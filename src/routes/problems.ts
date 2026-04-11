@@ -85,7 +85,7 @@ router.get("/", optionalAuth, async (req, res) => {
       });
 
       // Mapping objects back to shuffled order
-      problems = pageIds.map(id => data.find(p => p.id === id)).filter(Boolean);
+      problems = pageIds.map(id => data.find(p => p.id === id)).filter((p): p is NonNullable<typeof p> => !!p);
     } else {
       problems = await prisma.problem.findMany({
         where,
@@ -302,7 +302,7 @@ router.get("/:slug/draft", requireAuth, async (req, res) => {
     const language = req.query.language as string;
     const userId = req.user!.userId;
 
-    const problem = await prisma.problem.findUnique({ where: { slug }, select: { id: true } });
+    const problem = await prisma.problem.findUnique({ where: { slug: slug as string }, select: { id: true } });
     if (!problem) {
       res.status(404).json({ error: "Problem not found" });
       return;
@@ -336,8 +336,8 @@ router.post("/:problemId/draft", requireAuth, async (req, res) => {
       where: {
         userId_problemId_language: {
           userId,
-          problemId,
-          language,
+          problemId: problemId as string,
+          language: language as string,
         },
       },
       update: {
@@ -346,8 +346,8 @@ router.post("/:problemId/draft", requireAuth, async (req, res) => {
       },
       create: {
         userId,
-        problemId,
-        language,
+        problemId: problemId as string,
+        language: language as string,
         code,
       },
     });
@@ -365,7 +365,7 @@ router.get("/:slug/timer", requireAuth, async (req, res) => {
     const { slug } = req.params;
     const userId = req.user!.userId;
 
-    const problem = await prisma.problem.findUnique({ where: { slug }, select: { id: true } });
+    const problem = await prisma.problem.findUnique({ where: { slug: slug as string }, select: { id: true } });
     if (!problem) {
       res.status(404).json({ error: "Problem not found" });
       return;
@@ -403,7 +403,7 @@ router.post("/:slug/timer", requireAuth, async (req, res) => {
     const { action, elapsedSeconds } = req.body;
     const userId = req.user!.userId;
 
-    const problem = await prisma.problem.findUnique({ where: { slug }, select: { id: true } });
+    const problem = await prisma.problem.findUnique({ where: { slug: slug as string }, select: { id: true } });
     if (!problem) {
       res.status(404).json({ error: "Problem not found" });
       return;
@@ -460,7 +460,7 @@ router.get("/:slug/submissions", requireAuth, async (req, res) => {
     const { slug } = req.params;
     const userId = req.user!.userId;
 
-    const problem = await prisma.problem.findUnique({ where: { slug }, select: { id: true } });
+    const problem = await prisma.problem.findUnique({ where: { slug: slug as string }, select: { id: true } });
     if (!problem) {
       res.status(404).json({ error: "Problem not found" });
       return;
