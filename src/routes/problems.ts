@@ -53,21 +53,56 @@ router.get("/", optionalAuth, async (req, res) => {
     else if (sortBy === "title-asc") orderBy = { title: "asc" };
     else if (sortBy === "title-desc") orderBy = { title: "desc" };
 
-    const problems = await prisma.problem.findMany({
-      where,
-      select: {
-        id: true,
-        title: true,
-        slug: true,
-        difficulty: true,
-        tags: true,
-        createdAt: true,
-        timeLimitMs: true,
-      },
-      orderBy,
-      skip: skipNum,
-      take: takeNum,
-    });
+    let problems;
+
+    if (sortBy === "shuffled") {
+      // 1. Fetch all published IDs matching filters
+      const matchingProblems = await prisma.problem.findMany({
+        where,
+        select: { id: true },
+      });
+
+      // 2. Shuffle IDs
+      const shuffledIds = matchingProblems
+        .map(p => p.id)
+        .sort(() => Math.random() - 0.5);
+
+      // 3. Take the subset for current page
+      const pageIds = shuffledIds.slice(skipNum, skipNum + takeNum);
+
+      // 4. Fetch full data for these IDs (maintain shuffled order)
+      const data = await prisma.problem.findMany({
+        where: { id: { in: pageIds } },
+        select: {
+          id: true,
+          title: true,
+          slug: true,
+          difficulty: true,
+          tags: true,
+          createdAt: true,
+          timeLimitMs: true,
+        },
+      });
+
+      // Mapping objects back to shuffled order
+      problems = pageIds.map(id => data.find(p => p.id === id)).filter(Boolean);
+    } else {
+      problems = await prisma.problem.findMany({
+        where,
+        select: {
+          id: true,
+          title: true,
+          slug: true,
+          difficulty: true,
+          tags: true,
+          createdAt: true,
+          timeLimitMs: true,
+        },
+        orderBy,
+        skip: skipNum,
+        take: takeNum,
+      });
+    }
 
     // Determine solved status for the current response set
     let statusMap: Record<string, string> = {}; // problemId -> "SOLVED" | "ATTEMPTING"
