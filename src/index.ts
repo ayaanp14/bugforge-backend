@@ -14,7 +14,6 @@ import executionRouter from "./routes/execution.js";
 import leaderboardRouter from "./routes/leaderboard.js";
 import bugChallengesRouter from "./routes/bug-challenges.js";
 import pairRoomsRouter from "./routes/pair-rooms.js";
-import { platformGuard } from "./middleware/platformGuard.js";
 import { prisma } from "./lib/prisma.js";
 import { encodeCode } from "./lib/obfuscation.js";
 // recoveryCode is generated using Math.random for simplicity
@@ -284,12 +283,12 @@ app.use(
     origin: FRONTEND_URL,
     credentials: true,
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization", "X-App-Platform", "X-App-Signature", "X-App-Timestamp"],
+    allowedHeaders: ["Content-Type", "Authorization"],
   })
 );
 
-// Strict Platform Guard
-app.use(platformGuard);
+// Strict Platform Guard (Removed)
+// app.use(platformGuard);
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
