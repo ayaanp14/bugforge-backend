@@ -51,7 +51,7 @@ model User {
   rating             Int               @default(1200)
   createdAt          DateTime          @default(now())
   updatedAt          DateTime          @updatedAt
-  avatar_url         String?           @map("image")
+  avatar_url         String?
   instituteName      String?
   username           String?           @unique
   gender             String?
