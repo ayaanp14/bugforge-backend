@@ -20,48 +20,6 @@ const generateUsername = async (baseName: string) => {
   return username;
 };
 
-// GET /api/auth/username-check (Public)
-router.get("/username-check", optionalAuth, async (req, res) => {
-  const { username } = req.query;
-
-  if (!username || typeof username !== "string") {
-    res.status(400).json({ error: "Username is required." });
-    return;
-  }
-
-  // 1. Format Validation
-  const usernameRegex = /^[a-zA-Z0-9_]+$/;
-  if (!usernameRegex.test(username)) {
-    res.json({ available: false, error: "Invalid format" });
-    return;
-  }
-
-  if (username.length < 3) {
-    res.json({ available: false, error: "Too short" });
-    return;
-  }
-
-  try {
-    // 2. Uniqueness Check (Excluding self if logged in)
-    const existingUser = await prisma.user.findFirst({
-      where: { 
-        username: { equals: username, mode: 'insensitive' },
-        // If logged in, exclude self
-        id: req.user?.userId ? { not: req.user.userId } : undefined
-      }
-    });
-
-    if (existingUser) {
-      res.json({ available: false, error: "Taken" });
-    } else {
-      res.json({ available: true });
-    }
-  } catch (err) {
-    console.error("GET /api/auth/username-check error:", err);
-    res.status(500).json({ error: "Internal server error" });
-  }
-});
-
 // POST /api/auth/register
 router.post("/register", async (req, res) => {
   const { username, email, password } = req.body;

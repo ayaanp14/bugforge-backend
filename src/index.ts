@@ -14,6 +14,7 @@ import executionRouter from "./routes/execution.js";
 import leaderboardRouter from "./routes/leaderboard.js";
 import bugChallengesRouter from "./routes/bug-challenges.js";
 import pairRoomsRouter from "./routes/pair-rooms.js";
+import { optionalAuth } from "./middleware/auth.js";
 import { platformGuard } from "./middleware/platformGuard.js";
 import { prisma } from "./lib/prisma.js";
 import { encodeCode } from "./lib/obfuscation.js";
@@ -92,7 +93,7 @@ io.on("connection", (socket) => {
       });
 
       if (room) {
-        const participant = room.participants.find(p => p.userId === userId);
+        const participant = room.participants.find((p: any) => p.userId === userId);
         if (participant) {
           socketMetadata.set(socket.id, { 
             roomId, 
@@ -101,7 +102,7 @@ io.on("connection", (socket) => {
             slug: room.problem.slug
           });
         }
-        const participants = room.participants.map(p => ({
+        const participants = room.participants.map((p: any) => ({
           userId: p.userId,
           name: p.user.name,
           avatar_url: p.user.avatar_url,
@@ -206,7 +207,7 @@ io.on("connection", (socket) => {
       });
 
       if (room) {
-        const participants = room.participants.map(p => ({
+        const participants = room.participants.map((p: any) => ({
           userId: p.userId,
           name: p.user.name,
           avatar_url: p.user.avatar_url,
@@ -304,13 +305,55 @@ app.use("/api/bug-challenges", bugChallengesRouter);
 app.use("/api/pair-rooms", pairRoomsRouter);
 app.use("/api", executionRouter); 
 
+// GET /api/username-check (Public, non-NextAuth)
+app.get("/api/username-check", optionalAuth, async (req: any, res) => {
+  const { username } = req.query;
+ 
+  if (!username || typeof username !== "string") {
+    res.status(400).json({ error: "Username is required." });
+    return;
+  }
+ 
+  // 1. Format Validation
+  const usernameRegex = /^[a-zA-Z0-9_]+$/;
+  if (!usernameRegex.test(username)) {
+    res.json({ available: false, error: "Invalid format" });
+    return;
+  }
+ 
+  if (username.length < 3) {
+    res.json({ available: false, error: "Too short" });
+    return;
+  }
+ 
+  try {
+    // 2. Uniqueness Check (Excluding self if logged in)
+    const existingUser = await prisma.user.findFirst({
+      where: { 
+        username: { equals: username, mode: 'insensitive' },
+        // If logged in, exclude self
+        id: req.user?.userId ? { not: req.user.userId } : undefined
+      }
+    });
+ 
+    if (existingUser) {
+      res.json({ available: false, error: "Taken" });
+    } else {
+      res.json({ available: true });
+    }
+  } catch (err) {
+    console.error("GET /api/username-check error:", err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+ 
 // Health check
 app.get("/health", (_req, res) => {
   res.json({ status: "ok", timestamp: new Date().toISOString() });
 });
 
 httpServer.listen(PORT, () => {
-  console.log(`🚀 Backend & WebSocket running at http://localhost:${PORT}`);
+  console.log(`🚀 Backend & WebSocket running on port: ${PORT}`);
   console.log(`   Auth:   GET /api/auth/google`);
   console.log(`   Me:     GET /api/me`);
   console.log(`   Problems: GET /api/problems`);
