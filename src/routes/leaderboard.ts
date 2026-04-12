@@ -23,7 +23,7 @@ router.get("/", async (_req, res) => {
       },
     });
 
-    const result = topUsers.map((u) => ({
+    const result = topUsers.map((u: any) => ({
       id: u.id,
       name: u.name || "Anonymous User",
       username: u.username || u.name || "Anonymous",

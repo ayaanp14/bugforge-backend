@@ -38,7 +38,7 @@ router.get("/", optionalAuth, async (req, res) => {
         },
         select: { problemId: true },
       });
-      const solvedIds = solvedSubmissions.map(s => s.problemId);
+      const solvedIds = solvedSubmissions.map((s: any) => s.problemId);
 
       if (status === "solved") {
         where.id = { in: solvedIds };
@@ -64,7 +64,7 @@ router.get("/", optionalAuth, async (req, res) => {
 
       // 2. Shuffle IDs
       const shuffledIds = matchingProblems
-        .map(p => p.id)
+        .map((p: any) => p.id)
         .sort(() => Math.random() - 0.5);
 
       // 3. Take the subset for current page
@@ -85,7 +85,7 @@ router.get("/", optionalAuth, async (req, res) => {
       });
 
       // Mapping objects back to shuffled order
-      problems = pageIds.map(id => data.find(p => p.id === id)).filter((p): p is NonNullable<typeof p> => !!p);
+      problems = pageIds.map((id: any) => data.find((p: any) => p.id === id)).filter((p: any): p is NonNullable<typeof p> => !!p);
     } else {
       problems = await prisma.problem.findMany({
         where,
@@ -115,7 +115,7 @@ router.get("/", optionalAuth, async (req, res) => {
         select: { problemId: true, verdict: true },
       });
 
-      submissions.forEach(sub => {
+      submissions.forEach((sub: any) => {
         const current = statusMap[sub.problemId];
         if (sub.verdict === "ACCEPTED") {
           statusMap[sub.problemId] = "SOLVED";
@@ -125,7 +125,7 @@ router.get("/", optionalAuth, async (req, res) => {
       });
     }
 
-    const result = problems.map((p) => ({
+    const result = problems.map((p: any) => ({
       ...p,
       status: statusMap[p.id] || "UNSOLVED",
     }));

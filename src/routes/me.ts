@@ -37,7 +37,7 @@ router.get("/activity", requireAuth, async (req, res) => {
         counts[label] = 0;
     }
 
-    submissions.forEach((s) => {
+    submissions.forEach((s: any) => {
       const d = new Date(s.submittedAt);
       const label = `${days[d.getDay()]} ${d.getDate()}/${d.getUTCMonth() + 1}`;
       if (counts[label] !== undefined) {
@@ -83,7 +83,7 @@ router.get("/heatmap", requireAuth, async (req, res) => {
     const dailyCounts: Record<string, number> = {};
     
     // Aggregrate counts
-    submissions.forEach((s) => {
+    submissions.forEach((s: any) => {
       const dateStr = s.submittedAt.toISOString().split('T')[0];
       dailyCounts[dateStr] = (dailyCounts[dateStr] || 0) + 1;
     });
@@ -423,7 +423,7 @@ router.get("/submissions", requireAuth, async (req, res) => {
 
     // Normalize and combine
     const history = [
-      ...problemSubmissions.map(s => ({
+      ...problemSubmissions.map((s: any) => ({
         id: s.id,
         type: "problem",
         title: s.problem.title,
@@ -435,7 +435,7 @@ router.get("/submissions", requireAuth, async (req, res) => {
         code: s.code,
         submittedAt: s.submittedAt
       })),
-      ...bugSubmissions.map(s => ({
+      ...bugSubmissions.map((s: any) => ({
         id: s.id,
         type: "bug",
         title: s.challenge.title,
@@ -536,7 +536,7 @@ router.get("/difficulty-stats", requireAuth, async (req, res) => {
     });
 
     const totalMap: Record<string, number> = { easy: 0, medium: 0, hard: 0 };
-    totalProblems.forEach(group => {
+    totalProblems.forEach((group: any) => {
       totalMap[group.difficulty.toLowerCase()] = group._count._all;
     });
 
@@ -556,7 +556,7 @@ router.get("/difficulty-stats", requireAuth, async (req, res) => {
 
     // Strategy: track best verdict per unique problem
     const problemBestVerdict: Record<string, { difficulty: string, isSolved: boolean }> = {};
-    userSubmissions.forEach(sub => {
+    userSubmissions.forEach((sub: any) => {
       const existing = problemBestVerdict[sub.problemId];
       const isAccepted = sub.verdict === "ACCEPTED";
       

@@ -92,7 +92,7 @@ io.on("connection", (socket) => {
       });
 
       if (room) {
-        const participant = room.participants.find(p => p.userId === userId);
+        const participant = room.participants.find((p: any) => p.userId === userId);
         if (participant) {
           socketMetadata.set(socket.id, { 
             roomId, 
@@ -101,7 +101,7 @@ io.on("connection", (socket) => {
             slug: room.problem.slug
           });
         }
-        const participants = room.participants.map(p => ({
+        const participants = room.participants.map((p: any) => ({
           userId: p.userId,
           name: p.user.name,
           avatar_url: p.user.avatar_url,
@@ -206,7 +206,7 @@ io.on("connection", (socket) => {
       });
 
       if (room) {
-        const participants = room.participants.map(p => ({
+        const participants = room.participants.map((p: any) => ({
           userId: p.userId,
           name: p.user.name,
           avatar_url: p.user.avatar_url,

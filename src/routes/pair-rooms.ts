@@ -165,7 +165,7 @@ router.post("/:id/join", requireAuth, async (req, res) => {
         where: { id },
         data: {
           kickedUserIds: {
-            set: room.kickedUserIds.filter(uid => uid !== userId)
+            set: room.kickedUserIds.filter((uid: any) => uid !== userId)
           }
         }
       });
@@ -185,7 +185,7 @@ router.post("/:id/join", requireAuth, async (req, res) => {
     }
 
     // Check if user is already a participant
-    const existing = room.participants.find(p => p.userId === userId);
+    const existing = room.participants.find((p: any) => p.userId === userId);
     if (!existing) {
        // Check if room is full
        if (room.participants.length >= room.maxParticipants) {
