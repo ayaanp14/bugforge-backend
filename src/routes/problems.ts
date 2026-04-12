@@ -85,7 +85,7 @@ router.get("/", optionalAuth, async (req, res) => {
       });
 
       // Mapping objects back to shuffled order
-      problems = pageIds.map(id => data.find(p => p.id === id)).filter(Boolean);
+      problems = pageIds.map(id => data.find(p => p.id === id)).filter((p): p is NonNullable<typeof p> => !!p);
     } else {
       problems = await prisma.problem.findMany({
         where,
@@ -110,7 +110,7 @@ router.get("/", optionalAuth, async (req, res) => {
       const submissions = await prisma.submission.findMany({
         where: {
           userId: req.user.userId,
-          problemId: { in: problems.map(p => p.id) }
+          problemId: { in: problems.map((p: any) => p.id) }
         },
         select: { problemId: true, verdict: true },
       });
@@ -302,7 +302,7 @@ router.get("/:slug/draft", requireAuth, async (req, res) => {
     const language = req.query.language as string;
     const userId = req.user!.userId;
 
-    const problem = await prisma.problem.findUnique({ where: { slug }, select: { id: true } });
+    const problem = await prisma.problem.findUnique({ where: { slug: String(slug) }, select: { id: true } });
     if (!problem) {
       res.status(404).json({ error: "Problem not found" });
       return;
@@ -328,8 +328,8 @@ router.get("/:slug/draft", requireAuth, async (req, res) => {
 // 10. POST /api/problems/:problemId/draft — Save/Auto-save code draft
 router.post("/:problemId/draft", requireAuth, async (req, res) => {
   try {
-    const { problemId } = req.params;
-    const { code, language } = req.body;
+    const problemId = req.params.problemId as string;
+    const { code, language } = req.body as { code: string; language: string };
     const userId = req.user!.userId;
 
     const draft = await prisma.codeDraft.upsert({
@@ -365,7 +365,7 @@ router.get("/:slug/timer", requireAuth, async (req, res) => {
     const { slug } = req.params;
     const userId = req.user!.userId;
 
-    const problem = await prisma.problem.findUnique({ where: { slug }, select: { id: true } });
+    const problem = await prisma.problem.findUnique({ where: { slug: String(slug) }, select: { id: true } });
     if (!problem) {
       res.status(404).json({ error: "Problem not found" });
       return;
@@ -403,7 +403,7 @@ router.post("/:slug/timer", requireAuth, async (req, res) => {
     const { action, elapsedSeconds } = req.body;
     const userId = req.user!.userId;
 
-    const problem = await prisma.problem.findUnique({ where: { slug }, select: { id: true } });
+    const problem = await prisma.problem.findUnique({ where: { slug: String(slug) }, select: { id: true } });
     if (!problem) {
       res.status(404).json({ error: "Problem not found" });
       return;
@@ -460,7 +460,7 @@ router.get("/:slug/submissions", requireAuth, async (req, res) => {
     const { slug } = req.params;
     const userId = req.user!.userId;
 
-    const problem = await prisma.problem.findUnique({ where: { slug }, select: { id: true } });
+    const problem = await prisma.problem.findUnique({ where: { slug: String(slug) }, select: { id: true } });
     if (!problem) {
       res.status(404).json({ error: "Problem not found" });
       return;
