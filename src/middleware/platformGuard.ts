@@ -5,8 +5,11 @@ import { verifySignature } from "../lib/crypto.js";
  * Middleware to block any requests not originating from the platform
  */
 export function platformGuard(req: Request, res: Response, next: NextFunction) {
-  // 1. Skip checks for health or public diagnostic routes if any
-  if (req.path === "/health") return next();
+  // 1. Skip checks for health or public diagnostic routes
+  // Also skip /api/auth routes which are public entry points and handled by NextAuth
+  if (req.path === "/health" || req.path.startsWith("/api/auth")) {
+    return next();
+  }
 
   const signature = req.headers["x-app-signature"] as string;
   const timestamp = req.headers["x-app-timestamp"] as string;
