@@ -58,6 +58,19 @@ router.post("/register", async (req, res) => {
       }
     });
 
+    // Trigger registration webhook
+    const registrationWebhookUrl = process.env.REGISTRATION_FLOW_URL;
+    if (registrationWebhookUrl) {
+      fetch(registrationWebhookUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: user.email,
+          username: user.username,
+        }),
+      }).catch(err => console.error("Registration webhook error:", err));
+    }
+
     res.status(201).json({ 
       message: "User registered successfully", 
       userId: user.id 
