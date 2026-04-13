@@ -143,4 +143,122 @@ router.post("/logout", (req, res) => {
   res.json({ message: "Logout successful" });
 });
 
+// POST /api/auth/forgot-password
+router.post("/forgot-password", async (req, res) => {
+  const { email } = req.body;
+
+  if (!email) {
+    res.status(400).json({ error: "Email is required." });
+    return;
+  }
+
+  try {
+    const user = await prisma.user.findUnique({ where: { email } });
+    if (!user) {
+      // For security, don't reveal if user exists or not
+      res.json({ message: "If an account with that email exists, an OTP has been sent." });
+      return;
+    }
+
+    // Generate 6-digit OTP
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    
+    // Create a hash of the OTP to store in the token (stateless)
+    // Using bcrypt to match user password patterns
+    const salt = await bcrypt.genSalt(10);
+    const otpHash = await bcrypt.hash(otp, salt);
+    
+    // Create a temporary token that expires in 5 minutes
+    const otpToken = jwt.sign({ email, otpHash }, JWT_SECRET, { expiresIn: "5m" });
+
+    // Send to Pabbly webhook
+    const webhookUrl = "https://flow.sokt.io/func/scriPfBslH2w";
+    await fetch(webhookUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        email,
+        otp,
+      }),
+    });
+
+    res.json({ 
+      message: "OTP sent successfully.",
+      otpToken // Send this to the frontend so it can be used for verification
+    });
+  } catch (err) {
+    console.error("Forgot password error:", err);
+    res.status(500).json({ error: "Failed to process forgot password request." });
+  }
+});
+
+// POST /api/auth/verify-otp
+router.post("/verify-otp", async (req, res) => {
+  const { otp, otpToken } = req.body;
+
+  if (!otp || !otpToken) {
+    res.status(400).json({ error: "OTP and token are required." });
+    return;
+  }
+
+  try {
+    // Verify the OTP token
+    const payload = jwt.verify(otpToken, JWT_SECRET) as { email: string; otpHash: string };
+    
+    // Check if the provided OTP matches the hash in the token
+    const isValid = await bcrypt.compare(otp, payload.otpHash);
+    
+    if (!isValid) {
+      res.status(400).json({ error: "Invalid or expired OTP." });
+      return;
+    }
+
+    // Generate a reset token that is valid for 10 minutes
+    const resetToken = jwt.sign({ email: payload.email, purpose: "password_reset" }, JWT_SECRET, { expiresIn: "10m" });
+
+    res.json({ 
+      message: "OTP verified successfully.",
+      resetToken 
+    });
+  } catch (err) {
+    console.error("OTP verification error:", err);
+    res.status(400).json({ error: "Invalid or expired verification session." });
+  }
+});
+
+// POST /api/auth/reset-password
+router.post("/reset-password", async (req, res) => {
+  const { newPassword, resetToken } = req.body;
+
+  if (!newPassword || !resetToken) {
+    res.status(400).json({ error: "New password and reset token are required." });
+    return;
+  }
+
+  try {
+    // Verify the reset token
+    const payload = jwt.verify(resetToken, JWT_SECRET) as { email: string; purpose: string };
+    
+    if (payload.purpose !== "password_reset") {
+      res.status(400).json({ error: "Invalid token purpose." });
+      return;
+    }
+
+    // Update user password
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    await prisma.user.update({
+      where: { email: payload.email },
+      data: { password_hash: hashedPassword }
+    });
+
+    res.json({ message: "Password reset successfully. You can now log in with your new password." });
+  } catch (err) {
+    console.error("Password reset error:", err);
+    res.status(400).json({ error: "Invalid or expired reset session." });
+  }
+});
+
 export default router;
+
