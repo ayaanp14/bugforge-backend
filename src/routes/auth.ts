@@ -7,6 +7,10 @@ import { optionalAuth } from "../middleware/auth.js";
 const router = Router();
 const JWT_SECRET = process.env["JWT_SECRET"] || "your-secret-key";
 
+// In-memory store for active OTP tokens to support immediate invalidation on resend
+// Key: email, Value: current valid otpToken
+const activeOtpTokens = new Map<string, string>();
+
 // Helper to generate a unique username (same logic as frontend)
 const generateUsername = async (baseName: string) => {
   let username = baseName.toLowerCase().replace(/\s+/g, "_").replace(/[^a-z0-9_]/g, "");
@@ -197,6 +201,9 @@ router.post("/forgot-password", async (req, res) => {
       }),
     });
 
+    // Store this as the only valid token for this email (invalidates previous ones)
+    activeOtpTokens.set(email, otpToken);
+
     res.json({ 
       message: "OTP sent successfully.",
       otpToken // Send this to the frontend so it can be used for verification
@@ -223,10 +230,16 @@ router.post("/verify-otp", async (req, res) => {
     // Check if the provided OTP matches the hash in the token
     const isValid = await bcrypt.compare(otp, payload.otpHash);
     
-    if (!isValid) {
+    // Check if this token is still the active one for this email
+    const currentActiveToken = activeOtpTokens.get(payload.email);
+    
+    if (!isValid || currentActiveToken !== otpToken) {
       res.status(400).json({ error: "Invalid or expired OTP." });
       return;
     }
+
+    // Success! Clear the token so it can't be used again
+    activeOtpTokens.delete(payload.email);
 
     // Generate a reset token that is valid for 10 minutes
     const resetToken = jwt.sign({ email: payload.email, purpose: "password_reset" }, JWT_SECRET, { expiresIn: "10m" });
