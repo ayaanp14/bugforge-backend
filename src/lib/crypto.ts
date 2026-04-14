@@ -1,6 +1,6 @@
 import * as crypto from "crypto";
 
-const PLATFORM_SECRET = process.env["PLATFORM_SECRET"] ?? "bugforge-super-secret-key-123";
+const PLATFORM_SECRET = process.env["PLATFORM_SECRET"] ?? "codexa-super-secret-key-123";
 
 /**
  * Generates an HMAC-SHA256 signature for a request

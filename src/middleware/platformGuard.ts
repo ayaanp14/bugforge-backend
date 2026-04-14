@@ -16,7 +16,7 @@ export function platformGuard(req: Request, res: Response, next: NextFunction) {
   const platform = req.headers["x-app-platform"] as string;
 
   // 2. Basic static platform check
-  if (platform !== "bugforge-web") {
+  if (platform !== "codexa-web") {
     console.warn(`[Guard] Invalid platform header: ${platform}`);
     return res.status(403).json({ error: "Access Denied: Invalid Platform" });
   }

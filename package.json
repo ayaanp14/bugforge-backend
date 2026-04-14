@@ -1,7 +1,7 @@
 {
   "name": "backend",
   "version": "1.0.0",
-  "description": "BugForge API Server",
+  "description": "Codexa API Server",
   "main": "dist/index.js",
   "type": "module",
   "scripts": {
