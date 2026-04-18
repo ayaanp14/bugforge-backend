@@ -11,10 +11,15 @@ export function requireAuth(
   res: Response,
   next: NextFunction
 ): void {
-  const token = (req.cookies as Record<string, string | undefined>).__session;
+  // Try Authorization header first (required for cross-domain / production)
+  const authHeader = req.headers.authorization;
+  const headerToken = authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : null;
+  // Fallback to cookie for same-site / local dev
+  const cookieToken = (req.cookies as Record<string, string | undefined>).__session;
+  const token = headerToken || cookieToken;
 
   if (!token) {
-    console.warn("Auth check failed: No __session cookie found. Cookies:", req.cookies);
+    console.warn("Auth check failed: No token in Authorization header or __session cookie.");
     res.status(401).json({ error: "Unauthorized — no session" });
     return;
   }
@@ -45,7 +50,10 @@ export function optionalAuth(
   _res: Response,
   next: NextFunction
 ): void {
-  const token = (req.cookies as Record<string, string | undefined>).__session;
+  const authHeader = req.headers.authorization;
+  const headerToken = authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : null;
+  const cookieToken = (req.cookies as Record<string, string | undefined>).__session;
+  const token = headerToken || cookieToken;
 
   if (!token) {
     return next();
@@ -62,7 +70,6 @@ export function optionalAuth(
       req.user = { userId: payload.userId, email: payload.email };
     }
   } catch (err) {
-    // Silently ignore if token is invalid in optional mode
     console.warn("Optional auth warning (ignoring):", (err as Error).message);
   }
   next();
