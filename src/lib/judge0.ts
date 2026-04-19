@@ -273,8 +273,9 @@ int main(void) {
 
 function wrapCode(code: string, language: string): string {
   if (language === "javascript") {
-    // Extract function name in the backend (cleaner)
-    const functionMatch = code.match(/function\s+([a-zA-Z0-9_]+)\s*\(/);
+    const functionMatch = 
+      code.match(/function\s+([a-zA-Z0-9_]+)\s*\(/) || 
+      code.match(/(?:var|let|const)\s+([a-zA-Z0-9_]+)\s*=\s*(?:function\s*\(|(?:\([^)]*\)|[a-zA-Z0-9_]+)\s*=>)/);
     const functionName = functionMatch ? functionMatch[1] : null;
 
     if (!functionName) return code;
