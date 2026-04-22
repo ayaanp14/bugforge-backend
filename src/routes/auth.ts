@@ -141,7 +141,8 @@ router.post("/login", async (req, res) => {
         username: user.username,
         name: user.name,
         avatar_url: user.avatar_url
-      }
+      },
+      token
     });
   } catch (err) {
     console.error("Login error:", err);
