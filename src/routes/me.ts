@@ -200,6 +200,7 @@ router.get("/", requireAuth, async (req, res) => {
             bugsFixed: true,
             currentStreak: true,
             longestStreak: true,
+            lastActive: true,
           },
         },
       },
@@ -210,7 +211,23 @@ router.get("/", requireAuth, async (req, res) => {
       return;
     }
 
-    // Lazy Migration: Generate username if missing
+    if (user.stats) {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const lastActive = new Date(user.stats.lastActive);
+      lastActive.setHours(0, 0, 0, 0);
+
+      const diffDays = Math.floor((today.getTime() - lastActive.getTime()) / (1000 * 60 * 60 * 24));
+
+      if (diffDays > 1 && user.stats.currentStreak > 0) {
+        await prisma.userStats.update({
+          where: { userId: user.id },
+          data: { currentStreak: 0 }
+        });
+        user.stats.currentStreak = 0;
+      }
+    }
+
     if (!user.username) {
       const baseName = user.name || "user";
       let newUsername = baseName.toLowerCase().replace(/\s+/g, "_").replace(/[^a-z0-9_]/g, "");
@@ -250,6 +267,7 @@ router.get("/", requireAuth, async (req, res) => {
               bugsFixed: true,
               currentStreak: true,
               longestStreak: true,
+              lastActive: true,
             },
           },
         },
