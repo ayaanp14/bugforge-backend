@@ -48,6 +48,8 @@ model User {
   password_hash      String?
   provider           String            @default("email")
   xp                 Int               @default(0)
+  questionsXp        Int               @default(0)
+  bugsXp             Int               @default(0)
   rating             Int               @default(1200)
   createdAt          DateTime          @default(now())
   updatedAt          DateTime          @updatedAt

@@ -191,6 +191,8 @@ router.get("/", requireAuth, async (req, res) => {
         twitter: true,
         readme: true,
         xp: true,
+        questionsXp: true,
+        bugsXp: true,
         rating: true,
         provider: true,
         createdAt: true,
@@ -282,11 +284,8 @@ router.get("/", requireAuth, async (req, res) => {
       return "Legend";
     };
 
-    const globalRank = await prisma.user.count({
-      where: {
-        xp: { gt: user.xp }
-      }
-    }) + 1;
+    // Ranks are now fetched independently via /api/me/rank to optimize performance
+    const globalRank = user.xp > 0 ? "..." : null; 
 
     // --- Trend Calculations (Ensuring only FIRST-TIME solves are counted) ---
     const now = new Date();
@@ -343,7 +342,6 @@ router.get("/", requireAuth, async (req, res) => {
 
     res.json({
       ...user,
-      globalRank,
       tierTitle: getTierTitle(user.rating),
       trends: {
         xpThisWeek,
@@ -606,6 +604,38 @@ router.get("/difficulty-stats", requireAuth, async (req, res) => {
     });
   } catch (err) {
     console.error("GET /api/me/difficulty-stats error:", err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// GET /api/me/rank?type=combined|questions|bugs
+router.get("/rank", requireAuth, async (req, res) => {
+  try {
+    const { type = "combined" } = req.query;
+    const userId = req.user!.userId;
+
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { xp: true, questionsXp: true, bugsXp: true }
+    });
+
+    if (!user) {
+      res.status(404).json({ error: "User not found" });
+      return;
+    }
+
+    let rank = null;
+    if (type === "questions") {
+      rank = user.questionsXp > 0 ? (await prisma.user.count({ where: { questionsXp: { gt: user.questionsXp } } }) + 1) : null;
+    } else if (type === "bugs") {
+      rank = user.bugsXp > 0 ? (await prisma.user.count({ where: { bugsXp: { gt: user.bugsXp } } }) + 1) : null;
+    } else {
+      rank = user.xp > 0 ? (await prisma.user.count({ where: { xp: { gt: user.xp } } }) + 1) : null;
+    }
+
+    res.json({ rank });
+  } catch (err) {
+    console.error("GET /api/me/rank error:", err);
     res.status(500).json({ error: "Internal server error" });
   }
 });

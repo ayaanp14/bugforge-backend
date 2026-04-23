@@ -342,7 +342,10 @@ router.post("/submit", requireAuth, async (req, res) => {
 
         await prisma.user.update({
           where: { id: userId },
-          data: { xp: { increment: xpAwarded } },
+          data: { 
+            xp: { increment: xpAwarded },
+            questionsXp: { increment: xpAwarded }
+          },
         });
 
         const stats = await prisma.userStats.findUnique({ where: { userId } });
