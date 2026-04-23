@@ -260,6 +260,8 @@ router.get("/", requireAuth, async (req, res) => {
           twitter: true,
           readme: true,
           xp: true,
+          questionsXp: true,
+          bugsXp: true,
           rating: true,
           provider: true,
           createdAt: true,
@@ -274,6 +276,11 @@ router.get("/", requireAuth, async (req, res) => {
           },
         },
       });
+    }
+
+    if (!user) {
+      res.status(404).json({ error: "User not found" });
+      return;
     }
 
     const getTierTitle = (rating: number) => {
