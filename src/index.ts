@@ -14,6 +14,7 @@ import executionRouter from "./routes/execution.js";
 import leaderboardRouter from "./routes/leaderboard.js";
 import bugChallengesRouter from "./routes/bug-challenges.js";
 import pairRoomsRouter from "./routes/pair-rooms.js";
+import interviewsRouter from "./routes/interviews.js";
 import { optionalAuth } from "./middleware/auth.js";
 import { platformGuard } from "./middleware/platformGuard.js";
 import { prisma } from "./lib/prisma.js";
@@ -303,6 +304,7 @@ app.use("/api/problems", problemsRouter);
 app.use("/api/leaderboard", leaderboardRouter);
 app.use("/api/bug-challenges", bugChallengesRouter);
 app.use("/api/pair-rooms", pairRoomsRouter);
+app.use("/api/interviews", interviewsRouter);
 app.use("/api", executionRouter); 
 
 // GET /api/username-check (Public, non-NextAuth)
