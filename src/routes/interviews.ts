@@ -183,24 +183,83 @@ async function initializeGtwyInterview(config: {
     threadId = `user_${userId}_${Date.now()}`,
   } = config;
 
+  const payload = {
+    query: previousQuestions ? "Next question please" : "Start the interview",
+    agent_id: "69ebe0945b4763a61d8518fe",
+    thread_id: threadId,
+    response_type: "text",
+    variables: {
+      targetRole: roleId,
+      interviewRound: roundId,
+      experienceBand: experienceBand,
+      difficulty: difficulty,
+      interviewStyle: interviewStyle,
+      stackFocus: (stackFocusIds || []).join(", "),
+      focusAreas: (focusAreaIds || []).join(", "),
+      previousQuestions: previousQuestions,
+    },
+  };
+
   return await axios.post(
     "https://api.gtwy.ai/api/v2/model/chat/completion",
+    payload,
     {
-      user: previousQuestions ? "Next question please" : "Start the interview",
-      agent_id: "69ebe0945b4763a61d8518fe",
-      thread_id: threadId,
-      response_type: "text",
-      variables: {
-        targetRole: roleId,
-        interviewRound: roundId,
-        experienceBand: experienceBand,
-        difficulty: difficulty,
-        interviewStyle: interviewStyle,
-        stackFocus: (stackFocusIds || []).join(", "),
-        focusAreas: (focusAreaIds || []).join(", "),
-        previousQuestions: previousQuestions,
+      headers: {
+        pauthkey: process.env.GTWY_PAUTHKEY,
+        "Content-Type": "application/json",
       },
+    }
+  );
+}
+
+/**
+ * Helper to evaluate GTWY AI Answer
+ */
+async function evaluateGtwyAnswer(config: {
+  answer: string;
+  roleId: string;
+  roundId: string;
+  difficulty: string;
+  experienceBand: string;
+  interviewStyle: string;
+  stackFocusIds: string[];
+  focusAreaIds: string[];
+  previousQuestions: string;
+  threadId: string;
+}) {
+  const {
+    answer,
+    roleId,
+    roundId,
+    difficulty,
+    experienceBand,
+    interviewStyle,
+    stackFocusIds,
+    focusAreaIds,
+    previousQuestions,
+    threadId,
+  } = config;
+
+  const payload = {
+    query: answer,
+    agent_id: "69ec016eb3f4d60fb9f0edcc",
+    thread_id: threadId,
+    response_type: "text",
+    variables: {
+      targetRole: roleId,
+      interviewRound: roundId,
+      difficulty: difficulty,
+      experienceBand: experienceBand,
+      interviewStyle: interviewStyle,
+      stackFocus: (stackFocusIds || []).join(", "),
+      focusAreas: (focusAreaIds || []).join(", "),
+      previousQuestions: previousQuestions,
     },
+  };
+  console.log("PAYLOAD", payload);
+  return await axios.post(
+    "https://api.gtwy.ai/api/v2/model/chat/completion",
+    payload,
     {
       headers: {
         pauthkey: process.env.GTWY_PAUTHKEY,
@@ -351,32 +410,18 @@ router.post("/session/:sessionId/answer", requireAuth, async (req: any, res) => 
       .join("\n---\n");
 
     // 2. Call GTWY AI for evaluation and next question
-    // Using the evaluation agent ID provided: 69ec016eb3f4d60fb9f0edcc
-    const gtwyResponse = await axios.post(
-      "https://api.gtwy.ai/api/v2/model/chat/completion",
-      {
-        user: answer,
-        agent_id: "69ec016eb3f4d60fb9f0edcc",
-        thread_id: session.gtwyThreadId,
-        response_type: "text",
-        variables: {
-          targetRole: template.roleId,
-          interviewRound: template.roundId,
-          difficulty: template.difficulty,
-          experienceBand: template.experienceBand,
-          interviewStyle: template.interviewStyle,
-          stackFocus: template.stackFocusIds.join(", "),
-          focusAreas: template.focusAreaIds.join(", "),
-          previousQuestions: previousQuestionsText,
-        },
-      },
-      {
-        headers: {
-          pauthkey: process.env.GTWY_PAUTHKEY,
-          "Content-Type": "application/json",
-        },
-      }
-    );
+    const gtwyResponse = await evaluateGtwyAnswer({
+      answer,
+      roleId: template.roleId,
+      roundId: template.roundId,
+      difficulty: template.difficulty,
+      experienceBand: template.experienceBand,
+      interviewStyle: template.interviewStyle,
+      stackFocusIds: template.stackFocusIds,
+      focusAreaIds: template.focusAreaIds,
+      previousQuestions: previousQuestionsText,
+      threadId: session.gtwyThreadId || "",
+    });
 
     const gtwyData = gtwyResponse.data;
     const contentStr = gtwyData?.response?.data?.content;

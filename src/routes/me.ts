@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { requireAuth } from "../middleware/auth.js";
 import { prisma } from "../lib/prisma.js";
+import { getHeatmap, getSubmissionHistory, getPairingHistory, getDifficultyStats, getRank, getDashboard } from "../services/dashboard.js";
 
 const router = Router();
 
@@ -60,69 +61,7 @@ router.get("/activity", requireAuth, async (req, res) => {
 // GET /api/me/heatmap — Contribution data for the last 365 days
 router.get("/heatmap", requireAuth, async (req, res) => {
   try {
-    const today = new Date();
-    today.setHours(23, 59, 59, 999);
-    const oneYearAgo = new Date();
-    oneYearAgo.setDate(today.getDate() - 364);
-    oneYearAgo.setHours(0, 0, 0, 0);
-
-    const submissions = await prisma.submission.findMany({
-      where: {
-        userId: req.user!.userId,
-        verdict: "ACCEPTED",
-        submittedAt: {
-          gte: oneYearAgo,
-          lte: today,
-        },
-      },
-      select: {
-        submittedAt: true,
-      },
-    });
-
-    const dailyCounts: Record<string, number> = {};
-    
-    // Aggregrate counts
-    submissions.forEach((s) => {
-      const dateStr = s.submittedAt.toISOString().split('T')[0];
-      dailyCounts[dateStr] = (dailyCounts[dateStr] || 0) + 1;
-    });
-
-    // Calculate streaks and active days
-    const dates: string[] = [];
-    for (let i = 0; i < 365; i++) {
-        const d = new Date(oneYearAgo);
-        d.setDate(oneYearAgo.getDate() + i);
-        dates.push(d.toISOString().split('T')[0]);
-    }
-
-    let maxStreak = 0;
-    let currentStreakCount = 0;
-    let activeDays = 0;
-
-    dates.forEach(date => {
-        if (dailyCounts[date]) {
-            activeDays++;
-            currentStreakCount++;
-            if (currentStreakCount > maxStreak) maxStreak = currentStreakCount;
-        } else {
-            currentStreakCount = 0;
-        }
-    });
-
-    // Final formatting for the heatmap component
-    const heatmapData = dates.map(date => ({
-        date,
-        count: dailyCounts[date] || 0
-    }));
-
-    res.json({
-        totalSubmissions: submissions.length,
-        activeDays,
-        maxStreak,
-        currentStreak: currentStreakCount,
-        heatmapData
-    });
+    res.json(await getHeatmap(req.user!.userId));
   } catch (err) {
     console.error("GET /api/me/heatmap error:", err);
     res.status(500).json({ error: "Internal server error" });
@@ -429,57 +368,7 @@ router.get("/submissions", requireAuth, async (req, res) => {
   try {
     const page = parseInt(req.query.page as string) || 1;
     const limit = parseInt(req.query.limit as string) || 10;
-    const skip = (page - 1) * limit;
-
-    const [problemSubmissions, bugSubmissions] = await Promise.all([
-      prisma.submission.findMany({
-        where: { userId: req.user!.userId },
-        include: { problem: { select: { title: true, difficulty: true } } },
-        orderBy: { submittedAt: "desc" },
-      }),
-      prisma.bugSubmission.findMany({
-        where: { userId: req.user!.userId },
-        include: { challenge: { select: { title: true, difficulty: true } } },
-        orderBy: { submittedAt: "desc" },
-      })
-    ]);
-
-    // Normalize and combine
-    const history = [
-      ...problemSubmissions.map(s => ({
-        id: s.id,
-        type: "problem",
-        title: s.problem.title,
-        difficulty: s.problem.difficulty,
-        verdict: s.verdict,
-        language: s.language,
-        runtime: s.runtimeMs ? `${s.runtimeMs}ms` : "N/A",
-        memory: s.memoryKb ? `${(s.memoryKb / 1024).toFixed(2)}MB` : "N/A",
-        code: s.code,
-        submittedAt: s.submittedAt
-      })),
-      ...bugSubmissions.map(s => ({
-        id: s.id,
-        type: "bug",
-        title: s.challenge.title,
-        difficulty: s.challenge.difficulty,
-        verdict: s.verdict,
-        language: "JS/JSON",
-        runtime: s.timeTakenSecs ? `${s.timeTakenSecs}s` : "N/A",
-        memory: "N/A",
-        code: JSON.stringify(s.editedFiles, null, 2),
-        submittedAt: s.submittedAt
-      }))
-    ].sort((a, b) => new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime());
-
-    const paginatedHistory = history.slice(skip, skip + limit);
-
-    res.json({
-      history: paginatedHistory,
-      total: history.length,
-      page,
-      limit
-    });
+    res.json(await getSubmissionHistory(req.user!.userId, page, limit));
   } catch (err) {
     console.error("GET /api/me/submissions error:", err);
     res.status(500).json({ error: "Internal server error" });
@@ -489,57 +378,9 @@ router.get("/submissions", requireAuth, async (req, res) => {
 // GET /api/me/pairing-history — returns sessions where the user was a participant (paginated)
 router.get("/pairing-history", requireAuth, async (req, res) => {
   try {
-    const userId = req.user!.userId;
     const page = parseInt(req.query["page"] as string) || 1;
     const limit = parseInt(req.query["limit"] as string) || 10;
-    const skip = (page - 1) * limit;
-
-    const [history, total] = await Promise.all([
-      prisma.pairRoom.findMany({
-        where: {
-          status: "closed",
-          participants: {
-            some: { userId: userId }
-          }
-        },
-        select: {
-          id: true,
-          endedAt: true,
-          problem: {
-            select: { title: true, difficulty: true }
-          },
-          participants: {
-            select: {
-              userId: true,
-              user: { select: { name: true, avatar_url: true } }
-            }
-          },
-          submissions: {
-            select: {
-              verdict: true,
-              code: true,
-              language: true,
-              submittedAt: true
-            },
-            orderBy: { submittedAt: "desc" },
-            take: 1
-          }
-        },
-        orderBy: { endedAt: "desc" },
-        skip,
-        take: limit
-      }),
-      prisma.pairRoom.count({
-        where: {
-          status: "closed",
-          participants: {
-            some: { userId: userId }
-          }
-        }
-      })
-    ]);
-
-    res.json({ history, total });
+    res.json(await getPairingHistory(req.user!.userId, page, limit));
   } catch (err) {
     console.error("GET /api/me/pairing-history error:", err);
     res.status(500).json({ error: "Internal server error" });
@@ -549,66 +390,7 @@ router.get("/pairing-history", requireAuth, async (req, res) => {
 // GET /api/me/difficulty-stats — returns counts of solved, attempted, and total problems per difficulty
 router.get("/difficulty-stats", requireAuth, async (req, res) => {
   try {
-    const userId = req.user!.userId;
-
-    // 1. Get total problems per difficulty
-    const totalProblems = await prisma.problem.groupBy({
-      by: ['difficulty'],
-      where: { isPublished: true },
-      _count: { _all: true }
-    });
-
-    const totalMap: Record<string, number> = { easy: 0, medium: 0, hard: 0 };
-    totalProblems.forEach(group => {
-      totalMap[group.difficulty.toLowerCase()] = group._count._all;
-    });
-
-    // 2. Get unique problem interactions (solved or attempted)
-    // We fetch all unique problemId's the user has submitted code for
-    const userSubmissions = await prisma.submission.findMany({
-      where: {
-        userId,
-        problem: { isPublished: true }
-      },
-      select: {
-        problemId: true,
-        verdict: true,
-        problem: { select: { difficulty: true } }
-      }
-    });
-
-    // Strategy: track best verdict per unique problem
-    const problemBestVerdict: Record<string, { difficulty: string, isSolved: boolean }> = {};
-    userSubmissions.forEach(sub => {
-      const existing = problemBestVerdict[sub.problemId];
-      const isAccepted = sub.verdict === "ACCEPTED";
-      
-      if (!existing) {
-        problemBestVerdict[sub.problemId] = { 
-          difficulty: sub.problem.difficulty.toLowerCase(), 
-          isSolved: isAccepted 
-        };
-      } else if (isAccepted) {
-        existing.isSolved = true;
-      }
-    });
-
-    const solvedMap: Record<string, number> = { easy: 0, medium: 0, hard: 0 };
-    const attemptedMap: Record<string, number> = { easy: 0, medium: 0, hard: 0 };
-
-    Object.values(problemBestVerdict).forEach(p => {
-      if (p.isSolved) {
-        solvedMap[p.difficulty]++;
-      } else {
-        attemptedMap[p.difficulty]++;
-      }
-    });
-
-    res.json({
-      easy: { solved: solvedMap.easy, attempted: attemptedMap.easy, total: totalMap.easy },
-      medium: { solved: solvedMap.medium, attempted: attemptedMap.medium, total: totalMap.medium },
-      hard: { solved: solvedMap.hard, attempted: attemptedMap.hard, total: totalMap.hard }
-    });
+    res.json(await getDifficultyStats(req.user!.userId));
   } catch (err) {
     console.error("GET /api/me/difficulty-stats error:", err);
     res.status(500).json({ error: "Internal server error" });
@@ -619,30 +401,19 @@ router.get("/difficulty-stats", requireAuth, async (req, res) => {
 router.get("/rank", requireAuth, async (req, res) => {
   try {
     const { type = "combined" } = req.query;
-    const userId = req.user!.userId;
-
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
-      select: { xp: true, questionsXp: true, bugsXp: true }
-    });
-
-    if (!user) {
-      res.status(404).json({ error: "User not found" });
-      return;
-    }
-
-    let rank = null;
-    if (type === "questions") {
-      rank = user.questionsXp > 0 ? (await prisma.user.count({ where: { questionsXp: { gt: user.questionsXp } } }) + 1) : null;
-    } else if (type === "bugs") {
-      rank = user.bugsXp > 0 ? (await prisma.user.count({ where: { bugsXp: { gt: user.bugsXp } } }) + 1) : null;
-    } else {
-      rank = user.xp > 0 ? (await prisma.user.count({ where: { xp: { gt: user.xp } } }) + 1) : null;
-    }
-
-    res.json({ rank });
+    res.json(await getRank(req.user!.userId, String(type)));
   } catch (err) {
     console.error("GET /api/me/rank error:", err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// GET /api/me/dashboard — everything the dashboard home needs, in one round-trip
+router.get("/dashboard", requireAuth, async (req, res) => {
+  try {
+    res.json(await getDashboard(req.user!.userId));
+  } catch (err) {
+    console.error("GET /api/me/dashboard error:", err);
     res.status(500).json({ error: "Internal server error" });
   }
 });
