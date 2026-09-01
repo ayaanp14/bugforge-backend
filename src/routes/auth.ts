@@ -3,6 +3,7 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { prisma } from "../lib/prisma.js";
 import { optionalAuth } from "../middleware/auth.js";
+import { WELCOME, createNotificationOnce } from "../services/notifications.js";
 
 const router = Router();
 const JWT_SECRET = process.env["JWT_SECRET"] || "your-secret-key";
@@ -61,6 +62,9 @@ router.post("/register", async (req, res) => {
         provider: "email",
       }
     });
+
+    // Seed the in-app welcome notification
+    void createNotificationOnce(user.id, WELCOME);
 
     // Trigger registration webhook
     const registrationWebhookUrl = process.env.REGISTRATION_FLOW_URL;

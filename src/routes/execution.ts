@@ -2,6 +2,7 @@ import { Router } from "express";
 import { prisma } from "../lib/prisma.js";
 import { requireAuth } from "../middleware/auth.js";
 import { pollBatchJudge0, pollJudge0, LANGUAGE_MAP, submitBatchToJudge0, submitToJudge0 } from "../lib/judge0.js";
+import { FIRST_SOLVE, createNotificationOnce, streakMilestone } from "../services/notifications.js";
 
 const router = Router();
 const SUBMIT_CONCURRENCY = Math.max(
@@ -383,6 +384,15 @@ router.post("/submit", requireAuth, async (req, res) => {
               lastActive: new Date(),
             },
           });
+
+          // First-ever solve + streak milestones land in the notifications bell
+          if (stats.problemsSolved === 0) {
+            void createNotificationOnce(userId, FIRST_SOLVE);
+          }
+          const milestone = streakMilestone(newStreak);
+          if (milestone) {
+            void createNotificationOnce(userId, milestone);
+          }
         } else {
           // First time stats
           await prisma.userStats.create({
@@ -394,6 +404,9 @@ router.post("/submit", requireAuth, async (req, res) => {
               lastActive: new Date(),
             },
           });
+
+          // Very first solve on a brand-new stats row
+          void createNotificationOnce(userId, FIRST_SOLVE);
         }
       }
     }

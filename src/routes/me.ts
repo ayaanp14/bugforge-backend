@@ -2,6 +2,7 @@ import { Router } from "express";
 import { requireAuth } from "../middleware/auth.js";
 import { prisma } from "../lib/prisma.js";
 import { getHeatmap, getSubmissionHistory, getPairingHistory, getDifficultyStats, getRank, getDashboard } from "../services/dashboard.js";
+import { ensureBaseline, listNotifications, countUnread, markAllRead } from "../services/notifications.js";
 
 const router = Router();
 
@@ -286,9 +287,12 @@ router.get("/", requireAuth, async (req, res) => {
       }
     });
 
+    const unreadNotifications = await countUnread(user.id);
+
     res.json({
       ...user,
       tierTitle: getTierTitle(user.rating),
+      unreadNotifications,
       trends: {
         xpThisWeek,
         solvedToday,
@@ -404,6 +408,34 @@ router.get("/rank", requireAuth, async (req, res) => {
     res.json(await getRank(req.user!.userId, String(type)));
   } catch (err) {
     console.error("GET /api/me/rank error:", err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// GET /api/me/notifications — the bell dropdown payload
+router.get("/notifications", requireAuth, async (req, res) => {
+  try {
+    const userId = req.user!.userId;
+    // Backfill welcome/first-solve for accounts that predate notifications
+    await ensureBaseline(userId);
+    const [notifications, unreadCount] = await Promise.all([
+      listNotifications(userId),
+      countUnread(userId),
+    ]);
+    res.json({ notifications, unreadCount });
+  } catch (err) {
+    console.error("GET /api/me/notifications error:", err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// POST /api/me/notifications/read — mark everything read
+router.post("/notifications/read", requireAuth, async (req, res) => {
+  try {
+    await markAllRead(req.user!.userId);
+    res.json({ unreadCount: 0 });
+  } catch (err) {
+    console.error("POST /api/me/notifications/read error:", err);
     res.status(500).json({ error: "Internal server error" });
   }
 });
