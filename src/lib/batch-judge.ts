@@ -40,8 +40,14 @@ const normalize = (v: string | null | undefined) => (v ?? "").trim();
 // Expected outputs are the size proxy; if a wrong solution still overflows a
 // chunk, the Output Limit detection below reports it honestly.
 const CHUNK_MAX_OUTPUT_BYTES = 130_000; // observed Wandbox stdout cap ≈ 145KB
+// Gzip languages emit compressed output, but poorly-compressing content
+// (~3:1) can still overflow the stdout cap — budget ~300KB raw per chunk.
+const CHUNK_MAX_OUTPUT_BYTES_GZIP = 300_000;
 const CHUNK_MAX_INPUT_BYTES = 200_000;
-const CHUNK_MAX_INPUT_BYTES_GZIP = 350_000; // probed: Wandbox accepts ≥360KB stdin
+// Gzip languages upload compressed (~2.5-4x smaller + base64), so the raw cap
+// can far exceed the plain-body limit. Probed: Wandbox accepts 800KB request
+// bodies (413 above ~1MB); 900KB raw ≈ 350-450KB compressed body.
+const CHUNK_MAX_INPUT_BYTES_GZIP = 900_000;
 const CHUNK_MAX_CASES = 5000;
 
 function chunkCases(cases: BatchCase[], language: string): BatchCase[][] {
@@ -49,6 +55,7 @@ function chunkCases(cases: BatchCase[], language: string): BatchCase[][] {
   // the input-size and case-count limits apply to them.
   const capOutput = !GZIP_OUTPUT_LANGS.has(language);
   const inputCap = capOutput ? CHUNK_MAX_INPUT_BYTES : CHUNK_MAX_INPUT_BYTES_GZIP;
+  const outputCap = capOutput ? CHUNK_MAX_OUTPUT_BYTES : CHUNK_MAX_OUTPUT_BYTES_GZIP;
   const chunks: BatchCase[][] = [];
   let current: BatchCase[] = [];
   let inputBytes = 0;
@@ -63,7 +70,7 @@ function chunkCases(cases: BatchCase[], language: string): BatchCase[][] {
       current.length > 0 &&
       (current.length >= CHUNK_MAX_CASES ||
         inputBytes + inB > inputCap ||
-        (capOutput && outputBytes + outB > CHUNK_MAX_OUTPUT_BYTES))
+        outputBytes + outB > outputCap)
     ) {
       chunks.push(current);
       current = [];
