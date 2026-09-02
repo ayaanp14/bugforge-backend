@@ -19,30 +19,30 @@ router.get("/", optionalAuth, async (req, res) => {
     if (difficulty) where.difficulty = difficulty as string;
     if (category) where.category = category as string;
 
-    const challenges = await prisma.bugChallenge.findMany({
-      where,
-      select: {
-        id: true,
-        title: true,
-        difficulty: true,
-        category: true,
-        language: true,
-        tags: true,
-        origin: true,
-        createdAt: true,
-      },
-      orderBy: { createdAt: "desc" },
-    });
-
-    // Solved markers for the signed-in hunter
-    let solvedIds = new Set<string>();
-    if (req.user) {
-      const solved = await prisma.bugSubmission.findMany({
-        where: { userId: req.user.userId, verdict: "ACCEPTED" },
-        select: { challengeId: true },
-      });
-      solvedIds = new Set(solved.map((s) => s.challengeId));
-    }
+    // One parallel batch — sequential round-trips are what make prod slow
+    const [challenges, solved] = await Promise.all([
+      prisma.bugChallenge.findMany({
+        where,
+        select: {
+          id: true,
+          title: true,
+          difficulty: true,
+          category: true,
+          language: true,
+          tags: true,
+          origin: true,
+          createdAt: true,
+        },
+        orderBy: { createdAt: "desc" },
+      }),
+      req.user
+        ? prisma.bugSubmission.findMany({
+            where: { userId: req.user.userId, verdict: "ACCEPTED" },
+            select: { challengeId: true },
+          })
+        : Promise.resolve([]),
+    ]);
+    const solvedIds = new Set(solved.map((s) => s.challengeId));
 
     res.json(challenges.map((c) => ({ ...c, solved: solvedIds.has(c.id) })));
   } catch (err) {
@@ -57,26 +57,28 @@ router.get("/stats/me", requireAuth, async (req, res) => {
   try {
     const userId = req.user!.userId;
 
-    const recent = await prisma.bugSubmission.findMany({
-      where: { userId },
-      orderBy: { submittedAt: "desc" },
-      take: 8,
-      select: {
-        id: true,
-        verdict: true,
-        passedTests: true,
-        totalTests: true,
-        submittedAt: true,
-        challenge: { select: { id: true, title: true } },
-      },
-    });
-
-    // Debugging streak: consecutive UTC days (ending today or yesterday)
-    // with at least one ACCEPTED bug fix.
-    const accepted = await prisma.bugSubmission.findMany({
-      where: { userId, verdict: "ACCEPTED" },
-      select: { submittedAt: true },
-    });
+    const [recent, accepted, totalSubmissions] = await Promise.all([
+      prisma.bugSubmission.findMany({
+        where: { userId },
+        orderBy: { submittedAt: "desc" },
+        take: 8,
+        select: {
+          id: true,
+          verdict: true,
+          passedTests: true,
+          totalTests: true,
+          submittedAt: true,
+          challenge: { select: { id: true, title: true } },
+        },
+      }),
+      // Debugging streak: consecutive UTC days (ending today or yesterday)
+      // with at least one ACCEPTED bug fix.
+      prisma.bugSubmission.findMany({
+        where: { userId, verdict: "ACCEPTED" },
+        select: { submittedAt: true },
+      }),
+      prisma.bugSubmission.count({ where: { userId } }),
+    ]);
     const days = new Set(accepted.map((s) => Math.floor(s.submittedAt.getTime() / 86400000)));
     const today = Math.floor(Date.now() / 86400000);
     let streak = 0;
@@ -88,7 +90,7 @@ router.get("/stats/me", requireAuth, async (req, res) => {
 
     res.json({
       streakDays: streak,
-      totalSubmissions: recent.length < 8 ? recent.length : await prisma.bugSubmission.count({ where: { userId } }),
+      totalSubmissions,
       recent: recent.map((r) => ({
         id: r.id,
         verdict: r.verdict,
@@ -108,35 +110,37 @@ router.get("/stats/me", requireAuth, async (req, res) => {
 // GET /api/bug-challenges/:id — Full challenge: files, report, visible tests
 router.get("/:id", optionalAuth, async (req, res) => {
   try {
-    const challenge = await prisma.bugChallenge.findUnique({
-      where: { id: String(req.params.id) },
-      include: {
-        files: { select: { id: true, filePath: true, content: true, isEditable: true, language: true } },
-        tests: { where: { isHidden: false }, select: { id: true, name: true } },
-      },
-    });
+    const challengeId = String(req.params.id);
+
+    // One parallel batch instead of three sequential round-trips
+    const [challenge, hiddenCount, submissions] = await Promise.all([
+      prisma.bugChallenge.findUnique({
+        where: { id: challengeId },
+        include: {
+          files: { select: { id: true, filePath: true, content: true, isEditable: true, language: true } },
+          tests: { where: { isHidden: false }, select: { id: true, name: true } },
+        },
+      }),
+      prisma.challengeTest.count({
+        where: { challengeId, isHidden: true },
+      }),
+      // Personal history + solved marker for the signed-in hunter
+      req.user
+        ? prisma.bugSubmission.findMany({
+            where: { userId: req.user.userId, challengeId },
+            select: { id: true, verdict: true, passedTests: true, totalTests: true, timeTakenSecs: true, submittedAt: true },
+            orderBy: { submittedAt: "desc" },
+            take: 20,
+          })
+        : Promise.resolve([]),
+    ]);
 
     if (!challenge || !challenge.isPublished) {
       res.status(404).json({ error: "Challenge not found" });
       return;
     }
 
-    const hiddenCount = await prisma.challengeTest.count({
-      where: { challengeId: challenge.id, isHidden: true },
-    });
-
-    // Personal history + solved marker for the signed-in hunter
-    let submissions: Array<{ id: string; verdict: string; passedTests: number; totalTests: number; timeTakenSecs: number | null; submittedAt: Date }> = [];
-    let solved = false;
-    if (req.user) {
-      submissions = await prisma.bugSubmission.findMany({
-        where: { userId: req.user.userId, challengeId: challenge.id },
-        select: { id: true, verdict: true, passedTests: true, totalTests: true, timeTakenSecs: true, submittedAt: true },
-        orderBy: { submittedAt: "desc" },
-        take: 20,
-      });
-      solved = submissions.some((s) => s.verdict === "ACCEPTED");
-    }
+    const solved = submissions.some((s) => s.verdict === "ACCEPTED");
 
     res.json({
       solved,
