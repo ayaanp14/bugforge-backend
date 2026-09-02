@@ -12,6 +12,10 @@ export interface BugSpec {
   title: string;
   difficulty: "easy" | "medium" | "hard";
   category: "frontend" | "backend" | "database";
+  /** Project language — defaults to javascript. */
+  language?: "javascript" | "python" | "java";
+  /** Topic tags for filtering (e.g. ["Caching", "TTL"]). */
+  tags?: string[];
   description: string;
   bugReport: string;
   logs: string | null;

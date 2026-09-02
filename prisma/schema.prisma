@@ -165,6 +165,9 @@ model BugChallenge {
   title       String
   difficulty  String
   category    String
+  language    String          @default("javascript")
+  tags        Json            @default("[]")
+  origin      String?
   description String          @db.MediumText
   bugReport   String          @db.MediumText
   logs        String?         @db.MediumText

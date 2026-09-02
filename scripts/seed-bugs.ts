@@ -12,7 +12,9 @@
 import "dotenv/config";
 import { prisma } from "../src/lib/prisma.js";
 import { judgeBugProject } from "../src/lib/bug-judge.js";
-import { BUGS, type BugSpec } from "./bugs-data.js";
+import { type BugSpec } from "./bugs-data.js";
+import { ALL_BUGS } from "./bugs-catalog.js";
+import { ORIGINS } from "./bugs-origins.js";
 
 const args = process.argv.slice(2);
 const flag = (n: string) => args.includes(`--${n}`);
@@ -21,8 +23,16 @@ const opt = (n: string) => {
   return i >= 0 && args[i + 1] ? args[i + 1] : null;
 };
 const ONLY = opt("only");
+const RANGE = opt("range"); // e.g. --range 9-20 (inclusive indexes into the catalog)
 
-const specs = () => BUGS.filter((b) => !ONLY || b.title === ONLY);
+const specs = () => {
+  let list = ALL_BUGS;
+  if (RANGE) {
+    const [a, b] = RANGE.split("-").map((n) => parseInt(n, 10));
+    list = list.slice(a, (isNaN(b) ? a : b) + 1);
+  }
+  return list.filter((b) => !ONLY || b.title === ONLY);
+};
 
 async function seed() {
   const list = specs();
@@ -33,6 +43,9 @@ async function seed() {
       title: spec.title,
       difficulty: spec.difficulty,
       category: spec.category,
+      language: spec.language ?? "javascript",
+      tags: spec.tags ?? [],
+      origin: ORIGINS[spec.title] ?? null,
       description: spec.description,
       bugReport: spec.bugReport,
       logs: spec.logs,
@@ -76,7 +89,7 @@ async function validate() {
     const tests = spec.tests.map((t) => ({ name: t.name, source: t.source }));
 
     // 1. Buggy version must fail at least one test (otherwise there's no bug!)
-    const buggy = await judgeBugProject(spec.files, tests);
+    const buggy = await judgeBugProject(spec.files, tests, spec.language ?? "javascript");
     const buggyOk = buggy.verdict === "FAILED" && buggy.passedTests < buggy.totalTests;
 
     // 2. Fixed version must pass everything
@@ -84,7 +97,7 @@ async function validate() {
       filePath: f.filePath,
       content: spec.fixedFiles[f.filePath] ?? f.content,
     }));
-    const fixed = await judgeBugProject(fixedFiles, tests);
+    const fixed = await judgeBugProject(fixedFiles, tests, spec.language ?? "javascript");
     const fixedOk = fixed.verdict === "ACCEPTED";
 
     if (buggyOk && fixedOk) {
@@ -106,7 +119,7 @@ async function validate() {
 
 (async () => {
   const seen = new Set<string>();
-  for (const b of BUGS) {
+  for (const b of ALL_BUGS) {
     if (seen.has(b.title)) throw new Error(`duplicate bug title: ${b.title}`);
     seen.add(b.title);
   }

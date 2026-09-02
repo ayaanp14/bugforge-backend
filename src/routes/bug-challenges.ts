@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { prisma } from "../lib/prisma.js";
 import { optionalAuth, requireAuth } from "../middleware/auth.js";
-import { judgeBugProject, type BugFile } from "../lib/bug-judge.js";
+import { judgeBugProject, type BugFile, type BugLanguage } from "../lib/bug-judge.js";
 
 const router = Router();
 
@@ -26,6 +26,9 @@ router.get("/", optionalAuth, async (req, res) => {
         title: true,
         difficulty: true,
         category: true,
+        language: true,
+        tags: true,
+        origin: true,
         createdAt: true,
       },
       orderBy: { createdAt: "desc" },
@@ -44,6 +47,60 @@ router.get("/", optionalAuth, async (req, res) => {
     res.json(challenges.map((c) => ({ ...c, solved: solvedIds.has(c.id) })));
   } catch (err) {
     console.error("GET /api/bug-challenges error:", err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// GET /api/bug-challenges/stats/me — personal analytics for the hunts page
+// (declared before /:id so "stats" is never treated as a challenge id)
+router.get("/stats/me", requireAuth, async (req, res) => {
+  try {
+    const userId = req.user!.userId;
+
+    const recent = await prisma.bugSubmission.findMany({
+      where: { userId },
+      orderBy: { submittedAt: "desc" },
+      take: 8,
+      select: {
+        id: true,
+        verdict: true,
+        passedTests: true,
+        totalTests: true,
+        submittedAt: true,
+        challenge: { select: { id: true, title: true } },
+      },
+    });
+
+    // Debugging streak: consecutive UTC days (ending today or yesterday)
+    // with at least one ACCEPTED bug fix.
+    const accepted = await prisma.bugSubmission.findMany({
+      where: { userId, verdict: "ACCEPTED" },
+      select: { submittedAt: true },
+    });
+    const days = new Set(accepted.map((s) => Math.floor(s.submittedAt.getTime() / 86400000)));
+    const today = Math.floor(Date.now() / 86400000);
+    let streak = 0;
+    let cursor = days.has(today) ? today : today - 1;
+    while (days.has(cursor)) {
+      streak++;
+      cursor--;
+    }
+
+    res.json({
+      streakDays: streak,
+      totalSubmissions: recent.length < 8 ? recent.length : await prisma.bugSubmission.count({ where: { userId } }),
+      recent: recent.map((r) => ({
+        id: r.id,
+        verdict: r.verdict,
+        passedTests: r.passedTests,
+        totalTests: r.totalTests,
+        submittedAt: r.submittedAt,
+        challengeId: r.challenge.id,
+        challengeTitle: r.challenge.title,
+      })),
+    });
+  } catch (err) {
+    console.error("GET /api/bug-challenges/stats/me error:", err);
     res.status(500).json({ error: "Internal server error" });
   }
 });
@@ -88,6 +145,9 @@ router.get("/:id", optionalAuth, async (req, res) => {
       title: challenge.title,
       difficulty: challenge.difficulty,
       category: challenge.category,
+      language: challenge.language,
+      tags: challenge.tags,
+      origin: challenge.origin,
       description: challenge.description,
       bugReport: challenge.bugReport,
       logs: challenge.logs,
@@ -135,7 +195,8 @@ router.post("/:id/run", requireAuth, async (req, res) => {
     const files = mergeFiles(challenge.files, editedFiles);
     const result = await judgeBugProject(
       files,
-      challenge.tests.map((t) => ({ name: t.name, source: t.runCommand }))
+      challenge.tests.map((t) => ({ name: t.name, source: t.runCommand })),
+      challenge.language as BugLanguage
     );
 
     res.json(result);
@@ -163,7 +224,8 @@ router.post("/:id/submit", requireAuth, async (req, res) => {
     const files = mergeFiles(challenge.files, editedFiles);
     const result = await judgeBugProject(
       files,
-      challenge.tests.map((t) => ({ name: t.name, source: t.runCommand }))
+      challenge.tests.map((t) => ({ name: t.name, source: t.runCommand })),
+      challenge.language as BugLanguage
     );
 
     // Hide hidden-test failure details; reveal only names + pass/fail
