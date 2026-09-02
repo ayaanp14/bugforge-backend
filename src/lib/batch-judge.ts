@@ -62,7 +62,8 @@ export async function runBatch(
   // Whole-run compile failure → every case is a compilation error.
   // (Only status 6: compile_output alone can be mere compiler warnings.)
   if (result.status.id === 6) {
-    const compileOutput = (result.compile_output || result.message || "Compilation failed").trim();
+    // Some setups report compiler diagnostics on stderr instead of compile_output
+    const compileOutput = (result.compile_output || result.stderr || result.message || "Compilation failed").trim();
     return {
       perCase: cases.map(() => ({
         passed: false,

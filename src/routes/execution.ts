@@ -188,6 +188,10 @@ router.post("/submit", requireAuth, async (req, res) => {
     passedCases = batch.perCase.filter((r) => r.passed).length;
     const firstFailure = batch.perCase.find((r) => !r.passed);
     verdict = firstFailure ? firstFailure.verdict : "ACCEPTED";
+    // Compiler output / stderr of the first failing case, for the submissions UI
+    const errorDetail = firstFailure
+      ? (firstFailure.compile_output || firstFailure.stderr || "").trim() || null
+      : null;
 
     // Save submission
     const submission = await prisma.submission.create({
@@ -295,6 +299,7 @@ router.post("/submit", requireAuth, async (req, res) => {
       passedCases,
       totalCases: problem.testCases.length,
       customResults: batch.perCase.slice(problem.testCases.length), // Return custom results separately if needed
+      errorDetail,
       runtimeMs: maxRuntime,
       memoryKb: maxMemory,
       submissionId: submission.id,
