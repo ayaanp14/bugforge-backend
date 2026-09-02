@@ -5,6 +5,9 @@ import { LANGUAGE_MAP } from "../lib/judge0.js";
 // All test cases run in ONE engine execution (1 compile + 1 run) and are
 // judged server-side — see src/lib/batch-judge.ts.
 import { runBatch } from "../lib/batch-judge.js";
+// The editor holds only the solution stub; the language driver (I/O parsing,
+// batching, gzip, stats) is wrapped around it here at execution time.
+import { applyDriver, type Language as DriverLanguage, type Signature } from "../lib/driver-codegen.js";
 import { FIRST_SOLVE, createNotificationOnce, streakMilestone } from "../services/notifications.js";
 
 const router = Router();
@@ -73,8 +76,11 @@ router.post("/run", requireAuth, async (req, res) => {
       return;
     }
 
+    const executedCode = problem.signature
+      ? applyDriver(language as DriverLanguage, problem.signature as Signature, code)
+      : code;
     const batch = await runBatch(
-      code,
+      executedCode,
       language as string,
       allTestCases.map((tc: any) => ({ input: tc.input, expectedOutput: tc.expectedOutput })),
       limits
@@ -177,8 +183,11 @@ router.post("/submit", requireAuth, async (req, res) => {
     ];
 
     // One batched execution for every test case (1 compile + 1 run)
+    const executedCode = problem.signature
+      ? applyDriver(language as DriverLanguage, problem.signature as Signature, code)
+      : code;
     const batch = await runBatch(
-      code,
+      executedCode,
       language as string,
       allTestCases.map((tc: any) => ({ input: tc.input, expectedOutput: tc.expectedOutput })),
       limits

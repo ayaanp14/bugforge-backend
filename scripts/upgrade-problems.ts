@@ -15,7 +15,7 @@
 import "dotenv/config";
 import { prisma } from "../src/lib/prisma.js";
 import { runBatch } from "../src/lib/batch-judge.js";
-import { ALL_LANGUAGES, renderFile, type Language } from "./problem-codegen.js";
+import { ALL_LANGUAGES, renderFile, renderStub, type Language } from "./problem-codegen.js";
 import { PROBLEMS } from "./problems-data.js";
 
 const args = process.argv.slice(2);
@@ -27,8 +27,9 @@ const opt = (name: string) => {
 
 async function seed() {
   for (const p of PROBLEMS) {
+    // Editor starter = stub only; the driver is applied server-side at run time
     const starterCode = Object.fromEntries(
-      ALL_LANGUAGES.map((lang) => [lang, renderFile(lang, p.signature, null)])
+      ALL_LANGUAGES.map((lang) => [lang, renderStub(lang, p.signature)])
     );
     const result = await prisma.problem.updateMany({
       where: { slug: p.slug },
@@ -36,6 +37,7 @@ async function seed() {
         description: p.description,
         hints: p.hints,
         starterCode,
+        signature: p.signature,
         referenceSolution: p.solutions.python,
         referenceLanguage: "python",
       },

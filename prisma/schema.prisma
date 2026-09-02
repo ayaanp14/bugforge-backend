@@ -91,6 +91,7 @@ model Problem {
   isPublished   Boolean      @default(false)
   createdAt     DateTime     @default(now())
   starterCode   Json?
+  signature     Json?
   referenceSolution String?
   referenceLanguage String?
   hints         String[] @default([])
