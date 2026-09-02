@@ -621,17 +621,37 @@ export async function submitBatchToJudge0(
   return response.data.map((item: { token: string }) => item.token);
 }
 
+/** Decode judge0's base64 text fields (it wraps them with newlines). */
+function decodeJudge0Field(value: string | null | undefined): string | null {
+  if (value === null || value === undefined) return null;
+  try {
+    return Buffer.from(String(value).replace(/\s/g, ""), "base64").toString("utf8");
+  } catch {
+    return String(value);
+  }
+}
+
+function decodeJudge0Result<T extends { stdout?: string | null; stderr?: string | null; compile_output?: string | null; message?: string | null }>(raw: T): T {
+  return {
+    ...raw,
+    stdout: decodeJudge0Field(raw.stdout),
+    stderr: decodeJudge0Field(raw.stderr),
+    compile_output: decodeJudge0Field(raw.compile_output),
+    message: decodeJudge0Field(raw.message),
+  };
+}
+
 export async function getJudge0Result(token: string): Promise<Judge0Result> {
   try {
-    const response = await axios.get(`${JUDGE0_BASE_URL}/submissions/${token}`, {
+    // base64_encoded=true is REQUIRED for robustness: judge0 responds 400 to a
+    // plain GET whenever the program's output contains non-ASCII characters.
+    const response = await axios.get(`${JUDGE0_BASE_URL}/submissions/${token}?base64_encoded=true`, {
       headers: getHeaders(),
       timeout: JUDGE0_REQUEST_TIMEOUT_MS,
       proxy: false,
     });
-    
-    const result = response.data;
-    
-    return response.data;
+
+    return decodeJudge0Result(response.data);
   } catch (err: any) {
     console.error("Judge0 result error:", err.message);
     throw err;
@@ -640,7 +660,7 @@ export async function getJudge0Result(token: string): Promise<Judge0Result> {
 
 export async function getBatchJudge0Results(tokens: string[]): Promise<Array<Judge0Result & { token: string }>> {
   const response = await axios.get<Judge0BatchResultResponse>(
-    `${JUDGE0_BASE_URL}/submissions/batch?tokens=${tokens.join(",")}`,
+    `${JUDGE0_BASE_URL}/submissions/batch?tokens=${tokens.join(",")}&base64_encoded=true`,
     {
       headers: getHeaders(),
       timeout: JUDGE0_REQUEST_TIMEOUT_MS,
@@ -648,7 +668,7 @@ export async function getBatchJudge0Results(tokens: string[]): Promise<Array<Jud
     }
   );
 
-  return response.data.submissions;
+  return response.data.submissions.map((s) => decodeJudge0Result(s));
 }
 
 export async function pollJudge0(token: string, maxAttempts = 30): Promise<Judge0Result> {

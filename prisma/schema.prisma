@@ -189,7 +189,7 @@ model ChallengeTest {
   id             String       @id @default(cuid())
   challengeId    String
   name           String
-  runCommand     String
+  runCommand     String       @db.Text
   expectedOutput String       @db.Text
   isHidden       Boolean      @default(false)
   challenge      BugChallenge @relation(fields: [challengeId], references: [id], onDelete: Cascade)
