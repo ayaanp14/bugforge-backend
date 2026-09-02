@@ -288,7 +288,7 @@ app.get("/api/username-check", optionalAuth, async (req, res) => {
         // 2. Uniqueness Check (Excluding self if logged in)
         const existingUser = await prisma.user.findFirst({
             where: {
-                username: { equals: username, mode: 'insensitive' },
+                username: { equals: username },
                 // If logged in, exclude self
                 id: req.user?.userId ? { not: req.user.userId } : undefined
             }
