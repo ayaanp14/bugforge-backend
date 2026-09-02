@@ -303,8 +303,10 @@ const parseArgs = (rawInput) => {
   }
   
   if (matches.length === 0) {
-    // If no assignments found, try parsing as a single value or split by newline
-    try { return [JSON.parse(rawInput)]; } catch { return [rawInput]; }
+    // No assignments: whole input as one JSON value, else one JSON value per line
+    try { return [JSON.parse(rawInput)]; } catch {}
+    const lines = rawInput.split(/\\r?\\n/).filter((l) => l.trim() !== "");
+    return lines.map((l) => { try { return JSON.parse(l); } catch { return l; } });
   }
 
   const args = [];
@@ -376,11 +378,21 @@ def parse_args(input_data):
     matches = list(re.finditer(var_regex, input_data))
     
     if not matches:
-        # If no assignments found, try parsing as a single value or split by newline
+        # No assignments: whole input as one JSON value, else one JSON value per line
         try:
             return [json.loads(input_data)]
         except:
-            return [input_data]
+            pass
+        parsed_lines = []
+        for line in input_data.splitlines():
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                parsed_lines.append(json.loads(line))
+            except:
+                parsed_lines.append(line)
+        return parsed_lines if parsed_lines else [input_data]
             
     parsed_args = []
     for i, match in enumerate(matches):
@@ -405,11 +417,11 @@ try:
     if isinstance(result, str):
         print(result)
     elif isinstance(result, bool):
-        print(json.dumps(result))
+        print(json.dumps(result, separators=(",", ":")))
     elif isinstance(result, (int, float)):
         print(result)
     else:
-        print(json.dumps(result))
+        print(json.dumps(result, separators=(",", ":")))
 except Exception as e:
     import traceback
     line_note = ""
