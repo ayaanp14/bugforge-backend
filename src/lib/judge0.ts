@@ -288,7 +288,12 @@ export function wrapCode(code: string, language: string): string {
 ${code}
 
 const fs = require('fs');
-const input = fs.readFileSync(0, 'utf8').trim();
+let input = fs.readFileSync(0, 'utf8').trim();
+if (input.startsWith("__CODEXA_GZIN__")) {
+  const __zlibIn = require('zlib');
+  const __b64 = input.slice("__CODEXA_GZIN__".length).replace(/\\s+/g, "");
+  input = __zlibIn.gunzipSync(Buffer.from(__b64, "base64")).toString("utf8").trim();
+}
 
 /**
  * Parses input string into an array of arguments.
@@ -326,17 +331,20 @@ const parseArgs = (rawInput) => {
 };
 
 // Batch protocol (see src/lib/batch.ts): one sentinel-separated chunk per case.
+// Output is buffered; large results are gzipped so any suite fits the
+// engine's stdout cap in a single run.
+const __outLines = [];
 const __chunks = input.split("__CODEXA_CASE__").map((c) => c.trim()).filter((c) => c !== "");
 for (const __chunk of __chunks) {
   try {
     const args = parseArgs(__chunk);
     const result = ${functionName}(...args);
     if (typeof result === "string") {
-      console.log(result);
+      __outLines.push(result);
     } else if (typeof result === "bigint") {
-      console.log(result.toString());
+      __outLines.push(result.toString());
     } else {
-      console.log(JSON.stringify(result, (key, value) =>
+      __outLines.push(JSON.stringify(result, (key, value) =>
         typeof value === "bigint" ? value.toString() : value
       ));
     }
@@ -353,9 +361,16 @@ for (const __chunk of __chunks) {
       }
     }
     const msg = err && err.message ? err.message : String(err);
-    console.log("__CODEXA_ERROR__: Execution error" + lineNote + ": " + msg);
+    __outLines.push("__CODEXA_ERROR__: Execution error" + lineNote + ": " + msg);
   }
-  console.log("__CODEXA_CASE__");
+  __outLines.push("__CODEXA_CASE__");
+}
+const __joined = __outLines.join("\\n") + "\\n";
+if (__joined.length > 65536) {
+  const __zlib = require("zlib");
+  process.stdout.write("__CODEXA_GZ__\\n" + __zlib.gzipSync(Buffer.from(__joined)).toString("base64") + "\\n");
+} else {
+  process.stdout.write(__joined);
 }
 `;
   }
@@ -414,8 +429,16 @@ def parse_args(input_data):
     return parsed_args
 
 input_data = sys.stdin.read().strip()
+if input_data.startswith("__CODEXA_GZIN__"):
+    import gzip
+    import base64
+    __b64 = "".join(input_data[len("__CODEXA_GZIN__"):].split())
+    input_data = gzip.decompress(base64.b64decode(__b64)).decode("utf-8").strip()
 
 # Batch protocol (see src/lib/batch.ts): one sentinel-separated chunk per case.
+# Output is buffered; large results are gzipped so any suite fits the
+# engine's stdout cap in a single run.
+__out_lines = []
 for __chunk in input_data.split("__CODEXA_CASE__"):
     __chunk = __chunk.strip()
     if __chunk == "":
@@ -424,13 +447,13 @@ for __chunk in input_data.split("__CODEXA_CASE__"):
         args = parse_args(__chunk)
         result = ${funcName}(*args)
         if isinstance(result, str):
-            print(result)
+            __out_lines.append(result)
         elif isinstance(result, bool):
-            print(json.dumps(result, separators=(",", ":")))
+            __out_lines.append(json.dumps(result, separators=(",", ":")))
         elif isinstance(result, (int, float)):
-            print(result)
+            __out_lines.append(str(result))
         else:
-            print(json.dumps(result, separators=(",", ":")))
+            __out_lines.append(json.dumps(result, separators=(",", ":")))
     except Exception as e:
         import traceback
         line_note = ""
@@ -438,8 +461,15 @@ for __chunk in input_data.split("__CODEXA_CASE__"):
             if 2 <= frame.lineno <= ${userCodeEndLine}:
                 line_note = " (line %d)" % (frame.lineno - 1)
                 break
-        print("__CODEXA_ERROR__: Execution error%s: %s" % (line_note, str(e)))
-    print("__CODEXA_CASE__")
+        __out_lines.append("__CODEXA_ERROR__: Execution error%s: %s" % (line_note, str(e)))
+    __out_lines.append("__CODEXA_CASE__")
+__joined = "\\n".join(__out_lines) + "\\n"
+if len(__joined) > 65536:
+    import gzip
+    import base64
+    sys.stdout.write("__CODEXA_GZ__\\n" + base64.b64encode(gzip.compress(__joined.encode("utf-8"))).decode("ascii") + "\\n")
+else:
+    sys.stdout.write(__joined)
 `;
   }
 

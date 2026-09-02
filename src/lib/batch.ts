@@ -10,12 +10,52 @@
  * the wrapCode harnesses (src/lib/judge0.ts).
  */
 
+import { gzipSync, gunzipSync } from "zlib";
+
 export const CASE_SENTINEL = "__CODEXA_CASE__";
 export const ERROR_MARKER = "__CODEXA_ERROR__:";
+export const GZIP_MARKER = "__CODEXA_GZ__";
+export const GZIN_MARKER = "__CODEXA_GZIN__";
+
+/**
+ * Languages whose drivers/harnesses gzip large outputs (stdlib gzip exists).
+ * Their suites never need output-size chunking — compressed answers always
+ * fit the engine's stdout cap. c/cpp/rust/swift stay plain (no stdlib gzip).
+ */
+export const GZIP_OUTPUT_LANGS = new Set([
+  // php excluded: Judge0's PHP build lacks the zlib extension (no gzencode);
+  // its driver still compresses opportunistically where zlib exists.
+  "javascript", "typescript", "python", "java", "kotlin", "csharp", "go", "ruby",
+]);
+
+/** If stdout is GZIP_MARKER + base64(gzip(...)), decode it; else return as-is. */
+export function decodeBatchStdout(stdout: string | null): string | null {
+  if (!stdout) return stdout;
+  const trimmed = stdout.trimStart();
+  if (!trimmed.startsWith(GZIP_MARKER)) return stdout;
+  const b64 = trimmed.slice(GZIP_MARKER.length).replace(/\s+/g, "");
+  try {
+    return gunzipSync(Buffer.from(b64, "base64")).toString("utf8");
+  } catch {
+    // Truncated/corrupt compressed payload: fall through to raw so the
+    // missing-chunk handling reports it honestly.
+    return stdout;
+  }
+}
 
 /** Join raw per-case inputs into the single batch stdin. */
 export function buildBatchStdin(inputs: string[]): string {
   return inputs.map((i) => i.replace(/\s+$/, "")).join(`\n${CASE_SENTINEL}\n`) + "\n";
+}
+
+/**
+ * Compress large stdin for languages whose drivers can decompress it
+ * (GZIN_MARKER line + base64(gzip)); big uploads shrink ~70x, which is most
+ * of the remaining wall time on remote engines.
+ */
+export function encodeBatchStdin(stdin: string, language: string): string {
+  if (!GZIP_OUTPUT_LANGS.has(language) || stdin.length <= 65536) return stdin;
+  return `${GZIN_MARKER}\n${gzipSync(Buffer.from(stdin)).toString("base64")}\n`;
 }
 
 /** Split a batch run's stdout back into per-case output chunks. */

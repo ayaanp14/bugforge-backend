@@ -1,6 +1,6 @@
 import { LANGUAGE_MAP } from "./judge0.js";
 import { EXECUTOR_ENGINE, pollResult, submitCode } from "./executor.js";
-import { ERROR_MARKER, buildBatchStdin, splitBatchStdout } from "./batch.js";
+import { ERROR_MARKER, GZIP_OUTPUT_LANGS, buildBatchStdin, decodeBatchStdout, encodeBatchStdin, splitBatchStdout } from "./batch.js";
 
 /**
  * Runs user code against ALL test cases in a single engine execution
@@ -41,21 +41,29 @@ const normalize = (v: string | null | undefined) => (v ?? "").trim();
 // chunk, the Output Limit detection below reports it honestly.
 const CHUNK_MAX_OUTPUT_BYTES = 130_000; // observed Wandbox stdout cap ≈ 145KB
 const CHUNK_MAX_INPUT_BYTES = 200_000;
+const CHUNK_MAX_INPUT_BYTES_GZIP = 350_000; // probed: Wandbox accepts ≥360KB stdin
 const CHUNK_MAX_CASES = 5000;
 
-function chunkCases(cases: BatchCase[]): BatchCase[][] {
+function chunkCases(cases: BatchCase[], language: string): BatchCase[][] {
+  // Gzipping languages compress their output below any engine cap, so only
+  // the input-size and case-count limits apply to them.
+  const capOutput = !GZIP_OUTPUT_LANGS.has(language);
+  const inputCap = capOutput ? CHUNK_MAX_INPUT_BYTES : CHUNK_MAX_INPUT_BYTES_GZIP;
   const chunks: BatchCase[][] = [];
   let current: BatchCase[] = [];
   let inputBytes = 0;
   let outputBytes = 0;
   for (const c of cases) {
     const inB = c.input.length + 20;
-    const outB = Math.max(c.expectedOutput.length, 32) + 20;
+    // Actual per-case output = answer + sentinel line (~17B). A degenerate
+    // solution printing far more than expected overflows the chunk and is
+    // reported as Output Limit Exceeded rather than mis-judged.
+    const outB = Math.max(c.expectedOutput.length, 8) + 18;
     if (
       current.length > 0 &&
       (current.length >= CHUNK_MAX_CASES ||
-        inputBytes + inB > CHUNK_MAX_INPUT_BYTES ||
-        outputBytes + outB > CHUNK_MAX_OUTPUT_BYTES)
+        inputBytes + inB > inputCap ||
+        (capOutput && outputBytes + outB > CHUNK_MAX_OUTPUT_BYTES))
     ) {
       chunks.push(current);
       current = [];
@@ -76,7 +84,7 @@ export async function runBatch(
   cases: BatchCase[],
   limits: { timeLimitMs: number; memoryLimitMb: number }
 ): Promise<BatchRunResult> {
-  const chunks = EXECUTOR_ENGINE === "judge0" ? [cases] : chunkCases(cases);
+  const chunks = EXECUTOR_ENGINE === "judge0" ? [cases] : chunkCases(cases, language);
   if (chunks.length <= 1) {
     return runSingleBatch(code, language, cases, limits);
   }
@@ -108,7 +116,7 @@ async function runSingleBatch(
     {
       source_code: code,
       language_id: LANGUAGE_MAP[language],
-      stdin: buildBatchStdin(cases.map((c) => c.input)),
+      stdin: encodeBatchStdin(buildBatchStdin(cases.map((c) => c.input)), language),
       // No expected_output: judging happens here, per case.
       cpu_time_limit: cpuSeconds,
       memory_limit: limits.memoryLimitMb * 1024,
@@ -139,7 +147,7 @@ async function runSingleBatch(
     };
   }
 
-  const chunks = splitBatchStdout(result.stdout);
+  const chunks = splitBatchStdout(decodeBatchStdout(result.stdout));
   const wholeRunTimedOut = result.status.id === 5;
   const stderrText = normalize(result.stderr) || null;
 

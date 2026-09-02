@@ -35,6 +35,11 @@ export interface Signature {
 // Kept in sync with src/lib/batch.ts
 const SENTINEL = "__CODEXA_CASE__";
 const ERR = "__CODEXA_ERROR__:";
+const GZ = "__CODEXA_GZ__";
+const GZIN = "__CODEXA_GZIN__"; // length 15; large stdin arrives as marker + base64(gzip)
+// Buffered output beyond this size is gzip+base64'd so any suite fits the
+// engine's stdout cap in one run (languages with stdlib gzip only).
+const GZ_THRESHOLD = 65536;
 
 const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
@@ -82,7 +87,14 @@ function tsDriver(sig: Signature): string {
   return [
     "// ---- driver (do not edit below) ----",
     "declare const require: (m: string) => any;",
-    'const _raw: string = require("fs").readFileSync(0, "utf8");',
+    "declare const Buffer: any;",
+    "declare const process: any;",
+    'let _raw: string = require("fs").readFileSync(0, "utf8");',
+    `if (_raw.slice(0, 15) === "${GZIN}") {`,
+    '    const _zlibIn = require("zlib");',
+    '    const _b64 = _raw.slice(15).replace(/\\s+/g, "");',
+    '    _raw = _zlibIn.gunzipSync(Buffer.from(_b64, "base64")).toString("utf8");',
+    "}",
     "const _cases: string[][] = [];",
     "{",
     "    let _cur: string[] = [];",
@@ -96,15 +108,23 @@ function tsDriver(sig: Signature): string {
     "    }",
     "    if (_cur.length > 0) _cases.push(_cur);",
     "}",
+    "const _out: string[] = [];",
     "for (const _lines of _cases) {",
     "    try {",
     ...parse,
     `        const _result = ${sig.funcName}(${sig.params.map((p) => p.name).join(", ")});`,
-    '        console.log(typeof _result === "string" ? _result : JSON.stringify(_result));',
+    '        _out.push(typeof _result === "string" ? _result : JSON.stringify(_result));',
     "    } catch (_e) {",
-    `        console.log("${ERR} " + _e);`,
+    `        _out.push("${ERR} " + _e);`,
     "    }",
-    `    console.log("${SENTINEL}");`,
+    `    _out.push("${SENTINEL}");`,
+    "}",
+    'const _joined = _out.join("\\n") + "\\n";',
+    `if (_joined.length > ${GZ_THRESHOLD}) {`,
+    '    const _zlib = require("zlib");',
+    `    process.stdout.write("${GZ}\\n" + _zlib.gzipSync(Buffer.from(_joined)).toString("base64") + "\\n");`,
+    "} else {",
+    "    process.stdout.write(_joined);",
     "}",
   ].join("\n");
 }
@@ -173,9 +193,9 @@ function javaFile(sig: Signature, fn: string): string {
   });
   const call = `${sig.funcName}(${sig.params.map((p) => p.name).join(", ")})`;
   const print =
-    sig.returns === "int[]" ? `System.out.println(fmtIntArray(${call}));`
-    : sig.returns === "string[]" ? `System.out.println(fmtStringArray(${call}));`
-    : `System.out.println(${call});`;
+    sig.returns === "int[]" ? `OUT.append(fmtIntArray(${call})).append("\\n");`
+    : sig.returns === "string[]" ? `OUT.append(fmtStringArray(${call})).append("\\n");`
+    : `OUT.append(String.valueOf(${call})).append("\\n");`;
   return [
     "import java.util.*;",
     "",
@@ -184,12 +204,18 @@ function javaFile(sig: Signature, fn: string): string {
     "",
     JAVA_HELPERS,
     "",
-    "    public static void main(String[] args) {",
-    "        Scanner sc = new Scanner(System.in);",
+    "    public static void main(String[] args) throws Exception {",
+    '        Scanner scin = new Scanner(System.in).useDelimiter("\\\\A");',
+    '        String raw = scin.hasNext() ? scin.next() : "";',
+    `        if (raw.startsWith("${GZIN}")) {`,
+    '            String b64 = raw.substring(15).replaceAll("\\\\s", "");',
+    "            java.util.zip.GZIPInputStream gzin = new java.util.zip.GZIPInputStream(new java.io.ByteArrayInputStream(Base64.getDecoder().decode(b64)));",
+    '            raw = new String(gzin.readAllBytes(), "UTF-8");',
+    "        }",
     "        List<List<String>> cases = new ArrayList<>();",
     "        List<String> cur = new ArrayList<>();",
-    "        while (sc.hasNextLine()) {",
-    "            String l = sc.nextLine().trim();",
+    '        for (String l0 : raw.split("\\n")) {',
+    "            String l = l0.trim();",
     `            if (l.equals("${SENTINEL}")) {`,
     "                if (!cur.isEmpty()) { cases.add(cur); cur = new ArrayList<>(); }",
     "            } else if (!l.isEmpty()) {",
@@ -197,14 +223,30 @@ function javaFile(sig: Signature, fn: string): string {
     "            }",
     "        }",
     "        if (!cur.isEmpty()) cases.add(cur);",
+    "        StringBuilder OUT = new StringBuilder();",
     "        for (List<String> lines : cases) {",
     "            try {",
     ...parse,
     `                ${print}`,
     "            } catch (Exception e) {",
-    `                System.out.println("${ERR} " + e);`,
+    `                OUT.append("${ERR} " + e).append("\\n");`,
     "            }",
-    `            System.out.println("${SENTINEL}");`,
+    `            OUT.append("${SENTINEL}\\n");`,
+    "        }",
+    "        String joined = OUT.toString();",
+    `        if (joined.length() > ${GZ_THRESHOLD}) {`,
+    "            try {",
+    "                java.io.ByteArrayOutputStream bos = new java.io.ByteArrayOutputStream();",
+    "                java.util.zip.GZIPOutputStream gz = new java.util.zip.GZIPOutputStream(bos);",
+    '                gz.write(joined.getBytes("UTF-8"));',
+    "                gz.close();",
+    `                System.out.println("${GZ}");`,
+    "                System.out.println(Base64.getEncoder().encodeToString(bos.toByteArray()));",
+    "            } catch (Exception e) {",
+    "                System.out.print(joined);",
+    "            }",
+    "        } else {",
+    "            System.out.print(joined);",
     "        }",
     "    }",
     "}",
@@ -530,10 +572,10 @@ function csFile(sig: Signature, fn: string): string {
   });
   const call = `${csFuncName(sig)}(${sig.params.map((p) => p.name).join(", ")})`;
   const print =
-    sig.returns === "int[]" ? `Console.WriteLine(FmtIntArray(${call}));`
-    : sig.returns === "string[]" ? `Console.WriteLine(FmtStringArray(${call}));`
-    : sig.returns === "bool" ? `Console.WriteLine(${call} ? "true" : "false");`
-    : `Console.WriteLine(${call});`;
+    sig.returns === "int[]" ? `OUT.Append(FmtIntArray(${call})).Append('\\n');`
+    : sig.returns === "string[]" ? `OUT.Append(FmtStringArray(${call})).Append('\\n');`
+    : sig.returns === "bool" ? `OUT.Append(${call} ? "true" : "false").Append('\\n');`
+    : `OUT.Append(${call}).Append('\\n');`;
   return [
     "using System;",
     "using System.Collections.Generic;",
@@ -547,12 +589,22 @@ function csFile(sig: Signature, fn: string): string {
     "",
     "    public static void Main()",
     "    {",
+    "        string raw = Console.In.ReadToEnd();",
+    `        if (raw.StartsWith("${GZIN}"))`,
+    "        {",
+    "            var b64 = raw.Substring(15);",
+    "            using (var msIn = new System.IO.MemoryStream(Convert.FromBase64String(b64)))",
+    "            using (var gzIn = new System.IO.Compression.GZipStream(msIn, System.IO.Compression.CompressionMode.Decompress))",
+    "            using (var reader = new System.IO.StreamReader(gzIn))",
+    "            {",
+    "                raw = reader.ReadToEnd();",
+    "            }",
+    "        }",
     "        var cases = new List<List<string>>();",
     "        var cur = new List<string>();",
-    "        string line;",
-    "        while ((line = Console.ReadLine()) != null)",
+    "        foreach (var line0 in raw.Split('\\n'))",
     "        {",
-    "            line = line.Trim();",
+    "            var line = line0.Trim();",
     `            if (line == "${SENTINEL}")`,
     "            {",
     "                if (cur.Count > 0) { cases.Add(cur); cur = new List<string>(); }",
@@ -563,6 +615,7 @@ function csFile(sig: Signature, fn: string): string {
     "            }",
     "        }",
     "        if (cur.Count > 0) cases.Add(cur);",
+    "        var OUT = new System.Text.StringBuilder();",
     "        foreach (var lines in cases)",
     "        {",
     "            try",
@@ -572,9 +625,27 @@ function csFile(sig: Signature, fn: string): string {
     "            }",
     "            catch (Exception e)",
     "            {",
-    `                Console.WriteLine("${ERR} " + e.Message);`,
+    `                OUT.Append("${ERR} " + e.Message).Append('\\n');`,
     "            }",
-    `            Console.WriteLine("${SENTINEL}");`,
+    `            OUT.Append("${SENTINEL}\\n");`,
+    "        }",
+    "        string joined = OUT.ToString();",
+    `        if (joined.Length > ${GZ_THRESHOLD})`,
+    "        {",
+    "            using (var ms = new System.IO.MemoryStream())",
+    "            {",
+    "                using (var gz = new System.IO.Compression.GZipStream(ms, System.IO.Compression.CompressionMode.Compress))",
+    "                {",
+    "                    var bytes = System.Text.Encoding.UTF8.GetBytes(joined);",
+    "                    gz.Write(bytes, 0, bytes.Length);",
+    "                }",
+    `                Console.WriteLine("${GZ}");`,
+    "                Console.WriteLine(Convert.ToBase64String(ms.ToArray()));",
+    "            }",
+    "        }",
+    "        else",
+    "        {",
+    "            Console.Write(joined);",
     "        }",
     "    }",
     "}",
@@ -596,7 +667,7 @@ function goStub(sig: Signature): string {
 function goFile(sig: Signature, fn: string): string {
   const needsJSON = sig.params.some((p) => p.type !== "int") || sig.returns.endsWith("[]");
   const needsStrconv = sig.params.some((p) => p.type === "int");
-  const imports = ["\t\"bufio\"", "\t\"fmt\"", "\t\"os\"", "\t\"strings\""];
+  const imports = ["\t\"bytes\"", "\t\"compress/gzip\"", "\t\"encoding/base64\"", "\t\"fmt\"", "\t\"io/ioutil\"", "\t\"os\"", "\t\"strings\""];
   if (needsJSON) imports.push("\t\"encoding/json\"");
   if (needsStrconv) imports.push("\t\"strconv\"");
   imports.sort();
@@ -615,10 +686,10 @@ function goFile(sig: Signature, fn: string): string {
         "\t\tif _result == nil {",
         `\t\t\t_result = ${GO_TYPES[sig.returns]}{}`,
         "\t\t}",
-        "\t\t_out, _ := json.Marshal(_result)",
-        "\t\tfmt.Println(string(_out))",
+        "\t\t_encoded, _ := json.Marshal(_result)",
+        "\t\tout = append(out, string(_encoded))",
       ]
-    : [`\t\tfmt.Println(${call})`];
+    : [`\t\tout = append(out, fmt.Sprint(${call}))`];
   return [
     "package main",
     "",
@@ -630,12 +701,21 @@ function goFile(sig: Signature, fn: string): string {
     "",
     "// ---- driver (do not edit below) ----",
     "func main() {",
-    "\tsc := bufio.NewScanner(os.Stdin)",
-    "\tsc.Buffer(make([]byte, 1024*1024), 1024*1024)",
+    "\trawBytes, _ := ioutil.ReadAll(os.Stdin)",
+    "\traw := string(rawBytes)",
+    `\tif strings.HasPrefix(raw, "${GZIN}") {`,
+    "\t\tb64 := raw[15:]",
+    '\t\tb64 = strings.ReplaceAll(b64, "\\n", "")',
+    '\t\tb64 = strings.ReplaceAll(b64, "\\r", "")',
+    "\t\tdecoded, _ := base64.StdEncoding.DecodeString(b64)",
+    "\t\tzr, _ := gzip.NewReader(bytes.NewReader(decoded))",
+    "\t\tunzipped, _ := ioutil.ReadAll(zr)",
+    "\t\traw = string(unzipped)",
+    "\t}",
     "\tvar cases [][]string",
     "\tvar cur []string",
-    "\tfor sc.Scan() {",
-    "\t\tt := strings.TrimSpace(sc.Text())",
+    '\tfor _, l := range strings.Split(raw, "\\n") {',
+    "\t\tt := strings.TrimSpace(l)",
     `\t\tif t == "${SENTINEL}" {`,
     "\t\t\tif len(cur) > 0 {",
     "\t\t\t\tcases = append(cases, cur)",
@@ -648,10 +728,22 @@ function goFile(sig: Signature, fn: string): string {
     "\tif len(cur) > 0 {",
     "\t\tcases = append(cases, cur)",
     "\t}",
+    "\tvar out []string",
     "\tfor _, lines := range cases {",
     ...parse,
     ...print,
-    `\t\tfmt.Println("${SENTINEL}")`,
+    `\t\tout = append(out, "${SENTINEL}")`,
+    "\t}",
+    '\tjoined := strings.Join(out, "\\n") + "\\n"',
+    `\tif len(joined) > ${GZ_THRESHOLD} {`,
+    "\t\tvar buf bytes.Buffer",
+    "\t\tzw := gzip.NewWriter(&buf)",
+    "\t\tzw.Write([]byte(joined))",
+    "\t\tzw.Close()",
+    `\t\tfmt.Println("${GZ}")`,
+    "\t\tfmt.Println(base64.StdEncoding.EncodeToString(buf.Bytes()))",
+    "\t} else {",
+    "\t\tfmt.Print(joined)",
     "\t}",
     "}",
   ].join("\n");
@@ -703,16 +795,22 @@ function ktFile(sig: Signature, fn: string): string {
   });
   const call = `${sig.funcName}(${sig.params.map((p) => p.name).join(", ")})`;
   const print =
-    sig.returns === "int[]" ? `println(fmtIntArray(${call}))`
-    : sig.returns === "string[]" ? `println(fmtStringArray(${call}))`
-    : `println(${call})`;
+    sig.returns === "int[]" ? `OUT.append(fmtIntArray(${call})).append("\\n")`
+    : sig.returns === "string[]" ? `OUT.append(fmtStringArray(${call})).append("\\n")`
+    : `OUT.append(${call}.toString()).append("\\n")`;
   return [
     fn,
     "",
     KT_HELPERS,
     "",
     "fun main() {",
-    "    val allLines = generateSequence(::readLine).map { it.trim() }.toList()",
+    '    var raw = generateSequence(::readLine).joinToString("\\n")',
+    `    if (raw.startsWith("${GZIN}")) {`,
+    '        val b64 = raw.substring(15).replace(Regex("\\\\s"), "")',
+    "        val gzin = java.util.zip.GZIPInputStream(java.io.ByteArrayInputStream(java.util.Base64.getDecoder().decode(b64)))",
+    "        raw = gzin.readBytes().toString(Charsets.UTF_8)",
+    "    }",
+    '    val allLines = raw.split("\\n").map { it.trim() }',
     "    val cases = ArrayList<List<String>>()",
     "    var cur = ArrayList<String>()",
     "    for (l in allLines) {",
@@ -723,14 +821,26 @@ function ktFile(sig: Signature, fn: string): string {
     "        }",
     "    }",
     "    if (cur.isNotEmpty()) cases.add(cur)",
+    "    val OUT = StringBuilder()",
     "    for (lines in cases) {",
     "        try {",
     ...parse,
     `            ${print}`,
     "        } catch (e: Exception) {",
-    `            println("${ERR} " + e)`,
+    `            OUT.append("${ERR} " + e).append("\\n")`,
     "        }",
-    `        println("${SENTINEL}")`,
+    `        OUT.append("${SENTINEL}\\n")`,
+    "    }",
+    "    val joined = OUT.toString()",
+    `    if (joined.length > ${GZ_THRESHOLD}) {`,
+    "        val bos = java.io.ByteArrayOutputStream()",
+    "        val gz = java.util.zip.GZIPOutputStream(bos)",
+    "        gz.write(joined.toByteArray(Charsets.UTF_8))",
+    "        gz.close()",
+    `        println("${GZ}")`,
+    "        println(java.util.Base64.getEncoder().encodeToString(bos.toByteArray()))",
+    "    } else {",
+    "        print(joined)",
     "    }",
     "}",
   ].join("\n");
@@ -946,17 +1056,24 @@ function phpFile(sig: Signature, fn: string): string {
     "    }",
     "}",
     "if (count($cur) > 0) $cases[] = $cur;",
+    "$out = [];",
     "foreach ($cases as $lines) {",
     "    try {",
     ...parse,
     `        $result = ${call};`,
-    '        if (is_bool($result)) echo ($result ? "true" : "false") . "\\n";',
-    '        elseif (is_array($result)) echo json_encode($result) . "\\n";',
-    '        else echo $result . "\\n";',
+    '        if (is_bool($result)) $out[] = $result ? "true" : "false";',
+    "        elseif (is_array($result)) $out[] = json_encode($result);",
+    "        else $out[] = strval($result);",
     "    } catch (Throwable $e) {",
-    `        echo "${ERR} " . $e->getMessage() . "\\n";`,
+    `        $out[] = "${ERR} " . $e->getMessage();`,
     "    }",
-    `    echo "${SENTINEL}\\n";`,
+    `    $out[] = "${SENTINEL}";`,
+    "}",
+    '$joined = implode("\\n", $out) . "\\n";',
+    `if (strlen($joined) > ${GZ_THRESHOLD} && function_exists("gzencode")) {`,
+    `    echo "${GZ}\\n" . base64_encode(gzencode($joined)) . "\\n";`,
+    "} else {",
+    "    echo $joined;",
     "}",
   ].join("\n");
 }
@@ -973,11 +1090,16 @@ function rbFile(sig: Signature, fn: string): string {
   const call = `${sig.funcName}(${sig.params.map((p) => p.name).join(", ")})`;
   return [
     "require 'json'",
+    "require 'zlib'",
     "",
     fn,
     "",
     "# ---- driver (do not edit below) ----",
     "raw = STDIN.read",
+    `if raw.start_with?("${GZIN}")`,
+    '  b64 = raw[15..].delete("\\n\\r ")',
+    '  raw = Zlib.gunzip(b64.unpack1("m0"))',
+    "end",
     "cases = []",
     "cur = []",
     'raw.split("\\n").each do |l|',
@@ -992,19 +1114,27 @@ function rbFile(sig: Signature, fn: string): string {
     "  end",
     "end",
     "cases << cur unless cur.empty?",
+    "out_lines = []",
     "cases.each do |lines|",
     "  begin",
     ...parse,
     `    result = ${call}`,
     "    if result.is_a?(Array)",
-    "      puts result.to_json",
+    "      out_lines << result.to_json",
     "    else",
-    "      puts result",
+    "      out_lines << result.to_s",
     "    end",
     "  rescue => e",
-    `    puts "${ERR} " + e.message`,
+    `    out_lines << "${ERR} " + e.message`,
     "  end",
-    `  puts "${SENTINEL}"`,
+    `  out_lines << "${SENTINEL}"`,
+    "end",
+    'joined = out_lines.join("\\n") + "\\n"',
+    `if joined.length > ${GZ_THRESHOLD}`,
+    `  puts "${GZ}"`,
+    '  puts [Zlib.gzip(joined)].pack("m0")',
+    "else",
+    "  print joined",
     "end",
   ].join("\n");
 }
