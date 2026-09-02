@@ -191,13 +191,19 @@ router.post("/:id/join", requireAuth, async (req, res) => {
          return res.status(403).json({ error: "Room is full" });
        }
 
-       await prisma.roomParticipant.create({
-         data: {
-           roomId: id,
-           userId,
-           role: "guest"
-         }
-       });
+       try {
+         await prisma.roomParticipant.create({
+           data: {
+             roomId: id,
+             userId,
+             role: "guest"
+           }
+         });
+       } catch (e) {
+         // Unique (roomId, userId) violation — a concurrent join request
+         // already added this user; treat as an idempotent success.
+         if ((e as { code?: string }).code !== "P2002") throw e;
+       }
 
        // Update status if needed
        if (room.participants.length === 1) {

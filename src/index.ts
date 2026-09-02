@@ -51,6 +51,7 @@ async function softDeleteRoom(roomId: string, slug: string) {
       data: { status: "closed", endedAt: new Date() }
     });
     io.to(roomId).emit("room-ended", { slug });
+    roomLatestCode.delete(roomId);
   } catch (err) {
     console.error("Soft delete room error:", err);
   }
@@ -77,11 +78,19 @@ async function handleParticipantLeave(roomId: string, userId: string, slug: stri
   }
 }
 
+// Latest editor code per active room — a late joiner receives the current
+// buffer immediately instead of waiting for the next keystroke.
+const roomLatestCode = new Map<string, string>();
+
 io.on("connection", (socket) => {
   console.log(`🔌 New client connected: ${socket.id}`);
 
   socket.on("join-room", async (roomId: string, userId: string) => {
     socket.join(roomId);
+
+    // Push the room's current code straight to the joining socket.
+    const latestCode = roomLatestCode.get(roomId);
+    if (latestCode) socket.emit("code-update", latestCode);
     console.log(`👤 Client ${socket.id} (User: ${userId}) joined room: ${roomId}`);
 
     try {
@@ -128,6 +137,7 @@ io.on("connection", (socket) => {
   });
 
   socket.on("code-update", ({ roomId, code }: { roomId: string, code: string }) => {
+    roomLatestCode.set(roomId, code);
     socket.to(roomId).emit("code-update", code);
   });
 
