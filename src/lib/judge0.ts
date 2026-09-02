@@ -273,8 +273,13 @@ int main(void) {
 
 export function wrapCode(code: string, language: string): string {
   if (language === "javascript") {
-    const functionMatch = 
-      code.match(/function\s+([a-zA-Z0-9_]+)\s*\(/) || 
+    // Match only TOP-LEVEL declarations (anchored to line start) so nested
+    // helper functions inside the solution are never mistaken for the entry
+    // point. Fall back to unanchored patterns for oddly formatted code.
+    const functionMatch =
+      code.match(/^(?:var|let|const)\s+([a-zA-Z0-9_]+)\s*=\s*(?:async\s*)?(?:function\s*\(|(?:\([^)]*\)|[a-zA-Z0-9_]+)\s*=>)/m) ||
+      code.match(/^(?:async\s+)?function\s+([a-zA-Z0-9_]+)\s*\(/m) ||
+      code.match(/function\s+([a-zA-Z0-9_]+)\s*\(/) ||
       code.match(/(?:var|let|const)\s+([a-zA-Z0-9_]+)\s*=\s*(?:function\s*\(|(?:\([^)]*\)|[a-zA-Z0-9_]+)\s*=>)/);
     const functionName = functionMatch ? functionMatch[1] : null;
 
@@ -378,7 +383,11 @@ if (__joined.length > 65536) {
   }
 
   if (language === "python") {
-    const funcMatch = code.match(/def\s+([a-zA-Z0-9_]+)\s*\(/);
+    // Anchored to line start so nested (indented) defs inside the solution
+    // are never mistaken for the entry point.
+    const funcMatch =
+      code.match(/^def\s+([a-zA-Z0-9_]+)\s*\(/m) ||
+      code.match(/def\s+([a-zA-Z0-9_]+)\s*\(/);
     const funcName = funcMatch ? funcMatch[1] : null;
 
     if (!funcName) return code;

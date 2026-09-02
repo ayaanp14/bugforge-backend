@@ -62,10 +62,29 @@ router.get("/", optionalAuth, async (req, res) => {
         select: { id: true },
       });
 
-      // 2. Shuffle IDs
-      const shuffledIds = matchingProblems
-        .map(p => p.id)
-        .sort(() => Math.random() - 0.5);
+      // 2. Shuffle IDs deterministically. The client sends one `seed` for a
+      //    whole browsing session, so every page slices the SAME order —
+      //    without this, each request reshuffles and infinite scroll returns
+      //    duplicate/missing rows. Falls back to a random seed when absent.
+      const seedStr = String(req.query.seed ?? "");
+      let h = 2166136261 >>> 0;
+      for (let i = 0; i < seedStr.length; i++) {
+        h = Math.imul(h ^ seedStr.charCodeAt(i), 16777619);
+      }
+      if (!seedStr) h = (Math.random() * 4294967296) >>> 0;
+      const rand = () => {
+        h = (h + 0x6d2b79f5) | 0;
+        let t = Math.imul(h ^ (h >>> 15), 1 | h);
+        t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+        return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+      };
+      const shuffledIds = matchingProblems.map(p => p.id);
+      for (let i = shuffledIds.length - 1; i > 0; i--) {
+        const j = Math.floor(rand() * (i + 1));
+        const tmp = shuffledIds[i];
+        shuffledIds[i] = shuffledIds[j];
+        shuffledIds[j] = tmp;
+      }
 
       // 3. Take the subset for current page
       const pageIds = shuffledIds.slice(skipNum, skipNum + takeNum);

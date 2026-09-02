@@ -18,8 +18,8 @@
  * that every language actually executes).
  */
 
-export type ParamType = "int" | "int[]" | "string" | "string[]";
-export type ReturnKind = "int" | "bool" | "int[]" | "string[]";
+export type ParamType = "int" | "int[]" | "int[][]" | "string" | "string[]";
+export type ReturnKind = "int" | "bool" | "string" | "int[]" | "int[][]" | "string[]";
 
 export interface Param {
   name: string;
@@ -46,7 +46,7 @@ const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 // ── javascript (harness-driven) ────────────────────────────────────
 const JS_TYPES: Record<ParamType | ReturnKind, string> = {
   int: "number", bool: "boolean", string: "string",
-  "int[]": "number[]", "string[]": "string[]",
+  "int[]": "number[]", "int[][]": "number[][]", "string[]": "string[]",
 };
 
 function jsStub(sig: Signature): string {
@@ -63,7 +63,7 @@ function jsStub(sig: Signature): string {
 // ── python (harness-driven) ────────────────────────────────────────
 const PY_TYPES: Record<ParamType | ReturnKind, string> = {
   int: "int", bool: "bool", string: "str",
-  "int[]": "List[int]", "string[]": "List[str]",
+  "int[]": "List[int]", "int[][]": "List[List[int]]", "string[]": "List[str]",
 };
 
 function pyStub(sig: Signature): string {
@@ -78,7 +78,7 @@ function pyStub(sig: Signature): string {
 // ── typescript (self-contained) ────────────────────────────────────
 function tsStub(sig: Signature): string {
   const args = sig.params.map((p) => `${p.name}: ${JS_TYPES[p.type]}`).join(", ");
-  const dflt = { int: "return 0;", bool: "return false;", "int[]": "return [];", "string[]": "return [];" }[sig.returns];
+  const dflt = { int: "return 0;", bool: "return false;", string: 'return "";', "int[]": "return [];", "int[][]": "return [];", "string[]": "return [];" }[sig.returns];
   return [`function ${sig.funcName}(${args}): ${JS_TYPES[sig.returns]} {`, "    // Write your code here", `    ${dflt}`, "}"].join("\n");
 }
 
@@ -134,7 +134,7 @@ function tsDriver(sig: Signature): string {
 // ── java (self-contained) ──────────────────────────────────────────
 const JAVA_TYPES: Record<ParamType | ReturnKind, string> = {
   int: "int", bool: "boolean", string: "String",
-  "int[]": "int[]", "string[]": "String[]",
+  "int[]": "int[]", "int[][]": "int[][]", "string[]": "String[]",
 };
 
 const JAVA_HELPERS = `    // ---- driver (do not edit below) ----
@@ -173,11 +173,26 @@ const JAVA_HELPERS = `    // ---- driver (do not edit below) ----
         StringBuilder sb = new StringBuilder("[");
         for (int i = 0; i < a.length; i++) { if (i > 0) sb.append(","); sb.append('"').append(a[i]).append('"'); }
         return sb.append("]").toString();
+    }
+    static int[][] parseIntMatrix(String s) {
+        java.util.List<int[]> rows = new java.util.ArrayList<>();
+        int depth = 0, start = 0;
+        for (int i = 0; i < s.length(); i++) {
+            char c = s.charAt(i);
+            if (c == '[') { depth++; if (depth == 2) start = i; }
+            else if (c == ']') { if (depth == 2) rows.add(parseIntArray(s.substring(start, i + 1))); depth--; }
+        }
+        return rows.toArray(new int[0][]);
+    }
+    static String fmtIntMatrix(int[][] m) {
+        StringBuilder sb = new StringBuilder("[");
+        for (int i = 0; i < m.length; i++) { if (i > 0) sb.append(","); sb.append(fmtIntArray(m[i])); }
+        return sb.append("]").toString();
     }`;
 
 function javaStub(sig: Signature): string {
   const args = sig.params.map((p) => `${JAVA_TYPES[p.type]} ${p.name}`).join(", ");
-  const dflt = { int: "return 0;", bool: "return false;", "int[]": "return new int[0];", "string[]": "return new String[0];" }[sig.returns];
+  const dflt = { int: "return 0;", bool: "return false;", string: 'return "";', "int[]": "return new int[0];", "int[][]": "return new int[0][];", "string[]": "return new String[0];" }[sig.returns];
   return [
     `    public static ${JAVA_TYPES[sig.returns]} ${sig.funcName}(${args}) {`,
     "        // Write your code here",
@@ -188,6 +203,7 @@ function javaStub(sig: Signature): string {
 
 function javaFile(sig: Signature, fn: string): string {
   const parse = sig.params.map((p, i) => {
+    if (p.type === "int[][]") return `                int[][] ${p.name} = parseIntMatrix(lines.get(${i}));`;
     if (p.type === "int[]") return `                int[] ${p.name} = parseIntArray(lines.get(${i}));`;
     if (p.type === "string[]") return `                String[] ${p.name} = parseStringArray(lines.get(${i}));`;
     if (p.type === "string") return `                String ${p.name} = parseString(lines.get(${i}));`;
@@ -196,6 +212,7 @@ function javaFile(sig: Signature, fn: string): string {
   const call = `${sig.funcName}(${sig.params.map((p) => p.name).join(", ")})`;
   const print =
     sig.returns === "int[]" ? `OUT.append(fmtIntArray(${call})).append("\\n");`
+    : sig.returns === "int[][]" ? `OUT.append(fmtIntMatrix(${call})).append("\\n");`
     : sig.returns === "string[]" ? `OUT.append(fmtStringArray(${call})).append("\\n");`
     : `OUT.append(String.valueOf(${call})).append("\\n");`;
   return [
@@ -261,7 +278,7 @@ function javaFile(sig: Signature, fn: string): string {
 // ── c++ (self-contained) ───────────────────────────────────────────
 const CPP_TYPES: Record<ParamType | ReturnKind, string> = {
   int: "int", bool: "bool", string: "string",
-  "int[]": "vector<int>", "string[]": "vector<string>",
+  "int[]": "vector<int>", "int[][]": "vector<vector<int>>", "string[]": "vector<string>",
 };
 
 const CPP_HELPERS = `// ---- driver (do not edit below) ----
@@ -298,18 +315,33 @@ static string fmtStringArray(const vector<string>& a) {
     string r = "[";
     for (size_t i = 0; i < a.size(); i++) { if (i) r += ","; r += '"' + a[i] + '"'; }
     return r + "]";
+}
+static vector<vector<int>> parseIntMatrix(const string& s) {
+    vector<vector<int>> rows;
+    int depth = 0; size_t start = 0;
+    for (size_t i = 0; i < s.size(); i++) {
+        if (s[i] == '[') { depth++; if (depth == 2) start = i; }
+        else if (s[i] == ']') { if (depth == 2) rows.push_back(parseIntArray(s.substr(start, i - start + 1))); depth--; }
+    }
+    return rows;
+}
+static string fmtIntMatrix(const vector<vector<int>>& m) {
+    string r = "[";
+    for (size_t i = 0; i < m.size(); i++) { if (i) r += ","; r += fmtIntArray(m[i]); }
+    return r + "]";
 }`;
 
 function cppStub(sig: Signature): string {
   const args = sig.params
     .map((p) => (p.type.endsWith("[]") ? `${CPP_TYPES[p.type]}& ${p.name}` : `${CPP_TYPES[p.type]} ${p.name}`))
     .join(", ");
-  const dflt = { int: "return 0;", bool: "return false;", "int[]": "return {};", "string[]": "return {};" }[sig.returns];
+  const dflt = { int: "return 0;", bool: "return false;", string: 'return "";', "int[]": "return {};", "int[][]": "return {};", "string[]": "return {};" }[sig.returns];
   return [`${CPP_TYPES[sig.returns]} ${sig.funcName}(${args}) {`, "    // Write your code here", `    ${dflt}`, "}"].join("\n");
 }
 
 function cppFile(sig: Signature, fn: string): string {
   const parse = sig.params.map((p, i) => {
+    if (p.type === "int[][]") return `            vector<vector<int>> ${p.name} = parseIntMatrix(lines[${i}]);`;
     if (p.type === "int[]") return `            vector<int> ${p.name} = parseIntArray(lines[${i}]);`;
     if (p.type === "string[]") return `            vector<string> ${p.name} = parseStringArray(lines[${i}]);`;
     if (p.type === "string") return `            string ${p.name} = parseStringValue(lines[${i}]);`;
@@ -318,6 +350,7 @@ function cppFile(sig: Signature, fn: string): string {
   const call = `${sig.funcName}(${sig.params.map((p) => p.name).join(", ")})`;
   const print =
     sig.returns === "int[]" ? `cout << fmtIntArray(${call}) << endl;`
+    : sig.returns === "int[][]" ? `cout << fmtIntMatrix(${call}) << endl;`
     : sig.returns === "string[]" ? `cout << fmtStringArray(${call}) << endl;`
     : sig.returns === "bool" ? `cout << (${call} ? "true" : "false") << endl;`
     : `cout << ${call} << endl;`;
@@ -421,27 +454,67 @@ static void print_string_array(char** a, int n) {
     printf("[");
     for (int i = 0; i < n; i++) { if (i) printf(","); printf("\\"%s\\"", a[i]); }
     printf("]\\n");
+}
+static int parse_int_matrix(const char* s, int*** out, int** colSizes) {
+    int cap = 8, n = 0;
+    int** rows = (int**)malloc(cap * sizeof(int*));
+    int* cols = (int*)malloc(cap * sizeof(int));
+    int depth = 0;
+    const char* start = NULL;
+    for (const char* p = s; *p; p++) {
+        if (*p == '[') { depth++; if (depth == 2) start = p; }
+        else if (*p == ']') {
+            if (depth == 2 && start) {
+                int len = (int)(p - start + 1);
+                char* row = (char*)malloc(len + 1);
+                memcpy(row, start, len);
+                row[len] = '\\0';
+                if (n == cap) { cap *= 2; rows = (int**)realloc(rows, cap * sizeof(int*)); cols = (int*)realloc(cols, cap * sizeof(int)); }
+                cols[n] = parse_int_array(row, &rows[n]);
+                free(row);
+                n++;
+            }
+            depth--;
+        }
+    }
+    *out = rows;
+    *colSizes = cols;
+    return n;
+}
+static void print_int_matrix(int** m, int n, const int* colSizes) {
+    printf("[");
+    for (int i = 0; i < n; i++) {
+        if (i) printf(",");
+        printf("[");
+        for (int j = 0; j < colSizes[i]; j++) { if (j) printf(","); printf("%d", m[i][j]); }
+        printf("]");
+    }
+    printf("]\\n");
 }`;
 
 /** LeetCode-style C parameter list: arrays carry a size, array returns carry returnSize. */
 function cParamList(sig: Signature): string {
   const parts: string[] = [];
   for (const p of sig.params) {
-    if (p.type === "int[]") parts.push(`int* ${p.name}, int ${p.name}Size`);
+    if (p.type === "int[][]") parts.push(`int** ${p.name}, int ${p.name}Size, int* ${p.name}ColSize`);
+    else if (p.type === "int[]") parts.push(`int* ${p.name}, int ${p.name}Size`);
     else if (p.type === "string[]") parts.push(`char** ${p.name}, int ${p.name}Size`);
     else if (p.type === "string") parts.push(`const char* ${p.name}`);
     else parts.push(`int ${p.name}`);
   }
-  if (sig.returns === "int[]" || sig.returns === "string[]") parts.push("int* returnSize");
+  if (sig.returns === "int[][]") parts.push("int* returnSize", "int** returnColumnSizes");
+  else if (sig.returns === "int[]" || sig.returns === "string[]") parts.push("int* returnSize");
   return parts.join(", ");
 }
 
 function cStub(sig: Signature): string {
-  const ret = { int: "int", bool: "bool", "int[]": "int*", "string[]": "char**" }[sig.returns];
+  const ret = { int: "int", bool: "bool", string: "char*", "int[]": "int*", "int[][]": "int**", "string[]": "char**" }[sig.returns];
   const dflt = {
     int: "return 0;",
     bool: "return false;",
+    string: 'return "";',
     "int[]": "*returnSize = 0;\n    return NULL;",
+    "int[][]": "*returnSize = 0;\n    return NULL;",
     "string[]": "*returnSize = 0;\n    return NULL;",
   }[sig.returns];
   return [`${ret} ${sig.funcName}(${cParamList(sig)}) {`, "    // Write your code here", `    ${dflt}`, "}"].join("\n");
@@ -451,7 +524,14 @@ function cFile(sig: Signature, fn: string): string {
   const parse: string[] = [];
   const callArgs: string[] = [];
   sig.params.forEach((p, i) => {
-    if (p.type === "int[]") {
+    if (p.type === "int[][]") {
+      parse.push(
+        `            int** ${p.name};`,
+        `            int* ${p.name}ColSize;`,
+        `            int ${p.name}Size = parse_int_matrix(lines[${i}], &${p.name}, &${p.name}ColSize);`
+      );
+      callArgs.push(p.name, `${p.name}Size`, `${p.name}ColSize`);
+    } else if (p.type === "int[]") {
       parse.push(`            int* ${p.name};`, `            int ${p.name}Size = parse_int_array(lines[${i}], &${p.name});`);
       callArgs.push(p.name, `${p.name}Size`);
     } else if (p.type === "string[]") {
@@ -466,7 +546,15 @@ function cFile(sig: Signature, fn: string): string {
     }
   });
   const callBody: string[] = [];
-  if (sig.returns === "int[]") {
+  if (sig.returns === "int[][]") {
+    callArgs.push("&returnSize", "&returnColumnSizes");
+    callBody.push(
+      "            int returnSize = 0;",
+      "            int* returnColumnSizes = NULL;",
+      `            int** result = ${sig.funcName}(${callArgs.join(", ")});`,
+      "            print_int_matrix(result, returnSize, returnColumnSizes);"
+    );
+  } else if (sig.returns === "int[]") {
     callArgs.push("&returnSize");
     callBody.push("            int returnSize = 0;", `            int* result = ${sig.funcName}(${callArgs.join(", ")});`, "            print_int_array(result, returnSize);");
   } else if (sig.returns === "string[]") {
@@ -474,6 +562,8 @@ function cFile(sig: Signature, fn: string): string {
     callBody.push("            int returnSize = 0;", `            char** result = ${sig.funcName}(${callArgs.join(", ")});`, "            print_string_array(result, returnSize);");
   } else if (sig.returns === "bool") {
     callBody.push(`            printf(${sig.funcName}(${callArgs.join(", ")}) ? "true\\n" : "false\\n");`);
+  } else if (sig.returns === "string") {
+    callBody.push(`            printf("%s\\n", ${sig.funcName}(${callArgs.join(", ")}));`);
   } else {
     callBody.push(`            printf("%d\\n", ${sig.funcName}(${callArgs.join(", ")}));`);
   }
@@ -532,7 +622,7 @@ function cFile(sig: Signature, fn: string): string {
 // ── c# (self-contained) ────────────────────────────────────────────
 const CS_TYPES: Record<ParamType | ReturnKind, string> = {
   int: "int", bool: "bool", string: "string",
-  "int[]": "int[]", "string[]": "string[]",
+  "int[]": "int[]", "int[][]": "int[][]", "string[]": "string[]",
 };
 
 const CS_HELPERS = `    // ---- driver (do not edit below) ----
@@ -560,7 +650,19 @@ const CS_HELPERS = `    // ---- driver (do not edit below) ----
         return s;
     }
     static string FmtIntArray(int[] a) { return "[" + string.Join(",", a) + "]"; }
-    static string FmtStringArray(string[] a) { return "[" + string.Join(",", a.Select(x => "\\"" + x + "\\"")) + "]"; }`;
+    static string FmtStringArray(string[] a) { return "[" + string.Join(",", a.Select(x => "\\"" + x + "\\"")) + "]"; }
+    static int[][] ParseIntMatrix(string s)
+    {
+        var rows = new List<int[]>();
+        int depth = 0, start = 0;
+        for (int i = 0; i < s.Length; i++)
+        {
+            if (s[i] == '[') { depth++; if (depth == 2) start = i; }
+            else if (s[i] == ']') { if (depth == 2) rows.Add(ParseIntArray(s.Substring(start, i - start + 1))); depth--; }
+        }
+        return rows.ToArray();
+    }
+    static string FmtIntMatrix(int[][] m) { return "[" + string.Join(",", m.Select(FmtIntArray)) + "]"; }`;
 
 function csFuncName(sig: Signature): string {
   return capitalize(sig.funcName);
@@ -568,7 +670,7 @@ function csFuncName(sig: Signature): string {
 
 function csStub(sig: Signature): string {
   const args = sig.params.map((p) => `${CS_TYPES[p.type]} ${p.name}`).join(", ");
-  const dflt = { int: "return 0;", bool: "return false;", "int[]": "return new int[0];", "string[]": "return new string[0];" }[sig.returns];
+  const dflt = { int: "return 0;", bool: "return false;", string: 'return "";', "int[]": "return new int[0];", "int[][]": "return new int[0][];", "string[]": "return new string[0];" }[sig.returns];
   return [
     `    public static ${CS_TYPES[sig.returns]} ${csFuncName(sig)}(${args})`,
     "    {",
@@ -580,6 +682,7 @@ function csStub(sig: Signature): string {
 
 function csFile(sig: Signature, fn: string): string {
   const parse = sig.params.map((p, i) => {
+    if (p.type === "int[][]") return `                int[][] ${p.name} = ParseIntMatrix(lines[${i}]);`;
     if (p.type === "int[]") return `                int[] ${p.name} = ParseIntArray(lines[${i}]);`;
     if (p.type === "string[]") return `                string[] ${p.name} = ParseStringArray(lines[${i}]);`;
     if (p.type === "string") return `                string ${p.name} = ParseString(lines[${i}]);`;
@@ -588,6 +691,7 @@ function csFile(sig: Signature, fn: string): string {
   const call = `${csFuncName(sig)}(${sig.params.map((p) => p.name).join(", ")})`;
   const print =
     sig.returns === "int[]" ? `OUT.Append(FmtIntArray(${call})).Append('\\n');`
+    : sig.returns === "int[][]" ? `OUT.Append(FmtIntMatrix(${call})).Append('\\n');`
     : sig.returns === "string[]" ? `OUT.Append(FmtStringArray(${call})).Append('\\n');`
     : sig.returns === "bool" ? `OUT.Append(${call} ? "true" : "false").Append('\\n');`
     : `OUT.Append(${call}).Append('\\n');`;
@@ -672,12 +776,12 @@ function csFile(sig: Signature, fn: string): string {
 // ── go (self-contained) ────────────────────────────────────────────
 const GO_TYPES: Record<ParamType | ReturnKind, string> = {
   int: "int", bool: "bool", string: "string",
-  "int[]": "[]int", "string[]": "[]string",
+  "int[]": "[]int", "int[][]": "[][]int", "string[]": "[]string",
 };
 
 function goStub(sig: Signature): string {
   const args = sig.params.map((p) => `${p.name} ${GO_TYPES[p.type]}`).join(", ");
-  const dflt = { int: "return 0", bool: "return false", "int[]": "return []int{}", "string[]": "return []string{}" }[sig.returns];
+  const dflt = { int: "return 0", bool: "return false", string: 'return ""', "int[]": "return []int{}", "int[][]": "return [][]int{}", "string[]": "return []string{}" }[sig.returns];
   return [`func ${sig.funcName}(${args}) ${GO_TYPES[sig.returns]} {`, "\t// Write your code here", `\t${dflt}`, "}"].join("\n");
 }
 
@@ -773,7 +877,7 @@ function goFile(sig: Signature, fn: string): string {
 // ── kotlin (self-contained) ────────────────────────────────────────
 const KT_TYPES: Record<ParamType | ReturnKind, string> = {
   int: "Int", bool: "Boolean", string: "String",
-  "int[]": "IntArray", "string[]": "Array<String>",
+  "int[]": "IntArray", "int[][]": "Array<IntArray>", "string[]": "Array<String>",
 };
 
 const KT_HELPERS = `// ---- driver (do not edit below) ----
@@ -799,16 +903,29 @@ fun parseStringValue(s: String): String {
     return if (t.length >= 2 && t.first() == '"' && t.last() == '"') t.substring(1, t.length - 1) else t
 }
 fun fmtIntArray(a: IntArray): String = a.joinToString(",", "[", "]")
-fun fmtStringArray(a: Array<String>): String = a.joinToString(",", "[", "]") { "\\"" + it + "\\"" }`;
+fun fmtStringArray(a: Array<String>): String = a.joinToString(",", "[", "]") { "\\"" + it + "\\"" }
+fun parseIntMatrix(s: String): Array<IntArray> {
+    val rows = ArrayList<IntArray>()
+    var depth = 0
+    var start = 0
+    for (i in s.indices) {
+        val c = s[i]
+        if (c == '[') { depth++; if (depth == 2) start = i }
+        else if (c == ']') { if (depth == 2) rows.add(parseIntArray(s.substring(start, i + 1))); depth-- }
+    }
+    return rows.toTypedArray()
+}
+fun fmtIntMatrix(m: Array<IntArray>): String = m.joinToString(",", "[", "]") { fmtIntArray(it) }`;
 
 function ktStub(sig: Signature): string {
   const args = sig.params.map((p) => `${p.name}: ${KT_TYPES[p.type]}`).join(", ");
-  const dflt = { int: "return 0", bool: "return false", "int[]": "return intArrayOf()", "string[]": "return arrayOf<String>()" }[sig.returns];
+  const dflt = { int: "return 0", bool: "return false", string: 'return ""', "int[]": "return intArrayOf()", "int[][]": "return arrayOf<IntArray>()", "string[]": "return arrayOf<String>()" }[sig.returns];
   return [`fun ${sig.funcName}(${args}): ${KT_TYPES[sig.returns]} {`, "    // Write your code here", `    ${dflt}`, "}"].join("\n");
 }
 
 function ktFile(sig: Signature, fn: string): string {
   const parse = sig.params.map((p, i) => {
+    if (p.type === "int[][]") return `            val ${p.name} = parseIntMatrix(lines[${i}])`;
     if (p.type === "int[]") return `            val ${p.name} = parseIntArray(lines[${i}])`;
     if (p.type === "string[]") return `            val ${p.name} = parseStringArray(lines[${i}])`;
     if (p.type === "string") return `            val ${p.name} = parseStringValue(lines[${i}])`;
@@ -817,6 +934,7 @@ function ktFile(sig: Signature, fn: string): string {
   const call = `${sig.funcName}(${sig.params.map((p) => p.name).join(", ")})`;
   const print =
     sig.returns === "int[]" ? `OUT.append(fmtIntArray(${call})).append("\\n")`
+    : sig.returns === "int[][]" ? `OUT.append(fmtIntMatrix(${call})).append("\\n")`
     : sig.returns === "string[]" ? `OUT.append(fmtStringArray(${call})).append("\\n")`
     : `OUT.append(${call}.toString()).append("\\n")`;
   return [
@@ -873,7 +991,7 @@ function ktFile(sig: Signature, fn: string): string {
 // ── swift (self-contained) ─────────────────────────────────────────
 const SW_TYPES: Record<ParamType | ReturnKind, string> = {
   int: "Int", bool: "Bool", string: "String",
-  "int[]": "[Int]", "string[]": "[String]",
+  "int[]": "[Int]", "int[][]": "[[Int]]", "string[]": "[String]",
 };
 
 const SW_HELPERS = `// ---- driver (do not edit below) ----
@@ -906,16 +1024,35 @@ func parseStringValue(_ s: String) -> String {
     return t
 }
 func fmtIntArray(_ a: [Int]) -> String { return "[" + a.map(String.init).joined(separator: ",") + "]" }
-func fmtStringArray(_ a: [String]) -> String { return "[" + a.map { "\\"" + $0 + "\\"" }.joined(separator: ",") + "]" }`;
+func fmtStringArray(_ a: [String]) -> String { return "[" + a.map { "\\"" + $0 + "\\"" }.joined(separator: ",") + "]" }
+func parseIntMatrix(_ s: String) -> [[Int]] {
+    var rows: [[Int]] = []
+    var depth = 0
+    var cur = ""
+    for ch in s {
+        if ch == "[" {
+            depth += 1
+            if depth == 2 { cur = "[" }
+        } else if ch == "]" {
+            if depth == 2 { cur.append("]"); rows.append(parseIntArray(cur)) }
+            depth -= 1
+        } else if depth == 2 {
+            cur.append(ch)
+        }
+    }
+    return rows
+}
+func fmtIntMatrix(_ m: [[Int]]) -> String { return "[" + m.map(fmtIntArray).joined(separator: ",") + "]" }`;
 
 function swStub(sig: Signature): string {
   const args = sig.params.map((p) => `_ ${p.name}: ${SW_TYPES[p.type]}`).join(", ");
-  const dflt = { int: "return 0", bool: "return false", "int[]": "return []", "string[]": "return []" }[sig.returns];
+  const dflt = { int: "return 0", bool: "return false", string: 'return ""', "int[]": "return []", "int[][]": "return []", "string[]": "return []" }[sig.returns];
   return [`func ${sig.funcName}(${args}) -> ${SW_TYPES[sig.returns]} {`, "    // Write your code here", `    ${dflt}`, "}"].join("\n");
 }
 
 function swFile(sig: Signature, fn: string): string {
   const parse = sig.params.map((p, i) => {
+    if (p.type === "int[][]") return `    let ${p.name} = parseIntMatrix(lines[${i}])`;
     if (p.type === "int[]") return `    let ${p.name} = parseIntArray(lines[${i}])`;
     if (p.type === "string[]") return `    let ${p.name} = parseStringArray(lines[${i}])`;
     if (p.type === "string") return `    let ${p.name} = parseStringValue(lines[${i}])`;
@@ -924,6 +1061,7 @@ function swFile(sig: Signature, fn: string): string {
   const call = `${sig.funcName}(${sig.params.map((p) => p.name).join(", ")})`;
   const print =
     sig.returns === "int[]" ? `print(fmtIntArray(${call}))`
+    : sig.returns === "int[][]" ? `print(fmtIntMatrix(${call}))`
     : sig.returns === "string[]" ? `print(fmtStringArray(${call}))`
     : `print(${call})`;
   return [
@@ -960,7 +1098,7 @@ function swFile(sig: Signature, fn: string): string {
 // ── rust (self-contained) ──────────────────────────────────────────
 const RS_TYPES: Record<ParamType | ReturnKind, string> = {
   int: "i32", bool: "bool", string: "String",
-  "int[]": "Vec<i32>", "string[]": "Vec<String>",
+  "int[]": "Vec<i32>", "int[][]": "Vec<Vec<i32>>", "string[]": "Vec<String>",
 };
 
 const RS_HELPERS = `// ---- driver (do not edit below) ----
@@ -1004,16 +1142,38 @@ fn fmt_int_array(a: &Vec<i32>) -> String {
 fn fmt_string_array(a: &Vec<String>) -> String {
     let items: Vec<String> = a.iter().map(|x| format!("\\"{}\\"", x)).collect();
     format!("[{}]", items.join(","))
+}
+fn parse_int_matrix(s: &str) -> Vec<Vec<i32>> {
+    let mut rows = Vec::new();
+    let bytes = s.as_bytes();
+    let mut depth = 0;
+    let mut start = 0usize;
+    for i in 0..bytes.len() {
+        let c = bytes[i] as char;
+        if c == '[' {
+            depth += 1;
+            if depth == 2 { start = i; }
+        } else if c == ']' {
+            if depth == 2 { rows.push(parse_int_array(&s[start..=i])); }
+            depth -= 1;
+        }
+    }
+    rows
+}
+fn fmt_int_matrix(m: &Vec<Vec<i32>>) -> String {
+    let items: Vec<String> = m.iter().map(|r| fmt_int_array(r)).collect();
+    format!("[{}]", items.join(","))
 }`;
 
 function rsStub(sig: Signature): string {
   const args = sig.params.map((p) => `${p.name}: ${RS_TYPES[p.type]}`).join(", ");
-  const dflt = { int: "0", bool: "false", "int[]": "vec![]", "string[]": "vec![]" }[sig.returns];
+  const dflt = { int: "0", bool: "false", string: "String::new()", "int[]": "vec![]", "int[][]": "vec![]", "string[]": "vec![]" }[sig.returns];
   return [`fn ${sig.funcName}(${args}) -> ${RS_TYPES[sig.returns]} {`, "    // Write your code here", `    ${dflt}`, "}"].join("\n");
 }
 
 function rsFile(sig: Signature, fn: string): string {
   const parse = sig.params.map((p, i) => {
+    if (p.type === "int[][]") return `        let ${p.name} = parse_int_matrix(&lines[${i}]);`;
     if (p.type === "int[]") return `        let ${p.name} = parse_int_array(&lines[${i}]);`;
     if (p.type === "string[]") return `        let ${p.name} = parse_string_array(&lines[${i}]);`;
     if (p.type === "string") return `        let ${p.name} = parse_string_value(&lines[${i}]);`;
@@ -1022,6 +1182,7 @@ function rsFile(sig: Signature, fn: string): string {
   const call = `${sig.funcName}(${sig.params.map((p) => p.name).join(", ")})`;
   const print =
     sig.returns === "int[]" ? `println!("{}", fmt_int_array(&${call}));`
+    : sig.returns === "int[][]" ? `println!("{}", fmt_int_matrix(&${call}));`
     : sig.returns === "string[]" ? `println!("{}", fmt_string_array(&${call}));`
     : `println!("{}", ${call});`;
   return [
@@ -1061,7 +1222,7 @@ function rsFile(sig: Signature, fn: string): string {
 // ── php (self-contained) ───────────────────────────────────────────
 function phpStub(sig: Signature): string {
   const args = sig.params.map((p) => `$${p.name}`).join(", ");
-  const dflt = { int: "return 0;", bool: "return false;", "int[]": "return [];", "string[]": "return [];" }[sig.returns];
+  const dflt = { int: "return 0;", bool: "return false;", string: 'return "";', "int[]": "return [];", "int[][]": "return [];", "string[]": "return [];" }[sig.returns];
   return [`function ${sig.funcName}(${args}) {`, "    // Write your code here", `    ${dflt}`, "}"].join("\n");
 }
 
@@ -1112,7 +1273,7 @@ function phpFile(sig: Signature, fn: string): string {
 // ── ruby (self-contained) ──────────────────────────────────────────
 function rbStub(sig: Signature): string {
   const args = sig.params.map((p) => p.name).join(", ");
-  const dflt = { int: "0", bool: "false", "int[]": "[]", "string[]": "[]" }[sig.returns];
+  const dflt = { int: "0", bool: "false", string: '""', "int[]": "[]", "int[][]": "[]", "string[]": "[]" }[sig.returns];
   return [`def ${sig.funcName}(${args})`, "  # Write your code here", `  ${dflt}`, "end"].join("\n");
 }
 

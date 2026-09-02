@@ -327,7 +327,7 @@ export async function getDashboard(userId: string) {
     getLeaderboard("combined"),
     getPairingHistory(userId, 1, 3),
     getContinueSolving(userId),
-    listProblemsWithStatus(userId, 100),
+    listProblemsWithStatus(userId, 600),
     getBugChallengeSummaries(),
     countSavedInterviews(userId),
   ]);
