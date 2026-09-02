@@ -1,7 +1,15 @@
 import { Router } from "express";
 import { prisma } from "../lib/prisma.js";
 import { requireAuth } from "../middleware/auth.js";
-import { pollBatchJudge0, pollJudge0, LANGUAGE_MAP, submitBatchToJudge0, submitToJudge0 } from "../lib/judge0.js";
+// Engine-agnostic executor (Judge0 locally, free public Piston in production
+// via EXECUTOR=piston) — aliased to the old names to keep this file unchanged.
+import {
+  LANGUAGE_MAP,
+  submitCode as submitToJudge0,
+  submitCodeBatch as submitBatchToJudge0,
+  pollResult as pollJudge0,
+  pollResultBatch as pollBatchJudge0,
+} from "../lib/executor.js";
 import { FIRST_SOLVE, createNotificationOnce, streakMilestone } from "../services/notifications.js";
 
 const router = Router();

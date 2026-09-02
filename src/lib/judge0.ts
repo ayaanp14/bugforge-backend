@@ -271,7 +271,7 @@ int main(void) {
 `;
 }
 
-function wrapCode(code: string, language: string): string {
+export function wrapCode(code: string, language: string): string {
   if (language === "javascript") {
     const functionMatch = 
       code.match(/function\s+([a-zA-Z0-9_]+)\s*\(/) || 
@@ -279,6 +279,10 @@ function wrapCode(code: string, language: string): string {
     const functionName = functionMatch ? functionMatch[1] : null;
 
     if (!functionName) return code;
+
+    // User code occupies wrapped lines 2..userCodeEndLine (the template opens
+    // with one newline), letting the harness map stack lines to editor lines.
+    const userCodeEndLine = code.split("\n").length + 1;
 
     return `
 ${code}
@@ -332,7 +336,19 @@ try {
     ));
   }
 } catch (err) {
-  process.stderr.write("Execution error: " + err.message + "\\n");
+  let lineNote = "";
+  const stackText = err && err.stack ? String(err.stack) : "";
+  const lineRegex = /:(\\d+):\\d+/g;
+  let frame;
+  while ((frame = lineRegex.exec(stackText)) !== null) {
+    const ln = parseInt(frame[1], 10);
+    if (ln >= 2 && ln <= ${userCodeEndLine}) {
+      lineNote = " (line " + (ln - 1) + ")";
+      break;
+    }
+  }
+  const msg = err && err.message ? err.message : String(err);
+  process.stderr.write("Execution error" + lineNote + ": " + msg + "\\n");
   process.exit(1);
 }
 `;
@@ -343,6 +359,10 @@ try {
     const funcName = funcMatch ? funcMatch[1] : null;
 
     if (!funcName) return code;
+
+    // User code occupies wrapped lines 2..userCodeEndLine (the template opens
+    // with one newline), letting the harness map traceback lines to editor lines.
+    const userCodeEndLine = code.split("\n").length + 1;
 
     return `
 ${code}
@@ -391,7 +411,13 @@ try:
     else:
         print(json.dumps(result))
 except Exception as e:
-    sys.stderr.write(f"Execution error: {str(e)}\\n")
+    import traceback
+    line_note = ""
+    for frame in reversed(traceback.extract_tb(sys.exc_info()[2])):
+        if 2 <= frame.lineno <= ${userCodeEndLine}:
+            line_note = " (line %d)" % (frame.lineno - 1)
+            break
+    sys.stderr.write("Execution error%s: %s\\n" % (line_note, str(e)))
     sys.exit(1)
 `;
   }

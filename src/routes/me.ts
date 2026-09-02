@@ -287,7 +287,12 @@ router.get("/", requireAuth, async (req, res) => {
       }
     });
 
-    const unreadNotifications = await countUnread(user.id);
+    // Fail-soft: a notification-subsystem problem must never break /api/me,
+    // since the whole app treats a failed /api/me as "not logged in".
+    const unreadNotifications = await countUnread(user.id).catch((err) => {
+      console.error("GET /api/me countUnread error:", err);
+      return 0;
+    });
 
     res.json({
       ...user,
