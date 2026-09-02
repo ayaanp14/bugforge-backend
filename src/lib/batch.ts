@@ -16,6 +16,28 @@ export const CASE_SENTINEL = "__CODEXA_CASE__";
 export const ERROR_MARKER = "__CODEXA_ERROR__:";
 export const GZIP_MARKER = "__CODEXA_GZ__";
 export const GZIN_MARKER = "__CODEXA_GZIN__";
+export const STATS_MARKER = "__CODEXA_STATS__";
+
+/**
+ * Drivers self-report "STATS_MARKER <runtimeMs> <peakMemoryKb>" as their last
+ * output line (engines like Wandbox report no time/memory of their own).
+ * Extracts and strips that line; either value may be 0 when unmeasurable.
+ */
+export function extractBatchStats(stdout: string | null): {
+  stdout: string | null;
+  runtimeMs: number | null;
+  memoryKb: number | null;
+} {
+  if (!stdout) return { stdout, runtimeMs: null, memoryKb: null };
+  const re = new RegExp(`^${STATS_MARKER} (\\d+) (\\d+)\\s*$`, "m");
+  const m = stdout.match(re);
+  if (!m) return { stdout, runtimeMs: null, memoryKb: null };
+  return {
+    stdout: stdout.replace(re, ""),
+    runtimeMs: parseInt(m[1], 10),
+    memoryKb: parseInt(m[2], 10),
+  };
+}
 
 /**
  * Languages whose drivers/harnesses gzip large outputs (stdlib gzip exists).

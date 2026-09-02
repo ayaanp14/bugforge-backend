@@ -1,6 +1,6 @@
 import { LANGUAGE_MAP } from "./judge0.js";
 import { EXECUTOR_ENGINE, pollResult, submitCode } from "./executor.js";
-import { ERROR_MARKER, GZIP_OUTPUT_LANGS, buildBatchStdin, decodeBatchStdout, encodeBatchStdin, splitBatchStdout } from "./batch.js";
+import { ERROR_MARKER, GZIP_OUTPUT_LANGS, buildBatchStdin, decodeBatchStdout, encodeBatchStdin, extractBatchStats, splitBatchStdout } from "./batch.js";
 
 /**
  * Runs user code against ALL test cases in a single engine execution
@@ -132,8 +132,11 @@ async function runSingleBatch(
   );
   const result = await pollResult(token, 120);
 
-  const totalRuntimeMs = result.time ? Math.round(parseFloat(result.time) * 1000) : 0;
-  const memoryKb = result.memory ?? 0;
+  // Prefer the driver's self-reported stats (Wandbox reports none of its own)
+  const stats = extractBatchStats(decodeBatchStdout(result.stdout));
+  const engineRuntimeMs = result.time ? Math.round(parseFloat(result.time) * 1000) : 0;
+  const totalRuntimeMs = stats.runtimeMs ?? engineRuntimeMs;
+  const memoryKb = stats.memoryKb || result.memory || 0;
 
   // Whole-run compile failure → every case is a compilation error.
   // (Only status 6: compile_output alone can be mere compiler warnings.)
@@ -154,7 +157,7 @@ async function runSingleBatch(
     };
   }
 
-  const chunks = splitBatchStdout(decodeBatchStdout(result.stdout));
+  const chunks = splitBatchStdout(stats.stdout);
   const wholeRunTimedOut = result.status.id === 5;
   const stderrText = normalize(result.stderr) || null;
 

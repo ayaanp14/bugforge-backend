@@ -333,6 +333,7 @@ const parseArgs = (rawInput) => {
 // Batch protocol (see src/lib/batch.ts): one sentinel-separated chunk per case.
 // Output is buffered; large results are gzipped so any suite fits the
 // engine's stdout cap in a single run.
+const __t0 = Date.now();
 const __outLines = [];
 const __chunks = input.split("__CODEXA_CASE__").map((c) => c.trim()).filter((c) => c !== "");
 for (const __chunk of __chunks) {
@@ -365,6 +366,7 @@ for (const __chunk of __chunks) {
   }
   __outLines.push("__CODEXA_CASE__");
 }
+__outLines.push("__CODEXA_STATS__ " + (Date.now() - __t0) + " " + Math.round(process.memoryUsage().rss / 1024));
 const __joined = __outLines.join("\\n") + "\\n";
 if (__joined.length > 65536) {
   const __zlib = require("zlib");
@@ -438,6 +440,8 @@ if input_data.startswith("__CODEXA_GZIN__"):
 # Batch protocol (see src/lib/batch.ts): one sentinel-separated chunk per case.
 # Output is buffered; large results are gzipped so any suite fits the
 # engine's stdout cap in a single run.
+import time as __time_mod
+__t0 = __time_mod.time()
 __out_lines = []
 for __chunk in input_data.split("__CODEXA_CASE__"):
     __chunk = __chunk.strip()
@@ -463,6 +467,12 @@ for __chunk in input_data.split("__CODEXA_CASE__"):
                 break
         __out_lines.append("__CODEXA_ERROR__: Execution error%s: %s" % (line_note, str(e)))
     __out_lines.append("__CODEXA_CASE__")
+try:
+    import resource as __res_mod
+    __peak_kb = __res_mod.getrusage(__res_mod.RUSAGE_SELF).ru_maxrss
+except Exception:
+    __peak_kb = 0
+__out_lines.append("__CODEXA_STATS__ %d %d" % (int((__time_mod.time() - __t0) * 1000), __peak_kb))
 __joined = "\\n".join(__out_lines) + "\\n"
 if len(__joined) > 65536:
     import gzip

@@ -108,6 +108,7 @@ function tsDriver(sig: Signature): string {
     "    }",
     "    if (_cur.length > 0) _cases.push(_cur);",
     "}",
+    "const _t0: number = Date.now();",
     "const _out: string[] = [];",
     "for (const _lines of _cases) {",
     "    try {",
@@ -119,6 +120,7 @@ function tsDriver(sig: Signature): string {
     "    }",
     `    _out.push("${SENTINEL}");`,
     "}",
+    '_out.push("__CODEXA_STATS__ " + (Date.now() - _t0) + " " + Math.round(process.memoryUsage().rss / 1024));',
     'const _joined = _out.join("\\n") + "\\n";',
     `if (_joined.length > ${GZ_THRESHOLD}) {`,
     '    const _zlib = require("zlib");',
@@ -223,6 +225,7 @@ function javaFile(sig: Signature, fn: string): string {
     "            }",
     "        }",
     "        if (!cur.isEmpty()) cases.add(cur);",
+    "        long __t0 = System.currentTimeMillis();",
     "        StringBuilder OUT = new StringBuilder();",
     "        for (List<String> lines : cases) {",
     "            try {",
@@ -233,6 +236,8 @@ function javaFile(sig: Signature, fn: string): string {
     "            }",
     `            OUT.append("${SENTINEL}\\n");`,
     "        }",
+    "        long __mem = (Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory()) / 1024;",
+    '        OUT.append("__CODEXA_STATS__ " + (System.currentTimeMillis() - __t0) + " " + __mem + "\\n");',
     "        String joined = OUT.toString();",
     `        if (joined.length() > ${GZ_THRESHOLD}) {`,
     "            try {",
@@ -318,6 +323,7 @@ function cppFile(sig: Signature, fn: string): string {
     : `cout << ${call} << endl;`;
   return [
     "#include <bits/stdc++.h>",
+    "#include <sys/resource.h>",
     "using namespace std;",
     "",
     fn,
@@ -348,6 +354,10 @@ function cppFile(sig: Signature, fn: string): string {
     "        }",
     `        cout << "${SENTINEL}" << endl;`,
     "    }",
+    "    struct rusage __ru;",
+    "    getrusage(RUSAGE_SELF, &__ru);",
+    "    long __cpu_ms = (__ru.ru_utime.tv_sec + __ru.ru_stime.tv_sec) * 1000 + (__ru.ru_utime.tv_usec + __ru.ru_stime.tv_usec) / 1000;",
+    '    printf("__CODEXA_STATS__ %ld %ld\\n", __cpu_ms, __ru.ru_maxrss);',
     "    return 0;",
     "}",
   ].join("\n");
@@ -472,6 +482,7 @@ function cFile(sig: Signature, fn: string): string {
     "#include <stdlib.h>",
     "#include <string.h>",
     "#include <stdbool.h>",
+    "#include <sys/resource.h>",
     "",
     fn,
     "",
@@ -509,6 +520,10 @@ function cFile(sig: Signature, fn: string): string {
     "            start = idx + 1;",
     "        }",
     "    }",
+    "    struct rusage __ru;",
+    "    getrusage(RUSAGE_SELF, &__ru);",
+    "    long __cpu_ms = (__ru.ru_utime.tv_sec + __ru.ru_stime.tv_sec) * 1000 + (__ru.ru_utime.tv_usec + __ru.ru_stime.tv_usec) / 1000;",
+    '    printf("__CODEXA_STATS__ %ld %ld\\n", __cpu_ms, __ru.ru_maxrss);',
     "    return 0;",
     "}",
   ].join("\n");
@@ -615,6 +630,7 @@ function csFile(sig: Signature, fn: string): string {
     "            }",
     "        }",
     "        if (cur.Count > 0) cases.Add(cur);",
+    "        int __t0 = Environment.TickCount;",
     "        var OUT = new System.Text.StringBuilder();",
     "        foreach (var lines in cases)",
     "        {",
@@ -629,6 +645,7 @@ function csFile(sig: Signature, fn: string): string {
     "            }",
     `            OUT.Append("${SENTINEL}\\n");`,
     "        }",
+    '        OUT.Append("__CODEXA_STATS__ " + (Environment.TickCount - __t0) + " " + (GC.GetTotalMemory(false) / 1024) + "\\n");',
     "        string joined = OUT.ToString();",
     `        if (joined.Length > ${GZ_THRESHOLD})`,
     "        {",
@@ -667,7 +684,7 @@ function goStub(sig: Signature): string {
 function goFile(sig: Signature, fn: string): string {
   const needsJSON = sig.params.some((p) => p.type !== "int") || sig.returns.endsWith("[]");
   const needsStrconv = sig.params.some((p) => p.type === "int");
-  const imports = ["\t\"bytes\"", "\t\"compress/gzip\"", "\t\"encoding/base64\"", "\t\"fmt\"", "\t\"io/ioutil\"", "\t\"os\"", "\t\"strings\""];
+  const imports = ["\t\"bytes\"", "\t\"compress/gzip\"", "\t\"encoding/base64\"", "\t\"fmt\"", "\t\"io/ioutil\"", "\t\"os\"", "\t\"runtime\"", "\t\"strings\"", "\t\"time\""];
   if (needsJSON) imports.push("\t\"encoding/json\"");
   if (needsStrconv) imports.push("\t\"strconv\"");
   imports.sort();
@@ -701,6 +718,7 @@ function goFile(sig: Signature, fn: string): string {
     "",
     "// ---- driver (do not edit below) ----",
     "func main() {",
+    "\t__t0 := time.Now()",
     "\trawBytes, _ := ioutil.ReadAll(os.Stdin)",
     "\traw := string(rawBytes)",
     `\tif strings.HasPrefix(raw, "${GZIN}") {`,
@@ -734,6 +752,9 @@ function goFile(sig: Signature, fn: string): string {
     ...print,
     `\t\tout = append(out, "${SENTINEL}")`,
     "\t}",
+    "\tvar __ms runtime.MemStats",
+    "\truntime.ReadMemStats(&__ms)",
+    '\tout = append(out, fmt.Sprintf("__CODEXA_STATS__ %d %d", time.Since(__t0).Milliseconds(), __ms.Sys/1024))',
     '\tjoined := strings.Join(out, "\\n") + "\\n"',
     `\tif len(joined) > ${GZ_THRESHOLD} {`,
     "\t\tvar buf bytes.Buffer",
@@ -821,6 +842,7 @@ function ktFile(sig: Signature, fn: string): string {
     "        }",
     "    }",
     "    if (cur.isNotEmpty()) cases.add(cur)",
+    "    val __t0 = System.currentTimeMillis()",
     "    val OUT = StringBuilder()",
     "    for (lines in cases) {",
     "        try {",
@@ -831,6 +853,8 @@ function ktFile(sig: Signature, fn: string): string {
     "        }",
     `        OUT.append("${SENTINEL}\\n")`,
     "    }",
+    "    val __mem = (Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory()) / 1024",
+    '    OUT.append("__CODEXA_STATS__ " + (System.currentTimeMillis() - __t0) + " " + __mem + "\\n")',
     "    val joined = OUT.toString()",
     `    if (joined.length > ${GZ_THRESHOLD}) {`,
     "        val bos = java.io.ByteArrayOutputStream()",
@@ -909,6 +933,7 @@ function swFile(sig: Signature, fn: string): string {
     "",
     SW_HELPERS,
     "",
+    "let __t0 = Date()",
     "var allLines: [String] = []",
     "while let line = readLine() {",
     "    allLines.append(line.trimmingCharacters(in: .whitespaces))",
@@ -928,6 +953,7 @@ function swFile(sig: Signature, fn: string): string {
     `    ${print}`,
     `    print("${SENTINEL}")`,
     "}",
+    'print("__CODEXA_STATS__ \\(Int(Date().timeIntervalSince(__t0) * 1000)) 0")',
   ].join("\n");
 }
 
@@ -1007,6 +1033,7 @@ function rsFile(sig: Signature, fn: string): string {
     RS_HELPERS,
     "",
     "fn main() {",
+    "    let __t0 = std::time::Instant::now();",
     "    let mut input = String::new();",
     "    std::io::stdin().read_to_string(&mut input).unwrap();",
     "    let mut cases: Vec<Vec<String>> = Vec::new();",
@@ -1025,6 +1052,8 @@ function rsFile(sig: Signature, fn: string): string {
     `        ${print}`,
     `        println!("${SENTINEL}");`,
     "    }",
+    '    let __mem: i64 = std::fs::read_to_string("/proc/self/status").ok().and_then(|s| s.lines().find(|l| l.starts_with("VmHWM:")).and_then(|l| l.split_whitespace().nth(1).and_then(|v| v.parse().ok()))).unwrap_or(0);',
+    '    println!("__CODEXA_STATS__ {} {}", __t0.elapsed().as_millis(), __mem);',
     "}",
   ].join("\n");
 }
@@ -1044,6 +1073,7 @@ function phpFile(sig: Signature, fn: string): string {
     fn,
     "",
     "// ---- driver (do not edit below) ----",
+    "$__t0 = microtime(true);",
     "$raw = stream_get_contents(STDIN);",
     "$cases = [];",
     "$cur = [];",
@@ -1069,6 +1099,7 @@ function phpFile(sig: Signature, fn: string): string {
     "    }",
     `    $out[] = "${SENTINEL}";`,
     "}",
+    '$out[] = "__CODEXA_STATS__ " . intval((microtime(true) - $__t0) * 1000) . " " . intval(memory_get_peak_usage(true) / 1024);',
     '$joined = implode("\\n", $out) . "\\n";',
     `if (strlen($joined) > ${GZ_THRESHOLD} && function_exists("gzencode")) {`,
     `    echo "${GZ}\\n" . base64_encode(gzencode($joined)) . "\\n";`,
@@ -1114,6 +1145,7 @@ function rbFile(sig: Signature, fn: string): string {
     "  end",
     "end",
     "cases << cur unless cur.empty?",
+    "__t0 = Process.clock_gettime(Process::CLOCK_MONOTONIC)",
     "out_lines = []",
     "cases.each do |lines|",
     "  begin",
@@ -1129,6 +1161,12 @@ function rbFile(sig: Signature, fn: string): string {
     "  end",
     `  out_lines << "${SENTINEL}"`,
     "end",
+    "__mem = begin",
+    '  File.read("/proc/self/status")[/VmHWM:\\s+(\\d+)/, 1].to_i',
+    "rescue",
+    "  0",
+    "end",
+    'out_lines << "__CODEXA_STATS__ #{((Process.clock_gettime(Process::CLOCK_MONOTONIC) - __t0) * 1000).to_i} #{__mem}"',
     'joined = out_lines.join("\\n") + "\\n"',
     `if joined.length > ${GZ_THRESHOLD}`,
     `  puts "${GZ}"`,
