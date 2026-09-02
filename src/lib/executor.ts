@@ -47,6 +47,9 @@ const ENGINE_NAME = (process.env["EXECUTOR"] ?? "judge0").toLowerCase();
 const engine = ENGINES[ENGINE_NAME] ?? ENGINES.judge0;
 console.log(`[Executor] Engine: ${ENGINES[ENGINE_NAME] ? ENGINE_NAME : `unknown "${ENGINE_NAME}", falling back to judge0`}`);
 
+/** The resolved engine name ("judge0" | "piston" | "wandbox"). */
+export const EXECUTOR_ENGINE = ENGINES[ENGINE_NAME] ? ENGINE_NAME : "judge0";
+
 export { LANGUAGE_MAP };
 export type { Judge0Result, Judge0Submission };
 
