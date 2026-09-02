@@ -325,33 +325,37 @@ const parseArgs = (rawInput) => {
   return args;
 };
 
-try {
-  const args = parseArgs(input);
-  const result = ${functionName}(...args);
-  if (typeof result === "string") {
-    console.log(result);
-  } else if (typeof result === "bigint") {
-    console.log(result.toString());
-  } else {
-    console.log(JSON.stringify(result, (key, value) => 
-      typeof value === "bigint" ? value.toString() : value
-    ));
-  }
-} catch (err) {
-  let lineNote = "";
-  const stackText = err && err.stack ? String(err.stack) : "";
-  const lineRegex = /:(\\d+):\\d+/g;
-  let frame;
-  while ((frame = lineRegex.exec(stackText)) !== null) {
-    const ln = parseInt(frame[1], 10);
-    if (ln >= 2 && ln <= ${userCodeEndLine}) {
-      lineNote = " (line " + (ln - 1) + ")";
-      break;
+// Batch protocol (see src/lib/batch.ts): one sentinel-separated chunk per case.
+const __chunks = input.split("__CODEXA_CASE__").map((c) => c.trim()).filter((c) => c !== "");
+for (const __chunk of __chunks) {
+  try {
+    const args = parseArgs(__chunk);
+    const result = ${functionName}(...args);
+    if (typeof result === "string") {
+      console.log(result);
+    } else if (typeof result === "bigint") {
+      console.log(result.toString());
+    } else {
+      console.log(JSON.stringify(result, (key, value) =>
+        typeof value === "bigint" ? value.toString() : value
+      ));
     }
+  } catch (err) {
+    let lineNote = "";
+    const stackText = err && err.stack ? String(err.stack) : "";
+    const lineRegex = /:(\\d+):\\d+/g;
+    let frame;
+    while ((frame = lineRegex.exec(stackText)) !== null) {
+      const ln = parseInt(frame[1], 10);
+      if (ln >= 2 && ln <= ${userCodeEndLine}) {
+        lineNote = " (line " + (ln - 1) + ")";
+        break;
+      }
+    }
+    const msg = err && err.message ? err.message : String(err);
+    console.log("__CODEXA_ERROR__: Execution error" + lineNote + ": " + msg);
   }
-  const msg = err && err.message ? err.message : String(err);
-  process.stderr.write("Execution error" + lineNote + ": " + msg + "\\n");
-  process.exit(1);
+  console.log("__CODEXA_CASE__");
 }
 `;
   }
@@ -411,26 +415,31 @@ def parse_args(input_data):
 
 input_data = sys.stdin.read().strip()
 
-try:
-    args = parse_args(input_data)
-    result = ${funcName}(*args)
-    if isinstance(result, str):
-        print(result)
-    elif isinstance(result, bool):
-        print(json.dumps(result, separators=(",", ":")))
-    elif isinstance(result, (int, float)):
-        print(result)
-    else:
-        print(json.dumps(result, separators=(",", ":")))
-except Exception as e:
-    import traceback
-    line_note = ""
-    for frame in reversed(traceback.extract_tb(sys.exc_info()[2])):
-        if 2 <= frame.lineno <= ${userCodeEndLine}:
-            line_note = " (line %d)" % (frame.lineno - 1)
-            break
-    sys.stderr.write("Execution error%s: %s\\n" % (line_note, str(e)))
-    sys.exit(1)
+# Batch protocol (see src/lib/batch.ts): one sentinel-separated chunk per case.
+for __chunk in input_data.split("__CODEXA_CASE__"):
+    __chunk = __chunk.strip()
+    if __chunk == "":
+        continue
+    try:
+        args = parse_args(__chunk)
+        result = ${funcName}(*args)
+        if isinstance(result, str):
+            print(result)
+        elif isinstance(result, bool):
+            print(json.dumps(result, separators=(",", ":")))
+        elif isinstance(result, (int, float)):
+            print(result)
+        else:
+            print(json.dumps(result, separators=(",", ":")))
+    except Exception as e:
+        import traceback
+        line_note = ""
+        for frame in reversed(traceback.extract_tb(sys.exc_info()[2])):
+            if 2 <= frame.lineno <= ${userCodeEndLine}:
+                line_note = " (line %d)" % (frame.lineno - 1)
+                break
+        print("__CODEXA_ERROR__: Execution error%s: %s" % (line_note, str(e)))
+    print("__CODEXA_CASE__")
 `;
   }
 

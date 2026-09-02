@@ -1,69 +1,17 @@
 import { Router } from "express";
 import { prisma } from "../lib/prisma.js";
 import { requireAuth } from "../middleware/auth.js";
-// Engine-agnostic executor (Judge0 locally, free public Piston in production
-// via EXECUTOR=piston) — aliased to the old names to keep this file unchanged.
-import {
-  LANGUAGE_MAP,
-  submitCode as submitToJudge0,
-  submitCodeBatch as submitBatchToJudge0,
-  pollResult as pollJudge0,
-  pollResultBatch as pollBatchJudge0,
-} from "../lib/executor.js";
+import { LANGUAGE_MAP } from "../lib/judge0.js";
+// All test cases run in ONE engine execution (1 compile + 1 run) and are
+// judged server-side — see src/lib/batch-judge.ts.
+import { runBatch } from "../lib/batch-judge.js";
 import { FIRST_SOLVE, createNotificationOnce, streakMilestone } from "../services/notifications.js";
 
 const router = Router();
-const SUBMIT_CONCURRENCY = Math.max(
-  1,
-  parseInt(process.env["SUBMIT_CONCURRENCY"] ?? "50", 10) || 50
-);
-const POLL_CONCURRENCY = Math.max(
-  1,
-  parseInt(process.env["POLL_CONCURRENCY"] ?? "200", 10) || 200
-);
 
 interface CustomTestCase {
   input: string;
   expectedOutput?: string;
-}
-
-async function mapWithConcurrency<T, R>(
-  items: T[],
-  limit: number,
-  mapper: (item: T, index: number) => Promise<R>
-): Promise<R[]> {
-  const results: R[] = new Array(items.length);
-  let nextIndex = 0;
-
-  async function worker() {
-    while (true) {
-      const currentIndex = nextIndex++;
-      if (currentIndex >= items.length) return;
-      results[currentIndex] = await mapper(items[currentIndex], currentIndex);
-    }
-  }
-
-  const workers = Array.from({ length: Math.min(limit, items.length) }, () => worker());
-  await Promise.all(workers);
-  return results;
-}
-
-async function processInBatches<T, R>(
-  items: T[],
-  batchSize: number,
-  mapper: (item: T, index: number) => Promise<R>
-): Promise<R[]> {
-  const results: R[] = [];
-
-  for (let start = 0; start < items.length; start += batchSize) {
-    const batch = items.slice(start, start + batchSize);
-    const batchResults = await Promise.all(
-      batch.map((item, index) => mapper(item, start + index))
-    );
-    results.push(...batchResults);
-  }
-
-  return results;
 }
 
 // 9. POST /api/run — Run code against visible test cases
@@ -88,33 +36,25 @@ router.post("/run", requireAuth, async (req, res) => {
       return;
     }
 
-    let finalCustomCases: CustomTestCase[] = (customTestCases || []).map((tc: any) => ({ ...tc }));
+    const limits = { timeLimitMs: problem.timeLimitMs, memoryLimitMb: problem.memoryLimitMb };
+    const finalCustomCases: CustomTestCase[] = (customTestCases || []).map((tc: any) => ({ ...tc }));
 
-    // Generate expected outputs if missing
-    if (finalCustomCases.length > 0 && problem.referenceSolution && problem.referenceLanguage) {
-      const casesToGen = finalCustomCases.filter((tc: CustomTestCase) => !tc.expectedOutput);
-      if (casesToGen.length > 0) {
-        const refLanguageId = LANGUAGE_MAP[problem.referenceLanguage];
-        if (refLanguageId) {
-          try {
-            const genTokens = await submitBatchToJudge0(
-              casesToGen.map((tc: CustomTestCase) => ({
-                source_code: problem.referenceSolution!,
-                language_id: refLanguageId,
-                stdin: tc.input,
-                cpu_time_limit: problem.timeLimitMs / 1000,
-                memory_limit: problem.memoryLimitMb * 1024,
-              })),
-              problem.referenceLanguage
-            );
-            const genResults = await pollBatchJudge0(genTokens);
-            genResults.forEach((res, i) => {
-              casesToGen[i].expectedOutput = (res.stdout || "").trim();
-            });
-          } catch (err) {
-            console.error("Failed to generate expected outputs:", err);
-          }
-        }
+    // Generate expected outputs for custom cases from the reference solution
+    // (one batched reference execution covers all of them)
+    const casesToGen = finalCustomCases.filter((tc: CustomTestCase) => !tc.expectedOutput);
+    if (casesToGen.length > 0 && problem.referenceSolution && problem.referenceLanguage && LANGUAGE_MAP[problem.referenceLanguage]) {
+      try {
+        const ref = await runBatch(
+          problem.referenceSolution,
+          problem.referenceLanguage,
+          casesToGen.map((tc) => ({ input: tc.input, expectedOutput: "" })),
+          limits
+        );
+        ref.perCase.forEach((r, i) => {
+          casesToGen[i].expectedOutput = (r.actualOutput || "").trim();
+        });
+      } catch (err) {
+        console.error("Failed to generate expected outputs:", err);
       }
     }
 
@@ -133,61 +73,30 @@ router.post("/run", requireAuth, async (req, res) => {
       return;
     }
 
-    const normalizeOutput = (value: string | null | undefined) => (value ?? "").trim();
-
-    const results = await Promise.all(
-      allTestCases.map(async (testCase) => {
-        try {
-          const submissionId = await submitToJudge0({
-            source_code: code,
-            language_id: languageId,
-            stdin: testCase.input,
-            cpu_time_limit: problem.timeLimitMs / 1000,
-            memory_limit: problem.memoryLimitMb * 1024,
-          }, language as string);
-
-          const result = await pollJudge0(submissionId);
-          const actualOutput = result.stdout;
-          const passed = result.status.id === 3
-            ? normalizeOutput(actualOutput) === normalizeOutput(testCase.expectedOutput)
-            : false;
-
-          return {
-            input: testCase.input,
-            expectedOutput: testCase.expectedOutput,
-            actualOutput,
-            passed,
-            runtime: result.time ? Math.round(parseFloat(result.time) * 1000) : 0,
-            memory: result.memory ?? 0,
-            status: passed ? "Accepted" : result.status.description,
-            stderr: result.stderr,
-            compile_output: result.compile_output,
-            message: result.message,
-          };
-        } catch (error) {
-          const err = error as Error;
-          console.error("Run testcase execution failed:", {
-            problemId,
-            language,
-            testCaseId: testCase.id,
-            message: err.message,
-          });
-
-          return {
-            input: testCase.input,
-            expectedOutput: testCase.expectedOutput,
-            actualOutput: null,
-            passed: false,
-            runtime: 0,
-            memory: 0,
-            status: "Execution Failed",
-            stderr: err.message,
-            compile_output: null,
-            message: null,
-          };
-        }
-      })
+    const batch = await runBatch(
+      code,
+      language as string,
+      allTestCases.map((tc: any) => ({ input: tc.input, expectedOutput: tc.expectedOutput })),
+      limits
     );
+    // Per-case timing isn't observable in a single run; report the average.
+    const perCaseRuntime = Math.round(batch.runtimeMs / allTestCases.length);
+
+    const results = allTestCases.map((tc: any, i: number) => {
+      const r = batch.perCase[i];
+      return {
+        input: tc.input,
+        expectedOutput: tc.expectedOutput,
+        actualOutput: r.actualOutput,
+        passed: r.passed,
+        runtime: perCaseRuntime,
+        memory: batch.memoryKb,
+        status: r.status,
+        stderr: r.stderr,
+        compile_output: r.compile_output,
+        message: null,
+      };
+    });
 
     res.json({ results });
   } catch (err) {
@@ -236,33 +145,24 @@ router.post("/submit", requireAuth, async (req, res) => {
     let maxRuntime = 0;
     let maxMemory = 0;
 
-    let finalCustomCases: CustomTestCase[] = (customTestCases || []).map((tc: any) => ({ ...tc }));
+    const limits = { timeLimitMs: problem.timeLimitMs, memoryLimitMb: problem.memoryLimitMb };
+    const finalCustomCases: CustomTestCase[] = (customTestCases || []).map((tc: any) => ({ ...tc }));
 
-    // Generate expected outputs if missing
-    if (finalCustomCases.length > 0 && problem.referenceSolution && problem.referenceLanguage) {
-      const casesToGen = finalCustomCases.filter((tc: CustomTestCase) => !tc.expectedOutput);
-      if (casesToGen.length > 0) {
-        const refLanguageId = LANGUAGE_MAP[problem.referenceLanguage];
-        if (refLanguageId) {
-          try {
-            const genTokens = await submitBatchToJudge0(
-              casesToGen.map((tc: CustomTestCase) => ({
-                source_code: problem.referenceSolution!,
-                language_id: refLanguageId,
-                stdin: tc.input,
-                cpu_time_limit: problem.timeLimitMs / 1000,
-                memory_limit: problem.memoryLimitMb * 1024,
-              })),
-              problem.referenceLanguage
-            );
-            const genResults = await pollBatchJudge0(genTokens);
-            genResults.forEach((res, i) => {
-              casesToGen[i].expectedOutput = (res.stdout || "").trim();
-            });
-          } catch (err) {
-            console.error("Failed to generate expected outputs:", err);
-          }
-        }
+    // Generate expected outputs for custom cases from the reference solution
+    const casesToGen = finalCustomCases.filter((tc: CustomTestCase) => !tc.expectedOutput);
+    if (casesToGen.length > 0 && problem.referenceSolution && problem.referenceLanguage && LANGUAGE_MAP[problem.referenceLanguage]) {
+      try {
+        const ref = await runBatch(
+          problem.referenceSolution,
+          problem.referenceLanguage,
+          casesToGen.map((tc) => ({ input: tc.input, expectedOutput: "" })),
+          limits
+        );
+        ref.perCase.forEach((r, i) => {
+          casesToGen[i].expectedOutput = (r.actualOutput || "").trim();
+        });
+      } catch (err) {
+        console.error("Failed to generate expected outputs:", err);
       }
     }
 
@@ -276,47 +176,18 @@ router.post("/submit", requireAuth, async (req, res) => {
       }))
     ];
 
-    const results = await processInBatches(
-      Array.from({ length: Math.ceil(allTestCases.length / SUBMIT_CONCURRENCY) }, (_, batchIndex) => {
-        const start = batchIndex * SUBMIT_CONCURRENCY;
-        return allTestCases.slice(start, start + SUBMIT_CONCURRENCY);
-      }),
-      1,
-      async (batch) => {
-        const submissionTokens = await submitBatchToJudge0(
-          batch.map((testCase) => ({
-            source_code: code,
-            language_id: languageId,
-            stdin: testCase.input,
-            expected_output: testCase.expectedOutput,
-            cpu_time_limit: problem.timeLimitMs / 1000,
-            memory_limit: problem.memoryLimitMb * 1024,
-          })),
-          language as string
-        );
-
-        return await pollBatchJudge0(submissionTokens);
-      }
+    // One batched execution for every test case (1 compile + 1 run)
+    const batch = await runBatch(
+      code,
+      language as string,
+      allTestCases.map((tc: any) => ({ input: tc.input, expectedOutput: tc.expectedOutput })),
+      limits
     );
-
-    const flatResults = results.flat();
-
-    for (const result of flatResults) {
-      const runtime = result.time ? Math.round(parseFloat(result.time) * 1000) : 0;
-      maxRuntime = Math.max(maxRuntime, runtime);
-      maxMemory = Math.max(maxMemory, result.memory);
-
-      if (result.status.id === 3) {
-        passedCases++;
-      } else {
-        if (verdict === "ACCEPTED") {
-          if (result.status.id === 4) verdict = "COMPILATION_ERROR";
-          else if (result.status.id === 5) verdict = "TIME_LIMIT_EXCEEDED";
-          else if (result.status.id >= 6 && result.status.id <= 12) verdict = "RUNTIME_ERROR";
-          else verdict = "WRONG_ANSWER";
-        }
-      }
-    }
+    maxRuntime = batch.runtimeMs;
+    maxMemory = batch.memoryKb;
+    passedCases = batch.perCase.filter((r) => r.passed).length;
+    const firstFailure = batch.perCase.find((r) => !r.passed);
+    verdict = firstFailure ? firstFailure.verdict : "ACCEPTED";
 
     // Save submission
     const submission = await prisma.submission.create({
@@ -423,7 +294,7 @@ router.post("/submit", requireAuth, async (req, res) => {
       verdict,
       passedCases,
       totalCases: problem.testCases.length,
-      customResults: flatResults.slice(problem.testCases.length), // Return custom results separately if needed
+      customResults: batch.perCase.slice(problem.testCases.length), // Return custom results separately if needed
       runtimeMs: maxRuntime,
       memoryKb: maxMemory,
       submissionId: submission.id,

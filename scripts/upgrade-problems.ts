@@ -14,8 +14,7 @@
 
 import "dotenv/config";
 import { prisma } from "../src/lib/prisma.js";
-import { LANGUAGE_MAP } from "../src/lib/judge0.js";
-import { submitCodeBatch, pollResultBatch } from "../src/lib/executor.js";
+import { runBatch } from "../src/lib/batch-judge.js";
 import { ALL_LANGUAGES, renderFile, type Language } from "./problem-codegen.js";
 import { PROBLEMS } from "./problems-data.js";
 
@@ -66,29 +65,23 @@ async function validate() {
       if (onlyLang && lang !== onlyLang) continue;
       const source = renderFile(lang, p.signature, p.solutions[lang]);
       try {
-        const tokens = await submitCodeBatch(
-          problem.testCases.map((tc) => ({
-            source_code: source,
-            language_id: LANGUAGE_MAP[lang],
-            stdin: tc.input,
-            expected_output: tc.expectedOutput,
-            cpu_time_limit: problem.timeLimitMs / 1000,
-            memory_limit: problem.memoryLimitMb * 1024,
-          })),
-          lang
+        const batch = await runBatch(
+          source,
+          lang,
+          problem.testCases.map((tc) => ({ input: tc.input, expectedOutput: tc.expectedOutput })),
+          { timeLimitMs: problem.timeLimitMs, memoryLimitMb: problem.memoryLimitMb }
         );
-        const results = await pollResultBatch(tokens, 60);
-        const bad = results
+        const bad = batch.perCase
           .map((r, i) => ({ r, i }))
-          .filter(({ r }) => r.status.id !== 3);
+          .filter(({ r }) => !r.passed);
         if (bad.length === 0) {
           pass++;
-          console.log(`PASS ${p.slug} [${lang}] (${results.length} cases)`);
+          console.log(`PASS ${p.slug} [${lang}] (${batch.perCase.length} cases, ${batch.runtimeMs}ms total)`);
         } else {
           fail++;
           const { r, i } = bad[0];
-          const detail = (r.compile_output || r.stderr || r.message || "").trim().split("\n").slice(0, 3).join(" | ");
-          const msg = `FAIL ${p.slug} [${lang}] case ${i + 1}: ${r.status.description}${detail ? ` — ${detail}` : ""} — got ${JSON.stringify(r.stdout?.trim()?.slice(0, 60))}`;
+          const detail = (r.compile_output || r.stderr || "").trim().split("\n").slice(0, 3).join(" | ");
+          const msg = `FAIL ${p.slug} [${lang}] case ${i + 1}: ${r.status}${detail ? ` — ${detail}` : ""} — got ${JSON.stringify(r.actualOutput?.slice(0, 60))}`;
           failures.push(msg);
           console.log(msg);
         }

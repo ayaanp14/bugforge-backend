@@ -5,9 +5,13 @@
  * in src/lib/judge0.ts supplies stdin parsing + result printing for those two.
  *
  * Every other language emits a self-contained file: the function stub for the
- * user plus a "driver" section that reads this problem's stdin format
- * (one JSON value per line), calls the function, and prints the result in the
- * exact expectedOutput format ("[0,1]", "true", '["o","l"]', 42).
+ * user plus a "driver" section implementing the batch protocol from
+ * src/lib/batch.ts — ALL test cases arrive in one stdin separated by
+ * __CODEXA_CASE__ lines; the driver loops cases, parses each one's lines
+ * positionally, calls the function, prints the result in the exact
+ * expectedOutput format ("[0,1]", "true", '["o","l"]', 42), then prints the
+ * sentinel. A case that throws prints __CODEXA_ERROR__: + message instead
+ * (where the language can catch), so one bad case doesn't hide the rest.
  *
  * renderFile(lang, sig, fnCode) — fnCode null gives the starter stub; passing
  * a full solution function yields a runnable solution file (used to validate
@@ -27,6 +31,10 @@ export interface Signature {
   params: Param[];
   returns: ReturnKind;
 }
+
+// Kept in sync with src/lib/batch.ts
+const SENTINEL = "__CODEXA_CASE__";
+const ERR = "__CODEXA_ERROR__:";
 
 const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
@@ -70,17 +78,35 @@ function tsStub(sig: Signature): string {
 }
 
 function tsDriver(sig: Signature): string {
-  const lines = [
+  const parse = sig.params.map((p, i) => `        const ${p.name}: ${JS_TYPES[p.type]} = JSON.parse(_lines[${i}]);`);
+  return [
     "// ---- driver (do not edit below) ----",
     "declare const require: (m: string) => any;",
-    'const _lines: string[] = require("fs").readFileSync(0, "utf8").split("\\n").map((l: string) => l.trim()).filter((l: string) => l !== "");',
-  ];
-  sig.params.forEach((p, i) => {
-    lines.push(`const _a${i}: ${JS_TYPES[p.type]} = JSON.parse(_lines[${i}]);`);
-  });
-  lines.push(`const _result = ${sig.funcName}(${sig.params.map((_, i) => `_a${i}`).join(", ")});`);
-  lines.push('console.log(typeof _result === "string" ? _result : JSON.stringify(_result));');
-  return lines.join("\n");
+    'const _raw: string = require("fs").readFileSync(0, "utf8");',
+    "const _cases: string[][] = [];",
+    "{",
+    "    let _cur: string[] = [];",
+    '    for (const _l of _raw.split("\\n")) {',
+    "        const _t = _l.trim();",
+    `        if (_t === "${SENTINEL}") {`,
+    "            if (_cur.length > 0) { _cases.push(_cur); _cur = []; }",
+    '        } else if (_t !== "") {',
+    "            _cur.push(_t);",
+    "        }",
+    "    }",
+    "    if (_cur.length > 0) _cases.push(_cur);",
+    "}",
+    "for (const _lines of _cases) {",
+    "    try {",
+    ...parse,
+    `        const _result = ${sig.funcName}(${sig.params.map((p) => p.name).join(", ")});`,
+    '        console.log(typeof _result === "string" ? _result : JSON.stringify(_result));',
+    "    } catch (_e) {",
+    `        console.log("${ERR} " + _e);`,
+    "    }",
+    `    console.log("${SENTINEL}");`,
+    "}",
+  ].join("\n");
 }
 
 // ── java (self-contained) ──────────────────────────────────────────
@@ -140,10 +166,10 @@ function javaStub(sig: Signature): string {
 
 function javaFile(sig: Signature, fn: string): string {
   const parse = sig.params.map((p, i) => {
-    if (p.type === "int[]") return `        int[] ${p.name} = parseIntArray(lines.get(${i}));`;
-    if (p.type === "string[]") return `        String[] ${p.name} = parseStringArray(lines.get(${i}));`;
-    if (p.type === "string") return `        String ${p.name} = parseString(lines.get(${i}));`;
-    return `        int ${p.name} = Integer.parseInt(lines.get(${i}).trim());`;
+    if (p.type === "int[]") return `                int[] ${p.name} = parseIntArray(lines.get(${i}));`;
+    if (p.type === "string[]") return `                String[] ${p.name} = parseStringArray(lines.get(${i}));`;
+    if (p.type === "string") return `                String ${p.name} = parseString(lines.get(${i}));`;
+    return `                int ${p.name} = Integer.parseInt(lines.get(${i}).trim());`;
   });
   const call = `${sig.funcName}(${sig.params.map((p) => p.name).join(", ")})`;
   const print =
@@ -160,13 +186,26 @@ function javaFile(sig: Signature, fn: string): string {
     "",
     "    public static void main(String[] args) {",
     "        Scanner sc = new Scanner(System.in);",
-    "        List<String> lines = new ArrayList<>();",
+    "        List<List<String>> cases = new ArrayList<>();",
+    "        List<String> cur = new ArrayList<>();",
     "        while (sc.hasNextLine()) {",
     "            String l = sc.nextLine().trim();",
-    '            if (!l.isEmpty()) lines.add(l);',
+    `            if (l.equals("${SENTINEL}")) {`,
+    "                if (!cur.isEmpty()) { cases.add(cur); cur = new ArrayList<>(); }",
+    "            } else if (!l.isEmpty()) {",
+    "                cur.add(l);",
+    "            }",
     "        }",
+    "        if (!cur.isEmpty()) cases.add(cur);",
+    "        for (List<String> lines : cases) {",
+    "            try {",
     ...parse,
-    `        ${print}`,
+    `                ${print}`,
+    "            } catch (Exception e) {",
+    `                System.out.println("${ERR} " + e);`,
+    "            }",
+    `            System.out.println("${SENTINEL}");`,
+    "        }",
     "    }",
     "}",
   ].join("\n");
@@ -224,10 +263,10 @@ function cppStub(sig: Signature): string {
 
 function cppFile(sig: Signature, fn: string): string {
   const parse = sig.params.map((p, i) => {
-    if (p.type === "int[]") return `    vector<int> ${p.name} = parseIntArray(lines[${i}]);`;
-    if (p.type === "string[]") return `    vector<string> ${p.name} = parseStringArray(lines[${i}]);`;
-    if (p.type === "string") return `    string ${p.name} = parseStringValue(lines[${i}]);`;
-    return `    int ${p.name} = stoi(lines[${i}]);`;
+    if (p.type === "int[]") return `            vector<int> ${p.name} = parseIntArray(lines[${i}]);`;
+    if (p.type === "string[]") return `            vector<string> ${p.name} = parseStringArray(lines[${i}]);`;
+    if (p.type === "string") return `            string ${p.name} = parseStringValue(lines[${i}]);`;
+    return `            int ${p.name} = stoi(lines[${i}]);`;
   });
   const call = `${sig.funcName}(${sig.params.map((p) => p.name).join(", ")})`;
   const print =
@@ -244,13 +283,29 @@ function cppFile(sig: Signature, fn: string): string {
     CPP_HELPERS,
     "",
     "int main() {",
-    "    vector<string> lines; string line;",
+    "    vector<vector<string>> cases;",
+    "    vector<string> cur;",
+    "    string line;",
     "    while (getline(cin, line)) {",
-    '        while (!line.empty() && (line.back() == \'\\r\' || line.back() == \'\\n\')) line.pop_back();',
-    "        if (!line.empty()) lines.push_back(line);",
+    '        size_t b = line.find_first_not_of(" \\t\\r\\n");',
+    '        size_t e = line.find_last_not_of(" \\t\\r\\n");',
+    '        string t = (b == string::npos) ? "" : line.substr(b, e - b + 1);',
+    `        if (t == "${SENTINEL}") {`,
+    "            if (!cur.empty()) { cases.push_back(cur); cur.clear(); }",
+    "        } else if (!t.empty()) {",
+    "            cur.push_back(t);",
+    "        }",
     "    }",
+    "    if (!cur.empty()) cases.push_back(cur);",
+    "    for (auto& lines : cases) {",
+    "        try {",
     ...parse,
-    `    ${print}`,
+    `            ${print}`,
+    "        } catch (...) {",
+    `            cout << "${ERR} runtime error" << endl;`,
+    "        }",
+    `        cout << "${SENTINEL}" << endl;`,
+    "    }",
     "    return 0;",
     "}",
   ].join("\n");
@@ -345,30 +400,30 @@ function cFile(sig: Signature, fn: string): string {
   const callArgs: string[] = [];
   sig.params.forEach((p, i) => {
     if (p.type === "int[]") {
-      parse.push(`    int* ${p.name};`, `    int ${p.name}Size = parse_int_array(lines[${i}], &${p.name});`);
+      parse.push(`            int* ${p.name};`, `            int ${p.name}Size = parse_int_array(lines[${i}], &${p.name});`);
       callArgs.push(p.name, `${p.name}Size`);
     } else if (p.type === "string[]") {
-      parse.push(`    char** ${p.name};`, `    int ${p.name}Size = parse_string_array(lines[${i}], &${p.name});`);
+      parse.push(`            char** ${p.name};`, `            int ${p.name}Size = parse_string_array(lines[${i}], &${p.name});`);
       callArgs.push(p.name, `${p.name}Size`);
     } else if (p.type === "string") {
-      parse.push(`    strip_string(lines[${i}]);`, `    const char* ${p.name} = lines[${i}];`);
+      parse.push(`            strip_string(lines[${i}]);`, `            const char* ${p.name} = lines[${i}];`);
       callArgs.push(p.name);
     } else {
-      parse.push(`    int ${p.name} = atoi(lines[${i}]);`);
+      parse.push(`            int ${p.name} = atoi(lines[${i}]);`);
       callArgs.push(p.name);
     }
   });
   const callBody: string[] = [];
   if (sig.returns === "int[]") {
     callArgs.push("&returnSize");
-    callBody.push("    int returnSize = 0;", `    int* result = ${sig.funcName}(${callArgs.join(", ")});`, "    print_int_array(result, returnSize);");
+    callBody.push("            int returnSize = 0;", `            int* result = ${sig.funcName}(${callArgs.join(", ")});`, "            print_int_array(result, returnSize);");
   } else if (sig.returns === "string[]") {
     callArgs.push("&returnSize");
-    callBody.push("    int returnSize = 0;", `    char** result = ${sig.funcName}(${callArgs.join(", ")});`, "    print_string_array(result, returnSize);");
+    callBody.push("            int returnSize = 0;", `            char** result = ${sig.funcName}(${callArgs.join(", ")});`, "            print_string_array(result, returnSize);");
   } else if (sig.returns === "bool") {
-    callBody.push(`    printf(${sig.funcName}(${callArgs.join(", ")}) ? "true\\n" : "false\\n");`);
+    callBody.push(`            printf(${sig.funcName}(${callArgs.join(", ")}) ? "true\\n" : "false\\n");`);
   } else {
-    callBody.push(`    printf("%d\\n", ${sig.funcName}(${callArgs.join(", ")}));`);
+    callBody.push(`            printf("%d\\n", ${sig.funcName}(${callArgs.join(", ")}));`);
   }
   return [
     "#include <stdio.h>",
@@ -381,11 +436,37 @@ function cFile(sig: Signature, fn: string): string {
     C_HELPERS,
     "",
     "int main(void) {",
-    "    static char lines[8][65536];",
-    "    int lineCount = 0;",
-    "    while (lineCount < 8 && fgets(lines[lineCount], sizeof(lines[0]), stdin)) lineCount++;",
+    "    size_t cap = 1 << 20, len = 0;",
+    "    char* buf = (char*)malloc(cap);",
+    "    size_t got;",
+    "    while ((got = fread(buf + len, 1, cap - len - 1, stdin)) > 0) {",
+    "        len += got;",
+    "        if (len + 1 >= cap) { cap *= 2; buf = (char*)realloc(buf, cap); }",
+    "    }",
+    "    buf[len] = '\\0';",
+    "    int lineCap = 1024, lineCount = 0;",
+    "    char** allLines = (char**)malloc(lineCap * sizeof(char*));",
+    "    char* save = NULL;",
+    '    for (char* tok = strtok_r(buf, "\\n", &save); tok; tok = strtok_r(NULL, "\\n", &save)) {',
+    "        size_t tl = strlen(tok);",
+    "        while (tl > 0 && (tok[tl - 1] == '\\r' || tok[tl - 1] == ' ')) tok[--tl] = '\\0';",
+    "        while (*tok == ' ') tok++;",
+    "        if (*tok == '\\0') continue;",
+    "        if (lineCount == lineCap) { lineCap *= 2; allLines = (char**)realloc(allLines, lineCap * sizeof(char*)); }",
+    "        allLines[lineCount++] = tok;",
+    "    }",
+    "    int start = 0;",
+    "    for (int idx = 0; idx <= lineCount; idx++) {",
+    `        if (idx == lineCount || strcmp(allLines[idx], "${SENTINEL}") == 0) {`,
+    "            if (idx > start) {",
+    "                char** lines = &allLines[start];",
     ...parse,
     ...callBody,
+    `                printf("${SENTINEL}\\n");`,
+    "            }",
+    "            start = idx + 1;",
+    "        }",
+    "    }",
     "    return 0;",
     "}",
   ].join("\n");
@@ -442,10 +523,10 @@ function csStub(sig: Signature): string {
 
 function csFile(sig: Signature, fn: string): string {
   const parse = sig.params.map((p, i) => {
-    if (p.type === "int[]") return `        int[] ${p.name} = ParseIntArray(lines[${i}]);`;
-    if (p.type === "string[]") return `        string[] ${p.name} = ParseStringArray(lines[${i}]);`;
-    if (p.type === "string") return `        string ${p.name} = ParseString(lines[${i}]);`;
-    return `        int ${p.name} = int.Parse(lines[${i}].Trim());`;
+    if (p.type === "int[]") return `                int[] ${p.name} = ParseIntArray(lines[${i}]);`;
+    if (p.type === "string[]") return `                string[] ${p.name} = ParseStringArray(lines[${i}]);`;
+    if (p.type === "string") return `                string ${p.name} = ParseString(lines[${i}]);`;
+    return `                int ${p.name} = int.Parse(lines[${i}].Trim());`;
   });
   const call = `${csFuncName(sig)}(${sig.params.map((p) => p.name).join(", ")})`;
   const print =
@@ -466,15 +547,35 @@ function csFile(sig: Signature, fn: string): string {
     "",
     "    public static void Main()",
     "    {",
-    "        var lines = new List<string>();",
+    "        var cases = new List<List<string>>();",
+    "        var cur = new List<string>();",
     "        string line;",
     "        while ((line = Console.ReadLine()) != null)",
     "        {",
     "            line = line.Trim();",
-    '            if (line.Length > 0) lines.Add(line);',
+    `            if (line == "${SENTINEL}")`,
+    "            {",
+    "                if (cur.Count > 0) { cases.Add(cur); cur = new List<string>(); }",
+    "            }",
+    "            else if (line.Length > 0)",
+    "            {",
+    "                cur.Add(line);",
+    "            }",
     "        }",
+    "        if (cur.Count > 0) cases.Add(cur);",
+    "        foreach (var lines in cases)",
+    "        {",
+    "            try",
+    "            {",
     ...parse,
-    `        ${print}`,
+    `                ${print}`,
+    "            }",
+    "            catch (Exception e)",
+    "            {",
+    `                Console.WriteLine("${ERR} " + e.Message);`,
+    "            }",
+    `            Console.WriteLine("${SENTINEL}");`,
+    "        }",
     "    }",
     "}",
   ].join("\n");
@@ -496,21 +597,28 @@ function goFile(sig: Signature, fn: string): string {
   const needsJSON = sig.params.some((p) => p.type !== "int") || sig.returns.endsWith("[]");
   const needsStrconv = sig.params.some((p) => p.type === "int");
   const imports = ["\t\"bufio\"", "\t\"fmt\"", "\t\"os\"", "\t\"strings\""];
-  if (needsJSON) imports.splice(1, 0, "\t\"encoding/json\"");
+  if (needsJSON) imports.push("\t\"encoding/json\"");
   if (needsStrconv) imports.push("\t\"strconv\"");
   imports.sort();
   const parse: string[] = [];
   sig.params.forEach((p, i) => {
     if (p.type === "int") {
-      parse.push(`\t${p.name}, _ := strconv.Atoi(lines[${i}])`);
+      parse.push(`\t\t${p.name}, _ := strconv.Atoi(lines[${i}])`);
     } else {
-      parse.push(`\tvar ${p.name} ${GO_TYPES[p.type]}`, `\tjson.Unmarshal([]byte(lines[${i}]), &${p.name})`);
+      parse.push(`\t\tvar ${p.name} ${GO_TYPES[p.type]}`, `\t\tjson.Unmarshal([]byte(lines[${i}]), &${p.name})`);
     }
   });
   const call = `${sig.funcName}(${sig.params.map((p) => p.name).join(", ")})`;
   const print = sig.returns.endsWith("[]")
-    ? [`\t_result := ${call}`, "\tif _result == nil {", `\t\t_result = ${GO_TYPES[sig.returns]}{}`, "\t}", "\t_out, _ := json.Marshal(_result)", "\tfmt.Println(string(_out))"]
-    : [`\tfmt.Println(${call})`];
+    ? [
+        `\t\t_result := ${call}`,
+        "\t\tif _result == nil {",
+        `\t\t\t_result = ${GO_TYPES[sig.returns]}{}`,
+        "\t\t}",
+        "\t\t_out, _ := json.Marshal(_result)",
+        "\t\tfmt.Println(string(_out))",
+      ]
+    : [`\t\tfmt.Println(${call})`];
   return [
     "package main",
     "",
@@ -524,15 +632,27 @@ function goFile(sig: Signature, fn: string): string {
     "func main() {",
     "\tsc := bufio.NewScanner(os.Stdin)",
     "\tsc.Buffer(make([]byte, 1024*1024), 1024*1024)",
-    "\tvar lines []string",
+    "\tvar cases [][]string",
+    "\tvar cur []string",
     "\tfor sc.Scan() {",
     "\t\tt := strings.TrimSpace(sc.Text())",
-    '\t\tif t != "" {',
-    "\t\t\tlines = append(lines, t)",
+    `\t\tif t == "${SENTINEL}" {`,
+    "\t\t\tif len(cur) > 0 {",
+    "\t\t\t\tcases = append(cases, cur)",
+    "\t\t\t\tcur = nil",
+    "\t\t\t}",
+    '\t\t} else if t != "" {',
+    "\t\t\tcur = append(cur, t)",
     "\t\t}",
     "\t}",
+    "\tif len(cur) > 0 {",
+    "\t\tcases = append(cases, cur)",
+    "\t}",
+    "\tfor _, lines := range cases {",
     ...parse,
     ...print,
+    `\t\tfmt.Println("${SENTINEL}")`,
+    "\t}",
     "}",
   ].join("\n");
 }
@@ -576,10 +696,10 @@ function ktStub(sig: Signature): string {
 
 function ktFile(sig: Signature, fn: string): string {
   const parse = sig.params.map((p, i) => {
-    if (p.type === "int[]") return `    val ${p.name} = parseIntArray(lines[${i}])`;
-    if (p.type === "string[]") return `    val ${p.name} = parseStringArray(lines[${i}])`;
-    if (p.type === "string") return `    val ${p.name} = parseStringValue(lines[${i}])`;
-    return `    val ${p.name} = lines[${i}].trim().toInt()`;
+    if (p.type === "int[]") return `            val ${p.name} = parseIntArray(lines[${i}])`;
+    if (p.type === "string[]") return `            val ${p.name} = parseStringArray(lines[${i}])`;
+    if (p.type === "string") return `            val ${p.name} = parseStringValue(lines[${i}])`;
+    return `            val ${p.name} = lines[${i}].trim().toInt()`;
   });
   const call = `${sig.funcName}(${sig.params.map((p) => p.name).join(", ")})`;
   const print =
@@ -592,9 +712,26 @@ function ktFile(sig: Signature, fn: string): string {
     KT_HELPERS,
     "",
     "fun main() {",
-    "    val lines = generateSequence(::readLine).map { it.trim() }.filter { it.isNotEmpty() }.toList()",
+    "    val allLines = generateSequence(::readLine).map { it.trim() }.toList()",
+    "    val cases = ArrayList<List<String>>()",
+    "    var cur = ArrayList<String>()",
+    "    for (l in allLines) {",
+    `        if (l == "${SENTINEL}") {`,
+    "            if (cur.isNotEmpty()) { cases.add(cur); cur = ArrayList() }",
+    "        } else if (l.isNotEmpty()) {",
+    "            cur.add(l)",
+    "        }",
+    "    }",
+    "    if (cur.isNotEmpty()) cases.add(cur)",
+    "    for (lines in cases) {",
+    "        try {",
     ...parse,
-    `    ${print}`,
+    `            ${print}`,
+    "        } catch (e: Exception) {",
+    `            println("${ERR} " + e)`,
+    "        }",
+    `        println("${SENTINEL}")`,
+    "    }",
     "}",
   ].join("\n");
 }
@@ -645,10 +782,10 @@ function swStub(sig: Signature): string {
 
 function swFile(sig: Signature, fn: string): string {
   const parse = sig.params.map((p, i) => {
-    if (p.type === "int[]") return `let ${p.name} = parseIntArray(lines[${i}])`;
-    if (p.type === "string[]") return `let ${p.name} = parseStringArray(lines[${i}])`;
-    if (p.type === "string") return `let ${p.name} = parseStringValue(lines[${i}])`;
-    return `let ${p.name} = Int(lines[${i}].trimmingCharacters(in: .whitespaces)) ?? 0`;
+    if (p.type === "int[]") return `    let ${p.name} = parseIntArray(lines[${i}])`;
+    if (p.type === "string[]") return `    let ${p.name} = parseStringArray(lines[${i}])`;
+    if (p.type === "string") return `    let ${p.name} = parseStringValue(lines[${i}])`;
+    return `    let ${p.name} = Int(lines[${i}].trimmingCharacters(in: .whitespaces)) ?? 0`;
   });
   const call = `${sig.funcName}(${sig.params.map((p) => p.name).join(", ")})`;
   const print =
@@ -662,13 +799,25 @@ function swFile(sig: Signature, fn: string): string {
     "",
     SW_HELPERS,
     "",
-    "var lines: [String] = []",
+    "var allLines: [String] = []",
     "while let line = readLine() {",
-    "    let t = line.trimmingCharacters(in: .whitespaces)",
-    "    if !t.isEmpty { lines.append(t) }",
+    "    allLines.append(line.trimmingCharacters(in: .whitespaces))",
     "}",
+    "var cases: [[String]] = []",
+    "var cur: [String] = []",
+    "for l in allLines {",
+    `    if l == "${SENTINEL}" {`,
+    "        if !cur.isEmpty { cases.append(cur); cur = [] }",
+    "    } else if !l.isEmpty {",
+    "        cur.append(l)",
+    "    }",
+    "}",
+    "if !cur.isEmpty { cases.append(cur) }",
+    "for lines in cases {",
     ...parse,
-    print,
+    `    ${print}`,
+    `    print("${SENTINEL}")`,
+    "}",
   ].join("\n");
 }
 
@@ -729,10 +878,10 @@ function rsStub(sig: Signature): string {
 
 function rsFile(sig: Signature, fn: string): string {
   const parse = sig.params.map((p, i) => {
-    if (p.type === "int[]") return `    let ${p.name} = parse_int_array(lines[${i}]);`;
-    if (p.type === "string[]") return `    let ${p.name} = parse_string_array(lines[${i}]);`;
-    if (p.type === "string") return `    let ${p.name} = parse_string_value(lines[${i}]);`;
-    return `    let ${p.name}: i32 = lines[${i}].trim().parse().unwrap();`;
+    if (p.type === "int[]") return `        let ${p.name} = parse_int_array(&lines[${i}]);`;
+    if (p.type === "string[]") return `        let ${p.name} = parse_string_array(&lines[${i}]);`;
+    if (p.type === "string") return `        let ${p.name} = parse_string_value(&lines[${i}]);`;
+    return `        let ${p.name}: i32 = lines[${i}].trim().parse().unwrap();`;
   });
   const call = `${sig.funcName}(${sig.params.map((p) => p.name).join(", ")})`;
   const print =
@@ -750,9 +899,22 @@ function rsFile(sig: Signature, fn: string): string {
     "fn main() {",
     "    let mut input = String::new();",
     "    std::io::stdin().read_to_string(&mut input).unwrap();",
-    "    let lines: Vec<&str> = input.lines().filter(|l| !l.trim().is_empty()).collect();",
+    "    let mut cases: Vec<Vec<String>> = Vec::new();",
+    "    let mut cur: Vec<String> = Vec::new();",
+    "    for l in input.lines() {",
+    "        let t = l.trim();",
+    `        if t == "${SENTINEL}" {`,
+    "            if !cur.is_empty() { cases.push(cur); cur = Vec::new(); }",
+    "        } else if !t.is_empty() {",
+    "            cur.push(t.to_string());",
+    "        }",
+    "    }",
+    "    if !cur.is_empty() { cases.push(cur); }",
+    "    for lines in &cases {",
     ...parse,
-    `    ${print}`,
+    `        ${print}`,
+    `        println!("${SENTINEL}");`,
+    "    }",
     "}",
   ].join("\n");
 }
@@ -765,20 +927,37 @@ function phpStub(sig: Signature): string {
 }
 
 function phpFile(sig: Signature, fn: string): string {
-  const parse = sig.params.map((p, i) => `$${p.name} = json_decode($lines[${i}]);`);
+  const parse = sig.params.map((p, i) => `        $${p.name} = json_decode($lines[${i}]);`);
   const call = `${sig.funcName}(${sig.params.map((p) => `$${p.name}`).join(", ")})`;
   return [
     "<?php",
     fn,
     "",
     "// ---- driver (do not edit below) ----",
-    '$lines = array_values(array_filter(array_map("trim", explode("\\n", stream_get_contents(STDIN))), function ($l) { return $l !== ""; }));',
+    "$raw = stream_get_contents(STDIN);",
+    "$cases = [];",
+    "$cur = [];",
+    'foreach (explode("\\n", $raw) as $l) {',
+    "    $t = trim($l);",
+    `    if ($t === "${SENTINEL}") {`,
+    "        if (count($cur) > 0) { $cases[] = $cur; $cur = []; }",
+    '    } elseif ($t !== "") {',
+    "        $cur[] = $t;",
+    "    }",
+    "}",
+    "if (count($cur) > 0) $cases[] = $cur;",
+    "foreach ($cases as $lines) {",
+    "    try {",
     ...parse,
-    `$result = ${call};`,
-    'if (is_bool($result)) echo $result ? "true" : "false";',
-    "elseif (is_array($result)) echo json_encode($result);",
-    "else echo $result;",
-    'echo "\\n";',
+    `        $result = ${call};`,
+    '        if (is_bool($result)) echo ($result ? "true" : "false") . "\\n";',
+    '        elseif (is_array($result)) echo json_encode($result) . "\\n";',
+    '        else echo $result . "\\n";',
+    "    } catch (Throwable $e) {",
+    `        echo "${ERR} " . $e->getMessage() . "\\n";`,
+    "    }",
+    `    echo "${SENTINEL}\\n";`,
+    "}",
   ].join("\n");
 }
 
@@ -790,7 +969,7 @@ function rbStub(sig: Signature): string {
 }
 
 function rbFile(sig: Signature, fn: string): string {
-  const parse = sig.params.map((p, i) => `${p.name} = JSON.parse(lines[${i}])`);
+  const parse = sig.params.map((p, i) => `    ${p.name} = JSON.parse(lines[${i}])`);
   const call = `${sig.funcName}(${sig.params.map((p) => p.name).join(", ")})`;
   return [
     "require 'json'",
@@ -798,13 +977,34 @@ function rbFile(sig: Signature, fn: string): string {
     fn,
     "",
     "# ---- driver (do not edit below) ----",
-    'lines = STDIN.read.split("\\n").map(&:strip).reject(&:empty?)',
+    "raw = STDIN.read",
+    "cases = []",
+    "cur = []",
+    'raw.split("\\n").each do |l|',
+    "  t = l.strip",
+    `  if t == "${SENTINEL}"`,
+    "    unless cur.empty?",
+    "      cases << cur",
+    "      cur = []",
+    "    end",
+    "  elsif !t.empty?",
+    "    cur << t",
+    "  end",
+    "end",
+    "cases << cur unless cur.empty?",
+    "cases.each do |lines|",
+    "  begin",
     ...parse,
-    `result = ${call}`,
-    "if result.is_a?(Array)",
-    "  puts result.to_json",
-    "else",
-    "  puts result",
+    `    result = ${call}`,
+    "    if result.is_a?(Array)",
+    "      puts result.to_json",
+    "    else",
+    "      puts result",
+    "    end",
+    "  rescue => e",
+    `    puts "${ERR} " + e.message`,
+    "  end",
+    `  puts "${SENTINEL}"`,
     "end",
   ].join("\n");
 }
