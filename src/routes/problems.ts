@@ -16,16 +16,21 @@ router.get("/", optionalAuth, async (req, res) => {
       isPublished: true,
     };
 
-    if (difficulty) where.difficulty = { equals: difficulty as string, mode: "insensitive" };
+    if (difficulty) where.difficulty = { equals: difficulty as string }; // MySQL CI collation handles case
     if (tag) {
       const tags = Array.isArray(tag) ? (tag as string[]) : [tag as string];
-      where.tags = { hasEvery: tags };
+      // tags is a Json array on MySQL — require every selected tag
+      // (replaces the Postgres-only scalar-list hasEvery filter).
+      where.AND = [
+        ...(where.AND ?? []),
+        ...tags.map((t: string) => ({ tags: { array_contains: [t] } })),
+      ];
     }
     if (maxTime) where.timeLimitMs = { lte: parseInt(maxTime as string) };
     if (search) {
       where.OR = [
-        { title: { contains: search as string, mode: "insensitive" } },
-        { description: { contains: search as string, mode: "insensitive" } },
+        { title: { contains: search as string } },
+        { description: { contains: search as string } },
       ];
     }
 

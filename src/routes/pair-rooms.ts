@@ -147,8 +147,9 @@ router.post("/:id/join", requireAuth, async (req, res) => {
       return res.status(404).json({ error: "Room not found" });
     }
 
-    // Check if user was kicked
-    const isKicked = room.kickedUserIds.includes(userId);
+    // Check if user was kicked (kickedUserIds is a Json array on MySQL)
+    const kickedIds = (room.kickedUserIds as string[] | null) ?? [];
+    const isKicked = kickedIds.includes(userId);
     
     // If kicked, they MUST provide the recoveryCode correctly
     if (isKicked) {
@@ -164,9 +165,7 @@ router.post("/:id/join", requireAuth, async (req, res) => {
       await prisma.pairRoom.update({
         where: { id },
         data: {
-          kickedUserIds: {
-            set: room.kickedUserIds.filter(uid => uid !== userId)
-          }
+          kickedUserIds: kickedIds.filter((uid) => uid !== userId)
         }
       });
     }

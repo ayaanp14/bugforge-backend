@@ -38,38 +38,67 @@ function specs(): CatalogProblem[] {
   return out;
 }
 
+async function seedOne(spec: CatalogProblem) {
+  const starterCode = Object.fromEntries(ALL_LANGUAGES.map((lang) => [lang, renderStub(lang, spec.signature)]));
+  const problem = await prisma.problem.upsert({
+    where: { slug: spec.slug },
+    update: {
+      title: spec.title, description: spec.description, difficulty: spec.difficulty,
+      tags: spec.tags, hints: spec.hints, starterCode, signature: spec.signature as object,
+      referenceSolution: spec.solutions.python, referenceLanguage: "python", isPublished: true,
+    },
+    create: {
+      slug: spec.slug, title: spec.title, description: spec.description, difficulty: spec.difficulty,
+      tags: spec.tags, hints: spec.hints, starterCode, signature: spec.signature as object,
+      referenceSolution: spec.solutions.python, referenceLanguage: "python", isPublished: true,
+      timeLimitMs: 2000, memoryLimitMb: 256,
+    },
+  });
+
+  await prisma.testCase.deleteMany({ where: { problemId: problem.id } });
+  const rows: Array<{ problemId: string; input: string; expectedOutput: string; isHidden: boolean; orderIndex: number }> = [];
+  spec.examples.forEach((ex, i) =>
+    rows.push({ problemId: problem.id, input: ex.input, expectedOutput: ex.expectedOutput, isHidden: false, orderIndex: i }));
+  const rng = makeRng(spec.slug);
+  for (let i = 0; i < HIDDEN; i++) {
+    const c = spec.gen(rng);
+    rows.push({ problemId: problem.id, input: c.input, expectedOutput: c.expectedOutput, isHidden: true, orderIndex: spec.examples.length + i });
+  }
+  for (let i = 0; i < rows.length; i += 2000) {
+    await prisma.testCase.createMany({ data: rows.slice(i, i + 2000) });
+  }
+}
+
 async function seed() {
   const list = specs();
-  console.log(`Seeding ${list.length} catalog problems × (${HIDDEN} hidden)…`);
+  const resume = flag("resume");
+  console.log(`Seeding ${list.length} catalog problems × (${HIDDEN} hidden)…${resume ? " [resume]" : ""}`);
   let done = 0;
   for (const spec of list) {
-    const starterCode = Object.fromEntries(ALL_LANGUAGES.map((lang) => [lang, renderStub(lang, spec.signature)]));
-    const problem = await prisma.problem.upsert({
-      where: { slug: spec.slug },
-      update: {
-        title: spec.title, description: spec.description, difficulty: spec.difficulty,
-        tags: spec.tags, hints: spec.hints, starterCode, signature: spec.signature as object,
-        referenceSolution: spec.solutions.python, referenceLanguage: "python", isPublished: true,
-      },
-      create: {
-        slug: spec.slug, title: spec.title, description: spec.description, difficulty: spec.difficulty,
-        tags: spec.tags, hints: spec.hints, starterCode, signature: spec.signature as object,
-        referenceSolution: spec.solutions.python, referenceLanguage: "python", isPublished: true,
-        timeLimitMs: 2000, memoryLimitMb: 256,
-      },
-    });
-
-    await prisma.testCase.deleteMany({ where: { problemId: problem.id } });
-    const rows: Array<{ problemId: string; input: string; expectedOutput: string; isHidden: boolean; orderIndex: number }> = [];
-    spec.examples.forEach((ex, i) =>
-      rows.push({ problemId: problem.id, input: ex.input, expectedOutput: ex.expectedOutput, isHidden: false, orderIndex: i }));
-    const rng = makeRng(spec.slug);
-    for (let i = 0; i < HIDDEN; i++) {
-      const c = spec.gen(rng);
-      rows.push({ problemId: problem.id, input: c.input, expectedOutput: c.expectedOutput, isHidden: true, orderIndex: spec.examples.length + i });
+    // --resume: skip problems that already carry the full expected suite
+    // (lets a run continue after a dropped connection without redoing work).
+    if (resume) {
+      const existing = await prisma.problem.findUnique({
+        where: { slug: spec.slug },
+        select: { _count: { select: { testCases: true } } },
+      });
+      if (existing && existing._count.testCases === spec.examples.length + HIDDEN) {
+        done++;
+        if (done % 10 === 0 || done === list.length) console.log(`  ${done}/${list.length} (skip: ${spec.slug})`);
+        continue;
+      }
     }
-    for (let i = 0; i < rows.length; i += 2000) {
-      await prisma.testCase.createMany({ data: rows.slice(i, i + 2000) });
+    // Shared hosts kill long-lived connections; retry each problem a few
+    // times — deleteMany+createMany makes a retry safe after partial writes.
+    for (let attempt = 1; ; attempt++) {
+      try {
+        await seedOne(spec);
+        break;
+      } catch (e) {
+        if (attempt >= 4) throw e;
+        console.log(`  retry ${attempt} for ${spec.slug}: ${(e as Error).message.slice(0, 100)}`);
+        await new Promise((r) => setTimeout(r, 3000 * attempt));
+      }
     }
     done++;
     if (done % 10 === 0 || done === list.length) console.log(`  ${done}/${list.length} (latest: ${spec.slug})`);

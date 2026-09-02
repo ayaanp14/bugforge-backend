@@ -94,7 +94,7 @@ router.get("/username-check", requireAuth, async (req, res) => {
     // 2. Uniqueness Check (Excluding self)
     const existingUser = await prisma.user.findFirst({
       where: { 
-        username: { equals: username, mode: 'insensitive' },
+        username: { equals: username },
         id: { not: req.user!.userId }
       }
     });
@@ -331,7 +331,7 @@ router.patch("/", requireAuth, async (req, res) => {
     if (username.length > 0) {
       const existingUser = await prisma.user.findFirst({
         where: { 
-          username: { equals: username, mode: 'insensitive' },
+          username: { equals: username },
           id: { not: req.user!.userId }
         }
       });

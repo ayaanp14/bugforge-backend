@@ -311,8 +311,8 @@ router.post("/start", requireAuth, async (req: any, res) => {
       difficulty: template.difficulty,
       experienceBand: template.experienceBand,
       interviewStyle: template.interviewStyle,
-      stackFocusIds: template.stackFocusIds,
-      focusAreaIds: template.focusAreaIds,
+      stackFocusIds: (template.stackFocusIds as string[] | null) ?? [],
+      focusAreaIds: (template.focusAreaIds as string[] | null) ?? [],
       threadId,
     });
 
@@ -417,8 +417,8 @@ router.post("/session/:sessionId/answer", requireAuth, async (req: any, res) => 
       difficulty: template.difficulty,
       experienceBand: template.experienceBand,
       interviewStyle: template.interviewStyle,
-      stackFocusIds: template.stackFocusIds,
-      focusAreaIds: template.focusAreaIds,
+      stackFocusIds: (template.stackFocusIds as string[] | null) ?? [],
+      focusAreaIds: (template.focusAreaIds as string[] | null) ?? [],
       previousQuestions: previousQuestionsText,
       threadId: session.gtwyThreadId || "",
     });
