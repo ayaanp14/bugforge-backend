@@ -76,6 +76,11 @@ model User {
   savedInterviews    SavedInterview[]
   mockSessions       MockInterviewSession[]
   notifications      Notification[]
+  posts              Post[]
+  postComments       PostComment[]
+  postLikes          PostLike[]
+  following          Follow[]          @relation("following")
+  followers          Follow[]          @relation("followers")
 }
 
 model Problem {
@@ -315,4 +320,57 @@ model Notification {
 
   @@index([userId, isRead])
   @@index([userId, createdAt])
+}
+
+// ── Community: stories/status posts, achievement shares, comments, follows ──
+
+model Post {
+  id        String        @id @default(cuid())
+  userId    String
+  type      String        @default("status") // "status" (story/life post) | "achievement" (shared solve)
+  content   String        @db.Text
+  meta      Json          @default("{}") // achievement payload: { kind: "problem"|"bug", slug?, challengeId?, title, difficulty?, xp? }
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+  user      User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  comments  PostComment[]
+  likes     PostLike[]
+
+  @@index([createdAt])
+  @@index([userId, createdAt])
+}
+
+model PostComment {
+  id        String   @id @default(cuid())
+  postId    String
+  userId    String
+  content   String   @db.Text
+  createdAt DateTime @default(now())
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([postId, createdAt])
+}
+
+model PostLike {
+  id        String   @id @default(cuid())
+  postId    String
+  userId    String
+  createdAt DateTime @default(now())
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([postId, userId])
+}
+
+model Follow {
+  id          String   @id @default(cuid())
+  followerId  String
+  followingId String
+  createdAt   DateTime @default(now())
+  follower    User     @relation("following", fields: [followerId], references: [id], onDelete: Cascade)
+  following   User     @relation("followers", fields: [followingId], references: [id], onDelete: Cascade)
+
+  @@unique([followerId, followingId])
+  @@index([followingId])
 }

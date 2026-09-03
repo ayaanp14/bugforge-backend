@@ -219,6 +219,8 @@ router.post("/submit", requireAuth, async (req, res) => {
     });
 
     // Award XP and update stats if first ACCEPTED solve
+    let awardedXp = 0;
+    let firstSolve = false;
     if (verdict === "ACCEPTED") {
       const prevSolved = await prisma.submission.findFirst({
         where: {
@@ -232,6 +234,8 @@ router.post("/submit", requireAuth, async (req, res) => {
       if (!prevSolved) {
         const xpMap: Record<string, number> = { easy: 10, medium: 20, hard: 30 };
         const xpAwarded = xpMap[problem.difficulty.toLowerCase()] ?? 10;
+        awardedXp = xpAwarded;
+        firstSolve = true;
 
         await prisma.user.update({
           where: { id: userId },
@@ -305,6 +309,8 @@ router.post("/submit", requireAuth, async (req, res) => {
 
     res.json({
       verdict,
+      awardedXp,
+      firstSolve,
       passedCases,
       totalCases: problem.testCases.length,
       customResults: batch.perCase.slice(problem.testCases.length), // Return custom results separately if needed
