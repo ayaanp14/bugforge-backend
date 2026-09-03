@@ -372,6 +372,33 @@ router.patch("/", requireAuth, async (req, res) => {
   }
 });
 
+// GET /api/me/submissions/:id?type=problem|bug — the code of ONE submission,
+// fetched on demand when a history row is opened (rows themselves are slim).
+router.get("/submissions/:id", requireAuth, async (req, res) => {
+  try {
+    const userId = req.user!.userId;
+    const id = String(req.params.id);
+    if (req.query.type === "bug") {
+      const sub = await prisma.bugSubmission.findFirst({ where: { id, userId }, select: { editedFiles: true } });
+      if (!sub) {
+        res.status(404).json({ error: "Submission not found" });
+        return;
+      }
+      res.json({ code: JSON.stringify(sub.editedFiles, null, 2), language: "json" });
+      return;
+    }
+    const sub = await prisma.submission.findFirst({ where: { id, userId }, select: { code: true, language: true } });
+    if (!sub) {
+      res.status(404).json({ error: "Submission not found" });
+      return;
+    }
+    res.json({ code: sub.code, language: sub.language });
+  } catch (err) {
+    console.error("GET /api/me/submissions/:id error:", err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 // GET /api/me/submissions — detailed history of all attempts
 router.get("/submissions", requireAuth, async (req, res) => {
   try {

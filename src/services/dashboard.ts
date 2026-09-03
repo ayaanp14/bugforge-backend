@@ -1,4 +1,5 @@
 import { prisma } from "../lib/prisma.js";
+import { getDashboardUser, getSocialCounts } from "./me.js";
 
 /**
  * Query functions shared by the per-widget /api/me routes and the aggregated
@@ -53,18 +54,39 @@ export async function getDifficultyStats(userId: string) {
 // ── Submission history (problems + bug hunts, newest first) ─────
 export async function getSubmissionHistory(userId: string, page = 1, limit = 10) {
   const skip = (page - 1) * limit;
+  const window = skip + limit;
 
-  const [problemSubmissions, bugSubmissions] = await Promise.all([
+  // Slim rows only — no code/editedFiles (fetched on demand via
+  // GET /api/me/submissions/:id) and only the page's window from each table.
+  const [problemSubmissions, bugSubmissions, problemTotal, bugTotal] = await Promise.all([
     prisma.submission.findMany({
       where: { userId },
-      include: { problem: { select: { title: true, difficulty: true, slug: true } } },
+      select: {
+        id: true,
+        verdict: true,
+        language: true,
+        runtimeMs: true,
+        memoryKb: true,
+        submittedAt: true,
+        problem: { select: { title: true, difficulty: true, slug: true } },
+      },
       orderBy: { submittedAt: "desc" },
+      take: window,
     }),
     prisma.bugSubmission.findMany({
       where: { userId },
-      include: { challenge: { select: { title: true, difficulty: true } } },
+      select: {
+        id: true,
+        verdict: true,
+        timeTakenSecs: true,
+        submittedAt: true,
+        challenge: { select: { title: true, difficulty: true } },
+      },
       orderBy: { submittedAt: "desc" },
+      take: window,
     }),
+    prisma.submission.count({ where: { userId } }),
+    prisma.bugSubmission.count({ where: { userId } }),
   ]);
 
   const history = [
@@ -78,7 +100,6 @@ export async function getSubmissionHistory(userId: string, page = 1, limit = 10)
       language: s.language,
       runtime: s.runtimeMs ? `${s.runtimeMs}ms` : "N/A",
       memory: s.memoryKb ? `${(s.memoryKb / 1024).toFixed(2)}MB` : "N/A",
-      code: s.code,
       submittedAt: s.submittedAt,
     })),
     ...bugSubmissions.map((s) => ({
@@ -91,12 +112,13 @@ export async function getSubmissionHistory(userId: string, page = 1, limit = 10)
       language: "JS/JSON",
       runtime: s.timeTakenSecs ? `${s.timeTakenSecs}s` : "N/A",
       memory: "N/A",
-      code: JSON.stringify(s.editedFiles, null, 2),
       submittedAt: s.submittedAt,
     })),
-  ].sort((a, b) => new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime());
+  ]
+    .sort((a, b) => new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime())
+    .slice(skip, skip + limit);
 
-  return { history: history.slice(skip, skip + limit), total: history.length, page, limit };
+  return { history, total: problemTotal + bugTotal, page, limit };
 }
 
 // ── 365-day accepted-solution heatmap ───────────────────────────
@@ -294,21 +316,56 @@ export async function listProblemsWithStatus(userId: string, take = 100) {
 }
 
 // ── Bug hunts + saved interviews ────────────────────────────────
-export function getBugChallengeSummaries() {
-  return prisma.bugChallenge.findMany({
-    where: { isPublished: true },
-    select: { id: true, title: true, difficulty: true, category: true },
-    orderBy: { createdAt: "desc" },
-  });
+// Counts only — the dashboard never renders individual bug challenges
+export async function getBugInsights() {
+  const [total, byDifficulty, cats] = await Promise.all([
+    prisma.bugChallenge.count({ where: { isPublished: true } }),
+    prisma.bugChallenge.groupBy({ by: ["difficulty"], where: { isPublished: true }, _count: { _all: true } }),
+    prisma.bugChallenge.findMany({ where: { isPublished: true }, select: { category: true }, distinct: ["category"] }),
+  ]);
+  const byLevel: Record<string, number> = {};
+  for (const g of byDifficulty) byLevel[(g.difficulty || "").toLowerCase()] = g._count._all;
+  return { total, byLevel, categories: cats.map((c) => c.category).filter(Boolean) };
 }
 
 export function countSavedInterviews(userId: string) {
   return prisma.savedInterview.count({ where: { userId } });
 }
 
+// ── Tiny problem insights for the dashboard (instead of shipping the list) ──
+export async function getProblemInsights(userId: string) {
+  const problems = (await listProblemsWithStatus(userId, 600)) as Array<{
+    id: string; slug: string; title: string; difficulty: string; tags?: string[]; status?: string;
+  }>;
+
+  const topicMap = new Map<string, { tag: string; total: number; solved: number }>();
+  for (const p of problems) {
+    for (const tag of p.tags ?? []) {
+      const t = topicMap.get(tag) ?? { tag, total: 0, solved: 0 };
+      t.total++;
+      if (p.status === "SOLVED") t.solved++;
+      topicMap.set(tag, t);
+    }
+  }
+  const skills = [...topicMap.values()].sort((a, b) => b.total - a.total);
+
+  const attempting = problems.filter((p) => p.status === "ATTEMPTING");
+  const untouched = problems.filter((p) => p.status !== "SOLVED" && p.status !== "ATTEMPTING");
+  const recommended = [...attempting, ...untouched]
+    .slice(0, 3)
+    .map((p) => ({ id: p.id, slug: p.slug, title: p.title, difficulty: p.difficulty, tags: (p.tags ?? []).slice(0, 2) }));
+
+  const solvedTags = [...new Set(problems.filter((p) => p.status === "SOLVED").flatMap((p) => p.tags ?? []))].slice(0, 30);
+  const unsolvedCount = problems.filter((p) => p.status !== "SOLVED").length;
+
+  return { skills, recommended, solvedTags, unsolvedCount };
+}
+
 // ── The aggregate the dashboard loads in one request ────────────
 export async function getDashboard(userId: string) {
   const [
+    me,
+    social,
     difficultyStats,
     submissions,
     heatmap,
@@ -316,21 +373,23 @@ export async function getDashboard(userId: string) {
     leaderboard,
     pairing,
     continueSolving,
-    problems,
-    bugChallenges,
+    problemInsights,
+    bugInsights,
     savedInterviews,
   ] = await Promise.all([
+    getDashboardUser(userId),
+    getSocialCounts(userId),
     getDifficultyStats(userId),
-    getSubmissionHistory(userId, 1, 25),
+    getSubmissionHistory(userId, 1, 5),
     getHeatmap(userId),
     getRank(userId, "combined"),
     getLeaderboard("combined"),
     getPairingHistory(userId, 1, 3),
     getContinueSolving(userId),
-    listProblemsWithStatus(userId, 600),
-    getBugChallengeSummaries(),
+    getProblemInsights(userId),
+    getBugInsights(),
     countSavedInterviews(userId),
   ]);
 
-  return { difficultyStats, submissions, heatmap, rank, leaderboard, pairing, continueSolving, problems, bugChallenges, savedInterviews };
+  return { me, social, difficultyStats, submissions, heatmap, rank, leaderboard, pairing, continueSolving, problemInsights, bugInsights, savedInterviews };
 }
