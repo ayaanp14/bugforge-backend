@@ -239,9 +239,11 @@ router.post("/submit", requireAuth, async (req, res) => {
 
         await prisma.user.update({
           where: { id: userId },
-          data: { 
+          data: {
             xp: { increment: xpAwarded },
-            questionsXp: { increment: xpAwarded }
+            questionsXp: { increment: xpAwarded },
+            // Rating climbs with every first solve — powers the tier bar
+            rating: { increment: xpAwarded },
           },
         });
 

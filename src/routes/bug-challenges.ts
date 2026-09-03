@@ -260,7 +260,12 @@ router.post("/:id/submit", requireAuth, async (req, res) => {
       awardedXp = BUG_XP;
       await prisma.user.update({
         where: { id: userId },
-        data: { xp: { increment: BUG_XP }, bugsXp: { increment: BUG_XP } },
+        data: {
+          xp: { increment: BUG_XP },
+          bugsXp: { increment: BUG_XP },
+          // Rating climbs with every first fix — powers the tier bar
+          rating: { increment: BUG_XP },
+        },
       });
       await prisma.userStats.upsert({
         where: { userId },

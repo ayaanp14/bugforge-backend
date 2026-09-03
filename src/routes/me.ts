@@ -224,10 +224,11 @@ router.get("/", requireAuth, async (req, res) => {
     }
 
     const getTierTitle = (rating: number) => {
-      if (rating < 1200) return "Novice";
-      if (rating < 1500) return "Warrior";
-      if (rating < 1800) return "Elite";
-      if (rating < 2100) return "Master";
+      // Zero-based ladder (kept in sync with services/me.ts)
+      if (rating < 100) return "Novice";
+      if (rating < 400) return "Warrior";
+      if (rating < 900) return "Elite";
+      if (rating < 1500) return "Master";
       return "Legend";
     };
 
