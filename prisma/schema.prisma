@@ -81,6 +81,7 @@ model User {
   postLikes          PostLike[]
   following          Follow[]          @relation("following")
   followers          Follow[]          @relation("followers")
+  tagAffinities      TagAffinity[]
 }
 
 model Problem {
@@ -325,16 +326,18 @@ model Notification {
 // ── Community: stories/status posts, achievement shares, comments, follows ──
 
 model Post {
-  id        String        @id @default(cuid())
-  userId    String
-  type      String        @default("status") // "status" (story/life post) | "achievement" (shared solve)
-  content   String        @db.Text
+  id         String        @id @default(cuid())
+  userId     String
+  type       String        @default("status") // "status" (story/life post) | "achievement" (shared solve)
+  visibility String        @default("public") // "public" | "followers" | "private"
+  content    String        @db.Text
   meta      Json          @default("{}") // achievement payload: { kind: "problem"|"bug", slug?, challengeId?, title, difficulty?, xp? }
   createdAt DateTime      @default(now())
   updatedAt DateTime      @updatedAt
   user      User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   comments  PostComment[]
   likes     PostLike[]
+  tags      PostTag[]
 
   @@index([createdAt])
   @@index([userId, createdAt])
@@ -373,4 +376,26 @@ model Follow {
 
   @@unique([followerId, followingId])
   @@index([followingId])
+}
+
+model PostTag {
+  id     String @id @default(cuid())
+  postId String
+  tag    String
+  post   Post   @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@unique([postId, tag])
+  @@index([tag])
+}
+
+// Per-user interest profile: which tags this user engages with (implicit signals)
+model TagAffinity {
+  id        String   @id @default(cuid())
+  userId    String
+  tag       String
+  score     Float    @default(0)
+  updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, tag])
 }
