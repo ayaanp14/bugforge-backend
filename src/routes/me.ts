@@ -224,12 +224,12 @@ router.get("/", requireAuth, async (req, res) => {
     }
 
     const getTierTitle = (rating: number) => {
-      // Zero-based ladder (kept in sync with services/me.ts)
+      // Zero-based dojo ladder (kept in sync with services/me.ts)
       if (rating < 100) return "Novice";
-      if (rating < 400) return "Warrior";
-      if (rating < 900) return "Elite";
-      if (rating < 1500) return "Master";
-      return "Legend";
+      if (rating < 400) return "Ninja";
+      if (rating < 900) return "Samurai";
+      if (rating < 1500) return "Sensei";
+      return "Shogun";
     };
 
     // Ranks are now fetched independently via /api/me/rank to optimize performance

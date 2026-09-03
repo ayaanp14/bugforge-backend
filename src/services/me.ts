@@ -1,12 +1,12 @@
 import { prisma } from "../lib/prisma.js";
 
-// Zero-based ladder: rating ≡ lifetime XP, so the bar moves from solve #1
+// Zero-based dojo ladder: rating ≡ lifetime XP, so the bar moves from solve #1
 export function getTierTitle(rating: number) {
   if (rating < 100) return "Novice";
-  if (rating < 400) return "Warrior";
-  if (rating < 900) return "Elite";
-  if (rating < 1500) return "Master";
-  return "Legend";
+  if (rating < 400) return "Ninja";
+  if (rating < 900) return "Samurai";
+  if (rating < 1500) return "Sensei";
+  return "Shogun";
 }
 
 /**
