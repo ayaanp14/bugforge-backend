@@ -79,6 +79,10 @@ model User {
   posts              Post[]
   postComments       PostComment[]
   postLikes          PostLike[]
+  postCommentLikes   PostCommentLike[]
+  savedPosts         SavedPost[]
+  pollVotes          PollVote[]
+  postReports        PostReport[]
   following          Follow[]          @relation("following")
   followers          Follow[]          @relation("followers")
   tagAffinities      TagAffinity[]
@@ -347,16 +351,25 @@ model Notification {
 model Post {
   id         String        @id @default(cuid())
   userId     String
-  type       String        @default("status") // "status" (story/life post) | "achievement" (shared solve)
+  // "status" (story/life post) | "achievement" (shared solve) | "question" (help
+  // request pinned to a problem/bug) | "poll"
+  type       String        @default("status")
   visibility String        @default("public") // "public" | "followers" | "private"
   content    String        @db.Text
-  meta      Json          @default("{}") // achievement payload: { kind: "problem"|"bug", slug?, challengeId?, title, difficulty?, xp? }
+  meta      Json          @default("{}") // achievement payload: { kind: "problem"|"bug", slug?, challengeId?, title, difficulty?, xp? }; poll: { poll: { options: string[] } }; question: { ask: { slug?, challengeId?, title? } }
   createdAt DateTime      @default(now())
   updatedAt DateTime      @updatedAt
+  // Set the first time the author edits, so the card can say "edited"
+  editedAt  DateTime?
+  // Questions: the comment the asker accepted as the answer
+  resolvedCommentId String?
   user      User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   comments  PostComment[]
   likes     PostLike[]
   tags      PostTag[]
+  saves     SavedPost[]
+  pollVotes PollVote[]
+  reports   PostReport[]
 
   @@index([createdAt])
   @@index([userId, createdAt])
@@ -367,11 +380,69 @@ model PostComment {
   postId    String
   userId    String
   content   String   @db.Text
+  // Threading is one level deep. Deliberately a plain column rather than a
+  // self-relation: MySQL handles a self-referencing FK badly when the parent
+  // post cascades, and the reply tree is assembled in the route anyway.
+  parentId  String?
+  createdAt DateTime @default(now())
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  likes     PostCommentLike[]
+
+  @@index([postId, createdAt])
+  @@index([parentId])
+}
+
+model PostCommentLike {
+  id        String      @id @default(cuid())
+  commentId String
+  userId    String
+  createdAt DateTime    @default(now())
+  comment   PostComment @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([commentId, userId])
+}
+
+// Bookmarks — "read it later", private to the saver.
+model SavedPost {
+  id        String   @id @default(cuid())
+  postId    String
+  userId    String
   createdAt DateTime @default(now())
   post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@index([postId, createdAt])
+  @@unique([postId, userId])
+  @@index([userId, createdAt])
+}
+
+// One vote per person per poll; the options live in Post.meta.poll.options.
+model PollVote {
+  id        String   @id @default(cuid())
+  postId    String
+  userId    String
+  option    Int
+  createdAt DateTime @default(now())
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([postId, userId])
+  @@index([postId])
+}
+
+// Moderation queue: one report per person per post.
+model PostReport {
+  id        String   @id @default(cuid())
+  postId    String
+  userId    String
+  reason    String
+  createdAt DateTime @default(now())
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([postId, userId])
+  @@index([createdAt])
 }
 
 model PostLike {
