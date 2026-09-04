@@ -75,6 +75,18 @@ export function listNotifications(userId: string, limit = 30) {
   });
 }
 
+/**
+ * The badge count on every /api/me. Deliberately NOT cached.
+ *
+ * It was, briefly. But the cache layer serves stale-while-revalidate, which is
+ * right for a dashboard and wrong for a notification badge: the first read after
+ * a new notification returns the old count while refreshing behind it, so the
+ * bell silently lags. Any write from outside this process makes that worse.
+ *
+ * This is one COUNT against the (userId, isRead) index, and the route already
+ * runs it in parallel with the cached payload, so it costs no extra wall-clock
+ * time. Correctness here is worth more than the round trip.
+ */
 export function countUnread(userId: string) {
   return prisma.notification.count({ where: { userId, isRead: false } });
 }

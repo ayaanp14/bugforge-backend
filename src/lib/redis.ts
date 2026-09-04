@@ -98,6 +98,45 @@ export async function redisDel(...keys: string[]): Promise<void> {
   await guard(r.del(...keys));
 }
 
+const INVALIDATION_CHANNEL = "cache:invalidate";
+let subscriber: Redis | null = null;
+
+/**
+ * Tell every other instance to drop a key from its in-process tier.
+ *
+ * Deleting from Redis is not enough on its own: each instance also holds an L1
+ * copy, and stale-while-revalidate keeps serving that copy well past its TTL.
+ * Without this broadcast, a submission handled by instance A would leave
+ * instance B serving the old dashboard for the whole stale window.
+ */
+export function publishInvalidation(key: string): void {
+  const r = connect();
+  if (!r) return;
+  void guard(r.publish(INVALIDATION_CHANNEL, key));
+}
+
+/**
+ * Listen for those broadcasts. Uses a dedicated connection because a subscribed
+ * Redis client cannot issue ordinary commands. Call once, at startup — not at
+ * import time, so scripts that merely pull in a service do not open a socket
+ * and then hang on exit.
+ */
+export function subscribeInvalidations(onKey: (key: string) => void): void {
+  const r = connect();
+  if (!r || subscriber) return;
+
+  subscriber = r.duplicate();
+  subscriber.on("error", () => {
+    /* the main connection already logs; a dead subscriber only costs freshness */
+  });
+  subscriber.on("message", (channel: string, message: string) => {
+    if (channel === INVALIDATION_CHANNEL) onKey(message);
+  });
+  void subscriber.subscribe(INVALIDATION_CHANNEL).catch(() => {
+    /* retries with the connection */
+  });
+}
+
 /**
  * Open the connection ahead of the first request.
  *
@@ -118,11 +157,14 @@ export async function warmRedis(): Promise<void> {
 
 /** For graceful shutdown; safe to call when Redis was never used. */
 export async function redisQuit(): Promise<void> {
-  if (!client) return;
-  try {
-    await client.quit();
-  } catch {
-    client.disconnect();
+  for (const c of [subscriber, client]) {
+    if (!c) continue;
+    try {
+      await c.quit();
+    } catch {
+      c.disconnect();
+    }
   }
+  subscriber = null;
   client = null;
 }
