@@ -433,7 +433,10 @@ export function invalidateDashboard(userId: string): void {
  * produces on a cache miss, so the HTTP response is byte-identical either way.
  */
 export async function getDashboard(userId: string) {
-  return cachedShared(dashboardKey(userId), 60, () => buildDashboard(userId));
+  // 5 minutes, not 60s: a miss costs ~18 round trips at ~500ms each against the
+  // remote database, so misses are what to avoid. Freshness is preserved by
+  // invalidateDashboard() firing on every submission rather than by a short TTL.
+  return cachedShared(dashboardKey(userId), 300, () => buildDashboard(userId));
 }
 
 async function buildDashboard(userId: string) {
