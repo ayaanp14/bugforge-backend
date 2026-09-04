@@ -1,6 +1,6 @@
 import { prisma } from "../lib/prisma.js";
 import { cached, cachedShared, invalidate } from "../lib/cache.js";
-import { getDashboardUser, getSocialCounts } from "./me.js";
+import { getDashboardUser, getSocialCounts, invalidateMe } from "./me.js";
 
 /**
  * Query functions shared by the per-widget /api/me routes and the aggregated
@@ -415,13 +415,18 @@ export async function getProblemInsights(userId: string) {
 const dashboardKey = (userId: string) => `dash:v1:${userId}`;
 
 /**
- * Drop a user's cached dashboard. Call after anything that changes what it shows
- * — a submission, an XP award — so the next load is rebuilt rather than served
- * stale. Without this the 60s TTL would be the only thing correcting it, and a
- * user who just solved a problem would watch their own stats fail to move.
+ * Drop everything cached about a user — the dashboard aggregate and /api/me.
+ * Call after anything that changes what they show (a submission, an XP award)
+ * so the next read is rebuilt rather than served stale. Without this the TTL
+ * would be the only thing correcting it, and a user who just solved a problem
+ * would watch their own stats fail to move.
+ *
+ * Both are cleared together because they are built from the same underlying
+ * facts: forgetting one leaves the header and the page below it disagreeing.
  */
 export function invalidateDashboard(userId: string): void {
   invalidate(dashboardKey(userId));
+  invalidateMe(userId);
 }
 
 /**

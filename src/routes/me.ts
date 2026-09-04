@@ -3,6 +3,7 @@ import { requireAuth } from "../middleware/auth.js";
 import { prisma } from "../lib/prisma.js";
 import { getHeatmap, getSubmissionHistory, getPairingHistory, getDifficultyStats, getRank, getDashboard } from "../services/dashboard.js";
 import { ensureBaseline, listNotifications, countUnread, markAllRead } from "../services/notifications.js";
+import { getMePayload, invalidateMe } from "../services/me.js";
 
 const router = Router();
 
@@ -113,198 +114,27 @@ router.get("/username-check", requireAuth, async (req, res) => {
 // GET /api/me — returns current authenticated user
 router.get("/", requireAuth, async (req, res) => {
   try {
-    let user = await prisma.user.findUnique({
-      where: { id: req.user!.userId },
-      select: {
-        id: true,
-        name: true,
-        username: true,
-        instituteName: true,
-        email: true,
-        avatar_url: true,
-        gender: true,
-        location: true,
-        birthday: true,
-        website: true,
-        github: true,
-        linkedin: true,
-        twitter: true,
-        readme: true,
-        xp: true,
-        questionsXp: true,
-        bugsXp: true,
-        rating: true,
-        provider: true,
-        createdAt: true,
-        stats: {
-          select: {
-            problemsSolved: true,
-            bugsFixed: true,
-            currentStreak: true,
-            longestStreak: true,
-            lastActive: true,
-          },
-        },
-      },
-    });
+    const userId = req.user!.userId;
 
-    if (!user) {
+    // The profile row and trends are cached (they change only on submissions and
+    // profile edits). The unread badge is NOT: it has to be right the moment a
+    // notification lands, so it is read live, in parallel with the cache lookup.
+    const [payload, unreadNotifications] = await Promise.all([
+      getMePayload(userId),
+      // Fail-soft: a notification-subsystem problem must never break /api/me,
+      // since the whole app treats a failed /api/me as "not logged in".
+      countUnread(userId).catch((err) => {
+        console.error("GET /api/me countUnread error:", err);
+        return 0;
+      }),
+    ]);
+
+    if (!payload) {
       res.status(404).json({ error: "User not found" });
       return;
     }
 
-    if (user.stats) {
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      const lastActive = new Date(user.stats.lastActive);
-      lastActive.setHours(0, 0, 0, 0);
-
-      const diffDays = Math.floor((today.getTime() - lastActive.getTime()) / (1000 * 60 * 60 * 24));
-
-      if (diffDays > 1 && user.stats.currentStreak > 0) {
-        await prisma.userStats.update({
-          where: { userId: user.id },
-          data: { currentStreak: 0 }
-        });
-        user.stats.currentStreak = 0;
-      }
-    }
-
-    if (!user.username) {
-      const baseName = user.name || "user";
-      let newUsername = baseName.toLowerCase().replace(/\s+/g, "_").replace(/[^a-z0-9_]/g, "");
-      if (newUsername.length < 3) newUsername = "user_" + Math.random().toString(36).substring(2, 7);
-      
-      // Check uniqueness and append suffix if needed
-      const existing = await prisma.user.findFirst({ where: { username: newUsername } });
-      if (existing) {
-        newUsername += "_" + Math.random().toString(36).substring(2, 5);
-      }
-
-      user = await prisma.user.update({
-        where: { id: user.id },
-        data: { username: newUsername },
-        select: {
-          id: true,
-          name: true,
-          username: true,
-          instituteName: true,
-          email: true,
-          avatar_url: true,
-          gender: true,
-          location: true,
-          birthday: true,
-          website: true,
-          github: true,
-          linkedin: true,
-          twitter: true,
-          readme: true,
-          xp: true,
-          questionsXp: true,
-          bugsXp: true,
-          rating: true,
-          provider: true,
-          createdAt: true,
-          stats: {
-            select: {
-              problemsSolved: true,
-              bugsFixed: true,
-              currentStreak: true,
-              longestStreak: true,
-              lastActive: true,
-            },
-          },
-        },
-      });
-    }
-
-    if (!user) {
-      res.status(404).json({ error: "User not found" });
-      return;
-    }
-
-    const getTierTitle = (rating: number) => {
-      // Zero-based dojo ladder (kept in sync with services/me.ts)
-      if (rating < 100) return "Novice";
-      if (rating < 400) return "Ninja";
-      if (rating < 900) return "Samurai";
-      if (rating < 1500) return "Sensei";
-      return "Shogun";
-    };
-
-    // Ranks are now fetched independently via /api/me/rank to optimize performance
-    const globalRank = user.xp > 0 ? "..." : null; 
-
-    // --- Trend Calculations (Ensuring only FIRST-TIME solves are counted) ---
-    const now = new Date();
-    const last7Days = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-    const last24Hours = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-
-    // Get all unique problems solved in the last 7 days
-    const recentSolvedProblems = await prisma.submission.findMany({
-      where: {
-        userId: user.id,
-        verdict: "ACCEPTED",
-        submittedAt: { gte: last7Days }
-      },
-      select: {
-        problemId: true,
-        submittedAt: true,
-        problem: { select: { difficulty: true } }
-      },
-      distinct: ['problemId'], // Get each problem once
-    });
-
-    let solvedToday = 0;
-    let xpThisWeek = 0;
-    const xpMap: Record<string, number> = { easy: 10, medium: 20, hard: 30 };
-
-    for (const sub of recentSolvedProblems) {
-      // Check if this was REALLY the first time they solved it
-      const solveCountBefore = await prisma.submission.count({
-        where: {
-          userId: user.id,
-          problemId: sub.problemId,
-          verdict: "ACCEPTED",
-          submittedAt: { lt: sub.submittedAt }
-        }
-      });
-
-      if (solveCountBefore === 0) {
-        // It's a brand new solve!
-        xpThisWeek += xpMap[sub.problem.difficulty.toLowerCase()] ?? 10;
-        if (sub.submittedAt >= last24Hours) {
-          solvedToday++;
-        }
-      }
-    }
-
-    // 3. Bugs Fixed This Week
-    const bugsFixedThisWeek = await prisma.bugSubmission.count({
-      where: {
-        userId: user.id,
-        verdict: "ACCEPTED",
-        submittedAt: { gte: last7Days }
-      }
-    });
-
-    // Fail-soft: a notification-subsystem problem must never break /api/me,
-    // since the whole app treats a failed /api/me as "not logged in".
-    const unreadNotifications = await countUnread(user.id).catch((err) => {
-      console.error("GET /api/me countUnread error:", err);
-      return 0;
-    });
-
-    res.json({
-      ...user,
-      tierTitle: getTierTitle(user.rating),
-      unreadNotifications,
-      trends: {
-        xpThisWeek,
-        solvedToday,
-        bugsFixedThisWeek
-      }
-    });
+    res.json({ ...payload, unreadNotifications });
   } catch (err) {
     console.error("GET /api/me error:", err);
     res.status(500).json({ error: "Internal server error" });
@@ -361,6 +191,10 @@ router.patch("/", requireAuth, async (req, res) => {
         readme: readme !== undefined ? readme : undefined,
       },
     });
+
+    // The profile just changed — drop the cached /api/me so the next read
+    // reflects it instead of serving the pre-edit copy for the TTL.
+    invalidateMe(req.user!.userId);
 
     res.json(updatedUser);
   } catch (err: any) {
