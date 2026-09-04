@@ -9,6 +9,7 @@ import { runBatch } from "../lib/batch-judge.js";
 // batching, gzip, stats) is wrapped around it here at execution time.
 import { applyDriver, type Language as DriverLanguage, type Signature } from "../lib/driver-codegen.js";
 import { FIRST_SOLVE, createNotificationOnce, streakMilestone } from "../services/notifications.js";
+import { invalidateDashboard } from "../services/dashboard.js";
 
 const router = Router();
 
@@ -217,6 +218,9 @@ router.post("/submit", requireAuth, async (req, res) => {
         totalCases: problem.testCases.length, // Only count official cases for ranking
       },
     });
+
+    // The dashboard aggregate is cached; this submission just changed it.
+    invalidateDashboard(userId);
 
     // Award XP and update stats if first ACCEPTED solve
     let awardedXp = 0;

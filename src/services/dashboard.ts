@@ -1,5 +1,5 @@
 import { prisma } from "../lib/prisma.js";
-import { cached } from "../lib/cache.js";
+import { cached, cachedShared, invalidate } from "../lib/cache.js";
 import { getDashboardUser, getSocialCounts } from "./me.js";
 
 /**
@@ -411,7 +411,32 @@ export async function getProblemInsights(userId: string) {
 }
 
 // ── The aggregate the dashboard loads in one request ────────────
+
+const dashboardKey = (userId: string) => `dash:v1:${userId}`;
+
+/**
+ * Drop a user's cached dashboard. Call after anything that changes what it shows
+ * — a submission, an XP award — so the next load is rebuilt rather than served
+ * stale. Without this the 60s TTL would be the only thing correcting it, and a
+ * user who just solved a problem would watch their own stats fail to move.
+ */
+export function invalidateDashboard(userId: string): void {
+  invalidate(dashboardKey(userId));
+}
+
+/**
+ * Cached across instances and restarts. Composing this payload costs ~18 queries
+ * against a remote database, which is far more than one Redis round trip, so it
+ * is the one thing here worth going over the network for.
+ *
+ * Dates serialise to ISO strings through Redis. That matches what res.json()
+ * produces on a cache miss, so the HTTP response is byte-identical either way.
+ */
 export async function getDashboard(userId: string) {
+  return cachedShared(dashboardKey(userId), 60, () => buildDashboard(userId));
+}
+
+async function buildDashboard(userId: string) {
   // difficultyStats and problemInsights both describe the same thing — which
   // published problems this user has solved — so the state behind them is loaded
   // once here and reduced twice, instead of each running its own pair of queries.

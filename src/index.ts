@@ -19,6 +19,7 @@ import communityRouter from "./routes/community.js";
 import { optionalAuth } from "./middleware/auth.js";
 import { platformGuard } from "./middleware/platformGuard.js";
 import { prisma } from "./lib/prisma.js";
+import { warmRedis } from "./lib/redis.js";
 import { encodeCode } from "./lib/obfuscation.js";
 // recoveryCode is generated using Math.random for simplicity
 
@@ -369,6 +370,8 @@ app.get("/health", (_req, res) => {
 });
 
 httpServer.listen(PORT, () => {
+  // Open the cache connection now so the first real request does not pay for it.
+  void warmRedis();
   console.log(`🚀 Backend & WebSocket running on port: ${PORT}`);
   console.log(`   Auth:   POST /api/auth/login`);
   console.log(`   Me:     GET /api/me`);

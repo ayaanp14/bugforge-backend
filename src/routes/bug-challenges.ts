@@ -2,6 +2,7 @@ import { Router } from "express";
 import { prisma } from "../lib/prisma.js";
 import { optionalAuth, requireAuth } from "../middleware/auth.js";
 import { judgeBugProject, type BugFile, type BugLanguage } from "../lib/bug-judge.js";
+import { invalidateDashboard } from "../services/dashboard.js";
 
 const router = Router();
 
@@ -254,6 +255,9 @@ router.post("/:id/submit", requireAuth, async (req, res) => {
         timeTakenSecs: typeof timeTakenSecs === "number" ? Math.max(0, Math.round(timeTakenSecs)) : null,
       },
     });
+
+    // The dashboard aggregate is cached; this submission just changed it.
+    invalidateDashboard(userId);
 
     let awardedXp = 0;
     if (result.verdict === "ACCEPTED" && !alreadySolved) {
