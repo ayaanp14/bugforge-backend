@@ -3,51 +3,65 @@ import { prisma } from "../lib/prisma.js";
 import { optionalAuth, requireAuth } from "../middleware/auth.js";
 import { judgeBugProject, type BugFile, type BugLanguage } from "../lib/bug-judge.js";
 import { invalidateDashboard } from "../services/dashboard.js";
+import {
+  DEFAULT_PAGE_SIZE,
+  getBugHuntIndex,
+  getBugHuntPage,
+  getNeighbours,
+} from "../services/bug-hunts.js";
 
 const router = Router();
 
 const BUG_XP = 50;
 
-// GET /api/bug-challenges — List all published bug hunts
+/**
+ * GET /api/bug-challenges — the paginated hunts index.
+ *
+ * Two modes, so the page costs one request on first paint and one per
+ * "Load more" after that:
+ *
+ *   no `category`  → first `limit` of every category, plus catalogue totals
+ *                    and the tag list for the filter dropdown
+ *   with `category` → that category's slice at `offset`
+ *
+ * Filters (search, difficulty, language, tag) apply in SQL in both modes, so
+ * they search the whole catalogue rather than only the rows already loaded.
+ */
 router.get("/", optionalAuth, async (req, res) => {
   try {
-    const { difficulty, category } = req.query;
+    const str = (v: unknown) => (typeof v === "string" && v.trim() ? v.trim() : undefined);
 
-    const where: any = {
-      isPublished: true,
+    const filters = {
+      search: str(req.query["search"]),
+      difficulty: str(req.query["difficulty"]),
+      language: str(req.query["language"]),
+      tag: str(req.query["tag"]),
     };
 
-    if (difficulty) where.difficulty = difficulty as string;
-    if (category) where.category = category as string;
+    // Clamped: `limit` comes straight from the query string.
+    const limit = Math.min(Math.max(Number(req.query["limit"]) || DEFAULT_PAGE_SIZE, 1), 100);
+    const offset = Math.max(Number(req.query["offset"]) || 0, 0);
+    const category = str(req.query["category"]);
+    const userId = req.user?.userId;
 
-    // One parallel batch — sequential round-trips are what make prod slow
-    const [challenges, solved] = await Promise.all([
-      prisma.bugChallenge.findMany({
-        where,
-        select: {
-          id: true,
-          title: true,
-          difficulty: true,
-          category: true,
-          language: true,
-          tags: true,
-          origin: true,
-          createdAt: true,
-        },
-        orderBy: { createdAt: "desc" },
-      }),
-      req.user
-        ? prisma.bugSubmission.findMany({
-            where: { userId: req.user.userId, verdict: "ACCEPTED" },
-            select: { challengeId: true },
-          })
-        : Promise.resolve([]),
-    ]);
-    const solvedIds = new Set(solved.map((s) => s.challengeId));
-
-    res.json(challenges.map((c) => ({ ...c, solved: solvedIds.has(c.id) })));
+    res.json(
+      category
+        ? await getBugHuntPage(category, filters, limit, offset, userId)
+        : await getBugHuntIndex(filters, limit, userId),
+    );
   } catch (err) {
     console.error("GET /api/bug-challenges error:", err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// GET /api/bug-challenges/:id/neighbours — prev/next for the workspace nav.
+// Declared before /:id so the extra segment isn't swallowed by it.
+router.get("/:id/neighbours", optionalAuth, async (req, res) => {
+  try {
+    res.json(await getNeighbours(String(req.params.id)));
+  } catch (err) {
+    console.error("GET /api/bug-challenges/:id/neighbours error:", err);
     res.status(500).json({ error: "Internal server error" });
   }
 });
