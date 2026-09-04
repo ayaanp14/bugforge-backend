@@ -8,6 +8,7 @@ import cookieParser from "cookie-parser";
 import { createServer } from "http";
 import { Server } from "socket.io";
 import authRouter from "./routes/auth.js";
+import oauthRouter from "./routes/oauth.js";
 import meRouter from "./routes/me.js";
 import problemsRouter from "./routes/problems.js";
 import executionRouter from "./routes/execution.js";
@@ -314,6 +315,7 @@ app.use(cookieParser());
 
 // Routes
 app.use("/api/auth", authRouter);
+app.use("/api/auth", oauthRouter);
 app.use("/api/me", meRouter);
 app.use("/api/problems", problemsRouter);
 app.use("/api/leaderboard", leaderboardRouter);

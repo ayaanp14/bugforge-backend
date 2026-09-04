@@ -4,6 +4,7 @@ import jwt from "jsonwebtoken";
 import { prisma } from "../lib/prisma.js";
 import { optionalAuth } from "../middleware/auth.js";
 import { WELCOME, createNotificationOnce } from "../services/notifications.js";
+import { establishSession, clearSessionCookie, generateUsername } from "../lib/auth-session.js";
 
 const router = Router();
 const JWT_SECRET = process.env["JWT_SECRET"] || "your-secret-key";
@@ -11,19 +12,6 @@ const JWT_SECRET = process.env["JWT_SECRET"] || "your-secret-key";
 // In-memory store for active OTP tokens to support immediate invalidation on resend
 // Key: email, Value: current valid otpToken
 const activeOtpTokens = new Map<string, string>();
-
-// Helper to generate a unique username (same logic as frontend)
-const generateUsername = async (baseName: string) => {
-  let username = baseName.toLowerCase().replace(/\s+/g, "_").replace(/[^a-z0-9_]/g, "");
-  if (username.length < 3) username = "user_" + Math.random().toString(36).substring(2, 7);
-  
-  // Check uniqueness
-  const existing = await prisma.user.findFirst({ where: { username } });
-  if (existing) {
-    username += "_" + Math.random().toString(36).substring(2, 5);
-  }
-  return username;
-};
 
 // POST /api/auth/register
 router.post("/register", async (req, res) => {
@@ -120,22 +108,8 @@ router.post("/login", async (req, res) => {
       return;
     }
 
-    // Generate JWT (matching NextAuth custom JWT format)
-    const payload = {
-      userId: user.id,
-      email: user.email
-    };
-
-    const token = jwt.sign(payload, JWT_SECRET, { algorithm: "HS256" });
-
-    // Set __session cookie
-    res.cookie("__session", token, {
-      httpOnly: true,
-      secure: true, // must be true for SameSite=None
-      sameSite: "none", // required for cross-origin (Vercel → Railway)
-      maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
-      path: "/"
-    });
+    // Same token format and cookie flags as every other sign-in path
+    const token = establishSession(res, user);
 
     res.json({
       message: "Login successful",
@@ -156,12 +130,7 @@ router.post("/login", async (req, res) => {
 
 // POST /api/auth/logout
 router.post("/logout", (req, res) => {
-  res.clearCookie("__session", {
-    path: "/",
-    httpOnly: true,
-    secure: true,
-    sameSite: "none"
-  });
+  clearSessionCookie(res);
   res.json({ message: "Logout successful" });
 });
 
