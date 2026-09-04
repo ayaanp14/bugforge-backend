@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { prisma } from "../lib/prisma.js";
 import { requireAuth } from "../middleware/auth.js";
+import { cachedShared } from "../lib/cache.js";
 
 const router = Router();
 
@@ -536,19 +537,24 @@ router.get("/me", requireAuth, async (req, res) => {
 // GET /api/community/pulse — lightweight activity stats for the sidebar
 router.get("/pulse", requireAuth, async (_req, res) => {
   try {
-    const dayAgo = new Date(Date.now() - 24 * 3600 * 1000);
-    const weekAgo = new Date(Date.now() - 7 * 24 * 3600 * 1000);
-    const [postsToday, winsThisWeek, activeCoders, totalCoders] = await Promise.all([
-      prisma.post.count({ where: { createdAt: { gte: dayAgo } } }),
-      prisma.post.count({ where: { type: "achievement", createdAt: { gte: weekAgo } } }),
-      prisma.post.findMany({
-        where: { createdAt: { gte: weekAgo } },
-        select: { userId: true },
-        distinct: ["userId"],
-      }),
-      prisma.user.count(),
-    ]);
-    res.json({ postsToday, winsThisWeek, activeCoders: activeCoders.length, totalCoders });
+    // Global counters, identical for every viewer — four queries that were
+    // recomputed per request. 60s keeps "posts today" feeling live enough.
+    const pulse = await cachedShared("community:pulse", 60, async () => {
+      const dayAgo = new Date(Date.now() - 24 * 3600 * 1000);
+      const weekAgo = new Date(Date.now() - 7 * 24 * 3600 * 1000);
+      const [postsToday, winsThisWeek, activeCoders, totalCoders] = await Promise.all([
+        prisma.post.count({ where: { createdAt: { gte: dayAgo } } }),
+        prisma.post.count({ where: { type: "achievement", createdAt: { gte: weekAgo } } }),
+        prisma.post.findMany({
+          where: { createdAt: { gte: weekAgo } },
+          select: { userId: true },
+          distinct: ["userId"],
+        }),
+        prisma.user.count(),
+      ]);
+      return { postsToday, winsThisWeek, activeCoders: activeCoders.length, totalCoders };
+    });
+    res.json(pulse);
   } catch (err) {
     console.error("GET /api/community/pulse error:", err);
     res.status(500).json({ error: "Internal server error" });
@@ -558,15 +564,20 @@ router.get("/pulse", requireAuth, async (_req, res) => {
 // GET /api/community/tags/trending — top tags of the last 7 days
 router.get("/tags/trending", requireAuth, async (_req, res) => {
   try {
-    const weekAgo = new Date(Date.now() - 7 * 24 * 3600 * 1000);
-    const groups = await prisma.postTag.groupBy({
-      by: ["tag"],
-      where: { post: { createdAt: { gte: weekAgo }, visibility: "public" } },
-      _count: { _all: true },
-      orderBy: { _count: { tag: "desc" } },
-      take: 10,
+    // A groupBy over a week of public posts, same answer for everyone.
+    // Trending lists don't need to move faster than every five minutes.
+    const trending = await cachedShared("community:trending", 300, async () => {
+      const weekAgo = new Date(Date.now() - 7 * 24 * 3600 * 1000);
+      const groups = await prisma.postTag.groupBy({
+        by: ["tag"],
+        where: { post: { createdAt: { gte: weekAgo }, visibility: "public" } },
+        _count: { _all: true },
+        orderBy: { _count: { tag: "desc" } },
+        take: 10,
+      });
+      return groups.map((g) => ({ tag: g.tag, posts: g._count._all }));
     });
-    res.json(groups.map((g) => ({ tag: g.tag, posts: g._count._all })));
+    res.json(trending);
   } catch (err) {
     console.error("GET /api/community/tags/trending error:", err);
     res.status(500).json({ error: "Internal server error" });
