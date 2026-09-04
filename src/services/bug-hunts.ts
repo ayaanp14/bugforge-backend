@@ -1,5 +1,6 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "../lib/prisma.js";
+import { cached, cachedShared } from "../lib/cache.js";
 
 /**
  * Query layer for the bug-hunts index.
@@ -164,61 +165,109 @@ export async function getBugHuntPage(
   return { category, total, offset, items: withSolved(items, solved) };
 }
 
+type SharedCatalogue = {
+  total: number;
+  byLanguage: { language: string; total: number }[];
+  byDifficulty: { difficulty: string; total: number }[];
+  tags: string[];
+};
+
 /**
- * Catalogue-wide totals for the sidebar and the tag dropdown. Deliberately
- * unfiltered: these describe the whole catalogue, not the current view, which
- * is how the page behaved when it held every record in memory.
+ * The half of the summary that is identical for every user.
+ *
+ * Four aggregates plus a full read of the `tags` column — the tag list can't be
+ * done as a groupBy because tags is a JSON array, so building the filter
+ * dropdown means touching every row. That is well over the ~300ms Redis costs,
+ * which is what earns it a place in the shared tier rather than memory alone.
+ *
+ * Deliberately unfiltered: this describes the whole catalogue, not the current
+ * view, which is how the sidebar behaved when the browser held every record.
+ */
+function getSharedCatalogue(): Promise<SharedCatalogue> {
+  return cachedShared("bug:catalogue", 300, async () => {
+    const where: Prisma.BugChallengeWhereInput = { isPublished: true };
+
+    const [total, byLanguage, byDifficulty, tagRows] = await Promise.all([
+      prisma.bugChallenge.count({ where }),
+      prisma.bugChallenge.groupBy({ by: ["language"], where, _count: { _all: true } }),
+      prisma.bugChallenge.groupBy({ by: ["difficulty"], where, _count: { _all: true } }),
+      prisma.bugChallenge.findMany({ where, select: { tags: true } }),
+    ]);
+
+    const tagSet = new Set<string>();
+    for (const row of tagRows) {
+      if (Array.isArray(row.tags)) {
+        for (const t of row.tags) if (typeof t === "string") tagSet.add(t);
+      }
+    }
+
+    return {
+      total,
+      byLanguage: byLanguage.map((l) => ({ language: l.language, total: l._count._all })),
+      byDifficulty: byDifficulty.map((d) => ({ difficulty: d.difficulty, total: d._count._all })),
+      tags: [...tagSet].sort(),
+    };
+  });
+}
+
+/**
+ * Catalogue totals with this user's solved counts layered on.
+ *
+ * The shared half is cached and therefore handed to every caller — so this maps
+ * it into fresh objects rather than assigning onto them. Mutating a cached
+ * value would leak one user's solved counts to everyone until the TTL expired.
  */
 async function getCatalogueSummary(solved: Set<string>) {
-  const where: Prisma.BugChallengeWhereInput = { isPublished: true };
-
-  const [total, byLanguageRaw, byDifficultyRaw, tagRows, solvedRows] = await Promise.all([
-    prisma.bugChallenge.count({ where }),
-    prisma.bugChallenge.groupBy({ by: ["language"], where, _count: { _all: true } }),
-    prisma.bugChallenge.groupBy({ by: ["difficulty"], where, _count: { _all: true } }),
-    prisma.bugChallenge.findMany({ where, select: { tags: true } }),
-    prisma.bugChallenge.findMany({
-      where: { ...where, id: { in: [...solved] } },
-      select: { language: true, difficulty: true },
-    }),
+  const [shared, solvedRows] = await Promise.all([
+    getSharedCatalogue(),
+    solved.size > 0
+      ? prisma.bugChallenge.findMany({
+          where: { isPublished: true, id: { in: [...solved] } },
+          select: { language: true, difficulty: true },
+        })
+      : Promise.resolve([]),
   ]);
 
   const countSolved = (key: "language" | "difficulty", value: string) =>
     solvedRows.filter((r) => r[key] === value).length;
 
-  const tagSet = new Set<string>();
-  for (const row of tagRows) {
-    if (Array.isArray(row.tags)) {
-      for (const t of row.tags) if (typeof t === "string") tagSet.add(t);
-    }
-  }
-
   return {
     summary: {
-      total,
+      total: shared.total,
       solved: solvedRows.length,
-      byLanguage: byLanguageRaw.map((l) => ({
-        language: l.language,
-        total: l._count._all,
+      byLanguage: shared.byLanguage.map((l) => ({
+        ...l,
         solved: countSolved("language", l.language),
       })),
-      byDifficulty: byDifficultyRaw.map((d) => ({
-        difficulty: d.difficulty,
-        total: d._count._all,
+      byDifficulty: shared.byDifficulty.map((d) => ({
+        ...d,
         solved: countSolved("difficulty", d.difficulty),
       })),
     },
-    tags: [...tagSet].sort(),
+    tags: shared.tags,
   };
+}
+
+/**
+ * The catalogue in display order, ids only.
+ *
+ * Memory-only: it's a single indexed query, so a Redis round trip would cost
+ * more than the query it replaces. The order changes only when a hunt is
+ * published, which happens through the seed scripts rather than the API.
+ */
+function orderedIds(): Promise<{ id: string }[]> {
+  return cached("bug:id-order", 300_000, () =>
+    prisma.bugChallenge.findMany({
+      where: { isPublished: true },
+      select: { id: true },
+      orderBy: { createdAt: "desc" },
+    }),
+  );
 }
 
 /** Previous/next hunt in the default catalogue order, for workspace nav. */
 export async function getNeighbours(id: string) {
-  const ids = await prisma.bugChallenge.findMany({
-    where: { isPublished: true },
-    select: { id: true },
-    orderBy: { createdAt: "desc" },
-  });
+  const ids = await orderedIds();
   const i = ids.findIndex((r) => r.id === id);
   return {
     prevId: i > 0 ? ids[i - 1]!.id : null,
