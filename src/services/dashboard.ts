@@ -1,4 +1,5 @@
 import { prisma } from "../lib/prisma.js";
+import { cached } from "../lib/cache.js";
 import { getDashboardUser, getSocialCounts } from "./me.js";
 
 /**
@@ -6,49 +7,81 @@ import { getDashboardUser, getSocialCounts } from "./me.js";
  * GET /api/me/dashboard endpoint. Each returns exactly the JSON its route used to.
  */
 
-// ── Difficulty stats ────────────────────────────────────────────
-export async function getDifficultyStats(userId: string) {
-  const [totalProblems, userSubmissions] = await Promise.all([
-    prisma.problem.groupBy({
-      by: ["difficulty"],
+type CatalogueRow = {
+  id: string;
+  title: string;
+  slug: string;
+  difficulty: string;
+  tags: unknown;
+  createdAt: Date;
+  timeLimitMs: number;
+};
+
+/** Which published problems this user has solved, and which they have only tried. */
+export type ProblemState = {
+  catalogue: CatalogueRow[];
+  solved: Set<string>;
+  attempted: Set<string>;
+};
+
+const tagsOf = (row: { tags: unknown }): string[] => (Array.isArray(row.tags) ? (row.tags as string[]) : []);
+
+/**
+ * The published catalogue is identical for every user, so it is fetched once per
+ * TTL window rather than once per dashboard load. Previously this was re-read on
+ * every request, 600 rows at a time, including a JSON tags column per row.
+ */
+function getCatalogue(): Promise<CatalogueRow[]> {
+  return cached("catalogue:published", 120_000, () =>
+    prisma.problem.findMany({
       where: { isPublished: true },
-      _count: { _all: true },
+      select: { id: true, title: true, slug: true, difficulty: true, tags: true, createdAt: true, timeLimitMs: true },
+      orderBy: { createdAt: "desc" },
     }),
-    prisma.submission.findMany({
-      where: { userId, problem: { isPublished: true } },
-      select: { problemId: true, verdict: true, problem: { select: { difficulty: true } } },
-    }),
+  );
+}
+
+/**
+ * Solve status as two GROUP BYs returning one row per problem, rather than
+ * pulling every submission row the user has ever made and reducing in JS. Both
+ * hit the (userId, verdict, submittedAt) index.
+ */
+export async function loadProblemState(userId: string): Promise<ProblemState> {
+  const [catalogue, solvedRows, touchedRows] = await Promise.all([
+    getCatalogue(),
+    prisma.submission.groupBy({ by: ["problemId"], where: { userId, verdict: "ACCEPTED" } }),
+    prisma.submission.groupBy({ by: ["problemId"], where: { userId } }),
   ]);
 
+  const solved = new Set(solvedRows.map((r) => r.problemId));
+  const attempted = new Set(touchedRows.map((r) => r.problemId).filter((id) => !solved.has(id)));
+  return { catalogue, solved, attempted };
+}
+
+// ── Difficulty stats ────────────────────────────────────────────
+/** Pure computation over an already-loaded ProblemState — issues no queries. */
+export function computeDifficultyStats(state: ProblemState) {
   const totalMap: Record<string, number> = { easy: 0, medium: 0, hard: 0 };
-  totalProblems.forEach((group) => {
-    totalMap[group.difficulty.toLowerCase()] = group._count._all;
-  });
-
-  // Track best verdict per unique problem
-  const best: Record<string, { difficulty: string; isSolved: boolean }> = {};
-  userSubmissions.forEach((sub) => {
-    const existing = best[sub.problemId];
-    const isAccepted = sub.verdict === "ACCEPTED";
-    if (!existing) {
-      best[sub.problemId] = { difficulty: sub.problem.difficulty.toLowerCase(), isSolved: isAccepted };
-    } else if (isAccepted) {
-      existing.isSolved = true;
-    }
-  });
-
   const solvedMap: Record<string, number> = { easy: 0, medium: 0, hard: 0 };
   const attemptedMap: Record<string, number> = { easy: 0, medium: 0, hard: 0 };
-  Object.values(best).forEach((p) => {
-    if (p.isSolved) solvedMap[p.difficulty] = (solvedMap[p.difficulty] ?? 0) + 1;
-    else attemptedMap[p.difficulty] = (attemptedMap[p.difficulty] ?? 0) + 1;
-  });
+
+  for (const p of state.catalogue) {
+    const key = p.difficulty.toLowerCase();
+    if (!(key in totalMap)) continue;
+    totalMap[key] += 1;
+    if (state.solved.has(p.id)) solvedMap[key] += 1;
+    else if (state.attempted.has(p.id)) attemptedMap[key] += 1;
+  }
 
   return {
     easy: { solved: solvedMap.easy, attempted: attemptedMap.easy, total: totalMap.easy },
     medium: { solved: solvedMap.medium, attempted: attemptedMap.medium, total: totalMap.medium },
     hard: { solved: solvedMap.hard, attempted: attemptedMap.hard, total: totalMap.hard },
   };
+}
+
+export async function getDifficultyStats(userId: string) {
+  return computeDifficultyStats(await loadProblemState(userId));
 }
 
 // ── Submission history (problems + bug hunts, newest first) ─────
@@ -190,6 +223,15 @@ export async function getRank(userId: string, type = "combined") {
 
 // ── Leaderboard (top 10) ────────────────────────────────────────
 export async function getLeaderboard(type = "combined") {
+  // Normalise before it becomes a cache key: the route passes this straight from
+  // the query string, and anything unrecognised already fell through to combined.
+  const kind = type === "questions" ? "questions" : type === "bugs" ? "bugs" : "combined";
+  // Same top 10 and same user count for everyone, so compute it once per window
+  // instead of once per dashboard load.
+  return cached(`leaderboard:${kind}`, 60_000, () => queryLeaderboard(kind));
+}
+
+async function queryLeaderboard(type: "combined" | "questions" | "bugs") {
   let orderBy: Record<string, "desc"> = { xp: "desc" };
   if (type === "questions") orderBy = { questionsXp: "desc" };
   if (type === "bugs") orderBy = { bugsXp: "desc" };
@@ -293,31 +335,22 @@ export async function getContinueSolving(userId: string) {
 
 // ── Catalogue with the user's per-problem status ────────────────
 export async function listProblemsWithStatus(userId: string, take = 100) {
-  const problems = await prisma.problem.findMany({
-    where: { isPublished: true },
-    select: { id: true, title: true, slug: true, difficulty: true, tags: true, createdAt: true, timeLimitMs: true },
-    orderBy: { createdAt: "desc" },
-    take,
-  });
-  if (problems.length === 0) return [];
-
-  const submissions = await prisma.submission.findMany({
-    where: { userId, problemId: { in: problems.map((p) => p.id) } },
-    select: { problemId: true, verdict: true },
-  });
-
-  const statusMap: Record<string, "SOLVED" | "ATTEMPTING"> = {};
-  submissions.forEach((sub) => {
-    if (sub.verdict === "ACCEPTED") statusMap[sub.problemId] = "SOLVED";
-    else if (statusMap[sub.problemId] !== "SOLVED") statusMap[sub.problemId] = "ATTEMPTING";
-  });
-
-  return problems.map((p) => ({ ...p, status: statusMap[p.id] || "UNSOLVED" }));
+  const state = await loadProblemState(userId);
+  return state.catalogue.slice(0, take).map((p) => ({
+    ...p,
+    status: state.solved.has(p.id) ? "SOLVED" : state.attempted.has(p.id) ? "ATTEMPTING" : "UNSOLVED",
+  }));
 }
 
 // ── Bug hunts + saved interviews ────────────────────────────────
 // Counts only — the dashboard never renders individual bug challenges
 export async function getBugInsights() {
+  // Catalogue-wide counts, identical for every user and changing only when a bug
+  // challenge is published — a long window is safe here.
+  return cached("bug-insights", 300_000, queryBugInsights);
+}
+
+async function queryBugInsights() {
   const [total, byDifficulty, cats] = await Promise.all([
     prisma.bugChallenge.count({ where: { isPublished: true } }),
     prisma.bugChallenge.groupBy({ by: ["difficulty"], where: { isPublished: true }, _count: { _all: true } }),
@@ -333,63 +366,83 @@ export function countSavedInterviews(userId: string) {
 }
 
 // ── Tiny problem insights for the dashboard (instead of shipping the list) ──
-export async function getProblemInsights(userId: string) {
-  const problems = (await listProblemsWithStatus(userId, 600)) as Array<{
-    id: string; slug: string; title: string; difficulty: string; tags?: string[]; status?: string;
-  }>;
+/** Pure computation over an already-loaded ProblemState — issues no queries. */
+export function computeProblemInsights(state: ProblemState) {
+  const { catalogue, solved, attempted } = state;
 
   const topicMap = new Map<string, { tag: string; total: number; solved: number }>();
-  for (const p of problems) {
-    for (const tag of p.tags ?? []) {
+  const solvedTagSet = new Set<string>();
+  const attempting: CatalogueRow[] = [];
+  const untouched: CatalogueRow[] = [];
+  let unsolvedCount = 0;
+
+  // One pass: the previous version walked the list five separate times.
+  for (const p of catalogue) {
+    const isSolved = solved.has(p.id);
+    const isAttempting = !isSolved && attempted.has(p.id);
+    const tags = tagsOf(p);
+
+    for (const tag of tags) {
       const t = topicMap.get(tag) ?? { tag, total: 0, solved: 0 };
       t.total++;
-      if (p.status === "SOLVED") t.solved++;
+      if (isSolved) t.solved++;
       topicMap.set(tag, t);
     }
-  }
-  const skills = [...topicMap.values()].sort((a, b) => b.total - a.total);
 
-  const attempting = problems.filter((p) => p.status === "ATTEMPTING");
-  const untouched = problems.filter((p) => p.status !== "SOLVED" && p.status !== "ATTEMPTING");
+    if (isSolved) {
+      for (const tag of tags) solvedTagSet.add(tag);
+    } else {
+      unsolvedCount++;
+      if (isAttempting) attempting.push(p);
+      else if (untouched.length < 3) untouched.push(p);
+    }
+  }
+
+  const skills = [...topicMap.values()].sort((a, b) => b.total - a.total);
   const recommended = [...attempting, ...untouched]
     .slice(0, 3)
-    .map((p) => ({ id: p.id, slug: p.slug, title: p.title, difficulty: p.difficulty, tags: (p.tags ?? []).slice(0, 2) }));
+    .map((p) => ({ id: p.id, slug: p.slug, title: p.title, difficulty: p.difficulty, tags: tagsOf(p).slice(0, 2) }));
 
-  const solvedTags = [...new Set(problems.filter((p) => p.status === "SOLVED").flatMap((p) => p.tags ?? []))].slice(0, 30);
-  const unsolvedCount = problems.filter((p) => p.status !== "SOLVED").length;
+  return { skills, recommended, solvedTags: [...solvedTagSet].slice(0, 30), unsolvedCount };
+}
 
-  return { skills, recommended, solvedTags, unsolvedCount };
+export async function getProblemInsights(userId: string) {
+  return computeProblemInsights(await loadProblemState(userId));
 }
 
 // ── The aggregate the dashboard loads in one request ────────────
 export async function getDashboard(userId: string) {
+  // difficultyStats and problemInsights both describe the same thing — which
+  // published problems this user has solved — so the state behind them is loaded
+  // once here and reduced twice, instead of each running its own pair of queries.
   const [
     me,
     social,
-    difficultyStats,
+    problemState,
     submissions,
     heatmap,
     rank,
     leaderboard,
     pairing,
     continueSolving,
-    problemInsights,
     bugInsights,
     savedInterviews,
   ] = await Promise.all([
     getDashboardUser(userId),
     getSocialCounts(userId),
-    getDifficultyStats(userId),
+    loadProblemState(userId),
     getSubmissionHistory(userId, 1, 5),
     getHeatmap(userId),
     getRank(userId, "combined"),
     getLeaderboard("combined"),
     getPairingHistory(userId, 1, 3),
     getContinueSolving(userId),
-    getProblemInsights(userId),
     getBugInsights(),
     countSavedInterviews(userId),
   ]);
+
+  const difficultyStats = computeDifficultyStats(problemState);
+  const problemInsights = computeProblemInsights(problemState);
 
   return { me, social, difficultyStats, submissions, heatmap, rank, leaderboard, pairing, continueSolving, problemInsights, bugInsights, savedInterviews };
 }

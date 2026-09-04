@@ -82,6 +82,12 @@ model User {
   following          Follow[]          @relation("following")
   followers          Follow[]          @relation("followers")
   tagAffinities      TagAffinity[]
+
+  // Rank is a COUNT of users above you and the leaderboard is an ORDER BY on the
+  // same columns; without these both are full table scans on every dashboard load.
+  @@index([xp])
+  @@index([questionsXp])
+  @@index([bugsXp])
 }
 
 model Problem {
@@ -106,6 +112,8 @@ model Problem {
   submissions   Submission[]
   testCases     TestCase[]
   problemTimers ProblemTimer[]
+
+  @@index([isPublished, createdAt])
 }
 
 model CodeDraft {
@@ -119,6 +127,8 @@ model CodeDraft {
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, problemId, language])
+  // "Continue solving" reads the newest draft for one user.
+  @@index([userId, updatedAt])
 }
 
 model ProblemTimer {
@@ -164,6 +174,13 @@ model Submission {
   problem     Problem  @relation(fields: [problemId], references: [id], onDelete: Cascade)
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   room        PairRoom? @relation(fields: [roomId], references: [id], onDelete: SetNull)
+
+  // The FK on userId alone leaves every "newest first" read to filesort the user's
+  // whole history, and every verdict filter to scan it. These two cover the
+  // dashboard's reads: history (userId+submittedAt) and heatmap/streak/solved
+  // counts (userId+verdict, with submittedAt for the date range).
+  @@index([userId, submittedAt])
+  @@index([userId, verdict, submittedAt])
 }
 
 model BugChallenge {
@@ -216,6 +233,8 @@ model BugSubmission {
   submittedAt   DateTime     @default(now())
   challenge     BugChallenge @relation(fields: [challengeId], references: [id], onDelete: Cascade)
   user          User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, submittedAt])
 }
 
 model PairRoom {
