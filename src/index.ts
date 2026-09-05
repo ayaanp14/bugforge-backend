@@ -17,9 +17,11 @@ import bugChallengesRouter from "./routes/bug-challenges.js";
 import pairRoomsRouter from "./routes/pair-rooms.js";
 import interviewsRouter from "./routes/interviews.js";
 import communityRouter from "./routes/community.js";
+import duelsRouter from "./routes/duels.js";
 import { optionalAuth } from "./middleware/auth.js";
 import { platformGuard } from "./middleware/platformGuard.js";
 import { prisma } from "./lib/prisma.js";
+import { setIo, duelRoom } from "./lib/realtime.js";
 import { warmRedis } from "./lib/redis.js";
 import { startCacheInvalidationListener } from "./lib/cache.js";
 import { encodeCode } from "./lib/obfuscation.js";
@@ -40,6 +42,9 @@ const io = new Server(httpServer, {
     credentials: true
   }
 });
+
+// Routes push duel updates through this handle rather than importing the server
+setIo(io);
 
 // Tracks socket.id -> { roomId, userId, isHost, slug } for room dissolution
 const socketMetadata = new Map<string, { roomId: string, userId: string, isHost: boolean, slug: string }>();
@@ -88,6 +93,14 @@ const roomLatestCode = new Map<string, string>();
 
 io.on("connection", (socket) => {
   console.log(`🔌 New client connected: ${socket.id}`);
+
+  // ── Kumite: one room per duel, so /api/duels can push straight to both sides
+  socket.on("join-duel", (duelId: string) => {
+    if (typeof duelId === "string" && duelId) socket.join(duelRoom(duelId));
+  });
+  socket.on("leave-duel", (duelId: string) => {
+    if (typeof duelId === "string" && duelId) socket.leave(duelRoom(duelId));
+  });
 
   socket.on("join-room", async (roomId: string, userId: string) => {
     socket.join(roomId);
@@ -323,6 +336,7 @@ app.use("/api/bug-challenges", bugChallengesRouter);
 app.use("/api/pair-rooms", pairRoomsRouter);
 app.use("/api/interviews", interviewsRouter);
 app.use("/api/community", communityRouter);
+app.use("/api/duels", duelsRouter);
 app.use("/api", executionRouter); 
 
 // GET /api/username-check (Public, non-NextAuth)

@@ -10,6 +10,7 @@ import { runBatch } from "../lib/batch-judge.js";
 import { applyDriver, type Language as DriverLanguage, type Signature } from "../lib/driver-codegen.js";
 import { FIRST_SOLVE, createNotificationOnce, streakMilestone } from "../services/notifications.js";
 import { invalidateDashboard } from "../services/dashboard.js";
+import { emitDuelActivity, settleDuelForSubmission } from "../lib/duels.js";
 
 const router = Router();
 
@@ -39,6 +40,9 @@ router.post("/run", requireAuth, async (req, res) => {
       res.status(404).json({ error: "Problem not found" });
       return;
     }
+
+    // Mid-duel, the other side sees you reach for Run.
+    void emitDuelActivity(req.user!.userId, { problemId }, { type: "running" });
 
     const limits = { timeLimitMs: problem.timeLimitMs, memoryLimitMb: problem.memoryLimitMb };
     const finalCustomCases: CustomTestCase[] = (customTestCases || []).map((tc: any) => ({ ...tc }));
@@ -105,6 +109,19 @@ router.post("/run", requireAuth, async (req, res) => {
       };
     });
 
+    // …and how it went. Only the official cases count, so a custom case cannot
+    // be used to fake a scary-looking score at the opponent.
+    const officialCount = problem.testCases.length;
+    void emitDuelActivity(
+      req.user!.userId,
+      { problemId },
+      {
+        type: "ran",
+        passed: results.slice(0, officialCount).filter((r: { passed: boolean }) => r.passed).length,
+        total: officialCount,
+      },
+    );
+
     res.json({ results });
   } catch (err) {
     console.error("POST /api/run error:", err);
@@ -136,6 +153,9 @@ router.post("/submit", requireAuth, async (req, res) => {
       res.status(400).json({ error: "Unsupported language" });
       return;
     }
+
+    // The tensest moment in a duel: the other side is submitting.
+    void emitDuelActivity(userId, { problemId }, { type: "submitting" });
 
     const problem = await prisma.problem.findUnique({
       where: { id: problemId },
@@ -221,6 +241,14 @@ router.post("/submit", requireAuth, async (req, res) => {
 
     // The dashboard aggregate is cached; this submission just changed it.
     invalidateDashboard(userId);
+
+    // If this solve landed inside a duel, the duel is decided right here — the
+    // Kumite never waits for the client to tell it what the judge already knows.
+    await settleDuelForSubmission(
+      userId,
+      { problemId },
+      { verdict, passed: passedCases, total: problem.testCases.length },
+    );
 
     // Award XP and update stats if first ACCEPTED solve
     let awardedXp = 0;

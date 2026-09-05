@@ -3,6 +3,7 @@ import { prisma } from "../lib/prisma.js";
 import { optionalAuth, requireAuth } from "../middleware/auth.js";
 import { judgeBugProject, type BugFile, type BugLanguage } from "../lib/bug-judge.js";
 import { invalidateDashboard } from "../services/dashboard.js";
+import { emitDuelActivity, settleDuelForSubmission } from "../lib/duels.js";
 import {
   DEFAULT_PAGE_SIZE,
   getBugHuntIndex,
@@ -211,12 +212,22 @@ router.post("/:id/run", requireAuth, async (req, res) => {
       return;
     }
 
+    // Mid-duel, the other side sees you reach for Run — and how it went.
+    const duelTarget = { challengeId: challenge.id };
+    void emitDuelActivity(req.user!.userId, duelTarget, { type: "running" });
+
     const files = mergeFiles(challenge.files, editedFiles);
     const result = await judgeBugProject(
       files,
       challenge.tests.map((t) => ({ name: t.name, source: t.runCommand })),
       challenge.language as BugLanguage
     );
+
+    void emitDuelActivity(req.user!.userId, duelTarget, {
+      type: "ran",
+      passed: result.passedTests,
+      total: result.totalTests,
+    });
 
     res.json(result);
   } catch (err) {
@@ -239,6 +250,9 @@ router.post("/:id/submit", requireAuth, async (req, res) => {
       res.status(404).json({ error: "Challenge not found" });
       return;
     }
+
+    // The tensest moment in a duel: the other side is submitting.
+    void emitDuelActivity(userId, { challengeId: challenge.id }, { type: "submitting" });
 
     const files = mergeFiles(challenge.files, editedFiles);
     const result = await judgeBugProject(
@@ -272,6 +286,14 @@ router.post("/:id/submit", requireAuth, async (req, res) => {
 
     // The dashboard aggregate is cached; this submission just changed it.
     invalidateDashboard(userId);
+
+    // If this fix landed inside a duel, the duel is decided right here — the
+    // Kumite never waits for the client to tell it what the judge already knows.
+    await settleDuelForSubmission(
+      userId,
+      { challengeId: challenge.id },
+      { verdict: result.verdict, passed: result.passedTests, total: result.totalTests },
+    );
 
     let awardedXp = 0;
     if (result.verdict === "ACCEPTED" && !alreadySolved) {

@@ -83,6 +83,7 @@ model User {
   savedPosts         SavedPost[]
   pollVotes          PollVote[]
   postReports        PostReport[]
+  duels              DuelParticipant[]
   following          Follow[]          @relation("following")
   followers          Follow[]          @relation("followers")
   tagAffinities      TagAffinity[]
@@ -116,6 +117,8 @@ model Problem {
   submissions   Submission[]
   testCases     TestCase[]
   problemTimers ProblemTimer[]
+
+  duels         Duel[]
 
   @@index([isPublished, createdAt])
 }
@@ -203,6 +206,7 @@ model BugChallenge {
   submissions BugSubmission[]
   files       ChallengeFile[]
   tests       ChallengeTest[]
+  duels       Duel[]
 }
 
 model ChallengeFile {
@@ -344,6 +348,58 @@ model Notification {
 
   @@index([userId, isRead])
   @@index([userId, createdAt])
+}
+
+// ── Kumite: 1v1 and 2v2 duels over a random problem or bug hunt ──────────
+//
+// A duel row *is* the queue: one sitting at status "waiting" with a free seat is
+// what matchmaking joins, so there is no separate queue table to keep in sync.
+
+model Duel {
+  id          String    @id @default(cuid())
+  mode        String    @default("1v1")     // "1v1" | "2v2"
+  kind        String    @default("problem") // "problem" | "bug"
+  status      String    @default("waiting") // waiting | active | finished | cancelled
+  visibility  String    @default("public")  // public (matchmade) | private (invite code)
+  roomCode    String?   @unique
+  /** Average rating of the warriors already seated — the matchmaking band. */
+  ratingBand  Int       @default(1200)
+  problemId   String?
+  challengeId String?
+  createdBy   String
+  startedAt   DateTime?
+  endedAt     DateTime?
+  winnerTeam  Int?
+  createdAt   DateTime  @default(now())
+
+  problem      Problem?          @relation(fields: [problemId], references: [id], onDelete: SetNull)
+  challenge    BugChallenge?     @relation(fields: [challengeId], references: [id], onDelete: SetNull)
+  participants DuelParticipant[]
+
+  @@index([status, mode, kind, visibility])
+  @@index([createdBy])
+  @@index([createdAt])
+}
+
+model DuelParticipant {
+  id         String    @id @default(cuid())
+  duelId     String
+  userId     String
+  team       Int       @default(1)
+  ready      Boolean   @default(false)
+  /** Live scoreboard: tests passed on this warrior's latest submission. */
+  passed     Int       @default(0)
+  total      Int       @default(0)
+  verdict    String?
+  finishedAt DateTime?
+  xpAwarded  Int       @default(0)
+  joinedAt   DateTime  @default(now())
+
+  duel Duel @relation(fields: [duelId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([duelId, userId])
+  @@index([userId])
 }
 
 // ── Community: stories/status posts, achievement shares, comments, follows ──
