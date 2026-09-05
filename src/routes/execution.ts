@@ -7,7 +7,9 @@ import { LANGUAGE_MAP } from "../lib/judge0.js";
 import { runBatch } from "../lib/batch-judge.js";
 // The editor holds only the solution stub; the language driver (I/O parsing,
 // batching, gzip, stats) is wrapped around it here at execution time.
-import { applyDriver, type Language as DriverLanguage, type Signature } from "../lib/driver-codegen.js";
+// buildDriver also hands back the line map that turns engine-reported
+// positions back into the editor's own line numbers (remapDiagnostics).
+import { buildDriver, remapDiagnostics, type Language as DriverLanguage, type Signature } from "../lib/driver-codegen.js";
 import { FIRST_SOLVE, createNotificationOnce, streakMilestone } from "../services/notifications.js";
 import { invalidateDashboard } from "../services/dashboard.js";
 import { emitDuelActivity, settleDuelForSubmission } from "../lib/duels.js";
@@ -82,9 +84,11 @@ router.post("/run", requireAuth, async (req, res) => {
       return;
     }
 
-    const executedCode = problem.signature
-      ? applyDriver(language as DriverLanguage, problem.signature as Signature, code)
-      : code;
+    const driver = problem.signature
+      ? buildDriver(language as DriverLanguage, problem.signature as Signature, code)
+      : null;
+    const executedCode = driver ? driver.code : code;
+    const toEditorLine = driver ? driver.toEditorLine : null;
     const batch = await runBatch(
       executedCode,
       language as string,
@@ -104,8 +108,8 @@ router.post("/run", requireAuth, async (req, res) => {
         runtime: perCaseRuntime,
         memory: batch.memoryKb,
         status: r.status,
-        stderr: r.stderr,
-        compile_output: r.compile_output,
+        stderr: remapDiagnostics(r.stderr, toEditorLine),
+        compile_output: remapDiagnostics(r.compile_output, toEditorLine),
         message: null,
       };
     });
@@ -210,9 +214,10 @@ router.post("/submit", requireAuth, async (req, res) => {
     ];
 
     // One batched execution for every test case (1 compile + 1 run)
-    const executedCode = problem.signature
-      ? applyDriver(language as DriverLanguage, problem.signature as Signature, code)
-      : code;
+    const driver = problem.signature
+      ? buildDriver(language as DriverLanguage, problem.signature as Signature, code)
+      : null;
+    const executedCode = driver ? driver.code : code;
     const batch = await runBatch(
       executedCode,
       language as string,
@@ -226,7 +231,7 @@ router.post("/submit", requireAuth, async (req, res) => {
     verdict = firstFailure ? firstFailure.verdict : "ACCEPTED";
     // Compiler output / stderr of the first failing case, for the submissions UI
     const errorDetail = firstFailure
-      ? (firstFailure.compile_output || firstFailure.stderr || "").trim() || null
+      ? remapDiagnostics((firstFailure.compile_output || firstFailure.stderr || "").trim() || null, driver ? driver.toEditorLine : null)
       : null;
 
     // Save submission

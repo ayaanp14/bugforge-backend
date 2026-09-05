@@ -1416,16 +1416,104 @@ export function renderStub(lang: Language, sig: Signature): string {
  * the top of the file so adding imports in the editor still compiles.
  */
 export function applyDriver(lang: Language, sig: Signature, userCode: string): string {
-  if (lang === "javascript" || lang === "python") return userCode;
-  let code = userCode;
-  let hoisted: string[] = [];
-  if (lang === "java" || lang === "kotlin" || lang === "csharp") {
-    const re = lang === "csharp" ? /^\s*using\s+[\w.]+\s*;\s*$/ : /^\s*import\s+[\w.*\s]+;?\s*$/;
-    const lines = code.split("\n");
-    hoisted = lines.filter((l) => re.test(l));
-    if (hoisted.length > 0) code = lines.filter((l) => !re.test(l)).join("\n");
+  return buildDriver(lang, sig, userCode).code;
+}
+
+/**
+ * Translates a 1-based line of the executed file to the 1-based line the user
+ * sees in the editor. Returns null when the line belongs to driver scaffolding
+ * the editor never shows.
+ */
+export type EditorLineMap = (fileLine: number) => number | null;
+
+export interface DriverBuild {
+  /** The full file handed to the execution engine. */
+  code: string;
+  toEditorLine: EditorLineMap;
+}
+
+/**
+ * applyDriver, plus the line map that undoes it. The compiler and the runtime
+ * both report positions in the executed file, which is offset from the editor
+ * by the driver prelude (and by any import lines hoisted above it), so every
+ * diagnostic shown to the user has to be translated back through this map.
+ */
+export function buildDriver(lang: Language, sig: Signature, userCode: string): DriverBuild {
+  if (lang === "javascript" || lang === "python") {
+    return { code: userCode, toEditorLine: (n) => n };
   }
-  let rendered = renderFile(lang, sig, code);
-  if (hoisted.length > 0) rendered = hoisted.join("\n") + "\n" + rendered;
-  return rendered;
+
+  const userLines = userCode.split("\n");
+  const importRe =
+    lang === "csharp" ? /^\s*using\s+[\w.]+\s*;\s*$/
+    : lang === "java" || lang === "kotlin" ? /^\s*import\s+[\w.*\s]+;?\s*$/
+    : null;
+
+  // Editor line numbers (1-based) of the lines hoisted to the top of the file,
+  // and of the lines left in place — both in their original order.
+  const hoistedLines: number[] = [];
+  const keptLines: number[] = [];
+  const kept: string[] = [];
+  for (const [i, line] of userLines.entries()) {
+    if (importRe?.test(line)) {
+      hoistedLines.push(i + 1);
+    } else {
+      keptLines.push(i + 1);
+      kept.push(line);
+    }
+  }
+
+  const code = hoistedLines.length > 0 ? kept.join("\n") : userCode;
+  const body = renderFile(lang, sig, code);
+  // The user block is spliced into the template verbatim, so its offset is
+  // whatever precedes it in the rendered file.
+  const at = code.trim() === "" ? -1 : body.indexOf(code);
+  const prefix = hoistedLines.length > 0 ? hoistedLines.map((n) => userLines[n - 1]).join("\n") + "\n" : "";
+  const rendered = prefix + body;
+
+  if (at < 0) {
+    // Couldn't locate the block (empty snippet) — better to leave diagnostics
+    // untouched than to shift them by a guess.
+    return { code: rendered, toEditorLine: () => null };
+  }
+
+  const preludeCount = body.slice(0, at).split("\n").length - 1;
+  const blockStart = hoistedLines.length + preludeCount + 1;
+
+  return {
+    code: rendered,
+    toEditorLine: (fileLine) => {
+      if (fileLine < 1) return null;
+      if (fileLine <= hoistedLines.length) return hoistedLines[fileLine - 1] as number;
+      const i = fileLine - blockStart;
+      return i >= 0 && i < keptLines.length ? (keptLines[i] as number) : null;
+    },
+  };
+}
+
+// Compiler and stack-trace positions, across the engines and languages we run:
+//   javac / kotlinc / gcc / go / rustc / ruby   Main.java:12: …   main.cpp:12:5: …
+//   csc / tsc                                   Main.cs(12,5): …
+//   php                                         … in /box/script.php on line 12
+const SOURCE_EXT = "java|kt|kts|cs|cpp|cc|cxx|c|h|hpp|go|rs|swift|php|rb|ts|js|py";
+const FILE_PAREN_RE = new RegExp(`([\\w./\\\\-]+\\.(?:${SOURCE_EXT}))\\((\\d+),(\\d+)\\)`, "g");
+const FILE_LINE_RE = new RegExp(`([\\w./\\\\-]+\\.(?:${SOURCE_EXT})):(\\d+)`, "g");
+const ON_LINE_RE = /\bon line (\d+)/g;
+
+/**
+ * Rewrites the line numbers in compiler output / stack traces so they point at
+ * the user's editor lines instead of the executed file's. Positions inside the
+ * driver are left alone — a wrong line number is worse than an unmapped one.
+ */
+export function remapDiagnostics(text: string | null | undefined, toEditorLine: EditorLineMap | null): string | null {
+  if (!text) return text ?? null;
+  if (!toEditorLine) return text;
+  const mapped = (raw: string) => {
+    const editorLine = toEditorLine(parseInt(raw, 10));
+    return editorLine === null ? raw : String(editorLine);
+  };
+  return text
+    .replace(FILE_PAREN_RE, (_m, file, line, col) => `${file}(${mapped(line)},${col})`)
+    .replace(FILE_LINE_RE, (_m, file, line) => `${file}:${mapped(line)}`)
+    .replace(ON_LINE_RE, (_m, line) => `on line ${mapped(line)}`);
 }
