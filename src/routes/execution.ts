@@ -11,6 +11,7 @@ import { applyDriver, type Language as DriverLanguage, type Signature } from "..
 import { FIRST_SOLVE, createNotificationOnce, streakMilestone } from "../services/notifications.js";
 import { invalidateDashboard } from "../services/dashboard.js";
 import { emitDuelActivity, settleDuelForSubmission } from "../lib/duels.js";
+import { ENGINE_DOWN_MESSAGE, isEngineDown } from "../lib/engine-error.js";
 
 const router = Router();
 
@@ -124,6 +125,11 @@ router.post("/run", requireAuth, async (req, res) => {
 
     res.json({ results });
   } catch (err) {
+    if (isEngineDown(err)) {
+      console.error("POST /api/run — engine down:", err.message);
+      res.status(503).json({ error: ENGINE_DOWN_MESSAGE, engineDown: true });
+      return;
+    }
     console.error("POST /api/run error:", err);
     res.status(500).json({ error: "Failed to run code" });
   }
@@ -354,6 +360,11 @@ router.post("/submit", requireAuth, async (req, res) => {
       submissionId: submission.id,
     });
   } catch (err) {
+    if (isEngineDown(err)) {
+      console.error("POST /api/submit — engine down:", err.message);
+      res.status(503).json({ error: ENGINE_DOWN_MESSAGE, engineDown: true });
+      return;
+    }
     console.error("POST /api/submit error:", err);
     res.status(500).json({ error: "Internal server error" });
   }

@@ -86,14 +86,20 @@ function tsDriver(sig: Signature): string {
   const parse = sig.params.map((p, i) => `        const ${p.name}: ${JS_TYPES[p.type]} = JSON.parse(_lines[${i}]);`);
   return [
     "// ---- driver (do not edit below) ----",
-    "declare const require: (m: string) => any;",
-    "declare const Buffer: any;",
-    "declare const process: any;",
-    'let _raw: string = require("fs").readFileSync(0, "utf8");',
+    // Node's globals are reached through globalThis rather than declared. An
+    // engine that ships @types/node (Paiza does) rejects a redeclaration of
+    // `Buffer` or `require` outright — "Cannot redeclare block-scoped
+    // variable" — while an engine without those types needs *something*. Going
+    // through globalThis satisfies both, since it declares nothing at all.
+    "const _g: any = globalThis as any;",
+    'const _require: (m: string) => any = typeof _g.require === "function" ? _g.require : eval("require");',
+    "const _Buffer: any = _g.Buffer;",
+    "const _process: any = _g.process;",
+    'let _raw: string = _require("fs").readFileSync(0, "utf8");',
     `if (_raw.slice(0, 15) === "${GZIN}") {`,
-    '    const _zlibIn = require("zlib");',
+    '    const _zlibIn = _require("zlib");',
     '    const _b64 = _raw.slice(15).replace(/\\s+/g, "");',
-    '    _raw = _zlibIn.gunzipSync(Buffer.from(_b64, "base64")).toString("utf8");',
+    '    _raw = _zlibIn.gunzipSync(_Buffer.from(_b64, "base64")).toString("utf8");',
     "}",
     "const _cases: string[][] = [];",
     "{",
@@ -120,13 +126,13 @@ function tsDriver(sig: Signature): string {
     "    }",
     `    _out.push("${SENTINEL}");`,
     "}",
-    '_out.push("__CODEXA_STATS__ " + (Date.now() - _t0) + " " + Math.round(process.memoryUsage().rss / 1024));',
+    '_out.push("__CODEXA_STATS__ " + (Date.now() - _t0) + " " + Math.round(_process.memoryUsage().rss / 1024));',
     'const _joined = _out.join("\\n") + "\\n";',
     `if (_joined.length > ${GZ_THRESHOLD}) {`,
-    '    const _zlib = require("zlib");',
-    `    process.stdout.write("${GZ}\\n" + _zlib.gzipSync(Buffer.from(_joined)).toString("base64") + "\\n");`,
+    '    const _zlib = _require("zlib");',
+    `    _process.stdout.write("${GZ}\\n" + _zlib.gzipSync(_Buffer.from(_joined)).toString("base64") + "\\n");`,
     "} else {",
-    "    process.stdout.write(_joined);",
+    "    _process.stdout.write(_joined);",
     "}",
   ].join("\n");
 }
@@ -589,14 +595,23 @@ function cFile(sig: Signature, fn: string): string {
     "    buf[len] = '\\0';",
     "    int lineCap = 1024, lineCount = 0;",
     "    char** allLines = (char**)malloc(lineCap * sizeof(char*));",
-    "    char* save = NULL;",
-    '    for (char* tok = strtok_r(buf, "\\n", &save); tok; tok = strtok_r(NULL, "\\n", &save)) {',
+    // Split on newlines with plain pointer arithmetic rather than strtok_r:
+    // strtok_r is POSIX, not ISO C, so a toolchain compiling in strict C mode
+    // (Paiza's clang does) leaves it implicitly declared, assumes it returns
+    // `int`, truncates the 64-bit pointer and segfaults on the first line.
+    "    char* cur = buf;",
+    "    while (cur != NULL && *cur != '\\0') {",
+    "        char* nl = strchr(cur, '\\n');",
+    "        if (nl != NULL) *nl = '\\0';",
+    "        char* tok = cur;",
     "        size_t tl = strlen(tok);",
     "        while (tl > 0 && (tok[tl - 1] == '\\r' || tok[tl - 1] == ' ')) tok[--tl] = '\\0';",
     "        while (*tok == ' ') tok++;",
-    "        if (*tok == '\\0') continue;",
-    "        if (lineCount == lineCap) { lineCap *= 2; allLines = (char**)realloc(allLines, lineCap * sizeof(char*)); }",
-    "        allLines[lineCount++] = tok;",
+    "        if (*tok != '\\0') {",
+    "            if (lineCount == lineCap) { lineCap *= 2; allLines = (char**)realloc(allLines, lineCap * sizeof(char*)); }",
+    "            allLines[lineCount++] = tok;",
+    "        }",
+    "        cur = (nl != NULL) ? nl + 1 : NULL;",
     "    }",
     "    int start = 0;",
     "    for (int idx = 0; idx <= lineCount; idx++) {",

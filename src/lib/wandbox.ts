@@ -1,5 +1,6 @@
 import axios from "axios";
 import { wrapCode, type Judge0Result, type Judge0Submission } from "./judge0.js";
+import { ExecutionEngineError } from "./engine-error.js";
 
 /**
  * Free execution engine: the public Wandbox API (https://wandbox.org).
@@ -79,7 +80,21 @@ async function postCompileWithRetry(body: Record<string, unknown>): Promise<Wand
       await new Promise((resolve) => setTimeout(resolve, attempt * 1000));
     }
   }
-  throw lastError;
+  // Three 5xx or three timeouts in a row is not a hiccup: Wandbox is a free
+  // community service with no SLA, and when its sandbox falls over it answers
+  // every language with the same 500. Say so, rather than blaming the code.
+  throw new ExecutionEngineError("wandbox", describeFailure(lastError));
+}
+
+/** The engine's own words, trimmed to something worth logging. */
+function describeFailure(err: unknown): string | undefined {
+  if (axios.isAxiosError(err)) {
+    const status = err.response?.status;
+    const body = err.response?.data;
+    const text = typeof body === "string" ? body : body ? JSON.stringify(body) : err.code || err.message;
+    return `${status ?? "no response"} ${String(text).replace(/\s+/g, " ").slice(0, 200)}`.trim();
+  }
+  return err instanceof Error ? err.message.slice(0, 200) : undefined;
 }
 
 function toJudge0Result(data: WandboxResponse, submission: Judge0Submission): Judge0Result {

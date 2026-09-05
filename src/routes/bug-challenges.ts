@@ -4,6 +4,7 @@ import { optionalAuth, requireAuth } from "../middleware/auth.js";
 import { judgeBugProject, type BugFile, type BugLanguage } from "../lib/bug-judge.js";
 import { invalidateDashboard } from "../services/dashboard.js";
 import { emitDuelActivity, settleDuelForSubmission } from "../lib/duels.js";
+import { ENGINE_DOWN_MESSAGE, isEngineDown } from "../lib/engine-error.js";
 import {
   DEFAULT_PAGE_SIZE,
   getBugHuntIndex,
@@ -231,6 +232,11 @@ router.post("/:id/run", requireAuth, async (req, res) => {
 
     res.json(result);
   } catch (err) {
+    if (isEngineDown(err)) {
+      console.error("POST /api/bug-challenges/:id/run — engine down:", err.message);
+      res.status(503).json({ error: ENGINE_DOWN_MESSAGE, engineDown: true });
+      return;
+    }
     console.error("POST /api/bug-challenges/:id/run error:", err);
     res.status(500).json({ error: "Failed to run tests" });
   }
@@ -316,6 +322,11 @@ router.post("/:id/submit", requireAuth, async (req, res) => {
 
     res.json({ ...result, results: publicResults, awardedXp, firstSolve: result.verdict === "ACCEPTED" && !alreadySolved });
   } catch (err) {
+    if (isEngineDown(err)) {
+      console.error("POST /api/bug-challenges/:id/submit — engine down:", err.message);
+      res.status(503).json({ error: ENGINE_DOWN_MESSAGE, engineDown: true });
+      return;
+    }
     console.error("POST /api/bug-challenges/:id/submit error:", err);
     res.status(500).json({ error: "Failed to submit fix" });
   }
