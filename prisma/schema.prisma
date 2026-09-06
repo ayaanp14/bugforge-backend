@@ -111,6 +111,10 @@ model Problem {
   signature     Json?
   referenceSolution String?  @db.MediumText
   referenceLanguage String?
+  /// Editorial reference solutions keyed by language ("python", "cpp", …).
+  /// Drives the Editorial tab's language picker; only validated languages are
+  /// written here, so a missing key means "not authored yet", not "broken".
+  solutions         Json?
   hints         Json         @default("[]")
   codeDrafts    CodeDraft[]
   pairRooms     PairRoom[]

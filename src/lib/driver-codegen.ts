@@ -800,12 +800,24 @@ function goStub(sig: Signature): string {
   return [`func ${sig.funcName}(${args}) ${GO_TYPES[sig.returns]} {`, "\t// Write your code here", `\t${dflt}`, "}"].join("\n");
 }
 
+/** Stdlib packages a Go solution may reference; added only when it does. */
+const GO_OPTIONAL_PKGS = ["sort", "math", "math/bits", "container/heap", "unicode", "strconv"];
+
 function goFile(sig: Signature, fn: string): string {
   const needsJSON = sig.params.some((p) => p.type !== "int") || sig.returns.endsWith("[]");
   const needsStrconv = sig.params.some((p) => p.type === "int");
   const imports = ["\t\"bytes\"", "\t\"compress/gzip\"", "\t\"encoding/base64\"", "\t\"fmt\"", "\t\"io/ioutil\"", "\t\"os\"", "\t\"runtime\"", "\t\"strings\"", "\t\"time\""];
   if (needsJSON) imports.push("\t\"encoding/json\"");
   if (needsStrconv) imports.push("\t\"strconv\"");
+  // Go rejects both missing AND unused imports, so pull in the stdlib packages
+  // the solution actually mentions — nothing more. Without this, a Go solution
+  // simply cannot call sort.Slice, which most non-trivial problems need.
+  for (const pkg of GO_OPTIONAL_PKGS) {
+    const quoted = `\t"${pkg}"`;
+    if (imports.includes(quoted)) continue;
+    const leaf = pkg.slice(pkg.lastIndexOf("/") + 1);
+    if (new RegExp(`\\b${leaf}\\.[A-Z]`).test(fn)) imports.push(quoted);
+  }
   imports.sort();
   const parse: string[] = [];
   sig.params.forEach((p, i) => {
@@ -822,8 +834,14 @@ function goFile(sig: Signature, fn: string): string {
         "\t\tif _result == nil {",
         `\t\t\t_result = ${GO_TYPES[sig.returns]}{}`,
         "\t\t}",
-        "\t\t_encoded, _ := json.Marshal(_result)",
-        "\t\tout = append(out, string(_encoded))",
+        // json.Marshal HTML-escapes <, > and & (so "0->2" becomes "0->2").
+        // An Encoder with SetEscapeHTML(false) is the only way to turn that off;
+        // it also appends a newline, hence the TrimRight.
+        "\t\t_buf := new(bytes.Buffer)",
+        "\t\t_enc := json.NewEncoder(_buf)",
+        "\t\t_enc.SetEscapeHTML(false)",
+        "\t\t_enc.Encode(_result)",
+        `\t\tout = append(out, strings.TrimRight(_buf.String(), "\\n"))`,
       ]
     : [`\t\tout = append(out, fmt.Sprint(${call}))`];
   return [
@@ -1246,6 +1264,12 @@ function phpFile(sig: Signature, fn: string): string {
   const call = `${sig.funcName}(${sig.params.map((p) => `$${p.name}`).join(", ")})`;
   return [
     "<?php",
+    // PHP function names are case-insensitive, so a solution named e.g.
+    // strStr collides with the built-in strstr and is a fatal redeclare.
+    // Declaring a namespace shadows the global name instead; unqualified
+    // calls to built-in *functions* still fall back to global, but class
+    // names do not — hence the leading backslash on \\Throwable below.
+    "namespace Solution;",
     fn,
     "",
     "// ---- driver (do not edit below) ----",
@@ -1270,7 +1294,7 @@ function phpFile(sig: Signature, fn: string): string {
     '        if (is_bool($result)) $out[] = $result ? "true" : "false";',
     "        elseif (is_array($result)) $out[] = json_encode($result);",
     "        else $out[] = strval($result);",
-    "    } catch (Throwable $e) {",
+    "    } catch (\Throwable $e) {",
     `        $out[] = "${ERR} " . $e->getMessage();`,
     "    }",
     `    $out[] = "${SENTINEL}";`,

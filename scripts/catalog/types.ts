@@ -6,7 +6,15 @@
  * and validated Python + JavaScript solutions.
  */
 
-import type { Signature } from "../../src/lib/driver-codegen.js";
+import type { Language, Signature } from "../../src/lib/driver-codegen.js";
+
+/**
+ * Reference solutions keyed by language. Python and JavaScript are required —
+ * python doubles as the problem's referenceSolution — and any of the other 11
+ * may be filled in as they are authored. `--validate` runs every language
+ * present here against every seeded case, so a key existing means it passes.
+ */
+export type Solutions = Partial<Record<Language, string>> & { python: string; javascript: string };
 
 export interface Case { input: string; expectedOutput: string }
 export type Rng = () => number;
@@ -20,12 +28,19 @@ export interface CatalogProblem {
   /** Full markdown description including Examples and Constraints. */
   description: string;
   hints: string[];
+  /**
+   * Markdown walkthrough for the Editorial tab: the idea, why it works, and
+   * the complexity — prose only. The seeder appends the reference solutions
+   * (see renderSolutions), so this must not repeat them. Optional: problems
+   * without one keep the "Coming Soon" empty state rather than filler.
+   */
+  editorial?: string;
   /** Visible cases (shown as Examples in the description). */
   examples: Case[];
   /** One deterministic hidden case per call. */
   gen: (rng: Rng) => Case;
   /** Validated solutions; python doubles as the referenceSolution. */
-  solutions: { python: string; javascript: string };
+  solutions: Solutions;
 }
 
 // ── Deterministic RNG (mulberry32 over the slug) ───────────────────
@@ -63,6 +78,43 @@ export function describe(intro: string, examples: Array<{ in: string; out: strin
     .join("\n\n");
   const tail = followUp ? `\n\n**Follow-up:** ${followUp}` : "";
   return `${intro}\n\n${ex}\n\n### Constraints\n\n${constraints.map((c) => `- \`${c}\``).join("\n")}${tail}`;
+}
+
+/**
+ * Renders an editorial: the insight that unlocks the problem, the algorithm,
+ * why it is correct, what it costs, and the reference implementation. Mirrors
+ * describe() so every editorial in the catalog reads the same way.
+ */
+export function explain(o: {
+  /** The idea the problem turns on, in a sentence or two. */
+  idea: string;
+  /** The algorithm, one numbered step at a time. */
+  steps: string[];
+  /** Why the algorithm is correct — the part hints deliberately withhold. */
+  why?: string;
+  time: string;
+  space: string;
+  /** Traps worth calling out; skipped entirely when there are none. */
+  pitfalls?: string[];
+}): string {
+  const parts = [
+    o.idea,
+    "## Approach",
+    o.steps.map((s, i) => `${i + 1}. ${s}`).join("\n"),
+  ];
+  if (o.why) parts.push("## Why it works", o.why);
+  parts.push("## Complexity", `- **Time** — \`${o.time}\`\n- **Space** — \`${o.space}\``);
+  if (o.pitfalls?.length) parts.push("## Pitfalls", o.pitfalls.map((p) => `- ${p}`).join("\n"));
+  return parts.join("\n\n");
+}
+
+/**
+ * The solutions map as the API stores it. Kept as structured data rather than
+ * markdown so the Editorial tab can offer a language picker over exactly the
+ * languages that were authored and validated for this problem.
+ */
+export function solutionsJson(s: Solutions): Record<string, string> {
+  return Object.fromEntries(Object.entries(s).filter(([, code]) => typeof code === "string" && code.length > 0));
 }
 
 /** Format an int matrix in expectedOutput style: [[1,2],[3,4]] (no spaces). */

@@ -2,13 +2,14 @@
  * Seeds the hand-authored classic-problem catalog (scripts/catalog/*).
  *
  *   npx tsx scripts/seed-catalog.ts --seed [--count 5000] [--only <slug>]
- *   npx tsx scripts/seed-catalog.ts --validate [--only <slug>] [--lang js|py|all13:<slug>]
+ *   npx tsx scripts/seed-catalog.ts --validate [--only <slug>] [--lang js|py|all|<language>]
  *
  * Each problem gets: description/hints/signature, stub-only starter code for
  * all 13 languages, Python reference solution, visible example cases, and
  * `--count` deterministic hidden cases. Validation runs the authored
- * Python + JavaScript solutions against every DB case through the real
- * execution path (applyDriver → runBatch).
+ * solutions against every DB case through the real execution path
+ * (applyDriver → runBatch); `--lang all` covers every language authored,
+ * which is what gates a language appearing in the editorial's picker.
  */
 
 import "dotenv/config";
@@ -16,7 +17,7 @@ import { prisma } from "../src/lib/prisma.js";
 import { runBatch } from "../src/lib/batch-judge.js";
 import { ALL_LANGUAGES, applyDriver, renderStub, type Language } from "../src/lib/driver-codegen.js";
 import { CATALOG } from "./catalog/index.js";
-import { makeRng, type CatalogProblem } from "./catalog/types.js";
+import { makeRng, solutionsJson, type CatalogProblem } from "./catalog/types.js";
 
 const args = process.argv.slice(2);
 const flag = (n: string) => args.includes(`--${n}`);
@@ -40,16 +41,20 @@ function specs(): CatalogProblem[] {
 
 async function seedOne(spec: CatalogProblem) {
   const starterCode = Object.fromEntries(ALL_LANGUAGES.map((lang) => [lang, renderStub(lang, spec.signature)]));
+  // Editorial markdown is prose only; the code lives in `solutions` as
+  // structured data so the Editorial tab can switch languages directly.
+  const editorial = spec.editorial ?? null;
+  const solutions = solutionsJson(spec.solutions);
   const problem = await prisma.problem.upsert({
     where: { slug: spec.slug },
     update: {
       title: spec.title, description: spec.description, difficulty: spec.difficulty,
-      tags: spec.tags, hints: spec.hints, starterCode, signature: spec.signature as object,
+      tags: spec.tags, hints: spec.hints, editorial, solutions, starterCode, signature: spec.signature as object,
       referenceSolution: spec.solutions.python, referenceLanguage: "python", isPublished: true,
     },
     create: {
       slug: spec.slug, title: spec.title, description: spec.description, difficulty: spec.difficulty,
-      tags: spec.tags, hints: spec.hints, starterCode, signature: spec.signature as object,
+      tags: spec.tags, hints: spec.hints, editorial, solutions, starterCode, signature: spec.signature as object,
       referenceSolution: spec.solutions.python, referenceLanguage: "python", isPublished: true,
       timeLimitMs: 2000, memoryLimitMb: 256,
     },
@@ -144,9 +149,22 @@ async function validate() {
     }
   }
 
+  // --lang py|js validate one language; --lang all (or a bare language name)
+  // covers every solution authored for the problem, which is what gates a
+  // language appearing in the editorial's picker.
   for (const spec of list) {
-    if (!langArg || langArg === "py" || langArg === "all") await check(spec, "python", spec.solutions.python);
-    if (!langArg || langArg === "js" || langArg === "all") await check(spec, "javascript", spec.solutions.javascript);
+    const authored = ALL_LANGUAGES.filter((l) => typeof spec.solutions[l] === "string" && spec.solutions[l]!.length > 0);
+    const wanted =
+      !langArg ? (["python", "javascript"] as Language[])
+      : langArg === "py" ? (["python"] as Language[])
+      : langArg === "js" ? (["javascript"] as Language[])
+      : langArg === "all" ? authored
+      : authored.filter((l) => l === langArg);
+    for (const lang of wanted) {
+      const code = spec.solutions[lang];
+      if (!code) { console.log(`SKIP ${spec.slug} [${lang}] (not authored)`); continue; }
+      await check(spec, lang, code);
+    }
   }
   console.log(`\n== ${pass} passed, ${fail} failed`);
   if (failures.length) process.exitCode = 1;
