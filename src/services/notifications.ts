@@ -16,7 +16,7 @@ export interface NotificationInput {
 
 export const WELCOME: NotificationInput = {
   type: "welcome",
-  title: "Welcome to Codexa 👋",
+  title: "Welcome to CodeKairo 👋",
   body: "Your journey starts here. Solve your first problem to earn XP, light up the heatmap and start a streak.",
   href: "/challenges",
 };

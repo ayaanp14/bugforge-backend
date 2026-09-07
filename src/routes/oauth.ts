@@ -128,7 +128,7 @@ router.get("/github/callback", async (req, res) => {
     const ghHeaders = {
       Authorization: `Bearer ${accessToken}`,
       Accept: "application/vnd.github+json",
-      "User-Agent": "Codexa",
+      "User-Agent": "CodeKairo",
     };
 
     const profileRes = await fetch("https://api.github.com/user", { headers: ghHeaders });
