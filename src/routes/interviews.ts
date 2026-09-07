@@ -470,7 +470,7 @@ router.post("/session/:sessionId/complete", requireAuth, async (req: any, res) =
       return res.status(403).json({ error: "You do not have permission to close this session" });
     }
     if (session.status === "completed") {
-      return res.json({ success: true, alreadyCompleted: true, report: reportOf(session) });
+      return res.json({ success: true, alreadyCompleted: true, report: reportOf(session, session.questions) });
     }
 
     const scored = session.questions.filter((q) => q.status === "evaluated" && q.evaluationScore !== null);
@@ -530,7 +530,7 @@ router.post("/session/:sessionId/complete", requireAuth, async (req: any, res) =
       },
     });
 
-    res.json({ success: true, report: reportOf(completed), questions: scored });
+    res.json({ success: true, report: reportOf(completed, scored) });
   } catch (error: any) {
     console.error("Error completing interview session:", error?.message);
     res.status(500).json({ error: "Failed to complete interview session" });
@@ -574,7 +574,7 @@ router.get("/session/:sessionId", requireAuth, async (req: any, res) => {
       session: { ...session, questions },
       questions,
       language: languageFor(configFrom(session.savedInterview)),
-      report: session.status === "completed" ? reportOf(session) : null,
+      report: session.status === "completed" ? reportOf(session, session.questions) : null,
       progress: { asked: session.questions.length, total: session.questionBudget },
     });
   } catch (error: any) {
@@ -584,15 +584,222 @@ router.get("/session/:sessionId", requireAuth, async (req: any, res) => {
 });
 
 /** Report shape shared by /complete and /session/:id. */
-function reportOf(session: {
-  overallScore: number | null;
-  summary: string | null;
-  strengths: unknown;
-  weaknesses: unknown;
-  nextSteps: unknown;
-  topicBreakdown: unknown;
-  completedAt: Date | null;
-}) {
+/* ── report analytics ───────────────────────────────────────────────────── */
+
+/**
+ * Everything below is derived from the question rows at read time rather than
+ * stored on the session. Two reasons: a report can never drift out of step with
+ * the answers it describes, and an interview finished before any of this existed
+ * still gets the full breakdown without a backfill.
+ */
+
+/** Acronyms the model writes lower case, which a naive title-caser mangles. */
+const ACRONYMS = new Set([
+  "dsa", "sql", "api", "css", "html", "http", "ui", "ux", "orm", "jwt",
+  "cli", "cdn", "dom", "tcp", "ssr", "crud", "oop", "io", "rest", "grpc",
+]);
+
+/** Chart axes have finite room, and the model sometimes writes a whole sentence
+ * where a topic tag belongs ("Implement Express endpoint with validation…"). */
+const MAX_LABEL = 42;
+
+function prettyLabel(raw: string) {
+  // Slugs come through as-is ("api-design", "node-express"); as labels they read
+  // far better spaced, and it lets the acronym list see the parts separately.
+  const text = raw.trim().replace(/[-_]+/g, " ").replace(/\s+/g, " ");
+  if (!text) return "General";
+  const words = text.split(" ");
+  // Two or three words is a tag, and title case suits it. Anything longer is a
+  // phrase, where title casing every word reads worse than leaving it alone.
+  const cased =
+    words.length <= 3
+      ? words
+          .map((word) =>
+            ACRONYMS.has(word.toLowerCase())
+              ? word.toUpperCase()
+              : word.charAt(0).toUpperCase() + word.slice(1),
+          )
+          .join(" ")
+      : text.charAt(0).toUpperCase() + text.slice(1);
+  return cased.length > MAX_LABEL ? `${cased.slice(0, MAX_LABEL - 1).trimEnd()}…` : cased;
+}
+
+/**
+ * One field can carry several labels: focusArea comes back as "backend, dsa,
+ * api-design" often enough that treating the whole string as one bucket gives a
+ * chart with one bar per unique *combination* rather than per area.
+ */
+function splitLabels(raw: string | null) {
+  const parts = (raw ?? "")
+    .split(/\s*[,/|]\s*/)
+    .map((part) => part.trim())
+    .filter(Boolean)
+    .slice(0, 4);
+  return parts.length ? parts : ["general"];
+}
+
+/**
+ * Groups by a case-insensitive key. The model is inconsistent about casing — one
+ * interview produced "dsa" and "DSA" as two separate rows — so grouping on the
+ * raw string splits what is really one topic in half and makes every bucket read
+ * "1 question". A multi-valued row counts once in each of its buckets, so `asked`
+ * can exceed the number of questions.
+ */
+function groupAverages(rows: Array<{ label: string | null; score: number }>) {
+  const buckets = new Map<string, { label: string; scores: number[] }>();
+  for (const row of rows) {
+    for (const piece of splitLabels(row.label)) {
+      const key = piece.toLowerCase();
+      const bucket = buckets.get(key) ?? { label: prettyLabel(piece), scores: [] };
+      bucket.scores.push(row.score);
+      buckets.set(key, bucket);
+    }
+  }
+  return [...buckets.values()]
+    .map((b) => ({
+      label: b.label,
+      asked: b.scores.length,
+      average: Number((b.scores.reduce((a, c) => a + c, 0) / b.scores.length).toFixed(1)),
+    }))
+    .sort((a, b) => a.average - b.average);
+}
+
+/** A band, not a verdict — one interview is evidence, not a hiring decision. */
+function readinessFor(average: number) {
+  if (average >= 8.5) {
+    return { band: "Interview ready", note: "You would hold your own in a real round at this level." };
+  }
+  if (average >= 7) {
+    return { band: "Nearly there", note: "The substance is mostly right; the gaps are in depth and articulation." };
+  }
+  if (average >= 5) {
+    return { band: "Developing", note: "You can reach the right answer, but not yet reliably or completely." };
+  }
+  return { band: "Early days", note: "Focus on fundamentals before sitting a real round of this type." };
+}
+
+type ReportQuestion = {
+  orderIndex: number;
+  questionText: string;
+  topic: string | null;
+  difficulty: string | null;
+  focusArea: string | null;
+  userAnswer: string | null;
+  evaluationScore: number | null;
+  verdict: string | null;
+  feedback: string | null;
+  missed: unknown;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
+function analyticsOf(questions: ReportQuestion[]) {
+  const scored = questions
+    .filter((q) => q.evaluationScore !== null)
+    .sort((a, b) => a.orderIndex - b.orderIndex);
+
+  if (scored.length === 0) return null;
+
+  const mean = (xs: number[]) => xs.reduce((a, b) => a + b, 0) / xs.length;
+  const scores = scored.map((q) => q.evaluationScore as number);
+  const average = mean(scores);
+
+  // Time between a question being created and its answer being scored. It
+  // includes the model's own latency, which is seconds against minutes of
+  // thinking — close enough to read as time spent, not precise enough to bill.
+  const seconds = (q: ReportQuestion) =>
+    Math.max(0, Math.round((q.updatedAt.getTime() - q.createdAt.getTime()) / 1000));
+
+  // Severity order, so the chart legend and colours stay stable between reports.
+  const verdictMix = ["strong", "adequate", "weak", "no_answer"]
+    .map((verdict) => ({ verdict, count: scored.filter((q) => q.verdict === verdict).length }))
+    .filter((v) => v.count > 0);
+
+  const byDifficulty = ["easy", "medium", "hard"].flatMap((level) => {
+    const rows = scored.filter((q) => (q.difficulty ?? "").toLowerCase() === level);
+    if (!rows.length) return [];
+    return [{
+      label: prettyLabel(level),
+      asked: rows.length,
+      average: Number(mean(rows.map((q) => q.evaluationScore as number)).toFixed(1)),
+    }];
+  });
+
+  // A gap that recurs is worth more than a long flat list of one-offs.
+  const gaps = new Map<string, { gap: string; count: number }>();
+  for (const q of scored) {
+    for (const raw of ((q.missed as string[] | null) ?? [])) {
+      const text = String(raw).trim();
+      if (!text) continue;
+      const entry = gaps.get(text.toLowerCase()) ?? { gap: text, count: 0 };
+      entry.count += 1;
+      gaps.set(text.toLowerCase(), entry);
+    }
+  }
+
+  // Warmed up or wore down? Only says anything once there are halves to compare.
+  const half = Math.floor(scored.length / 2);
+  const trend =
+    scored.length >= 4
+      ? {
+          first: Number(mean(scores.slice(0, half)).toFixed(1)),
+          second: Number(mean(scores.slice(-half)).toFixed(1)),
+        }
+      : null;
+
+  const spread = Math.sqrt(mean(scores.map((s) => (s - average) ** 2)));
+  const totalSeconds = scored.reduce((a, q) => a + seconds(q), 0);
+
+  return {
+    answered: scored.length,
+    average: Number(average.toFixed(1)),
+    best: Math.max(...scores),
+    worst: Math.min(...scores),
+    spread: Number(spread.toFixed(1)),
+    consistency: spread <= 1 ? "steady" : spread <= 2 ? "mixed" : "uneven",
+    readiness: readinessFor(average),
+    trend,
+    pace: { totalSeconds, averageSeconds: Math.round(totalSeconds / scored.length) },
+    trajectory: scored.map((q, i) => ({
+      order: i + 1,
+      score: q.evaluationScore as number,
+      topic: prettyLabel(q.topic ?? "general"),
+      difficulty: q.difficulty,
+      verdict: q.verdict,
+      seconds: seconds(q),
+    })),
+    verdictMix,
+    byTopic: groupAverages(scored.map((q) => ({ label: q.topic, score: q.evaluationScore as number }))),
+    byFocus: groupAverages(scored.map((q) => ({ label: q.focusArea, score: q.evaluationScore as number }))),
+    byDifficulty,
+    recurringGaps: [...gaps.values()].sort((a, b) => b.count - a.count).slice(0, 10),
+    questions: scored.map((q, i) => ({
+      order: i + 1,
+      question: q.questionText,
+      topic: prettyLabel(q.topic ?? "general"),
+      difficulty: q.difficulty,
+      score: q.evaluationScore,
+      verdict: q.verdict,
+      feedback: q.feedback,
+      missed: ((q.missed as string[] | null) ?? []),
+      answer: q.userAnswer,
+      seconds: seconds(q),
+    })),
+  };
+}
+
+function reportOf(
+  session: {
+    overallScore: number | null;
+    summary: string | null;
+    strengths: unknown;
+    weaknesses: unknown;
+    nextSteps: unknown;
+    topicBreakdown: unknown;
+    completedAt: Date | null;
+  },
+  questions: ReportQuestion[],
+) {
   return {
     // Stored ×10 so the average keeps a decimal place without a float column.
     overallScore: session.overallScore === null ? null : session.overallScore / 10,
@@ -602,6 +809,7 @@ function reportOf(session: {
     nextSteps: (session.nextSteps as string[] | null) ?? [],
     topicBreakdown: (session.topicBreakdown as Array<{ topic: string; asked: number; average: number }> | null) ?? [],
     completedAt: session.completedAt,
+    analytics: analyticsOf(questions),
   };
 }
 
