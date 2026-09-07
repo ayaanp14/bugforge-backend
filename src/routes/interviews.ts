@@ -1,7 +1,16 @@
 import { Router } from "express";
 import { prisma } from "../lib/prisma.js";
 import { requireAuth } from "../middleware/auth.js";
-import axios from "axios";
+import {
+  evaluateAndContinue,
+  evaluateFinal,
+  openInterview,
+  questionBudgetFor,
+  writeReport,
+  type InterviewConfig,
+  type InterviewQuestion as AskedQuestion,
+  type Usage,
+} from "../services/interview-ai.js";
 
 const router = Router();
 
@@ -155,118 +164,36 @@ router.delete("/:id", requireAuth, async (req: any, res) => {
   }
 });
 
-/**
- * Helper to initialize GTWY AI Interview
- */
-async function initializeGtwyInterview(config: {
-  userId: string;
+/** Config the model layer needs, pulled off a saved template row. */
+function configFrom(template: {
   roleId: string;
   roundId: string;
-  difficulty: string;
-  experienceBand: string;
-  interviewStyle: string;
-  stackFocusIds: string[];
-  focusAreaIds: string[];
-  previousQuestions?: string;
-  threadId?: string;
-}) {
-  const {
-    userId,
-    roleId,
-    roundId,
-    difficulty,
-    experienceBand,
-    interviewStyle,
-    stackFocusIds,
-    focusAreaIds,
-    previousQuestions = "",
-    threadId = `user_${userId}_${Date.now()}`,
-  } = config;
-
-  const payload = {
-    query: previousQuestions ? "Next question please" : "Start the interview",
-    agent_id: "69ebe0945b4763a61d8518fe",
-    thread_id: threadId,
-    response_type: "text",
-    variables: {
-      targetRole: roleId,
-      interviewRound: roundId,
-      experienceBand: experienceBand,
-      difficulty: difficulty,
-      interviewStyle: interviewStyle,
-      stackFocus: (stackFocusIds || []).join(", "),
-      focusAreas: (focusAreaIds || []).join(", "),
-      previousQuestions: previousQuestions,
-    },
+  difficulty: string | null;
+  experienceBand: string | null;
+  interviewStyle: string | null;
+  stackFocusIds: unknown;
+  focusAreaIds: unknown;
+}): InterviewConfig {
+  return {
+    roleId: template.roleId,
+    roundId: template.roundId,
+    difficulty: template.difficulty ?? "medium",
+    experienceBand: template.experienceBand ?? "mid",
+    interviewStyle: template.interviewStyle ?? "balanced",
+    stackFocusIds: (template.stackFocusIds as string[] | null) ?? [],
+    focusAreaIds: (template.focusAreaIds as string[] | null) ?? [],
   };
-
-  return await axios.post(
-    "https://api.gtwy.ai/api/v2/model/chat/completion",
-    payload,
-    {
-      headers: {
-        pauthkey: process.env.GTWY_PAUTHKEY,
-        "Content-Type": "application/json",
-      },
-    }
-  );
 }
 
-/**
- * Helper to evaluate GTWY AI Answer
- */
-async function evaluateGtwyAnswer(config: {
-  answer: string;
-  roleId: string;
-  roundId: string;
-  difficulty: string;
-  experienceBand: string;
-  interviewStyle: string;
-  stackFocusIds: string[];
-  focusAreaIds: string[];
-  previousQuestions: string;
-  threadId: string;
-}) {
-  const {
-    answer,
-    roleId,
-    roundId,
-    difficulty,
-    experienceBand,
-    interviewStyle,
-    stackFocusIds,
-    focusAreaIds,
-    previousQuestions,
-    threadId,
-  } = config;
-
-  const payload = {
-    query: answer,
-    agent_id: "69ec016eb3f4d60fb9f0edcc",
-    thread_id: threadId,
-    response_type: "text",
-    variables: {
-      targetRole: roleId,
-      interviewRound: roundId,
-      difficulty: difficulty,
-      experienceBand: experienceBand,
-      interviewStyle: interviewStyle,
-      stackFocus: (stackFocusIds || []).join(", "),
-      focusAreas: (focusAreaIds || []).join(", "),
-      previousQuestions: previousQuestions,
-    },
+/** Folds one call's usage into the session's running totals. */
+function usageIncrement(usage: Usage) {
+  return {
+    promptTokens: { increment: usage.promptTokens },
+    cachedTokens: { increment: usage.cachedTokens },
+    completionTokens: { increment: usage.completionTokens },
+    reasoningTokens: { increment: usage.reasoningTokens },
+    costMicros: { increment: usage.costMicros },
   };
-  console.log("PAYLOAD", payload);
-  return await axios.post(
-    "https://api.gtwy.ai/api/v2/model/chat/completion",
-    payload,
-    {
-      headers: {
-        pauthkey: process.env.GTWY_PAUTHKEY,
-        "Content-Type": "application/json",
-      },
-    }
-  );
 }
 
 /**
@@ -282,206 +209,318 @@ router.post("/start", requireAuth, async (req: any, res) => {
   }
 
   try {
-    console.log("Starting mock interview for user:", req.user.userId, "Template:", savedInterviewId);
-
-    // 1. Fetch the interview configuration from the SavedInterview table
-    const template = await prisma.savedInterview.findUnique({
-      where: { id: savedInterviewId }
-    });
+    const template = await prisma.savedInterview.findUnique({ where: { id: savedInterviewId } });
 
     if (!template) {
       return res.status(404).json({ error: "Saved interview configuration not found" });
     }
+    if (template.userId !== req.user.userId) {
+      return res.status(403).json({ error: "You do not have permission to use this configuration" });
+    }
 
-    // 2. Create a session record in the DB linked to the template
+    const config = configFrom(template);
+    const budget = questionBudgetFor(config.difficulty);
+
     const session = await prisma.mockInterviewSession.create({
       data: {
         userId: req.user.userId,
         savedInterviewId: template.id,
         status: "started",
+        questionBudget: budget,
       },
     });
 
-    // 3. Call GTWY AI to initialize the interview and get the first question
-    const threadId = `session_${session.id}`;
-    const gtwyResponse = await initializeGtwyInterview({
-      userId: req.user.userId,
-      roleId: template.roleId,
-      roundId: template.roundId,
-      difficulty: template.difficulty,
-      experienceBand: template.experienceBand,
-      interviewStyle: template.interviewStyle,
-      stackFocusIds: (template.stackFocusIds as string[] | null) ?? [],
-      focusAreaIds: (template.focusAreaIds as string[] | null) ?? [],
-      threadId,
-    });
+    const { question, usage } = await openInterview(config, budget);
 
-    // Update session with the thread ID
-    await prisma.mockInterviewSession.update({
-      where: { id: session.id },
-      data: { gtwyThreadId: threadId },
-    });
-
-    // 3. Parse the AI's content response
-    const gtwyData = gtwyResponse.data;
-    const contentStr = gtwyData?.response?.data?.content;
-
-    if (!contentStr) {
-      throw new Error("AI failed to generate initial interview content");
-    }
-
-    // Attempt to parse the JSON content from the AI
-    let content;
-    try {
-      content = JSON.parse(contentStr);
-    } catch (parseError) {
-      console.error("Failed to parse AI content as JSON:", contentStr);
-      // Fallback: If it's not JSON, treat the whole string as the question
-      content = { question: contentStr };
-    }
-
-    // 4. Create the first question in the DB
-    const firstQuestion = await prisma.mockInterviewQuestion.create({
-      data: {
-        sessionId: session.id,
-        questionText: content.question || "Welcome! Let's start the interview.",
-        topic: content.topic,
-        difficulty: content.difficulty,
-        focusArea: content.focusArea,
-        starterCode: content.starterCode || null,
-        expectedSkills: content.expectedSkills || [],
-        status: "pending",
-        orderIndex: 0,
-      },
-    });
+    const [firstQuestion] = await prisma.$transaction([
+      prisma.mockInterviewQuestion.create({
+        data: {
+          sessionId: session.id,
+          questionText: question.question,
+          topic: question.topic,
+          difficulty: question.difficulty,
+          focusArea: question.focusArea,
+          starterCode: question.starterCode || null,
+          expectedSkills: question.expectedSkills,
+          status: "pending",
+          orderIndex: 0,
+        },
+      }),
+      prisma.mockInterviewSession.update({
+        where: { id: session.id },
+        data: usageIncrement(usage),
+      }),
+    ]);
 
     res.json({
       success: true,
       message: "Interview session started successfully",
-      session: session,
+      session: { ...session, questionBudget: budget },
       question: firstQuestion,
+      progress: { asked: 1, total: budget },
     });
   } catch (error: any) {
-    console.error(
-      "Error starting interview session:",
-      error.response?.data || error.message
-    );
-    res.status(500).json({
-      error: "Failed to start interview session",
-      details: error.response?.data || error.message,
-    });
+    console.error("Error starting interview session:", error?.message);
+    res.status(500).json({ error: "Failed to start interview session" });
   }
 });
 
 /**
  * @route   POST /api/interviews/session/:sessionId/answer
- * @desc    Submit an answer for a specific question
+ * @desc    Score the answer and, unless the budget is spent, ask the next question
  * @access  Private
  */
 router.post("/session/:sessionId/answer", requireAuth, async (req: any, res) => {
   const { sessionId } = req.params;
   const { questionId, answer } = req.body;
 
-  if (!questionId || !answer) {
-    return res.status(400).json({ error: "questionId and answer are required" });
+  if (!questionId || typeof answer !== "string" || !answer.trim()) {
+    return res.status(400).json({ error: "questionId and a non-empty answer are required" });
   }
 
   try {
-    console.log(`Submitting and evaluating answer for session ${sessionId}, question ${questionId}`);
-
-    // 1. Fetch session and template context
     const session = await prisma.mockInterviewSession.findUnique({
       where: { id: sessionId },
       include: {
         savedInterview: true,
-        questions: {
-          orderBy: { orderIndex: "asc" }
-        }
-      }
-    });
-
-    if (!session) {
-      return res.status(404).json({ error: "Session not found" });
-    }
-
-    const template = session.savedInterview;
-    const previousQuestionsText = session.questions
-      .map(q => `Q: ${q.questionText}\nA: ${q.userAnswer || "No answer"}`)
-      .join("\n---\n");
-
-    // 2. Call GTWY AI for evaluation and next question
-    const gtwyResponse = await evaluateGtwyAnswer({
-      answer,
-      roleId: template.roleId,
-      roundId: template.roundId,
-      difficulty: template.difficulty,
-      experienceBand: template.experienceBand,
-      interviewStyle: template.interviewStyle,
-      stackFocusIds: (template.stackFocusIds as string[] | null) ?? [],
-      focusAreaIds: (template.focusAreaIds as string[] | null) ?? [],
-      previousQuestions: previousQuestionsText,
-      threadId: session.gtwyThreadId || "",
-    });
-
-    const gtwyData = gtwyResponse.data;
-    const contentStr = gtwyData?.response?.data?.content;
-
-    if (!contentStr) {
-      throw new Error("AI failed to evaluate the answer and generate next content");
-    }
-
-    // 3. Parse the evaluation and next question
-    let content;
-    try {
-      content = JSON.parse(contentStr);
-    } catch (parseError) {
-      console.error("Failed to parse AI evaluation as JSON:", contentStr);
-      // Fallback: If not JSON, we can't easily extract score/feedback
-      content = { 
-        evaluation: { score: 0, feedback: "AI response was not in expected JSON format." },
-        nextQuestion: { question: contentStr } 
-      };
-    }
-
-    // 4. Update the current question with the score and feedback
-    await prisma.mockInterviewQuestion.update({
-      where: { id: questionId },
-      data: {
-        userAnswer: answer,
-        evaluationScore: content.evaluation?.score || 0,
-        feedback: content.evaluation?.feedback || "",
-        status: "evaluated",
+        questions: { orderBy: { orderIndex: "asc" } },
       },
     });
 
-    // 5. Create the next question in the sequence
-    const nextQuestion = await prisma.mockInterviewQuestion.create({
-      data: {
-        sessionId: session.id,
-        questionText: content.nextQuestion?.question || "Interview complete! Thank you for your time.",
-        topic: content.nextQuestion?.topic,
-        difficulty: content.nextQuestion?.difficulty,
-        focusArea: content.nextQuestion?.focusArea,
-        starterCode: content.nextQuestion?.starterCode || null,
-        expectedSkills: content.nextQuestion?.expectedSkills || [],
-        status: "pending",
-        orderIndex: session.questions.length, // Increment index
-      },
-    });
+    if (!session) return res.status(404).json({ error: "Session not found" });
+    if (session.userId !== req.user.userId) {
+      return res.status(403).json({ error: "You do not have permission to answer in this session" });
+    }
+    if (session.status === "completed") {
+      return res.status(409).json({ error: "This interview has already finished" });
+    }
+
+    const current = session.questions.find((q) => q.id === questionId);
+    if (!current) return res.status(404).json({ error: "Question not found in this session" });
+    if (current.status === "evaluated") {
+      return res.status(409).json({ error: "That question has already been answered" });
+    }
+
+    const config = configFrom(session.savedInterview);
+    const budget = session.questionBudget;
+    // Everything already asked and answered, in order — the cached prefix.
+    const transcript = session.questions
+      .filter((q) => q.orderIndex < current.orderIndex && q.status === "evaluated")
+      .map((q) => ({ questionText: q.questionText, userAnswer: q.userAnswer }));
+
+    const asked = current.orderIndex + 1;
+    const isLast = asked >= budget;
+
+    let nextQ: AskedQuestion | null = null;
+    let evaluation;
+    let usage: Usage;
+
+    if (isLast) {
+      ({ evaluation, usage } = await evaluateFinal(config, budget, transcript, current.questionText, answer));
+    } else {
+      const turn = await evaluateAndContinue(config, budget, transcript, current.questionText, answer, asked);
+      evaluation = turn.evaluation;
+      usage = turn.usage;
+      nextQ = turn.nextQuestion;
+    }
+
+    const writes: any[] = [
+      prisma.mockInterviewQuestion.update({
+        where: { id: current.id },
+        data: {
+          userAnswer: answer,
+          evaluationScore: evaluation.score,
+          feedback: evaluation.feedback,
+          verdict: evaluation.verdict,
+          missed: evaluation.missed,
+          status: "evaluated",
+        },
+      }),
+      prisma.mockInterviewSession.update({
+        where: { id: session.id },
+        data: usageIncrement(usage),
+      }),
+    ];
+
+    // orderIndex comes from the answered question, not from a count, so two
+    // answers landing together cannot collide on the same slot.
+    if (nextQ) {
+      const next = nextQ;
+      writes.push(
+        prisma.mockInterviewQuestion.create({
+          data: {
+            sessionId: session.id,
+            questionText: next.question,
+            topic: next.topic,
+            difficulty: next.difficulty,
+            focusArea: next.focusArea,
+            starterCode: next.starterCode || null,
+            expectedSkills: next.expectedSkills,
+            status: "pending",
+            orderIndex: current.orderIndex + 1,
+          },
+        }),
+      );
+    }
+
+    const results = await prisma.$transaction(writes);
+    const nextQuestion = isLast ? null : results[2];
 
     res.json({
       success: true,
-      message: "Answer evaluated successfully",
-      evaluation: content.evaluation,
-      nextQuestion: nextQuestion,
+      evaluation,
+      nextQuestion,
+      done: isLast,
+      progress: { asked: isLast ? budget : asked + 1, total: budget },
     });
   } catch (error: any) {
-    console.error("Error evaluating answer:", error.response?.data || error.message);
-    res.status(500).json({
-      error: "Failed to evaluate answer",
-      details: error.response?.data || error.message,
-    });
+    console.error("Error evaluating answer:", error?.message);
+    res.status(500).json({ error: "Failed to evaluate answer" });
   }
 });
+
+/**
+ * @route   POST /api/interviews/session/:sessionId/complete
+ * @desc    Close the session and build its report
+ * @access  Private
+ *
+ * Every number here is computed from rows already on disk. The model is only
+ * asked for prose, and only over feedback it has already written — which is why
+ * the closing report costs a fraction of a single interview turn.
+ */
+router.post("/session/:sessionId/complete", requireAuth, async (req: any, res) => {
+  const { sessionId } = req.params;
+
+  try {
+    const session = await prisma.mockInterviewSession.findUnique({
+      where: { id: sessionId },
+      include: {
+        savedInterview: true,
+        questions: { orderBy: { orderIndex: "asc" } },
+      },
+    });
+
+    if (!session) return res.status(404).json({ error: "Session not found" });
+    if (session.userId !== req.user.userId) {
+      return res.status(403).json({ error: "You do not have permission to close this session" });
+    }
+    if (session.status === "completed") {
+      return res.json({ success: true, alreadyCompleted: true, report: reportOf(session) });
+    }
+
+    const scored = session.questions.filter((q) => q.status === "evaluated" && q.evaluationScore !== null);
+
+    // Walked out before answering anything: close it, no report, no model call.
+    if (scored.length === 0) {
+      const abandoned = await prisma.mockInterviewSession.update({
+        where: { id: session.id },
+        data: { status: "abandoned", completedAt: new Date() },
+      });
+      return res.json({ success: true, abandoned: true, session: abandoned });
+    }
+
+    const scores = scored.map((q) => q.evaluationScore as number);
+    const average = scores.reduce((a, b) => a + b, 0) / scores.length;
+
+    // Per-topic averages, straight out of the rows.
+    const byTopic = new Map<string, number[]>();
+    for (const q of scored) {
+      const topic = q.topic ?? "general";
+      const bucket = byTopic.get(topic) ?? [];
+      bucket.push(q.evaluationScore as number);
+      byTopic.set(topic, bucket);
+    }
+    const topicBreakdown = [...byTopic.entries()]
+      .map(([topic, values]) => ({
+        topic,
+        asked: values.length,
+        average: Number((values.reduce((a, b) => a + b, 0) / values.length).toFixed(1)),
+      }))
+      .sort((a, b) => a.average - b.average);
+
+    const { report, usage } = await writeReport(
+      configFrom(session.savedInterview),
+      scored.map((q) => ({
+        topic: q.topic,
+        score: q.evaluationScore as number,
+        feedback: q.feedback ?? "",
+        missed: ((q.missed as string[] | null) ?? []),
+      })),
+      average,
+      session.questionBudget,
+    );
+
+    const completed = await prisma.mockInterviewSession.update({
+      where: { id: session.id },
+      data: {
+        status: "completed",
+        completedAt: new Date(),
+        overallScore: Math.round(average * 10),
+        summary: report.summary,
+        strengths: report.strengths,
+        weaknesses: report.weaknesses,
+        nextSteps: report.nextSteps,
+        topicBreakdown,
+        ...usageIncrement(usage),
+      },
+    });
+
+    res.json({ success: true, report: reportOf(completed), questions: scored });
+  } catch (error: any) {
+    console.error("Error completing interview session:", error?.message);
+    res.status(500).json({ error: "Failed to complete interview session" });
+  }
+});
+
+/**
+ * @route   GET /api/interviews/session/:sessionId
+ * @desc    The session with its questions, and the report once it has one
+ * @access  Private
+ */
+router.get("/session/:sessionId", requireAuth, async (req: any, res) => {
+  try {
+    const session = await prisma.mockInterviewSession.findUnique({
+      where: { id: req.params.sessionId },
+      include: { questions: { orderBy: { orderIndex: "asc" } } },
+    });
+
+    if (!session) return res.status(404).json({ error: "Session not found" });
+    if (session.userId !== req.user.userId) {
+      return res.status(403).json({ error: "You do not have permission to view this session" });
+    }
+
+    res.json({
+      session,
+      questions: session.questions,
+      report: session.status === "completed" ? reportOf(session) : null,
+      progress: { asked: session.questions.length, total: session.questionBudget },
+    });
+  } catch (error: any) {
+    console.error("Error fetching interview session:", error?.message);
+    res.status(500).json({ error: "Failed to fetch interview session" });
+  }
+});
+
+/** Report shape shared by /complete and /session/:id. */
+function reportOf(session: {
+  overallScore: number | null;
+  summary: string | null;
+  strengths: unknown;
+  weaknesses: unknown;
+  nextSteps: unknown;
+  topicBreakdown: unknown;
+  completedAt: Date | null;
+}) {
+  return {
+    // Stored ×10 so the average keeps a decimal place without a float column.
+    overallScore: session.overallScore === null ? null : session.overallScore / 10,
+    summary: session.summary,
+    strengths: (session.strengths as string[] | null) ?? [],
+    weaknesses: (session.weaknesses as string[] | null) ?? [],
+    nextSteps: (session.nextSteps as string[] | null) ?? [],
+    topicBreakdown: (session.topicBreakdown as Array<{ topic: string; asked: number; average: number }> | null) ?? [],
+    completedAt: session.completedAt,
+  };
+}
 
 export default router;
