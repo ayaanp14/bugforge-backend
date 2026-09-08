@@ -33,8 +33,10 @@ export function platformGuard(req: Request, res: Response, next: NextFunction) {
   if (!isVerified) {
     console.warn(`[Guard] Signature verification failed`, { 
       method: req.method, 
-      path: req.path, 
-      timestamp 
+      path: req.path,
+      originalUrl: req.originalUrl,
+      timestamp,
+      signatureHead: signature?.slice(0, 8) + "...",
     });
     return res.status(403).json({ error: "Access Denied: Strict Origin Verification Failed" });
   }

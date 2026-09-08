@@ -22,12 +22,19 @@ export function verifySignature(
   path: string,
   timestamp: string
 ): boolean {
-  // 1. Check if timestamp is relatively recent (within 60 seconds)
+  // 1. Check if timestamp is relatively recent (within 5 minutes).
+  // 60 s was too tight for production: Railway server ↔ browser clock skew
+  // and cold-start latency regularly pushed legitimate requests over the edge.
   const now = Date.now();
   const requestTime = parseInt(timestamp);
-  
-  if (isNaN(requestTime) || Math.abs(now - requestTime) > 60000) {
-    console.warn("Signature verification failed: Timestamp expired or invalid", { now, requestTime });
+  const delta = Math.abs(now - requestTime);
+
+  if (isNaN(requestTime) || delta > 300_000) {
+    console.warn("Signature verification failed: Timestamp expired or invalid", {
+      now,
+      requestTime,
+      deltaMs: isNaN(requestTime) ? "NaN" : delta,
+    });
     return false;
   }
 
