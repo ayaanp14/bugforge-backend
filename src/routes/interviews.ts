@@ -3,6 +3,7 @@ import { prisma } from "../lib/prisma.js";
 import { requireAuth } from "../middleware/auth.js";
 import { prettyLabel } from "../lib/interview-labels.js";
 import { estimatedQuestions, voiceDurationMinutes } from "../lib/interview-duration.js";
+import { checkInterviewQuota, checkVoiceDuration } from "../services/entitlements.js";
 import {
   askNextQuestion,
   evaluateAnswer,
@@ -274,6 +275,11 @@ router.post("/start", requireAuth, async (req: any, res) => {
       return res.status(403).json({ error: "You do not have permission to use this configuration" });
     }
 
+    // Metered before anything is created, so a refusal leaves no orphan row and
+    // costs no model call.
+    const quota = await checkInterviewQuota(req.user.userId);
+    if (quota) return res.status(402).json(quota);
+
     const config = configFrom(template);
     const budget = questionBudgetFor(config.difficulty);
 
@@ -284,6 +290,11 @@ router.post("/start", requireAuth, async (req: any, res) => {
       }
 
       const durationMin = voiceDurationMinutes(req.body?.durationMin);
+
+      // Longer rounds are a paid feature, so the length is checked as well as
+      // the count — otherwise free could ask for thirty minutes twice a week.
+      const lengthGate = await checkVoiceDuration(req.user.userId, durationMin);
+      if (lengthGate) return res.status(402).json(lengthGate);
 
       // No opening question is written here. In a spoken round the interviewer
       // asks it out loud on the socket, and the question rows are recovered

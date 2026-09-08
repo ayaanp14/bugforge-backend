@@ -7,7 +7,10 @@ import { verifySignature } from "../lib/crypto.js";
 export function platformGuard(req: Request, res: Response, next: NextFunction) {
   // 1. Skip checks for health or public diagnostic routes
   // Also skip /api/auth routes which are public entry points and handled by NextAuth
-  if (req.path === "/health" || req.path.startsWith("/api/auth")) {
+  // The payment webhook is called by Cashfree, which cannot sign our platform
+  // HMAC. It authenticates itself instead with its own signature header, which
+  // the route verifies before touching anything — see routes/billing.ts.
+  if (req.path === "/health" || req.path.startsWith("/api/auth") || req.path === "/api/billing/webhook") {
     return next();
   }
 

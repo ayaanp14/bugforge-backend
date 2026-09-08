@@ -5,6 +5,7 @@ import { judgeBugProject, type BugFile, type BugLanguage } from "../lib/bug-judg
 import { invalidateDashboard } from "../services/dashboard.js";
 import { emitDuelActivity, settleDuelForSubmission } from "../lib/duels.js";
 import { ENGINE_DOWN_MESSAGE, isEngineDown } from "../lib/engine-error.js";
+import { checkBugQuota } from "../services/entitlements.js";
 import {
   DEFAULT_PAGE_SIZE,
   getBugHuntIndex,
@@ -254,6 +255,15 @@ router.post("/:id/submit", requireAuth, async (req, res) => {
     });
     if (!challenge || !challenge.isPublished) {
       res.status(404).json({ error: "Challenge not found" });
+      return;
+    }
+
+    // A bug already worked today is always allowed through, so the daily
+    // allowance buys distinct challenges rather than attempts — the first
+    // failed run must not lock someone out of finishing what they started.
+    const quota = await checkBugQuota(userId, challenge.id);
+    if (quota) {
+      res.status(402).json(quota);
       return;
     }
 

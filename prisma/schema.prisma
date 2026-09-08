@@ -75,6 +75,8 @@ model User {
   problemTimers      ProblemTimer[]
   savedInterviews    SavedInterview[]
   mockSessions       MockInterviewSession[]
+  subscriptions      Subscription[]
+  paymentOrders      PaymentOrder[]
   notifications      Notification[]
   posts              Post[]
   postComments       PostComment[]
@@ -445,6 +447,62 @@ model InterviewEvent {
   /// written, and the unique constraint is what makes that a no-op rather than
   /// a duplicated turn. Doubles as the ordered read index for /complete.
   @@unique([sessionId, sequence])
+}
+
+/// A paid plan the user currently holds.
+///
+/// Access is decided by `status = "active" AND currentPeriodEnd > now`, which
+/// is a query rather than a flag on User — a flag would need a cron to flip it
+/// the moment a period lapsed, and the day that cron failed everyone would keep
+/// their entitlements for free.
+model Subscription {
+  id               String   @id @default(cuid())
+  userId           String
+  /// "starter" | "pro" | "elite" — resolved through lib/plans.ts.
+  planId           String
+  /// "monthly" | "yearly"
+  period           String
+  /// "active" | "expired" | "cancelled"
+  status           String   @default("active")
+  startedAt        DateTime @default(now())
+  currentPeriodEnd DateTime
+  /// The order that paid for this period.
+  orderId          String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  /// The entitlement lookup on every metered request: one user's live rows,
+  /// newest expiry first.
+  @@index([userId, status, currentPeriodEnd])
+}
+
+/// One attempt to pay for a plan.
+///
+/// Written before the user is sent to the gateway, so a webhook that arrives
+/// for an order we never created is rejected rather than granting access. The
+/// id doubles as the gateway's `order_id`.
+model PaymentOrder {
+  id                String   @id
+  userId            String
+  planId            String
+  period            String
+  /// Rupees. Integer because every price in the catalogue is whole rupees.
+  amount            Int
+  currency          String   @default("INR")
+  /// "created" | "paid" | "failed" | "expired"
+  status            String   @default("created")
+  provider          String   @default("cashfree")
+  /// Returned by the gateway; the browser needs it to open checkout.
+  paymentSessionId  String?  @db.Text
+  providerPaymentId String?
+  /// The verified gateway payload, kept for reconciliation and disputes.
+  raw               Json?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
 }
 
 model Notification {

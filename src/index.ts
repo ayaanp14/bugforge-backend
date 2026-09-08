@@ -10,6 +10,7 @@ import { Server } from "socket.io";
 import authRouter from "./routes/auth.js";
 import oauthRouter from "./routes/oauth.js";
 import interviewsVoiceRouter from "./routes/interviews-voice.js";
+import billingRouter from "./routes/billing.js";
 import meRouter from "./routes/me.js";
 import problemsRouter from "./routes/problems.js";
 import executionRouter from "./routes/execution.js";
@@ -320,6 +321,14 @@ app.use(
   })
 );
 
+/**
+ * The payment webhook is signed over the exact bytes Cashfree sent, so it must
+ * reach the route as a Buffer — `express.json()` would parse it, and the
+ * re-serialised body would never reproduce the signature. Mounted before the
+ * JSON parser so this one path wins; every other route is unaffected.
+ */
+app.use("/api/billing/webhook", express.raw({ type: "*/*", limit: "1mb" }));
+
 // Strict Platform Guard
 app.use(platformGuard);
 
@@ -339,6 +348,7 @@ app.use("/api/pair-rooms", pairRoomsRouter);
 // written router's prefix without shadowing any of its routes.
 app.use("/api/interviews", interviewsVoiceRouter);
 app.use("/api/interviews", interviewsRouter);
+app.use("/api/billing", billingRouter);
 app.use("/api/community", communityRouter);
 app.use("/api/duels", duelsRouter);
 app.use("/api", executionRouter); 
