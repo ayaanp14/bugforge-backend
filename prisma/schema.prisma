@@ -505,6 +505,38 @@ model PaymentOrder {
   @@index([userId, createdAt])
 }
 
+/// An application to run CodeKairo on a campus.
+///
+/// Deliberately not related to `User`: people apply before they have an
+/// account, and an application is a record of something that happened which
+/// should outlive the account it may later be attached to. `userId` is
+/// therefore a plain column, filled in when the applicant happened to be signed
+/// in, and never a foreign key that would cascade the application away.
+model CampusAmbassador {
+  id             String   @id @default(cuid())
+  name           String
+  /// Unique: one application per person. A second attempt is answered with
+  /// "we already have yours" rather than quietly creating a duplicate.
+  email          String   @unique
+  phone          String?
+  college        String
+  city           String?
+  graduationYear String?
+  linkedin       String?  @db.Text
+  instagram      String?  @db.Text
+  /// Free text: the clubs, groups or following they can actually reach.
+  reach          String?  @db.Text
+  why            String   @db.Text
+  /// "pending" | "accepted" | "rejected"
+  status         String   @default("pending")
+  userId         String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  /// The review queue: oldest pending first.
+  @@index([status, createdAt])
+}
+
 model Notification {
   id        String   @id @default(cuid())
   userId    String

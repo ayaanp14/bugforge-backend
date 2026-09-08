@@ -28,6 +28,13 @@ export const FIRST_SOLVE: NotificationInput = {
   href: "/",
 };
 
+export const CAMPUS_APPLIED: NotificationInput = {
+  type: "campus_ambassador_applied",
+  title: "Ambassador application received 🎓",
+  body: "Thanks for applying to run CodeKairo on your campus. We review applications every week and reply either way.",
+  href: "/campus-ambassador",
+};
+
 /** Streak milestones worth celebrating. Returns null for ordinary days. */
 export function streakMilestone(days: number): NotificationInput | null {
   const milestones: Record<number, { title: string; body: string }> = {
