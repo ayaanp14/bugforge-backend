@@ -9,6 +9,7 @@ import { createServer } from "http";
 import { Server } from "socket.io";
 import authRouter from "./routes/auth.js";
 import oauthRouter from "./routes/oauth.js";
+import interviewsVoiceRouter from "./routes/interviews-voice.js";
 import meRouter from "./routes/me.js";
 import problemsRouter from "./routes/problems.js";
 import executionRouter from "./routes/execution.js";
@@ -334,6 +335,9 @@ app.use("/api/problems", problemsRouter);
 app.use("/api/leaderboard", leaderboardRouter);
 app.use("/api/bug-challenges", bugChallengesRouter);
 app.use("/api/pair-rooms", pairRoomsRouter);
+// Voice paths are namespaced under /session/:id/voice, so this shares the
+// written router's prefix without shadowing any of its routes.
+app.use("/api/interviews", interviewsVoiceRouter);
 app.use("/api/interviews", interviewsRouter);
 app.use("/api/community", communityRouter);
 app.use("/api/duels", duelsRouter);

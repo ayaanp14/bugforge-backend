@@ -609,6 +609,8 @@ async function ask<S extends z.ZodType>(
   messages: InputItem[],
   schema: S,
   name: string,
+  /** Overrides the shared ceiling for the rare call that writes far more. */
+  maxTokens = MAX_OUTPUT_TOKENS,
 ): Promise<{ parsed: z.infer<S>; usage: Usage }> {
   const outgoing: InputItem[] = STRUCTURED_OUTPUTS
     ? messages
@@ -625,7 +627,7 @@ async function ask<S extends z.ZodType>(
   const request = {
     model: MODEL,
     messages: outgoing,
-    max_completion_tokens: MAX_OUTPUT_TOKENS,
+    max_completion_tokens: maxTokens,
     ...(REASONING_EFFORT === "default" ? {} : { reasoning_effort: REASONING_EFFORT }),
     ...(STRUCTURED_OUTPUTS ? { response_format: responseFormat(schema, name) } : {}),
   };
@@ -849,6 +851,97 @@ export async function writeReport(
 
   const { parsed, usage } = await ask(input, Report, "report");
   return { report: parsed, usage };
+}
+
+/* ── scoring a spoken round ────────────────────────────────────────────── */
+
+/**
+ * One question lifted out of a voice transcript, scored on the same 0-10 scale
+ * the written round uses. The extra fields over `Evaluation` are the ones a
+ * written round gets for free from the row it already wrote — a spoken round
+ * has to recover them from what was actually said.
+ */
+const SpokenTurn = z.object({
+  question: z.string(),
+  answer: z.string(),
+  topic: z.string(),
+  focusArea: z.string(),
+  difficulty: z.enum(["easy", "medium", "hard"]),
+  expectedSkills: z.array(z.string()),
+  score: z.number().int().min(0).max(10),
+  verdict: z.enum(["strong", "adequate", "weak", "no_answer"]),
+  feedback: z.string(),
+  missed: z.array(z.string()),
+});
+const SpokenBreakdown = z.object({ questions: z.array(SpokenTurn) });
+
+export type SpokenQuestion = z.infer<typeof SpokenTurn>;
+
+/** A line of the conversation as it was actually spoken. */
+export interface SpokenLine {
+  speaker: "interviewer" | "candidate";
+  text: string;
+}
+
+/**
+ * Turns a spoken round into the same scored question rows a written round
+ * stores, so history, the report page and the career analytics never learn
+ * that two kinds of interview exist.
+ *
+ * Deliberately not run on the realtime model. That model is priced and tuned
+ * for holding a conversation at latency, and it spent the whole interview under
+ * instructions never to reveal a judgement — asking it to grade its own round
+ * afterwards is both the expensive way and the biased one. Nemotron sees the
+ * finished transcript cold, with the same rubric that marks every written
+ * answer, which is what makes the two modes comparable at all.
+ *
+ * Follow-ups are folded into the question that prompted them: a probe and its
+ * answer are evidence about one topic, not a separate question the candidate
+ * was asked.
+ */
+export async function analyzeVoiceTranscript(
+  config: InterviewConfig,
+  budget: number,
+  lines: SpokenLine[],
+) {
+  const conversation = lines
+    .map((line) => `${line.speaker === "interviewer" ? "INTERVIEWER" : "CANDIDATE"}: ${line.text}`)
+    .join("\n");
+
+  const input: InputItem[] = [
+    { role: "system", content: RUBRIC },
+    { role: "system", content: configBlock(config, budget) },
+    {
+      role: "user",
+      content:
+        `Below is the full transcript of a spoken technical interview, transcribed from audio. ` +
+        `Break it into the questions that were actually asked and score each one.\n\n` +
+        `${conversation}\n\n---\n` +
+        `Rules for the breakdown:\n` +
+        `- One entry per substantive question. Fold each follow-up into the question that prompted it: ` +
+        `the answer field should capture everything the candidate said on that thread.\n` +
+        `- Skip greetings, the closing, and any exchange that was not a question about engineering.\n` +
+        `- Quote the question roughly as it was asked, cleaned up into one sentence.\n` +
+        `- The answer field summarises what the candidate actually said, in their own terms. ` +
+        `Do not improve it, and do not credit them with anything they did not say.\n` +
+        `- This is speech, so expect filler, false starts and transcription errors. ` +
+        `Judge the engineering, not the fluency, and do not penalise a mangled word that is obviously ` +
+        `the right term misheard.\n` +
+        `- A question the candidate never really answered scores accordingly, with verdict "no_answer".\n` +
+        `- Score on the same scale you would apply to a written answer for this experience band.`,
+    },
+  ];
+
+  // A nine-question breakdown carries nine sets of feedback, which is several
+  // times what any single written call emits — the shared ceiling would cut it
+  // off mid-object and fail validation.
+  const { parsed, usage } = await ask(
+    input,
+    SpokenBreakdown,
+    "voice_breakdown",
+    Number(process.env.INTERVIEW_VOICE_MAX_OUTPUT_TOKENS ?? 12_000),
+  );
+  return { questions: parsed.questions, usage };
 }
 
 /** Questions per interview, from the difficulty tier the builder offers. */

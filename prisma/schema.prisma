@@ -322,6 +322,35 @@ model MockInterviewSession {
   questionBudget   Int            @default(7)
   completedAt      DateTime?
 
+  // ── interaction layer ──────────────────────────────────────────────────
+  //
+  // "written" is the typed round Nemotron has always run; "voice" is the
+  // realtime spoken round. Everything below this line is null on a written
+  // session, and the default keeps every row written before voice existed
+  // reading as what it actually was.
+  mode             String         @default("written") // "written" | "voice"
+  /// Realtime vendor, kept as data so a second provider needs no migration.
+  provider         String?
+  /// The exact realtime model that ran, for cost attribution after the fact.
+  realtimeModel    String?
+  /// When audio actually started, as opposed to when the row was created.
+  startedAt        DateTime?
+  endedAt          DateTime?
+  durationSec      Int?
+  /// The wall-clock budget the candidate chose, in seconds. A spoken round is
+  /// bounded by time rather than by a question count — how many questions fit
+  /// is an outcome, not a setting — and the round closes itself when this runs
+  /// out. Null on a written round, which is still question-bounded.
+  durationLimitSec Int?
+  /// The structured interview state the realtime round is conducted from —
+  /// current question, topics covered, weak areas. Not the transcript.
+  ///
+  /// Nullable rather than defaulted: MySQL cannot put a literal default on a
+  /// JSON column, so adding it NOT NULL to a table that already holds sessions
+  /// is an ALTER that can fail outright. Readers go through `stateOf()`, which
+  /// treats null as a fresh state anyway.
+  voiceState       Json?
+
   // Closing report. Numbers are computed from the questions, not from the model.
   overallScore     Int?
   summary          String?        @db.Text
@@ -342,6 +371,7 @@ model MockInterviewSession {
   user             User           @relation(fields: [userId], references: [id], onDelete: Cascade)
   savedInterview   SavedInterview @relation(fields: [savedInterviewId], references: [id], onDelete: Cascade)
   questions        MockInterviewQuestion[]
+  events           InterviewEvent[]
 
   /// The history list: one user's sessions, newest first, cursor-paged.
   @@index([userId, createdAt])
@@ -382,6 +412,39 @@ model MockInterviewQuestion {
   /// Doubles as the index for every read of a session's questions, which is
   /// always ordered by slot — so no separate @@index is needed.
   @@unique([sessionId, orderIndex])
+}
+
+/// Everything that happened during a realtime round, in the order it happened.
+///
+/// A voice interview has no natural row-per-question rhythm to hang state off —
+/// the model asks, the candidate talks over it, the model follows up, and only
+/// afterwards is any of that separable into questions. So the conversation is
+/// stored as it arrives and the question rows are derived from it at /complete.
+/// That also means a browser that dies mid-round leaves everything said up to
+/// that point already on disk.
+model InterviewEvent {
+  id             String   @id @default(cuid())
+  sessionId      String
+  /// Per-session monotonic counter, assigned by the client that owns the
+  /// socket. Ordering by `createdAt` cannot work: a batch of events written in
+  /// one round trip shares a timestamp to the millisecond.
+  sequence       Int
+  /// "candidate" | "interviewer" | "system"
+  speaker        String
+  /// "transcript" | "interview_started" | "interruption" | "question_started" |
+  /// "connection_lost" | "error" | … — open set, read by analytics only.
+  type           String
+  text           String?  @db.Text
+  /// Which question this belongs to, as counted by the running interview state.
+  questionNumber Int?
+  metadata       Json     @default("{}")
+  createdAt      DateTime @default(now())
+  session        MockInterviewSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  /// Idempotent replay: a retried batch re-sends sequence numbers already
+  /// written, and the unique constraint is what makes that a no-op rather than
+  /// a duplicated turn. Doubles as the ordered read index for /complete.
+  @@unique([sessionId, sequence])
 }
 
 model Notification {

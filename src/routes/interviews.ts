@@ -1,6 +1,8 @@
 import { Router } from "express";
 import { prisma } from "../lib/prisma.js";
 import { requireAuth } from "../middleware/auth.js";
+import { prettyLabel } from "../lib/interview-labels.js";
+import { estimatedQuestions, voiceDurationMinutes } from "../lib/interview-duration.js";
 import {
   askNextQuestion,
   evaluateAnswer,
@@ -12,6 +14,8 @@ import {
   type InterviewQuestion as AskedQuestion,
   type Usage,
 } from "../services/interview-ai.js";
+import { realtimeProvider } from "../services/realtime-interview.js";
+import { finalizeInterview, usageIncrement } from "../services/interview-completion.js";
 
 const router = Router();
 
@@ -245,17 +249,6 @@ function starterCodeFor(starterCode: string, config: InterviewConfig, language: 
   return wantsCode(config) ? defaultStub(language) : null;
 }
 
-/** Folds one call's usage into the session's running totals. */
-function usageIncrement(usage: Usage) {
-  return {
-    promptTokens: { increment: usage.promptTokens },
-    cachedTokens: { increment: usage.cachedTokens },
-    completionTokens: { increment: usage.completionTokens },
-    reasoningTokens: { increment: usage.reasoningTokens },
-    costMicros: { increment: usage.costMicros },
-  };
-}
-
 /**
  * @route   POST /api/interviews/start
  * @desc    Start a new mock interview session
@@ -263,6 +256,9 @@ function usageIncrement(usage: Usage) {
  */
 router.post("/start", requireAuth, async (req: any, res) => {
   const { savedInterviewId } = req.body;
+  // Anything that is not explicitly "voice" is the typed round this endpoint
+  // has always run, so an older client that sends no mode is unaffected.
+  const mode = req.body?.mode === "voice" ? "voice" : "written";
 
   if (!savedInterviewId) {
     return res.status(400).json({ error: "savedInterviewId is required to start an interview" });
@@ -280,6 +276,44 @@ router.post("/start", requireAuth, async (req: any, res) => {
 
     const config = configFrom(template);
     const budget = questionBudgetFor(config.difficulty);
+
+    if (mode === "voice") {
+      const provider = realtimeProvider();
+      if (!provider.isConfigured()) {
+        return res.status(503).json({ error: "Voice interviews are not available on this deployment" });
+      }
+
+      const durationMin = voiceDurationMinutes(req.body?.durationMin);
+
+      // No opening question is written here. In a spoken round the interviewer
+      // asks it out loud on the socket, and the question rows are recovered
+      // from the transcript when the round closes.
+      const session = await prisma.mockInterviewSession.create({
+        data: {
+          userId: req.user.userId,
+          savedInterviewId: template.id,
+          status: "started",
+          // A placeholder until the round ends: a spoken interview is bounded
+          // by the clock, and the real count is whatever fitted, written back
+          // by /voice/complete.
+          questionBudget: estimatedQuestions(durationMin),
+          mode: "voice",
+          provider: provider.id,
+          realtimeModel: provider.model,
+          durationLimitSec: durationMin * 60,
+        },
+      });
+
+      return res.json({
+        success: true,
+        message: "Voice interview session created",
+        session,
+        mode: "voice",
+        setup: config,
+        language: languageFor(config),
+        durationLimitSec: durationMin * 60,
+      });
+    }
 
     const session = await prisma.mockInterviewSession.create({
       data: {
@@ -322,6 +356,7 @@ router.post("/start", requireAuth, async (req: any, res) => {
       message: "Interview session started successfully",
       session: { ...session, questionBudget: budget },
       question: firstQuestion,
+      mode: "written",
       language,
       // The room the candidate is sitting in — role, round, depth, focus. It is
       // shown alongside the question rather than left behind on the builder.
@@ -730,51 +765,7 @@ router.post("/session/:sessionId/complete", requireAuth, async (req: any, res) =
       return res.json({ success: true, abandoned: true, session: abandoned });
     }
 
-    const scores = scored.map((q) => q.evaluationScore as number);
-    const average = scores.reduce((a, b) => a + b, 0) / scores.length;
-
-    // Per-topic averages, straight out of the rows.
-    const byTopic = new Map<string, number[]>();
-    for (const q of scored) {
-      const topic = q.topic ?? "general";
-      const bucket = byTopic.get(topic) ?? [];
-      bucket.push(q.evaluationScore as number);
-      byTopic.set(topic, bucket);
-    }
-    const topicBreakdown = [...byTopic.entries()]
-      .map(([topic, values]) => ({
-        topic,
-        asked: values.length,
-        average: Number((values.reduce((a, b) => a + b, 0) / values.length).toFixed(1)),
-      }))
-      .sort((a, b) => a.average - b.average);
-
-    const { report, usage } = await writeReport(
-      configFrom(session.savedInterview),
-      scored.map((q) => ({
-        topic: q.topic,
-        score: q.evaluationScore as number,
-        feedback: q.feedback ?? "",
-        missed: ((q.missed as string[] | null) ?? []),
-      })),
-      average,
-      session.questionBudget,
-    );
-
-    const completed = await prisma.mockInterviewSession.update({
-      where: { id: session.id },
-      data: {
-        status: "completed",
-        completedAt: new Date(),
-        overallScore: Math.round(average * 10),
-        summary: report.summary,
-        strengths: report.strengths,
-        weaknesses: report.weaknesses,
-        nextSteps: report.nextSteps,
-        topicBreakdown,
-        ...usageIncrement(usage),
-      },
-    });
+    const completed = await finalizeInterview(session, configFrom(session.savedInterview), scored);
 
     res.json({ success: true, report: reportOf(completed, scored) });
   } catch (error: any) {
@@ -1300,36 +1291,6 @@ router.get("/session/:sessionId", requireAuth, async (req: any, res) => {
  */
 
 /** Acronyms the model writes lower case, which a naive title-caser mangles. */
-const ACRONYMS = new Set([
-  "dsa", "sql", "api", "css", "html", "http", "ui", "ux", "orm", "jwt",
-  "cli", "cdn", "dom", "tcp", "ssr", "crud", "oop", "io", "rest", "grpc",
-]);
-
-/** Chart axes have finite room, and the model sometimes writes a whole sentence
- * where a topic tag belongs ("Implement Express endpoint with validation…"). */
-const MAX_LABEL = 42;
-
-function prettyLabel(raw: string) {
-  // Slugs come through as-is ("api-design", "node-express"); as labels they read
-  // far better spaced, and it lets the acronym list see the parts separately.
-  const text = raw.trim().replace(/[-_]+/g, " ").replace(/\s+/g, " ");
-  if (!text) return "General";
-  const words = text.split(" ");
-  // Two or three words is a tag, and title case suits it. Anything longer is a
-  // phrase, where title casing every word reads worse than leaving it alone.
-  const cased =
-    words.length <= 3
-      ? words
-          .map((word) =>
-            ACRONYMS.has(word.toLowerCase())
-              ? word.toUpperCase()
-              : word.charAt(0).toUpperCase() + word.slice(1),
-          )
-          .join(" ")
-      : text.charAt(0).toUpperCase() + text.slice(1);
-  return cased.length > MAX_LABEL ? `${cased.slice(0, MAX_LABEL - 1).trimEnd()}…` : cased;
-}
-
 /**
  * One field can carry several labels: focusArea comes back as "backend, dsa,
  * api-design" often enough that treating the whole string as one bucket gives a
