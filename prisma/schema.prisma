@@ -305,6 +305,9 @@ model SavedInterview {
   updatedAt       DateTime @updatedAt
   user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   mockSessions    MockInterviewSession[]
+
+  /// The builder lists a user's templates newest-first and nothing else.
+  @@index([userId, createdAt])
 }
 
 model MockInterviewSession {
@@ -339,6 +342,15 @@ model MockInterviewSession {
   user             User           @relation(fields: [userId], references: [id], onDelete: Cascade)
   savedInterview   SavedInterview @relation(fields: [savedInterviewId], references: [id], onDelete: Cascade)
   questions        MockInterviewQuestion[]
+
+  /// The history list: one user's sessions, newest first, cursor-paged.
+  @@index([userId, createdAt])
+  /// The same list filtered to a status chip, and the "is a round already open
+  /// for this user" lookup that keeps /start from opening a second one.
+  @@index([userId, status, createdAt])
+  /// Ranking by score reads overallScore in order within one user.
+  @@index([userId, overallScore])
+  @@index([savedInterviewId])
 }
 
 model MockInterviewQuestion {
@@ -362,6 +374,14 @@ model MockInterviewQuestion {
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
   session         MockInterviewSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  /// A slot belongs to exactly one question. Two answers submitted for the same
+  /// question at once would otherwise each append a "next question" at the same
+  /// index, and the interview would fork — the check in /answer runs before a
+  /// model call that takes seconds, so both requests can pass it.
+  /// Doubles as the index for every read of a session's questions, which is
+  /// always ordered by slot — so no separate @@index is needed.
+  @@unique([sessionId, orderIndex])
 }
 
 model Notification {

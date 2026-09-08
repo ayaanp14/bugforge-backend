@@ -1,6 +1,3 @@
-import OpenAI from "openai";
-import { zodResponseFormat } from "openai/helpers/zod";
-import type { CompletionUsage } from "openai/resources/completions";
 import { z } from "zod";
 
 /**
@@ -20,14 +17,24 @@ import { z } from "zod";
  */
 
 /**
- * NVIDIA's hosted catalogue is the only provider. It speaks the OpenAI Chat
- * Completions wire format, which is why the `openai` package is the client
- * here — the SDK is the transport, not a dependency on OpenAI the vendor.
+ * NVIDIA's hosted catalogue is the only provider, and the only one there is any
+ * intention of supporting. The endpoint is a chat-completions API, which the
+ * `openai` SDK used to speak for us — but a whole vendor SDK for a single POST
+ * was misleading about who we talk to and gave us no control over the one thing
+ * that matters here, which is how long we are willing to wait. It is a `fetch`
+ * now: no SDK, no second provider, no fallback chain.
  *
  * Models are namespaced: `nvidia/nemotron-3-super-120b-a12b`.
  */
 const BASE_URL = process.env.NVIDIA_BASE_URL || "https://integrate.api.nvidia.com/v1";
 const MODEL = process.env.INTERVIEW_MODEL || "nvidia/nemotron-3-super-120b-a12b";
+
+/**
+ * Nemotron decodes at roughly twenty tokens a second on the free tier, so a
+ * long reply legitimately takes a minute. The ceiling exists for the request
+ * that has stopped moving altogether, not for the slow one.
+ */
+const REQUEST_TIMEOUT_MS = Number(process.env.INTERVIEW_TIMEOUT_MS ?? 120_000);
 
 /**
  * USD per 1M tokens. NVIDIA's hosted catalogue is free, so these read 0 and the
@@ -53,14 +60,92 @@ const STRUCTURED_OUTPUTS = (() => {
   return !/nemotron-3-ultra|nemotron-3\.5-lightning/i.test(MODEL);
 })();
 
-let client: OpenAI | null = null;
-function openai() {
-  if (!client) {
-    const apiKey = process.env.NVIDIA_API_KEY;
-    if (!apiKey) throw new Error("Set NVIDIA_API_KEY to run interviews");
-    client = new OpenAI({ apiKey, baseURL: BASE_URL });
+/* ── the NVIDIA client ─────────────────────────────────────────────────── */
+
+/** Only the fields we read. Nemotron returns more; none of it is used. */
+interface CompletionResponse {
+  choices?: Array<{
+    message?: { content?: string | null; refusal?: string | null };
+    finish_reason?: string;
+  }>;
+  usage?: {
+    prompt_tokens?: number;
+    completion_tokens?: number;
+    prompt_tokens_details?: { cached_tokens?: number };
+    completion_tokens_details?: { reasoning_tokens?: number };
+  };
+  error?: { message?: string };
+}
+
+/** Carries the HTTP status so the retry policy can tell transient from fatal. */
+class ProviderError extends Error {
+  constructor(
+    message: string,
+    readonly status: number,
+  ) {
+    super(message);
+    this.name = "ProviderError";
   }
-  return client;
+}
+
+function apiKey() {
+  const key = process.env.NVIDIA_API_KEY;
+  if (!key) throw new Error("Set NVIDIA_API_KEY to run interviews");
+  return key;
+}
+
+async function postCompletion(
+  body: Record<string, unknown>,
+  controller = new AbortController(),
+): Promise<CompletionResponse> {
+  let timedOut = false;
+  const timer = setTimeout(() => {
+    timedOut = true;
+    controller.abort();
+  }, REQUEST_TIMEOUT_MS);
+
+  let response: Response;
+  try {
+    response = await fetch(`${BASE_URL}/chat/completions`, {
+      method: "POST",
+      headers: { "content-type": "application/json", authorization: `Bearer ${apiKey()}` },
+      body: JSON.stringify(body),
+      signal: controller.signal,
+    });
+  } catch (error) {
+    if ((error as Error).name === "AbortError") {
+      // Our own deadline: transient, and worth another attempt.
+      if (timedOut) throw new ProviderError(`Interview provider timed out after ${REQUEST_TIMEOUT_MS}ms`, 408);
+      // Otherwise a hedge won and cancelled this one. Deliberately given no
+      // status, so the retry policy leaves it alone — there is nothing left to
+      // retry for, the answer already arrived on another attempt.
+      throw error;
+    }
+    throw new ProviderError(`Interview provider unreachable: ${(error as Error).message}`, 503);
+  } finally {
+    clearTimeout(timer);
+  }
+
+  if (!response.ok) {
+    const detail = await response.text().catch(() => "");
+    throw new ProviderError(
+      `Interview provider ${response.status}: ${detail.slice(0, 200) || response.statusText}`,
+      response.status,
+    );
+  }
+
+  return (await response.json()) as CompletionResponse;
+}
+
+/**
+ * A strict JSON Schema for the response format. Zod already emits `required`
+ * and `additionalProperties: false`; only the `$schema` key has to go, which
+ * some gateways reject outright.
+ */
+function responseFormat(schema: z.ZodType, name: string) {
+  const { $schema, ...jsonSchema } = z.toJSONSchema(schema) as Record<string, unknown>;
+  void $schema;
+  return { type: "json_schema" as const, json_schema: { name, schema: jsonSchema, strict: true } };
 }
 
 /** What the model layer is actually talking to — for logs and the smoke test. */
@@ -189,14 +274,28 @@ For "topic": two or three words naming the subject area, always populated — it
 
 /* ── schemas ───────────────────────────────────────────────────────────── */
 
-const Question = z.object({
+const QuestionFields = {
   question: z.string(),
   topic: z.string(),
   focusArea: z.string(),
   difficulty: z.enum(["easy", "medium", "hard"]),
   expectedSkills: z.array(z.string()),
-  starterCode: z.string(),
-});
+};
+
+/**
+ * Two shapes, chosen by whether the round asks the candidate to write code.
+ *
+ * `starterCode` is a required field, so a discussion round still had to emit
+ * one — and the model does not emit `""`, it writes a stub, which the caller
+ * then throws away because a discussion round has no editor. That is a few
+ * hundred tokens of pure latency on the one call a candidate waits for. The
+ * field is simply absent from the schema where it cannot be used, which is a
+ * harder guarantee than asking the model to leave it empty.
+ */
+const DiscussionQuestion = z.object(QuestionFields);
+const CodingQuestion = z.object({ ...QuestionFields, starterCode: z.string() });
+
+const Question = CodingQuestion;
 
 const Evaluation = z.object({
   score: z.number().int().min(0).max(10),
@@ -205,8 +304,11 @@ const Evaluation = z.object({
   missed: z.array(z.string()),
 });
 
-const FirstTurn = z.object({ question: Question });
-const Turn = z.object({ evaluation: Evaluation, nextQuestion: Question });
+/** A question on its own — the opener, and every question after a scored turn. */
+const CodingTurn = z.object({ question: CodingQuestion });
+const DiscussionTurn = z.object({ question: DiscussionQuestion });
+const questionSchema = (wantsCode: boolean) => (wantsCode ? CodingTurn : DiscussionTurn);
+/** An evaluation on its own — the scoring half of a turn, and the final answer. */
 const LastTurn = z.object({ evaluation: Evaluation });
 const Report = z.object({
   summary: z.string(),
@@ -215,7 +317,8 @@ const Report = z.object({
   nextSteps: z.array(z.string()),
 });
 
-export type InterviewQuestion = z.infer<typeof Question>;
+/** A discussion round returns no stub at all, so the field is optional here. */
+export type InterviewQuestion = z.infer<typeof DiscussionQuestion> & { starterCode?: string };
 export type InterviewEvaluation = z.infer<typeof Evaluation>;
 export type InterviewReport = z.infer<typeof Report>;
 
@@ -289,7 +392,7 @@ const EMPTY_USAGE: Usage = {
   costMicros: 0,
 };
 
-function readUsage(usage: CompletionUsage | undefined): Usage {
+function readUsage(usage: CompletionResponse["usage"]): Usage {
   if (!usage) return EMPTY_USAGE;
 
   const promptTokens = usage.prompt_tokens ?? 0;
@@ -322,12 +425,159 @@ export function addUsage(a: Usage, b: Usage): Usage {
 /* ── calls ─────────────────────────────────────────────────────────────── */
 
 /**
+ * Nemotron thinks before it answers, and the thinking is billed and decoded
+ * like any other token while never reaching us.
+ *
+ * Measured: a scored answer stores about 154 tokens' worth of feedback, and the
+ * same call reported 785-1,317 completion tokens. The content held no prose
+ * before the JSON, so the difference was not something we were discarding at
+ * this end — it was reasoning the endpoint never returned. Turning it off cut
+ * an evaluation from 440 tokens to 207 and 22.5s to 2.8s in the same test, and
+ * scoring stayed calibrated: the weak answer scored 4 with thinking and 3
+ * without, the strong one 8 and 7. Slightly harsher, which is the direction the
+ * rubric asks for anyway.
+ *
+ * Only "none" is safe. `reasoning_effort: "low"` was measured running to the
+ * full 16,000-token ceiling and truncating mid-object after 195 seconds — far
+ * worse than leaving it on. Set INTERVIEW_REASONING_EFFORT=default to send
+ * nothing and get the model's own behaviour back.
+ */
+const REASONING_EFFORT = process.env.INTERVIEW_REASONING_EFFORT ?? "none";
+
+/**
  * Explicit output ceiling. Without one the request reserves the model's full
  * 64K output window, which reserves budget nobody needs — a turn is a question
- * plus a paragraph. Kept generous rather than tight: Nemotron has no effort
- * dial to turn down, and a cap it overruns truncates the JSON mid-object.
+ * plus a paragraph. With reasoning off nothing observed has passed 800 tokens,
+ * so this is roughly five times the largest real reply: loose enough never to
+ * truncate a legitimate one, tight enough to bound a runaway.
  */
-const MAX_OUTPUT_TOKENS = Number(process.env.INTERVIEW_MAX_OUTPUT_TOKENS ?? 16000);
+const MAX_OUTPUT_TOKENS = Number(process.env.INTERVIEW_MAX_OUTPUT_TOKENS ?? 4000);
+
+/**
+ * The hosted catalogue is free and correspondingly busy — "Service temporarily
+ * overloaded" comes back often enough to hit on a first request. Without a
+ * retry that 503 surfaces as a lost turn: the candidate's answer is not saved
+ * and they are asked to submit it again, which doubles a wait that is already
+ * the slowest part of the interview.
+ *
+ * Only transient classes are retried. A 400 or a refusal is a bug or a policy
+ * decision and will fail identically the second time.
+ */
+const RETRY_STATUS = new Set([408, 409, 429, 500, 502, 503, 504]);
+const RETRIES = Number(process.env.INTERVIEW_RETRIES ?? 6);
+
+/**
+ * A refusal is not a slow response.
+ *
+ * Measured against this endpoint: roughly a third of requests come back
+ * "Service temporarily overloaded", and they come back in 180-360ms — the
+ * gateway declines before generating a token. Backing off for seconds after
+ * one is pure added latency, and with only a couple of attempts a turn still
+ * fails outright often enough to matter.
+ *
+ * So a refusal is retried almost immediately, many times: six attempts at a 35%
+ * refusal rate leaves under a 0.2% chance of losing the turn, and costs under a
+ * second of waiting in total. Jitter keeps two calls that were refused together
+ * from returning together.
+ *
+ * A 408 is the opposite case — the request did start, and hammering it would
+ * queue work behind work — so it keeps a real backoff.
+ */
+function backoffFor(status: number, attempt: number) {
+  const base = status === 408 ? 2000 * (attempt + 1) : 150 + attempt * 120;
+  return base + Math.random() * base * 0.4;
+}
+
+async function withRetry<T>(label: string, call: () => Promise<T>): Promise<T> {
+  let last: unknown;
+  for (let attempt = 0; attempt <= RETRIES; attempt++) {
+    try {
+      return await call();
+    } catch (error) {
+      last = error;
+      const status = (error as { status?: number }).status;
+      if (status === undefined || !RETRY_STATUS.has(status) || attempt === RETRIES) break;
+      const wait = Math.round(backoffFor(status, attempt));
+      if (process.env.INTERVIEW_DEBUG_TIMING === "1") {
+        console.log(`[interview] ${label} ${status}, retry ${attempt + 1}/${RETRIES} in ${wait}ms`);
+      }
+      await new Promise((resolve) => setTimeout(resolve, wait));
+    }
+  }
+  throw last;
+}
+
+/**
+ * Hedging, because the slow case here does not fail — it succeeds slowly.
+ *
+ * Measured on identical prompts back to back: one call decoded at 57 tokens a
+ * second and finished in 4s, the next decoded at 3.9 and took 134s. Nothing
+ * about the request differed; the difference was which worker answered it. A
+ * retry policy is no help against that, because there is no error to react to.
+ *
+ * So a request that has not answered within the hedge window gets a second one
+ * started alongside it, and the first to finish wins while the rest are
+ * aborted. A fast call finishes long before the hedge fires and costs nothing
+ * extra; a call that drew a slow worker gets a fresh draw instead of running to
+ * completion. Tokens are free on this tier, which is what makes the trade
+ * one-sided.
+ */
+const HEDGE_MS = Number(process.env.INTERVIEW_HEDGE_MS ?? 6000);
+const HEDGE_ATTEMPTS = Number(process.env.INTERVIEW_HEDGE_ATTEMPTS ?? 3);
+
+function hedged<T>(label: string, run: (controller: AbortController) => Promise<T>): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const controllers: AbortController[] = [];
+    const timers: ReturnType<typeof setTimeout>[] = [];
+    let started = 0;
+    let outstanding = 0;
+    let done = false;
+
+    const finish = (fn: () => void) => {
+      if (done) return;
+      done = true;
+      timers.forEach(clearTimeout);
+      // The winner's own controller is already settled; aborting it is a no-op.
+      controllers.forEach((c) => c.abort());
+      fn();
+    };
+
+    const start = () => {
+      started += 1;
+      outstanding += 1;
+      const attempt = started;
+      if (attempt > 1 && process.env.INTERVIEW_DEBUG_TIMING === "1") {
+        console.log(`[interview] ${label} still running after ${HEDGE_MS * (attempt - 1)}ms — hedging (attempt ${attempt})`);
+      }
+
+      const controller = new AbortController();
+      controllers.push(controller);
+
+      run(controller).then(
+        (value) => finish(() => resolve(value)),
+        (error) => {
+          outstanding -= 1;
+          if (done) return;
+          // An abort here is this hedge losing the race, not a failure.
+          if ((error as Error)?.name === "AbortError") return;
+          if (outstanding > 0) return;
+          if (started >= HEDGE_ATTEMPTS) finish(() => reject(error));
+          else start();
+        },
+      );
+
+      if (started < HEDGE_ATTEMPTS) {
+        timers.push(
+          setTimeout(() => {
+            if (!done) start();
+          }, HEDGE_MS),
+        );
+      }
+    };
+
+    start();
+  });
+}
 
 /** Strips ```json fences a chatty model wraps its JSON in. */
 function unfence(text: string) {
@@ -372,17 +622,37 @@ async function ask<S extends z.ZodType>(
         },
       ];
 
-  const response = await openai().chat.completions.create({
+  const request = {
     model: MODEL,
     messages: outgoing,
     max_completion_tokens: MAX_OUTPUT_TOKENS,
-    ...(STRUCTURED_OUTPUTS ? { response_format: zodResponseFormat(schema, name) } : {}),
-  });
+    ...(REASONING_EFFORT === "default" ? {} : { reasoning_effort: REASONING_EFFORT }),
+    ...(STRUCTURED_OUTPUTS ? { response_format: responseFormat(schema, name) } : {}),
+  };
+
+  const startedAt = Date.now();
+  // Retry handles the instant refusals; hedging handles the slow successes.
+  const response = await hedged(name, (controller) =>
+    withRetry(name, () => postCompletion(request, controller)),
+  );
+
+  // Turn latency here is decode-bound and the provider's rate swings by an
+  // order of magnitude with load, so "the interview felt slow" is unanswerable
+  // without the per-call split. Off unless asked for.
+  if (process.env.INTERVIEW_DEBUG_TIMING === "1") {
+    const ms = Date.now() - startedAt;
+    const out = response.usage?.completion_tokens ?? 0;
+    console.log(
+      `[interview] ${name} ${ms}ms | out=${out} in=${response.usage?.prompt_tokens ?? 0}` +
+        ` cached=${response.usage?.prompt_tokens_details?.cached_tokens ?? 0}` +
+        ` | ${out && ms ? (out / (ms / 1000)).toFixed(1) : "?"} tok/s`,
+    );
+  }
 
   // A gateway can answer 200 with an error body and no choices at all.
   const choice = response.choices?.[0];
   if (!choice) {
-    const upstream = (response as unknown as { error?: { message?: string } }).error?.message;
+    const upstream = response.error?.message;
     throw new Error(upstream ? `Interview provider error: ${upstream}` : `Interview provider returned no choices for ${name}`);
   }
   if (choice.message?.refusal) throw new Error(`Interview model refused: ${choice.message.refusal}`);
@@ -408,30 +678,118 @@ async function ask<S extends z.ZodType>(
 }
 
 /** Opens the interview. No transcript yet, so the prefix is just rubric + config. */
-export async function openInterview(config: InterviewConfig, budget: number) {
+export async function openInterview(config: InterviewConfig, budget: number, wantsCode: boolean) {
   const input = prefix(config, budget, []);
   input.push({ role: "user", content: "Begin the interview. Ask question 1." });
-  const { parsed, usage } = await ask(input, FirstTurn, "first_turn");
-  return { question: parsed.question, usage };
+  const { parsed, usage } = await ask(input, questionSchema(wantsCode), "first_turn");
+  return { question: parsed.question as InterviewQuestion, usage };
 }
 
-/** Scores the answer just given and asks the next question in one call. */
-export async function evaluateAndContinue(
+/**
+ * The two halves of a turn.
+ *
+ * They began as one call, which read as the obvious economy: one round trip,
+ * one prefix, and the model could choose the next question in light of the
+ * score it had just written. Measurement killed it. Decoding is strictly
+ * sequential and this provider runs anywhere between 5 and 60 tokens a second,
+ * so a combined reply is the sum of both halves — and the scoring half turns
+ * out to be the larger one, at 800-1,100 tokens against the question's 100-700.
+ *
+ * That matters more than it looks, because the score is deliberately withheld
+ * until the interview closes. Waiting for it means the candidate waits on the
+ * longest thing in the turn and is then shown none of it. So the two are split:
+ * the caller awaits the question and lets the score land on its own.
+ *
+ * The coupling is not lost, only moved — the question call is told to judge the
+ * answer's strength itself, which is what the rubric already asks of it.
+ */
+function turnPrompt(
+  config: InterviewConfig,
+  budget: number,
+  transcript: TranscriptTurn[],
+  currentQuestion: string,
+) {
+  const input = prefix(config, budget, transcript);
+  input.push({ role: "assistant", content: currentQuestion });
+  return input;
+}
+
+/** Scores one answer. Nothing waits on this — see the note above. */
+export async function evaluateAnswer(
+  config: InterviewConfig,
+  budget: number,
+  transcript: TranscriptTurn[],
+  currentQuestion: string,
+  answer: string,
+) {
+  const input = turnPrompt(config, budget, transcript, currentQuestion);
+  input.push({
+    role: "user",
+    content: `${answer}\n\n---\nScore that answer. Do not ask another question.`,
+  });
+  const { parsed, usage } = await ask(input, LastTurn, "evaluation");
+  return { evaluation: parsed.evaluation, usage };
+}
+
+/** Asks the next question. This is the only call a candidate actually waits on. */
+export async function askNextQuestion(
   config: InterviewConfig,
   budget: number,
   transcript: TranscriptTurn[],
   currentQuestion: string,
   answer: string,
   questionNumber: number,
+  wantsCode: boolean,
 ) {
-  const input = prefix(config, budget, transcript);
-  input.push({ role: "assistant", content: currentQuestion });
+  const input = turnPrompt(config, budget, transcript, currentQuestion);
   input.push({
     role: "user",
-    content: `${answer}\n\n---\nScore that answer, then ask question ${questionNumber + 1} of ${budget}.`,
+    content:
+      `${answer}\n\n---\nAsk question ${questionNumber + 1} of ${budget}. ` +
+      `Judge for yourself how well that answer went and choose accordingly: go deeper on the same thread ` +
+      `if it was strong, move to a different area if it was weak. Do not score it here. ` +
+      // Every token generated here is a token the candidate waits through.
+      `Keep the question itself to one to three sentences.`,
   });
-  const { parsed, usage } = await ask(input, Turn, "turn");
-  return { evaluation: parsed.evaluation, nextQuestion: parsed.nextQuestion, usage };
+  const { parsed, usage } = await ask(input, questionSchema(wantsCode), "next_question");
+  return { nextQuestion: parsed.question as InterviewQuestion, usage };
+}
+
+/**
+ * Writes the question *after* the one currently on screen, while the candidate
+ * is still answering it.
+ *
+ * This is the whole latency story. A candidate spends thirty seconds to three
+ * minutes on an answer; generating a question takes five to fifteen. That gap
+ * is free wall-clock time, and filling it means a submitted answer can be met
+ * with a question that already exists instead of one that has to be written.
+ *
+ * The cost is one answer's worth of hindsight: this question is chosen knowing
+ * everything the candidate has said *except* the reply being typed as it is
+ * written. Everything earlier is still in the transcript, so the interview
+ * still develops — it simply reacts a beat later than it used to.
+ */
+export async function prefetchQuestion(
+  config: InterviewConfig,
+  budget: number,
+  transcript: TranscriptTurn[],
+  askedQuestion: string,
+  questionNumber: number,
+  wantsCode: boolean,
+) {
+  const input = prefix(config, budget, transcript);
+  input.push({ role: "assistant", content: askedQuestion });
+  input.push({
+    role: "user",
+    content:
+      `You have just asked the question above and the candidate is still writing their answer. ` +
+      `Write the question you will ask after it — question ${questionNumber + 1} of ${budget}. ` +
+      `It must cover different ground from the question above and from everything already asked, ` +
+      `since you cannot yet know how the current answer goes. ` +
+      `Keep the question itself to one to three sentences.`,
+  });
+  const { parsed, usage } = await ask(input, questionSchema(wantsCode), "prefetch_question");
+  return { nextQuestion: parsed.question as InterviewQuestion, usage };
 }
 
 /** Scores the final answer. No next question — the budget is spent. */

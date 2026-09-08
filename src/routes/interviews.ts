@@ -2,9 +2,10 @@ import { Router } from "express";
 import { prisma } from "../lib/prisma.js";
 import { requireAuth } from "../middleware/auth.js";
 import {
-  evaluateAndContinue,
-  evaluateFinal,
+  askNextQuestion,
+  evaluateAnswer,
   openInterview,
+  prefetchQuestion,
   questionBudgetFor,
   writeReport,
   type InterviewConfig,
@@ -289,7 +290,7 @@ router.post("/start", requireAuth, async (req: any, res) => {
       },
     });
 
-    const { question, usage } = await openInterview(config, budget);
+    const { question, usage } = await openInterview(config, budget, wantsCode(config));
     const language = languageFor(config);
 
     const [firstQuestion] = await prisma.$transaction([
@@ -300,7 +301,7 @@ router.post("/start", requireAuth, async (req: any, res) => {
           topic: question.topic,
           difficulty: question.difficulty,
           focusArea: question.focusArea,
-          starterCode: starterCodeFor(question.starterCode, config, language),
+          starterCode: starterCodeFor(question.starterCode ?? "", config, language),
           expectedSkills: question.expectedSkills,
           status: "pending",
           orderIndex: 0,
@@ -311,6 +312,10 @@ router.post("/start", requireAuth, async (req: any, res) => {
         data: usageIncrement(usage),
       }),
     ]);
+
+    // Question two starts being written now, while the candidate is still
+    // reading question one. By the time they submit it is already on disk.
+    prefetchAhead({ id: session.id, questionBudget: budget }, config, [], firstQuestion.questionText, 1);
 
     res.json({
       success: true,
@@ -328,6 +333,184 @@ router.post("/start", requireAuth, async (req: any, res) => {
     res.status(500).json({ error: "Failed to start interview session" });
   }
 });
+
+/* ── prefetching the next question ──────────────────────────────────────── */
+
+/**
+ * The interview's whole latency budget lives here.
+ *
+ * A candidate spends thirty seconds to three minutes writing an answer, and a
+ * question takes five to fifteen seconds to generate. Those two facts used to
+ * be arranged the expensive way round: the answer arrived, and only then did
+ * anyone start writing what came next, so every turn cost a candidate the full
+ * generation while they watched a spinner.
+ *
+ * Now the question after the one on screen is written *during* that answering
+ * time and parked as a row with status "prefetched". Submitting an answer costs
+ * a database write and nothing else. Scoring is not on this path at all — it
+ * happens once, at /complete, so it never competes with question generation for
+ * a provider that refuses about a third of what it is sent.
+ *
+ * The map holds work this process is already doing, so a submit that arrives
+ * mid-flight can wait on it rather than starting a second copy of it. It is not
+ * a queue and does not survive a restart: the row either exists or it does not,
+ * and /answer falls back to generating inline when it does not.
+ */
+const prefetching = new Map<string, Promise<unknown>>();
+
+function prefetchKey(sessionId: string, orderIndex: number) {
+  return `${sessionId}:${orderIndex}`;
+}
+
+/**
+ * Writes question `orderIndex` ahead of time. Safe to call twice for the same
+ * slot — the unique constraint on (sessionId, orderIndex) settles the race.
+ */
+function prefetchAhead(
+  session: { id: string; questionBudget: number },
+  config: InterviewConfig,
+  transcript: Array<{ questionText: string; userAnswer: string | null }>,
+  askedQuestion: string,
+  orderIndex: number,
+) {
+  // Past the budget there is nothing left to ask.
+  if (orderIndex >= session.questionBudget) return;
+
+  const key = prefetchKey(session.id, orderIndex);
+  if (prefetching.has(key)) return;
+
+  const job = (async () => {
+    try {
+      const { nextQuestion, usage } = await prefetchQuestion(
+        config,
+        session.questionBudget,
+        transcript,
+        askedQuestion,
+        orderIndex,
+        wantsCode(config),
+      );
+      await prisma.$transaction([
+        prisma.mockInterviewQuestion.create({
+          data: {
+            sessionId: session.id,
+            questionText: nextQuestion.question,
+            topic: nextQuestion.topic,
+            difficulty: nextQuestion.difficulty,
+            focusArea: nextQuestion.focusArea,
+            starterCode: starterCodeFor(nextQuestion.starterCode ?? "", config, languageFor(config)),
+            expectedSkills: nextQuestion.expectedSkills,
+            // Written, but not the candidate's to see until they submit.
+            status: "prefetched",
+            orderIndex,
+          },
+        }),
+        prisma.mockInterviewSession.update({ where: { id: session.id }, data: usageIncrement(usage) }),
+      ]);
+    } catch (error: any) {
+      // Never fatal. /answer generates the question inline when the slot is
+      // empty, which is exactly the behaviour this replaced.
+      if (error?.code !== "P2002") {
+        console.error(`Prefetch of question ${orderIndex} failed:`, error?.message);
+      }
+    } finally {
+      prefetching.delete(key);
+    }
+  })();
+
+  prefetching.set(key, job);
+}
+
+/** Waits for an in-flight prefetch of one slot, if this process started one. */
+async function settlePrefetch(sessionId: string, orderIndex: number) {
+  const job = prefetching.get(prefetchKey(sessionId, orderIndex));
+  if (job) await job.catch(() => undefined);
+}
+
+/* ── scoring in the same idle window ────────────────────────────────────── */
+
+/**
+ * Marks in flight, by session.
+ *
+ * Scoring was moved to /complete to get it off the turn, which worked but piled
+ * every answer into one closing call — seven evaluations at once, and the
+ * candidate watching a minute of it. The idle window the prefetch already uses
+ * is big enough for both: a question takes a few seconds to write and an answer
+ * a few to mark, against thirty seconds or more of someone typing.
+ *
+ * So the mark for answer N is started once question N+2 has been written —
+ * deliberately second, because a late question is a wait the candidate sees and
+ * a late mark is not. /complete settles whatever is still outstanding and scores
+ * anything that never ran, so this is an optimisation, never a dependency.
+ */
+const marking = new Map<string, Set<Promise<unknown>>>();
+
+function trackMark(sessionId: string, job: Promise<unknown>) {
+  const jobs = marking.get(sessionId) ?? new Set();
+  jobs.add(job);
+  marking.set(sessionId, jobs);
+  void job.finally(() => {
+    jobs.delete(job);
+    if (jobs.size === 0) marking.delete(sessionId);
+  });
+}
+
+/** Waits for marks this process started for a session. Never throws. */
+async function settleMarking(sessionId: string) {
+  const jobs = marking.get(sessionId);
+  if (!jobs?.size) return;
+  await Promise.allSettled([...jobs]);
+}
+
+/** Scores one answer in the background, after the prefetch it queues behind. */
+function markInBackground(
+  session: { id: string; questionBudget: number },
+  config: InterviewConfig,
+  transcript: Array<{ questionText: string; userAnswer: string | null }>,
+  question: { id: string; questionText: string },
+  answer: string,
+  after: number,
+) {
+  const job = (async () => {
+    try {
+      // Question first: the candidate is waiting on one of these and not the other.
+      await settlePrefetch(session.id, after);
+      const { evaluation, usage } = await evaluateAnswer(
+        config,
+        session.questionBudget,
+        transcript,
+        question.questionText,
+        answer,
+      );
+      await storeEvaluation(session.id, question.id, evaluation, usage);
+    } catch (error: any) {
+      // /complete re-scores anything still unmarked, so this is recoverable.
+      console.error(`Background marking failed for question ${question.id}:`, error?.message);
+    }
+  })();
+  trackMark(session.id, job);
+}
+
+/** Writes one mark and folds its usage into the session totals. */
+async function storeEvaluation(
+  sessionId: string,
+  questionId: string,
+  evaluation: { score: number; feedback: string; verdict: string; missed: string[] },
+  usage: Usage,
+) {
+  await prisma.$transaction([
+    prisma.mockInterviewQuestion.update({
+      where: { id: questionId },
+      data: {
+        evaluationScore: evaluation.score,
+        feedback: evaluation.feedback,
+        verdict: evaluation.verdict,
+        missed: evaluation.missed,
+        status: "evaluated",
+      },
+    }),
+    prisma.mockInterviewSession.update({ where: { id: sessionId }, data: usageIncrement(usage) }),
+  ]);
+}
 
 /**
  * @route   POST /api/interviews/session/:sessionId/answer
@@ -361,79 +544,98 @@ router.post("/session/:sessionId/answer", requireAuth, async (req: any, res) => 
 
     const current = session.questions.find((q) => q.id === questionId);
     if (!current) return res.status(404).json({ error: "Question not found in this session" });
-    if (current.status === "evaluated") {
+    // Anything past "pending" has already been submitted. A turn that failed
+    // mid-flight never leaves this state, so a retry is still allowed.
+    if (current.status !== "pending") {
       return res.status(409).json({ error: "That question has already been answered" });
     }
 
     const config = configFrom(session.savedInterview);
     const budget = session.questionBudget;
     // Everything already asked and answered, in order — the cached prefix.
+    // A turn whose score has not landed yet still belongs in the transcript;
+    // what makes it history is the answer, not the mark.
     const transcript = session.questions
-      .filter((q) => q.orderIndex < current.orderIndex && q.status === "evaluated")
+      .filter((q) => q.orderIndex < current.orderIndex && q.userAnswer !== null)
       .map((q) => ({ questionText: q.questionText, userAnswer: q.userAnswer }));
 
     const asked = current.orderIndex + 1;
     const isLast = asked >= budget;
+    const nextIndex = current.orderIndex + 1;
 
-    let nextQ: AskedQuestion | null = null;
-    let evaluation;
-    let usage: Usage;
+    // The answer is recorded first and on its own. Nothing here is scored —
+    // marking happens once, at /complete — so this write is the entire cost of
+    // a turn when the next question was prefetched in time.
+    await prisma.mockInterviewQuestion.update({
+      where: { id: current.id },
+      data: { userAnswer: answer, status: "answered" },
+    });
 
-    if (isLast) {
-      ({ evaluation, usage } = await evaluateFinal(config, budget, transcript, current.questionText, answer));
-    } else {
-      const turn = await evaluateAndContinue(config, budget, transcript, current.questionText, answer, asked);
-      evaluation = turn.evaluation;
-      usage = turn.usage;
-      nextQ = turn.nextQuestion;
+    let nextQuestion = null;
+
+    if (!isLast) {
+      // Written while they were typing, in the usual case.
+      await settlePrefetch(session.id, nextIndex);
+      let ready = await prisma.mockInterviewQuestion.findUnique({
+        where: { sessionId_orderIndex: { sessionId: session.id, orderIndex: nextIndex } },
+      });
+
+      if (!ready) {
+        // Prefetch failed or never ran — an unusually fast answer, a restart,
+        // or a provider refusal that outlasted its retries. Generate inline,
+        // which is what every turn used to do.
+        const turn = await askNextQuestion(
+          config,
+          budget,
+          [...transcript, { questionText: current.questionText, userAnswer: answer }],
+          current.questionText,
+          answer,
+          asked,
+          wantsCode(config),
+        );
+        const next = turn.nextQuestion;
+        [ready] = await prisma.$transaction([
+          prisma.mockInterviewQuestion.create({
+            data: {
+              sessionId: session.id,
+              questionText: next.question,
+              topic: next.topic,
+              difficulty: next.difficulty,
+              focusArea: next.focusArea,
+              starterCode: starterCodeFor(next.starterCode ?? "", config, languageFor(config)),
+              expectedSkills: next.expectedSkills,
+              status: "pending",
+              orderIndex: nextIndex,
+            },
+          }),
+          prisma.mockInterviewSession.update({
+            where: { id: session.id },
+            data: usageIncrement(turn.usage),
+          }),
+        ]);
+      } else if (ready.status === "prefetched") {
+        // Hand it over: it is the candidate's question now.
+        ready = await prisma.mockInterviewQuestion.update({
+          where: { id: ready.id },
+          data: { status: "pending" },
+        });
+      }
+
+      nextQuestion = ready;
+
+      const history = [...transcript, { questionText: current.questionText, userAnswer: answer }];
+
+      // Both of these run while the candidate reads and types, and neither is
+      // on the path back to them. The question goes first because a missing one
+      // is a visible wait; the mark is not needed until the round closes.
+      prefetchAhead(session, config, history, ready.questionText, nextIndex + 1);
+      markInBackground(session, config, transcript, current, answer, nextIndex + 1);
     }
 
-    const writes: any[] = [
-      prisma.mockInterviewQuestion.update({
-        where: { id: current.id },
-        data: {
-          userAnswer: answer,
-          evaluationScore: evaluation.score,
-          feedback: evaluation.feedback,
-          verdict: evaluation.verdict,
-          missed: evaluation.missed,
-          status: "evaluated",
-        },
-      }),
-      prisma.mockInterviewSession.update({
-        where: { id: session.id },
-        data: usageIncrement(usage),
-      }),
-    ];
-
-    // orderIndex comes from the answered question, not from a count, so two
-    // answers landing together cannot collide on the same slot.
-    if (nextQ) {
-      const next = nextQ;
-      writes.push(
-        prisma.mockInterviewQuestion.create({
-          data: {
-            sessionId: session.id,
-            questionText: next.question,
-            topic: next.topic,
-            difficulty: next.difficulty,
-            focusArea: next.focusArea,
-            starterCode: starterCodeFor(next.starterCode, config, languageFor(config)),
-            expectedSkills: next.expectedSkills,
-            status: "pending",
-            orderIndex: current.orderIndex + 1,
-          },
-        }),
-      );
-    }
-
-    const results = await prisma.$transaction(writes);
-    const nextQuestion = isLast ? null : results[2];
-
-    // The evaluation is stored above but deliberately not returned. A candidate
-    // who sees "3/10" after question two answers the rest of the interview
-    // differently — and a score on the wire is a score in the devtools network
-    // tab. All of it is released at once by /complete.
+    // No score is returned, and the last answer's has not even been computed. A
+    // candidate who sees "3/10" after question two answers the rest of the
+    // interview differently — and a score on the wire is a score in the devtools
+    // network tab. All of it is released together by /complete.
     res.json({
       success: true,
       nextQuestion,
@@ -442,8 +644,8 @@ router.post("/session/:sessionId/answer", requireAuth, async (req: any, res) => 
       progress: { asked: isLast ? budget : asked + 1, total: budget },
     });
   } catch (error: any) {
-    console.error("Error evaluating answer:", error?.message);
-    res.status(500).json({ error: "Failed to evaluate answer" });
+    console.error("Error recording answer:", error?.message);
+    res.status(500).json({ error: "Failed to submit answer" });
   }
 });
 
@@ -460,7 +662,15 @@ router.post("/session/:sessionId/complete", requireAuth, async (req: any, res) =
   const { sessionId } = req.params;
 
   try {
-    const session = await prisma.mockInterviewSession.findUnique({
+    // A turn hands back its question before its mark is written, so the last
+    // one or two answers may still be scoring when the candidate closes the
+    // round. Read the rows only once that work has finished.
+    // Most answers were marked while the candidate was working on the next
+    // question. Let anything still running finish before reading the rows,
+    // rather than starting a second copy of it below.
+    await settleMarking(sessionId);
+
+    let session = await prisma.mockInterviewSession.findUnique({
       where: { id: sessionId },
       include: {
         savedInterview: true,
@@ -474,6 +684,39 @@ router.post("/session/:sessionId/complete", requireAuth, async (req: any, res) =
     }
     if (session.status === "completed") {
       return res.json({ success: true, alreadyCompleted: true, report: reportOf(session, session.questions) });
+    }
+
+    // Whatever the idle windows did not cover — in the normal case just the
+    // final answer, which had no window after it, plus anything a failed
+    // background mark or a restart left behind. Concurrent, so this costs the
+    // slowest one rather than the sum.
+    const unmarked = session.questions.filter((q) => q.userAnswer !== null && q.evaluationScore === null);
+    if (unmarked.length > 0) {
+      const config = configFrom(session.savedInterview);
+      const budget = session.questionBudget;
+      const ordered = session.questions;
+
+      await Promise.allSettled(
+        unmarked.map(async (question) => {
+          const transcript = ordered
+            .filter((q) => q.orderIndex < question.orderIndex && q.userAnswer !== null)
+            .map((q) => ({ questionText: q.questionText, userAnswer: q.userAnswer }));
+          const { evaluation, usage } = await evaluateAnswer(
+            config,
+            budget,
+            transcript,
+            question.questionText,
+            question.userAnswer as string,
+          );
+          await storeEvaluation(session!.id, question.id, evaluation, usage);
+        }),
+      );
+
+      session = await prisma.mockInterviewSession.findUnique({
+        where: { id: sessionId },
+        include: { savedInterview: true, questions: { orderBy: { orderIndex: "asc" } } },
+      });
+      if (!session) return res.status(404).json({ error: "Session not found" });
     }
 
     const scored = session.questions.filter((q) => q.status === "evaluated" && q.evaluationScore !== null);
@@ -1008,6 +1251,11 @@ router.get("/session/:sessionId", requireAuth, async (req: any, res) => {
       return res.status(403).json({ error: "You do not have permission to view this session" });
     }
 
+    // A prefetched question has been written but not asked. It is on disk only
+    // so that submitting an answer is instant, and handing it out here would
+    // let a candidate read the rest of the interview out of the network tab.
+    const asked = session.questions.filter((q) => q.status !== "prefetched");
+
     // While the interview is still live the stored scores stay server-side —
     // resuming a session must not hand back the marks for answers already
     // given. They are released together with the report once it closes. Note
@@ -1015,14 +1263,14 @@ router.get("/session/:sessionId", requireAuth, async (req: any, res) => {
     // nested and the top-level list have to be blanked, not just one.
     const live = session.status !== "completed";
     const questions = live
-      ? session.questions.map((q) => ({
+      ? asked.map((q) => ({
           ...q,
           evaluationScore: null,
           feedback: null,
           verdict: null,
           missed: [],
         }))
-      : session.questions;
+      : asked;
 
     res.json({
       session: { ...session, questions },
@@ -1033,7 +1281,7 @@ router.get("/session/:sessionId", requireAuth, async (req: any, res) => {
       completedAt: session.completedAt,
       startedAt: session.createdAt,
       report: session.status === "completed" ? reportOf(session, session.questions) : null,
-      progress: { asked: session.questions.length, total: session.questionBudget },
+      progress: { asked: asked.length, total: session.questionBudget },
     });
   } catch (error: any) {
     console.error("Error fetching interview session:", error?.message);
