@@ -132,6 +132,57 @@ export async function emitDuelActivity(
 }
 
 /**
+ * How long a duel may sit unfought before it is treated as abandoned.
+ *
+ * A waiting duel had no expiry at all, and nothing closes one when a tab is
+ * shut — so a queue entry or an unused room stayed "waiting" forever. That is
+ * not merely untidy: /queue refuses to double-book, so it hands the old duel
+ * back instead of matchmaking, and its owner is quietly locked out of duelling
+ * with no way to find out why. One was found three days old.
+ *
+ * A public entry is a matchmaking attempt and dies quickly — it is also what
+ * another player would otherwise be matched into, landing them in a fight
+ * against somebody who closed the tab twenty minutes ago. A private room is a
+ * code shared with a friend, so it is given the afternoon.
+ */
+const WAITING_TTL_MS = {
+  public: Number(process.env.DUEL_QUEUE_TTL_MS ?? 20 * 60_000),
+  private: Number(process.env.DUEL_ROOM_TTL_MS ?? 2 * 60 * 60_000),
+};
+
+/** The cut-off a still-joinable public duel must have been created after. */
+export function freshPublicSince() {
+  return new Date(Date.now() - WAITING_TTL_MS.public);
+}
+
+function isStaleWaiting(duel: { status: string; visibility: string; createdAt: Date } | null) {
+  if (!duel || duel.status !== "waiting") return false;
+  const ttl = duel.visibility === "private" ? WAITING_TTL_MS.private : WAITING_TTL_MS.public;
+  return Date.now() - new Date(duel.createdAt).getTime() > ttl;
+}
+
+/**
+ * Closes a waiting duel nobody came back to, and reports it as no longer live.
+ *
+ * Lazily, on read, in the same spirit as `reconcileDuel` — a duel nobody looks
+ * at harms nobody, and the moment anyone does look, it stops standing in the
+ * way. That also means no sweeper to schedule and no cron to forget.
+ */
+export async function expireIfStale<T extends Awaited<ReturnType<typeof loadDuel>>>(duel: T): Promise<T | null> {
+  if (!isStaleWaiting(duel)) return duel;
+  try {
+    await prisma.duel.update({
+      where: { id: duel!.id },
+      data: { status: "cancelled", endedAt: new Date() },
+    });
+  } catch (err) {
+    // Losing this race is fine: somebody else closed or joined it first.
+    console.error("expireIfStale error:", (err as Error).message);
+  }
+  return null;
+}
+
+/**
  * Self-healing: an active duel whose target already has an accepted submission
  * from one of its warriors is over — it just hasn't been told. Reading a duel
  * runs this first, so a fight that was solved in another tab (or before the

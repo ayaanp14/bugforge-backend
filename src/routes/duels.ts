@@ -12,7 +12,7 @@ import crypto from "crypto";
 import { prisma } from "../lib/prisma.js";
 import { requireAuth } from "../middleware/auth.js";
 import { duelRoom, emitToRoom } from "../lib/realtime.js";
-import { DUEL_INCLUDE, applyDuelResult, loadDuel, reconcileDuel } from "../lib/duels.js";
+import { DUEL_INCLUDE, applyDuelResult, expireIfStale, freshPublicSince, loadDuel, reconcileDuel } from "../lib/duels.js";
 
 const router = Router();
 
@@ -106,7 +106,10 @@ router.post("/queue", requireAuth, async (req, res) => {
       include: DUEL_INCLUDE,
     });
     if (existing) {
-      const settled = await reconcileDuel(existing);
+      const settled = await expireIfStale(await reconcileDuel(existing));
+      // `expireIfStale` returns null once it has closed an abandoned one, which
+      // is what lets this fall through and actually queue rather than handing
+      // back a room the player forgot about days ago.
       if (settled && settled.status !== "finished") {
         res.json(settled);
         return;
@@ -117,7 +120,17 @@ router.post("/queue", requireAuth, async (req, res) => {
     const rating = me?.rating ?? 1200;
 
     const open = await prisma.duel.findMany({
-      where: { status: "waiting", visibility: "public", mode, kind, NOT: { participants: { some: { userId } } } },
+      where: {
+        status: "waiting",
+        visibility: "public",
+        mode,
+        kind,
+        NOT: { participants: { some: { userId } } },
+        // Never seat somebody opposite a warrior who closed the tab. Those rows
+        // are cancelled the next time their owner looks; until then they are
+        // simply not offered.
+        createdAt: { gte: freshPublicSince() },
+      },
       include: { participants: { select: { userId: true, team: true } } },
       orderBy: { createdAt: "asc" },
       take: 25,
@@ -563,7 +576,10 @@ router.get("/me/state", requireAuth, async (req, res) => {
 
     // A duel that was won without anybody reporting it is finished, not live —
     // and it belongs at the top of the record rather than nowhere at all.
-    const settled = await reconcileDuel(liveRaw);
+    // Reconcile a fight that was already decided, then close one nobody came
+    // back to — so simply opening the page clears a room that would otherwise
+    // block every future match.
+    const settled = await expireIfStale(await reconcileDuel(liveRaw));
     const justFinished = settled && settled.status === "finished" ? settled : null;
     const live = justFinished ? null : settled;
     if (justFinished && !history.some((d) => d.id === justFinished.id)) history.unshift(justFinished);
