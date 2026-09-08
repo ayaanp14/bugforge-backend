@@ -318,6 +318,9 @@ router.post("/start", requireAuth, async (req: any, res) => {
       session: { ...session, questionBudget: budget },
       question: firstQuestion,
       language,
+      // The room the candidate is sitting in — role, round, depth, focus. It is
+      // shown alongside the question rather than left behind on the builder.
+      setup: config,
       progress: { asked: 1, total: budget },
     });
   } catch (error: any) {
@@ -537,6 +540,457 @@ router.post("/session/:sessionId/complete", requireAuth, async (req: any, res) =
   }
 });
 
+/* ── history ────────────────────────────────────────────────────────────── */
+
+/**
+ * The history page needs two things that look unrelated but come from the same
+ * rows: a list of past sessions, and the analytics that only exist *across*
+ * sessions (is the score climbing? which topic keeps costing marks, whatever
+ * the round?). Both are folded into one response rather than two endpoints, so
+ * opening the page is one request and the two halves can never disagree.
+ */
+
+/**
+ * The columns the history screens actually read.
+ *
+ * A question row carries `questionText`, `starterCode`, `feedback` and a
+ * MediumText `userAnswer`; the list needs a mark, a topic and two timestamps.
+ * Selecting the whole row meant a ten-session page dragged every transcript the
+ * user has ever written out of the database to render "7/7 answered". The full
+ * rows are still loaded — once, per session — when a report is opened.
+ */
+const LIST_QUESTION = {
+  evaluationScore: true,
+  topic: true,
+  verdict: true,
+  createdAt: true,
+  updatedAt: true,
+} as const;
+
+/** As above, plus the fields the cross-session breakdowns group by. */
+const ANALYTICS_QUESTION = {
+  ...LIST_QUESTION,
+  focusArea: true,
+  difficulty: true,
+  missed: true,
+} as const;
+
+type HistoryQuestion = {
+  evaluationScore: number | null;
+  topic: string | null;
+  verdict: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
+type AnalyticsQuestion = HistoryQuestion & {
+  focusArea: string | null;
+  difficulty: string | null;
+  missed: unknown;
+};
+
+type HistorySession<Q extends HistoryQuestion = HistoryQuestion> = {
+  id: string;
+  status: string;
+  questionBudget: number;
+  overallScore: number | null;
+  createdAt: Date;
+  completedAt: Date | null;
+  savedInterview: {
+    roleId: string;
+    roundId: string;
+    difficulty: string | null;
+    focusAreaIds?: unknown;
+  };
+  questions: Q[];
+};
+
+const mean = (xs: number[]) => xs.reduce((a, b) => a + b, 0) / xs.length;
+const round1 = (n: number) => Number(n.toFixed(1));
+
+/** Wall-clock seconds a session took, from its first question to its last mark. */
+function sessionSeconds(session: HistorySession) {
+  if (!session.questions.length) return 0;
+  const start = session.createdAt.getTime();
+  const end = (
+    session.completedAt ??
+    session.questions.reduce(
+      (latest, q) => (q.updatedAt > latest ? q.updatedAt : latest),
+      session.questions[0].updatedAt,
+    )
+  ).getTime();
+  return Math.max(0, Math.round((end - start) / 1000));
+}
+
+function verdictMixOf(questions: Array<{ verdict: string | null }>) {
+  return ["strong", "adequate", "weak", "no_answer"]
+    .map((verdict) => ({ verdict, count: questions.filter((q) => q.verdict === verdict).length }))
+    .filter((v) => v.count > 0);
+}
+
+/**
+ * One row in the history list. Deliberately not the full report — thirty
+ * sessions each carrying every question and answer is megabytes of JSON for a
+ * page that shows a score and a date. The report is fetched per session when a
+ * row is opened.
+ */
+function summaryOf(session: HistorySession) {
+  const scored = session.questions.filter((q) => q.evaluationScore !== null);
+  const scores = scored.map((q) => q.evaluationScore as number);
+  const average = scores.length ? mean(scores) : null;
+
+  // The stored overallScore is authoritative for a closed session; a session
+  // walked out of never got one, so its answers are averaged instead.
+  const score =
+    session.overallScore !== null ? session.overallScore / 10 : average === null ? null : round1(average);
+
+  const topics = groupAverages(
+    scored.map((q) => ({ label: q.topic, score: q.evaluationScore as number })),
+  );
+
+  // Exactly the fields a row draws — nothing here is "might be useful later".
+  // The setup recap, the summary prose and the transcript all belong to the
+  // report, which is fetched when a row is opened.
+  return {
+    id: session.id,
+    status: session.status,
+    createdAt: session.createdAt,
+    roleId: session.savedInterview.roleId,
+    roundId: session.savedInterview.roundId,
+    difficulty: session.savedInterview.difficulty,
+    questionBudget: session.questionBudget,
+    answered: scored.length,
+    score,
+    durationSeconds: sessionSeconds(session),
+    verdictMix: verdictMixOf(scored),
+    // Weakest first: on a list row the useful three are the ones that cost marks.
+    weakestTopics: topics.slice(0, 3).map((t) => t.label),
+    readiness: average === null ? null : readinessFor(average).band,
+  };
+}
+
+/** Averages grouped by a saved-config id, carrying the id through for labelling. */
+function groupByConfigId(rows: Array<{ id: string; score: number }>) {
+  const buckets = new Map<string, { id: string; scores: number[] }>();
+  for (const row of rows) {
+    const bucket = buckets.get(row.id) ?? { id: row.id, scores: [] };
+    bucket.scores.push(row.score);
+    buckets.set(row.id, bucket);
+  }
+  return [...buckets.values()]
+    .map((b) => ({
+      id: b.id,
+      label: prettyLabel(b.id),
+      asked: b.scores.length,
+      average: round1(mean(b.scores)),
+    }))
+    .sort((a, b) => a.average - b.average);
+}
+
+/** Local YYYY-MM-DD — the calendar the user sits in, not UTC. */
+function dayKey(date: Date) {
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return date.getFullYear() + "-" + month + "-" + day;
+}
+
+const ACTIVITY_DAYS = 84;
+
+/** One cell per day for the last twelve weeks, plus the streak they add up to. */
+function activityOf(sessions: HistorySession[]) {
+  const counts = new Map<string, number>();
+  for (const session of sessions) {
+    const key = dayKey(session.createdAt);
+    counts.set(key, (counts.get(key) ?? 0) + 1);
+  }
+
+  const days: Array<{ date: string; count: number }> = [];
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  for (let i = ACTIVITY_DAYS - 1; i >= 0; i--) {
+    const day = new Date(today);
+    day.setDate(today.getDate() - i);
+    const key = dayKey(day);
+    days.push({ date: key, count: counts.get(key) ?? 0 });
+  }
+
+  // A streak that reaches today is alive; one that ended yesterday is still the
+  // current streak until today is over, so an empty today does not break it.
+  let current = 0;
+  for (let i = days.length - 1; i >= 0; i--) {
+    if (days[i].count > 0) current += 1;
+    else if (i < days.length - 1) break;
+  }
+
+  let longest = 0;
+  let run = 0;
+  for (const day of days) {
+    run = day.count > 0 ? run + 1 : 0;
+    if (run > longest) longest = run;
+  }
+
+  return { days, streak: { current, longest } };
+}
+
+/**
+ * Everything that only means something once there is more than one interview.
+ * Per-session analytics already live on the report; this is the career view.
+ */
+function careerAnalytics(sessions: HistorySession<AnalyticsQuestion>[]) {
+  const questions = sessions.flatMap((s) => s.questions);
+  const scored = questions.filter((q) => q.evaluationScore !== null);
+  const activity = activityOf(sessions);
+
+  const totals = {
+    sessions: sessions.length,
+    completed: sessions.filter((s) => s.status === "completed").length,
+    abandoned: sessions.filter((s) => s.status === "abandoned").length,
+    inProgress: sessions.filter((s) => s.status === "started").length,
+    questionsAnswered: scored.length,
+    // Only sessions that scored something count toward time spent. A round
+    // opened and abandoned still has a clock running between its creation and
+    // its last touch, and summing those turns "time in the room" into hours
+    // nobody sat.
+    timeSeconds: sessions
+      .filter((s) => s.questions.some((q) => q.evaluationScore !== null))
+      .reduce((a, s) => a + sessionSeconds(s), 0),
+  };
+
+  // Nothing scored yet: the counts above still mean something, the charts do
+  // not. A null `scores` block is what the UI reads as "no data yet".
+  if (scored.length === 0) return { totals, activity, scores: null };
+
+  const values = scored.map((q) => q.evaluationScore as number);
+  const average = mean(values);
+  const spread = Math.sqrt(mean(values.map((s) => (s - average) ** 2)));
+
+  // Oldest first — a progress line that runs backwards reads as a decline.
+  const ordered = [...sessions].reverse();
+  const timeline = ordered
+    .map((session) => {
+      const marks = session.questions
+        .filter((q) => q.evaluationScore !== null)
+        .map((q) => q.evaluationScore as number);
+      if (!marks.length) return null;
+      return {
+        id: session.id,
+        date: session.completedAt ?? session.createdAt,
+        score: session.overallScore !== null ? session.overallScore / 10 : round1(mean(marks)),
+        roleId: session.savedInterview.roleId,
+        roundId: session.savedInterview.roundId,
+        difficulty: session.savedInterview.difficulty,
+        answered: marks.length,
+      };
+    })
+    .filter((row): row is NonNullable<typeof row> => row !== null)
+    .map((row, index) => ({ ...row, order: index + 1 }));
+
+  const sessionScores = timeline.map((t) => t.score);
+  const best = timeline.reduce((a, b) => (b.score > a.score ? b : a));
+
+  // Early sessions against recent ones. Under four there are no halves to
+  // compare and the "trend" would be noise dressed up as a finding.
+  const half = Math.floor(timeline.length / 2);
+  const trend =
+    timeline.length >= 4
+      ? { first: round1(mean(sessionScores.slice(0, half))), second: round1(mean(sessionScores.slice(-half))) }
+      : null;
+
+  const gaps = new Map<string, { gap: string; count: number }>();
+  for (const q of scored) {
+    for (const raw of ((q.missed as string[] | null) ?? [])) {
+      const text = String(raw).trim();
+      if (!text) continue;
+      const entry = gaps.get(text.toLowerCase()) ?? { gap: text, count: 0 };
+      entry.count += 1;
+      gaps.set(text.toLowerCase(), entry);
+    }
+  }
+
+  const sessionAverage = (session: HistorySession) => {
+    const marks = session.questions
+      .filter((q) => q.evaluationScore !== null)
+      .map((q) => q.evaluationScore as number);
+    return marks.length ? mean(marks) : null;
+  };
+  const configRows = (pick: (s: HistorySession) => string) =>
+    sessions.flatMap((session) => {
+      const avg = sessionAverage(session);
+      return avg === null ? [] : [{ id: pick(session), score: avg }];
+    });
+
+  return {
+    totals,
+    activity,
+    scores: {
+      average: round1(average),
+      best: Math.max(...values),
+      worst: Math.min(...values),
+      spread: round1(spread),
+      consistency: spread <= 1 ? "steady" : spread <= 2 ? "mixed" : "uneven",
+      readiness: readinessFor(average),
+      trend,
+      bestSession: { id: best.id, score: best.score, date: best.date, roleId: best.roleId, roundId: best.roundId },
+      timeline,
+      verdictMix: verdictMixOf(scored),
+      byTopic: groupAverages(scored.map((q) => ({ label: q.topic, score: q.evaluationScore as number }))),
+      byFocus: groupAverages(scored.map((q) => ({ label: q.focusArea, score: q.evaluationScore as number }))),
+      byDifficulty: ["easy", "medium", "hard"].flatMap((level) => {
+        const rows = scored.filter((q) => (q.difficulty ?? "").toLowerCase() === level);
+        if (!rows.length) return [];
+        return [{
+          label: prettyLabel(level),
+          asked: rows.length,
+          average: round1(mean(rows.map((q) => q.evaluationScore as number))),
+        }];
+      }),
+      byRole: groupByConfigId(configRows((s) => s.savedInterview.roleId)),
+      byRound: groupByConfigId(configRows((s) => s.savedInterview.roundId)),
+      recurringGaps: [...gaps.values()].sort((a, b) => b.count - a.count).slice(0, 12),
+    },
+  };
+}
+
+/** Rows per page when the caller does not say. */
+const DEFAULT_PAGE = 10;
+
+/** Ceiling on how far back the career analytics look. */
+const ANALYTICS_CAP = 200;
+
+const STATUSES = new Set(["completed", "abandoned", "started"]);
+
+/**
+ * A session still in progress keeps its marks hidden, exactly as it does while
+ * it is being sat — the history page is not a back door to them.
+ */
+function hideLiveMarks<T extends { status: string; questions: unknown[] }>(sessions: T[]): T[] {
+  return sessions.map((session) =>
+    session.status === "started"
+      ? ({
+          ...session,
+          questions: (session.questions as Array<Record<string, unknown>>).map((q) => ({
+            ...q,
+            evaluationScore: null,
+            feedback: null,
+            verdict: null,
+            missed: [],
+          })),
+        } as T)
+      : session,
+  );
+}
+
+/**
+ * @route   GET /api/interviews/history
+ * @desc    One page of past sessions, plus (on the first page) the analytics
+ *          and filter options that span every session
+ * @access  Private
+ */
+router.get("/history", requireAuth, async (req: any, res) => {
+  try {
+    const requested = Number(req.query.limit);
+    const take = Number.isFinite(requested) ? Math.min(Math.max(requested, 1), 50) : DEFAULT_PAGE;
+    const cursor = typeof req.query.cursor === "string" && req.query.cursor ? req.query.cursor : null;
+    const sort = req.query.sort === "best" || req.query.sort === "worst" ? req.query.sort : "recent";
+    const status = STATUSES.has(req.query.status) ? (req.query.status as string) : null;
+    const roleId = typeof req.query.roleId === "string" && req.query.roleId ? req.query.roleId : null;
+    // The analytics span every session, so they are computed once for the first
+    // page and never again while paging. A caller that only wants rows — the
+    // builder's "recent sessions" strip — opts out entirely.
+    const wantsAnalytics = !cursor && req.query.analytics !== "0";
+
+    const byScore = sort !== "recent";
+    const where = {
+      userId: req.user.userId,
+      ...(status ? { status } : {}),
+      ...(roleId ? { savedInterview: { is: { roleId } } } : {}),
+      // A ranking by score is a ranking of sessions that have one. Left in, the
+      // unscored rows pile up at whichever end MySQL puts NULLs and the list
+      // reads as though the worst interviews were never marked.
+      ...(byScore ? { overallScore: { not: null } } : {}),
+    };
+
+    const orderBy = byScore
+      ? [{ overallScore: sort === "best" ? ("desc" as const) : ("asc" as const) }, { createdAt: "desc" as const }]
+      : [{ createdAt: "desc" as const }];
+
+    // One row past the page: its existence is what says there is a next page,
+    // without a second count query on the hot path.
+    const [rows, total] = await Promise.all([
+      prisma.mockInterviewSession.findMany({
+        where,
+        orderBy,
+        take: take + 1,
+        ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
+        select: {
+          id: true,
+          status: true,
+          questionBudget: true,
+          overallScore: true,
+          createdAt: true,
+          completedAt: true,
+          savedInterview: { select: { roleId: true, roundId: true, difficulty: true } },
+          questions: { select: LIST_QUESTION, orderBy: { orderIndex: "asc" } },
+        },
+      }),
+      prisma.mockInterviewSession.count({ where }),
+    ]);
+
+    const hasMore = rows.length > take;
+    const page = hasMore ? rows.slice(0, take) : rows;
+
+    const body: Record<string, unknown> = {
+      sessions: hideLiveMarks(page).map(summaryOf),
+      nextCursor: hasMore ? (page[page.length - 1]?.id ?? null) : null,
+      total,
+    };
+
+    if (wantsAnalytics) {
+      // Deliberately unfiltered: "your average across every round" must not
+      // change because the list below it is filtered to one role.
+      const everything = await prisma.mockInterviewSession.findMany({
+        where: { userId: req.user.userId },
+        orderBy: { createdAt: "desc" },
+        take: ANALYTICS_CAP,
+        select: {
+          id: true,
+          status: true,
+          questionBudget: true,
+          overallScore: true,
+          createdAt: true,
+          completedAt: true,
+          savedInterview: {
+            select: { roleId: true, roundId: true, difficulty: true, focusAreaIds: true },
+          },
+          questions: { select: ANALYTICS_QUESTION, orderBy: { orderIndex: "asc" } },
+        },
+      });
+      const all = hideLiveMarks(everything);
+
+      body["analytics"] = careerAnalytics(all);
+      // The filter controls are driven from the whole history, not the page —
+      // a role filter that only lists the roles on screen is no filter at all.
+      body["filters"] = {
+        roles: [...new Set(all.map((s) => s.savedInterview.roleId))],
+        focusAreas: [
+          ...new Set(all.flatMap((s) => (s.savedInterview.focusAreaIds as string[] | null) ?? [])),
+        ],
+        statusCounts: {
+          all: all.length,
+          completed: all.filter((s) => s.status === "completed").length,
+          abandoned: all.filter((s) => s.status === "abandoned").length,
+          started: all.filter((s) => s.status === "started").length,
+        },
+      };
+    }
+
+    res.json(body);
+  } catch (error: any) {
+    console.error("Error fetching interview history:", error?.message);
+    res.status(500).json({ error: "Failed to fetch interview history" });
+  }
+});
+
 /**
  * @route   GET /api/interviews/session/:sessionId
  * @desc    The session with its questions, and the report once it has one
@@ -574,6 +1028,10 @@ router.get("/session/:sessionId", requireAuth, async (req: any, res) => {
       session: { ...session, questions },
       questions,
       language: languageFor(configFrom(session.savedInterview)),
+      setup: configFrom(session.savedInterview),
+      status: session.status,
+      completedAt: session.completedAt,
+      startedAt: session.createdAt,
       report: session.status === "completed" ? reportOf(session, session.questions) : null,
       progress: { asked: session.questions.length, total: session.questionBudget },
     });
