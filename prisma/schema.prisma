@@ -90,6 +90,7 @@ model User {
   followers          Follow[]          @relation("followers")
   tagAffinities      TagAffinity[]
   feedback           Feedback[]
+  aptitudeAttempts   AptitudeAttempt[]
 
   // Rank is a COUNT of users above you and the leaderboard is an ORDER BY on the
   // same columns; without these both are full table scans on every dashboard load.
@@ -775,4 +776,61 @@ model Feedback {
   /// "Last platform rating for this user" and "is this interview rated".
   @@index([userId, kind, createdAt])
   @@index([sessionId])
+}
+
+/// Aptitude preparation: one multiple-choice question with its hints, worked
+/// solution and the idea behind it. Content is authored in
+/// scripts/aptitude-data and upserted by slug (scripts/seed-aptitude.ts), so
+/// the rows are the catalogue, not user data.
+model AptitudeQuestion {
+  id            String   @id @default(cuid())
+  slug          String   @unique
+  /// "quantitative" | "logical" | "verbal" | "data-interpretation"
+  category      String
+  /// Topic slug within the category, e.g. "percentages".
+  topic         String
+  title         String
+  /// Markdown. Tables are GFM.
+  prompt        String   @db.Text
+  /// Markdown strings, in display order.
+  options       Json
+  /// Index into options.
+  answer        Int
+  /// "easy" | "medium" | "hard"
+  difficulty    String
+  /// Progressive hints, weakest first.
+  hints         Json
+  /// Markdown, step by step.
+  solution      String   @db.Text
+  /// The idea or shortcut the question is really testing.
+  approach      String   @db.Text
+  tags          Json     @default("[]")
+  /// A sensible pace for this question, in seconds.
+  timeTargetSec Int      @default(90)
+  orderIndex    Int      @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  attempts      AptitudeAttempt[]
+
+  @@index([category, topic, orderIndex])
+  @@index([topic, difficulty])
+}
+
+/// One answer to an aptitude question. `selected` is null when the candidate
+/// asked for the solution without answering.
+model AptitudeAttempt {
+  id         String           @id @default(cuid())
+  userId     String
+  questionId String
+  selected   Int?
+  correct    Boolean
+  timeSec    Int?
+  usedHints  Int              @default(0)
+  createdAt  DateTime         @default(now())
+  user       User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  question   AptitudeQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  /// Progress per topic and "is this one solved" both read the user's rows.
+  @@index([userId, questionId, createdAt])
+  @@index([userId, createdAt])
 }
