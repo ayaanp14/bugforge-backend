@@ -23,6 +23,7 @@ import communityRouter from "./routes/community.js";
 import duelsRouter from "./routes/duels.js";
 import feedbackRouter from "./routes/feedback.js";
 import aptitudeRouter from "./routes/aptitude.js";
+import mockTestsRouter from "./routes/mock-tests.js";
 import { optionalAuth } from "./middleware/auth.js";
 import { platformGuard } from "./middleware/platformGuard.js";
 import { prisma } from "./lib/prisma.js";
@@ -357,6 +358,7 @@ app.use("/api/community", communityRouter);
 app.use("/api/duels", duelsRouter);
 app.use("/api/feedback", feedbackRouter);
 app.use("/api/aptitude", aptitudeRouter);
+app.use("/api/tests", mockTestsRouter);
 app.use("/api", executionRouter); 
 
 // GET /api/username-check (Public, non-NextAuth)

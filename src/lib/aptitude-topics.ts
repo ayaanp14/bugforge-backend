@@ -6,7 +6,7 @@
  * plus its questions.
  */
 
-export type AptitudeCategoryId = "quantitative" | "logical" | "verbal" | "data-interpretation";
+export type AptitudeCategoryId = "quantitative" | "logical" | "verbal" | "data-interpretation" | "programming";
 export type AptitudeDifficulty = "easy" | "medium" | "hard";
 
 export interface AptitudeCategory {
@@ -27,6 +27,7 @@ export const APTITUDE_CATEGORIES: AptitudeCategory[] = [
   { id: "logical", label: "Logical Reasoning", blurb: "Patterns, puzzles and deductions: the section that rewards a method more than a memory." },
   { id: "verbal", label: "Verbal Ability", blurb: "Grammar, vocabulary and reading — precision with words under a clock." },
   { id: "data-interpretation", label: "Data Interpretation", blurb: "Tables, charts and caselets: read the numbers, then reason about them." },
+  { id: "programming", label: "Programming MCQs", blurb: "Pseudocode, output prediction and core computer science — the technical section of a placement paper." },
 ];
 
 export const APTITUDE_TOPICS: AptitudeTopic[] = [
@@ -61,6 +62,11 @@ export const APTITUDE_TOPICS: AptitudeTopic[] = [
   // ── Data Interpretation ──
   { id: "tables-and-charts", category: "data-interpretation", label: "Tables & Charts", blurb: "Read a table or chart, then compute ratios, growth and shares." },
   { id: "caselets", category: "data-interpretation", label: "Caselets", blurb: "Data buried in a paragraph — extract it, tabulate it, answer." },
+  // ── Programming ──
+  { id: "pseudocode", category: "programming", label: "Pseudocode", blurb: "Trace the loop, print the output — the section Infosys and Wipro lean on." },
+  { id: "programming-fundamentals", category: "programming", label: "Programming Fundamentals", blurb: "Operators, control flow, functions, pointers and output prediction in C, Java and Python." },
+  { id: "data-structures-mcq", category: "programming", label: "Data Structures & Algorithms", blurb: "Arrays, linked lists, stacks, trees, sorting and complexity, asked as MCQs." },
+  { id: "os-dbms-networks", category: "programming", label: "OS, DBMS & Networks", blurb: "Core computer science: processes, scheduling, SQL, normalisation and the OSI layers." },
 ];
 
 const TOPIC_BY_ID = new Map(APTITUDE_TOPICS.map((topic) => [topic.id, topic]));

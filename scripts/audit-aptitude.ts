@@ -73,8 +73,11 @@ for (const q of APTITUDE_QUESTIONS) {
   const prose = [q.solution, q.approach, ...q.hints].join("\n");
   // Self-correction phrasing only. Plain "recompute" is legitimate advice, so
   // the pattern looks for the author talking to themselves mid-solution.
-  // "so I" is excluded deliberately: syllogism solutions refer to conclusion I.
-  if (/(\bRechecking\b|\bRe-reading\b|\bRecomputing step\b|\bCareful:|\bAdding again\b|\bwait,|\bhmm\b|so recompute|\blet me\b|\bI made a\b)/i.test(prose)) {
+  // Two exclusions are deliberate, both learned from false positives:
+  //   - "so I" is not matched, because syllogism solutions name conclusion I;
+  //   - "wait," is only matched when it opens a sentence, because the deadlock
+  //     conditions are "mutual exclusion, hold and wait, no preemption ...".
+  if (/(\bRechecking\b|\bRe-reading\b|\bRecomputing step\b|\bCareful:|\bAdding again\b|(^|[.!?]\s+|\n)wait,|\bhmm\b|so recompute|\blet me\b|\bI made a\b)/im.test(prose)) {
     warn(q.slug, "working-out left in the prose");
   }
 

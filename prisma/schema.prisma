@@ -41,29 +41,29 @@ model VerificationToken {
 }
 
 model User {
-  id                 String            @id @default(cuid())
+  id                 String                 @id @default(cuid())
   name               String?
-  email              String?           @unique
+  email              String?                @unique
   emailVerified      DateTime?
   password_hash      String?
-  provider           String            @default("email")
-  xp                 Int               @default(0)
-  questionsXp        Int               @default(0)
-  bugsXp             Int               @default(0)
-  rating             Int               @default(0)
-  createdAt          DateTime          @default(now())
-  updatedAt          DateTime          @updatedAt
-  avatar_url         String?           @db.Text
+  provider           String                 @default("email")
+  xp                 Int                    @default(0)
+  questionsXp        Int                    @default(0)
+  bugsXp             Int                    @default(0)
+  rating             Int                    @default(0)
+  createdAt          DateTime               @default(now())
+  updatedAt          DateTime               @updatedAt
+  avatar_url         String?                @db.Text
   instituteName      String?
-  username           String?           @unique
+  username           String?                @unique
   gender             String?
   location           String?
   birthday           DateTime?
-  website            String?           @db.Text
-  github             String?           @db.Text
-  linkedin           String?           @db.Text
-  twitter            String?           @db.Text
-  readme             String?           @db.Text
+  website            String?                @db.Text
+  github             String?                @db.Text
+  linkedin           String?                @db.Text
+  twitter            String?                @db.Text
+  readme             String?                @db.Text
   accounts           Account[]
   bugSubmissions     BugSubmission[]
   codeDrafts         CodeDraft[]
@@ -86,11 +86,12 @@ model User {
   pollVotes          PollVote[]
   postReports        PostReport[]
   duels              DuelParticipant[]
-  following          Follow[]          @relation("following")
-  followers          Follow[]          @relation("followers")
+  following          Follow[]               @relation("following")
+  followers          Follow[]               @relation("followers")
   tagAffinities      TagAffinity[]
   feedback           Feedback[]
   aptitudeAttempts   AptitudeAttempt[]
+  mockAttempts       MockAttempt[]
 
   // Rank is a COUNT of users above you and the leaderboard is an ORDER BY on the
   // same columns; without these both are full table scans on every dashboard load.
@@ -100,33 +101,34 @@ model User {
 }
 
 model Problem {
-  id            String       @id @default(cuid())
-  title         String
-  slug          String       @unique
-  description   String       @db.MediumText
-  difficulty    String
-  tags          Json         @default("[]")
-  timeLimitMs   Int          @default(2000)
-  memoryLimitMb Int          @default(256)
-  editorial     String?      @db.MediumText
-  isPublished   Boolean      @default(false)
-  createdAt     DateTime     @default(now())
-  starterCode   Json?
-  signature     Json?
-  referenceSolution String?  @db.MediumText
+  id                String           @id @default(cuid())
+  title             String
+  slug              String           @unique
+  description       String           @db.MediumText
+  difficulty        String
+  tags              Json             @default("[]")
+  timeLimitMs       Int              @default(2000)
+  memoryLimitMb     Int              @default(256)
+  editorial         String?          @db.MediumText
+  isPublished       Boolean          @default(false)
+  createdAt         DateTime         @default(now())
+  starterCode       Json?
+  signature         Json?
+  referenceSolution String?          @db.MediumText
   referenceLanguage String?
   /// Editorial reference solutions keyed by language ("python", "cpp", …).
   /// Drives the Editorial tab's language picker; only validated languages are
   /// written here, so a missing key means "not authored yet", not "broken".
   solutions         Json?
-  hints         Json         @default("[]")
-  codeDrafts    CodeDraft[]
-  pairRooms     PairRoom[]
-  submissions   Submission[]
-  testCases     TestCase[]
-  problemTimers ProblemTimer[]
+  hints             Json             @default("[]")
+  codeDrafts        CodeDraft[]
+  pairRooms         PairRoom[]
+  submissions       Submission[]
+  testCases         TestCase[]
+  problemTimers     ProblemTimer[]
+  mockCodeAnswers   MockCodeAnswer[]
 
-  duels         Duel[]
+  duels Duel[]
 
   @@index([isPublished, createdAt])
 }
@@ -147,15 +149,15 @@ model CodeDraft {
 }
 
 model ProblemTimer {
-  id              String    @id @default(cuid())
-  userId          String
-  problemId       String
-  elapsedSeconds  Int       @default(0)
-  lastStartedAt   DateTime?
-  isRunning       Boolean   @default(false)
-  updatedAt       DateTime  @updatedAt
-  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  problem         Problem   @relation(fields: [problemId], references: [id], onDelete: Cascade)
+  id             String    @id @default(cuid())
+  userId         String
+  problemId      String
+  elapsedSeconds Int       @default(0)
+  lastStartedAt  DateTime?
+  isRunning      Boolean   @default(false)
+  updatedAt      DateTime  @updatedAt
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  problem        Problem   @relation(fields: [problemId], references: [id], onDelete: Cascade)
 
   @@unique([userId, problemId])
 }
@@ -172,22 +174,21 @@ model TestCase {
   @@index([problemId, orderIndex])
 }
 
-
 model Submission {
-  id          String   @id @default(cuid())
+  id          String    @id @default(cuid())
   userId      String
   problemId   String
   roomId      String?
-  code        String   @db.MediumText
+  code        String    @db.MediumText
   language    String
   verdict     String
   runtimeMs   Int?
   memoryKb    Int?
-  passedCases Int      @default(0)
-  totalCases  Int      @default(0)
-  submittedAt DateTime @default(now())
-  problem     Problem  @relation(fields: [problemId], references: [id], onDelete: Cascade)
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  passedCases Int       @default(0)
+  totalCases  Int       @default(0)
+  submittedAt DateTime  @default(now())
+  problem     Problem   @relation(fields: [problemId], references: [id], onDelete: Cascade)
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   room        PairRoom? @relation(fields: [roomId], references: [id], onDelete: SetNull)
 
   // The FK on userId alone leaves every "newest first" read to filesort the user's
@@ -254,21 +255,21 @@ model BugSubmission {
 }
 
 model PairRoom {
-  id           String            @id @default(cuid())
-  createdBy    String
-  problemId    String
-  mode         String
-  status       String            @default("waiting")
-  inviteCode   String?
-  recoveryCode String?           @unique
-  maxParticipants Int            @default(2)
-  startedAt    DateTime?
-  endedAt      DateTime?
-  kickedUserIds Json             @default("[]")
-  creator      User              @relation(fields: [createdBy], references: [id], onDelete: Cascade)
-  problem      Problem           @relation(fields: [problemId], references: [id], onDelete: Cascade)
-  participants RoomParticipant[]
-  submissions  Submission[]
+  id              String            @id @default(cuid())
+  createdBy       String
+  problemId       String
+  mode            String
+  status          String            @default("waiting")
+  inviteCode      String?
+  recoveryCode    String?           @unique
+  maxParticipants Int               @default(2)
+  startedAt       DateTime?
+  endedAt         DateTime?
+  kickedUserIds   Json              @default("[]")
+  creator         User              @relation(fields: [createdBy], references: [id], onDelete: Cascade)
+  problem         Problem           @relation(fields: [problemId], references: [id], onDelete: Cascade)
+  participants    RoomParticipant[]
+  submissions     Submission[]
 }
 
 model RoomParticipant {
@@ -296,35 +297,35 @@ model UserStats {
 }
 
 model SavedInterview {
-  id              String   @id @default(cuid())
-  userId          String
-  roleId          String
-  roundId         String
-  difficulty      String
-  experienceBand  String
-  interviewStyle  String
-  stackFocusIds   Json     @default("[]")
-  focusAreaIds    Json     @default("[]")
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  mockSessions    MockInterviewSession[]
+  id             String                 @id @default(cuid())
+  userId         String
+  roleId         String
+  roundId        String
+  difficulty     String
+  experienceBand String
+  interviewStyle String
+  stackFocusIds  Json                   @default("[]")
+  focusAreaIds   Json                   @default("[]")
+  createdAt      DateTime               @default(now())
+  updatedAt      DateTime               @updatedAt
+  user           User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  mockSessions   MockInterviewSession[]
 
   /// The builder lists a user's templates newest-first and nothing else.
   @@index([userId, createdAt])
 }
 
 model MockInterviewSession {
-  id              String   @id @default(cuid())
+  id               String  @id @default(cuid())
   userId           String
   savedInterviewId String
-  status           String         @default("started") // started, completed, abandoned
+  status           String  @default("started") // started, completed, abandoned
   /// Dead: left in place so a schema push stays additive. Safe to drop later.
   gtwyThreadId     String?
 
   /// How many questions this interview runs, fixed when it starts.
-  questionBudget   Int            @default(7)
-  completedAt      DateTime?
+  questionBudget Int       @default(7)
+  completedAt    DateTime?
 
   // ── interaction layer ──────────────────────────────────────────────────
   //
@@ -332,7 +333,7 @@ model MockInterviewSession {
   // realtime spoken round. Everything below this line is null on a written
   // session, and the default keeps every row written before voice existed
   // reading as what it actually was.
-  mode             String         @default("written") // "written" | "voice"
+  mode             String    @default("written") // "written" | "voice"
   /// Realtime vendor, kept as data so a second provider needs no migration.
   provider         String?
   /// The exact realtime model that ran, for cost attribution after the fact.
@@ -356,26 +357,26 @@ model MockInterviewSession {
   voiceState       Json?
 
   // Closing report. Numbers are computed from the questions, not from the model.
-  overallScore     Int?
-  summary          String?        @db.Text
-  strengths        Json           @default("[]")
-  weaknesses       Json           @default("[]")
-  nextSteps        Json           @default("[]")
-  topicBreakdown   Json           @default("[]")
+  overallScore   Int?
+  summary        String? @db.Text
+  strengths      Json    @default("[]")
+  weaknesses     Json    @default("[]")
+  nextSteps      Json    @default("[]")
+  topicBreakdown Json    @default("[]")
 
   // What the session cost to run, accumulated across every model call.
-  promptTokens     Int            @default(0)
-  cachedTokens     Int            @default(0)
-  completionTokens Int            @default(0)
-  reasoningTokens  Int            @default(0)
-  costMicros       Int            @default(0)
+  promptTokens     Int @default(0)
+  cachedTokens     Int @default(0)
+  completionTokens Int @default(0)
+  reasoningTokens  Int @default(0)
+  costMicros       Int @default(0)
 
-  createdAt        DateTime       @default(now())
-  updatedAt        DateTime       @updatedAt
-  user             User           @relation(fields: [userId], references: [id], onDelete: Cascade)
-  savedInterview   SavedInterview @relation(fields: [savedInterviewId], references: [id], onDelete: Cascade)
-  questions        MockInterviewQuestion[]
-  events           InterviewEvent[]
+  createdAt      DateTime                @default(now())
+  updatedAt      DateTime                @updatedAt
+  user           User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  savedInterview SavedInterview          @relation(fields: [savedInterviewId], references: [id], onDelete: Cascade)
+  questions      MockInterviewQuestion[]
+  events         InterviewEvent[]
 
   /// The history list: one user's sessions, newest first, cursor-paged.
   @@index([userId, createdAt])
@@ -388,25 +389,25 @@ model MockInterviewSession {
 }
 
 model MockInterviewQuestion {
-  id              String   @id @default(cuid())
+  id              String               @id @default(cuid())
   sessionId       String
-  questionText    String   @db.Text
+  questionText    String               @db.Text
   topic           String?
   difficulty      String?
   focusArea       String?
-  userAnswer      String?  @db.MediumText
+  userAnswer      String?              @db.MediumText
   evaluationScore Int?
-  feedback        String?  @db.Text
+  feedback        String?              @db.Text
   /// "strong" | "adequate" | "weak" | "no_answer"
   verdict         String?
   /// Points a strong answer would have covered and this one did not.
-  missed          Json     @default("[]")
-  starterCode     String?  @db.Text
-  expectedSkills  Json     @default("[]")
-  status          String   @default("pending") // pending, answered, evaluated
+  missed          Json                 @default("[]")
+  starterCode     String?              @db.Text
+  expectedSkills  Json                 @default("[]")
+  status          String               @default("pending") // pending, answered, evaluated
   orderIndex      Int
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  createdAt       DateTime             @default(now())
+  updatedAt       DateTime             @updatedAt
   session         MockInterviewSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
 
   /// A slot belongs to exactly one question. Two answers submitted for the same
@@ -427,7 +428,7 @@ model MockInterviewQuestion {
 /// That also means a browser that dies mid-round leaves everything said up to
 /// that point already on disk.
 model InterviewEvent {
-  id             String   @id @default(cuid())
+  id             String               @id @default(cuid())
   sessionId      String
   /// Per-session monotonic counter, assigned by the client that owns the
   /// socket. Ordering by `createdAt` cannot work: a batch of events written in
@@ -438,11 +439,11 @@ model InterviewEvent {
   /// "transcript" | "interview_started" | "interruption" | "question_started" |
   /// "connection_lost" | "error" | … — open set, read by analytics only.
   type           String
-  text           String?  @db.Text
+  text           String?              @db.Text
   /// Which question this belongs to, as counted by the running interview state.
   questionNumber Int?
-  metadata       Json     @default("{}")
-  createdAt      DateTime @default(now())
+  metadata       Json                 @default("{}")
+  createdAt      DateTime             @default(now())
   session        MockInterviewSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
 
   /// Idempotent replay: a retried batch re-sends sequence numbers already
@@ -561,12 +562,14 @@ model Notification {
 
 model Duel {
   id          String    @id @default(cuid())
-  mode        String    @default("1v1")     // "1v1" | "2v2"
+  mode        String    @default("1v1") // "1v1" | "2v2"
   kind        String    @default("problem") // "problem" | "bug"
   status      String    @default("waiting") // waiting | active | finished | cancelled
-  visibility  String    @default("public")  // public (matchmade) | private (invite code)
+  visibility  String    @default("public") // public (matchmade) | private (invite code)
   roomCode    String?   @unique
-  /** Average rating of the warriors already seated — the matchmaking band. */
+  /**
+   * Average rating of the warriors already seated — the matchmaking band.
+   */
   ratingBand  Int       @default(1200)
   problemId   String?
   challengeId String?
@@ -591,7 +594,9 @@ model DuelParticipant {
   userId     String
   team       Int       @default(1)
   ready      Boolean   @default(false)
-  /** Live scoreboard: tests passed on this warrior's latest submission. */
+  /**
+   * Live scoreboard: tests passed on this warrior's latest submission.
+   */
   passed     Int       @default(0)
   total      Int       @default(0)
   verdict    String?
@@ -609,44 +614,44 @@ model DuelParticipant {
 // ── Community: stories/status posts, achievement shares, comments, follows ──
 
 model Post {
-  id         String        @id @default(cuid())
-  userId     String
+  id                String        @id @default(cuid())
+  userId            String
   // "status" (story/life post) | "achievement" (shared solve) | "question" (help
   // request pinned to a problem/bug) | "poll"
-  type       String        @default("status")
-  visibility String        @default("public") // "public" | "followers" | "private"
-  content    String        @db.Text
-  meta      Json          @default("{}") // achievement payload: { kind: "problem"|"bug", slug?, challengeId?, title, difficulty?, xp? }; poll: { poll: { options: string[] } }; question: { ask: { slug?, challengeId?, title? } }
-  createdAt DateTime      @default(now())
-  updatedAt DateTime      @updatedAt
+  type              String        @default("status")
+  visibility        String        @default("public") // "public" | "followers" | "private"
+  content           String        @db.Text
+  meta              Json          @default("{}") // achievement payload: { kind: "problem"|"bug", slug?, challengeId?, title, difficulty?, xp? }; poll: { poll: { options: string[] } }; question: { ask: { slug?, challengeId?, title? } }
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
   // Set the first time the author edits, so the card can say "edited"
-  editedAt  DateTime?
+  editedAt          DateTime?
   // Questions: the comment the asker accepted as the answer
   resolvedCommentId String?
-  user      User          @relation(fields: [userId], references: [id], onDelete: Cascade)
-  comments  PostComment[]
-  likes     PostLike[]
-  tags      PostTag[]
-  saves     SavedPost[]
-  pollVotes PollVote[]
-  reports   PostReport[]
+  user              User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  comments          PostComment[]
+  likes             PostLike[]
+  tags              PostTag[]
+  saves             SavedPost[]
+  pollVotes         PollVote[]
+  reports           PostReport[]
 
   @@index([createdAt])
   @@index([userId, createdAt])
 }
 
 model PostComment {
-  id        String   @id @default(cuid())
+  id        String            @id @default(cuid())
   postId    String
   userId    String
-  content   String   @db.Text
+  content   String            @db.Text
   // Threading is one level deep. Deliberately a plain column rather than a
   // self-relation: MySQL handles a self-referencing FK badly when the parent
   // post cascades, and the reply tree is assembled in the route anyway.
   parentId  String?
-  createdAt DateTime @default(now())
-  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime          @default(now())
+  post      Post              @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user      User              @relation(fields: [userId], references: [id], onDelete: Cascade)
   likes     PostCommentLike[]
 
   @@index([postId, createdAt])
@@ -783,15 +788,15 @@ model Feedback {
 /// scripts/aptitude-data and upserted by slug (scripts/seed-aptitude.ts), so
 /// the rows are the catalogue, not user data.
 model AptitudeQuestion {
-  id            String   @id @default(cuid())
-  slug          String   @unique
+  id            String            @id @default(cuid())
+  slug          String            @unique
   /// "quantitative" | "logical" | "verbal" | "data-interpretation"
   category      String
   /// Topic slug within the category, e.g. "percentages".
   topic         String
   title         String
   /// Markdown. Tables are GFM.
-  prompt        String   @db.Text
+  prompt        String            @db.Text
   /// Markdown strings, in display order.
   options       Json
   /// Index into options.
@@ -801,15 +806,15 @@ model AptitudeQuestion {
   /// Progressive hints, weakest first.
   hints         Json
   /// Markdown, step by step.
-  solution      String   @db.Text
+  solution      String            @db.Text
   /// The idea or shortcut the question is really testing.
-  approach      String   @db.Text
-  tags          Json     @default("[]")
+  approach      String            @db.Text
+  tags          Json              @default("[]")
   /// A sensible pace for this question, in seconds.
-  timeTargetSec Int      @default(90)
-  orderIndex    Int      @default(0)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  timeTargetSec Int               @default(90)
+  orderIndex    Int               @default(0)
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
   attempts      AptitudeAttempt[]
 
   @@index([category, topic, orderIndex])
@@ -833,4 +838,148 @@ model AptitudeAttempt {
   /// Progress per topic and "is this one solved" both read the user's rows.
   @@index([userId, questionId, createdAt])
   @@index([userId, createdAt])
+}
+
+/// A company's placement test pattern. The rows are content, seeded from
+/// scripts/mock-test-data; a sitting draws its paper from the aptitude bank
+/// according to each section's blueprint, so one pattern yields a fresh paper
+/// every time.
+model MockTest {
+  id              String            @id @default(cuid())
+  slug            String            @unique
+  /// "TCS", "Infosys", "Amazon".
+  company         String
+  /// "TCS NQT — Ninja".
+  name            String
+  /// "service" | "product" | "generic"
+  family          String            @default("service")
+  blurb           String            @db.Text
+  /// Markdown shown before the clock starts.
+  instructions    String            @db.Text
+  /// Cached sum of the section durations.
+  durationSec     Int
+  totalQuestions  Int
+  /// Marks lost per wrong answer; 0 where the real test has none.
+  negativeMark    Float             @default(0)
+  /// A section cannot be revisited once left, as in the real thing.
+  sectionalTiming Boolean           @default(true)
+  isAdaptive      Boolean           @default(false)
+  /// Short chips for the card: "No negative marking", "Sectionally timed".
+  highlights      Json              @default("[]")
+  /// Where the pattern came from, shown in small print.
+  sourceNote      String?           @db.Text
+  difficulty      String            @default("medium")
+  orderIndex      Int               @default(0)
+  published       Boolean           @default(true)
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+  sections        MockTestSection[]
+  attempts        MockAttempt[]
+
+  @@index([published, family, orderIndex])
+}
+
+/// One timed section of a pattern, and the rule for filling it.
+model MockTestSection {
+  id               String   @id @default(cuid())
+  testId           String
+  /// Stable within the test, e.g. "numerical-ability".
+  key              String
+  name             String
+  orderIndex       Int
+  durationSec      Int
+  questionCount    Int
+  instructions     String?  @db.Text
+  /// "mcq" draws from the aptitude bank; "coding" draws from the problem
+  /// catalogue and is graded on test cases passed.
+  kind             String   @default("mcq")
+  /// What one question in this section is worth. A coding problem is worth
+  /// far more than a multiple-choice question, as it is in the real papers.
+  marksPerQuestion Float    @default(1)
+  /// Draw rules: [{ topics?, category?, difficulty?, count }].
+  blueprint        Json
+  test             MockTest @relation(fields: [testId], references: [id], onDelete: Cascade)
+
+  @@unique([testId, key])
+  @@index([testId, orderIndex])
+}
+
+/// One sitting. The paper is fixed at the start and the deadlines are the
+/// server's, so a reload or a closed tab cannot buy extra time.
+model MockAttempt {
+  id             String           @id @default(cuid())
+  userId         String
+  testId         String
+  /// "in-progress" | "submitted" | "expired"
+  status         String           @default("in-progress")
+  startedAt      DateTime         @default(now())
+  /// Hard stop for the whole paper.
+  expiresAt      DateTime
+  /// Deadline for the section in progress, when the test is sectionally timed.
+  sectionEndsAt  DateTime?
+  currentSection Int              @default(0)
+  submittedAt    DateTime?
+  /// The paper as drawn: [{ key, name, durationSec, questionIds }].
+  paper          Json
+  score          Float?
+  maxScore       Float?
+  correctCount   Int?
+  wrongCount     Int?
+  skippedCount   Int?
+  /// Per-section marks, accuracy and time, computed once at submit.
+  sectionScores  Json?
+  test           MockTest         @relation(fields: [testId], references: [id], onDelete: Cascade)
+  user           User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  answers        MockAnswer[]
+  codeAnswers    MockCodeAnswer[]
+
+  @@index([userId, status, startedAt])
+  @@index([testId, submittedAt])
+}
+
+/// One answer within a sitting. Upserted as the candidate moves about, so the
+/// row survives a refresh.
+model MockAnswer {
+  id           String      @id @default(cuid())
+  attemptId    String
+  questionId   String
+  sectionIndex Int
+  selected     Int?
+  correct      Boolean     @default(false)
+  /// The candidate flagged it to come back to.
+  marked       Boolean     @default(false)
+  /// Seconds spent on this question, accumulated client-side.
+  timeSec      Int         @default(0)
+  updatedAt    DateTime    @updatedAt
+  attempt      MockAttempt @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+
+  @@unique([attemptId, questionId])
+  @@index([attemptId, sectionIndex])
+}
+
+/// One coding problem within a sitting: the candidate's working copy and the
+/// best result they have reached on it. Deliberately separate from CodeDraft
+/// and Submission — a mock sitting must never disturb the drafts or the
+/// submission history of ordinary practice.
+model MockCodeAnswer {
+  id           String      @id @default(cuid())
+  attemptId    String
+  problemId    String
+  sectionIndex Int
+  language     String      @default("python")
+  code         String      @db.MediumText
+  /// The best run so far, which is what the sitting is graded on.
+  verdict      String?
+  passedCases  Int         @default(0)
+  totalCases   Int         @default(0)
+  runtimeMs    Int?
+  /// How many times the candidate submitted this problem.
+  submissions  Int         @default(0)
+  timeSec      Int         @default(0)
+  updatedAt    DateTime    @updatedAt
+  attempt      MockAttempt @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+  problem      Problem     @relation(fields: [problemId], references: [id], onDelete: Cascade)
+
+  @@unique([attemptId, problemId])
+  @@index([attemptId, sectionIndex])
 }

@@ -29,6 +29,8 @@ import { BANK_QUANT_TOPUP } from "./bank-quant-topup.js";
 import { BANK_REASONING_TOPUP } from "./bank-reasoning-topup.js";
 import { BANK_FINAL } from "./bank-final.js";
 import { BANK_EXTRA } from "./bank-extra.js";
+import { BANK_PSEUDOCODE } from "./bank-pseudocode.js";
+import { BANK_CORE_CS } from "./bank-core-cs.js";
 
 /**
  * The whole aptitude bank, in the order topics appear in the syllabus.
@@ -66,4 +68,6 @@ export const APTITUDE_QUESTIONS: AptitudeSeed[] = [
   ...BANK_REASONING_TOPUP,
   ...BANK_FINAL,
   ...BANK_EXTRA,
+  ...BANK_PSEUDOCODE,
+  ...BANK_CORE_CS,
 ];
