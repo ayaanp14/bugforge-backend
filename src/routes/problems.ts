@@ -2,8 +2,26 @@ import { Router } from "express";
 import slugify from "slugify";
 import { prisma } from "../lib/prisma.js";
 import { requireAuth, optionalAuth, adminOnly } from "../middleware/auth.js";
+import { cachedShared, invalidate } from "../lib/cache.js";
 
 const router = Router();
+
+/**
+ * A published problem statement is the same bytes for everyone and changes
+ * only when an admin edits it, so the whole composed payload is cached rather
+ * than any one query inside it. That is the shape the shared tier is for: one
+ * round trip instead of three (the problem with its visible cases, then the
+ * neighbour on either side).
+ */
+const problemKey = (slug: string) => `problem:v1:${slug}`;
+
+/** After any admin write, so the next reader sees the edit rather than the TTL. */
+function invalidateProblem(slug: string): void {
+  invalidate(problemKey(slug));
+  // The catalogue carries titles, tags and difficulty, all of which an edit can
+  // move, and publishing or retiring a problem changes its membership outright.
+  invalidate("catalogue:published");
+}
 
 // 1. GET /api/problems — List all published problems with pagination and filtering
 router.get("/", optionalAuth, async (req, res) => {
@@ -165,46 +183,50 @@ router.get("/", optionalAuth, async (req, res) => {
 router.get("/:slug", optionalAuth, async (req, res) => {
   try {
     const { slug } = req.params;
-    const problem = await prisma.problem.findUnique({
-      where: { slug: String(slug) },
-      include: {
-        testCases: {
-          where: { isHidden: false },
-          select: { id: true, input: true, expectedOutput: true, orderIndex: true },
-          orderBy: { orderIndex: "asc" },
+    // Nothing below depends on who is asking — the draft, the timer and the
+    // submissions each have their own endpoint — so one cached copy serves
+    // every reader.
+    const payload = await cachedShared(problemKey(String(slug)), 600, async () => {
+      const problem = await prisma.problem.findUnique({
+        where: { slug: String(slug) },
+        include: {
+          testCases: {
+            where: { isHidden: false },
+            select: { id: true, input: true, expectedOutput: true, orderIndex: true },
+            orderBy: { orderIndex: "asc" },
+          },
         },
-      },
+      });
+
+      if (!problem || !problem.isPublished) return null;
+
+      // Previous (newer) and next (older) in the catalogue.
+      const [prevProblem, nextProblem] = await Promise.all([
+        prisma.problem.findFirst({
+          where: { isPublished: true, createdAt: { gt: problem.createdAt } },
+          orderBy: { createdAt: "asc" },
+          select: { slug: true },
+        }),
+        prisma.problem.findFirst({
+          where: { isPublished: true, createdAt: { lt: problem.createdAt } },
+          orderBy: { createdAt: "desc" },
+          select: { slug: true },
+        }),
+      ]);
+
+      return {
+        ...problem,
+        prevSlug: prevProblem?.slug || null,
+        nextSlug: nextProblem?.slug || null,
+      };
     });
 
-    if (!problem || !problem.isPublished) {
+    if (!payload) {
       res.status(404).json({ error: "Problem not found" });
       return;
     }
 
-    // Find Previous (Newer) and Next (Older) problem slugs
-    const prevProblem = await prisma.problem.findFirst({
-      where: {
-        isPublished: true,
-        createdAt: { gt: problem.createdAt }
-      },
-      orderBy: { createdAt: "asc" },
-      select: { slug: true }
-    });
-
-    const nextProblem = await prisma.problem.findFirst({
-      where: {
-        isPublished: true,
-        createdAt: { lt: problem.createdAt }
-      },
-      orderBy: { createdAt: "desc" },
-      select: { slug: true }
-    });
-
-    res.json({
-      ...problem,
-      prevSlug: prevProblem?.slug || null,
-      nextSlug: nextProblem?.slug || null,
-    });
+    res.json(payload);
   } catch (err) {
     console.error("GET /api/problems/:slug error:", err);
     res.status(500).json({ error: "Internal server error" });
@@ -254,6 +276,9 @@ router.put("/:slug", requireAuth, adminOnly, async (req, res) => {
       data: updateData,
     });
 
+    invalidateProblem(String(slug));
+    if (problem.slug !== String(slug)) invalidateProblem(problem.slug);
+
     res.json(problem);
   } catch (err) {
     console.error("PUT /api/problems/:slug error:", err);
@@ -269,6 +294,7 @@ router.delete("/:slug", requireAuth, adminOnly, async (req, res) => {
       where: { slug: String(slug) },
       data: { isPublished: false },
     });
+    invalidateProblem(String(slug));
     res.json({ success: true });
   } catch (err) {
     console.error("DELETE /api/problems/:slug error:", err);
@@ -298,6 +324,7 @@ router.post("/:slug/test-cases", requireAuth, adminOnly, async (req, res) => {
       },
     });
 
+    invalidateProblem(String(slug));
     res.status(201).json(testCase);
   } catch (err) {
     console.error("POST /api/problems/:slug/test-cases error:", err);
@@ -308,8 +335,9 @@ router.post("/:slug/test-cases", requireAuth, adminOnly, async (req, res) => {
 // 7. DELETE /api/problems/[slug]/test-cases/[testCaseId] — Delete test case (Admin)
 router.delete("/:slug/test-cases/:testCaseId", requireAuth, adminOnly, async (req, res) => {
   try {
-    const { testCaseId } = req.params;
+    const { slug, testCaseId } = req.params;
     await prisma.testCase.delete({ where: { id: testCaseId as string } });
+    invalidateProblem(String(slug));
     res.json({ success: true });
   } catch (err) {
     console.error("DELETE test case error:", err);

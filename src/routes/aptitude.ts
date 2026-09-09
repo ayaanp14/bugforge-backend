@@ -1,6 +1,8 @@
 import { Router } from "express";
 import { prisma } from "../lib/prisma.js";
 import { optionalAuth, requireAuth } from "../middleware/auth.js";
+import { questionBySlug, questionIndex, topicOrder } from "../services/aptitude-bank.js";
+import { cachedShared } from "../lib/cache.js";
 import { APTITUDE_CATEGORIES, APTITUDE_DIFFICULTIES, APTITUDE_TOPICS, aptitudeTopic, type AptitudeDifficulty } from "../lib/aptitude-topics.js";
 
 /**
@@ -40,6 +42,7 @@ async function progressFor(userId: string | null) {
 
 const statusOf = (entry: { correct: boolean } | undefined): Status => (entry ? (entry.correct ? "solved" : "attempted") : "new");
 
+
 /**
  * GET /api/aptitude/topics
  * The syllabus with question counts and, when signed in, progress per topic.
@@ -47,10 +50,7 @@ const statusOf = (entry: { correct: boolean } | undefined): Status => (entry ? (
 router.get("/topics", optionalAuth, async (req: any, res) => {
   try {
     const userId: string | null = req.user?.userId ?? null;
-    const [questions, progress] = await Promise.all([
-      prisma.aptitudeQuestion.findMany({ select: { id: true, topic: true, difficulty: true } }),
-      progressFor(userId),
-    ]);
+    const [questions, progress] = await Promise.all([questionIndex(), progressFor(userId)]);
 
     const perTopic = new Map<string, { total: number; byDifficulty: Record<AptitudeDifficulty, number>; solved: number; attempted: number }>();
     for (const topic of APTITUDE_TOPICS) perTopic.set(topic.id, { total: 0, byDifficulty: { easy: 0, medium: 0, hard: 0 }, solved: 0, attempted: 0 });
@@ -121,20 +121,29 @@ router.get("/questions", optionalAuth, async (req: any, res) => {
 
     const where = { topic: topic.id, ...(difficulty ? { difficulty } : {}) };
     const userId: string | null = req.user?.userId ?? null;
-    const [rows, total, attempts] = await Promise.all([
-      prisma.aptitudeQuestion.findMany({
-        where,
-        orderBy: { orderIndex: "asc" },
-        skip: offset,
-        take: limit,
-        select: { id: true, slug: true, title: true, difficulty: true, tags: true, timeTargetSec: true, orderIndex: true },
+    // The slice itself is the same for everyone who asks for it; only the
+    // status marks laid over it are the candidate's. Both halves are fetched
+    // together so a signed-in reader still pays one round trip.
+    const [page, attempts] = await Promise.all([
+      cachedShared(`aptitude:page:v1:${topic.id}:${difficulty ?? "all"}:${offset}:${limit}`, 900, async () => {
+        const [rows, total] = await Promise.all([
+          prisma.aptitudeQuestion.findMany({
+            where,
+            orderBy: { orderIndex: "asc" },
+            skip: offset,
+            take: limit,
+            select: { id: true, slug: true, title: true, difficulty: true, tags: true, timeTargetSec: true, orderIndex: true },
+          }),
+          prisma.aptitudeQuestion.count({ where }),
+        ]);
+        return { rows, total };
       }),
-      prisma.aptitudeQuestion.count({ where }),
       // Scoped to this topic and level, so paging never widens the query.
       userId
         ? prisma.aptitudeAttempt.findMany({ where: { userId, question: where }, select: { questionId: true, correct: true } })
         : Promise.resolve([] as Array<{ questionId: string; correct: boolean }>),
     ]);
+    const { rows, total } = page;
 
     const byQuestion = new Map<string, { correct: boolean; attempts: number }>();
     for (const attempt of attempts) {
@@ -177,13 +186,15 @@ router.get("/questions", optionalAuth, async (req: any, res) => {
  */
 router.get("/questions/:slug", optionalAuth, async (req: any, res) => {
   try {
-    const question = await prisma.aptitudeQuestion.findUnique({ where: { slug: req.params.slug } });
+    const question = await questionBySlug(req.params.slug);
     if (!question) return res.status(404).json({ error: "Question not found" });
     const topic = aptitudeTopic(question.topic);
 
     const userId: string | null = req.user?.userId ?? null;
     const [siblings, attempts] = await Promise.all([
-      prisma.aptitudeQuestion.findMany({ where: { topic: question.topic }, orderBy: { orderIndex: "asc" }, select: { slug: true } }),
+      // Every question in the topic, only to find the one either side of this
+      // one. That ordering is fixed by orderIndex at seed time.
+      topicOrder(question.topic),
       userId
         ? prisma.aptitudeAttempt.findMany({
             where: { userId, questionId: question.id },

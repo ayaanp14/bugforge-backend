@@ -7,6 +7,8 @@ import { LANGUAGE_MAP } from "../lib/judge0.js";
 import { runBatch } from "../lib/batch-judge.js";
 import { buildDriver, remapDiagnostics, type Language as DriverLanguage, type Signature } from "../lib/driver-codegen.js";
 import { ENGINE_DOWN_MESSAGE, isEngineDown } from "../lib/engine-error.js";
+import { cachedShared } from "../lib/cache.js";
+import { codingPool, questionIndex } from "../services/aptitude-bank.js";
 
 /**
  * Full-length placement tests.
@@ -34,21 +36,6 @@ const sectionPlans = (sections: Array<{ key: string; name: string; orderIndex: n
     blueprint: (section.blueprint ?? []) as unknown as DrawRule[],
   }));
 
-/** The problem catalogue, shaped so the same draw code can use it. */
-async function problemPool() {
-  const rows = await prisma.problem.findMany({
-    where: { isPublished: true },
-    select: { id: true, difficulty: true, tags: true },
-  });
-  return rows.map((row) => ({
-    id: row.id,
-    topic: "",
-    category: "coding",
-    difficulty: String(row.difficulty).toLowerCase(),
-    tags: ((row.tags as string[]) ?? []).map(String),
-  }));
-}
-
 /** The public shape of a pattern, without the blueprints that fill it. */
 const testSummary = (test: any) => ({
   slug: test.slug,
@@ -72,6 +59,29 @@ const testSummary = (test: any) => ({
     questionCount: section.questionCount,
   })),
 });
+
+/**
+ * A pattern is seeded content (scripts/seed-mock-tests.ts) and a sitting draws
+ * from it without changing it, so both of these are the same bytes for every
+ * candidate. Only the attempts laid over them are personal, and those are
+ * fetched alongside rather than inside.
+ */
+const testCatalogue = () =>
+  cachedShared("mock:catalogue:v1", 600, () =>
+    prisma.mockTest.findMany({
+      where: { published: true },
+      orderBy: [{ orderIndex: "asc" }, { name: "asc" }],
+      include: { sections: { orderBy: { orderIndex: "asc" } } },
+    }),
+  );
+
+const testPattern = (slug: string) =>
+  cachedShared(`mock:test:v1:${slug}`, 600, () =>
+    prisma.mockTest.findFirst({
+      where: { slug, published: true },
+      include: { sections: { orderBy: { orderIndex: "asc" } } },
+    }),
+  );
 
 /* ── the clock, enforced ──────────────────────────────────────────── */
 
@@ -221,11 +231,7 @@ router.get("/", optionalAuth, async (req: any, res) => {
   try {
     const userId: string | null = req.user?.userId ?? null;
     const [tests, attempts] = await Promise.all([
-      prisma.mockTest.findMany({
-        where: { published: true },
-        orderBy: [{ orderIndex: "asc" }, { name: "asc" }],
-        include: { sections: { orderBy: { orderIndex: "asc" } } },
-      }),
+      testCatalogue(),
       userId
         ? prisma.mockAttempt.findMany({
             where: { userId },
@@ -274,10 +280,7 @@ router.get("/", optionalAuth, async (req: any, res) => {
  */
 router.get("/:slug", optionalAuth, async (req: any, res) => {
   try {
-    const test = await prisma.mockTest.findFirst({
-      where: { slug: req.params.slug, published: true },
-      include: { sections: { orderBy: { orderIndex: "asc" } } },
-    });
+    const test = await testPattern(req.params.slug);
     if (!test) return res.status(404).json({ error: "Test not found" });
 
     const userId: string | null = req.user?.userId ?? null;
@@ -347,10 +350,7 @@ router.get("/:slug", optionalAuth, async (req: any, res) => {
  */
 router.post("/:slug/start", requireAuth, async (req: any, res) => {
   try {
-    const test = await prisma.mockTest.findFirst({
-      where: { slug: req.params.slug, published: true },
-      include: { sections: { orderBy: { orderIndex: "asc" } } },
-    });
+    const test = await testPattern(req.params.slug);
     if (!test) return res.status(404).json({ error: "Test not found" });
 
     const live = await prisma.mockAttempt.findFirst({
@@ -359,9 +359,13 @@ router.post("/:slug/start", requireAuth, async (req: any, res) => {
     if (live) return res.json({ attemptId: live.id, resumed: true });
 
     const plans = sectionPlans(test.sections);
+    // Both pools are seeded content shared by every sitting, so drawing a
+    // paper reads them from the cache rather than pulling the whole bank and
+    // the whole catalogue out of the database each time — this is the wait a
+    // candidate sits through on "Drawing your paper…".
     const [pool, problems] = await Promise.all([
-      prisma.aptitudeQuestion.findMany({ select: { id: true, topic: true, category: true, difficulty: true } }),
-      plans.some((plan) => plan.kind === "coding") ? problemPool() : Promise.resolve([]),
+      questionIndex(),
+      plans.some((plan) => plan.kind === "coding") ? codingPool() : Promise.resolve([]),
     ]);
     const { paper, shortfalls } = drawPaper(plans, pool, Math.random, problems);
     if (shortfalls.length) {
