@@ -89,6 +89,7 @@ model User {
   following          Follow[]          @relation("following")
   followers          Follow[]          @relation("followers")
   tagAffinities      TagAffinity[]
+  feedback           Feedback[]
 
   // Rank is a COUNT of users above you and the leaderboard is an ORDER BY on the
   // same columns; without these both are full table scans on every dashboard load.
@@ -746,4 +747,32 @@ model TagAffinity {
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, tag])
+}
+
+/// What candidates think: a star rating with optional quick-pick tags and a
+/// comment, either about the platform (prompted every few days while they are
+/// active, never inside a problem or an interview) or about one interview
+/// (asked on its report). See routes/feedback.ts and services/feedback.ts.
+model Feedback {
+  id        String   @id @default(cuid())
+  userId    String
+  /// "platform" | "interview"
+  kind      String
+  /// Whole stars, 1–5.
+  rating    Int
+  comment   String?  @db.Text
+  /// Phrases picked in the dialog.
+  tags      Json     @default("[]")
+  /// The MockInterviewSession rated, for kind "interview". Kept as a plain id
+  /// so a rating outlives the session row it described.
+  sessionId String?
+  /// Where the platform prompt was answered.
+  path      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  /// "Last platform rating for this user" and "is this interview rated".
+  @@index([userId, kind, createdAt])
+  @@index([sessionId])
 }

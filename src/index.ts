@@ -21,6 +21,7 @@ import pairRoomsRouter from "./routes/pair-rooms.js";
 import interviewsRouter from "./routes/interviews.js";
 import communityRouter from "./routes/community.js";
 import duelsRouter from "./routes/duels.js";
+import feedbackRouter from "./routes/feedback.js";
 import { optionalAuth } from "./middleware/auth.js";
 import { platformGuard } from "./middleware/platformGuard.js";
 import { prisma } from "./lib/prisma.js";
@@ -353,6 +354,7 @@ app.use("/api/billing", billingRouter);
 app.use("/api/campus", campusRouter);
 app.use("/api/community", communityRouter);
 app.use("/api/duels", duelsRouter);
+app.use("/api/feedback", feedbackRouter);
 app.use("/api", executionRouter); 
 
 // GET /api/username-check (Public, non-NextAuth)

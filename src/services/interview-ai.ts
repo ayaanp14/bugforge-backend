@@ -264,7 +264,7 @@ Notice what the strong feedback does: it names the specific reasoning that earne
 
 Return only the structured object you are asked for. No preamble, no markdown, no commentary outside the fields.
 
-For "starterCode": include a code stub only for a coding question that needs one. Otherwise return an empty string. Never put prose in it.
+For "starterCode": the presence of this field decides whether the candidate gets a code editor or a plain text box, so get it right. When the question asks the candidate to write code, return a complete, properly formatted starter skeleton in the editor language named in the configuration: the function, method or class signature the question implies, parameter names taken from the question, a single comment placeholder where the body goes, every brace or block closed, real newlines, and two-space indentation (four for Python). No solution, no explanation, no imports the candidate does not need, and no markdown fences — the text is placed straight into the editor. When the question does not ask for code — a design, conceptual, debugging-by-discussion or behavioural question — return an empty string so the candidate gets a text box.
 
 For "expectedSkills": three to five short tags naming what the question tests.
 
@@ -332,6 +332,8 @@ export interface InterviewConfig {
   interviewStyle: string;
   stackFocusIds: string[];
   focusAreaIds: string[];
+  /** Monaco language id the round's editor opens in; the stub is written in it. */
+  language?: string;
 }
 
 export interface TranscriptTurn {
@@ -349,6 +351,7 @@ function configBlock(config: InterviewConfig, budget: number) {
     `Interview style: ${config.interviewStyle}`,
     `Stack focus: ${config.stackFocusIds.join(", ") || "not specified"}`,
     `Focus areas: ${config.focusAreaIds.join(", ") || "not specified"}`,
+    `Editor language for starter code: ${config.language ?? "javascript"}`,
     `Total questions in this interview: ${budget}`,
   ].join("\n");
 }

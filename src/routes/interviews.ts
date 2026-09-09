@@ -4,6 +4,7 @@ import { requireAuth } from "../middleware/auth.js";
 import { prettyLabel } from "../lib/interview-labels.js";
 import { estimatedQuestions, voiceDurationMinutes } from "../lib/interview-duration.js";
 import { checkInterviewQuota, checkVoiceDuration } from "../services/entitlements.js";
+import { normalizeStarterCode } from "../lib/starter-code.js";
 import {
   askNextQuestion,
   evaluateAnswer,
@@ -180,7 +181,7 @@ function configFrom(template: {
   stackFocusIds: unknown;
   focusAreaIds: unknown;
 }): InterviewConfig {
-  return {
+  const config: InterviewConfig = {
     roleId: template.roleId,
     roundId: template.roundId,
     difficulty: template.difficulty ?? "medium",
@@ -189,17 +190,20 @@ function configFrom(template: {
     stackFocusIds: (template.stackFocusIds as string[] | null) ?? [],
     focusAreaIds: (template.focusAreaIds as string[] | null) ?? [],
   };
+  // Named in the prompt so the stub arrives in the language the editor opens in.
+  config.language = languageFor(config);
+  return config;
 }
 
 /**
  * Rounds and focus areas where the candidate is expected to *write* code rather
- * than talk about it.
+ * than talk about it. They get the schema with a `starterCode` field; the
+ * others do not, so the model cannot even offer a stub there.
  *
- * The model is asked for a stub and told to leave it empty when a question does
- * not need one, but that is a judgement call it gets wrong — and an empty
- * `starterCode` is exactly what the UI reads as "no editor". The result is a
- * binary search question with nothing but a plain textarea. For these rounds the
- * stub is therefore guaranteed here rather than left to the model.
+ * Within a coding round the model decides per question: a stub opens the
+ * editor, an empty string opens a text box (which has its own code formatting).
+ * The prompt spells out when each is right; what arrives is only cleaned up,
+ * never replaced — see normalizeStarterCode.
  */
 const CODE_ROUNDS = new Set(["coding-interview", "machine-coding", "debugging-interview"]);
 const CODE_FOCUS = new Set(["dsa", "debugging"]);
@@ -241,21 +245,13 @@ function languageFor(config: InterviewConfig) {
   return "javascript";
 }
 
-/** Comment syntax differs enough that a JS stub in a SQL round looks broken. */
-function defaultStub(language: string) {
-  if (language === "python" || language === "yaml") return "# Write your solution here";
-  if (language === "sql") return "-- Write your query here";
-  return "// Write your solution here";
-}
-
 /**
- * The stub actually stored for a question. A model-supplied stub always wins;
- * otherwise a coding round gets a placeholder so the editor still opens, and
- * a discussion round gets null so it does not.
+ * The stub actually stored for a question: the model's, cleaned and closed, or
+ * null when it sent nothing — which is exactly what the UI reads as "no
+ * editor, show the text box".
  */
-function starterCodeFor(starterCode: string, config: InterviewConfig, language: string) {
-  if (starterCode?.trim()) return starterCode;
-  return wantsCode(config) ? defaultStub(language) : null;
+function starterCodeFor(starterCode: string, language: string) {
+  return normalizeStarterCode(starterCode, language);
 }
 
 /**
@@ -354,7 +350,7 @@ router.post("/start", requireAuth, async (req: any, res) => {
           topic: question.topic,
           difficulty: question.difficulty,
           focusArea: question.focusArea,
-          starterCode: starterCodeFor(question.starterCode ?? "", config, language),
+          starterCode: starterCodeFor(question.starterCode ?? "", language),
           expectedSkills: question.expectedSkills,
           status: "pending",
           orderIndex: 0,
@@ -451,7 +447,7 @@ function prefetchAhead(
             topic: nextQuestion.topic,
             difficulty: nextQuestion.difficulty,
             focusArea: nextQuestion.focusArea,
-            starterCode: starterCodeFor(nextQuestion.starterCode ?? "", config, languageFor(config)),
+            starterCode: starterCodeFor(nextQuestion.starterCode ?? "", languageFor(config)),
             expectedSkills: nextQuestion.expectedSkills,
             // Written, but not the candidate's to see until they submit.
             status: "prefetched",
@@ -656,7 +652,7 @@ router.post("/session/:sessionId/answer", requireAuth, async (req: any, res) => 
               topic: next.topic,
               difficulty: next.difficulty,
               focusArea: next.focusArea,
-              starterCode: starterCodeFor(next.starterCode ?? "", config, languageFor(config)),
+              starterCode: starterCodeFor(next.starterCode ?? "", languageFor(config)),
               expectedSkills: next.expectedSkills,
               status: "pending",
               orderIndex: nextIndex,
