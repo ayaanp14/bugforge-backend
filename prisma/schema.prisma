@@ -973,6 +973,7 @@ model MockCodeAnswer {
   passedCases  Int         @default(0)
   totalCases   Int         @default(0)
   runtimeMs    Int?
+  memoryKb     Int?
   /// How many times the candidate submitted this problem.
   submissions  Int         @default(0)
   timeSec      Int         @default(0)

@@ -451,7 +451,7 @@ router.get("/attempts/:id", requireAuth, async (req: any, res) => {
       coding
         ? prisma.mockCodeAnswer.findMany({
             where: { attemptId: attempt.id },
-            select: { problemId: true, language: true, code: true, verdict: true, passedCases: true, totalCases: true, submissions: true },
+            select: { problemId: true, language: true, code: true, verdict: true, passedCases: true, totalCases: true, submissions: true, runtimeMs: true, memoryKb: true },
           })
         : Promise.resolve([]),
     ]);
@@ -530,7 +530,14 @@ router.get("/attempts/:id", requireAuth, async (req: any, res) => {
                   language: saved?.language ?? null,
                   code: saved?.code ?? null,
                   best: saved
-                    ? { verdict: saved.verdict, passedCases: saved.passedCases, totalCases: saved.totalCases, submissions: saved.submissions }
+                    ? {
+                        verdict: saved.verdict,
+                        passedCases: saved.passedCases,
+                        totalCases: saved.totalCases,
+                        submissions: saved.submissions,
+                        runtimeMs: saved.runtimeMs,
+                        memoryKb: saved.memoryKb,
+                      }
                     : null,
                 };
               })
@@ -758,6 +765,7 @@ router.post("/attempts/:id/submit-code", requireAuth, async (req: any, res) => {
         passedCases: result.passed,
         totalCases: cases.length,
         runtimeMs: result.batch.runtimeMs,
+        memoryKb: result.batch.memoryKb,
         submissions: 1,
       },
       update: {
@@ -765,7 +773,13 @@ router.post("/attempts/:id/submit-code", requireAuth, async (req: any, res) => {
         code,
         submissions: { increment: 1 },
         ...(better
-          ? { verdict: result.verdict, passedCases: result.passed, totalCases: cases.length, runtimeMs: result.batch.runtimeMs }
+          ? {
+              verdict: result.verdict,
+              passedCases: result.passed,
+              totalCases: cases.length,
+              runtimeMs: result.batch.runtimeMs,
+              memoryKb: result.batch.memoryKb,
+            }
           : {}),
       },
     });
@@ -778,6 +792,7 @@ router.post("/attempts/:id/submit-code", requireAuth, async (req: any, res) => {
       maxMarks: context.marks,
       error: result.error,
       runtimeMs: result.batch.runtimeMs,
+      memoryKb: result.batch.memoryKb,
     });
   } catch (error: any) {
     if (isEngineDown(error)) return res.status(503).json({ error: ENGINE_DOWN_MESSAGE });
