@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { prisma } from "../lib/prisma.js";
 import { encodeCode, decodeCode } from "../lib/obfuscation.js";
+import { generateInviteCode } from "../lib/room-codes.js";
 import { requireAuth } from "../middleware/auth.js";
 import { banStore } from "../lib/banStore.js";
 
@@ -39,10 +40,9 @@ router.post("/", requireAuth, async (req, res) => {
   }
 
   try {
-    // Only generate inviteCode for private rooms
-    const rawInviteCode = mode === "private" 
-      ? Math.random().toString(36).substring(2, 6).toUpperCase() + "-" + Math.random().toString(36).substring(2, 6).toUpperCase()
-      : null;
+    // Only generate inviteCode for private rooms. The code is the only thing
+    // gating entry, so it comes from the cryptographic generator.
+    const rawInviteCode = mode === "private" ? generateInviteCode() : null;
     
     const inviteCode = encodeCode(rawInviteCode);
     

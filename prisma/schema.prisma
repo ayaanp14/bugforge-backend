@@ -46,6 +46,14 @@ model User {
   email              String?                @unique
   emailVerified      DateTime?
   password_hash      String?
+  /// Sessions issued before this instant are refused.
+  ///
+  /// A JWT cannot be taken back once handed out, so resetting a password could
+  /// not evict whoever was already holding a token — exactly the person a
+  /// reset is usually meant to remove. Stamping the account here and comparing
+  /// against each token's issue time gives that back, without keeping a record
+  /// of every session. Null means nothing has been revoked.
+  sessionsValidFrom  DateTime?
   provider           String                 @default("email")
   xp                 Int                    @default(0)
   questionsXp        Int                    @default(0)

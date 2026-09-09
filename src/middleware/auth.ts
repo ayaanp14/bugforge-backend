@@ -1,16 +1,20 @@
 import type { Request, Response, NextFunction } from "express";
 import jwt from "jsonwebtoken";
+import { JWT_SECRET } from "../lib/secrets.js";
+import { isSessionRevoked } from "../lib/session-revocation.js";
 
 interface JwtPayload {
   userId: string;
   email: string;
+  /** Issued-at, in seconds. Added by the library on every token we mint. */
+  iat?: number;
 }
 
-export function requireAuth(
+export async function requireAuth(
   req: Request,
   res: Response,
   next: NextFunction
-): void {
+): Promise<void> {
   // Try Authorization header first (required for cross-domain / production)
   const authHeader = req.headers.authorization;
   const headerToken = authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : null;
@@ -25,15 +29,19 @@ export function requireAuth(
   }
 
   try {
-    const payload = jwt.verify(
-      token,
-      process.env["JWT_SECRET"] ?? "",
-      { algorithms: ["HS256"] }
-    ) as JwtPayload;
+    const payload = jwt.verify(token, JWT_SECRET, { algorithms: ["HS256"] }) as JwtPayload;
     
     if (!payload.userId) {
       console.error("Auth check failed: Payload missing userId", payload);
       res.status(401).json({ error: "Invalid session payload" });
+      return;
+    }
+
+    // A valid signature is not enough on its own: the account may have ended
+    // every session since this token was issued, which is what a password
+    // reset does.
+    if (await isSessionRevoked(payload.userId, payload.iat)) {
+      res.status(401).json({ error: "Session ended. Please sign in again." });
       return;
     }
 
@@ -60,11 +68,7 @@ export function optionalAuth(
   }
 
   try {
-    const payload = jwt.verify(
-      token,
-      process.env["JWT_SECRET"] ?? "",
-      { algorithms: ["HS256"] }
-    ) as JwtPayload;
+    const payload = jwt.verify(token, JWT_SECRET, { algorithms: ["HS256"] }) as JwtPayload;
 
     if (payload.userId) {
       req.user = { userId: payload.userId, email: payload.email };

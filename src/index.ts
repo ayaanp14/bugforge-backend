@@ -26,16 +26,30 @@ import aptitudeRouter from "./routes/aptitude.js";
 import mockTestsRouter from "./routes/mock-tests.js";
 import { optionalAuth } from "./middleware/auth.js";
 import { platformGuard } from "./middleware/platformGuard.js";
+import { securityHeaders } from "./middleware/security-headers.js";
+import { authLimiter, generalLimiter, otpRequestLimiter } from "./middleware/rate-limit.js";
 import { prisma } from "./lib/prisma.js";
 import { setIo, duelRoom } from "./lib/realtime.js";
 import { warmRedis } from "./lib/redis.js";
 import { startCacheInvalidationListener } from "./lib/cache.js";
 import { encodeCode } from "./lib/obfuscation.js";
-// recoveryCode is generated using Math.random for simplicity
+import { generateRecoveryCode } from "./lib/room-codes.js";
 
 const app = express();
 const httpServer = createServer(app);
 const PORT = Number(process.env["PORT"] ?? 3001);
+
+/**
+ * One proxy sits in front of this service in production. Saying so is what
+ * makes `req.ip` the caller's address rather than the load balancer's, and
+ * every rate limit is keyed on that: without it the whole internet shares one
+ * bucket and a single attacker locks everyone out.
+ *
+ * It is deliberately the number 1 and not `true`. Trusting every hop would let
+ * a caller prepend their own X-Forwarded-For and choose which address they are
+ * limited as, which defeats the limiting entirely.
+ */
+app.set("trust proxy", 1);
 // Trailing slash stripped: browser Origin headers never include one, and
 // CORS origin matching is an exact string comparison
 const FRONTEND_URL = (process.env["FRONTEND_URL"] ?? "http://localhost:3000").replace(/\/+$/, "");
@@ -221,7 +235,8 @@ io.on("connection", (socket) => {
           kickedUserIds: {
             push: targetUserId
           },
-          recoveryCode: encodeCode(currentRoom?.recoveryCode || Math.random().toString(36).substring(2, 8).toUpperCase())
+          // A kicked participant must not be able to guess their way back in.
+          recoveryCode: encodeCode(currentRoom?.recoveryCode || generateRecoveryCode())
         }
       });
 
@@ -315,6 +330,15 @@ io.on("connection", (socket) => {
   });
 });
 
+/**
+ * Hardening headers go on before anything else, so they are present on every
+ * response including the ones the guard and the limiters reject.
+ */
+app.use(securityHeaders);
+
+/** A ceiling for every caller, under which the per-route limits are stricter. */
+app.use(generalLimiter);
+
 // CORS — allow frontend origin with credentials
 app.use(
   cors({
@@ -339,6 +363,18 @@ app.use(platformGuard);
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
+
+/**
+ * Guessing a credential is the attack these limits exist for, so they are
+ * mounted ahead of the auth routes rather than inside them. Asking for a code
+ * is limited harder still, because it also sends mail in our name.
+ *
+ * `/session-token` is excluded: the SPA calls it on every load to read the
+ * token behind its own cookie, and it grants nothing to a caller who does not
+ * already hold that cookie.
+ */
+app.use(["/api/auth/login", "/api/auth/register", "/api/auth/verify-otp", "/api/auth/reset-password"], authLimiter);
+app.use("/api/auth/forgot-password", otpRequestLimiter);
 
 // Routes
 app.use("/api/auth", authRouter);

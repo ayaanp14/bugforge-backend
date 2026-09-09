@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { prisma } from "../lib/prisma.js";
 import { requireAuth } from "../middleware/auth.js";
+import { executionLimiter } from "../middleware/rate-limit.js";
 import { LANGUAGE_MAP } from "../lib/judge0.js";
 // All test cases run in ONE engine execution (1 compile + 1 run) and are
 // judged server-side — see src/lib/batch-judge.ts.
@@ -23,7 +24,9 @@ interface CustomTestCase {
 }
 
 // 9. POST /api/run — Run code against visible test cases
-router.post("/run", requireAuth, async (req, res) => {
+// Limited after requireAuth so the budget is per account, not per address:
+// people on one campus network should not share one allowance.
+router.post("/run", requireAuth, executionLimiter, async (req, res) => {
   console.log(`[POST /api/run] Received request from user ${req.user?.userId}`);
   try {
     const { code, language, problemId, customTestCases } = req.body;
@@ -140,7 +143,7 @@ router.post("/run", requireAuth, async (req, res) => {
 });
 
 // 10. POST /api/submit — Submit code against all test cases
-router.post("/submit", requireAuth, async (req, res) => {
+router.post("/submit", requireAuth, executionLimiter, async (req, res) => {
   console.log(`[POST /api/submit] Received request from user ${req.user?.userId}`);
   try {
     const { code, language, problemId, customTestCases, roomId } = req.body;

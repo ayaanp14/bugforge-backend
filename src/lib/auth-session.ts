@@ -11,7 +11,7 @@ import { prisma } from "./prisma.js";
  * existing sessions stay valid across the migration.
  */
 
-const JWT_SECRET = process.env["JWT_SECRET"] || "your-secret-key";
+import { JWT_SECRET, SESSION_TTL } from "./secrets.js";
 
 export const SESSION_COOKIE = "__session";
 
@@ -36,10 +36,18 @@ const COOKIE_OPTIONS = {
 
 export type SessionUser = { id: string; email: string | null };
 
-/** HS256 `{ userId, email }` — the shape backend middleware already verifies. */
+/**
+ * HS256 `{ userId, email }` — the shape backend middleware already verifies.
+ *
+ * The expiry is the important part. Without it a leaked token was valid for
+ * ever and signing out could not take it back, because nothing about a JWT is
+ * stored server-side to revoke. Tokens minted before this change carry no
+ * `exp` and still verify, so nobody is signed out by the upgrade.
+ */
 export function signSession(user: SessionUser): string {
   return jwt.sign({ userId: user.id, email: user.email }, JWT_SECRET, {
     algorithm: "HS256",
+    expiresIn: SESSION_TTL,
   });
 }
 

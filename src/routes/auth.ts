@@ -5,13 +5,11 @@ import { prisma } from "../lib/prisma.js";
 import { optionalAuth } from "../middleware/auth.js";
 import { WELCOME, createNotificationOnce } from "../services/notifications.js";
 import { establishSession, clearSessionCookie, generateUsername } from "../lib/auth-session.js";
+import { JWT_SECRET } from "../lib/secrets.js";
+import { consumeChallenge, generateOtp, issueChallenge } from "../lib/otp-store.js";
+import { forgetSessions } from "../lib/session-revocation.js";
 
 const router = Router();
-const JWT_SECRET = process.env["JWT_SECRET"] || "your-secret-key";
-
-// In-memory store for active OTP tokens to support immediate invalidation on resend
-// Key: email, Value: current valid otpToken
-const activeOtpTokens = new Map<string, string>();
 
 // POST /api/auth/register
 router.post("/register", async (req, res) => {
@@ -145,42 +143,27 @@ router.post("/forgot-password", async (req, res) => {
 
   try {
     const user = await prisma.user.findUnique({ where: { email } });
-    if (!user) {
-      // For security, don't reveal if user exists or not
-      res.json({ message: "If an account with that email exists, an OTP has been sent." });
-      return;
+
+    // A code is minted either way. The handle below carries no information, so
+    // an address with no account produces an identical response and this
+    // endpoint cannot be used to discover who has registered.
+    const otp = generateOtp();
+    const otpToken = await issueChallenge(user ? email : null, otp);
+
+    // Only a real account is ever sent a code.
+    if (user) {
+      const webhookUrl = "https://flow.sokt.io/func/scriPfBslH2w";
+      await fetch(webhookUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, otp }),
+      }).catch((err) => console.error("[auth] OTP delivery failed:", err));
     }
 
-    // Generate 6-digit OTP
-    const otp = Math.floor(100000 + Math.random() * 900000).toString();
-    
-    // Create a hash of the OTP to store in the token (stateless)
-    // Using bcrypt to match user password patterns
-    const salt = await bcrypt.genSalt(10);
-    const otpHash = await bcrypt.hash(otp, salt);
-    
-    // Create a temporary token that expires in 5 minutes
-    const otpToken = jwt.sign({ email, otpHash }, JWT_SECRET, { expiresIn: "5m" });
-
-    // Send to Pabbly webhook
-    const webhookUrl = "https://flow.sokt.io/func/scriPfBslH2w";
-    await fetch(webhookUrl, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        email,
-        otp,
-      }),
-    });
-
-    // Store this as the only valid token for this email (invalidates previous ones)
-    activeOtpTokens.set(email, otpToken);
-
-    res.json({ 
-      message: "OTP sent successfully.",
-      otpToken // Send this to the frontend so it can be used for verification
+    res.json({
+      message: "If an account with that email exists, an OTP has been sent.",
+      // Opaque handle. The code itself, and its hash, stay on the server.
+      otpToken,
     });
   } catch (err) {
     console.error("Forgot password error:", err);
@@ -198,29 +181,23 @@ router.post("/verify-otp", async (req, res) => {
   }
 
   try {
-    // Verify the OTP token
-    const payload = jwt.verify(otpToken, JWT_SECRET) as { email: string; otpHash: string };
-    
-    // Check if the provided OTP matches the hash in the token
-    const isValid = await bcrypt.compare(otp, payload.otpHash);
-    
-    // Check if this token is still the active one for this email
-    const currentActiveToken = activeOtpTokens.get(payload.email);
-    
-    if (!isValid || currentActiveToken !== otpToken) {
+    const outcome = await consumeChallenge(String(otpToken), String(otp));
+
+    if (!outcome.ok) {
+      // The reason is deliberately not passed on. Telling a caller that their
+      // guesses are exhausted, rather than simply wrong, would confirm the
+      // address has an account.
       res.status(400).json({ error: "Invalid or expired OTP." });
       return;
     }
 
-    // Success! Clear the token so it can't be used again
-    activeOtpTokens.delete(payload.email);
+    // Ten minutes to choose a new password, and this token is the only thing
+    // that authorises the change.
+    const resetToken = jwt.sign({ email: outcome.email, purpose: "password_reset" }, JWT_SECRET, { expiresIn: "10m" });
 
-    // Generate a reset token that is valid for 10 minutes
-    const resetToken = jwt.sign({ email: payload.email, purpose: "password_reset" }, JWT_SECRET, { expiresIn: "10m" });
-
-    res.json({ 
+    res.json({
       message: "OTP verified successfully.",
-      resetToken 
+      resetToken,
     });
   } catch (err) {
     console.error("OTP verification error:", err);
@@ -246,12 +223,16 @@ router.post("/reset-password", async (req, res) => {
       return;
     }
 
-    // Update user password
+    // The new password and the end of every existing session are written
+    // together. Whoever prompted the reset is usually someone who already has
+    // a token, and leaving them signed in would defeat the point of resetting.
     const hashedPassword = await bcrypt.hash(newPassword, 10);
-    await prisma.user.update({
+    const updated = await prisma.user.update({
       where: { email: payload.email },
-      data: { password_hash: hashedPassword }
+      data: { password_hash: hashedPassword, sessionsValidFrom: new Date() },
+      select: { id: true },
     });
+    forgetSessions(updated.id);
 
     res.json({ message: "Password reset successfully. You can now log in with your new password." });
   } catch (err) {
