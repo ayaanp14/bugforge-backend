@@ -1,5 +1,5 @@
 import { prisma } from "../lib/prisma.js";
-import { FREE_PLAN, planFor, type Plan } from "../lib/plans.js";
+import { FREE_PLAN, OWNER_PLAN, isOwnerEmail, planFor, type Plan } from "../lib/plans.js";
 
 /**
  * Who is allowed to do what, and how much of it they have already done.
@@ -44,20 +44,39 @@ export function dayStart(now = new Date()): Date {
 }
 
 /**
+ * Whether this account belongs to the creator (see ownerEmails in lib/plans).
+ * Read from the user row rather than the session token so it holds for every
+ * caller and every token, however old.
+ */
+export async function isOwnerAccount(userId: string): Promise<boolean> {
+  const user = await prisma.user.findUnique({ where: { id: userId }, select: { email: true } });
+  return isOwnerEmail(user?.email);
+}
+
+/**
  * The user's live plan.
  *
- * Expiry is enforced in the query, so a lapsed subscription stops granting
- * anything the second it lapses without a job having to run. Where two are
- * somehow active — an upgrade paid before the old one expired — the one that
- * runs longest wins, which is always the one the user paid most recently for.
+ * An owner account is always on OWNER_PLAN, whatever the subscription table
+ * says: every quota and plan gate reads its limits from here, so this one
+ * branch is the whole bypass.
+ *
+ * Otherwise expiry is enforced in the query, so a lapsed subscription stops
+ * granting anything the second it lapses without a job having to run. Where
+ * two are somehow active — an upgrade paid before the old one expired — the
+ * one that runs longest wins, which is always the one the user paid most
+ * recently for.
  */
 export async function activePlan(userId: string): Promise<{ plan: Plan; currentPeriodEnd: Date | null }> {
-  const subscription = await prisma.subscription.findFirst({
-    where: { userId, status: "active", currentPeriodEnd: { gt: new Date() } },
-    orderBy: { currentPeriodEnd: "desc" },
-    select: { planId: true, currentPeriodEnd: true },
-  });
+  const [owner, subscription] = await Promise.all([
+    isOwnerAccount(userId),
+    prisma.subscription.findFirst({
+      where: { userId, status: "active", currentPeriodEnd: { gt: new Date() } },
+      orderBy: { currentPeriodEnd: "desc" },
+      select: { planId: true, currentPeriodEnd: true },
+    }),
+  ]);
 
+  if (owner) return { plan: OWNER_PLAN, currentPeriodEnd: null };
   if (!subscription) return { plan: FREE_PLAN, currentPeriodEnd: null };
   return { plan: planFor(subscription.planId), currentPeriodEnd: subscription.currentPeriodEnd };
 }

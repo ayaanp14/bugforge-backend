@@ -1,7 +1,7 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 
-import { FREE_PLAN, PLANS, isPaidPlan, periodEnd, planFor, priceOf } from "./plans.js";
+import { FREE_PLAN, OWNER_PLAN, PLANS, isOwnerEmail, isPaidPlan, periodEnd, planFor, priceOf } from "./plans.js";
 import { dayStart, weekStart } from "../services/entitlements.js";
 
 /**
@@ -147,5 +147,36 @@ describe("quota windows", () => {
     const start = dayStart(new Date("2026-09-09T23:59:00"));
     assert.equal(start.getHours(), 0);
     assert.equal(start.getDate(), 9);
+  });
+});
+
+describe("owner accounts", () => {
+  it("always includes the creator, case-insensitively", () => {
+    assert.equal(isOwnerEmail("ayaanpathan14@gmail.com", {}), true);
+    assert.equal(isOwnerEmail("  AyaanPathan14@Gmail.com ", {}), true);
+    assert.equal(isOwnerEmail("someone@example.com", {}), false);
+    assert.equal(isOwnerEmail(null, {}), false);
+    assert.equal(isOwnerEmail("", {}), false);
+  });
+
+  it("adds the comma-separated OWNER_EMAILS", () => {
+    const env = { OWNER_EMAILS: "a@x.com, B@Y.com ,," };
+    assert.equal(isOwnerEmail("a@x.com", env), true);
+    assert.equal(isOwnerEmail("b@y.com", env), true);
+    assert.equal(isOwnerEmail("ayaanpathan14@gmail.com", env), true);
+    assert.equal(isOwnerEmail("c@z.com", env), false);
+  });
+
+  it("has no ceilings and cannot be bought or listed", () => {
+    const e = OWNER_PLAN.entitlements;
+    assert.equal(e.interviewsPerWeek, null);
+    assert.equal(e.bugsPerDay, null);
+    assert.equal(e.problemsPerDay, null);
+    assert.equal(e.duelsPerDay, null);
+    assert.deepEqual(e.voiceDurationsMin, [10, 20, 30]);
+    assert.equal(isPaidPlan("owner"), false);
+    assert.equal(PLANS.some((plan) => plan.id === "owner"), false);
+    // A subscription row claiming "owner" grants nothing: only the allow-list does.
+    assert.equal(planFor("owner").id, "free");
   });
 });

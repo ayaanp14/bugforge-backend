@@ -224,6 +224,14 @@ const STACK_LANGUAGE: Record<string, string> = {
   mobile: "typescript",
   "ml-data": "python",
   security: "javascript",
+  angular: "typescript",
+  "vue-nuxt": "javascript",
+  dotnet: "csharp",
+  "go-microservices": "go",
+  "php-laravel": "php",
+  flutter: "dart",
+  "data-spark": "python",
+  "genai-llm": "python",
 };
 
 function languageFor(config: InterviewConfig) {

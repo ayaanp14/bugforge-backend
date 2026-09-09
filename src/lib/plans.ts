@@ -11,7 +11,7 @@
  * thing, whereas `null` forces every caller to handle "no limit" explicitly.
  */
 
-export type PlanId = "free" | "starter" | "pro" | "elite";
+export type PlanId = "free" | "starter" | "pro" | "elite" | "owner";
 export type BillingPeriod = "monthly" | "yearly";
 
 export interface PlanEntitlements {
@@ -128,6 +128,53 @@ export const PLANS: Plan[] = [
     ],
   },
 ];
+
+/**
+ * The creator's own plan: nothing metered, nothing to buy.
+ *
+ * It is deliberately not in PLANS — it is never listed on the pricing page,
+ * cannot be checked out (isPaidPlan says no) and is never stored on a
+ * subscription row. An account gets it only by being on the owner list below,
+ * which activePlan() in services/entitlements consults before the database.
+ */
+export const OWNER_PLAN: Plan = {
+  id: "owner",
+  name: "Owner",
+  tagline: "The creator's account — no limits, no billing.",
+  monthly: 0,
+  yearly: 0,
+  entitlements: {
+    interviewsPerWeek: null,
+    voiceDurationsMin: [10, 20, 30],
+    bugsPerDay: null,
+    problemsPerDay: null,
+    duelsPerDay: null,
+  },
+  highlights: [
+    "Unlimited DSA problem solving",
+    "Unlimited mock interviews",
+    "Full 30 minute voice rounds",
+    "Unlimited bug hunts",
+    "Unlimited 1v1 and 2v2 duels",
+  ],
+};
+
+/** The creator's address is always an owner; OWNER_EMAILS adds more, comma-separated. */
+const DEFAULT_OWNER_EMAILS = ["ayaanpathan14@gmail.com"];
+
+export function ownerEmails(env: NodeJS.ProcessEnv = process.env): Set<string> {
+  const extra = (env["OWNER_EMAILS"] ?? "")
+    .split(",")
+    .map((item) => item.trim().toLowerCase())
+    .filter(Boolean);
+  return new Set([...DEFAULT_OWNER_EMAILS, ...extra]);
+}
+
+/** Case-insensitive; a missing email is never an owner. */
+export function isOwnerEmail(email: string | null | undefined, env: NodeJS.ProcessEnv = process.env): boolean {
+  if (!email) return false;
+  return ownerEmails(env).has(email.trim().toLowerCase());
+}
 
 const BY_ID = new Map(PLANS.map((plan) => [plan.id, plan]));
 
