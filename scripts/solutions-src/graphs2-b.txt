@@ -1,0 +1,3911 @@
+@@@PROBLEM number-of-operations-to-make-network-connected
+@@@LANG typescript
+function makeConnected(n: number, connections: number[][]): number {
+    if (connections.length < n - 1) return -1;
+    var parent: number[] = [];
+    for (var i = 0; i < n; i++) parent.push(i);
+    var find = function (x: number): number {
+        while (parent[x] !== x) {
+            parent[x] = parent[parent[x]];
+            x = parent[x];
+        }
+        return x;
+    };
+    var components = n;
+    for (var j = 0; j < connections.length; j++) {
+        var a = find(connections[j][0]);
+        var b = find(connections[j][1]);
+        if (a !== b) {
+            parent[a] = b;
+            components--;
+        }
+    }
+    return components - 1;
+}
+@@@LANG java
+private static int findRoot(int[] parent, int x) {
+    while (parent[x] != x) {
+        parent[x] = parent[parent[x]];
+        x = parent[x];
+    }
+    return x;
+}
+
+public static int makeConnected(int n, int[][] connections) {
+    if (connections.length < n - 1) return -1;
+    int[] parent = new int[n];
+    for (int i = 0; i < n; i++) parent[i] = i;
+    int components = n;
+    for (int[] e : connections) {
+        int a = findRoot(parent, e[0]);
+        int b = findRoot(parent, e[1]);
+        if (a != b) {
+            parent[a] = b;
+            components--;
+        }
+    }
+    return components - 1;
+}
+@@@LANG cpp
+static int findRoot(vector<int>& parent, int x) {
+    while (parent[x] != x) {
+        parent[x] = parent[parent[x]];
+        x = parent[x];
+    }
+    return x;
+}
+
+int makeConnected(int n, vector<vector<int>>& connections) {
+    if ((int) connections.size() < n - 1) return -1;
+    vector<int> parent(n);
+    for (int i = 0; i < n; i++) parent[i] = i;
+    int components = n;
+    for (const auto& e : connections) {
+        int a = findRoot(parent, e[0]);
+        int b = findRoot(parent, e[1]);
+        if (a != b) {
+            parent[a] = b;
+            components--;
+        }
+    }
+    return components - 1;
+}
+@@@LANG c
+static int findRootC(int* parent, int x) {
+    while (parent[x] != x) {
+        parent[x] = parent[parent[x]];
+        x = parent[x];
+    }
+    return x;
+}
+
+int makeConnected(int n, int** connections, int connectionsSize, int* connectionsColSize) {
+    if (connectionsSize < n - 1) return -1;
+    int* parent = (int*) malloc((size_t) n * sizeof(int));
+    for (int i = 0; i < n; i++) parent[i] = i;
+    int components = n;
+    for (int i = 0; i < connectionsSize; i++) {
+        int a = findRootC(parent, connections[i][0]);
+        int b = findRootC(parent, connections[i][1]);
+        if (a != b) {
+            parent[a] = b;
+            components--;
+        }
+    }
+    free(parent);
+    return components - 1;
+}
+@@@LANG csharp
+private static int FindRoot(int[] parent, int x)
+{
+    while (parent[x] != x)
+    {
+        parent[x] = parent[parent[x]];
+        x = parent[x];
+    }
+    return x;
+}
+
+public static int MakeConnected(int n, int[][] connections)
+{
+    if (connections.Length < n - 1) return -1;
+    int[] parent = new int[n];
+    for (int i = 0; i < n; i++) parent[i] = i;
+    int components = n;
+    foreach (int[] e in connections)
+    {
+        int a = FindRoot(parent, e[0]);
+        int b = FindRoot(parent, e[1]);
+        if (a != b)
+        {
+            parent[a] = b;
+            components--;
+        }
+    }
+    return components - 1;
+}
+@@@LANG go
+func findRoot(parent []int, x int) int {
+	for parent[x] != x {
+		parent[x] = parent[parent[x]]
+		x = parent[x]
+	}
+	return x
+}
+
+func makeConnected(n int, connections [][]int) int {
+	if len(connections) < n-1 {
+		return -1
+	}
+	parent := make([]int, n)
+	for i := range parent {
+		parent[i] = i
+	}
+	components := n
+	for _, e := range connections {
+		a := findRoot(parent, e[0])
+		b := findRoot(parent, e[1])
+		if a != b {
+			parent[a] = b
+			components--
+		}
+	}
+	return components - 1
+}
+@@@LANG kotlin
+fun findRoot(parent: IntArray, start: Int): Int {
+    var x = start
+    while (parent[x] != x) {
+        parent[x] = parent[parent[x]]
+        x = parent[x]
+    }
+    return x
+}
+
+fun makeConnected(n: Int, connections: Array<IntArray>): Int {
+    if (connections.size < n - 1) return -1
+    val parent = IntArray(n) { it }
+    var components = n
+    for (e in connections) {
+        val a = findRoot(parent, e[0])
+        val b = findRoot(parent, e[1])
+        if (a != b) {
+            parent[a] = b
+            components--
+        }
+    }
+    return components - 1
+}
+@@@LANG swift
+func findRoot(_ parent: inout [Int], _ start: Int) -> Int {
+    var x = start
+    while parent[x] != x {
+        parent[x] = parent[parent[x]]
+        x = parent[x]
+    }
+    return x
+}
+
+func makeConnected(_ n: Int, _ connections: [[Int]]) -> Int {
+    if connections.count < n - 1 { return -1 }
+    var parent = Array(0..<n)
+    var components = n
+    for e in connections {
+        let a = findRoot(&parent, e[0])
+        let b = findRoot(&parent, e[1])
+        if a != b {
+            parent[a] = b
+            components -= 1
+        }
+    }
+    return components - 1
+}
+@@@LANG rust
+fn find_root(parent: &mut Vec<usize>, start: usize) -> usize {
+    let mut x = start;
+    while parent[x] != x {
+        parent[x] = parent[parent[x]];
+        x = parent[x];
+    }
+    x
+}
+
+fn makeConnected(n: i32, connections: Vec<Vec<i32>>) -> i32 {
+    if (connections.len() as i32) < n - 1 {
+        return -1;
+    }
+    let size = n as usize;
+    let mut parent: Vec<usize> = (0..size).collect();
+    let mut components = n;
+    for e in connections.iter() {
+        let a = find_root(&mut parent, e[0] as usize);
+        let b = find_root(&mut parent, e[1] as usize);
+        if a != b {
+            parent[a] = b;
+            components -= 1;
+        }
+    }
+    components - 1
+}
+@@@LANG php
+function findRoot(&$parent, $x) {
+    while ($parent[$x] !== $x) {
+        $parent[$x] = $parent[$parent[$x]];
+        $x = $parent[$x];
+    }
+    return $x;
+}
+
+function makeConnected($n, $connections) {
+    if (count($connections) < $n - 1) return -1;
+    $parent = range(0, max($n - 1, 0));
+    $components = $n;
+    foreach ($connections as $e) {
+        $a = findRoot($parent, $e[0]);
+        $b = findRoot($parent, $e[1]);
+        if ($a !== $b) {
+            $parent[$a] = $b;
+            $components--;
+        }
+    }
+    return $components - 1;
+}
+@@@LANG ruby
+def find_root(parent, x)
+  while parent[x] != x
+    parent[x] = parent[parent[x]]
+    x = parent[x]
+  end
+  x
+end
+
+def makeConnected(n, connections)
+  return -1 if connections.length < n - 1
+  parent = (0...n).to_a
+  components = n
+  connections.each do |e|
+    a = find_root(parent, e[0])
+    b = find_root(parent, e[1])
+    if a != b
+      parent[a] = b
+      components -= 1
+    end
+  end
+  components - 1
+end
+
+@@@PROBLEM the-earliest-moment-when-everyone-become-friends
+@@@LANG typescript
+function earliestAcq(logs: number[][], n: number): number {
+    var sorted = logs.slice().sort(function (a, b) { return a[0] - b[0]; });
+    var parent: number[] = [];
+    for (var i = 0; i < n; i++) parent.push(i);
+    var find = function (x: number): number {
+        while (parent[x] !== x) {
+            parent[x] = parent[parent[x]];
+            x = parent[x];
+        }
+        return x;
+    };
+    var groups = n;
+    for (var j = 0; j < sorted.length; j++) {
+        var a = find(sorted[j][1]);
+        var b = find(sorted[j][2]);
+        if (a !== b) {
+            parent[a] = b;
+            groups--;
+            if (groups === 1) return sorted[j][0];
+        }
+    }
+    return groups === 1 ? 0 : -1;
+}
+@@@LANG java
+private static int findRoot(int[] parent, int x) {
+    while (parent[x] != x) {
+        parent[x] = parent[parent[x]];
+        x = parent[x];
+    }
+    return x;
+}
+
+public static int earliestAcq(int[][] logs, int n) {
+    int[][] sorted = logs.clone();
+    Arrays.sort(sorted, (a, b) -> Integer.compare(a[0], b[0]));
+    int[] parent = new int[n];
+    for (int i = 0; i < n; i++) parent[i] = i;
+    int groups = n;
+    for (int[] entry : sorted) {
+        int a = findRoot(parent, entry[1]);
+        int b = findRoot(parent, entry[2]);
+        if (a != b) {
+            parent[a] = b;
+            groups--;
+            if (groups == 1) return entry[0];
+        }
+    }
+    return groups == 1 ? 0 : -1;
+}
+@@@LANG cpp
+static int findRoot(vector<int>& parent, int x) {
+    while (parent[x] != x) {
+        parent[x] = parent[parent[x]];
+        x = parent[x];
+    }
+    return x;
+}
+
+int earliestAcq(vector<vector<int>>& logs, int n) {
+    vector<vector<int>> sorted = logs;
+    sort(sorted.begin(), sorted.end(), [](const vector<int>& a, const vector<int>& b) { return a[0] < b[0]; });
+    vector<int> parent(n);
+    for (int i = 0; i < n; i++) parent[i] = i;
+    int groups = n;
+    for (const auto& entry : sorted) {
+        int a = findRoot(parent, entry[1]);
+        int b = findRoot(parent, entry[2]);
+        if (a != b) {
+            parent[a] = b;
+            groups--;
+            if (groups == 1) return entry[0];
+        }
+    }
+    return groups == 1 ? 0 : -1;
+}
+@@@LANG c
+static int findRootC(int* parent, int x) {
+    while (parent[x] != x) {
+        parent[x] = parent[parent[x]];
+        x = parent[x];
+    }
+    return x;
+}
+
+static int cmpLogTime(const void* a, const void* b) {
+    const int* x = *(const int**) a;
+    const int* y = *(const int**) b;
+    return (x[0] > y[0]) - (x[0] < y[0]);
+}
+
+int earliestAcq(int** logs, int logsSize, int* logsColSize, int n) {
+    int** sorted = (int**) malloc((size_t) (logsSize > 0 ? logsSize : 1) * sizeof(int*));
+    for (int i = 0; i < logsSize; i++) sorted[i] = logs[i];
+    qsort(sorted, logsSize, sizeof(int*), cmpLogTime);
+    int* parent = (int*) malloc((size_t) n * sizeof(int));
+    for (int i = 0; i < n; i++) parent[i] = i;
+    int groups = n;
+    int answer = -1;
+    for (int i = 0; i < logsSize; i++) {
+        int a = findRootC(parent, sorted[i][1]);
+        int b = findRootC(parent, sorted[i][2]);
+        if (a != b) {
+            parent[a] = b;
+            groups--;
+            if (groups == 1) {
+                answer = sorted[i][0];
+                break;
+            }
+        }
+    }
+    if (answer == -1 && groups == 1) answer = 0;
+    free(sorted);
+    free(parent);
+    return answer;
+}
+@@@LANG csharp
+private static int FindRoot(int[] parent, int x)
+{
+    while (parent[x] != x)
+    {
+        parent[x] = parent[parent[x]];
+        x = parent[x];
+    }
+    return x;
+}
+
+public static int EarliestAcq(int[][] logs, int n)
+{
+    var sorted = new List<int[]>(logs);
+    sorted.Sort((a, b) => a[0].CompareTo(b[0]));
+    int[] parent = new int[n];
+    for (int i = 0; i < n; i++) parent[i] = i;
+    int groups = n;
+    foreach (int[] entry in sorted)
+    {
+        int a = FindRoot(parent, entry[1]);
+        int b = FindRoot(parent, entry[2]);
+        if (a != b)
+        {
+            parent[a] = b;
+            groups--;
+            if (groups == 1) return entry[0];
+        }
+    }
+    return groups == 1 ? 0 : -1;
+}
+@@@LANG go
+func findRoot(parent []int, x int) int {
+	for parent[x] != x {
+		parent[x] = parent[parent[x]]
+		x = parent[x]
+	}
+	return x
+}
+
+func earliestAcq(logs [][]int, n int) int {
+	sorted := append([][]int{}, logs...)
+	sort.Slice(sorted, func(a, b int) bool { return sorted[a][0] < sorted[b][0] })
+	parent := make([]int, n)
+	for i := range parent {
+		parent[i] = i
+	}
+	groups := n
+	for _, entry := range sorted {
+		a := findRoot(parent, entry[1])
+		b := findRoot(parent, entry[2])
+		if a != b {
+			parent[a] = b
+			groups--
+			if groups == 1 {
+				return entry[0]
+			}
+		}
+	}
+	if groups == 1 {
+		return 0
+	}
+	return -1
+}
+@@@LANG kotlin
+fun findRoot(parent: IntArray, start: Int): Int {
+    var x = start
+    while (parent[x] != x) {
+        parent[x] = parent[parent[x]]
+        x = parent[x]
+    }
+    return x
+}
+
+fun earliestAcq(logs: Array<IntArray>, n: Int): Int {
+    val sorted = logs.sortedBy { it[0] }
+    val parent = IntArray(n) { it }
+    var groups = n
+    for (entry in sorted) {
+        val a = findRoot(parent, entry[1])
+        val b = findRoot(parent, entry[2])
+        if (a != b) {
+            parent[a] = b
+            groups--
+            if (groups == 1) return entry[0]
+        }
+    }
+    return if (groups == 1) 0 else -1
+}
+@@@LANG swift
+func findRoot(_ parent: inout [Int], _ start: Int) -> Int {
+    var x = start
+    while parent[x] != x {
+        parent[x] = parent[parent[x]]
+        x = parent[x]
+    }
+    return x
+}
+
+func earliestAcq(_ logs: [[Int]], _ n: Int) -> Int {
+    let sorted = logs.sorted { $0[0] < $1[0] }
+    var parent = Array(0..<n)
+    var groups = n
+    for entry in sorted {
+        let a = findRoot(&parent, entry[1])
+        let b = findRoot(&parent, entry[2])
+        if a != b {
+            parent[a] = b
+            groups -= 1
+            if groups == 1 { return entry[0] }
+        }
+    }
+    return groups == 1 ? 0 : -1
+}
+@@@LANG rust
+fn find_root(parent: &mut Vec<usize>, start: usize) -> usize {
+    let mut x = start;
+    while parent[x] != x {
+        parent[x] = parent[parent[x]];
+        x = parent[x];
+    }
+    x
+}
+
+fn earliestAcq(logs: Vec<Vec<i32>>, n: i32) -> i32 {
+    let mut sorted = logs.clone();
+    sorted.sort_by(|a, b| a[0].cmp(&b[0]));
+    let size = n as usize;
+    let mut parent: Vec<usize> = (0..size).collect();
+    let mut groups = n;
+    for entry in sorted.iter() {
+        let a = find_root(&mut parent, entry[1] as usize);
+        let b = find_root(&mut parent, entry[2] as usize);
+        if a != b {
+            parent[a] = b;
+            groups -= 1;
+            if groups == 1 {
+                return entry[0];
+            }
+        }
+    }
+    if groups == 1 { 0 } else { -1 }
+}
+@@@LANG php
+function findRoot(&$parent, $x) {
+    while ($parent[$x] !== $x) {
+        $parent[$x] = $parent[$parent[$x]];
+        $x = $parent[$x];
+    }
+    return $x;
+}
+
+function earliestAcq($logs, $n) {
+    $sorted = $logs;
+    usort($sorted, function($a, $b) { return $a[0] - $b[0]; });
+    $parent = range(0, max($n - 1, 0));
+    $groups = $n;
+    foreach ($sorted as $entry) {
+        $a = findRoot($parent, $entry[1]);
+        $b = findRoot($parent, $entry[2]);
+        if ($a !== $b) {
+            $parent[$a] = $b;
+            $groups--;
+            if ($groups === 1) return $entry[0];
+        }
+    }
+    return $groups === 1 ? 0 : -1;
+}
+@@@LANG ruby
+def find_root(parent, x)
+  while parent[x] != x
+    parent[x] = parent[parent[x]]
+    x = parent[x]
+  end
+  x
+end
+
+def earliestAcq(logs, n)
+  sorted = logs.sort_by { |entry| entry[0] }
+  parent = (0...n).to_a
+  groups = n
+  sorted.each do |entry|
+    a = find_root(parent, entry[1])
+    b = find_root(parent, entry[2])
+    if a != b
+      parent[a] = b
+      groups -= 1
+      return entry[0] if groups == 1
+    end
+  end
+  groups == 1 ? 0 : -1
+end
+
+@@@PROBLEM shortest-bridge
+@@@LANG typescript
+function shortestBridge(grid: number[][]): number {
+    var n = grid.length;
+    var dr = [1, -1, 0, 0];
+    var dc = [0, 0, 1, -1];
+    var dist: number[][] = [];
+    for (var r = 0; r < n; r++) {
+        var row: number[] = [];
+        for (var c = 0; c < n; c++) row.push(-1);
+        dist.push(row);
+    }
+    var queue: number[][] = [];
+    var started = false;
+    for (var r2 = 0; r2 < n && !started; r2++) {
+        for (var c2 = 0; c2 < n && !started; c2++) {
+            if (grid[r2][c2] !== 1) continue;
+            started = true;
+            dist[r2][c2] = 0;
+            var stack: number[][] = [[r2, c2]];
+            queue.push([r2, c2]);
+            while (stack.length > 0) {
+                var cell = stack.pop() as number[];
+                for (var d = 0; d < 4; d++) {
+                    var nr = cell[0] + dr[d];
+                    var nc = cell[1] + dc[d];
+                    if (nr < 0 || nc < 0 || nr >= n || nc >= n) continue;
+                    if (grid[nr][nc] !== 1 || dist[nr][nc] !== -1) continue;
+                    dist[nr][nc] = 0;
+                    stack.push([nr, nc]);
+                    queue.push([nr, nc]);
+                }
+            }
+        }
+    }
+    var head = 0;
+    while (head < queue.length) {
+        var cur = queue[head++];
+        for (var d2 = 0; d2 < 4; d2++) {
+            var mr = cur[0] + dr[d2];
+            var mc = cur[1] + dc[d2];
+            if (mr < 0 || mc < 0 || mr >= n || mc >= n) continue;
+            if (dist[mr][mc] !== -1) continue;
+            if (grid[mr][mc] === 1) return dist[cur[0]][cur[1]];
+            dist[mr][mc] = dist[cur[0]][cur[1]] + 1;
+            queue.push([mr, mc]);
+        }
+    }
+    return -1;
+}
+@@@LANG java
+public static int shortestBridge(int[][] grid) {
+    int n = grid.length;
+    int[] dr = {1, -1, 0, 0};
+    int[] dc = {0, 0, 1, -1};
+    int[][] dist = new int[n][n];
+    for (int[] row : dist) Arrays.fill(row, -1);
+    List<int[]> queue = new ArrayList<>();
+    boolean started = false;
+    for (int r = 0; r < n && !started; r++) {
+        for (int c = 0; c < n && !started; c++) {
+            if (grid[r][c] != 1) continue;
+            started = true;
+            dist[r][c] = 0;
+            Deque<int[]> stack = new ArrayDeque<>();
+            stack.push(new int[]{r, c});
+            queue.add(new int[]{r, c});
+            while (!stack.isEmpty()) {
+                int[] cell = stack.pop();
+                for (int d = 0; d < 4; d++) {
+                    int nr = cell[0] + dr[d], nc = cell[1] + dc[d];
+                    if (nr < 0 || nc < 0 || nr >= n || nc >= n) continue;
+                    if (grid[nr][nc] != 1 || dist[nr][nc] != -1) continue;
+                    dist[nr][nc] = 0;
+                    stack.push(new int[]{nr, nc});
+                    queue.add(new int[]{nr, nc});
+                }
+            }
+        }
+    }
+    int head = 0;
+    while (head < queue.size()) {
+        int[] cur = queue.get(head++);
+        for (int d = 0; d < 4; d++) {
+            int nr = cur[0] + dr[d], nc = cur[1] + dc[d];
+            if (nr < 0 || nc < 0 || nr >= n || nc >= n) continue;
+            if (dist[nr][nc] != -1) continue;
+            if (grid[nr][nc] == 1) return dist[cur[0]][cur[1]];
+            dist[nr][nc] = dist[cur[0]][cur[1]] + 1;
+            queue.add(new int[]{nr, nc});
+        }
+    }
+    return -1;
+}
+@@@LANG cpp
+int shortestBridge(vector<vector<int>>& grid) {
+    int n = (int) grid.size();
+    int dr[4] = {1, -1, 0, 0};
+    int dc[4] = {0, 0, 1, -1};
+    vector<vector<int>> dist(n, vector<int>(n, -1));
+    vector<pair<int,int>> queue;
+    bool started = false;
+    for (int r = 0; r < n && !started; r++) {
+        for (int c = 0; c < n && !started; c++) {
+            if (grid[r][c] != 1) continue;
+            started = true;
+            dist[r][c] = 0;
+            vector<pair<int,int>> stack;
+            stack.push_back(make_pair(r, c));
+            queue.push_back(make_pair(r, c));
+            while (!stack.empty()) {
+                pair<int,int> cell = stack.back();
+                stack.pop_back();
+                for (int d = 0; d < 4; d++) {
+                    int nr = cell.first + dr[d], nc = cell.second + dc[d];
+                    if (nr < 0 || nc < 0 || nr >= n || nc >= n) continue;
+                    if (grid[nr][nc] != 1 || dist[nr][nc] != -1) continue;
+                    dist[nr][nc] = 0;
+                    stack.push_back(make_pair(nr, nc));
+                    queue.push_back(make_pair(nr, nc));
+                }
+            }
+        }
+    }
+    size_t head = 0;
+    while (head < queue.size()) {
+        pair<int,int> cur = queue[head++];
+        for (int d = 0; d < 4; d++) {
+            int nr = cur.first + dr[d], nc = cur.second + dc[d];
+            if (nr < 0 || nc < 0 || nr >= n || nc >= n) continue;
+            if (dist[nr][nc] != -1) continue;
+            if (grid[nr][nc] == 1) return dist[cur.first][cur.second];
+            dist[nr][nc] = dist[cur.first][cur.second] + 1;
+            queue.push_back(make_pair(nr, nc));
+        }
+    }
+    return -1;
+}
+@@@LANG c
+int shortestBridge(int** grid, int gridSize, int* gridColSize) {
+    int n = gridSize;
+    int dr[4] = {1, -1, 0, 0};
+    int dc[4] = {0, 0, 1, -1};
+    int* dist = (int*) malloc((size_t) (n * n) * sizeof(int));
+    for (int i = 0; i < n * n; i++) dist[i] = -1;
+    int* queue = (int*) malloc((size_t) (n * n) * sizeof(int));
+    int* stack = (int*) malloc((size_t) (n * n) * sizeof(int));
+    int head = 0, tail = 0;
+    int started = 0;
+    for (int r = 0; r < n && !started; r++) {
+        for (int c = 0; c < n && !started; c++) {
+            if (grid[r][c] != 1) continue;
+            started = 1;
+            dist[r * n + c] = 0;
+            int top = 0;
+            stack[top++] = r * n + c;
+            queue[tail++] = r * n + c;
+            while (top > 0) {
+                int cell = stack[--top];
+                int cr = cell / n, cc = cell % n;
+                for (int d = 0; d < 4; d++) {
+                    int nr = cr + dr[d], nc = cc + dc[d];
+                    if (nr < 0 || nc < 0 || nr >= n || nc >= n) continue;
+                    if (grid[nr][nc] != 1 || dist[nr * n + nc] != -1) continue;
+                    dist[nr * n + nc] = 0;
+                    stack[top++] = nr * n + nc;
+                    queue[tail++] = nr * n + nc;
+                }
+            }
+        }
+    }
+    int answer = -1;
+    while (head < tail && answer == -1) {
+        int cur = queue[head++];
+        int cr = cur / n, cc = cur % n;
+        for (int d = 0; d < 4; d++) {
+            int nr = cr + dr[d], nc = cc + dc[d];
+            if (nr < 0 || nc < 0 || nr >= n || nc >= n) continue;
+            if (dist[nr * n + nc] != -1) continue;
+            if (grid[nr][nc] == 1) {
+                answer = dist[cur];
+                break;
+            }
+            dist[nr * n + nc] = dist[cur] + 1;
+            queue[tail++] = nr * n + nc;
+        }
+    }
+    free(dist);
+    free(queue);
+    free(stack);
+    return answer;
+}
+@@@LANG csharp
+public static int ShortestBridge(int[][] grid)
+{
+    int n = grid.Length;
+    int[] dr = { 1, -1, 0, 0 };
+    int[] dc = { 0, 0, 1, -1 };
+    int[,] dist = new int[n, n];
+    for (int r = 0; r < n; r++)
+    {
+        for (int c = 0; c < n; c++) dist[r, c] = -1;
+    }
+    var queue = new List<int[]>();
+    bool started = false;
+    for (int r = 0; r < n && !started; r++)
+    {
+        for (int c = 0; c < n && !started; c++)
+        {
+            if (grid[r][c] != 1) continue;
+            started = true;
+            dist[r, c] = 0;
+            var stack = new List<int[]>();
+            stack.Add(new int[] { r, c });
+            queue.Add(new int[] { r, c });
+            while (stack.Count > 0)
+            {
+                int[] cell = stack[stack.Count - 1];
+                stack.RemoveAt(stack.Count - 1);
+                for (int d = 0; d < 4; d++)
+                {
+                    int nr = cell[0] + dr[d], nc = cell[1] + dc[d];
+                    if (nr < 0 || nc < 0 || nr >= n || nc >= n) continue;
+                    if (grid[nr][nc] != 1 || dist[nr, nc] != -1) continue;
+                    dist[nr, nc] = 0;
+                    stack.Add(new int[] { nr, nc });
+                    queue.Add(new int[] { nr, nc });
+                }
+            }
+        }
+    }
+    int head = 0;
+    while (head < queue.Count)
+    {
+        int[] cur = queue[head++];
+        for (int d = 0; d < 4; d++)
+        {
+            int nr = cur[0] + dr[d], nc = cur[1] + dc[d];
+            if (nr < 0 || nc < 0 || nr >= n || nc >= n) continue;
+            if (dist[nr, nc] != -1) continue;
+            if (grid[nr][nc] == 1) return dist[cur[0], cur[1]];
+            dist[nr, nc] = dist[cur[0], cur[1]] + 1;
+            queue.Add(new int[] { nr, nc });
+        }
+    }
+    return -1;
+}
+@@@LANG go
+func shortestBridge(grid [][]int) int {
+	n := len(grid)
+	dr := []int{1, -1, 0, 0}
+	dc := []int{0, 0, 1, -1}
+	dist := make([][]int, n)
+	for i := range dist {
+		dist[i] = make([]int, n)
+		for j := range dist[i] {
+			dist[i][j] = -1
+		}
+	}
+	queue := [][2]int{}
+	started := false
+	for r := 0; r < n && !started; r++ {
+		for c := 0; c < n && !started; c++ {
+			if grid[r][c] != 1 {
+				continue
+			}
+			started = true
+			dist[r][c] = 0
+			stack := [][2]int{{r, c}}
+			queue = append(queue, [2]int{r, c})
+			for len(stack) > 0 {
+				cell := stack[len(stack)-1]
+				stack = stack[:len(stack)-1]
+				for d := 0; d < 4; d++ {
+					nr, nc := cell[0]+dr[d], cell[1]+dc[d]
+					if nr < 0 || nc < 0 || nr >= n || nc >= n {
+						continue
+					}
+					if grid[nr][nc] != 1 || dist[nr][nc] != -1 {
+						continue
+					}
+					dist[nr][nc] = 0
+					stack = append(stack, [2]int{nr, nc})
+					queue = append(queue, [2]int{nr, nc})
+				}
+			}
+		}
+	}
+	head := 0
+	for head < len(queue) {
+		cur := queue[head]
+		head++
+		for d := 0; d < 4; d++ {
+			nr, nc := cur[0]+dr[d], cur[1]+dc[d]
+			if nr < 0 || nc < 0 || nr >= n || nc >= n {
+				continue
+			}
+			if dist[nr][nc] != -1 {
+				continue
+			}
+			if grid[nr][nc] == 1 {
+				return dist[cur[0]][cur[1]]
+			}
+			dist[nr][nc] = dist[cur[0]][cur[1]] + 1
+			queue = append(queue, [2]int{nr, nc})
+		}
+	}
+	return -1
+}
+@@@LANG kotlin
+fun shortestBridge(grid: Array<IntArray>): Int {
+    val n = grid.size
+    val dr = intArrayOf(1, -1, 0, 0)
+    val dc = intArrayOf(0, 0, 1, -1)
+    val dist = Array(n) { IntArray(n) { -1 } }
+    val queue = ArrayList<IntArray>()
+    var started = false
+    for (r in 0 until n) {
+        if (started) break
+        for (c in 0 until n) {
+            if (started) break
+            if (grid[r][c] != 1) continue
+            started = true
+            dist[r][c] = 0
+            val stack = ArrayList<IntArray>()
+            stack.add(intArrayOf(r, c))
+            queue.add(intArrayOf(r, c))
+            while (stack.isNotEmpty()) {
+                val cell = stack.removeAt(stack.size - 1)
+                for (d in 0 until 4) {
+                    val nr = cell[0] + dr[d]
+                    val nc = cell[1] + dc[d]
+                    if (nr < 0 || nc < 0 || nr >= n || nc >= n) continue
+                    if (grid[nr][nc] != 1 || dist[nr][nc] != -1) continue
+                    dist[nr][nc] = 0
+                    stack.add(intArrayOf(nr, nc))
+                    queue.add(intArrayOf(nr, nc))
+                }
+            }
+        }
+    }
+    var head = 0
+    while (head < queue.size) {
+        val cur = queue[head++]
+        for (d in 0 until 4) {
+            val nr = cur[0] + dr[d]
+            val nc = cur[1] + dc[d]
+            if (nr < 0 || nc < 0 || nr >= n || nc >= n) continue
+            if (dist[nr][nc] != -1) continue
+            if (grid[nr][nc] == 1) return dist[cur[0]][cur[1]]
+            dist[nr][nc] = dist[cur[0]][cur[1]] + 1
+            queue.add(intArrayOf(nr, nc))
+        }
+    }
+    return -1
+}
+@@@LANG swift
+func shortestBridge(_ grid: [[Int]]) -> Int {
+    let n = grid.count
+    let dr = [1, -1, 0, 0]
+    let dc = [0, 0, 1, -1]
+    var dist = [[Int]](repeating: [Int](repeating: -1, count: n), count: n)
+    var queue: [[Int]] = []
+    var started = false
+    for r in 0..<n {
+        if started { break }
+        for c in 0..<n {
+            if started { break }
+            if grid[r][c] != 1 { continue }
+            started = true
+            dist[r][c] = 0
+            var stack: [[Int]] = [[r, c]]
+            queue.append([r, c])
+            while let cell = stack.popLast() {
+                for d in 0..<4 {
+                    let nr = cell[0] + dr[d]
+                    let nc = cell[1] + dc[d]
+                    if nr < 0 || nc < 0 || nr >= n || nc >= n { continue }
+                    if grid[nr][nc] != 1 || dist[nr][nc] != -1 { continue }
+                    dist[nr][nc] = 0
+                    stack.append([nr, nc])
+                    queue.append([nr, nc])
+                }
+            }
+        }
+    }
+    var head = 0
+    while head < queue.count {
+        let cur = queue[head]
+        head += 1
+        for d in 0..<4 {
+            let nr = cur[0] + dr[d]
+            let nc = cur[1] + dc[d]
+            if nr < 0 || nc < 0 || nr >= n || nc >= n { continue }
+            if dist[nr][nc] != -1 { continue }
+            if grid[nr][nc] == 1 { return dist[cur[0]][cur[1]] }
+            dist[nr][nc] = dist[cur[0]][cur[1]] + 1
+            queue.append([nr, nc])
+        }
+    }
+    return -1
+}
+@@@LANG rust
+fn shortestBridge(grid: Vec<Vec<i32>>) -> i32 {
+    let n = grid.len();
+    let dr: [i32; 4] = [1, -1, 0, 0];
+    let dc: [i32; 4] = [0, 0, 1, -1];
+    let mut dist = vec![vec![-1i32; n]; n];
+    let mut queue: Vec<(usize, usize)> = Vec::new();
+    let mut started = false;
+    for r in 0..n {
+        if started {
+            break;
+        }
+        for c in 0..n {
+            if started {
+                break;
+            }
+            if grid[r][c] != 1 {
+                continue;
+            }
+            started = true;
+            dist[r][c] = 0;
+            let mut stack: Vec<(usize, usize)> = vec![(r, c)];
+            queue.push((r, c));
+            while let Some((cr, cc)) = stack.pop() {
+                for d in 0..4 {
+                    let nr = cr as i32 + dr[d];
+                    let nc = cc as i32 + dc[d];
+                    if nr < 0 || nc < 0 || nr >= n as i32 || nc >= n as i32 {
+                        continue;
+                    }
+                    let (nru, ncu) = (nr as usize, nc as usize);
+                    if grid[nru][ncu] != 1 || dist[nru][ncu] != -1 {
+                        continue;
+                    }
+                    dist[nru][ncu] = 0;
+                    stack.push((nru, ncu));
+                    queue.push((nru, ncu));
+                }
+            }
+        }
+    }
+    let mut head = 0usize;
+    while head < queue.len() {
+        let (cr, cc) = queue[head];
+        head += 1;
+        for d in 0..4 {
+            let nr = cr as i32 + dr[d];
+            let nc = cc as i32 + dc[d];
+            if nr < 0 || nc < 0 || nr >= n as i32 || nc >= n as i32 {
+                continue;
+            }
+            let (nru, ncu) = (nr as usize, nc as usize);
+            if dist[nru][ncu] != -1 {
+                continue;
+            }
+            if grid[nru][ncu] == 1 {
+                return dist[cr][cc];
+            }
+            dist[nru][ncu] = dist[cr][cc] + 1;
+            queue.push((nru, ncu));
+        }
+    }
+    -1
+}
+@@@LANG php
+function shortestBridge($grid) {
+    $n = count($grid);
+    $dr = array(1, -1, 0, 0);
+    $dc = array(0, 0, 1, -1);
+    $dist = array();
+    for ($r = 0; $r < $n; $r++) $dist[] = array_fill(0, $n, -1);
+    $queue = array();
+    $started = false;
+    for ($r = 0; $r < $n && !$started; $r++) {
+        for ($c = 0; $c < $n && !$started; $c++) {
+            if ($grid[$r][$c] !== 1) continue;
+            $started = true;
+            $dist[$r][$c] = 0;
+            $stack = array(array($r, $c));
+            $queue[] = array($r, $c);
+            while (count($stack) > 0) {
+                $cell = array_pop($stack);
+                for ($d = 0; $d < 4; $d++) {
+                    $nr = $cell[0] + $dr[$d];
+                    $nc = $cell[1] + $dc[$d];
+                    if ($nr < 0 || $nc < 0 || $nr >= $n || $nc >= $n) continue;
+                    if ($grid[$nr][$nc] !== 1 || $dist[$nr][$nc] !== -1) continue;
+                    $dist[$nr][$nc] = 0;
+                    $stack[] = array($nr, $nc);
+                    $queue[] = array($nr, $nc);
+                }
+            }
+        }
+    }
+    $head = 0;
+    while ($head < count($queue)) {
+        $cur = $queue[$head++];
+        for ($d = 0; $d < 4; $d++) {
+            $nr = $cur[0] + $dr[$d];
+            $nc = $cur[1] + $dc[$d];
+            if ($nr < 0 || $nc < 0 || $nr >= $n || $nc >= $n) continue;
+            if ($dist[$nr][$nc] !== -1) continue;
+            if ($grid[$nr][$nc] === 1) return $dist[$cur[0]][$cur[1]];
+            $dist[$nr][$nc] = $dist[$cur[0]][$cur[1]] + 1;
+            $queue[] = array($nr, $nc);
+        }
+    }
+    return -1;
+}
+@@@LANG ruby
+def shortestBridge(grid)
+  n = grid.length
+  dr = [1, -1, 0, 0]
+  dc = [0, 0, 1, -1]
+  dist = Array.new(n) { Array.new(n, -1) }
+  queue = []
+  started = false
+  (0...n).each do |r|
+    break if started
+    (0...n).each do |c|
+      break if started
+      next if grid[r][c] != 1
+      started = true
+      dist[r][c] = 0
+      stack = [[r, c]]
+      queue.push([r, c])
+      while !stack.empty?
+        cell = stack.pop
+        (0...4).each do |d|
+          nr = cell[0] + dr[d]
+          nc = cell[1] + dc[d]
+          next if nr < 0 || nc < 0 || nr >= n || nc >= n
+          next if grid[nr][nc] != 1 || dist[nr][nc] != -1
+          dist[nr][nc] = 0
+          stack.push([nr, nc])
+          queue.push([nr, nc])
+        end
+      end
+    end
+  end
+  head = 0
+  while head < queue.length
+    cur = queue[head]
+    head += 1
+    (0...4).each do |d|
+      nr = cur[0] + dr[d]
+      nc = cur[1] + dc[d]
+      next if nr < 0 || nc < 0 || nr >= n || nc >= n
+      next if dist[nr][nc] != -1
+      return dist[cur[0]][cur[1]] if grid[nr][nc] == 1
+      dist[nr][nc] = dist[cur[0]][cur[1]] + 1
+      queue.push([nr, nc])
+    end
+  end
+  -1
+end
+
+@@@PROBLEM number-of-distinct-islands
+@@@LANG typescript
+function numDistinctIslands(grid: number[][]): number {
+    var rows = grid.length;
+    var cols = grid[0].length;
+    var seen: boolean[][] = [];
+    for (var r = 0; r < rows; r++) {
+        var row: boolean[] = [];
+        for (var c = 0; c < cols; c++) row.push(false);
+        seen.push(row);
+    }
+    var dr = [1, -1, 0, 0];
+    var dc = [0, 0, 1, -1];
+    var shapes: { [key: string]: boolean } = {};
+    var count = 0;
+    for (var r2 = 0; r2 < rows; r2++) {
+        for (var c2 = 0; c2 < cols; c2++) {
+            if (grid[r2][c2] !== 1 || seen[r2][c2]) continue;
+            seen[r2][c2] = true;
+            var stack: number[][] = [[r2, c2]];
+            var cells: string[] = [];
+            while (stack.length > 0) {
+                var cell = stack.pop() as number[];
+                cells.push((cell[0] - r2) + "," + (cell[1] - c2));
+                for (var d = 0; d < 4; d++) {
+                    var nr = cell[0] + dr[d];
+                    var nc = cell[1] + dc[d];
+                    if (nr < 0 || nc < 0 || nr >= rows || nc >= cols) continue;
+                    if (grid[nr][nc] !== 1 || seen[nr][nc]) continue;
+                    seen[nr][nc] = true;
+                    stack.push([nr, nc]);
+                }
+            }
+            cells.sort();
+            var key = cells.join("|");
+            if (shapes[key] !== true) {
+                shapes[key] = true;
+                count++;
+            }
+        }
+    }
+    return count;
+}
+@@@LANG java
+public static int numDistinctIslands(int[][] grid) {
+    int rows = grid.length, cols = grid[0].length;
+    boolean[][] seen = new boolean[rows][cols];
+    int[] dr = {1, -1, 0, 0};
+    int[] dc = {0, 0, 1, -1};
+    Set<String> shapes = new HashSet<>();
+    for (int r = 0; r < rows; r++) {
+        for (int c = 0; c < cols; c++) {
+            if (grid[r][c] != 1 || seen[r][c]) continue;
+            seen[r][c] = true;
+            Deque<int[]> stack = new ArrayDeque<>();
+            stack.push(new int[]{r, c});
+            List<String> cells = new ArrayList<>();
+            while (!stack.isEmpty()) {
+                int[] cell = stack.pop();
+                cells.add((cell[0] - r) + "," + (cell[1] - c));
+                for (int d = 0; d < 4; d++) {
+                    int nr = cell[0] + dr[d], nc = cell[1] + dc[d];
+                    if (nr < 0 || nc < 0 || nr >= rows || nc >= cols) continue;
+                    if (grid[nr][nc] != 1 || seen[nr][nc]) continue;
+                    seen[nr][nc] = true;
+                    stack.push(new int[]{nr, nc});
+                }
+            }
+            Collections.sort(cells);
+            shapes.add(String.join("|", cells));
+        }
+    }
+    return shapes.size();
+}
+@@@LANG cpp
+int numDistinctIslands(vector<vector<int>>& grid) {
+    int rows = (int) grid.size(), cols = (int) grid[0].size();
+    vector<vector<bool>> seen(rows, vector<bool>(cols, false));
+    int dr[4] = {1, -1, 0, 0};
+    int dc[4] = {0, 0, 1, -1};
+    set<string> shapes;
+    for (int r = 0; r < rows; r++) {
+        for (int c = 0; c < cols; c++) {
+            if (grid[r][c] != 1 || seen[r][c]) continue;
+            seen[r][c] = true;
+            vector<pair<int,int>> stack;
+            stack.push_back(make_pair(r, c));
+            vector<string> cells;
+            while (!stack.empty()) {
+                pair<int,int> cell = stack.back();
+                stack.pop_back();
+                cells.push_back(to_string(cell.first - r) + "," + to_string(cell.second - c));
+                for (int d = 0; d < 4; d++) {
+                    int nr = cell.first + dr[d], nc = cell.second + dc[d];
+                    if (nr < 0 || nc < 0 || nr >= rows || nc >= cols) continue;
+                    if (grid[nr][nc] != 1 || seen[nr][nc]) continue;
+                    seen[nr][nc] = true;
+                    stack.push_back(make_pair(nr, nc));
+                }
+            }
+            sort(cells.begin(), cells.end());
+            string key;
+            for (size_t i = 0; i < cells.size(); i++) {
+                if (i > 0) key += "|";
+                key += cells[i];
+            }
+            shapes.insert(key);
+        }
+    }
+    return (int) shapes.size();
+}
+@@@LANG c
+static int cmpCellKey(const void* a, const void* b) {
+    return strcmp(*(const char**) a, *(const char**) b);
+}
+
+int numDistinctIslands(int** grid, int gridSize, int* gridColSize) {
+    int rows = gridSize, cols = gridColSize[0];
+    int total = rows * cols;
+    char* seen = (char*) calloc((size_t) total, sizeof(char));
+    int* stack = (int*) malloc((size_t) total * sizeof(int));
+    char** cells = (char**) malloc((size_t) total * sizeof(char*));
+    char** shapes = (char**) malloc((size_t) total * sizeof(char*));
+    int shapeCount = 0;
+    int dr[4] = {1, -1, 0, 0};
+    int dc[4] = {0, 0, 1, -1};
+    for (int r = 0; r < rows; r++) {
+        for (int c = 0; c < cols; c++) {
+            if (grid[r][c] != 1 || seen[r * cols + c]) continue;
+            seen[r * cols + c] = 1;
+            int top = 0, m = 0;
+            stack[top++] = r * cols + c;
+            while (top > 0) {
+                int cell = stack[--top];
+                int cr = cell / cols, cc = cell % cols;
+                cells[m] = (char*) malloc(16);
+                sprintf(cells[m], "%d,%d", cr - r, cc - c);
+                m++;
+                for (int d = 0; d < 4; d++) {
+                    int nr = cr + dr[d], nc = cc + dc[d];
+                    if (nr < 0 || nc < 0 || nr >= rows || nc >= cols) continue;
+                    if (grid[nr][nc] != 1 || seen[nr * cols + nc]) continue;
+                    seen[nr * cols + nc] = 1;
+                    stack[top++] = nr * cols + nc;
+                }
+            }
+            qsort(cells, m, sizeof(char*), cmpCellKey);
+            char* key = (char*) malloc((size_t) (m * 17 + 2));
+            key[0] = '\0';
+            for (int i = 0; i < m; i++) {
+                if (i > 0) strcat(key, "|");
+                strcat(key, cells[i]);
+                free(cells[i]);
+            }
+            int duplicate = 0;
+            for (int i = 0; i < shapeCount; i++) {
+                if (strcmp(shapes[i], key) == 0) {
+                    duplicate = 1;
+                    break;
+                }
+            }
+            if (duplicate) free(key);
+            else shapes[shapeCount++] = key;
+        }
+    }
+    for (int i = 0; i < shapeCount; i++) free(shapes[i]);
+    free(shapes);
+    free(cells);
+    free(stack);
+    free(seen);
+    return shapeCount;
+}
+@@@LANG csharp
+public static int NumDistinctIslands(int[][] grid)
+{
+    int rows = grid.Length, cols = grid[0].Length;
+    bool[,] seen = new bool[rows, cols];
+    int[] dr = { 1, -1, 0, 0 };
+    int[] dc = { 0, 0, 1, -1 };
+    var shapes = new HashSet<string>();
+    for (int r = 0; r < rows; r++)
+    {
+        for (int c = 0; c < cols; c++)
+        {
+            if (grid[r][c] != 1 || seen[r, c]) continue;
+            seen[r, c] = true;
+            var stack = new List<int[]>();
+            stack.Add(new int[] { r, c });
+            var cells = new List<string>();
+            while (stack.Count > 0)
+            {
+                int[] cell = stack[stack.Count - 1];
+                stack.RemoveAt(stack.Count - 1);
+                cells.Add((cell[0] - r) + "," + (cell[1] - c));
+                for (int d = 0; d < 4; d++)
+                {
+                    int nr = cell[0] + dr[d], nc = cell[1] + dc[d];
+                    if (nr < 0 || nc < 0 || nr >= rows || nc >= cols) continue;
+                    if (grid[nr][nc] != 1 || seen[nr, nc]) continue;
+                    seen[nr, nc] = true;
+                    stack.Add(new int[] { nr, nc });
+                }
+            }
+            cells.Sort(string.CompareOrdinal);
+            shapes.Add(string.Join("|", cells));
+        }
+    }
+    return shapes.Count;
+}
+@@@LANG go
+func numDistinctIslands(grid [][]int) int {
+	rows, cols := len(grid), len(grid[0])
+	seen := make([][]bool, rows)
+	for i := range seen {
+		seen[i] = make([]bool, cols)
+	}
+	dr := []int{1, -1, 0, 0}
+	dc := []int{0, 0, 1, -1}
+	shapes := map[string]bool{}
+	for r := 0; r < rows; r++ {
+		for c := 0; c < cols; c++ {
+			if grid[r][c] != 1 || seen[r][c] {
+				continue
+			}
+			seen[r][c] = true
+			stack := [][2]int{{r, c}}
+			cells := []string{}
+			for len(stack) > 0 {
+				cell := stack[len(stack)-1]
+				stack = stack[:len(stack)-1]
+				cells = append(cells, strconv.Itoa(cell[0]-r)+","+strconv.Itoa(cell[1]-c))
+				for d := 0; d < 4; d++ {
+					nr, nc := cell[0]+dr[d], cell[1]+dc[d]
+					if nr < 0 || nc < 0 || nr >= rows || nc >= cols {
+						continue
+					}
+					if grid[nr][nc] != 1 || seen[nr][nc] {
+						continue
+					}
+					seen[nr][nc] = true
+					stack = append(stack, [2]int{nr, nc})
+				}
+			}
+			sort.Strings(cells)
+			shapes[strings.Join(cells, "|")] = true
+		}
+	}
+	return len(shapes)
+}
+@@@LANG kotlin
+fun numDistinctIslands(grid: Array<IntArray>): Int {
+    val rows = grid.size
+    val cols = grid[0].size
+    val seen = Array(rows) { BooleanArray(cols) }
+    val dr = intArrayOf(1, -1, 0, 0)
+    val dc = intArrayOf(0, 0, 1, -1)
+    val shapes = HashSet<String>()
+    for (r in 0 until rows) {
+        for (c in 0 until cols) {
+            if (grid[r][c] != 1 || seen[r][c]) continue
+            seen[r][c] = true
+            val stack = ArrayList<IntArray>()
+            stack.add(intArrayOf(r, c))
+            val cells = ArrayList<String>()
+            while (stack.isNotEmpty()) {
+                val cell = stack.removeAt(stack.size - 1)
+                cells.add("" + (cell[0] - r) + "," + (cell[1] - c))
+                for (d in 0 until 4) {
+                    val nr = cell[0] + dr[d]
+                    val nc = cell[1] + dc[d]
+                    if (nr < 0 || nc < 0 || nr >= rows || nc >= cols) continue
+                    if (grid[nr][nc] != 1 || seen[nr][nc]) continue
+                    seen[nr][nc] = true
+                    stack.add(intArrayOf(nr, nc))
+                }
+            }
+            cells.sort()
+            shapes.add(cells.joinToString("|"))
+        }
+    }
+    return shapes.size
+}
+@@@LANG swift
+func numDistinctIslands(_ grid: [[Int]]) -> Int {
+    let rows = grid.count
+    let cols = grid[0].count
+    var seen = [[Bool]](repeating: [Bool](repeating: false, count: cols), count: rows)
+    let dr = [1, -1, 0, 0]
+    let dc = [0, 0, 1, -1]
+    var shapes = Set<String>()
+    for r in 0..<rows {
+        for c in 0..<cols {
+            if grid[r][c] != 1 || seen[r][c] { continue }
+            seen[r][c] = true
+            var stack: [[Int]] = [[r, c]]
+            var cells: [String] = []
+            while let cell = stack.popLast() {
+                cells.append("\(cell[0] - r),\(cell[1] - c)")
+                for d in 0..<4 {
+                    let nr = cell[0] + dr[d]
+                    let nc = cell[1] + dc[d]
+                    if nr < 0 || nc < 0 || nr >= rows || nc >= cols { continue }
+                    if grid[nr][nc] != 1 || seen[nr][nc] { continue }
+                    seen[nr][nc] = true
+                    stack.append([nr, nc])
+                }
+            }
+            cells.sort()
+            shapes.insert(cells.joined(separator: "|"))
+        }
+    }
+    return shapes.count
+}
+@@@LANG rust
+use std::collections::HashSet;
+
+fn numDistinctIslands(grid: Vec<Vec<i32>>) -> i32 {
+    let rows = grid.len();
+    let cols = grid[0].len();
+    let mut seen = vec![vec![false; cols]; rows];
+    let dr: [i32; 4] = [1, -1, 0, 0];
+    let dc: [i32; 4] = [0, 0, 1, -1];
+    let mut shapes: HashSet<String> = HashSet::new();
+    for r in 0..rows {
+        for c in 0..cols {
+            if grid[r][c] != 1 || seen[r][c] {
+                continue;
+            }
+            seen[r][c] = true;
+            let mut stack: Vec<(usize, usize)> = vec![(r, c)];
+            let mut cells: Vec<String> = Vec::new();
+            while let Some((cr, cc)) = stack.pop() {
+                cells.push(format!("{},{}", cr as i32 - r as i32, cc as i32 - c as i32));
+                for d in 0..4 {
+                    let nr = cr as i32 + dr[d];
+                    let nc = cc as i32 + dc[d];
+                    if nr < 0 || nc < 0 || nr >= rows as i32 || nc >= cols as i32 {
+                        continue;
+                    }
+                    let (nru, ncu) = (nr as usize, nc as usize);
+                    if grid[nru][ncu] != 1 || seen[nru][ncu] {
+                        continue;
+                    }
+                    seen[nru][ncu] = true;
+                    stack.push((nru, ncu));
+                }
+            }
+            cells.sort();
+            shapes.insert(cells.join("|"));
+        }
+    }
+    shapes.len() as i32
+}
+@@@LANG php
+function numDistinctIslands($grid) {
+    $rows = count($grid);
+    $cols = count($grid[0]);
+    $seen = array();
+    for ($r = 0; $r < $rows; $r++) $seen[] = array_fill(0, $cols, false);
+    $dr = array(1, -1, 0, 0);
+    $dc = array(0, 0, 1, -1);
+    $shapes = array();
+    for ($r = 0; $r < $rows; $r++) {
+        for ($c = 0; $c < $cols; $c++) {
+            if ($grid[$r][$c] !== 1 || $seen[$r][$c]) continue;
+            $seen[$r][$c] = true;
+            $stack = array(array($r, $c));
+            $cells = array();
+            while (count($stack) > 0) {
+                $cell = array_pop($stack);
+                $cells[] = ($cell[0] - $r) . "," . ($cell[1] - $c);
+                for ($d = 0; $d < 4; $d++) {
+                    $nr = $cell[0] + $dr[$d];
+                    $nc = $cell[1] + $dc[$d];
+                    if ($nr < 0 || $nc < 0 || $nr >= $rows || $nc >= $cols) continue;
+                    if ($grid[$nr][$nc] !== 1 || $seen[$nr][$nc]) continue;
+                    $seen[$nr][$nc] = true;
+                    $stack[] = array($nr, $nc);
+                }
+            }
+            sort($cells, SORT_STRING);
+            $shapes[implode("|", $cells)] = true;
+        }
+    }
+    return count($shapes);
+}
+@@@LANG ruby
+def numDistinctIslands(grid)
+  rows = grid.length
+  cols = grid[0].length
+  seen = Array.new(rows) { Array.new(cols, false) }
+  dr = [1, -1, 0, 0]
+  dc = [0, 0, 1, -1]
+  shapes = {}
+  (0...rows).each do |r|
+    (0...cols).each do |c|
+      next if grid[r][c] != 1 || seen[r][c]
+      seen[r][c] = true
+      stack = [[r, c]]
+      cells = []
+      while !stack.empty?
+        cell = stack.pop
+        cells.push("#{cell[0] - r},#{cell[1] - c}")
+        (0...4).each do |d|
+          nr = cell[0] + dr[d]
+          nc = cell[1] + dc[d]
+          next if nr < 0 || nc < 0 || nr >= rows || nc >= cols
+          next if grid[nr][nc] != 1 || seen[nr][nc]
+          seen[nr][nc] = true
+          stack.push([nr, nc])
+        end
+      end
+      shapes[cells.sort.join("|")] = true
+    end
+  end
+  shapes.length
+end
+
+@@@PROBLEM detect-cycles-in-2d-grid
+@@@LANG typescript
+function containsCycle(grid: string[]): boolean {
+    var rows = grid.length;
+    var cols = grid[0].length;
+    var seen: boolean[][] = [];
+    for (var r = 0; r < rows; r++) {
+        var row: boolean[] = [];
+        for (var c = 0; c < cols; c++) row.push(false);
+        seen.push(row);
+    }
+    var dr = [1, -1, 0, 0];
+    var dc = [0, 0, 1, -1];
+    for (var r2 = 0; r2 < rows; r2++) {
+        for (var c2 = 0; c2 < cols; c2++) {
+            if (seen[r2][c2]) continue;
+            var letter = grid[r2].charAt(c2);
+            var stack: number[][] = [[r2, c2, -1, -1]];
+            seen[r2][c2] = true;
+            while (stack.length > 0) {
+                var cell = stack.pop() as number[];
+                for (var d = 0; d < 4; d++) {
+                    var nr = cell[0] + dr[d];
+                    var nc = cell[1] + dc[d];
+                    if (nr < 0 || nc < 0 || nr >= rows || nc >= cols) continue;
+                    if (grid[nr].charAt(nc) !== letter) continue;
+                    if (nr === cell[2] && nc === cell[3]) continue;
+                    if (seen[nr][nc]) return true;
+                    seen[nr][nc] = true;
+                    stack.push([nr, nc, cell[0], cell[1]]);
+                }
+            }
+        }
+    }
+    return false;
+}
+@@@LANG java
+public static boolean containsCycle(String[] grid) {
+    int rows = grid.length, cols = grid[0].length();
+    boolean[][] seen = new boolean[rows][cols];
+    int[] dr = {1, -1, 0, 0};
+    int[] dc = {0, 0, 1, -1};
+    for (int r = 0; r < rows; r++) {
+        for (int c = 0; c < cols; c++) {
+            if (seen[r][c]) continue;
+            char letter = grid[r].charAt(c);
+            Deque<int[]> stack = new ArrayDeque<>();
+            stack.push(new int[]{r, c, -1, -1});
+            seen[r][c] = true;
+            while (!stack.isEmpty()) {
+                int[] cell = stack.pop();
+                for (int d = 0; d < 4; d++) {
+                    int nr = cell[0] + dr[d], nc = cell[1] + dc[d];
+                    if (nr < 0 || nc < 0 || nr >= rows || nc >= cols) continue;
+                    if (grid[nr].charAt(nc) != letter) continue;
+                    if (nr == cell[2] && nc == cell[3]) continue;
+                    if (seen[nr][nc]) return true;
+                    seen[nr][nc] = true;
+                    stack.push(new int[]{nr, nc, cell[0], cell[1]});
+                }
+            }
+        }
+    }
+    return false;
+}
+@@@LANG cpp
+bool containsCycle(vector<string>& grid) {
+    int rows = (int) grid.size(), cols = (int) grid[0].size();
+    vector<vector<bool>> seen(rows, vector<bool>(cols, false));
+    int dr[4] = {1, -1, 0, 0};
+    int dc[4] = {0, 0, 1, -1};
+    for (int r = 0; r < rows; r++) {
+        for (int c = 0; c < cols; c++) {
+            if (seen[r][c]) continue;
+            char letter = grid[r][c];
+            vector<array<int,4>> stack;
+            stack.push_back({r, c, -1, -1});
+            seen[r][c] = true;
+            while (!stack.empty()) {
+                array<int,4> cell = stack.back();
+                stack.pop_back();
+                for (int d = 0; d < 4; d++) {
+                    int nr = cell[0] + dr[d], nc = cell[1] + dc[d];
+                    if (nr < 0 || nc < 0 || nr >= rows || nc >= cols) continue;
+                    if (grid[nr][nc] != letter) continue;
+                    if (nr == cell[2] && nc == cell[3]) continue;
+                    if (seen[nr][nc]) return true;
+                    seen[nr][nc] = true;
+                    stack.push_back({nr, nc, cell[0], cell[1]});
+                }
+            }
+        }
+    }
+    return false;
+}
+@@@LANG c
+bool containsCycle(char** grid, int gridSize) {
+    int rows = gridSize;
+    int cols = (int) strlen(grid[0]);
+    int total = rows * cols;
+    char* seen = (char*) calloc((size_t) total, sizeof(char));
+    int* stack = (int*) malloc((size_t) total * 2 * sizeof(int));
+    int dr[4] = {1, -1, 0, 0};
+    int dc[4] = {0, 0, 1, -1};
+    for (int r = 0; r < rows; r++) {
+        for (int c = 0; c < cols; c++) {
+            if (seen[r * cols + c]) continue;
+            char letter = grid[r][c];
+            int top = 0;
+            stack[top * 2] = r * cols + c;
+            stack[top * 2 + 1] = -1;
+            top++;
+            seen[r * cols + c] = 1;
+            while (top > 0) {
+                top--;
+                int cell = stack[top * 2];
+                int parent = stack[top * 2 + 1];
+                int cr = cell / cols, cc = cell % cols;
+                for (int d = 0; d < 4; d++) {
+                    int nr = cr + dr[d], nc = cc + dc[d];
+                    if (nr < 0 || nc < 0 || nr >= rows || nc >= cols) continue;
+                    if (grid[nr][nc] != letter) continue;
+                    if (nr * cols + nc == parent) continue;
+                    if (seen[nr * cols + nc]) {
+                        free(seen);
+                        free(stack);
+                        return true;
+                    }
+                    seen[nr * cols + nc] = 1;
+                    stack[top * 2] = nr * cols + nc;
+                    stack[top * 2 + 1] = cell;
+                    top++;
+                }
+            }
+        }
+    }
+    free(seen);
+    free(stack);
+    return false;
+}
+@@@LANG csharp
+public static bool ContainsCycle(string[] grid)
+{
+    int rows = grid.Length, cols = grid[0].Length;
+    bool[,] seen = new bool[rows, cols];
+    int[] dr = { 1, -1, 0, 0 };
+    int[] dc = { 0, 0, 1, -1 };
+    for (int r = 0; r < rows; r++)
+    {
+        for (int c = 0; c < cols; c++)
+        {
+            if (seen[r, c]) continue;
+            char letter = grid[r][c];
+            var stack = new List<int[]>();
+            stack.Add(new int[] { r, c, -1, -1 });
+            seen[r, c] = true;
+            while (stack.Count > 0)
+            {
+                int[] cell = stack[stack.Count - 1];
+                stack.RemoveAt(stack.Count - 1);
+                for (int d = 0; d < 4; d++)
+                {
+                    int nr = cell[0] + dr[d], nc = cell[1] + dc[d];
+                    if (nr < 0 || nc < 0 || nr >= rows || nc >= cols) continue;
+                    if (grid[nr][nc] != letter) continue;
+                    if (nr == cell[2] && nc == cell[3]) continue;
+                    if (seen[nr, nc]) return true;
+                    seen[nr, nc] = true;
+                    stack.Add(new int[] { nr, nc, cell[0], cell[1] });
+                }
+            }
+        }
+    }
+    return false;
+}
+@@@LANG go
+func containsCycle(grid []string) bool {
+	rows, cols := len(grid), len(grid[0])
+	seen := make([][]bool, rows)
+	for i := range seen {
+		seen[i] = make([]bool, cols)
+	}
+	dr := []int{1, -1, 0, 0}
+	dc := []int{0, 0, 1, -1}
+	for r := 0; r < rows; r++ {
+		for c := 0; c < cols; c++ {
+			if seen[r][c] {
+				continue
+			}
+			letter := grid[r][c]
+			stack := [][4]int{{r, c, -1, -1}}
+			seen[r][c] = true
+			for len(stack) > 0 {
+				cell := stack[len(stack)-1]
+				stack = stack[:len(stack)-1]
+				for d := 0; d < 4; d++ {
+					nr, nc := cell[0]+dr[d], cell[1]+dc[d]
+					if nr < 0 || nc < 0 || nr >= rows || nc >= cols {
+						continue
+					}
+					if grid[nr][nc] != letter {
+						continue
+					}
+					if nr == cell[2] && nc == cell[3] {
+						continue
+					}
+					if seen[nr][nc] {
+						return true
+					}
+					seen[nr][nc] = true
+					stack = append(stack, [4]int{nr, nc, cell[0], cell[1]})
+				}
+			}
+		}
+	}
+	return false
+}
+@@@LANG kotlin
+fun containsCycle(grid: Array<String>): Boolean {
+    val rows = grid.size
+    val cols = grid[0].length
+    val seen = Array(rows) { BooleanArray(cols) }
+    val dr = intArrayOf(1, -1, 0, 0)
+    val dc = intArrayOf(0, 0, 1, -1)
+    for (r in 0 until rows) {
+        for (c in 0 until cols) {
+            if (seen[r][c]) continue
+            val letter = grid[r][c]
+            val stack = ArrayList<IntArray>()
+            stack.add(intArrayOf(r, c, -1, -1))
+            seen[r][c] = true
+            while (stack.isNotEmpty()) {
+                val cell = stack.removeAt(stack.size - 1)
+                for (d in 0 until 4) {
+                    val nr = cell[0] + dr[d]
+                    val nc = cell[1] + dc[d]
+                    if (nr < 0 || nc < 0 || nr >= rows || nc >= cols) continue
+                    if (grid[nr][nc] != letter) continue
+                    if (nr == cell[2] && nc == cell[3]) continue
+                    if (seen[nr][nc]) return true
+                    seen[nr][nc] = true
+                    stack.add(intArrayOf(nr, nc, cell[0], cell[1]))
+                }
+            }
+        }
+    }
+    return false
+}
+@@@LANG swift
+func containsCycle(_ grid: [String]) -> Bool {
+    let chars = grid.map { Array($0) }
+    let rows = chars.count
+    let cols = chars[0].count
+    var seen = [[Bool]](repeating: [Bool](repeating: false, count: cols), count: rows)
+    let dr = [1, -1, 0, 0]
+    let dc = [0, 0, 1, -1]
+    for r in 0..<rows {
+        for c in 0..<cols {
+            if seen[r][c] { continue }
+            let letter = chars[r][c]
+            var stack: [[Int]] = [[r, c, -1, -1]]
+            seen[r][c] = true
+            while let cell = stack.popLast() {
+                for d in 0..<4 {
+                    let nr = cell[0] + dr[d]
+                    let nc = cell[1] + dc[d]
+                    if nr < 0 || nc < 0 || nr >= rows || nc >= cols { continue }
+                    if chars[nr][nc] != letter { continue }
+                    if nr == cell[2] && nc == cell[3] { continue }
+                    if seen[nr][nc] { return true }
+                    seen[nr][nc] = true
+                    stack.append([nr, nc, cell[0], cell[1]])
+                }
+            }
+        }
+    }
+    return false
+}
+@@@LANG rust
+fn containsCycle(grid: Vec<String>) -> bool {
+    let chars: Vec<Vec<u8>> = grid.iter().map(|row| row.bytes().collect()).collect();
+    let rows = chars.len();
+    let cols = chars[0].len();
+    let mut seen = vec![vec![false; cols]; rows];
+    let dr: [i32; 4] = [1, -1, 0, 0];
+    let dc: [i32; 4] = [0, 0, 1, -1];
+    for r in 0..rows {
+        for c in 0..cols {
+            if seen[r][c] {
+                continue;
+            }
+            let letter = chars[r][c];
+            let mut stack: Vec<(usize, usize, i32, i32)> = vec![(r, c, -1, -1)];
+            seen[r][c] = true;
+            while let Some((cr, cc, pr, pc)) = stack.pop() {
+                for d in 0..4 {
+                    let nr = cr as i32 + dr[d];
+                    let nc = cc as i32 + dc[d];
+                    if nr < 0 || nc < 0 || nr >= rows as i32 || nc >= cols as i32 {
+                        continue;
+                    }
+                    let (nru, ncu) = (nr as usize, nc as usize);
+                    if chars[nru][ncu] != letter {
+                        continue;
+                    }
+                    if nr == pr && nc == pc {
+                        continue;
+                    }
+                    if seen[nru][ncu] {
+                        return true;
+                    }
+                    seen[nru][ncu] = true;
+                    stack.push((nru, ncu, cr as i32, cc as i32));
+                }
+            }
+        }
+    }
+    false
+}
+@@@LANG php
+function containsCycle($grid) {
+    $rows = count($grid);
+    $cols = strlen($grid[0]);
+    $seen = array();
+    for ($r = 0; $r < $rows; $r++) $seen[] = array_fill(0, $cols, false);
+    $dr = array(1, -1, 0, 0);
+    $dc = array(0, 0, 1, -1);
+    for ($r = 0; $r < $rows; $r++) {
+        for ($c = 0; $c < $cols; $c++) {
+            if ($seen[$r][$c]) continue;
+            $letter = $grid[$r][$c];
+            $stack = array(array($r, $c, -1, -1));
+            $seen[$r][$c] = true;
+            while (count($stack) > 0) {
+                $cell = array_pop($stack);
+                for ($d = 0; $d < 4; $d++) {
+                    $nr = $cell[0] + $dr[$d];
+                    $nc = $cell[1] + $dc[$d];
+                    if ($nr < 0 || $nc < 0 || $nr >= $rows || $nc >= $cols) continue;
+                    if ($grid[$nr][$nc] !== $letter) continue;
+                    if ($nr === $cell[2] && $nc === $cell[3]) continue;
+                    if ($seen[$nr][$nc]) return true;
+                    $seen[$nr][$nc] = true;
+                    $stack[] = array($nr, $nc, $cell[0], $cell[1]);
+                }
+            }
+        }
+    }
+    return false;
+}
+@@@LANG ruby
+def containsCycle(grid)
+  rows = grid.length
+  cols = grid[0].length
+  seen = Array.new(rows) { Array.new(cols, false) }
+  dr = [1, -1, 0, 0]
+  dc = [0, 0, 1, -1]
+  (0...rows).each do |r|
+    (0...cols).each do |c|
+      next if seen[r][c]
+      letter = grid[r][c]
+      stack = [[r, c, -1, -1]]
+      seen[r][c] = true
+      while !stack.empty?
+        cell = stack.pop
+        (0...4).each do |d|
+          nr = cell[0] + dr[d]
+          nc = cell[1] + dc[d]
+          next if nr < 0 || nc < 0 || nr >= rows || nc >= cols
+          next if grid[nr][nc] != letter
+          next if nr == cell[2] && nc == cell[3]
+          return true if seen[nr][nc]
+          seen[nr][nc] = true
+          stack.push([nr, nc, cell[0], cell[1]])
+        end
+      end
+    end
+  end
+  false
+end
+
+@@@PROBLEM minimum-height-trees
+@@@LANG typescript
+function findMinHeightTrees(n: number, edges: number[][]): number[] {
+    if (n === 1) return [0];
+    var adjacency: number[][] = [];
+    var degree: number[] = [];
+    for (var i = 0; i < n; i++) {
+        adjacency.push([]);
+        degree.push(0);
+    }
+    for (var j = 0; j < edges.length; j++) {
+        adjacency[edges[j][0]].push(edges[j][1]);
+        adjacency[edges[j][1]].push(edges[j][0]);
+        degree[edges[j][0]]++;
+        degree[edges[j][1]]++;
+    }
+    var leaves: number[] = [];
+    for (var k = 0; k < n; k++) {
+        if (degree[k] === 1) leaves.push(k);
+    }
+    var remaining = n;
+    while (remaining > 2) {
+        remaining -= leaves.length;
+        var next: number[] = [];
+        for (var m = 0; m < leaves.length; m++) {
+            var leaf = leaves[m];
+            for (var p = 0; p < adjacency[leaf].length; p++) {
+                var neighbour = adjacency[leaf][p];
+                degree[neighbour]--;
+                if (degree[neighbour] === 1) next.push(neighbour);
+            }
+        }
+        leaves = next;
+    }
+    return leaves.slice().sort(function (a, b) { return a - b; });
+}
+@@@LANG java
+public static int[] findMinHeightTrees(int n, int[][] edges) {
+    if (n == 1) return new int[]{0};
+    List<List<Integer>> adjacency = new ArrayList<>();
+    int[] degree = new int[n];
+    for (int i = 0; i < n; i++) adjacency.add(new ArrayList<>());
+    for (int[] e : edges) {
+        adjacency.get(e[0]).add(e[1]);
+        adjacency.get(e[1]).add(e[0]);
+        degree[e[0]]++;
+        degree[e[1]]++;
+    }
+    List<Integer> leaves = new ArrayList<>();
+    for (int i = 0; i < n; i++) {
+        if (degree[i] == 1) leaves.add(i);
+    }
+    int remaining = n;
+    while (remaining > 2) {
+        remaining -= leaves.size();
+        List<Integer> next = new ArrayList<>();
+        for (int leaf : leaves) {
+            for (int neighbour : adjacency.get(leaf)) {
+                degree[neighbour]--;
+                if (degree[neighbour] == 1) next.add(neighbour);
+            }
+        }
+        leaves = next;
+    }
+    Collections.sort(leaves);
+    int[] out = new int[leaves.size()];
+    for (int i = 0; i < leaves.size(); i++) out[i] = leaves.get(i);
+    return out;
+}
+@@@LANG cpp
+vector<int> findMinHeightTrees(int n, vector<vector<int>>& edges) {
+    if (n == 1) return vector<int>{0};
+    vector<vector<int>> adjacency(n);
+    vector<int> degree(n, 0);
+    for (const auto& e : edges) {
+        adjacency[e[0]].push_back(e[1]);
+        adjacency[e[1]].push_back(e[0]);
+        degree[e[0]]++;
+        degree[e[1]]++;
+    }
+    vector<int> leaves;
+    for (int i = 0; i < n; i++) {
+        if (degree[i] == 1) leaves.push_back(i);
+    }
+    int remaining = n;
+    while (remaining > 2) {
+        remaining -= (int) leaves.size();
+        vector<int> next;
+        for (int leaf : leaves) {
+            for (int neighbour : adjacency[leaf]) {
+                degree[neighbour]--;
+                if (degree[neighbour] == 1) next.push_back(neighbour);
+            }
+        }
+        leaves = next;
+    }
+    sort(leaves.begin(), leaves.end());
+    return leaves;
+}
+@@@LANG c
+int* findMinHeightTrees(int n, int** edges, int edgesSize, int* edgesColSize, int* returnSize) {
+    if (n == 1) {
+        int* single = (int*) malloc(sizeof(int));
+        single[0] = 0;
+        *returnSize = 1;
+        return single;
+    }
+    int* degree = (int*) calloc((size_t) n, sizeof(int));
+    for (int i = 0; i < edgesSize; i++) {
+        degree[edges[i][0]]++;
+        degree[edges[i][1]]++;
+    }
+    int* offset = (int*) calloc((size_t) (n + 1), sizeof(int));
+    for (int i = 0; i < n; i++) offset[i + 1] = offset[i] + degree[i];
+    int* fill = (int*) calloc((size_t) n, sizeof(int));
+    int* flat = (int*) malloc((size_t) (2 * edgesSize > 0 ? 2 * edgesSize : 1) * sizeof(int));
+    for (int i = 0; i < edgesSize; i++) {
+        int a = edges[i][0], b = edges[i][1];
+        flat[offset[a] + fill[a]++] = b;
+        flat[offset[b] + fill[b]++] = a;
+    }
+    int* leaves = (int*) malloc((size_t) n * sizeof(int));
+    int* next = (int*) malloc((size_t) n * sizeof(int));
+    int leafCount = 0;
+    for (int i = 0; i < n; i++) {
+        if (degree[i] == 1) leaves[leafCount++] = i;
+    }
+    int remaining = n;
+    while (remaining > 2) {
+        remaining -= leafCount;
+        int nextCount = 0;
+        for (int i = 0; i < leafCount; i++) {
+            int leaf = leaves[i];
+            for (int k = offset[leaf]; k < offset[leaf + 1]; k++) {
+                int neighbour = flat[k];
+                degree[neighbour]--;
+                if (degree[neighbour] == 1) next[nextCount++] = neighbour;
+            }
+        }
+        for (int i = 0; i < nextCount; i++) leaves[i] = next[i];
+        leafCount = nextCount;
+    }
+    for (int i = 0; i < leafCount; i++) {
+        for (int j = i + 1; j < leafCount; j++) {
+            if (leaves[j] < leaves[i]) {
+                int t = leaves[i];
+                leaves[i] = leaves[j];
+                leaves[j] = t;
+            }
+        }
+    }
+    free(degree);
+    free(offset);
+    free(fill);
+    free(flat);
+    free(next);
+    *returnSize = leafCount;
+    return leaves;
+}
+@@@LANG csharp
+public static int[] FindMinHeightTrees(int n, int[][] edges)
+{
+    if (n == 1) return new int[] { 0 };
+    var adjacency = new List<List<int>>();
+    int[] degree = new int[n];
+    for (int i = 0; i < n; i++) adjacency.Add(new List<int>());
+    foreach (int[] e in edges)
+    {
+        adjacency[e[0]].Add(e[1]);
+        adjacency[e[1]].Add(e[0]);
+        degree[e[0]]++;
+        degree[e[1]]++;
+    }
+    var leaves = new List<int>();
+    for (int i = 0; i < n; i++)
+    {
+        if (degree[i] == 1) leaves.Add(i);
+    }
+    int remaining = n;
+    while (remaining > 2)
+    {
+        remaining -= leaves.Count;
+        var next = new List<int>();
+        foreach (int leaf in leaves)
+        {
+            foreach (int neighbour in adjacency[leaf])
+            {
+                degree[neighbour]--;
+                if (degree[neighbour] == 1) next.Add(neighbour);
+            }
+        }
+        leaves = next;
+    }
+    leaves.Sort();
+    return leaves.ToArray();
+}
+@@@LANG go
+func findMinHeightTrees(n int, edges [][]int) []int {
+	if n == 1 {
+		return []int{0}
+	}
+	adjacency := make([][]int, n)
+	degree := make([]int, n)
+	for _, e := range edges {
+		adjacency[e[0]] = append(adjacency[e[0]], e[1])
+		adjacency[e[1]] = append(adjacency[e[1]], e[0])
+		degree[e[0]]++
+		degree[e[1]]++
+	}
+	leaves := []int{}
+	for i := 0; i < n; i++ {
+		if degree[i] == 1 {
+			leaves = append(leaves, i)
+		}
+	}
+	remaining := n
+	for remaining > 2 {
+		remaining -= len(leaves)
+		next := []int{}
+		for _, leaf := range leaves {
+			for _, neighbour := range adjacency[leaf] {
+				degree[neighbour]--
+				if degree[neighbour] == 1 {
+					next = append(next, neighbour)
+				}
+			}
+		}
+		leaves = next
+	}
+	sort.Ints(leaves)
+	return leaves
+}
+@@@LANG kotlin
+fun findMinHeightTrees(n: Int, edges: Array<IntArray>): IntArray {
+    if (n == 1) return intArrayOf(0)
+    val adjacency = Array(n) { ArrayList<Int>() }
+    val degree = IntArray(n)
+    for (e in edges) {
+        adjacency[e[0]].add(e[1])
+        adjacency[e[1]].add(e[0])
+        degree[e[0]]++
+        degree[e[1]]++
+    }
+    var leaves = ArrayList<Int>()
+    for (i in 0 until n) {
+        if (degree[i] == 1) leaves.add(i)
+    }
+    var remaining = n
+    while (remaining > 2) {
+        remaining -= leaves.size
+        val next = ArrayList<Int>()
+        for (leaf in leaves) {
+            for (neighbour in adjacency[leaf]) {
+                degree[neighbour]--
+                if (degree[neighbour] == 1) next.add(neighbour)
+            }
+        }
+        leaves = next
+    }
+    leaves.sort()
+    return leaves.toIntArray()
+}
+@@@LANG swift
+func findMinHeightTrees(_ n: Int, _ edges: [[Int]]) -> [Int] {
+    if n == 1 { return [0] }
+    var adjacency = [[Int]](repeating: [], count: n)
+    var degree = [Int](repeating: 0, count: n)
+    for e in edges {
+        adjacency[e[0]].append(e[1])
+        adjacency[e[1]].append(e[0])
+        degree[e[0]] += 1
+        degree[e[1]] += 1
+    }
+    var leaves: [Int] = []
+    for i in 0..<n where degree[i] == 1 {
+        leaves.append(i)
+    }
+    var remaining = n
+    while remaining > 2 {
+        remaining -= leaves.count
+        var next: [Int] = []
+        for leaf in leaves {
+            for neighbour in adjacency[leaf] {
+                degree[neighbour] -= 1
+                if degree[neighbour] == 1 { next.append(neighbour) }
+            }
+        }
+        leaves = next
+    }
+    return leaves.sorted()
+}
+@@@LANG rust
+fn findMinHeightTrees(n: i32, edges: Vec<Vec<i32>>) -> Vec<i32> {
+    if n == 1 {
+        return vec![0];
+    }
+    let size = n as usize;
+    let mut adjacency: Vec<Vec<usize>> = vec![Vec::new(); size];
+    let mut degree = vec![0i32; size];
+    for e in edges.iter() {
+        let (a, b) = (e[0] as usize, e[1] as usize);
+        adjacency[a].push(b);
+        adjacency[b].push(a);
+        degree[a] += 1;
+        degree[b] += 1;
+    }
+    let mut leaves: Vec<usize> = Vec::new();
+    for i in 0..size {
+        if degree[i] == 1 {
+            leaves.push(i);
+        }
+    }
+    let mut remaining = n;
+    while remaining > 2 {
+        remaining -= leaves.len() as i32;
+        let mut next: Vec<usize> = Vec::new();
+        for leaf in leaves.iter() {
+            for neighbour in adjacency[*leaf].clone().iter() {
+                degree[*neighbour] -= 1;
+                if degree[*neighbour] == 1 {
+                    next.push(*neighbour);
+                }
+            }
+        }
+        leaves = next;
+    }
+    leaves.sort();
+    leaves.iter().map(|x| *x as i32).collect()
+}
+@@@LANG php
+function findMinHeightTrees($n, $edges) {
+    if ($n === 1) return array(0);
+    $adjacency = array();
+    $degree = array_fill(0, $n, 0);
+    for ($i = 0; $i < $n; $i++) $adjacency[] = array();
+    foreach ($edges as $e) {
+        $adjacency[$e[0]][] = $e[1];
+        $adjacency[$e[1]][] = $e[0];
+        $degree[$e[0]]++;
+        $degree[$e[1]]++;
+    }
+    $leaves = array();
+    for ($i = 0; $i < $n; $i++) {
+        if ($degree[$i] === 1) $leaves[] = $i;
+    }
+    $remaining = $n;
+    while ($remaining > 2) {
+        $remaining -= count($leaves);
+        $next = array();
+        foreach ($leaves as $leaf) {
+            foreach ($adjacency[$leaf] as $neighbour) {
+                $degree[$neighbour]--;
+                if ($degree[$neighbour] === 1) $next[] = $neighbour;
+            }
+        }
+        $leaves = $next;
+    }
+    sort($leaves);
+    return $leaves;
+}
+@@@LANG ruby
+def findMinHeightTrees(n, edges)
+  return [0] if n == 1
+  adjacency = Array.new(n) { [] }
+  degree = Array.new(n, 0)
+  edges.each do |e|
+    adjacency[e[0]].push(e[1])
+    adjacency[e[1]].push(e[0])
+    degree[e[0]] += 1
+    degree[e[1]] += 1
+  end
+  leaves = (0...n).select { |i| degree[i] == 1 }
+  remaining = n
+  while remaining > 2
+    remaining -= leaves.length
+    nxt = []
+    leaves.each do |leaf|
+      adjacency[leaf].each do |neighbour|
+        degree[neighbour] -= 1
+        nxt.push(neighbour) if degree[neighbour] == 1
+      end
+    end
+    leaves = nxt
+  end
+  leaves.sort
+end
+
+@@@PROBLEM possible-bipartition
+@@@LANG typescript
+function possibleBipartition(n: number, dislikes: number[][]): boolean {
+    var adjacency: number[][] = [];
+    for (var i = 0; i <= n; i++) adjacency.push([]);
+    for (var j = 0; j < dislikes.length; j++) {
+        adjacency[dislikes[j][0]].push(dislikes[j][1]);
+        adjacency[dislikes[j][1]].push(dislikes[j][0]);
+    }
+    var color: number[] = [];
+    for (var k = 0; k <= n; k++) color.push(0);
+    for (var start = 1; start <= n; start++) {
+        if (color[start] !== 0) continue;
+        color[start] = 1;
+        var queue: number[] = [start];
+        var head = 0;
+        while (head < queue.length) {
+            var node = queue[head++];
+            for (var m = 0; m < adjacency[node].length; m++) {
+                var next = adjacency[node][m];
+                if (color[next] === 0) {
+                    color[next] = -color[node];
+                    queue.push(next);
+                } else if (color[next] === color[node]) {
+                    return false;
+                }
+            }
+        }
+    }
+    return true;
+}
+@@@LANG java
+public static boolean possibleBipartition(int n, int[][] dislikes) {
+    List<List<Integer>> adjacency = new ArrayList<>();
+    for (int i = 0; i <= n; i++) adjacency.add(new ArrayList<>());
+    for (int[] pair : dislikes) {
+        adjacency.get(pair[0]).add(pair[1]);
+        adjacency.get(pair[1]).add(pair[0]);
+    }
+    int[] color = new int[n + 1];
+    for (int start = 1; start <= n; start++) {
+        if (color[start] != 0) continue;
+        color[start] = 1;
+        Deque<Integer> queue = new ArrayDeque<>();
+        queue.addLast(start);
+        while (!queue.isEmpty()) {
+            int node = queue.pollFirst();
+            for (int next : adjacency.get(node)) {
+                if (color[next] == 0) {
+                    color[next] = -color[node];
+                    queue.addLast(next);
+                } else if (color[next] == color[node]) {
+                    return false;
+                }
+            }
+        }
+    }
+    return true;
+}
+@@@LANG cpp
+bool possibleBipartition(int n, vector<vector<int>>& dislikes) {
+    vector<vector<int>> adjacency(n + 1);
+    for (const auto& pair : dislikes) {
+        adjacency[pair[0]].push_back(pair[1]);
+        adjacency[pair[1]].push_back(pair[0]);
+    }
+    vector<int> color(n + 1, 0);
+    for (int start = 1; start <= n; start++) {
+        if (color[start] != 0) continue;
+        color[start] = 1;
+        vector<int> queue;
+        queue.push_back(start);
+        size_t head = 0;
+        while (head < queue.size()) {
+            int node = queue[head++];
+            for (int next : adjacency[node]) {
+                if (color[next] == 0) {
+                    color[next] = -color[node];
+                    queue.push_back(next);
+                } else if (color[next] == color[node]) {
+                    return false;
+                }
+            }
+        }
+    }
+    return true;
+}
+@@@LANG c
+bool possibleBipartition(int n, int** dislikes, int dislikesSize, int* dislikesColSize) {
+    int* degree = (int*) calloc((size_t) (n + 1), sizeof(int));
+    for (int i = 0; i < dislikesSize; i++) {
+        degree[dislikes[i][0]]++;
+        degree[dislikes[i][1]]++;
+    }
+    int* offset = (int*) calloc((size_t) (n + 2), sizeof(int));
+    for (int i = 0; i <= n; i++) offset[i + 1] = offset[i] + degree[i];
+    int* fill = (int*) calloc((size_t) (n + 1), sizeof(int));
+    int* flat = (int*) malloc((size_t) (2 * dislikesSize > 0 ? 2 * dislikesSize : 1) * sizeof(int));
+    for (int i = 0; i < dislikesSize; i++) {
+        int a = dislikes[i][0], b = dislikes[i][1];
+        flat[offset[a] + fill[a]++] = b;
+        flat[offset[b] + fill[b]++] = a;
+    }
+    int* color = (int*) calloc((size_t) (n + 1), sizeof(int));
+    int* queue = (int*) malloc((size_t) (n + 1) * sizeof(int));
+    bool ok = true;
+    for (int start = 1; start <= n && ok; start++) {
+        if (color[start] != 0) continue;
+        color[start] = 1;
+        int head = 0, tail = 0;
+        queue[tail++] = start;
+        while (head < tail) {
+            int node = queue[head++];
+            for (int k = offset[node]; k < offset[node + 1]; k++) {
+                int next = flat[k];
+                if (color[next] == 0) {
+                    color[next] = -color[node];
+                    queue[tail++] = next;
+                } else if (color[next] == color[node]) {
+                    ok = false;
+                    break;
+                }
+            }
+            if (!ok) break;
+        }
+    }
+    free(degree);
+    free(offset);
+    free(fill);
+    free(flat);
+    free(color);
+    free(queue);
+    return ok;
+}
+@@@LANG csharp
+public static bool PossibleBipartition(int n, int[][] dislikes)
+{
+    var adjacency = new List<List<int>>();
+    for (int i = 0; i <= n; i++) adjacency.Add(new List<int>());
+    foreach (int[] pair in dislikes)
+    {
+        adjacency[pair[0]].Add(pair[1]);
+        adjacency[pair[1]].Add(pair[0]);
+    }
+    int[] color = new int[n + 1];
+    for (int start = 1; start <= n; start++)
+    {
+        if (color[start] != 0) continue;
+        color[start] = 1;
+        var queue = new Queue<int>();
+        queue.Enqueue(start);
+        while (queue.Count > 0)
+        {
+            int node = queue.Dequeue();
+            foreach (int next in adjacency[node])
+            {
+                if (color[next] == 0)
+                {
+                    color[next] = -color[node];
+                    queue.Enqueue(next);
+                }
+                else if (color[next] == color[node])
+                {
+                    return false;
+                }
+            }
+        }
+    }
+    return true;
+}
+@@@LANG go
+func possibleBipartition(n int, dislikes [][]int) bool {
+	adjacency := make([][]int, n+1)
+	for _, pair := range dislikes {
+		adjacency[pair[0]] = append(adjacency[pair[0]], pair[1])
+		adjacency[pair[1]] = append(adjacency[pair[1]], pair[0])
+	}
+	color := make([]int, n+1)
+	for start := 1; start <= n; start++ {
+		if color[start] != 0 {
+			continue
+		}
+		color[start] = 1
+		queue := []int{start}
+		head := 0
+		for head < len(queue) {
+			node := queue[head]
+			head++
+			for _, next := range adjacency[node] {
+				if color[next] == 0 {
+					color[next] = -color[node]
+					queue = append(queue, next)
+				} else if color[next] == color[node] {
+					return false
+				}
+			}
+		}
+	}
+	return true
+}
+@@@LANG kotlin
+fun possibleBipartition(n: Int, dislikes: Array<IntArray>): Boolean {
+    val adjacency = Array(n + 1) { ArrayList<Int>() }
+    for (pair in dislikes) {
+        adjacency[pair[0]].add(pair[1])
+        adjacency[pair[1]].add(pair[0])
+    }
+    val color = IntArray(n + 1)
+    for (start in 1..n) {
+        if (color[start] != 0) continue
+        color[start] = 1
+        val queue = ArrayList<Int>()
+        queue.add(start)
+        var head = 0
+        while (head < queue.size) {
+            val node = queue[head++]
+            for (next in adjacency[node]) {
+                if (color[next] == 0) {
+                    color[next] = -color[node]
+                    queue.add(next)
+                } else if (color[next] == color[node]) {
+                    return false
+                }
+            }
+        }
+    }
+    return true
+}
+@@@LANG swift
+func possibleBipartition(_ n: Int, _ dislikes: [[Int]]) -> Bool {
+    var adjacency = [[Int]](repeating: [], count: n + 1)
+    for pair in dislikes {
+        adjacency[pair[0]].append(pair[1])
+        adjacency[pair[1]].append(pair[0])
+    }
+    var color = [Int](repeating: 0, count: n + 1)
+    for start in 1...max(n, 1) where start <= n {
+        if color[start] != 0 { continue }
+        color[start] = 1
+        var queue = [start]
+        var head = 0
+        while head < queue.count {
+            let node = queue[head]
+            head += 1
+            for next in adjacency[node] {
+                if color[next] == 0 {
+                    color[next] = -color[node]
+                    queue.append(next)
+                } else if color[next] == color[node] {
+                    return false
+                }
+            }
+        }
+    }
+    return true
+}
+@@@LANG rust
+fn possibleBipartition(n: i32, dislikes: Vec<Vec<i32>>) -> bool {
+    let size = (n + 1) as usize;
+    let mut adjacency: Vec<Vec<usize>> = vec![Vec::new(); size];
+    for pair in dislikes.iter() {
+        let (a, b) = (pair[0] as usize, pair[1] as usize);
+        adjacency[a].push(b);
+        adjacency[b].push(a);
+    }
+    let mut color = vec![0i32; size];
+    for start in 1..size {
+        if color[start] != 0 {
+            continue;
+        }
+        color[start] = 1;
+        let mut queue: Vec<usize> = vec![start];
+        let mut head = 0usize;
+        while head < queue.len() {
+            let node = queue[head];
+            head += 1;
+            for next in adjacency[node].clone().iter() {
+                if color[*next] == 0 {
+                    color[*next] = -color[node];
+                    queue.push(*next);
+                } else if color[*next] == color[node] {
+                    return false;
+                }
+            }
+        }
+    }
+    true
+}
+@@@LANG php
+function possibleBipartition($n, $dislikes) {
+    $adjacency = array();
+    for ($i = 0; $i <= $n; $i++) $adjacency[] = array();
+    foreach ($dislikes as $pair) {
+        $adjacency[$pair[0]][] = $pair[1];
+        $adjacency[$pair[1]][] = $pair[0];
+    }
+    $color = array_fill(0, $n + 1, 0);
+    for ($start = 1; $start <= $n; $start++) {
+        if ($color[$start] !== 0) continue;
+        $color[$start] = 1;
+        $queue = array($start);
+        $head = 0;
+        while ($head < count($queue)) {
+            $node = $queue[$head++];
+            foreach ($adjacency[$node] as $next) {
+                if ($color[$next] === 0) {
+                    $color[$next] = -$color[$node];
+                    $queue[] = $next;
+                } else if ($color[$next] === $color[$node]) {
+                    return false;
+                }
+            }
+        }
+    }
+    return true;
+}
+@@@LANG ruby
+def possibleBipartition(n, dislikes)
+  adjacency = Array.new(n + 1) { [] }
+  dislikes.each do |pair|
+    adjacency[pair[0]].push(pair[1])
+    adjacency[pair[1]].push(pair[0])
+  end
+  color = Array.new(n + 1, 0)
+  (1..n).each do |start|
+    next if color[start] != 0
+    color[start] = 1
+    queue = [start]
+    head = 0
+    while head < queue.length
+      node = queue[head]
+      head += 1
+      adjacency[node].each do |nxt|
+        if color[nxt] == 0
+          color[nxt] = -color[node]
+          queue.push(nxt)
+        elsif color[nxt] == color[node]
+          return false
+        end
+      end
+    end
+  end
+  true
+end
+
+@@@PROBLEM reorder-routes-to-make-all-paths-lead-to-the-city-zero
+@@@LANG typescript
+function minReorder(n: number, connections: number[][]): number {
+    var adjacency: number[][][] = [];
+    for (var i = 0; i < n; i++) adjacency.push([]);
+    for (var j = 0; j < connections.length; j++) {
+        adjacency[connections[j][0]].push([connections[j][1], 1]);
+        adjacency[connections[j][1]].push([connections[j][0], 0]);
+    }
+    var seen: boolean[] = [];
+    for (var k = 0; k < n; k++) seen.push(false);
+    seen[0] = true;
+    var stack: number[] = [0];
+    var changes = 0;
+    while (stack.length > 0) {
+        var node = stack.pop() as number;
+        for (var m = 0; m < adjacency[node].length; m++) {
+            var next = adjacency[node][m][0];
+            var away = adjacency[node][m][1];
+            if (seen[next]) continue;
+            seen[next] = true;
+            changes += away;
+            stack.push(next);
+        }
+    }
+    return changes;
+}
+@@@LANG java
+public static int minReorder(int n, int[][] connections) {
+    List<List<int[]>> adjacency = new ArrayList<>();
+    for (int i = 0; i < n; i++) adjacency.add(new ArrayList<>());
+    for (int[] e : connections) {
+        adjacency.get(e[0]).add(new int[]{e[1], 1});
+        adjacency.get(e[1]).add(new int[]{e[0], 0});
+    }
+    boolean[] seen = new boolean[n];
+    seen[0] = true;
+    Deque<Integer> stack = new ArrayDeque<>();
+    stack.push(0);
+    int changes = 0;
+    while (!stack.isEmpty()) {
+        int node = stack.pop();
+        for (int[] entry : adjacency.get(node)) {
+            if (seen[entry[0]]) continue;
+            seen[entry[0]] = true;
+            changes += entry[1];
+            stack.push(entry[0]);
+        }
+    }
+    return changes;
+}
+@@@LANG cpp
+int minReorder(int n, vector<vector<int>>& connections) {
+    vector<vector<pair<int,int>>> adjacency(n);
+    for (const auto& e : connections) {
+        adjacency[e[0]].push_back(make_pair(e[1], 1));
+        adjacency[e[1]].push_back(make_pair(e[0], 0));
+    }
+    vector<bool> seen(n, false);
+    seen[0] = true;
+    vector<int> stack;
+    stack.push_back(0);
+    int changes = 0;
+    while (!stack.empty()) {
+        int node = stack.back();
+        stack.pop_back();
+        for (const auto& entry : adjacency[node]) {
+            if (seen[entry.first]) continue;
+            seen[entry.first] = true;
+            changes += entry.second;
+            stack.push_back(entry.first);
+        }
+    }
+    return changes;
+}
+@@@LANG c
+int minReorder(int n, int** connections, int connectionsSize, int* connectionsColSize) {
+    int* degree = (int*) calloc((size_t) n, sizeof(int));
+    for (int i = 0; i < connectionsSize; i++) {
+        degree[connections[i][0]]++;
+        degree[connections[i][1]]++;
+    }
+    int* offset = (int*) calloc((size_t) (n + 1), sizeof(int));
+    for (int i = 0; i < n; i++) offset[i + 1] = offset[i] + degree[i];
+    int* fill = (int*) calloc((size_t) n, sizeof(int));
+    int total = 2 * connectionsSize > 0 ? 2 * connectionsSize : 1;
+    int* targets = (int*) malloc((size_t) total * sizeof(int));
+    int* away = (int*) malloc((size_t) total * sizeof(int));
+    for (int i = 0; i < connectionsSize; i++) {
+        int a = connections[i][0], b = connections[i][1];
+        targets[offset[a] + fill[a]] = b;
+        away[offset[a] + fill[a]] = 1;
+        fill[a]++;
+        targets[offset[b] + fill[b]] = a;
+        away[offset[b] + fill[b]] = 0;
+        fill[b]++;
+    }
+    char* seen = (char*) calloc((size_t) n, sizeof(char));
+    int* stack = (int*) malloc((size_t) n * sizeof(int));
+    int top = 0;
+    seen[0] = 1;
+    stack[top++] = 0;
+    int changes = 0;
+    while (top > 0) {
+        int node = stack[--top];
+        for (int k = offset[node]; k < offset[node + 1]; k++) {
+            int next = targets[k];
+            if (seen[next]) continue;
+            seen[next] = 1;
+            changes += away[k];
+            stack[top++] = next;
+        }
+    }
+    free(degree);
+    free(offset);
+    free(fill);
+    free(targets);
+    free(away);
+    free(seen);
+    free(stack);
+    return changes;
+}
+@@@LANG csharp
+public static int MinReorder(int n, int[][] connections)
+{
+    var adjacency = new List<List<int[]>>();
+    for (int i = 0; i < n; i++) adjacency.Add(new List<int[]>());
+    foreach (int[] e in connections)
+    {
+        adjacency[e[0]].Add(new int[] { e[1], 1 });
+        adjacency[e[1]].Add(new int[] { e[0], 0 });
+    }
+    bool[] seen = new bool[n];
+    seen[0] = true;
+    var stack = new List<int>();
+    stack.Add(0);
+    int changes = 0;
+    while (stack.Count > 0)
+    {
+        int node = stack[stack.Count - 1];
+        stack.RemoveAt(stack.Count - 1);
+        foreach (int[] entry in adjacency[node])
+        {
+            if (seen[entry[0]]) continue;
+            seen[entry[0]] = true;
+            changes += entry[1];
+            stack.Add(entry[0]);
+        }
+    }
+    return changes;
+}
+@@@LANG go
+func minReorder(n int, connections [][]int) int {
+	adjacency := make([][][2]int, n)
+	for _, e := range connections {
+		adjacency[e[0]] = append(adjacency[e[0]], [2]int{e[1], 1})
+		adjacency[e[1]] = append(adjacency[e[1]], [2]int{e[0], 0})
+	}
+	seen := make([]bool, n)
+	seen[0] = true
+	stack := []int{0}
+	changes := 0
+	for len(stack) > 0 {
+		node := stack[len(stack)-1]
+		stack = stack[:len(stack)-1]
+		for _, entry := range adjacency[node] {
+			if seen[entry[0]] {
+				continue
+			}
+			seen[entry[0]] = true
+			changes += entry[1]
+			stack = append(stack, entry[0])
+		}
+	}
+	return changes
+}
+@@@LANG kotlin
+fun minReorder(n: Int, connections: Array<IntArray>): Int {
+    val adjacency = Array(n) { ArrayList<IntArray>() }
+    for (e in connections) {
+        adjacency[e[0]].add(intArrayOf(e[1], 1))
+        adjacency[e[1]].add(intArrayOf(e[0], 0))
+    }
+    val seen = BooleanArray(n)
+    seen[0] = true
+    val stack = ArrayList<Int>()
+    stack.add(0)
+    var changes = 0
+    while (stack.isNotEmpty()) {
+        val node = stack.removeAt(stack.size - 1)
+        for (entry in adjacency[node]) {
+            if (seen[entry[0]]) continue
+            seen[entry[0]] = true
+            changes += entry[1]
+            stack.add(entry[0])
+        }
+    }
+    return changes
+}
+@@@LANG swift
+func minReorder(_ n: Int, _ connections: [[Int]]) -> Int {
+    var adjacency = [[[Int]]](repeating: [], count: n)
+    for e in connections {
+        adjacency[e[0]].append([e[1], 1])
+        adjacency[e[1]].append([e[0], 0])
+    }
+    var seen = [Bool](repeating: false, count: n)
+    seen[0] = true
+    var stack = [0]
+    var changes = 0
+    while let node = stack.popLast() {
+        for entry in adjacency[node] {
+            if seen[entry[0]] { continue }
+            seen[entry[0]] = true
+            changes += entry[1]
+            stack.append(entry[0])
+        }
+    }
+    return changes
+}
+@@@LANG rust
+fn minReorder(n: i32, connections: Vec<Vec<i32>>) -> i32 {
+    let size = n as usize;
+    let mut adjacency: Vec<Vec<(usize, i32)>> = vec![Vec::new(); size];
+    for e in connections.iter() {
+        let (a, b) = (e[0] as usize, e[1] as usize);
+        adjacency[a].push((b, 1));
+        adjacency[b].push((a, 0));
+    }
+    let mut seen = vec![false; size];
+    seen[0] = true;
+    let mut stack: Vec<usize> = vec![0];
+    let mut changes = 0;
+    while let Some(node) = stack.pop() {
+        for (next, away) in adjacency[node].clone().iter() {
+            if seen[*next] {
+                continue;
+            }
+            seen[*next] = true;
+            changes += *away;
+            stack.push(*next);
+        }
+    }
+    changes
+}
+@@@LANG php
+function minReorder($n, $connections) {
+    $adjacency = array();
+    for ($i = 0; $i < $n; $i++) $adjacency[] = array();
+    foreach ($connections as $e) {
+        $adjacency[$e[0]][] = array($e[1], 1);
+        $adjacency[$e[1]][] = array($e[0], 0);
+    }
+    $seen = array_fill(0, $n, false);
+    $seen[0] = true;
+    $stack = array(0);
+    $changes = 0;
+    while (count($stack) > 0) {
+        $node = array_pop($stack);
+        foreach ($adjacency[$node] as $entry) {
+            if ($seen[$entry[0]]) continue;
+            $seen[$entry[0]] = true;
+            $changes += $entry[1];
+            $stack[] = $entry[0];
+        }
+    }
+    return $changes;
+}
+@@@LANG ruby
+def minReorder(n, connections)
+  adjacency = Array.new(n) { [] }
+  connections.each do |e|
+    adjacency[e[0]].push([e[1], 1])
+    adjacency[e[1]].push([e[0], 0])
+  end
+  seen = Array.new(n, false)
+  seen[0] = true
+  stack = [0]
+  changes = 0
+  while !stack.empty?
+    node = stack.pop
+    adjacency[node].each do |entry|
+      next if seen[entry[0]]
+      seen[entry[0]] = true
+      changes += entry[1]
+      stack.push(entry[0])
+    end
+  end
+  changes
+end
+
+@@@PROBLEM time-needed-to-inform-all-employees
+@@@LANG typescript
+function numOfMinutes(n: number, headID: number, manager: number[], informTime: number[]): number {
+    var children: number[][] = [];
+    for (var i = 0; i < n; i++) children.push([]);
+    for (var j = 0; j < n; j++) {
+        if (manager[j] !== -1) children[manager[j]].push(j);
+    }
+    var best = 0;
+    var stack: number[][] = [[headID, 0]];
+    while (stack.length > 0) {
+        var entry = stack.pop() as number[];
+        var node = entry[0];
+        var elapsed = entry[1];
+        if (elapsed > best) best = elapsed;
+        for (var k = 0; k < children[node].length; k++) {
+            stack.push([children[node][k], elapsed + informTime[node]]);
+        }
+    }
+    return best;
+}
+@@@LANG java
+public static int numOfMinutes(int n, int headID, int[] manager, int[] informTime) {
+    List<List<Integer>> children = new ArrayList<>();
+    for (int i = 0; i < n; i++) children.add(new ArrayList<>());
+    for (int i = 0; i < n; i++) {
+        if (manager[i] != -1) children.get(manager[i]).add(i);
+    }
+    int best = 0;
+    Deque<int[]> stack = new ArrayDeque<>();
+    stack.push(new int[]{headID, 0});
+    while (!stack.isEmpty()) {
+        int[] entry = stack.pop();
+        best = Math.max(best, entry[1]);
+        for (int child : children.get(entry[0])) {
+            stack.push(new int[]{child, entry[1] + informTime[entry[0]]});
+        }
+    }
+    return best;
+}
+@@@LANG cpp
+int numOfMinutes(int n, int headID, vector<int>& manager, vector<int>& informTime) {
+    vector<vector<int>> children(n);
+    for (int i = 0; i < n; i++) {
+        if (manager[i] != -1) children[manager[i]].push_back(i);
+    }
+    int best = 0;
+    vector<pair<int,int>> stack;
+    stack.push_back(make_pair(headID, 0));
+    while (!stack.empty()) {
+        pair<int,int> entry = stack.back();
+        stack.pop_back();
+        best = max(best, entry.second);
+        for (int child : children[entry.first]) {
+            stack.push_back(make_pair(child, entry.second + informTime[entry.first]));
+        }
+    }
+    return best;
+}
+@@@LANG c
+int numOfMinutes(int n, int headID, int* manager, int managerSize, int* informTime, int informTimeSize) {
+    int* degree = (int*) calloc((size_t) n, sizeof(int));
+    for (int i = 0; i < n; i++) {
+        if (manager[i] != -1) degree[manager[i]]++;
+    }
+    int* offset = (int*) calloc((size_t) (n + 1), sizeof(int));
+    for (int i = 0; i < n; i++) offset[i + 1] = offset[i] + degree[i];
+    int* fill = (int*) calloc((size_t) n, sizeof(int));
+    int* flat = (int*) malloc((size_t) (n > 0 ? n : 1) * sizeof(int));
+    for (int i = 0; i < n; i++) {
+        if (manager[i] != -1) {
+            int m = manager[i];
+            flat[offset[m] + fill[m]++] = i;
+        }
+    }
+    int* stackNode = (int*) malloc((size_t) (n + 1) * sizeof(int));
+    int* stackTime = (int*) malloc((size_t) (n + 1) * sizeof(int));
+    int top = 0;
+    stackNode[top] = headID;
+    stackTime[top] = 0;
+    top++;
+    int best = 0;
+    while (top > 0) {
+        top--;
+        int node = stackNode[top];
+        int elapsed = stackTime[top];
+        if (elapsed > best) best = elapsed;
+        for (int k = offset[node]; k < offset[node + 1]; k++) {
+            stackNode[top] = flat[k];
+            stackTime[top] = elapsed + informTime[node];
+            top++;
+        }
+    }
+    free(degree);
+    free(offset);
+    free(fill);
+    free(flat);
+    free(stackNode);
+    free(stackTime);
+    return best;
+}
+@@@LANG csharp
+public static int NumOfMinutes(int n, int headID, int[] manager, int[] informTime)
+{
+    var children = new List<List<int>>();
+    for (int i = 0; i < n; i++) children.Add(new List<int>());
+    for (int i = 0; i < n; i++)
+    {
+        if (manager[i] != -1) children[manager[i]].Add(i);
+    }
+    int best = 0;
+    var stack = new List<int[]>();
+    stack.Add(new int[] { headID, 0 });
+    while (stack.Count > 0)
+    {
+        int[] entry = stack[stack.Count - 1];
+        stack.RemoveAt(stack.Count - 1);
+        best = Math.Max(best, entry[1]);
+        foreach (int child in children[entry[0]])
+        {
+            stack.Add(new int[] { child, entry[1] + informTime[entry[0]] });
+        }
+    }
+    return best;
+}
+@@@LANG go
+func numOfMinutes(n int, headID int, manager []int, informTime []int) int {
+	children := make([][]int, n)
+	for i := 0; i < n; i++ {
+		if manager[i] != -1 {
+			children[manager[i]] = append(children[manager[i]], i)
+		}
+	}
+	best := 0
+	stack := [][2]int{{headID, 0}}
+	for len(stack) > 0 {
+		entry := stack[len(stack)-1]
+		stack = stack[:len(stack)-1]
+		if entry[1] > best {
+			best = entry[1]
+		}
+		for _, child := range children[entry[0]] {
+			stack = append(stack, [2]int{child, entry[1] + informTime[entry[0]]})
+		}
+	}
+	return best
+}
+@@@LANG kotlin
+fun numOfMinutes(n: Int, headID: Int, manager: IntArray, informTime: IntArray): Int {
+    val children = Array(n) { ArrayList<Int>() }
+    for (i in 0 until n) {
+        if (manager[i] != -1) children[manager[i]].add(i)
+    }
+    var best = 0
+    val stack = ArrayList<IntArray>()
+    stack.add(intArrayOf(headID, 0))
+    while (stack.isNotEmpty()) {
+        val entry = stack.removeAt(stack.size - 1)
+        if (entry[1] > best) best = entry[1]
+        for (child in children[entry[0]]) {
+            stack.add(intArrayOf(child, entry[1] + informTime[entry[0]]))
+        }
+    }
+    return best
+}
+@@@LANG swift
+func numOfMinutes(_ n: Int, _ headID: Int, _ manager: [Int], _ informTime: [Int]) -> Int {
+    var children = [[Int]](repeating: [], count: n)
+    for i in 0..<n where manager[i] != -1 {
+        children[manager[i]].append(i)
+    }
+    var best = 0
+    var stack: [[Int]] = [[headID, 0]]
+    while let entry = stack.popLast() {
+        if entry[1] > best { best = entry[1] }
+        for child in children[entry[0]] {
+            stack.append([child, entry[1] + informTime[entry[0]]])
+        }
+    }
+    return best
+}
+@@@LANG rust
+fn numOfMinutes(n: i32, headID: i32, manager: Vec<i32>, informTime: Vec<i32>) -> i32 {
+    let size = n as usize;
+    let mut children: Vec<Vec<usize>> = vec![Vec::new(); size];
+    for i in 0..size {
+        if manager[i] != -1 {
+            children[manager[i] as usize].push(i);
+        }
+    }
+    let mut best = 0i32;
+    let mut stack: Vec<(usize, i32)> = vec![(headID as usize, 0)];
+    while let Some((node, elapsed)) = stack.pop() {
+        if elapsed > best {
+            best = elapsed;
+        }
+        for child in children[node].clone().iter() {
+            stack.push((*child, elapsed + informTime[node]));
+        }
+    }
+    best
+}
+@@@LANG php
+function numOfMinutes($n, $headID, $manager, $informTime) {
+    $children = array();
+    for ($i = 0; $i < $n; $i++) $children[] = array();
+    for ($i = 0; $i < $n; $i++) {
+        if ($manager[$i] !== -1) $children[$manager[$i]][] = $i;
+    }
+    $best = 0;
+    $stack = array(array($headID, 0));
+    while (count($stack) > 0) {
+        $entry = array_pop($stack);
+        if ($entry[1] > $best) $best = $entry[1];
+        foreach ($children[$entry[0]] as $child) {
+            $stack[] = array($child, $entry[1] + $informTime[$entry[0]]);
+        }
+    }
+    return $best;
+}
+@@@LANG ruby
+def numOfMinutes(n, headID, manager, informTime)
+  children = Array.new(n) { [] }
+  (0...n).each do |i|
+    children[manager[i]].push(i) if manager[i] != -1
+  end
+  best = 0
+  stack = [[headID, 0]]
+  while !stack.empty?
+    entry = stack.pop
+    best = entry[1] if entry[1] > best
+    children[entry[0]].each do |child|
+      stack.push([child, entry[1] + informTime[entry[0]]])
+    end
+  end
+  best
+end
+
+@@@PROBLEM path-with-minimum-effort
+@@@LANG typescript
+function minimumEffortPath(heights: number[][]): number {
+    var rows = heights.length;
+    var cols = heights[0].length;
+    var dr = [1, -1, 0, 0];
+    var dc = [0, 0, 1, -1];
+    var reachable = function (limit: number): boolean {
+        var seen: boolean[][] = [];
+        for (var r = 0; r < rows; r++) {
+            var row: boolean[] = [];
+            for (var c = 0; c < cols; c++) row.push(false);
+            seen.push(row);
+        }
+        seen[0][0] = true;
+        var stack: number[][] = [[0, 0]];
+        while (stack.length > 0) {
+            var cell = stack.pop() as number[];
+            if (cell[0] === rows - 1 && cell[1] === cols - 1) return true;
+            for (var d = 0; d < 4; d++) {
+                var nr = cell[0] + dr[d];
+                var nc = cell[1] + dc[d];
+                if (nr < 0 || nc < 0 || nr >= rows || nc >= cols || seen[nr][nc]) continue;
+                var diff = Math.abs(heights[nr][nc] - heights[cell[0]][cell[1]]);
+                if (diff > limit) continue;
+                seen[nr][nc] = true;
+                stack.push([nr, nc]);
+            }
+        }
+        return seen[rows - 1][cols - 1];
+    };
+    var lo = 0;
+    var hi = 0;
+    for (var r2 = 0; r2 < rows; r2++) {
+        for (var c2 = 0; c2 < cols; c2++) {
+            if (heights[r2][c2] > hi) hi = heights[r2][c2];
+        }
+    }
+    while (lo < hi) {
+        var mid = Math.floor((lo + hi) / 2);
+        if (reachable(mid)) hi = mid;
+        else lo = mid + 1;
+    }
+    return lo;
+}
+@@@LANG java
+private static boolean effortReachable(int[][] heights, int limit) {
+    int rows = heights.length, cols = heights[0].length;
+    boolean[][] seen = new boolean[rows][cols];
+    seen[0][0] = true;
+    Deque<int[]> stack = new ArrayDeque<>();
+    stack.push(new int[]{0, 0});
+    int[] dr = {1, -1, 0, 0};
+    int[] dc = {0, 0, 1, -1};
+    while (!stack.isEmpty()) {
+        int[] cell = stack.pop();
+        if (cell[0] == rows - 1 && cell[1] == cols - 1) return true;
+        for (int d = 0; d < 4; d++) {
+            int nr = cell[0] + dr[d], nc = cell[1] + dc[d];
+            if (nr < 0 || nc < 0 || nr >= rows || nc >= cols || seen[nr][nc]) continue;
+            if (Math.abs(heights[nr][nc] - heights[cell[0]][cell[1]]) > limit) continue;
+            seen[nr][nc] = true;
+            stack.push(new int[]{nr, nc});
+        }
+    }
+    return seen[rows - 1][cols - 1];
+}
+
+public static int minimumEffortPath(int[][] heights) {
+    int lo = 0, hi = 0;
+    for (int[] row : heights) {
+        for (int value : row) hi = Math.max(hi, value);
+    }
+    while (lo < hi) {
+        int mid = (lo + hi) / 2;
+        if (effortReachable(heights, mid)) hi = mid;
+        else lo = mid + 1;
+    }
+    return lo;
+}
+@@@LANG cpp
+static bool effortReachable(vector<vector<int>>& heights, int limit) {
+    int rows = (int) heights.size(), cols = (int) heights[0].size();
+    vector<vector<bool>> seen(rows, vector<bool>(cols, false));
+    seen[0][0] = true;
+    vector<pair<int,int>> stack;
+    stack.push_back(make_pair(0, 0));
+    int dr[4] = {1, -1, 0, 0};
+    int dc[4] = {0, 0, 1, -1};
+    while (!stack.empty()) {
+        pair<int,int> cell = stack.back();
+        stack.pop_back();
+        if (cell.first == rows - 1 && cell.second == cols - 1) return true;
+        for (int d = 0; d < 4; d++) {
+            int nr = cell.first + dr[d], nc = cell.second + dc[d];
+            if (nr < 0 || nc < 0 || nr >= rows || nc >= cols || seen[nr][nc]) continue;
+            if (abs(heights[nr][nc] - heights[cell.first][cell.second]) > limit) continue;
+            seen[nr][nc] = true;
+            stack.push_back(make_pair(nr, nc));
+        }
+    }
+    return seen[rows - 1][cols - 1];
+}
+
+int minimumEffortPath(vector<vector<int>>& heights) {
+    int lo = 0, hi = 0;
+    for (const auto& row : heights) {
+        for (int value : row) hi = max(hi, value);
+    }
+    while (lo < hi) {
+        int mid = (lo + hi) / 2;
+        if (effortReachable(heights, mid)) hi = mid;
+        else lo = mid + 1;
+    }
+    return lo;
+}
+@@@LANG c
+static int effortReachable(int** heights, int rows, int cols, int limit, char* seen, int* stack) {
+    for (int i = 0; i < rows * cols; i++) seen[i] = 0;
+    seen[0] = 1;
+    int top = 0;
+    stack[top++] = 0;
+    int dr[4] = {1, -1, 0, 0};
+    int dc[4] = {0, 0, 1, -1};
+    while (top > 0) {
+        int cell = stack[--top];
+        int cr = cell / cols, cc = cell % cols;
+        if (cr == rows - 1 && cc == cols - 1) return 1;
+        for (int d = 0; d < 4; d++) {
+            int nr = cr + dr[d], nc = cc + dc[d];
+            if (nr < 0 || nc < 0 || nr >= rows || nc >= cols || seen[nr * cols + nc]) continue;
+            int diff = heights[nr][nc] - heights[cr][cc];
+            if (diff < 0) diff = -diff;
+            if (diff > limit) continue;
+            seen[nr * cols + nc] = 1;
+            stack[top++] = nr * cols + nc;
+        }
+    }
+    return seen[(rows - 1) * cols + (cols - 1)];
+}
+
+int minimumEffortPath(int** heights, int heightsSize, int* heightsColSize) {
+    int rows = heightsSize, cols = heightsColSize[0];
+    char* seen = (char*) malloc((size_t) (rows * cols));
+    int* stack = (int*) malloc((size_t) (rows * cols) * sizeof(int));
+    int lo = 0, hi = 0;
+    for (int r = 0; r < rows; r++) {
+        for (int c = 0; c < cols; c++) {
+            if (heights[r][c] > hi) hi = heights[r][c];
+        }
+    }
+    while (lo < hi) {
+        int mid = lo + (hi - lo) / 2;
+        if (effortReachable(heights, rows, cols, mid, seen, stack)) hi = mid;
+        else lo = mid + 1;
+    }
+    free(seen);
+    free(stack);
+    return lo;
+}
+@@@LANG csharp
+private static bool EffortReachable(int[][] heights, int limit)
+{
+    int rows = heights.Length, cols = heights[0].Length;
+    bool[,] seen = new bool[rows, cols];
+    seen[0, 0] = true;
+    var stack = new List<int[]>();
+    stack.Add(new int[] { 0, 0 });
+    int[] dr = { 1, -1, 0, 0 };
+    int[] dc = { 0, 0, 1, -1 };
+    while (stack.Count > 0)
+    {
+        int[] cell = stack[stack.Count - 1];
+        stack.RemoveAt(stack.Count - 1);
+        if (cell[0] == rows - 1 && cell[1] == cols - 1) return true;
+        for (int d = 0; d < 4; d++)
+        {
+            int nr = cell[0] + dr[d], nc = cell[1] + dc[d];
+            if (nr < 0 || nc < 0 || nr >= rows || nc >= cols || seen[nr, nc]) continue;
+            if (Math.Abs(heights[nr][nc] - heights[cell[0]][cell[1]]) > limit) continue;
+            seen[nr, nc] = true;
+            stack.Add(new int[] { nr, nc });
+        }
+    }
+    return seen[rows - 1, cols - 1];
+}
+
+public static int MinimumEffortPath(int[][] heights)
+{
+    int lo = 0, hi = 0;
+    foreach (int[] row in heights)
+    {
+        foreach (int value in row) hi = Math.Max(hi, value);
+    }
+    while (lo < hi)
+    {
+        int mid = (lo + hi) / 2;
+        if (EffortReachable(heights, mid)) hi = mid;
+        else lo = mid + 1;
+    }
+    return lo;
+}
+@@@LANG go
+func effortReachable(heights [][]int, limit int) bool {
+	rows, cols := len(heights), len(heights[0])
+	seen := make([][]bool, rows)
+	for i := range seen {
+		seen[i] = make([]bool, cols)
+	}
+	seen[0][0] = true
+	stack := [][2]int{{0, 0}}
+	dr := []int{1, -1, 0, 0}
+	dc := []int{0, 0, 1, -1}
+	for len(stack) > 0 {
+		cell := stack[len(stack)-1]
+		stack = stack[:len(stack)-1]
+		if cell[0] == rows-1 && cell[1] == cols-1 {
+			return true
+		}
+		for d := 0; d < 4; d++ {
+			nr, nc := cell[0]+dr[d], cell[1]+dc[d]
+			if nr < 0 || nc < 0 || nr >= rows || nc >= cols || seen[nr][nc] {
+				continue
+			}
+			diff := heights[nr][nc] - heights[cell[0]][cell[1]]
+			if diff < 0 {
+				diff = -diff
+			}
+			if diff > limit {
+				continue
+			}
+			seen[nr][nc] = true
+			stack = append(stack, [2]int{nr, nc})
+		}
+	}
+	return seen[rows-1][cols-1]
+}
+
+func minimumEffortPath(heights [][]int) int {
+	lo, hi := 0, 0
+	for _, row := range heights {
+		for _, value := range row {
+			if value > hi {
+				hi = value
+			}
+		}
+	}
+	for lo < hi {
+		mid := (lo + hi) / 2
+		if effortReachable(heights, mid) {
+			hi = mid
+		} else {
+			lo = mid + 1
+		}
+	}
+	return lo
+}
+@@@LANG kotlin
+fun effortReachable(heights: Array<IntArray>, limit: Int): Boolean {
+    val rows = heights.size
+    val cols = heights[0].size
+    val seen = Array(rows) { BooleanArray(cols) }
+    seen[0][0] = true
+    val stack = ArrayList<IntArray>()
+    stack.add(intArrayOf(0, 0))
+    val dr = intArrayOf(1, -1, 0, 0)
+    val dc = intArrayOf(0, 0, 1, -1)
+    while (stack.isNotEmpty()) {
+        val cell = stack.removeAt(stack.size - 1)
+        if (cell[0] == rows - 1 && cell[1] == cols - 1) return true
+        for (d in 0 until 4) {
+            val nr = cell[0] + dr[d]
+            val nc = cell[1] + dc[d]
+            if (nr < 0 || nc < 0 || nr >= rows || nc >= cols || seen[nr][nc]) continue
+            if (Math.abs(heights[nr][nc] - heights[cell[0]][cell[1]]) > limit) continue
+            seen[nr][nc] = true
+            stack.add(intArrayOf(nr, nc))
+        }
+    }
+    return seen[rows - 1][cols - 1]
+}
+
+fun minimumEffortPath(heights: Array<IntArray>): Int {
+    var lo = 0
+    var hi = 0
+    for (row in heights) {
+        for (value in row) {
+            if (value > hi) hi = value
+        }
+    }
+    while (lo < hi) {
+        val mid = (lo + hi) / 2
+        if (effortReachable(heights, mid)) hi = mid else lo = mid + 1
+    }
+    return lo
+}
+@@@LANG swift
+func effortReachable(_ heights: [[Int]], _ limit: Int) -> Bool {
+    let rows = heights.count
+    let cols = heights[0].count
+    var seen = [[Bool]](repeating: [Bool](repeating: false, count: cols), count: rows)
+    seen[0][0] = true
+    var stack: [[Int]] = [[0, 0]]
+    let dr = [1, -1, 0, 0]
+    let dc = [0, 0, 1, -1]
+    while let cell = stack.popLast() {
+        if cell[0] == rows - 1 && cell[1] == cols - 1 { return true }
+        for d in 0..<4 {
+            let nr = cell[0] + dr[d]
+            let nc = cell[1] + dc[d]
+            if nr < 0 || nc < 0 || nr >= rows || nc >= cols || seen[nr][nc] { continue }
+            if abs(heights[nr][nc] - heights[cell[0]][cell[1]]) > limit { continue }
+            seen[nr][nc] = true
+            stack.append([nr, nc])
+        }
+    }
+    return seen[rows - 1][cols - 1]
+}
+
+func minimumEffortPath(_ heights: [[Int]]) -> Int {
+    var lo = 0
+    var hi = 0
+    for row in heights {
+        for value in row where value > hi { hi = value }
+    }
+    while lo < hi {
+        let mid = (lo + hi) / 2
+        if effortReachable(heights, mid) { hi = mid } else { lo = mid + 1 }
+    }
+    return lo
+}
+@@@LANG rust
+fn effort_reachable(heights: &Vec<Vec<i32>>, limit: i32) -> bool {
+    let rows = heights.len();
+    let cols = heights[0].len();
+    let mut seen = vec![vec![false; cols]; rows];
+    seen[0][0] = true;
+    let mut stack: Vec<(usize, usize)> = vec![(0, 0)];
+    let dr: [i32; 4] = [1, -1, 0, 0];
+    let dc: [i32; 4] = [0, 0, 1, -1];
+    while let Some((cr, cc)) = stack.pop() {
+        if cr == rows - 1 && cc == cols - 1 {
+            return true;
+        }
+        for d in 0..4 {
+            let nr = cr as i32 + dr[d];
+            let nc = cc as i32 + dc[d];
+            if nr < 0 || nc < 0 || nr >= rows as i32 || nc >= cols as i32 {
+                continue;
+            }
+            let (nru, ncu) = (nr as usize, nc as usize);
+            if seen[nru][ncu] {
+                continue;
+            }
+            if (heights[nru][ncu] - heights[cr][cc]).abs() > limit {
+                continue;
+            }
+            seen[nru][ncu] = true;
+            stack.push((nru, ncu));
+        }
+    }
+    seen[rows - 1][cols - 1]
+}
+
+fn minimumEffortPath(heights: Vec<Vec<i32>>) -> i32 {
+    let mut lo = 0i32;
+    let mut hi = 0i32;
+    for row in heights.iter() {
+        for value in row.iter() {
+            if *value > hi {
+                hi = *value;
+            }
+        }
+    }
+    while lo < hi {
+        let mid = lo + (hi - lo) / 2;
+        if effort_reachable(&heights, mid) {
+            hi = mid;
+        } else {
+            lo = mid + 1;
+        }
+    }
+    lo
+}
+@@@LANG php
+function effortReachable($heights, $limit) {
+    $rows = count($heights);
+    $cols = count($heights[0]);
+    $seen = array();
+    for ($r = 0; $r < $rows; $r++) $seen[] = array_fill(0, $cols, false);
+    $seen[0][0] = true;
+    $stack = array(array(0, 0));
+    $dr = array(1, -1, 0, 0);
+    $dc = array(0, 0, 1, -1);
+    while (count($stack) > 0) {
+        $cell = array_pop($stack);
+        if ($cell[0] === $rows - 1 && $cell[1] === $cols - 1) return true;
+        for ($d = 0; $d < 4; $d++) {
+            $nr = $cell[0] + $dr[$d];
+            $nc = $cell[1] + $dc[$d];
+            if ($nr < 0 || $nc < 0 || $nr >= $rows || $nc >= $cols || $seen[$nr][$nc]) continue;
+            if (abs($heights[$nr][$nc] - $heights[$cell[0]][$cell[1]]) > $limit) continue;
+            $seen[$nr][$nc] = true;
+            $stack[] = array($nr, $nc);
+        }
+    }
+    return $seen[$rows - 1][$cols - 1];
+}
+
+function minimumEffortPath($heights) {
+    $lo = 0;
+    $hi = 0;
+    foreach ($heights as $row) {
+        foreach ($row as $value) {
+            if ($value > $hi) $hi = $value;
+        }
+    }
+    while ($lo < $hi) {
+        $mid = intdiv($lo + $hi, 2);
+        if (effortReachable($heights, $mid)) $hi = $mid;
+        else $lo = $mid + 1;
+    }
+    return $lo;
+}
+@@@LANG ruby
+def effort_reachable(heights, limit)
+  rows = heights.length
+  cols = heights[0].length
+  seen = Array.new(rows) { Array.new(cols, false) }
+  seen[0][0] = true
+  stack = [[0, 0]]
+  dr = [1, -1, 0, 0]
+  dc = [0, 0, 1, -1]
+  while !stack.empty?
+    cell = stack.pop
+    return true if cell[0] == rows - 1 && cell[1] == cols - 1
+    (0...4).each do |d|
+      nr = cell[0] + dr[d]
+      nc = cell[1] + dc[d]
+      next if nr < 0 || nc < 0 || nr >= rows || nc >= cols || seen[nr][nc]
+      next if (heights[nr][nc] - heights[cell[0]][cell[1]]).abs > limit
+      seen[nr][nc] = true
+      stack.push([nr, nc])
+    end
+  end
+  seen[rows - 1][cols - 1]
+end
+
+def minimumEffortPath(heights)
+  lo = 0
+  hi = heights.map { |row| row.max }.max
+  while lo < hi
+    mid = (lo + hi) / 2
+    if effort_reachable(heights, mid)
+      hi = mid
+    else
+      lo = mid + 1
+    end
+  end
+  lo
+end
+
+@@@PROBLEM maximal-network-rank
+@@@LANG typescript
+function maximalNetworkRank(n: number, roads: number[][]): number {
+    var degree: number[] = [];
+    for (var i = 0; i < n; i++) degree.push(0);
+    var connected: { [key: string]: boolean } = {};
+    for (var j = 0; j < roads.length; j++) {
+        var a = roads[j][0];
+        var b = roads[j][1];
+        degree[a]++;
+        degree[b]++;
+        connected[a < b ? a + "," + b : b + "," + a] = true;
+    }
+    var best = 0;
+    for (var p = 0; p < n; p++) {
+        for (var q = p + 1; q < n; q++) {
+            var rank = degree[p] + degree[q];
+            if (connected[p + "," + q] === true) rank--;
+            if (rank > best) best = rank;
+        }
+    }
+    return best;
+}
+@@@LANG java
+public static int maximalNetworkRank(int n, int[][] roads) {
+    int[] degree = new int[n];
+    boolean[][] connected = new boolean[n][n];
+    for (int[] road : roads) {
+        degree[road[0]]++;
+        degree[road[1]]++;
+        connected[road[0]][road[1]] = true;
+        connected[road[1]][road[0]] = true;
+    }
+    int best = 0;
+    for (int i = 0; i < n; i++) {
+        for (int j = i + 1; j < n; j++) {
+            int rank = degree[i] + degree[j];
+            if (connected[i][j]) rank--;
+            best = Math.max(best, rank);
+        }
+    }
+    return best;
+}
+@@@LANG cpp
+int maximalNetworkRank(int n, vector<vector<int>>& roads) {
+    vector<int> degree(n, 0);
+    vector<vector<bool>> connected(n, vector<bool>(n, false));
+    for (const auto& road : roads) {
+        degree[road[0]]++;
+        degree[road[1]]++;
+        connected[road[0]][road[1]] = true;
+        connected[road[1]][road[0]] = true;
+    }
+    int best = 0;
+    for (int i = 0; i < n; i++) {
+        for (int j = i + 1; j < n; j++) {
+            int rank = degree[i] + degree[j];
+            if (connected[i][j]) rank--;
+            best = max(best, rank);
+        }
+    }
+    return best;
+}
+@@@LANG c
+int maximalNetworkRank(int n, int** roads, int roadsSize, int* roadsColSize) {
+    int* degree = (int*) calloc((size_t) n, sizeof(int));
+    char* connected = (char*) calloc((size_t) (n * n), sizeof(char));
+    for (int i = 0; i < roadsSize; i++) {
+        int a = roads[i][0], b = roads[i][1];
+        degree[a]++;
+        degree[b]++;
+        connected[a * n + b] = 1;
+        connected[b * n + a] = 1;
+    }
+    int best = 0;
+    for (int i = 0; i < n; i++) {
+        for (int j = i + 1; j < n; j++) {
+            int rank = degree[i] + degree[j];
+            if (connected[i * n + j]) rank--;
+            if (rank > best) best = rank;
+        }
+    }
+    free(degree);
+    free(connected);
+    return best;
+}
+@@@LANG csharp
+public static int MaximalNetworkRank(int n, int[][] roads)
+{
+    int[] degree = new int[n];
+    bool[,] connected = new bool[n, n];
+    foreach (int[] road in roads)
+    {
+        degree[road[0]]++;
+        degree[road[1]]++;
+        connected[road[0], road[1]] = true;
+        connected[road[1], road[0]] = true;
+    }
+    int best = 0;
+    for (int i = 0; i < n; i++)
+    {
+        for (int j = i + 1; j < n; j++)
+        {
+            int rank = degree[i] + degree[j];
+            if (connected[i, j]) rank--;
+            best = Math.Max(best, rank);
+        }
+    }
+    return best;
+}
+@@@LANG go
+func maximalNetworkRank(n int, roads [][]int) int {
+	degree := make([]int, n)
+	connected := make([][]bool, n)
+	for i := range connected {
+		connected[i] = make([]bool, n)
+	}
+	for _, road := range roads {
+		degree[road[0]]++
+		degree[road[1]]++
+		connected[road[0]][road[1]] = true
+		connected[road[1]][road[0]] = true
+	}
+	best := 0
+	for i := 0; i < n; i++ {
+		for j := i + 1; j < n; j++ {
+			rank := degree[i] + degree[j]
+			if connected[i][j] {
+				rank--
+			}
+			if rank > best {
+				best = rank
+			}
+		}
+	}
+	return best
+}
+@@@LANG kotlin
+fun maximalNetworkRank(n: Int, roads: Array<IntArray>): Int {
+    val degree = IntArray(n)
+    val connected = Array(n) { BooleanArray(n) }
+    for (road in roads) {
+        degree[road[0]]++
+        degree[road[1]]++
+        connected[road[0]][road[1]] = true
+        connected[road[1]][road[0]] = true
+    }
+    var best = 0
+    for (i in 0 until n) {
+        for (j in i + 1 until n) {
+            var rank = degree[i] + degree[j]
+            if (connected[i][j]) rank--
+            if (rank > best) best = rank
+        }
+    }
+    return best
+}
+@@@LANG swift
+func maximalNetworkRank(_ n: Int, _ roads: [[Int]]) -> Int {
+    var degree = [Int](repeating: 0, count: n)
+    var connected = [[Bool]](repeating: [Bool](repeating: false, count: n), count: n)
+    for road in roads {
+        degree[road[0]] += 1
+        degree[road[1]] += 1
+        connected[road[0]][road[1]] = true
+        connected[road[1]][road[0]] = true
+    }
+    var best = 0
+    for i in 0..<n {
+        for j in (i + 1)..<max(n, i + 1) where j < n {
+            var rank = degree[i] + degree[j]
+            if connected[i][j] { rank -= 1 }
+            if rank > best { best = rank }
+        }
+    }
+    return best
+}
+@@@LANG rust
+fn maximalNetworkRank(n: i32, roads: Vec<Vec<i32>>) -> i32 {
+    let size = n as usize;
+    let mut degree = vec![0i32; size];
+    let mut connected = vec![vec![false; size]; size];
+    for road in roads.iter() {
+        let (a, b) = (road[0] as usize, road[1] as usize);
+        degree[a] += 1;
+        degree[b] += 1;
+        connected[a][b] = true;
+        connected[b][a] = true;
+    }
+    let mut best = 0i32;
+    for i in 0..size {
+        for j in (i + 1)..size {
+            let mut rank = degree[i] + degree[j];
+            if connected[i][j] {
+                rank -= 1;
+            }
+            if rank > best {
+                best = rank;
+            }
+        }
+    }
+    best
+}
+@@@LANG php
+function maximalNetworkRank($n, $roads) {
+    $degree = array_fill(0, $n, 0);
+    $connected = array();
+    for ($i = 0; $i < $n; $i++) $connected[] = array_fill(0, $n, false);
+    foreach ($roads as $road) {
+        $degree[$road[0]]++;
+        $degree[$road[1]]++;
+        $connected[$road[0]][$road[1]] = true;
+        $connected[$road[1]][$road[0]] = true;
+    }
+    $best = 0;
+    for ($i = 0; $i < $n; $i++) {
+        for ($j = $i + 1; $j < $n; $j++) {
+            $rank = $degree[$i] + $degree[$j];
+            if ($connected[$i][$j]) $rank--;
+            if ($rank > $best) $best = $rank;
+        }
+    }
+    return $best;
+}
+@@@LANG ruby
+def maximalNetworkRank(n, roads)
+  degree = Array.new(n, 0)
+  connected = Array.new(n) { Array.new(n, false) }
+  roads.each do |road|
+    degree[road[0]] += 1
+    degree[road[1]] += 1
+    connected[road[0]][road[1]] = true
+    connected[road[1]][road[0]] = true
+  end
+  best = 0
+  (0...n).each do |i|
+    ((i + 1)...n).each do |j|
+      rank = degree[i] + degree[j]
+      rank -= 1 if connected[i][j]
+      best = rank if rank > best
+    end
+  end
+  best
+end

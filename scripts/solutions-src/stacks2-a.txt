@@ -1,0 +1,2076 @@
+@@@PROBLEM baseball-game
+@@@LANG typescript
+function calPoints(operations: string[]): number {
+    var stack: number[] = [];
+    for (var i = 0; i < operations.length; i++) {
+        var op = operations[i];
+        if (op === "+") stack.push(stack[stack.length - 1] + stack[stack.length - 2]);
+        else if (op === "D") stack.push(2 * stack[stack.length - 1]);
+        else if (op === "C") stack.pop();
+        else stack.push(parseInt(op, 10));
+    }
+    var sum = 0;
+    for (var j = 0; j < stack.length; j++) sum += stack[j];
+    return sum;
+}
+@@@LANG java
+public static int calPoints(String[] operations) {
+    List<Integer> stack = new ArrayList<>();
+    for (String op : operations) {
+        if (op.equals("+")) {
+            stack.add(stack.get(stack.size() - 1) + stack.get(stack.size() - 2));
+        } else if (op.equals("D")) {
+            stack.add(2 * stack.get(stack.size() - 1));
+        } else if (op.equals("C")) {
+            stack.remove(stack.size() - 1);
+        } else {
+            stack.add(Integer.parseInt(op));
+        }
+    }
+    int sum = 0;
+    for (int x : stack) sum += x;
+    return sum;
+}
+@@@LANG cpp
+int calPoints(vector<string>& operations) {
+    vector<int> stack;
+    for (const string& op : operations) {
+        if (op == "+") stack.push_back(stack[stack.size() - 1] + stack[stack.size() - 2]);
+        else if (op == "D") stack.push_back(2 * stack.back());
+        else if (op == "C") stack.pop_back();
+        else stack.push_back(stoi(op));
+    }
+    int sum = 0;
+    for (int x : stack) sum += x;
+    return sum;
+}
+@@@LANG c
+int calPoints(char** operations, int operationsSize) {
+    int* stack = (int*) malloc((size_t) (operationsSize > 0 ? operationsSize : 1) * sizeof(int));
+    int top = 0;
+    for (int i = 0; i < operationsSize; i++) {
+        const char* op = operations[i];
+        if (strcmp(op, "+") == 0) {
+            stack[top] = stack[top - 1] + stack[top - 2];
+            top++;
+        } else if (strcmp(op, "D") == 0) {
+            stack[top] = 2 * stack[top - 1];
+            top++;
+        } else if (strcmp(op, "C") == 0) {
+            top--;
+        } else {
+            stack[top++] = atoi(op);
+        }
+    }
+    int sum = 0;
+    for (int i = 0; i < top; i++) sum += stack[i];
+    free(stack);
+    return sum;
+}
+@@@LANG csharp
+public static int CalPoints(string[] operations)
+{
+    var stack = new List<int>();
+    foreach (string op in operations)
+    {
+        if (op == "+") stack.Add(stack[stack.Count - 1] + stack[stack.Count - 2]);
+        else if (op == "D") stack.Add(2 * stack[stack.Count - 1]);
+        else if (op == "C") stack.RemoveAt(stack.Count - 1);
+        else stack.Add(int.Parse(op));
+    }
+    int sum = 0;
+    foreach (int x in stack) sum += x;
+    return sum;
+}
+@@@LANG go
+func calPoints(operations []string) int {
+	stack := []int{}
+	for _, op := range operations {
+		if op == "+" {
+			stack = append(stack, stack[len(stack)-1]+stack[len(stack)-2])
+		} else if op == "D" {
+			stack = append(stack, 2*stack[len(stack)-1])
+		} else if op == "C" {
+			stack = stack[:len(stack)-1]
+		} else {
+			v, _ := strconv.Atoi(op)
+			stack = append(stack, v)
+		}
+	}
+	sum := 0
+	for _, x := range stack {
+		sum += x
+	}
+	return sum
+}
+@@@LANG kotlin
+fun calPoints(operations: Array<String>): Int {
+    val stack = ArrayList<Int>()
+    for (op in operations) {
+        when (op) {
+            "+" -> stack.add(stack[stack.size - 1] + stack[stack.size - 2])
+            "D" -> stack.add(2 * stack[stack.size - 1])
+            "C" -> stack.removeAt(stack.size - 1)
+            else -> stack.add(op.toInt())
+        }
+    }
+    var sum = 0
+    for (x in stack) sum += x
+    return sum
+}
+@@@LANG swift
+func calPoints(_ operations: [String]) -> Int {
+    var stack: [Int] = []
+    for op in operations {
+        if op == "+" {
+            stack.append(stack[stack.count - 1] + stack[stack.count - 2])
+        } else if op == "D" {
+            stack.append(2 * stack[stack.count - 1])
+        } else if op == "C" {
+            stack.removeLast()
+        } else {
+            stack.append(Int(op)!)
+        }
+    }
+    var sum = 0
+    for x in stack { sum += x }
+    return sum
+}
+@@@LANG rust
+fn calPoints(operations: Vec<String>) -> i32 {
+    let mut stack: Vec<i32> = Vec::new();
+    for op in operations.iter() {
+        if op == "+" {
+            let n = stack.len();
+            stack.push(stack[n - 1] + stack[n - 2]);
+        } else if op == "D" {
+            let n = stack.len();
+            stack.push(2 * stack[n - 1]);
+        } else if op == "C" {
+            stack.pop();
+        } else {
+            stack.push(op.parse::<i32>().unwrap());
+        }
+    }
+    stack.iter().sum()
+}
+@@@LANG php
+function calPoints($operations) {
+    $stack = array();
+    foreach ($operations as $op) {
+        $n = count($stack);
+        if ($op === "+") $stack[] = $stack[$n - 1] + $stack[$n - 2];
+        else if ($op === "D") $stack[] = 2 * $stack[$n - 1];
+        else if ($op === "C") array_pop($stack);
+        else $stack[] = intval($op);
+    }
+    return array_sum($stack);
+}
+@@@LANG ruby
+def calPoints(operations)
+  stack = []
+  operations.each do |op|
+    case op
+    when "+" then stack.push(stack[-1] + stack[-2])
+    when "D" then stack.push(2 * stack[-1])
+    when "C" then stack.pop
+    else stack.push(op.to_i)
+    end
+  end
+  stack.sum
+end
+
+@@@PROBLEM make-the-string-great
+@@@LANG typescript
+function makeGood(s: string): string {
+    var stack: string[] = [];
+    for (var i = 0; i < s.length; i++) {
+        var c = s.charAt(i);
+        if (stack.length > 0) {
+            var top = stack[stack.length - 1];
+            if (top !== c && top.toLowerCase() === c.toLowerCase()) {
+                stack.pop();
+                continue;
+            }
+        }
+        stack.push(c);
+    }
+    return stack.join("");
+}
+@@@LANG java
+public static String makeGood(String s) {
+    StringBuilder stack = new StringBuilder();
+    for (int i = 0; i < s.length(); i++) {
+        char c = s.charAt(i);
+        if (stack.length() > 0) {
+            char top = stack.charAt(stack.length() - 1);
+            if (top != c && Character.toLowerCase(top) == Character.toLowerCase(c)) {
+                stack.deleteCharAt(stack.length() - 1);
+                continue;
+            }
+        }
+        stack.append(c);
+    }
+    return stack.toString();
+}
+@@@LANG cpp
+string makeGood(string s) {
+    string stk;
+    for (char c : s) {
+        if (!stk.empty()) {
+            char top = stk.back();
+            if (top != c && tolower(top) == tolower(c)) {
+                stk.pop_back();
+                continue;
+            }
+        }
+        stk.push_back(c);
+    }
+    return stk;
+}
+@@@LANG c
+static char lowerOf(char c) {
+    return (c >= 'A' && c <= 'Z') ? (char) (c + 32) : c;
+}
+
+char* makeGood(const char* s) {
+    int n = (int) strlen(s);
+    char* stack = (char*) malloc((size_t) n + 2);
+    int top = 0;
+    for (int i = 0; i < n; i++) {
+        if (top > 0 && stack[top - 1] != s[i] && lowerOf(stack[top - 1]) == lowerOf(s[i])) {
+            top--;
+            continue;
+        }
+        stack[top++] = s[i];
+    }
+    stack[top] = '\0';
+    return stack;
+}
+@@@LANG csharp
+public static string MakeGood(string s)
+{
+    var stack = new List<char>();
+    foreach (char c in s)
+    {
+        if (stack.Count > 0)
+        {
+            char top = stack[stack.Count - 1];
+            if (top != c && char.ToLowerInvariant(top) == char.ToLowerInvariant(c))
+            {
+                stack.RemoveAt(stack.Count - 1);
+                continue;
+            }
+        }
+        stack.Add(c);
+    }
+    return new string(stack.ToArray());
+}
+@@@LANG go
+func makeGood(s string) string {
+	stack := []byte{}
+	lower := func(c byte) byte {
+		if c >= 'A' && c <= 'Z' {
+			return c + 32
+		}
+		return c
+	}
+	for i := 0; i < len(s); i++ {
+		if len(stack) > 0 {
+			top := stack[len(stack)-1]
+			if top != s[i] && lower(top) == lower(s[i]) {
+				stack = stack[:len(stack)-1]
+				continue
+			}
+		}
+		stack = append(stack, s[i])
+	}
+	return string(stack)
+}
+@@@LANG kotlin
+fun makeGood(s: String): String {
+    val stack = StringBuilder()
+    for (c in s) {
+        if (stack.isNotEmpty()) {
+            val top = stack[stack.length - 1]
+            if (top != c && top.toLowerCase() == c.toLowerCase()) {
+                stack.deleteCharAt(stack.length - 1)
+                continue
+            }
+        }
+        stack.append(c)
+    }
+    return stack.toString()
+}
+@@@LANG swift
+func makeGood(_ s: String) -> String {
+    var stack: [Character] = []
+    for c in s {
+        if let top = stack.last {
+            if top != c && String(top).lowercased() == String(c).lowercased() {
+                stack.removeLast()
+                continue
+            }
+        }
+        stack.append(c)
+    }
+    return String(stack)
+}
+@@@LANG rust
+fn makeGood(s: String) -> String {
+    let lower = |c: u8| -> u8 {
+        if c >= b'A' && c <= b'Z' { c + 32 } else { c }
+    };
+    let mut stack: Vec<u8> = Vec::new();
+    for c in s.bytes() {
+        if let Some(&top) = stack.last() {
+            if top != c && lower(top) == lower(c) {
+                stack.pop();
+                continue;
+            }
+        }
+        stack.push(c);
+    }
+    String::from_utf8(stack).unwrap()
+}
+@@@LANG php
+function makeGood($s) {
+    $stack = array();
+    $n = strlen($s);
+    for ($i = 0; $i < $n; $i++) {
+        $c = $s[$i];
+        if (count($stack) > 0) {
+            $top = $stack[count($stack) - 1];
+            if ($top !== $c && strtolower($top) === strtolower($c)) {
+                array_pop($stack);
+                continue;
+            }
+        }
+        $stack[] = $c;
+    }
+    return implode("", $stack);
+}
+@@@LANG ruby
+def makeGood(s)
+  stack = []
+  s.each_char do |c|
+    if !stack.empty? && stack[-1] != c && stack[-1].downcase == c.downcase
+      stack.pop
+    else
+      stack.push(c)
+    end
+  end
+  stack.join
+end
+
+@@@PROBLEM minimum-add-to-make-parentheses-valid
+@@@LANG typescript
+function minAddToMakeValid(s: string): number {
+    var open = 0;
+    var needed = 0;
+    for (var i = 0; i < s.length; i++) {
+        if (s.charAt(i) === "(") open++;
+        else if (open > 0) open--;
+        else needed++;
+    }
+    return needed + open;
+}
+@@@LANG java
+public static int minAddToMakeValid(String s) {
+    int open = 0, needed = 0;
+    for (int i = 0; i < s.length(); i++) {
+        if (s.charAt(i) == '(') open++;
+        else if (open > 0) open--;
+        else needed++;
+    }
+    return needed + open;
+}
+@@@LANG cpp
+int minAddToMakeValid(string s) {
+    int open = 0, needed = 0;
+    for (char c : s) {
+        if (c == '(') open++;
+        else if (open > 0) open--;
+        else needed++;
+    }
+    return needed + open;
+}
+@@@LANG c
+int minAddToMakeValid(const char* s) {
+    int open = 0, needed = 0;
+    for (int i = 0; s[i] != '\0'; i++) {
+        if (s[i] == '(') open++;
+        else if (open > 0) open--;
+        else needed++;
+    }
+    return needed + open;
+}
+@@@LANG csharp
+public static int MinAddToMakeValid(string s)
+{
+    int open = 0, needed = 0;
+    foreach (char c in s)
+    {
+        if (c == '(') open++;
+        else if (open > 0) open--;
+        else needed++;
+    }
+    return needed + open;
+}
+@@@LANG go
+func minAddToMakeValid(s string) int {
+	open, needed := 0, 0
+	for i := 0; i < len(s); i++ {
+		if s[i] == '(' {
+			open++
+		} else if open > 0 {
+			open--
+		} else {
+			needed++
+		}
+	}
+	return needed + open
+}
+@@@LANG kotlin
+fun minAddToMakeValid(s: String): Int {
+    var open = 0
+    var needed = 0
+    for (c in s) {
+        if (c == '(') open++
+        else if (open > 0) open--
+        else needed++
+    }
+    return needed + open
+}
+@@@LANG swift
+func minAddToMakeValid(_ s: String) -> Int {
+    var open = 0
+    var needed = 0
+    for c in s {
+        if c == "(" { open += 1 }
+        else if open > 0 { open -= 1 }
+        else { needed += 1 }
+    }
+    return needed + open
+}
+@@@LANG rust
+fn minAddToMakeValid(s: String) -> i32 {
+    let mut open = 0;
+    let mut needed = 0;
+    for c in s.bytes() {
+        if c == b'(' {
+            open += 1;
+        } else if open > 0 {
+            open -= 1;
+        } else {
+            needed += 1;
+        }
+    }
+    needed + open
+}
+@@@LANG php
+function minAddToMakeValid($s) {
+    $open = 0;
+    $needed = 0;
+    $n = strlen($s);
+    for ($i = 0; $i < $n; $i++) {
+        if ($s[$i] === "(") $open++;
+        else if ($open > 0) $open--;
+        else $needed++;
+    }
+    return $needed + $open;
+}
+@@@LANG ruby
+def minAddToMakeValid(s)
+  open = 0
+  needed = 0
+  s.each_char do |c|
+    if c == "("
+      open += 1
+    elsif open > 0
+      open -= 1
+    else
+      needed += 1
+    end
+  end
+  needed + open
+end
+
+@@@PROBLEM minimum-remove-to-make-valid-parentheses
+@@@LANG typescript
+function minRemoveToMakeValid(s: string): string {
+    var keep: boolean[] = [];
+    for (var i = 0; i < s.length; i++) keep.push(true);
+    var openIdx: number[] = [];
+    for (var j = 0; j < s.length; j++) {
+        var c = s.charAt(j);
+        if (c === "(") openIdx.push(j);
+        else if (c === ")") {
+            if (openIdx.length > 0) openIdx.pop();
+            else keep[j] = false;
+        }
+    }
+    for (var k = 0; k < openIdx.length; k++) keep[openIdx[k]] = false;
+    var out = "";
+    for (var m = 0; m < s.length; m++) {
+        if (keep[m]) out += s.charAt(m);
+    }
+    return out;
+}
+@@@LANG java
+public static String minRemoveToMakeValid(String s) {
+    boolean[] keep = new boolean[s.length()];
+    Arrays.fill(keep, true);
+    Deque<Integer> openIdx = new ArrayDeque<>();
+    for (int i = 0; i < s.length(); i++) {
+        char c = s.charAt(i);
+        if (c == '(') {
+            openIdx.push(i);
+        } else if (c == ')') {
+            if (!openIdx.isEmpty()) openIdx.pop();
+            else keep[i] = false;
+        }
+    }
+    for (int i : openIdx) keep[i] = false;
+    StringBuilder out = new StringBuilder();
+    for (int i = 0; i < s.length(); i++) {
+        if (keep[i]) out.append(s.charAt(i));
+    }
+    return out.toString();
+}
+@@@LANG cpp
+string minRemoveToMakeValid(string s) {
+    vector<bool> keep(s.size(), true);
+    vector<int> openIdx;
+    for (int i = 0; i < (int) s.size(); i++) {
+        if (s[i] == '(') openIdx.push_back(i);
+        else if (s[i] == ')') {
+            if (!openIdx.empty()) openIdx.pop_back();
+            else keep[i] = false;
+        }
+    }
+    for (int i : openIdx) keep[i] = false;
+    string out;
+    for (int i = 0; i < (int) s.size(); i++) {
+        if (keep[i]) out.push_back(s[i]);
+    }
+    return out;
+}
+@@@LANG c
+char* minRemoveToMakeValid(const char* s) {
+    int n = (int) strlen(s);
+    char* keep = (char*) malloc((size_t) n + 1);
+    for (int i = 0; i < n; i++) keep[i] = 1;
+    int* openIdx = (int*) malloc((size_t) (n > 0 ? n : 1) * sizeof(int));
+    int top = 0;
+    for (int i = 0; i < n; i++) {
+        if (s[i] == '(') openIdx[top++] = i;
+        else if (s[i] == ')') {
+            if (top > 0) top--;
+            else keep[i] = 0;
+        }
+    }
+    for (int i = 0; i < top; i++) keep[openIdx[i]] = 0;
+    char* out = (char*) malloc((size_t) n + 2);
+    int m = 0;
+    for (int i = 0; i < n; i++) {
+        if (keep[i]) out[m++] = s[i];
+    }
+    out[m] = '\0';
+    free(keep);
+    free(openIdx);
+    return out;
+}
+@@@LANG csharp
+public static string MinRemoveToMakeValid(string s)
+{
+    bool[] keep = new bool[s.Length];
+    for (int i = 0; i < s.Length; i++) keep[i] = true;
+    var openIdx = new List<int>();
+    for (int i = 0; i < s.Length; i++)
+    {
+        if (s[i] == '(') openIdx.Add(i);
+        else if (s[i] == ')')
+        {
+            if (openIdx.Count > 0) openIdx.RemoveAt(openIdx.Count - 1);
+            else keep[i] = false;
+        }
+    }
+    foreach (int i in openIdx) keep[i] = false;
+    var out_ = new List<char>();
+    for (int i = 0; i < s.Length; i++)
+    {
+        if (keep[i]) out_.Add(s[i]);
+    }
+    return new string(out_.ToArray());
+}
+@@@LANG go
+func minRemoveToMakeValid(s string) string {
+	keep := make([]bool, len(s))
+	for i := range keep {
+		keep[i] = true
+	}
+	openIdx := []int{}
+	for i := 0; i < len(s); i++ {
+		if s[i] == '(' {
+			openIdx = append(openIdx, i)
+		} else if s[i] == ')' {
+			if len(openIdx) > 0 {
+				openIdx = openIdx[:len(openIdx)-1]
+			} else {
+				keep[i] = false
+			}
+		}
+	}
+	for _, i := range openIdx {
+		keep[i] = false
+	}
+	out := []byte{}
+	for i := 0; i < len(s); i++ {
+		if keep[i] {
+			out = append(out, s[i])
+		}
+	}
+	return string(out)
+}
+@@@LANG kotlin
+fun minRemoveToMakeValid(s: String): String {
+    val keep = BooleanArray(s.length) { true }
+    val openIdx = ArrayList<Int>()
+    for (i in s.indices) {
+        if (s[i] == '(') {
+            openIdx.add(i)
+        } else if (s[i] == ')') {
+            if (openIdx.isNotEmpty()) openIdx.removeAt(openIdx.size - 1)
+            else keep[i] = false
+        }
+    }
+    for (i in openIdx) keep[i] = false
+    val out = StringBuilder()
+    for (i in s.indices) {
+        if (keep[i]) out.append(s[i])
+    }
+    return out.toString()
+}
+@@@LANG swift
+func minRemoveToMakeValid(_ s: String) -> String {
+    let chars = Array(s)
+    var keep = [Bool](repeating: true, count: chars.count)
+    var openIdx: [Int] = []
+    for i in 0..<chars.count {
+        if chars[i] == "(" {
+            openIdx.append(i)
+        } else if chars[i] == ")" {
+            if !openIdx.isEmpty { openIdx.removeLast() }
+            else { keep[i] = false }
+        }
+    }
+    for i in openIdx { keep[i] = false }
+    var out = ""
+    for i in 0..<chars.count where keep[i] {
+        out.append(chars[i])
+    }
+    return out
+}
+@@@LANG rust
+fn minRemoveToMakeValid(s: String) -> String {
+    let chars: Vec<u8> = s.bytes().collect();
+    let mut keep = vec![true; chars.len()];
+    let mut open_idx: Vec<usize> = Vec::new();
+    for i in 0..chars.len() {
+        if chars[i] == b'(' {
+            open_idx.push(i);
+        } else if chars[i] == b')' {
+            if !open_idx.is_empty() {
+                open_idx.pop();
+            } else {
+                keep[i] = false;
+            }
+        }
+    }
+    for i in open_idx.iter() {
+        keep[*i] = false;
+    }
+    let mut out: Vec<u8> = Vec::new();
+    for i in 0..chars.len() {
+        if keep[i] {
+            out.push(chars[i]);
+        }
+    }
+    String::from_utf8(out).unwrap()
+}
+@@@LANG php
+function minRemoveToMakeValid($s) {
+    $n = strlen($s);
+    $keep = array_fill(0, $n, true);
+    $openIdx = array();
+    for ($i = 0; $i < $n; $i++) {
+        if ($s[$i] === "(") $openIdx[] = $i;
+        else if ($s[$i] === ")") {
+            if (count($openIdx) > 0) array_pop($openIdx);
+            else $keep[$i] = false;
+        }
+    }
+    foreach ($openIdx as $i) $keep[$i] = false;
+    $out = "";
+    for ($i = 0; $i < $n; $i++) {
+        if ($keep[$i]) $out .= $s[$i];
+    }
+    return $out;
+}
+@@@LANG ruby
+def minRemoveToMakeValid(s)
+  keep = Array.new(s.length, true)
+  open_idx = []
+  s.each_char.with_index do |c, i|
+    if c == "("
+      open_idx.push(i)
+    elsif c == ")"
+      if open_idx.empty?
+        keep[i] = false
+      else
+        open_idx.pop
+      end
+    end
+  end
+  open_idx.each { |i| keep[i] = false }
+  out = ""
+  s.each_char.with_index { |c, i| out << c if keep[i] }
+  out
+end
+
+@@@PROBLEM score-of-parentheses
+@@@LANG typescript
+function scoreOfParentheses(s: string): number {
+    var stack: number[] = [0];
+    for (var i = 0; i < s.length; i++) {
+        if (s.charAt(i) === "(") {
+            stack.push(0);
+        } else {
+            var inner = stack.pop() as number;
+            var value = inner === 0 ? 1 : 2 * inner;
+            stack[stack.length - 1] += value;
+        }
+    }
+    return stack[0];
+}
+@@@LANG java
+public static int scoreOfParentheses(String s) {
+    List<Integer> stack = new ArrayList<>();
+    stack.add(0);
+    for (int i = 0; i < s.length(); i++) {
+        if (s.charAt(i) == '(') {
+            stack.add(0);
+        } else {
+            int inner = stack.remove(stack.size() - 1);
+            int value = inner == 0 ? 1 : 2 * inner;
+            stack.set(stack.size() - 1, stack.get(stack.size() - 1) + value);
+        }
+    }
+    return stack.get(0);
+}
+@@@LANG cpp
+int scoreOfParentheses(string s) {
+    vector<int> stack;
+    stack.push_back(0);
+    for (char c : s) {
+        if (c == '(') {
+            stack.push_back(0);
+        } else {
+            int inner = stack.back();
+            stack.pop_back();
+            stack.back() += (inner == 0 ? 1 : 2 * inner);
+        }
+    }
+    return stack[0];
+}
+@@@LANG c
+int scoreOfParentheses(const char* s) {
+    int n = (int) strlen(s);
+    int* stack = (int*) calloc((size_t) n + 2, sizeof(int));
+    int top = 1;
+    for (int i = 0; i < n; i++) {
+        if (s[i] == '(') {
+            stack[top++] = 0;
+        } else {
+            int inner = stack[--top];
+            stack[top - 1] += (inner == 0 ? 1 : 2 * inner);
+        }
+    }
+    int answer = stack[0];
+    free(stack);
+    return answer;
+}
+@@@LANG csharp
+public static int ScoreOfParentheses(string s)
+{
+    var stack = new List<int>();
+    stack.Add(0);
+    foreach (char c in s)
+    {
+        if (c == '(')
+        {
+            stack.Add(0);
+        }
+        else
+        {
+            int inner = stack[stack.Count - 1];
+            stack.RemoveAt(stack.Count - 1);
+            stack[stack.Count - 1] += (inner == 0 ? 1 : 2 * inner);
+        }
+    }
+    return stack[0];
+}
+@@@LANG go
+func scoreOfParentheses(s string) int {
+	stack := []int{0}
+	for i := 0; i < len(s); i++ {
+		if s[i] == '(' {
+			stack = append(stack, 0)
+		} else {
+			inner := stack[len(stack)-1]
+			stack = stack[:len(stack)-1]
+			value := 1
+			if inner != 0 {
+				value = 2 * inner
+			}
+			stack[len(stack)-1] += value
+		}
+	}
+	return stack[0]
+}
+@@@LANG kotlin
+fun scoreOfParentheses(s: String): Int {
+    val stack = ArrayList<Int>()
+    stack.add(0)
+    for (c in s) {
+        if (c == '(') {
+            stack.add(0)
+        } else {
+            val inner = stack.removeAt(stack.size - 1)
+            val value = if (inner == 0) 1 else 2 * inner
+            stack[stack.size - 1] = stack[stack.size - 1] + value
+        }
+    }
+    return stack[0]
+}
+@@@LANG swift
+func scoreOfParentheses(_ s: String) -> Int {
+    var stack: [Int] = [0]
+    for c in s {
+        if c == "(" {
+            stack.append(0)
+        } else {
+            let inner = stack.removeLast()
+            stack[stack.count - 1] += (inner == 0 ? 1 : 2 * inner)
+        }
+    }
+    return stack[0]
+}
+@@@LANG rust
+fn scoreOfParentheses(s: String) -> i32 {
+    let mut stack: Vec<i32> = vec![0];
+    for c in s.bytes() {
+        if c == b'(' {
+            stack.push(0);
+        } else {
+            let inner = stack.pop().unwrap();
+            let value = if inner == 0 { 1 } else { 2 * inner };
+            let n = stack.len();
+            stack[n - 1] += value;
+        }
+    }
+    stack[0]
+}
+@@@LANG php
+function scoreOfParentheses($s) {
+    $stack = array(0);
+    $n = strlen($s);
+    for ($i = 0; $i < $n; $i++) {
+        if ($s[$i] === "(") {
+            $stack[] = 0;
+        } else {
+            $inner = array_pop($stack);
+            $value = $inner === 0 ? 1 : 2 * $inner;
+            $stack[count($stack) - 1] += $value;
+        }
+    }
+    return $stack[0];
+}
+@@@LANG ruby
+def scoreOfParentheses(s)
+  stack = [0]
+  s.each_char do |c|
+    if c == "("
+      stack.push(0)
+    else
+      inner = stack.pop
+      stack[-1] += (inner == 0 ? 1 : 2 * inner)
+    end
+  end
+  stack[0]
+end
+
+@@@PROBLEM check-if-word-is-valid-after-substitutions
+@@@LANG typescript
+function isValid(s: string): boolean {
+    var stack: string[] = [];
+    for (var i = 0; i < s.length; i++) {
+        var c = s.charAt(i);
+        if (c === "c") {
+            if (stack.length < 2) return false;
+            var b = stack.pop();
+            var a = stack.pop();
+            if (a !== "a" || b !== "b") return false;
+        } else {
+            stack.push(c);
+        }
+    }
+    return stack.length === 0;
+}
+@@@LANG java
+public static boolean isValid(String s) {
+    Deque<Character> stack = new ArrayDeque<>();
+    for (int i = 0; i < s.length(); i++) {
+        char c = s.charAt(i);
+        if (c == 'c') {
+            if (stack.size() < 2) return false;
+            char b = stack.pop();
+            char a = stack.pop();
+            if (a != 'a' || b != 'b') return false;
+        } else {
+            stack.push(c);
+        }
+    }
+    return stack.isEmpty();
+}
+@@@LANG cpp
+bool isValid(string s) {
+    vector<char> stack;
+    for (char c : s) {
+        if (c == 'c') {
+            if (stack.size() < 2) return false;
+            char b = stack.back();
+            stack.pop_back();
+            char a = stack.back();
+            stack.pop_back();
+            if (a != 'a' || b != 'b') return false;
+        } else {
+            stack.push_back(c);
+        }
+    }
+    return stack.empty();
+}
+@@@LANG c
+bool isValid(const char* s) {
+    int n = (int) strlen(s);
+    char* stack = (char*) malloc((size_t) n + 1);
+    int top = 0;
+    for (int i = 0; i < n; i++) {
+        if (s[i] == 'c') {
+            if (top < 2) {
+                free(stack);
+                return false;
+            }
+            char b = stack[--top];
+            char a = stack[--top];
+            if (a != 'a' || b != 'b') {
+                free(stack);
+                return false;
+            }
+        } else {
+            stack[top++] = s[i];
+        }
+    }
+    bool ok = (top == 0);
+    free(stack);
+    return ok;
+}
+@@@LANG csharp
+public static bool IsValid(string s)
+{
+    var stack = new List<char>();
+    foreach (char c in s)
+    {
+        if (c == 'c')
+        {
+            if (stack.Count < 2) return false;
+            char b = stack[stack.Count - 1];
+            stack.RemoveAt(stack.Count - 1);
+            char a = stack[stack.Count - 1];
+            stack.RemoveAt(stack.Count - 1);
+            if (a != 'a' || b != 'b') return false;
+        }
+        else
+        {
+            stack.Add(c);
+        }
+    }
+    return stack.Count == 0;
+}
+@@@LANG go
+func isValid(s string) bool {
+	stack := []byte{}
+	for i := 0; i < len(s); i++ {
+		if s[i] == 'c' {
+			if len(stack) < 2 {
+				return false
+			}
+			b := stack[len(stack)-1]
+			a := stack[len(stack)-2]
+			stack = stack[:len(stack)-2]
+			if a != 'a' || b != 'b' {
+				return false
+			}
+		} else {
+			stack = append(stack, s[i])
+		}
+	}
+	return len(stack) == 0
+}
+@@@LANG kotlin
+fun isValid(s: String): Boolean {
+    val stack = ArrayList<Char>()
+    for (c in s) {
+        if (c == 'c') {
+            if (stack.size < 2) return false
+            val b = stack.removeAt(stack.size - 1)
+            val a = stack.removeAt(stack.size - 1)
+            if (a != 'a' || b != 'b') return false
+        } else {
+            stack.add(c)
+        }
+    }
+    return stack.isEmpty()
+}
+@@@LANG swift
+func isValid(_ s: String) -> Bool {
+    var stack: [Character] = []
+    for c in s {
+        if c == "c" {
+            if stack.count < 2 { return false }
+            let b = stack.removeLast()
+            let a = stack.removeLast()
+            if a != "a" || b != "b" { return false }
+        } else {
+            stack.append(c)
+        }
+    }
+    return stack.isEmpty
+}
+@@@LANG rust
+fn isValid(s: String) -> bool {
+    let mut stack: Vec<u8> = Vec::new();
+    for c in s.bytes() {
+        if c == b'c' {
+            if stack.len() < 2 {
+                return false;
+            }
+            let b = stack.pop().unwrap();
+            let a = stack.pop().unwrap();
+            if a != b'a' || b != b'b' {
+                return false;
+            }
+        } else {
+            stack.push(c);
+        }
+    }
+    stack.is_empty()
+}
+@@@LANG php
+function isValid($s) {
+    $stack = array();
+    $n = strlen($s);
+    for ($i = 0; $i < $n; $i++) {
+        $c = $s[$i];
+        if ($c === "c") {
+            if (count($stack) < 2) return false;
+            $b = array_pop($stack);
+            $a = array_pop($stack);
+            if ($a !== "a" || $b !== "b") return false;
+        } else {
+            $stack[] = $c;
+        }
+    }
+    return count($stack) === 0;
+}
+@@@LANG ruby
+def isValid(s)
+  stack = []
+  s.each_char do |c|
+    if c == "c"
+      return false if stack.length < 2
+      b = stack.pop
+      a = stack.pop
+      return false if a != "a" || b != "b"
+    else
+      stack.push(c)
+    end
+  end
+  stack.empty?
+end
+
+@@@PROBLEM crawler-log-folder
+@@@LANG typescript
+function minOperations(logs: string[]): number {
+    var depth = 0;
+    for (var i = 0; i < logs.length; i++) {
+        var op = logs[i];
+        if (op === "../") {
+            if (depth > 0) depth--;
+        } else if (op !== "./") {
+            depth++;
+        }
+    }
+    return depth;
+}
+@@@LANG java
+public static int minOperations(String[] logs) {
+    int depth = 0;
+    for (String op : logs) {
+        if (op.equals("../")) {
+            if (depth > 0) depth--;
+        } else if (!op.equals("./")) {
+            depth++;
+        }
+    }
+    return depth;
+}
+@@@LANG cpp
+int minOperations(vector<string>& logs) {
+    int depth = 0;
+    for (const string& op : logs) {
+        if (op == "../") {
+            if (depth > 0) depth--;
+        } else if (op != "./") {
+            depth++;
+        }
+    }
+    return depth;
+}
+@@@LANG c
+int minOperations(char** logs, int logsSize) {
+    int depth = 0;
+    for (int i = 0; i < logsSize; i++) {
+        if (strcmp(logs[i], "../") == 0) {
+            if (depth > 0) depth--;
+        } else if (strcmp(logs[i], "./") != 0) {
+            depth++;
+        }
+    }
+    return depth;
+}
+@@@LANG csharp
+public static int MinOperations(string[] logs)
+{
+    int depth = 0;
+    foreach (string op in logs)
+    {
+        if (op == "../")
+        {
+            if (depth > 0) depth--;
+        }
+        else if (op != "./")
+        {
+            depth++;
+        }
+    }
+    return depth;
+}
+@@@LANG go
+func minOperations(logs []string) int {
+	depth := 0
+	for _, op := range logs {
+		if op == "../" {
+			if depth > 0 {
+				depth--
+			}
+		} else if op != "./" {
+			depth++
+		}
+	}
+	return depth
+}
+@@@LANG kotlin
+fun minOperations(logs: Array<String>): Int {
+    var depth = 0
+    for (op in logs) {
+        if (op == "../") {
+            if (depth > 0) depth--
+        } else if (op != "./") {
+            depth++
+        }
+    }
+    return depth
+}
+@@@LANG swift
+func minOperations(_ logs: [String]) -> Int {
+    var depth = 0
+    for op in logs {
+        if op == "../" {
+            if depth > 0 { depth -= 1 }
+        } else if op != "./" {
+            depth += 1
+        }
+    }
+    return depth
+}
+@@@LANG rust
+fn minOperations(logs: Vec<String>) -> i32 {
+    let mut depth = 0;
+    for op in logs.iter() {
+        if op == "../" {
+            if depth > 0 {
+                depth -= 1;
+            }
+        } else if op != "./" {
+            depth += 1;
+        }
+    }
+    depth
+}
+@@@LANG php
+function minOperations($logs) {
+    $depth = 0;
+    foreach ($logs as $op) {
+        if ($op === "../") {
+            if ($depth > 0) $depth--;
+        } else if ($op !== "./") {
+            $depth++;
+        }
+    }
+    return $depth;
+}
+@@@LANG ruby
+def minOperations(logs)
+  depth = 0
+  logs.each do |op|
+    if op == "../"
+      depth -= 1 if depth > 0
+    elsif op != "./"
+      depth += 1
+    end
+  end
+  depth
+end
+
+@@@PROBLEM build-an-array-with-stack-operations
+@@@LANG typescript
+function buildArray(target: number[], n: number): string[] {
+    var out: string[] = [];
+    var value = 1;
+    for (var i = 0; i < target.length; i++) {
+        while (value < target[i]) {
+            out.push("Push");
+            out.push("Pop");
+            value++;
+        }
+        out.push("Push");
+        value++;
+    }
+    return out;
+}
+@@@LANG java
+public static String[] buildArray(int[] target, int n) {
+    List<String> out = new ArrayList<>();
+    int value = 1;
+    for (int want : target) {
+        while (value < want) {
+            out.add("Push");
+            out.add("Pop");
+            value++;
+        }
+        out.add("Push");
+        value++;
+    }
+    return out.toArray(new String[0]);
+}
+@@@LANG cpp
+vector<string> buildArray(vector<int>& target, int n) {
+    vector<string> out;
+    int value = 1;
+    for (int want : target) {
+        while (value < want) {
+            out.push_back("Push");
+            out.push_back("Pop");
+            value++;
+        }
+        out.push_back("Push");
+        value++;
+    }
+    return out;
+}
+@@@LANG c
+char** buildArray(int* target, int targetSize, int n, int* returnSize) {
+    char** out = (char**) malloc((size_t) (2 * n + 2) * sizeof(char*));
+    int m = 0;
+    int value = 1;
+    for (int i = 0; i < targetSize; i++) {
+        while (value < target[i]) {
+            out[m] = (char*) malloc(8);
+            strcpy(out[m++], "Push");
+            out[m] = (char*) malloc(8);
+            strcpy(out[m++], "Pop");
+            value++;
+        }
+        out[m] = (char*) malloc(8);
+        strcpy(out[m++], "Push");
+        value++;
+    }
+    *returnSize = m;
+    return out;
+}
+@@@LANG csharp
+public static string[] BuildArray(int[] target, int n)
+{
+    var out_ = new List<string>();
+    int value = 1;
+    foreach (int want in target)
+    {
+        while (value < want)
+        {
+            out_.Add("Push");
+            out_.Add("Pop");
+            value++;
+        }
+        out_.Add("Push");
+        value++;
+    }
+    return out_.ToArray();
+}
+@@@LANG go
+func buildArray(target []int, n int) []string {
+	out := []string{}
+	value := 1
+	for _, want := range target {
+		for value < want {
+			out = append(out, "Push", "Pop")
+			value++
+		}
+		out = append(out, "Push")
+		value++
+	}
+	return out
+}
+@@@LANG kotlin
+fun buildArray(target: IntArray, n: Int): Array<String> {
+    val out = ArrayList<String>()
+    var value = 1
+    for (want in target) {
+        while (value < want) {
+            out.add("Push")
+            out.add("Pop")
+            value++
+        }
+        out.add("Push")
+        value++
+    }
+    return out.toTypedArray()
+}
+@@@LANG swift
+func buildArray(_ target: [Int], _ n: Int) -> [String] {
+    var out: [String] = []
+    var value = 1
+    for want in target {
+        while value < want {
+            out.append("Push")
+            out.append("Pop")
+            value += 1
+        }
+        out.append("Push")
+        value += 1
+    }
+    return out
+}
+@@@LANG rust
+fn buildArray(target: Vec<i32>, n: i32) -> Vec<String> {
+    let mut out: Vec<String> = Vec::new();
+    let mut value = 1;
+    for want in target.iter() {
+        while value < *want {
+            out.push(String::from("Push"));
+            out.push(String::from("Pop"));
+            value += 1;
+        }
+        out.push(String::from("Push"));
+        value += 1;
+    }
+    out
+}
+@@@LANG php
+function buildArray($target, $n) {
+    $out = array();
+    $value = 1;
+    foreach ($target as $want) {
+        while ($value < $want) {
+            $out[] = "Push";
+            $out[] = "Pop";
+            $value++;
+        }
+        $out[] = "Push";
+        $value++;
+    }
+    return $out;
+}
+@@@LANG ruby
+def buildArray(target, n)
+  out = []
+  value = 1
+  target.each do |want|
+    while value < want
+      out.push("Push")
+      out.push("Pop")
+      value += 1
+    end
+    out.push("Push")
+    value += 1
+  end
+  out
+end
+
+@@@PROBLEM final-prices-with-a-special-discount-in-a-shop
+@@@LANG typescript
+function finalPrices(prices: number[]): number[] {
+    var out = prices.slice();
+    var stack: number[] = [];
+    for (var i = 0; i < prices.length; i++) {
+        while (stack.length > 0 && prices[stack[stack.length - 1]] >= prices[i]) {
+            var j = stack.pop() as number;
+            out[j] = prices[j] - prices[i];
+        }
+        stack.push(i);
+    }
+    return out;
+}
+@@@LANG java
+public static int[] finalPrices(int[] prices) {
+    int[] out = prices.clone();
+    Deque<Integer> stack = new ArrayDeque<>();
+    for (int i = 0; i < prices.length; i++) {
+        while (!stack.isEmpty() && prices[stack.peek()] >= prices[i]) {
+            int j = stack.pop();
+            out[j] = prices[j] - prices[i];
+        }
+        stack.push(i);
+    }
+    return out;
+}
+@@@LANG cpp
+vector<int> finalPrices(vector<int>& prices) {
+    vector<int> out = prices;
+    vector<int> stack;
+    for (int i = 0; i < (int) prices.size(); i++) {
+        while (!stack.empty() && prices[stack.back()] >= prices[i]) {
+            int j = stack.back();
+            stack.pop_back();
+            out[j] = prices[j] - prices[i];
+        }
+        stack.push_back(i);
+    }
+    return out;
+}
+@@@LANG c
+int* finalPrices(int* prices, int pricesSize, int* returnSize) {
+    int* out = (int*) malloc((size_t) (pricesSize > 0 ? pricesSize : 1) * sizeof(int));
+    for (int i = 0; i < pricesSize; i++) out[i] = prices[i];
+    int* stack = (int*) malloc((size_t) (pricesSize > 0 ? pricesSize : 1) * sizeof(int));
+    int top = 0;
+    for (int i = 0; i < pricesSize; i++) {
+        while (top > 0 && prices[stack[top - 1]] >= prices[i]) {
+            int j = stack[--top];
+            out[j] = prices[j] - prices[i];
+        }
+        stack[top++] = i;
+    }
+    free(stack);
+    *returnSize = pricesSize;
+    return out;
+}
+@@@LANG csharp
+public static int[] FinalPrices(int[] prices)
+{
+    int[] out_ = (int[]) prices.Clone();
+    var stack = new List<int>();
+    for (int i = 0; i < prices.Length; i++)
+    {
+        while (stack.Count > 0 && prices[stack[stack.Count - 1]] >= prices[i])
+        {
+            int j = stack[stack.Count - 1];
+            stack.RemoveAt(stack.Count - 1);
+            out_[j] = prices[j] - prices[i];
+        }
+        stack.Add(i);
+    }
+    return out_;
+}
+@@@LANG go
+func finalPrices(prices []int) []int {
+	out := append([]int{}, prices...)
+	stack := []int{}
+	for i := 0; i < len(prices); i++ {
+		for len(stack) > 0 && prices[stack[len(stack)-1]] >= prices[i] {
+			j := stack[len(stack)-1]
+			stack = stack[:len(stack)-1]
+			out[j] = prices[j] - prices[i]
+		}
+		stack = append(stack, i)
+	}
+	return out
+}
+@@@LANG kotlin
+fun finalPrices(prices: IntArray): IntArray {
+    val out = prices.copyOf()
+    val stack = ArrayList<Int>()
+    for (i in prices.indices) {
+        while (stack.isNotEmpty() && prices[stack[stack.size - 1]] >= prices[i]) {
+            val j = stack.removeAt(stack.size - 1)
+            out[j] = prices[j] - prices[i]
+        }
+        stack.add(i)
+    }
+    return out
+}
+@@@LANG swift
+func finalPrices(_ prices: [Int]) -> [Int] {
+    var out = prices
+    var stack: [Int] = []
+    for i in 0..<prices.count {
+        while let top = stack.last, prices[top] >= prices[i] {
+            stack.removeLast()
+            out[top] = prices[top] - prices[i]
+        }
+        stack.append(i)
+    }
+    return out
+}
+@@@LANG rust
+fn finalPrices(prices: Vec<i32>) -> Vec<i32> {
+    let mut out = prices.clone();
+    let mut stack: Vec<usize> = Vec::new();
+    for i in 0..prices.len() {
+        while let Some(&top) = stack.last() {
+            if prices[top] >= prices[i] {
+                stack.pop();
+                out[top] = prices[top] - prices[i];
+            } else {
+                break;
+            }
+        }
+        stack.push(i);
+    }
+    out
+}
+@@@LANG php
+function finalPrices($prices) {
+    $out = $prices;
+    $stack = array();
+    $n = count($prices);
+    for ($i = 0; $i < $n; $i++) {
+        while (count($stack) > 0 && $prices[$stack[count($stack) - 1]] >= $prices[$i]) {
+            $j = array_pop($stack);
+            $out[$j] = $prices[$j] - $prices[$i];
+        }
+        $stack[] = $i;
+    }
+    return $out;
+}
+@@@LANG ruby
+def finalPrices(prices)
+  out = prices.dup
+  stack = []
+  prices.each_with_index do |price, i|
+    while !stack.empty? && prices[stack[-1]] >= price
+      j = stack.pop
+      out[j] = prices[j] - price
+    end
+    stack.push(i)
+  end
+  out
+end
+
+@@@PROBLEM sum-of-subarray-minimums
+@@@LANG typescript
+function sumSubarrayMins(arr: number[]): number {
+    var MOD = 1000000007;
+    var n = arr.length;
+    var left: number[] = [];
+    var right: number[] = [];
+    for (var i = 0; i < n; i++) {
+        left.push(0);
+        right.push(0);
+    }
+    var stack: number[] = [];
+    for (var a = 0; a < n; a++) {
+        while (stack.length > 0 && arr[stack[stack.length - 1]] > arr[a]) stack.pop();
+        left[a] = stack.length === 0 ? a + 1 : a - stack[stack.length - 1];
+        stack.push(a);
+    }
+    stack = [];
+    for (var b = n - 1; b >= 0; b--) {
+        while (stack.length > 0 && arr[stack[stack.length - 1]] >= arr[b]) stack.pop();
+        right[b] = stack.length === 0 ? n - b : stack[stack.length - 1] - b;
+        stack.push(b);
+    }
+    var total = 0;
+    for (var c = 0; c < n; c++) total = (total + arr[c] * left[c] * right[c]) % MOD;
+    return total;
+}
+@@@LANG java
+public static int sumSubarrayMins(int[] arr) {
+    final int MOD = 1000000007;
+    int n = arr.length;
+    int[] left = new int[n];
+    int[] right = new int[n];
+    Deque<Integer> stack = new ArrayDeque<>();
+    for (int i = 0; i < n; i++) {
+        while (!stack.isEmpty() && arr[stack.peek()] > arr[i]) stack.pop();
+        left[i] = stack.isEmpty() ? i + 1 : i - stack.peek();
+        stack.push(i);
+    }
+    stack.clear();
+    for (int i = n - 1; i >= 0; i--) {
+        while (!stack.isEmpty() && arr[stack.peek()] >= arr[i]) stack.pop();
+        right[i] = stack.isEmpty() ? n - i : stack.peek() - i;
+        stack.push(i);
+    }
+    long total = 0;
+    for (int i = 0; i < n; i++) {
+        total = (total + (long) arr[i] * left[i] * right[i]) % MOD;
+    }
+    return (int) total;
+}
+@@@LANG cpp
+int sumSubarrayMins(vector<int>& arr) {
+    const long long MOD = 1000000007LL;
+    int n = (int) arr.size();
+    vector<int> left(n, 0), right(n, 0);
+    vector<int> stack;
+    for (int i = 0; i < n; i++) {
+        while (!stack.empty() && arr[stack.back()] > arr[i]) stack.pop_back();
+        left[i] = stack.empty() ? i + 1 : i - stack.back();
+        stack.push_back(i);
+    }
+    stack.clear();
+    for (int i = n - 1; i >= 0; i--) {
+        while (!stack.empty() && arr[stack.back()] >= arr[i]) stack.pop_back();
+        right[i] = stack.empty() ? n - i : stack.back() - i;
+        stack.push_back(i);
+    }
+    long long total = 0;
+    for (int i = 0; i < n; i++) {
+        total = (total + (long long) arr[i] * left[i] * right[i]) % MOD;
+    }
+    return (int) total;
+}
+@@@LANG c
+int sumSubarrayMins(int* arr, int arrSize) {
+    const long long MOD = 1000000007LL;
+    int n = arrSize;
+    int* left = (int*) calloc((size_t) (n > 0 ? n : 1), sizeof(int));
+    int* right = (int*) calloc((size_t) (n > 0 ? n : 1), sizeof(int));
+    int* stack = (int*) malloc((size_t) (n > 0 ? n : 1) * sizeof(int));
+    int top = 0;
+    for (int i = 0; i < n; i++) {
+        while (top > 0 && arr[stack[top - 1]] > arr[i]) top--;
+        left[i] = (top == 0) ? i + 1 : i - stack[top - 1];
+        stack[top++] = i;
+    }
+    top = 0;
+    for (int i = n - 1; i >= 0; i--) {
+        while (top > 0 && arr[stack[top - 1]] >= arr[i]) top--;
+        right[i] = (top == 0) ? n - i : stack[top - 1] - i;
+        stack[top++] = i;
+    }
+    long long total = 0;
+    for (int i = 0; i < n; i++) {
+        total = (total + (long long) arr[i] * left[i] * right[i]) % MOD;
+    }
+    free(left);
+    free(right);
+    free(stack);
+    return (int) total;
+}
+@@@LANG csharp
+public static int SumSubarrayMins(int[] arr)
+{
+    const long MOD = 1000000007L;
+    int n = arr.Length;
+    int[] left = new int[n];
+    int[] right = new int[n];
+    var stack = new List<int>();
+    for (int i = 0; i < n; i++)
+    {
+        while (stack.Count > 0 && arr[stack[stack.Count - 1]] > arr[i]) stack.RemoveAt(stack.Count - 1);
+        left[i] = stack.Count == 0 ? i + 1 : i - stack[stack.Count - 1];
+        stack.Add(i);
+    }
+    stack.Clear();
+    for (int i = n - 1; i >= 0; i--)
+    {
+        while (stack.Count > 0 && arr[stack[stack.Count - 1]] >= arr[i]) stack.RemoveAt(stack.Count - 1);
+        right[i] = stack.Count == 0 ? n - i : stack[stack.Count - 1] - i;
+        stack.Add(i);
+    }
+    long total = 0;
+    for (int i = 0; i < n; i++)
+    {
+        total = (total + (long) arr[i] * left[i] * right[i]) % MOD;
+    }
+    return (int) total;
+}
+@@@LANG go
+func sumSubarrayMins(arr []int) int {
+	const MOD = 1000000007
+	n := len(arr)
+	left := make([]int, n)
+	right := make([]int, n)
+	stack := []int{}
+	for i := 0; i < n; i++ {
+		for len(stack) > 0 && arr[stack[len(stack)-1]] > arr[i] {
+			stack = stack[:len(stack)-1]
+		}
+		if len(stack) == 0 {
+			left[i] = i + 1
+		} else {
+			left[i] = i - stack[len(stack)-1]
+		}
+		stack = append(stack, i)
+	}
+	stack = []int{}
+	for i := n - 1; i >= 0; i-- {
+		for len(stack) > 0 && arr[stack[len(stack)-1]] >= arr[i] {
+			stack = stack[:len(stack)-1]
+		}
+		if len(stack) == 0 {
+			right[i] = n - i
+		} else {
+			right[i] = stack[len(stack)-1] - i
+		}
+		stack = append(stack, i)
+	}
+	total := 0
+	for i := 0; i < n; i++ {
+		total = (total + arr[i]*left[i]*right[i]) % MOD
+	}
+	return total
+}
+@@@LANG kotlin
+fun sumSubarrayMins(arr: IntArray): Int {
+    val MOD = 1000000007L
+    val n = arr.size
+    val left = IntArray(n)
+    val right = IntArray(n)
+    val stack = ArrayList<Int>()
+    for (i in 0 until n) {
+        while (stack.isNotEmpty() && arr[stack[stack.size - 1]] > arr[i]) stack.removeAt(stack.size - 1)
+        left[i] = if (stack.isEmpty()) i + 1 else i - stack[stack.size - 1]
+        stack.add(i)
+    }
+    stack.clear()
+    for (i in n - 1 downTo 0) {
+        while (stack.isNotEmpty() && arr[stack[stack.size - 1]] >= arr[i]) stack.removeAt(stack.size - 1)
+        right[i] = if (stack.isEmpty()) n - i else stack[stack.size - 1] - i
+        stack.add(i)
+    }
+    var total = 0L
+    for (i in 0 until n) {
+        total = (total + arr[i].toLong() * left[i] * right[i]) % MOD
+    }
+    return total.toInt()
+}
+@@@LANG swift
+func sumSubarrayMins(_ arr: [Int]) -> Int {
+    let MOD = 1000000007
+    let n = arr.count
+    var left = [Int](repeating: 0, count: n)
+    var right = [Int](repeating: 0, count: n)
+    var stack: [Int] = []
+    for i in 0..<n {
+        while let top = stack.last, arr[top] > arr[i] { stack.removeLast() }
+        left[i] = stack.isEmpty ? i + 1 : i - stack[stack.count - 1]
+        stack.append(i)
+    }
+    stack.removeAll()
+    var i = n - 1
+    while i >= 0 {
+        while let top = stack.last, arr[top] >= arr[i] { stack.removeLast() }
+        right[i] = stack.isEmpty ? n - i : stack[stack.count - 1] - i
+        stack.append(i)
+        i -= 1
+    }
+    var total = 0
+    for j in 0..<n {
+        total = (total + arr[j] * left[j] * right[j]) % MOD
+    }
+    return total
+}
+@@@LANG rust
+fn sumSubarrayMins(arr: Vec<i32>) -> i32 {
+    let md: i64 = 1000000007;
+    let n = arr.len();
+    let mut left = vec![0i64; n];
+    let mut right = vec![0i64; n];
+    let mut stack: Vec<usize> = Vec::new();
+    for i in 0..n {
+        while let Some(&top) = stack.last() {
+            if arr[top] > arr[i] { stack.pop(); } else { break; }
+        }
+        left[i] = match stack.last() {
+            None => (i + 1) as i64,
+            Some(&top) => (i - top) as i64,
+        };
+        stack.push(i);
+    }
+    stack.clear();
+    for i in (0..n).rev() {
+        while let Some(&top) = stack.last() {
+            if arr[top] >= arr[i] { stack.pop(); } else { break; }
+        }
+        right[i] = match stack.last() {
+            None => (n - i) as i64,
+            Some(&top) => (top - i) as i64,
+        };
+        stack.push(i);
+    }
+    let mut total: i64 = 0;
+    for i in 0..n {
+        total = (total + arr[i] as i64 * left[i] * right[i]) % md;
+    }
+    total as i32
+}
+@@@LANG php
+function sumSubarrayMins($arr) {
+    $MOD = 1000000007;
+    $n = count($arr);
+    $left = array_fill(0, $n, 0);
+    $right = array_fill(0, $n, 0);
+    $stack = array();
+    for ($i = 0; $i < $n; $i++) {
+        while (count($stack) > 0 && $arr[$stack[count($stack) - 1]] > $arr[$i]) array_pop($stack);
+        $left[$i] = count($stack) === 0 ? $i + 1 : $i - $stack[count($stack) - 1];
+        $stack[] = $i;
+    }
+    $stack = array();
+    for ($i = $n - 1; $i >= 0; $i--) {
+        while (count($stack) > 0 && $arr[$stack[count($stack) - 1]] >= $arr[$i]) array_pop($stack);
+        $right[$i] = count($stack) === 0 ? $n - $i : $stack[count($stack) - 1] - $i;
+        $stack[] = $i;
+    }
+    $total = 0;
+    for ($i = 0; $i < $n; $i++) {
+        $total = ($total + $arr[$i] * $left[$i] * $right[$i]) % $MOD;
+    }
+    return $total;
+}
+@@@LANG ruby
+def sumSubarrayMins(arr)
+  mod = 1000000007
+  n = arr.length
+  left = Array.new(n, 0)
+  right = Array.new(n, 0)
+  stack = []
+  (0...n).each do |i|
+    stack.pop while !stack.empty? && arr[stack[-1]] > arr[i]
+    left[i] = stack.empty? ? i + 1 : i - stack[-1]
+    stack.push(i)
+  end
+  stack = []
+  (n - 1).downto(0) do |i|
+    stack.pop while !stack.empty? && arr[stack[-1]] >= arr[i]
+    right[i] = stack.empty? ? n - i : stack[-1] - i
+    stack.push(i)
+  end
+  total = 0
+  (0...n).each { |i| total = (total + arr[i] * left[i] * right[i]) % mod }
+  total
+end
+
+@@@PROBLEM 132-pattern
+@@@LANG typescript
+function find132pattern(nums: number[]): boolean {
+    var stack: number[] = [];
+    var hasThird = false;
+    var third = 0;
+    for (var i = nums.length - 1; i >= 0; i--) {
+        if (hasThird && nums[i] < third) return true;
+        while (stack.length > 0 && stack[stack.length - 1] < nums[i]) {
+            third = stack.pop() as number;
+            hasThird = true;
+        }
+        stack.push(nums[i]);
+    }
+    return false;
+}
+@@@LANG java
+public static boolean find132pattern(int[] nums) {
+    Deque<Integer> stack = new ArrayDeque<>();
+    boolean hasThird = false;
+    int third = 0;
+    for (int i = nums.length - 1; i >= 0; i--) {
+        if (hasThird && nums[i] < third) return true;
+        while (!stack.isEmpty() && stack.peek() < nums[i]) {
+            third = stack.pop();
+            hasThird = true;
+        }
+        stack.push(nums[i]);
+    }
+    return false;
+}
+@@@LANG cpp
+bool find132pattern(vector<int>& nums) {
+    vector<int> stack;
+    bool hasThird = false;
+    int third = 0;
+    for (int i = (int) nums.size() - 1; i >= 0; i--) {
+        if (hasThird && nums[i] < third) return true;
+        while (!stack.empty() && stack.back() < nums[i]) {
+            third = stack.back();
+            stack.pop_back();
+            hasThird = true;
+        }
+        stack.push_back(nums[i]);
+    }
+    return false;
+}
+@@@LANG c
+bool find132pattern(int* nums, int numsSize) {
+    int* stack = (int*) malloc((size_t) (numsSize > 0 ? numsSize : 1) * sizeof(int));
+    int top = 0;
+    bool hasThird = false;
+    int third = 0;
+    for (int i = numsSize - 1; i >= 0; i--) {
+        if (hasThird && nums[i] < third) {
+            free(stack);
+            return true;
+        }
+        while (top > 0 && stack[top - 1] < nums[i]) {
+            third = stack[--top];
+            hasThird = true;
+        }
+        stack[top++] = nums[i];
+    }
+    free(stack);
+    return false;
+}
+@@@LANG csharp
+public static bool Find132pattern(int[] nums)
+{
+    var stack = new List<int>();
+    bool hasThird = false;
+    int third = 0;
+    for (int i = nums.Length - 1; i >= 0; i--)
+    {
+        if (hasThird && nums[i] < third) return true;
+        while (stack.Count > 0 && stack[stack.Count - 1] < nums[i])
+        {
+            third = stack[stack.Count - 1];
+            stack.RemoveAt(stack.Count - 1);
+            hasThird = true;
+        }
+        stack.Add(nums[i]);
+    }
+    return false;
+}
+@@@LANG go
+func find132pattern(nums []int) bool {
+	stack := []int{}
+	hasThird := false
+	third := 0
+	for i := len(nums) - 1; i >= 0; i-- {
+		if hasThird && nums[i] < third {
+			return true
+		}
+		for len(stack) > 0 && stack[len(stack)-1] < nums[i] {
+			third = stack[len(stack)-1]
+			stack = stack[:len(stack)-1]
+			hasThird = true
+		}
+		stack = append(stack, nums[i])
+	}
+	return false
+}
+@@@LANG kotlin
+fun find132pattern(nums: IntArray): Boolean {
+    val stack = ArrayList<Int>()
+    var hasThird = false
+    var third = 0
+    for (i in nums.size - 1 downTo 0) {
+        if (hasThird && nums[i] < third) return true
+        while (stack.isNotEmpty() && stack[stack.size - 1] < nums[i]) {
+            third = stack.removeAt(stack.size - 1)
+            hasThird = true
+        }
+        stack.add(nums[i])
+    }
+    return false
+}
+@@@LANG swift
+func find132pattern(_ nums: [Int]) -> Bool {
+    var stack: [Int] = []
+    var hasThird = false
+    var third = 0
+    var i = nums.count - 1
+    while i >= 0 {
+        if hasThird && nums[i] < third { return true }
+        while let top = stack.last, top < nums[i] {
+            third = top
+            stack.removeLast()
+            hasThird = true
+        }
+        stack.append(nums[i])
+        i -= 1
+    }
+    return false
+}
+@@@LANG rust
+fn find132pattern(nums: Vec<i32>) -> bool {
+    let mut stack: Vec<i32> = Vec::new();
+    let mut has_third = false;
+    let mut third = 0;
+    for i in (0..nums.len()).rev() {
+        if has_third && nums[i] < third {
+            return true;
+        }
+        while let Some(&top) = stack.last() {
+            if top < nums[i] {
+                third = top;
+                stack.pop();
+                has_third = true;
+            } else {
+                break;
+            }
+        }
+        stack.push(nums[i]);
+    }
+    false
+}
+@@@LANG php
+function find132pattern($nums) {
+    $stack = array();
+    $hasThird = false;
+    $third = 0;
+    for ($i = count($nums) - 1; $i >= 0; $i--) {
+        if ($hasThird && $nums[$i] < $third) return true;
+        while (count($stack) > 0 && $stack[count($stack) - 1] < $nums[$i]) {
+            $third = array_pop($stack);
+            $hasThird = true;
+        }
+        $stack[] = $nums[$i];
+    }
+    return false;
+}
+@@@LANG ruby
+def find132pattern(nums)
+  stack = []
+  has_third = false
+  third = 0
+  (nums.length - 1).downto(0) do |i|
+    return true if has_third && nums[i] < third
+    while !stack.empty? && stack[-1] < nums[i]
+      third = stack.pop
+      has_third = true
+    end
+    stack.push(nums[i])
+  end
+  false
+end

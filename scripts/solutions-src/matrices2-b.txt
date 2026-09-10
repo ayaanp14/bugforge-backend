@@ -1,0 +1,2685 @@
+@@@PROBLEM number-of-equivalent-domino-pairs
+@@@LANG typescript
+function numEquivDominoPairs(dominoes: number[][]): number {
+    var count: { [key: string]: number } = {};
+    var total = 0;
+    for (var i = 0; i < dominoes.length; i++) {
+        var a = dominoes[i][0];
+        var b = dominoes[i][1];
+        var key = String(a < b ? a * 10 + b : b * 10 + a);
+        var seen = count[key] === undefined ? 0 : count[key];
+        total += seen;
+        count[key] = seen + 1;
+    }
+    return total;
+}
+@@@LANG java
+public static int numEquivDominoPairs(int[][] dominoes) {
+    int[] count = new int[100];
+    int total = 0;
+    for (int[] d : dominoes) {
+        int key = d[0] < d[1] ? d[0] * 10 + d[1] : d[1] * 10 + d[0];
+        total += count[key];
+        count[key]++;
+    }
+    return total;
+}
+@@@LANG cpp
+int numEquivDominoPairs(vector<vector<int>>& dominoes) {
+    int count[100] = {0};
+    int total = 0;
+    for (vector<int>& d : dominoes) {
+        int key = d[0] < d[1] ? d[0] * 10 + d[1] : d[1] * 10 + d[0];
+        total += count[key];
+        count[key]++;
+    }
+    return total;
+}
+@@@LANG c
+int numEquivDominoPairs(int** dominoes, int dominoesSize, int* dominoesColSize) {
+    int count[100] = {0};
+    int total = 0;
+    for (int i = 0; i < dominoesSize; i++) {
+        int a = dominoes[i][0], b = dominoes[i][1];
+        int key = a < b ? a * 10 + b : b * 10 + a;
+        total += count[key];
+        count[key]++;
+    }
+    return total;
+}
+@@@LANG csharp
+public static int NumEquivDominoPairs(int[][] dominoes)
+{
+    int[] count = new int[100];
+    int total = 0;
+    foreach (int[] d in dominoes)
+    {
+        int key = d[0] < d[1] ? d[0] * 10 + d[1] : d[1] * 10 + d[0];
+        total += count[key];
+        count[key]++;
+    }
+    return total;
+}
+@@@LANG go
+func numEquivDominoPairs(dominoes [][]int) int {
+	var count [100]int
+	total := 0
+	for _, d := range dominoes {
+		key := d[0]*10 + d[1]
+		if d[1] < d[0] {
+			key = d[1]*10 + d[0]
+		}
+		total += count[key]
+		count[key]++
+	}
+	return total
+}
+@@@LANG kotlin
+fun numEquivDominoPairs(dominoes: Array<IntArray>): Int {
+    val count = IntArray(100)
+    var total = 0
+    for (d in dominoes) {
+        val key = if (d[0] < d[1]) d[0] * 10 + d[1] else d[1] * 10 + d[0]
+        total += count[key]
+        count[key]++
+    }
+    return total
+}
+@@@LANG swift
+func numEquivDominoPairs(_ dominoes: [[Int]]) -> Int {
+    var count = [Int](repeating: 0, count: 100)
+    var total = 0
+    for d in dominoes {
+        let key = d[0] < d[1] ? d[0] * 10 + d[1] : d[1] * 10 + d[0]
+        total += count[key]
+        count[key] += 1
+    }
+    return total
+}
+@@@LANG rust
+fn numEquivDominoPairs(dominoes: Vec<Vec<i32>>) -> i32 {
+    let mut count = [0i32; 100];
+    let mut total = 0;
+    for d in dominoes.iter() {
+        let key = if d[0] < d[1] { d[0] * 10 + d[1] } else { d[1] * 10 + d[0] } as usize;
+        total += count[key];
+        count[key] += 1;
+    }
+    total
+}
+@@@LANG php
+function numEquivDominoPairs($dominoes) {
+    $count = array_fill(0, 100, 0);
+    $total = 0;
+    foreach ($dominoes as $d) {
+        $key = $d[0] < $d[1] ? $d[0] * 10 + $d[1] : $d[1] * 10 + $d[0];
+        $total += $count[$key];
+        $count[$key]++;
+    }
+    return $total;
+}
+@@@LANG ruby
+def numEquivDominoPairs(dominoes)
+  count = Array.new(100, 0)
+  total = 0
+  dominoes.each do |d|
+    key = d[0] < d[1] ? d[0] * 10 + d[1] : d[1] * 10 + d[0]
+    total += count[key]
+    count[key] += 1
+  end
+  total
+end
+
+@@@PROBLEM sort-the-matrix-diagonally
+@@@LANG typescript
+function diagonalSort(mat: number[][]): number[][] {
+    var m = mat.length;
+    var n = mat[0].length;
+    var groups: { [key: string]: number[] } = {};
+    for (var r = 0; r < m; r++) {
+        for (var c = 0; c < n; c++) {
+            var key = String(r - c);
+            if (groups[key] === undefined) groups[key] = [];
+            groups[key].push(mat[r][c]);
+        }
+    }
+    for (var g in groups) {
+        groups[g].sort(function (a, b) { return a - b; });
+    }
+    var cursor: { [key: string]: number } = {};
+    var out: number[][] = [];
+    for (var r2 = 0; r2 < m; r2++) {
+        var row: number[] = [];
+        for (var c2 = 0; c2 < n; c2++) {
+            var key2 = String(r2 - c2);
+            var idx = cursor[key2] === undefined ? 0 : cursor[key2];
+            row.push(groups[key2][idx]);
+            cursor[key2] = idx + 1;
+        }
+        out.push(row);
+    }
+    return out;
+}
+@@@LANG java
+public static int[][] diagonalSort(int[][] mat) {
+    int m = mat.length, n = mat[0].length;
+    Map<Integer, List<Integer>> groups = new HashMap<>();
+    for (int r = 0; r < m; r++) {
+        for (int c = 0; c < n; c++) {
+            groups.computeIfAbsent(r - c, x -> new ArrayList<>()).add(mat[r][c]);
+        }
+    }
+    for (List<Integer> g : groups.values()) Collections.sort(g);
+    Map<Integer, Integer> cursor = new HashMap<>();
+    int[][] out = new int[m][n];
+    for (int r = 0; r < m; r++) {
+        for (int c = 0; c < n; c++) {
+            int key = r - c;
+            int idx = cursor.getOrDefault(key, 0);
+            out[r][c] = groups.get(key).get(idx);
+            cursor.put(key, idx + 1);
+        }
+    }
+    return out;
+}
+@@@LANG cpp
+vector<vector<int>> diagonalSort(vector<vector<int>>& mat) {
+    int m = (int) mat.size(), n = (int) mat[0].size();
+    map<int, vector<int>> groups;
+    for (int r = 0; r < m; r++) {
+        for (int c = 0; c < n; c++) groups[r - c].push_back(mat[r][c]);
+    }
+    for (auto& kv : groups) sort(kv.second.begin(), kv.second.end());
+    map<int, int> cursor;
+    vector<vector<int>> out(m, vector<int>(n, 0));
+    for (int r = 0; r < m; r++) {
+        for (int c = 0; c < n; c++) {
+            int key = r - c;
+            out[r][c] = groups[key][cursor[key]];
+            cursor[key]++;
+        }
+    }
+    return out;
+}
+@@@LANG c
+int** diagonalSort(int** mat, int matSize, int* matColSize, int* returnSize, int** returnColumnSizes) {
+    int m = matSize, n = matColSize[0];
+    int total = m + n;
+    int** groups = (int**) malloc(sizeof(int*) * total);
+    int* lens = (int*) calloc(total, sizeof(int));
+    int* cursor = (int*) calloc(total, sizeof(int));
+    for (int i = 0; i < total; i++) groups[i] = (int*) malloc(sizeof(int) * (m > n ? m : n));
+    for (int r = 0; r < m; r++) {
+        for (int c = 0; c < n; c++) {
+            int key = r - c + n;
+            groups[key][lens[key]++] = mat[r][c];
+        }
+    }
+    for (int g = 0; g < total; g++) {
+        for (int i = 1; i < lens[g]; i++) {
+            int keyVal = groups[g][i];
+            int j = i - 1;
+            while (j >= 0 && groups[g][j] > keyVal) { groups[g][j + 1] = groups[g][j]; j--; }
+            groups[g][j + 1] = keyVal;
+        }
+    }
+    int** out = (int**) malloc(sizeof(int*) * m);
+    *returnColumnSizes = (int*) malloc(sizeof(int) * m);
+    for (int r = 0; r < m; r++) {
+        out[r] = (int*) malloc(sizeof(int) * n);
+        (*returnColumnSizes)[r] = n;
+        for (int c = 0; c < n; c++) {
+            int key = r - c + n;
+            out[r][c] = groups[key][cursor[key]++];
+        }
+    }
+    for (int i = 0; i < total; i++) free(groups[i]);
+    free(groups);
+    free(lens);
+    free(cursor);
+    *returnSize = m;
+    return out;
+}
+@@@LANG csharp
+public static int[][] DiagonalSort(int[][] mat)
+{
+    int m = mat.Length, n = mat[0].Length;
+    var groups = new Dictionary<int, List<int>>();
+    for (int r = 0; r < m; r++)
+    {
+        for (int c = 0; c < n; c++)
+        {
+            int key = r - c;
+            if (!groups.ContainsKey(key)) groups[key] = new List<int>();
+            groups[key].Add(mat[r][c]);
+        }
+    }
+    foreach (var g in groups.Values) g.Sort();
+    var cursor = new Dictionary<int, int>();
+    int[][] out_ = new int[m][];
+    for (int r = 0; r < m; r++)
+    {
+        out_[r] = new int[n];
+        for (int c = 0; c < n; c++)
+        {
+            int key = r - c;
+            int idx = cursor.ContainsKey(key) ? cursor[key] : 0;
+            out_[r][c] = groups[key][idx];
+            cursor[key] = idx + 1;
+        }
+    }
+    return out_;
+}
+@@@LANG go
+func diagonalSort(mat [][]int) [][]int {
+	m, n := len(mat), len(mat[0])
+	groups := make(map[int][]int)
+	for r := 0; r < m; r++ {
+		for c := 0; c < n; c++ {
+			groups[r-c] = append(groups[r-c], mat[r][c])
+		}
+	}
+	for key := range groups {
+		sort.Ints(groups[key])
+	}
+	cursor := make(map[int]int)
+	out := make([][]int, m)
+	for r := 0; r < m; r++ {
+		out[r] = make([]int, n)
+		for c := 0; c < n; c++ {
+			key := r - c
+			out[r][c] = groups[key][cursor[key]]
+			cursor[key]++
+		}
+	}
+	return out
+}
+@@@LANG kotlin
+fun diagonalSort(mat: Array<IntArray>): Array<IntArray> {
+    val m = mat.size
+    val n = mat[0].size
+    val groups = HashMap<Int, ArrayList<Int>>()
+    for (r in 0 until m) {
+        for (c in 0 until n) {
+            groups.getOrPut(r - c) { ArrayList() }.add(mat[r][c])
+        }
+    }
+    for (g in groups.values) g.sort()
+    val cursor = HashMap<Int, Int>()
+    val out = Array(m) { IntArray(n) }
+    for (r in 0 until m) {
+        for (c in 0 until n) {
+            val key = r - c
+            val idx = cursor[key] ?: 0
+            out[r][c] = groups[key]!![idx]
+            cursor[key] = idx + 1
+        }
+    }
+    return out
+}
+@@@LANG swift
+func diagonalSort(_ mat: [[Int]]) -> [[Int]] {
+    let m = mat.count
+    let n = mat[0].count
+    var groups: [Int: [Int]] = [:]
+    for r in 0..<m {
+        for c in 0..<n {
+            groups[r - c, default: []].append(mat[r][c])
+        }
+    }
+    for key in groups.keys {
+        groups[key]!.sort()
+    }
+    var cursor: [Int: Int] = [:]
+    var out = [[Int]](repeating: [Int](repeating: 0, count: n), count: m)
+    for r in 0..<m {
+        for c in 0..<n {
+            let key = r - c
+            let idx = cursor[key] ?? 0
+            out[r][c] = groups[key]![idx]
+            cursor[key] = idx + 1
+        }
+    }
+    return out
+}
+@@@LANG rust
+fn diagonalSort(mat: Vec<Vec<i32>>) -> Vec<Vec<i32>> {
+    use std::collections::HashMap;
+    let m = mat.len();
+    let n = mat[0].len();
+    let mut groups: HashMap<i32, Vec<i32>> = HashMap::new();
+    for r in 0..m {
+        for c in 0..n {
+            groups.entry(r as i32 - c as i32).or_insert_with(Vec::new).push(mat[r][c]);
+        }
+    }
+    for (_, g) in groups.iter_mut() {
+        g.sort();
+    }
+    let mut cursor: HashMap<i32, usize> = HashMap::new();
+    let mut out = vec![vec![0i32; n]; m];
+    for r in 0..m {
+        for c in 0..n {
+            let key = r as i32 - c as i32;
+            let idx = *cursor.get(&key).unwrap_or(&0);
+            out[r][c] = groups[&key][idx];
+            cursor.insert(key, idx + 1);
+        }
+    }
+    out
+}
+@@@LANG php
+function diagonalSort($mat) {
+    $m = count($mat);
+    $n = count($mat[0]);
+    $groups = array();
+    for ($r = 0; $r < $m; $r++) {
+        for ($c = 0; $c < $n; $c++) {
+            $key = $r - $c;
+            if (!isset($groups[$key])) $groups[$key] = array();
+            $groups[$key][] = $mat[$r][$c];
+        }
+    }
+    foreach ($groups as $key => $g) {
+        sort($g);
+        $groups[$key] = $g;
+    }
+    $cursor = array();
+    $out = array();
+    for ($r = 0; $r < $m; $r++) {
+        $row = array();
+        for ($c = 0; $c < $n; $c++) {
+            $key = $r - $c;
+            $idx = isset($cursor[$key]) ? $cursor[$key] : 0;
+            $row[] = $groups[$key][$idx];
+            $cursor[$key] = $idx + 1;
+        }
+        $out[] = $row;
+    }
+    return $out;
+}
+@@@LANG ruby
+def diagonalSort(mat)
+  m = mat.length
+  n = mat[0].length
+  groups = Hash.new { |h, k| h[k] = [] }
+  (0...m).each do |r|
+    (0...n).each { |c| groups[r - c] << mat[r][c] }
+  end
+  groups.each_value(&:sort!)
+  cursor = Hash.new(0)
+  (0...m).map do |r|
+    (0...n).map do |c|
+      key = r - c
+      value = groups[key][cursor[key]]
+      cursor[key] += 1
+      value
+    end
+  end
+end
+
+@@@PROBLEM minimum-path-sum
+@@@LANG typescript
+function minPathSum(grid: number[][]): number {
+    var m = grid.length;
+    var n = grid[0].length;
+    var dp: number[][] = [];
+    for (var i = 0; i < m; i++) dp.push(grid[i].slice());
+    for (var c = 1; c < n; c++) dp[0][c] += dp[0][c - 1];
+    for (var r = 1; r < m; r++) dp[r][0] += dp[r - 1][0];
+    for (var r2 = 1; r2 < m; r2++) {
+        for (var c2 = 1; c2 < n; c2++) {
+            dp[r2][c2] += Math.min(dp[r2 - 1][c2], dp[r2][c2 - 1]);
+        }
+    }
+    return dp[m - 1][n - 1];
+}
+@@@LANG java
+public static int minPathSum(int[][] grid) {
+    int m = grid.length, n = grid[0].length;
+    int[][] dp = new int[m][n];
+    for (int r = 0; r < m; r++) {
+        for (int c = 0; c < n; c++) dp[r][c] = grid[r][c];
+    }
+    for (int c = 1; c < n; c++) dp[0][c] += dp[0][c - 1];
+    for (int r = 1; r < m; r++) dp[r][0] += dp[r - 1][0];
+    for (int r = 1; r < m; r++) {
+        for (int c = 1; c < n; c++) {
+            dp[r][c] += Math.min(dp[r - 1][c], dp[r][c - 1]);
+        }
+    }
+    return dp[m - 1][n - 1];
+}
+@@@LANG cpp
+int minPathSum(vector<vector<int>>& grid) {
+    int m = (int) grid.size(), n = (int) grid[0].size();
+    vector<vector<int>> dp = grid;
+    for (int c = 1; c < n; c++) dp[0][c] += dp[0][c - 1];
+    for (int r = 1; r < m; r++) dp[r][0] += dp[r - 1][0];
+    for (int r = 1; r < m; r++) {
+        for (int c = 1; c < n; c++) {
+            dp[r][c] += min(dp[r - 1][c], dp[r][c - 1]);
+        }
+    }
+    return dp[m - 1][n - 1];
+}
+@@@LANG c
+int minPathSum(int** grid, int gridSize, int* gridColSize) {
+    int m = gridSize, n = gridColSize[0];
+    int** dp = (int**) malloc(sizeof(int*) * m);
+    for (int r = 0; r < m; r++) {
+        dp[r] = (int*) malloc(sizeof(int) * n);
+        for (int c = 0; c < n; c++) dp[r][c] = grid[r][c];
+    }
+    for (int c = 1; c < n; c++) dp[0][c] += dp[0][c - 1];
+    for (int r = 1; r < m; r++) dp[r][0] += dp[r - 1][0];
+    for (int r = 1; r < m; r++) {
+        for (int c = 1; c < n; c++) {
+            int up = dp[r - 1][c], leftV = dp[r][c - 1];
+            dp[r][c] += up < leftV ? up : leftV;
+        }
+    }
+    int result = dp[m - 1][n - 1];
+    for (int r = 0; r < m; r++) free(dp[r]);
+    free(dp);
+    return result;
+}
+@@@LANG csharp
+public static int MinPathSum(int[][] grid)
+{
+    int m = grid.Length, n = grid[0].Length;
+    int[][] dp = new int[m][];
+    for (int r = 0; r < m; r++)
+    {
+        dp[r] = new int[n];
+        for (int c = 0; c < n; c++) dp[r][c] = grid[r][c];
+    }
+    for (int c = 1; c < n; c++) dp[0][c] += dp[0][c - 1];
+    for (int r = 1; r < m; r++) dp[r][0] += dp[r - 1][0];
+    for (int r = 1; r < m; r++)
+    {
+        for (int c = 1; c < n; c++)
+        {
+            dp[r][c] += Math.Min(dp[r - 1][c], dp[r][c - 1]);
+        }
+    }
+    return dp[m - 1][n - 1];
+}
+@@@LANG go
+func minPathSum(grid [][]int) int {
+	m, n := len(grid), len(grid[0])
+	dp := make([][]int, m)
+	for r := 0; r < m; r++ {
+		dp[r] = make([]int, n)
+		copy(dp[r], grid[r])
+	}
+	for c := 1; c < n; c++ {
+		dp[0][c] += dp[0][c-1]
+	}
+	for r := 1; r < m; r++ {
+		dp[r][0] += dp[r-1][0]
+	}
+	for r := 1; r < m; r++ {
+		for c := 1; c < n; c++ {
+			up, leftV := dp[r-1][c], dp[r][c-1]
+			if up < leftV {
+				dp[r][c] += up
+			} else {
+				dp[r][c] += leftV
+			}
+		}
+	}
+	return dp[m-1][n-1]
+}
+@@@LANG kotlin
+fun minPathSum(grid: Array<IntArray>): Int {
+    val m = grid.size
+    val n = grid[0].size
+    val dp = Array(m) { grid[it].copyOf() }
+    for (c in 1 until n) dp[0][c] += dp[0][c - 1]
+    for (r in 1 until m) dp[r][0] += dp[r - 1][0]
+    for (r in 1 until m) {
+        for (c in 1 until n) {
+            dp[r][c] += Math.min(dp[r - 1][c], dp[r][c - 1])
+        }
+    }
+    return dp[m - 1][n - 1]
+}
+@@@LANG swift
+func minPathSum(_ grid: [[Int]]) -> Int {
+    let m = grid.count
+    let n = grid[0].count
+    var dp = grid
+    for c in 1..<max(n, 1) { dp[0][c] += dp[0][c - 1] }
+    for r in 1..<max(m, 1) { dp[r][0] += dp[r - 1][0] }
+    if m > 1 && n > 1 {
+        for r in 1..<m {
+            for c in 1..<n {
+                dp[r][c] += min(dp[r - 1][c], dp[r][c - 1])
+            }
+        }
+    }
+    return dp[m - 1][n - 1]
+}
+@@@LANG rust
+fn minPathSum(grid: Vec<Vec<i32>>) -> i32 {
+    let m = grid.len();
+    let n = grid[0].len();
+    let mut dp = grid.clone();
+    for c in 1..n {
+        dp[0][c] += dp[0][c - 1];
+    }
+    for r in 1..m {
+        dp[r][0] += dp[r - 1][0];
+    }
+    for r in 1..m {
+        for c in 1..n {
+            let up = dp[r - 1][c];
+            let left = dp[r][c - 1];
+            dp[r][c] += if up < left { up } else { left };
+        }
+    }
+    dp[m - 1][n - 1]
+}
+@@@LANG php
+function minPathSum($grid) {
+    $m = count($grid);
+    $n = count($grid[0]);
+    $dp = $grid;
+    for ($c = 1; $c < $n; $c++) $dp[0][$c] += $dp[0][$c - 1];
+    for ($r = 1; $r < $m; $r++) $dp[$r][0] += $dp[$r - 1][0];
+    for ($r = 1; $r < $m; $r++) {
+        for ($c = 1; $c < $n; $c++) {
+            $dp[$r][$c] += min($dp[$r - 1][$c], $dp[$r][$c - 1]);
+        }
+    }
+    return $dp[$m - 1][$n - 1];
+}
+@@@LANG ruby
+def minPathSum(grid)
+  m = grid.length
+  n = grid[0].length
+  dp = grid.map(&:dup)
+  (1...n).each { |c| dp[0][c] += dp[0][c - 1] }
+  (1...m).each { |r| dp[r][0] += dp[r - 1][0] }
+  (1...m).each do |r|
+    (1...n).each do |c|
+      dp[r][c] += [dp[r - 1][c], dp[r][c - 1]].min
+    end
+  end
+  dp[m - 1][n - 1]
+end
+
+@@@PROBLEM unique-paths-ii
+@@@LANG typescript
+function uniquePathsWithObstacles(obstacleGrid: number[][]): number {
+    var m = obstacleGrid.length;
+    var n = obstacleGrid[0].length;
+    if (obstacleGrid[0][0] === 1) return 0;
+    var dp: number[][] = [];
+    for (var i = 0; i < m; i++) {
+        var row: number[] = [];
+        for (var j = 0; j < n; j++) row.push(0);
+        dp.push(row);
+    }
+    dp[0][0] = 1;
+    for (var r = 0; r < m; r++) {
+        for (var c = 0; c < n; c++) {
+            if (obstacleGrid[r][c] === 1) { dp[r][c] = 0; continue; }
+            if (r > 0) dp[r][c] += dp[r - 1][c];
+            if (c > 0) dp[r][c] += dp[r][c - 1];
+        }
+    }
+    return dp[m - 1][n - 1];
+}
+@@@LANG java
+public static int uniquePathsWithObstacles(int[][] obstacleGrid) {
+    int m = obstacleGrid.length, n = obstacleGrid[0].length;
+    if (obstacleGrid[0][0] == 1) return 0;
+    int[][] dp = new int[m][n];
+    dp[0][0] = 1;
+    for (int r = 0; r < m; r++) {
+        for (int c = 0; c < n; c++) {
+            if (obstacleGrid[r][c] == 1) { dp[r][c] = 0; continue; }
+            if (r > 0) dp[r][c] += dp[r - 1][c];
+            if (c > 0) dp[r][c] += dp[r][c - 1];
+        }
+    }
+    return dp[m - 1][n - 1];
+}
+@@@LANG cpp
+int uniquePathsWithObstacles(vector<vector<int>>& obstacleGrid) {
+    int m = (int) obstacleGrid.size(), n = (int) obstacleGrid[0].size();
+    if (obstacleGrid[0][0] == 1) return 0;
+    vector<vector<int>> dp(m, vector<int>(n, 0));
+    dp[0][0] = 1;
+    for (int r = 0; r < m; r++) {
+        for (int c = 0; c < n; c++) {
+            if (obstacleGrid[r][c] == 1) { dp[r][c] = 0; continue; }
+            if (r > 0) dp[r][c] += dp[r - 1][c];
+            if (c > 0) dp[r][c] += dp[r][c - 1];
+        }
+    }
+    return dp[m - 1][n - 1];
+}
+@@@LANG c
+int uniquePathsWithObstacles(int** obstacleGrid, int obstacleGridSize, int* obstacleGridColSize) {
+    int m = obstacleGridSize, n = obstacleGridColSize[0];
+    if (obstacleGrid[0][0] == 1) return 0;
+    int** dp = (int**) malloc(sizeof(int*) * m);
+    for (int r = 0; r < m; r++) dp[r] = (int*) calloc(n, sizeof(int));
+    dp[0][0] = 1;
+    for (int r = 0; r < m; r++) {
+        for (int c = 0; c < n; c++) {
+            if (obstacleGrid[r][c] == 1) { dp[r][c] = 0; continue; }
+            if (r > 0) dp[r][c] += dp[r - 1][c];
+            if (c > 0) dp[r][c] += dp[r][c - 1];
+        }
+    }
+    int result = dp[m - 1][n - 1];
+    for (int r = 0; r < m; r++) free(dp[r]);
+    free(dp);
+    return result;
+}
+@@@LANG csharp
+public static int UniquePathsWithObstacles(int[][] obstacleGrid)
+{
+    int m = obstacleGrid.Length, n = obstacleGrid[0].Length;
+    if (obstacleGrid[0][0] == 1) return 0;
+    int[][] dp = new int[m][];
+    for (int r = 0; r < m; r++) dp[r] = new int[n];
+    dp[0][0] = 1;
+    for (int r = 0; r < m; r++)
+    {
+        for (int c = 0; c < n; c++)
+        {
+            if (obstacleGrid[r][c] == 1) { dp[r][c] = 0; continue; }
+            if (r > 0) dp[r][c] += dp[r - 1][c];
+            if (c > 0) dp[r][c] += dp[r][c - 1];
+        }
+    }
+    return dp[m - 1][n - 1];
+}
+@@@LANG go
+func uniquePathsWithObstacles(obstacleGrid [][]int) int {
+	m, n := len(obstacleGrid), len(obstacleGrid[0])
+	if obstacleGrid[0][0] == 1 {
+		return 0
+	}
+	dp := make([][]int, m)
+	for r := range dp {
+		dp[r] = make([]int, n)
+	}
+	dp[0][0] = 1
+	for r := 0; r < m; r++ {
+		for c := 0; c < n; c++ {
+			if obstacleGrid[r][c] == 1 {
+				dp[r][c] = 0
+				continue
+			}
+			if r > 0 {
+				dp[r][c] += dp[r-1][c]
+			}
+			if c > 0 {
+				dp[r][c] += dp[r][c-1]
+			}
+		}
+	}
+	return dp[m-1][n-1]
+}
+@@@LANG kotlin
+fun uniquePathsWithObstacles(obstacleGrid: Array<IntArray>): Int {
+    val m = obstacleGrid.size
+    val n = obstacleGrid[0].size
+    if (obstacleGrid[0][0] == 1) return 0
+    val dp = Array(m) { IntArray(n) }
+    dp[0][0] = 1
+    for (r in 0 until m) {
+        for (c in 0 until n) {
+            if (obstacleGrid[r][c] == 1) {
+                dp[r][c] = 0
+                continue
+            }
+            if (r > 0) dp[r][c] += dp[r - 1][c]
+            if (c > 0) dp[r][c] += dp[r][c - 1]
+        }
+    }
+    return dp[m - 1][n - 1]
+}
+@@@LANG swift
+func uniquePathsWithObstacles(_ obstacleGrid: [[Int]]) -> Int {
+    let m = obstacleGrid.count
+    let n = obstacleGrid[0].count
+    if obstacleGrid[0][0] == 1 { return 0 }
+    var dp = [[Int]](repeating: [Int](repeating: 0, count: n), count: m)
+    dp[0][0] = 1
+    for r in 0..<m {
+        for c in 0..<n {
+            if obstacleGrid[r][c] == 1 {
+                dp[r][c] = 0
+                continue
+            }
+            if r > 0 { dp[r][c] += dp[r - 1][c] }
+            if c > 0 { dp[r][c] += dp[r][c - 1] }
+        }
+    }
+    return dp[m - 1][n - 1]
+}
+@@@LANG rust
+fn uniquePathsWithObstacles(obstacleGrid: Vec<Vec<i32>>) -> i32 {
+    let m = obstacleGrid.len();
+    let n = obstacleGrid[0].len();
+    if obstacleGrid[0][0] == 1 {
+        return 0;
+    }
+    let mut dp = vec![vec![0i32; n]; m];
+    dp[0][0] = 1;
+    for r in 0..m {
+        for c in 0..n {
+            if obstacleGrid[r][c] == 1 {
+                dp[r][c] = 0;
+                continue;
+            }
+            if r > 0 {
+                dp[r][c] += dp[r - 1][c];
+            }
+            if c > 0 {
+                dp[r][c] += dp[r][c - 1];
+            }
+        }
+    }
+    dp[m - 1][n - 1]
+}
+@@@LANG php
+function uniquePathsWithObstacles($obstacleGrid) {
+    $m = count($obstacleGrid);
+    $n = count($obstacleGrid[0]);
+    if ($obstacleGrid[0][0] === 1) return 0;
+    $dp = array();
+    for ($i = 0; $i < $m; $i++) $dp[] = array_fill(0, $n, 0);
+    $dp[0][0] = 1;
+    for ($r = 0; $r < $m; $r++) {
+        for ($c = 0; $c < $n; $c++) {
+            if ($obstacleGrid[$r][$c] === 1) { $dp[$r][$c] = 0; continue; }
+            if ($r > 0) $dp[$r][$c] += $dp[$r - 1][$c];
+            if ($c > 0) $dp[$r][$c] += $dp[$r][$c - 1];
+        }
+    }
+    return $dp[$m - 1][$n - 1];
+}
+@@@LANG ruby
+def uniquePathsWithObstacles(obstacleGrid)
+  m = obstacleGrid.length
+  n = obstacleGrid[0].length
+  return 0 if obstacleGrid[0][0] == 1
+  dp = Array.new(m) { Array.new(n, 0) }
+  dp[0][0] = 1
+  (0...m).each do |r|
+    (0...n).each do |c|
+      if obstacleGrid[r][c] == 1
+        dp[r][c] = 0
+        next
+      end
+      dp[r][c] += dp[r - 1][c] if r > 0
+      dp[r][c] += dp[r][c - 1] if c > 0
+    end
+  end
+  dp[m - 1][n - 1]
+end
+
+@@@PROBLEM maximal-square
+@@@LANG typescript
+function maximalSquare(matrix: number[][]): number {
+    var m = matrix.length;
+    var n = matrix[0].length;
+    var dp: number[][] = [];
+    for (var i = 0; i < m; i++) {
+        var row: number[] = [];
+        for (var j = 0; j < n; j++) row.push(0);
+        dp.push(row);
+    }
+    var best = 0;
+    for (var r = 0; r < m; r++) {
+        for (var c = 0; c < n; c++) {
+            if (matrix[r][c] === 1) {
+                if (r === 0 || c === 0) dp[r][c] = 1;
+                else dp[r][c] = Math.min(dp[r - 1][c], Math.min(dp[r][c - 1], dp[r - 1][c - 1])) + 1;
+                if (dp[r][c] > best) best = dp[r][c];
+            }
+        }
+    }
+    return best * best;
+}
+@@@LANG java
+public static int maximalSquare(int[][] matrix) {
+    int m = matrix.length, n = matrix[0].length;
+    int[][] dp = new int[m][n];
+    int best = 0;
+    for (int r = 0; r < m; r++) {
+        for (int c = 0; c < n; c++) {
+            if (matrix[r][c] == 1) {
+                if (r == 0 || c == 0) dp[r][c] = 1;
+                else dp[r][c] = Math.min(dp[r - 1][c], Math.min(dp[r][c - 1], dp[r - 1][c - 1])) + 1;
+                if (dp[r][c] > best) best = dp[r][c];
+            }
+        }
+    }
+    return best * best;
+}
+@@@LANG cpp
+int maximalSquare(vector<vector<int>>& matrix) {
+    int m = (int) matrix.size(), n = (int) matrix[0].size();
+    vector<vector<int>> dp(m, vector<int>(n, 0));
+    int best = 0;
+    for (int r = 0; r < m; r++) {
+        for (int c = 0; c < n; c++) {
+            if (matrix[r][c] == 1) {
+                if (r == 0 || c == 0) dp[r][c] = 1;
+                else dp[r][c] = min(dp[r - 1][c], min(dp[r][c - 1], dp[r - 1][c - 1])) + 1;
+                best = max(best, dp[r][c]);
+            }
+        }
+    }
+    return best * best;
+}
+@@@LANG c
+int maximalSquare(int** matrix, int matrixSize, int* matrixColSize) {
+    int m = matrixSize, n = matrixColSize[0];
+    int** dp = (int**) malloc(sizeof(int*) * m);
+    for (int r = 0; r < m; r++) dp[r] = (int*) calloc(n, sizeof(int));
+    int best = 0;
+    for (int r = 0; r < m; r++) {
+        for (int c = 0; c < n; c++) {
+            if (matrix[r][c] == 1) {
+                if (r == 0 || c == 0) {
+                    dp[r][c] = 1;
+                } else {
+                    int a = dp[r - 1][c], b = dp[r][c - 1], d = dp[r - 1][c - 1];
+                    int smallest = a < b ? a : b;
+                    if (d < smallest) smallest = d;
+                    dp[r][c] = smallest + 1;
+                }
+                if (dp[r][c] > best) best = dp[r][c];
+            }
+        }
+    }
+    for (int r = 0; r < m; r++) free(dp[r]);
+    free(dp);
+    return best * best;
+}
+@@@LANG csharp
+public static int MaximalSquare(int[][] matrix)
+{
+    int m = matrix.Length, n = matrix[0].Length;
+    int[][] dp = new int[m][];
+    for (int r = 0; r < m; r++) dp[r] = new int[n];
+    int best = 0;
+    for (int r = 0; r < m; r++)
+    {
+        for (int c = 0; c < n; c++)
+        {
+            if (matrix[r][c] == 1)
+            {
+                if (r == 0 || c == 0) dp[r][c] = 1;
+                else dp[r][c] = Math.Min(dp[r - 1][c], Math.Min(dp[r][c - 1], dp[r - 1][c - 1])) + 1;
+                if (dp[r][c] > best) best = dp[r][c];
+            }
+        }
+    }
+    return best * best;
+}
+@@@LANG go
+func maximalSquare(matrix [][]int) int {
+	m, n := len(matrix), len(matrix[0])
+	dp := make([][]int, m)
+	for r := range dp {
+		dp[r] = make([]int, n)
+	}
+	best := 0
+	for r := 0; r < m; r++ {
+		for c := 0; c < n; c++ {
+			if matrix[r][c] == 1 {
+				if r == 0 || c == 0 {
+					dp[r][c] = 1
+				} else {
+					smallest := dp[r-1][c]
+					if dp[r][c-1] < smallest {
+						smallest = dp[r][c-1]
+					}
+					if dp[r-1][c-1] < smallest {
+						smallest = dp[r-1][c-1]
+					}
+					dp[r][c] = smallest + 1
+				}
+				if dp[r][c] > best {
+					best = dp[r][c]
+				}
+			}
+		}
+	}
+	return best * best
+}
+@@@LANG kotlin
+fun maximalSquare(matrix: Array<IntArray>): Int {
+    val m = matrix.size
+    val n = matrix[0].size
+    val dp = Array(m) { IntArray(n) }
+    var best = 0
+    for (r in 0 until m) {
+        for (c in 0 until n) {
+            if (matrix[r][c] == 1) {
+                dp[r][c] = if (r == 0 || c == 0) 1
+                else minOf(dp[r - 1][c], dp[r][c - 1], dp[r - 1][c - 1]) + 1
+                if (dp[r][c] > best) best = dp[r][c]
+            }
+        }
+    }
+    return best * best
+}
+@@@LANG swift
+func maximalSquare(_ matrix: [[Int]]) -> Int {
+    let m = matrix.count
+    let n = matrix[0].count
+    var dp = [[Int]](repeating: [Int](repeating: 0, count: n), count: m)
+    var best = 0
+    for r in 0..<m {
+        for c in 0..<n {
+            if matrix[r][c] == 1 {
+                if r == 0 || c == 0 {
+                    dp[r][c] = 1
+                } else {
+                    dp[r][c] = min(dp[r - 1][c], min(dp[r][c - 1], dp[r - 1][c - 1])) + 1
+                }
+                if dp[r][c] > best { best = dp[r][c] }
+            }
+        }
+    }
+    return best * best
+}
+@@@LANG rust
+fn maximalSquare(matrix: Vec<Vec<i32>>) -> i32 {
+    let m = matrix.len();
+    let n = matrix[0].len();
+    let mut dp = vec![vec![0i32; n]; m];
+    let mut best = 0;
+    for r in 0..m {
+        for c in 0..n {
+            if matrix[r][c] == 1 {
+                dp[r][c] = if r == 0 || c == 0 {
+                    1
+                } else {
+                    let a = dp[r - 1][c];
+                    let b = dp[r][c - 1];
+                    let d = dp[r - 1][c - 1];
+                    let smallest = if a < b { a } else { b };
+                    let smallest = if d < smallest { d } else { smallest };
+                    smallest + 1
+                };
+                if dp[r][c] > best {
+                    best = dp[r][c];
+                }
+            }
+        }
+    }
+    best * best
+}
+@@@LANG php
+function maximalSquare($matrix) {
+    $m = count($matrix);
+    $n = count($matrix[0]);
+    $dp = array();
+    for ($i = 0; $i < $m; $i++) $dp[] = array_fill(0, $n, 0);
+    $best = 0;
+    for ($r = 0; $r < $m; $r++) {
+        for ($c = 0; $c < $n; $c++) {
+            if ($matrix[$r][$c] === 1) {
+                if ($r === 0 || $c === 0) $dp[$r][$c] = 1;
+                else $dp[$r][$c] = min($dp[$r - 1][$c], $dp[$r][$c - 1], $dp[$r - 1][$c - 1]) + 1;
+                if ($dp[$r][$c] > $best) $best = $dp[$r][$c];
+            }
+        }
+    }
+    return $best * $best;
+}
+@@@LANG ruby
+def maximalSquare(matrix)
+  m = matrix.length
+  n = matrix[0].length
+  dp = Array.new(m) { Array.new(n, 0) }
+  best = 0
+  (0...m).each do |r|
+    (0...n).each do |c|
+      next unless matrix[r][c] == 1
+      dp[r][c] = if r == 0 || c == 0
+                   1
+                 else
+                   [dp[r - 1][c], dp[r][c - 1], dp[r - 1][c - 1]].min + 1
+                 end
+      best = dp[r][c] if dp[r][c] > best
+    end
+  end
+  best * best
+end
+
+@@@PROBLEM count-square-submatrices-with-all-ones
+@@@LANG typescript
+function countSquares(matrix: number[][]): number {
+    var m = matrix.length;
+    var n = matrix[0].length;
+    var dp: number[][] = [];
+    for (var i = 0; i < m; i++) {
+        var row: number[] = [];
+        for (var j = 0; j < n; j++) row.push(0);
+        dp.push(row);
+    }
+    var total = 0;
+    for (var r = 0; r < m; r++) {
+        for (var c = 0; c < n; c++) {
+            if (matrix[r][c] === 1) {
+                if (r === 0 || c === 0) dp[r][c] = 1;
+                else dp[r][c] = Math.min(dp[r - 1][c], Math.min(dp[r][c - 1], dp[r - 1][c - 1])) + 1;
+                total += dp[r][c];
+            }
+        }
+    }
+    return total;
+}
+@@@LANG java
+public static int countSquares(int[][] matrix) {
+    int m = matrix.length, n = matrix[0].length;
+    int[][] dp = new int[m][n];
+    int total = 0;
+    for (int r = 0; r < m; r++) {
+        for (int c = 0; c < n; c++) {
+            if (matrix[r][c] == 1) {
+                if (r == 0 || c == 0) dp[r][c] = 1;
+                else dp[r][c] = Math.min(dp[r - 1][c], Math.min(dp[r][c - 1], dp[r - 1][c - 1])) + 1;
+                total += dp[r][c];
+            }
+        }
+    }
+    return total;
+}
+@@@LANG cpp
+int countSquares(vector<vector<int>>& matrix) {
+    int m = (int) matrix.size(), n = (int) matrix[0].size();
+    vector<vector<int>> dp(m, vector<int>(n, 0));
+    int total = 0;
+    for (int r = 0; r < m; r++) {
+        for (int c = 0; c < n; c++) {
+            if (matrix[r][c] == 1) {
+                if (r == 0 || c == 0) dp[r][c] = 1;
+                else dp[r][c] = min(dp[r - 1][c], min(dp[r][c - 1], dp[r - 1][c - 1])) + 1;
+                total += dp[r][c];
+            }
+        }
+    }
+    return total;
+}
+@@@LANG c
+int countSquares(int** matrix, int matrixSize, int* matrixColSize) {
+    int m = matrixSize, n = matrixColSize[0];
+    int** dp = (int**) malloc(sizeof(int*) * m);
+    for (int r = 0; r < m; r++) dp[r] = (int*) calloc(n, sizeof(int));
+    int total = 0;
+    for (int r = 0; r < m; r++) {
+        for (int c = 0; c < n; c++) {
+            if (matrix[r][c] == 1) {
+                if (r == 0 || c == 0) {
+                    dp[r][c] = 1;
+                } else {
+                    int a = dp[r - 1][c], b = dp[r][c - 1], d = dp[r - 1][c - 1];
+                    int smallest = a < b ? a : b;
+                    if (d < smallest) smallest = d;
+                    dp[r][c] = smallest + 1;
+                }
+                total += dp[r][c];
+            }
+        }
+    }
+    for (int r = 0; r < m; r++) free(dp[r]);
+    free(dp);
+    return total;
+}
+@@@LANG csharp
+public static int CountSquares(int[][] matrix)
+{
+    int m = matrix.Length, n = matrix[0].Length;
+    int[][] dp = new int[m][];
+    for (int r = 0; r < m; r++) dp[r] = new int[n];
+    int total = 0;
+    for (int r = 0; r < m; r++)
+    {
+        for (int c = 0; c < n; c++)
+        {
+            if (matrix[r][c] == 1)
+            {
+                if (r == 0 || c == 0) dp[r][c] = 1;
+                else dp[r][c] = Math.Min(dp[r - 1][c], Math.Min(dp[r][c - 1], dp[r - 1][c - 1])) + 1;
+                total += dp[r][c];
+            }
+        }
+    }
+    return total;
+}
+@@@LANG go
+func countSquares(matrix [][]int) int {
+	m, n := len(matrix), len(matrix[0])
+	dp := make([][]int, m)
+	for r := range dp {
+		dp[r] = make([]int, n)
+	}
+	total := 0
+	for r := 0; r < m; r++ {
+		for c := 0; c < n; c++ {
+			if matrix[r][c] == 1 {
+				if r == 0 || c == 0 {
+					dp[r][c] = 1
+				} else {
+					smallest := dp[r-1][c]
+					if dp[r][c-1] < smallest {
+						smallest = dp[r][c-1]
+					}
+					if dp[r-1][c-1] < smallest {
+						smallest = dp[r-1][c-1]
+					}
+					dp[r][c] = smallest + 1
+				}
+				total += dp[r][c]
+			}
+		}
+	}
+	return total
+}
+@@@LANG kotlin
+fun countSquares(matrix: Array<IntArray>): Int {
+    val m = matrix.size
+    val n = matrix[0].size
+    val dp = Array(m) { IntArray(n) }
+    var total = 0
+    for (r in 0 until m) {
+        for (c in 0 until n) {
+            if (matrix[r][c] == 1) {
+                dp[r][c] = if (r == 0 || c == 0) 1
+                else minOf(dp[r - 1][c], dp[r][c - 1], dp[r - 1][c - 1]) + 1
+                total += dp[r][c]
+            }
+        }
+    }
+    return total
+}
+@@@LANG swift
+func countSquares(_ matrix: [[Int]]) -> Int {
+    let m = matrix.count
+    let n = matrix[0].count
+    var dp = [[Int]](repeating: [Int](repeating: 0, count: n), count: m)
+    var total = 0
+    for r in 0..<m {
+        for c in 0..<n {
+            if matrix[r][c] == 1 {
+                if r == 0 || c == 0 {
+                    dp[r][c] = 1
+                } else {
+                    dp[r][c] = min(dp[r - 1][c], min(dp[r][c - 1], dp[r - 1][c - 1])) + 1
+                }
+                total += dp[r][c]
+            }
+        }
+    }
+    return total
+}
+@@@LANG rust
+fn countSquares(matrix: Vec<Vec<i32>>) -> i32 {
+    let m = matrix.len();
+    let n = matrix[0].len();
+    let mut dp = vec![vec![0i32; n]; m];
+    let mut total = 0;
+    for r in 0..m {
+        for c in 0..n {
+            if matrix[r][c] == 1 {
+                dp[r][c] = if r == 0 || c == 0 {
+                    1
+                } else {
+                    let a = dp[r - 1][c];
+                    let b = dp[r][c - 1];
+                    let d = dp[r - 1][c - 1];
+                    let smallest = if a < b { a } else { b };
+                    let smallest = if d < smallest { d } else { smallest };
+                    smallest + 1
+                };
+                total += dp[r][c];
+            }
+        }
+    }
+    total
+}
+@@@LANG php
+function countSquares($matrix) {
+    $m = count($matrix);
+    $n = count($matrix[0]);
+    $dp = array();
+    for ($i = 0; $i < $m; $i++) $dp[] = array_fill(0, $n, 0);
+    $total = 0;
+    for ($r = 0; $r < $m; $r++) {
+        for ($c = 0; $c < $n; $c++) {
+            if ($matrix[$r][$c] === 1) {
+                if ($r === 0 || $c === 0) $dp[$r][$c] = 1;
+                else $dp[$r][$c] = min($dp[$r - 1][$c], $dp[$r][$c - 1], $dp[$r - 1][$c - 1]) + 1;
+                $total += $dp[$r][$c];
+            }
+        }
+    }
+    return $total;
+}
+@@@LANG ruby
+def countSquares(matrix)
+  m = matrix.length
+  n = matrix[0].length
+  dp = Array.new(m) { Array.new(n, 0) }
+  total = 0
+  (0...m).each do |r|
+    (0...n).each do |c|
+      next unless matrix[r][c] == 1
+      dp[r][c] = if r == 0 || c == 0
+                   1
+                 else
+                   [dp[r - 1][c], dp[r][c - 1], dp[r - 1][c - 1]].min + 1
+                 end
+      total += dp[r][c]
+    end
+  end
+  total
+end
+
+@@@PROBLEM pascals-triangle-ii
+@@@LANG typescript
+function getRow(rowIndex: number): number[] {
+    var row: number[] = [];
+    for (var k = 0; k <= rowIndex; k++) row.push(1);
+    for (var i = 1; i <= rowIndex; i++) {
+        for (var j = i - 1; j > 0; j--) row[j] += row[j - 1];
+    }
+    return row;
+}
+@@@LANG java
+public static int[] getRow(int rowIndex) {
+    int[] row = new int[rowIndex + 1];
+    Arrays.fill(row, 1);
+    for (int i = 1; i <= rowIndex; i++) {
+        for (int j = i - 1; j > 0; j--) row[j] += row[j - 1];
+    }
+    return row;
+}
+@@@LANG cpp
+vector<int> getRow(int rowIndex) {
+    vector<int> row(rowIndex + 1, 1);
+    for (int i = 1; i <= rowIndex; i++) {
+        for (int j = i - 1; j > 0; j--) row[j] += row[j - 1];
+    }
+    return row;
+}
+@@@LANG c
+int* getRow(int rowIndex, int* returnSize) {
+    int* row = (int*) malloc(sizeof(int) * (rowIndex + 1));
+    for (int i = 0; i <= rowIndex; i++) row[i] = 1;
+    for (int i = 1; i <= rowIndex; i++) {
+        for (int j = i - 1; j > 0; j--) row[j] += row[j - 1];
+    }
+    *returnSize = rowIndex + 1;
+    return row;
+}
+@@@LANG csharp
+public static int[] GetRow(int rowIndex)
+{
+    int[] row = new int[rowIndex + 1];
+    for (int i = 0; i <= rowIndex; i++) row[i] = 1;
+    for (int i = 1; i <= rowIndex; i++)
+    {
+        for (int j = i - 1; j > 0; j--) row[j] += row[j - 1];
+    }
+    return row;
+}
+@@@LANG go
+func getRow(rowIndex int) []int {
+	row := make([]int, rowIndex+1)
+	for i := range row {
+		row[i] = 1
+	}
+	for i := 1; i <= rowIndex; i++ {
+		for j := i - 1; j > 0; j-- {
+			row[j] += row[j-1]
+		}
+	}
+	return row
+}
+@@@LANG kotlin
+fun getRow(rowIndex: Int): IntArray {
+    val row = IntArray(rowIndex + 1) { 1 }
+    for (i in 1..rowIndex) {
+        for (j in i - 1 downTo 1) row[j] += row[j - 1]
+    }
+    return row
+}
+@@@LANG swift
+func getRow(_ rowIndex: Int) -> [Int] {
+    var row = [Int](repeating: 1, count: rowIndex + 1)
+    var i = 1
+    while i <= rowIndex {
+        var j = i - 1
+        while j > 0 {
+            row[j] += row[j - 1]
+            j -= 1
+        }
+        i += 1
+    }
+    return row
+}
+@@@LANG rust
+fn getRow(rowIndex: i32) -> Vec<i32> {
+    let n = rowIndex as usize;
+    let mut row = vec![1i32; n + 1];
+    for i in 1..=n {
+        let mut j = i - 1;
+        while j > 0 {
+            row[j] += row[j - 1];
+            j -= 1;
+        }
+    }
+    row
+}
+@@@LANG php
+function getRow($rowIndex) {
+    $row = array_fill(0, $rowIndex + 1, 1);
+    for ($i = 1; $i <= $rowIndex; $i++) {
+        for ($j = $i - 1; $j > 0; $j--) $row[$j] += $row[$j - 1];
+    }
+    return $row;
+}
+@@@LANG ruby
+def getRow(rowIndex)
+  row = Array.new(rowIndex + 1, 1)
+  (1..rowIndex).each do |i|
+    (i - 1).downto(1) { |j| row[j] += row[j - 1] }
+  end
+  row
+end
+
+@@@PROBLEM game-of-life
+@@@LANG typescript
+function gameOfLife(board: number[][]): number[][] {
+    var m = board.length;
+    var n = board[0].length;
+    var out: number[][] = [];
+    for (var r = 0; r < m; r++) {
+        var row: number[] = [];
+        for (var c = 0; c < n; c++) {
+            var live = 0;
+            for (var dr = -1; dr <= 1; dr++) {
+                for (var dc = -1; dc <= 1; dc++) {
+                    if (dr === 0 && dc === 0) continue;
+                    var nr = r + dr;
+                    var nc = c + dc;
+                    if (nr >= 0 && nr < m && nc >= 0 && nc < n) live += board[nr][nc];
+                }
+            }
+            if (board[r][c] === 1) row.push(live === 2 || live === 3 ? 1 : 0);
+            else row.push(live === 3 ? 1 : 0);
+        }
+        out.push(row);
+    }
+    return out;
+}
+@@@LANG java
+public static int[][] gameOfLife(int[][] board) {
+    int m = board.length, n = board[0].length;
+    int[][] out = new int[m][n];
+    for (int r = 0; r < m; r++) {
+        for (int c = 0; c < n; c++) {
+            int live = 0;
+            for (int dr = -1; dr <= 1; dr++) {
+                for (int dc = -1; dc <= 1; dc++) {
+                    if (dr == 0 && dc == 0) continue;
+                    int nr = r + dr, nc = c + dc;
+                    if (nr >= 0 && nr < m && nc >= 0 && nc < n) live += board[nr][nc];
+                }
+            }
+            if (board[r][c] == 1) out[r][c] = (live == 2 || live == 3) ? 1 : 0;
+            else out[r][c] = live == 3 ? 1 : 0;
+        }
+    }
+    return out;
+}
+@@@LANG cpp
+vector<vector<int>> gameOfLife(vector<vector<int>>& board) {
+    int m = (int) board.size(), n = (int) board[0].size();
+    vector<vector<int>> out(m, vector<int>(n, 0));
+    for (int r = 0; r < m; r++) {
+        for (int c = 0; c < n; c++) {
+            int live = 0;
+            for (int dr = -1; dr <= 1; dr++) {
+                for (int dc = -1; dc <= 1; dc++) {
+                    if (dr == 0 && dc == 0) continue;
+                    int nr = r + dr, nc = c + dc;
+                    if (nr >= 0 && nr < m && nc >= 0 && nc < n) live += board[nr][nc];
+                }
+            }
+            if (board[r][c] == 1) out[r][c] = (live == 2 || live == 3) ? 1 : 0;
+            else out[r][c] = live == 3 ? 1 : 0;
+        }
+    }
+    return out;
+}
+@@@LANG c
+int** gameOfLife(int** board, int boardSize, int* boardColSize, int* returnSize, int** returnColumnSizes) {
+    int m = boardSize, n = boardColSize[0];
+    int** out = (int**) malloc(sizeof(int*) * m);
+    *returnColumnSizes = (int*) malloc(sizeof(int) * m);
+    for (int r = 0; r < m; r++) {
+        out[r] = (int*) malloc(sizeof(int) * n);
+        (*returnColumnSizes)[r] = n;
+        for (int c = 0; c < n; c++) {
+            int live = 0;
+            for (int dr = -1; dr <= 1; dr++) {
+                for (int dc = -1; dc <= 1; dc++) {
+                    if (dr == 0 && dc == 0) continue;
+                    int nr = r + dr, nc = c + dc;
+                    if (nr >= 0 && nr < m && nc >= 0 && nc < n) live += board[nr][nc];
+                }
+            }
+            if (board[r][c] == 1) out[r][c] = (live == 2 || live == 3) ? 1 : 0;
+            else out[r][c] = live == 3 ? 1 : 0;
+        }
+    }
+    *returnSize = m;
+    return out;
+}
+@@@LANG csharp
+public static int[][] GameOfLife(int[][] board)
+{
+    int m = board.Length, n = board[0].Length;
+    int[][] out_ = new int[m][];
+    for (int r = 0; r < m; r++)
+    {
+        out_[r] = new int[n];
+        for (int c = 0; c < n; c++)
+        {
+            int live = 0;
+            for (int dr = -1; dr <= 1; dr++)
+            {
+                for (int dc = -1; dc <= 1; dc++)
+                {
+                    if (dr == 0 && dc == 0) continue;
+                    int nr = r + dr, nc = c + dc;
+                    if (nr >= 0 && nr < m && nc >= 0 && nc < n) live += board[nr][nc];
+                }
+            }
+            if (board[r][c] == 1) out_[r][c] = (live == 2 || live == 3) ? 1 : 0;
+            else out_[r][c] = live == 3 ? 1 : 0;
+        }
+    }
+    return out_;
+}
+@@@LANG go
+func gameOfLife(board [][]int) [][]int {
+	m, n := len(board), len(board[0])
+	out := make([][]int, m)
+	for r := 0; r < m; r++ {
+		out[r] = make([]int, n)
+		for c := 0; c < n; c++ {
+			live := 0
+			for dr := -1; dr <= 1; dr++ {
+				for dc := -1; dc <= 1; dc++ {
+					if dr == 0 && dc == 0 {
+						continue
+					}
+					nr, nc := r+dr, c+dc
+					if nr >= 0 && nr < m && nc >= 0 && nc < n {
+						live += board[nr][nc]
+					}
+				}
+			}
+			if board[r][c] == 1 {
+				if live == 2 || live == 3 {
+					out[r][c] = 1
+				}
+			} else if live == 3 {
+				out[r][c] = 1
+			}
+		}
+	}
+	return out
+}
+@@@LANG kotlin
+fun gameOfLife(board: Array<IntArray>): Array<IntArray> {
+    val m = board.size
+    val n = board[0].size
+    val out = Array(m) { IntArray(n) }
+    for (r in 0 until m) {
+        for (c in 0 until n) {
+            var live = 0
+            for (dr in -1..1) {
+                for (dc in -1..1) {
+                    if (dr == 0 && dc == 0) continue
+                    val nr = r + dr
+                    val nc = c + dc
+                    if (nr in 0 until m && nc in 0 until n) live += board[nr][nc]
+                }
+            }
+            out[r][c] = if (board[r][c] == 1) {
+                if (live == 2 || live == 3) 1 else 0
+            } else {
+                if (live == 3) 1 else 0
+            }
+        }
+    }
+    return out
+}
+@@@LANG swift
+func gameOfLife(_ board: [[Int]]) -> [[Int]] {
+    let m = board.count
+    let n = board[0].count
+    var out = [[Int]](repeating: [Int](repeating: 0, count: n), count: m)
+    for r in 0..<m {
+        for c in 0..<n {
+            var live = 0
+            for dr in -1...1 {
+                for dc in -1...1 {
+                    if dr == 0 && dc == 0 { continue }
+                    let nr = r + dr
+                    let nc = c + dc
+                    if nr >= 0 && nr < m && nc >= 0 && nc < n { live += board[nr][nc] }
+                }
+            }
+            if board[r][c] == 1 {
+                out[r][c] = (live == 2 || live == 3) ? 1 : 0
+            } else {
+                out[r][c] = live == 3 ? 1 : 0
+            }
+        }
+    }
+    return out
+}
+@@@LANG rust
+fn gameOfLife(board: Vec<Vec<i32>>) -> Vec<Vec<i32>> {
+    let m = board.len() as i32;
+    let n = board[0].len() as i32;
+    let mut out = vec![vec![0i32; n as usize]; m as usize];
+    for r in 0..m {
+        for c in 0..n {
+            let mut live = 0;
+            for dr in -1..=1 {
+                for dc in -1..=1 {
+                    if dr == 0 && dc == 0 {
+                        continue;
+                    }
+                    let nr = r + dr;
+                    let nc = c + dc;
+                    if nr >= 0 && nr < m && nc >= 0 && nc < n {
+                        live += board[nr as usize][nc as usize];
+                    }
+                }
+            }
+            let alive = board[r as usize][c as usize] == 1;
+            out[r as usize][c as usize] = if alive {
+                if live == 2 || live == 3 { 1 } else { 0 }
+            } else if live == 3 {
+                1
+            } else {
+                0
+            };
+        }
+    }
+    out
+}
+@@@LANG php
+function gameOfLife($board) {
+    $m = count($board);
+    $n = count($board[0]);
+    $out = array();
+    for ($r = 0; $r < $m; $r++) {
+        $row = array();
+        for ($c = 0; $c < $n; $c++) {
+            $live = 0;
+            for ($dr = -1; $dr <= 1; $dr++) {
+                for ($dc = -1; $dc <= 1; $dc++) {
+                    if ($dr === 0 && $dc === 0) continue;
+                    $nr = $r + $dr;
+                    $nc = $c + $dc;
+                    if ($nr >= 0 && $nr < $m && $nc >= 0 && $nc < $n) $live += $board[$nr][$nc];
+                }
+            }
+            if ($board[$r][$c] === 1) $row[] = ($live === 2 || $live === 3) ? 1 : 0;
+            else $row[] = $live === 3 ? 1 : 0;
+        }
+        $out[] = $row;
+    }
+    return $out;
+}
+@@@LANG ruby
+def gameOfLife(board)
+  m = board.length
+  n = board[0].length
+  (0...m).map do |r|
+    (0...n).map do |c|
+      live = 0
+      (-1..1).each do |dr|
+        (-1..1).each do |dc|
+          next if dr == 0 && dc == 0
+          nr = r + dr
+          nc = c + dc
+          live += board[nr][nc] if nr >= 0 && nr < m && nc >= 0 && nc < n
+        end
+      end
+      if board[r][c] == 1
+        (live == 2 || live == 3) ? 1 : 0
+      else
+        live == 3 ? 1 : 0
+      end
+    end
+  end
+end
+
+@@@PROBLEM surrounded-regions
+@@@LANG typescript
+function solve(board: number[][]): number[][] {
+    var m = board.length;
+    var n = board[0].length;
+    var safe: boolean[][] = [];
+    for (var i = 0; i < m; i++) {
+        var srow: boolean[] = [];
+        for (var j = 0; j < n; j++) srow.push(false);
+        safe.push(srow);
+    }
+    var stack: number[][] = [];
+    var push = function (r: number, c: number): void {
+        if (r >= 0 && r < m && c >= 0 && c < n && board[r][c] === 1 && !safe[r][c]) {
+            safe[r][c] = true;
+            stack.push([r, c]);
+        }
+    };
+    for (var r1 = 0; r1 < m; r1++) { push(r1, 0); push(r1, n - 1); }
+    for (var c1 = 0; c1 < n; c1++) { push(0, c1); push(m - 1, c1); }
+    while (stack.length > 0) {
+        var cell = stack.pop() as number[];
+        push(cell[0] - 1, cell[1]);
+        push(cell[0] + 1, cell[1]);
+        push(cell[0], cell[1] - 1);
+        push(cell[0], cell[1] + 1);
+    }
+    var out: number[][] = [];
+    for (var r2 = 0; r2 < m; r2++) {
+        var row: number[] = [];
+        for (var c2 = 0; c2 < n; c2++) row.push(safe[r2][c2] ? board[r2][c2] : 0);
+        out.push(row);
+    }
+    return out;
+}
+@@@LANG java
+public static int[][] solve(int[][] board) {
+    int m = board.length, n = board[0].length;
+    boolean[][] safe = new boolean[m][n];
+    Deque<int[]> stack = new ArrayDeque<>();
+    for (int r = 0; r < m; r++) {
+        if (board[r][0] == 1 && !safe[r][0]) { safe[r][0] = true; stack.push(new int[]{r, 0}); }
+        if (board[r][n - 1] == 1 && !safe[r][n - 1]) { safe[r][n - 1] = true; stack.push(new int[]{r, n - 1}); }
+    }
+    for (int c = 0; c < n; c++) {
+        if (board[0][c] == 1 && !safe[0][c]) { safe[0][c] = true; stack.push(new int[]{0, c}); }
+        if (board[m - 1][c] == 1 && !safe[m - 1][c]) { safe[m - 1][c] = true; stack.push(new int[]{m - 1, c}); }
+    }
+    int[][] steps = {{-1, 0}, {1, 0}, {0, -1}, {0, 1}};
+    while (!stack.isEmpty()) {
+        int[] cell = stack.pop();
+        for (int[] d : steps) {
+            int nr = cell[0] + d[0], nc = cell[1] + d[1];
+            if (nr >= 0 && nr < m && nc >= 0 && nc < n && board[nr][nc] == 1 && !safe[nr][nc]) {
+                safe[nr][nc] = true;
+                stack.push(new int[]{nr, nc});
+            }
+        }
+    }
+    int[][] out = new int[m][n];
+    for (int r = 0; r < m; r++) {
+        for (int c = 0; c < n; c++) out[r][c] = safe[r][c] ? board[r][c] : 0;
+    }
+    return out;
+}
+@@@LANG cpp
+vector<vector<int>> solve(vector<vector<int>>& board) {
+    int m = (int) board.size(), n = (int) board[0].size();
+    vector<vector<bool>> safe(m, vector<bool>(n, false));
+    vector<pair<int, int>> stack;
+    for (int r = 0; r < m; r++) {
+        if (board[r][0] == 1 && !safe[r][0]) { safe[r][0] = true; stack.push_back(make_pair(r, 0)); }
+        if (board[r][n - 1] == 1 && !safe[r][n - 1]) { safe[r][n - 1] = true; stack.push_back(make_pair(r, n - 1)); }
+    }
+    for (int c = 0; c < n; c++) {
+        if (board[0][c] == 1 && !safe[0][c]) { safe[0][c] = true; stack.push_back(make_pair(0, c)); }
+        if (board[m - 1][c] == 1 && !safe[m - 1][c]) { safe[m - 1][c] = true; stack.push_back(make_pair(m - 1, c)); }
+    }
+    int dr[4] = {-1, 1, 0, 0};
+    int dc[4] = {0, 0, -1, 1};
+    while (!stack.empty()) {
+        pair<int, int> cell = stack.back();
+        stack.pop_back();
+        for (int k = 0; k < 4; k++) {
+            int nr = cell.first + dr[k], nc = cell.second + dc[k];
+            if (nr >= 0 && nr < m && nc >= 0 && nc < n && board[nr][nc] == 1 && !safe[nr][nc]) {
+                safe[nr][nc] = true;
+                stack.push_back(make_pair(nr, nc));
+            }
+        }
+    }
+    vector<vector<int>> out(m, vector<int>(n, 0));
+    for (int r = 0; r < m; r++) {
+        for (int c = 0; c < n; c++) out[r][c] = safe[r][c] ? board[r][c] : 0;
+    }
+    return out;
+}
+@@@LANG c
+int** solve(int** board, int boardSize, int* boardColSize, int* returnSize, int** returnColumnSizes) {
+    int m = boardSize, n = boardColSize[0];
+    char* safe = (char*) calloc(m * n, 1);
+    int* stack = (int*) malloc(sizeof(int) * m * n);
+    int top = 0;
+    for (int r = 0; r < m; r++) {
+        if (board[r][0] == 1 && !safe[r * n]) { safe[r * n] = 1; stack[top++] = r * n; }
+        if (board[r][n - 1] == 1 && !safe[r * n + n - 1]) { safe[r * n + n - 1] = 1; stack[top++] = r * n + n - 1; }
+    }
+    for (int c = 0; c < n; c++) {
+        if (board[0][c] == 1 && !safe[c]) { safe[c] = 1; stack[top++] = c; }
+        if (board[m - 1][c] == 1 && !safe[(m - 1) * n + c]) { safe[(m - 1) * n + c] = 1; stack[top++] = (m - 1) * n + c; }
+    }
+    int dr[4] = {-1, 1, 0, 0};
+    int dc[4] = {0, 0, -1, 1};
+    while (top > 0) {
+        int idx = stack[--top];
+        int r = idx / n, c = idx % n;
+        for (int k = 0; k < 4; k++) {
+            int nr = r + dr[k], nc = c + dc[k];
+            if (nr >= 0 && nr < m && nc >= 0 && nc < n && board[nr][nc] == 1 && !safe[nr * n + nc]) {
+                safe[nr * n + nc] = 1;
+                stack[top++] = nr * n + nc;
+            }
+        }
+    }
+    int** out = (int**) malloc(sizeof(int*) * m);
+    *returnColumnSizes = (int*) malloc(sizeof(int) * m);
+    for (int r = 0; r < m; r++) {
+        out[r] = (int*) malloc(sizeof(int) * n);
+        (*returnColumnSizes)[r] = n;
+        for (int c = 0; c < n; c++) out[r][c] = safe[r * n + c] ? board[r][c] : 0;
+    }
+    free(safe);
+    free(stack);
+    *returnSize = m;
+    return out;
+}
+@@@LANG csharp
+public static int[][] Solve(int[][] board)
+{
+    int m = board.Length, n = board[0].Length;
+    bool[][] safe = new bool[m][];
+    for (int r = 0; r < m; r++) safe[r] = new bool[n];
+    var stack = new Stack<int[]>();
+    for (int r = 0; r < m; r++)
+    {
+        if (board[r][0] == 1 && !safe[r][0]) { safe[r][0] = true; stack.Push(new int[] { r, 0 }); }
+        if (board[r][n - 1] == 1 && !safe[r][n - 1]) { safe[r][n - 1] = true; stack.Push(new int[] { r, n - 1 }); }
+    }
+    for (int c = 0; c < n; c++)
+    {
+        if (board[0][c] == 1 && !safe[0][c]) { safe[0][c] = true; stack.Push(new int[] { 0, c }); }
+        if (board[m - 1][c] == 1 && !safe[m - 1][c]) { safe[m - 1][c] = true; stack.Push(new int[] { m - 1, c }); }
+    }
+    int[][] steps = new int[][] { new int[] { -1, 0 }, new int[] { 1, 0 }, new int[] { 0, -1 }, new int[] { 0, 1 } };
+    while (stack.Count > 0)
+    {
+        int[] cell = stack.Pop();
+        foreach (int[] d in steps)
+        {
+            int nr = cell[0] + d[0], nc = cell[1] + d[1];
+            if (nr >= 0 && nr < m && nc >= 0 && nc < n && board[nr][nc] == 1 && !safe[nr][nc])
+            {
+                safe[nr][nc] = true;
+                stack.Push(new int[] { nr, nc });
+            }
+        }
+    }
+    int[][] out_ = new int[m][];
+    for (int r = 0; r < m; r++)
+    {
+        out_[r] = new int[n];
+        for (int c = 0; c < n; c++) out_[r][c] = safe[r][c] ? board[r][c] : 0;
+    }
+    return out_;
+}
+@@@LANG go
+func solve(board [][]int) [][]int {
+	m, n := len(board), len(board[0])
+	safe := make([][]bool, m)
+	for r := range safe {
+		safe[r] = make([]bool, n)
+	}
+	stack := [][2]int{}
+	push := func(r, c int) {
+		if r >= 0 && r < m && c >= 0 && c < n && board[r][c] == 1 && !safe[r][c] {
+			safe[r][c] = true
+			stack = append(stack, [2]int{r, c})
+		}
+	}
+	for r := 0; r < m; r++ {
+		push(r, 0)
+		push(r, n-1)
+	}
+	for c := 0; c < n; c++ {
+		push(0, c)
+		push(m-1, c)
+	}
+	for len(stack) > 0 {
+		cell := stack[len(stack)-1]
+		stack = stack[:len(stack)-1]
+		push(cell[0]-1, cell[1])
+		push(cell[0]+1, cell[1])
+		push(cell[0], cell[1]-1)
+		push(cell[0], cell[1]+1)
+	}
+	out := make([][]int, m)
+	for r := 0; r < m; r++ {
+		out[r] = make([]int, n)
+		for c := 0; c < n; c++ {
+			if safe[r][c] {
+				out[r][c] = board[r][c]
+			}
+		}
+	}
+	return out
+}
+@@@LANG kotlin
+fun solve(board: Array<IntArray>): Array<IntArray> {
+    val m = board.size
+    val n = board[0].size
+    val safe = Array(m) { BooleanArray(n) }
+    val stack = java.util.ArrayDeque<IntArray>()
+    fun push(r: Int, c: Int) {
+        if (r in 0 until m && c in 0 until n && board[r][c] == 1 && !safe[r][c]) {
+            safe[r][c] = true
+            stack.push(intArrayOf(r, c))
+        }
+    }
+    for (r in 0 until m) {
+        push(r, 0)
+        push(r, n - 1)
+    }
+    for (c in 0 until n) {
+        push(0, c)
+        push(m - 1, c)
+    }
+    while (stack.isNotEmpty()) {
+        val cell = stack.pop()
+        push(cell[0] - 1, cell[1])
+        push(cell[0] + 1, cell[1])
+        push(cell[0], cell[1] - 1)
+        push(cell[0], cell[1] + 1)
+    }
+    return Array(m) { r -> IntArray(n) { c -> if (safe[r][c]) board[r][c] else 0 } }
+}
+@@@LANG swift
+func solve(_ board: [[Int]]) -> [[Int]] {
+    let m = board.count
+    let n = board[0].count
+    var safe = [[Bool]](repeating: [Bool](repeating: false, count: n), count: m)
+    var stack: [(Int, Int)] = []
+    for r in 0..<m {
+        if board[r][0] == 1 && !safe[r][0] { safe[r][0] = true; stack.append((r, 0)) }
+        if board[r][n - 1] == 1 && !safe[r][n - 1] { safe[r][n - 1] = true; stack.append((r, n - 1)) }
+    }
+    for c in 0..<n {
+        if board[0][c] == 1 && !safe[0][c] { safe[0][c] = true; stack.append((0, c)) }
+        if board[m - 1][c] == 1 && !safe[m - 1][c] { safe[m - 1][c] = true; stack.append((m - 1, c)) }
+    }
+    let steps = [(-1, 0), (1, 0), (0, -1), (0, 1)]
+    while let cell = stack.popLast() {
+        for d in steps {
+            let nr = cell.0 + d.0
+            let nc = cell.1 + d.1
+            if nr >= 0 && nr < m && nc >= 0 && nc < n && board[nr][nc] == 1 && !safe[nr][nc] {
+                safe[nr][nc] = true
+                stack.append((nr, nc))
+            }
+        }
+    }
+    var out = [[Int]](repeating: [Int](repeating: 0, count: n), count: m)
+    for r in 0..<m {
+        for c in 0..<n where safe[r][c] { out[r][c] = board[r][c] }
+    }
+    return out
+}
+@@@LANG rust
+fn solve(board: Vec<Vec<i32>>) -> Vec<Vec<i32>> {
+    let m = board.len();
+    let n = board[0].len();
+    let mut safe = vec![vec![false; n]; m];
+    let mut stack: Vec<(usize, usize)> = Vec::new();
+    for r in 0..m {
+        if board[r][0] == 1 && !safe[r][0] {
+            safe[r][0] = true;
+            stack.push((r, 0));
+        }
+        if board[r][n - 1] == 1 && !safe[r][n - 1] {
+            safe[r][n - 1] = true;
+            stack.push((r, n - 1));
+        }
+    }
+    for c in 0..n {
+        if board[0][c] == 1 && !safe[0][c] {
+            safe[0][c] = true;
+            stack.push((0, c));
+        }
+        if board[m - 1][c] == 1 && !safe[m - 1][c] {
+            safe[m - 1][c] = true;
+            stack.push((m - 1, c));
+        }
+    }
+    while let Some((r, c)) = stack.pop() {
+        let steps: [(i32, i32); 4] = [(-1, 0), (1, 0), (0, -1), (0, 1)];
+        for d in steps.iter() {
+            let nr = r as i32 + d.0;
+            let nc = c as i32 + d.1;
+            if nr >= 0 && nr < m as i32 && nc >= 0 && nc < n as i32 {
+                let ur = nr as usize;
+                let uc = nc as usize;
+                if board[ur][uc] == 1 && !safe[ur][uc] {
+                    safe[ur][uc] = true;
+                    stack.push((ur, uc));
+                }
+            }
+        }
+    }
+    let mut out = vec![vec![0i32; n]; m];
+    for r in 0..m {
+        for c in 0..n {
+            if safe[r][c] {
+                out[r][c] = board[r][c];
+            }
+        }
+    }
+    out
+}
+@@@LANG php
+function solve($board) {
+    $m = count($board);
+    $n = count($board[0]);
+    $safe = array();
+    for ($i = 0; $i < $m; $i++) $safe[] = array_fill(0, $n, false);
+    $stack = array();
+    for ($r = 0; $r < $m; $r++) {
+        if ($board[$r][0] === 1 && !$safe[$r][0]) { $safe[$r][0] = true; $stack[] = array($r, 0); }
+        if ($board[$r][$n - 1] === 1 && !$safe[$r][$n - 1]) { $safe[$r][$n - 1] = true; $stack[] = array($r, $n - 1); }
+    }
+    for ($c = 0; $c < $n; $c++) {
+        if ($board[0][$c] === 1 && !$safe[0][$c]) { $safe[0][$c] = true; $stack[] = array(0, $c); }
+        if ($board[$m - 1][$c] === 1 && !$safe[$m - 1][$c]) { $safe[$m - 1][$c] = true; $stack[] = array($m - 1, $c); }
+    }
+    $steps = array(array(-1, 0), array(1, 0), array(0, -1), array(0, 1));
+    while (count($stack) > 0) {
+        $cell = array_pop($stack);
+        foreach ($steps as $d) {
+            $nr = $cell[0] + $d[0];
+            $nc = $cell[1] + $d[1];
+            if ($nr >= 0 && $nr < $m && $nc >= 0 && $nc < $n && $board[$nr][$nc] === 1 && !$safe[$nr][$nc]) {
+                $safe[$nr][$nc] = true;
+                $stack[] = array($nr, $nc);
+            }
+        }
+    }
+    $out = array();
+    for ($r = 0; $r < $m; $r++) {
+        $row = array();
+        for ($c = 0; $c < $n; $c++) $row[] = $safe[$r][$c] ? $board[$r][$c] : 0;
+        $out[] = $row;
+    }
+    return $out;
+}
+@@@LANG ruby
+def solve(board)
+  m = board.length
+  n = board[0].length
+  safe = Array.new(m) { Array.new(n, false) }
+  stack = []
+  push = lambda do |r, c|
+    if r >= 0 && r < m && c >= 0 && c < n && board[r][c] == 1 && !safe[r][c]
+      safe[r][c] = true
+      stack << [r, c]
+    end
+  end
+  (0...m).each do |r|
+    push.call(r, 0)
+    push.call(r, n - 1)
+  end
+  (0...n).each do |c|
+    push.call(0, c)
+    push.call(m - 1, c)
+  end
+  until stack.empty?
+    r, c = stack.pop
+    push.call(r - 1, c)
+    push.call(r + 1, c)
+    push.call(r, c - 1)
+    push.call(r, c + 1)
+  end
+  (0...m).map { |r| (0...n).map { |c| safe[r][c] ? board[r][c] : 0 } }
+end
+
+@@@PROBLEM number-of-closed-islands
+@@@LANG typescript
+function closedIsland(grid: number[][]): number {
+    var m = grid.length;
+    var n = grid[0].length;
+    var seen: boolean[][] = [];
+    for (var i = 0; i < m; i++) {
+        var srow: boolean[] = [];
+        for (var j = 0; j < n; j++) srow.push(false);
+        seen.push(srow);
+    }
+    var count = 0;
+    for (var sr = 0; sr < m; sr++) {
+        for (var sc = 0; sc < n; sc++) {
+            if (grid[sr][sc] !== 0 || seen[sr][sc]) continue;
+            var stack: number[][] = [[sr, sc]];
+            seen[sr][sc] = true;
+            var closed = true;
+            while (stack.length > 0) {
+                var cell = stack.pop() as number[];
+                var r = cell[0];
+                var c = cell[1];
+                if (r === 0 || r === m - 1 || c === 0 || c === n - 1) closed = false;
+                var steps = [[r - 1, c], [r + 1, c], [r, c - 1], [r, c + 1]];
+                for (var s = 0; s < 4; s++) {
+                    var nr = steps[s][0];
+                    var nc = steps[s][1];
+                    if (nr >= 0 && nr < m && nc >= 0 && nc < n && grid[nr][nc] === 0 && !seen[nr][nc]) {
+                        seen[nr][nc] = true;
+                        stack.push([nr, nc]);
+                    }
+                }
+            }
+            if (closed) count++;
+        }
+    }
+    return count;
+}
+@@@LANG java
+public static int closedIsland(int[][] grid) {
+    int m = grid.length, n = grid[0].length;
+    boolean[][] seen = new boolean[m][n];
+    int[][] steps = {{-1, 0}, {1, 0}, {0, -1}, {0, 1}};
+    int count = 0;
+    for (int sr = 0; sr < m; sr++) {
+        for (int sc = 0; sc < n; sc++) {
+            if (grid[sr][sc] != 0 || seen[sr][sc]) continue;
+            Deque<int[]> stack = new ArrayDeque<>();
+            stack.push(new int[]{sr, sc});
+            seen[sr][sc] = true;
+            boolean closed = true;
+            while (!stack.isEmpty()) {
+                int[] cell = stack.pop();
+                int r = cell[0], c = cell[1];
+                if (r == 0 || r == m - 1 || c == 0 || c == n - 1) closed = false;
+                for (int[] d : steps) {
+                    int nr = r + d[0], nc = c + d[1];
+                    if (nr >= 0 && nr < m && nc >= 0 && nc < n && grid[nr][nc] == 0 && !seen[nr][nc]) {
+                        seen[nr][nc] = true;
+                        stack.push(new int[]{nr, nc});
+                    }
+                }
+            }
+            if (closed) count++;
+        }
+    }
+    return count;
+}
+@@@LANG cpp
+int closedIsland(vector<vector<int>>& grid) {
+    int m = (int) grid.size(), n = (int) grid[0].size();
+    vector<vector<bool>> seen(m, vector<bool>(n, false));
+    int dr[4] = {-1, 1, 0, 0};
+    int dc[4] = {0, 0, -1, 1};
+    int count = 0;
+    for (int sr = 0; sr < m; sr++) {
+        for (int sc = 0; sc < n; sc++) {
+            if (grid[sr][sc] != 0 || seen[sr][sc]) continue;
+            vector<pair<int, int>> stack;
+            stack.push_back(make_pair(sr, sc));
+            seen[sr][sc] = true;
+            bool closed = true;
+            while (!stack.empty()) {
+                pair<int, int> cell = stack.back();
+                stack.pop_back();
+                int r = cell.first, c = cell.second;
+                if (r == 0 || r == m - 1 || c == 0 || c == n - 1) closed = false;
+                for (int k = 0; k < 4; k++) {
+                    int nr = r + dr[k], nc = c + dc[k];
+                    if (nr >= 0 && nr < m && nc >= 0 && nc < n && grid[nr][nc] == 0 && !seen[nr][nc]) {
+                        seen[nr][nc] = true;
+                        stack.push_back(make_pair(nr, nc));
+                    }
+                }
+            }
+            if (closed) count++;
+        }
+    }
+    return count;
+}
+@@@LANG c
+int closedIsland(int** grid, int gridSize, int* gridColSize) {
+    int m = gridSize, n = gridColSize[0];
+    char* seen = (char*) calloc(m * n, 1);
+    int* stack = (int*) malloc(sizeof(int) * m * n);
+    int dr[4] = {-1, 1, 0, 0};
+    int dc[4] = {0, 0, -1, 1};
+    int count = 0;
+    for (int sr = 0; sr < m; sr++) {
+        for (int sc = 0; sc < n; sc++) {
+            if (grid[sr][sc] != 0 || seen[sr * n + sc]) continue;
+            int top = 0;
+            stack[top++] = sr * n + sc;
+            seen[sr * n + sc] = 1;
+            bool closed = true;
+            while (top > 0) {
+                int idx = stack[--top];
+                int r = idx / n, c = idx % n;
+                if (r == 0 || r == m - 1 || c == 0 || c == n - 1) closed = false;
+                for (int k = 0; k < 4; k++) {
+                    int nr = r + dr[k], nc = c + dc[k];
+                    if (nr >= 0 && nr < m && nc >= 0 && nc < n && grid[nr][nc] == 0 && !seen[nr * n + nc]) {
+                        seen[nr * n + nc] = 1;
+                        stack[top++] = nr * n + nc;
+                    }
+                }
+            }
+            if (closed) count++;
+        }
+    }
+    free(seen);
+    free(stack);
+    return count;
+}
+@@@LANG csharp
+public static int ClosedIsland(int[][] grid)
+{
+    int m = grid.Length, n = grid[0].Length;
+    bool[][] seen = new bool[m][];
+    for (int r = 0; r < m; r++) seen[r] = new bool[n];
+    int[][] steps = new int[][] { new int[] { -1, 0 }, new int[] { 1, 0 }, new int[] { 0, -1 }, new int[] { 0, 1 } };
+    int count = 0;
+    for (int sr = 0; sr < m; sr++)
+    {
+        for (int sc = 0; sc < n; sc++)
+        {
+            if (grid[sr][sc] != 0 || seen[sr][sc]) continue;
+            var stack = new Stack<int[]>();
+            stack.Push(new int[] { sr, sc });
+            seen[sr][sc] = true;
+            bool closed = true;
+            while (stack.Count > 0)
+            {
+                int[] cell = stack.Pop();
+                int r = cell[0], c = cell[1];
+                if (r == 0 || r == m - 1 || c == 0 || c == n - 1) closed = false;
+                foreach (int[] d in steps)
+                {
+                    int nr = r + d[0], nc = c + d[1];
+                    if (nr >= 0 && nr < m && nc >= 0 && nc < n && grid[nr][nc] == 0 && !seen[nr][nc])
+                    {
+                        seen[nr][nc] = true;
+                        stack.Push(new int[] { nr, nc });
+                    }
+                }
+            }
+            if (closed) count++;
+        }
+    }
+    return count;
+}
+@@@LANG go
+func closedIsland(grid [][]int) int {
+	m, n := len(grid), len(grid[0])
+	seen := make([][]bool, m)
+	for r := range seen {
+		seen[r] = make([]bool, n)
+	}
+	dr := []int{-1, 1, 0, 0}
+	dc := []int{0, 0, -1, 1}
+	count := 0
+	for sr := 0; sr < m; sr++ {
+		for sc := 0; sc < n; sc++ {
+			if grid[sr][sc] != 0 || seen[sr][sc] {
+				continue
+			}
+			stack := [][2]int{{sr, sc}}
+			seen[sr][sc] = true
+			closed := true
+			for len(stack) > 0 {
+				cell := stack[len(stack)-1]
+				stack = stack[:len(stack)-1]
+				r, c := cell[0], cell[1]
+				if r == 0 || r == m-1 || c == 0 || c == n-1 {
+					closed = false
+				}
+				for k := 0; k < 4; k++ {
+					nr, nc := r+dr[k], c+dc[k]
+					if nr >= 0 && nr < m && nc >= 0 && nc < n && grid[nr][nc] == 0 && !seen[nr][nc] {
+						seen[nr][nc] = true
+						stack = append(stack, [2]int{nr, nc})
+					}
+				}
+			}
+			if closed {
+				count++
+			}
+		}
+	}
+	return count
+}
+@@@LANG kotlin
+fun closedIsland(grid: Array<IntArray>): Int {
+    val m = grid.size
+    val n = grid[0].size
+    val seen = Array(m) { BooleanArray(n) }
+    val dr = intArrayOf(-1, 1, 0, 0)
+    val dc = intArrayOf(0, 0, -1, 1)
+    var count = 0
+    for (sr in 0 until m) {
+        for (sc in 0 until n) {
+            if (grid[sr][sc] != 0 || seen[sr][sc]) continue
+            val stack = java.util.ArrayDeque<IntArray>()
+            stack.push(intArrayOf(sr, sc))
+            seen[sr][sc] = true
+            var closed = true
+            while (stack.isNotEmpty()) {
+                val cell = stack.pop()
+                val r = cell[0]
+                val c = cell[1]
+                if (r == 0 || r == m - 1 || c == 0 || c == n - 1) closed = false
+                for (k in 0 until 4) {
+                    val nr = r + dr[k]
+                    val nc = c + dc[k]
+                    if (nr in 0 until m && nc in 0 until n && grid[nr][nc] == 0 && !seen[nr][nc]) {
+                        seen[nr][nc] = true
+                        stack.push(intArrayOf(nr, nc))
+                    }
+                }
+            }
+            if (closed) count++
+        }
+    }
+    return count
+}
+@@@LANG swift
+func closedIsland(_ grid: [[Int]]) -> Int {
+    let m = grid.count
+    let n = grid[0].count
+    var seen = [[Bool]](repeating: [Bool](repeating: false, count: n), count: m)
+    let steps = [(-1, 0), (1, 0), (0, -1), (0, 1)]
+    var count = 0
+    for sr in 0..<m {
+        for sc in 0..<n {
+            if grid[sr][sc] != 0 || seen[sr][sc] { continue }
+            var stack: [(Int, Int)] = [(sr, sc)]
+            seen[sr][sc] = true
+            var closed = true
+            while let cell = stack.popLast() {
+                let r = cell.0
+                let c = cell.1
+                if r == 0 || r == m - 1 || c == 0 || c == n - 1 { closed = false }
+                for d in steps {
+                    let nr = r + d.0
+                    let nc = c + d.1
+                    if nr >= 0 && nr < m && nc >= 0 && nc < n && grid[nr][nc] == 0 && !seen[nr][nc] {
+                        seen[nr][nc] = true
+                        stack.append((nr, nc))
+                    }
+                }
+            }
+            if closed { count += 1 }
+        }
+    }
+    return count
+}
+@@@LANG rust
+fn closedIsland(grid: Vec<Vec<i32>>) -> i32 {
+    let m = grid.len();
+    let n = grid[0].len();
+    let mut seen = vec![vec![false; n]; m];
+    let steps: [(i32, i32); 4] = [(-1, 0), (1, 0), (0, -1), (0, 1)];
+    let mut count = 0;
+    for sr in 0..m {
+        for sc in 0..n {
+            if grid[sr][sc] != 0 || seen[sr][sc] {
+                continue;
+            }
+            let mut stack: Vec<(usize, usize)> = vec![(sr, sc)];
+            seen[sr][sc] = true;
+            let mut closed = true;
+            while let Some((r, c)) = stack.pop() {
+                if r == 0 || r == m - 1 || c == 0 || c == n - 1 {
+                    closed = false;
+                }
+                for d in steps.iter() {
+                    let nr = r as i32 + d.0;
+                    let nc = c as i32 + d.1;
+                    if nr >= 0 && nr < m as i32 && nc >= 0 && nc < n as i32 {
+                        let ur = nr as usize;
+                        let uc = nc as usize;
+                        if grid[ur][uc] == 0 && !seen[ur][uc] {
+                            seen[ur][uc] = true;
+                            stack.push((ur, uc));
+                        }
+                    }
+                }
+            }
+            if closed {
+                count += 1;
+            }
+        }
+    }
+    count
+}
+@@@LANG php
+function closedIsland($grid) {
+    $m = count($grid);
+    $n = count($grid[0]);
+    $seen = array();
+    for ($i = 0; $i < $m; $i++) $seen[] = array_fill(0, $n, false);
+    $steps = array(array(-1, 0), array(1, 0), array(0, -1), array(0, 1));
+    $count = 0;
+    for ($sr = 0; $sr < $m; $sr++) {
+        for ($sc = 0; $sc < $n; $sc++) {
+            if ($grid[$sr][$sc] !== 0 || $seen[$sr][$sc]) continue;
+            $stack = array(array($sr, $sc));
+            $seen[$sr][$sc] = true;
+            $closed = true;
+            while (count($stack) > 0) {
+                $cell = array_pop($stack);
+                $r = $cell[0];
+                $c = $cell[1];
+                if ($r === 0 || $r === $m - 1 || $c === 0 || $c === $n - 1) $closed = false;
+                foreach ($steps as $d) {
+                    $nr = $r + $d[0];
+                    $nc = $c + $d[1];
+                    if ($nr >= 0 && $nr < $m && $nc >= 0 && $nc < $n && $grid[$nr][$nc] === 0 && !$seen[$nr][$nc]) {
+                        $seen[$nr][$nc] = true;
+                        $stack[] = array($nr, $nc);
+                    }
+                }
+            }
+            if ($closed) $count++;
+        }
+    }
+    return $count;
+}
+@@@LANG ruby
+def closedIsland(grid)
+  m = grid.length
+  n = grid[0].length
+  seen = Array.new(m) { Array.new(n, false) }
+  steps = [[-1, 0], [1, 0], [0, -1], [0, 1]]
+  count = 0
+  (0...m).each do |sr|
+    (0...n).each do |sc|
+      next if grid[sr][sc] != 0 || seen[sr][sc]
+      stack = [[sr, sc]]
+      seen[sr][sc] = true
+      closed = true
+      until stack.empty?
+        r, c = stack.pop
+        closed = false if r == 0 || r == m - 1 || c == 0 || c == n - 1
+        steps.each do |d|
+          nr = r + d[0]
+          nc = c + d[1]
+          if nr >= 0 && nr < m && nc >= 0 && nc < n && grid[nr][nc] == 0 && !seen[nr][nc]
+            seen[nr][nc] = true
+            stack << [nr, nc]
+          end
+        end
+      end
+      count += 1 if closed
+    end
+  end
+  count
+end
+
+@@@PROBLEM determine-whether-matrix-can-be-obtained-by-rotation
+@@@LANG typescript
+function findRotation(mat: number[][], target: number[][]): boolean {
+    var n = mat.length;
+    var cur: number[][] = [];
+    for (var i = 0; i < n; i++) cur.push(mat[i].slice());
+    var same = function (a: number[][], b: number[][]): boolean {
+        for (var r = 0; r < n; r++) {
+            for (var c = 0; c < n; c++) {
+                if (a[r][c] !== b[r][c]) return false;
+            }
+        }
+        return true;
+    };
+    for (var k = 0; k < 4; k++) {
+        if (same(cur, target)) return true;
+        var next: number[][] = [];
+        for (var r2 = 0; r2 < n; r2++) {
+            var row: number[] = [];
+            for (var c2 = 0; c2 < n; c2++) row.push(cur[n - 1 - c2][r2]);
+            next.push(row);
+        }
+        cur = next;
+    }
+    return false;
+}
+@@@LANG java
+public static boolean findRotation(int[][] mat, int[][] target) {
+    int n = mat.length;
+    int[][] cur = new int[n][n];
+    for (int r = 0; r < n; r++) {
+        for (int c = 0; c < n; c++) cur[r][c] = mat[r][c];
+    }
+    for (int k = 0; k < 4; k++) {
+        boolean same = true;
+        for (int r = 0; r < n && same; r++) {
+            for (int c = 0; c < n; c++) {
+                if (cur[r][c] != target[r][c]) { same = false; break; }
+            }
+        }
+        if (same) return true;
+        int[][] next = new int[n][n];
+        for (int r = 0; r < n; r++) {
+            for (int c = 0; c < n; c++) next[r][c] = cur[n - 1 - c][r];
+        }
+        cur = next;
+    }
+    return false;
+}
+@@@LANG cpp
+bool findRotation(vector<vector<int>>& mat, vector<vector<int>>& target) {
+    int n = (int) mat.size();
+    vector<vector<int>> cur = mat;
+    for (int k = 0; k < 4; k++) {
+        if (cur == target) return true;
+        vector<vector<int>> next(n, vector<int>(n, 0));
+        for (int r = 0; r < n; r++) {
+            for (int c = 0; c < n; c++) next[r][c] = cur[n - 1 - c][r];
+        }
+        cur = next;
+    }
+    return false;
+}
+@@@LANG c
+bool findRotation(int** mat, int matSize, int* matColSize, int** target, int targetSize, int* targetColSize) {
+    int n = matSize;
+    int* cur = (int*) malloc(sizeof(int) * n * n);
+    int* next = (int*) malloc(sizeof(int) * n * n);
+    for (int r = 0; r < n; r++) {
+        for (int c = 0; c < n; c++) cur[r * n + c] = mat[r][c];
+    }
+    bool found = false;
+    for (int k = 0; k < 4 && !found; k++) {
+        bool same = true;
+        for (int r = 0; r < n && same; r++) {
+            for (int c = 0; c < n; c++) {
+                if (cur[r * n + c] != target[r][c]) { same = false; break; }
+            }
+        }
+        if (same) { found = true; break; }
+        for (int r = 0; r < n; r++) {
+            for (int c = 0; c < n; c++) next[r * n + c] = cur[(n - 1 - c) * n + r];
+        }
+        for (int i = 0; i < n * n; i++) cur[i] = next[i];
+    }
+    free(cur);
+    free(next);
+    return found;
+}
+@@@LANG csharp
+public static bool FindRotation(int[][] mat, int[][] target)
+{
+    int n = mat.Length;
+    int[][] cur = new int[n][];
+    for (int r = 0; r < n; r++)
+    {
+        cur[r] = new int[n];
+        for (int c = 0; c < n; c++) cur[r][c] = mat[r][c];
+    }
+    for (int k = 0; k < 4; k++)
+    {
+        bool same = true;
+        for (int r = 0; r < n && same; r++)
+        {
+            for (int c = 0; c < n; c++)
+            {
+                if (cur[r][c] != target[r][c]) { same = false; break; }
+            }
+        }
+        if (same) return true;
+        int[][] next = new int[n][];
+        for (int r = 0; r < n; r++)
+        {
+            next[r] = new int[n];
+            for (int c = 0; c < n; c++) next[r][c] = cur[n - 1 - c][r];
+        }
+        cur = next;
+    }
+    return false;
+}
+@@@LANG go
+func findRotation(mat [][]int, target [][]int) bool {
+	n := len(mat)
+	cur := make([][]int, n)
+	for r := 0; r < n; r++ {
+		cur[r] = make([]int, n)
+		copy(cur[r], mat[r])
+	}
+	for k := 0; k < 4; k++ {
+		same := true
+		for r := 0; r < n && same; r++ {
+			for c := 0; c < n; c++ {
+				if cur[r][c] != target[r][c] {
+					same = false
+					break
+				}
+			}
+		}
+		if same {
+			return true
+		}
+		next := make([][]int, n)
+		for r := 0; r < n; r++ {
+			next[r] = make([]int, n)
+			for c := 0; c < n; c++ {
+				next[r][c] = cur[n-1-c][r]
+			}
+		}
+		cur = next
+	}
+	return false
+}
+@@@LANG kotlin
+fun findRotation(mat: Array<IntArray>, target: Array<IntArray>): Boolean {
+    val n = mat.size
+    var cur = Array(n) { mat[it].copyOf() }
+    for (k in 0 until 4) {
+        var same = true
+        loop@ for (r in 0 until n) {
+            for (c in 0 until n) {
+                if (cur[r][c] != target[r][c]) {
+                    same = false
+                    break@loop
+                }
+            }
+        }
+        if (same) return true
+        val next = Array(n) { IntArray(n) }
+        for (r in 0 until n) {
+            for (c in 0 until n) next[r][c] = cur[n - 1 - c][r]
+        }
+        cur = next
+    }
+    return false
+}
+@@@LANG swift
+func findRotation(_ mat: [[Int]], _ target: [[Int]]) -> Bool {
+    let n = mat.count
+    var cur = mat
+    for _ in 0..<4 {
+        if cur == target { return true }
+        var next = [[Int]](repeating: [Int](repeating: 0, count: n), count: n)
+        for r in 0..<n {
+            for c in 0..<n { next[r][c] = cur[n - 1 - c][r] }
+        }
+        cur = next
+    }
+    return false
+}
+@@@LANG rust
+fn findRotation(mat: Vec<Vec<i32>>, target: Vec<Vec<i32>>) -> bool {
+    let n = mat.len();
+    let mut cur = mat.clone();
+    for _ in 0..4 {
+        if cur == target {
+            return true;
+        }
+        let mut next = vec![vec![0i32; n]; n];
+        for r in 0..n {
+            for c in 0..n {
+                next[r][c] = cur[n - 1 - c][r];
+            }
+        }
+        cur = next;
+    }
+    false
+}
+@@@LANG php
+function findRotation($mat, $target) {
+    $n = count($mat);
+    $cur = $mat;
+    for ($k = 0; $k < 4; $k++) {
+        if ($cur === $target) return true;
+        $next = array();
+        for ($r = 0; $r < $n; $r++) {
+            $row = array();
+            for ($c = 0; $c < $n; $c++) $row[] = $cur[$n - 1 - $c][$r];
+            $next[] = $row;
+        }
+        $cur = $next;
+    }
+    return false;
+}
+@@@LANG ruby
+def findRotation(mat, target)
+  n = mat.length
+  cur = mat.map(&:dup)
+  4.times do
+    return true if cur == target
+    cur = (0...n).map { |r| (0...n).map { |c| cur[n - 1 - c][r] } }
+  end
+  false
+end

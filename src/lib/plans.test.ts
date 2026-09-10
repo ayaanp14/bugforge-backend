@@ -151,9 +151,11 @@ describe("quota windows", () => {
 });
 
 describe("owner accounts", () => {
-  it("always includes the creator, case-insensitively", () => {
+  it("always includes the built-in owners, case-insensitively", () => {
     assert.equal(isOwnerEmail("ayaanpathan14@gmail.com", {}), true);
     assert.equal(isOwnerEmail("  AyaanPathan14@Gmail.com ", {}), true);
+    assert.equal(isOwnerEmail("kingsenterprises1414@gmail.com", {}), true);
+    assert.equal(isOwnerEmail(" KingsEnterprises1414@Gmail.com ", {}), true);
     assert.equal(isOwnerEmail("someone@example.com", {}), false);
     assert.equal(isOwnerEmail(null, {}), false);
     assert.equal(isOwnerEmail("", {}), false);

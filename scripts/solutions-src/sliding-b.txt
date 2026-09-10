@@ -1,0 +1,1526 @@
+@@@PROBLEM remove-element
+@@@LANG typescript
+function removeElement(nums: number[], value: number): number[] {
+    var out: number[] = [];
+    for (var i = 0; i < nums.length; i++) {
+        if (nums[i] !== value) out.push(nums[i]);
+    }
+    return out;
+}
+@@@LANG java
+public static int[] removeElement(int[] nums, int value) {
+    int[] out = new int[nums.length];
+    int len = 0;
+    for (int v : nums) {
+        if (v != value) out[len++] = v;
+    }
+    return Arrays.copyOf(out, len);
+}
+@@@LANG cpp
+vector<int> removeElement(vector<int>& nums, int value) {
+    vector<int> out;
+    for (int v : nums) {
+        if (v != value) out.push_back(v);
+    }
+    return out;
+}
+@@@LANG c
+int* removeElement(int* nums, int numsSize, int value, int* returnSize) {
+    int* out = (int*) malloc(sizeof(int) * (numsSize > 0 ? numsSize : 1));
+    int len = 0;
+    for (int i = 0; i < numsSize; i++) {
+        if (nums[i] != value) out[len++] = nums[i];
+    }
+    *returnSize = len;
+    return out;
+}
+@@@LANG csharp
+public static int[] RemoveElement(int[] nums, int value)
+{
+    var out_ = new List<int>();
+    foreach (int v in nums)
+    {
+        if (v != value) out_.Add(v);
+    }
+    return out_.ToArray();
+}
+@@@LANG go
+func removeElement(nums []int, value int) []int {
+	out := []int{}
+	for _, v := range nums {
+		if v != value {
+			out = append(out, v)
+		}
+	}
+	return out
+}
+@@@LANG kotlin
+fun removeElement(nums: IntArray, value: Int): IntArray {
+    val out = ArrayList<Int>()
+    for (v in nums) {
+        if (v != value) out.add(v)
+    }
+    return out.toIntArray()
+}
+@@@LANG swift
+func removeElement(_ nums: [Int], _ value: Int) -> [Int] {
+    var out: [Int] = []
+    for v in nums where v != value { out.append(v) }
+    return out
+}
+@@@LANG rust
+fn removeElement(nums: Vec<i32>, value: i32) -> Vec<i32> {
+    let mut out: Vec<i32> = Vec::new();
+    for v in nums.iter() {
+        if *v != value {
+            out.push(*v);
+        }
+    }
+    out
+}
+@@@LANG php
+function removeElement($nums, $value) {
+    $out = array();
+    foreach ($nums as $v) {
+        if ($v !== $value) $out[] = $v;
+    }
+    return $out;
+}
+@@@LANG ruby
+def removeElement(nums, value)
+  nums.reject { |v| v == value }
+end
+
+@@@PROBLEM merge-strings-alternately
+@@@LANG typescript
+function mergeAlternately(word1: string, word2: string): string {
+    var out = "";
+    var n = Math.max(word1.length, word2.length);
+    for (var i = 0; i < n; i++) {
+        if (i < word1.length) out += word1.charAt(i);
+        if (i < word2.length) out += word2.charAt(i);
+    }
+    return out;
+}
+@@@LANG java
+public static String mergeAlternately(String word1, String word2) {
+    StringBuilder out = new StringBuilder();
+    int n = Math.max(word1.length(), word2.length());
+    for (int i = 0; i < n; i++) {
+        if (i < word1.length()) out.append(word1.charAt(i));
+        if (i < word2.length()) out.append(word2.charAt(i));
+    }
+    return out.toString();
+}
+@@@LANG cpp
+string mergeAlternately(string word1, string word2) {
+    string out = "";
+    size_t n = max(word1.size(), word2.size());
+    for (size_t i = 0; i < n; i++) {
+        if (i < word1.size()) out += word1[i];
+        if (i < word2.size()) out += word2[i];
+    }
+    return out;
+}
+@@@LANG c
+char* mergeAlternately(const char* word1, const char* word2) {
+    int n1 = (int) strlen(word1);
+    int n2 = (int) strlen(word2);
+    char* out = (char*) malloc(n1 + n2 + 1);
+    int pos = 0;
+    int n = n1 > n2 ? n1 : n2;
+    for (int i = 0; i < n; i++) {
+        if (i < n1) out[pos++] = word1[i];
+        if (i < n2) out[pos++] = word2[i];
+    }
+    out[pos] = '\0';
+    return out;
+}
+@@@LANG csharp
+public static string MergeAlternately(string word1, string word2)
+{
+    var out_ = new System.Text.StringBuilder();
+    int n = Math.Max(word1.Length, word2.Length);
+    for (int i = 0; i < n; i++)
+    {
+        if (i < word1.Length) out_.Append(word1[i]);
+        if (i < word2.Length) out_.Append(word2[i]);
+    }
+    return out_.ToString();
+}
+@@@LANG go
+func mergeAlternately(word1 string, word2 string) string {
+	var sb strings.Builder
+	n := len(word1)
+	if len(word2) > n {
+		n = len(word2)
+	}
+	for i := 0; i < n; i++ {
+		if i < len(word1) {
+			sb.WriteByte(word1[i])
+		}
+		if i < len(word2) {
+			sb.WriteByte(word2[i])
+		}
+	}
+	return sb.String()
+}
+@@@LANG kotlin
+fun mergeAlternately(word1: String, word2: String): String {
+    val out = StringBuilder()
+    val n = if (word1.length > word2.length) word1.length else word2.length
+    for (i in 0 until n) {
+        if (i < word1.length) out.append(word1[i])
+        if (i < word2.length) out.append(word2[i])
+    }
+    return out.toString()
+}
+@@@LANG swift
+func mergeAlternately(_ word1: String, _ word2: String) -> String {
+    let a = Array(word1)
+    let b = Array(word2)
+    var out = ""
+    let n = max(a.count, b.count)
+    for i in 0..<n {
+        if i < a.count { out.append(a[i]) }
+        if i < b.count { out.append(b[i]) }
+    }
+    return out
+}
+@@@LANG rust
+fn mergeAlternately(word1: String, word2: String) -> String {
+    let a = word1.as_bytes();
+    let b = word2.as_bytes();
+    let n = if a.len() > b.len() { a.len() } else { b.len() };
+    let mut out: Vec<u8> = Vec::new();
+    for i in 0..n {
+        if i < a.len() {
+            out.push(a[i]);
+        }
+        if i < b.len() {
+            out.push(b[i]);
+        }
+    }
+    String::from_utf8(out).unwrap()
+}
+@@@LANG php
+function mergeAlternately($word1, $word2) {
+    $out = "";
+    $n1 = strlen($word1);
+    $n2 = strlen($word2);
+    $n = $n1 > $n2 ? $n1 : $n2;
+    for ($i = 0; $i < $n; $i++) {
+        if ($i < $n1) $out .= $word1[$i];
+        if ($i < $n2) $out .= $word2[$i];
+    }
+    return $out;
+}
+@@@LANG ruby
+def mergeAlternately(word1, word2)
+  out = ""
+  n = [word1.length, word2.length].max
+  (0...n).each do |i|
+    out += word1[i] if i < word1.length
+    out += word2[i] if i < word2.length
+  end
+  out
+end
+
+@@@PROBLEM reverse-prefix-of-word
+@@@LANG typescript
+function reversePrefix(word: string, ch: string): string {
+    var idx = word.indexOf(ch);
+    if (idx < 0) return word;
+    var head = word.substring(0, idx + 1).split("").reverse().join("");
+    return head + word.substring(idx + 1);
+}
+@@@LANG java
+public static String reversePrefix(String word, String ch) {
+    int idx = word.indexOf(ch);
+    if (idx < 0) return word;
+    String head = new StringBuilder(word.substring(0, idx + 1)).reverse().toString();
+    return head + word.substring(idx + 1);
+}
+@@@LANG cpp
+string reversePrefix(string word, string ch) {
+    size_t idx = word.find(ch);
+    if (idx == string::npos) return word;
+    reverse(word.begin(), word.begin() + idx + 1);
+    return word;
+}
+@@@LANG c
+char* reversePrefix(const char* word, const char* ch) {
+    int n = (int) strlen(word);
+    int idx = -1;
+    for (int i = 0; i < n; i++) {
+        if (word[i] == ch[0]) { idx = i; break; }
+    }
+    char* out = (char*) malloc(n + 1);
+    for (int i = 0; i < n; i++) out[i] = word[i];
+    out[n] = '\0';
+    if (idx < 0) return out;
+    for (int i = 0; i <= idx; i++) out[i] = word[idx - i];
+    return out;
+}
+@@@LANG csharp
+public static string ReversePrefix(string word, string ch)
+{
+    int idx = word.IndexOf(ch);
+    if (idx < 0) return word;
+    char[] head = word.Substring(0, idx + 1).ToCharArray();
+    Array.Reverse(head);
+    return new string(head) + word.Substring(idx + 1);
+}
+@@@LANG go
+func reversePrefix(word string, ch string) string {
+	idx := strings.Index(word, ch)
+	if idx < 0 {
+		return word
+	}
+	b := []byte(word)
+	for l, r := 0, idx; l < r; l, r = l+1, r-1 {
+		b[l], b[r] = b[r], b[l]
+	}
+	return string(b)
+}
+@@@LANG kotlin
+fun reversePrefix(word: String, ch: String): String {
+    val idx = word.indexOf(ch)
+    if (idx < 0) return word
+    return word.substring(0, idx + 1).reversed() + word.substring(idx + 1)
+}
+@@@LANG swift
+func reversePrefix(_ word: String, _ ch: String) -> String {
+    let chars = Array(word)
+    let target = Array(ch)[0]
+    var idx = -1
+    for i in 0..<chars.count {
+        if chars[i] == target {
+            idx = i
+            break
+        }
+    }
+    if idx < 0 { return word }
+    var out = Array(chars[0...idx].reversed())
+    out.append(contentsOf: chars[(idx + 1)...])
+    return String(out)
+}
+@@@LANG rust
+fn reversePrefix(word: String, ch: String) -> String {
+    let target = ch.as_bytes()[0];
+    let mut bytes = word.into_bytes();
+    let mut idx: i32 = -1;
+    for i in 0..bytes.len() {
+        if bytes[i] == target {
+            idx = i as i32;
+            break;
+        }
+    }
+    if idx < 0 {
+        return String::from_utf8(bytes).unwrap();
+    }
+    bytes[0..(idx as usize + 1)].reverse();
+    String::from_utf8(bytes).unwrap()
+}
+@@@LANG php
+function reversePrefix($word, $ch) {
+    $idx = strpos($word, $ch);
+    if ($idx === false) return $word;
+    return strrev(substr($word, 0, $idx + 1)) . substr($word, $idx + 1);
+}
+@@@LANG ruby
+def reversePrefix(word, ch)
+  idx = word.index(ch)
+  return word if idx.nil?
+  word[0..idx].reverse + word[(idx + 1)..-1].to_s
+end
+
+@@@PROBLEM shortest-distance-to-a-character
+@@@LANG typescript
+function shortestToChar(s: string, c: string): number[] {
+    var n = s.length;
+    var out: number[] = [];
+    for (var k = 0; k < n; k++) out.push(0);
+    var prev = -10000;
+    for (var i = 0; i < n; i++) {
+        if (s.charAt(i) === c) prev = i;
+        out[i] = i - prev;
+    }
+    prev = 10000;
+    for (var j = n - 1; j >= 0; j--) {
+        if (s.charAt(j) === c) prev = j;
+        if (prev - j < out[j]) out[j] = prev - j;
+    }
+    return out;
+}
+@@@LANG java
+public static int[] shortestToChar(String s, String c) {
+    int n = s.length();
+    char target = c.charAt(0);
+    int[] out = new int[n];
+    int prev = -10000;
+    for (int i = 0; i < n; i++) {
+        if (s.charAt(i) == target) prev = i;
+        out[i] = i - prev;
+    }
+    prev = 10000;
+    for (int i = n - 1; i >= 0; i--) {
+        if (s.charAt(i) == target) prev = i;
+        out[i] = Math.min(out[i], prev - i);
+    }
+    return out;
+}
+@@@LANG cpp
+vector<int> shortestToChar(string s, string c) {
+    int n = (int) s.size();
+    char target = c[0];
+    vector<int> out(n, 0);
+    int prev = -10000;
+    for (int i = 0; i < n; i++) {
+        if (s[i] == target) prev = i;
+        out[i] = i - prev;
+    }
+    prev = 10000;
+    for (int i = n - 1; i >= 0; i--) {
+        if (s[i] == target) prev = i;
+        out[i] = min(out[i], prev - i);
+    }
+    return out;
+}
+@@@LANG c
+int* shortestToChar(const char* s, const char* c, int* returnSize) {
+    int n = (int) strlen(s);
+    char target = c[0];
+    int* out = (int*) malloc(sizeof(int) * (n > 0 ? n : 1));
+    int prev = -10000;
+    for (int i = 0; i < n; i++) {
+        if (s[i] == target) prev = i;
+        out[i] = i - prev;
+    }
+    prev = 10000;
+    for (int i = n - 1; i >= 0; i--) {
+        if (s[i] == target) prev = i;
+        if (prev - i < out[i]) out[i] = prev - i;
+    }
+    *returnSize = n;
+    return out;
+}
+@@@LANG csharp
+public static int[] ShortestToChar(string s, string c)
+{
+    int n = s.Length;
+    char target = c[0];
+    int[] out_ = new int[n];
+    int prev = -10000;
+    for (int i = 0; i < n; i++)
+    {
+        if (s[i] == target) prev = i;
+        out_[i] = i - prev;
+    }
+    prev = 10000;
+    for (int i = n - 1; i >= 0; i--)
+    {
+        if (s[i] == target) prev = i;
+        out_[i] = Math.Min(out_[i], prev - i);
+    }
+    return out_;
+}
+@@@LANG go
+func shortestToChar(s string, c string) []int {
+	n := len(s)
+	target := c[0]
+	out := make([]int, n)
+	prev := -10000
+	for i := 0; i < n; i++ {
+		if s[i] == target {
+			prev = i
+		}
+		out[i] = i - prev
+	}
+	prev = 10000
+	for i := n - 1; i >= 0; i-- {
+		if s[i] == target {
+			prev = i
+		}
+		if prev-i < out[i] {
+			out[i] = prev - i
+		}
+	}
+	return out
+}
+@@@LANG kotlin
+fun shortestToChar(s: String, c: String): IntArray {
+    val n = s.length
+    val target = c[0]
+    val out = IntArray(n)
+    var prev = -10000
+    for (i in 0 until n) {
+        if (s[i] == target) prev = i
+        out[i] = i - prev
+    }
+    prev = 10000
+    for (i in n - 1 downTo 0) {
+        if (s[i] == target) prev = i
+        if (prev - i < out[i]) out[i] = prev - i
+    }
+    return out
+}
+@@@LANG swift
+func shortestToChar(_ s: String, _ c: String) -> [Int] {
+    let chars = Array(s)
+    let target = Array(c)[0]
+    let n = chars.count
+    var out = [Int](repeating: 0, count: n)
+    var prev = -10000
+    for i in 0..<n {
+        if chars[i] == target { prev = i }
+        out[i] = i - prev
+    }
+    prev = 10000
+    for i in stride(from: n - 1, through: 0, by: -1) {
+        if chars[i] == target { prev = i }
+        if prev - i < out[i] { out[i] = prev - i }
+    }
+    return out
+}
+@@@LANG rust
+fn shortestToChar(s: String, c: String) -> Vec<i32> {
+    let bytes = s.as_bytes();
+    let target = c.as_bytes()[0];
+    let n = bytes.len();
+    let mut out = vec![0i32; n];
+    let mut prev: i32 = -10000;
+    for i in 0..n {
+        if bytes[i] == target {
+            prev = i as i32;
+        }
+        out[i] = i as i32 - prev;
+    }
+    prev = 10000;
+    for i in (0..n).rev() {
+        if bytes[i] == target {
+            prev = i as i32;
+        }
+        if prev - (i as i32) < out[i] {
+            out[i] = prev - (i as i32);
+        }
+    }
+    out
+}
+@@@LANG php
+function shortestToChar($s, $c) {
+    $n = strlen($s);
+    $out = array_fill(0, $n, 0);
+    $prev = -10000;
+    for ($i = 0; $i < $n; $i++) {
+        if ($s[$i] === $c) $prev = $i;
+        $out[$i] = $i - $prev;
+    }
+    $prev = 10000;
+    for ($i = $n - 1; $i >= 0; $i--) {
+        if ($s[$i] === $c) $prev = $i;
+        if ($prev - $i < $out[$i]) $out[$i] = $prev - $i;
+    }
+    return $out;
+}
+@@@LANG ruby
+def shortestToChar(s, c)
+  n = s.length
+  out = Array.new(n, 0)
+  prev = -10000
+  (0...n).each do |i|
+    prev = i if s[i] == c
+    out[i] = i - prev
+  end
+  prev = 10000
+  (n - 1).downto(0) do |i|
+    prev = i if s[i] == c
+    out[i] = prev - i if prev - i < out[i]
+  end
+  out
+end
+
+@@@PROBLEM can-make-arithmetic-progression-from-sequence
+@@@LANG typescript
+function canMakeArithmeticProgression(arr: number[]): boolean {
+    var a = arr.slice();
+    a.sort(function (x, y) { return x - y; });
+    if (a.length <= 2) return true;
+    var d = a[1] - a[0];
+    for (var i = 2; i < a.length; i++) {
+        if (a[i] - a[i - 1] !== d) return false;
+    }
+    return true;
+}
+@@@LANG java
+public static boolean canMakeArithmeticProgression(int[] arr) {
+    int[] a = Arrays.copyOf(arr, arr.length);
+    Arrays.sort(a);
+    if (a.length <= 2) return true;
+    int d = a[1] - a[0];
+    for (int i = 2; i < a.length; i++) {
+        if (a[i] - a[i - 1] != d) return false;
+    }
+    return true;
+}
+@@@LANG cpp
+bool canMakeArithmeticProgression(vector<int>& arr) {
+    vector<int> a = arr;
+    sort(a.begin(), a.end());
+    if (a.size() <= 2) return true;
+    int d = a[1] - a[0];
+    for (size_t i = 2; i < a.size(); i++) {
+        if (a[i] - a[i - 1] != d) return false;
+    }
+    return true;
+}
+@@@LANG c
+bool canMakeArithmeticProgression(int* arr, int arrSize) {
+    int* a = (int*) malloc(sizeof(int) * arrSize);
+    for (int i = 0; i < arrSize; i++) a[i] = arr[i];
+    for (int i = 1; i < arrSize; i++) {
+        int key = a[i];
+        int j = i - 1;
+        while (j >= 0 && a[j] > key) { a[j + 1] = a[j]; j--; }
+        a[j + 1] = key;
+    }
+    bool ok = true;
+    if (arrSize > 2) {
+        int d = a[1] - a[0];
+        for (int i = 2; i < arrSize; i++) {
+            if (a[i] - a[i - 1] != d) { ok = false; break; }
+        }
+    }
+    free(a);
+    return ok;
+}
+@@@LANG csharp
+public static bool CanMakeArithmeticProgression(int[] arr)
+{
+    int[] a = (int[]) arr.Clone();
+    Array.Sort(a);
+    if (a.Length <= 2) return true;
+    int d = a[1] - a[0];
+    for (int i = 2; i < a.Length; i++)
+    {
+        if (a[i] - a[i - 1] != d) return false;
+    }
+    return true;
+}
+@@@LANG go
+func canMakeArithmeticProgression(arr []int) bool {
+	a := make([]int, len(arr))
+	copy(a, arr)
+	sort.Ints(a)
+	if len(a) <= 2 {
+		return true
+	}
+	d := a[1] - a[0]
+	for i := 2; i < len(a); i++ {
+		if a[i]-a[i-1] != d {
+			return false
+		}
+	}
+	return true
+}
+@@@LANG kotlin
+fun canMakeArithmeticProgression(arr: IntArray): Boolean {
+    val a = arr.copyOf()
+    a.sort()
+    if (a.size <= 2) return true
+    val d = a[1] - a[0]
+    for (i in 2 until a.size) {
+        if (a[i] - a[i - 1] != d) return false
+    }
+    return true
+}
+@@@LANG swift
+func canMakeArithmeticProgression(_ arr: [Int]) -> Bool {
+    let a = arr.sorted()
+    if a.count <= 2 { return true }
+    let d = a[1] - a[0]
+    for i in 2..<a.count {
+        if a[i] - a[i - 1] != d { return false }
+    }
+    return true
+}
+@@@LANG rust
+fn canMakeArithmeticProgression(arr: Vec<i32>) -> bool {
+    let mut a = arr.clone();
+    a.sort();
+    if a.len() <= 2 {
+        return true;
+    }
+    let d = a[1] - a[0];
+    for i in 2..a.len() {
+        if a[i] - a[i - 1] != d {
+            return false;
+        }
+    }
+    true
+}
+@@@LANG php
+function canMakeArithmeticProgression($arr) {
+    $a = $arr;
+    sort($a);
+    $n = count($a);
+    if ($n <= 2) return true;
+    $d = $a[1] - $a[0];
+    for ($i = 2; $i < $n; $i++) {
+        if ($a[$i] - $a[$i - 1] !== $d) return false;
+    }
+    return true;
+}
+@@@LANG ruby
+def canMakeArithmeticProgression(arr)
+  a = arr.sort
+  return true if a.length <= 2
+  d = a[1] - a[0]
+  (2...a.length).each do |i|
+    return false if a[i] - a[i - 1] != d
+  end
+  true
+end
+
+@@@PROBLEM check-if-n-and-its-double-exist
+@@@LANG typescript
+function checkIfExist(arr: number[]): boolean {
+    var seen: { [key: string]: boolean } = {};
+    for (var i = 0; i < arr.length; i++) {
+        var x = arr[i];
+        if (seen[String(2 * x)] === true) return true;
+        if (x % 2 === 0 && seen[String(x / 2)] === true) return true;
+        seen[String(x)] = true;
+    }
+    return false;
+}
+@@@LANG java
+public static boolean checkIfExist(int[] arr) {
+    Set<Integer> seen = new HashSet<>();
+    for (int x : arr) {
+        if (seen.contains(2 * x)) return true;
+        if (x % 2 == 0 && seen.contains(x / 2)) return true;
+        seen.add(x);
+    }
+    return false;
+}
+@@@LANG cpp
+bool checkIfExist(vector<int>& arr) {
+    unordered_set<int> seen;
+    for (int x : arr) {
+        if (seen.count(2 * x)) return true;
+        if (x % 2 == 0 && seen.count(x / 2)) return true;
+        seen.insert(x);
+    }
+    return false;
+}
+@@@LANG c
+bool checkIfExist(int* arr, int arrSize) {
+    for (int i = 0; i < arrSize; i++) {
+        for (int j = 0; j < arrSize; j++) {
+            if (i != j && arr[i] == 2 * arr[j]) return true;
+        }
+    }
+    return false;
+}
+@@@LANG csharp
+public static bool CheckIfExist(int[] arr)
+{
+    var seen = new HashSet<int>();
+    foreach (int x in arr)
+    {
+        if (seen.Contains(2 * x)) return true;
+        if (x % 2 == 0 && seen.Contains(x / 2)) return true;
+        seen.Add(x);
+    }
+    return false;
+}
+@@@LANG go
+func checkIfExist(arr []int) bool {
+	seen := make(map[int]bool)
+	for _, x := range arr {
+		if seen[2*x] {
+			return true
+		}
+		if x%2 == 0 && seen[x/2] {
+			return true
+		}
+		seen[x] = true
+	}
+	return false
+}
+@@@LANG kotlin
+fun checkIfExist(arr: IntArray): Boolean {
+    val seen = HashSet<Int>()
+    for (x in arr) {
+        if (seen.contains(2 * x)) return true
+        if (x % 2 == 0 && seen.contains(x / 2)) return true
+        seen.add(x)
+    }
+    return false
+}
+@@@LANG swift
+func checkIfExist(_ arr: [Int]) -> Bool {
+    var seen = Set<Int>()
+    for x in arr {
+        if seen.contains(2 * x) { return true }
+        if x % 2 == 0 && seen.contains(x / 2) { return true }
+        seen.insert(x)
+    }
+    return false
+}
+@@@LANG rust
+fn checkIfExist(arr: Vec<i32>) -> bool {
+    use std::collections::HashSet;
+    let mut seen: HashSet<i32> = HashSet::new();
+    for x in arr.iter() {
+        if seen.contains(&(2 * *x)) {
+            return true;
+        }
+        if *x % 2 == 0 && seen.contains(&(*x / 2)) {
+            return true;
+        }
+        seen.insert(*x);
+    }
+    false
+}
+@@@LANG php
+function checkIfExist($arr) {
+    $seen = array();
+    foreach ($arr as $x) {
+        if (isset($seen[2 * $x])) return true;
+        if ($x % 2 === 0 && isset($seen[intdiv($x, 2)])) return true;
+        $seen[$x] = true;
+    }
+    return false;
+}
+@@@LANG ruby
+def checkIfExist(arr)
+  seen = {}
+  arr.each do |x|
+    return true if seen[2 * x]
+    return true if x % 2 == 0 && seen[x / 2]
+    seen[x] = true
+  end
+  false
+end
+
+@@@PROBLEM minimum-difference-between-highest-and-lowest-of-k-scores
+@@@LANG typescript
+function minimumDifference(nums: number[], k: number): number {
+    if (k <= 1) return 0;
+    var a = nums.slice();
+    a.sort(function (x, y) { return x - y; });
+    var best = -1;
+    for (var i = 0; i + k <= a.length; i++) {
+        var d = a[i + k - 1] - a[i];
+        if (best < 0 || d < best) best = d;
+    }
+    return best;
+}
+@@@LANG java
+public static int minimumDifference(int[] nums, int k) {
+    if (k <= 1) return 0;
+    int[] a = Arrays.copyOf(nums, nums.length);
+    Arrays.sort(a);
+    int best = Integer.MAX_VALUE;
+    for (int i = 0; i + k <= a.length; i++) {
+        best = Math.min(best, a[i + k - 1] - a[i]);
+    }
+    return best;
+}
+@@@LANG cpp
+int minimumDifference(vector<int>& nums, int k) {
+    if (k <= 1) return 0;
+    vector<int> a = nums;
+    sort(a.begin(), a.end());
+    int best = -1;
+    for (int i = 0; i + k <= (int) a.size(); i++) {
+        int d = a[i + k - 1] - a[i];
+        if (best < 0 || d < best) best = d;
+    }
+    return best;
+}
+@@@LANG c
+int minimumDifference(int* nums, int numsSize, int k) {
+    if (k <= 1) return 0;
+    int* a = (int*) malloc(sizeof(int) * numsSize);
+    for (int i = 0; i < numsSize; i++) a[i] = nums[i];
+    for (int i = 1; i < numsSize; i++) {
+        int key = a[i];
+        int j = i - 1;
+        while (j >= 0 && a[j] > key) { a[j + 1] = a[j]; j--; }
+        a[j + 1] = key;
+    }
+    int best = -1;
+    for (int i = 0; i + k <= numsSize; i++) {
+        int d = a[i + k - 1] - a[i];
+        if (best < 0 || d < best) best = d;
+    }
+    free(a);
+    return best;
+}
+@@@LANG csharp
+public static int MinimumDifference(int[] nums, int k)
+{
+    if (k <= 1) return 0;
+    int[] a = (int[]) nums.Clone();
+    Array.Sort(a);
+    int best = int.MaxValue;
+    for (int i = 0; i + k <= a.Length; i++)
+    {
+        best = Math.Min(best, a[i + k - 1] - a[i]);
+    }
+    return best;
+}
+@@@LANG go
+func minimumDifference(nums []int, k int) int {
+	if k <= 1 {
+		return 0
+	}
+	a := make([]int, len(nums))
+	copy(a, nums)
+	sort.Ints(a)
+	best := -1
+	for i := 0; i+k <= len(a); i++ {
+		d := a[i+k-1] - a[i]
+		if best < 0 || d < best {
+			best = d
+		}
+	}
+	return best
+}
+@@@LANG kotlin
+fun minimumDifference(nums: IntArray, k: Int): Int {
+    if (k <= 1) return 0
+    val a = nums.copyOf()
+    a.sort()
+    var best = -1
+    var i = 0
+    while (i + k <= a.size) {
+        val d = a[i + k - 1] - a[i]
+        if (best < 0 || d < best) best = d
+        i++
+    }
+    return best
+}
+@@@LANG swift
+func minimumDifference(_ nums: [Int], _ k: Int) -> Int {
+    if k <= 1 { return 0 }
+    let a = nums.sorted()
+    var best = -1
+    var i = 0
+    while i + k <= a.count {
+        let d = a[i + k - 1] - a[i]
+        if best < 0 || d < best { best = d }
+        i += 1
+    }
+    return best
+}
+@@@LANG rust
+fn minimumDifference(nums: Vec<i32>, k: i32) -> i32 {
+    if k <= 1 {
+        return 0;
+    }
+    let window = k as usize;
+    let mut a = nums.clone();
+    a.sort();
+    let mut best: i32 = -1;
+    let mut i = 0usize;
+    while i + window <= a.len() {
+        let d = a[i + window - 1] - a[i];
+        if best < 0 || d < best {
+            best = d;
+        }
+        i += 1;
+    }
+    best
+}
+@@@LANG php
+function minimumDifference($nums, $k) {
+    if ($k <= 1) return 0;
+    $a = $nums;
+    sort($a);
+    $best = -1;
+    $n = count($a);
+    for ($i = 0; $i + $k <= $n; $i++) {
+        $d = $a[$i + $k - 1] - $a[$i];
+        if ($best < 0 || $d < $best) $best = $d;
+    }
+    return $best;
+}
+@@@LANG ruby
+def minimumDifference(nums, k)
+  return 0 if k <= 1
+  a = nums.sort
+  best = -1
+  i = 0
+  while i + k <= a.length
+    d = a[i + k - 1] - a[i]
+    best = d if best < 0 || d < best
+    i += 1
+  end
+  best
+end
+
+@@@PROBLEM array-partition
+@@@LANG typescript
+function arrayPairSum(nums: number[]): number {
+    var a = nums.slice();
+    a.sort(function (x, y) { return x - y; });
+    var sum = 0;
+    for (var i = 0; i < a.length; i += 2) sum += a[i];
+    return sum;
+}
+@@@LANG java
+public static int arrayPairSum(int[] nums) {
+    int[] a = Arrays.copyOf(nums, nums.length);
+    Arrays.sort(a);
+    int sum = 0;
+    for (int i = 0; i < a.length; i += 2) sum += a[i];
+    return sum;
+}
+@@@LANG cpp
+int arrayPairSum(vector<int>& nums) {
+    vector<int> a = nums;
+    sort(a.begin(), a.end());
+    int sum = 0;
+    for (size_t i = 0; i < a.size(); i += 2) sum += a[i];
+    return sum;
+}
+@@@LANG c
+int arrayPairSum(int* nums, int numsSize) {
+    int* a = (int*) malloc(sizeof(int) * numsSize);
+    for (int i = 0; i < numsSize; i++) a[i] = nums[i];
+    for (int i = 1; i < numsSize; i++) {
+        int key = a[i];
+        int j = i - 1;
+        while (j >= 0 && a[j] > key) { a[j + 1] = a[j]; j--; }
+        a[j + 1] = key;
+    }
+    int sum = 0;
+    for (int i = 0; i < numsSize; i += 2) sum += a[i];
+    free(a);
+    return sum;
+}
+@@@LANG csharp
+public static int ArrayPairSum(int[] nums)
+{
+    int[] a = (int[]) nums.Clone();
+    Array.Sort(a);
+    int sum = 0;
+    for (int i = 0; i < a.Length; i += 2) sum += a[i];
+    return sum;
+}
+@@@LANG go
+func arrayPairSum(nums []int) int {
+	a := make([]int, len(nums))
+	copy(a, nums)
+	sort.Ints(a)
+	sum := 0
+	for i := 0; i < len(a); i += 2 {
+		sum += a[i]
+	}
+	return sum
+}
+@@@LANG kotlin
+fun arrayPairSum(nums: IntArray): Int {
+    val a = nums.copyOf()
+    a.sort()
+    var sum = 0
+    var i = 0
+    while (i < a.size) {
+        sum += a[i]
+        i += 2
+    }
+    return sum
+}
+@@@LANG swift
+func arrayPairSum(_ nums: [Int]) -> Int {
+    let a = nums.sorted()
+    var sum = 0
+    var i = 0
+    while i < a.count {
+        sum += a[i]
+        i += 2
+    }
+    return sum
+}
+@@@LANG rust
+fn arrayPairSum(nums: Vec<i32>) -> i32 {
+    let mut a = nums.clone();
+    a.sort();
+    let mut sum = 0;
+    let mut i = 0usize;
+    while i < a.len() {
+        sum += a[i];
+        i += 2;
+    }
+    sum
+}
+@@@LANG php
+function arrayPairSum($nums) {
+    $a = $nums;
+    sort($a);
+    $sum = 0;
+    $n = count($a);
+    for ($i = 0; $i < $n; $i += 2) $sum += $a[$i];
+    return $sum;
+}
+@@@LANG ruby
+def arrayPairSum(nums)
+  a = nums.sort
+  sum = 0
+  i = 0
+  while i < a.length
+    sum += a[i]
+    i += 2
+  end
+  sum
+end
+
+@@@PROBLEM maximum-product-of-two-elements-in-an-array
+@@@LANG typescript
+function maxProduct(nums: number[]): number {
+    var first = -1;
+    var second = -1;
+    for (var i = 0; i < nums.length; i++) {
+        if (nums[i] > first) {
+            second = first;
+            first = nums[i];
+        } else if (nums[i] > second) {
+            second = nums[i];
+        }
+    }
+    return (first - 1) * (second - 1);
+}
+@@@LANG java
+public static int maxProduct(int[] nums) {
+    int first = -1, second = -1;
+    for (int x : nums) {
+        if (x > first) {
+            second = first;
+            first = x;
+        } else if (x > second) {
+            second = x;
+        }
+    }
+    return (first - 1) * (second - 1);
+}
+@@@LANG cpp
+int maxProduct(vector<int>& nums) {
+    int first = -1, second = -1;
+    for (int x : nums) {
+        if (x > first) {
+            second = first;
+            first = x;
+        } else if (x > second) {
+            second = x;
+        }
+    }
+    return (first - 1) * (second - 1);
+}
+@@@LANG c
+int maxProduct(int* nums, int numsSize) {
+    int first = -1, second = -1;
+    for (int i = 0; i < numsSize; i++) {
+        if (nums[i] > first) {
+            second = first;
+            first = nums[i];
+        } else if (nums[i] > second) {
+            second = nums[i];
+        }
+    }
+    return (first - 1) * (second - 1);
+}
+@@@LANG csharp
+public static int MaxProduct(int[] nums)
+{
+    int first = -1, second = -1;
+    foreach (int x in nums)
+    {
+        if (x > first)
+        {
+            second = first;
+            first = x;
+        }
+        else if (x > second)
+        {
+            second = x;
+        }
+    }
+    return (first - 1) * (second - 1);
+}
+@@@LANG go
+func maxProduct(nums []int) int {
+	first, second := -1, -1
+	for _, x := range nums {
+		if x > first {
+			second = first
+			first = x
+		} else if x > second {
+			second = x
+		}
+	}
+	return (first - 1) * (second - 1)
+}
+@@@LANG kotlin
+fun maxProduct(nums: IntArray): Int {
+    var first = -1
+    var second = -1
+    for (x in nums) {
+        if (x > first) {
+            second = first
+            first = x
+        } else if (x > second) {
+            second = x
+        }
+    }
+    return (first - 1) * (second - 1)
+}
+@@@LANG swift
+func maxProduct(_ nums: [Int]) -> Int {
+    var first = -1
+    var second = -1
+    for x in nums {
+        if x > first {
+            second = first
+            first = x
+        } else if x > second {
+            second = x
+        }
+    }
+    return (first - 1) * (second - 1)
+}
+@@@LANG rust
+fn maxProduct(nums: Vec<i32>) -> i32 {
+    let mut first = -1;
+    let mut second = -1;
+    for x in nums.iter() {
+        if *x > first {
+            second = first;
+            first = *x;
+        } else if *x > second {
+            second = *x;
+        }
+    }
+    (first - 1) * (second - 1)
+}
+@@@LANG php
+function maxProduct($nums) {
+    $first = -1;
+    $second = -1;
+    foreach ($nums as $x) {
+        if ($x > $first) {
+            $second = $first;
+            $first = $x;
+        } else if ($x > $second) {
+            $second = $x;
+        }
+    }
+    return ($first - 1) * ($second - 1);
+}
+@@@LANG ruby
+def maxProduct(nums)
+  first = -1
+  second = -1
+  nums.each do |x|
+    if x > first
+      second = first
+      first = x
+    elsif x > second
+      second = x
+    end
+  end
+  (first - 1) * (second - 1)
+end
+
+@@@PROBLEM three-consecutive-odds
+@@@LANG typescript
+function threeConsecutiveOdds(arr: number[]): boolean {
+    var run = 0;
+    for (var i = 0; i < arr.length; i++) {
+        run = arr[i] % 2 !== 0 ? run + 1 : 0;
+        if (run >= 3) return true;
+    }
+    return false;
+}
+@@@LANG java
+public static boolean threeConsecutiveOdds(int[] arr) {
+    int run = 0;
+    for (int x : arr) {
+        run = x % 2 != 0 ? run + 1 : 0;
+        if (run >= 3) return true;
+    }
+    return false;
+}
+@@@LANG cpp
+bool threeConsecutiveOdds(vector<int>& arr) {
+    int run = 0;
+    for (int x : arr) {
+        run = x % 2 != 0 ? run + 1 : 0;
+        if (run >= 3) return true;
+    }
+    return false;
+}
+@@@LANG c
+bool threeConsecutiveOdds(int* arr, int arrSize) {
+    int run = 0;
+    for (int i = 0; i < arrSize; i++) {
+        run = arr[i] % 2 != 0 ? run + 1 : 0;
+        if (run >= 3) return true;
+    }
+    return false;
+}
+@@@LANG csharp
+public static bool ThreeConsecutiveOdds(int[] arr)
+{
+    int run = 0;
+    foreach (int x in arr)
+    {
+        run = x % 2 != 0 ? run + 1 : 0;
+        if (run >= 3) return true;
+    }
+    return false;
+}
+@@@LANG go
+func threeConsecutiveOdds(arr []int) bool {
+	run := 0
+	for _, x := range arr {
+		if x%2 != 0 {
+			run++
+		} else {
+			run = 0
+		}
+		if run >= 3 {
+			return true
+		}
+	}
+	return false
+}
+@@@LANG kotlin
+fun threeConsecutiveOdds(arr: IntArray): Boolean {
+    var run = 0
+    for (x in arr) {
+        run = if (x % 2 != 0) run + 1 else 0
+        if (run >= 3) return true
+    }
+    return false
+}
+@@@LANG swift
+func threeConsecutiveOdds(_ arr: [Int]) -> Bool {
+    var run = 0
+    for x in arr {
+        run = x % 2 != 0 ? run + 1 : 0
+        if run >= 3 { return true }
+    }
+    return false
+}
+@@@LANG rust
+fn threeConsecutiveOdds(arr: Vec<i32>) -> bool {
+    let mut run = 0;
+    for x in arr.iter() {
+        run = if *x % 2 != 0 { run + 1 } else { 0 };
+        if run >= 3 {
+            return true;
+        }
+    }
+    false
+}
+@@@LANG php
+function threeConsecutiveOdds($arr) {
+    $run = 0;
+    foreach ($arr as $x) {
+        $run = $x % 2 !== 0 ? $run + 1 : 0;
+        if ($run >= 3) return true;
+    }
+    return false;
+}
+@@@LANG ruby
+def threeConsecutiveOdds(arr)
+  run = 0
+  arr.each do |x|
+    run = x.odd? ? run + 1 : 0
+    return true if run >= 3
+  end
+  false
+end
+
+@@@PROBLEM count-good-triplets
+@@@LANG typescript
+function countGoodTriplets(arr: number[], a: number, b: number, c: number): number {
+    var n = arr.length;
+    var count = 0;
+    for (var i = 0; i < n; i++) {
+        for (var j = i + 1; j < n; j++) {
+            if (Math.abs(arr[i] - arr[j]) > a) continue;
+            for (var k = j + 1; k < n; k++) {
+                if (Math.abs(arr[j] - arr[k]) <= b && Math.abs(arr[i] - arr[k]) <= c) count++;
+            }
+        }
+    }
+    return count;
+}
+@@@LANG java
+public static int countGoodTriplets(int[] arr, int a, int b, int c) {
+    int n = arr.length;
+    int count = 0;
+    for (int i = 0; i < n; i++) {
+        for (int j = i + 1; j < n; j++) {
+            if (Math.abs(arr[i] - arr[j]) > a) continue;
+            for (int k = j + 1; k < n; k++) {
+                if (Math.abs(arr[j] - arr[k]) <= b && Math.abs(arr[i] - arr[k]) <= c) count++;
+            }
+        }
+    }
+    return count;
+}
+@@@LANG cpp
+int countGoodTriplets(vector<int>& arr, int a, int b, int c) {
+    int n = (int) arr.size();
+    int count = 0;
+    for (int i = 0; i < n; i++) {
+        for (int j = i + 1; j < n; j++) {
+            if (abs(arr[i] - arr[j]) > a) continue;
+            for (int k = j + 1; k < n; k++) {
+                if (abs(arr[j] - arr[k]) <= b && abs(arr[i] - arr[k]) <= c) count++;
+            }
+        }
+    }
+    return count;
+}
+@@@LANG c
+int countGoodTriplets(int* arr, int arrSize, int a, int b, int c) {
+    int count = 0;
+    for (int i = 0; i < arrSize; i++) {
+        for (int j = i + 1; j < arrSize; j++) {
+            int d1 = arr[i] - arr[j];
+            if (d1 < 0) d1 = -d1;
+            if (d1 > a) continue;
+            for (int k = j + 1; k < arrSize; k++) {
+                int d2 = arr[j] - arr[k];
+                if (d2 < 0) d2 = -d2;
+                int d3 = arr[i] - arr[k];
+                if (d3 < 0) d3 = -d3;
+                if (d2 <= b && d3 <= c) count++;
+            }
+        }
+    }
+    return count;
+}
+@@@LANG csharp
+public static int CountGoodTriplets(int[] arr, int a, int b, int c)
+{
+    int n = arr.Length;
+    int count = 0;
+    for (int i = 0; i < n; i++)
+    {
+        for (int j = i + 1; j < n; j++)
+        {
+            if (Math.Abs(arr[i] - arr[j]) > a) continue;
+            for (int k = j + 1; k < n; k++)
+            {
+                if (Math.Abs(arr[j] - arr[k]) <= b && Math.Abs(arr[i] - arr[k]) <= c) count++;
+            }
+        }
+    }
+    return count;
+}
+@@@LANG go
+func countGoodTriplets(arr []int, a int, b int, c int) int {
+	abs := func(x int) int {
+		if x < 0 {
+			return -x
+		}
+		return x
+	}
+	n := len(arr)
+	count := 0
+	for i := 0; i < n; i++ {
+		for j := i + 1; j < n; j++ {
+			if abs(arr[i]-arr[j]) > a {
+				continue
+			}
+			for k := j + 1; k < n; k++ {
+				if abs(arr[j]-arr[k]) <= b && abs(arr[i]-arr[k]) <= c {
+					count++
+				}
+			}
+		}
+	}
+	return count
+}
+@@@LANG kotlin
+fun countGoodTriplets(arr: IntArray, a: Int, b: Int, c: Int): Int {
+    val n = arr.size
+    var count = 0
+    for (i in 0 until n) {
+        for (j in i + 1 until n) {
+            if (Math.abs(arr[i] - arr[j]) > a) continue
+            for (k in j + 1 until n) {
+                if (Math.abs(arr[j] - arr[k]) <= b && Math.abs(arr[i] - arr[k]) <= c) count++
+            }
+        }
+    }
+    return count
+}
+@@@LANG swift
+func countGoodTriplets(_ arr: [Int], _ a: Int, _ b: Int, _ c: Int) -> Int {
+    let n = arr.count
+    var count = 0
+    for i in 0..<n {
+        for j in (i + 1)..<n {
+            if abs(arr[i] - arr[j]) > a { continue }
+            for k in (j + 1)..<n {
+                if abs(arr[j] - arr[k]) <= b && abs(arr[i] - arr[k]) <= c { count += 1 }
+            }
+        }
+    }
+    return count
+}
+@@@LANG rust
+fn countGoodTriplets(arr: Vec<i32>, a: i32, b: i32, c: i32) -> i32 {
+    let n = arr.len();
+    let mut count = 0;
+    for i in 0..n {
+        for j in (i + 1)..n {
+            if (arr[i] - arr[j]).abs() > a {
+                continue;
+            }
+            for k in (j + 1)..n {
+                if (arr[j] - arr[k]).abs() <= b && (arr[i] - arr[k]).abs() <= c {
+                    count += 1;
+                }
+            }
+        }
+    }
+    count
+}
+@@@LANG php
+function countGoodTriplets($arr, $a, $b, $c) {
+    $n = count($arr);
+    $count = 0;
+    for ($i = 0; $i < $n; $i++) {
+        for ($j = $i + 1; $j < $n; $j++) {
+            if (abs($arr[$i] - $arr[$j]) > $a) continue;
+            for ($k = $j + 1; $k < $n; $k++) {
+                if (abs($arr[$j] - $arr[$k]) <= $b && abs($arr[$i] - $arr[$k]) <= $c) $count++;
+            }
+        }
+    }
+    return $count;
+}
+@@@LANG ruby
+def countGoodTriplets(arr, a, b, c)
+  n = arr.length
+  count = 0
+  (0...n).each do |i|
+    ((i + 1)...n).each do |j|
+      next if (arr[i] - arr[j]).abs > a
+      ((j + 1)...n).each do |k|
+        count += 1 if (arr[j] - arr[k]).abs <= b && (arr[i] - arr[k]).abs <= c
+      end
+    end
+  end
+  count
+end

@@ -1,0 +1,3654 @@
+@@@PROBLEM longest-cycle-in-a-graph
+@@@LANG typescript
+function longestCycle(edges: number[]): number {
+    var n = edges.length;
+    var visitedAt: number[] = [];
+    for (var i = 0; i < n; i++) visitedAt.push(-1);
+    var best = -1;
+    var clock = 0;
+    for (var j = 0; j < n; j++) {
+        if (visitedAt[j] !== -1) continue;
+        var walkStart = clock;
+        var node = j;
+        while (node !== -1 && visitedAt[node] === -1) {
+            visitedAt[node] = clock++;
+            node = edges[node];
+        }
+        if (node !== -1 && visitedAt[node] >= walkStart) {
+            var length = clock - visitedAt[node];
+            if (length > best) best = length;
+        }
+    }
+    return best;
+}
+@@@LANG java
+public static int longestCycle(int[] edges) {
+    int n = edges.length;
+    int[] visitedAt = new int[n];
+    Arrays.fill(visitedAt, -1);
+    int best = -1, clock = 0;
+    for (int i = 0; i < n; i++) {
+        if (visitedAt[i] != -1) continue;
+        int walkStart = clock;
+        int node = i;
+        while (node != -1 && visitedAt[node] == -1) {
+            visitedAt[node] = clock++;
+            node = edges[node];
+        }
+        if (node != -1 && visitedAt[node] >= walkStart) {
+            best = Math.max(best, clock - visitedAt[node]);
+        }
+    }
+    return best;
+}
+@@@LANG cpp
+int longestCycle(vector<int>& edges) {
+    int n = (int) edges.size();
+    vector<int> visitedAt(n, -1);
+    int best = -1, clock = 0;
+    for (int i = 0; i < n; i++) {
+        if (visitedAt[i] != -1) continue;
+        int walkStart = clock;
+        int node = i;
+        while (node != -1 && visitedAt[node] == -1) {
+            visitedAt[node] = clock++;
+            node = edges[node];
+        }
+        if (node != -1 && visitedAt[node] >= walkStart) {
+            best = max(best, clock - visitedAt[node]);
+        }
+    }
+    return best;
+}
+@@@LANG c
+int longestCycle(int* edges, int edgesSize) {
+    int n = edgesSize;
+    int* visitedAt = (int*) malloc((size_t) n * sizeof(int));
+    for (int i = 0; i < n; i++) visitedAt[i] = -1;
+    int best = -1, clock = 0;
+    for (int i = 0; i < n; i++) {
+        if (visitedAt[i] != -1) continue;
+        int walkStart = clock;
+        int node = i;
+        while (node != -1 && visitedAt[node] == -1) {
+            visitedAt[node] = clock++;
+            node = edges[node];
+        }
+        if (node != -1 && visitedAt[node] >= walkStart) {
+            int length = clock - visitedAt[node];
+            if (length > best) best = length;
+        }
+    }
+    free(visitedAt);
+    return best;
+}
+@@@LANG csharp
+public static int LongestCycle(int[] edges)
+{
+    int n = edges.Length;
+    int[] visitedAt = new int[n];
+    for (int i = 0; i < n; i++) visitedAt[i] = -1;
+    int best = -1, clock = 0;
+    for (int i = 0; i < n; i++)
+    {
+        if (visitedAt[i] != -1) continue;
+        int walkStart = clock;
+        int node = i;
+        while (node != -1 && visitedAt[node] == -1)
+        {
+            visitedAt[node] = clock++;
+            node = edges[node];
+        }
+        if (node != -1 && visitedAt[node] >= walkStart)
+        {
+            best = Math.Max(best, clock - visitedAt[node]);
+        }
+    }
+    return best;
+}
+@@@LANG go
+func longestCycle(edges []int) int {
+	n := len(edges)
+	visitedAt := make([]int, n)
+	for i := range visitedAt {
+		visitedAt[i] = -1
+	}
+	best, clock := -1, 0
+	for i := 0; i < n; i++ {
+		if visitedAt[i] != -1 {
+			continue
+		}
+		walkStart := clock
+		node := i
+		for node != -1 && visitedAt[node] == -1 {
+			visitedAt[node] = clock
+			clock++
+			node = edges[node]
+		}
+		if node != -1 && visitedAt[node] >= walkStart {
+			length := clock - visitedAt[node]
+			if length > best {
+				best = length
+			}
+		}
+	}
+	return best
+}
+@@@LANG kotlin
+fun longestCycle(edges: IntArray): Int {
+    val n = edges.size
+    val visitedAt = IntArray(n) { -1 }
+    var best = -1
+    var clock = 0
+    for (i in 0 until n) {
+        if (visitedAt[i] != -1) continue
+        val walkStart = clock
+        var node = i
+        while (node != -1 && visitedAt[node] == -1) {
+            visitedAt[node] = clock++
+            node = edges[node]
+        }
+        if (node != -1 && visitedAt[node] >= walkStart) {
+            val length = clock - visitedAt[node]
+            if (length > best) best = length
+        }
+    }
+    return best
+}
+@@@LANG swift
+func longestCycle(_ edges: [Int]) -> Int {
+    let n = edges.count
+    var visitedAt = [Int](repeating: -1, count: n)
+    var best = -1
+    var clock = 0
+    for i in 0..<n {
+        if visitedAt[i] != -1 { continue }
+        let walkStart = clock
+        var node = i
+        while node != -1 && visitedAt[node] == -1 {
+            visitedAt[node] = clock
+            clock += 1
+            node = edges[node]
+        }
+        if node != -1 && visitedAt[node] >= walkStart {
+            let length = clock - visitedAt[node]
+            if length > best { best = length }
+        }
+    }
+    return best
+}
+@@@LANG rust
+fn longestCycle(edges: Vec<i32>) -> i32 {
+    let n = edges.len();
+    let mut visited_at = vec![-1i32; n];
+    let mut best = -1i32;
+    let mut clock = 0i32;
+    for i in 0..n {
+        if visited_at[i] != -1 {
+            continue;
+        }
+        let walk_start = clock;
+        let mut node = i as i32;
+        while node != -1 && visited_at[node as usize] == -1 {
+            visited_at[node as usize] = clock;
+            clock += 1;
+            node = edges[node as usize];
+        }
+        if node != -1 && visited_at[node as usize] >= walk_start {
+            let length = clock - visited_at[node as usize];
+            if length > best {
+                best = length;
+            }
+        }
+    }
+    best
+}
+@@@LANG php
+function longestCycle($edges) {
+    $n = count($edges);
+    $visitedAt = array_fill(0, $n, -1);
+    $best = -1;
+    $clock = 0;
+    for ($i = 0; $i < $n; $i++) {
+        if ($visitedAt[$i] !== -1) continue;
+        $walkStart = $clock;
+        $node = $i;
+        while ($node !== -1 && $visitedAt[$node] === -1) {
+            $visitedAt[$node] = $clock++;
+            $node = $edges[$node];
+        }
+        if ($node !== -1 && $visitedAt[$node] >= $walkStart) {
+            $length = $clock - $visitedAt[$node];
+            if ($length > $best) $best = $length;
+        }
+    }
+    return $best;
+}
+@@@LANG ruby
+def longestCycle(edges)
+  n = edges.length
+  visited_at = Array.new(n, -1)
+  best = -1
+  clock = 0
+  (0...n).each do |i|
+    next if visited_at[i] != -1
+    walk_start = clock
+    node = i
+    while node != -1 && visited_at[node] == -1
+      visited_at[node] = clock
+      clock += 1
+      node = edges[node]
+    end
+    if node != -1 && visited_at[node] >= walk_start
+      length = clock - visited_at[node]
+      best = length if length > best
+    end
+  end
+  best
+end
+
+@@@PROBLEM find-closest-node-to-given-two-nodes
+@@@LANG typescript
+function walkDistances(edges: number[], start: number): number[] {
+    var dist: number[] = [];
+    for (var i = 0; i < edges.length; i++) dist.push(-1);
+    var node = start;
+    var steps = 0;
+    while (node !== -1 && dist[node] === -1) {
+        dist[node] = steps++;
+        node = edges[node];
+    }
+    return dist;
+}
+
+function closestMeetingNode(edges: number[], node1: number, node2: number): number {
+    var d1 = walkDistances(edges, node1);
+    var d2 = walkDistances(edges, node2);
+    var best = -1;
+    var bestDistance = -1;
+    for (var i = 0; i < edges.length; i++) {
+        if (d1[i] === -1 || d2[i] === -1) continue;
+        var worst = d1[i] > d2[i] ? d1[i] : d2[i];
+        if (best === -1 || worst < bestDistance) {
+            best = i;
+            bestDistance = worst;
+        }
+    }
+    return best;
+}
+@@@LANG java
+private static int[] walkDistances(int[] edges, int start) {
+    int[] dist = new int[edges.length];
+    Arrays.fill(dist, -1);
+    int node = start, steps = 0;
+    while (node != -1 && dist[node] == -1) {
+        dist[node] = steps++;
+        node = edges[node];
+    }
+    return dist;
+}
+
+public static int closestMeetingNode(int[] edges, int node1, int node2) {
+    int[] d1 = walkDistances(edges, node1);
+    int[] d2 = walkDistances(edges, node2);
+    int best = -1, bestDistance = -1;
+    for (int i = 0; i < edges.length; i++) {
+        if (d1[i] == -1 || d2[i] == -1) continue;
+        int worst = Math.max(d1[i], d2[i]);
+        if (best == -1 || worst < bestDistance) {
+            best = i;
+            bestDistance = worst;
+        }
+    }
+    return best;
+}
+@@@LANG cpp
+static vector<int> walkDistances(vector<int>& edges, int start) {
+    vector<int> dist(edges.size(), -1);
+    int node = start, steps = 0;
+    while (node != -1 && dist[node] == -1) {
+        dist[node] = steps++;
+        node = edges[node];
+    }
+    return dist;
+}
+
+int closestMeetingNode(vector<int>& edges, int node1, int node2) {
+    vector<int> d1 = walkDistances(edges, node1);
+    vector<int> d2 = walkDistances(edges, node2);
+    int best = -1, bestDistance = -1;
+    for (int i = 0; i < (int) edges.size(); i++) {
+        if (d1[i] == -1 || d2[i] == -1) continue;
+        int worst = max(d1[i], d2[i]);
+        if (best == -1 || worst < bestDistance) {
+            best = i;
+            bestDistance = worst;
+        }
+    }
+    return best;
+}
+@@@LANG c
+static void walkDistances(int* edges, int n, int start, int* dist) {
+    for (int i = 0; i < n; i++) dist[i] = -1;
+    int node = start, steps = 0;
+    while (node != -1 && dist[node] == -1) {
+        dist[node] = steps++;
+        node = edges[node];
+    }
+}
+
+int closestMeetingNode(int* edges, int edgesSize, int node1, int node2) {
+    int n = edgesSize;
+    int* d1 = (int*) malloc((size_t) n * sizeof(int));
+    int* d2 = (int*) malloc((size_t) n * sizeof(int));
+    walkDistances(edges, n, node1, d1);
+    walkDistances(edges, n, node2, d2);
+    int best = -1, bestDistance = -1;
+    for (int i = 0; i < n; i++) {
+        if (d1[i] == -1 || d2[i] == -1) continue;
+        int worst = d1[i] > d2[i] ? d1[i] : d2[i];
+        if (best == -1 || worst < bestDistance) {
+            best = i;
+            bestDistance = worst;
+        }
+    }
+    free(d1);
+    free(d2);
+    return best;
+}
+@@@LANG csharp
+private static int[] WalkDistances(int[] edges, int start)
+{
+    int[] dist = new int[edges.Length];
+    for (int i = 0; i < dist.Length; i++) dist[i] = -1;
+    int node = start, steps = 0;
+    while (node != -1 && dist[node] == -1)
+    {
+        dist[node] = steps++;
+        node = edges[node];
+    }
+    return dist;
+}
+
+public static int ClosestMeetingNode(int[] edges, int node1, int node2)
+{
+    int[] d1 = WalkDistances(edges, node1);
+    int[] d2 = WalkDistances(edges, node2);
+    int best = -1, bestDistance = -1;
+    for (int i = 0; i < edges.Length; i++)
+    {
+        if (d1[i] == -1 || d2[i] == -1) continue;
+        int worst = Math.Max(d1[i], d2[i]);
+        if (best == -1 || worst < bestDistance)
+        {
+            best = i;
+            bestDistance = worst;
+        }
+    }
+    return best;
+}
+@@@LANG go
+func walkDistances(edges []int, start int) []int {
+	dist := make([]int, len(edges))
+	for i := range dist {
+		dist[i] = -1
+	}
+	node, steps := start, 0
+	for node != -1 && dist[node] == -1 {
+		dist[node] = steps
+		steps++
+		node = edges[node]
+	}
+	return dist
+}
+
+func closestMeetingNode(edges []int, node1 int, node2 int) int {
+	d1 := walkDistances(edges, node1)
+	d2 := walkDistances(edges, node2)
+	best, bestDistance := -1, -1
+	for i := 0; i < len(edges); i++ {
+		if d1[i] == -1 || d2[i] == -1 {
+			continue
+		}
+		worst := d1[i]
+		if d2[i] > worst {
+			worst = d2[i]
+		}
+		if best == -1 || worst < bestDistance {
+			best = i
+			bestDistance = worst
+		}
+	}
+	return best
+}
+@@@LANG kotlin
+fun walkDistances(edges: IntArray, start: Int): IntArray {
+    val dist = IntArray(edges.size) { -1 }
+    var node = start
+    var steps = 0
+    while (node != -1 && dist[node] == -1) {
+        dist[node] = steps++
+        node = edges[node]
+    }
+    return dist
+}
+
+fun closestMeetingNode(edges: IntArray, node1: Int, node2: Int): Int {
+    val d1 = walkDistances(edges, node1)
+    val d2 = walkDistances(edges, node2)
+    var best = -1
+    var bestDistance = -1
+    for (i in edges.indices) {
+        if (d1[i] == -1 || d2[i] == -1) continue
+        val worst = if (d1[i] > d2[i]) d1[i] else d2[i]
+        if (best == -1 || worst < bestDistance) {
+            best = i
+            bestDistance = worst
+        }
+    }
+    return best
+}
+@@@LANG swift
+func walkDistances(_ edges: [Int], _ start: Int) -> [Int] {
+    var dist = [Int](repeating: -1, count: edges.count)
+    var node = start
+    var steps = 0
+    while node != -1 && dist[node] == -1 {
+        dist[node] = steps
+        steps += 1
+        node = edges[node]
+    }
+    return dist
+}
+
+func closestMeetingNode(_ edges: [Int], _ node1: Int, _ node2: Int) -> Int {
+    let d1 = walkDistances(edges, node1)
+    let d2 = walkDistances(edges, node2)
+    var best = -1
+    var bestDistance = -1
+    for i in 0..<edges.count {
+        if d1[i] == -1 || d2[i] == -1 { continue }
+        let worst = max(d1[i], d2[i])
+        if best == -1 || worst < bestDistance {
+            best = i
+            bestDistance = worst
+        }
+    }
+    return best
+}
+@@@LANG rust
+fn walk_distances(edges: &Vec<i32>, start: i32) -> Vec<i32> {
+    let mut dist = vec![-1i32; edges.len()];
+    let mut node = start;
+    let mut steps = 0i32;
+    while node != -1 && dist[node as usize] == -1 {
+        dist[node as usize] = steps;
+        steps += 1;
+        node = edges[node as usize];
+    }
+    dist
+}
+
+fn closestMeetingNode(edges: Vec<i32>, node1: i32, node2: i32) -> i32 {
+    let d1 = walk_distances(&edges, node1);
+    let d2 = walk_distances(&edges, node2);
+    let mut best = -1i32;
+    let mut best_distance = -1i32;
+    for i in 0..edges.len() {
+        if d1[i] == -1 || d2[i] == -1 {
+            continue;
+        }
+        let worst = if d1[i] > d2[i] { d1[i] } else { d2[i] };
+        if best == -1 || worst < best_distance {
+            best = i as i32;
+            best_distance = worst;
+        }
+    }
+    best
+}
+@@@LANG php
+function walkDistances($edges, $start) {
+    $dist = array_fill(0, count($edges), -1);
+    $node = $start;
+    $steps = 0;
+    while ($node !== -1 && $dist[$node] === -1) {
+        $dist[$node] = $steps++;
+        $node = $edges[$node];
+    }
+    return $dist;
+}
+
+function closestMeetingNode($edges, $node1, $node2) {
+    $d1 = walkDistances($edges, $node1);
+    $d2 = walkDistances($edges, $node2);
+    $best = -1;
+    $bestDistance = -1;
+    for ($i = 0; $i < count($edges); $i++) {
+        if ($d1[$i] === -1 || $d2[$i] === -1) continue;
+        $worst = max($d1[$i], $d2[$i]);
+        if ($best === -1 || $worst < $bestDistance) {
+            $best = $i;
+            $bestDistance = $worst;
+        }
+    }
+    return $best;
+}
+@@@LANG ruby
+def walk_distances(edges, start)
+  dist = Array.new(edges.length, -1)
+  node = start
+  steps = 0
+  while node != -1 && dist[node] == -1
+    dist[node] = steps
+    steps += 1
+    node = edges[node]
+  end
+  dist
+end
+
+def closestMeetingNode(edges, node1, node2)
+  d1 = walk_distances(edges, node1)
+  d2 = walk_distances(edges, node2)
+  best = -1
+  best_distance = -1
+  (0...edges.length).each do |i|
+    next if d1[i] == -1 || d2[i] == -1
+    worst = [d1[i], d2[i]].max
+    if best == -1 || worst < best_distance
+      best = i
+      best_distance = worst
+    end
+  end
+  best
+end
+
+@@@PROBLEM maximum-total-importance-of-roads
+@@@LANG typescript
+function maximumImportance(n: number, roads: number[][]): number {
+    var degree: number[] = [];
+    for (var i = 0; i < n; i++) degree.push(0);
+    for (var j = 0; j < roads.length; j++) {
+        degree[roads[j][0]]++;
+        degree[roads[j][1]]++;
+    }
+    degree.sort(function (a, b) { return a - b; });
+    var total = 0;
+    for (var k = 0; k < n; k++) total += degree[k] * (k + 1);
+    return total;
+}
+@@@LANG java
+public static int maximumImportance(int n, int[][] roads) {
+    int[] degree = new int[n];
+    for (int[] road : roads) {
+        degree[road[0]]++;
+        degree[road[1]]++;
+    }
+    Arrays.sort(degree);
+    int total = 0;
+    for (int i = 0; i < n; i++) total += degree[i] * (i + 1);
+    return total;
+}
+@@@LANG cpp
+int maximumImportance(int n, vector<vector<int>>& roads) {
+    vector<int> degree(n, 0);
+    for (const auto& road : roads) {
+        degree[road[0]]++;
+        degree[road[1]]++;
+    }
+    sort(degree.begin(), degree.end());
+    int total = 0;
+    for (int i = 0; i < n; i++) total += degree[i] * (i + 1);
+    return total;
+}
+@@@LANG c
+static int cmpDegreeAsc(const void* a, const void* b) {
+    int x = *(const int*) a;
+    int y = *(const int*) b;
+    return (x > y) - (x < y);
+}
+
+int maximumImportance(int n, int** roads, int roadsSize, int* roadsColSize) {
+    int* degree = (int*) calloc((size_t) n, sizeof(int));
+    for (int i = 0; i < roadsSize; i++) {
+        degree[roads[i][0]]++;
+        degree[roads[i][1]]++;
+    }
+    qsort(degree, n, sizeof(int), cmpDegreeAsc);
+    int total = 0;
+    for (int i = 0; i < n; i++) total += degree[i] * (i + 1);
+    free(degree);
+    return total;
+}
+@@@LANG csharp
+public static int MaximumImportance(int n, int[][] roads)
+{
+    int[] degree = new int[n];
+    foreach (int[] road in roads)
+    {
+        degree[road[0]]++;
+        degree[road[1]]++;
+    }
+    Array.Sort(degree);
+    int total = 0;
+    for (int i = 0; i < n; i++) total += degree[i] * (i + 1);
+    return total;
+}
+@@@LANG go
+func maximumImportance(n int, roads [][]int) int {
+	degree := make([]int, n)
+	for _, road := range roads {
+		degree[road[0]]++
+		degree[road[1]]++
+	}
+	sort.Ints(degree)
+	total := 0
+	for i := 0; i < n; i++ {
+		total += degree[i] * (i + 1)
+	}
+	return total
+}
+@@@LANG kotlin
+fun maximumImportance(n: Int, roads: Array<IntArray>): Int {
+    val degree = IntArray(n)
+    for (road in roads) {
+        degree[road[0]]++
+        degree[road[1]]++
+    }
+    degree.sort()
+    var total = 0
+    for (i in 0 until n) total += degree[i] * (i + 1)
+    return total
+}
+@@@LANG swift
+func maximumImportance(_ n: Int, _ roads: [[Int]]) -> Int {
+    var degree = [Int](repeating: 0, count: n)
+    for road in roads {
+        degree[road[0]] += 1
+        degree[road[1]] += 1
+    }
+    degree.sort()
+    var total = 0
+    for i in 0..<n { total += degree[i] * (i + 1) }
+    return total
+}
+@@@LANG rust
+fn maximumImportance(n: i32, roads: Vec<Vec<i32>>) -> i32 {
+    let size = n as usize;
+    let mut degree = vec![0i32; size];
+    for road in roads.iter() {
+        degree[road[0] as usize] += 1;
+        degree[road[1] as usize] += 1;
+    }
+    degree.sort();
+    let mut total = 0i32;
+    for i in 0..size {
+        total += degree[i] * (i as i32 + 1);
+    }
+    total
+}
+@@@LANG php
+function maximumImportance($n, $roads) {
+    $degree = array_fill(0, $n, 0);
+    foreach ($roads as $road) {
+        $degree[$road[0]]++;
+        $degree[$road[1]]++;
+    }
+    sort($degree);
+    $total = 0;
+    for ($i = 0; $i < $n; $i++) $total += $degree[$i] * ($i + 1);
+    return $total;
+}
+@@@LANG ruby
+def maximumImportance(n, roads)
+  degree = Array.new(n, 0)
+  roads.each do |road|
+    degree[road[0]] += 1
+    degree[road[1]] += 1
+  end
+  degree.sort.each_with_index.map { |d, i| d * (i + 1) }.sum
+end
+
+@@@PROBLEM count-unreachable-pairs-of-nodes-in-an-undirected-graph
+@@@LANG typescript
+function countPairs(n: number, edges: number[][]): number {
+    var parent: number[] = [];
+    var size: number[] = [];
+    for (var i = 0; i < n; i++) {
+        parent.push(i);
+        size.push(1);
+    }
+    var find = function (x: number): number {
+        while (parent[x] !== x) {
+            parent[x] = parent[parent[x]];
+            x = parent[x];
+        }
+        return x;
+    };
+    for (var j = 0; j < edges.length; j++) {
+        var a = find(edges[j][0]);
+        var b = find(edges[j][1]);
+        if (a !== b) {
+            parent[a] = b;
+            size[b] += size[a];
+        }
+    }
+    var unreachable = 0;
+    var seenSoFar = 0;
+    for (var k = 0; k < n; k++) {
+        if (find(k) !== k) continue;
+        unreachable += size[k] * seenSoFar;
+        seenSoFar += size[k];
+    }
+    return unreachable;
+}
+@@@LANG java
+private static int findRoot(int[] parent, int x) {
+    while (parent[x] != x) {
+        parent[x] = parent[parent[x]];
+        x = parent[x];
+    }
+    return x;
+}
+
+public static int countPairs(int n, int[][] edges) {
+    int[] parent = new int[n];
+    int[] size = new int[n];
+    for (int i = 0; i < n; i++) {
+        parent[i] = i;
+        size[i] = 1;
+    }
+    for (int[] e : edges) {
+        int a = findRoot(parent, e[0]);
+        int b = findRoot(parent, e[1]);
+        if (a != b) {
+            parent[a] = b;
+            size[b] += size[a];
+        }
+    }
+    int unreachable = 0, seenSoFar = 0;
+    for (int i = 0; i < n; i++) {
+        if (findRoot(parent, i) != i) continue;
+        unreachable += size[i] * seenSoFar;
+        seenSoFar += size[i];
+    }
+    return unreachable;
+}
+@@@LANG cpp
+static int findRoot(vector<int>& parent, int x) {
+    while (parent[x] != x) {
+        parent[x] = parent[parent[x]];
+        x = parent[x];
+    }
+    return x;
+}
+
+int countPairs(int n, vector<vector<int>>& edges) {
+    vector<int> parent(n), size(n, 1);
+    for (int i = 0; i < n; i++) parent[i] = i;
+    for (const auto& e : edges) {
+        int a = findRoot(parent, e[0]);
+        int b = findRoot(parent, e[1]);
+        if (a != b) {
+            parent[a] = b;
+            size[b] += size[a];
+        }
+    }
+    int unreachable = 0, seenSoFar = 0;
+    for (int i = 0; i < n; i++) {
+        if (findRoot(parent, i) != i) continue;
+        unreachable += size[i] * seenSoFar;
+        seenSoFar += size[i];
+    }
+    return unreachable;
+}
+@@@LANG c
+static int findRootC(int* parent, int x) {
+    while (parent[x] != x) {
+        parent[x] = parent[parent[x]];
+        x = parent[x];
+    }
+    return x;
+}
+
+int countPairs(int n, int** edges, int edgesSize, int* edgesColSize) {
+    int* parent = (int*) malloc((size_t) n * sizeof(int));
+    int* size = (int*) malloc((size_t) n * sizeof(int));
+    for (int i = 0; i < n; i++) {
+        parent[i] = i;
+        size[i] = 1;
+    }
+    for (int i = 0; i < edgesSize; i++) {
+        int a = findRootC(parent, edges[i][0]);
+        int b = findRootC(parent, edges[i][1]);
+        if (a != b) {
+            parent[a] = b;
+            size[b] += size[a];
+        }
+    }
+    int unreachable = 0, seenSoFar = 0;
+    for (int i = 0; i < n; i++) {
+        if (findRootC(parent, i) != i) continue;
+        unreachable += size[i] * seenSoFar;
+        seenSoFar += size[i];
+    }
+    free(parent);
+    free(size);
+    return unreachable;
+}
+@@@LANG csharp
+private static int FindRoot(int[] parent, int x)
+{
+    while (parent[x] != x)
+    {
+        parent[x] = parent[parent[x]];
+        x = parent[x];
+    }
+    return x;
+}
+
+public static int CountPairs(int n, int[][] edges)
+{
+    int[] parent = new int[n];
+    int[] size = new int[n];
+    for (int i = 0; i < n; i++)
+    {
+        parent[i] = i;
+        size[i] = 1;
+    }
+    foreach (int[] e in edges)
+    {
+        int a = FindRoot(parent, e[0]);
+        int b = FindRoot(parent, e[1]);
+        if (a != b)
+        {
+            parent[a] = b;
+            size[b] += size[a];
+        }
+    }
+    int unreachable = 0, seenSoFar = 0;
+    for (int i = 0; i < n; i++)
+    {
+        if (FindRoot(parent, i) != i) continue;
+        unreachable += size[i] * seenSoFar;
+        seenSoFar += size[i];
+    }
+    return unreachable;
+}
+@@@LANG go
+func findRoot(parent []int, x int) int {
+	for parent[x] != x {
+		parent[x] = parent[parent[x]]
+		x = parent[x]
+	}
+	return x
+}
+
+func countPairs(n int, edges [][]int) int {
+	parent := make([]int, n)
+	size := make([]int, n)
+	for i := range parent {
+		parent[i] = i
+		size[i] = 1
+	}
+	for _, e := range edges {
+		a := findRoot(parent, e[0])
+		b := findRoot(parent, e[1])
+		if a != b {
+			parent[a] = b
+			size[b] += size[a]
+		}
+	}
+	unreachable, seenSoFar := 0, 0
+	for i := 0; i < n; i++ {
+		if findRoot(parent, i) != i {
+			continue
+		}
+		unreachable += size[i] * seenSoFar
+		seenSoFar += size[i]
+	}
+	return unreachable
+}
+@@@LANG kotlin
+fun findRoot(parent: IntArray, start: Int): Int {
+    var x = start
+    while (parent[x] != x) {
+        parent[x] = parent[parent[x]]
+        x = parent[x]
+    }
+    return x
+}
+
+fun countPairs(n: Int, edges: Array<IntArray>): Int {
+    val parent = IntArray(n) { it }
+    val size = IntArray(n) { 1 }
+    for (e in edges) {
+        val a = findRoot(parent, e[0])
+        val b = findRoot(parent, e[1])
+        if (a != b) {
+            parent[a] = b
+            size[b] += size[a]
+        }
+    }
+    var unreachable = 0
+    var seenSoFar = 0
+    for (i in 0 until n) {
+        if (findRoot(parent, i) != i) continue
+        unreachable += size[i] * seenSoFar
+        seenSoFar += size[i]
+    }
+    return unreachable
+}
+@@@LANG swift
+func findRoot(_ parent: inout [Int], _ start: Int) -> Int {
+    var x = start
+    while parent[x] != x {
+        parent[x] = parent[parent[x]]
+        x = parent[x]
+    }
+    return x
+}
+
+func countPairs(_ n: Int, _ edges: [[Int]]) -> Int {
+    var parent = Array(0..<n)
+    var size = [Int](repeating: 1, count: n)
+    for e in edges {
+        let a = findRoot(&parent, e[0])
+        let b = findRoot(&parent, e[1])
+        if a != b {
+            parent[a] = b
+            size[b] += size[a]
+        }
+    }
+    var unreachable = 0
+    var seenSoFar = 0
+    for i in 0..<n {
+        if findRoot(&parent, i) != i { continue }
+        unreachable += size[i] * seenSoFar
+        seenSoFar += size[i]
+    }
+    return unreachable
+}
+@@@LANG rust
+fn find_root(parent: &mut Vec<usize>, start: usize) -> usize {
+    let mut x = start;
+    while parent[x] != x {
+        parent[x] = parent[parent[x]];
+        x = parent[x];
+    }
+    x
+}
+
+fn countPairs(n: i32, edges: Vec<Vec<i32>>) -> i32 {
+    let size_n = n as usize;
+    let mut parent: Vec<usize> = (0..size_n).collect();
+    let mut size = vec![1i32; size_n];
+    for e in edges.iter() {
+        let a = find_root(&mut parent, e[0] as usize);
+        let b = find_root(&mut parent, e[1] as usize);
+        if a != b {
+            parent[a] = b;
+            size[b] += size[a];
+        }
+    }
+    let mut unreachable = 0i32;
+    let mut seen_so_far = 0i32;
+    for i in 0..size_n {
+        if find_root(&mut parent, i) != i {
+            continue;
+        }
+        unreachable += size[i] * seen_so_far;
+        seen_so_far += size[i];
+    }
+    unreachable
+}
+@@@LANG php
+function findRoot(&$parent, $x) {
+    while ($parent[$x] !== $x) {
+        $parent[$x] = $parent[$parent[$x]];
+        $x = $parent[$x];
+    }
+    return $x;
+}
+
+function countPairs($n, $edges) {
+    $parent = range(0, max($n - 1, 0));
+    $size = array_fill(0, $n, 1);
+    foreach ($edges as $e) {
+        $a = findRoot($parent, $e[0]);
+        $b = findRoot($parent, $e[1]);
+        if ($a !== $b) {
+            $parent[$a] = $b;
+            $size[$b] += $size[$a];
+        }
+    }
+    $unreachable = 0;
+    $seenSoFar = 0;
+    for ($i = 0; $i < $n; $i++) {
+        if (findRoot($parent, $i) !== $i) continue;
+        $unreachable += $size[$i] * $seenSoFar;
+        $seenSoFar += $size[$i];
+    }
+    return $unreachable;
+}
+@@@LANG ruby
+def find_root(parent, x)
+  while parent[x] != x
+    parent[x] = parent[parent[x]]
+    x = parent[x]
+  end
+  x
+end
+
+def countPairs(n, edges)
+  parent = (0...n).to_a
+  size = Array.new(n, 1)
+  edges.each do |e|
+    a = find_root(parent, e[0])
+    b = find_root(parent, e[1])
+    if a != b
+      parent[a] = b
+      size[b] += size[a]
+    end
+  end
+  unreachable = 0
+  seen_so_far = 0
+  (0...n).each do |i|
+    next if find_root(parent, i) != i
+    unreachable += size[i] * seen_so_far
+    seen_so_far += size[i]
+  end
+  unreachable
+end
+
+@@@PROBLEM jump-game-iii
+@@@LANG typescript
+function canReach(arr: number[], start: number): boolean {
+    var n = arr.length;
+    var seen: boolean[] = [];
+    for (var i = 0; i < n; i++) seen.push(false);
+    seen[start] = true;
+    var stack: number[] = [start];
+    while (stack.length > 0) {
+        var index = stack.pop() as number;
+        if (arr[index] === 0) return true;
+        var forward = index + arr[index];
+        var backward = index - arr[index];
+        if (forward < n && !seen[forward]) {
+            seen[forward] = true;
+            stack.push(forward);
+        }
+        if (backward >= 0 && !seen[backward]) {
+            seen[backward] = true;
+            stack.push(backward);
+        }
+    }
+    return false;
+}
+@@@LANG java
+public static boolean canReach(int[] arr, int start) {
+    int n = arr.length;
+    boolean[] seen = new boolean[n];
+    seen[start] = true;
+    Deque<Integer> stack = new ArrayDeque<>();
+    stack.push(start);
+    while (!stack.isEmpty()) {
+        int index = stack.pop();
+        if (arr[index] == 0) return true;
+        int forward = index + arr[index];
+        int backward = index - arr[index];
+        if (forward < n && !seen[forward]) {
+            seen[forward] = true;
+            stack.push(forward);
+        }
+        if (backward >= 0 && !seen[backward]) {
+            seen[backward] = true;
+            stack.push(backward);
+        }
+    }
+    return false;
+}
+@@@LANG cpp
+bool canReach(vector<int>& arr, int start) {
+    int n = (int) arr.size();
+    vector<bool> seen(n, false);
+    seen[start] = true;
+    vector<int> stack;
+    stack.push_back(start);
+    while (!stack.empty()) {
+        int index = stack.back();
+        stack.pop_back();
+        if (arr[index] == 0) return true;
+        int forward = index + arr[index];
+        int backward = index - arr[index];
+        if (forward < n && !seen[forward]) {
+            seen[forward] = true;
+            stack.push_back(forward);
+        }
+        if (backward >= 0 && !seen[backward]) {
+            seen[backward] = true;
+            stack.push_back(backward);
+        }
+    }
+    return false;
+}
+@@@LANG c
+bool canReach(int* arr, int arrSize, int start) {
+    int n = arrSize;
+    char* seen = (char*) calloc((size_t) n, sizeof(char));
+    int* stack = (int*) malloc((size_t) n * sizeof(int));
+    int top = 0;
+    seen[start] = 1;
+    stack[top++] = start;
+    bool found = false;
+    while (top > 0) {
+        int index = stack[--top];
+        if (arr[index] == 0) {
+            found = true;
+            break;
+        }
+        int forward = index + arr[index];
+        int backward = index - arr[index];
+        if (forward < n && !seen[forward]) {
+            seen[forward] = 1;
+            stack[top++] = forward;
+        }
+        if (backward >= 0 && !seen[backward]) {
+            seen[backward] = 1;
+            stack[top++] = backward;
+        }
+    }
+    free(seen);
+    free(stack);
+    return found;
+}
+@@@LANG csharp
+public static bool CanReach(int[] arr, int start)
+{
+    int n = arr.Length;
+    bool[] seen = new bool[n];
+    seen[start] = true;
+    var stack = new List<int>();
+    stack.Add(start);
+    while (stack.Count > 0)
+    {
+        int index = stack[stack.Count - 1];
+        stack.RemoveAt(stack.Count - 1);
+        if (arr[index] == 0) return true;
+        int forward = index + arr[index];
+        int backward = index - arr[index];
+        if (forward < n && !seen[forward])
+        {
+            seen[forward] = true;
+            stack.Add(forward);
+        }
+        if (backward >= 0 && !seen[backward])
+        {
+            seen[backward] = true;
+            stack.Add(backward);
+        }
+    }
+    return false;
+}
+@@@LANG go
+func canReach(arr []int, start int) bool {
+	n := len(arr)
+	seen := make([]bool, n)
+	seen[start] = true
+	stack := []int{start}
+	for len(stack) > 0 {
+		index := stack[len(stack)-1]
+		stack = stack[:len(stack)-1]
+		if arr[index] == 0 {
+			return true
+		}
+		forward := index + arr[index]
+		backward := index - arr[index]
+		if forward < n && !seen[forward] {
+			seen[forward] = true
+			stack = append(stack, forward)
+		}
+		if backward >= 0 && !seen[backward] {
+			seen[backward] = true
+			stack = append(stack, backward)
+		}
+	}
+	return false
+}
+@@@LANG kotlin
+fun canReach(arr: IntArray, start: Int): Boolean {
+    val n = arr.size
+    val seen = BooleanArray(n)
+    seen[start] = true
+    val stack = ArrayList<Int>()
+    stack.add(start)
+    while (stack.isNotEmpty()) {
+        val index = stack.removeAt(stack.size - 1)
+        if (arr[index] == 0) return true
+        val forward = index + arr[index]
+        val backward = index - arr[index]
+        if (forward < n && !seen[forward]) {
+            seen[forward] = true
+            stack.add(forward)
+        }
+        if (backward >= 0 && !seen[backward]) {
+            seen[backward] = true
+            stack.add(backward)
+        }
+    }
+    return false
+}
+@@@LANG swift
+func canReach(_ arr: [Int], _ start: Int) -> Bool {
+    let n = arr.count
+    var seen = [Bool](repeating: false, count: n)
+    seen[start] = true
+    var stack = [start]
+    while let index = stack.popLast() {
+        if arr[index] == 0 { return true }
+        let forward = index + arr[index]
+        let backward = index - arr[index]
+        if forward < n && !seen[forward] {
+            seen[forward] = true
+            stack.append(forward)
+        }
+        if backward >= 0 && !seen[backward] {
+            seen[backward] = true
+            stack.append(backward)
+        }
+    }
+    return false
+}
+@@@LANG rust
+fn canReach(arr: Vec<i32>, start: i32) -> bool {
+    let n = arr.len() as i32;
+    let mut seen = vec![false; arr.len()];
+    seen[start as usize] = true;
+    let mut stack: Vec<i32> = vec![start];
+    while let Some(index) = stack.pop() {
+        if arr[index as usize] == 0 {
+            return true;
+        }
+        let forward = index + arr[index as usize];
+        let backward = index - arr[index as usize];
+        if forward < n && !seen[forward as usize] {
+            seen[forward as usize] = true;
+            stack.push(forward);
+        }
+        if backward >= 0 && !seen[backward as usize] {
+            seen[backward as usize] = true;
+            stack.push(backward);
+        }
+    }
+    false
+}
+@@@LANG php
+function canReach($arr, $start) {
+    $n = count($arr);
+    $seen = array_fill(0, $n, false);
+    $seen[$start] = true;
+    $stack = array($start);
+    while (count($stack) > 0) {
+        $index = array_pop($stack);
+        if ($arr[$index] === 0) return true;
+        $forward = $index + $arr[$index];
+        $backward = $index - $arr[$index];
+        if ($forward < $n && !$seen[$forward]) {
+            $seen[$forward] = true;
+            $stack[] = $forward;
+        }
+        if ($backward >= 0 && !$seen[$backward]) {
+            $seen[$backward] = true;
+            $stack[] = $backward;
+        }
+    }
+    return false;
+}
+@@@LANG ruby
+def canReach(arr, start)
+  n = arr.length
+  seen = Array.new(n, false)
+  seen[start] = true
+  stack = [start]
+  while !stack.empty?
+    index = stack.pop
+    return true if arr[index] == 0
+    forward = index + arr[index]
+    backward = index - arr[index]
+    if forward < n && !seen[forward]
+      seen[forward] = true
+      stack.push(forward)
+    end
+    if backward >= 0 && !seen[backward]
+      seen[backward] = true
+      stack.push(backward)
+    end
+  end
+  false
+end
+
+@@@PROBLEM minimum-genetic-mutation
+@@@LANG typescript
+function minMutation(startGene: string, endGene: string, bank: string[]): number {
+    var used: boolean[] = [];
+    for (var i = 0; i < bank.length; i++) used.push(false);
+    var frontier: string[] = [startGene];
+    var level = 0;
+    while (frontier.length > 0) {
+        var next: string[] = [];
+        for (var f = 0; f < frontier.length; f++) {
+            for (var j = 0; j < bank.length; j++) {
+                if (used[j]) continue;
+                var diff = 0;
+                for (var k = 0; k < bank[j].length; k++) {
+                    if (bank[j].charAt(k) !== frontier[f].charAt(k)) diff++;
+                }
+                if (diff !== 1) continue;
+                if (bank[j] === endGene) return level + 1;
+                used[j] = true;
+                next.push(bank[j]);
+            }
+        }
+        frontier = next;
+        level++;
+    }
+    return startGene === endGene ? 0 : -1;
+}
+@@@LANG java
+public static int minMutation(String startGene, String endGene, String[] bank) {
+    boolean[] used = new boolean[bank.length];
+    List<String> frontier = new ArrayList<>();
+    frontier.add(startGene);
+    int level = 0;
+    while (!frontier.isEmpty()) {
+        List<String> next = new ArrayList<>();
+        for (String gene : frontier) {
+            for (int i = 0; i < bank.length; i++) {
+                if (used[i]) continue;
+                int diff = 0;
+                for (int k = 0; k < bank[i].length(); k++) {
+                    if (bank[i].charAt(k) != gene.charAt(k)) diff++;
+                }
+                if (diff != 1) continue;
+                if (bank[i].equals(endGene)) return level + 1;
+                used[i] = true;
+                next.add(bank[i]);
+            }
+        }
+        frontier = next;
+        level++;
+    }
+    return startGene.equals(endGene) ? 0 : -1;
+}
+@@@LANG cpp
+int minMutation(string startGene, string endGene, vector<string>& bank) {
+    vector<bool> used(bank.size(), false);
+    vector<string> frontier;
+    frontier.push_back(startGene);
+    int level = 0;
+    while (!frontier.empty()) {
+        vector<string> next;
+        for (const string& gene : frontier) {
+            for (size_t i = 0; i < bank.size(); i++) {
+                if (used[i]) continue;
+                int diff = 0;
+                for (size_t k = 0; k < bank[i].size(); k++) {
+                    if (bank[i][k] != gene[k]) diff++;
+                }
+                if (diff != 1) continue;
+                if (bank[i] == endGene) return level + 1;
+                used[i] = true;
+                next.push_back(bank[i]);
+            }
+        }
+        frontier = next;
+        level++;
+    }
+    return startGene == endGene ? 0 : -1;
+}
+@@@LANG c
+int minMutation(const char* startGene, const char* endGene, char** bank, int bankSize) {
+    char* used = (char*) calloc((size_t) (bankSize > 0 ? bankSize : 1), sizeof(char));
+    char** frontier = (char**) malloc((size_t) (bankSize + 2) * sizeof(char*));
+    char** next = (char**) malloc((size_t) (bankSize + 2) * sizeof(char*));
+    int frontierCount = 0;
+    frontier[frontierCount++] = (char*) startGene;
+    int level = 0;
+    int answer = -2;
+    while (frontierCount > 0 && answer == -2) {
+        int nextCount = 0;
+        for (int f = 0; f < frontierCount && answer == -2; f++) {
+            for (int i = 0; i < bankSize; i++) {
+                if (used[i]) continue;
+                int diff = 0;
+                for (int k = 0; bank[i][k] != '\0'; k++) {
+                    if (bank[i][k] != frontier[f][k]) diff++;
+                }
+                if (diff != 1) continue;
+                if (strcmp(bank[i], endGene) == 0) {
+                    answer = level + 1;
+                    break;
+                }
+                used[i] = 1;
+                next[nextCount++] = bank[i];
+            }
+        }
+        if (answer != -2) break;
+        for (int i = 0; i < nextCount; i++) frontier[i] = next[i];
+        frontierCount = nextCount;
+        level++;
+    }
+    if (answer == -2) answer = (strcmp(startGene, endGene) == 0) ? 0 : -1;
+    free(used);
+    free(frontier);
+    free(next);
+    return answer;
+}
+@@@LANG csharp
+public static int MinMutation(string startGene, string endGene, string[] bank)
+{
+    bool[] used = new bool[bank.Length];
+    var frontier = new List<string>();
+    frontier.Add(startGene);
+    int level = 0;
+    while (frontier.Count > 0)
+    {
+        var next = new List<string>();
+        foreach (string gene in frontier)
+        {
+            for (int i = 0; i < bank.Length; i++)
+            {
+                if (used[i]) continue;
+                int diff = 0;
+                for (int k = 0; k < bank[i].Length; k++)
+                {
+                    if (bank[i][k] != gene[k]) diff++;
+                }
+                if (diff != 1) continue;
+                if (bank[i] == endGene) return level + 1;
+                used[i] = true;
+                next.Add(bank[i]);
+            }
+        }
+        frontier = next;
+        level++;
+    }
+    return startGene == endGene ? 0 : -1;
+}
+@@@LANG go
+func minMutation(startGene string, endGene string, bank []string) int {
+	used := make([]bool, len(bank))
+	frontier := []string{startGene}
+	level := 0
+	for len(frontier) > 0 {
+		next := []string{}
+		for _, gene := range frontier {
+			for i := 0; i < len(bank); i++ {
+				if used[i] {
+					continue
+				}
+				diff := 0
+				for k := 0; k < len(bank[i]); k++ {
+					if bank[i][k] != gene[k] {
+						diff++
+					}
+				}
+				if diff != 1 {
+					continue
+				}
+				if bank[i] == endGene {
+					return level + 1
+				}
+				used[i] = true
+				next = append(next, bank[i])
+			}
+		}
+		frontier = next
+		level++
+	}
+	if startGene == endGene {
+		return 0
+	}
+	return -1
+}
+@@@LANG kotlin
+fun minMutation(startGene: String, endGene: String, bank: Array<String>): Int {
+    val used = BooleanArray(bank.size)
+    var frontier = ArrayList<String>()
+    frontier.add(startGene)
+    var level = 0
+    while (frontier.isNotEmpty()) {
+        val next = ArrayList<String>()
+        for (gene in frontier) {
+            for (i in bank.indices) {
+                if (used[i]) continue
+                var diff = 0
+                for (k in bank[i].indices) {
+                    if (bank[i][k] != gene[k]) diff++
+                }
+                if (diff != 1) continue
+                if (bank[i] == endGene) return level + 1
+                used[i] = true
+                next.add(bank[i])
+            }
+        }
+        frontier = next
+        level++
+    }
+    return if (startGene == endGene) 0 else -1
+}
+@@@LANG swift
+func minMutation(_ startGene: String, _ endGene: String, _ bank: [String]) -> Int {
+    let bankChars = bank.map { Array($0) }
+    var used = [Bool](repeating: false, count: bank.count)
+    var frontier: [[Character]] = [Array(startGene)]
+    var level = 0
+    while !frontier.isEmpty {
+        var next: [[Character]] = []
+        for gene in frontier {
+            for i in 0..<bank.count {
+                if used[i] { continue }
+                var diff = 0
+                for k in 0..<bankChars[i].count {
+                    if bankChars[i][k] != gene[k] { diff += 1 }
+                }
+                if diff != 1 { continue }
+                if bank[i] == endGene { return level + 1 }
+                used[i] = true
+                next.append(bankChars[i])
+            }
+        }
+        frontier = next
+        level += 1
+    }
+    return startGene == endGene ? 0 : -1
+}
+@@@LANG rust
+fn minMutation(startGene: String, endGene: String, bank: Vec<String>) -> i32 {
+    let mut used = vec![false; bank.len()];
+    let mut frontier: Vec<String> = vec![startGene.clone()];
+    let mut level = 0i32;
+    while !frontier.is_empty() {
+        let mut next: Vec<String> = Vec::new();
+        for gene in frontier.iter() {
+            let gene_bytes: Vec<u8> = gene.bytes().collect();
+            for i in 0..bank.len() {
+                if used[i] {
+                    continue;
+                }
+                let candidate: Vec<u8> = bank[i].bytes().collect();
+                let mut diff = 0;
+                for k in 0..candidate.len() {
+                    if candidate[k] != gene_bytes[k] {
+                        diff += 1;
+                    }
+                }
+                if diff != 1 {
+                    continue;
+                }
+                if bank[i] == endGene {
+                    return level + 1;
+                }
+                used[i] = true;
+                next.push(bank[i].clone());
+            }
+        }
+        frontier = next;
+        level += 1;
+    }
+    if startGene == endGene { 0 } else { -1 }
+}
+@@@LANG php
+function minMutation($startGene, $endGene, $bank) {
+    $used = array_fill(0, max(count($bank), 1), false);
+    $frontier = array($startGene);
+    $level = 0;
+    while (count($frontier) > 0) {
+        $next = array();
+        foreach ($frontier as $gene) {
+            for ($i = 0; $i < count($bank); $i++) {
+                if ($used[$i]) continue;
+                $diff = 0;
+                for ($k = 0; $k < strlen($bank[$i]); $k++) {
+                    if ($bank[$i][$k] !== $gene[$k]) $diff++;
+                }
+                if ($diff !== 1) continue;
+                if ($bank[$i] === $endGene) return $level + 1;
+                $used[$i] = true;
+                $next[] = $bank[$i];
+            }
+        }
+        $frontier = $next;
+        $level++;
+    }
+    return $startGene === $endGene ? 0 : -1;
+}
+@@@LANG ruby
+def minMutation(startGene, endGene, bank)
+  used = Array.new(bank.length, false)
+  frontier = [startGene]
+  level = 0
+  while !frontier.empty?
+    nxt = []
+    frontier.each do |gene|
+      bank.each_with_index do |candidate, i|
+        next if used[i]
+        diff = 0
+        (0...candidate.length).each { |k| diff += 1 if candidate[k] != gene[k] }
+        next if diff != 1
+        return level + 1 if candidate == endGene
+        used[i] = true
+        nxt.push(candidate)
+      end
+    end
+    frontier = nxt
+    level += 1
+  end
+  startGene == endGene ? 0 : -1
+end
+
+@@@PROBLEM word-ladder
+@@@LANG typescript
+function ladderLength(beginWord: string, endWord: string, wordList: string[]): number {
+    var used: boolean[] = [];
+    for (var i = 0; i < wordList.length; i++) used.push(false);
+    var frontier: string[] = [beginWord];
+    var level = 1;
+    while (frontier.length > 0) {
+        var next: string[] = [];
+        for (var f = 0; f < frontier.length; f++) {
+            for (var j = 0; j < wordList.length; j++) {
+                if (used[j]) continue;
+                var diff = 0;
+                for (var k = 0; k < wordList[j].length; k++) {
+                    if (wordList[j].charAt(k) !== frontier[f].charAt(k)) diff++;
+                }
+                if (diff !== 1) continue;
+                if (wordList[j] === endWord) return level + 1;
+                used[j] = true;
+                next.push(wordList[j]);
+            }
+        }
+        frontier = next;
+        level++;
+    }
+    return 0;
+}
+@@@LANG java
+public static int ladderLength(String beginWord, String endWord, String[] wordList) {
+    boolean[] used = new boolean[wordList.length];
+    List<String> frontier = new ArrayList<>();
+    frontier.add(beginWord);
+    int level = 1;
+    while (!frontier.isEmpty()) {
+        List<String> next = new ArrayList<>();
+        for (String word : frontier) {
+            for (int i = 0; i < wordList.length; i++) {
+                if (used[i]) continue;
+                int diff = 0;
+                for (int k = 0; k < wordList[i].length(); k++) {
+                    if (wordList[i].charAt(k) != word.charAt(k)) diff++;
+                }
+                if (diff != 1) continue;
+                if (wordList[i].equals(endWord)) return level + 1;
+                used[i] = true;
+                next.add(wordList[i]);
+            }
+        }
+        frontier = next;
+        level++;
+    }
+    return 0;
+}
+@@@LANG cpp
+int ladderLength(string beginWord, string endWord, vector<string>& wordList) {
+    vector<bool> used(wordList.size(), false);
+    vector<string> frontier;
+    frontier.push_back(beginWord);
+    int level = 1;
+    while (!frontier.empty()) {
+        vector<string> next;
+        for (const string& word : frontier) {
+            for (size_t i = 0; i < wordList.size(); i++) {
+                if (used[i]) continue;
+                int diff = 0;
+                for (size_t k = 0; k < wordList[i].size(); k++) {
+                    if (wordList[i][k] != word[k]) diff++;
+                }
+                if (diff != 1) continue;
+                if (wordList[i] == endWord) return level + 1;
+                used[i] = true;
+                next.push_back(wordList[i]);
+            }
+        }
+        frontier = next;
+        level++;
+    }
+    return 0;
+}
+@@@LANG c
+int ladderLength(const char* beginWord, const char* endWord, char** wordList, int wordListSize) {
+    char* used = (char*) calloc((size_t) (wordListSize > 0 ? wordListSize : 1), sizeof(char));
+    char** frontier = (char**) malloc((size_t) (wordListSize + 2) * sizeof(char*));
+    char** next = (char**) malloc((size_t) (wordListSize + 2) * sizeof(char*));
+    int frontierCount = 0;
+    frontier[frontierCount++] = (char*) beginWord;
+    int level = 1;
+    int answer = 0;
+    while (frontierCount > 0 && answer == 0) {
+        int nextCount = 0;
+        for (int f = 0; f < frontierCount && answer == 0; f++) {
+            for (int i = 0; i < wordListSize; i++) {
+                if (used[i]) continue;
+                int diff = 0;
+                for (int k = 0; wordList[i][k] != '\0'; k++) {
+                    if (wordList[i][k] != frontier[f][k]) diff++;
+                }
+                if (diff != 1) continue;
+                if (strcmp(wordList[i], endWord) == 0) {
+                    answer = level + 1;
+                    break;
+                }
+                used[i] = 1;
+                next[nextCount++] = wordList[i];
+            }
+        }
+        if (answer != 0) break;
+        for (int i = 0; i < nextCount; i++) frontier[i] = next[i];
+        frontierCount = nextCount;
+        level++;
+    }
+    free(used);
+    free(frontier);
+    free(next);
+    return answer;
+}
+@@@LANG csharp
+public static int LadderLength(string beginWord, string endWord, string[] wordList)
+{
+    bool[] used = new bool[wordList.Length];
+    var frontier = new List<string>();
+    frontier.Add(beginWord);
+    int level = 1;
+    while (frontier.Count > 0)
+    {
+        var next = new List<string>();
+        foreach (string word in frontier)
+        {
+            for (int i = 0; i < wordList.Length; i++)
+            {
+                if (used[i]) continue;
+                int diff = 0;
+                for (int k = 0; k < wordList[i].Length; k++)
+                {
+                    if (wordList[i][k] != word[k]) diff++;
+                }
+                if (diff != 1) continue;
+                if (wordList[i] == endWord) return level + 1;
+                used[i] = true;
+                next.Add(wordList[i]);
+            }
+        }
+        frontier = next;
+        level++;
+    }
+    return 0;
+}
+@@@LANG go
+func ladderLength(beginWord string, endWord string, wordList []string) int {
+	used := make([]bool, len(wordList))
+	frontier := []string{beginWord}
+	level := 1
+	for len(frontier) > 0 {
+		next := []string{}
+		for _, word := range frontier {
+			for i := 0; i < len(wordList); i++ {
+				if used[i] {
+					continue
+				}
+				diff := 0
+				for k := 0; k < len(wordList[i]); k++ {
+					if wordList[i][k] != word[k] {
+						diff++
+					}
+				}
+				if diff != 1 {
+					continue
+				}
+				if wordList[i] == endWord {
+					return level + 1
+				}
+				used[i] = true
+				next = append(next, wordList[i])
+			}
+		}
+		frontier = next
+		level++
+	}
+	return 0
+}
+@@@LANG kotlin
+fun ladderLength(beginWord: String, endWord: String, wordList: Array<String>): Int {
+    val used = BooleanArray(wordList.size)
+    var frontier = ArrayList<String>()
+    frontier.add(beginWord)
+    var level = 1
+    while (frontier.isNotEmpty()) {
+        val next = ArrayList<String>()
+        for (word in frontier) {
+            for (i in wordList.indices) {
+                if (used[i]) continue
+                var diff = 0
+                for (k in wordList[i].indices) {
+                    if (wordList[i][k] != word[k]) diff++
+                }
+                if (diff != 1) continue
+                if (wordList[i] == endWord) return level + 1
+                used[i] = true
+                next.add(wordList[i])
+            }
+        }
+        frontier = next
+        level++
+    }
+    return 0
+}
+@@@LANG swift
+func ladderLength(_ beginWord: String, _ endWord: String, _ wordList: [String]) -> Int {
+    let listChars = wordList.map { Array($0) }
+    var used = [Bool](repeating: false, count: wordList.count)
+    var frontier: [[Character]] = [Array(beginWord)]
+    var level = 1
+    while !frontier.isEmpty {
+        var next: [[Character]] = []
+        for word in frontier {
+            for i in 0..<wordList.count {
+                if used[i] { continue }
+                var diff = 0
+                for k in 0..<listChars[i].count {
+                    if listChars[i][k] != word[k] { diff += 1 }
+                }
+                if diff != 1 { continue }
+                if wordList[i] == endWord { return level + 1 }
+                used[i] = true
+                next.append(listChars[i])
+            }
+        }
+        frontier = next
+        level += 1
+    }
+    return 0
+}
+@@@LANG rust
+fn ladderLength(beginWord: String, endWord: String, wordList: Vec<String>) -> i32 {
+    let mut used = vec![false; wordList.len()];
+    let mut frontier: Vec<String> = vec![beginWord];
+    let mut level = 1i32;
+    while !frontier.is_empty() {
+        let mut next: Vec<String> = Vec::new();
+        for word in frontier.iter() {
+            let word_bytes: Vec<u8> = word.bytes().collect();
+            for i in 0..wordList.len() {
+                if used[i] {
+                    continue;
+                }
+                let candidate: Vec<u8> = wordList[i].bytes().collect();
+                let mut diff = 0;
+                for k in 0..candidate.len() {
+                    if candidate[k] != word_bytes[k] {
+                        diff += 1;
+                    }
+                }
+                if diff != 1 {
+                    continue;
+                }
+                if wordList[i] == endWord {
+                    return level + 1;
+                }
+                used[i] = true;
+                next.push(wordList[i].clone());
+            }
+        }
+        frontier = next;
+        level += 1;
+    }
+    0
+}
+@@@LANG php
+function ladderLength($beginWord, $endWord, $wordList) {
+    $used = array_fill(0, max(count($wordList), 1), false);
+    $frontier = array($beginWord);
+    $level = 1;
+    while (count($frontier) > 0) {
+        $next = array();
+        foreach ($frontier as $word) {
+            for ($i = 0; $i < count($wordList); $i++) {
+                if ($used[$i]) continue;
+                $diff = 0;
+                for ($k = 0; $k < strlen($wordList[$i]); $k++) {
+                    if ($wordList[$i][$k] !== $word[$k]) $diff++;
+                }
+                if ($diff !== 1) continue;
+                if ($wordList[$i] === $endWord) return $level + 1;
+                $used[$i] = true;
+                $next[] = $wordList[$i];
+            }
+        }
+        $frontier = $next;
+        $level++;
+    }
+    return 0;
+}
+@@@LANG ruby
+def ladderLength(beginWord, endWord, wordList)
+  used = Array.new(wordList.length, false)
+  frontier = [beginWord]
+  level = 1
+  while !frontier.empty?
+    nxt = []
+    frontier.each do |word|
+      wordList.each_with_index do |candidate, i|
+        next if used[i]
+        diff = 0
+        (0...candidate.length).each { |k| diff += 1 if candidate[k] != word[k] }
+        next if diff != 1
+        return level + 1 if candidate == endWord
+        used[i] = true
+        nxt.push(candidate)
+      end
+    end
+    frontier = nxt
+    level += 1
+  end
+  0
+end
+
+@@@PROBLEM snakes-and-ladders
+@@@LANG typescript
+function snakesAndLadders(board: number[][]): number {
+    var n = board.length;
+    var target = n * n;
+    var valueAt = function (square: number): number {
+        var quotient = Math.floor((square - 1) / n);
+        var remainder = (square - 1) % n;
+        var row = n - 1 - quotient;
+        var col = quotient % 2 === 0 ? remainder : n - 1 - remainder;
+        return board[row][col];
+    };
+    var dist: number[] = [];
+    for (var i = 0; i <= target; i++) dist.push(-1);
+    dist[1] = 0;
+    var queue: number[] = [1];
+    var head = 0;
+    while (head < queue.length) {
+        var square = queue[head++];
+        if (square === target) return dist[square];
+        for (var step = 1; step <= 6 && square + step <= target; step++) {
+            var landing = square + step;
+            var jump = valueAt(landing);
+            var destination = jump === -1 ? landing : jump;
+            if (dist[destination] === -1) {
+                dist[destination] = dist[square] + 1;
+                queue.push(destination);
+            }
+        }
+    }
+    return -1;
+}
+@@@LANG java
+public static int snakesAndLadders(int[][] board) {
+    int n = board.length;
+    int target = n * n;
+    int[] dist = new int[target + 1];
+    Arrays.fill(dist, -1);
+    dist[1] = 0;
+    Deque<Integer> queue = new ArrayDeque<>();
+    queue.addLast(1);
+    while (!queue.isEmpty()) {
+        int square = queue.pollFirst();
+        if (square == target) return dist[square];
+        for (int step = 1; step <= 6 && square + step <= target; step++) {
+            int landing = square + step;
+            int quotient = (landing - 1) / n;
+            int remainder = (landing - 1) % n;
+            int row = n - 1 - quotient;
+            int col = quotient % 2 == 0 ? remainder : n - 1 - remainder;
+            int jump = board[row][col];
+            int destination = jump == -1 ? landing : jump;
+            if (dist[destination] == -1) {
+                dist[destination] = dist[square] + 1;
+                queue.addLast(destination);
+            }
+        }
+    }
+    return -1;
+}
+@@@LANG cpp
+int snakesAndLadders(vector<vector<int>>& board) {
+    int n = (int) board.size();
+    int target = n * n;
+    vector<int> dist(target + 1, -1);
+    dist[1] = 0;
+    vector<int> queue;
+    queue.push_back(1);
+    size_t head = 0;
+    while (head < queue.size()) {
+        int square = queue[head++];
+        if (square == target) return dist[square];
+        for (int step = 1; step <= 6 && square + step <= target; step++) {
+            int landing = square + step;
+            int quotient = (landing - 1) / n;
+            int remainder = (landing - 1) % n;
+            int row = n - 1 - quotient;
+            int col = quotient % 2 == 0 ? remainder : n - 1 - remainder;
+            int jump = board[row][col];
+            int destination = jump == -1 ? landing : jump;
+            if (dist[destination] == -1) {
+                dist[destination] = dist[square] + 1;
+                queue.push_back(destination);
+            }
+        }
+    }
+    return -1;
+}
+@@@LANG c
+int snakesAndLadders(int** board, int boardSize, int* boardColSize) {
+    int n = boardSize;
+    int target = n * n;
+    int* dist = (int*) malloc((size_t) (target + 1) * sizeof(int));
+    for (int i = 0; i <= target; i++) dist[i] = -1;
+    int* queue = (int*) malloc((size_t) (target + 1) * sizeof(int));
+    int head = 0, tail = 0;
+    dist[1] = 0;
+    queue[tail++] = 1;
+    int answer = -1;
+    while (head < tail) {
+        int square = queue[head++];
+        if (square == target) {
+            answer = dist[square];
+            break;
+        }
+        for (int step = 1; step <= 6 && square + step <= target; step++) {
+            int landing = square + step;
+            int quotient = (landing - 1) / n;
+            int remainder = (landing - 1) % n;
+            int row = n - 1 - quotient;
+            int col = quotient % 2 == 0 ? remainder : n - 1 - remainder;
+            int jump = board[row][col];
+            int destination = jump == -1 ? landing : jump;
+            if (dist[destination] == -1) {
+                dist[destination] = dist[square] + 1;
+                queue[tail++] = destination;
+            }
+        }
+    }
+    free(dist);
+    free(queue);
+    return answer;
+}
+@@@LANG csharp
+public static int SnakesAndLadders(int[][] board)
+{
+    int n = board.Length;
+    int target = n * n;
+    int[] dist = new int[target + 1];
+    for (int i = 0; i <= target; i++) dist[i] = -1;
+    dist[1] = 0;
+    var queue = new Queue<int>();
+    queue.Enqueue(1);
+    while (queue.Count > 0)
+    {
+        int square = queue.Dequeue();
+        if (square == target) return dist[square];
+        for (int step = 1; step <= 6 && square + step <= target; step++)
+        {
+            int landing = square + step;
+            int quotient = (landing - 1) / n;
+            int remainder = (landing - 1) % n;
+            int row = n - 1 - quotient;
+            int col = quotient % 2 == 0 ? remainder : n - 1 - remainder;
+            int jump = board[row][col];
+            int destination = jump == -1 ? landing : jump;
+            if (dist[destination] == -1)
+            {
+                dist[destination] = dist[square] + 1;
+                queue.Enqueue(destination);
+            }
+        }
+    }
+    return -1;
+}
+@@@LANG go
+func snakesAndLadders(board [][]int) int {
+	n := len(board)
+	target := n * n
+	dist := make([]int, target+1)
+	for i := range dist {
+		dist[i] = -1
+	}
+	dist[1] = 0
+	queue := []int{1}
+	head := 0
+	for head < len(queue) {
+		square := queue[head]
+		head++
+		if square == target {
+			return dist[square]
+		}
+		for step := 1; step <= 6 && square+step <= target; step++ {
+			landing := square + step
+			quotient := (landing - 1) / n
+			remainder := (landing - 1) % n
+			row := n - 1 - quotient
+			col := remainder
+			if quotient%2 != 0 {
+				col = n - 1 - remainder
+			}
+			jump := board[row][col]
+			destination := landing
+			if jump != -1 {
+				destination = jump
+			}
+			if dist[destination] == -1 {
+				dist[destination] = dist[square] + 1
+				queue = append(queue, destination)
+			}
+		}
+	}
+	return -1
+}
+@@@LANG kotlin
+fun snakesAndLadders(board: Array<IntArray>): Int {
+    val n = board.size
+    val target = n * n
+    val dist = IntArray(target + 1) { -1 }
+    dist[1] = 0
+    val queue = ArrayList<Int>()
+    queue.add(1)
+    var head = 0
+    while (head < queue.size) {
+        val square = queue[head++]
+        if (square == target) return dist[square]
+        var step = 1
+        while (step <= 6 && square + step <= target) {
+            val landing = square + step
+            val quotient = (landing - 1) / n
+            val remainder = (landing - 1) % n
+            val row = n - 1 - quotient
+            val col = if (quotient % 2 == 0) remainder else n - 1 - remainder
+            val jump = board[row][col]
+            val destination = if (jump == -1) landing else jump
+            if (dist[destination] == -1) {
+                dist[destination] = dist[square] + 1
+                queue.add(destination)
+            }
+            step++
+        }
+    }
+    return -1
+}
+@@@LANG swift
+func snakesAndLadders(_ board: [[Int]]) -> Int {
+    let n = board.count
+    let target = n * n
+    var dist = [Int](repeating: -1, count: target + 1)
+    dist[1] = 0
+    var queue = [1]
+    var head = 0
+    while head < queue.count {
+        let square = queue[head]
+        head += 1
+        if square == target { return dist[square] }
+        var step = 1
+        while step <= 6 && square + step <= target {
+            let landing = square + step
+            let quotient = (landing - 1) / n
+            let remainder = (landing - 1) % n
+            let row = n - 1 - quotient
+            let col = quotient % 2 == 0 ? remainder : n - 1 - remainder
+            let jump = board[row][col]
+            let destination = jump == -1 ? landing : jump
+            if dist[destination] == -1 {
+                dist[destination] = dist[square] + 1
+                queue.append(destination)
+            }
+            step += 1
+        }
+    }
+    return -1
+}
+@@@LANG rust
+fn snakesAndLadders(board: Vec<Vec<i32>>) -> i32 {
+    let n = board.len() as i32;
+    let target = n * n;
+    let mut dist = vec![-1i32; (target + 1) as usize];
+    dist[1] = 0;
+    let mut queue: Vec<i32> = vec![1];
+    let mut head = 0usize;
+    while head < queue.len() {
+        let square = queue[head];
+        head += 1;
+        if square == target {
+            return dist[square as usize];
+        }
+        let mut step = 1i32;
+        while step <= 6 && square + step <= target {
+            let landing = square + step;
+            let quotient = (landing - 1) / n;
+            let remainder = (landing - 1) % n;
+            let row = (n - 1 - quotient) as usize;
+            let col = if quotient % 2 == 0 { remainder } else { n - 1 - remainder } as usize;
+            let jump = board[row][col];
+            let destination = if jump == -1 { landing } else { jump };
+            if dist[destination as usize] == -1 {
+                dist[destination as usize] = dist[square as usize] + 1;
+                queue.push(destination);
+            }
+            step += 1;
+        }
+    }
+    -1
+}
+@@@LANG php
+function snakesAndLadders($board) {
+    $n = count($board);
+    $target = $n * $n;
+    $dist = array_fill(0, $target + 1, -1);
+    $dist[1] = 0;
+    $queue = array(1);
+    $head = 0;
+    while ($head < count($queue)) {
+        $square = $queue[$head++];
+        if ($square === $target) return $dist[$square];
+        for ($step = 1; $step <= 6 && $square + $step <= $target; $step++) {
+            $landing = $square + $step;
+            $quotient = intdiv($landing - 1, $n);
+            $remainder = ($landing - 1) % $n;
+            $row = $n - 1 - $quotient;
+            $col = $quotient % 2 === 0 ? $remainder : $n - 1 - $remainder;
+            $jump = $board[$row][$col];
+            $destination = $jump === -1 ? $landing : $jump;
+            if ($dist[$destination] === -1) {
+                $dist[$destination] = $dist[$square] + 1;
+                $queue[] = $destination;
+            }
+        }
+    }
+    return -1;
+}
+@@@LANG ruby
+def snakesAndLadders(board)
+  n = board.length
+  target = n * n
+  dist = Array.new(target + 1, -1)
+  dist[1] = 0
+  queue = [1]
+  head = 0
+  while head < queue.length
+    square = queue[head]
+    head += 1
+    return dist[square] if square == target
+    step = 1
+    while step <= 6 && square + step <= target
+      landing = square + step
+      quotient = (landing - 1) / n
+      remainder = (landing - 1) % n
+      row = n - 1 - quotient
+      col = quotient.even? ? remainder : n - 1 - remainder
+      jump = board[row][col]
+      destination = jump == -1 ? landing : jump
+      if dist[destination] == -1
+        dist[destination] = dist[square] + 1
+        queue.push(destination)
+      end
+      step += 1
+    end
+  end
+  -1
+end
+
+@@@PROBLEM pacific-atlantic-water-flow
+@@@LANG typescript
+function pacificAtlantic(heights: number[][]): number[][] {
+    var rows = heights.length;
+    var cols = heights[0].length;
+    var dr = [1, -1, 0, 0];
+    var dc = [0, 0, 1, -1];
+    var flow = function (starts: number[][]): boolean[][] {
+        var seen: boolean[][] = [];
+        for (var r = 0; r < rows; r++) {
+            var row: boolean[] = [];
+            for (var c = 0; c < cols; c++) row.push(false);
+            seen.push(row);
+        }
+        var stack: number[][] = [];
+        for (var i = 0; i < starts.length; i++) {
+            seen[starts[i][0]][starts[i][1]] = true;
+            stack.push(starts[i]);
+        }
+        while (stack.length > 0) {
+            var cell = stack.pop() as number[];
+            for (var d = 0; d < 4; d++) {
+                var nr = cell[0] + dr[d];
+                var nc = cell[1] + dc[d];
+                if (nr < 0 || nc < 0 || nr >= rows || nc >= cols || seen[nr][nc]) continue;
+                if (heights[nr][nc] < heights[cell[0]][cell[1]]) continue;
+                seen[nr][nc] = true;
+                stack.push([nr, nc]);
+            }
+        }
+        return seen;
+    };
+    var pacificStarts: number[][] = [];
+    var atlanticStarts: number[][] = [];
+    for (var c2 = 0; c2 < cols; c2++) {
+        pacificStarts.push([0, c2]);
+        atlanticStarts.push([rows - 1, c2]);
+    }
+    for (var r2 = 0; r2 < rows; r2++) {
+        pacificStarts.push([r2, 0]);
+        atlanticStarts.push([r2, cols - 1]);
+    }
+    var pacific = flow(pacificStarts);
+    var atlantic = flow(atlanticStarts);
+    var out: number[][] = [];
+    for (var r3 = 0; r3 < rows; r3++) {
+        for (var c3 = 0; c3 < cols; c3++) {
+            if (pacific[r3][c3] && atlantic[r3][c3]) out.push([r3, c3]);
+        }
+    }
+    return out;
+}
+@@@LANG java
+private static boolean[][] oceanFlow(int[][] heights, List<int[]> starts) {
+    int rows = heights.length, cols = heights[0].length;
+    boolean[][] seen = new boolean[rows][cols];
+    Deque<int[]> stack = new ArrayDeque<>();
+    for (int[] s : starts) {
+        seen[s[0]][s[1]] = true;
+        stack.push(s);
+    }
+    int[] dr = {1, -1, 0, 0};
+    int[] dc = {0, 0, 1, -1};
+    while (!stack.isEmpty()) {
+        int[] cell = stack.pop();
+        for (int d = 0; d < 4; d++) {
+            int nr = cell[0] + dr[d], nc = cell[1] + dc[d];
+            if (nr < 0 || nc < 0 || nr >= rows || nc >= cols || seen[nr][nc]) continue;
+            if (heights[nr][nc] < heights[cell[0]][cell[1]]) continue;
+            seen[nr][nc] = true;
+            stack.push(new int[]{nr, nc});
+        }
+    }
+    return seen;
+}
+
+public static int[][] pacificAtlantic(int[][] heights) {
+    int rows = heights.length, cols = heights[0].length;
+    List<int[]> pacificStarts = new ArrayList<>();
+    List<int[]> atlanticStarts = new ArrayList<>();
+    for (int c = 0; c < cols; c++) {
+        pacificStarts.add(new int[]{0, c});
+        atlanticStarts.add(new int[]{rows - 1, c});
+    }
+    for (int r = 0; r < rows; r++) {
+        pacificStarts.add(new int[]{r, 0});
+        atlanticStarts.add(new int[]{r, cols - 1});
+    }
+    boolean[][] pacific = oceanFlow(heights, pacificStarts);
+    boolean[][] atlantic = oceanFlow(heights, atlanticStarts);
+    List<int[]> out = new ArrayList<>();
+    for (int r = 0; r < rows; r++) {
+        for (int c = 0; c < cols; c++) {
+            if (pacific[r][c] && atlantic[r][c]) out.add(new int[]{r, c});
+        }
+    }
+    return out.toArray(new int[0][]);
+}
+@@@LANG cpp
+static vector<vector<bool>> oceanFlow(vector<vector<int>>& heights, vector<pair<int,int>>& starts) {
+    int rows = (int) heights.size(), cols = (int) heights[0].size();
+    vector<vector<bool>> seen(rows, vector<bool>(cols, false));
+    vector<pair<int,int>> stack;
+    for (const auto& s : starts) {
+        seen[s.first][s.second] = true;
+        stack.push_back(s);
+    }
+    int dr[4] = {1, -1, 0, 0};
+    int dc[4] = {0, 0, 1, -1};
+    while (!stack.empty()) {
+        pair<int,int> cell = stack.back();
+        stack.pop_back();
+        for (int d = 0; d < 4; d++) {
+            int nr = cell.first + dr[d], nc = cell.second + dc[d];
+            if (nr < 0 || nc < 0 || nr >= rows || nc >= cols || seen[nr][nc]) continue;
+            if (heights[nr][nc] < heights[cell.first][cell.second]) continue;
+            seen[nr][nc] = true;
+            stack.push_back(make_pair(nr, nc));
+        }
+    }
+    return seen;
+}
+
+vector<vector<int>> pacificAtlantic(vector<vector<int>>& heights) {
+    int rows = (int) heights.size(), cols = (int) heights[0].size();
+    vector<pair<int,int>> pacificStarts, atlanticStarts;
+    for (int c = 0; c < cols; c++) {
+        pacificStarts.push_back(make_pair(0, c));
+        atlanticStarts.push_back(make_pair(rows - 1, c));
+    }
+    for (int r = 0; r < rows; r++) {
+        pacificStarts.push_back(make_pair(r, 0));
+        atlanticStarts.push_back(make_pair(r, cols - 1));
+    }
+    vector<vector<bool>> pacific = oceanFlow(heights, pacificStarts);
+    vector<vector<bool>> atlantic = oceanFlow(heights, atlanticStarts);
+    vector<vector<int>> out;
+    for (int r = 0; r < rows; r++) {
+        for (int c = 0; c < cols; c++) {
+            if (pacific[r][c] && atlantic[r][c]) out.push_back(vector<int>{r, c});
+        }
+    }
+    return out;
+}
+@@@LANG c
+static void oceanFlow(int** heights, int rows, int cols, int fromTopLeft, char* seen) {
+    int* stack = (int*) malloc((size_t) (rows * cols) * sizeof(int));
+    int top = 0;
+    for (int i = 0; i < rows * cols; i++) seen[i] = 0;
+    if (fromTopLeft) {
+        for (int c = 0; c < cols; c++) {
+            if (!seen[c]) {
+                seen[c] = 1;
+                stack[top++] = c;
+            }
+        }
+        for (int r = 0; r < rows; r++) {
+            if (!seen[r * cols]) {
+                seen[r * cols] = 1;
+                stack[top++] = r * cols;
+            }
+        }
+    } else {
+        for (int c = 0; c < cols; c++) {
+            int index = (rows - 1) * cols + c;
+            if (!seen[index]) {
+                seen[index] = 1;
+                stack[top++] = index;
+            }
+        }
+        for (int r = 0; r < rows; r++) {
+            int index = r * cols + (cols - 1);
+            if (!seen[index]) {
+                seen[index] = 1;
+                stack[top++] = index;
+            }
+        }
+    }
+    int dr[4] = {1, -1, 0, 0};
+    int dc[4] = {0, 0, 1, -1};
+    while (top > 0) {
+        int cell = stack[--top];
+        int cr = cell / cols, cc = cell % cols;
+        for (int d = 0; d < 4; d++) {
+            int nr = cr + dr[d], nc = cc + dc[d];
+            if (nr < 0 || nc < 0 || nr >= rows || nc >= cols || seen[nr * cols + nc]) continue;
+            if (heights[nr][nc] < heights[cr][cc]) continue;
+            seen[nr * cols + nc] = 1;
+            stack[top++] = nr * cols + nc;
+        }
+    }
+    free(stack);
+}
+
+int** pacificAtlantic(int** heights, int heightsSize, int* heightsColSize, int* returnSize, int** returnColumnSizes) {
+    int rows = heightsSize, cols = heightsColSize[0];
+    char* pacific = (char*) malloc((size_t) (rows * cols));
+    char* atlantic = (char*) malloc((size_t) (rows * cols));
+    oceanFlow(heights, rows, cols, 1, pacific);
+    oceanFlow(heights, rows, cols, 0, atlantic);
+    int** out = (int**) malloc((size_t) (rows * cols) * sizeof(int*));
+    int* cols_ = (int*) malloc((size_t) (rows * cols) * sizeof(int));
+    int count = 0;
+    for (int r = 0; r < rows; r++) {
+        for (int c = 0; c < cols; c++) {
+            if (pacific[r * cols + c] && atlantic[r * cols + c]) {
+                int* pair = (int*) malloc(2 * sizeof(int));
+                pair[0] = r;
+                pair[1] = c;
+                out[count] = pair;
+                cols_[count] = 2;
+                count++;
+            }
+        }
+    }
+    free(pacific);
+    free(atlantic);
+    *returnSize = count;
+    *returnColumnSizes = cols_;
+    return out;
+}
+@@@LANG csharp
+private static bool[,] OceanFlow(int[][] heights, List<int[]> starts)
+{
+    int rows = heights.Length, cols = heights[0].Length;
+    bool[,] seen = new bool[rows, cols];
+    var stack = new List<int[]>();
+    foreach (int[] s in starts)
+    {
+        seen[s[0], s[1]] = true;
+        stack.Add(s);
+    }
+    int[] dr = { 1, -1, 0, 0 };
+    int[] dc = { 0, 0, 1, -1 };
+    while (stack.Count > 0)
+    {
+        int[] cell = stack[stack.Count - 1];
+        stack.RemoveAt(stack.Count - 1);
+        for (int d = 0; d < 4; d++)
+        {
+            int nr = cell[0] + dr[d], nc = cell[1] + dc[d];
+            if (nr < 0 || nc < 0 || nr >= rows || nc >= cols || seen[nr, nc]) continue;
+            if (heights[nr][nc] < heights[cell[0]][cell[1]]) continue;
+            seen[nr, nc] = true;
+            stack.Add(new int[] { nr, nc });
+        }
+    }
+    return seen;
+}
+
+public static int[][] PacificAtlantic(int[][] heights)
+{
+    int rows = heights.Length, cols = heights[0].Length;
+    var pacificStarts = new List<int[]>();
+    var atlanticStarts = new List<int[]>();
+    for (int c = 0; c < cols; c++)
+    {
+        pacificStarts.Add(new int[] { 0, c });
+        atlanticStarts.Add(new int[] { rows - 1, c });
+    }
+    for (int r = 0; r < rows; r++)
+    {
+        pacificStarts.Add(new int[] { r, 0 });
+        atlanticStarts.Add(new int[] { r, cols - 1 });
+    }
+    bool[,] pacific = OceanFlow(heights, pacificStarts);
+    bool[,] atlantic = OceanFlow(heights, atlanticStarts);
+    var out_ = new List<int[]>();
+    for (int r = 0; r < rows; r++)
+    {
+        for (int c = 0; c < cols; c++)
+        {
+            if (pacific[r, c] && atlantic[r, c]) out_.Add(new int[] { r, c });
+        }
+    }
+    return out_.ToArray();
+}
+@@@LANG go
+func oceanFlow(heights [][]int, starts [][2]int) [][]bool {
+	rows, cols := len(heights), len(heights[0])
+	seen := make([][]bool, rows)
+	for i := range seen {
+		seen[i] = make([]bool, cols)
+	}
+	stack := [][2]int{}
+	for _, s := range starts {
+		if !seen[s[0]][s[1]] {
+			seen[s[0]][s[1]] = true
+			stack = append(stack, s)
+		}
+	}
+	dr := []int{1, -1, 0, 0}
+	dc := []int{0, 0, 1, -1}
+	for len(stack) > 0 {
+		cell := stack[len(stack)-1]
+		stack = stack[:len(stack)-1]
+		for d := 0; d < 4; d++ {
+			nr, nc := cell[0]+dr[d], cell[1]+dc[d]
+			if nr < 0 || nc < 0 || nr >= rows || nc >= cols || seen[nr][nc] {
+				continue
+			}
+			if heights[nr][nc] < heights[cell[0]][cell[1]] {
+				continue
+			}
+			seen[nr][nc] = true
+			stack = append(stack, [2]int{nr, nc})
+		}
+	}
+	return seen
+}
+
+func pacificAtlantic(heights [][]int) [][]int {
+	rows, cols := len(heights), len(heights[0])
+	pacificStarts := [][2]int{}
+	atlanticStarts := [][2]int{}
+	for c := 0; c < cols; c++ {
+		pacificStarts = append(pacificStarts, [2]int{0, c})
+		atlanticStarts = append(atlanticStarts, [2]int{rows - 1, c})
+	}
+	for r := 0; r < rows; r++ {
+		pacificStarts = append(pacificStarts, [2]int{r, 0})
+		atlanticStarts = append(atlanticStarts, [2]int{r, cols - 1})
+	}
+	pacific := oceanFlow(heights, pacificStarts)
+	atlantic := oceanFlow(heights, atlanticStarts)
+	out := [][]int{}
+	for r := 0; r < rows; r++ {
+		for c := 0; c < cols; c++ {
+			if pacific[r][c] && atlantic[r][c] {
+				out = append(out, []int{r, c})
+			}
+		}
+	}
+	return out
+}
+@@@LANG kotlin
+fun oceanFlow(heights: Array<IntArray>, starts: List<IntArray>): Array<BooleanArray> {
+    val rows = heights.size
+    val cols = heights[0].size
+    val seen = Array(rows) { BooleanArray(cols) }
+    val stack = ArrayList<IntArray>()
+    for (s in starts) {
+        if (!seen[s[0]][s[1]]) {
+            seen[s[0]][s[1]] = true
+            stack.add(s)
+        }
+    }
+    val dr = intArrayOf(1, -1, 0, 0)
+    val dc = intArrayOf(0, 0, 1, -1)
+    while (stack.isNotEmpty()) {
+        val cell = stack.removeAt(stack.size - 1)
+        for (d in 0 until 4) {
+            val nr = cell[0] + dr[d]
+            val nc = cell[1] + dc[d]
+            if (nr < 0 || nc < 0 || nr >= rows || nc >= cols || seen[nr][nc]) continue
+            if (heights[nr][nc] < heights[cell[0]][cell[1]]) continue
+            seen[nr][nc] = true
+            stack.add(intArrayOf(nr, nc))
+        }
+    }
+    return seen
+}
+
+fun pacificAtlantic(heights: Array<IntArray>): Array<IntArray> {
+    val rows = heights.size
+    val cols = heights[0].size
+    val pacificStarts = ArrayList<IntArray>()
+    val atlanticStarts = ArrayList<IntArray>()
+    for (c in 0 until cols) {
+        pacificStarts.add(intArrayOf(0, c))
+        atlanticStarts.add(intArrayOf(rows - 1, c))
+    }
+    for (r in 0 until rows) {
+        pacificStarts.add(intArrayOf(r, 0))
+        atlanticStarts.add(intArrayOf(r, cols - 1))
+    }
+    val pacific = oceanFlow(heights, pacificStarts)
+    val atlantic = oceanFlow(heights, atlanticStarts)
+    val out = ArrayList<IntArray>()
+    for (r in 0 until rows) {
+        for (c in 0 until cols) {
+            if (pacific[r][c] && atlantic[r][c]) out.add(intArrayOf(r, c))
+        }
+    }
+    return out.toTypedArray()
+}
+@@@LANG swift
+func oceanFlow(_ heights: [[Int]], _ starts: [[Int]]) -> [[Bool]] {
+    let rows = heights.count
+    let cols = heights[0].count
+    var seen = [[Bool]](repeating: [Bool](repeating: false, count: cols), count: rows)
+    var stack: [[Int]] = []
+    for s in starts where !seen[s[0]][s[1]] {
+        seen[s[0]][s[1]] = true
+        stack.append(s)
+    }
+    let dr = [1, -1, 0, 0]
+    let dc = [0, 0, 1, -1]
+    while let cell = stack.popLast() {
+        for d in 0..<4 {
+            let nr = cell[0] + dr[d]
+            let nc = cell[1] + dc[d]
+            if nr < 0 || nc < 0 || nr >= rows || nc >= cols || seen[nr][nc] { continue }
+            if heights[nr][nc] < heights[cell[0]][cell[1]] { continue }
+            seen[nr][nc] = true
+            stack.append([nr, nc])
+        }
+    }
+    return seen
+}
+
+func pacificAtlantic(_ heights: [[Int]]) -> [[Int]] {
+    let rows = heights.count
+    let cols = heights[0].count
+    var pacificStarts: [[Int]] = []
+    var atlanticStarts: [[Int]] = []
+    for c in 0..<cols {
+        pacificStarts.append([0, c])
+        atlanticStarts.append([rows - 1, c])
+    }
+    for r in 0..<rows {
+        pacificStarts.append([r, 0])
+        atlanticStarts.append([r, cols - 1])
+    }
+    let pacific = oceanFlow(heights, pacificStarts)
+    let atlantic = oceanFlow(heights, atlanticStarts)
+    var out: [[Int]] = []
+    for r in 0..<rows {
+        for c in 0..<cols where pacific[r][c] && atlantic[r][c] {
+            out.append([r, c])
+        }
+    }
+    return out
+}
+@@@LANG rust
+fn ocean_flow(heights: &Vec<Vec<i32>>, starts: &Vec<(usize, usize)>) -> Vec<Vec<bool>> {
+    let rows = heights.len();
+    let cols = heights[0].len();
+    let mut seen = vec![vec![false; cols]; rows];
+    let mut stack: Vec<(usize, usize)> = Vec::new();
+    for s in starts.iter() {
+        if !seen[s.0][s.1] {
+            seen[s.0][s.1] = true;
+            stack.push(*s);
+        }
+    }
+    let dr: [i32; 4] = [1, -1, 0, 0];
+    let dc: [i32; 4] = [0, 0, 1, -1];
+    while let Some((cr, cc)) = stack.pop() {
+        for d in 0..4 {
+            let nr = cr as i32 + dr[d];
+            let nc = cc as i32 + dc[d];
+            if nr < 0 || nc < 0 || nr >= rows as i32 || nc >= cols as i32 {
+                continue;
+            }
+            let (nru, ncu) = (nr as usize, nc as usize);
+            if seen[nru][ncu] || heights[nru][ncu] < heights[cr][cc] {
+                continue;
+            }
+            seen[nru][ncu] = true;
+            stack.push((nru, ncu));
+        }
+    }
+    seen
+}
+
+fn pacificAtlantic(heights: Vec<Vec<i32>>) -> Vec<Vec<i32>> {
+    let rows = heights.len();
+    let cols = heights[0].len();
+    let mut pacific_starts: Vec<(usize, usize)> = Vec::new();
+    let mut atlantic_starts: Vec<(usize, usize)> = Vec::new();
+    for c in 0..cols {
+        pacific_starts.push((0, c));
+        atlantic_starts.push((rows - 1, c));
+    }
+    for r in 0..rows {
+        pacific_starts.push((r, 0));
+        atlantic_starts.push((r, cols - 1));
+    }
+    let pacific = ocean_flow(&heights, &pacific_starts);
+    let atlantic = ocean_flow(&heights, &atlantic_starts);
+    let mut out: Vec<Vec<i32>> = Vec::new();
+    for r in 0..rows {
+        for c in 0..cols {
+            if pacific[r][c] && atlantic[r][c] {
+                out.push(vec![r as i32, c as i32]);
+            }
+        }
+    }
+    out
+}
+@@@LANG php
+function oceanFlow($heights, $starts) {
+    $rows = count($heights);
+    $cols = count($heights[0]);
+    $seen = array();
+    for ($r = 0; $r < $rows; $r++) $seen[] = array_fill(0, $cols, false);
+    $stack = array();
+    foreach ($starts as $s) {
+        if (!$seen[$s[0]][$s[1]]) {
+            $seen[$s[0]][$s[1]] = true;
+            $stack[] = $s;
+        }
+    }
+    $dr = array(1, -1, 0, 0);
+    $dc = array(0, 0, 1, -1);
+    while (count($stack) > 0) {
+        $cell = array_pop($stack);
+        for ($d = 0; $d < 4; $d++) {
+            $nr = $cell[0] + $dr[$d];
+            $nc = $cell[1] + $dc[$d];
+            if ($nr < 0 || $nc < 0 || $nr >= $rows || $nc >= $cols || $seen[$nr][$nc]) continue;
+            if ($heights[$nr][$nc] < $heights[$cell[0]][$cell[1]]) continue;
+            $seen[$nr][$nc] = true;
+            $stack[] = array($nr, $nc);
+        }
+    }
+    return $seen;
+}
+
+function pacificAtlantic($heights) {
+    $rows = count($heights);
+    $cols = count($heights[0]);
+    $pacificStarts = array();
+    $atlanticStarts = array();
+    for ($c = 0; $c < $cols; $c++) {
+        $pacificStarts[] = array(0, $c);
+        $atlanticStarts[] = array($rows - 1, $c);
+    }
+    for ($r = 0; $r < $rows; $r++) {
+        $pacificStarts[] = array($r, 0);
+        $atlanticStarts[] = array($r, $cols - 1);
+    }
+    $pacific = oceanFlow($heights, $pacificStarts);
+    $atlantic = oceanFlow($heights, $atlanticStarts);
+    $out = array();
+    for ($r = 0; $r < $rows; $r++) {
+        for ($c = 0; $c < $cols; $c++) {
+            if ($pacific[$r][$c] && $atlantic[$r][$c]) $out[] = array($r, $c);
+        }
+    }
+    return $out;
+}
+@@@LANG ruby
+def ocean_flow(heights, starts)
+  rows = heights.length
+  cols = heights[0].length
+  seen = Array.new(rows) { Array.new(cols, false) }
+  stack = []
+  starts.each do |s|
+    unless seen[s[0]][s[1]]
+      seen[s[0]][s[1]] = true
+      stack.push(s)
+    end
+  end
+  dr = [1, -1, 0, 0]
+  dc = [0, 0, 1, -1]
+  while !stack.empty?
+    cell = stack.pop
+    (0...4).each do |d|
+      nr = cell[0] + dr[d]
+      nc = cell[1] + dc[d]
+      next if nr < 0 || nc < 0 || nr >= rows || nc >= cols || seen[nr][nc]
+      next if heights[nr][nc] < heights[cell[0]][cell[1]]
+      seen[nr][nc] = true
+      stack.push([nr, nc])
+    end
+  end
+  seen
+end
+
+def pacificAtlantic(heights)
+  rows = heights.length
+  cols = heights[0].length
+  pacific_starts = []
+  atlantic_starts = []
+  (0...cols).each do |c|
+    pacific_starts.push([0, c])
+    atlantic_starts.push([rows - 1, c])
+  end
+  (0...rows).each do |r|
+    pacific_starts.push([r, 0])
+    atlantic_starts.push([r, cols - 1])
+  end
+  pacific = ocean_flow(heights, pacific_starts)
+  atlantic = ocean_flow(heights, atlantic_starts)
+  out = []
+  (0...rows).each do |r|
+    (0...cols).each do |c|
+      out.push([r, c]) if pacific[r][c] && atlantic[r][c]
+    end
+  end
+  out
+end
+
+@@@PROBLEM word-search
+@@@LANG typescript
+function exist(board: string[], word: string): boolean {
+    var rows = board.length;
+    var cols = board[0].length;
+    var used: boolean[][] = [];
+    for (var r = 0; r < rows; r++) {
+        var row: boolean[] = [];
+        for (var c = 0; c < cols; c++) row.push(false);
+        used.push(row);
+    }
+    var search = function (r: number, c: number, index: number): boolean {
+        if (index === word.length) return true;
+        if (r < 0 || c < 0 || r >= rows || c >= cols) return false;
+        if (used[r][c] || board[r].charAt(c) !== word.charAt(index)) return false;
+        used[r][c] = true;
+        var found = search(r + 1, c, index + 1) || search(r - 1, c, index + 1) ||
+            search(r, c + 1, index + 1) || search(r, c - 1, index + 1);
+        used[r][c] = false;
+        return found;
+    };
+    for (var r2 = 0; r2 < rows; r2++) {
+        for (var c2 = 0; c2 < cols; c2++) {
+            if (search(r2, c2, 0)) return true;
+        }
+    }
+    return false;
+}
+@@@LANG java
+private static boolean searchWord(String[] board, String word, boolean[][] used, int r, int c, int index) {
+    if (index == word.length()) return true;
+    int rows = board.length, cols = board[0].length();
+    if (r < 0 || c < 0 || r >= rows || c >= cols) return false;
+    if (used[r][c] || board[r].charAt(c) != word.charAt(index)) return false;
+    used[r][c] = true;
+    boolean found = searchWord(board, word, used, r + 1, c, index + 1)
+            || searchWord(board, word, used, r - 1, c, index + 1)
+            || searchWord(board, word, used, r, c + 1, index + 1)
+            || searchWord(board, word, used, r, c - 1, index + 1);
+    used[r][c] = false;
+    return found;
+}
+
+public static boolean exist(String[] board, String word) {
+    int rows = board.length, cols = board[0].length();
+    boolean[][] used = new boolean[rows][cols];
+    for (int r = 0; r < rows; r++) {
+        for (int c = 0; c < cols; c++) {
+            if (searchWord(board, word, used, r, c, 0)) return true;
+        }
+    }
+    return false;
+}
+@@@LANG cpp
+static bool searchWord(vector<string>& board, const string& word, vector<vector<bool>>& used, int r, int c, int index) {
+    if (index == (int) word.size()) return true;
+    int rows = (int) board.size(), cols = (int) board[0].size();
+    if (r < 0 || c < 0 || r >= rows || c >= cols) return false;
+    if (used[r][c] || board[r][c] != word[index]) return false;
+    used[r][c] = true;
+    bool found = searchWord(board, word, used, r + 1, c, index + 1)
+        || searchWord(board, word, used, r - 1, c, index + 1)
+        || searchWord(board, word, used, r, c + 1, index + 1)
+        || searchWord(board, word, used, r, c - 1, index + 1);
+    used[r][c] = false;
+    return found;
+}
+
+bool exist(vector<string>& board, string word) {
+    int rows = (int) board.size(), cols = (int) board[0].size();
+    vector<vector<bool>> used(rows, vector<bool>(cols, false));
+    for (int r = 0; r < rows; r++) {
+        for (int c = 0; c < cols; c++) {
+            if (searchWord(board, word, used, r, c, 0)) return true;
+        }
+    }
+    return false;
+}
+@@@LANG c
+static int searchWord(char** board, int rows, int cols, const char* word, int wordLen, char* used, int r, int c, int index) {
+    if (index == wordLen) return 1;
+    if (r < 0 || c < 0 || r >= rows || c >= cols) return 0;
+    if (used[r * cols + c] || board[r][c] != word[index]) return 0;
+    used[r * cols + c] = 1;
+    int found = searchWord(board, rows, cols, word, wordLen, used, r + 1, c, index + 1)
+        || searchWord(board, rows, cols, word, wordLen, used, r - 1, c, index + 1)
+        || searchWord(board, rows, cols, word, wordLen, used, r, c + 1, index + 1)
+        || searchWord(board, rows, cols, word, wordLen, used, r, c - 1, index + 1);
+    used[r * cols + c] = 0;
+    return found;
+}
+
+bool exist(char** board, int boardSize, const char* word) {
+    int rows = boardSize;
+    int cols = (int) strlen(board[0]);
+    int wordLen = (int) strlen(word);
+    char* used = (char*) calloc((size_t) (rows * cols), sizeof(char));
+    bool answer = false;
+    for (int r = 0; r < rows && !answer; r++) {
+        for (int c = 0; c < cols && !answer; c++) {
+            if (searchWord(board, rows, cols, word, wordLen, used, r, c, 0)) answer = true;
+        }
+    }
+    free(used);
+    return answer;
+}
+@@@LANG csharp
+private static bool SearchWord(string[] board, string word, bool[,] used, int r, int c, int index)
+{
+    if (index == word.Length) return true;
+    int rows = board.Length, cols = board[0].Length;
+    if (r < 0 || c < 0 || r >= rows || c >= cols) return false;
+    if (used[r, c] || board[r][c] != word[index]) return false;
+    used[r, c] = true;
+    bool found = SearchWord(board, word, used, r + 1, c, index + 1)
+        || SearchWord(board, word, used, r - 1, c, index + 1)
+        || SearchWord(board, word, used, r, c + 1, index + 1)
+        || SearchWord(board, word, used, r, c - 1, index + 1);
+    used[r, c] = false;
+    return found;
+}
+
+public static bool Exist(string[] board, string word)
+{
+    int rows = board.Length, cols = board[0].Length;
+    bool[,] used = new bool[rows, cols];
+    for (int r = 0; r < rows; r++)
+    {
+        for (int c = 0; c < cols; c++)
+        {
+            if (SearchWord(board, word, used, r, c, 0)) return true;
+        }
+    }
+    return false;
+}
+@@@LANG go
+func searchWord(board []string, word string, used [][]bool, r int, c int, index int) bool {
+	if index == len(word) {
+		return true
+	}
+	rows, cols := len(board), len(board[0])
+	if r < 0 || c < 0 || r >= rows || c >= cols {
+		return false
+	}
+	if used[r][c] || board[r][c] != word[index] {
+		return false
+	}
+	used[r][c] = true
+	found := searchWord(board, word, used, r+1, c, index+1) ||
+		searchWord(board, word, used, r-1, c, index+1) ||
+		searchWord(board, word, used, r, c+1, index+1) ||
+		searchWord(board, word, used, r, c-1, index+1)
+	used[r][c] = false
+	return found
+}
+
+func exist(board []string, word string) bool {
+	rows, cols := len(board), len(board[0])
+	used := make([][]bool, rows)
+	for i := range used {
+		used[i] = make([]bool, cols)
+	}
+	for r := 0; r < rows; r++ {
+		for c := 0; c < cols; c++ {
+			if searchWord(board, word, used, r, c, 0) {
+				return true
+			}
+		}
+	}
+	return false
+}
+@@@LANG kotlin
+fun searchWord(board: Array<String>, word: String, used: Array<BooleanArray>, r: Int, c: Int, index: Int): Boolean {
+    if (index == word.length) return true
+    val rows = board.size
+    val cols = board[0].length
+    if (r < 0 || c < 0 || r >= rows || c >= cols) return false
+    if (used[r][c] || board[r][c] != word[index]) return false
+    used[r][c] = true
+    val found = searchWord(board, word, used, r + 1, c, index + 1) ||
+        searchWord(board, word, used, r - 1, c, index + 1) ||
+        searchWord(board, word, used, r, c + 1, index + 1) ||
+        searchWord(board, word, used, r, c - 1, index + 1)
+    used[r][c] = false
+    return found
+}
+
+fun exist(board: Array<String>, word: String): Boolean {
+    val rows = board.size
+    val cols = board[0].length
+    val used = Array(rows) { BooleanArray(cols) }
+    for (r in 0 until rows) {
+        for (c in 0 until cols) {
+            if (searchWord(board, word, used, r, c, 0)) return true
+        }
+    }
+    return false
+}
+@@@LANG swift
+func searchWord(_ board: [[Character]], _ word: [Character], _ used: inout [[Bool]], _ r: Int, _ c: Int, _ index: Int) -> Bool {
+    if index == word.count { return true }
+    let rows = board.count
+    let cols = board[0].count
+    if r < 0 || c < 0 || r >= rows || c >= cols { return false }
+    if used[r][c] || board[r][c] != word[index] { return false }
+    used[r][c] = true
+    let found = searchWord(board, word, &used, r + 1, c, index + 1) ||
+        searchWord(board, word, &used, r - 1, c, index + 1) ||
+        searchWord(board, word, &used, r, c + 1, index + 1) ||
+        searchWord(board, word, &used, r, c - 1, index + 1)
+    used[r][c] = false
+    return found
+}
+
+func exist(_ board: [String], _ word: String) -> Bool {
+    let chars = board.map { Array($0) }
+    let target = Array(word)
+    let rows = chars.count
+    let cols = chars[0].count
+    var used = [[Bool]](repeating: [Bool](repeating: false, count: cols), count: rows)
+    for r in 0..<rows {
+        for c in 0..<cols {
+            if searchWord(chars, target, &used, r, c, 0) { return true }
+        }
+    }
+    return false
+}
+@@@LANG rust
+fn search_word(board: &Vec<Vec<u8>>, word: &Vec<u8>, used: &mut Vec<Vec<bool>>, r: i32, c: i32, index: usize) -> bool {
+    if index == word.len() {
+        return true;
+    }
+    let rows = board.len() as i32;
+    let cols = board[0].len() as i32;
+    if r < 0 || c < 0 || r >= rows || c >= cols {
+        return false;
+    }
+    let (ru, cu) = (r as usize, c as usize);
+    if used[ru][cu] || board[ru][cu] != word[index] {
+        return false;
+    }
+    used[ru][cu] = true;
+    let found = search_word(board, word, used, r + 1, c, index + 1)
+        || search_word(board, word, used, r - 1, c, index + 1)
+        || search_word(board, word, used, r, c + 1, index + 1)
+        || search_word(board, word, used, r, c - 1, index + 1);
+    used[ru][cu] = false;
+    found
+}
+
+fn exist(board: Vec<String>, word: String) -> bool {
+    let chars: Vec<Vec<u8>> = board.iter().map(|row| row.bytes().collect()).collect();
+    let target: Vec<u8> = word.bytes().collect();
+    let rows = chars.len();
+    let cols = chars[0].len();
+    let mut used = vec![vec![false; cols]; rows];
+    for r in 0..rows {
+        for c in 0..cols {
+            if search_word(&chars, &target, &mut used, r as i32, c as i32, 0) {
+                return true;
+            }
+        }
+    }
+    false
+}
+@@@LANG php
+function searchWord($board, $word, &$used, $r, $c, $index) {
+    if ($index === strlen($word)) return true;
+    $rows = count($board);
+    $cols = strlen($board[0]);
+    if ($r < 0 || $c < 0 || $r >= $rows || $c >= $cols) return false;
+    if ($used[$r][$c] || $board[$r][$c] !== $word[$index]) return false;
+    $used[$r][$c] = true;
+    $found = searchWord($board, $word, $used, $r + 1, $c, $index + 1)
+        || searchWord($board, $word, $used, $r - 1, $c, $index + 1)
+        || searchWord($board, $word, $used, $r, $c + 1, $index + 1)
+        || searchWord($board, $word, $used, $r, $c - 1, $index + 1);
+    $used[$r][$c] = false;
+    return $found;
+}
+
+function exist($board, $word) {
+    $rows = count($board);
+    $cols = strlen($board[0]);
+    $used = array();
+    for ($r = 0; $r < $rows; $r++) $used[] = array_fill(0, $cols, false);
+    for ($r = 0; $r < $rows; $r++) {
+        for ($c = 0; $c < $cols; $c++) {
+            if (searchWord($board, $word, $used, $r, $c, 0)) return true;
+        }
+    }
+    return false;
+}
+@@@LANG ruby
+def search_word(board, word, used, r, c, index)
+  return true if index == word.length
+  rows = board.length
+  cols = board[0].length
+  return false if r < 0 || c < 0 || r >= rows || c >= cols
+  return false if used[r][c] || board[r][c] != word[index]
+  used[r][c] = true
+  found = search_word(board, word, used, r + 1, c, index + 1) ||
+          search_word(board, word, used, r - 1, c, index + 1) ||
+          search_word(board, word, used, r, c + 1, index + 1) ||
+          search_word(board, word, used, r, c - 1, index + 1)
+  used[r][c] = false
+  found
+end
+
+def exist(board, word)
+  rows = board.length
+  cols = board[0].length
+  used = Array.new(rows) { Array.new(cols, false) }
+  (0...rows).each do |r|
+    (0...cols).each do |c|
+      return true if search_word(board, word, used, r, c, 0)
+    end
+  end
+  false
+end
+
+@@@PROBLEM swim-in-rising-water
+@@@LANG typescript
+function swimInWater(grid: number[][]): number {
+    var n = grid.length;
+    var dr = [1, -1, 0, 0];
+    var dc = [0, 0, 1, -1];
+    var reachable = function (limit: number): boolean {
+        if (grid[0][0] > limit) return false;
+        var seen: boolean[][] = [];
+        for (var r = 0; r < n; r++) {
+            var row: boolean[] = [];
+            for (var c = 0; c < n; c++) row.push(false);
+            seen.push(row);
+        }
+        seen[0][0] = true;
+        var stack: number[][] = [[0, 0]];
+        while (stack.length > 0) {
+            var cell = stack.pop() as number[];
+            if (cell[0] === n - 1 && cell[1] === n - 1) return true;
+            for (var d = 0; d < 4; d++) {
+                var nr = cell[0] + dr[d];
+                var nc = cell[1] + dc[d];
+                if (nr < 0 || nc < 0 || nr >= n || nc >= n || seen[nr][nc]) continue;
+                if (grid[nr][nc] > limit) continue;
+                seen[nr][nc] = true;
+                stack.push([nr, nc]);
+            }
+        }
+        return seen[n - 1][n - 1];
+    };
+    var lo = grid[0][0] > grid[n - 1][n - 1] ? grid[0][0] : grid[n - 1][n - 1];
+    var hi = n * n - 1;
+    while (lo < hi) {
+        var mid = Math.floor((lo + hi) / 2);
+        if (reachable(mid)) hi = mid;
+        else lo = mid + 1;
+    }
+    return lo;
+}
+@@@LANG java
+private static boolean swimReachable(int[][] grid, int limit) {
+    int n = grid.length;
+    if (grid[0][0] > limit) return false;
+    boolean[][] seen = new boolean[n][n];
+    seen[0][0] = true;
+    Deque<int[]> stack = new ArrayDeque<>();
+    stack.push(new int[]{0, 0});
+    int[] dr = {1, -1, 0, 0};
+    int[] dc = {0, 0, 1, -1};
+    while (!stack.isEmpty()) {
+        int[] cell = stack.pop();
+        if (cell[0] == n - 1 && cell[1] == n - 1) return true;
+        for (int d = 0; d < 4; d++) {
+            int nr = cell[0] + dr[d], nc = cell[1] + dc[d];
+            if (nr < 0 || nc < 0 || nr >= n || nc >= n || seen[nr][nc]) continue;
+            if (grid[nr][nc] > limit) continue;
+            seen[nr][nc] = true;
+            stack.push(new int[]{nr, nc});
+        }
+    }
+    return seen[n - 1][n - 1];
+}
+
+public static int swimInWater(int[][] grid) {
+    int n = grid.length;
+    int lo = Math.max(grid[0][0], grid[n - 1][n - 1]);
+    int hi = n * n - 1;
+    while (lo < hi) {
+        int mid = (lo + hi) / 2;
+        if (swimReachable(grid, mid)) hi = mid;
+        else lo = mid + 1;
+    }
+    return lo;
+}
+@@@LANG cpp
+static bool swimReachable(vector<vector<int>>& grid, int limit) {
+    int n = (int) grid.size();
+    if (grid[0][0] > limit) return false;
+    vector<vector<bool>> seen(n, vector<bool>(n, false));
+    seen[0][0] = true;
+    vector<pair<int,int>> stack;
+    stack.push_back(make_pair(0, 0));
+    int dr[4] = {1, -1, 0, 0};
+    int dc[4] = {0, 0, 1, -1};
+    while (!stack.empty()) {
+        pair<int,int> cell = stack.back();
+        stack.pop_back();
+        if (cell.first == n - 1 && cell.second == n - 1) return true;
+        for (int d = 0; d < 4; d++) {
+            int nr = cell.first + dr[d], nc = cell.second + dc[d];
+            if (nr < 0 || nc < 0 || nr >= n || nc >= n || seen[nr][nc]) continue;
+            if (grid[nr][nc] > limit) continue;
+            seen[nr][nc] = true;
+            stack.push_back(make_pair(nr, nc));
+        }
+    }
+    return seen[n - 1][n - 1];
+}
+
+int swimInWater(vector<vector<int>>& grid) {
+    int n = (int) grid.size();
+    int lo = max(grid[0][0], grid[n - 1][n - 1]);
+    int hi = n * n - 1;
+    while (lo < hi) {
+        int mid = (lo + hi) / 2;
+        if (swimReachable(grid, mid)) hi = mid;
+        else lo = mid + 1;
+    }
+    return lo;
+}
+@@@LANG c
+static int swimReachable(int** grid, int n, int limit, char* seen, int* stack) {
+    if (grid[0][0] > limit) return 0;
+    for (int i = 0; i < n * n; i++) seen[i] = 0;
+    seen[0] = 1;
+    int top = 0;
+    stack[top++] = 0;
+    int dr[4] = {1, -1, 0, 0};
+    int dc[4] = {0, 0, 1, -1};
+    while (top > 0) {
+        int cell = stack[--top];
+        int cr = cell / n, cc = cell % n;
+        if (cr == n - 1 && cc == n - 1) return 1;
+        for (int d = 0; d < 4; d++) {
+            int nr = cr + dr[d], nc = cc + dc[d];
+            if (nr < 0 || nc < 0 || nr >= n || nc >= n || seen[nr * n + nc]) continue;
+            if (grid[nr][nc] > limit) continue;
+            seen[nr * n + nc] = 1;
+            stack[top++] = nr * n + nc;
+        }
+    }
+    return seen[(n - 1) * n + (n - 1)];
+}
+
+int swimInWater(int** grid, int gridSize, int* gridColSize) {
+    int n = gridSize;
+    char* seen = (char*) malloc((size_t) (n * n));
+    int* stack = (int*) malloc((size_t) (n * n) * sizeof(int));
+    int lo = grid[0][0] > grid[n - 1][n - 1] ? grid[0][0] : grid[n - 1][n - 1];
+    int hi = n * n - 1;
+    while (lo < hi) {
+        int mid = lo + (hi - lo) / 2;
+        if (swimReachable(grid, n, mid, seen, stack)) hi = mid;
+        else lo = mid + 1;
+    }
+    free(seen);
+    free(stack);
+    return lo;
+}
+@@@LANG csharp
+private static bool SwimReachable(int[][] grid, int limit)
+{
+    int n = grid.Length;
+    if (grid[0][0] > limit) return false;
+    bool[,] seen = new bool[n, n];
+    seen[0, 0] = true;
+    var stack = new List<int[]>();
+    stack.Add(new int[] { 0, 0 });
+    int[] dr = { 1, -1, 0, 0 };
+    int[] dc = { 0, 0, 1, -1 };
+    while (stack.Count > 0)
+    {
+        int[] cell = stack[stack.Count - 1];
+        stack.RemoveAt(stack.Count - 1);
+        if (cell[0] == n - 1 && cell[1] == n - 1) return true;
+        for (int d = 0; d < 4; d++)
+        {
+            int nr = cell[0] + dr[d], nc = cell[1] + dc[d];
+            if (nr < 0 || nc < 0 || nr >= n || nc >= n || seen[nr, nc]) continue;
+            if (grid[nr][nc] > limit) continue;
+            seen[nr, nc] = true;
+            stack.Add(new int[] { nr, nc });
+        }
+    }
+    return seen[n - 1, n - 1];
+}
+
+public static int SwimInWater(int[][] grid)
+{
+    int n = grid.Length;
+    int lo = Math.Max(grid[0][0], grid[n - 1][n - 1]);
+    int hi = n * n - 1;
+    while (lo < hi)
+    {
+        int mid = (lo + hi) / 2;
+        if (SwimReachable(grid, mid)) hi = mid;
+        else lo = mid + 1;
+    }
+    return lo;
+}
+@@@LANG go
+func swimReachable(grid [][]int, limit int) bool {
+	n := len(grid)
+	if grid[0][0] > limit {
+		return false
+	}
+	seen := make([][]bool, n)
+	for i := range seen {
+		seen[i] = make([]bool, n)
+	}
+	seen[0][0] = true
+	stack := [][2]int{{0, 0}}
+	dr := []int{1, -1, 0, 0}
+	dc := []int{0, 0, 1, -1}
+	for len(stack) > 0 {
+		cell := stack[len(stack)-1]
+		stack = stack[:len(stack)-1]
+		if cell[0] == n-1 && cell[1] == n-1 {
+			return true
+		}
+		for d := 0; d < 4; d++ {
+			nr, nc := cell[0]+dr[d], cell[1]+dc[d]
+			if nr < 0 || nc < 0 || nr >= n || nc >= n || seen[nr][nc] {
+				continue
+			}
+			if grid[nr][nc] > limit {
+				continue
+			}
+			seen[nr][nc] = true
+			stack = append(stack, [2]int{nr, nc})
+		}
+	}
+	return seen[n-1][n-1]
+}
+
+func swimInWater(grid [][]int) int {
+	n := len(grid)
+	lo := grid[0][0]
+	if grid[n-1][n-1] > lo {
+		lo = grid[n-1][n-1]
+	}
+	hi := n*n - 1
+	for lo < hi {
+		mid := (lo + hi) / 2
+		if swimReachable(grid, mid) {
+			hi = mid
+		} else {
+			lo = mid + 1
+		}
+	}
+	return lo
+}
+@@@LANG kotlin
+fun swimReachable(grid: Array<IntArray>, limit: Int): Boolean {
+    val n = grid.size
+    if (grid[0][0] > limit) return false
+    val seen = Array(n) { BooleanArray(n) }
+    seen[0][0] = true
+    val stack = ArrayList<IntArray>()
+    stack.add(intArrayOf(0, 0))
+    val dr = intArrayOf(1, -1, 0, 0)
+    val dc = intArrayOf(0, 0, 1, -1)
+    while (stack.isNotEmpty()) {
+        val cell = stack.removeAt(stack.size - 1)
+        if (cell[0] == n - 1 && cell[1] == n - 1) return true
+        for (d in 0 until 4) {
+            val nr = cell[0] + dr[d]
+            val nc = cell[1] + dc[d]
+            if (nr < 0 || nc < 0 || nr >= n || nc >= n || seen[nr][nc]) continue
+            if (grid[nr][nc] > limit) continue
+            seen[nr][nc] = true
+            stack.add(intArrayOf(nr, nc))
+        }
+    }
+    return seen[n - 1][n - 1]
+}
+
+fun swimInWater(grid: Array<IntArray>): Int {
+    val n = grid.size
+    var lo = if (grid[0][0] > grid[n - 1][n - 1]) grid[0][0] else grid[n - 1][n - 1]
+    var hi = n * n - 1
+    while (lo < hi) {
+        val mid = (lo + hi) / 2
+        if (swimReachable(grid, mid)) hi = mid else lo = mid + 1
+    }
+    return lo
+}
+@@@LANG swift
+func swimReachable(_ grid: [[Int]], _ limit: Int) -> Bool {
+    let n = grid.count
+    if grid[0][0] > limit { return false }
+    var seen = [[Bool]](repeating: [Bool](repeating: false, count: n), count: n)
+    seen[0][0] = true
+    var stack: [[Int]] = [[0, 0]]
+    let dr = [1, -1, 0, 0]
+    let dc = [0, 0, 1, -1]
+    while let cell = stack.popLast() {
+        if cell[0] == n - 1 && cell[1] == n - 1 { return true }
+        for d in 0..<4 {
+            let nr = cell[0] + dr[d]
+            let nc = cell[1] + dc[d]
+            if nr < 0 || nc < 0 || nr >= n || nc >= n || seen[nr][nc] { continue }
+            if grid[nr][nc] > limit { continue }
+            seen[nr][nc] = true
+            stack.append([nr, nc])
+        }
+    }
+    return seen[n - 1][n - 1]
+}
+
+func swimInWater(_ grid: [[Int]]) -> Int {
+    let n = grid.count
+    var lo = max(grid[0][0], grid[n - 1][n - 1])
+    var hi = n * n - 1
+    while lo < hi {
+        let mid = (lo + hi) / 2
+        if swimReachable(grid, mid) { hi = mid } else { lo = mid + 1 }
+    }
+    return lo
+}
+@@@LANG rust
+fn swim_reachable(grid: &Vec<Vec<i32>>, limit: i32) -> bool {
+    let n = grid.len();
+    if grid[0][0] > limit {
+        return false;
+    }
+    let mut seen = vec![vec![false; n]; n];
+    seen[0][0] = true;
+    let mut stack: Vec<(usize, usize)> = vec![(0, 0)];
+    let dr: [i32; 4] = [1, -1, 0, 0];
+    let dc: [i32; 4] = [0, 0, 1, -1];
+    while let Some((cr, cc)) = stack.pop() {
+        if cr == n - 1 && cc == n - 1 {
+            return true;
+        }
+        for d in 0..4 {
+            let nr = cr as i32 + dr[d];
+            let nc = cc as i32 + dc[d];
+            if nr < 0 || nc < 0 || nr >= n as i32 || nc >= n as i32 {
+                continue;
+            }
+            let (nru, ncu) = (nr as usize, nc as usize);
+            if seen[nru][ncu] || grid[nru][ncu] > limit {
+                continue;
+            }
+            seen[nru][ncu] = true;
+            stack.push((nru, ncu));
+        }
+    }
+    seen[n - 1][n - 1]
+}
+
+fn swimInWater(grid: Vec<Vec<i32>>) -> i32 {
+    let n = grid.len();
+    let mut lo = if grid[0][0] > grid[n - 1][n - 1] { grid[0][0] } else { grid[n - 1][n - 1] };
+    let mut hi = (n * n - 1) as i32;
+    while lo < hi {
+        let mid = lo + (hi - lo) / 2;
+        if swim_reachable(&grid, mid) {
+            hi = mid;
+        } else {
+            lo = mid + 1;
+        }
+    }
+    lo
+}
+@@@LANG php
+function swimReachable($grid, $limit) {
+    $n = count($grid);
+    if ($grid[0][0] > $limit) return false;
+    $seen = array();
+    for ($r = 0; $r < $n; $r++) $seen[] = array_fill(0, $n, false);
+    $seen[0][0] = true;
+    $stack = array(array(0, 0));
+    $dr = array(1, -1, 0, 0);
+    $dc = array(0, 0, 1, -1);
+    while (count($stack) > 0) {
+        $cell = array_pop($stack);
+        if ($cell[0] === $n - 1 && $cell[1] === $n - 1) return true;
+        for ($d = 0; $d < 4; $d++) {
+            $nr = $cell[0] + $dr[$d];
+            $nc = $cell[1] + $dc[$d];
+            if ($nr < 0 || $nc < 0 || $nr >= $n || $nc >= $n || $seen[$nr][$nc]) continue;
+            if ($grid[$nr][$nc] > $limit) continue;
+            $seen[$nr][$nc] = true;
+            $stack[] = array($nr, $nc);
+        }
+    }
+    return $seen[$n - 1][$n - 1];
+}
+
+function swimInWater($grid) {
+    $n = count($grid);
+    $lo = max($grid[0][0], $grid[$n - 1][$n - 1]);
+    $hi = $n * $n - 1;
+    while ($lo < $hi) {
+        $mid = intdiv($lo + $hi, 2);
+        if (swimReachable($grid, $mid)) $hi = $mid;
+        else $lo = $mid + 1;
+    }
+    return $lo;
+}
+@@@LANG ruby
+def swim_reachable(grid, limit)
+  n = grid.length
+  return false if grid[0][0] > limit
+  seen = Array.new(n) { Array.new(n, false) }
+  seen[0][0] = true
+  stack = [[0, 0]]
+  dr = [1, -1, 0, 0]
+  dc = [0, 0, 1, -1]
+  while !stack.empty?
+    cell = stack.pop
+    return true if cell[0] == n - 1 && cell[1] == n - 1
+    (0...4).each do |d|
+      nr = cell[0] + dr[d]
+      nc = cell[1] + dc[d]
+      next if nr < 0 || nc < 0 || nr >= n || nc >= n || seen[nr][nc]
+      next if grid[nr][nc] > limit
+      seen[nr][nc] = true
+      stack.push([nr, nc])
+    end
+  end
+  seen[n - 1][n - 1]
+end
+
+def swimInWater(grid)
+  n = grid.length
+  lo = [grid[0][0], grid[n - 1][n - 1]].max
+  hi = n * n - 1
+  while lo < hi
+    mid = (lo + hi) / 2
+    if swim_reachable(grid, mid)
+      hi = mid
+    else
+      lo = mid + 1
+    end
+  end
+  lo
+end

@@ -1,0 +1,2246 @@
+@@@PROBLEM spiral-matrix-ii
+@@@LANG typescript
+function generateMatrix(n: number): number[][] {
+    var m: number[][] = [];
+    for (var i = 0; i < n; i++) {
+        var row: number[] = [];
+        for (var j = 0; j < n; j++) row.push(0);
+        m.push(row);
+    }
+    var top = 0, bottom = n - 1, left = 0, right = n - 1, v = 1;
+    while (top <= bottom && left <= right) {
+        for (var c = left; c <= right; c++) { m[top][c] = v; v++; }
+        top++;
+        for (var r = top; r <= bottom; r++) { m[r][right] = v; v++; }
+        right--;
+        if (top <= bottom) {
+            for (var c2 = right; c2 >= left; c2--) { m[bottom][c2] = v; v++; }
+            bottom--;
+        }
+        if (left <= right) {
+            for (var r2 = bottom; r2 >= top; r2--) { m[r2][left] = v; v++; }
+            left++;
+        }
+    }
+    return m;
+}
+@@@LANG java
+public static int[][] generateMatrix(int n) {
+    int[][] m = new int[n][n];
+    int top = 0, bottom = n - 1, left = 0, right = n - 1, v = 1;
+    while (top <= bottom && left <= right) {
+        for (int c = left; c <= right; c++) m[top][c] = v++;
+        top++;
+        for (int r = top; r <= bottom; r++) m[r][right] = v++;
+        right--;
+        if (top <= bottom) {
+            for (int c = right; c >= left; c--) m[bottom][c] = v++;
+            bottom--;
+        }
+        if (left <= right) {
+            for (int r = bottom; r >= top; r--) m[r][left] = v++;
+            left++;
+        }
+    }
+    return m;
+}
+@@@LANG cpp
+vector<vector<int>> generateMatrix(int n) {
+    vector<vector<int>> m(n, vector<int>(n, 0));
+    int top = 0, bottom = n - 1, left = 0, right = n - 1, v = 1;
+    while (top <= bottom && left <= right) {
+        for (int c = left; c <= right; c++) m[top][c] = v++;
+        top++;
+        for (int r = top; r <= bottom; r++) m[r][right] = v++;
+        right--;
+        if (top <= bottom) {
+            for (int c = right; c >= left; c--) m[bottom][c] = v++;
+            bottom--;
+        }
+        if (left <= right) {
+            for (int r = bottom; r >= top; r--) m[r][left] = v++;
+            left++;
+        }
+    }
+    return m;
+}
+@@@LANG c
+int** generateMatrix(int n, int* returnSize, int** returnColumnSizes) {
+    int** m = (int**) malloc(sizeof(int*) * n);
+    *returnColumnSizes = (int*) malloc(sizeof(int) * n);
+    for (int i = 0; i < n; i++) {
+        m[i] = (int*) calloc(n, sizeof(int));
+        (*returnColumnSizes)[i] = n;
+    }
+    int top = 0, bottom = n - 1, left = 0, right = n - 1, v = 1;
+    while (top <= bottom && left <= right) {
+        for (int c = left; c <= right; c++) m[top][c] = v++;
+        top++;
+        for (int r = top; r <= bottom; r++) m[r][right] = v++;
+        right--;
+        if (top <= bottom) {
+            for (int c = right; c >= left; c--) m[bottom][c] = v++;
+            bottom--;
+        }
+        if (left <= right) {
+            for (int r = bottom; r >= top; r--) m[r][left] = v++;
+            left++;
+        }
+    }
+    *returnSize = n;
+    return m;
+}
+@@@LANG csharp
+public static int[][] GenerateMatrix(int n)
+{
+    int[][] m = new int[n][];
+    for (int i = 0; i < n; i++) m[i] = new int[n];
+    int top = 0, bottom = n - 1, left = 0, right = n - 1, v = 1;
+    while (top <= bottom && left <= right)
+    {
+        for (int c = left; c <= right; c++) m[top][c] = v++;
+        top++;
+        for (int r = top; r <= bottom; r++) m[r][right] = v++;
+        right--;
+        if (top <= bottom)
+        {
+            for (int c = right; c >= left; c--) m[bottom][c] = v++;
+            bottom--;
+        }
+        if (left <= right)
+        {
+            for (int r = bottom; r >= top; r--) m[r][left] = v++;
+            left++;
+        }
+    }
+    return m;
+}
+@@@LANG go
+func generateMatrix(n int) [][]int {
+	m := make([][]int, n)
+	for i := range m {
+		m[i] = make([]int, n)
+	}
+	top, bottom, left, right, v := 0, n-1, 0, n-1, 1
+	for top <= bottom && left <= right {
+		for c := left; c <= right; c++ {
+			m[top][c] = v
+			v++
+		}
+		top++
+		for r := top; r <= bottom; r++ {
+			m[r][right] = v
+			v++
+		}
+		right--
+		if top <= bottom {
+			for c := right; c >= left; c-- {
+				m[bottom][c] = v
+				v++
+			}
+			bottom--
+		}
+		if left <= right {
+			for r := bottom; r >= top; r-- {
+				m[r][left] = v
+				v++
+			}
+			left++
+		}
+	}
+	return m
+}
+@@@LANG kotlin
+fun generateMatrix(n: Int): Array<IntArray> {
+    val m = Array(n) { IntArray(n) }
+    var top = 0
+    var bottom = n - 1
+    var left = 0
+    var right = n - 1
+    var v = 1
+    while (top <= bottom && left <= right) {
+        for (c in left..right) { m[top][c] = v; v++ }
+        top++
+        for (r in top..bottom) { m[r][right] = v; v++ }
+        right--
+        if (top <= bottom) {
+            for (c in right downTo left) { m[bottom][c] = v; v++ }
+            bottom--
+        }
+        if (left <= right) {
+            for (r in bottom downTo top) { m[r][left] = v; v++ }
+            left++
+        }
+    }
+    return m
+}
+@@@LANG swift
+func generateMatrix(_ n: Int) -> [[Int]] {
+    var m = [[Int]](repeating: [Int](repeating: 0, count: n), count: n)
+    var top = 0
+    var bottom = n - 1
+    var left = 0
+    var right = n - 1
+    var v = 1
+    while top <= bottom && left <= right {
+        var c = left
+        while c <= right { m[top][c] = v; v += 1; c += 1 }
+        top += 1
+        var r = top
+        while r <= bottom { m[r][right] = v; v += 1; r += 1 }
+        right -= 1
+        if top <= bottom {
+            var c2 = right
+            while c2 >= left { m[bottom][c2] = v; v += 1; c2 -= 1 }
+            bottom -= 1
+        }
+        if left <= right {
+            var r2 = bottom
+            while r2 >= top { m[r2][left] = v; v += 1; r2 -= 1 }
+            left += 1
+        }
+    }
+    return m
+}
+@@@LANG rust
+fn generateMatrix(n: i32) -> Vec<Vec<i32>> {
+    let size = n as usize;
+    let mut m = vec![vec![0i32; size]; size];
+    let mut top: i32 = 0;
+    let mut bottom: i32 = n - 1;
+    let mut left: i32 = 0;
+    let mut right: i32 = n - 1;
+    let mut v = 1;
+    while top <= bottom && left <= right {
+        let mut c = left;
+        while c <= right {
+            m[top as usize][c as usize] = v;
+            v += 1;
+            c += 1;
+        }
+        top += 1;
+        let mut r = top;
+        while r <= bottom {
+            m[r as usize][right as usize] = v;
+            v += 1;
+            r += 1;
+        }
+        right -= 1;
+        if top <= bottom {
+            let mut c2 = right;
+            while c2 >= left {
+                m[bottom as usize][c2 as usize] = v;
+                v += 1;
+                c2 -= 1;
+            }
+            bottom -= 1;
+        }
+        if left <= right {
+            let mut r2 = bottom;
+            while r2 >= top {
+                m[r2 as usize][left as usize] = v;
+                v += 1;
+                r2 -= 1;
+            }
+            left += 1;
+        }
+    }
+    m
+}
+@@@LANG php
+function generateMatrix($n) {
+    $m = array();
+    for ($i = 0; $i < $n; $i++) $m[] = array_fill(0, $n, 0);
+    $top = 0; $bottom = $n - 1; $left = 0; $right = $n - 1; $v = 1;
+    while ($top <= $bottom && $left <= $right) {
+        for ($c = $left; $c <= $right; $c++) { $m[$top][$c] = $v; $v++; }
+        $top++;
+        for ($r = $top; $r <= $bottom; $r++) { $m[$r][$right] = $v; $v++; }
+        $right--;
+        if ($top <= $bottom) {
+            for ($c = $right; $c >= $left; $c--) { $m[$bottom][$c] = $v; $v++; }
+            $bottom--;
+        }
+        if ($left <= $right) {
+            for ($r = $bottom; $r >= $top; $r--) { $m[$r][$left] = $v; $v++; }
+            $left++;
+        }
+    }
+    return $m;
+}
+@@@LANG ruby
+def generateMatrix(n)
+  m = Array.new(n) { Array.new(n, 0) }
+  top = 0
+  bottom = n - 1
+  left = 0
+  right = n - 1
+  v = 1
+  while top <= bottom && left <= right
+    (left..right).each { |c| m[top][c] = v; v += 1 }
+    top += 1
+    (top..bottom).each { |r| m[r][right] = v; v += 1 }
+    right -= 1
+    if top <= bottom
+      right.downto(left) { |c| m[bottom][c] = v; v += 1 }
+      bottom -= 1
+    end
+    if left <= right
+      bottom.downto(top) { |r| m[r][left] = v; v += 1 }
+      left += 1
+    end
+  end
+  m
+end
+
+@@@PROBLEM diagonal-traverse
+@@@LANG typescript
+function findDiagonalOrder(mat: number[][]): number[] {
+    var rows = mat.length;
+    var cols = mat[0].length;
+    var out: number[] = [];
+    for (var d = 0; d < rows + cols - 1; d++) {
+        if (d % 2 === 0) {
+            var r = d < rows ? d : rows - 1;
+            var c = d - r;
+            while (r >= 0 && c < cols) {
+                out.push(mat[r][c]);
+                r--;
+                c++;
+            }
+        } else {
+            var c2 = d < cols ? d : cols - 1;
+            var r2 = d - c2;
+            while (c2 >= 0 && r2 < rows) {
+                out.push(mat[r2][c2]);
+                r2++;
+                c2--;
+            }
+        }
+    }
+    return out;
+}
+@@@LANG java
+public static int[] findDiagonalOrder(int[][] mat) {
+    int rows = mat.length, cols = mat[0].length;
+    int[] out = new int[rows * cols];
+    int pos = 0;
+    for (int d = 0; d < rows + cols - 1; d++) {
+        if (d % 2 == 0) {
+            int r = d < rows ? d : rows - 1;
+            int c = d - r;
+            while (r >= 0 && c < cols) {
+                out[pos++] = mat[r][c];
+                r--;
+                c++;
+            }
+        } else {
+            int c = d < cols ? d : cols - 1;
+            int r = d - c;
+            while (c >= 0 && r < rows) {
+                out[pos++] = mat[r][c];
+                r++;
+                c--;
+            }
+        }
+    }
+    return out;
+}
+@@@LANG cpp
+vector<int> findDiagonalOrder(vector<vector<int>>& mat) {
+    int rows = (int) mat.size(), cols = (int) mat[0].size();
+    vector<int> out;
+    for (int d = 0; d < rows + cols - 1; d++) {
+        if (d % 2 == 0) {
+            int r = d < rows ? d : rows - 1;
+            int c = d - r;
+            while (r >= 0 && c < cols) {
+                out.push_back(mat[r][c]);
+                r--;
+                c++;
+            }
+        } else {
+            int c = d < cols ? d : cols - 1;
+            int r = d - c;
+            while (c >= 0 && r < rows) {
+                out.push_back(mat[r][c]);
+                r++;
+                c--;
+            }
+        }
+    }
+    return out;
+}
+@@@LANG c
+int* findDiagonalOrder(int** mat, int matSize, int* matColSize, int* returnSize) {
+    int rows = matSize, cols = matColSize[0];
+    int* out = (int*) malloc(sizeof(int) * rows * cols);
+    int pos = 0;
+    for (int d = 0; d < rows + cols - 1; d++) {
+        if (d % 2 == 0) {
+            int r = d < rows ? d : rows - 1;
+            int c = d - r;
+            while (r >= 0 && c < cols) {
+                out[pos++] = mat[r][c];
+                r--;
+                c++;
+            }
+        } else {
+            int c = d < cols ? d : cols - 1;
+            int r = d - c;
+            while (c >= 0 && r < rows) {
+                out[pos++] = mat[r][c];
+                r++;
+                c--;
+            }
+        }
+    }
+    *returnSize = pos;
+    return out;
+}
+@@@LANG csharp
+public static int[] FindDiagonalOrder(int[][] mat)
+{
+    int rows = mat.Length, cols = mat[0].Length;
+    int[] out_ = new int[rows * cols];
+    int pos = 0;
+    for (int d = 0; d < rows + cols - 1; d++)
+    {
+        if (d % 2 == 0)
+        {
+            int r = d < rows ? d : rows - 1;
+            int c = d - r;
+            while (r >= 0 && c < cols)
+            {
+                out_[pos++] = mat[r][c];
+                r--;
+                c++;
+            }
+        }
+        else
+        {
+            int c = d < cols ? d : cols - 1;
+            int r = d - c;
+            while (c >= 0 && r < rows)
+            {
+                out_[pos++] = mat[r][c];
+                r++;
+                c--;
+            }
+        }
+    }
+    return out_;
+}
+@@@LANG go
+func findDiagonalOrder(mat [][]int) []int {
+	rows, cols := len(mat), len(mat[0])
+	out := make([]int, 0, rows*cols)
+	for d := 0; d < rows+cols-1; d++ {
+		if d%2 == 0 {
+			r := d
+			if r >= rows {
+				r = rows - 1
+			}
+			c := d - r
+			for r >= 0 && c < cols {
+				out = append(out, mat[r][c])
+				r--
+				c++
+			}
+		} else {
+			c := d
+			if c >= cols {
+				c = cols - 1
+			}
+			r := d - c
+			for c >= 0 && r < rows {
+				out = append(out, mat[r][c])
+				r++
+				c--
+			}
+		}
+	}
+	return out
+}
+@@@LANG kotlin
+fun findDiagonalOrder(mat: Array<IntArray>): IntArray {
+    val rows = mat.size
+    val cols = mat[0].size
+    val out = IntArray(rows * cols)
+    var pos = 0
+    for (d in 0 until rows + cols - 1) {
+        if (d % 2 == 0) {
+            var r = if (d < rows) d else rows - 1
+            var c = d - r
+            while (r >= 0 && c < cols) {
+                out[pos++] = mat[r][c]
+                r--
+                c++
+            }
+        } else {
+            var c = if (d < cols) d else cols - 1
+            var r = d - c
+            while (c >= 0 && r < rows) {
+                out[pos++] = mat[r][c]
+                r++
+                c--
+            }
+        }
+    }
+    return out
+}
+@@@LANG swift
+func findDiagonalOrder(_ mat: [[Int]]) -> [Int] {
+    let rows = mat.count
+    let cols = mat[0].count
+    var out: [Int] = []
+    for d in 0..<(rows + cols - 1) {
+        if d % 2 == 0 {
+            var r = d < rows ? d : rows - 1
+            var c = d - r
+            while r >= 0 && c < cols {
+                out.append(mat[r][c])
+                r -= 1
+                c += 1
+            }
+        } else {
+            var c = d < cols ? d : cols - 1
+            var r = d - c
+            while c >= 0 && r < rows {
+                out.append(mat[r][c])
+                r += 1
+                c -= 1
+            }
+        }
+    }
+    return out
+}
+@@@LANG rust
+fn findDiagonalOrder(mat: Vec<Vec<i32>>) -> Vec<i32> {
+    let rows = mat.len() as i32;
+    let cols = mat[0].len() as i32;
+    let mut out: Vec<i32> = Vec::new();
+    for d in 0..(rows + cols - 1) {
+        if d % 2 == 0 {
+            let mut r = if d < rows { d } else { rows - 1 };
+            let mut c = d - r;
+            while r >= 0 && c < cols {
+                out.push(mat[r as usize][c as usize]);
+                r -= 1;
+                c += 1;
+            }
+        } else {
+            let mut c = if d < cols { d } else { cols - 1 };
+            let mut r = d - c;
+            while c >= 0 && r < rows {
+                out.push(mat[r as usize][c as usize]);
+                r += 1;
+                c -= 1;
+            }
+        }
+    }
+    out
+}
+@@@LANG php
+function findDiagonalOrder($mat) {
+    $rows = count($mat);
+    $cols = count($mat[0]);
+    $out = array();
+    for ($d = 0; $d < $rows + $cols - 1; $d++) {
+        if ($d % 2 === 0) {
+            $r = $d < $rows ? $d : $rows - 1;
+            $c = $d - $r;
+            while ($r >= 0 && $c < $cols) {
+                $out[] = $mat[$r][$c];
+                $r--;
+                $c++;
+            }
+        } else {
+            $c = $d < $cols ? $d : $cols - 1;
+            $r = $d - $c;
+            while ($c >= 0 && $r < $rows) {
+                $out[] = $mat[$r][$c];
+                $r++;
+                $c--;
+            }
+        }
+    }
+    return $out;
+}
+@@@LANG ruby
+def findDiagonalOrder(mat)
+  rows = mat.length
+  cols = mat[0].length
+  out = []
+  (0...(rows + cols - 1)).each do |d|
+    if d.even?
+      r = d < rows ? d : rows - 1
+      c = d - r
+      while r >= 0 && c < cols
+        out << mat[r][c]
+        r -= 1
+        c += 1
+      end
+    else
+      c = d < cols ? d : cols - 1
+      r = d - c
+      while c >= 0 && r < rows
+        out << mat[r][c]
+        r += 1
+        c -= 1
+      end
+    end
+  end
+  out
+end
+
+@@@PROBLEM toeplitz-matrix
+@@@LANG typescript
+function isToeplitzMatrix(matrix: number[][]): boolean {
+    for (var r = 1; r < matrix.length; r++) {
+        for (var c = 1; c < matrix[0].length; c++) {
+            if (matrix[r][c] !== matrix[r - 1][c - 1]) return false;
+        }
+    }
+    return true;
+}
+@@@LANG java
+public static boolean isToeplitzMatrix(int[][] matrix) {
+    for (int r = 1; r < matrix.length; r++) {
+        for (int c = 1; c < matrix[0].length; c++) {
+            if (matrix[r][c] != matrix[r - 1][c - 1]) return false;
+        }
+    }
+    return true;
+}
+@@@LANG cpp
+bool isToeplitzMatrix(vector<vector<int>>& matrix) {
+    for (size_t r = 1; r < matrix.size(); r++) {
+        for (size_t c = 1; c < matrix[0].size(); c++) {
+            if (matrix[r][c] != matrix[r - 1][c - 1]) return false;
+        }
+    }
+    return true;
+}
+@@@LANG c
+bool isToeplitzMatrix(int** matrix, int matrixSize, int* matrixColSize) {
+    for (int r = 1; r < matrixSize; r++) {
+        for (int c = 1; c < matrixColSize[0]; c++) {
+            if (matrix[r][c] != matrix[r - 1][c - 1]) return false;
+        }
+    }
+    return true;
+}
+@@@LANG csharp
+public static bool IsToeplitzMatrix(int[][] matrix)
+{
+    for (int r = 1; r < matrix.Length; r++)
+    {
+        for (int c = 1; c < matrix[0].Length; c++)
+        {
+            if (matrix[r][c] != matrix[r - 1][c - 1]) return false;
+        }
+    }
+    return true;
+}
+@@@LANG go
+func isToeplitzMatrix(matrix [][]int) bool {
+	for r := 1; r < len(matrix); r++ {
+		for c := 1; c < len(matrix[0]); c++ {
+			if matrix[r][c] != matrix[r-1][c-1] {
+				return false
+			}
+		}
+	}
+	return true
+}
+@@@LANG kotlin
+fun isToeplitzMatrix(matrix: Array<IntArray>): Boolean {
+    for (r in 1 until matrix.size) {
+        for (c in 1 until matrix[0].size) {
+            if (matrix[r][c] != matrix[r - 1][c - 1]) return false
+        }
+    }
+    return true
+}
+@@@LANG swift
+func isToeplitzMatrix(_ matrix: [[Int]]) -> Bool {
+    if matrix.count < 2 || matrix[0].count < 2 { return true }
+    for r in 1..<matrix.count {
+        for c in 1..<matrix[0].count {
+            if matrix[r][c] != matrix[r - 1][c - 1] { return false }
+        }
+    }
+    return true
+}
+@@@LANG rust
+fn isToeplitzMatrix(matrix: Vec<Vec<i32>>) -> bool {
+    for r in 1..matrix.len() {
+        for c in 1..matrix[0].len() {
+            if matrix[r][c] != matrix[r - 1][c - 1] {
+                return false;
+            }
+        }
+    }
+    true
+}
+@@@LANG php
+function isToeplitzMatrix($matrix) {
+    $rows = count($matrix);
+    $cols = count($matrix[0]);
+    for ($r = 1; $r < $rows; $r++) {
+        for ($c = 1; $c < $cols; $c++) {
+            if ($matrix[$r][$c] !== $matrix[$r - 1][$c - 1]) return false;
+        }
+    }
+    return true;
+}
+@@@LANG ruby
+def isToeplitzMatrix(matrix)
+  (1...matrix.length).each do |r|
+    (1...matrix[0].length).each do |c|
+      return false if matrix[r][c] != matrix[r - 1][c - 1]
+    end
+  end
+  true
+end
+
+@@@PROBLEM reshape-the-matrix
+@@@LANG typescript
+function matrixReshape(mat: number[][], r: number, c: number): number[][] {
+    var rows = mat.length;
+    var cols = mat[0].length;
+    if (rows * cols !== r * c) return mat;
+    var flat: number[] = [];
+    for (var i = 0; i < rows; i++) {
+        for (var j = 0; j < cols; j++) flat.push(mat[i][j]);
+    }
+    var out: number[][] = [];
+    for (var k = 0; k < r; k++) out.push(flat.slice(k * c, k * c + c));
+    return out;
+}
+@@@LANG java
+public static int[][] matrixReshape(int[][] mat, int r, int c) {
+    int rows = mat.length, cols = mat[0].length;
+    if (rows * cols != r * c) return mat;
+    int[][] out = new int[r][c];
+    for (int k = 0; k < r * c; k++) {
+        out[k / c][k % c] = mat[k / cols][k % cols];
+    }
+    return out;
+}
+@@@LANG cpp
+vector<vector<int>> matrixReshape(vector<vector<int>>& mat, int r, int c) {
+    int rows = (int) mat.size(), cols = (int) mat[0].size();
+    if (rows * cols != r * c) return mat;
+    vector<vector<int>> out(r, vector<int>(c, 0));
+    for (int k = 0; k < r * c; k++) {
+        out[k / c][k % c] = mat[k / cols][k % cols];
+    }
+    return out;
+}
+@@@LANG c
+int** matrixReshape(int** mat, int matSize, int* matColSize, int r, int c, int* returnSize, int** returnColumnSizes) {
+    int rows = matSize, cols = matColSize[0];
+    if (rows * cols != r * c) {
+        int** same = (int**) malloc(sizeof(int*) * rows);
+        *returnColumnSizes = (int*) malloc(sizeof(int) * rows);
+        for (int i = 0; i < rows; i++) {
+            same[i] = (int*) malloc(sizeof(int) * cols);
+            for (int j = 0; j < cols; j++) same[i][j] = mat[i][j];
+            (*returnColumnSizes)[i] = cols;
+        }
+        *returnSize = rows;
+        return same;
+    }
+    int** out = (int**) malloc(sizeof(int*) * r);
+    *returnColumnSizes = (int*) malloc(sizeof(int) * r);
+    for (int i = 0; i < r; i++) {
+        out[i] = (int*) malloc(sizeof(int) * c);
+        (*returnColumnSizes)[i] = c;
+    }
+    for (int k = 0; k < r * c; k++) {
+        out[k / c][k % c] = mat[k / cols][k % cols];
+    }
+    *returnSize = r;
+    return out;
+}
+@@@LANG csharp
+public static int[][] MatrixReshape(int[][] mat, int r, int c)
+{
+    int rows = mat.Length, cols = mat[0].Length;
+    if (rows * cols != r * c) return mat;
+    int[][] out_ = new int[r][];
+    for (int i = 0; i < r; i++) out_[i] = new int[c];
+    for (int k = 0; k < r * c; k++)
+    {
+        out_[k / c][k % c] = mat[k / cols][k % cols];
+    }
+    return out_;
+}
+@@@LANG go
+func matrixReshape(mat [][]int, r int, c int) [][]int {
+	rows, cols := len(mat), len(mat[0])
+	if rows*cols != r*c {
+		return mat
+	}
+	out := make([][]int, r)
+	for i := range out {
+		out[i] = make([]int, c)
+	}
+	for k := 0; k < r*c; k++ {
+		out[k/c][k%c] = mat[k/cols][k%cols]
+	}
+	return out
+}
+@@@LANG kotlin
+fun matrixReshape(mat: Array<IntArray>, r: Int, c: Int): Array<IntArray> {
+    val rows = mat.size
+    val cols = mat[0].size
+    if (rows * cols != r * c) return mat
+    val out = Array(r) { IntArray(c) }
+    for (k in 0 until r * c) {
+        out[k / c][k % c] = mat[k / cols][k % cols]
+    }
+    return out
+}
+@@@LANG swift
+func matrixReshape(_ mat: [[Int]], _ r: Int, _ c: Int) -> [[Int]] {
+    let rows = mat.count
+    let cols = mat[0].count
+    if rows * cols != r * c { return mat }
+    var out = [[Int]](repeating: [Int](repeating: 0, count: c), count: r)
+    for k in 0..<(r * c) {
+        out[k / c][k % c] = mat[k / cols][k % cols]
+    }
+    return out
+}
+@@@LANG rust
+fn matrixReshape(mat: Vec<Vec<i32>>, r: i32, c: i32) -> Vec<Vec<i32>> {
+    let rows = mat.len();
+    let cols = mat[0].len();
+    let target_r = r as usize;
+    let target_c = c as usize;
+    if rows * cols != target_r * target_c {
+        return mat;
+    }
+    let mut out = vec![vec![0i32; target_c]; target_r];
+    for k in 0..(target_r * target_c) {
+        out[k / target_c][k % target_c] = mat[k / cols][k % cols];
+    }
+    out
+}
+@@@LANG php
+function matrixReshape($mat, $r, $c) {
+    $rows = count($mat);
+    $cols = count($mat[0]);
+    if ($rows * $cols !== $r * $c) return $mat;
+    $out = array();
+    for ($i = 0; $i < $r; $i++) $out[] = array_fill(0, $c, 0);
+    for ($k = 0; $k < $r * $c; $k++) {
+        $out[intdiv($k, $c)][$k % $c] = $mat[intdiv($k, $cols)][$k % $cols];
+    }
+    return $out;
+}
+@@@LANG ruby
+def matrixReshape(mat, r, c)
+  rows = mat.length
+  cols = mat[0].length
+  return mat if rows * cols != r * c
+  out = Array.new(r) { Array.new(c, 0) }
+  (0...(r * c)).each do |k|
+    out[k / c][k % c] = mat[k / cols][k % cols]
+  end
+  out
+end
+
+@@@PROBLEM flipping-an-image
+@@@LANG typescript
+function flipAndInvertImage(image: number[][]): number[][] {
+    var out: number[][] = [];
+    for (var i = 0; i < image.length; i++) {
+        var row: number[] = [];
+        for (var j = image[i].length - 1; j >= 0; j--) row.push(1 - image[i][j]);
+        out.push(row);
+    }
+    return out;
+}
+@@@LANG java
+public static int[][] flipAndInvertImage(int[][] image) {
+    int n = image.length;
+    int[][] out = new int[n][];
+    for (int i = 0; i < n; i++) {
+        int cols = image[i].length;
+        out[i] = new int[cols];
+        for (int j = 0; j < cols; j++) out[i][j] = 1 - image[i][cols - 1 - j];
+    }
+    return out;
+}
+@@@LANG cpp
+vector<vector<int>> flipAndInvertImage(vector<vector<int>>& image) {
+    vector<vector<int>> out;
+    for (size_t i = 0; i < image.size(); i++) {
+        vector<int> row;
+        for (int j = (int) image[i].size() - 1; j >= 0; j--) row.push_back(1 - image[i][j]);
+        out.push_back(row);
+    }
+    return out;
+}
+@@@LANG c
+int** flipAndInvertImage(int** image, int imageSize, int* imageColSize, int* returnSize, int** returnColumnSizes) {
+    int n = imageSize;
+    int cols = imageColSize[0];
+    int** out = (int**) malloc(sizeof(int*) * n);
+    *returnColumnSizes = (int*) malloc(sizeof(int) * n);
+    for (int i = 0; i < n; i++) {
+        out[i] = (int*) malloc(sizeof(int) * cols);
+        (*returnColumnSizes)[i] = cols;
+        for (int j = 0; j < cols; j++) out[i][j] = 1 - image[i][cols - 1 - j];
+    }
+    *returnSize = n;
+    return out;
+}
+@@@LANG csharp
+public static int[][] FlipAndInvertImage(int[][] image)
+{
+    int n = image.Length;
+    int[][] out_ = new int[n][];
+    for (int i = 0; i < n; i++)
+    {
+        int cols = image[i].Length;
+        out_[i] = new int[cols];
+        for (int j = 0; j < cols; j++) out_[i][j] = 1 - image[i][cols - 1 - j];
+    }
+    return out_;
+}
+@@@LANG go
+func flipAndInvertImage(image [][]int) [][]int {
+	out := make([][]int, len(image))
+	for i, row := range image {
+		cols := len(row)
+		out[i] = make([]int, cols)
+		for j := 0; j < cols; j++ {
+			out[i][j] = 1 - row[cols-1-j]
+		}
+	}
+	return out
+}
+@@@LANG kotlin
+fun flipAndInvertImage(image: Array<IntArray>): Array<IntArray> {
+    return Array(image.size) { i ->
+        val cols = image[i].size
+        IntArray(cols) { j -> 1 - image[i][cols - 1 - j] }
+    }
+}
+@@@LANG swift
+func flipAndInvertImage(_ image: [[Int]]) -> [[Int]] {
+    var out: [[Int]] = []
+    for row in image {
+        out.append(row.reversed().map { 1 - $0 })
+    }
+    return out
+}
+@@@LANG rust
+fn flipAndInvertImage(image: Vec<Vec<i32>>) -> Vec<Vec<i32>> {
+    let mut out: Vec<Vec<i32>> = Vec::new();
+    for row in image.iter() {
+        let mut new_row: Vec<i32> = Vec::new();
+        for v in row.iter().rev() {
+            new_row.push(1 - *v);
+        }
+        out.push(new_row);
+    }
+    out
+}
+@@@LANG php
+function flipAndInvertImage($image) {
+    $out = array();
+    foreach ($image as $row) {
+        $rev = array_reverse($row);
+        $newRow = array();
+        foreach ($rev as $v) $newRow[] = 1 - $v;
+        $out[] = $newRow;
+    }
+    return $out;
+}
+@@@LANG ruby
+def flipAndInvertImage(image)
+  image.map { |row| row.reverse.map { |v| 1 - v } }
+end
+
+@@@PROBLEM image-smoother
+@@@LANG typescript
+function imageSmoother(img: number[][]): number[][] {
+    var m = img.length;
+    var n = img[0].length;
+    var out: number[][] = [];
+    for (var r = 0; r < m; r++) {
+        var row: number[] = [];
+        for (var c = 0; c < n; c++) {
+            var sum = 0;
+            var count = 0;
+            for (var dr = -1; dr <= 1; dr++) {
+                for (var dc = -1; dc <= 1; dc++) {
+                    var nr = r + dr;
+                    var nc = c + dc;
+                    if (nr >= 0 && nr < m && nc >= 0 && nc < n) {
+                        sum += img[nr][nc];
+                        count++;
+                    }
+                }
+            }
+            row.push(Math.floor(sum / count));
+        }
+        out.push(row);
+    }
+    return out;
+}
+@@@LANG java
+public static int[][] imageSmoother(int[][] img) {
+    int m = img.length, n = img[0].length;
+    int[][] out = new int[m][n];
+    for (int r = 0; r < m; r++) {
+        for (int c = 0; c < n; c++) {
+            int sum = 0, count = 0;
+            for (int dr = -1; dr <= 1; dr++) {
+                for (int dc = -1; dc <= 1; dc++) {
+                    int nr = r + dr, nc = c + dc;
+                    if (nr >= 0 && nr < m && nc >= 0 && nc < n) {
+                        sum += img[nr][nc];
+                        count++;
+                    }
+                }
+            }
+            out[r][c] = sum / count;
+        }
+    }
+    return out;
+}
+@@@LANG cpp
+vector<vector<int>> imageSmoother(vector<vector<int>>& img) {
+    int m = (int) img.size(), n = (int) img[0].size();
+    vector<vector<int>> out(m, vector<int>(n, 0));
+    for (int r = 0; r < m; r++) {
+        for (int c = 0; c < n; c++) {
+            int sum = 0, count = 0;
+            for (int dr = -1; dr <= 1; dr++) {
+                for (int dc = -1; dc <= 1; dc++) {
+                    int nr = r + dr, nc = c + dc;
+                    if (nr >= 0 && nr < m && nc >= 0 && nc < n) {
+                        sum += img[nr][nc];
+                        count++;
+                    }
+                }
+            }
+            out[r][c] = sum / count;
+        }
+    }
+    return out;
+}
+@@@LANG c
+int** imageSmoother(int** img, int imgSize, int* imgColSize, int* returnSize, int** returnColumnSizes) {
+    int m = imgSize, n = imgColSize[0];
+    int** out = (int**) malloc(sizeof(int*) * m);
+    *returnColumnSizes = (int*) malloc(sizeof(int) * m);
+    for (int r = 0; r < m; r++) {
+        out[r] = (int*) malloc(sizeof(int) * n);
+        (*returnColumnSizes)[r] = n;
+        for (int c = 0; c < n; c++) {
+            int sum = 0, count = 0;
+            for (int dr = -1; dr <= 1; dr++) {
+                for (int dc = -1; dc <= 1; dc++) {
+                    int nr = r + dr, nc = c + dc;
+                    if (nr >= 0 && nr < m && nc >= 0 && nc < n) {
+                        sum += img[nr][nc];
+                        count++;
+                    }
+                }
+            }
+            out[r][c] = sum / count;
+        }
+    }
+    *returnSize = m;
+    return out;
+}
+@@@LANG csharp
+public static int[][] ImageSmoother(int[][] img)
+{
+    int m = img.Length, n = img[0].Length;
+    int[][] out_ = new int[m][];
+    for (int r = 0; r < m; r++)
+    {
+        out_[r] = new int[n];
+        for (int c = 0; c < n; c++)
+        {
+            int sum = 0, count = 0;
+            for (int dr = -1; dr <= 1; dr++)
+            {
+                for (int dc = -1; dc <= 1; dc++)
+                {
+                    int nr = r + dr, nc = c + dc;
+                    if (nr >= 0 && nr < m && nc >= 0 && nc < n)
+                    {
+                        sum += img[nr][nc];
+                        count++;
+                    }
+                }
+            }
+            out_[r][c] = sum / count;
+        }
+    }
+    return out_;
+}
+@@@LANG go
+func imageSmoother(img [][]int) [][]int {
+	m, n := len(img), len(img[0])
+	out := make([][]int, m)
+	for r := 0; r < m; r++ {
+		out[r] = make([]int, n)
+		for c := 0; c < n; c++ {
+			sum, count := 0, 0
+			for dr := -1; dr <= 1; dr++ {
+				for dc := -1; dc <= 1; dc++ {
+					nr, nc := r+dr, c+dc
+					if nr >= 0 && nr < m && nc >= 0 && nc < n {
+						sum += img[nr][nc]
+						count++
+					}
+				}
+			}
+			out[r][c] = sum / count
+		}
+	}
+	return out
+}
+@@@LANG kotlin
+fun imageSmoother(img: Array<IntArray>): Array<IntArray> {
+    val m = img.size
+    val n = img[0].size
+    val out = Array(m) { IntArray(n) }
+    for (r in 0 until m) {
+        for (c in 0 until n) {
+            var sum = 0
+            var count = 0
+            for (dr in -1..1) {
+                for (dc in -1..1) {
+                    val nr = r + dr
+                    val nc = c + dc
+                    if (nr in 0 until m && nc in 0 until n) {
+                        sum += img[nr][nc]
+                        count++
+                    }
+                }
+            }
+            out[r][c] = sum / count
+        }
+    }
+    return out
+}
+@@@LANG swift
+func imageSmoother(_ img: [[Int]]) -> [[Int]] {
+    let m = img.count
+    let n = img[0].count
+    var out = [[Int]](repeating: [Int](repeating: 0, count: n), count: m)
+    for r in 0..<m {
+        for c in 0..<n {
+            var sum = 0
+            var count = 0
+            for dr in -1...1 {
+                for dc in -1...1 {
+                    let nr = r + dr
+                    let nc = c + dc
+                    if nr >= 0 && nr < m && nc >= 0 && nc < n {
+                        sum += img[nr][nc]
+                        count += 1
+                    }
+                }
+            }
+            out[r][c] = sum / count
+        }
+    }
+    return out
+}
+@@@LANG rust
+fn imageSmoother(img: Vec<Vec<i32>>) -> Vec<Vec<i32>> {
+    let m = img.len() as i32;
+    let n = img[0].len() as i32;
+    let mut out = vec![vec![0i32; n as usize]; m as usize];
+    for r in 0..m {
+        for c in 0..n {
+            let mut sum = 0;
+            let mut count = 0;
+            for dr in -1..=1 {
+                for dc in -1..=1 {
+                    let nr = r + dr;
+                    let nc = c + dc;
+                    if nr >= 0 && nr < m && nc >= 0 && nc < n {
+                        sum += img[nr as usize][nc as usize];
+                        count += 1;
+                    }
+                }
+            }
+            out[r as usize][c as usize] = sum / count;
+        }
+    }
+    out
+}
+@@@LANG php
+function imageSmoother($img) {
+    $m = count($img);
+    $n = count($img[0]);
+    $out = array();
+    for ($r = 0; $r < $m; $r++) {
+        $row = array();
+        for ($c = 0; $c < $n; $c++) {
+            $sum = 0;
+            $count = 0;
+            for ($dr = -1; $dr <= 1; $dr++) {
+                for ($dc = -1; $dc <= 1; $dc++) {
+                    $nr = $r + $dr;
+                    $nc = $c + $dc;
+                    if ($nr >= 0 && $nr < $m && $nc >= 0 && $nc < $n) {
+                        $sum += $img[$nr][$nc];
+                        $count++;
+                    }
+                }
+            }
+            $row[] = intdiv($sum, $count);
+        }
+        $out[] = $row;
+    }
+    return $out;
+}
+@@@LANG ruby
+def imageSmoother(img)
+  m = img.length
+  n = img[0].length
+  (0...m).map do |r|
+    (0...n).map do |c|
+      sum = 0
+      count = 0
+      (-1..1).each do |dr|
+        (-1..1).each do |dc|
+          nr = r + dr
+          nc = c + dc
+          if nr >= 0 && nr < m && nc >= 0 && nc < n
+            sum += img[nr][nc]
+            count += 1
+          end
+        end
+      end
+      sum / count
+    end
+  end
+end
+
+@@@PROBLEM count-negative-numbers-in-a-sorted-matrix
+@@@LANG typescript
+function countNegatives(grid: number[][]): number {
+    var m = grid.length;
+    var n = grid[0].length;
+    var r = m - 1;
+    var c = 0;
+    var count = 0;
+    while (r >= 0 && c < n) {
+        if (grid[r][c] < 0) {
+            count += n - c;
+            r--;
+        } else {
+            c++;
+        }
+    }
+    return count;
+}
+@@@LANG java
+public static int countNegatives(int[][] grid) {
+    int m = grid.length, n = grid[0].length;
+    int r = m - 1, c = 0, count = 0;
+    while (r >= 0 && c < n) {
+        if (grid[r][c] < 0) {
+            count += n - c;
+            r--;
+        } else {
+            c++;
+        }
+    }
+    return count;
+}
+@@@LANG cpp
+int countNegatives(vector<vector<int>>& grid) {
+    int m = (int) grid.size(), n = (int) grid[0].size();
+    int r = m - 1, c = 0, count = 0;
+    while (r >= 0 && c < n) {
+        if (grid[r][c] < 0) {
+            count += n - c;
+            r--;
+        } else {
+            c++;
+        }
+    }
+    return count;
+}
+@@@LANG c
+int countNegatives(int** grid, int gridSize, int* gridColSize) {
+    int m = gridSize, n = gridColSize[0];
+    int r = m - 1, c = 0, count = 0;
+    while (r >= 0 && c < n) {
+        if (grid[r][c] < 0) {
+            count += n - c;
+            r--;
+        } else {
+            c++;
+        }
+    }
+    return count;
+}
+@@@LANG csharp
+public static int CountNegatives(int[][] grid)
+{
+    int m = grid.Length, n = grid[0].Length;
+    int r = m - 1, c = 0, count = 0;
+    while (r >= 0 && c < n)
+    {
+        if (grid[r][c] < 0)
+        {
+            count += n - c;
+            r--;
+        }
+        else
+        {
+            c++;
+        }
+    }
+    return count;
+}
+@@@LANG go
+func countNegatives(grid [][]int) int {
+	m, n := len(grid), len(grid[0])
+	r, c, count := m-1, 0, 0
+	for r >= 0 && c < n {
+		if grid[r][c] < 0 {
+			count += n - c
+			r--
+		} else {
+			c++
+		}
+	}
+	return count
+}
+@@@LANG kotlin
+fun countNegatives(grid: Array<IntArray>): Int {
+    val m = grid.size
+    val n = grid[0].size
+    var r = m - 1
+    var c = 0
+    var count = 0
+    while (r >= 0 && c < n) {
+        if (grid[r][c] < 0) {
+            count += n - c
+            r--
+        } else {
+            c++
+        }
+    }
+    return count
+}
+@@@LANG swift
+func countNegatives(_ grid: [[Int]]) -> Int {
+    let m = grid.count
+    let n = grid[0].count
+    var r = m - 1
+    var c = 0
+    var count = 0
+    while r >= 0 && c < n {
+        if grid[r][c] < 0 {
+            count += n - c
+            r -= 1
+        } else {
+            c += 1
+        }
+    }
+    return count
+}
+@@@LANG rust
+fn countNegatives(grid: Vec<Vec<i32>>) -> i32 {
+    let m = grid.len() as i32;
+    let n = grid[0].len() as i32;
+    let mut r = m - 1;
+    let mut c = 0;
+    let mut count = 0;
+    while r >= 0 && c < n {
+        if grid[r as usize][c as usize] < 0 {
+            count += n - c;
+            r -= 1;
+        } else {
+            c += 1;
+        }
+    }
+    count
+}
+@@@LANG php
+function countNegatives($grid) {
+    $m = count($grid);
+    $n = count($grid[0]);
+    $r = $m - 1;
+    $c = 0;
+    $count = 0;
+    while ($r >= 0 && $c < $n) {
+        if ($grid[$r][$c] < 0) {
+            $count += $n - $c;
+            $r--;
+        } else {
+            $c++;
+        }
+    }
+    return $count;
+}
+@@@LANG ruby
+def countNegatives(grid)
+  m = grid.length
+  n = grid[0].length
+  r = m - 1
+  c = 0
+  count = 0
+  while r >= 0 && c < n
+    if grid[r][c] < 0
+      count += n - c
+      r -= 1
+    else
+      c += 1
+    end
+  end
+  count
+end
+
+@@@PROBLEM lucky-numbers-in-a-matrix
+@@@LANG typescript
+function luckyNumbers(matrix: number[][]): number[] {
+    var m = matrix.length;
+    var n = matrix[0].length;
+    var out: number[] = [];
+    for (var r = 0; r < m; r++) {
+        var minC = 0;
+        for (var c = 1; c < n; c++) {
+            if (matrix[r][c] < matrix[r][minC]) minC = c;
+        }
+        var isMax = true;
+        for (var rr = 0; rr < m; rr++) {
+            if (matrix[rr][minC] > matrix[r][minC]) { isMax = false; break; }
+        }
+        if (isMax) out.push(matrix[r][minC]);
+    }
+    return out;
+}
+@@@LANG java
+public static int[] luckyNumbers(int[][] matrix) {
+    int m = matrix.length, n = matrix[0].length;
+    List<Integer> out = new ArrayList<>();
+    for (int r = 0; r < m; r++) {
+        int minC = 0;
+        for (int c = 1; c < n; c++) {
+            if (matrix[r][c] < matrix[r][minC]) minC = c;
+        }
+        boolean isMax = true;
+        for (int rr = 0; rr < m; rr++) {
+            if (matrix[rr][minC] > matrix[r][minC]) { isMax = false; break; }
+        }
+        if (isMax) out.add(matrix[r][minC]);
+    }
+    int[] res = new int[out.size()];
+    for (int i = 0; i < res.length; i++) res[i] = out.get(i);
+    return res;
+}
+@@@LANG cpp
+vector<int> luckyNumbers(vector<vector<int>>& matrix) {
+    int m = (int) matrix.size(), n = (int) matrix[0].size();
+    vector<int> out;
+    for (int r = 0; r < m; r++) {
+        int minC = 0;
+        for (int c = 1; c < n; c++) {
+            if (matrix[r][c] < matrix[r][minC]) minC = c;
+        }
+        bool isMax = true;
+        for (int rr = 0; rr < m; rr++) {
+            if (matrix[rr][minC] > matrix[r][minC]) { isMax = false; break; }
+        }
+        if (isMax) out.push_back(matrix[r][minC]);
+    }
+    return out;
+}
+@@@LANG c
+int* luckyNumbers(int** matrix, int matrixSize, int* matrixColSize, int* returnSize) {
+    int m = matrixSize, n = matrixColSize[0];
+    int* out = (int*) malloc(sizeof(int) * (m > 0 ? m : 1));
+    int len = 0;
+    for (int r = 0; r < m; r++) {
+        int minC = 0;
+        for (int c = 1; c < n; c++) {
+            if (matrix[r][c] < matrix[r][minC]) minC = c;
+        }
+        bool isMax = true;
+        for (int rr = 0; rr < m; rr++) {
+            if (matrix[rr][minC] > matrix[r][minC]) { isMax = false; break; }
+        }
+        if (isMax) out[len++] = matrix[r][minC];
+    }
+    *returnSize = len;
+    return out;
+}
+@@@LANG csharp
+public static int[] LuckyNumbers(int[][] matrix)
+{
+    int m = matrix.Length, n = matrix[0].Length;
+    var out_ = new List<int>();
+    for (int r = 0; r < m; r++)
+    {
+        int minC = 0;
+        for (int c = 1; c < n; c++)
+        {
+            if (matrix[r][c] < matrix[r][minC]) minC = c;
+        }
+        bool isMax = true;
+        for (int rr = 0; rr < m; rr++)
+        {
+            if (matrix[rr][minC] > matrix[r][minC]) { isMax = false; break; }
+        }
+        if (isMax) out_.Add(matrix[r][minC]);
+    }
+    return out_.ToArray();
+}
+@@@LANG go
+func luckyNumbers(matrix [][]int) []int {
+	m, n := len(matrix), len(matrix[0])
+	out := []int{}
+	for r := 0; r < m; r++ {
+		minC := 0
+		for c := 1; c < n; c++ {
+			if matrix[r][c] < matrix[r][minC] {
+				minC = c
+			}
+		}
+		isMax := true
+		for rr := 0; rr < m; rr++ {
+			if matrix[rr][minC] > matrix[r][minC] {
+				isMax = false
+				break
+			}
+		}
+		if isMax {
+			out = append(out, matrix[r][minC])
+		}
+	}
+	return out
+}
+@@@LANG kotlin
+fun luckyNumbers(matrix: Array<IntArray>): IntArray {
+    val m = matrix.size
+    val n = matrix[0].size
+    val out = ArrayList<Int>()
+    for (r in 0 until m) {
+        var minC = 0
+        for (c in 1 until n) {
+            if (matrix[r][c] < matrix[r][minC]) minC = c
+        }
+        var isMax = true
+        for (rr in 0 until m) {
+            if (matrix[rr][minC] > matrix[r][minC]) {
+                isMax = false
+                break
+            }
+        }
+        if (isMax) out.add(matrix[r][minC])
+    }
+    return out.toIntArray()
+}
+@@@LANG swift
+func luckyNumbers(_ matrix: [[Int]]) -> [Int] {
+    let m = matrix.count
+    let n = matrix[0].count
+    var out: [Int] = []
+    for r in 0..<m {
+        var minC = 0
+        for c in 1..<max(n, 1) where matrix[r][c] < matrix[r][minC] { minC = c }
+        var isMax = true
+        for rr in 0..<m where matrix[rr][minC] > matrix[r][minC] { isMax = false }
+        if isMax { out.append(matrix[r][minC]) }
+    }
+    return out
+}
+@@@LANG rust
+fn luckyNumbers(matrix: Vec<Vec<i32>>) -> Vec<i32> {
+    let m = matrix.len();
+    let n = matrix[0].len();
+    let mut out: Vec<i32> = Vec::new();
+    for r in 0..m {
+        let mut min_c = 0;
+        for c in 1..n {
+            if matrix[r][c] < matrix[r][min_c] {
+                min_c = c;
+            }
+        }
+        let mut is_max = true;
+        for rr in 0..m {
+            if matrix[rr][min_c] > matrix[r][min_c] {
+                is_max = false;
+                break;
+            }
+        }
+        if is_max {
+            out.push(matrix[r][min_c]);
+        }
+    }
+    out
+}
+@@@LANG php
+function luckyNumbers($matrix) {
+    $m = count($matrix);
+    $n = count($matrix[0]);
+    $out = array();
+    for ($r = 0; $r < $m; $r++) {
+        $minC = 0;
+        for ($c = 1; $c < $n; $c++) {
+            if ($matrix[$r][$c] < $matrix[$r][$minC]) $minC = $c;
+        }
+        $isMax = true;
+        for ($rr = 0; $rr < $m; $rr++) {
+            if ($matrix[$rr][$minC] > $matrix[$r][$minC]) { $isMax = false; break; }
+        }
+        if ($isMax) $out[] = $matrix[$r][$minC];
+    }
+    return $out;
+}
+@@@LANG ruby
+def luckyNumbers(matrix)
+  m = matrix.length
+  n = matrix[0].length
+  out = []
+  (0...m).each do |r|
+    min_c = 0
+    (1...n).each { |c| min_c = c if matrix[r][c] < matrix[r][min_c] }
+    is_max = true
+    (0...m).each do |rr|
+      if matrix[rr][min_c] > matrix[r][min_c]
+        is_max = false
+        break
+      end
+    end
+    out << matrix[r][min_c] if is_max
+  end
+  out
+end
+
+@@@PROBLEM shift-2d-grid
+@@@LANG typescript
+function shiftGrid(grid: number[][], k: number): number[][] {
+    var m = grid.length;
+    var n = grid[0].length;
+    var total = m * n;
+    var shift = k % total;
+    var flat: number[] = [];
+    for (var r = 0; r < m; r++) {
+        for (var c = 0; c < n; c++) flat.push(grid[r][c]);
+    }
+    var out: number[][] = [];
+    for (var r2 = 0; r2 < m; r2++) {
+        var row: number[] = [];
+        for (var c2 = 0; c2 < n; c2++) {
+            var idx = ((r2 * n + c2) - shift + total) % total;
+            row.push(flat[idx]);
+        }
+        out.push(row);
+    }
+    return out;
+}
+@@@LANG java
+public static int[][] shiftGrid(int[][] grid, int k) {
+    int m = grid.length, n = grid[0].length, total = m * n;
+    int shift = k % total;
+    int[] flat = new int[total];
+    for (int r = 0; r < m; r++) {
+        for (int c = 0; c < n; c++) flat[r * n + c] = grid[r][c];
+    }
+    int[][] out = new int[m][n];
+    for (int r = 0; r < m; r++) {
+        for (int c = 0; c < n; c++) {
+            out[r][c] = flat[((r * n + c) - shift + total) % total];
+        }
+    }
+    return out;
+}
+@@@LANG cpp
+vector<vector<int>> shiftGrid(vector<vector<int>>& grid, int k) {
+    int m = (int) grid.size(), n = (int) grid[0].size(), total = m * n;
+    int shift = k % total;
+    vector<int> flat(total, 0);
+    for (int r = 0; r < m; r++) {
+        for (int c = 0; c < n; c++) flat[r * n + c] = grid[r][c];
+    }
+    vector<vector<int>> out(m, vector<int>(n, 0));
+    for (int r = 0; r < m; r++) {
+        for (int c = 0; c < n; c++) {
+            out[r][c] = flat[((r * n + c) - shift + total) % total];
+        }
+    }
+    return out;
+}
+@@@LANG c
+int** shiftGrid(int** grid, int gridSize, int* gridColSize, int k, int* returnSize, int** returnColumnSizes) {
+    int m = gridSize, n = gridColSize[0], total = m * n;
+    int shift = k % total;
+    int* flat = (int*) malloc(sizeof(int) * total);
+    for (int r = 0; r < m; r++) {
+        for (int c = 0; c < n; c++) flat[r * n + c] = grid[r][c];
+    }
+    int** out = (int**) malloc(sizeof(int*) * m);
+    *returnColumnSizes = (int*) malloc(sizeof(int) * m);
+    for (int r = 0; r < m; r++) {
+        out[r] = (int*) malloc(sizeof(int) * n);
+        (*returnColumnSizes)[r] = n;
+        for (int c = 0; c < n; c++) {
+            out[r][c] = flat[((r * n + c) - shift + total) % total];
+        }
+    }
+    free(flat);
+    *returnSize = m;
+    return out;
+}
+@@@LANG csharp
+public static int[][] ShiftGrid(int[][] grid, int k)
+{
+    int m = grid.Length, n = grid[0].Length, total = m * n;
+    int shift = k % total;
+    int[] flat = new int[total];
+    for (int r = 0; r < m; r++)
+    {
+        for (int c = 0; c < n; c++) flat[r * n + c] = grid[r][c];
+    }
+    int[][] out_ = new int[m][];
+    for (int r = 0; r < m; r++)
+    {
+        out_[r] = new int[n];
+        for (int c = 0; c < n; c++)
+        {
+            out_[r][c] = flat[((r * n + c) - shift + total) % total];
+        }
+    }
+    return out_;
+}
+@@@LANG go
+func shiftGrid(grid [][]int, k int) [][]int {
+	m, n := len(grid), len(grid[0])
+	total := m * n
+	shift := k % total
+	flat := make([]int, total)
+	for r := 0; r < m; r++ {
+		for c := 0; c < n; c++ {
+			flat[r*n+c] = grid[r][c]
+		}
+	}
+	out := make([][]int, m)
+	for r := 0; r < m; r++ {
+		out[r] = make([]int, n)
+		for c := 0; c < n; c++ {
+			out[r][c] = flat[((r*n+c)-shift+total)%total]
+		}
+	}
+	return out
+}
+@@@LANG kotlin
+fun shiftGrid(grid: Array<IntArray>, k: Int): Array<IntArray> {
+    val m = grid.size
+    val n = grid[0].size
+    val total = m * n
+    val shift = k % total
+    val flat = IntArray(total)
+    for (r in 0 until m) {
+        for (c in 0 until n) flat[r * n + c] = grid[r][c]
+    }
+    val out = Array(m) { IntArray(n) }
+    for (r in 0 until m) {
+        for (c in 0 until n) {
+            out[r][c] = flat[((r * n + c) - shift + total) % total]
+        }
+    }
+    return out
+}
+@@@LANG swift
+func shiftGrid(_ grid: [[Int]], _ k: Int) -> [[Int]] {
+    let m = grid.count
+    let n = grid[0].count
+    let total = m * n
+    let shift = k % total
+    var flat = [Int](repeating: 0, count: total)
+    for r in 0..<m {
+        for c in 0..<n { flat[r * n + c] = grid[r][c] }
+    }
+    var out = [[Int]](repeating: [Int](repeating: 0, count: n), count: m)
+    for r in 0..<m {
+        for c in 0..<n {
+            out[r][c] = flat[((r * n + c) - shift + total) % total]
+        }
+    }
+    return out
+}
+@@@LANG rust
+fn shiftGrid(grid: Vec<Vec<i32>>, k: i32) -> Vec<Vec<i32>> {
+    let m = grid.len();
+    let n = grid[0].len();
+    let total = (m * n) as i32;
+    let shift = k % total;
+    let mut flat: Vec<i32> = Vec::new();
+    for row in grid.iter() {
+        for v in row.iter() {
+            flat.push(*v);
+        }
+    }
+    let mut out = vec![vec![0i32; n]; m];
+    for r in 0..m {
+        for c in 0..n {
+            let idx = (((r * n + c) as i32 - shift + total) % total) as usize;
+            out[r][c] = flat[idx];
+        }
+    }
+    out
+}
+@@@LANG php
+function shiftGrid($grid, $k) {
+    $m = count($grid);
+    $n = count($grid[0]);
+    $total = $m * $n;
+    $shift = $k % $total;
+    $flat = array();
+    foreach ($grid as $row) {
+        foreach ($row as $v) $flat[] = $v;
+    }
+    $out = array();
+    for ($r = 0; $r < $m; $r++) {
+        $row = array();
+        for ($c = 0; $c < $n; $c++) {
+            $idx = (($r * $n + $c) - $shift + $total) % $total;
+            $row[] = $flat[$idx];
+        }
+        $out[] = $row;
+    }
+    return $out;
+}
+@@@LANG ruby
+def shiftGrid(grid, k)
+  m = grid.length
+  n = grid[0].length
+  total = m * n
+  shift = k % total
+  flat = grid.flatten
+  (0...m).map do |r|
+    (0...n).map do |c|
+      flat[((r * n + c) - shift + total) % total]
+    end
+  end
+end
+
+@@@PROBLEM the-k-weakest-rows-in-a-matrix
+@@@LANG typescript
+function kWeakestRows(mat: number[][], k: number): number[] {
+    var rows: number[][] = [];
+    for (var i = 0; i < mat.length; i++) {
+        var soldiers = 0;
+        for (var c = 0; c < mat[i].length; c++) soldiers += mat[i][c];
+        rows.push([soldiers, i]);
+    }
+    rows.sort(function (a, b) { return a[0] !== b[0] ? a[0] - b[0] : a[1] - b[1]; });
+    var out: number[] = [];
+    for (var j = 0; j < k; j++) out.push(rows[j][1]);
+    return out;
+}
+@@@LANG java
+public static int[] kWeakestRows(int[][] mat, int k) {
+    int m = mat.length;
+    Integer[] order = new Integer[m];
+    final int[] soldiers = new int[m];
+    for (int i = 0; i < m; i++) {
+        int count = 0;
+        for (int c = 0; c < mat[i].length; c++) count += mat[i][c];
+        soldiers[i] = count;
+        order[i] = i;
+    }
+    Arrays.sort(order, new Comparator<Integer>() {
+        public int compare(Integer a, Integer b) {
+            if (soldiers[a] != soldiers[b]) return soldiers[a] - soldiers[b];
+            return a - b;
+        }
+    });
+    int[] out = new int[k];
+    for (int i = 0; i < k; i++) out[i] = order[i];
+    return out;
+}
+@@@LANG cpp
+vector<int> kWeakestRows(vector<vector<int>>& mat, int k) {
+    vector<pair<int, int>> rows;
+    for (int i = 0; i < (int) mat.size(); i++) {
+        int soldiers = 0;
+        for (int v : mat[i]) soldiers += v;
+        rows.push_back(make_pair(soldiers, i));
+    }
+    sort(rows.begin(), rows.end());
+    vector<int> out;
+    for (int i = 0; i < k; i++) out.push_back(rows[i].second);
+    return out;
+}
+@@@LANG c
+int* kWeakestRows(int** mat, int matSize, int* matColSize, int k, int* returnSize) {
+    int m = matSize, n = matColSize[0];
+    int* soldiers = (int*) malloc(sizeof(int) * m);
+    int* order = (int*) malloc(sizeof(int) * m);
+    for (int i = 0; i < m; i++) {
+        int count = 0;
+        for (int c = 0; c < n; c++) count += mat[i][c];
+        soldiers[i] = count;
+        order[i] = i;
+    }
+    for (int i = 1; i < m; i++) {
+        int keyIdx = order[i];
+        int j = i - 1;
+        while (j >= 0 && (soldiers[order[j]] > soldiers[keyIdx] ||
+               (soldiers[order[j]] == soldiers[keyIdx] && order[j] > keyIdx))) {
+            order[j + 1] = order[j];
+            j--;
+        }
+        order[j + 1] = keyIdx;
+    }
+    int* out = (int*) malloc(sizeof(int) * k);
+    for (int i = 0; i < k; i++) out[i] = order[i];
+    free(soldiers);
+    free(order);
+    *returnSize = k;
+    return out;
+}
+@@@LANG csharp
+public static int[] KWeakestRows(int[][] mat, int k)
+{
+    int m = mat.Length;
+    var rows = new List<int[]>();
+    for (int i = 0; i < m; i++)
+    {
+        int soldiers = 0;
+        foreach (int v in mat[i]) soldiers += v;
+        rows.Add(new int[] { soldiers, i });
+    }
+    rows.Sort(delegate (int[] a, int[] b)
+    {
+        if (a[0] != b[0]) return a[0] - b[0];
+        return a[1] - b[1];
+    });
+    int[] out_ = new int[k];
+    for (int i = 0; i < k; i++) out_[i] = rows[i][1];
+    return out_;
+}
+@@@LANG go
+func kWeakestRows(mat [][]int, k int) []int {
+	m := len(mat)
+	soldiers := make([]int, m)
+	order := make([]int, m)
+	for i := 0; i < m; i++ {
+		count := 0
+		for _, v := range mat[i] {
+			count += v
+		}
+		soldiers[i] = count
+		order[i] = i
+	}
+	sort.Slice(order, func(a, b int) bool {
+		if soldiers[order[a]] != soldiers[order[b]] {
+			return soldiers[order[a]] < soldiers[order[b]]
+		}
+		return order[a] < order[b]
+	})
+	return order[:k]
+}
+@@@LANG kotlin
+fun kWeakestRows(mat: Array<IntArray>, k: Int): IntArray {
+    val m = mat.size
+    val soldiers = IntArray(m)
+    for (i in 0 until m) soldiers[i] = mat[i].sum()
+    val order = (0 until m).sortedWith(compareBy({ soldiers[it] }, { it }))
+    return order.take(k).toIntArray()
+}
+@@@LANG swift
+func kWeakestRows(_ mat: [[Int]], _ k: Int) -> [Int] {
+    var rows: [(Int, Int)] = []
+    for i in 0..<mat.count {
+        var soldiers = 0
+        for v in mat[i] { soldiers += v }
+        rows.append((soldiers, i))
+    }
+    rows.sort { a, b in a.0 != b.0 ? a.0 < b.0 : a.1 < b.1 }
+    return rows.prefix(k).map { $0.1 }
+}
+@@@LANG rust
+fn kWeakestRows(mat: Vec<Vec<i32>>, k: i32) -> Vec<i32> {
+    let mut rows: Vec<(i32, i32)> = Vec::new();
+    for i in 0..mat.len() {
+        let soldiers: i32 = mat[i].iter().sum();
+        rows.push((soldiers, i as i32));
+    }
+    rows.sort();
+    rows.into_iter().take(k as usize).map(|p| p.1).collect()
+}
+@@@LANG php
+function kWeakestRows($mat, $k) {
+    $rows = array();
+    for ($i = 0; $i < count($mat); $i++) {
+        $soldiers = array_sum($mat[$i]);
+        $rows[] = array($soldiers, $i);
+    }
+    usort($rows, function ($a, $b) {
+        if ($a[0] !== $b[0]) return $a[0] - $b[0];
+        return $a[1] - $b[1];
+    });
+    $out = array();
+    for ($i = 0; $i < $k; $i++) $out[] = $rows[$i][1];
+    return $out;
+}
+@@@LANG ruby
+def kWeakestRows(mat, k)
+  rows = mat.each_with_index.map { |row, i| [row.sum, i] }
+  rows.sort!
+  rows.first(k).map { |pair| pair[1] }
+end
+
+@@@PROBLEM max-increase-to-keep-city-skyline
+@@@LANG typescript
+function maxIncreaseKeepingSkyline(grid: number[][]): number {
+    var m = grid.length;
+    var n = grid[0].length;
+    var rowMax: number[] = [];
+    var colMax: number[] = [];
+    for (var r = 0; r < m; r++) {
+        var best = grid[r][0];
+        for (var c = 1; c < n; c++) {
+            if (grid[r][c] > best) best = grid[r][c];
+        }
+        rowMax.push(best);
+    }
+    for (var c2 = 0; c2 < n; c2++) {
+        var best2 = grid[0][c2];
+        for (var r2 = 1; r2 < m; r2++) {
+            if (grid[r2][c2] > best2) best2 = grid[r2][c2];
+        }
+        colMax.push(best2);
+    }
+    var total = 0;
+    for (var r3 = 0; r3 < m; r3++) {
+        for (var c3 = 0; c3 < n; c3++) {
+            total += Math.min(rowMax[r3], colMax[c3]) - grid[r3][c3];
+        }
+    }
+    return total;
+}
+@@@LANG java
+public static int maxIncreaseKeepingSkyline(int[][] grid) {
+    int m = grid.length, n = grid[0].length;
+    int[] rowMax = new int[m];
+    int[] colMax = new int[n];
+    for (int r = 0; r < m; r++) {
+        for (int c = 0; c < n; c++) {
+            if (grid[r][c] > rowMax[r]) rowMax[r] = grid[r][c];
+            if (grid[r][c] > colMax[c]) colMax[c] = grid[r][c];
+        }
+    }
+    int total = 0;
+    for (int r = 0; r < m; r++) {
+        for (int c = 0; c < n; c++) {
+            total += Math.min(rowMax[r], colMax[c]) - grid[r][c];
+        }
+    }
+    return total;
+}
+@@@LANG cpp
+int maxIncreaseKeepingSkyline(vector<vector<int>>& grid) {
+    int m = (int) grid.size(), n = (int) grid[0].size();
+    vector<int> rowMax(m, 0), colMax(n, 0);
+    for (int r = 0; r < m; r++) {
+        for (int c = 0; c < n; c++) {
+            rowMax[r] = max(rowMax[r], grid[r][c]);
+            colMax[c] = max(colMax[c], grid[r][c]);
+        }
+    }
+    int total = 0;
+    for (int r = 0; r < m; r++) {
+        for (int c = 0; c < n; c++) {
+            total += min(rowMax[r], colMax[c]) - grid[r][c];
+        }
+    }
+    return total;
+}
+@@@LANG c
+int maxIncreaseKeepingSkyline(int** grid, int gridSize, int* gridColSize) {
+    int m = gridSize, n = gridColSize[0];
+    int* rowMax = (int*) calloc(m, sizeof(int));
+    int* colMax = (int*) calloc(n, sizeof(int));
+    for (int r = 0; r < m; r++) {
+        for (int c = 0; c < n; c++) {
+            if (grid[r][c] > rowMax[r]) rowMax[r] = grid[r][c];
+            if (grid[r][c] > colMax[c]) colMax[c] = grid[r][c];
+        }
+    }
+    int total = 0;
+    for (int r = 0; r < m; r++) {
+        for (int c = 0; c < n; c++) {
+            int cap = rowMax[r] < colMax[c] ? rowMax[r] : colMax[c];
+            total += cap - grid[r][c];
+        }
+    }
+    free(rowMax);
+    free(colMax);
+    return total;
+}
+@@@LANG csharp
+public static int MaxIncreaseKeepingSkyline(int[][] grid)
+{
+    int m = grid.Length, n = grid[0].Length;
+    int[] rowMax = new int[m];
+    int[] colMax = new int[n];
+    for (int r = 0; r < m; r++)
+    {
+        for (int c = 0; c < n; c++)
+        {
+            if (grid[r][c] > rowMax[r]) rowMax[r] = grid[r][c];
+            if (grid[r][c] > colMax[c]) colMax[c] = grid[r][c];
+        }
+    }
+    int total = 0;
+    for (int r = 0; r < m; r++)
+    {
+        for (int c = 0; c < n; c++)
+        {
+            total += Math.Min(rowMax[r], colMax[c]) - grid[r][c];
+        }
+    }
+    return total;
+}
+@@@LANG go
+func maxIncreaseKeepingSkyline(grid [][]int) int {
+	m, n := len(grid), len(grid[0])
+	rowMax := make([]int, m)
+	colMax := make([]int, n)
+	for r := 0; r < m; r++ {
+		for c := 0; c < n; c++ {
+			if grid[r][c] > rowMax[r] {
+				rowMax[r] = grid[r][c]
+			}
+			if grid[r][c] > colMax[c] {
+				colMax[c] = grid[r][c]
+			}
+		}
+	}
+	total := 0
+	for r := 0; r < m; r++ {
+		for c := 0; c < n; c++ {
+			cap := rowMax[r]
+			if colMax[c] < cap {
+				cap = colMax[c]
+			}
+			total += cap - grid[r][c]
+		}
+	}
+	return total
+}
+@@@LANG kotlin
+fun maxIncreaseKeepingSkyline(grid: Array<IntArray>): Int {
+    val m = grid.size
+    val n = grid[0].size
+    val rowMax = IntArray(m)
+    val colMax = IntArray(n)
+    for (r in 0 until m) {
+        for (c in 0 until n) {
+            if (grid[r][c] > rowMax[r]) rowMax[r] = grid[r][c]
+            if (grid[r][c] > colMax[c]) colMax[c] = grid[r][c]
+        }
+    }
+    var total = 0
+    for (r in 0 until m) {
+        for (c in 0 until n) {
+            total += Math.min(rowMax[r], colMax[c]) - grid[r][c]
+        }
+    }
+    return total
+}
+@@@LANG swift
+func maxIncreaseKeepingSkyline(_ grid: [[Int]]) -> Int {
+    let m = grid.count
+    let n = grid[0].count
+    var rowMax = [Int](repeating: 0, count: m)
+    var colMax = [Int](repeating: 0, count: n)
+    for r in 0..<m {
+        for c in 0..<n {
+            if grid[r][c] > rowMax[r] { rowMax[r] = grid[r][c] }
+            if grid[r][c] > colMax[c] { colMax[c] = grid[r][c] }
+        }
+    }
+    var total = 0
+    for r in 0..<m {
+        for c in 0..<n {
+            total += min(rowMax[r], colMax[c]) - grid[r][c]
+        }
+    }
+    return total
+}
+@@@LANG rust
+fn maxIncreaseKeepingSkyline(grid: Vec<Vec<i32>>) -> i32 {
+    let m = grid.len();
+    let n = grid[0].len();
+    let mut row_max = vec![0i32; m];
+    let mut col_max = vec![0i32; n];
+    for r in 0..m {
+        for c in 0..n {
+            if grid[r][c] > row_max[r] {
+                row_max[r] = grid[r][c];
+            }
+            if grid[r][c] > col_max[c] {
+                col_max[c] = grid[r][c];
+            }
+        }
+    }
+    let mut total = 0;
+    for r in 0..m {
+        for c in 0..n {
+            let cap = if row_max[r] < col_max[c] { row_max[r] } else { col_max[c] };
+            total += cap - grid[r][c];
+        }
+    }
+    total
+}
+@@@LANG php
+function maxIncreaseKeepingSkyline($grid) {
+    $m = count($grid);
+    $n = count($grid[0]);
+    $rowMax = array_fill(0, $m, 0);
+    $colMax = array_fill(0, $n, 0);
+    for ($r = 0; $r < $m; $r++) {
+        for ($c = 0; $c < $n; $c++) {
+            if ($grid[$r][$c] > $rowMax[$r]) $rowMax[$r] = $grid[$r][$c];
+            if ($grid[$r][$c] > $colMax[$c]) $colMax[$c] = $grid[$r][$c];
+        }
+    }
+    $total = 0;
+    for ($r = 0; $r < $m; $r++) {
+        for ($c = 0; $c < $n; $c++) {
+            $cap = min($rowMax[$r], $colMax[$c]);
+            $total += $cap - $grid[$r][$c];
+        }
+    }
+    return $total;
+}
+@@@LANG ruby
+def maxIncreaseKeepingSkyline(grid)
+  m = grid.length
+  n = grid[0].length
+  row_max = grid.map(&:max)
+  col_max = (0...n).map { |c| (0...m).map { |r| grid[r][c] }.max }
+  total = 0
+  (0...m).each do |r|
+    (0...n).each do |c|
+      total += [row_max[r], col_max[c]].min - grid[r][c]
+    end
+  end
+  total
+end

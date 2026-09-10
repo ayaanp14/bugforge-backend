@@ -1,0 +1,1573 @@
+@@@PROBLEM binary-gap
+@@@LANG typescript
+function binaryGap(n: number): number {
+    var best = 0;
+    var last = -1;
+    var index = 0;
+    var v = n;
+    while (v > 0) {
+        if (v % 2 === 1) {
+            if (last >= 0 && index - last > best) best = index - last;
+            last = index;
+        }
+        v = Math.floor(v / 2);
+        index++;
+    }
+    return best;
+}
+@@@LANG java
+public static int binaryGap(int n) {
+    int best = 0, last = -1, index = 0, v = n;
+    while (v > 0) {
+        if ((v & 1) == 1) {
+            if (last >= 0) best = Math.max(best, index - last);
+            last = index;
+        }
+        v >>= 1;
+        index++;
+    }
+    return best;
+}
+@@@LANG cpp
+int binaryGap(int n) {
+    int best = 0, last = -1, index = 0, v = n;
+    while (v > 0) {
+        if (v & 1) {
+            if (last >= 0) best = max(best, index - last);
+            last = index;
+        }
+        v >>= 1;
+        index++;
+    }
+    return best;
+}
+@@@LANG c
+int binaryGap(int n) {
+    int best = 0, last = -1, index = 0, v = n;
+    while (v > 0) {
+        if (v & 1) {
+            if (last >= 0 && index - last > best) best = index - last;
+            last = index;
+        }
+        v >>= 1;
+        index++;
+    }
+    return best;
+}
+@@@LANG csharp
+public static int BinaryGap(int n)
+{
+    int best = 0, last = -1, index = 0, v = n;
+    while (v > 0)
+    {
+        if ((v & 1) == 1)
+        {
+            if (last >= 0) best = Math.Max(best, index - last);
+            last = index;
+        }
+        v >>= 1;
+        index++;
+    }
+    return best;
+}
+@@@LANG go
+func binaryGap(n int) int {
+	best, last, index, v := 0, -1, 0, n
+	for v > 0 {
+		if v&1 == 1 {
+			if last >= 0 && index-last > best {
+				best = index - last
+			}
+			last = index
+		}
+		v >>= 1
+		index++
+	}
+	return best
+}
+@@@LANG kotlin
+fun binaryGap(n: Int): Int {
+    var best = 0
+    var last = -1
+    var index = 0
+    var v = n
+    while (v > 0) {
+        if (v and 1 == 1) {
+            if (last >= 0 && index - last > best) best = index - last
+            last = index
+        }
+        v = v shr 1
+        index++
+    }
+    return best
+}
+@@@LANG swift
+func binaryGap(_ n: Int) -> Int {
+    var best = 0
+    var last = -1
+    var index = 0
+    var v = n
+    while v > 0 {
+        if v & 1 == 1 {
+            if last >= 0 && index - last > best { best = index - last }
+            last = index
+        }
+        v >>= 1
+        index += 1
+    }
+    return best
+}
+@@@LANG rust
+fn binaryGap(n: i32) -> i32 {
+    let mut best = 0;
+    let mut last = -1i32;
+    let mut index = 0i32;
+    let mut v = n;
+    while v > 0 {
+        if v & 1 == 1 {
+            if last >= 0 && index - last > best {
+                best = index - last;
+            }
+            last = index;
+        }
+        v >>= 1;
+        index += 1;
+    }
+    best
+}
+@@@LANG php
+function binaryGap($n) {
+    $best = 0;
+    $last = -1;
+    $index = 0;
+    $v = $n;
+    while ($v > 0) {
+        if ($v & 1) {
+            if ($last >= 0 && $index - $last > $best) $best = $index - $last;
+            $last = $index;
+        }
+        $v >>= 1;
+        $index++;
+    }
+    return $best;
+}
+@@@LANG ruby
+def binaryGap(n)
+  best = 0
+  last = -1
+  index = 0
+  v = n
+  while v > 0
+    if v & 1 == 1
+      best = index - last if last >= 0 && index - last > best
+      last = index
+    end
+    v >>= 1
+    index += 1
+  end
+  best
+end
+
+@@@PROBLEM prime-number-of-set-bits
+@@@LANG typescript
+function countPrimeSetBits(left: number, right: number): number {
+    var primes: { [key: string]: boolean } = { "2": true, "3": true, "5": true, "7": true, "11": true, "13": true, "17": true, "19": true };
+    var count = 0;
+    for (var v = left; v <= right; v++) {
+        var bits = 0;
+        var x = v;
+        while (x > 0) {
+            bits += x & 1;
+            x >>>= 1;
+        }
+        if (primes[String(bits)] === true) count++;
+    }
+    return count;
+}
+@@@LANG java
+public static int countPrimeSetBits(int left, int right) {
+    Set<Integer> primes = new HashSet<>(Arrays.asList(2, 3, 5, 7, 11, 13, 17, 19));
+    int count = 0;
+    for (int v = left; v <= right; v++) {
+        if (primes.contains(Integer.bitCount(v))) count++;
+    }
+    return count;
+}
+@@@LANG cpp
+int countPrimeSetBits(int left, int right) {
+    unordered_set<int> primes = {2, 3, 5, 7, 11, 13, 17, 19};
+    int count = 0;
+    for (int v = left; v <= right; v++) {
+        int bits = 0;
+        unsigned int x = (unsigned int) v;
+        while (x) {
+            bits += (int) (x & 1u);
+            x >>= 1;
+        }
+        if (primes.count(bits) > 0) count++;
+    }
+    return count;
+}
+@@@LANG c
+int countPrimeSetBits(int left, int right) {
+    int primes[20];
+    for (int i = 0; i < 20; i++) primes[i] = 0;
+    primes[2] = primes[3] = primes[5] = primes[7] = 1;
+    primes[11] = primes[13] = primes[17] = primes[19] = 1;
+    int count = 0;
+    for (int v = left; v <= right; v++) {
+        int bits = 0;
+        unsigned int x = (unsigned int) v;
+        while (x) {
+            bits += (int) (x & 1u);
+            x >>= 1;
+        }
+        if (bits < 20 && primes[bits]) count++;
+    }
+    return count;
+}
+@@@LANG csharp
+public static int CountPrimeSetBits(int left, int right)
+{
+    var primes = new HashSet<int> { 2, 3, 5, 7, 11, 13, 17, 19 };
+    int count = 0;
+    for (int v = left; v <= right; v++)
+    {
+        int bits = 0;
+        uint x = (uint) v;
+        while (x != 0)
+        {
+            bits += (int) (x & 1u);
+            x >>= 1;
+        }
+        if (primes.Contains(bits)) count++;
+    }
+    return count;
+}
+@@@LANG go
+func countPrimeSetBits(left int, right int) int {
+	primes := map[int]bool{2: true, 3: true, 5: true, 7: true, 11: true, 13: true, 17: true, 19: true}
+	count := 0
+	for v := left; v <= right; v++ {
+		bits := 0
+		x := v
+		for x > 0 {
+			bits += x & 1
+			x >>= 1
+		}
+		if primes[bits] {
+			count++
+		}
+	}
+	return count
+}
+@@@LANG kotlin
+fun countPrimeSetBits(left: Int, right: Int): Int {
+    val primes = hashSetOf(2, 3, 5, 7, 11, 13, 17, 19)
+    var count = 0
+    for (v in left..right) {
+        var bits = 0
+        var x = v
+        while (x > 0) {
+            bits += x and 1
+            x = x shr 1
+        }
+        if (primes.contains(bits)) count++
+    }
+    return count
+}
+@@@LANG swift
+func countPrimeSetBits(_ left: Int, _ right: Int) -> Int {
+    let primes: Set<Int> = [2, 3, 5, 7, 11, 13, 17, 19]
+    var count = 0
+    for v in left...right {
+        var bits = 0
+        var x = v
+        while x > 0 {
+            bits += x & 1
+            x >>= 1
+        }
+        if primes.contains(bits) { count += 1 }
+    }
+    return count
+}
+@@@LANG rust
+fn countPrimeSetBits(left: i32, right: i32) -> i32 {
+    let primes = [2, 3, 5, 7, 11, 13, 17, 19];
+    let mut count = 0;
+    for v in left..=right {
+        let mut bits = 0;
+        let mut x = v;
+        while x > 0 {
+            bits += x & 1;
+            x >>= 1;
+        }
+        if primes.contains(&bits) {
+            count += 1;
+        }
+    }
+    count
+}
+@@@LANG php
+function countPrimeSetBits($left, $right) {
+    $primes = array(2 => true, 3 => true, 5 => true, 7 => true, 11 => true, 13 => true, 17 => true, 19 => true);
+    $count = 0;
+    for ($v = $left; $v <= $right; $v++) {
+        $bits = 0;
+        $x = $v;
+        while ($x > 0) {
+            $bits += $x & 1;
+            $x >>= 1;
+        }
+        if (isset($primes[$bits])) $count++;
+    }
+    return $count;
+}
+@@@LANG ruby
+def countPrimeSetBits(left, right)
+  primes = { 2 => true, 3 => true, 5 => true, 7 => true, 11 => true, 13 => true, 17 => true, 19 => true }
+  count = 0
+  (left..right).each do |v|
+    bits = 0
+    x = v
+    while x > 0
+      bits += x & 1
+      x >>= 1
+    end
+    count += 1 if primes[bits]
+  end
+  count
+end
+
+@@@PROBLEM convert-a-number-to-hexadecimal
+@@@LANG typescript
+function toHex(num: number): string {
+    if (num === 0) return "0";
+    var digits = "0123456789abcdef";
+    var v = num < 0 ? num + 4294967296 : num;
+    var out = "";
+    while (v > 0) {
+        out = digits.charAt(v % 16) + out;
+        v = Math.floor(v / 16);
+    }
+    return out;
+}
+@@@LANG java
+public static String toHex(int num) {
+    if (num == 0) return "0";
+    String digits = "0123456789abcdef";
+    long v = num < 0 ? (long) num + 4294967296L : (long) num;
+    StringBuilder out = new StringBuilder();
+    while (v > 0) {
+        out.insert(0, digits.charAt((int) (v % 16)));
+        v /= 16;
+    }
+    return out.toString();
+}
+@@@LANG cpp
+string toHex(int num) {
+    if (num == 0) return "0";
+    string digits = "0123456789abcdef";
+    long long v = num < 0 ? (long long) num + 4294967296LL : (long long) num;
+    string out;
+    while (v > 0) {
+        out = string(1, digits[(int) (v % 16)]) + out;
+        v /= 16;
+    }
+    return out;
+}
+@@@LANG c
+char* toHex(int num) {
+    const char* digits = "0123456789abcdef";
+    char* out = (char*) malloc(16);
+    if (num == 0) {
+        strcpy(out, "0");
+        return out;
+    }
+    long long v = num < 0 ? (long long) num + 4294967296LL : (long long) num;
+    char buf[16];
+    int len = 0;
+    while (v > 0) {
+        buf[len++] = digits[(int) (v % 16)];
+        v /= 16;
+    }
+    for (int i = 0; i < len; i++) out[i] = buf[len - 1 - i];
+    out[len] = '\0';
+    return out;
+}
+@@@LANG csharp
+public static string ToHex(int num)
+{
+    if (num == 0) return "0";
+    string digits = "0123456789abcdef";
+    long v = num < 0 ? (long) num + 4294967296L : (long) num;
+    var out_ = new List<char>();
+    while (v > 0)
+    {
+        out_.Insert(0, digits[(int) (v % 16)]);
+        v /= 16;
+    }
+    return new string(out_.ToArray());
+}
+@@@LANG go
+func toHex(num int) string {
+	if num == 0 {
+		return "0"
+	}
+	digits := "0123456789abcdef"
+	v := num
+	if v < 0 {
+		v += 4294967296
+	}
+	out := ""
+	for v > 0 {
+		out = string(digits[v%16]) + out
+		v /= 16
+	}
+	return out
+}
+@@@LANG kotlin
+fun toHex(num: Int): String {
+    if (num == 0) return "0"
+    val digits = "0123456789abcdef"
+    var v = if (num < 0) num.toLong() + 4294967296L else num.toLong()
+    val out = StringBuilder()
+    while (v > 0) {
+        out.insert(0, digits[(v % 16).toInt()])
+        v /= 16
+    }
+    return out.toString()
+}
+@@@LANG swift
+func toHex(_ num: Int) -> String {
+    if num == 0 { return "0" }
+    let digits = Array("0123456789abcdef")
+    var v = num < 0 ? num + 4294967296 : num
+    var out: [Character] = []
+    while v > 0 {
+        out.insert(digits[v % 16], at: 0)
+        v /= 16
+    }
+    return String(out)
+}
+@@@LANG rust
+fn toHex(num: i32) -> String {
+    if num == 0 {
+        return String::from("0");
+    }
+    let digits: Vec<char> = "0123456789abcdef".chars().collect();
+    let mut v: i64 = if num < 0 { num as i64 + 4294967296 } else { num as i64 };
+    let mut out: Vec<char> = Vec::new();
+    while v > 0 {
+        out.push(digits[(v % 16) as usize]);
+        v /= 16;
+    }
+    out.reverse();
+    out.into_iter().collect()
+}
+@@@LANG php
+function toHex($num) {
+    if ($num === 0) return "0";
+    $digits = "0123456789abcdef";
+    $v = $num < 0 ? $num + 4294967296 : $num;
+    $out = "";
+    while ($v > 0) {
+        $out = $digits[$v % 16] . $out;
+        $v = intdiv($v, 16);
+    }
+    return $out;
+}
+@@@LANG ruby
+def toHex(num)
+  return "0" if num == 0
+  digits = "0123456789abcdef"
+  v = num < 0 ? num + 4294967296 : num
+  out = ""
+  while v > 0
+    out = digits[v % 16] + out
+    v /= 16
+  end
+  out
+end
+
+@@@PROBLEM base-7
+@@@LANG typescript
+function convertToBase7(num: number): string {
+    if (num === 0) return "0";
+    var negative = num < 0;
+    var v = Math.abs(num);
+    var out = "";
+    while (v > 0) {
+        out = String(v % 7) + out;
+        v = Math.floor(v / 7);
+    }
+    return negative ? "-" + out : out;
+}
+@@@LANG java
+public static String convertToBase7(int num) {
+    if (num == 0) return "0";
+    boolean negative = num < 0;
+    long v = Math.abs((long) num);
+    StringBuilder out = new StringBuilder();
+    while (v > 0) {
+        out.insert(0, (char) ('0' + (int) (v % 7)));
+        v /= 7;
+    }
+    return negative ? "-" + out.toString() : out.toString();
+}
+@@@LANG cpp
+string convertToBase7(int num) {
+    if (num == 0) return "0";
+    bool negative = num < 0;
+    long long v = num < 0 ? -(long long) num : (long long) num;
+    string out;
+    while (v > 0) {
+        out = string(1, (char) ('0' + (int) (v % 7))) + out;
+        v /= 7;
+    }
+    return negative ? "-" + out : out;
+}
+@@@LANG c
+char* convertToBase7(int num) {
+    char* out = (char*) malloc(32);
+    if (num == 0) {
+        strcpy(out, "0");
+        return out;
+    }
+    int negative = num < 0;
+    long long v = num < 0 ? -(long long) num : (long long) num;
+    char buf[32];
+    int len = 0;
+    while (v > 0) {
+        buf[len++] = (char) ('0' + (int) (v % 7));
+        v /= 7;
+    }
+    int m = 0;
+    if (negative) out[m++] = '-';
+    for (int i = 0; i < len; i++) out[m++] = buf[len - 1 - i];
+    out[m] = '\0';
+    return out;
+}
+@@@LANG csharp
+public static string ConvertToBase7(int num)
+{
+    if (num == 0) return "0";
+    bool negative = num < 0;
+    long v = Math.Abs((long) num);
+    var out_ = new List<char>();
+    while (v > 0)
+    {
+        out_.Insert(0, (char) ('0' + (int) (v % 7)));
+        v /= 7;
+    }
+    string text = new string(out_.ToArray());
+    return negative ? "-" + text : text;
+}
+@@@LANG go
+func convertToBase7(num int) string {
+	if num == 0 {
+		return "0"
+	}
+	negative := num < 0
+	v := num
+	if v < 0 {
+		v = -v
+	}
+	out := ""
+	for v > 0 {
+		out = strconv.Itoa(v%7) + out
+		v /= 7
+	}
+	if negative {
+		return "-" + out
+	}
+	return out
+}
+@@@LANG kotlin
+fun convertToBase7(num: Int): String {
+    if (num == 0) return "0"
+    val negative = num < 0
+    var v = Math.abs(num.toLong())
+    val out = StringBuilder()
+    while (v > 0) {
+        out.insert(0, ('0' + (v % 7).toInt()))
+        v /= 7
+    }
+    return if (negative) "-" + out.toString() else out.toString()
+}
+@@@LANG swift
+func convertToBase7(_ num: Int) -> String {
+    if num == 0 { return "0" }
+    let negative = num < 0
+    var v = abs(num)
+    var out = ""
+    while v > 0 {
+        out = String(v % 7) + out
+        v /= 7
+    }
+    return negative ? "-" + out : out
+}
+@@@LANG rust
+fn convertToBase7(num: i32) -> String {
+    if num == 0 {
+        return String::from("0");
+    }
+    let negative = num < 0;
+    let mut v: i64 = (num as i64).abs();
+    let mut out = String::new();
+    while v > 0 {
+        out.insert(0, std::char::from_digit((v % 7) as u32, 10).unwrap());
+        v /= 7;
+    }
+    if negative {
+        format!("-{}", out)
+    } else {
+        out
+    }
+}
+@@@LANG php
+function convertToBase7($num) {
+    if ($num === 0) return "0";
+    $negative = $num < 0;
+    $v = abs($num);
+    $out = "";
+    while ($v > 0) {
+        $out = strval($v % 7) . $out;
+        $v = intdiv($v, 7);
+    }
+    return $negative ? "-" . $out : $out;
+}
+@@@LANG ruby
+def convertToBase7(num)
+  return "0" if num == 0
+  negative = num < 0
+  v = num.abs
+  out = ""
+  while v > 0
+    out = (v % 7).to_s + out
+    v /= 7
+  end
+  negative ? "-" + out : out
+end
+
+@@@PROBLEM nim-game
+@@@LANG typescript
+function canWinNim(n: number): boolean {
+    return n % 4 !== 0;
+}
+@@@LANG java
+public static boolean canWinNim(int n) {
+    return n % 4 != 0;
+}
+@@@LANG cpp
+bool canWinNim(int n) {
+    return n % 4 != 0;
+}
+@@@LANG c
+bool canWinNim(int n) {
+    return n % 4 != 0;
+}
+@@@LANG csharp
+public static bool CanWinNim(int n)
+{
+    return n % 4 != 0;
+}
+@@@LANG go
+func canWinNim(n int) bool {
+	return n%4 != 0
+}
+@@@LANG kotlin
+fun canWinNim(n: Int): Boolean {
+    return n % 4 != 0
+}
+@@@LANG swift
+func canWinNim(_ n: Int) -> Bool {
+    return n % 4 != 0
+}
+@@@LANG rust
+fn canWinNim(n: i32) -> bool {
+    n % 4 != 0
+}
+@@@LANG php
+function canWinNim($n) {
+    return $n % 4 !== 0;
+}
+@@@LANG ruby
+def canWinNim(n)
+  n % 4 != 0
+end
+
+@@@PROBLEM gray-code
+@@@LANG typescript
+function grayCode(n: number): number[] {
+    var total = 1;
+    for (var k = 0; k < n; k++) total *= 2;
+    var out: number[] = [];
+    for (var i = 0; i < total; i++) out.push(i ^ (i >> 1));
+    return out;
+}
+@@@LANG java
+public static int[] grayCode(int n) {
+    int total = 1 << n;
+    int[] out = new int[total];
+    for (int i = 0; i < total; i++) out[i] = i ^ (i >> 1);
+    return out;
+}
+@@@LANG cpp
+vector<int> grayCode(int n) {
+    int total = 1 << n;
+    vector<int> out(total);
+    for (int i = 0; i < total; i++) out[i] = i ^ (i >> 1);
+    return out;
+}
+@@@LANG c
+int* grayCode(int n, int* returnSize) {
+    int total = 1 << n;
+    int* out = (int*) malloc((size_t) total * sizeof(int));
+    for (int i = 0; i < total; i++) out[i] = i ^ (i >> 1);
+    *returnSize = total;
+    return out;
+}
+@@@LANG csharp
+public static int[] GrayCode(int n)
+{
+    int total = 1 << n;
+    int[] out_ = new int[total];
+    for (int i = 0; i < total; i++) out_[i] = i ^ (i >> 1);
+    return out_;
+}
+@@@LANG go
+func grayCode(n int) []int {
+	total := 1 << uint(n)
+	out := make([]int, total)
+	for i := 0; i < total; i++ {
+		out[i] = i ^ (i >> 1)
+	}
+	return out
+}
+@@@LANG kotlin
+fun grayCode(n: Int): IntArray {
+    val total = 1 shl n
+    val out = IntArray(total)
+    for (i in 0 until total) out[i] = i xor (i shr 1)
+    return out
+}
+@@@LANG swift
+func grayCode(_ n: Int) -> [Int] {
+    let total = 1 << n
+    var out = [Int](repeating: 0, count: total)
+    for i in 0..<total {
+        out[i] = i ^ (i >> 1)
+    }
+    return out
+}
+@@@LANG rust
+fn grayCode(n: i32) -> Vec<i32> {
+    let total = 1i32 << n;
+    let mut out: Vec<i32> = Vec::new();
+    for i in 0..total {
+        out.push(i ^ (i >> 1));
+    }
+    out
+}
+@@@LANG php
+function grayCode($n) {
+    $total = 1 << $n;
+    $out = array();
+    for ($i = 0; $i < $total; $i++) {
+        $out[] = $i ^ ($i >> 1);
+    }
+    return $out;
+}
+@@@LANG ruby
+def grayCode(n)
+  total = 1 << n
+  (0...total).map { |i| i ^ (i >> 1) }
+end
+
+@@@PROBLEM minimum-flips-to-make-a-or-b-equal-to-c
+@@@LANG typescript
+function minFlips(a: number, b: number, c: number): number {
+    var flips = 0;
+    for (var bit = 0; bit < 31; bit++) {
+        var ab = (a >> bit) & 1;
+        var bb = (b >> bit) & 1;
+        var cb = (c >> bit) & 1;
+        if (cb === 0) flips += ab + bb;
+        else if (ab === 0 && bb === 0) flips += 1;
+    }
+    return flips;
+}
+@@@LANG java
+public static int minFlips(int a, int b, int c) {
+    int flips = 0;
+    for (int bit = 0; bit < 31; bit++) {
+        int ab = (a >> bit) & 1;
+        int bb = (b >> bit) & 1;
+        int cb = (c >> bit) & 1;
+        if (cb == 0) flips += ab + bb;
+        else if (ab == 0 && bb == 0) flips += 1;
+    }
+    return flips;
+}
+@@@LANG cpp
+int minFlips(int a, int b, int c) {
+    int flips = 0;
+    for (int bit = 0; bit < 31; bit++) {
+        int ab = (a >> bit) & 1;
+        int bb = (b >> bit) & 1;
+        int cb = (c >> bit) & 1;
+        if (cb == 0) flips += ab + bb;
+        else if (ab == 0 && bb == 0) flips += 1;
+    }
+    return flips;
+}
+@@@LANG c
+int minFlips(int a, int b, int c) {
+    int flips = 0;
+    for (int bit = 0; bit < 31; bit++) {
+        int ab = (a >> bit) & 1;
+        int bb = (b >> bit) & 1;
+        int cb = (c >> bit) & 1;
+        if (cb == 0) flips += ab + bb;
+        else if (ab == 0 && bb == 0) flips += 1;
+    }
+    return flips;
+}
+@@@LANG csharp
+public static int MinFlips(int a, int b, int c)
+{
+    int flips = 0;
+    for (int bit = 0; bit < 31; bit++)
+    {
+        int ab = (a >> bit) & 1;
+        int bb = (b >> bit) & 1;
+        int cb = (c >> bit) & 1;
+        if (cb == 0) flips += ab + bb;
+        else if (ab == 0 && bb == 0) flips += 1;
+    }
+    return flips;
+}
+@@@LANG go
+func minFlips(a int, b int, c int) int {
+	flips := 0
+	for bit := 0; bit < 31; bit++ {
+		ab := (a >> uint(bit)) & 1
+		bb := (b >> uint(bit)) & 1
+		cb := (c >> uint(bit)) & 1
+		if cb == 0 {
+			flips += ab + bb
+		} else if ab == 0 && bb == 0 {
+			flips++
+		}
+	}
+	return flips
+}
+@@@LANG kotlin
+fun minFlips(a: Int, b: Int, c: Int): Int {
+    var flips = 0
+    for (bit in 0 until 31) {
+        val ab = (a shr bit) and 1
+        val bb = (b shr bit) and 1
+        val cb = (c shr bit) and 1
+        if (cb == 0) flips += ab + bb
+        else if (ab == 0 && bb == 0) flips += 1
+    }
+    return flips
+}
+@@@LANG swift
+func minFlips(_ a: Int, _ b: Int, _ c: Int) -> Int {
+    var flips = 0
+    for bit in 0..<31 {
+        let ab = (a >> bit) & 1
+        let bb = (b >> bit) & 1
+        let cb = (c >> bit) & 1
+        if cb == 0 { flips += ab + bb }
+        else if ab == 0 && bb == 0 { flips += 1 }
+    }
+    return flips
+}
+@@@LANG rust
+fn minFlips(a: i32, b: i32, c: i32) -> i32 {
+    let mut flips = 0;
+    for bit in 0..31 {
+        let ab = (a >> bit) & 1;
+        let bb = (b >> bit) & 1;
+        let cb = (c >> bit) & 1;
+        if cb == 0 {
+            flips += ab + bb;
+        } else if ab == 0 && bb == 0 {
+            flips += 1;
+        }
+    }
+    flips
+}
+@@@LANG php
+function minFlips($a, $b, $c) {
+    $flips = 0;
+    for ($bit = 0; $bit < 31; $bit++) {
+        $ab = ($a >> $bit) & 1;
+        $bb = ($b >> $bit) & 1;
+        $cb = ($c >> $bit) & 1;
+        if ($cb === 0) $flips += $ab + $bb;
+        else if ($ab === 0 && $bb === 0) $flips += 1;
+    }
+    return $flips;
+}
+@@@LANG ruby
+def minFlips(a, b, c)
+  flips = 0
+  (0...31).each do |bit|
+    ab = (a >> bit) & 1
+    bb = (b >> bit) & 1
+    cb = (c >> bit) & 1
+    if cb == 0
+      flips += ab + bb
+    elsif ab == 0 && bb == 0
+      flips += 1
+    end
+  end
+  flips
+end
+
+@@@PROBLEM xor-operation-in-an-array
+@@@LANG typescript
+function xorOperation(n: number, start: number): number {
+    var out = 0;
+    for (var i = 0; i < n; i++) out ^= start + 2 * i;
+    return out;
+}
+@@@LANG java
+public static int xorOperation(int n, int start) {
+    int out = 0;
+    for (int i = 0; i < n; i++) out ^= start + 2 * i;
+    return out;
+}
+@@@LANG cpp
+int xorOperation(int n, int start) {
+    int out = 0;
+    for (int i = 0; i < n; i++) out ^= start + 2 * i;
+    return out;
+}
+@@@LANG c
+int xorOperation(int n, int start) {
+    int out = 0;
+    for (int i = 0; i < n; i++) out ^= start + 2 * i;
+    return out;
+}
+@@@LANG csharp
+public static int XorOperation(int n, int start)
+{
+    int out_ = 0;
+    for (int i = 0; i < n; i++) out_ ^= start + 2 * i;
+    return out_;
+}
+@@@LANG go
+func xorOperation(n int, start int) int {
+	out := 0
+	for i := 0; i < n; i++ {
+		out ^= start + 2*i
+	}
+	return out
+}
+@@@LANG kotlin
+fun xorOperation(n: Int, start: Int): Int {
+    var out = 0
+    for (i in 0 until n) out = out xor (start + 2 * i)
+    return out
+}
+@@@LANG swift
+func xorOperation(_ n: Int, _ start: Int) -> Int {
+    var out = 0
+    for i in 0..<n { out ^= start + 2 * i }
+    return out
+}
+@@@LANG rust
+fn xorOperation(n: i32, start: i32) -> i32 {
+    let mut out = 0;
+    for i in 0..n {
+        out ^= start + 2 * i;
+    }
+    out
+}
+@@@LANG php
+function xorOperation($n, $start) {
+    $out = 0;
+    for ($i = 0; $i < $n; $i++) $out ^= $start + 2 * $i;
+    return $out;
+}
+@@@LANG ruby
+def xorOperation(n, start)
+  out = 0
+  (0...n).each { |i| out ^= start + 2 * i }
+  out
+end
+
+@@@PROBLEM decode-xored-array
+@@@LANG typescript
+function decode(encoded: number[], first: number): number[] {
+    var out: number[] = [first];
+    for (var i = 0; i < encoded.length; i++) out.push(out[i] ^ encoded[i]);
+    return out;
+}
+@@@LANG java
+public static int[] decode(int[] encoded, int first) {
+    int[] out = new int[encoded.length + 1];
+    out[0] = first;
+    for (int i = 0; i < encoded.length; i++) out[i + 1] = out[i] ^ encoded[i];
+    return out;
+}
+@@@LANG cpp
+vector<int> decode(vector<int>& encoded, int first) {
+    vector<int> out(encoded.size() + 1);
+    out[0] = first;
+    for (size_t i = 0; i < encoded.size(); i++) out[i + 1] = out[i] ^ encoded[i];
+    return out;
+}
+@@@LANG c
+int* decode(int* encoded, int encodedSize, int first, int* returnSize) {
+    int* out = (int*) malloc((size_t) (encodedSize + 1) * sizeof(int));
+    out[0] = first;
+    for (int i = 0; i < encodedSize; i++) out[i + 1] = out[i] ^ encoded[i];
+    *returnSize = encodedSize + 1;
+    return out;
+}
+@@@LANG csharp
+public static int[] Decode(int[] encoded, int first)
+{
+    int[] out_ = new int[encoded.Length + 1];
+    out_[0] = first;
+    for (int i = 0; i < encoded.Length; i++) out_[i + 1] = out_[i] ^ encoded[i];
+    return out_;
+}
+@@@LANG go
+func decode(encoded []int, first int) []int {
+	out := make([]int, len(encoded)+1)
+	out[0] = first
+	for i := 0; i < len(encoded); i++ {
+		out[i+1] = out[i] ^ encoded[i]
+	}
+	return out
+}
+@@@LANG kotlin
+fun decode(encoded: IntArray, first: Int): IntArray {
+    val out = IntArray(encoded.size + 1)
+    out[0] = first
+    for (i in encoded.indices) out[i + 1] = out[i] xor encoded[i]
+    return out
+}
+@@@LANG swift
+func decode(_ encoded: [Int], _ first: Int) -> [Int] {
+    var out = [Int](repeating: 0, count: encoded.count + 1)
+    out[0] = first
+    for i in 0..<encoded.count {
+        out[i + 1] = out[i] ^ encoded[i]
+    }
+    return out
+}
+@@@LANG rust
+fn decode(encoded: Vec<i32>, first: i32) -> Vec<i32> {
+    let mut out = vec![0i32; encoded.len() + 1];
+    out[0] = first;
+    for i in 0..encoded.len() {
+        out[i + 1] = out[i] ^ encoded[i];
+    }
+    out
+}
+@@@LANG php
+function decode($encoded, $first) {
+    $out = array($first);
+    for ($i = 0; $i < count($encoded); $i++) {
+        $out[] = $out[$i] ^ $encoded[$i];
+    }
+    return $out;
+}
+@@@LANG ruby
+def decode(encoded, first)
+  out = [first]
+  encoded.each_with_index { |x, i| out.push(out[i] ^ x) }
+  out
+end
+
+@@@PROBLEM sort-integers-by-the-power-value
+@@@LANG typescript
+function collatzPower(x: number): number {
+    var steps = 0;
+    var v = x;
+    while (v !== 1) {
+        v = v % 2 === 0 ? v / 2 : 3 * v + 1;
+        steps++;
+    }
+    return steps;
+}
+
+function getKth(lo: number, hi: number, k: number): number {
+    var values: number[] = [];
+    for (var v = lo; v <= hi; v++) values.push(v);
+    values.sort(function (a, b) {
+        var pa = collatzPower(a);
+        var pb = collatzPower(b);
+        return pa !== pb ? pa - pb : a - b;
+    });
+    return values[k - 1];
+}
+@@@LANG java
+private static int collatzPower(int x) {
+    int steps = 0;
+    long v = x;
+    while (v != 1) {
+        v = v % 2 == 0 ? v / 2 : 3 * v + 1;
+        steps++;
+    }
+    return steps;
+}
+
+public static int getKth(int lo, int hi, int k) {
+    Integer[] values = new Integer[hi - lo + 1];
+    for (int i = 0; i < values.length; i++) values[i] = lo + i;
+    Arrays.sort(values, (a, b) -> {
+        int pa = collatzPower(a), pb = collatzPower(b);
+        return pa != pb ? pa - pb : a - b;
+    });
+    return values[k - 1];
+}
+@@@LANG cpp
+static int collatzPower(int x) {
+    int steps = 0;
+    long long v = x;
+    while (v != 1) {
+        v = v % 2 == 0 ? v / 2 : 3 * v + 1;
+        steps++;
+    }
+    return steps;
+}
+
+int getKth(int lo, int hi, int k) {
+    vector<int> values;
+    for (int v = lo; v <= hi; v++) values.push_back(v);
+    sort(values.begin(), values.end(), [](int a, int b) {
+        int pa = collatzPower(a), pb = collatzPower(b);
+        if (pa != pb) return pa < pb;
+        return a < b;
+    });
+    return values[k - 1];
+}
+@@@LANG c
+static int collatzPower(int x) {
+    int steps = 0;
+    long long v = x;
+    while (v != 1) {
+        v = v % 2 == 0 ? v / 2 : 3 * v + 1;
+        steps++;
+    }
+    return steps;
+}
+
+static int cmpPower(const void* a, const void* b) {
+    int x = *(const int*) a;
+    int y = *(const int*) b;
+    int px = collatzPower(x);
+    int py = collatzPower(y);
+    if (px != py) return px - py;
+    return (x > y) - (x < y);
+}
+
+int getKth(int lo, int hi, int k) {
+    int n = hi - lo + 1;
+    int* values = (int*) malloc((size_t) n * sizeof(int));
+    for (int i = 0; i < n; i++) values[i] = lo + i;
+    qsort(values, n, sizeof(int), cmpPower);
+    int answer = values[k - 1];
+    free(values);
+    return answer;
+}
+@@@LANG csharp
+private static int CollatzPower(int x)
+{
+    int steps = 0;
+    long v = x;
+    while (v != 1)
+    {
+        v = v % 2 == 0 ? v / 2 : 3 * v + 1;
+        steps++;
+    }
+    return steps;
+}
+
+public static int GetKth(int lo, int hi, int k)
+{
+    var values = new List<int>();
+    for (int v = lo; v <= hi; v++) values.Add(v);
+    values.Sort((a, b) =>
+    {
+        int pa = CollatzPower(a), pb = CollatzPower(b);
+        if (pa != pb) return pa.CompareTo(pb);
+        return a.CompareTo(b);
+    });
+    return values[k - 1];
+}
+@@@LANG go
+func collatzPower(x int) int {
+	steps := 0
+	v := x
+	for v != 1 {
+		if v%2 == 0 {
+			v /= 2
+		} else {
+			v = 3*v + 1
+		}
+		steps++
+	}
+	return steps
+}
+
+func getKth(lo int, hi int, k int) int {
+	values := []int{}
+	for v := lo; v <= hi; v++ {
+		values = append(values, v)
+	}
+	sort.Slice(values, func(a, b int) bool {
+		pa, pb := collatzPower(values[a]), collatzPower(values[b])
+		if pa != pb {
+			return pa < pb
+		}
+		return values[a] < values[b]
+	})
+	return values[k-1]
+}
+@@@LANG kotlin
+fun collatzPower(x: Int): Int {
+    var steps = 0
+    var v = x.toLong()
+    while (v != 1L) {
+        v = if (v % 2 == 0L) v / 2 else 3 * v + 1
+        steps++
+    }
+    return steps
+}
+
+fun getKth(lo: Int, hi: Int, k: Int): Int {
+    val values = (lo..hi).toMutableList()
+    val sorted = values.sortedWith(Comparator { a, b ->
+        val pa = collatzPower(a)
+        val pb = collatzPower(b)
+        if (pa != pb) pa - pb else a - b
+    })
+    return sorted[k - 1]
+}
+@@@LANG swift
+func collatzPower(_ x: Int) -> Int {
+    var steps = 0
+    var v = x
+    while v != 1 {
+        v = v % 2 == 0 ? v / 2 : 3 * v + 1
+        steps += 1
+    }
+    return steps
+}
+
+func getKth(_ lo: Int, _ hi: Int, _ k: Int) -> Int {
+    let values = Array(lo...hi)
+    let sorted = values.sorted { a, b in
+        let pa = collatzPower(a)
+        let pb = collatzPower(b)
+        if pa != pb { return pa < pb }
+        return a < b
+    }
+    return sorted[k - 1]
+}
+@@@LANG rust
+fn collatz_power(x: i32) -> i32 {
+    let mut steps = 0;
+    let mut v: i64 = x as i64;
+    while v != 1 {
+        v = if v % 2 == 0 { v / 2 } else { 3 * v + 1 };
+        steps += 1;
+    }
+    steps
+}
+
+fn getKth(lo: i32, hi: i32, k: i32) -> i32 {
+    let mut values: Vec<i32> = (lo..=hi).collect();
+    values.sort_by(|a, b| {
+        let pa = collatz_power(*a);
+        let pb = collatz_power(*b);
+        if pa != pb {
+            pa.cmp(&pb)
+        } else {
+            a.cmp(b)
+        }
+    });
+    values[(k - 1) as usize]
+}
+@@@LANG php
+function collatzPower($x) {
+    $steps = 0;
+    $v = $x;
+    while ($v != 1) {
+        $v = $v % 2 === 0 ? intdiv($v, 2) : 3 * $v + 1;
+        $steps++;
+    }
+    return $steps;
+}
+
+function getKth($lo, $hi, $k) {
+    $values = range($lo, $hi);
+    usort($values, function($a, $b) {
+        $pa = collatzPower($a);
+        $pb = collatzPower($b);
+        if ($pa !== $pb) return $pa - $pb;
+        return $a - $b;
+    });
+    return $values[$k - 1];
+}
+@@@LANG ruby
+def collatz_power(x)
+  steps = 0
+  v = x
+  while v != 1
+    v = v.even? ? v / 2 : 3 * v + 1
+    steps += 1
+  end
+  steps
+end
+
+def getKth(lo, hi, k)
+  (lo..hi).to_a.sort_by { |v| [collatz_power(v), v] }[k - 1]
+end
+
+@@@PROBLEM maximum-product-of-word-lengths
+@@@LANG typescript
+function maxProduct(words: string[]): number {
+    var masks: number[] = [];
+    for (var i = 0; i < words.length; i++) {
+        var mask = 0;
+        for (var j = 0; j < words[i].length; j++) mask |= 1 << (words[i].charCodeAt(j) - 97);
+        masks.push(mask);
+    }
+    var best = 0;
+    for (var a = 0; a < words.length; a++) {
+        for (var b = a + 1; b < words.length; b++) {
+            if ((masks[a] & masks[b]) === 0) {
+                var product = words[a].length * words[b].length;
+                if (product > best) best = product;
+            }
+        }
+    }
+    return best;
+}
+@@@LANG java
+public static int maxProduct(String[] words) {
+    int[] masks = new int[words.length];
+    for (int i = 0; i < words.length; i++) {
+        int mask = 0;
+        for (int j = 0; j < words[i].length(); j++) mask |= 1 << (words[i].charAt(j) - 'a');
+        masks[i] = mask;
+    }
+    int best = 0;
+    for (int i = 0; i < words.length; i++) {
+        for (int j = i + 1; j < words.length; j++) {
+            if ((masks[i] & masks[j]) == 0) {
+                best = Math.max(best, words[i].length() * words[j].length());
+            }
+        }
+    }
+    return best;
+}
+@@@LANG cpp
+int maxProduct(vector<string>& words) {
+    vector<int> masks(words.size(), 0);
+    for (size_t i = 0; i < words.size(); i++) {
+        int mask = 0;
+        for (char c : words[i]) mask |= 1 << (c - 'a');
+        masks[i] = mask;
+    }
+    int best = 0;
+    for (size_t i = 0; i < words.size(); i++) {
+        for (size_t j = i + 1; j < words.size(); j++) {
+            if ((masks[i] & masks[j]) == 0) {
+                int product = (int) (words[i].size() * words[j].size());
+                if (product > best) best = product;
+            }
+        }
+    }
+    return best;
+}
+@@@LANG c
+int maxProduct(char** words, int wordsSize) {
+    int* masks = (int*) calloc((size_t) (wordsSize > 0 ? wordsSize : 1), sizeof(int));
+    int* lengths = (int*) calloc((size_t) (wordsSize > 0 ? wordsSize : 1), sizeof(int));
+    for (int i = 0; i < wordsSize; i++) {
+        int mask = 0;
+        int len = (int) strlen(words[i]);
+        for (int j = 0; j < len; j++) mask |= 1 << (words[i][j] - 'a');
+        masks[i] = mask;
+        lengths[i] = len;
+    }
+    int best = 0;
+    for (int i = 0; i < wordsSize; i++) {
+        for (int j = i + 1; j < wordsSize; j++) {
+            if ((masks[i] & masks[j]) == 0) {
+                int product = lengths[i] * lengths[j];
+                if (product > best) best = product;
+            }
+        }
+    }
+    free(masks);
+    free(lengths);
+    return best;
+}
+@@@LANG csharp
+public static int MaxProduct(string[] words)
+{
+    int[] masks = new int[words.Length];
+    for (int i = 0; i < words.Length; i++)
+    {
+        int mask = 0;
+        foreach (char c in words[i]) mask |= 1 << (c - 'a');
+        masks[i] = mask;
+    }
+    int best = 0;
+    for (int i = 0; i < words.Length; i++)
+    {
+        for (int j = i + 1; j < words.Length; j++)
+        {
+            if ((masks[i] & masks[j]) == 0)
+            {
+                best = Math.Max(best, words[i].Length * words[j].Length);
+            }
+        }
+    }
+    return best;
+}
+@@@LANG go
+func maxProduct(words []string) int {
+	masks := make([]int, len(words))
+	for i, w := range words {
+		mask := 0
+		for j := 0; j < len(w); j++ {
+			mask |= 1 << uint(w[j]-'a')
+		}
+		masks[i] = mask
+	}
+	best := 0
+	for i := 0; i < len(words); i++ {
+		for j := i + 1; j < len(words); j++ {
+			if masks[i]&masks[j] == 0 {
+				product := len(words[i]) * len(words[j])
+				if product > best {
+					best = product
+				}
+			}
+		}
+	}
+	return best
+}
+@@@LANG kotlin
+fun maxProduct(words: Array<String>): Int {
+    val masks = IntArray(words.size)
+    for (i in words.indices) {
+        var mask = 0
+        for (c in words[i]) mask = mask or (1 shl (c - 'a'))
+        masks[i] = mask
+    }
+    var best = 0
+    for (i in words.indices) {
+        for (j in i + 1 until words.size) {
+            if ((masks[i] and masks[j]) == 0) {
+                val product = words[i].length * words[j].length
+                if (product > best) best = product
+            }
+        }
+    }
+    return best
+}
+@@@LANG swift
+func maxProduct(_ words: [String]) -> Int {
+    var masks = [Int](repeating: 0, count: words.count)
+    var lengths = [Int](repeating: 0, count: words.count)
+    for i in 0..<words.count {
+        var mask = 0
+        var len = 0
+        for c in words[i].unicodeScalars {
+            mask |= 1 << (Int(c.value) - 97)
+            len += 1
+        }
+        masks[i] = mask
+        lengths[i] = len
+    }
+    var best = 0
+    for i in 0..<words.count {
+        for j in (i + 1)..<max(words.count, i + 1) where j < words.count {
+            if masks[i] & masks[j] == 0 {
+                let product = lengths[i] * lengths[j]
+                if product > best { best = product }
+            }
+        }
+    }
+    return best
+}
+@@@LANG rust
+fn maxProduct(words: Vec<String>) -> i32 {
+    let mut masks: Vec<i32> = Vec::new();
+    let mut lengths: Vec<i32> = Vec::new();
+    for w in words.iter() {
+        let mut mask = 0i32;
+        for c in w.bytes() {
+            mask |= 1 << (c - b'a');
+        }
+        masks.push(mask);
+        lengths.push(w.len() as i32);
+    }
+    let mut best = 0i32;
+    for i in 0..words.len() {
+        for j in (i + 1)..words.len() {
+            if masks[i] & masks[j] == 0 {
+                let product = lengths[i] * lengths[j];
+                if product > best {
+                    best = product;
+                }
+            }
+        }
+    }
+    best
+}
+@@@LANG php
+function maxProduct($words) {
+    $masks = array();
+    foreach ($words as $w) {
+        $mask = 0;
+        $len = strlen($w);
+        for ($j = 0; $j < $len; $j++) $mask |= 1 << (ord($w[$j]) - 97);
+        $masks[] = $mask;
+    }
+    $best = 0;
+    $n = count($words);
+    for ($i = 0; $i < $n; $i++) {
+        for ($j = $i + 1; $j < $n; $j++) {
+            if (($masks[$i] & $masks[$j]) === 0) {
+                $product = strlen($words[$i]) * strlen($words[$j]);
+                if ($product > $best) $best = $product;
+            }
+        }
+    }
+    return $best;
+}
+@@@LANG ruby
+def maxProduct(words)
+  masks = words.map do |w|
+    mask = 0
+    w.each_byte { |b| mask |= 1 << (b - 97) }
+    mask
+  end
+  best = 0
+  (0...words.length).each do |i|
+    ((i + 1)...words.length).each do |j|
+      if masks[i] & masks[j] == 0
+        product = words[i].length * words[j].length
+        best = product if product > best
+      end
+    end
+  end
+  best
+end

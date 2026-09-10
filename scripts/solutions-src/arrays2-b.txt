@@ -1,0 +1,1140 @@
+@@@PROBLEM how-many-numbers-are-smaller-than-the-current-number
+@@@LANG typescript
+function smallerNumbersThanCurrent(nums: number[]): number[] {
+    var count: number[] = [];
+    for (var k = 0; k < 102; k++) count.push(0);
+    for (var i = 0; i < nums.length; i++) count[nums[i] + 1]++;
+    for (var v = 1; v < 102; v++) count[v] += count[v - 1];
+    var out: number[] = [];
+    for (var j = 0; j < nums.length; j++) out.push(count[nums[j]]);
+    return out;
+}
+@@@LANG java
+public static int[] smallerNumbersThanCurrent(int[] nums) {
+    int[] count = new int[102];
+    for (int x : nums) count[x + 1]++;
+    for (int v = 1; v < 102; v++) count[v] += count[v - 1];
+    int[] out = new int[nums.length];
+    for (int i = 0; i < nums.length; i++) out[i] = count[nums[i]];
+    return out;
+}
+@@@LANG cpp
+vector<int> smallerNumbersThanCurrent(vector<int>& nums) {
+    vector<int> count(102, 0);
+    for (int x : nums) count[x + 1]++;
+    for (int v = 1; v < 102; v++) count[v] += count[v - 1];
+    vector<int> out;
+    for (int x : nums) out.push_back(count[x]);
+    return out;
+}
+@@@LANG c
+int* smallerNumbersThanCurrent(int* nums, int numsSize, int* returnSize) {
+    int count[102] = {0};
+    for (int i = 0; i < numsSize; i++) count[nums[i] + 1]++;
+    for (int v = 1; v < 102; v++) count[v] += count[v - 1];
+    int* out = (int*) malloc(sizeof(int) * (numsSize > 0 ? numsSize : 1));
+    for (int i = 0; i < numsSize; i++) out[i] = count[nums[i]];
+    *returnSize = numsSize;
+    return out;
+}
+@@@LANG csharp
+public static int[] SmallerNumbersThanCurrent(int[] nums)
+{
+    int[] count = new int[102];
+    foreach (int x in nums) count[x + 1]++;
+    for (int v = 1; v < 102; v++) count[v] += count[v - 1];
+    int[] out_ = new int[nums.Length];
+    for (int i = 0; i < nums.Length; i++) out_[i] = count[nums[i]];
+    return out_;
+}
+@@@LANG go
+func smallerNumbersThanCurrent(nums []int) []int {
+	count := make([]int, 102)
+	for _, x := range nums {
+		count[x+1]++
+	}
+	for v := 1; v < 102; v++ {
+		count[v] += count[v-1]
+	}
+	out := make([]int, len(nums))
+	for i, x := range nums {
+		out[i] = count[x]
+	}
+	return out
+}
+@@@LANG kotlin
+fun smallerNumbersThanCurrent(nums: IntArray): IntArray {
+    val count = IntArray(102)
+    for (x in nums) count[x + 1]++
+    for (v in 1 until 102) count[v] += count[v - 1]
+    val out = IntArray(nums.size)
+    for (i in nums.indices) out[i] = count[nums[i]]
+    return out
+}
+@@@LANG swift
+func smallerNumbersThanCurrent(_ nums: [Int]) -> [Int] {
+    var count = [Int](repeating: 0, count: 102)
+    for x in nums { count[x + 1] += 1 }
+    for v in 1..<102 { count[v] += count[v - 1] }
+    var out: [Int] = []
+    for x in nums { out.append(count[x]) }
+    return out
+}
+@@@LANG rust
+fn smallerNumbersThanCurrent(nums: Vec<i32>) -> Vec<i32> {
+    let mut count = vec![0i32; 102];
+    for x in nums.iter() {
+        count[(*x + 1) as usize] += 1;
+    }
+    for v in 1..102 {
+        count[v] += count[v - 1];
+    }
+    let mut out: Vec<i32> = Vec::new();
+    for x in nums.iter() {
+        out.push(count[*x as usize]);
+    }
+    out
+}
+@@@LANG php
+function smallerNumbersThanCurrent($nums) {
+    $count = array_fill(0, 102, 0);
+    foreach ($nums as $x) $count[$x + 1]++;
+    for ($v = 1; $v < 102; $v++) $count[$v] += $count[$v - 1];
+    $out = array();
+    foreach ($nums as $x) $out[] = $count[$x];
+    return $out;
+}
+@@@LANG ruby
+def smallerNumbersThanCurrent(nums)
+  count = Array.new(102, 0)
+  nums.each { |x| count[x + 1] += 1 }
+  (1...102).each { |v| count[v] += count[v - 1] }
+  nums.map { |x| count[x] }
+end
+
+@@@PROBLEM number-of-good-pairs
+@@@LANG typescript
+function numIdenticalPairs(nums: number[]): number {
+    var count: { [key: string]: number } = {};
+    var total = 0;
+    for (var i = 0; i < nums.length; i++) {
+        var key = String(nums[i]);
+        var seen = count[key] === undefined ? 0 : count[key];
+        total += seen;
+        count[key] = seen + 1;
+    }
+    return total;
+}
+@@@LANG java
+public static int numIdenticalPairs(int[] nums) {
+    Map<Integer, Integer> count = new HashMap<>();
+    int total = 0;
+    for (int x : nums) {
+        int seen = count.getOrDefault(x, 0);
+        total += seen;
+        count.put(x, seen + 1);
+    }
+    return total;
+}
+@@@LANG cpp
+int numIdenticalPairs(vector<int>& nums) {
+    unordered_map<int, int> count;
+    int total = 0;
+    for (int x : nums) {
+        total += count[x];
+        count[x]++;
+    }
+    return total;
+}
+@@@LANG c
+int numIdenticalPairs(int* nums, int numsSize) {
+    int total = 0;
+    for (int i = 0; i < numsSize; i++) {
+        for (int j = i + 1; j < numsSize; j++) {
+            if (nums[i] == nums[j]) total++;
+        }
+    }
+    return total;
+}
+@@@LANG csharp
+public static int NumIdenticalPairs(int[] nums)
+{
+    var count = new Dictionary<int, int>();
+    int total = 0;
+    foreach (int x in nums)
+    {
+        int seen = count.ContainsKey(x) ? count[x] : 0;
+        total += seen;
+        count[x] = seen + 1;
+    }
+    return total;
+}
+@@@LANG go
+func numIdenticalPairs(nums []int) int {
+	count := make(map[int]int)
+	total := 0
+	for _, x := range nums {
+		total += count[x]
+		count[x]++
+	}
+	return total
+}
+@@@LANG kotlin
+fun numIdenticalPairs(nums: IntArray): Int {
+    val count = HashMap<Int, Int>()
+    var total = 0
+    for (x in nums) {
+        val seen = count[x] ?: 0
+        total += seen
+        count[x] = seen + 1
+    }
+    return total
+}
+@@@LANG swift
+func numIdenticalPairs(_ nums: [Int]) -> Int {
+    var count: [Int: Int] = [:]
+    var total = 0
+    for x in nums {
+        let seen = count[x] ?? 0
+        total += seen
+        count[x] = seen + 1
+    }
+    return total
+}
+@@@LANG rust
+fn numIdenticalPairs(nums: Vec<i32>) -> i32 {
+    use std::collections::HashMap;
+    let mut count: HashMap<i32, i32> = HashMap::new();
+    let mut total = 0;
+    for x in nums.iter() {
+        let seen = count.entry(*x).or_insert(0);
+        total += *seen;
+        *seen += 1;
+    }
+    total
+}
+@@@LANG php
+function numIdenticalPairs($nums) {
+    $count = array();
+    $total = 0;
+    foreach ($nums as $x) {
+        $seen = isset($count[$x]) ? $count[$x] : 0;
+        $total += $seen;
+        $count[$x] = $seen + 1;
+    }
+    return $total;
+}
+@@@LANG ruby
+def numIdenticalPairs(nums)
+  count = Hash.new(0)
+  total = 0
+  nums.each do |x|
+    total += count[x]
+    count[x] += 1
+  end
+  total
+end
+
+@@@PROBLEM shuffle-the-array
+@@@LANG typescript
+function shuffle(nums: number[], n: number): number[] {
+    var out: number[] = [];
+    for (var i = 0; i < n; i++) {
+        out.push(nums[i]);
+        out.push(nums[i + n]);
+    }
+    return out;
+}
+@@@LANG java
+public static int[] shuffle(int[] nums, int n) {
+    int[] out = new int[2 * n];
+    for (int i = 0; i < n; i++) {
+        out[2 * i] = nums[i];
+        out[2 * i + 1] = nums[i + n];
+    }
+    return out;
+}
+@@@LANG cpp
+vector<int> shuffle(vector<int>& nums, int n) {
+    vector<int> out;
+    for (int i = 0; i < n; i++) {
+        out.push_back(nums[i]);
+        out.push_back(nums[i + n]);
+    }
+    return out;
+}
+@@@LANG c
+int* shuffle(int* nums, int numsSize, int n, int* returnSize) {
+    int* out = (int*) malloc(sizeof(int) * (2 * n));
+    for (int i = 0; i < n; i++) {
+        out[2 * i] = nums[i];
+        out[2 * i + 1] = nums[i + n];
+    }
+    *returnSize = 2 * n;
+    return out;
+}
+@@@LANG csharp
+public static int[] Shuffle(int[] nums, int n)
+{
+    int[] out_ = new int[2 * n];
+    for (int i = 0; i < n; i++)
+    {
+        out_[2 * i] = nums[i];
+        out_[2 * i + 1] = nums[i + n];
+    }
+    return out_;
+}
+@@@LANG go
+func shuffle(nums []int, n int) []int {
+	out := make([]int, 0, 2*n)
+	for i := 0; i < n; i++ {
+		out = append(out, nums[i], nums[i+n])
+	}
+	return out
+}
+@@@LANG kotlin
+fun shuffle(nums: IntArray, n: Int): IntArray {
+    val out = IntArray(2 * n)
+    for (i in 0 until n) {
+        out[2 * i] = nums[i]
+        out[2 * i + 1] = nums[i + n]
+    }
+    return out
+}
+@@@LANG swift
+func shuffle(_ nums: [Int], _ n: Int) -> [Int] {
+    var out: [Int] = []
+    for i in 0..<n {
+        out.append(nums[i])
+        out.append(nums[i + n])
+    }
+    return out
+}
+@@@LANG rust
+fn shuffle(nums: Vec<i32>, n: i32) -> Vec<i32> {
+    let half = n as usize;
+    let mut out: Vec<i32> = Vec::new();
+    for i in 0..half {
+        out.push(nums[i]);
+        out.push(nums[i + half]);
+    }
+    out
+}
+@@@LANG php
+function shuffle($nums, $n) {
+    $out = array();
+    for ($i = 0; $i < $n; $i++) {
+        $out[] = $nums[$i];
+        $out[] = $nums[$i + $n];
+    }
+    return $out;
+}
+@@@LANG ruby
+def shuffle(nums, n)
+  out = []
+  (0...n).each do |i|
+    out << nums[i]
+    out << nums[i + n]
+  end
+  out
+end
+
+@@@PROBLEM build-array-from-permutation
+@@@LANG typescript
+function buildArray(nums: number[]): number[] {
+    var out: number[] = [];
+    for (var i = 0; i < nums.length; i++) out.push(nums[nums[i]]);
+    return out;
+}
+@@@LANG java
+public static int[] buildArray(int[] nums) {
+    int[] out = new int[nums.length];
+    for (int i = 0; i < nums.length; i++) out[i] = nums[nums[i]];
+    return out;
+}
+@@@LANG cpp
+vector<int> buildArray(vector<int>& nums) {
+    vector<int> out;
+    for (size_t i = 0; i < nums.size(); i++) out.push_back(nums[nums[i]]);
+    return out;
+}
+@@@LANG c
+int* buildArray(int* nums, int numsSize, int* returnSize) {
+    int* out = (int*) malloc(sizeof(int) * (numsSize > 0 ? numsSize : 1));
+    for (int i = 0; i < numsSize; i++) out[i] = nums[nums[i]];
+    *returnSize = numsSize;
+    return out;
+}
+@@@LANG csharp
+public static int[] BuildArray(int[] nums)
+{
+    int[] out_ = new int[nums.Length];
+    for (int i = 0; i < nums.Length; i++) out_[i] = nums[nums[i]];
+    return out_;
+}
+@@@LANG go
+func buildArray(nums []int) []int {
+	out := make([]int, len(nums))
+	for i := range nums {
+		out[i] = nums[nums[i]]
+	}
+	return out
+}
+@@@LANG kotlin
+fun buildArray(nums: IntArray): IntArray {
+    val out = IntArray(nums.size)
+    for (i in nums.indices) out[i] = nums[nums[i]]
+    return out
+}
+@@@LANG swift
+func buildArray(_ nums: [Int]) -> [Int] {
+    var out: [Int] = []
+    for i in 0..<nums.count { out.append(nums[nums[i]]) }
+    return out
+}
+@@@LANG rust
+fn buildArray(nums: Vec<i32>) -> Vec<i32> {
+    let mut out: Vec<i32> = Vec::new();
+    for i in 0..nums.len() {
+        out.push(nums[nums[i] as usize]);
+    }
+    out
+}
+@@@LANG php
+function buildArray($nums) {
+    $out = array();
+    for ($i = 0; $i < count($nums); $i++) $out[] = $nums[$nums[$i]];
+    return $out;
+}
+@@@LANG ruby
+def buildArray(nums)
+  nums.map { |x| nums[x] }
+end
+
+@@@PROBLEM concatenation-of-array
+@@@LANG typescript
+function getConcatenation(nums: number[]): number[] {
+    return nums.concat(nums);
+}
+@@@LANG java
+public static int[] getConcatenation(int[] nums) {
+    int n = nums.length;
+    int[] out = new int[2 * n];
+    for (int i = 0; i < n; i++) {
+        out[i] = nums[i];
+        out[i + n] = nums[i];
+    }
+    return out;
+}
+@@@LANG cpp
+vector<int> getConcatenation(vector<int>& nums) {
+    vector<int> out(nums);
+    for (int x : nums) out.push_back(x);
+    return out;
+}
+@@@LANG c
+int* getConcatenation(int* nums, int numsSize, int* returnSize) {
+    int* out = (int*) malloc(sizeof(int) * (2 * numsSize > 0 ? 2 * numsSize : 1));
+    for (int i = 0; i < numsSize; i++) {
+        out[i] = nums[i];
+        out[i + numsSize] = nums[i];
+    }
+    *returnSize = 2 * numsSize;
+    return out;
+}
+@@@LANG csharp
+public static int[] GetConcatenation(int[] nums)
+{
+    int n = nums.Length;
+    int[] out_ = new int[2 * n];
+    for (int i = 0; i < n; i++)
+    {
+        out_[i] = nums[i];
+        out_[i + n] = nums[i];
+    }
+    return out_;
+}
+@@@LANG go
+func getConcatenation(nums []int) []int {
+	out := make([]int, 0, 2*len(nums))
+	out = append(out, nums...)
+	out = append(out, nums...)
+	return out
+}
+@@@LANG kotlin
+fun getConcatenation(nums: IntArray): IntArray {
+    return nums + nums
+}
+@@@LANG swift
+func getConcatenation(_ nums: [Int]) -> [Int] {
+    return nums + nums
+}
+@@@LANG rust
+fn getConcatenation(nums: Vec<i32>) -> Vec<i32> {
+    let mut out = nums.clone();
+    out.extend(nums.iter());
+    out
+}
+@@@LANG php
+function getConcatenation($nums) {
+    return array_merge($nums, $nums);
+}
+@@@LANG ruby
+def getConcatenation(nums)
+  nums + nums
+end
+
+@@@PROBLEM decompress-run-length-encoded-list
+@@@LANG typescript
+function decompressRLElist(nums: number[]): number[] {
+    var out: number[] = [];
+    for (var i = 0; i < nums.length; i += 2) {
+        for (var k = 0; k < nums[i]; k++) out.push(nums[i + 1]);
+    }
+    return out;
+}
+@@@LANG java
+public static int[] decompressRLElist(int[] nums) {
+    int total = 0;
+    for (int i = 0; i < nums.length; i += 2) total += nums[i];
+    int[] out = new int[total];
+    int pos = 0;
+    for (int i = 0; i < nums.length; i += 2) {
+        for (int k = 0; k < nums[i]; k++) out[pos++] = nums[i + 1];
+    }
+    return out;
+}
+@@@LANG cpp
+vector<int> decompressRLElist(vector<int>& nums) {
+    vector<int> out;
+    for (size_t i = 0; i < nums.size(); i += 2) {
+        for (int k = 0; k < nums[i]; k++) out.push_back(nums[i + 1]);
+    }
+    return out;
+}
+@@@LANG c
+int* decompressRLElist(int* nums, int numsSize, int* returnSize) {
+    int total = 0;
+    for (int i = 0; i < numsSize; i += 2) total += nums[i];
+    int* out = (int*) malloc(sizeof(int) * (total > 0 ? total : 1));
+    int pos = 0;
+    for (int i = 0; i < numsSize; i += 2) {
+        for (int k = 0; k < nums[i]; k++) out[pos++] = nums[i + 1];
+    }
+    *returnSize = total;
+    return out;
+}
+@@@LANG csharp
+public static int[] DecompressRLElist(int[] nums)
+{
+    var out_ = new List<int>();
+    for (int i = 0; i < nums.Length; i += 2)
+    {
+        for (int k = 0; k < nums[i]; k++) out_.Add(nums[i + 1]);
+    }
+    return out_.ToArray();
+}
+@@@LANG go
+func decompressRLElist(nums []int) []int {
+	out := []int{}
+	for i := 0; i < len(nums); i += 2 {
+		for k := 0; k < nums[i]; k++ {
+			out = append(out, nums[i+1])
+		}
+	}
+	return out
+}
+@@@LANG kotlin
+fun decompressRLElist(nums: IntArray): IntArray {
+    val out = ArrayList<Int>()
+    var i = 0
+    while (i < nums.size) {
+        for (k in 0 until nums[i]) out.add(nums[i + 1])
+        i += 2
+    }
+    return out.toIntArray()
+}
+@@@LANG swift
+func decompressRLElist(_ nums: [Int]) -> [Int] {
+    var out: [Int] = []
+    var i = 0
+    while i < nums.count {
+        for _ in 0..<nums[i] { out.append(nums[i + 1]) }
+        i += 2
+    }
+    return out
+}
+@@@LANG rust
+fn decompressRLElist(nums: Vec<i32>) -> Vec<i32> {
+    let mut out: Vec<i32> = Vec::new();
+    let mut i = 0;
+    while i < nums.len() {
+        for _ in 0..nums[i] {
+            out.push(nums[i + 1]);
+        }
+        i += 2;
+    }
+    out
+}
+@@@LANG php
+function decompressRLElist($nums) {
+    $out = array();
+    for ($i = 0; $i < count($nums); $i += 2) {
+        for ($k = 0; $k < $nums[$i]; $k++) $out[] = $nums[$i + 1];
+    }
+    return $out;
+}
+@@@LANG ruby
+def decompressRLElist(nums)
+  out = []
+  i = 0
+  while i < nums.length
+    nums[i].times { out << nums[i + 1] }
+    i += 2
+  end
+  out
+end
+
+@@@PROBLEM create-target-array-in-the-given-order
+@@@LANG typescript
+function createTargetArray(nums: number[], index: number[]): number[] {
+    var out: number[] = [];
+    for (var i = 0; i < nums.length; i++) out.splice(index[i], 0, nums[i]);
+    return out;
+}
+@@@LANG java
+public static int[] createTargetArray(int[] nums, int[] index) {
+    List<Integer> out = new ArrayList<>();
+    for (int i = 0; i < nums.length; i++) out.add(index[i], nums[i]);
+    int[] res = new int[out.size()];
+    for (int i = 0; i < res.length; i++) res[i] = out.get(i);
+    return res;
+}
+@@@LANG cpp
+vector<int> createTargetArray(vector<int>& nums, vector<int>& index) {
+    vector<int> out;
+    for (size_t i = 0; i < nums.size(); i++) {
+        out.insert(out.begin() + index[i], nums[i]);
+    }
+    return out;
+}
+@@@LANG c
+int* createTargetArray(int* nums, int numsSize, int* index, int indexSize, int* returnSize) {
+    int* out = (int*) malloc(sizeof(int) * (numsSize > 0 ? numsSize : 1));
+    int len = 0;
+    for (int i = 0; i < numsSize; i++) {
+        for (int j = len; j > index[i]; j--) out[j] = out[j - 1];
+        out[index[i]] = nums[i];
+        len++;
+    }
+    *returnSize = len;
+    return out;
+}
+@@@LANG csharp
+public static int[] CreateTargetArray(int[] nums, int[] index)
+{
+    var out_ = new List<int>();
+    for (int i = 0; i < nums.Length; i++) out_.Insert(index[i], nums[i]);
+    return out_.ToArray();
+}
+@@@LANG go
+func createTargetArray(nums []int, index []int) []int {
+	out := []int{}
+	for i, x := range nums {
+		out = append(out, 0)
+		copy(out[index[i]+1:], out[index[i]:])
+		out[index[i]] = x
+	}
+	return out
+}
+@@@LANG kotlin
+fun createTargetArray(nums: IntArray, index: IntArray): IntArray {
+    val out = ArrayList<Int>()
+    for (i in nums.indices) out.add(index[i], nums[i])
+    return out.toIntArray()
+}
+@@@LANG swift
+func createTargetArray(_ nums: [Int], _ index: [Int]) -> [Int] {
+    var out: [Int] = []
+    for i in 0..<nums.count {
+        out.insert(nums[i], at: index[i])
+    }
+    return out
+}
+@@@LANG rust
+fn createTargetArray(nums: Vec<i32>, index: Vec<i32>) -> Vec<i32> {
+    let mut out: Vec<i32> = Vec::new();
+    for i in 0..nums.len() {
+        out.insert(index[i] as usize, nums[i]);
+    }
+    out
+}
+@@@LANG php
+function createTargetArray($nums, $index) {
+    $out = array();
+    for ($i = 0; $i < count($nums); $i++) {
+        array_splice($out, $index[$i], 0, array($nums[$i]));
+    }
+    return $out;
+}
+@@@LANG ruby
+def createTargetArray(nums, index)
+  out = []
+  nums.each_with_index do |x, i|
+    out.insert(index[i], x)
+  end
+  out
+end
+
+@@@PROBLEM find-the-highest-altitude
+@@@LANG typescript
+function largestAltitude(gain: number[]): number {
+    var cur = 0;
+    var best = 0;
+    for (var i = 0; i < gain.length; i++) {
+        cur += gain[i];
+        if (cur > best) best = cur;
+    }
+    return best;
+}
+@@@LANG java
+public static int largestAltitude(int[] gain) {
+    int cur = 0, best = 0;
+    for (int g : gain) {
+        cur += g;
+        if (cur > best) best = cur;
+    }
+    return best;
+}
+@@@LANG cpp
+int largestAltitude(vector<int>& gain) {
+    int cur = 0, best = 0;
+    for (int g : gain) {
+        cur += g;
+        if (cur > best) best = cur;
+    }
+    return best;
+}
+@@@LANG c
+int largestAltitude(int* gain, int gainSize) {
+    int cur = 0, best = 0;
+    for (int i = 0; i < gainSize; i++) {
+        cur += gain[i];
+        if (cur > best) best = cur;
+    }
+    return best;
+}
+@@@LANG csharp
+public static int LargestAltitude(int[] gain)
+{
+    int cur = 0, best = 0;
+    foreach (int g in gain)
+    {
+        cur += g;
+        if (cur > best) best = cur;
+    }
+    return best;
+}
+@@@LANG go
+func largestAltitude(gain []int) int {
+	cur, best := 0, 0
+	for _, g := range gain {
+		cur += g
+		if cur > best {
+			best = cur
+		}
+	}
+	return best
+}
+@@@LANG kotlin
+fun largestAltitude(gain: IntArray): Int {
+    var cur = 0
+    var best = 0
+    for (g in gain) {
+        cur += g
+        if (cur > best) best = cur
+    }
+    return best
+}
+@@@LANG swift
+func largestAltitude(_ gain: [Int]) -> Int {
+    var cur = 0
+    var best = 0
+    for g in gain {
+        cur += g
+        if cur > best { best = cur }
+    }
+    return best
+}
+@@@LANG rust
+fn largestAltitude(gain: Vec<i32>) -> i32 {
+    let mut cur = 0;
+    let mut best = 0;
+    for g in gain.iter() {
+        cur += *g;
+        if cur > best {
+            best = cur;
+        }
+    }
+    best
+}
+@@@LANG php
+function largestAltitude($gain) {
+    $cur = 0;
+    $best = 0;
+    foreach ($gain as $g) {
+        $cur += $g;
+        if ($cur > $best) $best = $cur;
+    }
+    return $best;
+}
+@@@LANG ruby
+def largestAltitude(gain)
+  cur = 0
+  best = 0
+  gain.each do |g|
+    cur += g
+    best = cur if cur > best
+  end
+  best
+end
+
+@@@PROBLEM sum-of-all-odd-length-subarrays
+@@@LANG typescript
+function sumOddLengthSubarrays(arr: number[]): number {
+    var n = arr.length;
+    var total = 0;
+    for (var i = 0; i < n; i++) {
+        var occurrences = Math.floor(((i + 1) * (n - i) + 1) / 2);
+        total += occurrences * arr[i];
+    }
+    return total;
+}
+@@@LANG java
+public static int sumOddLengthSubarrays(int[] arr) {
+    int n = arr.length;
+    int total = 0;
+    for (int i = 0; i < n; i++) {
+        int occurrences = ((i + 1) * (n - i) + 1) / 2;
+        total += occurrences * arr[i];
+    }
+    return total;
+}
+@@@LANG cpp
+int sumOddLengthSubarrays(vector<int>& arr) {
+    int n = (int) arr.size();
+    int total = 0;
+    for (int i = 0; i < n; i++) {
+        int occurrences = ((i + 1) * (n - i) + 1) / 2;
+        total += occurrences * arr[i];
+    }
+    return total;
+}
+@@@LANG c
+int sumOddLengthSubarrays(int* arr, int arrSize) {
+    int total = 0;
+    for (int i = 0; i < arrSize; i++) {
+        int occurrences = ((i + 1) * (arrSize - i) + 1) / 2;
+        total += occurrences * arr[i];
+    }
+    return total;
+}
+@@@LANG csharp
+public static int SumOddLengthSubarrays(int[] arr)
+{
+    int n = arr.Length;
+    int total = 0;
+    for (int i = 0; i < n; i++)
+    {
+        int occurrences = ((i + 1) * (n - i) + 1) / 2;
+        total += occurrences * arr[i];
+    }
+    return total;
+}
+@@@LANG go
+func sumOddLengthSubarrays(arr []int) int {
+	n := len(arr)
+	total := 0
+	for i := 0; i < n; i++ {
+		occurrences := ((i+1)*(n-i) + 1) / 2
+		total += occurrences * arr[i]
+	}
+	return total
+}
+@@@LANG kotlin
+fun sumOddLengthSubarrays(arr: IntArray): Int {
+    val n = arr.size
+    var total = 0
+    for (i in 0 until n) {
+        val occurrences = ((i + 1) * (n - i) + 1) / 2
+        total += occurrences * arr[i]
+    }
+    return total
+}
+@@@LANG swift
+func sumOddLengthSubarrays(_ arr: [Int]) -> Int {
+    let n = arr.count
+    var total = 0
+    for i in 0..<n {
+        let occurrences = ((i + 1) * (n - i) + 1) / 2
+        total += occurrences * arr[i]
+    }
+    return total
+}
+@@@LANG rust
+fn sumOddLengthSubarrays(arr: Vec<i32>) -> i32 {
+    let n = arr.len() as i32;
+    let mut total = 0;
+    for i in 0..arr.len() {
+        let idx = i as i32;
+        let occurrences = ((idx + 1) * (n - idx) + 1) / 2;
+        total += occurrences * arr[i];
+    }
+    total
+}
+@@@LANG php
+function sumOddLengthSubarrays($arr) {
+    $n = count($arr);
+    $total = 0;
+    for ($i = 0; $i < $n; $i++) {
+        $occurrences = intdiv(($i + 1) * ($n - $i) + 1, 2);
+        $total += $occurrences * $arr[$i];
+    }
+    return $total;
+}
+@@@LANG ruby
+def sumOddLengthSubarrays(arr)
+  n = arr.length
+  total = 0
+  arr.each_with_index do |x, i|
+    occurrences = ((i + 1) * (n - i) + 1) / 2
+    total += occurrences * x
+  end
+  total
+end
+
+@@@PROBLEM max-consecutive-ones
+@@@LANG typescript
+function findMaxConsecutiveOnes(nums: number[]): number {
+    var best = 0;
+    var run = 0;
+    for (var i = 0; i < nums.length; i++) {
+        run = nums[i] === 1 ? run + 1 : 0;
+        if (run > best) best = run;
+    }
+    return best;
+}
+@@@LANG java
+public static int findMaxConsecutiveOnes(int[] nums) {
+    int best = 0, run = 0;
+    for (int x : nums) {
+        run = x == 1 ? run + 1 : 0;
+        if (run > best) best = run;
+    }
+    return best;
+}
+@@@LANG cpp
+int findMaxConsecutiveOnes(vector<int>& nums) {
+    int best = 0, run = 0;
+    for (int x : nums) {
+        run = x == 1 ? run + 1 : 0;
+        if (run > best) best = run;
+    }
+    return best;
+}
+@@@LANG c
+int findMaxConsecutiveOnes(int* nums, int numsSize) {
+    int best = 0, run = 0;
+    for (int i = 0; i < numsSize; i++) {
+        run = nums[i] == 1 ? run + 1 : 0;
+        if (run > best) best = run;
+    }
+    return best;
+}
+@@@LANG csharp
+public static int FindMaxConsecutiveOnes(int[] nums)
+{
+    int best = 0, run = 0;
+    foreach (int x in nums)
+    {
+        run = x == 1 ? run + 1 : 0;
+        if (run > best) best = run;
+    }
+    return best;
+}
+@@@LANG go
+func findMaxConsecutiveOnes(nums []int) int {
+	best, run := 0, 0
+	for _, x := range nums {
+		if x == 1 {
+			run++
+		} else {
+			run = 0
+		}
+		if run > best {
+			best = run
+		}
+	}
+	return best
+}
+@@@LANG kotlin
+fun findMaxConsecutiveOnes(nums: IntArray): Int {
+    var best = 0
+    var run = 0
+    for (x in nums) {
+        run = if (x == 1) run + 1 else 0
+        if (run > best) best = run
+    }
+    return best
+}
+@@@LANG swift
+func findMaxConsecutiveOnes(_ nums: [Int]) -> Int {
+    var best = 0
+    var run = 0
+    for x in nums {
+        run = x == 1 ? run + 1 : 0
+        if run > best { best = run }
+    }
+    return best
+}
+@@@LANG rust
+fn findMaxConsecutiveOnes(nums: Vec<i32>) -> i32 {
+    let mut best = 0;
+    let mut run = 0;
+    for x in nums.iter() {
+        run = if *x == 1 { run + 1 } else { 0 };
+        if run > best {
+            best = run;
+        }
+    }
+    best
+}
+@@@LANG php
+function findMaxConsecutiveOnes($nums) {
+    $best = 0;
+    $run = 0;
+    foreach ($nums as $x) {
+        $run = $x === 1 ? $run + 1 : 0;
+        if ($run > $best) $best = $run;
+    }
+    return $best;
+}
+@@@LANG ruby
+def findMaxConsecutiveOnes(nums)
+  best = 0
+  run = 0
+  nums.each do |x|
+    run = x == 1 ? run + 1 : 0
+    best = run if run > best
+  end
+  best
+end
+
+@@@PROBLEM third-maximum-number
+@@@LANG typescript
+function thirdMax(nums: number[]): number {
+    var seen: { [key: string]: boolean } = {};
+    var distinct: number[] = [];
+    for (var i = 0; i < nums.length; i++) {
+        var key = String(nums[i]);
+        if (seen[key] !== true) {
+            seen[key] = true;
+            distinct.push(nums[i]);
+        }
+    }
+    distinct.sort(function (a, b) { return b - a; });
+    return distinct.length >= 3 ? distinct[2] : distinct[0];
+}
+@@@LANG java
+public static int thirdMax(int[] nums) {
+    TreeSet<Integer> distinct = new TreeSet<>();
+    for (int x : nums) distinct.add(x);
+    if (distinct.size() < 3) return distinct.last();
+    Iterator<Integer> it = distinct.descendingIterator();
+    it.next();
+    it.next();
+    return it.next();
+}
+@@@LANG cpp
+int thirdMax(vector<int>& nums) {
+    set<int> distinct(nums.begin(), nums.end());
+    vector<int> ordered(distinct.rbegin(), distinct.rend());
+    return ordered.size() >= 3 ? ordered[2] : ordered[0];
+}
+@@@LANG c
+int thirdMax(int* nums, int numsSize) {
+    int* a = (int*) malloc(sizeof(int) * numsSize);
+    for (int i = 0; i < numsSize; i++) a[i] = nums[i];
+    for (int i = 1; i < numsSize; i++) {
+        int key = a[i];
+        int j = i - 1;
+        while (j >= 0 && a[j] < key) { a[j + 1] = a[j]; j--; }
+        a[j + 1] = key;
+    }
+    int len = 0;
+    for (int i = 0; i < numsSize; i++) {
+        if (i == 0 || a[i] != a[i - 1]) a[len++] = a[i];
+    }
+    int result = len >= 3 ? a[2] : a[0];
+    free(a);
+    return result;
+}
+@@@LANG csharp
+public static int ThirdMax(int[] nums)
+{
+    var distinct = new List<int>(new HashSet<int>(nums));
+    distinct.Sort();
+    distinct.Reverse();
+    return distinct.Count >= 3 ? distinct[2] : distinct[0];
+}
+@@@LANG go
+func thirdMax(nums []int) int {
+	seen := make(map[int]bool)
+	distinct := []int{}
+	for _, x := range nums {
+		if !seen[x] {
+			seen[x] = true
+			distinct = append(distinct, x)
+		}
+	}
+	sort.Sort(sort.Reverse(sort.IntSlice(distinct)))
+	if len(distinct) >= 3 {
+		return distinct[2]
+	}
+	return distinct[0]
+}
+@@@LANG kotlin
+fun thirdMax(nums: IntArray): Int {
+    val distinct = nums.toHashSet().toMutableList()
+    distinct.sortDescending()
+    return if (distinct.size >= 3) distinct[2] else distinct[0]
+}
+@@@LANG swift
+func thirdMax(_ nums: [Int]) -> Int {
+    let distinct = Array(Set(nums)).sorted(by: >)
+    return distinct.count >= 3 ? distinct[2] : distinct[0]
+}
+@@@LANG rust
+fn thirdMax(nums: Vec<i32>) -> i32 {
+    use std::collections::HashSet;
+    let set: HashSet<i32> = nums.into_iter().collect();
+    let mut distinct: Vec<i32> = set.into_iter().collect();
+    distinct.sort();
+    distinct.reverse();
+    if distinct.len() >= 3 {
+        distinct[2]
+    } else {
+        distinct[0]
+    }
+}
+@@@LANG php
+function thirdMax($nums) {
+    $distinct = array_values(array_unique($nums));
+    rsort($distinct);
+    return count($distinct) >= 3 ? $distinct[2] : $distinct[0];
+}
+@@@LANG ruby
+def thirdMax(nums)
+  distinct = nums.uniq.sort.reverse
+  distinct.length >= 3 ? distinct[2] : distinct[0]
+end

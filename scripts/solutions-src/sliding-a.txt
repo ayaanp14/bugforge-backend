@@ -1,0 +1,1939 @@
+@@@PROBLEM maximum-number-of-vowels-in-a-substring-of-given-length
+@@@LANG typescript
+function maxVowels(s: string, k: number): number {
+    var vowels = "aeiou";
+    var cur = 0;
+    for (var i = 0; i < k; i++) {
+        if (vowels.indexOf(s.charAt(i)) >= 0) cur++;
+    }
+    var best = cur;
+    for (var j = k; j < s.length; j++) {
+        if (vowels.indexOf(s.charAt(j)) >= 0) cur++;
+        if (vowels.indexOf(s.charAt(j - k)) >= 0) cur--;
+        if (cur > best) best = cur;
+    }
+    return best;
+}
+@@@LANG java
+public static int maxVowels(String s, int k) {
+    String vowels = "aeiou";
+    int cur = 0;
+    for (int i = 0; i < k; i++) {
+        if (vowels.indexOf(s.charAt(i)) >= 0) cur++;
+    }
+    int best = cur;
+    for (int i = k; i < s.length(); i++) {
+        if (vowels.indexOf(s.charAt(i)) >= 0) cur++;
+        if (vowels.indexOf(s.charAt(i - k)) >= 0) cur--;
+        if (cur > best) best = cur;
+    }
+    return best;
+}
+@@@LANG cpp
+int maxVowels(string s, int k) {
+    string vowels = "aeiou";
+    int cur = 0;
+    for (int i = 0; i < k; i++) {
+        if (vowels.find(s[i]) != string::npos) cur++;
+    }
+    int best = cur;
+    for (int i = k; i < (int) s.size(); i++) {
+        if (vowels.find(s[i]) != string::npos) cur++;
+        if (vowels.find(s[i - k]) != string::npos) cur--;
+        if (cur > best) best = cur;
+    }
+    return best;
+}
+@@@LANG c
+static bool isVowelLetter(char c) {
+    return c == 'a' || c == 'e' || c == 'i' || c == 'o' || c == 'u';
+}
+
+int maxVowels(const char* s, int k) {
+    int n = (int) strlen(s);
+    int cur = 0;
+    for (int i = 0; i < k; i++) {
+        if (isVowelLetter(s[i])) cur++;
+    }
+    int best = cur;
+    for (int i = k; i < n; i++) {
+        if (isVowelLetter(s[i])) cur++;
+        if (isVowelLetter(s[i - k])) cur--;
+        if (cur > best) best = cur;
+    }
+    return best;
+}
+@@@LANG csharp
+public static int MaxVowels(string s, int k)
+{
+    string vowels = "aeiou";
+    int cur = 0;
+    for (int i = 0; i < k; i++)
+    {
+        if (vowels.IndexOf(s[i]) >= 0) cur++;
+    }
+    int best = cur;
+    for (int i = k; i < s.Length; i++)
+    {
+        if (vowels.IndexOf(s[i]) >= 0) cur++;
+        if (vowels.IndexOf(s[i - k]) >= 0) cur--;
+        if (cur > best) best = cur;
+    }
+    return best;
+}
+@@@LANG go
+func maxVowels(s string, k int) int {
+	isVowel := func(c byte) bool {
+		return strings.IndexByte("aeiou", c) >= 0
+	}
+	cur := 0
+	for i := 0; i < k; i++ {
+		if isVowel(s[i]) {
+			cur++
+		}
+	}
+	best := cur
+	for i := k; i < len(s); i++ {
+		if isVowel(s[i]) {
+			cur++
+		}
+		if isVowel(s[i-k]) {
+			cur--
+		}
+		if cur > best {
+			best = cur
+		}
+	}
+	return best
+}
+@@@LANG kotlin
+fun maxVowels(s: String, k: Int): Int {
+    val vowels = "aeiou"
+    var cur = 0
+    for (i in 0 until k) {
+        if (vowels.indexOf(s[i]) >= 0) cur++
+    }
+    var best = cur
+    for (i in k until s.length) {
+        if (vowels.indexOf(s[i]) >= 0) cur++
+        if (vowels.indexOf(s[i - k]) >= 0) cur--
+        if (cur > best) best = cur
+    }
+    return best
+}
+@@@LANG swift
+func maxVowels(_ s: String, _ k: Int) -> Int {
+    let vowels: Set<Character> = ["a", "e", "i", "o", "u"]
+    let chars = Array(s)
+    var cur = 0
+    for i in 0..<k {
+        if vowels.contains(chars[i]) { cur += 1 }
+    }
+    var best = cur
+    for i in k..<chars.count {
+        if vowels.contains(chars[i]) { cur += 1 }
+        if vowels.contains(chars[i - k]) { cur -= 1 }
+        if cur > best { best = cur }
+    }
+    return best
+}
+@@@LANG rust
+fn maxVowels(s: String, k: i32) -> i32 {
+    let window = k as usize;
+    let bytes = s.as_bytes();
+    let is_vowel = |c: u8| b"aeiou".contains(&c);
+    let mut cur = 0;
+    for i in 0..window {
+        if is_vowel(bytes[i]) {
+            cur += 1;
+        }
+    }
+    let mut best = cur;
+    for i in window..bytes.len() {
+        if is_vowel(bytes[i]) {
+            cur += 1;
+        }
+        if is_vowel(bytes[i - window]) {
+            cur -= 1;
+        }
+        if cur > best {
+            best = cur;
+        }
+    }
+    best
+}
+@@@LANG php
+function maxVowels($s, $k) {
+    $vowels = "aeiou";
+    $cur = 0;
+    for ($i = 0; $i < $k; $i++) {
+        if (strpos($vowels, $s[$i]) !== false) $cur++;
+    }
+    $best = $cur;
+    $n = strlen($s);
+    for ($i = $k; $i < $n; $i++) {
+        if (strpos($vowels, $s[$i]) !== false) $cur++;
+        if (strpos($vowels, $s[$i - $k]) !== false) $cur--;
+        if ($cur > $best) $best = $cur;
+    }
+    return $best;
+}
+@@@LANG ruby
+def maxVowels(s, k)
+  vowels = "aeiou"
+  cur = 0
+  (0...k).each { |i| cur += 1 if vowels.include?(s[i]) }
+  best = cur
+  (k...s.length).each do |i|
+    cur += 1 if vowels.include?(s[i])
+    cur -= 1 if vowels.include?(s[i - k])
+    best = cur if cur > best
+  end
+  best
+end
+
+@@@PROBLEM number-of-sub-arrays-of-size-k-and-average-greater-than-or-equal-to-threshold
+@@@LANG typescript
+function numOfSubarrays(arr: number[], k: number, threshold: number): number {
+    var need = k * threshold;
+    var sum = 0;
+    for (var i = 0; i < k; i++) sum += arr[i];
+    var count = sum >= need ? 1 : 0;
+    for (var j = k; j < arr.length; j++) {
+        sum += arr[j] - arr[j - k];
+        if (sum >= need) count++;
+    }
+    return count;
+}
+@@@LANG java
+public static int numOfSubarrays(int[] arr, int k, int threshold) {
+    int need = k * threshold;
+    int sum = 0;
+    for (int i = 0; i < k; i++) sum += arr[i];
+    int count = sum >= need ? 1 : 0;
+    for (int i = k; i < arr.length; i++) {
+        sum += arr[i] - arr[i - k];
+        if (sum >= need) count++;
+    }
+    return count;
+}
+@@@LANG cpp
+int numOfSubarrays(vector<int>& arr, int k, int threshold) {
+    int need = k * threshold;
+    int sum = 0;
+    for (int i = 0; i < k; i++) sum += arr[i];
+    int count = sum >= need ? 1 : 0;
+    for (int i = k; i < (int) arr.size(); i++) {
+        sum += arr[i] - arr[i - k];
+        if (sum >= need) count++;
+    }
+    return count;
+}
+@@@LANG c
+int numOfSubarrays(int* arr, int arrSize, int k, int threshold) {
+    int need = k * threshold;
+    int sum = 0;
+    for (int i = 0; i < k; i++) sum += arr[i];
+    int count = sum >= need ? 1 : 0;
+    for (int i = k; i < arrSize; i++) {
+        sum += arr[i] - arr[i - k];
+        if (sum >= need) count++;
+    }
+    return count;
+}
+@@@LANG csharp
+public static int NumOfSubarrays(int[] arr, int k, int threshold)
+{
+    int need = k * threshold;
+    int sum = 0;
+    for (int i = 0; i < k; i++) sum += arr[i];
+    int count = sum >= need ? 1 : 0;
+    for (int i = k; i < arr.Length; i++)
+    {
+        sum += arr[i] - arr[i - k];
+        if (sum >= need) count++;
+    }
+    return count;
+}
+@@@LANG go
+func numOfSubarrays(arr []int, k int, threshold int) int {
+	need := k * threshold
+	sum := 0
+	for i := 0; i < k; i++ {
+		sum += arr[i]
+	}
+	count := 0
+	if sum >= need {
+		count = 1
+	}
+	for i := k; i < len(arr); i++ {
+		sum += arr[i] - arr[i-k]
+		if sum >= need {
+			count++
+		}
+	}
+	return count
+}
+@@@LANG kotlin
+fun numOfSubarrays(arr: IntArray, k: Int, threshold: Int): Int {
+    val need = k * threshold
+    var sum = 0
+    for (i in 0 until k) sum += arr[i]
+    var count = if (sum >= need) 1 else 0
+    for (i in k until arr.size) {
+        sum += arr[i] - arr[i - k]
+        if (sum >= need) count++
+    }
+    return count
+}
+@@@LANG swift
+func numOfSubarrays(_ arr: [Int], _ k: Int, _ threshold: Int) -> Int {
+    let need = k * threshold
+    var sum = 0
+    for i in 0..<k { sum += arr[i] }
+    var count = sum >= need ? 1 : 0
+    for i in k..<arr.count {
+        sum += arr[i] - arr[i - k]
+        if sum >= need { count += 1 }
+    }
+    return count
+}
+@@@LANG rust
+fn numOfSubarrays(arr: Vec<i32>, k: i32, threshold: i32) -> i32 {
+    let window = k as usize;
+    let need = k * threshold;
+    let mut sum = 0;
+    for i in 0..window {
+        sum += arr[i];
+    }
+    let mut count = if sum >= need { 1 } else { 0 };
+    for i in window..arr.len() {
+        sum += arr[i] - arr[i - window];
+        if sum >= need {
+            count += 1;
+        }
+    }
+    count
+}
+@@@LANG php
+function numOfSubarrays($arr, $k, $threshold) {
+    $need = $k * $threshold;
+    $sum = 0;
+    for ($i = 0; $i < $k; $i++) $sum += $arr[$i];
+    $count = $sum >= $need ? 1 : 0;
+    $n = count($arr);
+    for ($i = $k; $i < $n; $i++) {
+        $sum += $arr[$i] - $arr[$i - $k];
+        if ($sum >= $need) $count++;
+    }
+    return $count;
+}
+@@@LANG ruby
+def numOfSubarrays(arr, k, threshold)
+  need = k * threshold
+  sum = arr[0, k].sum
+  count = sum >= need ? 1 : 0
+  (k...arr.length).each do |i|
+    sum += arr[i] - arr[i - k]
+    count += 1 if sum >= need
+  end
+  count
+end
+
+@@@PROBLEM subarray-product-less-than-k
+@@@LANG typescript
+function numSubarrayProductLessThanK(nums: number[], k: number): number {
+    if (k <= 1) return 0;
+    var product = 1;
+    var left = 0;
+    var count = 0;
+    for (var right = 0; right < nums.length; right++) {
+        product *= nums[right];
+        while (product >= k) {
+            product = product / nums[left];
+            left++;
+        }
+        count += right - left + 1;
+    }
+    return count;
+}
+@@@LANG java
+public static int numSubarrayProductLessThanK(int[] nums, int k) {
+    if (k <= 1) return 0;
+    long product = 1;
+    int left = 0, count = 0;
+    for (int right = 0; right < nums.length; right++) {
+        product *= nums[right];
+        while (product >= k) {
+            product /= nums[left];
+            left++;
+        }
+        count += right - left + 1;
+    }
+    return count;
+}
+@@@LANG cpp
+int numSubarrayProductLessThanK(vector<int>& nums, int k) {
+    if (k <= 1) return 0;
+    long long product = 1;
+    int left = 0, count = 0;
+    for (int right = 0; right < (int) nums.size(); right++) {
+        product *= nums[right];
+        while (product >= k) {
+            product /= nums[left];
+            left++;
+        }
+        count += right - left + 1;
+    }
+    return count;
+}
+@@@LANG c
+int numSubarrayProductLessThanK(int* nums, int numsSize, int k) {
+    if (k <= 1) return 0;
+    long long product = 1;
+    int left = 0, count = 0;
+    for (int right = 0; right < numsSize; right++) {
+        product *= nums[right];
+        while (product >= k) {
+            product /= nums[left];
+            left++;
+        }
+        count += right - left + 1;
+    }
+    return count;
+}
+@@@LANG csharp
+public static int NumSubarrayProductLessThanK(int[] nums, int k)
+{
+    if (k <= 1) return 0;
+    long product = 1;
+    int left = 0, count = 0;
+    for (int right = 0; right < nums.Length; right++)
+    {
+        product *= nums[right];
+        while (product >= k)
+        {
+            product /= nums[left];
+            left++;
+        }
+        count += right - left + 1;
+    }
+    return count;
+}
+@@@LANG go
+func numSubarrayProductLessThanK(nums []int, k int) int {
+	if k <= 1 {
+		return 0
+	}
+	product := 1
+	left, count := 0, 0
+	for right := 0; right < len(nums); right++ {
+		product *= nums[right]
+		for product >= k {
+			product /= nums[left]
+			left++
+		}
+		count += right - left + 1
+	}
+	return count
+}
+@@@LANG kotlin
+fun numSubarrayProductLessThanK(nums: IntArray, k: Int): Int {
+    if (k <= 1) return 0
+    var product = 1L
+    var left = 0
+    var count = 0
+    for (right in nums.indices) {
+        product *= nums[right]
+        while (product >= k) {
+            product /= nums[left]
+            left++
+        }
+        count += right - left + 1
+    }
+    return count
+}
+@@@LANG swift
+func numSubarrayProductLessThanK(_ nums: [Int], _ k: Int) -> Int {
+    if k <= 1 { return 0 }
+    var product = 1
+    var left = 0
+    var count = 0
+    for right in 0..<nums.count {
+        product *= nums[right]
+        while product >= k {
+            product /= nums[left]
+            left += 1
+        }
+        count += right - left + 1
+    }
+    return count
+}
+@@@LANG rust
+fn numSubarrayProductLessThanK(nums: Vec<i32>, k: i32) -> i32 {
+    if k <= 1 {
+        return 0;
+    }
+    let limit = k as i64;
+    let mut product: i64 = 1;
+    let mut left = 0usize;
+    let mut count = 0i32;
+    for right in 0..nums.len() {
+        product *= nums[right] as i64;
+        while product >= limit {
+            product /= nums[left] as i64;
+            left += 1;
+        }
+        count += (right + 1 - left) as i32;
+    }
+    count
+}
+@@@LANG php
+function numSubarrayProductLessThanK($nums, $k) {
+    if ($k <= 1) return 0;
+    $product = 1;
+    $left = 0;
+    $count = 0;
+    $n = count($nums);
+    for ($right = 0; $right < $n; $right++) {
+        $product *= $nums[$right];
+        while ($product >= $k) {
+            $product = intdiv($product, $nums[$left]);
+            $left++;
+        }
+        $count += $right - $left + 1;
+    }
+    return $count;
+}
+@@@LANG ruby
+def numSubarrayProductLessThanK(nums, k)
+  return 0 if k <= 1
+  product = 1
+  left = 0
+  count = 0
+  nums.each_with_index do |x, right|
+    product *= x
+    while product >= k
+      product /= nums[left]
+      left += 1
+    end
+    count += right - left + 1
+  end
+  count
+end
+
+@@@PROBLEM contiguous-array
+@@@LANG typescript
+function findMaxLength(nums: number[]): number {
+    var firstAt: { [key: string]: number } = {};
+    firstAt["0"] = -1;
+    var balance = 0;
+    var best = 0;
+    for (var i = 0; i < nums.length; i++) {
+        balance += nums[i] === 1 ? 1 : -1;
+        var key = String(balance);
+        if (firstAt[key] !== undefined) {
+            var len = i - firstAt[key];
+            if (len > best) best = len;
+        } else {
+            firstAt[key] = i;
+        }
+    }
+    return best;
+}
+@@@LANG java
+public static int findMaxLength(int[] nums) {
+    Map<Integer, Integer> firstAt = new HashMap<>();
+    firstAt.put(0, -1);
+    int balance = 0, best = 0;
+    for (int i = 0; i < nums.length; i++) {
+        balance += nums[i] == 1 ? 1 : -1;
+        Integer seen = firstAt.get(balance);
+        if (seen != null) {
+            best = Math.max(best, i - seen);
+        } else {
+            firstAt.put(balance, i);
+        }
+    }
+    return best;
+}
+@@@LANG cpp
+int findMaxLength(vector<int>& nums) {
+    unordered_map<int, int> firstAt;
+    firstAt[0] = -1;
+    int balance = 0, best = 0;
+    for (int i = 0; i < (int) nums.size(); i++) {
+        balance += nums[i] == 1 ? 1 : -1;
+        if (firstAt.count(balance)) {
+            best = max(best, i - firstAt[balance]);
+        } else {
+            firstAt[balance] = i;
+        }
+    }
+    return best;
+}
+@@@LANG c
+int findMaxLength(int* nums, int numsSize) {
+    int size = 2 * numsSize + 1;
+    int* firstAt = (int*) malloc(sizeof(int) * size);
+    for (int i = 0; i < size; i++) firstAt[i] = -2;
+    firstAt[numsSize] = -1;
+    int balance = 0, best = 0;
+    for (int i = 0; i < numsSize; i++) {
+        balance += nums[i] == 1 ? 1 : -1;
+        int idx = balance + numsSize;
+        if (firstAt[idx] != -2) {
+            int len = i - firstAt[idx];
+            if (len > best) best = len;
+        } else {
+            firstAt[idx] = i;
+        }
+    }
+    free(firstAt);
+    return best;
+}
+@@@LANG csharp
+public static int FindMaxLength(int[] nums)
+{
+    var firstAt = new Dictionary<int, int>();
+    firstAt[0] = -1;
+    int balance = 0, best = 0;
+    for (int i = 0; i < nums.Length; i++)
+    {
+        balance += nums[i] == 1 ? 1 : -1;
+        if (firstAt.ContainsKey(balance))
+        {
+            best = Math.Max(best, i - firstAt[balance]);
+        }
+        else
+        {
+            firstAt[balance] = i;
+        }
+    }
+    return best;
+}
+@@@LANG go
+func findMaxLength(nums []int) int {
+	firstAt := map[int]int{0: -1}
+	balance, best := 0, 0
+	for i, x := range nums {
+		if x == 1 {
+			balance++
+		} else {
+			balance--
+		}
+		if seen, ok := firstAt[balance]; ok {
+			if i-seen > best {
+				best = i - seen
+			}
+		} else {
+			firstAt[balance] = i
+		}
+	}
+	return best
+}
+@@@LANG kotlin
+fun findMaxLength(nums: IntArray): Int {
+    val firstAt = HashMap<Int, Int>()
+    firstAt[0] = -1
+    var balance = 0
+    var best = 0
+    for (i in nums.indices) {
+        balance += if (nums[i] == 1) 1 else -1
+        val seen = firstAt[balance]
+        if (seen != null) {
+            if (i - seen > best) best = i - seen
+        } else {
+            firstAt[balance] = i
+        }
+    }
+    return best
+}
+@@@LANG swift
+func findMaxLength(_ nums: [Int]) -> Int {
+    var firstAt: [Int: Int] = [0: -1]
+    var balance = 0
+    var best = 0
+    for i in 0..<nums.count {
+        balance += nums[i] == 1 ? 1 : -1
+        if let seen = firstAt[balance] {
+            if i - seen > best { best = i - seen }
+        } else {
+            firstAt[balance] = i
+        }
+    }
+    return best
+}
+@@@LANG rust
+fn findMaxLength(nums: Vec<i32>) -> i32 {
+    use std::collections::HashMap;
+    let mut first_at: HashMap<i32, i32> = HashMap::new();
+    first_at.insert(0, -1);
+    let mut balance = 0;
+    let mut best = 0;
+    for i in 0..nums.len() {
+        balance += if nums[i] == 1 { 1 } else { -1 };
+        let idx = i as i32;
+        match first_at.get(&balance) {
+            Some(seen) => {
+                if idx - *seen > best {
+                    best = idx - *seen;
+                }
+            }
+            None => {
+                first_at.insert(balance, idx);
+            }
+        }
+    }
+    best
+}
+@@@LANG php
+function findMaxLength($nums) {
+    $firstAt = array(0 => -1);
+    $balance = 0;
+    $best = 0;
+    $n = count($nums);
+    for ($i = 0; $i < $n; $i++) {
+        $balance += $nums[$i] === 1 ? 1 : -1;
+        if (array_key_exists($balance, $firstAt)) {
+            $len = $i - $firstAt[$balance];
+            if ($len > $best) $best = $len;
+        } else {
+            $firstAt[$balance] = $i;
+        }
+    }
+    return $best;
+}
+@@@LANG ruby
+def findMaxLength(nums)
+  first_at = { 0 => -1 }
+  balance = 0
+  best = 0
+  nums.each_with_index do |x, i|
+    balance += x == 1 ? 1 : -1
+    if first_at.key?(balance)
+      len = i - first_at[balance]
+      best = len if len > best
+    else
+      first_at[balance] = i
+    end
+  end
+  best
+end
+
+@@@PROBLEM continuous-subarray-sum
+@@@LANG typescript
+function checkSubarraySum(nums: number[], k: number): boolean {
+    var firstAt: { [key: string]: number } = {};
+    firstAt["0"] = -1;
+    var sum = 0;
+    for (var i = 0; i < nums.length; i++) {
+        sum += nums[i];
+        var r = ((sum % k) + k) % k;
+        var key = String(r);
+        if (firstAt[key] !== undefined) {
+            if (i - firstAt[key] >= 2) return true;
+        } else {
+            firstAt[key] = i;
+        }
+    }
+    return false;
+}
+@@@LANG java
+public static boolean checkSubarraySum(int[] nums, int k) {
+    Map<Integer, Integer> firstAt = new HashMap<>();
+    firstAt.put(0, -1);
+    int sum = 0;
+    for (int i = 0; i < nums.length; i++) {
+        sum += nums[i];
+        int r = ((sum % k) + k) % k;
+        Integer seen = firstAt.get(r);
+        if (seen != null) {
+            if (i - seen >= 2) return true;
+        } else {
+            firstAt.put(r, i);
+        }
+    }
+    return false;
+}
+@@@LANG cpp
+bool checkSubarraySum(vector<int>& nums, int k) {
+    unordered_map<int, int> firstAt;
+    firstAt[0] = -1;
+    int sum = 0;
+    for (int i = 0; i < (int) nums.size(); i++) {
+        sum += nums[i];
+        int r = ((sum % k) + k) % k;
+        if (firstAt.count(r)) {
+            if (i - firstAt[r] >= 2) return true;
+        } else {
+            firstAt[r] = i;
+        }
+    }
+    return false;
+}
+@@@LANG c
+bool checkSubarraySum(int* nums, int numsSize, int k) {
+    int* firstAt = (int*) malloc(sizeof(int) * k);
+    for (int i = 0; i < k; i++) firstAt[i] = -2;
+    firstAt[0] = -1;
+    int sum = 0;
+    bool found = false;
+    for (int i = 0; i < numsSize; i++) {
+        sum += nums[i];
+        int r = ((sum % k) + k) % k;
+        if (firstAt[r] != -2) {
+            if (i - firstAt[r] >= 2) { found = true; break; }
+        } else {
+            firstAt[r] = i;
+        }
+    }
+    free(firstAt);
+    return found;
+}
+@@@LANG csharp
+public static bool CheckSubarraySum(int[] nums, int k)
+{
+    var firstAt = new Dictionary<int, int>();
+    firstAt[0] = -1;
+    int sum = 0;
+    for (int i = 0; i < nums.Length; i++)
+    {
+        sum += nums[i];
+        int r = ((sum % k) + k) % k;
+        if (firstAt.ContainsKey(r))
+        {
+            if (i - firstAt[r] >= 2) return true;
+        }
+        else
+        {
+            firstAt[r] = i;
+        }
+    }
+    return false;
+}
+@@@LANG go
+func checkSubarraySum(nums []int, k int) bool {
+	firstAt := map[int]int{0: -1}
+	sum := 0
+	for i, x := range nums {
+		sum += x
+		r := ((sum % k) + k) % k
+		if seen, ok := firstAt[r]; ok {
+			if i-seen >= 2 {
+				return true
+			}
+		} else {
+			firstAt[r] = i
+		}
+	}
+	return false
+}
+@@@LANG kotlin
+fun checkSubarraySum(nums: IntArray, k: Int): Boolean {
+    val firstAt = HashMap<Int, Int>()
+    firstAt[0] = -1
+    var sum = 0
+    for (i in nums.indices) {
+        sum += nums[i]
+        val r = ((sum % k) + k) % k
+        val seen = firstAt[r]
+        if (seen != null) {
+            if (i - seen >= 2) return true
+        } else {
+            firstAt[r] = i
+        }
+    }
+    return false
+}
+@@@LANG swift
+func checkSubarraySum(_ nums: [Int], _ k: Int) -> Bool {
+    var firstAt: [Int: Int] = [0: -1]
+    var sum = 0
+    for i in 0..<nums.count {
+        sum += nums[i]
+        let r = ((sum % k) + k) % k
+        if let seen = firstAt[r] {
+            if i - seen >= 2 { return true }
+        } else {
+            firstAt[r] = i
+        }
+    }
+    return false
+}
+@@@LANG rust
+fn checkSubarraySum(nums: Vec<i32>, k: i32) -> bool {
+    use std::collections::HashMap;
+    let mut first_at: HashMap<i32, i32> = HashMap::new();
+    first_at.insert(0, -1);
+    let mut sum = 0;
+    for i in 0..nums.len() {
+        sum += nums[i];
+        let r = ((sum % k) + k) % k;
+        let idx = i as i32;
+        match first_at.get(&r) {
+            Some(seen) => {
+                if idx - *seen >= 2 {
+                    return true;
+                }
+            }
+            None => {
+                first_at.insert(r, idx);
+            }
+        }
+    }
+    false
+}
+@@@LANG php
+function checkSubarraySum($nums, $k) {
+    $firstAt = array(0 => -1);
+    $sum = 0;
+    $n = count($nums);
+    for ($i = 0; $i < $n; $i++) {
+        $sum += $nums[$i];
+        $r = (($sum % $k) + $k) % $k;
+        if (array_key_exists($r, $firstAt)) {
+            if ($i - $firstAt[$r] >= 2) return true;
+        } else {
+            $firstAt[$r] = $i;
+        }
+    }
+    return false;
+}
+@@@LANG ruby
+def checkSubarraySum(nums, k)
+  first_at = { 0 => -1 }
+  sum = 0
+  nums.each_with_index do |x, i|
+    sum += x
+    r = sum % k
+    if first_at.key?(r)
+      return true if i - first_at[r] >= 2
+    else
+      first_at[r] = i
+    end
+  end
+  false
+end
+
+@@@PROBLEM longest-subarray-of-1s-after-deleting-one-element
+@@@LANG typescript
+function longestSubarray(nums: number[]): number {
+    var left = 0;
+    var zeros = 0;
+    var best = 0;
+    for (var right = 0; right < nums.length; right++) {
+        if (nums[right] === 0) zeros++;
+        while (zeros > 1) {
+            if (nums[left] === 0) zeros--;
+            left++;
+        }
+        var len = right - left;
+        if (len > best) best = len;
+    }
+    return best;
+}
+@@@LANG java
+public static int longestSubarray(int[] nums) {
+    int left = 0, zeros = 0, best = 0;
+    for (int right = 0; right < nums.length; right++) {
+        if (nums[right] == 0) zeros++;
+        while (zeros > 1) {
+            if (nums[left] == 0) zeros--;
+            left++;
+        }
+        best = Math.max(best, right - left);
+    }
+    return best;
+}
+@@@LANG cpp
+int longestSubarray(vector<int>& nums) {
+    int left = 0, zeros = 0, best = 0;
+    for (int right = 0; right < (int) nums.size(); right++) {
+        if (nums[right] == 0) zeros++;
+        while (zeros > 1) {
+            if (nums[left] == 0) zeros--;
+            left++;
+        }
+        best = max(best, right - left);
+    }
+    return best;
+}
+@@@LANG c
+int longestSubarray(int* nums, int numsSize) {
+    int left = 0, zeros = 0, best = 0;
+    for (int right = 0; right < numsSize; right++) {
+        if (nums[right] == 0) zeros++;
+        while (zeros > 1) {
+            if (nums[left] == 0) zeros--;
+            left++;
+        }
+        int len = right - left;
+        if (len > best) best = len;
+    }
+    return best;
+}
+@@@LANG csharp
+public static int LongestSubarray(int[] nums)
+{
+    int left = 0, zeros = 0, best = 0;
+    for (int right = 0; right < nums.Length; right++)
+    {
+        if (nums[right] == 0) zeros++;
+        while (zeros > 1)
+        {
+            if (nums[left] == 0) zeros--;
+            left++;
+        }
+        best = Math.Max(best, right - left);
+    }
+    return best;
+}
+@@@LANG go
+func longestSubarray(nums []int) int {
+	left, zeros, best := 0, 0, 0
+	for right := 0; right < len(nums); right++ {
+		if nums[right] == 0 {
+			zeros++
+		}
+		for zeros > 1 {
+			if nums[left] == 0 {
+				zeros--
+			}
+			left++
+		}
+		if right-left > best {
+			best = right - left
+		}
+	}
+	return best
+}
+@@@LANG kotlin
+fun longestSubarray(nums: IntArray): Int {
+    var left = 0
+    var zeros = 0
+    var best = 0
+    for (right in nums.indices) {
+        if (nums[right] == 0) zeros++
+        while (zeros > 1) {
+            if (nums[left] == 0) zeros--
+            left++
+        }
+        if (right - left > best) best = right - left
+    }
+    return best
+}
+@@@LANG swift
+func longestSubarray(_ nums: [Int]) -> Int {
+    var left = 0
+    var zeros = 0
+    var best = 0
+    for right in 0..<nums.count {
+        if nums[right] == 0 { zeros += 1 }
+        while zeros > 1 {
+            if nums[left] == 0 { zeros -= 1 }
+            left += 1
+        }
+        if right - left > best { best = right - left }
+    }
+    return best
+}
+@@@LANG rust
+fn longestSubarray(nums: Vec<i32>) -> i32 {
+    let mut left = 0usize;
+    let mut zeros = 0;
+    let mut best = 0usize;
+    for right in 0..nums.len() {
+        if nums[right] == 0 {
+            zeros += 1;
+        }
+        while zeros > 1 {
+            if nums[left] == 0 {
+                zeros -= 1;
+            }
+            left += 1;
+        }
+        if right - left > best {
+            best = right - left;
+        }
+    }
+    best as i32
+}
+@@@LANG php
+function longestSubarray($nums) {
+    $left = 0;
+    $zeros = 0;
+    $best = 0;
+    $n = count($nums);
+    for ($right = 0; $right < $n; $right++) {
+        if ($nums[$right] === 0) $zeros++;
+        while ($zeros > 1) {
+            if ($nums[$left] === 0) $zeros--;
+            $left++;
+        }
+        $len = $right - $left;
+        if ($len > $best) $best = $len;
+    }
+    return $best;
+}
+@@@LANG ruby
+def longestSubarray(nums)
+  left = 0
+  zeros = 0
+  best = 0
+  nums.each_with_index do |x, right|
+    zeros += 1 if x == 0
+    while zeros > 1
+      zeros -= 1 if nums[left] == 0
+      left += 1
+    end
+    best = right - left if right - left > best
+  end
+  best
+end
+
+@@@PROBLEM minimum-operations-to-reduce-x-to-zero
+@@@LANG typescript
+function minOperations(nums: number[], x: number): number {
+    var total = 0;
+    for (var i = 0; i < nums.length; i++) total += nums[i];
+    var target = total - x;
+    if (target < 0) return -1;
+    if (target === 0) return nums.length;
+    var left = 0;
+    var sum = 0;
+    var best = -1;
+    for (var right = 0; right < nums.length; right++) {
+        sum += nums[right];
+        while (sum > target && left <= right) {
+            sum -= nums[left];
+            left++;
+        }
+        if (sum === target) {
+            var len = right - left + 1;
+            if (len > best) best = len;
+        }
+    }
+    return best === -1 ? -1 : nums.length - best;
+}
+@@@LANG java
+public static int minOperations(int[] nums, int x) {
+    int total = 0;
+    for (int v : nums) total += v;
+    int target = total - x;
+    if (target < 0) return -1;
+    if (target == 0) return nums.length;
+    int left = 0, sum = 0, best = -1;
+    for (int right = 0; right < nums.length; right++) {
+        sum += nums[right];
+        while (sum > target && left <= right) {
+            sum -= nums[left];
+            left++;
+        }
+        if (sum == target) best = Math.max(best, right - left + 1);
+    }
+    return best == -1 ? -1 : nums.length - best;
+}
+@@@LANG cpp
+int minOperations(vector<int>& nums, int x) {
+    int total = 0;
+    for (int v : nums) total += v;
+    int target = total - x;
+    if (target < 0) return -1;
+    if (target == 0) return (int) nums.size();
+    int left = 0, sum = 0, best = -1;
+    for (int right = 0; right < (int) nums.size(); right++) {
+        sum += nums[right];
+        while (sum > target && left <= right) {
+            sum -= nums[left];
+            left++;
+        }
+        if (sum == target) best = max(best, right - left + 1);
+    }
+    return best == -1 ? -1 : (int) nums.size() - best;
+}
+@@@LANG c
+int minOperations(int* nums, int numsSize, int x) {
+    int total = 0;
+    for (int i = 0; i < numsSize; i++) total += nums[i];
+    int target = total - x;
+    if (target < 0) return -1;
+    if (target == 0) return numsSize;
+    int left = 0, sum = 0, best = -1;
+    for (int right = 0; right < numsSize; right++) {
+        sum += nums[right];
+        while (sum > target && left <= right) {
+            sum -= nums[left];
+            left++;
+        }
+        if (sum == target) {
+            int len = right - left + 1;
+            if (len > best) best = len;
+        }
+    }
+    return best == -1 ? -1 : numsSize - best;
+}
+@@@LANG csharp
+public static int MinOperations(int[] nums, int x)
+{
+    int total = 0;
+    foreach (int v in nums) total += v;
+    int target = total - x;
+    if (target < 0) return -1;
+    if (target == 0) return nums.Length;
+    int left = 0, sum = 0, best = -1;
+    for (int right = 0; right < nums.Length; right++)
+    {
+        sum += nums[right];
+        while (sum > target && left <= right)
+        {
+            sum -= nums[left];
+            left++;
+        }
+        if (sum == target) best = Math.Max(best, right - left + 1);
+    }
+    return best == -1 ? -1 : nums.Length - best;
+}
+@@@LANG go
+func minOperations(nums []int, x int) int {
+	total := 0
+	for _, v := range nums {
+		total += v
+	}
+	target := total - x
+	if target < 0 {
+		return -1
+	}
+	if target == 0 {
+		return len(nums)
+	}
+	left, sum, best := 0, 0, -1
+	for right := 0; right < len(nums); right++ {
+		sum += nums[right]
+		for sum > target && left <= right {
+			sum -= nums[left]
+			left++
+		}
+		if sum == target && right-left+1 > best {
+			best = right - left + 1
+		}
+	}
+	if best == -1 {
+		return -1
+	}
+	return len(nums) - best
+}
+@@@LANG kotlin
+fun minOperations(nums: IntArray, x: Int): Int {
+    var total = 0
+    for (v in nums) total += v
+    val target = total - x
+    if (target < 0) return -1
+    if (target == 0) return nums.size
+    var left = 0
+    var sum = 0
+    var best = -1
+    for (right in nums.indices) {
+        sum += nums[right]
+        while (sum > target && left <= right) {
+            sum -= nums[left]
+            left++
+        }
+        if (sum == target && right - left + 1 > best) best = right - left + 1
+    }
+    return if (best == -1) -1 else nums.size - best
+}
+@@@LANG swift
+func minOperations(_ nums: [Int], _ x: Int) -> Int {
+    var total = 0
+    for v in nums { total += v }
+    let target = total - x
+    if target < 0 { return -1 }
+    if target == 0 { return nums.count }
+    var left = 0
+    var sum = 0
+    var best = -1
+    for right in 0..<nums.count {
+        sum += nums[right]
+        while sum > target && left <= right {
+            sum -= nums[left]
+            left += 1
+        }
+        if sum == target && right - left + 1 > best { best = right - left + 1 }
+    }
+    return best == -1 ? -1 : nums.count - best
+}
+@@@LANG rust
+fn minOperations(nums: Vec<i32>, x: i32) -> i32 {
+    let total: i32 = nums.iter().sum();
+    let target = total - x;
+    if target < 0 {
+        return -1;
+    }
+    if target == 0 {
+        return nums.len() as i32;
+    }
+    let mut left = 0usize;
+    let mut sum = 0;
+    let mut best: i32 = -1;
+    for right in 0..nums.len() {
+        sum += nums[right];
+        while sum > target && left <= right {
+            sum -= nums[left];
+            left += 1;
+        }
+        if sum == target {
+            let len = (right - left + 1) as i32;
+            if len > best {
+                best = len;
+            }
+        }
+    }
+    if best == -1 {
+        -1
+    } else {
+        nums.len() as i32 - best
+    }
+}
+@@@LANG php
+function minOperations($nums, $x) {
+    $total = array_sum($nums);
+    $target = $total - $x;
+    if ($target < 0) return -1;
+    $n = count($nums);
+    if ($target === 0) return $n;
+    $left = 0;
+    $sum = 0;
+    $best = -1;
+    for ($right = 0; $right < $n; $right++) {
+        $sum += $nums[$right];
+        while ($sum > $target && $left <= $right) {
+            $sum -= $nums[$left];
+            $left++;
+        }
+        if ($sum === $target) {
+            $len = $right - $left + 1;
+            if ($len > $best) $best = $len;
+        }
+    }
+    return $best === -1 ? -1 : $n - $best;
+}
+@@@LANG ruby
+def minOperations(nums, x)
+  total = nums.sum
+  target = total - x
+  return -1 if target < 0
+  return nums.length if target == 0
+  left = 0
+  sum = 0
+  best = -1
+  nums.each_with_index do |v, right|
+    sum += v
+    while sum > target && left <= right
+      sum -= nums[left]
+      left += 1
+    end
+    if sum == target
+      len = right - left + 1
+      best = len if len > best
+    end
+  end
+  best == -1 ? -1 : nums.length - best
+end
+
+@@@PROBLEM maximum-erasure-value
+@@@LANG typescript
+function maximumUniqueSubarray(nums: number[]): number {
+    var inWindow: { [key: string]: boolean } = {};
+    var left = 0;
+    var sum = 0;
+    var best = 0;
+    for (var right = 0; right < nums.length; right++) {
+        while (inWindow[String(nums[right])] === true) {
+            inWindow[String(nums[left])] = false;
+            sum -= nums[left];
+            left++;
+        }
+        inWindow[String(nums[right])] = true;
+        sum += nums[right];
+        if (sum > best) best = sum;
+    }
+    return best;
+}
+@@@LANG java
+public static int maximumUniqueSubarray(int[] nums) {
+    Set<Integer> inWindow = new HashSet<>();
+    int left = 0, sum = 0, best = 0;
+    for (int right = 0; right < nums.length; right++) {
+        while (inWindow.contains(nums[right])) {
+            inWindow.remove(nums[left]);
+            sum -= nums[left];
+            left++;
+        }
+        inWindow.add(nums[right]);
+        sum += nums[right];
+        if (sum > best) best = sum;
+    }
+    return best;
+}
+@@@LANG cpp
+int maximumUniqueSubarray(vector<int>& nums) {
+    unordered_set<int> inWindow;
+    int left = 0, sum = 0, best = 0;
+    for (int right = 0; right < (int) nums.size(); right++) {
+        while (inWindow.count(nums[right])) {
+            inWindow.erase(nums[left]);
+            sum -= nums[left];
+            left++;
+        }
+        inWindow.insert(nums[right]);
+        sum += nums[right];
+        if (sum > best) best = sum;
+    }
+    return best;
+}
+@@@LANG c
+int maximumUniqueSubarray(int* nums, int numsSize) {
+    bool inWindow[1001];
+    for (int i = 0; i <= 1000; i++) inWindow[i] = false;
+    int left = 0, sum = 0, best = 0;
+    for (int right = 0; right < numsSize; right++) {
+        while (inWindow[nums[right]]) {
+            inWindow[nums[left]] = false;
+            sum -= nums[left];
+            left++;
+        }
+        inWindow[nums[right]] = true;
+        sum += nums[right];
+        if (sum > best) best = sum;
+    }
+    return best;
+}
+@@@LANG csharp
+public static int MaximumUniqueSubarray(int[] nums)
+{
+    var inWindow = new HashSet<int>();
+    int left = 0, sum = 0, best = 0;
+    for (int right = 0; right < nums.Length; right++)
+    {
+        while (inWindow.Contains(nums[right]))
+        {
+            inWindow.Remove(nums[left]);
+            sum -= nums[left];
+            left++;
+        }
+        inWindow.Add(nums[right]);
+        sum += nums[right];
+        if (sum > best) best = sum;
+    }
+    return best;
+}
+@@@LANG go
+func maximumUniqueSubarray(nums []int) int {
+	inWindow := make(map[int]bool)
+	left, sum, best := 0, 0, 0
+	for right := 0; right < len(nums); right++ {
+		for inWindow[nums[right]] {
+			inWindow[nums[left]] = false
+			sum -= nums[left]
+			left++
+		}
+		inWindow[nums[right]] = true
+		sum += nums[right]
+		if sum > best {
+			best = sum
+		}
+	}
+	return best
+}
+@@@LANG kotlin
+fun maximumUniqueSubarray(nums: IntArray): Int {
+    val inWindow = HashSet<Int>()
+    var left = 0
+    var sum = 0
+    var best = 0
+    for (right in nums.indices) {
+        while (inWindow.contains(nums[right])) {
+            inWindow.remove(nums[left])
+            sum -= nums[left]
+            left++
+        }
+        inWindow.add(nums[right])
+        sum += nums[right]
+        if (sum > best) best = sum
+    }
+    return best
+}
+@@@LANG swift
+func maximumUniqueSubarray(_ nums: [Int]) -> Int {
+    var inWindow = Set<Int>()
+    var left = 0
+    var sum = 0
+    var best = 0
+    for right in 0..<nums.count {
+        while inWindow.contains(nums[right]) {
+            inWindow.remove(nums[left])
+            sum -= nums[left]
+            left += 1
+        }
+        inWindow.insert(nums[right])
+        sum += nums[right]
+        if sum > best { best = sum }
+    }
+    return best
+}
+@@@LANG rust
+fn maximumUniqueSubarray(nums: Vec<i32>) -> i32 {
+    use std::collections::HashSet;
+    let mut in_window: HashSet<i32> = HashSet::new();
+    let mut left = 0usize;
+    let mut sum = 0;
+    let mut best = 0;
+    for right in 0..nums.len() {
+        while in_window.contains(&nums[right]) {
+            in_window.remove(&nums[left]);
+            sum -= nums[left];
+            left += 1;
+        }
+        in_window.insert(nums[right]);
+        sum += nums[right];
+        if sum > best {
+            best = sum;
+        }
+    }
+    best
+}
+@@@LANG php
+function maximumUniqueSubarray($nums) {
+    $inWindow = array();
+    $left = 0;
+    $sum = 0;
+    $best = 0;
+    $n = count($nums);
+    for ($right = 0; $right < $n; $right++) {
+        while (isset($inWindow[$nums[$right]])) {
+            unset($inWindow[$nums[$left]]);
+            $sum -= $nums[$left];
+            $left++;
+        }
+        $inWindow[$nums[$right]] = true;
+        $sum += $nums[$right];
+        if ($sum > $best) $best = $sum;
+    }
+    return $best;
+}
+@@@LANG ruby
+def maximumUniqueSubarray(nums)
+  in_window = {}
+  left = 0
+  sum = 0
+  best = 0
+  nums.each_with_index do |x, right|
+    while in_window[x]
+      in_window.delete(nums[left])
+      sum -= nums[left]
+      left += 1
+    end
+    in_window[x] = true
+    sum += x
+    best = sum if sum > best
+  end
+  best
+end
+
+@@@PROBLEM binary-subarrays-with-sum
+@@@LANG typescript
+function numSubarraysWithSum(nums: number[], goal: number): number {
+    var count: { [key: string]: number } = {};
+    count["0"] = 1;
+    var sum = 0;
+    var total = 0;
+    for (var i = 0; i < nums.length; i++) {
+        sum += nums[i];
+        var wanted = String(sum - goal);
+        if (count[wanted] !== undefined) total += count[wanted];
+        var key = String(sum);
+        count[key] = (count[key] === undefined ? 0 : count[key]) + 1;
+    }
+    return total;
+}
+@@@LANG java
+public static int numSubarraysWithSum(int[] nums, int goal) {
+    Map<Integer, Integer> count = new HashMap<>();
+    count.put(0, 1);
+    int sum = 0, total = 0;
+    for (int v : nums) {
+        sum += v;
+        total += count.getOrDefault(sum - goal, 0);
+        count.put(sum, count.getOrDefault(sum, 0) + 1);
+    }
+    return total;
+}
+@@@LANG cpp
+int numSubarraysWithSum(vector<int>& nums, int goal) {
+    unordered_map<int, int> count;
+    count[0] = 1;
+    int sum = 0, total = 0;
+    for (int v : nums) {
+        sum += v;
+        auto it = count.find(sum - goal);
+        if (it != count.end()) total += it->second;
+        count[sum]++;
+    }
+    return total;
+}
+@@@LANG c
+int numSubarraysWithSum(int* nums, int numsSize, int goal) {
+    int* count = (int*) calloc(numsSize + 1, sizeof(int));
+    count[0] = 1;
+    int sum = 0, total = 0;
+    for (int i = 0; i < numsSize; i++) {
+        sum += nums[i];
+        int wanted = sum - goal;
+        if (wanted >= 0 && wanted <= numsSize) total += count[wanted];
+        count[sum]++;
+    }
+    free(count);
+    return total;
+}
+@@@LANG csharp
+public static int NumSubarraysWithSum(int[] nums, int goal)
+{
+    var count = new Dictionary<int, int>();
+    count[0] = 1;
+    int sum = 0, total = 0;
+    foreach (int v in nums)
+    {
+        sum += v;
+        if (count.ContainsKey(sum - goal)) total += count[sum - goal];
+        count[sum] = count.ContainsKey(sum) ? count[sum] + 1 : 1;
+    }
+    return total;
+}
+@@@LANG go
+func numSubarraysWithSum(nums []int, goal int) int {
+	count := map[int]int{0: 1}
+	sum, total := 0, 0
+	for _, v := range nums {
+		sum += v
+		total += count[sum-goal]
+		count[sum]++
+	}
+	return total
+}
+@@@LANG kotlin
+fun numSubarraysWithSum(nums: IntArray, goal: Int): Int {
+    val count = HashMap<Int, Int>()
+    count[0] = 1
+    var sum = 0
+    var total = 0
+    for (v in nums) {
+        sum += v
+        total += count[sum - goal] ?: 0
+        count[sum] = (count[sum] ?: 0) + 1
+    }
+    return total
+}
+@@@LANG swift
+func numSubarraysWithSum(_ nums: [Int], _ goal: Int) -> Int {
+    var count: [Int: Int] = [0: 1]
+    var sum = 0
+    var total = 0
+    for v in nums {
+        sum += v
+        total += count[sum - goal] ?? 0
+        count[sum, default: 0] += 1
+    }
+    return total
+}
+@@@LANG rust
+fn numSubarraysWithSum(nums: Vec<i32>, goal: i32) -> i32 {
+    use std::collections::HashMap;
+    let mut count: HashMap<i32, i32> = HashMap::new();
+    count.insert(0, 1);
+    let mut sum = 0;
+    let mut total = 0;
+    for v in nums.iter() {
+        sum += *v;
+        if let Some(c) = count.get(&(sum - goal)) {
+            total += *c;
+        }
+        *count.entry(sum).or_insert(0) += 1;
+    }
+    total
+}
+@@@LANG php
+function numSubarraysWithSum($nums, $goal) {
+    $count = array(0 => 1);
+    $sum = 0;
+    $total = 0;
+    foreach ($nums as $v) {
+        $sum += $v;
+        $wanted = $sum - $goal;
+        if (isset($count[$wanted])) $total += $count[$wanted];
+        $count[$sum] = isset($count[$sum]) ? $count[$sum] + 1 : 1;
+    }
+    return $total;
+}
+@@@LANG ruby
+def numSubarraysWithSum(nums, goal)
+  count = Hash.new(0)
+  count[0] = 1
+  sum = 0
+  total = 0
+  nums.each do |v|
+    sum += v
+    total += count[sum - goal]
+    count[sum] += 1
+  end
+  total
+end
+
+@@@PROBLEM count-number-of-nice-subarrays
+@@@LANG typescript
+function numberOfSubarrays(nums: number[], k: number): number {
+    var count: { [key: string]: number } = {};
+    count["0"] = 1;
+    var odds = 0;
+    var total = 0;
+    for (var i = 0; i < nums.length; i++) {
+        odds += nums[i] % 2;
+        var wanted = String(odds - k);
+        if (count[wanted] !== undefined) total += count[wanted];
+        var key = String(odds);
+        count[key] = (count[key] === undefined ? 0 : count[key]) + 1;
+    }
+    return total;
+}
+@@@LANG java
+public static int numberOfSubarrays(int[] nums, int k) {
+    Map<Integer, Integer> count = new HashMap<>();
+    count.put(0, 1);
+    int odds = 0, total = 0;
+    for (int v : nums) {
+        odds += v % 2;
+        total += count.getOrDefault(odds - k, 0);
+        count.put(odds, count.getOrDefault(odds, 0) + 1);
+    }
+    return total;
+}
+@@@LANG cpp
+int numberOfSubarrays(vector<int>& nums, int k) {
+    unordered_map<int, int> count;
+    count[0] = 1;
+    int odds = 0, total = 0;
+    for (int v : nums) {
+        odds += v % 2;
+        auto it = count.find(odds - k);
+        if (it != count.end()) total += it->second;
+        count[odds]++;
+    }
+    return total;
+}
+@@@LANG c
+int numberOfSubarrays(int* nums, int numsSize, int k) {
+    int* count = (int*) calloc(numsSize + 1, sizeof(int));
+    count[0] = 1;
+    int odds = 0, total = 0;
+    for (int i = 0; i < numsSize; i++) {
+        odds += nums[i] % 2;
+        int wanted = odds - k;
+        if (wanted >= 0 && wanted <= numsSize) total += count[wanted];
+        count[odds]++;
+    }
+    free(count);
+    return total;
+}
+@@@LANG csharp
+public static int NumberOfSubarrays(int[] nums, int k)
+{
+    var count = new Dictionary<int, int>();
+    count[0] = 1;
+    int odds = 0, total = 0;
+    foreach (int v in nums)
+    {
+        odds += v % 2;
+        if (count.ContainsKey(odds - k)) total += count[odds - k];
+        count[odds] = count.ContainsKey(odds) ? count[odds] + 1 : 1;
+    }
+    return total;
+}
+@@@LANG go
+func numberOfSubarrays(nums []int, k int) int {
+	count := map[int]int{0: 1}
+	odds, total := 0, 0
+	for _, v := range nums {
+		odds += v % 2
+		total += count[odds-k]
+		count[odds]++
+	}
+	return total
+}
+@@@LANG kotlin
+fun numberOfSubarrays(nums: IntArray, k: Int): Int {
+    val count = HashMap<Int, Int>()
+    count[0] = 1
+    var odds = 0
+    var total = 0
+    for (v in nums) {
+        odds += v % 2
+        total += count[odds - k] ?: 0
+        count[odds] = (count[odds] ?: 0) + 1
+    }
+    return total
+}
+@@@LANG swift
+func numberOfSubarrays(_ nums: [Int], _ k: Int) -> Int {
+    var count: [Int: Int] = [0: 1]
+    var odds = 0
+    var total = 0
+    for v in nums {
+        odds += v % 2
+        total += count[odds - k] ?? 0
+        count[odds, default: 0] += 1
+    }
+    return total
+}
+@@@LANG rust
+fn numberOfSubarrays(nums: Vec<i32>, k: i32) -> i32 {
+    use std::collections::HashMap;
+    let mut count: HashMap<i32, i32> = HashMap::new();
+    count.insert(0, 1);
+    let mut odds = 0;
+    let mut total = 0;
+    for v in nums.iter() {
+        odds += *v % 2;
+        if let Some(c) = count.get(&(odds - k)) {
+            total += *c;
+        }
+        *count.entry(odds).or_insert(0) += 1;
+    }
+    total
+}
+@@@LANG php
+function numberOfSubarrays($nums, $k) {
+    $count = array(0 => 1);
+    $odds = 0;
+    $total = 0;
+    foreach ($nums as $v) {
+        $odds += $v % 2;
+        $wanted = $odds - $k;
+        if (isset($count[$wanted])) $total += $count[$wanted];
+        $count[$odds] = isset($count[$odds]) ? $count[$odds] + 1 : 1;
+    }
+    return $total;
+}
+@@@LANG ruby
+def numberOfSubarrays(nums, k)
+  count = Hash.new(0)
+  count[0] = 1
+  odds = 0
+  total = 0
+  nums.each do |v|
+    odds += v % 2
+    total += count[odds - k]
+    count[odds] += 1
+  end
+  total
+end
+
+@@@PROBLEM remove-duplicates-from-sorted-array-ii
+@@@LANG typescript
+function removeDuplicates(nums: number[]): number[] {
+    var out: number[] = [];
+    for (var i = 0; i < nums.length; i++) {
+        if (out.length < 2 || out[out.length - 2] !== nums[i]) out.push(nums[i]);
+    }
+    return out;
+}
+@@@LANG java
+public static int[] removeDuplicates(int[] nums) {
+    int[] out = new int[nums.length];
+    int len = 0;
+    for (int v : nums) {
+        if (len < 2 || out[len - 2] != v) out[len++] = v;
+    }
+    return Arrays.copyOf(out, len);
+}
+@@@LANG cpp
+vector<int> removeDuplicates(vector<int>& nums) {
+    vector<int> out;
+    for (int v : nums) {
+        if (out.size() < 2 || out[out.size() - 2] != v) out.push_back(v);
+    }
+    return out;
+}
+@@@LANG c
+int* removeDuplicates(int* nums, int numsSize, int* returnSize) {
+    int* out = (int*) malloc(sizeof(int) * (numsSize > 0 ? numsSize : 1));
+    int len = 0;
+    for (int i = 0; i < numsSize; i++) {
+        if (len < 2 || out[len - 2] != nums[i]) out[len++] = nums[i];
+    }
+    *returnSize = len;
+    return out;
+}
+@@@LANG csharp
+public static int[] RemoveDuplicates(int[] nums)
+{
+    var out_ = new List<int>();
+    foreach (int v in nums)
+    {
+        if (out_.Count < 2 || out_[out_.Count - 2] != v) out_.Add(v);
+    }
+    return out_.ToArray();
+}
+@@@LANG go
+func removeDuplicates(nums []int) []int {
+	out := []int{}
+	for _, v := range nums {
+		if len(out) < 2 || out[len(out)-2] != v {
+			out = append(out, v)
+		}
+	}
+	return out
+}
+@@@LANG kotlin
+fun removeDuplicates(nums: IntArray): IntArray {
+    val out = ArrayList<Int>()
+    for (v in nums) {
+        if (out.size < 2 || out[out.size - 2] != v) out.add(v)
+    }
+    return out.toIntArray()
+}
+@@@LANG swift
+func removeDuplicates(_ nums: [Int]) -> [Int] {
+    var out: [Int] = []
+    for v in nums {
+        if out.count < 2 || out[out.count - 2] != v { out.append(v) }
+    }
+    return out
+}
+@@@LANG rust
+fn removeDuplicates(nums: Vec<i32>) -> Vec<i32> {
+    let mut out: Vec<i32> = Vec::new();
+    for v in nums.iter() {
+        let len = out.len();
+        if len < 2 || out[len - 2] != *v {
+            out.push(*v);
+        }
+    }
+    out
+}
+@@@LANG php
+function removeDuplicates($nums) {
+    $out = array();
+    foreach ($nums as $v) {
+        $len = count($out);
+        if ($len < 2 || $out[$len - 2] !== $v) $out[] = $v;
+    }
+    return $out;
+}
+@@@LANG ruby
+def removeDuplicates(nums)
+  out = []
+  nums.each do |v|
+    out << v if out.length < 2 || out[-2] != v
+  end
+  out
+end

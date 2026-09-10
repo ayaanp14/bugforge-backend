@@ -1,7 +1,7 @@
 /**
  * Seeds the hand-authored classic-problem catalog (scripts/catalog/*).
  *
- *   npx tsx scripts/seed-catalog.ts --seed [--count 5000] [--only <slug>]
+ *   npx tsx scripts/seed-catalog.ts --seed [--count 5000] [--only <slug,slug,…>]
  *   npx tsx scripts/seed-catalog.ts --validate [--only <slug>] [--lang js|py|all|<language>]
  *
  * Each problem gets: description/hints/signature, stub-only starter code for
@@ -26,7 +26,9 @@ const opt = (n: string) => {
   return i >= 0 && args[i + 1] ? args[i + 1] : null;
 };
 const HIDDEN = parseInt(opt("count") ?? "5000", 10);
-const ONLY = opt("only");
+// --only takes a comma-separated list, so one run can cover a whole authoring
+// wave without touching the problems already seeded at full case count.
+const ONLY = opt("only")?.split(",").map((x) => x.trim()).filter(Boolean) ?? null;
 
 function specs(): CatalogProblem[] {
   const seen = new Set<string>();
@@ -34,7 +36,7 @@ function specs(): CatalogProblem[] {
   for (const p of CATALOG) {
     if (seen.has(p.slug)) throw new Error(`duplicate slug in catalog: ${p.slug}`);
     seen.add(p.slug);
-    if (!ONLY || p.slug === ONLY) out.push(p);
+    if (!ONLY || ONLY.includes(p.slug)) out.push(p);
   }
   return out;
 }

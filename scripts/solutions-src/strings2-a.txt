@@ -1,0 +1,1591 @@
+@@@PROBLEM reverse-string
+@@@LANG typescript
+function reverseString(s: string): string {
+    var chars = s.split("");
+    var left = 0;
+    var right = chars.length - 1;
+    while (left < right) {
+        var t = chars[left];
+        chars[left] = chars[right];
+        chars[right] = t;
+        left++;
+        right--;
+    }
+    return chars.join("");
+}
+@@@LANG java
+public static String reverseString(String s) {
+    char[] chars = s.toCharArray();
+    int left = 0, right = chars.length - 1;
+    while (left < right) {
+        char t = chars[left];
+        chars[left] = chars[right];
+        chars[right] = t;
+        left++;
+        right--;
+    }
+    return new String(chars);
+}
+@@@LANG cpp
+string reverseString(string s) {
+    int left = 0, right = (int) s.size() - 1;
+    while (left < right) {
+        char t = s[left];
+        s[left] = s[right];
+        s[right] = t;
+        left++;
+        right--;
+    }
+    return s;
+}
+@@@LANG c
+char* reverseString(const char* s) {
+    int n = (int) strlen(s);
+    char* out = (char*) malloc(n + 1);
+    for (int i = 0; i < n; i++) out[i] = s[n - 1 - i];
+    out[n] = '\0';
+    return out;
+}
+@@@LANG csharp
+public static string ReverseString(string s)
+{
+    char[] chars = s.ToCharArray();
+    int left = 0, right = chars.Length - 1;
+    while (left < right)
+    {
+        char t = chars[left];
+        chars[left] = chars[right];
+        chars[right] = t;
+        left++;
+        right--;
+    }
+    return new string(chars);
+}
+@@@LANG go
+func reverseString(s string) string {
+	b := []byte(s)
+	for l, r := 0, len(b)-1; l < r; l, r = l+1, r-1 {
+		b[l], b[r] = b[r], b[l]
+	}
+	return string(b)
+}
+@@@LANG kotlin
+fun reverseString(s: String): String {
+    val chars = s.toCharArray()
+    var left = 0
+    var right = chars.size - 1
+    while (left < right) {
+        val t = chars[left]
+        chars[left] = chars[right]
+        chars[right] = t
+        left++
+        right--
+    }
+    return String(chars)
+}
+@@@LANG swift
+func reverseString(_ s: String) -> String {
+    return String(s.reversed())
+}
+@@@LANG rust
+fn reverseString(s: String) -> String {
+    let mut bytes = s.into_bytes();
+    bytes.reverse();
+    String::from_utf8(bytes).unwrap()
+}
+@@@LANG php
+function reverseString($s) {
+    return strrev($s);
+}
+@@@LANG ruby
+def reverseString(s)
+  s.reverse
+end
+
+@@@PROBLEM reverse-words-in-a-string
+@@@LANG typescript
+function reverseWords(s: string): string {
+    var words: string[] = [];
+    var pieces = s.split(" ");
+    for (var i = 0; i < pieces.length; i++) {
+        if (pieces[i].length > 0) words.push(pieces[i]);
+    }
+    words.reverse();
+    return words.join(" ");
+}
+@@@LANG java
+public static String reverseWords(String s) {
+    String[] pieces = s.split(" ");
+    List<String> words = new ArrayList<>();
+    for (String w : pieces) {
+        if (w.length() > 0) words.add(w);
+    }
+    Collections.reverse(words);
+    return String.join(" ", words);
+}
+@@@LANG cpp
+string reverseWords(string s) {
+    vector<string> words;
+    string cur = "";
+    for (char ch : s) {
+        if (ch == ' ') {
+            if (!cur.empty()) { words.push_back(cur); cur = ""; }
+        } else {
+            cur += ch;
+        }
+    }
+    if (!cur.empty()) words.push_back(cur);
+    string out = "";
+    for (int i = (int) words.size() - 1; i >= 0; i--) {
+        if (!out.empty()) out += " ";
+        out += words[i];
+    }
+    return out;
+}
+@@@LANG c
+char* reverseWords(const char* s) {
+    int n = (int) strlen(s);
+    char* out = (char*) malloc(n + 2);
+    int len = 0;
+    int end = n - 1;
+    while (end >= 0) {
+        while (end >= 0 && s[end] == ' ') end--;
+        if (end < 0) break;
+        int start = end;
+        while (start >= 0 && s[start] != ' ') start--;
+        if (len > 0) out[len++] = ' ';
+        for (int i = start + 1; i <= end; i++) out[len++] = s[i];
+        end = start;
+    }
+    out[len] = '\0';
+    return out;
+}
+@@@LANG csharp
+public static string ReverseWords(string s)
+{
+    var words = new List<string>();
+    foreach (string w in s.Split(' '))
+    {
+        if (w.Length > 0) words.Add(w);
+    }
+    words.Reverse();
+    return string.Join(" ", words);
+}
+@@@LANG go
+func reverseWords(s string) string {
+	words := strings.Fields(s)
+	for l, r := 0, len(words)-1; l < r; l, r = l+1, r-1 {
+		words[l], words[r] = words[r], words[l]
+	}
+	return strings.Join(words, " ")
+}
+@@@LANG kotlin
+fun reverseWords(s: String): String {
+    val words = ArrayList<String>()
+    for (w in s.split(" ")) {
+        if (w.isNotEmpty()) words.add(w)
+    }
+    words.reverse()
+    return words.joinToString(" ")
+}
+@@@LANG swift
+func reverseWords(_ s: String) -> String {
+    let words = s.split(separator: " ").map { String($0) }
+    return words.reversed().joined(separator: " ")
+}
+@@@LANG rust
+fn reverseWords(s: String) -> String {
+    let words: Vec<&str> = s.split_whitespace().collect();
+    let reversed: Vec<&str> = words.into_iter().rev().collect();
+    reversed.join(" ")
+}
+@@@LANG php
+function reverseWords($s) {
+    $words = array();
+    foreach (explode(" ", $s) as $w) {
+        if (strlen($w) > 0) $words[] = $w;
+    }
+    return implode(" ", array_reverse($words));
+}
+@@@LANG ruby
+def reverseWords(s)
+  s.split(" ").reject(&:empty?).reverse.join(" ")
+end
+
+@@@PROBLEM reverse-words-in-a-string-iii
+@@@LANG typescript
+function reverseWords(s: string): string {
+    var pieces = s.split(" ");
+    var out: string[] = [];
+    for (var i = 0; i < pieces.length; i++) {
+        out.push(pieces[i].split("").reverse().join(""));
+    }
+    return out.join(" ");
+}
+@@@LANG java
+public static String reverseWords(String s) {
+    String[] pieces = s.split(" ", -1);
+    StringBuilder out = new StringBuilder();
+    for (int i = 0; i < pieces.length; i++) {
+        if (i > 0) out.append(' ');
+        out.append(new StringBuilder(pieces[i]).reverse());
+    }
+    return out.toString();
+}
+@@@LANG cpp
+string reverseWords(string s) {
+    int i = 0;
+    int n = (int) s.size();
+    while (i < n) {
+        int j = i;
+        while (j < n && s[j] != ' ') j++;
+        reverse(s.begin() + i, s.begin() + j);
+        i = j + 1;
+    }
+    return s;
+}
+@@@LANG c
+char* reverseWords(const char* s) {
+    int n = (int) strlen(s);
+    char* out = (char*) malloc(n + 1);
+    int i = 0;
+    while (i < n) {
+        int j = i;
+        while (j < n && s[j] != ' ') j++;
+        for (int k = 0; k < j - i; k++) out[i + k] = s[j - 1 - k];
+        if (j < n) out[j] = ' ';
+        i = j + 1;
+    }
+    out[n] = '\0';
+    return out;
+}
+@@@LANG csharp
+public static string ReverseWords(string s)
+{
+    string[] pieces = s.Split(' ');
+    var out_ = new List<string>();
+    foreach (string w in pieces)
+    {
+        char[] chars = w.ToCharArray();
+        Array.Reverse(chars);
+        out_.Add(new string(chars));
+    }
+    return string.Join(" ", out_);
+}
+@@@LANG go
+func reverseWords(s string) string {
+	b := []byte(s)
+	i := 0
+	for i < len(b) {
+		j := i
+		for j < len(b) && b[j] != ' ' {
+			j++
+		}
+		for l, r := i, j-1; l < r; l, r = l+1, r-1 {
+			b[l], b[r] = b[r], b[l]
+		}
+		i = j + 1
+	}
+	return string(b)
+}
+@@@LANG kotlin
+fun reverseWords(s: String): String {
+    return s.split(" ").joinToString(" ") { it.reversed() }
+}
+@@@LANG swift
+func reverseWords(_ s: String) -> String {
+    let pieces = s.components(separatedBy: " ")
+    return pieces.map { String($0.reversed()) }.joined(separator: " ")
+}
+@@@LANG rust
+fn reverseWords(s: String) -> String {
+    let pieces: Vec<String> = s
+        .split(' ')
+        .map(|w| w.chars().rev().collect::<String>())
+        .collect();
+    pieces.join(" ")
+}
+@@@LANG php
+function reverseWords($s) {
+    $pieces = explode(" ", $s);
+    $out = array();
+    foreach ($pieces as $w) {
+        $out[] = strrev($w);
+    }
+    return implode(" ", $out);
+}
+@@@LANG ruby
+def reverseWords(s)
+  s.split(/ /).map(&:reverse).join(" ")
+end
+
+@@@PROBLEM reverse-vowels-of-a-string
+@@@LANG typescript
+function reverseVowels(s: string): string {
+    var vowels = "aeiouAEIOU";
+    var chars = s.split("");
+    var left = 0;
+    var right = chars.length - 1;
+    while (left < right) {
+        while (left < right && vowels.indexOf(chars[left]) < 0) left++;
+        while (left < right && vowels.indexOf(chars[right]) < 0) right--;
+        if (left < right) {
+            var t = chars[left];
+            chars[left] = chars[right];
+            chars[right] = t;
+            left++;
+            right--;
+        }
+    }
+    return chars.join("");
+}
+@@@LANG java
+public static String reverseVowels(String s) {
+    String vowels = "aeiouAEIOU";
+    char[] chars = s.toCharArray();
+    int left = 0, right = chars.length - 1;
+    while (left < right) {
+        while (left < right && vowels.indexOf(chars[left]) < 0) left++;
+        while (left < right && vowels.indexOf(chars[right]) < 0) right--;
+        if (left < right) {
+            char t = chars[left];
+            chars[left] = chars[right];
+            chars[right] = t;
+            left++;
+            right--;
+        }
+    }
+    return new String(chars);
+}
+@@@LANG cpp
+string reverseVowels(string s) {
+    string vowels = "aeiouAEIOU";
+    int left = 0, right = (int) s.size() - 1;
+    while (left < right) {
+        while (left < right && vowels.find(s[left]) == string::npos) left++;
+        while (left < right && vowels.find(s[right]) == string::npos) right--;
+        if (left < right) {
+            char t = s[left];
+            s[left] = s[right];
+            s[right] = t;
+            left++;
+            right--;
+        }
+    }
+    return s;
+}
+@@@LANG c
+static bool isVowelChar(char c) {
+    return c == 'a' || c == 'e' || c == 'i' || c == 'o' || c == 'u'
+        || c == 'A' || c == 'E' || c == 'I' || c == 'O' || c == 'U';
+}
+
+char* reverseVowels(const char* s) {
+    int n = (int) strlen(s);
+    char* out = (char*) malloc(n + 1);
+    for (int i = 0; i < n; i++) out[i] = s[i];
+    out[n] = '\0';
+    int left = 0, right = n - 1;
+    while (left < right) {
+        while (left < right && !isVowelChar(out[left])) left++;
+        while (left < right && !isVowelChar(out[right])) right--;
+        if (left < right) {
+            char t = out[left];
+            out[left] = out[right];
+            out[right] = t;
+            left++;
+            right--;
+        }
+    }
+    return out;
+}
+@@@LANG csharp
+public static string ReverseVowels(string s)
+{
+    string vowels = "aeiouAEIOU";
+    char[] chars = s.ToCharArray();
+    int left = 0, right = chars.Length - 1;
+    while (left < right)
+    {
+        while (left < right && vowels.IndexOf(chars[left]) < 0) left++;
+        while (left < right && vowels.IndexOf(chars[right]) < 0) right--;
+        if (left < right)
+        {
+            char t = chars[left];
+            chars[left] = chars[right];
+            chars[right] = t;
+            left++;
+            right--;
+        }
+    }
+    return new string(chars);
+}
+@@@LANG go
+func reverseVowels(s string) string {
+	isVowel := func(c byte) bool {
+		return strings.IndexByte("aeiouAEIOU", c) >= 0
+	}
+	b := []byte(s)
+	left, right := 0, len(b)-1
+	for left < right {
+		for left < right && !isVowel(b[left]) {
+			left++
+		}
+		for left < right && !isVowel(b[right]) {
+			right--
+		}
+		if left < right {
+			b[left], b[right] = b[right], b[left]
+			left++
+			right--
+		}
+	}
+	return string(b)
+}
+@@@LANG kotlin
+fun reverseVowels(s: String): String {
+    val vowels = "aeiouAEIOU"
+    val chars = s.toCharArray()
+    var left = 0
+    var right = chars.size - 1
+    while (left < right) {
+        while (left < right && vowels.indexOf(chars[left]) < 0) left++
+        while (left < right && vowels.indexOf(chars[right]) < 0) right--
+        if (left < right) {
+            val t = chars[left]
+            chars[left] = chars[right]
+            chars[right] = t
+            left++
+            right--
+        }
+    }
+    return String(chars)
+}
+@@@LANG swift
+func reverseVowels(_ s: String) -> String {
+    let vowels = Set("aeiouAEIOU")
+    var chars = Array(s)
+    var left = 0
+    var right = chars.count - 1
+    while left < right {
+        while left < right && !vowels.contains(chars[left]) { left += 1 }
+        while left < right && !vowels.contains(chars[right]) { right -= 1 }
+        if left < right {
+            chars.swapAt(left, right)
+            left += 1
+            right -= 1
+        }
+    }
+    return String(chars)
+}
+@@@LANG rust
+fn reverseVowels(s: String) -> String {
+    fn is_vowel(c: u8) -> bool {
+        b"aeiouAEIOU".contains(&c)
+    }
+    let mut bytes = s.into_bytes();
+    if bytes.is_empty() {
+        return String::new();
+    }
+    let mut left = 0usize;
+    let mut right = bytes.len() - 1;
+    while left < right {
+        while left < right && !is_vowel(bytes[left]) {
+            left += 1;
+        }
+        while left < right && !is_vowel(bytes[right]) {
+            right -= 1;
+        }
+        if left < right {
+            bytes.swap(left, right);
+            left += 1;
+            right -= 1;
+        }
+    }
+    String::from_utf8(bytes).unwrap()
+}
+@@@LANG php
+function reverseVowels($s) {
+    $vowels = "aeiouAEIOU";
+    $chars = str_split($s);
+    $left = 0;
+    $right = count($chars) - 1;
+    while ($left < $right) {
+        while ($left < $right && strpos($vowels, $chars[$left]) === false) $left++;
+        while ($left < $right && strpos($vowels, $chars[$right]) === false) $right--;
+        if ($left < $right) {
+            $t = $chars[$left];
+            $chars[$left] = $chars[$right];
+            $chars[$right] = $t;
+            $left++;
+            $right--;
+        }
+    }
+    return implode("", $chars);
+}
+@@@LANG ruby
+def reverseVowels(s)
+  vowels = "aeiouAEIOU"
+  chars = s.chars
+  left = 0
+  right = chars.length - 1
+  while left < right
+    left += 1 while left < right && !vowels.include?(chars[left])
+    right -= 1 while left < right && !vowels.include?(chars[right])
+    if left < right
+      chars[left], chars[right] = chars[right], chars[left]
+      left += 1
+      right -= 1
+    end
+  end
+  chars.join
+end
+
+@@@PROBLEM first-unique-character-in-a-string
+@@@LANG typescript
+function firstUniqChar(s: string): number {
+    var count: number[] = [];
+    for (var k = 0; k < 26; k++) count.push(0);
+    for (var i = 0; i < s.length; i++) count[s.charCodeAt(i) - 97]++;
+    for (var j = 0; j < s.length; j++) {
+        if (count[s.charCodeAt(j) - 97] === 1) return j;
+    }
+    return -1;
+}
+@@@LANG java
+public static int firstUniqChar(String s) {
+    int[] count = new int[26];
+    for (int i = 0; i < s.length(); i++) count[s.charAt(i) - 'a']++;
+    for (int i = 0; i < s.length(); i++) {
+        if (count[s.charAt(i) - 'a'] == 1) return i;
+    }
+    return -1;
+}
+@@@LANG cpp
+int firstUniqChar(string s) {
+    int count[26] = {0};
+    for (char ch : s) count[ch - 'a']++;
+    for (int i = 0; i < (int) s.size(); i++) {
+        if (count[s[i] - 'a'] == 1) return i;
+    }
+    return -1;
+}
+@@@LANG c
+int firstUniqChar(const char* s) {
+    int count[26] = {0};
+    int n = (int) strlen(s);
+    for (int i = 0; i < n; i++) count[s[i] - 'a']++;
+    for (int i = 0; i < n; i++) {
+        if (count[s[i] - 'a'] == 1) return i;
+    }
+    return -1;
+}
+@@@LANG csharp
+public static int FirstUniqChar(string s)
+{
+    int[] count = new int[26];
+    for (int i = 0; i < s.Length; i++) count[s[i] - 'a']++;
+    for (int i = 0; i < s.Length; i++)
+    {
+        if (count[s[i] - 'a'] == 1) return i;
+    }
+    return -1;
+}
+@@@LANG go
+func firstUniqChar(s string) int {
+	var count [26]int
+	for i := 0; i < len(s); i++ {
+		count[s[i]-'a']++
+	}
+	for i := 0; i < len(s); i++ {
+		if count[s[i]-'a'] == 1 {
+			return i
+		}
+	}
+	return -1
+}
+@@@LANG kotlin
+fun firstUniqChar(s: String): Int {
+    val count = IntArray(26)
+    for (ch in s) count[ch - 'a']++
+    for (i in s.indices) {
+        if (count[s[i] - 'a'] == 1) return i
+    }
+    return -1
+}
+@@@LANG swift
+func firstUniqChar(_ s: String) -> Int {
+    let bytes = Array(s.utf8)
+    var count = [Int](repeating: 0, count: 26)
+    for b in bytes { count[Int(b) - 97] += 1 }
+    for i in 0..<bytes.count {
+        if count[Int(bytes[i]) - 97] == 1 { return i }
+    }
+    return -1
+}
+@@@LANG rust
+fn firstUniqChar(s: String) -> i32 {
+    let bytes = s.as_bytes();
+    let mut count = [0i32; 26];
+    for b in bytes.iter() {
+        count[(*b - b'a') as usize] += 1;
+    }
+    for i in 0..bytes.len() {
+        if count[(bytes[i] - b'a') as usize] == 1 {
+            return i as i32;
+        }
+    }
+    -1
+}
+@@@LANG php
+function firstUniqChar($s) {
+    $count = array_fill(0, 26, 0);
+    $n = strlen($s);
+    for ($i = 0; $i < $n; $i++) $count[ord($s[$i]) - 97]++;
+    for ($i = 0; $i < $n; $i++) {
+        if ($count[ord($s[$i]) - 97] === 1) return $i;
+    }
+    return -1;
+}
+@@@LANG ruby
+def firstUniqChar(s)
+  count = Array.new(26, 0)
+  s.each_char { |ch| count[ch.ord - 97] += 1 }
+  s.each_char.with_index do |ch, i|
+    return i if count[ch.ord - 97] == 1
+  end
+  -1
+end
+
+@@@PROBLEM ransom-note
+@@@LANG typescript
+function canConstruct(ransomNote: string, magazine: string): boolean {
+    var count: number[] = [];
+    for (var k = 0; k < 26; k++) count.push(0);
+    for (var i = 0; i < magazine.length; i++) count[magazine.charCodeAt(i) - 97]++;
+    for (var j = 0; j < ransomNote.length; j++) {
+        var idx = ransomNote.charCodeAt(j) - 97;
+        count[idx]--;
+        if (count[idx] < 0) return false;
+    }
+    return true;
+}
+@@@LANG java
+public static boolean canConstruct(String ransomNote, String magazine) {
+    int[] count = new int[26];
+    for (int i = 0; i < magazine.length(); i++) count[magazine.charAt(i) - 'a']++;
+    for (int i = 0; i < ransomNote.length(); i++) {
+        int idx = ransomNote.charAt(i) - 'a';
+        count[idx]--;
+        if (count[idx] < 0) return false;
+    }
+    return true;
+}
+@@@LANG cpp
+bool canConstruct(string ransomNote, string magazine) {
+    int count[26] = {0};
+    for (char ch : magazine) count[ch - 'a']++;
+    for (char ch : ransomNote) {
+        int idx = ch - 'a';
+        count[idx]--;
+        if (count[idx] < 0) return false;
+    }
+    return true;
+}
+@@@LANG c
+bool canConstruct(const char* ransomNote, const char* magazine) {
+    int count[26] = {0};
+    for (int i = 0; magazine[i] != '\0'; i++) count[magazine[i] - 'a']++;
+    for (int i = 0; ransomNote[i] != '\0'; i++) {
+        int idx = ransomNote[i] - 'a';
+        count[idx]--;
+        if (count[idx] < 0) return false;
+    }
+    return true;
+}
+@@@LANG csharp
+public static bool CanConstruct(string ransomNote, string magazine)
+{
+    int[] count = new int[26];
+    for (int i = 0; i < magazine.Length; i++) count[magazine[i] - 'a']++;
+    for (int i = 0; i < ransomNote.Length; i++)
+    {
+        int idx = ransomNote[i] - 'a';
+        count[idx]--;
+        if (count[idx] < 0) return false;
+    }
+    return true;
+}
+@@@LANG go
+func canConstruct(ransomNote string, magazine string) bool {
+	var count [26]int
+	for i := 0; i < len(magazine); i++ {
+		count[magazine[i]-'a']++
+	}
+	for i := 0; i < len(ransomNote); i++ {
+		idx := ransomNote[i] - 'a'
+		count[idx]--
+		if count[idx] < 0 {
+			return false
+		}
+	}
+	return true
+}
+@@@LANG kotlin
+fun canConstruct(ransomNote: String, magazine: String): Boolean {
+    val count = IntArray(26)
+    for (ch in magazine) count[ch - 'a']++
+    for (ch in ransomNote) {
+        val idx = ch - 'a'
+        count[idx]--
+        if (count[idx] < 0) return false
+    }
+    return true
+}
+@@@LANG swift
+func canConstruct(_ ransomNote: String, _ magazine: String) -> Bool {
+    var count = [Int](repeating: 0, count: 26)
+    for b in Array(magazine.utf8) { count[Int(b) - 97] += 1 }
+    for b in Array(ransomNote.utf8) {
+        let idx = Int(b) - 97
+        count[idx] -= 1
+        if count[idx] < 0 { return false }
+    }
+    return true
+}
+@@@LANG rust
+fn canConstruct(ransomNote: String, magazine: String) -> bool {
+    let mut count = [0i32; 26];
+    for b in magazine.as_bytes().iter() {
+        count[(*b - b'a') as usize] += 1;
+    }
+    for b in ransomNote.as_bytes().iter() {
+        let idx = (*b - b'a') as usize;
+        count[idx] -= 1;
+        if count[idx] < 0 {
+            return false;
+        }
+    }
+    true
+}
+@@@LANG php
+function canConstruct($ransomNote, $magazine) {
+    $count = array_fill(0, 26, 0);
+    for ($i = 0; $i < strlen($magazine); $i++) $count[ord($magazine[$i]) - 97]++;
+    for ($i = 0; $i < strlen($ransomNote); $i++) {
+        $idx = ord($ransomNote[$i]) - 97;
+        $count[$idx]--;
+        if ($count[$idx] < 0) return false;
+    }
+    return true;
+}
+@@@LANG ruby
+def canConstruct(ransomNote, magazine)
+  count = Array.new(26, 0)
+  magazine.each_char { |ch| count[ch.ord - 97] += 1 }
+  ransomNote.each_char do |ch|
+    idx = ch.ord - 97
+    count[idx] -= 1
+    return false if count[idx] < 0
+  end
+  true
+end
+
+@@@PROBLEM length-of-last-word
+@@@LANG typescript
+function lengthOfLastWord(s: string): number {
+    var i = s.length - 1;
+    while (i >= 0 && s.charAt(i) === " ") i--;
+    var len = 0;
+    while (i >= 0 && s.charAt(i) !== " ") {
+        len++;
+        i--;
+    }
+    return len;
+}
+@@@LANG java
+public static int lengthOfLastWord(String s) {
+    int i = s.length() - 1;
+    while (i >= 0 && s.charAt(i) == ' ') i--;
+    int len = 0;
+    while (i >= 0 && s.charAt(i) != ' ') {
+        len++;
+        i--;
+    }
+    return len;
+}
+@@@LANG cpp
+int lengthOfLastWord(string s) {
+    int i = (int) s.size() - 1;
+    while (i >= 0 && s[i] == ' ') i--;
+    int len = 0;
+    while (i >= 0 && s[i] != ' ') {
+        len++;
+        i--;
+    }
+    return len;
+}
+@@@LANG c
+int lengthOfLastWord(const char* s) {
+    int i = (int) strlen(s) - 1;
+    while (i >= 0 && s[i] == ' ') i--;
+    int len = 0;
+    while (i >= 0 && s[i] != ' ') {
+        len++;
+        i--;
+    }
+    return len;
+}
+@@@LANG csharp
+public static int LengthOfLastWord(string s)
+{
+    int i = s.Length - 1;
+    while (i >= 0 && s[i] == ' ') i--;
+    int len = 0;
+    while (i >= 0 && s[i] != ' ')
+    {
+        len++;
+        i--;
+    }
+    return len;
+}
+@@@LANG go
+func lengthOfLastWord(s string) int {
+	i := len(s) - 1
+	for i >= 0 && s[i] == ' ' {
+		i--
+	}
+	length := 0
+	for i >= 0 && s[i] != ' ' {
+		length++
+		i--
+	}
+	return length
+}
+@@@LANG kotlin
+fun lengthOfLastWord(s: String): Int {
+    var i = s.length - 1
+    while (i >= 0 && s[i] == ' ') i--
+    var len = 0
+    while (i >= 0 && s[i] != ' ') {
+        len++
+        i--
+    }
+    return len
+}
+@@@LANG swift
+func lengthOfLastWord(_ s: String) -> Int {
+    let chars = Array(s)
+    var i = chars.count - 1
+    while i >= 0 && chars[i] == " " { i -= 1 }
+    var len = 0
+    while i >= 0 && chars[i] != " " {
+        len += 1
+        i -= 1
+    }
+    return len
+}
+@@@LANG rust
+fn lengthOfLastWord(s: String) -> i32 {
+    let bytes = s.as_bytes();
+    let mut i = bytes.len() as i32 - 1;
+    while i >= 0 && bytes[i as usize] == b' ' {
+        i -= 1;
+    }
+    let mut len = 0;
+    while i >= 0 && bytes[i as usize] != b' ' {
+        len += 1;
+        i -= 1;
+    }
+    len
+}
+@@@LANG php
+function lengthOfLastWord($s) {
+    $i = strlen($s) - 1;
+    while ($i >= 0 && $s[$i] === " ") $i--;
+    $len = 0;
+    while ($i >= 0 && $s[$i] !== " ") {
+        $len++;
+        $i--;
+    }
+    return $len;
+}
+@@@LANG ruby
+def lengthOfLastWord(s)
+  i = s.length - 1
+  i -= 1 while i >= 0 && s[i] == " "
+  len = 0
+  while i >= 0 && s[i] != " "
+    len += 1
+    i -= 1
+  end
+  len
+end
+
+@@@PROBLEM detect-capital
+@@@LANG typescript
+function detectCapitalUse(word: string): boolean {
+    var upper = 0;
+    for (var i = 0; i < word.length; i++) {
+        var c = word.charAt(i);
+        if (c >= "A" && c <= "Z") upper++;
+    }
+    if (upper === word.length || upper === 0) return true;
+    return upper === 1 && word.charAt(0) >= "A" && word.charAt(0) <= "Z";
+}
+@@@LANG java
+public static boolean detectCapitalUse(String word) {
+    int upper = 0;
+    for (int i = 0; i < word.length(); i++) {
+        if (Character.isUpperCase(word.charAt(i))) upper++;
+    }
+    if (upper == word.length() || upper == 0) return true;
+    return upper == 1 && Character.isUpperCase(word.charAt(0));
+}
+@@@LANG cpp
+bool detectCapitalUse(string word) {
+    int upper = 0;
+    for (char ch : word) {
+        if (ch >= 'A' && ch <= 'Z') upper++;
+    }
+    if (upper == (int) word.size() || upper == 0) return true;
+    return upper == 1 && word[0] >= 'A' && word[0] <= 'Z';
+}
+@@@LANG c
+bool detectCapitalUse(const char* word) {
+    int n = (int) strlen(word);
+    int upper = 0;
+    for (int i = 0; i < n; i++) {
+        if (word[i] >= 'A' && word[i] <= 'Z') upper++;
+    }
+    if (upper == n || upper == 0) return true;
+    return upper == 1 && word[0] >= 'A' && word[0] <= 'Z';
+}
+@@@LANG csharp
+public static bool DetectCapitalUse(string word)
+{
+    int upper = 0;
+    foreach (char ch in word)
+    {
+        if (ch >= 'A' && ch <= 'Z') upper++;
+    }
+    if (upper == word.Length || upper == 0) return true;
+    return upper == 1 && word[0] >= 'A' && word[0] <= 'Z';
+}
+@@@LANG go
+func detectCapitalUse(word string) bool {
+	upper := 0
+	for i := 0; i < len(word); i++ {
+		if word[i] >= 'A' && word[i] <= 'Z' {
+			upper++
+		}
+	}
+	if upper == len(word) || upper == 0 {
+		return true
+	}
+	return upper == 1 && word[0] >= 'A' && word[0] <= 'Z'
+}
+@@@LANG kotlin
+fun detectCapitalUse(word: String): Boolean {
+    var upper = 0
+    for (ch in word) {
+        if (ch in 'A'..'Z') upper++
+    }
+    if (upper == word.length || upper == 0) return true
+    return upper == 1 && word[0] in 'A'..'Z'
+}
+@@@LANG swift
+func detectCapitalUse(_ word: String) -> Bool {
+    let bytes = Array(word.utf8)
+    var upper = 0
+    for b in bytes {
+        if b >= 65 && b <= 90 { upper += 1 }
+    }
+    if upper == bytes.count || upper == 0 { return true }
+    return upper == 1 && bytes[0] >= 65 && bytes[0] <= 90
+}
+@@@LANG rust
+fn detectCapitalUse(word: String) -> bool {
+    let bytes = word.as_bytes();
+    let mut upper = 0;
+    for b in bytes.iter() {
+        if *b >= b'A' && *b <= b'Z' {
+            upper += 1;
+        }
+    }
+    if upper == bytes.len() || upper == 0 {
+        return true;
+    }
+    upper == 1 && bytes[0] >= b'A' && bytes[0] <= b'Z'
+}
+@@@LANG php
+function detectCapitalUse($word) {
+    $n = strlen($word);
+    $upper = 0;
+    for ($i = 0; $i < $n; $i++) {
+        $c = ord($word[$i]);
+        if ($c >= 65 && $c <= 90) $upper++;
+    }
+    if ($upper === $n || $upper === 0) return true;
+    $first = ord($word[0]);
+    return $upper === 1 && $first >= 65 && $first <= 90;
+}
+@@@LANG ruby
+def detectCapitalUse(word)
+  upper = word.count("A-Z")
+  return true if upper == word.length || upper == 0
+  upper == 1 && word[0].between?("A", "Z")
+end
+
+@@@PROBLEM repeated-substring-pattern
+@@@LANG typescript
+function repeatedSubstringPattern(s: string): boolean {
+    var n = s.length;
+    for (var len = 1; len <= Math.floor(n / 2); len++) {
+        if (n % len !== 0) continue;
+        var unit = s.substring(0, len);
+        var ok = true;
+        for (var i = len; i < n; i += len) {
+            if (s.substring(i, i + len) !== unit) {
+                ok = false;
+                break;
+            }
+        }
+        if (ok) return true;
+    }
+    return false;
+}
+@@@LANG java
+public static boolean repeatedSubstringPattern(String s) {
+    int n = s.length();
+    for (int len = 1; len <= n / 2; len++) {
+        if (n % len != 0) continue;
+        String unit = s.substring(0, len);
+        boolean ok = true;
+        for (int i = len; i < n; i += len) {
+            if (!s.substring(i, i + len).equals(unit)) {
+                ok = false;
+                break;
+            }
+        }
+        if (ok) return true;
+    }
+    return false;
+}
+@@@LANG cpp
+bool repeatedSubstringPattern(string s) {
+    int n = (int) s.size();
+    for (int len = 1; len <= n / 2; len++) {
+        if (n % len != 0) continue;
+        bool ok = true;
+        for (int i = len; i < n; i++) {
+            if (s[i] != s[i - len]) { ok = false; break; }
+        }
+        if (ok) return true;
+    }
+    return false;
+}
+@@@LANG c
+bool repeatedSubstringPattern(const char* s) {
+    int n = (int) strlen(s);
+    for (int len = 1; len <= n / 2; len++) {
+        if (n % len != 0) continue;
+        bool ok = true;
+        for (int i = len; i < n; i++) {
+            if (s[i] != s[i - len]) { ok = false; break; }
+        }
+        if (ok) return true;
+    }
+    return false;
+}
+@@@LANG csharp
+public static bool RepeatedSubstringPattern(string s)
+{
+    int n = s.Length;
+    for (int len = 1; len <= n / 2; len++)
+    {
+        if (n % len != 0) continue;
+        bool ok = true;
+        for (int i = len; i < n; i++)
+        {
+            if (s[i] != s[i - len]) { ok = false; break; }
+        }
+        if (ok) return true;
+    }
+    return false;
+}
+@@@LANG go
+func repeatedSubstringPattern(s string) bool {
+	n := len(s)
+	for length := 1; length <= n/2; length++ {
+		if n%length != 0 {
+			continue
+		}
+		ok := true
+		for i := length; i < n; i++ {
+			if s[i] != s[i-length] {
+				ok = false
+				break
+			}
+		}
+		if ok {
+			return true
+		}
+	}
+	return false
+}
+@@@LANG kotlin
+fun repeatedSubstringPattern(s: String): Boolean {
+    val n = s.length
+    for (len in 1..n / 2) {
+        if (n % len != 0) continue
+        var ok = true
+        for (i in len until n) {
+            if (s[i] != s[i - len]) {
+                ok = false
+                break
+            }
+        }
+        if (ok) return true
+    }
+    return false
+}
+@@@LANG swift
+func repeatedSubstringPattern(_ s: String) -> Bool {
+    let chars = Array(s)
+    let n = chars.count
+    var len = 1
+    while len <= n / 2 {
+        if n % len == 0 {
+            var ok = true
+            var i = len
+            while i < n {
+                if chars[i] != chars[i - len] {
+                    ok = false
+                    break
+                }
+                i += 1
+            }
+            if ok { return true }
+        }
+        len += 1
+    }
+    return false
+}
+@@@LANG rust
+fn repeatedSubstringPattern(s: String) -> bool {
+    let bytes = s.as_bytes();
+    let n = bytes.len();
+    let mut len = 1;
+    while len <= n / 2 {
+        if n % len == 0 {
+            let mut ok = true;
+            let mut i = len;
+            while i < n {
+                if bytes[i] != bytes[i - len] {
+                    ok = false;
+                    break;
+                }
+                i += 1;
+            }
+            if ok {
+                return true;
+            }
+        }
+        len += 1;
+    }
+    false
+}
+@@@LANG php
+function repeatedSubstringPattern($s) {
+    $n = strlen($s);
+    for ($len = 1; $len <= intdiv($n, 2); $len++) {
+        if ($n % $len !== 0) continue;
+        $ok = true;
+        for ($i = $len; $i < $n; $i++) {
+            if ($s[$i] !== $s[$i - $len]) { $ok = false; break; }
+        }
+        if ($ok) return true;
+    }
+    return false;
+}
+@@@LANG ruby
+def repeatedSubstringPattern(s)
+  n = s.length
+  (1..n / 2).each do |len|
+    next unless n % len == 0
+    ok = true
+    (len...n).each do |i|
+      if s[i] != s[i - len]
+        ok = false
+        break
+      end
+    end
+    return true if ok
+  end
+  false
+end
+
+@@@PROBLEM count-and-say
+@@@LANG typescript
+function countAndSay(n: number): string {
+    var cur = "1";
+    for (var step = 2; step <= n; step++) {
+        var next = "";
+        var i = 0;
+        while (i < cur.length) {
+            var j = i;
+            while (j < cur.length && cur.charAt(j) === cur.charAt(i)) j++;
+            next += String(j - i) + cur.charAt(i);
+            i = j;
+        }
+        cur = next;
+    }
+    return cur;
+}
+@@@LANG java
+public static String countAndSay(int n) {
+    String cur = "1";
+    for (int step = 2; step <= n; step++) {
+        StringBuilder next = new StringBuilder();
+        int i = 0;
+        while (i < cur.length()) {
+            int j = i;
+            while (j < cur.length() && cur.charAt(j) == cur.charAt(i)) j++;
+            next.append(j - i).append(cur.charAt(i));
+            i = j;
+        }
+        cur = next.toString();
+    }
+    return cur;
+}
+@@@LANG cpp
+string countAndSay(int n) {
+    string cur = "1";
+    for (int step = 2; step <= n; step++) {
+        string next = "";
+        int i = 0;
+        int len = (int) cur.size();
+        while (i < len) {
+            int j = i;
+            while (j < len && cur[j] == cur[i]) j++;
+            next += to_string(j - i);
+            next += cur[i];
+            i = j;
+        }
+        cur = next;
+    }
+    return cur;
+}
+@@@LANG c
+char* countAndSay(int n) {
+    char* cur = (char*) malloc(8192);
+    char* next = (char*) malloc(8192);
+    strcpy(cur, "1");
+    for (int step = 2; step <= n; step++) {
+        int len = (int) strlen(cur);
+        int pos = 0;
+        int i = 0;
+        while (i < len) {
+            int j = i;
+            while (j < len && cur[j] == cur[i]) j++;
+            pos += sprintf(next + pos, "%d%c", j - i, cur[i]);
+            i = j;
+        }
+        next[pos] = '\0';
+        char* tmp = cur;
+        cur = next;
+        next = tmp;
+    }
+    free(next);
+    return cur;
+}
+@@@LANG csharp
+public static string CountAndSay(int n)
+{
+    string cur = "1";
+    for (int step = 2; step <= n; step++)
+    {
+        var next = new System.Text.StringBuilder();
+        int i = 0;
+        while (i < cur.Length)
+        {
+            int j = i;
+            while (j < cur.Length && cur[j] == cur[i]) j++;
+            next.Append(j - i).Append(cur[i]);
+            i = j;
+        }
+        cur = next.ToString();
+    }
+    return cur;
+}
+@@@LANG go
+func countAndSay(n int) string {
+	cur := "1"
+	for step := 2; step <= n; step++ {
+		var sb strings.Builder
+		i := 0
+		for i < len(cur) {
+			j := i
+			for j < len(cur) && cur[j] == cur[i] {
+				j++
+			}
+			sb.WriteString(strconv.Itoa(j - i))
+			sb.WriteByte(cur[i])
+			i = j
+		}
+		cur = sb.String()
+	}
+	return cur
+}
+@@@LANG kotlin
+fun countAndSay(n: Int): String {
+    var cur = "1"
+    for (step in 2..n) {
+        val next = StringBuilder()
+        var i = 0
+        while (i < cur.length) {
+            var j = i
+            while (j < cur.length && cur[j] == cur[i]) j++
+            next.append(j - i).append(cur[i])
+            i = j
+        }
+        cur = next.toString()
+    }
+    return cur
+}
+@@@LANG swift
+func countAndSay(_ n: Int) -> String {
+    var cur = "1"
+    var step = 2
+    while step <= n {
+        let chars = Array(cur)
+        var next = ""
+        var i = 0
+        while i < chars.count {
+            var j = i
+            while j < chars.count && chars[j] == chars[i] { j += 1 }
+            next += String(j - i)
+            next.append(chars[i])
+            i = j
+        }
+        cur = next
+        step += 1
+    }
+    return cur
+}
+@@@LANG rust
+fn countAndSay(n: i32) -> String {
+    let mut cur = String::from("1");
+    for _ in 2..=n {
+        let bytes = cur.as_bytes().to_vec();
+        let mut next = String::new();
+        let mut i = 0;
+        while i < bytes.len() {
+            let mut j = i;
+            while j < bytes.len() && bytes[j] == bytes[i] {
+                j += 1;
+            }
+            next.push_str(&(j - i).to_string());
+            next.push(bytes[i] as char);
+            i = j;
+        }
+        cur = next;
+    }
+    cur
+}
+@@@LANG php
+function countAndSay($n) {
+    $cur = "1";
+    for ($step = 2; $step <= $n; $step++) {
+        $next = "";
+        $i = 0;
+        $len = strlen($cur);
+        while ($i < $len) {
+            $j = $i;
+            while ($j < $len && $cur[$j] === $cur[$i]) $j++;
+            $next .= strval($j - $i) . $cur[$i];
+            $i = $j;
+        }
+        $cur = $next;
+    }
+    return $cur;
+}
+@@@LANG ruby
+def countAndSay(n)
+  cur = "1"
+  (2..n).each do
+    nxt = ""
+    i = 0
+    while i < cur.length
+      j = i
+      j += 1 while j < cur.length && cur[j] == cur[i]
+      nxt += (j - i).to_s + cur[i]
+      i = j
+    end
+    cur = nxt
+  end
+  cur
+end
+
+@@@PROBLEM string-compression
+@@@LANG typescript
+function compress(chars: string): string {
+    var out = "";
+    var i = 0;
+    while (i < chars.length) {
+        var j = i;
+        while (j < chars.length && chars.charAt(j) === chars.charAt(i)) j++;
+        out += chars.charAt(i);
+        if (j - i > 1) out += String(j - i);
+        i = j;
+    }
+    return out;
+}
+@@@LANG java
+public static String compress(String chars) {
+    StringBuilder out = new StringBuilder();
+    int i = 0;
+    while (i < chars.length()) {
+        int j = i;
+        while (j < chars.length() && chars.charAt(j) == chars.charAt(i)) j++;
+        out.append(chars.charAt(i));
+        if (j - i > 1) out.append(j - i);
+        i = j;
+    }
+    return out.toString();
+}
+@@@LANG cpp
+string compress(string chars) {
+    string out = "";
+    int i = 0;
+    int n = (int) chars.size();
+    while (i < n) {
+        int j = i;
+        while (j < n && chars[j] == chars[i]) j++;
+        out += chars[i];
+        if (j - i > 1) out += to_string(j - i);
+        i = j;
+    }
+    return out;
+}
+@@@LANG c
+char* compress(const char* chars) {
+    int n = (int) strlen(chars);
+    char* out = (char*) malloc(128);
+    int pos = 0;
+    int i = 0;
+    while (i < n) {
+        int j = i;
+        while (j < n && chars[j] == chars[i]) j++;
+        out[pos++] = chars[i];
+        if (j - i > 1) pos += sprintf(out + pos, "%d", j - i);
+        i = j;
+    }
+    out[pos] = '\0';
+    return out;
+}
+@@@LANG csharp
+public static string Compress(string chars)
+{
+    var out_ = new System.Text.StringBuilder();
+    int i = 0;
+    while (i < chars.Length)
+    {
+        int j = i;
+        while (j < chars.Length && chars[j] == chars[i]) j++;
+        out_.Append(chars[i]);
+        if (j - i > 1) out_.Append(j - i);
+        i = j;
+    }
+    return out_.ToString();
+}
+@@@LANG go
+func compress(chars string) string {
+	var sb strings.Builder
+	i := 0
+	for i < len(chars) {
+		j := i
+		for j < len(chars) && chars[j] == chars[i] {
+			j++
+		}
+		sb.WriteByte(chars[i])
+		if j-i > 1 {
+			sb.WriteString(strconv.Itoa(j - i))
+		}
+		i = j
+	}
+	return sb.String()
+}
+@@@LANG kotlin
+fun compress(chars: String): String {
+    val out = StringBuilder()
+    var i = 0
+    while (i < chars.length) {
+        var j = i
+        while (j < chars.length && chars[j] == chars[i]) j++
+        out.append(chars[i])
+        if (j - i > 1) out.append(j - i)
+        i = j
+    }
+    return out.toString()
+}
+@@@LANG swift
+func compress(_ chars: String) -> String {
+    let arr = Array(chars)
+    var out = ""
+    var i = 0
+    while i < arr.count {
+        var j = i
+        while j < arr.count && arr[j] == arr[i] { j += 1 }
+        out.append(arr[i])
+        if j - i > 1 { out += String(j - i) }
+        i = j
+    }
+    return out
+}
+@@@LANG rust
+fn compress(chars: String) -> String {
+    let bytes = chars.as_bytes();
+    let mut out = String::new();
+    let mut i = 0;
+    while i < bytes.len() {
+        let mut j = i;
+        while j < bytes.len() && bytes[j] == bytes[i] {
+            j += 1;
+        }
+        out.push(bytes[i] as char);
+        if j - i > 1 {
+            out.push_str(&(j - i).to_string());
+        }
+        i = j;
+    }
+    out
+}
+@@@LANG php
+function compress($chars) {
+    $out = "";
+    $i = 0;
+    $n = strlen($chars);
+    while ($i < $n) {
+        $j = $i;
+        while ($j < $n && $chars[$j] === $chars[$i]) $j++;
+        $out .= $chars[$i];
+        if ($j - $i > 1) $out .= strval($j - $i);
+        $i = $j;
+    }
+    return $out;
+}
+@@@LANG ruby
+def compress(chars)
+  out = ""
+  i = 0
+  while i < chars.length
+    j = i
+    j += 1 while j < chars.length && chars[j] == chars[i]
+    out += chars[i]
+    out += (j - i).to_s if j - i > 1
+    i = j
+  end
+  out
+end

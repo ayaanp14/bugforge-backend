@@ -1,0 +1,2178 @@
+@@@PROBLEM check-if-matrix-is-x-matrix
+@@@LANG typescript
+function checkXMatrix(grid: number[][]): boolean {
+    var n = grid.length;
+    for (var r = 0; r < n; r++) {
+        for (var c = 0; c < n; c++) {
+            var onDiagonal = r === c || r + c === n - 1;
+            if (onDiagonal && grid[r][c] === 0) return false;
+            if (!onDiagonal && grid[r][c] !== 0) return false;
+        }
+    }
+    return true;
+}
+@@@LANG java
+public static boolean checkXMatrix(int[][] grid) {
+    int n = grid.length;
+    for (int r = 0; r < n; r++) {
+        for (int c = 0; c < n; c++) {
+            boolean onDiagonal = r == c || r + c == n - 1;
+            if (onDiagonal && grid[r][c] == 0) return false;
+            if (!onDiagonal && grid[r][c] != 0) return false;
+        }
+    }
+    return true;
+}
+@@@LANG cpp
+bool checkXMatrix(vector<vector<int>>& grid) {
+    int n = (int) grid.size();
+    for (int r = 0; r < n; r++) {
+        for (int c = 0; c < n; c++) {
+            bool onDiagonal = r == c || r + c == n - 1;
+            if (onDiagonal && grid[r][c] == 0) return false;
+            if (!onDiagonal && grid[r][c] != 0) return false;
+        }
+    }
+    return true;
+}
+@@@LANG c
+bool checkXMatrix(int** grid, int gridSize, int* gridColSize) {
+    int n = gridSize;
+    for (int r = 0; r < n; r++) {
+        for (int c = 0; c < n; c++) {
+            bool onDiagonal = (r == c) || (r + c == n - 1);
+            if (onDiagonal && grid[r][c] == 0) return false;
+            if (!onDiagonal && grid[r][c] != 0) return false;
+        }
+    }
+    return true;
+}
+@@@LANG csharp
+public static bool CheckXMatrix(int[][] grid)
+{
+    int n = grid.Length;
+    for (int r = 0; r < n; r++)
+    {
+        for (int c = 0; c < n; c++)
+        {
+            bool onDiagonal = r == c || r + c == n - 1;
+            if (onDiagonal && grid[r][c] == 0) return false;
+            if (!onDiagonal && grid[r][c] != 0) return false;
+        }
+    }
+    return true;
+}
+@@@LANG go
+func checkXMatrix(grid [][]int) bool {
+	n := len(grid)
+	for r := 0; r < n; r++ {
+		for c := 0; c < n; c++ {
+			onDiagonal := r == c || r+c == n-1
+			if onDiagonal && grid[r][c] == 0 {
+				return false
+			}
+			if !onDiagonal && grid[r][c] != 0 {
+				return false
+			}
+		}
+	}
+	return true
+}
+@@@LANG kotlin
+fun checkXMatrix(grid: Array<IntArray>): Boolean {
+    val n = grid.size
+    for (r in 0 until n) {
+        for (c in 0 until n) {
+            val onDiagonal = r == c || r + c == n - 1
+            if (onDiagonal && grid[r][c] == 0) return false
+            if (!onDiagonal && grid[r][c] != 0) return false
+        }
+    }
+    return true
+}
+@@@LANG swift
+func checkXMatrix(_ grid: [[Int]]) -> Bool {
+    let n = grid.count
+    for r in 0..<n {
+        for c in 0..<n {
+            let onDiagonal = r == c || r + c == n - 1
+            if onDiagonal && grid[r][c] == 0 { return false }
+            if !onDiagonal && grid[r][c] != 0 { return false }
+        }
+    }
+    return true
+}
+@@@LANG rust
+fn checkXMatrix(grid: Vec<Vec<i32>>) -> bool {
+    let n = grid.len();
+    for r in 0..n {
+        for c in 0..n {
+            let on_diagonal = r == c || r + c == n - 1;
+            if on_diagonal && grid[r][c] == 0 {
+                return false;
+            }
+            if !on_diagonal && grid[r][c] != 0 {
+                return false;
+            }
+        }
+    }
+    true
+}
+@@@LANG php
+function checkXMatrix($grid) {
+    $n = count($grid);
+    for ($r = 0; $r < $n; $r++) {
+        for ($c = 0; $c < $n; $c++) {
+            $onDiagonal = ($r === $c) || ($r + $c === $n - 1);
+            if ($onDiagonal && $grid[$r][$c] === 0) return false;
+            if (!$onDiagonal && $grid[$r][$c] !== 0) return false;
+        }
+    }
+    return true;
+}
+@@@LANG ruby
+def checkXMatrix(grid)
+  n = grid.length
+  (0...n).each do |r|
+    (0...n).each do |c|
+      on_diagonal = r == c || r + c == n - 1
+      return false if on_diagonal && grid[r][c] == 0
+      return false if !on_diagonal && grid[r][c] != 0
+    end
+  end
+  true
+end
+
+@@@PROBLEM row-with-maximum-ones
+@@@LANG typescript
+function rowAndMaximumOnes(mat: number[][]): number[] {
+    var bestRow = 0;
+    var bestCount = -1;
+    for (var r = 0; r < mat.length; r++) {
+        var count = 0;
+        for (var c = 0; c < mat[r].length; c++) count += mat[r][c];
+        if (count > bestCount) {
+            bestCount = count;
+            bestRow = r;
+        }
+    }
+    return [bestRow, bestCount];
+}
+@@@LANG java
+public static int[] rowAndMaximumOnes(int[][] mat) {
+    int bestRow = 0, bestCount = -1;
+    for (int r = 0; r < mat.length; r++) {
+        int count = 0;
+        for (int c = 0; c < mat[r].length; c++) count += mat[r][c];
+        if (count > bestCount) {
+            bestCount = count;
+            bestRow = r;
+        }
+    }
+    return new int[]{bestRow, bestCount};
+}
+@@@LANG cpp
+vector<int> rowAndMaximumOnes(vector<vector<int>>& mat) {
+    int bestRow = 0, bestCount = -1;
+    for (int r = 0; r < (int) mat.size(); r++) {
+        int count = 0;
+        for (int v : mat[r]) count += v;
+        if (count > bestCount) {
+            bestCount = count;
+            bestRow = r;
+        }
+    }
+    return {bestRow, bestCount};
+}
+@@@LANG c
+int* rowAndMaximumOnes(int** mat, int matSize, int* matColSize, int* returnSize) {
+    int bestRow = 0, bestCount = -1;
+    for (int r = 0; r < matSize; r++) {
+        int count = 0;
+        for (int c = 0; c < matColSize[0]; c++) count += mat[r][c];
+        if (count > bestCount) {
+            bestCount = count;
+            bestRow = r;
+        }
+    }
+    int* out = (int*) malloc(sizeof(int) * 2);
+    out[0] = bestRow;
+    out[1] = bestCount;
+    *returnSize = 2;
+    return out;
+}
+@@@LANG csharp
+public static int[] RowAndMaximumOnes(int[][] mat)
+{
+    int bestRow = 0, bestCount = -1;
+    for (int r = 0; r < mat.Length; r++)
+    {
+        int count = 0;
+        for (int c = 0; c < mat[r].Length; c++) count += mat[r][c];
+        if (count > bestCount)
+        {
+            bestCount = count;
+            bestRow = r;
+        }
+    }
+    return new int[] { bestRow, bestCount };
+}
+@@@LANG go
+func rowAndMaximumOnes(mat [][]int) []int {
+	bestRow, bestCount := 0, -1
+	for r, row := range mat {
+		count := 0
+		for _, v := range row {
+			count += v
+		}
+		if count > bestCount {
+			bestCount = count
+			bestRow = r
+		}
+	}
+	return []int{bestRow, bestCount}
+}
+@@@LANG kotlin
+fun rowAndMaximumOnes(mat: Array<IntArray>): IntArray {
+    var bestRow = 0
+    var bestCount = -1
+    for (r in mat.indices) {
+        val count = mat[r].sum()
+        if (count > bestCount) {
+            bestCount = count
+            bestRow = r
+        }
+    }
+    return intArrayOf(bestRow, bestCount)
+}
+@@@LANG swift
+func rowAndMaximumOnes(_ mat: [[Int]]) -> [Int] {
+    var bestRow = 0
+    var bestCount = -1
+    for r in 0..<mat.count {
+        var count = 0
+        for v in mat[r] { count += v }
+        if count > bestCount {
+            bestCount = count
+            bestRow = r
+        }
+    }
+    return [bestRow, bestCount]
+}
+@@@LANG rust
+fn rowAndMaximumOnes(mat: Vec<Vec<i32>>) -> Vec<i32> {
+    let mut best_row = 0i32;
+    let mut best_count = -1i32;
+    for r in 0..mat.len() {
+        let count: i32 = mat[r].iter().sum();
+        if count > best_count {
+            best_count = count;
+            best_row = r as i32;
+        }
+    }
+    vec![best_row, best_count]
+}
+@@@LANG php
+function rowAndMaximumOnes($mat) {
+    $bestRow = 0;
+    $bestCount = -1;
+    for ($r = 0; $r < count($mat); $r++) {
+        $count = array_sum($mat[$r]);
+        if ($count > $bestCount) {
+            $bestCount = $count;
+            $bestRow = $r;
+        }
+    }
+    return array($bestRow, $bestCount);
+}
+@@@LANG ruby
+def rowAndMaximumOnes(mat)
+  best_row = 0
+  best_count = -1
+  mat.each_with_index do |row, r|
+    count = row.sum
+    if count > best_count
+      best_count = count
+      best_row = r
+    end
+  end
+  [best_row, best_count]
+end
+
+@@@PROBLEM largest-local-values-in-a-matrix
+@@@LANG typescript
+function largestLocal(grid: number[][]): number[][] {
+    var n = grid.length;
+    var out: number[][] = [];
+    for (var r = 0; r < n - 2; r++) {
+        var row: number[] = [];
+        for (var c = 0; c < n - 2; c++) {
+            var best = 0;
+            for (var dr = 0; dr < 3; dr++) {
+                for (var dc = 0; dc < 3; dc++) {
+                    if (grid[r + dr][c + dc] > best) best = grid[r + dr][c + dc];
+                }
+            }
+            row.push(best);
+        }
+        out.push(row);
+    }
+    return out;
+}
+@@@LANG java
+public static int[][] largestLocal(int[][] grid) {
+    int n = grid.length;
+    int[][] out = new int[n - 2][n - 2];
+    for (int r = 0; r < n - 2; r++) {
+        for (int c = 0; c < n - 2; c++) {
+            int best = 0;
+            for (int dr = 0; dr < 3; dr++) {
+                for (int dc = 0; dc < 3; dc++) {
+                    if (grid[r + dr][c + dc] > best) best = grid[r + dr][c + dc];
+                }
+            }
+            out[r][c] = best;
+        }
+    }
+    return out;
+}
+@@@LANG cpp
+vector<vector<int>> largestLocal(vector<vector<int>>& grid) {
+    int n = (int) grid.size();
+    vector<vector<int>> out(n - 2, vector<int>(n - 2, 0));
+    for (int r = 0; r < n - 2; r++) {
+        for (int c = 0; c < n - 2; c++) {
+            int best = 0;
+            for (int dr = 0; dr < 3; dr++) {
+                for (int dc = 0; dc < 3; dc++) {
+                    best = max(best, grid[r + dr][c + dc]);
+                }
+            }
+            out[r][c] = best;
+        }
+    }
+    return out;
+}
+@@@LANG c
+int** largestLocal(int** grid, int gridSize, int* gridColSize, int* returnSize, int** returnColumnSizes) {
+    int n = gridSize;
+    int size = n - 2;
+    int** out = (int**) malloc(sizeof(int*) * size);
+    *returnColumnSizes = (int*) malloc(sizeof(int) * size);
+    for (int r = 0; r < size; r++) {
+        out[r] = (int*) malloc(sizeof(int) * size);
+        (*returnColumnSizes)[r] = size;
+        for (int c = 0; c < size; c++) {
+            int best = 0;
+            for (int dr = 0; dr < 3; dr++) {
+                for (int dc = 0; dc < 3; dc++) {
+                    if (grid[r + dr][c + dc] > best) best = grid[r + dr][c + dc];
+                }
+            }
+            out[r][c] = best;
+        }
+    }
+    *returnSize = size;
+    return out;
+}
+@@@LANG csharp
+public static int[][] LargestLocal(int[][] grid)
+{
+    int n = grid.Length;
+    int size = n - 2;
+    int[][] out_ = new int[size][];
+    for (int r = 0; r < size; r++)
+    {
+        out_[r] = new int[size];
+        for (int c = 0; c < size; c++)
+        {
+            int best = 0;
+            for (int dr = 0; dr < 3; dr++)
+            {
+                for (int dc = 0; dc < 3; dc++)
+                {
+                    if (grid[r + dr][c + dc] > best) best = grid[r + dr][c + dc];
+                }
+            }
+            out_[r][c] = best;
+        }
+    }
+    return out_;
+}
+@@@LANG go
+func largestLocal(grid [][]int) [][]int {
+	n := len(grid)
+	size := n - 2
+	out := make([][]int, size)
+	for r := 0; r < size; r++ {
+		out[r] = make([]int, size)
+		for c := 0; c < size; c++ {
+			best := 0
+			for dr := 0; dr < 3; dr++ {
+				for dc := 0; dc < 3; dc++ {
+					if grid[r+dr][c+dc] > best {
+						best = grid[r+dr][c+dc]
+					}
+				}
+			}
+			out[r][c] = best
+		}
+	}
+	return out
+}
+@@@LANG kotlin
+fun largestLocal(grid: Array<IntArray>): Array<IntArray> {
+    val n = grid.size
+    val size = n - 2
+    val out = Array(size) { IntArray(size) }
+    for (r in 0 until size) {
+        for (c in 0 until size) {
+            var best = 0
+            for (dr in 0 until 3) {
+                for (dc in 0 until 3) {
+                    if (grid[r + dr][c + dc] > best) best = grid[r + dr][c + dc]
+                }
+            }
+            out[r][c] = best
+        }
+    }
+    return out
+}
+@@@LANG swift
+func largestLocal(_ grid: [[Int]]) -> [[Int]] {
+    let n = grid.count
+    let size = n - 2
+    var out = [[Int]](repeating: [Int](repeating: 0, count: size), count: size)
+    for r in 0..<size {
+        for c in 0..<size {
+            var best = 0
+            for dr in 0..<3 {
+                for dc in 0..<3 {
+                    if grid[r + dr][c + dc] > best { best = grid[r + dr][c + dc] }
+                }
+            }
+            out[r][c] = best
+        }
+    }
+    return out
+}
+@@@LANG rust
+fn largestLocal(grid: Vec<Vec<i32>>) -> Vec<Vec<i32>> {
+    let n = grid.len();
+    let size = n - 2;
+    let mut out = vec![vec![0i32; size]; size];
+    for r in 0..size {
+        for c in 0..size {
+            let mut best = 0;
+            for dr in 0..3 {
+                for dc in 0..3 {
+                    if grid[r + dr][c + dc] > best {
+                        best = grid[r + dr][c + dc];
+                    }
+                }
+            }
+            out[r][c] = best;
+        }
+    }
+    out
+}
+@@@LANG php
+function largestLocal($grid) {
+    $n = count($grid);
+    $size = $n - 2;
+    $out = array();
+    for ($r = 0; $r < $size; $r++) {
+        $row = array();
+        for ($c = 0; $c < $size; $c++) {
+            $best = 0;
+            for ($dr = 0; $dr < 3; $dr++) {
+                for ($dc = 0; $dc < 3; $dc++) {
+                    if ($grid[$r + $dr][$c + $dc] > $best) $best = $grid[$r + $dr][$c + $dc];
+                }
+            }
+            $row[] = $best;
+        }
+        $out[] = $row;
+    }
+    return $out;
+}
+@@@LANG ruby
+def largestLocal(grid)
+  n = grid.length
+  size = n - 2
+  (0...size).map do |r|
+    (0...size).map do |c|
+      best = 0
+      (0...3).each do |dr|
+        (0...3).each do |dc|
+          best = grid[r + dr][c + dc] if grid[r + dr][c + dc] > best
+        end
+      end
+      best
+    end
+  end
+end
+
+@@@PROBLEM count-servers-that-communicate
+@@@LANG typescript
+function countServers(grid: number[][]): number {
+    var m = grid.length;
+    var n = grid[0].length;
+    var rowCount: number[] = [];
+    var colCount: number[] = [];
+    for (var i = 0; i < m; i++) rowCount.push(0);
+    for (var j = 0; j < n; j++) colCount.push(0);
+    for (var r = 0; r < m; r++) {
+        for (var c = 0; c < n; c++) {
+            if (grid[r][c] === 1) {
+                rowCount[r]++;
+                colCount[c]++;
+            }
+        }
+    }
+    var total = 0;
+    for (var r2 = 0; r2 < m; r2++) {
+        for (var c2 = 0; c2 < n; c2++) {
+            if (grid[r2][c2] === 1 && (rowCount[r2] > 1 || colCount[c2] > 1)) total++;
+        }
+    }
+    return total;
+}
+@@@LANG java
+public static int countServers(int[][] grid) {
+    int m = grid.length, n = grid[0].length;
+    int[] rowCount = new int[m];
+    int[] colCount = new int[n];
+    for (int r = 0; r < m; r++) {
+        for (int c = 0; c < n; c++) {
+            if (grid[r][c] == 1) {
+                rowCount[r]++;
+                colCount[c]++;
+            }
+        }
+    }
+    int total = 0;
+    for (int r = 0; r < m; r++) {
+        for (int c = 0; c < n; c++) {
+            if (grid[r][c] == 1 && (rowCount[r] > 1 || colCount[c] > 1)) total++;
+        }
+    }
+    return total;
+}
+@@@LANG cpp
+int countServers(vector<vector<int>>& grid) {
+    int m = (int) grid.size(), n = (int) grid[0].size();
+    vector<int> rowCount(m, 0), colCount(n, 0);
+    for (int r = 0; r < m; r++) {
+        for (int c = 0; c < n; c++) {
+            if (grid[r][c] == 1) {
+                rowCount[r]++;
+                colCount[c]++;
+            }
+        }
+    }
+    int total = 0;
+    for (int r = 0; r < m; r++) {
+        for (int c = 0; c < n; c++) {
+            if (grid[r][c] == 1 && (rowCount[r] > 1 || colCount[c] > 1)) total++;
+        }
+    }
+    return total;
+}
+@@@LANG c
+int countServers(int** grid, int gridSize, int* gridColSize) {
+    int m = gridSize, n = gridColSize[0];
+    int* rowCount = (int*) calloc(m, sizeof(int));
+    int* colCount = (int*) calloc(n, sizeof(int));
+    for (int r = 0; r < m; r++) {
+        for (int c = 0; c < n; c++) {
+            if (grid[r][c] == 1) {
+                rowCount[r]++;
+                colCount[c]++;
+            }
+        }
+    }
+    int total = 0;
+    for (int r = 0; r < m; r++) {
+        for (int c = 0; c < n; c++) {
+            if (grid[r][c] == 1 && (rowCount[r] > 1 || colCount[c] > 1)) total++;
+        }
+    }
+    free(rowCount);
+    free(colCount);
+    return total;
+}
+@@@LANG csharp
+public static int CountServers(int[][] grid)
+{
+    int m = grid.Length, n = grid[0].Length;
+    int[] rowCount = new int[m];
+    int[] colCount = new int[n];
+    for (int r = 0; r < m; r++)
+    {
+        for (int c = 0; c < n; c++)
+        {
+            if (grid[r][c] == 1)
+            {
+                rowCount[r]++;
+                colCount[c]++;
+            }
+        }
+    }
+    int total = 0;
+    for (int r = 0; r < m; r++)
+    {
+        for (int c = 0; c < n; c++)
+        {
+            if (grid[r][c] == 1 && (rowCount[r] > 1 || colCount[c] > 1)) total++;
+        }
+    }
+    return total;
+}
+@@@LANG go
+func countServers(grid [][]int) int {
+	m, n := len(grid), len(grid[0])
+	rowCount := make([]int, m)
+	colCount := make([]int, n)
+	for r := 0; r < m; r++ {
+		for c := 0; c < n; c++ {
+			if grid[r][c] == 1 {
+				rowCount[r]++
+				colCount[c]++
+			}
+		}
+	}
+	total := 0
+	for r := 0; r < m; r++ {
+		for c := 0; c < n; c++ {
+			if grid[r][c] == 1 && (rowCount[r] > 1 || colCount[c] > 1) {
+				total++
+			}
+		}
+	}
+	return total
+}
+@@@LANG kotlin
+fun countServers(grid: Array<IntArray>): Int {
+    val m = grid.size
+    val n = grid[0].size
+    val rowCount = IntArray(m)
+    val colCount = IntArray(n)
+    for (r in 0 until m) {
+        for (c in 0 until n) {
+            if (grid[r][c] == 1) {
+                rowCount[r]++
+                colCount[c]++
+            }
+        }
+    }
+    var total = 0
+    for (r in 0 until m) {
+        for (c in 0 until n) {
+            if (grid[r][c] == 1 && (rowCount[r] > 1 || colCount[c] > 1)) total++
+        }
+    }
+    return total
+}
+@@@LANG swift
+func countServers(_ grid: [[Int]]) -> Int {
+    let m = grid.count
+    let n = grid[0].count
+    var rowCount = [Int](repeating: 0, count: m)
+    var colCount = [Int](repeating: 0, count: n)
+    for r in 0..<m {
+        for c in 0..<n where grid[r][c] == 1 {
+            rowCount[r] += 1
+            colCount[c] += 1
+        }
+    }
+    var total = 0
+    for r in 0..<m {
+        for c in 0..<n where grid[r][c] == 1 {
+            if rowCount[r] > 1 || colCount[c] > 1 { total += 1 }
+        }
+    }
+    return total
+}
+@@@LANG rust
+fn countServers(grid: Vec<Vec<i32>>) -> i32 {
+    let m = grid.len();
+    let n = grid[0].len();
+    let mut row_count = vec![0i32; m];
+    let mut col_count = vec![0i32; n];
+    for r in 0..m {
+        for c in 0..n {
+            if grid[r][c] == 1 {
+                row_count[r] += 1;
+                col_count[c] += 1;
+            }
+        }
+    }
+    let mut total = 0;
+    for r in 0..m {
+        for c in 0..n {
+            if grid[r][c] == 1 && (row_count[r] > 1 || col_count[c] > 1) {
+                total += 1;
+            }
+        }
+    }
+    total
+}
+@@@LANG php
+function countServers($grid) {
+    $m = count($grid);
+    $n = count($grid[0]);
+    $rowCount = array_fill(0, $m, 0);
+    $colCount = array_fill(0, $n, 0);
+    for ($r = 0; $r < $m; $r++) {
+        for ($c = 0; $c < $n; $c++) {
+            if ($grid[$r][$c] === 1) {
+                $rowCount[$r]++;
+                $colCount[$c]++;
+            }
+        }
+    }
+    $total = 0;
+    for ($r = 0; $r < $m; $r++) {
+        for ($c = 0; $c < $n; $c++) {
+            if ($grid[$r][$c] === 1 && ($rowCount[$r] > 1 || $colCount[$c] > 1)) $total++;
+        }
+    }
+    return $total;
+}
+@@@LANG ruby
+def countServers(grid)
+  m = grid.length
+  n = grid[0].length
+  row_count = Array.new(m, 0)
+  col_count = Array.new(n, 0)
+  (0...m).each do |r|
+    (0...n).each do |c|
+      if grid[r][c] == 1
+        row_count[r] += 1
+        col_count[c] += 1
+      end
+    end
+  end
+  total = 0
+  (0...m).each do |r|
+    (0...n).each do |c|
+      total += 1 if grid[r][c] == 1 && (row_count[r] > 1 || col_count[c] > 1)
+    end
+  end
+  total
+end
+
+@@@PROBLEM cells-with-odd-values-in-a-matrix
+@@@LANG typescript
+function oddCells(m: number, n: number, indices: number[][]): number {
+    var rowCount: number[] = [];
+    var colCount: number[] = [];
+    for (var i = 0; i < m; i++) rowCount.push(0);
+    for (var j = 0; j < n; j++) colCount.push(0);
+    for (var k = 0; k < indices.length; k++) {
+        rowCount[indices[k][0]]++;
+        colCount[indices[k][1]]++;
+    }
+    var odd = 0;
+    for (var r = 0; r < m; r++) {
+        for (var c = 0; c < n; c++) {
+            if ((rowCount[r] + colCount[c]) % 2 === 1) odd++;
+        }
+    }
+    return odd;
+}
+@@@LANG java
+public static int oddCells(int m, int n, int[][] indices) {
+    int[] rowCount = new int[m];
+    int[] colCount = new int[n];
+    for (int[] idx : indices) {
+        rowCount[idx[0]]++;
+        colCount[idx[1]]++;
+    }
+    int odd = 0;
+    for (int r = 0; r < m; r++) {
+        for (int c = 0; c < n; c++) {
+            if ((rowCount[r] + colCount[c]) % 2 == 1) odd++;
+        }
+    }
+    return odd;
+}
+@@@LANG cpp
+int oddCells(int m, int n, vector<vector<int>>& indices) {
+    vector<int> rowCount(m, 0), colCount(n, 0);
+    for (vector<int>& idx : indices) {
+        rowCount[idx[0]]++;
+        colCount[idx[1]]++;
+    }
+    int odd = 0;
+    for (int r = 0; r < m; r++) {
+        for (int c = 0; c < n; c++) {
+            if ((rowCount[r] + colCount[c]) % 2 == 1) odd++;
+        }
+    }
+    return odd;
+}
+@@@LANG c
+int oddCells(int m, int n, int** indices, int indicesSize, int* indicesColSize) {
+    int* rowCount = (int*) calloc(m, sizeof(int));
+    int* colCount = (int*) calloc(n, sizeof(int));
+    for (int k = 0; k < indicesSize; k++) {
+        rowCount[indices[k][0]]++;
+        colCount[indices[k][1]]++;
+    }
+    int odd = 0;
+    for (int r = 0; r < m; r++) {
+        for (int c = 0; c < n; c++) {
+            if ((rowCount[r] + colCount[c]) % 2 == 1) odd++;
+        }
+    }
+    free(rowCount);
+    free(colCount);
+    return odd;
+}
+@@@LANG csharp
+public static int OddCells(int m, int n, int[][] indices)
+{
+    int[] rowCount = new int[m];
+    int[] colCount = new int[n];
+    foreach (int[] idx in indices)
+    {
+        rowCount[idx[0]]++;
+        colCount[idx[1]]++;
+    }
+    int odd = 0;
+    for (int r = 0; r < m; r++)
+    {
+        for (int c = 0; c < n; c++)
+        {
+            if ((rowCount[r] + colCount[c]) % 2 == 1) odd++;
+        }
+    }
+    return odd;
+}
+@@@LANG go
+func oddCells(m int, n int, indices [][]int) int {
+	rowCount := make([]int, m)
+	colCount := make([]int, n)
+	for _, idx := range indices {
+		rowCount[idx[0]]++
+		colCount[idx[1]]++
+	}
+	odd := 0
+	for r := 0; r < m; r++ {
+		for c := 0; c < n; c++ {
+			if (rowCount[r]+colCount[c])%2 == 1 {
+				odd++
+			}
+		}
+	}
+	return odd
+}
+@@@LANG kotlin
+fun oddCells(m: Int, n: Int, indices: Array<IntArray>): Int {
+    val rowCount = IntArray(m)
+    val colCount = IntArray(n)
+    for (idx in indices) {
+        rowCount[idx[0]]++
+        colCount[idx[1]]++
+    }
+    var odd = 0
+    for (r in 0 until m) {
+        for (c in 0 until n) {
+            if ((rowCount[r] + colCount[c]) % 2 == 1) odd++
+        }
+    }
+    return odd
+}
+@@@LANG swift
+func oddCells(_ m: Int, _ n: Int, _ indices: [[Int]]) -> Int {
+    var rowCount = [Int](repeating: 0, count: m)
+    var colCount = [Int](repeating: 0, count: n)
+    for idx in indices {
+        rowCount[idx[0]] += 1
+        colCount[idx[1]] += 1
+    }
+    var odd = 0
+    for r in 0..<m {
+        for c in 0..<n {
+            if (rowCount[r] + colCount[c]) % 2 == 1 { odd += 1 }
+        }
+    }
+    return odd
+}
+@@@LANG rust
+fn oddCells(m: i32, n: i32, indices: Vec<Vec<i32>>) -> i32 {
+    let rows = m as usize;
+    let cols = n as usize;
+    let mut row_count = vec![0i32; rows];
+    let mut col_count = vec![0i32; cols];
+    for idx in indices.iter() {
+        row_count[idx[0] as usize] += 1;
+        col_count[idx[1] as usize] += 1;
+    }
+    let mut odd = 0;
+    for r in 0..rows {
+        for c in 0..cols {
+            if (row_count[r] + col_count[c]) % 2 == 1 {
+                odd += 1;
+            }
+        }
+    }
+    odd
+}
+@@@LANG php
+function oddCells($m, $n, $indices) {
+    $rowCount = array_fill(0, $m, 0);
+    $colCount = array_fill(0, $n, 0);
+    foreach ($indices as $idx) {
+        $rowCount[$idx[0]]++;
+        $colCount[$idx[1]]++;
+    }
+    $odd = 0;
+    for ($r = 0; $r < $m; $r++) {
+        for ($c = 0; $c < $n; $c++) {
+            if (($rowCount[$r] + $colCount[$c]) % 2 === 1) $odd++;
+        }
+    }
+    return $odd;
+}
+@@@LANG ruby
+def oddCells(m, n, indices)
+  row_count = Array.new(m, 0)
+  col_count = Array.new(n, 0)
+  indices.each do |idx|
+    row_count[idx[0]] += 1
+    col_count[idx[1]] += 1
+  end
+  odd = 0
+  (0...m).each do |r|
+    (0...n).each do |c|
+      odd += 1 if (row_count[r] + col_count[c]).odd?
+    end
+  end
+  odd
+end
+
+@@@PROBLEM convert-1d-array-into-2d-array
+@@@LANG typescript
+function construct2DArray(original: number[], m: number, n: number): number[][] {
+    if (original.length !== m * n) return [];
+    var out: number[][] = [];
+    for (var r = 0; r < m; r++) out.push(original.slice(r * n, r * n + n));
+    return out;
+}
+@@@LANG java
+public static int[][] construct2DArray(int[] original, int m, int n) {
+    if (original.length != m * n) return new int[0][];
+    int[][] out = new int[m][n];
+    for (int r = 0; r < m; r++) {
+        for (int c = 0; c < n; c++) out[r][c] = original[r * n + c];
+    }
+    return out;
+}
+@@@LANG cpp
+vector<vector<int>> construct2DArray(vector<int>& original, int m, int n) {
+    if ((int) original.size() != m * n) return {};
+    vector<vector<int>> out(m, vector<int>(n, 0));
+    for (int r = 0; r < m; r++) {
+        for (int c = 0; c < n; c++) out[r][c] = original[r * n + c];
+    }
+    return out;
+}
+@@@LANG c
+int** construct2DArray(int* original, int originalSize, int m, int n, int* returnSize, int** returnColumnSizes) {
+    if (originalSize != m * n) {
+        *returnSize = 0;
+        *returnColumnSizes = (int*) malloc(sizeof(int));
+        return (int**) malloc(sizeof(int*));
+    }
+    int** out = (int**) malloc(sizeof(int*) * m);
+    *returnColumnSizes = (int*) malloc(sizeof(int) * m);
+    for (int r = 0; r < m; r++) {
+        out[r] = (int*) malloc(sizeof(int) * n);
+        (*returnColumnSizes)[r] = n;
+        for (int c = 0; c < n; c++) out[r][c] = original[r * n + c];
+    }
+    *returnSize = m;
+    return out;
+}
+@@@LANG csharp
+public static int[][] Construct2DArray(int[] original, int m, int n)
+{
+    if (original.Length != m * n) return new int[0][];
+    int[][] out_ = new int[m][];
+    for (int r = 0; r < m; r++)
+    {
+        out_[r] = new int[n];
+        for (int c = 0; c < n; c++) out_[r][c] = original[r * n + c];
+    }
+    return out_;
+}
+@@@LANG go
+func construct2DArray(original []int, m int, n int) [][]int {
+	if len(original) != m*n {
+		return [][]int{}
+	}
+	out := make([][]int, m)
+	for r := 0; r < m; r++ {
+		out[r] = make([]int, n)
+		for c := 0; c < n; c++ {
+			out[r][c] = original[r*n+c]
+		}
+	}
+	return out
+}
+@@@LANG kotlin
+fun construct2DArray(original: IntArray, m: Int, n: Int): Array<IntArray> {
+    if (original.size != m * n) return arrayOf()
+    return Array(m) { r -> IntArray(n) { c -> original[r * n + c] } }
+}
+@@@LANG swift
+func construct2DArray(_ original: [Int], _ m: Int, _ n: Int) -> [[Int]] {
+    if original.count != m * n { return [] }
+    var out: [[Int]] = []
+    for r in 0..<m {
+        out.append(Array(original[(r * n)..<(r * n + n)]))
+    }
+    return out
+}
+@@@LANG rust
+fn construct2DArray(original: Vec<i32>, m: i32, n: i32) -> Vec<Vec<i32>> {
+    let rows = m as usize;
+    let cols = n as usize;
+    if original.len() != rows * cols {
+        return vec![];
+    }
+    let mut out = vec![vec![0i32; cols]; rows];
+    for r in 0..rows {
+        for c in 0..cols {
+            out[r][c] = original[r * cols + c];
+        }
+    }
+    out
+}
+@@@LANG php
+function construct2DArray($original, $m, $n) {
+    if (count($original) !== $m * $n) return array();
+    $out = array();
+    for ($r = 0; $r < $m; $r++) {
+        $out[] = array_slice($original, $r * $n, $n);
+    }
+    return $out;
+}
+@@@LANG ruby
+def construct2DArray(original, m, n)
+  return [] if original.length != m * n
+  (0...m).map { |r| original[r * n, n] }
+end
+
+@@@PROBLEM valid-sudoku
+@@@LANG typescript
+function isValidSudoku(board: number[][]): boolean {
+    var rows: boolean[][] = [];
+    var cols: boolean[][] = [];
+    var boxes: boolean[][] = [];
+    for (var i = 0; i < 9; i++) {
+        var a: boolean[] = [];
+        var b: boolean[] = [];
+        var d: boolean[] = [];
+        for (var j = 0; j < 10; j++) { a.push(false); b.push(false); d.push(false); }
+        rows.push(a);
+        cols.push(b);
+        boxes.push(d);
+    }
+    for (var r = 0; r < 9; r++) {
+        for (var c = 0; c < 9; c++) {
+            var v = board[r][c];
+            if (v === 0) continue;
+            var box = Math.floor(r / 3) * 3 + Math.floor(c / 3);
+            if (rows[r][v] || cols[c][v] || boxes[box][v]) return false;
+            rows[r][v] = true;
+            cols[c][v] = true;
+            boxes[box][v] = true;
+        }
+    }
+    return true;
+}
+@@@LANG java
+public static boolean isValidSudoku(int[][] board) {
+    boolean[][] rows = new boolean[9][10];
+    boolean[][] cols = new boolean[9][10];
+    boolean[][] boxes = new boolean[9][10];
+    for (int r = 0; r < 9; r++) {
+        for (int c = 0; c < 9; c++) {
+            int v = board[r][c];
+            if (v == 0) continue;
+            int box = (r / 3) * 3 + c / 3;
+            if (rows[r][v] || cols[c][v] || boxes[box][v]) return false;
+            rows[r][v] = true;
+            cols[c][v] = true;
+            boxes[box][v] = true;
+        }
+    }
+    return true;
+}
+@@@LANG cpp
+bool isValidSudoku(vector<vector<int>>& board) {
+    bool rows[9][10] = {{false}};
+    bool cols[9][10] = {{false}};
+    bool boxes[9][10] = {{false}};
+    for (int r = 0; r < 9; r++) {
+        for (int c = 0; c < 9; c++) {
+            int v = board[r][c];
+            if (v == 0) continue;
+            int box = (r / 3) * 3 + c / 3;
+            if (rows[r][v] || cols[c][v] || boxes[box][v]) return false;
+            rows[r][v] = true;
+            cols[c][v] = true;
+            boxes[box][v] = true;
+        }
+    }
+    return true;
+}
+@@@LANG c
+bool isValidSudoku(int** board, int boardSize, int* boardColSize) {
+    bool rows[9][10];
+    bool cols[9][10];
+    bool boxes[9][10];
+    for (int i = 0; i < 9; i++) {
+        for (int j = 0; j < 10; j++) {
+            rows[i][j] = false;
+            cols[i][j] = false;
+            boxes[i][j] = false;
+        }
+    }
+    for (int r = 0; r < 9; r++) {
+        for (int c = 0; c < 9; c++) {
+            int v = board[r][c];
+            if (v == 0) continue;
+            int box = (r / 3) * 3 + c / 3;
+            if (rows[r][v] || cols[c][v] || boxes[box][v]) return false;
+            rows[r][v] = true;
+            cols[c][v] = true;
+            boxes[box][v] = true;
+        }
+    }
+    return true;
+}
+@@@LANG csharp
+public static bool IsValidSudoku(int[][] board)
+{
+    bool[,] rows = new bool[9, 10];
+    bool[,] cols = new bool[9, 10];
+    bool[,] boxes = new bool[9, 10];
+    for (int r = 0; r < 9; r++)
+    {
+        for (int c = 0; c < 9; c++)
+        {
+            int v = board[r][c];
+            if (v == 0) continue;
+            int box = (r / 3) * 3 + c / 3;
+            if (rows[r, v] || cols[c, v] || boxes[box, v]) return false;
+            rows[r, v] = true;
+            cols[c, v] = true;
+            boxes[box, v] = true;
+        }
+    }
+    return true;
+}
+@@@LANG go
+func isValidSudoku(board [][]int) bool {
+	var rows, cols, boxes [9][10]bool
+	for r := 0; r < 9; r++ {
+		for c := 0; c < 9; c++ {
+			v := board[r][c]
+			if v == 0 {
+				continue
+			}
+			box := (r/3)*3 + c/3
+			if rows[r][v] || cols[c][v] || boxes[box][v] {
+				return false
+			}
+			rows[r][v] = true
+			cols[c][v] = true
+			boxes[box][v] = true
+		}
+	}
+	return true
+}
+@@@LANG kotlin
+fun isValidSudoku(board: Array<IntArray>): Boolean {
+    val rows = Array(9) { BooleanArray(10) }
+    val cols = Array(9) { BooleanArray(10) }
+    val boxes = Array(9) { BooleanArray(10) }
+    for (r in 0 until 9) {
+        for (c in 0 until 9) {
+            val v = board[r][c]
+            if (v == 0) continue
+            val box = (r / 3) * 3 + c / 3
+            if (rows[r][v] || cols[c][v] || boxes[box][v]) return false
+            rows[r][v] = true
+            cols[c][v] = true
+            boxes[box][v] = true
+        }
+    }
+    return true
+}
+@@@LANG swift
+func isValidSudoku(_ board: [[Int]]) -> Bool {
+    var rows = [[Bool]](repeating: [Bool](repeating: false, count: 10), count: 9)
+    var cols = [[Bool]](repeating: [Bool](repeating: false, count: 10), count: 9)
+    var boxes = [[Bool]](repeating: [Bool](repeating: false, count: 10), count: 9)
+    for r in 0..<9 {
+        for c in 0..<9 {
+            let v = board[r][c]
+            if v == 0 { continue }
+            let box = (r / 3) * 3 + c / 3
+            if rows[r][v] || cols[c][v] || boxes[box][v] { return false }
+            rows[r][v] = true
+            cols[c][v] = true
+            boxes[box][v] = true
+        }
+    }
+    return true
+}
+@@@LANG rust
+fn isValidSudoku(board: Vec<Vec<i32>>) -> bool {
+    let mut rows = [[false; 10]; 9];
+    let mut cols = [[false; 10]; 9];
+    let mut boxes = [[false; 10]; 9];
+    for r in 0..9 {
+        for c in 0..9 {
+            let v = board[r][c] as usize;
+            if v == 0 {
+                continue;
+            }
+            let b = (r / 3) * 3 + c / 3;
+            if rows[r][v] || cols[c][v] || boxes[b][v] {
+                return false;
+            }
+            rows[r][v] = true;
+            cols[c][v] = true;
+            boxes[b][v] = true;
+        }
+    }
+    true
+}
+@@@LANG php
+function isValidSudoku($board) {
+    $rows = array();
+    $cols = array();
+    $boxes = array();
+    for ($i = 0; $i < 9; $i++) {
+        $rows[] = array_fill(0, 10, false);
+        $cols[] = array_fill(0, 10, false);
+        $boxes[] = array_fill(0, 10, false);
+    }
+    for ($r = 0; $r < 9; $r++) {
+        for ($c = 0; $c < 9; $c++) {
+            $v = $board[$r][$c];
+            if ($v === 0) continue;
+            $box = intdiv($r, 3) * 3 + intdiv($c, 3);
+            if ($rows[$r][$v] || $cols[$c][$v] || $boxes[$box][$v]) return false;
+            $rows[$r][$v] = true;
+            $cols[$c][$v] = true;
+            $boxes[$box][$v] = true;
+        }
+    }
+    return true;
+}
+@@@LANG ruby
+def isValidSudoku(board)
+  rows = Array.new(9) { Array.new(10, false) }
+  cols = Array.new(9) { Array.new(10, false) }
+  boxes = Array.new(9) { Array.new(10, false) }
+  (0...9).each do |r|
+    (0...9).each do |c|
+      v = board[r][c]
+      next if v == 0
+      box = (r / 3) * 3 + c / 3
+      return false if rows[r][v] || cols[c][v] || boxes[box][v]
+      rows[r][v] = true
+      cols[c][v] = true
+      boxes[box][v] = true
+    end
+  end
+  true
+end
+
+@@@PROBLEM find-winner-on-a-tic-tac-toe-game
+@@@LANG typescript
+function tictactoe(moves: number[][]): string {
+    var board: number[][] = [];
+    for (var i = 0; i < 3; i++) board.push([0, 0, 0]);
+    for (var k = 0; k < moves.length; k++) {
+        board[moves[k][0]][moves[k][1]] = k % 2 === 0 ? 1 : 2;
+    }
+    var lines = [
+        [[0, 0], [0, 1], [0, 2]], [[1, 0], [1, 1], [1, 2]], [[2, 0], [2, 1], [2, 2]],
+        [[0, 0], [1, 0], [2, 0]], [[0, 1], [1, 1], [2, 1]], [[0, 2], [1, 2], [2, 2]],
+        [[0, 0], [1, 1], [2, 2]], [[0, 2], [1, 1], [2, 0]]
+    ];
+    for (var i2 = 0; i2 < lines.length; i2++) {
+        var line = lines[i2];
+        var v = board[line[0][0]][line[0][1]];
+        if (v !== 0 && v === board[line[1][0]][line[1][1]] && v === board[line[2][0]][line[2][1]]) {
+            return v === 1 ? "A" : "B";
+        }
+    }
+    return moves.length === 9 ? "Draw" : "Pending";
+}
+@@@LANG java
+public static String tictactoe(int[][] moves) {
+    int[][] board = new int[3][3];
+    for (int k = 0; k < moves.length; k++) {
+        board[moves[k][0]][moves[k][1]] = k % 2 == 0 ? 1 : 2;
+    }
+    int[][][] lines = {
+        {{0, 0}, {0, 1}, {0, 2}}, {{1, 0}, {1, 1}, {1, 2}}, {{2, 0}, {2, 1}, {2, 2}},
+        {{0, 0}, {1, 0}, {2, 0}}, {{0, 1}, {1, 1}, {2, 1}}, {{0, 2}, {1, 2}, {2, 2}},
+        {{0, 0}, {1, 1}, {2, 2}}, {{0, 2}, {1, 1}, {2, 0}}
+    };
+    for (int[][] line : lines) {
+        int v = board[line[0][0]][line[0][1]];
+        if (v != 0 && v == board[line[1][0]][line[1][1]] && v == board[line[2][0]][line[2][1]]) {
+            return v == 1 ? "A" : "B";
+        }
+    }
+    return moves.length == 9 ? "Draw" : "Pending";
+}
+@@@LANG cpp
+string tictactoe(vector<vector<int>>& moves) {
+    int board[3][3] = {{0, 0, 0}, {0, 0, 0}, {0, 0, 0}};
+    for (int k = 0; k < (int) moves.size(); k++) {
+        board[moves[k][0]][moves[k][1]] = k % 2 == 0 ? 1 : 2;
+    }
+    int lines[8][3][2] = {
+        {{0, 0}, {0, 1}, {0, 2}}, {{1, 0}, {1, 1}, {1, 2}}, {{2, 0}, {2, 1}, {2, 2}},
+        {{0, 0}, {1, 0}, {2, 0}}, {{0, 1}, {1, 1}, {2, 1}}, {{0, 2}, {1, 2}, {2, 2}},
+        {{0, 0}, {1, 1}, {2, 2}}, {{0, 2}, {1, 1}, {2, 0}}
+    };
+    for (int i = 0; i < 8; i++) {
+        int v = board[lines[i][0][0]][lines[i][0][1]];
+        if (v != 0 && v == board[lines[i][1][0]][lines[i][1][1]] && v == board[lines[i][2][0]][lines[i][2][1]]) {
+            return v == 1 ? "A" : "B";
+        }
+    }
+    return moves.size() == 9 ? "Draw" : "Pending";
+}
+@@@LANG c
+char* tictactoe(int** moves, int movesSize, int* movesColSize) {
+    int board[3][3] = {{0, 0, 0}, {0, 0, 0}, {0, 0, 0}};
+    for (int k = 0; k < movesSize; k++) {
+        board[moves[k][0]][moves[k][1]] = k % 2 == 0 ? 1 : 2;
+    }
+    int lines[8][3][2] = {
+        {{0, 0}, {0, 1}, {0, 2}}, {{1, 0}, {1, 1}, {1, 2}}, {{2, 0}, {2, 1}, {2, 2}},
+        {{0, 0}, {1, 0}, {2, 0}}, {{0, 1}, {1, 1}, {2, 1}}, {{0, 2}, {1, 2}, {2, 2}},
+        {{0, 0}, {1, 1}, {2, 2}}, {{0, 2}, {1, 1}, {2, 0}}
+    };
+    char* out = (char*) malloc(16);
+    for (int i = 0; i < 8; i++) {
+        int v = board[lines[i][0][0]][lines[i][0][1]];
+        if (v != 0 && v == board[lines[i][1][0]][lines[i][1][1]] && v == board[lines[i][2][0]][lines[i][2][1]]) {
+            strcpy(out, v == 1 ? "A" : "B");
+            return out;
+        }
+    }
+    strcpy(out, movesSize == 9 ? "Draw" : "Pending");
+    return out;
+}
+@@@LANG csharp
+public static string Tictactoe(int[][] moves)
+{
+    int[,] board = new int[3, 3];
+    for (int k = 0; k < moves.Length; k++)
+    {
+        board[moves[k][0], moves[k][1]] = k % 2 == 0 ? 1 : 2;
+    }
+    int[][][] lines = new int[][][] {
+        new int[][] { new int[] {0,0}, new int[] {0,1}, new int[] {0,2} },
+        new int[][] { new int[] {1,0}, new int[] {1,1}, new int[] {1,2} },
+        new int[][] { new int[] {2,0}, new int[] {2,1}, new int[] {2,2} },
+        new int[][] { new int[] {0,0}, new int[] {1,0}, new int[] {2,0} },
+        new int[][] { new int[] {0,1}, new int[] {1,1}, new int[] {2,1} },
+        new int[][] { new int[] {0,2}, new int[] {1,2}, new int[] {2,2} },
+        new int[][] { new int[] {0,0}, new int[] {1,1}, new int[] {2,2} },
+        new int[][] { new int[] {0,2}, new int[] {1,1}, new int[] {2,0} }
+    };
+    foreach (int[][] line in lines)
+    {
+        int v = board[line[0][0], line[0][1]];
+        if (v != 0 && v == board[line[1][0], line[1][1]] && v == board[line[2][0], line[2][1]])
+        {
+            return v == 1 ? "A" : "B";
+        }
+    }
+    return moves.Length == 9 ? "Draw" : "Pending";
+}
+@@@LANG go
+func tictactoe(moves [][]int) string {
+	var board [3][3]int
+	for k, mv := range moves {
+		if k%2 == 0 {
+			board[mv[0]][mv[1]] = 1
+		} else {
+			board[mv[0]][mv[1]] = 2
+		}
+	}
+	lines := [8][3][2]int{
+		{{0, 0}, {0, 1}, {0, 2}}, {{1, 0}, {1, 1}, {1, 2}}, {{2, 0}, {2, 1}, {2, 2}},
+		{{0, 0}, {1, 0}, {2, 0}}, {{0, 1}, {1, 1}, {2, 1}}, {{0, 2}, {1, 2}, {2, 2}},
+		{{0, 0}, {1, 1}, {2, 2}}, {{0, 2}, {1, 1}, {2, 0}},
+	}
+	for i := 0; i < 8; i++ {
+		v := board[lines[i][0][0]][lines[i][0][1]]
+		if v != 0 && v == board[lines[i][1][0]][lines[i][1][1]] && v == board[lines[i][2][0]][lines[i][2][1]] {
+			if v == 1 {
+				return "A"
+			}
+			return "B"
+		}
+	}
+	if len(moves) == 9 {
+		return "Draw"
+	}
+	return "Pending"
+}
+@@@LANG kotlin
+fun tictactoe(moves: Array<IntArray>): String {
+    val board = Array(3) { IntArray(3) }
+    for (k in moves.indices) {
+        board[moves[k][0]][moves[k][1]] = if (k % 2 == 0) 1 else 2
+    }
+    val lines = arrayOf(
+        arrayOf(intArrayOf(0, 0), intArrayOf(0, 1), intArrayOf(0, 2)),
+        arrayOf(intArrayOf(1, 0), intArrayOf(1, 1), intArrayOf(1, 2)),
+        arrayOf(intArrayOf(2, 0), intArrayOf(2, 1), intArrayOf(2, 2)),
+        arrayOf(intArrayOf(0, 0), intArrayOf(1, 0), intArrayOf(2, 0)),
+        arrayOf(intArrayOf(0, 1), intArrayOf(1, 1), intArrayOf(2, 1)),
+        arrayOf(intArrayOf(0, 2), intArrayOf(1, 2), intArrayOf(2, 2)),
+        arrayOf(intArrayOf(0, 0), intArrayOf(1, 1), intArrayOf(2, 2)),
+        arrayOf(intArrayOf(0, 2), intArrayOf(1, 1), intArrayOf(2, 0))
+    )
+    for (line in lines) {
+        val v = board[line[0][0]][line[0][1]]
+        if (v != 0 && v == board[line[1][0]][line[1][1]] && v == board[line[2][0]][line[2][1]]) {
+            return if (v == 1) "A" else "B"
+        }
+    }
+    return if (moves.size == 9) "Draw" else "Pending"
+}
+@@@LANG swift
+func tictactoe(_ moves: [[Int]]) -> String {
+    var board = [[Int]](repeating: [Int](repeating: 0, count: 3), count: 3)
+    for k in 0..<moves.count {
+        board[moves[k][0]][moves[k][1]] = k % 2 == 0 ? 1 : 2
+    }
+    let lines: [[(Int, Int)]] = [
+        [(0, 0), (0, 1), (0, 2)], [(1, 0), (1, 1), (1, 2)], [(2, 0), (2, 1), (2, 2)],
+        [(0, 0), (1, 0), (2, 0)], [(0, 1), (1, 1), (2, 1)], [(0, 2), (1, 2), (2, 2)],
+        [(0, 0), (1, 1), (2, 2)], [(0, 2), (1, 1), (2, 0)]
+    ]
+    for line in lines {
+        let v = board[line[0].0][line[0].1]
+        if v != 0 && v == board[line[1].0][line[1].1] && v == board[line[2].0][line[2].1] {
+            return v == 1 ? "A" : "B"
+        }
+    }
+    return moves.count == 9 ? "Draw" : "Pending"
+}
+@@@LANG rust
+fn tictactoe(moves: Vec<Vec<i32>>) -> String {
+    let mut board = [[0i32; 3]; 3];
+    for k in 0..moves.len() {
+        board[moves[k][0] as usize][moves[k][1] as usize] = if k % 2 == 0 { 1 } else { 2 };
+    }
+    let lines: [[(usize, usize); 3]; 8] = [
+        [(0, 0), (0, 1), (0, 2)], [(1, 0), (1, 1), (1, 2)], [(2, 0), (2, 1), (2, 2)],
+        [(0, 0), (1, 0), (2, 0)], [(0, 1), (1, 1), (2, 1)], [(0, 2), (1, 2), (2, 2)],
+        [(0, 0), (1, 1), (2, 2)], [(0, 2), (1, 1), (2, 0)],
+    ];
+    for line in lines.iter() {
+        let v = board[line[0].0][line[0].1];
+        if v != 0 && v == board[line[1].0][line[1].1] && v == board[line[2].0][line[2].1] {
+            return String::from(if v == 1 { "A" } else { "B" });
+        }
+    }
+    String::from(if moves.len() == 9 { "Draw" } else { "Pending" })
+}
+@@@LANG php
+function tictactoe($moves) {
+    $board = array(array(0, 0, 0), array(0, 0, 0), array(0, 0, 0));
+    for ($k = 0; $k < count($moves); $k++) {
+        $board[$moves[$k][0]][$moves[$k][1]] = $k % 2 === 0 ? 1 : 2;
+    }
+    $lines = array(
+        array(array(0,0), array(0,1), array(0,2)),
+        array(array(1,0), array(1,1), array(1,2)),
+        array(array(2,0), array(2,1), array(2,2)),
+        array(array(0,0), array(1,0), array(2,0)),
+        array(array(0,1), array(1,1), array(2,1)),
+        array(array(0,2), array(1,2), array(2,2)),
+        array(array(0,0), array(1,1), array(2,2)),
+        array(array(0,2), array(1,1), array(2,0))
+    );
+    foreach ($lines as $line) {
+        $v = $board[$line[0][0]][$line[0][1]];
+        if ($v !== 0 && $v === $board[$line[1][0]][$line[1][1]] && $v === $board[$line[2][0]][$line[2][1]]) {
+            return $v === 1 ? "A" : "B";
+        }
+    }
+    return count($moves) === 9 ? "Draw" : "Pending";
+}
+@@@LANG ruby
+def tictactoe(moves)
+  board = Array.new(3) { Array.new(3, 0) }
+  moves.each_with_index do |mv, k|
+    board[mv[0]][mv[1]] = k.even? ? 1 : 2
+  end
+  lines = [
+    [[0, 0], [0, 1], [0, 2]], [[1, 0], [1, 1], [1, 2]], [[2, 0], [2, 1], [2, 2]],
+    [[0, 0], [1, 0], [2, 0]], [[0, 1], [1, 1], [2, 1]], [[0, 2], [1, 2], [2, 2]],
+    [[0, 0], [1, 1], [2, 2]], [[0, 2], [1, 1], [2, 0]]
+  ]
+  lines.each do |line|
+    v = board[line[0][0]][line[0][1]]
+    if v != 0 && v == board[line[1][0]][line[1][1]] && v == board[line[2][0]][line[2][1]]
+      return v == 1 ? "A" : "B"
+    end
+  end
+  moves.length == 9 ? "Draw" : "Pending"
+end
+
+@@@PROBLEM matrix-cells-in-distance-order
+@@@LANG typescript
+function allCellsDistOrder(rows: number, cols: number, rCenter: number, cCenter: number): number[][] {
+    var cells: number[][] = [];
+    for (var r = 0; r < rows; r++) {
+        for (var c = 0; c < cols; c++) cells.push([r, c]);
+    }
+    cells.sort(function (a, b) {
+        var da = Math.abs(a[0] - rCenter) + Math.abs(a[1] - cCenter);
+        var db = Math.abs(b[0] - rCenter) + Math.abs(b[1] - cCenter);
+        if (da !== db) return da - db;
+        if (a[0] !== b[0]) return a[0] - b[0];
+        return a[1] - b[1];
+    });
+    return cells;
+}
+@@@LANG java
+public static int[][] allCellsDistOrder(int rows, int cols, int rCenter, int cCenter) {
+    int[][] cells = new int[rows * cols][2];
+    int pos = 0;
+    for (int r = 0; r < rows; r++) {
+        for (int c = 0; c < cols; c++) {
+            cells[pos][0] = r;
+            cells[pos][1] = c;
+            pos++;
+        }
+    }
+    Arrays.sort(cells, new Comparator<int[]>() {
+        public int compare(int[] a, int[] b) {
+            int da = Math.abs(a[0] - rCenter) + Math.abs(a[1] - cCenter);
+            int db = Math.abs(b[0] - rCenter) + Math.abs(b[1] - cCenter);
+            if (da != db) return da - db;
+            if (a[0] != b[0]) return a[0] - b[0];
+            return a[1] - b[1];
+        }
+    });
+    return cells;
+}
+@@@LANG cpp
+vector<vector<int>> allCellsDistOrder(int rows, int cols, int rCenter, int cCenter) {
+    vector<vector<int>> cells;
+    for (int r = 0; r < rows; r++) {
+        for (int c = 0; c < cols; c++) cells.push_back({r, c});
+    }
+    sort(cells.begin(), cells.end(), [rCenter, cCenter](const vector<int>& a, const vector<int>& b) {
+        int da = abs(a[0] - rCenter) + abs(a[1] - cCenter);
+        int db = abs(b[0] - rCenter) + abs(b[1] - cCenter);
+        if (da != db) return da < db;
+        if (a[0] != b[0]) return a[0] < b[0];
+        return a[1] < b[1];
+    });
+    return cells;
+}
+@@@LANG c
+int** allCellsDistOrder(int rows, int cols, int rCenter, int cCenter, int* returnSize, int** returnColumnSizes) {
+    int total = rows * cols;
+    int** cells = (int**) malloc(sizeof(int*) * total);
+    *returnColumnSizes = (int*) malloc(sizeof(int) * total);
+    int pos = 0;
+    for (int d = 0; d <= rows + cols; d++) {
+        for (int r = 0; r < rows; r++) {
+            for (int c = 0; c < cols; c++) {
+                int dr = r - rCenter;
+                if (dr < 0) dr = -dr;
+                int dc = c - cCenter;
+                if (dc < 0) dc = -dc;
+                if (dr + dc != d) continue;
+                cells[pos] = (int*) malloc(sizeof(int) * 2);
+                cells[pos][0] = r;
+                cells[pos][1] = c;
+                (*returnColumnSizes)[pos] = 2;
+                pos++;
+            }
+        }
+    }
+    *returnSize = total;
+    return cells;
+}
+@@@LANG csharp
+public static int[][] AllCellsDistOrder(int rows, int cols, int rCenter, int cCenter)
+{
+    var cells = new List<int[]>();
+    for (int r = 0; r < rows; r++)
+    {
+        for (int c = 0; c < cols; c++) cells.Add(new int[] { r, c });
+    }
+    cells.Sort(delegate (int[] a, int[] b)
+    {
+        int da = Math.Abs(a[0] - rCenter) + Math.Abs(a[1] - cCenter);
+        int db = Math.Abs(b[0] - rCenter) + Math.Abs(b[1] - cCenter);
+        if (da != db) return da - db;
+        if (a[0] != b[0]) return a[0] - b[0];
+        return a[1] - b[1];
+    });
+    return cells.ToArray();
+}
+@@@LANG go
+func allCellsDistOrder(rows int, cols int, rCenter int, cCenter int) [][]int {
+	abs := func(x int) int {
+		if x < 0 {
+			return -x
+		}
+		return x
+	}
+	cells := make([][]int, 0, rows*cols)
+	for r := 0; r < rows; r++ {
+		for c := 0; c < cols; c++ {
+			cells = append(cells, []int{r, c})
+		}
+	}
+	sort.Slice(cells, func(i, j int) bool {
+		a, b := cells[i], cells[j]
+		da := abs(a[0]-rCenter) + abs(a[1]-cCenter)
+		db := abs(b[0]-rCenter) + abs(b[1]-cCenter)
+		if da != db {
+			return da < db
+		}
+		if a[0] != b[0] {
+			return a[0] < b[0]
+		}
+		return a[1] < b[1]
+	})
+	return cells
+}
+@@@LANG kotlin
+fun allCellsDistOrder(rows: Int, cols: Int, rCenter: Int, cCenter: Int): Array<IntArray> {
+    val cells = ArrayList<IntArray>()
+    for (r in 0 until rows) {
+        for (c in 0 until cols) cells.add(intArrayOf(r, c))
+    }
+    cells.sortWith(Comparator { a, b ->
+        val da = Math.abs(a[0] - rCenter) + Math.abs(a[1] - cCenter)
+        val db = Math.abs(b[0] - rCenter) + Math.abs(b[1] - cCenter)
+        when {
+            da != db -> da - db
+            a[0] != b[0] -> a[0] - b[0]
+            else -> a[1] - b[1]
+        }
+    })
+    return cells.toTypedArray()
+}
+@@@LANG swift
+func allCellsDistOrder(_ rows: Int, _ cols: Int, _ rCenter: Int, _ cCenter: Int) -> [[Int]] {
+    var cells: [[Int]] = []
+    for r in 0..<rows {
+        for c in 0..<cols { cells.append([r, c]) }
+    }
+    cells.sort { a, b in
+        let da = abs(a[0] - rCenter) + abs(a[1] - cCenter)
+        let db = abs(b[0] - rCenter) + abs(b[1] - cCenter)
+        if da != db { return da < db }
+        if a[0] != b[0] { return a[0] < b[0] }
+        return a[1] < b[1]
+    }
+    return cells
+}
+@@@LANG rust
+fn allCellsDistOrder(rows: i32, cols: i32, rCenter: i32, cCenter: i32) -> Vec<Vec<i32>> {
+    let mut cells: Vec<Vec<i32>> = Vec::new();
+    for r in 0..rows {
+        for c in 0..cols {
+            cells.push(vec![r, c]);
+        }
+    }
+    cells.sort_by(|a, b| {
+        let da = (a[0] - rCenter).abs() + (a[1] - cCenter).abs();
+        let db = (b[0] - rCenter).abs() + (b[1] - cCenter).abs();
+        da.cmp(&db).then(a[0].cmp(&b[0])).then(a[1].cmp(&b[1]))
+    });
+    cells
+}
+@@@LANG php
+function allCellsDistOrder($rows, $cols, $rCenter, $cCenter) {
+    $cells = array();
+    for ($r = 0; $r < $rows; $r++) {
+        for ($c = 0; $c < $cols; $c++) $cells[] = array($r, $c);
+    }
+    usort($cells, function ($a, $b) use ($rCenter, $cCenter) {
+        $da = abs($a[0] - $rCenter) + abs($a[1] - $cCenter);
+        $db = abs($b[0] - $rCenter) + abs($b[1] - $cCenter);
+        if ($da !== $db) return $da - $db;
+        if ($a[0] !== $b[0]) return $a[0] - $b[0];
+        return $a[1] - $b[1];
+    });
+    return $cells;
+}
+@@@LANG ruby
+def allCellsDistOrder(rows, cols, rCenter, cCenter)
+  cells = []
+  (0...rows).each do |r|
+    (0...cols).each { |c| cells << [r, c] }
+  end
+  cells.sort_by { |cell| [(cell[0] - rCenter).abs + (cell[1] - cCenter).abs, cell[0], cell[1]] }
+end
+
+@@@PROBLEM projection-area-of-3d-shapes
+@@@LANG typescript
+function projectionArea(grid: number[][]): number {
+    var n = grid.length;
+    var top = 0;
+    var front = 0;
+    var side = 0;
+    for (var r = 0; r < n; r++) {
+        var rowMax = 0;
+        var colMax = 0;
+        for (var c = 0; c < n; c++) {
+            if (grid[r][c] > 0) top++;
+            if (grid[r][c] > rowMax) rowMax = grid[r][c];
+            if (grid[c][r] > colMax) colMax = grid[c][r];
+        }
+        side += rowMax;
+        front += colMax;
+    }
+    return top + front + side;
+}
+@@@LANG java
+public static int projectionArea(int[][] grid) {
+    int n = grid.length;
+    int top = 0, front = 0, side = 0;
+    for (int r = 0; r < n; r++) {
+        int rowMax = 0, colMax = 0;
+        for (int c = 0; c < n; c++) {
+            if (grid[r][c] > 0) top++;
+            if (grid[r][c] > rowMax) rowMax = grid[r][c];
+            if (grid[c][r] > colMax) colMax = grid[c][r];
+        }
+        side += rowMax;
+        front += colMax;
+    }
+    return top + front + side;
+}
+@@@LANG cpp
+int projectionArea(vector<vector<int>>& grid) {
+    int n = (int) grid.size();
+    int top = 0, front = 0, side = 0;
+    for (int r = 0; r < n; r++) {
+        int rowMax = 0, colMax = 0;
+        for (int c = 0; c < n; c++) {
+            if (grid[r][c] > 0) top++;
+            rowMax = max(rowMax, grid[r][c]);
+            colMax = max(colMax, grid[c][r]);
+        }
+        side += rowMax;
+        front += colMax;
+    }
+    return top + front + side;
+}
+@@@LANG c
+int projectionArea(int** grid, int gridSize, int* gridColSize) {
+    int n = gridSize;
+    int top = 0, front = 0, side = 0;
+    for (int r = 0; r < n; r++) {
+        int rowMax = 0, colMax = 0;
+        for (int c = 0; c < n; c++) {
+            if (grid[r][c] > 0) top++;
+            if (grid[r][c] > rowMax) rowMax = grid[r][c];
+            if (grid[c][r] > colMax) colMax = grid[c][r];
+        }
+        side += rowMax;
+        front += colMax;
+    }
+    return top + front + side;
+}
+@@@LANG csharp
+public static int ProjectionArea(int[][] grid)
+{
+    int n = grid.Length;
+    int top = 0, front = 0, side = 0;
+    for (int r = 0; r < n; r++)
+    {
+        int rowMax = 0, colMax = 0;
+        for (int c = 0; c < n; c++)
+        {
+            if (grid[r][c] > 0) top++;
+            if (grid[r][c] > rowMax) rowMax = grid[r][c];
+            if (grid[c][r] > colMax) colMax = grid[c][r];
+        }
+        side += rowMax;
+        front += colMax;
+    }
+    return top + front + side;
+}
+@@@LANG go
+func projectionArea(grid [][]int) int {
+	n := len(grid)
+	top, front, side := 0, 0, 0
+	for r := 0; r < n; r++ {
+		rowMax, colMax := 0, 0
+		for c := 0; c < n; c++ {
+			if grid[r][c] > 0 {
+				top++
+			}
+			if grid[r][c] > rowMax {
+				rowMax = grid[r][c]
+			}
+			if grid[c][r] > colMax {
+				colMax = grid[c][r]
+			}
+		}
+		side += rowMax
+		front += colMax
+	}
+	return top + front + side
+}
+@@@LANG kotlin
+fun projectionArea(grid: Array<IntArray>): Int {
+    val n = grid.size
+    var top = 0
+    var front = 0
+    var side = 0
+    for (r in 0 until n) {
+        var rowMax = 0
+        var colMax = 0
+        for (c in 0 until n) {
+            if (grid[r][c] > 0) top++
+            if (grid[r][c] > rowMax) rowMax = grid[r][c]
+            if (grid[c][r] > colMax) colMax = grid[c][r]
+        }
+        side += rowMax
+        front += colMax
+    }
+    return top + front + side
+}
+@@@LANG swift
+func projectionArea(_ grid: [[Int]]) -> Int {
+    let n = grid.count
+    var top = 0
+    var front = 0
+    var side = 0
+    for r in 0..<n {
+        var rowMax = 0
+        var colMax = 0
+        for c in 0..<n {
+            if grid[r][c] > 0 { top += 1 }
+            if grid[r][c] > rowMax { rowMax = grid[r][c] }
+            if grid[c][r] > colMax { colMax = grid[c][r] }
+        }
+        side += rowMax
+        front += colMax
+    }
+    return top + front + side
+}
+@@@LANG rust
+fn projectionArea(grid: Vec<Vec<i32>>) -> i32 {
+    let n = grid.len();
+    let mut top = 0;
+    let mut front = 0;
+    let mut side = 0;
+    for r in 0..n {
+        let mut row_max = 0;
+        let mut col_max = 0;
+        for c in 0..n {
+            if grid[r][c] > 0 {
+                top += 1;
+            }
+            if grid[r][c] > row_max {
+                row_max = grid[r][c];
+            }
+            if grid[c][r] > col_max {
+                col_max = grid[c][r];
+            }
+        }
+        side += row_max;
+        front += col_max;
+    }
+    top + front + side
+}
+@@@LANG php
+function projectionArea($grid) {
+    $n = count($grid);
+    $top = 0;
+    $front = 0;
+    $side = 0;
+    for ($r = 0; $r < $n; $r++) {
+        $rowMax = 0;
+        $colMax = 0;
+        for ($c = 0; $c < $n; $c++) {
+            if ($grid[$r][$c] > 0) $top++;
+            if ($grid[$r][$c] > $rowMax) $rowMax = $grid[$r][$c];
+            if ($grid[$c][$r] > $colMax) $colMax = $grid[$c][$r];
+        }
+        $side += $rowMax;
+        $front += $colMax;
+    }
+    return $top + $front + $side;
+}
+@@@LANG ruby
+def projectionArea(grid)
+  n = grid.length
+  top = 0
+  front = 0
+  side = 0
+  (0...n).each do |r|
+    row_max = 0
+    col_max = 0
+    (0...n).each do |c|
+      top += 1 if grid[r][c] > 0
+      row_max = grid[r][c] if grid[r][c] > row_max
+      col_max = grid[c][r] if grid[c][r] > col_max
+    end
+    side += row_max
+    front += col_max
+  end
+  top + front + side
+end
+
+@@@PROBLEM special-positions-in-a-binary-matrix
+@@@LANG typescript
+function numSpecial(mat: number[][]): number {
+    var m = mat.length;
+    var n = mat[0].length;
+    var rowSum: number[] = [];
+    var colSum: number[] = [];
+    for (var i = 0; i < m; i++) rowSum.push(0);
+    for (var j = 0; j < n; j++) colSum.push(0);
+    for (var r = 0; r < m; r++) {
+        for (var c = 0; c < n; c++) {
+            rowSum[r] += mat[r][c];
+            colSum[c] += mat[r][c];
+        }
+    }
+    var count = 0;
+    for (var r2 = 0; r2 < m; r2++) {
+        for (var c2 = 0; c2 < n; c2++) {
+            if (mat[r2][c2] === 1 && rowSum[r2] === 1 && colSum[c2] === 1) count++;
+        }
+    }
+    return count;
+}
+@@@LANG java
+public static int numSpecial(int[][] mat) {
+    int m = mat.length, n = mat[0].length;
+    int[] rowSum = new int[m];
+    int[] colSum = new int[n];
+    for (int r = 0; r < m; r++) {
+        for (int c = 0; c < n; c++) {
+            rowSum[r] += mat[r][c];
+            colSum[c] += mat[r][c];
+        }
+    }
+    int count = 0;
+    for (int r = 0; r < m; r++) {
+        for (int c = 0; c < n; c++) {
+            if (mat[r][c] == 1 && rowSum[r] == 1 && colSum[c] == 1) count++;
+        }
+    }
+    return count;
+}
+@@@LANG cpp
+int numSpecial(vector<vector<int>>& mat) {
+    int m = (int) mat.size(), n = (int) mat[0].size();
+    vector<int> rowSum(m, 0), colSum(n, 0);
+    for (int r = 0; r < m; r++) {
+        for (int c = 0; c < n; c++) {
+            rowSum[r] += mat[r][c];
+            colSum[c] += mat[r][c];
+        }
+    }
+    int count = 0;
+    for (int r = 0; r < m; r++) {
+        for (int c = 0; c < n; c++) {
+            if (mat[r][c] == 1 && rowSum[r] == 1 && colSum[c] == 1) count++;
+        }
+    }
+    return count;
+}
+@@@LANG c
+int numSpecial(int** mat, int matSize, int* matColSize) {
+    int m = matSize, n = matColSize[0];
+    int* rowSum = (int*) calloc(m, sizeof(int));
+    int* colSum = (int*) calloc(n, sizeof(int));
+    for (int r = 0; r < m; r++) {
+        for (int c = 0; c < n; c++) {
+            rowSum[r] += mat[r][c];
+            colSum[c] += mat[r][c];
+        }
+    }
+    int count = 0;
+    for (int r = 0; r < m; r++) {
+        for (int c = 0; c < n; c++) {
+            if (mat[r][c] == 1 && rowSum[r] == 1 && colSum[c] == 1) count++;
+        }
+    }
+    free(rowSum);
+    free(colSum);
+    return count;
+}
+@@@LANG csharp
+public static int NumSpecial(int[][] mat)
+{
+    int m = mat.Length, n = mat[0].Length;
+    int[] rowSum = new int[m];
+    int[] colSum = new int[n];
+    for (int r = 0; r < m; r++)
+    {
+        for (int c = 0; c < n; c++)
+        {
+            rowSum[r] += mat[r][c];
+            colSum[c] += mat[r][c];
+        }
+    }
+    int count = 0;
+    for (int r = 0; r < m; r++)
+    {
+        for (int c = 0; c < n; c++)
+        {
+            if (mat[r][c] == 1 && rowSum[r] == 1 && colSum[c] == 1) count++;
+        }
+    }
+    return count;
+}
+@@@LANG go
+func numSpecial(mat [][]int) int {
+	m, n := len(mat), len(mat[0])
+	rowSum := make([]int, m)
+	colSum := make([]int, n)
+	for r := 0; r < m; r++ {
+		for c := 0; c < n; c++ {
+			rowSum[r] += mat[r][c]
+			colSum[c] += mat[r][c]
+		}
+	}
+	count := 0
+	for r := 0; r < m; r++ {
+		for c := 0; c < n; c++ {
+			if mat[r][c] == 1 && rowSum[r] == 1 && colSum[c] == 1 {
+				count++
+			}
+		}
+	}
+	return count
+}
+@@@LANG kotlin
+fun numSpecial(mat: Array<IntArray>): Int {
+    val m = mat.size
+    val n = mat[0].size
+    val rowSum = IntArray(m)
+    val colSum = IntArray(n)
+    for (r in 0 until m) {
+        for (c in 0 until n) {
+            rowSum[r] += mat[r][c]
+            colSum[c] += mat[r][c]
+        }
+    }
+    var count = 0
+    for (r in 0 until m) {
+        for (c in 0 until n) {
+            if (mat[r][c] == 1 && rowSum[r] == 1 && colSum[c] == 1) count++
+        }
+    }
+    return count
+}
+@@@LANG swift
+func numSpecial(_ mat: [[Int]]) -> Int {
+    let m = mat.count
+    let n = mat[0].count
+    var rowSum = [Int](repeating: 0, count: m)
+    var colSum = [Int](repeating: 0, count: n)
+    for r in 0..<m {
+        for c in 0..<n {
+            rowSum[r] += mat[r][c]
+            colSum[c] += mat[r][c]
+        }
+    }
+    var count = 0
+    for r in 0..<m {
+        for c in 0..<n {
+            if mat[r][c] == 1 && rowSum[r] == 1 && colSum[c] == 1 { count += 1 }
+        }
+    }
+    return count
+}
+@@@LANG rust
+fn numSpecial(mat: Vec<Vec<i32>>) -> i32 {
+    let m = mat.len();
+    let n = mat[0].len();
+    let mut row_sum = vec![0i32; m];
+    let mut col_sum = vec![0i32; n];
+    for r in 0..m {
+        for c in 0..n {
+            row_sum[r] += mat[r][c];
+            col_sum[c] += mat[r][c];
+        }
+    }
+    let mut count = 0;
+    for r in 0..m {
+        for c in 0..n {
+            if mat[r][c] == 1 && row_sum[r] == 1 && col_sum[c] == 1 {
+                count += 1;
+            }
+        }
+    }
+    count
+}
+@@@LANG php
+function numSpecial($mat) {
+    $m = count($mat);
+    $n = count($mat[0]);
+    $rowSum = array_fill(0, $m, 0);
+    $colSum = array_fill(0, $n, 0);
+    for ($r = 0; $r < $m; $r++) {
+        for ($c = 0; $c < $n; $c++) {
+            $rowSum[$r] += $mat[$r][$c];
+            $colSum[$c] += $mat[$r][$c];
+        }
+    }
+    $count = 0;
+    for ($r = 0; $r < $m; $r++) {
+        for ($c = 0; $c < $n; $c++) {
+            if ($mat[$r][$c] === 1 && $rowSum[$r] === 1 && $colSum[$c] === 1) $count++;
+        }
+    }
+    return $count;
+}
+@@@LANG ruby
+def numSpecial(mat)
+  m = mat.length
+  n = mat[0].length
+  row_sum = Array.new(m, 0)
+  col_sum = Array.new(n, 0)
+  (0...m).each do |r|
+    (0...n).each do |c|
+      row_sum[r] += mat[r][c]
+      col_sum[c] += mat[r][c]
+    end
+  end
+  count = 0
+  (0...m).each do |r|
+    (0...n).each do |c|
+      count += 1 if mat[r][c] == 1 && row_sum[r] == 1 && col_sum[c] == 1
+    end
+  end
+  count
+end

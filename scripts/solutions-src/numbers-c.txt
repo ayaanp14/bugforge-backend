@@ -1,0 +1,1555 @@
+@@@PROBLEM neon-number
+@@@LANG typescript
+function isNeon(n: number): boolean {
+    var sq = n * n;
+    var total = 0;
+    while (sq > 0) {
+        total += sq % 10;
+        sq = Math.floor(sq / 10);
+    }
+    return total === n;
+}
+@@@LANG java
+public static boolean isNeon(int n) {
+    long sq = (long) n * n;
+    long total = 0;
+    while (sq > 0) {
+        total += sq % 10;
+        sq /= 10;
+    }
+    return total == n;
+}
+@@@LANG cpp
+bool isNeon(int n) {
+    long long sq = (long long) n * n;
+    long long total = 0;
+    while (sq > 0) {
+        total += sq % 10;
+        sq /= 10;
+    }
+    return total == (long long) n;
+}
+@@@LANG c
+bool isNeon(int n) {
+    long long sq = (long long) n * n;
+    long long total = 0;
+    while (sq > 0) {
+        total += sq % 10;
+        sq /= 10;
+    }
+    return total == (long long) n;
+}
+@@@LANG csharp
+public static bool IsNeon(int n)
+{
+    long sq = (long) n * n;
+    long total = 0;
+    while (sq > 0)
+    {
+        total += sq % 10;
+        sq /= 10;
+    }
+    return total == n;
+}
+@@@LANG go
+func isNeon(n int) bool {
+	sq := n * n
+	total := 0
+	for sq > 0 {
+		total += sq % 10
+		sq /= 10
+	}
+	return total == n
+}
+@@@LANG kotlin
+fun isNeon(n: Int): Boolean {
+    var sq = n.toLong() * n
+    var total = 0L
+    while (sq > 0) {
+        total += sq % 10
+        sq /= 10
+    }
+    return total == n.toLong()
+}
+@@@LANG swift
+func isNeon(_ n: Int) -> Bool {
+    var sq = n * n
+    var total = 0
+    while sq > 0 {
+        total += sq % 10
+        sq /= 10
+    }
+    return total == n
+}
+@@@LANG rust
+fn isNeon(n: i32) -> bool {
+    let big = n as i64;
+    let mut sq = big * big;
+    let mut total: i64 = 0;
+    while sq > 0 {
+        total += sq % 10;
+        sq /= 10;
+    }
+    total == big
+}
+@@@LANG php
+function isNeon($n) {
+    $sq = $n * $n;
+    $total = 0;
+    while ($sq > 0) {
+        $total += $sq % 10;
+        $sq = intdiv($sq, 10);
+    }
+    return $total === $n;
+}
+@@@LANG ruby
+def isNeon(n)
+  sq = n * n
+  total = 0
+  while sq > 0
+    total += sq % 10
+    sq /= 10
+  end
+  total == n
+end
+
+@@@PROBLEM disarium-number
+@@@LANG typescript
+function isDisarium(n: number): boolean {
+    var s = String(n);
+    var total = 0;
+    for (var i = 0; i < s.length; i++) {
+        total += Math.pow(s.charCodeAt(i) - 48, i + 1);
+    }
+    return total === n;
+}
+@@@LANG java
+public static boolean isDisarium(int n) {
+    String s = String.valueOf(n);
+    long total = 0;
+    for (int i = 0; i < s.length(); i++) {
+        long d = s.charAt(i) - '0';
+        long p = 1;
+        for (int e = 0; e <= i; e++) p *= d;
+        total += p;
+    }
+    return total == n;
+}
+@@@LANG cpp
+bool isDisarium(int n) {
+    string s = to_string(n);
+    long long total = 0;
+    for (int i = 0; i < (int) s.size(); i++) {
+        long long d = s[i] - '0';
+        long long p = 1;
+        for (int e = 0; e <= i; e++) p *= d;
+        total += p;
+    }
+    return total == (long long) n;
+}
+@@@LANG c
+bool isDisarium(int n) {
+    char s[16];
+    sprintf(s, "%d", n);
+    int len = (int) strlen(s);
+    long long total = 0;
+    for (int i = 0; i < len; i++) {
+        long long d = s[i] - '0';
+        long long p = 1;
+        for (int e = 0; e <= i; e++) p *= d;
+        total += p;
+    }
+    return total == (long long) n;
+}
+@@@LANG csharp
+public static bool IsDisarium(int n)
+{
+    string s = n.ToString();
+    long total = 0;
+    for (int i = 0; i < s.Length; i++)
+    {
+        long d = s[i] - '0';
+        long p = 1;
+        for (int e = 0; e <= i; e++) p *= d;
+        total += p;
+    }
+    return total == n;
+}
+@@@LANG go
+func isDisarium(n int) bool {
+	s := strconv.Itoa(n)
+	total := 0
+	for i := 0; i < len(s); i++ {
+		d := int(s[i] - '0')
+		p := 1
+		for e := 0; e <= i; e++ {
+			p *= d
+		}
+		total += p
+	}
+	return total == n
+}
+@@@LANG kotlin
+fun isDisarium(n: Int): Boolean {
+    val s = n.toString()
+    var total = 0L
+    for (i in 0 until s.length) {
+        val d = (s[i] - '0').toLong()
+        var p = 1L
+        for (e in 0..i) p *= d
+        total += p
+    }
+    return total == n.toLong()
+}
+@@@LANG swift
+func isDisarium(_ n: Int) -> Bool {
+    let s = Array(String(n).utf8)
+    var total = 0
+    for i in 0..<s.count {
+        let d = Int(s[i]) - 48
+        var p = 1
+        for _ in 0...i { p *= d }
+        total += p
+    }
+    return total == n
+}
+@@@LANG rust
+fn isDisarium(n: i32) -> bool {
+    let s = n.to_string();
+    let bytes = s.as_bytes();
+    let mut total: i64 = 0;
+    for i in 0..bytes.len() {
+        let d = (bytes[i] - b'0') as i64;
+        let mut p: i64 = 1;
+        for _ in 0..=i {
+            p *= d;
+        }
+        total += p;
+    }
+    total == n as i64
+}
+@@@LANG php
+function isDisarium($n) {
+    $s = strval($n);
+    $len = strlen($s);
+    $total = 0;
+    for ($i = 0; $i < $len; $i++) {
+        $d = ord($s[$i]) - 48;
+        $p = 1;
+        for ($e = 0; $e <= $i; $e++) $p *= $d;
+        $total += $p;
+    }
+    return $total === $n;
+}
+@@@LANG ruby
+def isDisarium(n)
+  s = n.to_s
+  total = 0
+  s.each_char.with_index do |ch, i|
+    total += (ch.ord - 48) ** (i + 1)
+  end
+  total == n
+end
+
+@@@PROBLEM harshad-number
+@@@LANG typescript
+function isHarshad(n: number): boolean {
+    var total = 0;
+    var x = n;
+    while (x > 0) {
+        total += x % 10;
+        x = Math.floor(x / 10);
+    }
+    return n % total === 0;
+}
+@@@LANG java
+public static boolean isHarshad(int n) {
+    int total = 0;
+    int x = n;
+    while (x > 0) {
+        total += x % 10;
+        x /= 10;
+    }
+    return n % total == 0;
+}
+@@@LANG cpp
+bool isHarshad(int n) {
+    int total = 0;
+    int x = n;
+    while (x > 0) {
+        total += x % 10;
+        x /= 10;
+    }
+    return n % total == 0;
+}
+@@@LANG c
+bool isHarshad(int n) {
+    int total = 0;
+    int x = n;
+    while (x > 0) {
+        total += x % 10;
+        x /= 10;
+    }
+    return n % total == 0;
+}
+@@@LANG csharp
+public static bool IsHarshad(int n)
+{
+    int total = 0;
+    int x = n;
+    while (x > 0)
+    {
+        total += x % 10;
+        x /= 10;
+    }
+    return n % total == 0;
+}
+@@@LANG go
+func isHarshad(n int) bool {
+	total := 0
+	x := n
+	for x > 0 {
+		total += x % 10
+		x /= 10
+	}
+	return n%total == 0
+}
+@@@LANG kotlin
+fun isHarshad(n: Int): Boolean {
+    var total = 0
+    var x = n
+    while (x > 0) {
+        total += x % 10
+        x /= 10
+    }
+    return n % total == 0
+}
+@@@LANG swift
+func isHarshad(_ n: Int) -> Bool {
+    var total = 0
+    var x = n
+    while x > 0 {
+        total += x % 10
+        x /= 10
+    }
+    return n % total == 0
+}
+@@@LANG rust
+fn isHarshad(n: i32) -> bool {
+    let mut total = 0;
+    let mut x = n;
+    while x > 0 {
+        total += x % 10;
+        x /= 10;
+    }
+    n % total == 0
+}
+@@@LANG php
+function isHarshad($n) {
+    $total = 0;
+    $x = $n;
+    while ($x > 0) {
+        $total += $x % 10;
+        $x = intdiv($x, 10);
+    }
+    return $n % $total === 0;
+}
+@@@LANG ruby
+def isHarshad(n)
+  total = 0
+  x = n
+  while x > 0
+    total += x % 10
+    x /= 10
+  end
+  n % total == 0
+end
+
+@@@PROBLEM perfect-number
+@@@LANG typescript
+function checkPerfectNumber(num: number): boolean {
+    if (num <= 1) return false;
+    var total = 1;
+    for (var d = 2; d * d <= num; d++) {
+        if (num % d === 0) {
+            total += d;
+            var other = num / d;
+            if (other !== d) total += other;
+        }
+    }
+    return total === num;
+}
+@@@LANG java
+public static boolean checkPerfectNumber(int num) {
+    if (num <= 1) return false;
+    long total = 1;
+    for (int d = 2; (long) d * d <= num; d++) {
+        if (num % d == 0) {
+            total += d;
+            int other = num / d;
+            if (other != d) total += other;
+        }
+    }
+    return total == num;
+}
+@@@LANG cpp
+bool checkPerfectNumber(int num) {
+    if (num <= 1) return false;
+    long long total = 1;
+    for (int d = 2; (long long) d * d <= num; d++) {
+        if (num % d == 0) {
+            total += d;
+            int other = num / d;
+            if (other != d) total += other;
+        }
+    }
+    return total == (long long) num;
+}
+@@@LANG c
+bool checkPerfectNumber(int num) {
+    if (num <= 1) return false;
+    long long total = 1;
+    for (int d = 2; (long long) d * d <= num; d++) {
+        if (num % d == 0) {
+            total += d;
+            int other = num / d;
+            if (other != d) total += other;
+        }
+    }
+    return total == (long long) num;
+}
+@@@LANG csharp
+public static bool CheckPerfectNumber(int num)
+{
+    if (num <= 1) return false;
+    long total = 1;
+    for (int d = 2; (long) d * d <= num; d++)
+    {
+        if (num % d == 0)
+        {
+            total += d;
+            int other = num / d;
+            if (other != d) total += other;
+        }
+    }
+    return total == num;
+}
+@@@LANG go
+func checkPerfectNumber(num int) bool {
+	if num <= 1 {
+		return false
+	}
+	total := 1
+	for d := 2; d*d <= num; d++ {
+		if num%d == 0 {
+			total += d
+			other := num / d
+			if other != d {
+				total += other
+			}
+		}
+	}
+	return total == num
+}
+@@@LANG kotlin
+fun checkPerfectNumber(num: Int): Boolean {
+    if (num <= 1) return false
+    var total = 1L
+    var d = 2
+    while (d.toLong() * d <= num) {
+        if (num % d == 0) {
+            total += d
+            val other = num / d
+            if (other != d) total += other
+        }
+        d++
+    }
+    return total == num.toLong()
+}
+@@@LANG swift
+func checkPerfectNumber(_ num: Int) -> Bool {
+    if num <= 1 { return false }
+    var total = 1
+    var d = 2
+    while d * d <= num {
+        if num % d == 0 {
+            total += d
+            let other = num / d
+            if other != d { total += other }
+        }
+        d += 1
+    }
+    return total == num
+}
+@@@LANG rust
+fn checkPerfectNumber(num: i32) -> bool {
+    if num <= 1 {
+        return false;
+    }
+    let n = num as i64;
+    let mut total: i64 = 1;
+    let mut d: i64 = 2;
+    while d * d <= n {
+        if n % d == 0 {
+            total += d;
+            let other = n / d;
+            if other != d {
+                total += other;
+            }
+        }
+        d += 1;
+    }
+    total == n
+}
+@@@LANG php
+function checkPerfectNumber($num) {
+    if ($num <= 1) return false;
+    $total = 1;
+    for ($d = 2; $d * $d <= $num; $d++) {
+        if ($num % $d === 0) {
+            $total += $d;
+            $other = intdiv($num, $d);
+            if ($other !== $d) $total += $other;
+        }
+    }
+    return $total === $num;
+}
+@@@LANG ruby
+def checkPerfectNumber(num)
+  return false if num <= 1
+  total = 1
+  d = 2
+  while d * d <= num
+    if num % d == 0
+      total += d
+      other = num / d
+      total += other if other != d
+    end
+    d += 1
+  end
+  total == num
+end
+
+@@@PROBLEM prime-factors
+@@@LANG typescript
+function primeFactors(n: number): number[] {
+    var out: number[] = [];
+    for (var d = 2; d * d <= n; d++) {
+        while (n % d === 0) {
+            out.push(d);
+            n /= d;
+        }
+    }
+    if (n > 1) out.push(n);
+    return out;
+}
+@@@LANG java
+public static int[] primeFactors(int n) {
+    List<Integer> out = new ArrayList<>();
+    for (int d = 2; (long) d * d <= n; d++) {
+        while (n % d == 0) {
+            out.add(d);
+            n /= d;
+        }
+    }
+    if (n > 1) out.add(n);
+    int[] res = new int[out.size()];
+    for (int i = 0; i < res.length; i++) res[i] = out.get(i);
+    return res;
+}
+@@@LANG cpp
+vector<int> primeFactors(int n) {
+    vector<int> out;
+    for (int d = 2; (long long) d * d <= n; d++) {
+        while (n % d == 0) {
+            out.push_back(d);
+            n /= d;
+        }
+    }
+    if (n > 1) out.push_back(n);
+    return out;
+}
+@@@LANG c
+int* primeFactors(int n, int* returnSize) {
+    int* out = (int*) malloc(sizeof(int) * 32);
+    int len = 0;
+    for (int d = 2; (long long) d * d <= n; d++) {
+        while (n % d == 0) {
+            out[len++] = d;
+            n /= d;
+        }
+    }
+    if (n > 1) out[len++] = n;
+    *returnSize = len;
+    return out;
+}
+@@@LANG csharp
+public static int[] PrimeFactors(int n)
+{
+    var out_ = new List<int>();
+    for (int d = 2; (long) d * d <= n; d++)
+    {
+        while (n % d == 0)
+        {
+            out_.Add(d);
+            n /= d;
+        }
+    }
+    if (n > 1) out_.Add(n);
+    return out_.ToArray();
+}
+@@@LANG go
+func primeFactors(n int) []int {
+	out := []int{}
+	for d := 2; d*d <= n; d++ {
+		for n%d == 0 {
+			out = append(out, d)
+			n /= d
+		}
+	}
+	if n > 1 {
+		out = append(out, n)
+	}
+	return out
+}
+@@@LANG kotlin
+fun primeFactors(n: Int): IntArray {
+    var cur = n
+    val out = ArrayList<Int>()
+    var d = 2
+    while (d.toLong() * d <= cur) {
+        while (cur % d == 0) {
+            out.add(d)
+            cur /= d
+        }
+        d++
+    }
+    if (cur > 1) out.add(cur)
+    return out.toIntArray()
+}
+@@@LANG swift
+func primeFactors(_ n: Int) -> [Int] {
+    var cur = n
+    var out: [Int] = []
+    var d = 2
+    while d * d <= cur {
+        while cur % d == 0 {
+            out.append(d)
+            cur /= d
+        }
+        d += 1
+    }
+    if cur > 1 { out.append(cur) }
+    return out
+}
+@@@LANG rust
+fn primeFactors(n: i32) -> Vec<i32> {
+    let mut cur = n;
+    let mut out: Vec<i32> = Vec::new();
+    let mut d: i32 = 2;
+    while (d as i64) * (d as i64) <= cur as i64 {
+        while cur % d == 0 {
+            out.push(d);
+            cur /= d;
+        }
+        d += 1;
+    }
+    if cur > 1 {
+        out.push(cur);
+    }
+    out
+}
+@@@LANG php
+function primeFactors($n) {
+    $out = array();
+    for ($d = 2; $d * $d <= $n; $d++) {
+        while ($n % $d === 0) {
+            $out[] = $d;
+            $n = intdiv($n, $d);
+        }
+    }
+    if ($n > 1) $out[] = $n;
+    return $out;
+}
+@@@LANG ruby
+def primeFactors(n)
+  out = []
+  d = 2
+  while d * d <= n
+    while n % d == 0
+      out << d
+      n /= d
+    end
+    d += 1
+  end
+  out << n if n > 1
+  out
+end
+
+@@@PROBLEM find-greatest-common-divisor-of-array
+@@@LANG typescript
+function findGCD(nums: number[]): number {
+    var lo = nums[0];
+    var hi = nums[0];
+    for (var i = 1; i < nums.length; i++) {
+        if (nums[i] < lo) lo = nums[i];
+        if (nums[i] > hi) hi = nums[i];
+    }
+    while (lo !== 0) {
+        var t = hi % lo;
+        hi = lo;
+        lo = t;
+    }
+    return hi;
+}
+@@@LANG java
+public static int findGCD(int[] nums) {
+    int lo = nums[0], hi = nums[0];
+    for (int x : nums) {
+        if (x < lo) lo = x;
+        if (x > hi) hi = x;
+    }
+    while (lo != 0) {
+        int t = hi % lo;
+        hi = lo;
+        lo = t;
+    }
+    return hi;
+}
+@@@LANG cpp
+int findGCD(vector<int>& nums) {
+    int lo = nums[0], hi = nums[0];
+    for (int x : nums) {
+        if (x < lo) lo = x;
+        if (x > hi) hi = x;
+    }
+    while (lo != 0) {
+        int t = hi % lo;
+        hi = lo;
+        lo = t;
+    }
+    return hi;
+}
+@@@LANG c
+int findGCD(int* nums, int numsSize) {
+    int lo = nums[0], hi = nums[0];
+    for (int i = 1; i < numsSize; i++) {
+        if (nums[i] < lo) lo = nums[i];
+        if (nums[i] > hi) hi = nums[i];
+    }
+    while (lo != 0) {
+        int t = hi % lo;
+        hi = lo;
+        lo = t;
+    }
+    return hi;
+}
+@@@LANG csharp
+public static int FindGCD(int[] nums)
+{
+    int lo = nums[0], hi = nums[0];
+    foreach (int x in nums)
+    {
+        if (x < lo) lo = x;
+        if (x > hi) hi = x;
+    }
+    while (lo != 0)
+    {
+        int t = hi % lo;
+        hi = lo;
+        lo = t;
+    }
+    return hi;
+}
+@@@LANG go
+func findGCD(nums []int) int {
+	lo, hi := nums[0], nums[0]
+	for _, x := range nums {
+		if x < lo {
+			lo = x
+		}
+		if x > hi {
+			hi = x
+		}
+	}
+	for lo != 0 {
+		lo, hi = hi%lo, lo
+	}
+	return hi
+}
+@@@LANG kotlin
+fun findGCD(nums: IntArray): Int {
+    var lo = nums[0]
+    var hi = nums[0]
+    for (x in nums) {
+        if (x < lo) lo = x
+        if (x > hi) hi = x
+    }
+    while (lo != 0) {
+        val t = hi % lo
+        hi = lo
+        lo = t
+    }
+    return hi
+}
+@@@LANG swift
+func findGCD(_ nums: [Int]) -> Int {
+    var lo = nums[0]
+    var hi = nums[0]
+    for x in nums {
+        if x < lo { lo = x }
+        if x > hi { hi = x }
+    }
+    while lo != 0 {
+        let t = hi % lo
+        hi = lo
+        lo = t
+    }
+    return hi
+}
+@@@LANG rust
+fn findGCD(nums: Vec<i32>) -> i32 {
+    let mut lo = nums[0];
+    let mut hi = nums[0];
+    for x in nums.iter() {
+        if *x < lo {
+            lo = *x;
+        }
+        if *x > hi {
+            hi = *x;
+        }
+    }
+    while lo != 0 {
+        let t = hi % lo;
+        hi = lo;
+        lo = t;
+    }
+    hi
+}
+@@@LANG php
+function findGCD($nums) {
+    $lo = $nums[0];
+    $hi = $nums[0];
+    foreach ($nums as $x) {
+        if ($x < $lo) $lo = $x;
+        if ($x > $hi) $hi = $x;
+    }
+    while ($lo !== 0) {
+        $t = $hi % $lo;
+        $hi = $lo;
+        $lo = $t;
+    }
+    return $hi;
+}
+@@@LANG ruby
+def findGCD(nums)
+  lo = nums.min
+  hi = nums.max
+  while lo != 0
+    lo, hi = hi % lo, lo
+  end
+  hi
+end
+
+@@@PROBLEM self-dividing-numbers
+@@@LANG typescript
+function selfDividingNumbers(left: number, right: number): number[] {
+    var out: number[] = [];
+    for (var n = left; n <= right; n++) {
+        var x = n;
+        var ok = true;
+        while (x > 0) {
+            var d = x % 10;
+            if (d === 0 || n % d !== 0) { ok = false; break; }
+            x = Math.floor(x / 10);
+        }
+        if (ok) out.push(n);
+    }
+    return out;
+}
+@@@LANG java
+public static int[] selfDividingNumbers(int left, int right) {
+    List<Integer> out = new ArrayList<>();
+    for (int n = left; n <= right; n++) {
+        int x = n;
+        boolean ok = true;
+        while (x > 0) {
+            int d = x % 10;
+            if (d == 0 || n % d != 0) { ok = false; break; }
+            x /= 10;
+        }
+        if (ok) out.add(n);
+    }
+    int[] res = new int[out.size()];
+    for (int i = 0; i < res.length; i++) res[i] = out.get(i);
+    return res;
+}
+@@@LANG cpp
+vector<int> selfDividingNumbers(int left, int right) {
+    vector<int> out;
+    for (int n = left; n <= right; n++) {
+        int x = n;
+        bool ok = true;
+        while (x > 0) {
+            int d = x % 10;
+            if (d == 0 || n % d != 0) { ok = false; break; }
+            x /= 10;
+        }
+        if (ok) out.push_back(n);
+    }
+    return out;
+}
+@@@LANG c
+int* selfDividingNumbers(int left, int right, int* returnSize) {
+    int cap = right - left + 1;
+    int* out = (int*) malloc(sizeof(int) * (cap > 0 ? cap : 1));
+    int len = 0;
+    for (int n = left; n <= right; n++) {
+        int x = n;
+        bool ok = true;
+        while (x > 0) {
+            int d = x % 10;
+            if (d == 0 || n % d != 0) { ok = false; break; }
+            x /= 10;
+        }
+        if (ok) out[len++] = n;
+    }
+    *returnSize = len;
+    return out;
+}
+@@@LANG csharp
+public static int[] SelfDividingNumbers(int left, int right)
+{
+    var out_ = new List<int>();
+    for (int n = left; n <= right; n++)
+    {
+        int x = n;
+        bool ok = true;
+        while (x > 0)
+        {
+            int d = x % 10;
+            if (d == 0 || n % d != 0) { ok = false; break; }
+            x /= 10;
+        }
+        if (ok) out_.Add(n);
+    }
+    return out_.ToArray();
+}
+@@@LANG go
+func selfDividingNumbers(left int, right int) []int {
+	out := []int{}
+	for n := left; n <= right; n++ {
+		x := n
+		ok := true
+		for x > 0 {
+			d := x % 10
+			if d == 0 || n%d != 0 {
+				ok = false
+				break
+			}
+			x /= 10
+		}
+		if ok {
+			out = append(out, n)
+		}
+	}
+	return out
+}
+@@@LANG kotlin
+fun selfDividingNumbers(left: Int, right: Int): IntArray {
+    val out = ArrayList<Int>()
+    for (n in left..right) {
+        var x = n
+        var ok = true
+        while (x > 0) {
+            val d = x % 10
+            if (d == 0 || n % d != 0) {
+                ok = false
+                break
+            }
+            x /= 10
+        }
+        if (ok) out.add(n)
+    }
+    return out.toIntArray()
+}
+@@@LANG swift
+func selfDividingNumbers(_ left: Int, _ right: Int) -> [Int] {
+    var out: [Int] = []
+    var n = left
+    while n <= right {
+        var x = n
+        var ok = true
+        while x > 0 {
+            let d = x % 10
+            if d == 0 || n % d != 0 {
+                ok = false
+                break
+            }
+            x /= 10
+        }
+        if ok { out.append(n) }
+        n += 1
+    }
+    return out
+}
+@@@LANG rust
+fn selfDividingNumbers(left: i32, right: i32) -> Vec<i32> {
+    let mut out: Vec<i32> = Vec::new();
+    for n in left..=right {
+        let mut x = n;
+        let mut ok = true;
+        while x > 0 {
+            let d = x % 10;
+            if d == 0 || n % d != 0 {
+                ok = false;
+                break;
+            }
+            x /= 10;
+        }
+        if ok {
+            out.push(n);
+        }
+    }
+    out
+}
+@@@LANG php
+function selfDividingNumbers($left, $right) {
+    $out = array();
+    for ($n = $left; $n <= $right; $n++) {
+        $x = $n;
+        $ok = true;
+        while ($x > 0) {
+            $d = $x % 10;
+            if ($d === 0 || $n % $d !== 0) { $ok = false; break; }
+            $x = intdiv($x, 10);
+        }
+        if ($ok) $out[] = $n;
+    }
+    return $out;
+}
+@@@LANG ruby
+def selfDividingNumbers(left, right)
+  out = []
+  (left..right).each do |n|
+    x = n
+    ok = true
+    while x > 0
+      d = x % 10
+      if d == 0 || n % d != 0
+        ok = false
+        break
+      end
+      x /= 10
+    end
+    out << n if ok
+  end
+  out
+end
+
+@@@PROBLEM number-of-steps-to-reduce-a-number-to-zero
+@@@LANG typescript
+function numberOfSteps(num: number): number {
+    var steps = 0;
+    while (num > 0) {
+        num = num % 2 === 0 ? num / 2 : num - 1;
+        steps++;
+    }
+    return steps;
+}
+@@@LANG java
+public static int numberOfSteps(int num) {
+    int steps = 0;
+    while (num > 0) {
+        num = num % 2 == 0 ? num / 2 : num - 1;
+        steps++;
+    }
+    return steps;
+}
+@@@LANG cpp
+int numberOfSteps(int num) {
+    int steps = 0;
+    while (num > 0) {
+        num = num % 2 == 0 ? num / 2 : num - 1;
+        steps++;
+    }
+    return steps;
+}
+@@@LANG c
+int numberOfSteps(int num) {
+    int steps = 0;
+    while (num > 0) {
+        num = num % 2 == 0 ? num / 2 : num - 1;
+        steps++;
+    }
+    return steps;
+}
+@@@LANG csharp
+public static int NumberOfSteps(int num)
+{
+    int steps = 0;
+    while (num > 0)
+    {
+        num = num % 2 == 0 ? num / 2 : num - 1;
+        steps++;
+    }
+    return steps;
+}
+@@@LANG go
+func numberOfSteps(num int) int {
+	steps := 0
+	for num > 0 {
+		if num%2 == 0 {
+			num /= 2
+		} else {
+			num--
+		}
+		steps++
+	}
+	return steps
+}
+@@@LANG kotlin
+fun numberOfSteps(num: Int): Int {
+    var n = num
+    var steps = 0
+    while (n > 0) {
+        n = if (n % 2 == 0) n / 2 else n - 1
+        steps++
+    }
+    return steps
+}
+@@@LANG swift
+func numberOfSteps(_ num: Int) -> Int {
+    var n = num
+    var steps = 0
+    while n > 0 {
+        n = n % 2 == 0 ? n / 2 : n - 1
+        steps += 1
+    }
+    return steps
+}
+@@@LANG rust
+fn numberOfSteps(num: i32) -> i32 {
+    let mut n = num;
+    let mut steps = 0;
+    while n > 0 {
+        n = if n % 2 == 0 { n / 2 } else { n - 1 };
+        steps += 1;
+    }
+    steps
+}
+@@@LANG php
+function numberOfSteps($num) {
+    $steps = 0;
+    while ($num > 0) {
+        $num = $num % 2 === 0 ? intdiv($num, 2) : $num - 1;
+        $steps++;
+    }
+    return $steps;
+}
+@@@LANG ruby
+def numberOfSteps(num)
+  steps = 0
+  while num > 0
+    num = num % 2 == 0 ? num / 2 : num - 1
+    steps += 1
+  end
+  steps
+end
+
+@@@PROBLEM subtract-product-and-sum-of-digits
+@@@LANG typescript
+function subtractProductAndSum(n: number): number {
+    var prod = 1;
+    var total = 0;
+    while (n > 0) {
+        var d = n % 10;
+        prod *= d;
+        total += d;
+        n = Math.floor(n / 10);
+    }
+    return prod - total;
+}
+@@@LANG java
+public static int subtractProductAndSum(int n) {
+    int prod = 1, total = 0;
+    while (n > 0) {
+        int d = n % 10;
+        prod *= d;
+        total += d;
+        n /= 10;
+    }
+    return prod - total;
+}
+@@@LANG cpp
+int subtractProductAndSum(int n) {
+    int prod = 1, total = 0;
+    while (n > 0) {
+        int d = n % 10;
+        prod *= d;
+        total += d;
+        n /= 10;
+    }
+    return prod - total;
+}
+@@@LANG c
+int subtractProductAndSum(int n) {
+    int prod = 1, total = 0;
+    while (n > 0) {
+        int d = n % 10;
+        prod *= d;
+        total += d;
+        n /= 10;
+    }
+    return prod - total;
+}
+@@@LANG csharp
+public static int SubtractProductAndSum(int n)
+{
+    int prod = 1, total = 0;
+    while (n > 0)
+    {
+        int d = n % 10;
+        prod *= d;
+        total += d;
+        n /= 10;
+    }
+    return prod - total;
+}
+@@@LANG go
+func subtractProductAndSum(n int) int {
+	prod, total := 1, 0
+	for n > 0 {
+		d := n % 10
+		prod *= d
+		total += d
+		n /= 10
+	}
+	return prod - total
+}
+@@@LANG kotlin
+fun subtractProductAndSum(n: Int): Int {
+    var cur = n
+    var prod = 1
+    var total = 0
+    while (cur > 0) {
+        val d = cur % 10
+        prod *= d
+        total += d
+        cur /= 10
+    }
+    return prod - total
+}
+@@@LANG swift
+func subtractProductAndSum(_ n: Int) -> Int {
+    var cur = n
+    var prod = 1
+    var total = 0
+    while cur > 0 {
+        let d = cur % 10
+        prod *= d
+        total += d
+        cur /= 10
+    }
+    return prod - total
+}
+@@@LANG rust
+fn subtractProductAndSum(n: i32) -> i32 {
+    let mut cur = n;
+    let mut prod = 1;
+    let mut total = 0;
+    while cur > 0 {
+        let d = cur % 10;
+        prod *= d;
+        total += d;
+        cur /= 10;
+    }
+    prod - total
+}
+@@@LANG php
+function subtractProductAndSum($n) {
+    $prod = 1;
+    $total = 0;
+    while ($n > 0) {
+        $d = $n % 10;
+        $prod *= $d;
+        $total += $d;
+        $n = intdiv($n, 10);
+    }
+    return $prod - $total;
+}
+@@@LANG ruby
+def subtractProductAndSum(n)
+  prod = 1
+  total = 0
+  while n > 0
+    d = n % 10
+    prod *= d
+    total += d
+    n /= 10
+  end
+  prod - total
+end
+
+@@@PROBLEM find-numbers-with-even-number-of-digits
+@@@LANG typescript
+function findNumbers(nums: number[]): number {
+    var count = 0;
+    for (var i = 0; i < nums.length; i++) {
+        var digits = 0;
+        var x = nums[i];
+        while (x > 0) {
+            digits++;
+            x = Math.floor(x / 10);
+        }
+        if (digits % 2 === 0) count++;
+    }
+    return count;
+}
+@@@LANG java
+public static int findNumbers(int[] nums) {
+    int count = 0;
+    for (int v : nums) {
+        int digits = 0, x = v;
+        while (x > 0) {
+            digits++;
+            x /= 10;
+        }
+        if (digits % 2 == 0) count++;
+    }
+    return count;
+}
+@@@LANG cpp
+int findNumbers(vector<int>& nums) {
+    int count = 0;
+    for (int v : nums) {
+        int digits = 0, x = v;
+        while (x > 0) {
+            digits++;
+            x /= 10;
+        }
+        if (digits % 2 == 0) count++;
+    }
+    return count;
+}
+@@@LANG c
+int findNumbers(int* nums, int numsSize) {
+    int count = 0;
+    for (int i = 0; i < numsSize; i++) {
+        int digits = 0, x = nums[i];
+        while (x > 0) {
+            digits++;
+            x /= 10;
+        }
+        if (digits % 2 == 0) count++;
+    }
+    return count;
+}
+@@@LANG csharp
+public static int FindNumbers(int[] nums)
+{
+    int count = 0;
+    foreach (int v in nums)
+    {
+        int digits = 0, x = v;
+        while (x > 0)
+        {
+            digits++;
+            x /= 10;
+        }
+        if (digits % 2 == 0) count++;
+    }
+    return count;
+}
+@@@LANG go
+func findNumbers(nums []int) int {
+	count := 0
+	for _, v := range nums {
+		digits, x := 0, v
+		for x > 0 {
+			digits++
+			x /= 10
+		}
+		if digits%2 == 0 {
+			count++
+		}
+	}
+	return count
+}
+@@@LANG kotlin
+fun findNumbers(nums: IntArray): Int {
+    var count = 0
+    for (v in nums) {
+        var digits = 0
+        var x = v
+        while (x > 0) {
+            digits++
+            x /= 10
+        }
+        if (digits % 2 == 0) count++
+    }
+    return count
+}
+@@@LANG swift
+func findNumbers(_ nums: [Int]) -> Int {
+    var count = 0
+    for v in nums {
+        var digits = 0
+        var x = v
+        while x > 0 {
+            digits += 1
+            x /= 10
+        }
+        if digits % 2 == 0 { count += 1 }
+    }
+    return count
+}
+@@@LANG rust
+fn findNumbers(nums: Vec<i32>) -> i32 {
+    let mut count = 0;
+    for v in nums.iter() {
+        let mut digits = 0;
+        let mut x = *v;
+        while x > 0 {
+            digits += 1;
+            x /= 10;
+        }
+        if digits % 2 == 0 {
+            count += 1;
+        }
+    }
+    count
+}
+@@@LANG php
+function findNumbers($nums) {
+    $count = 0;
+    foreach ($nums as $v) {
+        $digits = 0;
+        $x = $v;
+        while ($x > 0) {
+            $digits++;
+            $x = intdiv($x, 10);
+        }
+        if ($digits % 2 === 0) $count++;
+    }
+    return $count;
+}
+@@@LANG ruby
+def findNumbers(nums)
+  count = 0
+  nums.each do |v|
+    digits = 0
+    x = v
+    while x > 0
+      digits += 1
+      x /= 10
+    end
+    count += 1 if digits % 2 == 0
+  end
+  count
+end
+
+@@@PROBLEM maximum-69-number
+@@@LANG typescript
+function maximum69Number(num: number): number {
+    var s = String(num);
+    var i = s.indexOf("6");
+    if (i < 0) return num;
+    return parseInt(s.substring(0, i) + "9" + s.substring(i + 1), 10);
+}
+@@@LANG java
+public static int maximum69Number(int num) {
+    String s = String.valueOf(num);
+    int i = s.indexOf('6');
+    if (i < 0) return num;
+    return Integer.parseInt(s.substring(0, i) + "9" + s.substring(i + 1));
+}
+@@@LANG cpp
+int maximum69Number(int num) {
+    string s = to_string(num);
+    size_t i = s.find('6');
+    if (i == string::npos) return num;
+    s[i] = '9';
+    return stoi(s);
+}
+@@@LANG c
+int maximum69Number(int num) {
+    char s[16];
+    sprintf(s, "%d", num);
+    for (int i = 0; s[i] != '\0'; i++) {
+        if (s[i] == '6') {
+            s[i] = '9';
+            break;
+        }
+    }
+    return atoi(s);
+}
+@@@LANG csharp
+public static int Maximum69Number(int num)
+{
+    string s = num.ToString();
+    int i = s.IndexOf('6');
+    if (i < 0) return num;
+    return int.Parse(s.Substring(0, i) + "9" + s.Substring(i + 1));
+}
+@@@LANG go
+func maximum69Number(num int) int {
+	s := []byte(strconv.Itoa(num))
+	for i := 0; i < len(s); i++ {
+		if s[i] == '6' {
+			s[i] = '9'
+			break
+		}
+	}
+	v, _ := strconv.Atoi(string(s))
+	return v
+}
+@@@LANG kotlin
+fun maximum69Number(num: Int): Int {
+    val s = num.toString().toCharArray()
+    for (i in s.indices) {
+        if (s[i] == '6') {
+            s[i] = '9'
+            break
+        }
+    }
+    return String(s).toInt()
+}
+@@@LANG swift
+func maximum69Number(_ num: Int) -> Int {
+    var chars = Array(String(num))
+    for i in 0..<chars.count {
+        if chars[i] == "6" {
+            chars[i] = "9"
+            break
+        }
+    }
+    return Int(String(chars))!
+}
+@@@LANG rust
+fn maximum69Number(num: i32) -> i32 {
+    let mut bytes = num.to_string().into_bytes();
+    for i in 0..bytes.len() {
+        if bytes[i] == b'6' {
+            bytes[i] = b'9';
+            break;
+        }
+    }
+    String::from_utf8(bytes).unwrap().parse::<i32>().unwrap()
+}
+@@@LANG php
+function maximum69Number($num) {
+    $s = strval($num);
+    $i = strpos($s, "6");
+    if ($i === false) return $num;
+    $s[$i] = "9";
+    return intval($s);
+}
+@@@LANG ruby
+def maximum69Number(num)
+  s = num.to_s
+  i = s.index("6")
+  return num if i.nil?
+  s[i] = "9"
+  s.to_i
+end

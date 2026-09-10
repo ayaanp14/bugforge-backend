@@ -1,0 +1,1585 @@
+@@@PROBLEM binary-number-with-alternating-bits
+@@@LANG typescript
+function hasAlternatingBits(n: number): boolean {
+    var v = n;
+    var prev = v % 2;
+    v = Math.floor(v / 2);
+    while (v > 0) {
+        var cur = v % 2;
+        if (cur === prev) return false;
+        prev = cur;
+        v = Math.floor(v / 2);
+    }
+    return true;
+}
+@@@LANG java
+public static boolean hasAlternatingBits(int n) {
+    long x = (long) n ^ ((long) n >> 1);
+    return (x & (x + 1)) == 0;
+}
+@@@LANG cpp
+bool hasAlternatingBits(int n) {
+    long long x = (long long) n ^ ((long long) n >> 1);
+    return (x & (x + 1)) == 0;
+}
+@@@LANG c
+bool hasAlternatingBits(int n) {
+    long long x = (long long) n ^ ((long long) n >> 1);
+    return (x & (x + 1)) == 0;
+}
+@@@LANG csharp
+public static bool HasAlternatingBits(int n)
+{
+    long x = (long) n ^ ((long) n >> 1);
+    return (x & (x + 1)) == 0;
+}
+@@@LANG go
+func hasAlternatingBits(n int) bool {
+	x := n ^ (n >> 1)
+	return x&(x+1) == 0
+}
+@@@LANG kotlin
+fun hasAlternatingBits(n: Int): Boolean {
+    val x = n.toLong() xor (n.toLong() shr 1)
+    return (x and (x + 1)) == 0L
+}
+@@@LANG swift
+func hasAlternatingBits(_ n: Int) -> Bool {
+    let x = n ^ (n >> 1)
+    return (x & (x + 1)) == 0
+}
+@@@LANG rust
+fn hasAlternatingBits(n: i32) -> bool {
+    let v = n as i64;
+    let x = v ^ (v >> 1);
+    (x & (x + 1)) == 0
+}
+@@@LANG php
+function hasAlternatingBits($n) {
+    $x = $n ^ ($n >> 1);
+    return ($x & ($x + 1)) === 0;
+}
+@@@LANG ruby
+def hasAlternatingBits(n)
+  x = n ^ (n >> 1)
+  (x & (x + 1)) == 0
+end
+
+@@@PROBLEM concatenation-of-consecutive-binary-numbers
+@@@LANG typescript
+function concatenatedBinary(n: number): number {
+    var MOD = 1000000007;
+    var answer = 0;
+    var width = 0;
+    for (var i = 1; i <= n; i++) {
+        if ((i & (i - 1)) === 0) width++;
+        answer = (answer * Math.pow(2, width) + i) % MOD;
+    }
+    return answer;
+}
+@@@LANG java
+public static int concatenatedBinary(int n) {
+    final long MOD = 1000000007L;
+    long answer = 0;
+    int width = 0;
+    for (int i = 1; i <= n; i++) {
+        if ((i & (i - 1)) == 0) width++;
+        answer = ((answer << width) + i) % MOD;
+    }
+    return (int) answer;
+}
+@@@LANG cpp
+int concatenatedBinary(int n) {
+    const long long MOD = 1000000007LL;
+    long long answer = 0;
+    int width = 0;
+    for (int i = 1; i <= n; i++) {
+        if ((i & (i - 1)) == 0) width++;
+        answer = ((answer << width) + i) % MOD;
+    }
+    return (int) answer;
+}
+@@@LANG c
+int concatenatedBinary(int n) {
+    const long long MOD = 1000000007LL;
+    long long answer = 0;
+    int width = 0;
+    for (int i = 1; i <= n; i++) {
+        if ((i & (i - 1)) == 0) width++;
+        answer = ((answer << width) + i) % MOD;
+    }
+    return (int) answer;
+}
+@@@LANG csharp
+public static int ConcatenatedBinary(int n)
+{
+    const long MOD = 1000000007L;
+    long answer = 0;
+    int width = 0;
+    for (int i = 1; i <= n; i++)
+    {
+        if ((i & (i - 1)) == 0) width++;
+        answer = ((answer << width) + i) % MOD;
+    }
+    return (int) answer;
+}
+@@@LANG go
+func concatenatedBinary(n int) int {
+	const MOD = 1000000007
+	answer := 0
+	width := uint(0)
+	for i := 1; i <= n; i++ {
+		if i&(i-1) == 0 {
+			width++
+		}
+		answer = ((answer << width) + i) % MOD
+	}
+	return answer
+}
+@@@LANG kotlin
+fun concatenatedBinary(n: Int): Int {
+    val MOD = 1000000007L
+    var answer = 0L
+    var width = 0
+    for (i in 1..n) {
+        if (i and (i - 1) == 0) width++
+        answer = ((answer shl width) + i) % MOD
+    }
+    return answer.toInt()
+}
+@@@LANG swift
+func concatenatedBinary(_ n: Int) -> Int {
+    let MOD = 1000000007
+    var answer = 0
+    var width = 0
+    for i in 1...max(n, 1) where i <= n {
+        if i & (i - 1) == 0 { width += 1 }
+        answer = ((answer << width) + i) % MOD
+    }
+    return answer
+}
+@@@LANG rust
+fn concatenatedBinary(n: i32) -> i32 {
+    let md: i64 = 1000000007;
+    let mut answer: i64 = 0;
+    let mut width = 0;
+    for i in 1..=n {
+        if i & (i - 1) == 0 {
+            width += 1;
+        }
+        answer = ((answer << width) + i as i64) % md;
+    }
+    answer as i32
+}
+@@@LANG php
+function concatenatedBinary($n) {
+    $MOD = 1000000007;
+    $answer = 0;
+    $width = 0;
+    for ($i = 1; $i <= $n; $i++) {
+        if (($i & ($i - 1)) === 0) $width++;
+        $answer = (($answer << $width) + $i) % $MOD;
+    }
+    return $answer;
+}
+@@@LANG ruby
+def concatenatedBinary(n)
+  mod = 1000000007
+  answer = 0
+  width = 0
+  (1..n).each do |i|
+    width += 1 if i & (i - 1) == 0
+    answer = ((answer << width) + i) % mod
+  end
+  answer
+end
+
+@@@PROBLEM divide-two-integers
+@@@LANG typescript
+function divide(dividend: number, divisor: number): number {
+    if (dividend === -2147483648 && divisor === -1) return 2147483647;
+    var negative = (dividend < 0) !== (divisor < 0);
+    var a = Math.abs(dividend);
+    var b = Math.abs(divisor);
+    var quotient = 0;
+    for (var shift = 31; shift >= 0; shift--) {
+        var scaled = b * Math.pow(2, shift);
+        if (scaled <= a) {
+            a -= scaled;
+            quotient += Math.pow(2, shift);
+        }
+    }
+    return negative ? -quotient : quotient;
+}
+@@@LANG java
+public static int divide(int dividend, int divisor) {
+    if (dividend == -2147483648 && divisor == -1) return 2147483647;
+    boolean negative = (dividend < 0) != (divisor < 0);
+    long a = Math.abs((long) dividend);
+    long b = Math.abs((long) divisor);
+    long quotient = 0;
+    for (int shift = 31; shift >= 0; shift--) {
+        if ((b << shift) <= a) {
+            a -= b << shift;
+            quotient += 1L << shift;
+        }
+    }
+    return (int) (negative ? -quotient : quotient);
+}
+@@@LANG cpp
+int divide(int dividend, int divisor) {
+    if (dividend == -2147483648 && divisor == -1) return 2147483647;
+    bool negative = (dividend < 0) != (divisor < 0);
+    long long a = dividend < 0 ? -(long long) dividend : (long long) dividend;
+    long long b = divisor < 0 ? -(long long) divisor : (long long) divisor;
+    long long quotient = 0;
+    for (int shift = 31; shift >= 0; shift--) {
+        if ((b << shift) <= a) {
+            a -= b << shift;
+            quotient += 1LL << shift;
+        }
+    }
+    return (int) (negative ? -quotient : quotient);
+}
+@@@LANG c
+int divide(int dividend, int divisor) {
+    if (dividend == -2147483648 && divisor == -1) return 2147483647;
+    int negative = (dividend < 0) != (divisor < 0);
+    long long a = dividend < 0 ? -(long long) dividend : (long long) dividend;
+    long long b = divisor < 0 ? -(long long) divisor : (long long) divisor;
+    long long quotient = 0;
+    for (int shift = 31; shift >= 0; shift--) {
+        if ((b << shift) <= a) {
+            a -= b << shift;
+            quotient += 1LL << shift;
+        }
+    }
+    return (int) (negative ? -quotient : quotient);
+}
+@@@LANG csharp
+public static int Divide(int dividend, int divisor)
+{
+    if (dividend == -2147483648 && divisor == -1) return 2147483647;
+    bool negative = (dividend < 0) != (divisor < 0);
+    long a = Math.Abs((long) dividend);
+    long b = Math.Abs((long) divisor);
+    long quotient = 0;
+    for (int shift = 31; shift >= 0; shift--)
+    {
+        if ((b << shift) <= a)
+        {
+            a -= b << shift;
+            quotient += 1L << shift;
+        }
+    }
+    return (int) (negative ? -quotient : quotient);
+}
+@@@LANG go
+func divide(dividend int, divisor int) int {
+	if dividend == -2147483648 && divisor == -1 {
+		return 2147483647
+	}
+	negative := (dividend < 0) != (divisor < 0)
+	a := dividend
+	if a < 0 {
+		a = -a
+	}
+	b := divisor
+	if b < 0 {
+		b = -b
+	}
+	quotient := 0
+	for shift := 31; shift >= 0; shift-- {
+		if (b << uint(shift)) <= a {
+			a -= b << uint(shift)
+			quotient += 1 << uint(shift)
+		}
+	}
+	if negative {
+		return -quotient
+	}
+	return quotient
+}
+@@@LANG kotlin
+fun divide(dividend: Int, divisor: Int): Int {
+    if (dividend == -2147483648 && divisor == -1) return 2147483647
+    val negative = (dividend < 0) != (divisor < 0)
+    var a = Math.abs(dividend.toLong())
+    val b = Math.abs(divisor.toLong())
+    var quotient = 0L
+    for (shift in 31 downTo 0) {
+        if ((b shl shift) <= a) {
+            a -= b shl shift
+            quotient += 1L shl shift
+        }
+    }
+    return (if (negative) -quotient else quotient).toInt()
+}
+@@@LANG swift
+func divide(_ dividend: Int, _ divisor: Int) -> Int {
+    if dividend == -2147483648 && divisor == -1 { return 2147483647 }
+    let negative = (dividend < 0) != (divisor < 0)
+    var a = abs(dividend)
+    let b = abs(divisor)
+    var quotient = 0
+    var shift = 31
+    while shift >= 0 {
+        if (b << shift) <= a {
+            a -= b << shift
+            quotient += 1 << shift
+        }
+        shift -= 1
+    }
+    return negative ? -quotient : quotient
+}
+@@@LANG rust
+fn divide(dividend: i32, divisor: i32) -> i32 {
+    if dividend == -2147483648 && divisor == -1 {
+        return 2147483647;
+    }
+    let negative = (dividend < 0) != (divisor < 0);
+    let mut a = (dividend as i64).abs();
+    let b = (divisor as i64).abs();
+    let mut quotient: i64 = 0;
+    for shift in (0..32).rev() {
+        if (b << shift) <= a {
+            a -= b << shift;
+            quotient += 1i64 << shift;
+        }
+    }
+    (if negative { -quotient } else { quotient }) as i32
+}
+@@@LANG php
+function divide($dividend, $divisor) {
+    if ($dividend === -2147483648 && $divisor === -1) return 2147483647;
+    $negative = ($dividend < 0) !== ($divisor < 0);
+    $a = abs($dividend);
+    $b = abs($divisor);
+    $quotient = 0;
+    for ($shift = 31; $shift >= 0; $shift--) {
+        if (($b << $shift) <= $a) {
+            $a -= $b << $shift;
+            $quotient += 1 << $shift;
+        }
+    }
+    return $negative ? -$quotient : $quotient;
+}
+@@@LANG ruby
+def divide(dividend, divisor)
+  return 2147483647 if dividend == -2147483648 && divisor == -1
+  negative = (dividend < 0) != (divisor < 0)
+  a = dividend.abs
+  b = divisor.abs
+  quotient = 0
+  31.downto(0) do |shift|
+    if (b << shift) <= a
+      a -= b << shift
+      quotient += 1 << shift
+    end
+  end
+  negative ? -quotient : quotient
+end
+
+@@@PROBLEM minimum-bit-flips-to-convert-number
+@@@LANG typescript
+function minBitFlips(start: number, goal: number): number {
+    var v = (start ^ goal) >>> 0;
+    var count = 0;
+    while (v > 0) {
+        v &= v - 1;
+        count++;
+    }
+    return count;
+}
+@@@LANG java
+public static int minBitFlips(int start, int goal) {
+    int v = start ^ goal;
+    int count = 0;
+    while (v != 0) {
+        v &= v - 1;
+        count++;
+    }
+    return count;
+}
+@@@LANG cpp
+int minBitFlips(int start, int goal) {
+    unsigned int v = (unsigned int) (start ^ goal);
+    int count = 0;
+    while (v) {
+        v &= v - 1;
+        count++;
+    }
+    return count;
+}
+@@@LANG c
+int minBitFlips(int start, int goal) {
+    unsigned int v = (unsigned int) (start ^ goal);
+    int count = 0;
+    while (v) {
+        v &= v - 1;
+        count++;
+    }
+    return count;
+}
+@@@LANG csharp
+public static int MinBitFlips(int start, int goal)
+{
+    uint v = (uint) (start ^ goal);
+    int count = 0;
+    while (v != 0)
+    {
+        v &= v - 1;
+        count++;
+    }
+    return count;
+}
+@@@LANG go
+func minBitFlips(start int, goal int) int {
+	v := start ^ goal
+	count := 0
+	for v != 0 {
+		v &= v - 1
+		count++
+	}
+	return count
+}
+@@@LANG kotlin
+fun minBitFlips(start: Int, goal: Int): Int {
+    var v = start xor goal
+    var count = 0
+    while (v != 0) {
+        v = v and (v - 1)
+        count++
+    }
+    return count
+}
+@@@LANG swift
+func minBitFlips(_ start: Int, _ goal: Int) -> Int {
+    var v = start ^ goal
+    var count = 0
+    while v != 0 {
+        v &= v - 1
+        count += 1
+    }
+    return count
+}
+@@@LANG rust
+fn minBitFlips(start: i32, goal: i32) -> i32 {
+    let mut v = (start ^ goal) as u32;
+    let mut count = 0;
+    while v != 0 {
+        v &= v - 1;
+        count += 1;
+    }
+    count
+}
+@@@LANG php
+function minBitFlips($start, $goal) {
+    $v = $start ^ $goal;
+    $count = 0;
+    while ($v != 0) {
+        $v &= $v - 1;
+        $count++;
+    }
+    return $count;
+}
+@@@LANG ruby
+def minBitFlips(start, goal)
+  v = start ^ goal
+  count = 0
+  while v != 0
+    v &= v - 1
+    count += 1
+  end
+  count
+end
+
+@@@PROBLEM find-the-difference
+@@@LANG typescript
+function findTheDifference(s: string, t: string): string {
+    var code = 0;
+    for (var i = 0; i < s.length; i++) code ^= s.charCodeAt(i);
+    for (var j = 0; j < t.length; j++) code ^= t.charCodeAt(j);
+    return String.fromCharCode(code);
+}
+@@@LANG java
+public static String findTheDifference(String s, String t) {
+    int code = 0;
+    for (int i = 0; i < s.length(); i++) code ^= s.charAt(i);
+    for (int i = 0; i < t.length(); i++) code ^= t.charAt(i);
+    return String.valueOf((char) code);
+}
+@@@LANG cpp
+string findTheDifference(string s, string t) {
+    int code = 0;
+    for (char c : s) code ^= c;
+    for (char c : t) code ^= c;
+    return string(1, (char) code);
+}
+@@@LANG c
+char* findTheDifference(const char* s, const char* t) {
+    int code = 0;
+    for (int i = 0; s[i] != '\0'; i++) code ^= s[i];
+    for (int i = 0; t[i] != '\0'; i++) code ^= t[i];
+    char* out = (char*) malloc(2);
+    out[0] = (char) code;
+    out[1] = '\0';
+    return out;
+}
+@@@LANG csharp
+public static string FindTheDifference(string s, string t)
+{
+    int code = 0;
+    foreach (char c in s) code ^= c;
+    foreach (char c in t) code ^= c;
+    return ((char) code).ToString();
+}
+@@@LANG go
+func findTheDifference(s string, t string) string {
+	code := 0
+	for i := 0; i < len(s); i++ {
+		code ^= int(s[i])
+	}
+	for i := 0; i < len(t); i++ {
+		code ^= int(t[i])
+	}
+	return string(rune(code))
+}
+@@@LANG kotlin
+fun findTheDifference(s: String, t: String): String {
+    var code = 0
+    for (c in s) code = code xor c.toInt()
+    for (c in t) code = code xor c.toInt()
+    return code.toChar().toString()
+}
+@@@LANG swift
+func findTheDifference(_ s: String, _ t: String) -> String {
+    var code: UInt32 = 0
+    for c in s.unicodeScalars { code ^= c.value }
+    for c in t.unicodeScalars { code ^= c.value }
+    return String(UnicodeScalar(code)!)
+}
+@@@LANG rust
+fn findTheDifference(s: String, t: String) -> String {
+    let mut code: u8 = 0;
+    for c in s.bytes() {
+        code ^= c;
+    }
+    for c in t.bytes() {
+        code ^= c;
+    }
+    (code as char).to_string()
+}
+@@@LANG php
+function findTheDifference($s, $t) {
+    $code = 0;
+    $n = strlen($s);
+    for ($i = 0; $i < $n; $i++) $code ^= ord($s[$i]);
+    $m = strlen($t);
+    for ($i = 0; $i < $m; $i++) $code ^= ord($t[$i]);
+    return chr($code);
+}
+@@@LANG ruby
+def findTheDifference(s, t)
+  code = 0
+  s.each_byte { |b| code ^= b }
+  t.each_byte { |b| code ^= b }
+  code.chr
+end
+
+@@@PROBLEM count-the-number-of-consistent-strings
+@@@LANG typescript
+function countConsistentStrings(allowed: string, words: string[]): number {
+    var mask = 0;
+    for (var i = 0; i < allowed.length; i++) mask |= 1 << (allowed.charCodeAt(i) - 97);
+    var count = 0;
+    for (var j = 0; j < words.length; j++) {
+        var wordMask = 0;
+        for (var m = 0; m < words[j].length; m++) wordMask |= 1 << (words[j].charCodeAt(m) - 97);
+        if ((wordMask & ~mask) === 0) count++;
+    }
+    return count;
+}
+@@@LANG java
+public static int countConsistentStrings(String allowed, String[] words) {
+    int mask = 0;
+    for (int i = 0; i < allowed.length(); i++) mask |= 1 << (allowed.charAt(i) - 'a');
+    int count = 0;
+    for (String w : words) {
+        int wordMask = 0;
+        for (int i = 0; i < w.length(); i++) wordMask |= 1 << (w.charAt(i) - 'a');
+        if ((wordMask & ~mask) == 0) count++;
+    }
+    return count;
+}
+@@@LANG cpp
+int countConsistentStrings(string allowed, vector<string>& words) {
+    int mask = 0;
+    for (char c : allowed) mask |= 1 << (c - 'a');
+    int count = 0;
+    for (const string& w : words) {
+        int wordMask = 0;
+        for (char c : w) wordMask |= 1 << (c - 'a');
+        if ((wordMask & ~mask) == 0) count++;
+    }
+    return count;
+}
+@@@LANG c
+int countConsistentStrings(const char* allowed, char** words, int wordsSize) {
+    int mask = 0;
+    for (int i = 0; allowed[i] != '\0'; i++) mask |= 1 << (allowed[i] - 'a');
+    int count = 0;
+    for (int i = 0; i < wordsSize; i++) {
+        int wordMask = 0;
+        for (int j = 0; words[i][j] != '\0'; j++) wordMask |= 1 << (words[i][j] - 'a');
+        if ((wordMask & ~mask) == 0) count++;
+    }
+    return count;
+}
+@@@LANG csharp
+public static int CountConsistentStrings(string allowed, string[] words)
+{
+    int mask = 0;
+    foreach (char c in allowed) mask |= 1 << (c - 'a');
+    int count = 0;
+    foreach (string w in words)
+    {
+        int wordMask = 0;
+        foreach (char c in w) wordMask |= 1 << (c - 'a');
+        if ((wordMask & ~mask) == 0) count++;
+    }
+    return count;
+}
+@@@LANG go
+func countConsistentStrings(allowed string, words []string) int {
+	mask := 0
+	for i := 0; i < len(allowed); i++ {
+		mask |= 1 << uint(allowed[i]-'a')
+	}
+	count := 0
+	for _, w := range words {
+		wordMask := 0
+		for i := 0; i < len(w); i++ {
+			wordMask |= 1 << uint(w[i]-'a')
+		}
+		if wordMask&^mask == 0 {
+			count++
+		}
+	}
+	return count
+}
+@@@LANG kotlin
+fun countConsistentStrings(allowed: String, words: Array<String>): Int {
+    var mask = 0
+    for (c in allowed) mask = mask or (1 shl (c - 'a'))
+    var count = 0
+    for (w in words) {
+        var wordMask = 0
+        for (c in w) wordMask = wordMask or (1 shl (c - 'a'))
+        if ((wordMask and mask.inv()) == 0) count++
+    }
+    return count
+}
+@@@LANG swift
+func countConsistentStrings(_ allowed: String, _ words: [String]) -> Int {
+    var mask = 0
+    for c in allowed.unicodeScalars { mask |= 1 << (Int(c.value) - 97) }
+    var count = 0
+    for w in words {
+        var wordMask = 0
+        for c in w.unicodeScalars { wordMask |= 1 << (Int(c.value) - 97) }
+        if wordMask & ~mask == 0 { count += 1 }
+    }
+    return count
+}
+@@@LANG rust
+fn countConsistentStrings(allowed: String, words: Vec<String>) -> i32 {
+    let mut mask = 0i32;
+    for c in allowed.bytes() {
+        mask |= 1 << (c - b'a');
+    }
+    let mut count = 0;
+    for w in words.iter() {
+        let mut word_mask = 0i32;
+        for c in w.bytes() {
+            word_mask |= 1 << (c - b'a');
+        }
+        if word_mask & !mask == 0 {
+            count += 1;
+        }
+    }
+    count
+}
+@@@LANG php
+function countConsistentStrings($allowed, $words) {
+    $mask = 0;
+    $n = strlen($allowed);
+    for ($i = 0; $i < $n; $i++) $mask |= 1 << (ord($allowed[$i]) - 97);
+    $count = 0;
+    foreach ($words as $w) {
+        $wordMask = 0;
+        $m = strlen($w);
+        for ($i = 0; $i < $m; $i++) $wordMask |= 1 << (ord($w[$i]) - 97);
+        if (($wordMask & ~$mask) === 0) $count++;
+    }
+    return $count;
+}
+@@@LANG ruby
+def countConsistentStrings(allowed, words)
+  mask = 0
+  allowed.each_byte { |b| mask |= 1 << (b - 97) }
+  count = 0
+  words.each do |w|
+    word_mask = 0
+    w.each_byte { |b| word_mask |= 1 << (b - 97) }
+    count += 1 if word_mask & ~mask == 0
+  end
+  count
+end
+
+@@@PROBLEM count-triplets-that-can-form-two-arrays-of-equal-xor
+@@@LANG typescript
+function countTriplets(arr: number[]): number {
+    var n = arr.length;
+    var prefix: number[] = [0];
+    for (var i = 0; i < n; i++) prefix.push(prefix[i] ^ arr[i]);
+    var count = 0;
+    for (var a = 0; a < n; a++) {
+        for (var k = a + 1; k < n; k++) {
+            if (prefix[a] === prefix[k + 1]) count += k - a;
+        }
+    }
+    return count;
+}
+@@@LANG java
+public static int countTriplets(int[] arr) {
+    int n = arr.length;
+    int[] prefix = new int[n + 1];
+    for (int i = 0; i < n; i++) prefix[i + 1] = prefix[i] ^ arr[i];
+    int count = 0;
+    for (int i = 0; i < n; i++) {
+        for (int k = i + 1; k < n; k++) {
+            if (prefix[i] == prefix[k + 1]) count += k - i;
+        }
+    }
+    return count;
+}
+@@@LANG cpp
+int countTriplets(vector<int>& arr) {
+    int n = (int) arr.size();
+    vector<int> prefix(n + 1, 0);
+    for (int i = 0; i < n; i++) prefix[i + 1] = prefix[i] ^ arr[i];
+    int count = 0;
+    for (int i = 0; i < n; i++) {
+        for (int k = i + 1; k < n; k++) {
+            if (prefix[i] == prefix[k + 1]) count += k - i;
+        }
+    }
+    return count;
+}
+@@@LANG c
+int countTriplets(int* arr, int arrSize) {
+    int n = arrSize;
+    int* prefix = (int*) calloc((size_t) (n + 1), sizeof(int));
+    for (int i = 0; i < n; i++) prefix[i + 1] = prefix[i] ^ arr[i];
+    int count = 0;
+    for (int i = 0; i < n; i++) {
+        for (int k = i + 1; k < n; k++) {
+            if (prefix[i] == prefix[k + 1]) count += k - i;
+        }
+    }
+    free(prefix);
+    return count;
+}
+@@@LANG csharp
+public static int CountTriplets(int[] arr)
+{
+    int n = arr.Length;
+    int[] prefix = new int[n + 1];
+    for (int i = 0; i < n; i++) prefix[i + 1] = prefix[i] ^ arr[i];
+    int count = 0;
+    for (int i = 0; i < n; i++)
+    {
+        for (int k = i + 1; k < n; k++)
+        {
+            if (prefix[i] == prefix[k + 1]) count += k - i;
+        }
+    }
+    return count;
+}
+@@@LANG go
+func countTriplets(arr []int) int {
+	n := len(arr)
+	prefix := make([]int, n+1)
+	for i := 0; i < n; i++ {
+		prefix[i+1] = prefix[i] ^ arr[i]
+	}
+	count := 0
+	for i := 0; i < n; i++ {
+		for k := i + 1; k < n; k++ {
+			if prefix[i] == prefix[k+1] {
+				count += k - i
+			}
+		}
+	}
+	return count
+}
+@@@LANG kotlin
+fun countTriplets(arr: IntArray): Int {
+    val n = arr.size
+    val prefix = IntArray(n + 1)
+    for (i in 0 until n) prefix[i + 1] = prefix[i] xor arr[i]
+    var count = 0
+    for (i in 0 until n) {
+        for (k in i + 1 until n) {
+            if (prefix[i] == prefix[k + 1]) count += k - i
+        }
+    }
+    return count
+}
+@@@LANG swift
+func countTriplets(_ arr: [Int]) -> Int {
+    let n = arr.count
+    var prefix = [Int](repeating: 0, count: n + 1)
+    for i in 0..<n { prefix[i + 1] = prefix[i] ^ arr[i] }
+    var count = 0
+    for i in 0..<n {
+        var k = i + 1
+        while k < n {
+            if prefix[i] == prefix[k + 1] { count += k - i }
+            k += 1
+        }
+    }
+    return count
+}
+@@@LANG rust
+fn countTriplets(arr: Vec<i32>) -> i32 {
+    let n = arr.len();
+    let mut prefix = vec![0i32; n + 1];
+    for i in 0..n {
+        prefix[i + 1] = prefix[i] ^ arr[i];
+    }
+    let mut count = 0i32;
+    for i in 0..n {
+        for k in (i + 1)..n {
+            if prefix[i] == prefix[k + 1] {
+                count += (k - i) as i32;
+            }
+        }
+    }
+    count
+}
+@@@LANG php
+function countTriplets($arr) {
+    $n = count($arr);
+    $prefix = array_fill(0, $n + 1, 0);
+    for ($i = 0; $i < $n; $i++) $prefix[$i + 1] = $prefix[$i] ^ $arr[$i];
+    $count = 0;
+    for ($i = 0; $i < $n; $i++) {
+        for ($k = $i + 1; $k < $n; $k++) {
+            if ($prefix[$i] === $prefix[$k + 1]) $count += $k - $i;
+        }
+    }
+    return $count;
+}
+@@@LANG ruby
+def countTriplets(arr)
+  n = arr.length
+  prefix = Array.new(n + 1, 0)
+  (0...n).each { |i| prefix[i + 1] = prefix[i] ^ arr[i] }
+  count = 0
+  (0...n).each do |i|
+    ((i + 1)...n).each do |k|
+      count += k - i if prefix[i] == prefix[k + 1]
+    end
+  end
+  count
+end
+
+@@@PROBLEM bulb-switcher
+@@@LANG typescript
+function bulbSwitch(n: number): number {
+    var root = Math.floor(Math.sqrt(n));
+    while ((root + 1) * (root + 1) <= n) root++;
+    while (root > 0 && root * root > n) root--;
+    return root;
+}
+@@@LANG java
+public static int bulbSwitch(int n) {
+    long root = (long) Math.sqrt((double) n);
+    while ((root + 1) * (root + 1) <= n) root++;
+    while (root > 0 && root * root > n) root--;
+    return (int) root;
+}
+@@@LANG cpp
+int bulbSwitch(int n) {
+    long long root = (long long) sqrt((double) n);
+    while ((root + 1) * (root + 1) <= n) root++;
+    while (root > 0 && root * root > n) root--;
+    return (int) root;
+}
+@@@LANG c
+int bulbSwitch(int n) {
+    long long root = 0;
+    while ((root + 1) * (root + 1) <= (long long) n) root++;
+    return (int) root;
+}
+@@@LANG csharp
+public static int BulbSwitch(int n)
+{
+    long root = (long) Math.Sqrt((double) n);
+    while ((root + 1) * (root + 1) <= n) root++;
+    while (root > 0 && root * root > n) root--;
+    return (int) root;
+}
+@@@LANG go
+func bulbSwitch(n int) int {
+	root := int(math.Sqrt(float64(n)))
+	for (root+1)*(root+1) <= n {
+		root++
+	}
+	for root > 0 && root*root > n {
+		root--
+	}
+	return root
+}
+@@@LANG kotlin
+fun bulbSwitch(n: Int): Int {
+    var root = Math.sqrt(n.toDouble()).toLong()
+    while ((root + 1) * (root + 1) <= n) root++
+    while (root > 0 && root * root > n) root--
+    return root.toInt()
+}
+@@@LANG swift
+func bulbSwitch(_ n: Int) -> Int {
+    var root = Int(Double(n).squareRoot())
+    while (root + 1) * (root + 1) <= n { root += 1 }
+    while root > 0 && root * root > n { root -= 1 }
+    return root
+}
+@@@LANG rust
+fn bulbSwitch(n: i32) -> i32 {
+    let target = n as i64;
+    let mut root = (target as f64).sqrt() as i64;
+    while (root + 1) * (root + 1) <= target {
+        root += 1;
+    }
+    while root > 0 && root * root > target {
+        root -= 1;
+    }
+    root as i32
+}
+@@@LANG php
+function bulbSwitch($n) {
+    $root = (int) sqrt($n);
+    while (($root + 1) * ($root + 1) <= $n) $root++;
+    while ($root > 0 && $root * $root > $n) $root--;
+    return $root;
+}
+@@@LANG ruby
+def bulbSwitch(n)
+  root = Math.sqrt(n).to_i
+  root += 1 while (root + 1) * (root + 1) <= n
+  root -= 1 while root > 0 && root * root > n
+  root
+end
+
+@@@PROBLEM nth-digit
+@@@LANG typescript
+function findNthDigit(n: number): number {
+    var remaining = n;
+    var digits = 1;
+    var count = 9;
+    var start = 1;
+    while (remaining > digits * count) {
+        remaining -= digits * count;
+        digits++;
+        count *= 10;
+        start *= 10;
+    }
+    var value = start + Math.floor((remaining - 1) / digits);
+    var text = String(value);
+    return Number(text.charAt((remaining - 1) % digits));
+}
+@@@LANG java
+public static int findNthDigit(int n) {
+    long remaining = n;
+    long digits = 1;
+    long count = 9;
+    long start = 1;
+    while (remaining > digits * count) {
+        remaining -= digits * count;
+        digits++;
+        count *= 10;
+        start *= 10;
+    }
+    long value = start + (remaining - 1) / digits;
+    String text = String.valueOf(value);
+    return text.charAt((int) ((remaining - 1) % digits)) - '0';
+}
+@@@LANG cpp
+int findNthDigit(int n) {
+    long long remaining = n, digits = 1, count = 9, start = 1;
+    while (remaining > digits * count) {
+        remaining -= digits * count;
+        digits++;
+        count *= 10;
+        start *= 10;
+    }
+    long long value = start + (remaining - 1) / digits;
+    string text = to_string(value);
+    return text[(int) ((remaining - 1) % digits)] - '0';
+}
+@@@LANG c
+int findNthDigit(int n) {
+    long long remaining = n, digits = 1, count = 9, start = 1;
+    while (remaining > digits * count) {
+        remaining -= digits * count;
+        digits++;
+        count *= 10;
+        start *= 10;
+    }
+    long long value = start + (remaining - 1) / digits;
+    char text[32];
+    sprintf(text, "%lld", value);
+    return text[(int) ((remaining - 1) % digits)] - '0';
+}
+@@@LANG csharp
+public static int FindNthDigit(int n)
+{
+    long remaining = n, digits = 1, count = 9, start = 1;
+    while (remaining > digits * count)
+    {
+        remaining -= digits * count;
+        digits++;
+        count *= 10;
+        start *= 10;
+    }
+    long value = start + (remaining - 1) / digits;
+    string text = value.ToString();
+    return text[(int) ((remaining - 1) % digits)] - '0';
+}
+@@@LANG go
+func findNthDigit(n int) int {
+	remaining, digits, count, start := n, 1, 9, 1
+	for remaining > digits*count {
+		remaining -= digits * count
+		digits++
+		count *= 10
+		start *= 10
+	}
+	value := start + (remaining-1)/digits
+	text := strconv.Itoa(value)
+	return int(text[(remaining-1)%digits] - '0')
+}
+@@@LANG kotlin
+fun findNthDigit(n: Int): Int {
+    var remaining = n.toLong()
+    var digits = 1L
+    var count = 9L
+    var start = 1L
+    while (remaining > digits * count) {
+        remaining -= digits * count
+        digits++
+        count *= 10
+        start *= 10
+    }
+    val value = start + (remaining - 1) / digits
+    val text = value.toString()
+    return text[((remaining - 1) % digits).toInt()] - '0'
+}
+@@@LANG swift
+func findNthDigit(_ n: Int) -> Int {
+    var remaining = n
+    var digits = 1
+    var count = 9
+    var start = 1
+    while remaining > digits * count {
+        remaining -= digits * count
+        digits += 1
+        count *= 10
+        start *= 10
+    }
+    let value = start + (remaining - 1) / digits
+    let text = Array(String(value).unicodeScalars)
+    return Int(text[(remaining - 1) % digits].value) - 48
+}
+@@@LANG rust
+fn findNthDigit(n: i32) -> i32 {
+    let mut remaining: i64 = n as i64;
+    let mut digits: i64 = 1;
+    let mut count: i64 = 9;
+    let mut start: i64 = 1;
+    while remaining > digits * count {
+        remaining -= digits * count;
+        digits += 1;
+        count *= 10;
+        start *= 10;
+    }
+    let value = start + (remaining - 1) / digits;
+    let text: Vec<u8> = value.to_string().into_bytes();
+    (text[((remaining - 1) % digits) as usize] - b'0') as i32
+}
+@@@LANG php
+function findNthDigit($n) {
+    $remaining = $n;
+    $digits = 1;
+    $count = 9;
+    $start = 1;
+    while ($remaining > $digits * $count) {
+        $remaining -= $digits * $count;
+        $digits++;
+        $count *= 10;
+        $start *= 10;
+    }
+    $value = $start + intdiv($remaining - 1, $digits);
+    $text = strval($value);
+    return intval($text[($remaining - 1) % $digits]);
+}
+@@@LANG ruby
+def findNthDigit(n)
+  remaining = n
+  digits = 1
+  count = 9
+  start = 1
+  while remaining > digits * count
+    remaining -= digits * count
+    digits += 1
+    count *= 10
+    start *= 10
+  end
+  value = start + (remaining - 1) / digits
+  value.to_s[(remaining - 1) % digits].to_i
+end
+
+@@@PROBLEM rotate-function
+@@@LANG typescript
+function maxRotateFunction(nums: number[]): number {
+    var n = nums.length;
+    var total = 0;
+    var current = 0;
+    for (var i = 0; i < n; i++) {
+        total += nums[i];
+        current += i * nums[i];
+    }
+    var best = current;
+    for (var k = 1; k < n; k++) {
+        current = current + total - n * nums[n - k];
+        if (current > best) best = current;
+    }
+    return best;
+}
+@@@LANG java
+public static int maxRotateFunction(int[] nums) {
+    int n = nums.length;
+    int total = 0, current = 0;
+    for (int i = 0; i < n; i++) {
+        total += nums[i];
+        current += i * nums[i];
+    }
+    int best = current;
+    for (int k = 1; k < n; k++) {
+        current = current + total - n * nums[n - k];
+        best = Math.max(best, current);
+    }
+    return best;
+}
+@@@LANG cpp
+int maxRotateFunction(vector<int>& nums) {
+    int n = (int) nums.size();
+    int total = 0, current = 0;
+    for (int i = 0; i < n; i++) {
+        total += nums[i];
+        current += i * nums[i];
+    }
+    int best = current;
+    for (int k = 1; k < n; k++) {
+        current = current + total - n * nums[n - k];
+        best = max(best, current);
+    }
+    return best;
+}
+@@@LANG c
+int maxRotateFunction(int* nums, int numsSize) {
+    int n = numsSize;
+    int total = 0, current = 0;
+    for (int i = 0; i < n; i++) {
+        total += nums[i];
+        current += i * nums[i];
+    }
+    int best = current;
+    for (int k = 1; k < n; k++) {
+        current = current + total - n * nums[n - k];
+        if (current > best) best = current;
+    }
+    return best;
+}
+@@@LANG csharp
+public static int MaxRotateFunction(int[] nums)
+{
+    int n = nums.Length;
+    int total = 0, current = 0;
+    for (int i = 0; i < n; i++)
+    {
+        total += nums[i];
+        current += i * nums[i];
+    }
+    int best = current;
+    for (int k = 1; k < n; k++)
+    {
+        current = current + total - n * nums[n - k];
+        best = Math.Max(best, current);
+    }
+    return best;
+}
+@@@LANG go
+func maxRotateFunction(nums []int) int {
+	n := len(nums)
+	total, current := 0, 0
+	for i := 0; i < n; i++ {
+		total += nums[i]
+		current += i * nums[i]
+	}
+	best := current
+	for k := 1; k < n; k++ {
+		current = current + total - n*nums[n-k]
+		if current > best {
+			best = current
+		}
+	}
+	return best
+}
+@@@LANG kotlin
+fun maxRotateFunction(nums: IntArray): Int {
+    val n = nums.size
+    var total = 0
+    var current = 0
+    for (i in 0 until n) {
+        total += nums[i]
+        current += i * nums[i]
+    }
+    var best = current
+    for (k in 1 until n) {
+        current = current + total - n * nums[n - k]
+        if (current > best) best = current
+    }
+    return best
+}
+@@@LANG swift
+func maxRotateFunction(_ nums: [Int]) -> Int {
+    let n = nums.count
+    var total = 0
+    var current = 0
+    for i in 0..<n {
+        total += nums[i]
+        current += i * nums[i]
+    }
+    var best = current
+    var k = 1
+    while k < n {
+        current = current + total - n * nums[n - k]
+        if current > best { best = current }
+        k += 1
+    }
+    return best
+}
+@@@LANG rust
+fn maxRotateFunction(nums: Vec<i32>) -> i32 {
+    let n = nums.len();
+    let mut total = 0i32;
+    let mut current = 0i32;
+    for i in 0..n {
+        total += nums[i];
+        current += (i as i32) * nums[i];
+    }
+    let mut best = current;
+    for k in 1..n {
+        current = current + total - (n as i32) * nums[n - k];
+        if current > best {
+            best = current;
+        }
+    }
+    best
+}
+@@@LANG php
+function maxRotateFunction($nums) {
+    $n = count($nums);
+    $total = 0;
+    $current = 0;
+    for ($i = 0; $i < $n; $i++) {
+        $total += $nums[$i];
+        $current += $i * $nums[$i];
+    }
+    $best = $current;
+    for ($k = 1; $k < $n; $k++) {
+        $current = $current + $total - $n * $nums[$n - $k];
+        if ($current > $best) $best = $current;
+    }
+    return $best;
+}
+@@@LANG ruby
+def maxRotateFunction(nums)
+  n = nums.length
+  total = nums.sum
+  current = nums.each_with_index.map { |x, i| i * x }.sum
+  best = current
+  (1...n).each do |k|
+    current = current + total - n * nums[n - k]
+    best = current if current > best
+  end
+  best
+end
+
+@@@PROBLEM sum-of-all-subset-xor-totals
+@@@LANG typescript
+function subsetXORSum(nums: number[]): number {
+    var orAll = 0;
+    for (var i = 0; i < nums.length; i++) orAll |= nums[i];
+    return orAll * Math.pow(2, nums.length - 1);
+}
+@@@LANG java
+public static int subsetXORSum(int[] nums) {
+    int orAll = 0;
+    for (int x : nums) orAll |= x;
+    return orAll << (nums.length - 1);
+}
+@@@LANG cpp
+int subsetXORSum(vector<int>& nums) {
+    int orAll = 0;
+    for (int x : nums) orAll |= x;
+    return orAll << ((int) nums.size() - 1);
+}
+@@@LANG c
+int subsetXORSum(int* nums, int numsSize) {
+    int orAll = 0;
+    for (int i = 0; i < numsSize; i++) orAll |= nums[i];
+    return orAll << (numsSize - 1);
+}
+@@@LANG csharp
+public static int SubsetXORSum(int[] nums)
+{
+    int orAll = 0;
+    foreach (int x in nums) orAll |= x;
+    return orAll << (nums.Length - 1);
+}
+@@@LANG go
+func subsetXORSum(nums []int) int {
+	orAll := 0
+	for _, x := range nums {
+		orAll |= x
+	}
+	return orAll << uint(len(nums)-1)
+}
+@@@LANG kotlin
+fun subsetXORSum(nums: IntArray): Int {
+    var orAll = 0
+    for (x in nums) orAll = orAll or x
+    return orAll shl (nums.size - 1)
+}
+@@@LANG swift
+func subsetXORSum(_ nums: [Int]) -> Int {
+    var orAll = 0
+    for x in nums { orAll |= x }
+    return orAll << (nums.count - 1)
+}
+@@@LANG rust
+fn subsetXORSum(nums: Vec<i32>) -> i32 {
+    let mut or_all = 0i32;
+    for x in nums.iter() {
+        or_all |= *x;
+    }
+    or_all << (nums.len() - 1)
+}
+@@@LANG php
+function subsetXORSum($nums) {
+    $orAll = 0;
+    foreach ($nums as $x) $orAll |= $x;
+    return $orAll << (count($nums) - 1);
+}
+@@@LANG ruby
+def subsetXORSum(nums)
+  or_all = 0
+  nums.each { |x| or_all |= x }
+  or_all << (nums.length - 1)
+end
+
+@@@PROBLEM water-bottles
+@@@LANG typescript
+function numWaterBottles(numBottles: number, numExchange: number): number {
+    var drunk = numBottles;
+    var empty = numBottles;
+    while (empty >= numExchange) {
+        var fresh = Math.floor(empty / numExchange);
+        drunk += fresh;
+        empty = empty - fresh * numExchange + fresh;
+    }
+    return drunk;
+}
+@@@LANG java
+public static int numWaterBottles(int numBottles, int numExchange) {
+    int drunk = numBottles, empty = numBottles;
+    while (empty >= numExchange) {
+        int fresh = empty / numExchange;
+        drunk += fresh;
+        empty = empty - fresh * numExchange + fresh;
+    }
+    return drunk;
+}
+@@@LANG cpp
+int numWaterBottles(int numBottles, int numExchange) {
+    int drunk = numBottles, empty = numBottles;
+    while (empty >= numExchange) {
+        int fresh = empty / numExchange;
+        drunk += fresh;
+        empty = empty - fresh * numExchange + fresh;
+    }
+    return drunk;
+}
+@@@LANG c
+int numWaterBottles(int numBottles, int numExchange) {
+    int drunk = numBottles, empty = numBottles;
+    while (empty >= numExchange) {
+        int fresh = empty / numExchange;
+        drunk += fresh;
+        empty = empty - fresh * numExchange + fresh;
+    }
+    return drunk;
+}
+@@@LANG csharp
+public static int NumWaterBottles(int numBottles, int numExchange)
+{
+    int drunk = numBottles, empty = numBottles;
+    while (empty >= numExchange)
+    {
+        int fresh = empty / numExchange;
+        drunk += fresh;
+        empty = empty - fresh * numExchange + fresh;
+    }
+    return drunk;
+}
+@@@LANG go
+func numWaterBottles(numBottles int, numExchange int) int {
+	drunk, empty := numBottles, numBottles
+	for empty >= numExchange {
+		fresh := empty / numExchange
+		drunk += fresh
+		empty = empty - fresh*numExchange + fresh
+	}
+	return drunk
+}
+@@@LANG kotlin
+fun numWaterBottles(numBottles: Int, numExchange: Int): Int {
+    var drunk = numBottles
+    var empty = numBottles
+    while (empty >= numExchange) {
+        val fresh = empty / numExchange
+        drunk += fresh
+        empty = empty - fresh * numExchange + fresh
+    }
+    return drunk
+}
+@@@LANG swift
+func numWaterBottles(_ numBottles: Int, _ numExchange: Int) -> Int {
+    var drunk = numBottles
+    var empty = numBottles
+    while empty >= numExchange {
+        let fresh = empty / numExchange
+        drunk += fresh
+        empty = empty - fresh * numExchange + fresh
+    }
+    return drunk
+}
+@@@LANG rust
+fn numWaterBottles(numBottles: i32, numExchange: i32) -> i32 {
+    let mut drunk = numBottles;
+    let mut empty = numBottles;
+    while empty >= numExchange {
+        let fresh = empty / numExchange;
+        drunk += fresh;
+        empty = empty - fresh * numExchange + fresh;
+    }
+    drunk
+}
+@@@LANG php
+function numWaterBottles($numBottles, $numExchange) {
+    $drunk = $numBottles;
+    $empty = $numBottles;
+    while ($empty >= $numExchange) {
+        $fresh = intdiv($empty, $numExchange);
+        $drunk += $fresh;
+        $empty = $empty - $fresh * $numExchange + $fresh;
+    }
+    return $drunk;
+}
+@@@LANG ruby
+def numWaterBottles(numBottles, numExchange)
+  drunk = numBottles
+  empty = numBottles
+  while empty >= numExchange
+    fresh = empty / numExchange
+    drunk += fresh
+    empty = empty - fresh * numExchange + fresh
+  end
+  drunk
+end
+
+@@@PROBLEM count-odd-numbers-in-an-interval-range
+@@@LANG typescript
+function countOdds(low: number, high: number): number {
+    var count = Math.floor((high - low) / 2);
+    return low % 2 === 1 || high % 2 === 1 ? count + 1 : count;
+}
+@@@LANG java
+public static int countOdds(int low, int high) {
+    int count = (high - low) / 2;
+    return (low % 2 == 1 || high % 2 == 1) ? count + 1 : count;
+}
+@@@LANG cpp
+int countOdds(int low, int high) {
+    int count = (high - low) / 2;
+    return (low % 2 == 1 || high % 2 == 1) ? count + 1 : count;
+}
+@@@LANG c
+int countOdds(int low, int high) {
+    int count = (high - low) / 2;
+    return (low % 2 == 1 || high % 2 == 1) ? count + 1 : count;
+}
+@@@LANG csharp
+public static int CountOdds(int low, int high)
+{
+    int count = (high - low) / 2;
+    return (low % 2 == 1 || high % 2 == 1) ? count + 1 : count;
+}
+@@@LANG go
+func countOdds(low int, high int) int {
+	count := (high - low) / 2
+	if low%2 == 1 || high%2 == 1 {
+		return count + 1
+	}
+	return count
+}
+@@@LANG kotlin
+fun countOdds(low: Int, high: Int): Int {
+    val count = (high - low) / 2
+    return if (low % 2 == 1 || high % 2 == 1) count + 1 else count
+}
+@@@LANG swift
+func countOdds(_ low: Int, _ high: Int) -> Int {
+    let count = (high - low) / 2
+    return (low % 2 == 1 || high % 2 == 1) ? count + 1 : count
+}
+@@@LANG rust
+fn countOdds(low: i32, high: i32) -> i32 {
+    let count = (high - low) / 2;
+    if low % 2 == 1 || high % 2 == 1 { count + 1 } else { count }
+}
+@@@LANG php
+function countOdds($low, $high) {
+    $count = intdiv($high - $low, 2);
+    return ($low % 2 === 1 || $high % 2 === 1) ? $count + 1 : $count;
+}
+@@@LANG ruby
+def countOdds(low, high)
+  count = (high - low) / 2
+  (low % 2 == 1 || high % 2 == 1) ? count + 1 : count
+end

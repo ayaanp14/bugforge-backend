@@ -1,0 +1,2058 @@
+@@@PROBLEM removing-stars-from-a-string
+@@@LANG typescript
+function removeStars(s: string): string {
+    var stack: string[] = [];
+    for (var i = 0; i < s.length; i++) {
+        if (s.charAt(i) === "*") stack.pop();
+        else stack.push(s.charAt(i));
+    }
+    return stack.join("");
+}
+@@@LANG java
+public static String removeStars(String s) {
+    StringBuilder stack = new StringBuilder();
+    for (int i = 0; i < s.length(); i++) {
+        char c = s.charAt(i);
+        if (c == '*') stack.deleteCharAt(stack.length() - 1);
+        else stack.append(c);
+    }
+    return stack.toString();
+}
+@@@LANG cpp
+string removeStars(string s) {
+    string stk;
+    for (char c : s) {
+        if (c == '*') stk.pop_back();
+        else stk.push_back(c);
+    }
+    return stk;
+}
+@@@LANG c
+char* removeStars(const char* s) {
+    int n = (int) strlen(s);
+    char* stack = (char*) malloc((size_t) n + 2);
+    int top = 0;
+    for (int i = 0; i < n; i++) {
+        if (s[i] == '*') top--;
+        else stack[top++] = s[i];
+    }
+    stack[top] = '\0';
+    return stack;
+}
+@@@LANG csharp
+public static string RemoveStars(string s)
+{
+    var stack = new List<char>();
+    foreach (char c in s)
+    {
+        if (c == '*') stack.RemoveAt(stack.Count - 1);
+        else stack.Add(c);
+    }
+    return new string(stack.ToArray());
+}
+@@@LANG go
+func removeStars(s string) string {
+	stack := []byte{}
+	for i := 0; i < len(s); i++ {
+		if s[i] == '*' {
+			stack = stack[:len(stack)-1]
+		} else {
+			stack = append(stack, s[i])
+		}
+	}
+	return string(stack)
+}
+@@@LANG kotlin
+fun removeStars(s: String): String {
+    val stack = StringBuilder()
+    for (c in s) {
+        if (c == '*') stack.deleteCharAt(stack.length - 1)
+        else stack.append(c)
+    }
+    return stack.toString()
+}
+@@@LANG swift
+func removeStars(_ s: String) -> String {
+    var stack: [Character] = []
+    for c in s {
+        if c == "*" {
+            stack.removeLast()
+        } else {
+            stack.append(c)
+        }
+    }
+    return String(stack)
+}
+@@@LANG rust
+fn removeStars(s: String) -> String {
+    let mut stack: Vec<u8> = Vec::new();
+    for c in s.bytes() {
+        if c == b'*' {
+            stack.pop();
+        } else {
+            stack.push(c);
+        }
+    }
+    String::from_utf8(stack).unwrap()
+}
+@@@LANG php
+function removeStars($s) {
+    $stack = array();
+    $n = strlen($s);
+    for ($i = 0; $i < $n; $i++) {
+        if ($s[$i] === "*") array_pop($stack);
+        else $stack[] = $s[$i];
+    }
+    return implode("", $stack);
+}
+@@@LANG ruby
+def removeStars(s)
+  stack = []
+  s.each_char do |c|
+    if c == "*"
+      stack.pop
+    else
+      stack.push(c)
+    end
+  end
+  stack.join
+end
+
+@@@PROBLEM sum-of-subarray-ranges
+@@@LANG typescript
+function subArrayRanges(nums: number[]): number {
+    var total = 0;
+    for (var i = 0; i < nums.length; i++) {
+        var lo = nums[i];
+        var hi = nums[i];
+        for (var j = i; j < nums.length; j++) {
+            if (nums[j] < lo) lo = nums[j];
+            if (nums[j] > hi) hi = nums[j];
+            total += hi - lo;
+        }
+    }
+    return total;
+}
+@@@LANG java
+public static int subArrayRanges(int[] nums) {
+    int total = 0;
+    for (int i = 0; i < nums.length; i++) {
+        int lo = nums[i], hi = nums[i];
+        for (int j = i; j < nums.length; j++) {
+            lo = Math.min(lo, nums[j]);
+            hi = Math.max(hi, nums[j]);
+            total += hi - lo;
+        }
+    }
+    return total;
+}
+@@@LANG cpp
+int subArrayRanges(vector<int>& nums) {
+    int total = 0;
+    int n = (int) nums.size();
+    for (int i = 0; i < n; i++) {
+        int lo = nums[i], hi = nums[i];
+        for (int j = i; j < n; j++) {
+            lo = min(lo, nums[j]);
+            hi = max(hi, nums[j]);
+            total += hi - lo;
+        }
+    }
+    return total;
+}
+@@@LANG c
+int subArrayRanges(int* nums, int numsSize) {
+    int total = 0;
+    for (int i = 0; i < numsSize; i++) {
+        int lo = nums[i], hi = nums[i];
+        for (int j = i; j < numsSize; j++) {
+            if (nums[j] < lo) lo = nums[j];
+            if (nums[j] > hi) hi = nums[j];
+            total += hi - lo;
+        }
+    }
+    return total;
+}
+@@@LANG csharp
+public static int SubArrayRanges(int[] nums)
+{
+    int total = 0;
+    for (int i = 0; i < nums.Length; i++)
+    {
+        int lo = nums[i], hi = nums[i];
+        for (int j = i; j < nums.Length; j++)
+        {
+            lo = Math.Min(lo, nums[j]);
+            hi = Math.Max(hi, nums[j]);
+            total += hi - lo;
+        }
+    }
+    return total;
+}
+@@@LANG go
+func subArrayRanges(nums []int) int {
+	total := 0
+	for i := 0; i < len(nums); i++ {
+		lo, hi := nums[i], nums[i]
+		for j := i; j < len(nums); j++ {
+			if nums[j] < lo {
+				lo = nums[j]
+			}
+			if nums[j] > hi {
+				hi = nums[j]
+			}
+			total += hi - lo
+		}
+	}
+	return total
+}
+@@@LANG kotlin
+fun subArrayRanges(nums: IntArray): Int {
+    var total = 0
+    for (i in nums.indices) {
+        var lo = nums[i]
+        var hi = nums[i]
+        for (j in i until nums.size) {
+            if (nums[j] < lo) lo = nums[j]
+            if (nums[j] > hi) hi = nums[j]
+            total += hi - lo
+        }
+    }
+    return total
+}
+@@@LANG swift
+func subArrayRanges(_ nums: [Int]) -> Int {
+    var total = 0
+    for i in 0..<nums.count {
+        var lo = nums[i]
+        var hi = nums[i]
+        for j in i..<nums.count {
+            if nums[j] < lo { lo = nums[j] }
+            if nums[j] > hi { hi = nums[j] }
+            total += hi - lo
+        }
+    }
+    return total
+}
+@@@LANG rust
+fn subArrayRanges(nums: Vec<i32>) -> i32 {
+    let mut total = 0i32;
+    for i in 0..nums.len() {
+        let mut lo = nums[i];
+        let mut hi = nums[i];
+        for j in i..nums.len() {
+            if nums[j] < lo {
+                lo = nums[j];
+            }
+            if nums[j] > hi {
+                hi = nums[j];
+            }
+            total += hi - lo;
+        }
+    }
+    total
+}
+@@@LANG php
+function subArrayRanges($nums) {
+    $total = 0;
+    $n = count($nums);
+    for ($i = 0; $i < $n; $i++) {
+        $lo = $nums[$i];
+        $hi = $nums[$i];
+        for ($j = $i; $j < $n; $j++) {
+            if ($nums[$j] < $lo) $lo = $nums[$j];
+            if ($nums[$j] > $hi) $hi = $nums[$j];
+            $total += $hi - $lo;
+        }
+    }
+    return $total;
+}
+@@@LANG ruby
+def subArrayRanges(nums)
+  total = 0
+  n = nums.length
+  (0...n).each do |i|
+    lo = nums[i]
+    hi = nums[i]
+    (i...n).each do |j|
+      lo = nums[j] if nums[j] < lo
+      hi = nums[j] if nums[j] > hi
+      total += hi - lo
+    end
+  end
+  total
+end
+
+@@@PROBLEM max-chunks-to-make-sorted
+@@@LANG typescript
+function maxChunksToSorted(arr: number[]): number {
+    var chunks = 0;
+    var running = -1;
+    for (var i = 0; i < arr.length; i++) {
+        if (arr[i] > running) running = arr[i];
+        if (running === i) chunks++;
+    }
+    return chunks;
+}
+@@@LANG java
+public static int maxChunksToSorted(int[] arr) {
+    int chunks = 0, running = -1;
+    for (int i = 0; i < arr.length; i++) {
+        running = Math.max(running, arr[i]);
+        if (running == i) chunks++;
+    }
+    return chunks;
+}
+@@@LANG cpp
+int maxChunksToSorted(vector<int>& arr) {
+    int chunks = 0, running = -1;
+    for (int i = 0; i < (int) arr.size(); i++) {
+        running = max(running, arr[i]);
+        if (running == i) chunks++;
+    }
+    return chunks;
+}
+@@@LANG c
+int maxChunksToSorted(int* arr, int arrSize) {
+    int chunks = 0, running = -1;
+    for (int i = 0; i < arrSize; i++) {
+        if (arr[i] > running) running = arr[i];
+        if (running == i) chunks++;
+    }
+    return chunks;
+}
+@@@LANG csharp
+public static int MaxChunksToSorted(int[] arr)
+{
+    int chunks = 0, running = -1;
+    for (int i = 0; i < arr.Length; i++)
+    {
+        running = Math.Max(running, arr[i]);
+        if (running == i) chunks++;
+    }
+    return chunks;
+}
+@@@LANG go
+func maxChunksToSorted(arr []int) int {
+	chunks, running := 0, -1
+	for i := 0; i < len(arr); i++ {
+		if arr[i] > running {
+			running = arr[i]
+		}
+		if running == i {
+			chunks++
+		}
+	}
+	return chunks
+}
+@@@LANG kotlin
+fun maxChunksToSorted(arr: IntArray): Int {
+    var chunks = 0
+    var running = -1
+    for (i in arr.indices) {
+        if (arr[i] > running) running = arr[i]
+        if (running == i) chunks++
+    }
+    return chunks
+}
+@@@LANG swift
+func maxChunksToSorted(_ arr: [Int]) -> Int {
+    var chunks = 0
+    var running = -1
+    for i in 0..<arr.count {
+        if arr[i] > running { running = arr[i] }
+        if running == i { chunks += 1 }
+    }
+    return chunks
+}
+@@@LANG rust
+fn maxChunksToSorted(arr: Vec<i32>) -> i32 {
+    let mut chunks = 0;
+    let mut running = -1;
+    for i in 0..arr.len() {
+        if arr[i] > running {
+            running = arr[i];
+        }
+        if running == i as i32 {
+            chunks += 1;
+        }
+    }
+    chunks
+}
+@@@LANG php
+function maxChunksToSorted($arr) {
+    $chunks = 0;
+    $running = -1;
+    $n = count($arr);
+    for ($i = 0; $i < $n; $i++) {
+        if ($arr[$i] > $running) $running = $arr[$i];
+        if ($running === $i) $chunks++;
+    }
+    return $chunks;
+}
+@@@LANG ruby
+def maxChunksToSorted(arr)
+  chunks = 0
+  running = -1
+  arr.each_with_index do |x, i|
+    running = x if x > running
+    chunks += 1 if running == i
+  end
+  chunks
+end
+
+@@@PROBLEM number-of-visible-people-in-a-queue
+@@@LANG typescript
+function canSeePersonsCount(heights: number[]): number[] {
+    var n = heights.length;
+    var out: number[] = [];
+    for (var i = 0; i < n; i++) out.push(0);
+    var stack: number[] = [];
+    for (var j = n - 1; j >= 0; j--) {
+        var seen = 0;
+        while (stack.length > 0 && stack[stack.length - 1] < heights[j]) {
+            stack.pop();
+            seen++;
+        }
+        if (stack.length > 0) seen++;
+        out[j] = seen;
+        stack.push(heights[j]);
+    }
+    return out;
+}
+@@@LANG java
+public static int[] canSeePersonsCount(int[] heights) {
+    int n = heights.length;
+    int[] out = new int[n];
+    Deque<Integer> stack = new ArrayDeque<>();
+    for (int i = n - 1; i >= 0; i--) {
+        int seen = 0;
+        while (!stack.isEmpty() && stack.peek() < heights[i]) {
+            stack.pop();
+            seen++;
+        }
+        if (!stack.isEmpty()) seen++;
+        out[i] = seen;
+        stack.push(heights[i]);
+    }
+    return out;
+}
+@@@LANG cpp
+vector<int> canSeePersonsCount(vector<int>& heights) {
+    int n = (int) heights.size();
+    vector<int> out(n, 0);
+    vector<int> stack;
+    for (int i = n - 1; i >= 0; i--) {
+        int seen = 0;
+        while (!stack.empty() && stack.back() < heights[i]) {
+            stack.pop_back();
+            seen++;
+        }
+        if (!stack.empty()) seen++;
+        out[i] = seen;
+        stack.push_back(heights[i]);
+    }
+    return out;
+}
+@@@LANG c
+int* canSeePersonsCount(int* heights, int heightsSize, int* returnSize) {
+    int n = heightsSize;
+    int* out = (int*) calloc((size_t) (n > 0 ? n : 1), sizeof(int));
+    int* stack = (int*) malloc((size_t) (n > 0 ? n : 1) * sizeof(int));
+    int top = 0;
+    for (int i = n - 1; i >= 0; i--) {
+        int seen = 0;
+        while (top > 0 && stack[top - 1] < heights[i]) {
+            top--;
+            seen++;
+        }
+        if (top > 0) seen++;
+        out[i] = seen;
+        stack[top++] = heights[i];
+    }
+    free(stack);
+    *returnSize = n;
+    return out;
+}
+@@@LANG csharp
+public static int[] CanSeePersonsCount(int[] heights)
+{
+    int n = heights.Length;
+    int[] out_ = new int[n];
+    var stack = new List<int>();
+    for (int i = n - 1; i >= 0; i--)
+    {
+        int seen = 0;
+        while (stack.Count > 0 && stack[stack.Count - 1] < heights[i])
+        {
+            stack.RemoveAt(stack.Count - 1);
+            seen++;
+        }
+        if (stack.Count > 0) seen++;
+        out_[i] = seen;
+        stack.Add(heights[i]);
+    }
+    return out_;
+}
+@@@LANG go
+func canSeePersonsCount(heights []int) []int {
+	n := len(heights)
+	out := make([]int, n)
+	stack := []int{}
+	for i := n - 1; i >= 0; i-- {
+		seen := 0
+		for len(stack) > 0 && stack[len(stack)-1] < heights[i] {
+			stack = stack[:len(stack)-1]
+			seen++
+		}
+		if len(stack) > 0 {
+			seen++
+		}
+		out[i] = seen
+		stack = append(stack, heights[i])
+	}
+	return out
+}
+@@@LANG kotlin
+fun canSeePersonsCount(heights: IntArray): IntArray {
+    val n = heights.size
+    val out = IntArray(n)
+    val stack = ArrayList<Int>()
+    for (i in n - 1 downTo 0) {
+        var seen = 0
+        while (stack.isNotEmpty() && stack[stack.size - 1] < heights[i]) {
+            stack.removeAt(stack.size - 1)
+            seen++
+        }
+        if (stack.isNotEmpty()) seen++
+        out[i] = seen
+        stack.add(heights[i])
+    }
+    return out
+}
+@@@LANG swift
+func canSeePersonsCount(_ heights: [Int]) -> [Int] {
+    let n = heights.count
+    var out = [Int](repeating: 0, count: n)
+    var stack: [Int] = []
+    var i = n - 1
+    while i >= 0 {
+        var seen = 0
+        while let top = stack.last, top < heights[i] {
+            stack.removeLast()
+            seen += 1
+        }
+        if !stack.isEmpty { seen += 1 }
+        out[i] = seen
+        stack.append(heights[i])
+        i -= 1
+    }
+    return out
+}
+@@@LANG rust
+fn canSeePersonsCount(heights: Vec<i32>) -> Vec<i32> {
+    let n = heights.len();
+    let mut out = vec![0i32; n];
+    let mut stack: Vec<i32> = Vec::new();
+    for i in (0..n).rev() {
+        let mut seen = 0;
+        while let Some(&top) = stack.last() {
+            if top < heights[i] {
+                stack.pop();
+                seen += 1;
+            } else {
+                break;
+            }
+        }
+        if !stack.is_empty() {
+            seen += 1;
+        }
+        out[i] = seen;
+        stack.push(heights[i]);
+    }
+    out
+}
+@@@LANG php
+function canSeePersonsCount($heights) {
+    $n = count($heights);
+    $out = array_fill(0, $n, 0);
+    $stack = array();
+    for ($i = $n - 1; $i >= 0; $i--) {
+        $seen = 0;
+        while (count($stack) > 0 && $stack[count($stack) - 1] < $heights[$i]) {
+            array_pop($stack);
+            $seen++;
+        }
+        if (count($stack) > 0) $seen++;
+        $out[$i] = $seen;
+        $stack[] = $heights[$i];
+    }
+    return $out;
+}
+@@@LANG ruby
+def canSeePersonsCount(heights)
+  n = heights.length
+  out = Array.new(n, 0)
+  stack = []
+  (n - 1).downto(0) do |i|
+    seen = 0
+    while !stack.empty? && stack[-1] < heights[i]
+      stack.pop
+      seen += 1
+    end
+    seen += 1 unless stack.empty?
+    out[i] = seen
+    stack.push(heights[i])
+  end
+  out
+end
+
+@@@PROBLEM remove-all-occurrences-of-a-substring
+@@@LANG typescript
+function removeOccurrences(s: string, part: string): string {
+    var stack: string[] = [];
+    var m = part.length;
+    for (var i = 0; i < s.length; i++) {
+        stack.push(s.charAt(i));
+        if (stack.length >= m) {
+            var match = true;
+            for (var j = 0; j < m; j++) {
+                if (stack[stack.length - m + j] !== part.charAt(j)) {
+                    match = false;
+                    break;
+                }
+            }
+            if (match) stack.length -= m;
+        }
+    }
+    return stack.join("");
+}
+@@@LANG java
+public static String removeOccurrences(String s, String part) {
+    StringBuilder stack = new StringBuilder();
+    int m = part.length();
+    for (int i = 0; i < s.length(); i++) {
+        stack.append(s.charAt(i));
+        if (stack.length() >= m) {
+            boolean match = true;
+            for (int j = 0; j < m; j++) {
+                if (stack.charAt(stack.length() - m + j) != part.charAt(j)) {
+                    match = false;
+                    break;
+                }
+            }
+            if (match) stack.setLength(stack.length() - m);
+        }
+    }
+    return stack.toString();
+}
+@@@LANG cpp
+string removeOccurrences(string s, string part) {
+    string stk;
+    int m = (int) part.size();
+    for (char c : s) {
+        stk.push_back(c);
+        if ((int) stk.size() >= m && stk.compare(stk.size() - m, m, part) == 0) {
+            stk.erase(stk.size() - m);
+        }
+    }
+    return stk;
+}
+@@@LANG c
+char* removeOccurrences(const char* s, const char* part) {
+    int n = (int) strlen(s);
+    int m = (int) strlen(part);
+    char* stack = (char*) malloc((size_t) n + 2);
+    int top = 0;
+    for (int i = 0; i < n; i++) {
+        stack[top++] = s[i];
+        if (top >= m) {
+            int match = 1;
+            for (int j = 0; j < m; j++) {
+                if (stack[top - m + j] != part[j]) {
+                    match = 0;
+                    break;
+                }
+            }
+            if (match) top -= m;
+        }
+    }
+    stack[top] = '\0';
+    return stack;
+}
+@@@LANG csharp
+public static string RemoveOccurrences(string s, string part)
+{
+    var stack = new List<char>();
+    int m = part.Length;
+    foreach (char c in s)
+    {
+        stack.Add(c);
+        if (stack.Count >= m)
+        {
+            bool match = true;
+            for (int j = 0; j < m; j++)
+            {
+                if (stack[stack.Count - m + j] != part[j])
+                {
+                    match = false;
+                    break;
+                }
+            }
+            if (match) stack.RemoveRange(stack.Count - m, m);
+        }
+    }
+    return new string(stack.ToArray());
+}
+@@@LANG go
+func removeOccurrences(s string, part string) string {
+	stack := []byte{}
+	m := len(part)
+	for i := 0; i < len(s); i++ {
+		stack = append(stack, s[i])
+		if len(stack) >= m {
+			match := true
+			for j := 0; j < m; j++ {
+				if stack[len(stack)-m+j] != part[j] {
+					match = false
+					break
+				}
+			}
+			if match {
+				stack = stack[:len(stack)-m]
+			}
+		}
+	}
+	return string(stack)
+}
+@@@LANG kotlin
+fun removeOccurrences(s: String, part: String): String {
+    val stack = StringBuilder()
+    val m = part.length
+    for (c in s) {
+        stack.append(c)
+        if (stack.length >= m) {
+            var match = true
+            for (j in 0 until m) {
+                if (stack[stack.length - m + j] != part[j]) {
+                    match = false
+                    break
+                }
+            }
+            if (match) stack.setLength(stack.length - m)
+        }
+    }
+    return stack.toString()
+}
+@@@LANG swift
+func removeOccurrences(_ s: String, _ part: String) -> String {
+    let partChars = Array(part)
+    let m = partChars.count
+    var stack: [Character] = []
+    for c in s {
+        stack.append(c)
+        if stack.count >= m {
+            var match = true
+            for j in 0..<m {
+                if stack[stack.count - m + j] != partChars[j] {
+                    match = false
+                    break
+                }
+            }
+            if match { stack.removeLast(m) }
+        }
+    }
+    return String(stack)
+}
+@@@LANG rust
+fn removeOccurrences(s: String, part: String) -> String {
+    let part_bytes: Vec<u8> = part.bytes().collect();
+    let m = part_bytes.len();
+    let mut stack: Vec<u8> = Vec::new();
+    for c in s.bytes() {
+        stack.push(c);
+        if stack.len() >= m {
+            let mut matched = true;
+            for j in 0..m {
+                if stack[stack.len() - m + j] != part_bytes[j] {
+                    matched = false;
+                    break;
+                }
+            }
+            if matched {
+                let keep = stack.len() - m;
+                stack.truncate(keep);
+            }
+        }
+    }
+    String::from_utf8(stack).unwrap()
+}
+@@@LANG php
+function removeOccurrences($s, $part) {
+    $stack = array();
+    $m = strlen($part);
+    $n = strlen($s);
+    for ($i = 0; $i < $n; $i++) {
+        $stack[] = $s[$i];
+        if (count($stack) >= $m) {
+            $match = true;
+            for ($j = 0; $j < $m; $j++) {
+                if ($stack[count($stack) - $m + $j] !== $part[$j]) {
+                    $match = false;
+                    break;
+                }
+            }
+            if ($match) $stack = array_slice($stack, 0, count($stack) - $m);
+        }
+    }
+    return implode("", $stack);
+}
+@@@LANG ruby
+def removeOccurrences(s, part)
+  stack = []
+  m = part.length
+  s.each_char do |c|
+    stack.push(c)
+    if stack.length >= m && stack[-m..-1].join == part
+      stack.pop(m)
+    end
+  end
+  stack.join
+end
+
+@@@PROBLEM minimum-number-of-swaps-to-make-the-string-balanced
+@@@LANG typescript
+function minSwaps(s: string): number {
+    var unmatched = 0;
+    for (var i = 0; i < s.length; i++) {
+        if (s.charAt(i) === "[") unmatched++;
+        else if (unmatched > 0) unmatched--;
+    }
+    return Math.floor((unmatched + 1) / 2);
+}
+@@@LANG java
+public static int minSwaps(String s) {
+    int unmatched = 0;
+    for (int i = 0; i < s.length(); i++) {
+        if (s.charAt(i) == '[') unmatched++;
+        else if (unmatched > 0) unmatched--;
+    }
+    return (unmatched + 1) / 2;
+}
+@@@LANG cpp
+int minSwaps(string s) {
+    int unmatched = 0;
+    for (char c : s) {
+        if (c == '[') unmatched++;
+        else if (unmatched > 0) unmatched--;
+    }
+    return (unmatched + 1) / 2;
+}
+@@@LANG c
+int minSwaps(const char* s) {
+    int unmatched = 0;
+    for (int i = 0; s[i] != '\0'; i++) {
+        if (s[i] == '[') unmatched++;
+        else if (unmatched > 0) unmatched--;
+    }
+    return (unmatched + 1) / 2;
+}
+@@@LANG csharp
+public static int MinSwaps(string s)
+{
+    int unmatched = 0;
+    foreach (char c in s)
+    {
+        if (c == '[') unmatched++;
+        else if (unmatched > 0) unmatched--;
+    }
+    return (unmatched + 1) / 2;
+}
+@@@LANG go
+func minSwaps(s string) int {
+	unmatched := 0
+	for i := 0; i < len(s); i++ {
+		if s[i] == '[' {
+			unmatched++
+		} else if unmatched > 0 {
+			unmatched--
+		}
+	}
+	return (unmatched + 1) / 2
+}
+@@@LANG kotlin
+fun minSwaps(s: String): Int {
+    var unmatched = 0
+    for (c in s) {
+        if (c == '[') unmatched++
+        else if (unmatched > 0) unmatched--
+    }
+    return (unmatched + 1) / 2
+}
+@@@LANG swift
+func minSwaps(_ s: String) -> Int {
+    var unmatched = 0
+    for c in s {
+        if c == "[" { unmatched += 1 }
+        else if unmatched > 0 { unmatched -= 1 }
+    }
+    return (unmatched + 1) / 2
+}
+@@@LANG rust
+fn minSwaps(s: String) -> i32 {
+    let mut unmatched = 0;
+    for c in s.bytes() {
+        if c == b'[' {
+            unmatched += 1;
+        } else if unmatched > 0 {
+            unmatched -= 1;
+        }
+    }
+    (unmatched + 1) / 2
+}
+@@@LANG php
+function minSwaps($s) {
+    $unmatched = 0;
+    $n = strlen($s);
+    for ($i = 0; $i < $n; $i++) {
+        if ($s[$i] === "[") $unmatched++;
+        else if ($unmatched > 0) $unmatched--;
+    }
+    return intdiv($unmatched + 1, 2);
+}
+@@@LANG ruby
+def minSwaps(s)
+  unmatched = 0
+  s.each_char do |c|
+    if c == "["
+      unmatched += 1
+    elsif unmatched > 0
+      unmatched -= 1
+    end
+  end
+  (unmatched + 1) / 2
+end
+
+@@@PROBLEM maximum-score-from-removing-substrings
+@@@LANG typescript
+function gainSweep(text: string, first: string, second: string, score: number, out: number[]): string {
+    var stack: string[] = [];
+    for (var i = 0; i < text.length; i++) {
+        var c = text.charAt(i);
+        if (stack.length > 0 && stack[stack.length - 1] === first && c === second) {
+            stack.pop();
+            out[0] += score;
+        } else {
+            stack.push(c);
+        }
+    }
+    return stack.join("");
+}
+
+function maximumGain(s: string, x: number, y: number): number {
+    var out = [0];
+    var rest: string;
+    if (x >= y) {
+        rest = gainSweep(s, "a", "b", x, out);
+        gainSweep(rest, "b", "a", y, out);
+    } else {
+        rest = gainSweep(s, "b", "a", y, out);
+        gainSweep(rest, "a", "b", x, out);
+    }
+    return out[0];
+}
+@@@LANG java
+private static int gainTotal;
+
+private static String gainSweep(String text, char first, char second, int score) {
+    StringBuilder stack = new StringBuilder();
+    for (int i = 0; i < text.length(); i++) {
+        char c = text.charAt(i);
+        if (stack.length() > 0 && stack.charAt(stack.length() - 1) == first && c == second) {
+            stack.deleteCharAt(stack.length() - 1);
+            gainTotal += score;
+        } else {
+            stack.append(c);
+        }
+    }
+    return stack.toString();
+}
+
+public static int maximumGain(String s, int x, int y) {
+    gainTotal = 0;
+    if (x >= y) {
+        String rest = gainSweep(s, 'a', 'b', x);
+        gainSweep(rest, 'b', 'a', y);
+    } else {
+        String rest = gainSweep(s, 'b', 'a', y);
+        gainSweep(rest, 'a', 'b', x);
+    }
+    return gainTotal;
+}
+@@@LANG cpp
+static int gainTotal;
+
+static string gainSweep(const string& text, char first, char second, int score) {
+    string stk;
+    for (char c : text) {
+        if (!stk.empty() && stk.back() == first && c == second) {
+            stk.pop_back();
+            gainTotal += score;
+        } else {
+            stk.push_back(c);
+        }
+    }
+    return stk;
+}
+
+int maximumGain(string s, int x, int y) {
+    gainTotal = 0;
+    if (x >= y) {
+        string rest = gainSweep(s, 'a', 'b', x);
+        gainSweep(rest, 'b', 'a', y);
+    } else {
+        string rest = gainSweep(s, 'b', 'a', y);
+        gainSweep(rest, 'a', 'b', x);
+    }
+    return gainTotal;
+}
+@@@LANG c
+static int gainSweepC(char* text, char first, char second, int score, int* total) {
+    int len = 0;
+    for (int i = 0; text[i] != '\0'; i++) {
+        char c = text[i];
+        if (len > 0 && text[len - 1] == first && c == second) {
+            len--;
+            *total += score;
+        } else {
+            text[len++] = c;
+        }
+    }
+    text[len] = '\0';
+    return len;
+}
+
+int maximumGain(const char* s, int x, int y) {
+    int n = (int) strlen(s);
+    char* buf = (char*) malloc((size_t) n + 2);
+    strcpy(buf, s);
+    int total = 0;
+    if (x >= y) {
+        gainSweepC(buf, 'a', 'b', x, &total);
+        gainSweepC(buf, 'b', 'a', y, &total);
+    } else {
+        gainSweepC(buf, 'b', 'a', y, &total);
+        gainSweepC(buf, 'a', 'b', x, &total);
+    }
+    free(buf);
+    return total;
+}
+@@@LANG csharp
+private static int gainTotal;
+
+private static string GainSweep(string text, char first, char second, int score)
+{
+    var stack = new List<char>();
+    foreach (char c in text)
+    {
+        if (stack.Count > 0 && stack[stack.Count - 1] == first && c == second)
+        {
+            stack.RemoveAt(stack.Count - 1);
+            gainTotal += score;
+        }
+        else
+        {
+            stack.Add(c);
+        }
+    }
+    return new string(stack.ToArray());
+}
+
+public static int MaximumGain(string s, int x, int y)
+{
+    gainTotal = 0;
+    if (x >= y)
+    {
+        string rest = GainSweep(s, 'a', 'b', x);
+        GainSweep(rest, 'b', 'a', y);
+    }
+    else
+    {
+        string rest = GainSweep(s, 'b', 'a', y);
+        GainSweep(rest, 'a', 'b', x);
+    }
+    return gainTotal;
+}
+@@@LANG go
+func gainSweep(text string, first byte, second byte, score int, total *int) string {
+	stack := []byte{}
+	for i := 0; i < len(text); i++ {
+		c := text[i]
+		if len(stack) > 0 && stack[len(stack)-1] == first && c == second {
+			stack = stack[:len(stack)-1]
+			*total += score
+		} else {
+			stack = append(stack, c)
+		}
+	}
+	return string(stack)
+}
+
+func maximumGain(s string, x int, y int) int {
+	total := 0
+	if x >= y {
+		rest := gainSweep(s, 'a', 'b', x, &total)
+		gainSweep(rest, 'b', 'a', y, &total)
+	} else {
+		rest := gainSweep(s, 'b', 'a', y, &total)
+		gainSweep(rest, 'a', 'b', x, &total)
+	}
+	return total
+}
+@@@LANG kotlin
+fun gainSweep(text: String, first: Char, second: Char, score: Int, total: IntArray): String {
+    val stack = StringBuilder()
+    for (c in text) {
+        if (stack.isNotEmpty() && stack[stack.length - 1] == first && c == second) {
+            stack.deleteCharAt(stack.length - 1)
+            total[0] += score
+        } else {
+            stack.append(c)
+        }
+    }
+    return stack.toString()
+}
+
+fun maximumGain(s: String, x: Int, y: Int): Int {
+    val total = IntArray(1)
+    if (x >= y) {
+        val rest = gainSweep(s, 'a', 'b', x, total)
+        gainSweep(rest, 'b', 'a', y, total)
+    } else {
+        val rest = gainSweep(s, 'b', 'a', y, total)
+        gainSweep(rest, 'a', 'b', x, total)
+    }
+    return total[0]
+}
+@@@LANG swift
+func gainSweep(_ text: [Character], _ first: Character, _ second: Character, _ score: Int, _ total: inout Int) -> [Character] {
+    var stack: [Character] = []
+    for c in text {
+        if let top = stack.last, top == first, c == second {
+            stack.removeLast()
+            total += score
+        } else {
+            stack.append(c)
+        }
+    }
+    return stack
+}
+
+func maximumGain(_ s: String, _ x: Int, _ y: Int) -> Int {
+    var total = 0
+    let chars = Array(s)
+    if x >= y {
+        let rest = gainSweep(chars, "a", "b", x, &total)
+        _ = gainSweep(rest, "b", "a", y, &total)
+    } else {
+        let rest = gainSweep(chars, "b", "a", y, &total)
+        _ = gainSweep(rest, "a", "b", x, &total)
+    }
+    return total
+}
+@@@LANG rust
+fn gain_sweep(text: &Vec<u8>, first: u8, second: u8, score: i32, total: &mut i32) -> Vec<u8> {
+    let mut stack: Vec<u8> = Vec::new();
+    for c in text.iter() {
+        if !stack.is_empty() && stack[stack.len() - 1] == first && *c == second {
+            stack.pop();
+            *total += score;
+        } else {
+            stack.push(*c);
+        }
+    }
+    stack
+}
+
+fn maximumGain(s: String, x: i32, y: i32) -> i32 {
+    let chars: Vec<u8> = s.bytes().collect();
+    let mut total = 0;
+    if x >= y {
+        let rest = gain_sweep(&chars, b'a', b'b', x, &mut total);
+        gain_sweep(&rest, b'b', b'a', y, &mut total);
+    } else {
+        let rest = gain_sweep(&chars, b'b', b'a', y, &mut total);
+        gain_sweep(&rest, b'a', b'b', x, &mut total);
+    }
+    total
+}
+@@@LANG php
+function gainSweep($text, $first, $second, $score, &$total) {
+    $stack = array();
+    $n = strlen($text);
+    for ($i = 0; $i < $n; $i++) {
+        $c = $text[$i];
+        if (count($stack) > 0 && $stack[count($stack) - 1] === $first && $c === $second) {
+            array_pop($stack);
+            $total += $score;
+        } else {
+            $stack[] = $c;
+        }
+    }
+    return implode("", $stack);
+}
+
+function maximumGain($s, $x, $y) {
+    $total = 0;
+    if ($x >= $y) {
+        $rest = gainSweep($s, "a", "b", $x, $total);
+        gainSweep($rest, "b", "a", $y, $total);
+    } else {
+        $rest = gainSweep($s, "b", "a", $y, $total);
+        gainSweep($rest, "a", "b", $x, $total);
+    }
+    return $total;
+}
+@@@LANG ruby
+def gain_sweep(text, first, second, score, total)
+  stack = []
+  text.each_char do |c|
+    if !stack.empty? && stack[-1] == first && c == second
+      stack.pop
+      total[0] += score
+    else
+      stack.push(c)
+    end
+  end
+  stack.join
+end
+
+def maximumGain(s, x, y)
+  total = [0]
+  if x >= y
+    rest = gain_sweep(s, "a", "b", x, total)
+    gain_sweep(rest, "b", "a", y, total)
+  else
+    rest = gain_sweep(s, "b", "a", y, total)
+    gain_sweep(rest, "a", "b", x, total)
+  end
+  total[0]
+end
+
+@@@PROBLEM the-number-of-weak-characters-in-the-game
+@@@LANG typescript
+function numberOfWeakCharacters(properties: number[][]): number {
+    var sorted = properties.slice().sort(function (a, b) {
+        return a[0] !== b[0] ? b[0] - a[0] : a[1] - b[1];
+    });
+    var maxDefense = 0;
+    var weak = 0;
+    for (var i = 0; i < sorted.length; i++) {
+        if (sorted[i][1] < maxDefense) weak++;
+        else maxDefense = sorted[i][1];
+    }
+    return weak;
+}
+@@@LANG java
+public static int numberOfWeakCharacters(int[][] properties) {
+    int[][] s = properties.clone();
+    Arrays.sort(s, (a, b) -> a[0] != b[0] ? b[0] - a[0] : a[1] - b[1]);
+    int maxDefense = 0, weak = 0;
+    for (int[] p : s) {
+        if (p[1] < maxDefense) weak++;
+        else maxDefense = p[1];
+    }
+    return weak;
+}
+@@@LANG cpp
+int numberOfWeakCharacters(vector<vector<int>>& properties) {
+    vector<vector<int>> s = properties;
+    sort(s.begin(), s.end(), [](const vector<int>& a, const vector<int>& b) {
+        if (a[0] != b[0]) return a[0] > b[0];
+        return a[1] < b[1];
+    });
+    int maxDefense = 0, weak = 0;
+    for (const auto& p : s) {
+        if (p[1] < maxDefense) weak++;
+        else maxDefense = p[1];
+    }
+    return weak;
+}
+@@@LANG c
+static int cmpWeakChar(const void* a, const void* b) {
+    const int* x = *(const int**) a;
+    const int* y = *(const int**) b;
+    if (x[0] != y[0]) return (y[0] > x[0]) - (y[0] < x[0]);
+    return (x[1] > y[1]) - (x[1] < y[1]);
+}
+
+int numberOfWeakCharacters(int** properties, int propertiesSize, int* propertiesColSize) {
+    int** s = (int**) malloc((size_t) (propertiesSize > 0 ? propertiesSize : 1) * sizeof(int*));
+    for (int i = 0; i < propertiesSize; i++) s[i] = properties[i];
+    qsort(s, propertiesSize, sizeof(int*), cmpWeakChar);
+    int maxDefense = 0, weak = 0;
+    for (int i = 0; i < propertiesSize; i++) {
+        if (s[i][1] < maxDefense) weak++;
+        else maxDefense = s[i][1];
+    }
+    free(s);
+    return weak;
+}
+@@@LANG csharp
+public static int NumberOfWeakCharacters(int[][] properties)
+{
+    var s = new List<int[]>(properties);
+    s.Sort((a, b) => a[0] != b[0] ? b[0].CompareTo(a[0]) : a[1].CompareTo(b[1]));
+    int maxDefense = 0, weak = 0;
+    foreach (int[] p in s)
+    {
+        if (p[1] < maxDefense) weak++;
+        else maxDefense = p[1];
+    }
+    return weak;
+}
+@@@LANG go
+func numberOfWeakCharacters(properties [][]int) int {
+	s := append([][]int{}, properties...)
+	sort.Slice(s, func(a, b int) bool {
+		if s[a][0] != s[b][0] {
+			return s[a][0] > s[b][0]
+		}
+		return s[a][1] < s[b][1]
+	})
+	maxDefense, weak := 0, 0
+	for _, p := range s {
+		if p[1] < maxDefense {
+			weak++
+		} else {
+			maxDefense = p[1]
+		}
+	}
+	return weak
+}
+@@@LANG kotlin
+fun numberOfWeakCharacters(properties: Array<IntArray>): Int {
+    val s = properties.sortedWith(compareByDescending<IntArray> { it[0] }.thenBy { it[1] })
+    var maxDefense = 0
+    var weak = 0
+    for (p in s) {
+        if (p[1] < maxDefense) weak++ else maxDefense = p[1]
+    }
+    return weak
+}
+@@@LANG swift
+func numberOfWeakCharacters(_ properties: [[Int]]) -> Int {
+    let s = properties.sorted { a, b in
+        if a[0] != b[0] { return a[0] > b[0] }
+        return a[1] < b[1]
+    }
+    var maxDefense = 0
+    var weak = 0
+    for p in s {
+        if p[1] < maxDefense { weak += 1 } else { maxDefense = p[1] }
+    }
+    return weak
+}
+@@@LANG rust
+fn numberOfWeakCharacters(properties: Vec<Vec<i32>>) -> i32 {
+    let mut s = properties.clone();
+    s.sort_by(|a, b| {
+        if a[0] != b[0] {
+            b[0].cmp(&a[0])
+        } else {
+            a[1].cmp(&b[1])
+        }
+    });
+    let mut max_defense = 0;
+    let mut weak = 0;
+    for p in s.iter() {
+        if p[1] < max_defense {
+            weak += 1;
+        } else {
+            max_defense = p[1];
+        }
+    }
+    weak
+}
+@@@LANG php
+function numberOfWeakCharacters($properties) {
+    $s = $properties;
+    usort($s, function($a, $b) {
+        if ($a[0] != $b[0]) return $b[0] - $a[0];
+        return $a[1] - $b[1];
+    });
+    $maxDefense = 0;
+    $weak = 0;
+    foreach ($s as $p) {
+        if ($p[1] < $maxDefense) $weak++;
+        else $maxDefense = $p[1];
+    }
+    return $weak;
+}
+@@@LANG ruby
+def numberOfWeakCharacters(properties)
+  s = properties.sort_by { |p| [-p[0], p[1]] }
+  max_defense = 0
+  weak = 0
+  s.each do |p|
+    if p[1] < max_defense
+      weak += 1
+    else
+      max_defense = p[1]
+    end
+  end
+  weak
+end
+
+@@@PROBLEM remove-all-adjacent-duplicates-in-string-ii
+@@@LANG typescript
+function removeDuplicates(s: string, k: number): string {
+    var chars: string[] = [];
+    var counts: number[] = [];
+    for (var i = 0; i < s.length; i++) {
+        var c = s.charAt(i);
+        if (chars.length > 0 && chars[chars.length - 1] === c) {
+            counts[counts.length - 1]++;
+        } else {
+            chars.push(c);
+            counts.push(1);
+        }
+        if (counts[counts.length - 1] === k) {
+            chars.pop();
+            counts.pop();
+        }
+    }
+    var out = "";
+    for (var j = 0; j < chars.length; j++) {
+        for (var m = 0; m < counts[j]; m++) out += chars[j];
+    }
+    return out;
+}
+@@@LANG java
+public static String removeDuplicates(String s, int k) {
+    List<Character> chars = new ArrayList<>();
+    List<Integer> counts = new ArrayList<>();
+    for (int i = 0; i < s.length(); i++) {
+        char c = s.charAt(i);
+        if (!chars.isEmpty() && chars.get(chars.size() - 1) == c) {
+            counts.set(counts.size() - 1, counts.get(counts.size() - 1) + 1);
+        } else {
+            chars.add(c);
+            counts.add(1);
+        }
+        if (counts.get(counts.size() - 1) == k) {
+            chars.remove(chars.size() - 1);
+            counts.remove(counts.size() - 1);
+        }
+    }
+    StringBuilder out = new StringBuilder();
+    for (int i = 0; i < chars.size(); i++) {
+        for (int j = 0; j < counts.get(i); j++) out.append(chars.get(i));
+    }
+    return out.toString();
+}
+@@@LANG cpp
+string removeDuplicates(string s, int k) {
+    vector<char> chars;
+    vector<int> counts;
+    for (char c : s) {
+        if (!chars.empty() && chars.back() == c) {
+            counts.back()++;
+        } else {
+            chars.push_back(c);
+            counts.push_back(1);
+        }
+        if (counts.back() == k) {
+            chars.pop_back();
+            counts.pop_back();
+        }
+    }
+    string out;
+    for (size_t i = 0; i < chars.size(); i++) {
+        out.append((size_t) counts[i], chars[i]);
+    }
+    return out;
+}
+@@@LANG c
+char* removeDuplicates(const char* s, int k) {
+    int n = (int) strlen(s);
+    char* chars = (char*) malloc((size_t) n + 1);
+    int* counts = (int*) malloc((size_t) (n > 0 ? n : 1) * sizeof(int));
+    int top = 0;
+    for (int i = 0; i < n; i++) {
+        if (top > 0 && chars[top - 1] == s[i]) {
+            counts[top - 1]++;
+        } else {
+            chars[top] = s[i];
+            counts[top] = 1;
+            top++;
+        }
+        if (counts[top - 1] == k) top--;
+    }
+    char* out = (char*) malloc((size_t) n + 2);
+    int len = 0;
+    for (int i = 0; i < top; i++) {
+        for (int j = 0; j < counts[i]; j++) out[len++] = chars[i];
+    }
+    out[len] = '\0';
+    free(chars);
+    free(counts);
+    return out;
+}
+@@@LANG csharp
+public static string RemoveDuplicates(string s, int k)
+{
+    var chars = new List<char>();
+    var counts = new List<int>();
+    foreach (char c in s)
+    {
+        if (chars.Count > 0 && chars[chars.Count - 1] == c)
+        {
+            counts[counts.Count - 1]++;
+        }
+        else
+        {
+            chars.Add(c);
+            counts.Add(1);
+        }
+        if (counts[counts.Count - 1] == k)
+        {
+            chars.RemoveAt(chars.Count - 1);
+            counts.RemoveAt(counts.Count - 1);
+        }
+    }
+    var out_ = new System.Text.StringBuilder();
+    for (int i = 0; i < chars.Count; i++)
+    {
+        for (int j = 0; j < counts[i]; j++) out_.Append(chars[i]);
+    }
+    return out_.ToString();
+}
+@@@LANG go
+func removeDuplicates(s string, k int) string {
+	chars := []byte{}
+	counts := []int{}
+	for i := 0; i < len(s); i++ {
+		if len(chars) > 0 && chars[len(chars)-1] == s[i] {
+			counts[len(counts)-1]++
+		} else {
+			chars = append(chars, s[i])
+			counts = append(counts, 1)
+		}
+		if counts[len(counts)-1] == k {
+			chars = chars[:len(chars)-1]
+			counts = counts[:len(counts)-1]
+		}
+	}
+	out := []byte{}
+	for i := 0; i < len(chars); i++ {
+		for j := 0; j < counts[i]; j++ {
+			out = append(out, chars[i])
+		}
+	}
+	return string(out)
+}
+@@@LANG kotlin
+fun removeDuplicates(s: String, k: Int): String {
+    val chars = ArrayList<Char>()
+    val counts = ArrayList<Int>()
+    for (c in s) {
+        if (chars.isNotEmpty() && chars[chars.size - 1] == c) {
+            counts[counts.size - 1] = counts[counts.size - 1] + 1
+        } else {
+            chars.add(c)
+            counts.add(1)
+        }
+        if (counts[counts.size - 1] == k) {
+            chars.removeAt(chars.size - 1)
+            counts.removeAt(counts.size - 1)
+        }
+    }
+    val out = StringBuilder()
+    for (i in chars.indices) {
+        for (j in 0 until counts[i]) out.append(chars[i])
+    }
+    return out.toString()
+}
+@@@LANG swift
+func removeDuplicates(_ s: String, _ k: Int) -> String {
+    var chars: [Character] = []
+    var counts: [Int] = []
+    for c in s {
+        if let last = chars.last, last == c {
+            counts[counts.count - 1] += 1
+        } else {
+            chars.append(c)
+            counts.append(1)
+        }
+        if counts[counts.count - 1] == k {
+            chars.removeLast()
+            counts.removeLast()
+        }
+    }
+    var out = ""
+    for i in 0..<chars.count {
+        for _ in 0..<counts[i] { out.append(chars[i]) }
+    }
+    return out
+}
+@@@LANG rust
+fn removeDuplicates(s: String, k: i32) -> String {
+    let mut chars: Vec<u8> = Vec::new();
+    let mut counts: Vec<i32> = Vec::new();
+    for c in s.bytes() {
+        if !chars.is_empty() && chars[chars.len() - 1] == c {
+            let n = counts.len();
+            counts[n - 1] += 1;
+        } else {
+            chars.push(c);
+            counts.push(1);
+        }
+        if counts[counts.len() - 1] == k {
+            chars.pop();
+            counts.pop();
+        }
+    }
+    let mut out: Vec<u8> = Vec::new();
+    for i in 0..chars.len() {
+        for _ in 0..counts[i] {
+            out.push(chars[i]);
+        }
+    }
+    String::from_utf8(out).unwrap()
+}
+@@@LANG php
+function removeDuplicates($s, $k) {
+    $chars = array();
+    $counts = array();
+    $n = strlen($s);
+    for ($i = 0; $i < $n; $i++) {
+        $c = $s[$i];
+        if (count($chars) > 0 && $chars[count($chars) - 1] === $c) {
+            $counts[count($counts) - 1]++;
+        } else {
+            $chars[] = $c;
+            $counts[] = 1;
+        }
+        if ($counts[count($counts) - 1] === $k) {
+            array_pop($chars);
+            array_pop($counts);
+        }
+    }
+    $out = "";
+    for ($i = 0; $i < count($chars); $i++) {
+        $out .= str_repeat($chars[$i], $counts[$i]);
+    }
+    return $out;
+}
+@@@LANG ruby
+def removeDuplicates(s, k)
+  chars = []
+  counts = []
+  s.each_char do |c|
+    if !chars.empty? && chars[-1] == c
+      counts[-1] += 1
+    else
+      chars.push(c)
+      counts.push(1)
+    end
+    if counts[-1] == k
+      chars.pop
+      counts.pop
+    end
+  end
+  out = ""
+  chars.each_with_index { |c, i| out << c * counts[i] }
+  out
+end
+
+@@@PROBLEM minimum-insertions-to-balance-a-parentheses-string
+@@@LANG typescript
+function minInsertions(s: string): number {
+    var res = 0;
+    var need = 0;
+    for (var i = 0; i < s.length; i++) {
+        if (s.charAt(i) === "(") {
+            need += 2;
+            if (need % 2 === 1) {
+                res++;
+                need--;
+            }
+        } else {
+            need--;
+            if (need < 0) {
+                res++;
+                need = 1;
+            }
+        }
+    }
+    return res + need;
+}
+@@@LANG java
+public static int minInsertions(String s) {
+    int res = 0, need = 0;
+    for (int i = 0; i < s.length(); i++) {
+        if (s.charAt(i) == '(') {
+            need += 2;
+            if (need % 2 == 1) {
+                res++;
+                need--;
+            }
+        } else {
+            need--;
+            if (need < 0) {
+                res++;
+                need = 1;
+            }
+        }
+    }
+    return res + need;
+}
+@@@LANG cpp
+int minInsertions(string s) {
+    int res = 0, need = 0;
+    for (char c : s) {
+        if (c == '(') {
+            need += 2;
+            if (need % 2 == 1) {
+                res++;
+                need--;
+            }
+        } else {
+            need--;
+            if (need < 0) {
+                res++;
+                need = 1;
+            }
+        }
+    }
+    return res + need;
+}
+@@@LANG c
+int minInsertions(const char* s) {
+    int res = 0, need = 0;
+    for (int i = 0; s[i] != '\0'; i++) {
+        if (s[i] == '(') {
+            need += 2;
+            if (need % 2 == 1) {
+                res++;
+                need--;
+            }
+        } else {
+            need--;
+            if (need < 0) {
+                res++;
+                need = 1;
+            }
+        }
+    }
+    return res + need;
+}
+@@@LANG csharp
+public static int MinInsertions(string s)
+{
+    int res = 0, need = 0;
+    foreach (char c in s)
+    {
+        if (c == '(')
+        {
+            need += 2;
+            if (need % 2 == 1)
+            {
+                res++;
+                need--;
+            }
+        }
+        else
+        {
+            need--;
+            if (need < 0)
+            {
+                res++;
+                need = 1;
+            }
+        }
+    }
+    return res + need;
+}
+@@@LANG go
+func minInsertions(s string) int {
+	res, need := 0, 0
+	for i := 0; i < len(s); i++ {
+		if s[i] == '(' {
+			need += 2
+			if need%2 == 1 {
+				res++
+				need--
+			}
+		} else {
+			need--
+			if need < 0 {
+				res++
+				need = 1
+			}
+		}
+	}
+	return res + need
+}
+@@@LANG kotlin
+fun minInsertions(s: String): Int {
+    var res = 0
+    var need = 0
+    for (c in s) {
+        if (c == '(') {
+            need += 2
+            if (need % 2 == 1) {
+                res++
+                need--
+            }
+        } else {
+            need--
+            if (need < 0) {
+                res++
+                need = 1
+            }
+        }
+    }
+    return res + need
+}
+@@@LANG swift
+func minInsertions(_ s: String) -> Int {
+    var res = 0
+    var need = 0
+    for c in s {
+        if c == "(" {
+            need += 2
+            if need % 2 == 1 {
+                res += 1
+                need -= 1
+            }
+        } else {
+            need -= 1
+            if need < 0 {
+                res += 1
+                need = 1
+            }
+        }
+    }
+    return res + need
+}
+@@@LANG rust
+fn minInsertions(s: String) -> i32 {
+    let mut res = 0;
+    let mut need = 0;
+    for c in s.bytes() {
+        if c == b'(' {
+            need += 2;
+            if need % 2 == 1 {
+                res += 1;
+                need -= 1;
+            }
+        } else {
+            need -= 1;
+            if need < 0 {
+                res += 1;
+                need = 1;
+            }
+        }
+    }
+    res + need
+}
+@@@LANG php
+function minInsertions($s) {
+    $res = 0;
+    $need = 0;
+    $n = strlen($s);
+    for ($i = 0; $i < $n; $i++) {
+        if ($s[$i] === "(") {
+            $need += 2;
+            if ($need % 2 === 1) {
+                $res++;
+                $need--;
+            }
+        } else {
+            $need--;
+            if ($need < 0) {
+                $res++;
+                $need = 1;
+            }
+        }
+    }
+    return $res + $need;
+}
+@@@LANG ruby
+def minInsertions(s)
+  res = 0
+  need = 0
+  s.each_char do |c|
+    if c == "("
+      need += 2
+      if need % 2 == 1
+        res += 1
+        need -= 1
+      end
+    else
+      need -= 1
+      if need < 0
+        res += 1
+        need = 1
+      end
+    end
+  end
+  res + need
+end
+
+@@@PROBLEM buildings-with-an-ocean-view
+@@@LANG typescript
+function findBuildings(heights: number[]): number[] {
+    var out: number[] = [];
+    var tallest = 0;
+    for (var i = heights.length - 1; i >= 0; i--) {
+        if (heights[i] > tallest) {
+            out.push(i);
+            tallest = heights[i];
+        }
+    }
+    out.reverse();
+    return out;
+}
+@@@LANG java
+public static int[] findBuildings(int[] heights) {
+    List<Integer> collected = new ArrayList<>();
+    int tallest = 0;
+    for (int i = heights.length - 1; i >= 0; i--) {
+        if (heights[i] > tallest) {
+            collected.add(i);
+            tallest = heights[i];
+        }
+    }
+    int[] out = new int[collected.size()];
+    for (int i = 0; i < out.length; i++) out[i] = collected.get(out.length - 1 - i);
+    return out;
+}
+@@@LANG cpp
+vector<int> findBuildings(vector<int>& heights) {
+    vector<int> out;
+    int tallest = 0;
+    for (int i = (int) heights.size() - 1; i >= 0; i--) {
+        if (heights[i] > tallest) {
+            out.push_back(i);
+            tallest = heights[i];
+        }
+    }
+    reverse(out.begin(), out.end());
+    return out;
+}
+@@@LANG c
+int* findBuildings(int* heights, int heightsSize, int* returnSize) {
+    int* tmp = (int*) malloc((size_t) (heightsSize > 0 ? heightsSize : 1) * sizeof(int));
+    int m = 0;
+    int tallest = 0;
+    for (int i = heightsSize - 1; i >= 0; i--) {
+        if (heights[i] > tallest) {
+            tmp[m++] = i;
+            tallest = heights[i];
+        }
+    }
+    int* out = (int*) malloc((size_t) (m > 0 ? m : 1) * sizeof(int));
+    for (int i = 0; i < m; i++) out[i] = tmp[m - 1 - i];
+    free(tmp);
+    *returnSize = m;
+    return out;
+}
+@@@LANG csharp
+public static int[] FindBuildings(int[] heights)
+{
+    var collected = new List<int>();
+    int tallest = 0;
+    for (int i = heights.Length - 1; i >= 0; i--)
+    {
+        if (heights[i] > tallest)
+        {
+            collected.Add(i);
+            tallest = heights[i];
+        }
+    }
+    collected.Reverse();
+    return collected.ToArray();
+}
+@@@LANG go
+func findBuildings(heights []int) []int {
+	out := []int{}
+	tallest := 0
+	for i := len(heights) - 1; i >= 0; i-- {
+		if heights[i] > tallest {
+			out = append(out, i)
+			tallest = heights[i]
+		}
+	}
+	for a, b := 0, len(out)-1; a < b; a, b = a+1, b-1 {
+		out[a], out[b] = out[b], out[a]
+	}
+	return out
+}
+@@@LANG kotlin
+fun findBuildings(heights: IntArray): IntArray {
+    val collected = ArrayList<Int>()
+    var tallest = 0
+    for (i in heights.size - 1 downTo 0) {
+        if (heights[i] > tallest) {
+            collected.add(i)
+            tallest = heights[i]
+        }
+    }
+    collected.reverse()
+    return collected.toIntArray()
+}
+@@@LANG swift
+func findBuildings(_ heights: [Int]) -> [Int] {
+    var out: [Int] = []
+    var tallest = 0
+    var i = heights.count - 1
+    while i >= 0 {
+        if heights[i] > tallest {
+            out.append(i)
+            tallest = heights[i]
+        }
+        i -= 1
+    }
+    out.reverse()
+    return out
+}
+@@@LANG rust
+fn findBuildings(heights: Vec<i32>) -> Vec<i32> {
+    let mut out: Vec<i32> = Vec::new();
+    let mut tallest = 0;
+    for i in (0..heights.len()).rev() {
+        if heights[i] > tallest {
+            out.push(i as i32);
+            tallest = heights[i];
+        }
+    }
+    out.reverse();
+    out
+}
+@@@LANG php
+function findBuildings($heights) {
+    $out = array();
+    $tallest = 0;
+    for ($i = count($heights) - 1; $i >= 0; $i--) {
+        if ($heights[$i] > $tallest) {
+            $out[] = $i;
+            $tallest = $heights[$i];
+        }
+    }
+    return array_reverse($out);
+}
+@@@LANG ruby
+def findBuildings(heights)
+  out = []
+  tallest = 0
+  (heights.length - 1).downto(0) do |i|
+    if heights[i] > tallest
+      out.push(i)
+      tallest = heights[i]
+    end
+  end
+  out.reverse
+end

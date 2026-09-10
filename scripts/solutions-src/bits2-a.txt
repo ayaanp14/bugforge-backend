@@ -1,0 +1,1343 @@
+@@@PROBLEM single-number-ii
+@@@LANG typescript
+function singleNumber(nums: number[]): number {
+    var answer = 0;
+    for (var bit = 0; bit < 32; bit++) {
+        var ones = 0;
+        for (var i = 0; i < nums.length; i++) ones += (nums[i] >> bit) & 1;
+        if (ones % 3 !== 0) answer |= 1 << bit;
+    }
+    return answer | 0;
+}
+@@@LANG java
+public static int singleNumber(int[] nums) {
+    int answer = 0;
+    for (int bit = 0; bit < 32; bit++) {
+        int ones = 0;
+        for (int x : nums) ones += (x >> bit) & 1;
+        if (ones % 3 != 0) answer |= 1 << bit;
+    }
+    return answer;
+}
+@@@LANG cpp
+int singleNumber(vector<int>& nums) {
+    int answer = 0;
+    for (int bit = 0; bit < 32; bit++) {
+        int ones = 0;
+        for (int x : nums) ones += (x >> bit) & 1;
+        if (ones % 3 != 0) answer |= 1 << bit;
+    }
+    return answer;
+}
+@@@LANG c
+int singleNumber(int* nums, int numsSize) {
+    unsigned int answer = 0;
+    for (int bit = 0; bit < 32; bit++) {
+        int ones = 0;
+        for (int i = 0; i < numsSize; i++) ones += (int) (((unsigned int) nums[i] >> bit) & 1u);
+        if (ones % 3 != 0) answer |= 1u << bit;
+    }
+    return (int) answer;
+}
+@@@LANG csharp
+public static int SingleNumber(int[] nums)
+{
+    int answer = 0;
+    for (int bit = 0; bit < 32; bit++)
+    {
+        int ones = 0;
+        foreach (int x in nums) ones += (x >> bit) & 1;
+        if (ones % 3 != 0) answer |= 1 << bit;
+    }
+    return answer;
+}
+@@@LANG go
+func singleNumber(nums []int) int {
+	answer := 0
+	for bit := 0; bit < 32; bit++ {
+		ones := 0
+		for _, x := range nums {
+			ones += (x >> uint(bit)) & 1
+		}
+		if ones%3 != 0 {
+			answer |= 1 << uint(bit)
+		}
+	}
+	if answer >= (1 << 31) {
+		answer -= 1 << 32
+	}
+	return answer
+}
+@@@LANG kotlin
+fun singleNumber(nums: IntArray): Int {
+    var answer = 0
+    for (bit in 0 until 32) {
+        var ones = 0
+        for (x in nums) ones += (x shr bit) and 1
+        if (ones % 3 != 0) answer = answer or (1 shl bit)
+    }
+    return answer
+}
+@@@LANG swift
+func singleNumber(_ nums: [Int]) -> Int {
+    var answer: Int32 = 0
+    for bit in 0..<32 {
+        var ones = 0
+        for x in nums {
+            ones += Int((Int32(truncatingIfNeeded: x) >> Int32(bit)) & 1)
+        }
+        if ones % 3 != 0 {
+            answer |= Int32(bitPattern: UInt32(1) << UInt32(bit))
+        }
+    }
+    return Int(answer)
+}
+@@@LANG rust
+fn singleNumber(nums: Vec<i32>) -> i32 {
+    let mut answer: u32 = 0;
+    for bit in 0..32 {
+        let mut ones = 0;
+        for x in nums.iter() {
+            ones += ((*x >> bit) & 1) as i32;
+        }
+        if ones % 3 != 0 {
+            answer |= 1u32 << bit;
+        }
+    }
+    answer as i32
+}
+@@@LANG php
+function singleNumber($nums) {
+    $answer = 0;
+    for ($bit = 0; $bit < 32; $bit++) {
+        $ones = 0;
+        foreach ($nums as $x) $ones += ($x >> $bit) & 1;
+        if ($ones % 3 !== 0) $answer |= 1 << $bit;
+    }
+    if ($answer >= (1 << 31)) $answer -= 1 << 32;
+    return $answer;
+}
+@@@LANG ruby
+def singleNumber(nums)
+  answer = 0
+  (0...32).each do |bit|
+    ones = nums.map { |x| (x >> bit) & 1 }.sum
+    answer |= 1 << bit if ones % 3 != 0
+  end
+  answer -= 1 << 32 if answer >= (1 << 31)
+  answer
+end
+
+@@@PROBLEM single-number-iii
+@@@LANG typescript
+function singleNumber(nums: number[]): number[] {
+    var xorAll = 0;
+    for (var i = 0; i < nums.length; i++) xorAll ^= nums[i];
+    var lowBit = xorAll & -xorAll;
+    var a = 0;
+    var b = 0;
+    for (var j = 0; j < nums.length; j++) {
+        if ((nums[j] & lowBit) !== 0) a ^= nums[j];
+        else b ^= nums[j];
+    }
+    return a < b ? [a, b] : [b, a];
+}
+@@@LANG java
+public static int[] singleNumber(int[] nums) {
+    int xorAll = 0;
+    for (int x : nums) xorAll ^= x;
+    int lowBit = xorAll & -xorAll;
+    int a = 0, b = 0;
+    for (int x : nums) {
+        if ((x & lowBit) != 0) a ^= x;
+        else b ^= x;
+    }
+    return a < b ? new int[]{a, b} : new int[]{b, a};
+}
+@@@LANG cpp
+vector<int> singleNumber(vector<int>& nums) {
+    int xorAll = 0;
+    for (int x : nums) xorAll ^= x;
+    int lowBit = xorAll & -xorAll;
+    int a = 0, b = 0;
+    for (int x : nums) {
+        if ((x & lowBit) != 0) a ^= x;
+        else b ^= x;
+    }
+    if (a < b) return vector<int>{a, b};
+    return vector<int>{b, a};
+}
+@@@LANG c
+int* singleNumber(int* nums, int numsSize, int* returnSize) {
+    int xorAll = 0;
+    for (int i = 0; i < numsSize; i++) xorAll ^= nums[i];
+    int lowBit = xorAll & -xorAll;
+    int a = 0, b = 0;
+    for (int i = 0; i < numsSize; i++) {
+        if ((nums[i] & lowBit) != 0) a ^= nums[i];
+        else b ^= nums[i];
+    }
+    int* out = (int*) malloc(2 * sizeof(int));
+    out[0] = a < b ? a : b;
+    out[1] = a < b ? b : a;
+    *returnSize = 2;
+    return out;
+}
+@@@LANG csharp
+public static int[] SingleNumber(int[] nums)
+{
+    int xorAll = 0;
+    foreach (int x in nums) xorAll ^= x;
+    int lowBit = xorAll & -xorAll;
+    int a = 0, b = 0;
+    foreach (int x in nums)
+    {
+        if ((x & lowBit) != 0) a ^= x;
+        else b ^= x;
+    }
+    return a < b ? new int[] { a, b } : new int[] { b, a };
+}
+@@@LANG go
+func singleNumber(nums []int) []int {
+	xorAll := 0
+	for _, x := range nums {
+		xorAll ^= x
+	}
+	lowBit := xorAll & -xorAll
+	a, b := 0, 0
+	for _, x := range nums {
+		if x&lowBit != 0 {
+			a ^= x
+		} else {
+			b ^= x
+		}
+	}
+	if a < b {
+		return []int{a, b}
+	}
+	return []int{b, a}
+}
+@@@LANG kotlin
+fun singleNumber(nums: IntArray): IntArray {
+    var xorAll = 0
+    for (x in nums) xorAll = xorAll xor x
+    val lowBit = xorAll and (-xorAll)
+    var a = 0
+    var b = 0
+    for (x in nums) {
+        if ((x and lowBit) != 0) a = a xor x else b = b xor x
+    }
+    return if (a < b) intArrayOf(a, b) else intArrayOf(b, a)
+}
+@@@LANG swift
+func singleNumber(_ nums: [Int]) -> [Int] {
+    var xorAll = 0
+    for x in nums { xorAll ^= x }
+    let lowBit = xorAll & (-xorAll)
+    var a = 0
+    var b = 0
+    for x in nums {
+        if (x & lowBit) != 0 { a ^= x } else { b ^= x }
+    }
+    return a < b ? [a, b] : [b, a]
+}
+@@@LANG rust
+fn singleNumber(nums: Vec<i32>) -> Vec<i32> {
+    let mut xor_all = 0i32;
+    for x in nums.iter() {
+        xor_all ^= *x;
+    }
+    let low_bit = xor_all & xor_all.wrapping_neg();
+    let mut a = 0i32;
+    let mut b = 0i32;
+    for x in nums.iter() {
+        if (*x & low_bit) != 0 {
+            a ^= *x;
+        } else {
+            b ^= *x;
+        }
+    }
+    if a < b { vec![a, b] } else { vec![b, a] }
+}
+@@@LANG php
+function singleNumber($nums) {
+    $xorAll = 0;
+    foreach ($nums as $x) $xorAll ^= $x;
+    $lowBit = $xorAll & -$xorAll;
+    $a = 0;
+    $b = 0;
+    foreach ($nums as $x) {
+        if (($x & $lowBit) !== 0) $a ^= $x;
+        else $b ^= $x;
+    }
+    return $a < $b ? array($a, $b) : array($b, $a);
+}
+@@@LANG ruby
+def singleNumber(nums)
+  xor_all = 0
+  nums.each { |x| xor_all ^= x }
+  low_bit = xor_all & -xor_all
+  a = 0
+  b = 0
+  nums.each do |x|
+    if (x & low_bit) != 0
+      a ^= x
+    else
+      b ^= x
+    end
+  end
+  a < b ? [a, b] : [b, a]
+end
+
+@@@PROBLEM number-of-1-bits
+@@@LANG typescript
+function hammingWeight(n: number): number {
+    var count = 0;
+    var v = n >>> 0;
+    while (v > 0) {
+        v &= v - 1;
+        count++;
+    }
+    return count;
+}
+@@@LANG java
+public static int hammingWeight(int n) {
+    int count = 0;
+    int v = n;
+    while (v != 0) {
+        v &= v - 1;
+        count++;
+    }
+    return count;
+}
+@@@LANG cpp
+int hammingWeight(int n) {
+    unsigned int v = (unsigned int) n;
+    int count = 0;
+    while (v) {
+        v &= v - 1;
+        count++;
+    }
+    return count;
+}
+@@@LANG c
+int hammingWeight(int n) {
+    unsigned int v = (unsigned int) n;
+    int count = 0;
+    while (v) {
+        v &= v - 1;
+        count++;
+    }
+    return count;
+}
+@@@LANG csharp
+public static int HammingWeight(int n)
+{
+    uint v = (uint) n;
+    int count = 0;
+    while (v != 0)
+    {
+        v &= v - 1;
+        count++;
+    }
+    return count;
+}
+@@@LANG go
+func hammingWeight(n int) int {
+	count := 0
+	v := n
+	for v != 0 {
+		v &= v - 1
+		count++
+	}
+	return count
+}
+@@@LANG kotlin
+fun hammingWeight(n: Int): Int {
+    var count = 0
+    var v = n
+    while (v != 0) {
+        v = v and (v - 1)
+        count++
+    }
+    return count
+}
+@@@LANG swift
+func hammingWeight(_ n: Int) -> Int {
+    var count = 0
+    var v = n
+    while v != 0 {
+        v &= v - 1
+        count += 1
+    }
+    return count
+}
+@@@LANG rust
+fn hammingWeight(n: i32) -> i32 {
+    let mut v = n as u32;
+    let mut count = 0;
+    while v != 0 {
+        v &= v - 1;
+        count += 1;
+    }
+    count
+}
+@@@LANG php
+function hammingWeight($n) {
+    $count = 0;
+    $v = $n;
+    while ($v != 0) {
+        $v &= $v - 1;
+        $count++;
+    }
+    return $count;
+}
+@@@LANG ruby
+def hammingWeight(n)
+  count = 0
+  v = n
+  while v != 0
+    v &= v - 1
+    count += 1
+  end
+  count
+end
+
+@@@PROBLEM counting-bits
+@@@LANG typescript
+function countBits(n: number): number[] {
+    var out: number[] = [0];
+    for (var i = 1; i <= n; i++) out.push(out[i >> 1] + (i & 1));
+    return out;
+}
+@@@LANG java
+public static int[] countBits(int n) {
+    int[] out = new int[n + 1];
+    for (int i = 1; i <= n; i++) out[i] = out[i >> 1] + (i & 1);
+    return out;
+}
+@@@LANG cpp
+vector<int> countBits(int n) {
+    vector<int> out(n + 1, 0);
+    for (int i = 1; i <= n; i++) out[i] = out[i >> 1] + (i & 1);
+    return out;
+}
+@@@LANG c
+int* countBits(int n, int* returnSize) {
+    int* out = (int*) calloc((size_t) (n + 1), sizeof(int));
+    for (int i = 1; i <= n; i++) out[i] = out[i >> 1] + (i & 1);
+    *returnSize = n + 1;
+    return out;
+}
+@@@LANG csharp
+public static int[] CountBits(int n)
+{
+    int[] out_ = new int[n + 1];
+    for (int i = 1; i <= n; i++) out_[i] = out_[i >> 1] + (i & 1);
+    return out_;
+}
+@@@LANG go
+func countBits(n int) []int {
+	out := make([]int, n+1)
+	for i := 1; i <= n; i++ {
+		out[i] = out[i>>1] + (i & 1)
+	}
+	return out
+}
+@@@LANG kotlin
+fun countBits(n: Int): IntArray {
+    val out = IntArray(n + 1)
+    for (i in 1..n) out[i] = out[i shr 1] + (i and 1)
+    return out
+}
+@@@LANG swift
+func countBits(_ n: Int) -> [Int] {
+    var out = [Int](repeating: 0, count: n + 1)
+    if n >= 1 {
+        for i in 1...n {
+            out[i] = out[i >> 1] + (i & 1)
+        }
+    }
+    return out
+}
+@@@LANG rust
+fn countBits(n: i32) -> Vec<i32> {
+    let size = (n + 1) as usize;
+    let mut out = vec![0i32; size];
+    for i in 1..size {
+        out[i] = out[i >> 1] + ((i as i32) & 1);
+    }
+    out
+}
+@@@LANG php
+function countBits($n) {
+    $out = array_fill(0, $n + 1, 0);
+    for ($i = 1; $i <= $n; $i++) {
+        $out[$i] = $out[$i >> 1] + ($i & 1);
+    }
+    return $out;
+}
+@@@LANG ruby
+def countBits(n)
+  out = Array.new(n + 1, 0)
+  (1..n).each { |i| out[i] = out[i >> 1] + (i & 1) }
+  out
+end
+
+@@@PROBLEM hamming-distance
+@@@LANG typescript
+function hammingDistance(x: number, y: number): number {
+    var v = (x ^ y) >>> 0;
+    var count = 0;
+    while (v > 0) {
+        v &= v - 1;
+        count++;
+    }
+    return count;
+}
+@@@LANG java
+public static int hammingDistance(int x, int y) {
+    int v = x ^ y;
+    int count = 0;
+    while (v != 0) {
+        v &= v - 1;
+        count++;
+    }
+    return count;
+}
+@@@LANG cpp
+int hammingDistance(int x, int y) {
+    unsigned int v = (unsigned int) (x ^ y);
+    int count = 0;
+    while (v) {
+        v &= v - 1;
+        count++;
+    }
+    return count;
+}
+@@@LANG c
+int hammingDistance(int x, int y) {
+    unsigned int v = (unsigned int) (x ^ y);
+    int count = 0;
+    while (v) {
+        v &= v - 1;
+        count++;
+    }
+    return count;
+}
+@@@LANG csharp
+public static int HammingDistance(int x, int y)
+{
+    uint v = (uint) (x ^ y);
+    int count = 0;
+    while (v != 0)
+    {
+        v &= v - 1;
+        count++;
+    }
+    return count;
+}
+@@@LANG go
+func hammingDistance(x int, y int) int {
+	v := x ^ y
+	count := 0
+	for v != 0 {
+		v &= v - 1
+		count++
+	}
+	return count
+}
+@@@LANG kotlin
+fun hammingDistance(x: Int, y: Int): Int {
+    var v = x xor y
+    var count = 0
+    while (v != 0) {
+        v = v and (v - 1)
+        count++
+    }
+    return count
+}
+@@@LANG swift
+func hammingDistance(_ x: Int, _ y: Int) -> Int {
+    var v = x ^ y
+    var count = 0
+    while v != 0 {
+        v &= v - 1
+        count += 1
+    }
+    return count
+}
+@@@LANG rust
+fn hammingDistance(x: i32, y: i32) -> i32 {
+    let mut v = (x ^ y) as u32;
+    let mut count = 0;
+    while v != 0 {
+        v &= v - 1;
+        count += 1;
+    }
+    count
+}
+@@@LANG php
+function hammingDistance($x, $y) {
+    $v = $x ^ $y;
+    $count = 0;
+    while ($v != 0) {
+        $v &= $v - 1;
+        $count++;
+    }
+    return $count;
+}
+@@@LANG ruby
+def hammingDistance(x, y)
+  v = x ^ y
+  count = 0
+  while v != 0
+    v &= v - 1
+    count += 1
+  end
+  count
+end
+
+@@@PROBLEM total-hamming-distance
+@@@LANG typescript
+function totalHammingDistance(nums: number[]): number {
+    var total = 0;
+    for (var bit = 0; bit < 31; bit++) {
+        var ones = 0;
+        for (var i = 0; i < nums.length; i++) ones += (nums[i] >> bit) & 1;
+        total += ones * (nums.length - ones);
+    }
+    return total;
+}
+@@@LANG java
+public static int totalHammingDistance(int[] nums) {
+    int total = 0;
+    int n = nums.length;
+    for (int bit = 0; bit < 31; bit++) {
+        int ones = 0;
+        for (int x : nums) ones += (x >> bit) & 1;
+        total += ones * (n - ones);
+    }
+    return total;
+}
+@@@LANG cpp
+int totalHammingDistance(vector<int>& nums) {
+    int total = 0;
+    int n = (int) nums.size();
+    for (int bit = 0; bit < 31; bit++) {
+        int ones = 0;
+        for (int x : nums) ones += (x >> bit) & 1;
+        total += ones * (n - ones);
+    }
+    return total;
+}
+@@@LANG c
+int totalHammingDistance(int* nums, int numsSize) {
+    int total = 0;
+    for (int bit = 0; bit < 31; bit++) {
+        int ones = 0;
+        for (int i = 0; i < numsSize; i++) ones += (nums[i] >> bit) & 1;
+        total += ones * (numsSize - ones);
+    }
+    return total;
+}
+@@@LANG csharp
+public static int TotalHammingDistance(int[] nums)
+{
+    int total = 0;
+    int n = nums.Length;
+    for (int bit = 0; bit < 31; bit++)
+    {
+        int ones = 0;
+        foreach (int x in nums) ones += (x >> bit) & 1;
+        total += ones * (n - ones);
+    }
+    return total;
+}
+@@@LANG go
+func totalHammingDistance(nums []int) int {
+	total := 0
+	n := len(nums)
+	for bit := 0; bit < 31; bit++ {
+		ones := 0
+		for _, x := range nums {
+			ones += (x >> uint(bit)) & 1
+		}
+		total += ones * (n - ones)
+	}
+	return total
+}
+@@@LANG kotlin
+fun totalHammingDistance(nums: IntArray): Int {
+    var total = 0
+    val n = nums.size
+    for (bit in 0 until 31) {
+        var ones = 0
+        for (x in nums) ones += (x shr bit) and 1
+        total += ones * (n - ones)
+    }
+    return total
+}
+@@@LANG swift
+func totalHammingDistance(_ nums: [Int]) -> Int {
+    var total = 0
+    let n = nums.count
+    for bit in 0..<31 {
+        var ones = 0
+        for x in nums { ones += (x >> bit) & 1 }
+        total += ones * (n - ones)
+    }
+    return total
+}
+@@@LANG rust
+fn totalHammingDistance(nums: Vec<i32>) -> i32 {
+    let mut total = 0i32;
+    let n = nums.len() as i32;
+    for bit in 0..31 {
+        let mut ones = 0i32;
+        for x in nums.iter() {
+            ones += (*x >> bit) & 1;
+        }
+        total += ones * (n - ones);
+    }
+    total
+}
+@@@LANG php
+function totalHammingDistance($nums) {
+    $total = 0;
+    $n = count($nums);
+    for ($bit = 0; $bit < 31; $bit++) {
+        $ones = 0;
+        foreach ($nums as $x) $ones += ($x >> $bit) & 1;
+        $total += $ones * ($n - $ones);
+    }
+    return $total;
+}
+@@@LANG ruby
+def totalHammingDistance(nums)
+  total = 0
+  n = nums.length
+  (0...31).each do |bit|
+    ones = nums.map { |x| (x >> bit) & 1 }.sum
+    total += ones * (n - ones)
+  end
+  total
+end
+
+@@@PROBLEM power-of-four
+@@@LANG typescript
+function isPowerOfFour(n: number): boolean {
+    return n > 0 && (n & (n - 1)) === 0 && (n & 0x55555555) !== 0;
+}
+@@@LANG java
+public static boolean isPowerOfFour(int n) {
+    return n > 0 && (n & (n - 1)) == 0 && (n & 0x55555555) != 0;
+}
+@@@LANG cpp
+bool isPowerOfFour(int n) {
+    return n > 0 && (n & (n - 1)) == 0 && (n & 0x55555555) != 0;
+}
+@@@LANG c
+bool isPowerOfFour(int n) {
+    return n > 0 && (n & (n - 1)) == 0 && (n & 0x55555555) != 0;
+}
+@@@LANG csharp
+public static bool IsPowerOfFour(int n)
+{
+    return n > 0 && (n & (n - 1)) == 0 && (n & 0x55555555) != 0;
+}
+@@@LANG go
+func isPowerOfFour(n int) bool {
+	return n > 0 && n&(n-1) == 0 && n&0x55555555 != 0
+}
+@@@LANG kotlin
+fun isPowerOfFour(n: Int): Boolean {
+    return n > 0 && (n and (n - 1)) == 0 && (n and 0x55555555) != 0
+}
+@@@LANG swift
+func isPowerOfFour(_ n: Int) -> Bool {
+    return n > 0 && (n & (n - 1)) == 0 && (n & 0x55555555) != 0
+}
+@@@LANG rust
+fn isPowerOfFour(n: i32) -> bool {
+    n > 0 && (n & (n - 1)) == 0 && (n & 0x55555555) != 0
+}
+@@@LANG php
+function isPowerOfFour($n) {
+    return $n > 0 && ($n & ($n - 1)) === 0 && ($n & 0x55555555) !== 0;
+}
+@@@LANG ruby
+def isPowerOfFour(n)
+  n > 0 && (n & (n - 1)) == 0 && (n & 0x55555555) != 0
+end
+
+@@@PROBLEM bitwise-and-of-numbers-range
+@@@LANG typescript
+function rangeBitwiseAnd(left: number, right: number): number {
+    var shift = 0;
+    var a = left;
+    var b = right;
+    while (a !== b) {
+        a = Math.floor(a / 2);
+        b = Math.floor(b / 2);
+        shift++;
+    }
+    return a * Math.pow(2, shift);
+}
+@@@LANG java
+public static int rangeBitwiseAnd(int left, int right) {
+    int shift = 0;
+    int a = left, b = right;
+    while (a != b) {
+        a >>>= 1;
+        b >>>= 1;
+        shift++;
+    }
+    return a << shift;
+}
+@@@LANG cpp
+int rangeBitwiseAnd(int left, int right) {
+    int shift = 0;
+    unsigned int a = (unsigned int) left, b = (unsigned int) right;
+    while (a != b) {
+        a >>= 1;
+        b >>= 1;
+        shift++;
+    }
+    return (int) (a << shift);
+}
+@@@LANG c
+int rangeBitwiseAnd(int left, int right) {
+    int shift = 0;
+    unsigned int a = (unsigned int) left, b = (unsigned int) right;
+    while (a != b) {
+        a >>= 1;
+        b >>= 1;
+        shift++;
+    }
+    return (int) (a << shift);
+}
+@@@LANG csharp
+public static int RangeBitwiseAnd(int left, int right)
+{
+    int shift = 0;
+    uint a = (uint) left, b = (uint) right;
+    while (a != b)
+    {
+        a >>= 1;
+        b >>= 1;
+        shift++;
+    }
+    return (int) (a << shift);
+}
+@@@LANG go
+func rangeBitwiseAnd(left int, right int) int {
+	shift := 0
+	a, b := left, right
+	for a != b {
+		a >>= 1
+		b >>= 1
+		shift++
+	}
+	return a << uint(shift)
+}
+@@@LANG kotlin
+fun rangeBitwiseAnd(left: Int, right: Int): Int {
+    var shift = 0
+    var a = left
+    var b = right
+    while (a != b) {
+        a = a ushr 1
+        b = b ushr 1
+        shift++
+    }
+    return a shl shift
+}
+@@@LANG swift
+func rangeBitwiseAnd(_ left: Int, _ right: Int) -> Int {
+    var shift = 0
+    var a = left
+    var b = right
+    while a != b {
+        a >>= 1
+        b >>= 1
+        shift += 1
+    }
+    return a << shift
+}
+@@@LANG rust
+fn rangeBitwiseAnd(left: i32, right: i32) -> i32 {
+    let mut shift = 0;
+    let mut a = left as u32;
+    let mut b = right as u32;
+    while a != b {
+        a >>= 1;
+        b >>= 1;
+        shift += 1;
+    }
+    (a << shift) as i32
+}
+@@@LANG php
+function rangeBitwiseAnd($left, $right) {
+    $shift = 0;
+    $a = $left;
+    $b = $right;
+    while ($a !== $b) {
+        $a >>= 1;
+        $b >>= 1;
+        $shift++;
+    }
+    return $a << $shift;
+}
+@@@LANG ruby
+def rangeBitwiseAnd(left, right)
+  shift = 0
+  a = left
+  b = right
+  while a != b
+    a >>= 1
+    b >>= 1
+    shift += 1
+  end
+  a << shift
+end
+
+@@@PROBLEM sum-of-two-integers
+@@@LANG typescript
+function getSum(a: number, b: number): number {
+    var x = a | 0;
+    var y = b | 0;
+    while (y !== 0) {
+        var carry = (x & y) << 1;
+        x = (x ^ y) | 0;
+        y = carry | 0;
+    }
+    return x | 0;
+}
+@@@LANG java
+public static int getSum(int a, int b) {
+    int x = a, y = b;
+    while (y != 0) {
+        int carry = (x & y) << 1;
+        x = x ^ y;
+        y = carry;
+    }
+    return x;
+}
+@@@LANG cpp
+int getSum(int a, int b) {
+    unsigned int x = (unsigned int) a, y = (unsigned int) b;
+    while (y != 0) {
+        unsigned int carry = (x & y) << 1;
+        x = x ^ y;
+        y = carry;
+    }
+    return (int) x;
+}
+@@@LANG c
+int getSum(int a, int b) {
+    unsigned int x = (unsigned int) a, y = (unsigned int) b;
+    while (y != 0) {
+        unsigned int carry = (x & y) << 1;
+        x = x ^ y;
+        y = carry;
+    }
+    return (int) x;
+}
+@@@LANG csharp
+public static int GetSum(int a, int b)
+{
+    uint x = (uint) a, y = (uint) b;
+    while (y != 0)
+    {
+        uint carry = (x & y) << 1;
+        x = x ^ y;
+        y = carry;
+    }
+    return (int) x;
+}
+@@@LANG go
+func getSum(a int, b int) int {
+	x, y := uint32(a), uint32(b)
+	for y != 0 {
+		carry := (x & y) << 1
+		x = x ^ y
+		y = carry
+	}
+	return int(int32(x))
+}
+@@@LANG kotlin
+fun getSum(a: Int, b: Int): Int {
+    var x = a
+    var y = b
+    while (y != 0) {
+        val carry = (x and y) shl 1
+        x = x xor y
+        y = carry
+    }
+    return x
+}
+@@@LANG swift
+func getSum(_ a: Int, _ b: Int) -> Int {
+    var x = Int32(truncatingIfNeeded: a)
+    var y = Int32(truncatingIfNeeded: b)
+    while y != 0 {
+        let carry = Int32(bitPattern: UInt32(bitPattern: x & y) << 1)
+        x = x ^ y
+        y = carry
+    }
+    return Int(x)
+}
+@@@LANG rust
+fn getSum(a: i32, b: i32) -> i32 {
+    let mut x = a as u32;
+    let mut y = b as u32;
+    while y != 0 {
+        let carry = (x & y) << 1;
+        x = x ^ y;
+        y = carry;
+    }
+    x as i32
+}
+@@@LANG php
+function getSum($a, $b) {
+    $mask = 0xFFFFFFFF;
+    $x = $a & $mask;
+    $y = $b & $mask;
+    while ($y != 0) {
+        $carry = (($x & $y) << 1) & $mask;
+        $x = ($x ^ $y) & $mask;
+        $y = $carry;
+    }
+    return $x <= 0x7FFFFFFF ? $x : $x - 0x100000000;
+}
+@@@LANG ruby
+def getSum(a, b)
+  mask = 0xFFFFFFFF
+  x = a & mask
+  y = b & mask
+  while y != 0
+    carry = ((x & y) << 1) & mask
+    x = (x ^ y) & mask
+    y = carry
+  end
+  x <= 0x7FFFFFFF ? x : x - 0x100000000
+end
+
+@@@PROBLEM maximum-xor-of-two-numbers-in-an-array
+@@@LANG typescript
+function findMaximumXOR(nums: number[]): number {
+    var best = 0;
+    var mask = 0;
+    for (var bit = 30; bit >= 0; bit--) {
+        mask = mask | (1 << bit);
+        var prefixes: { [key: string]: boolean } = {};
+        for (var i = 0; i < nums.length; i++) prefixes[String(nums[i] & mask)] = true;
+        var candidate = best | (1 << bit);
+        var found = false;
+        for (var j = 0; j < nums.length; j++) {
+            var p = nums[j] & mask;
+            if (prefixes[String(candidate ^ p)] === true) {
+                found = true;
+                break;
+            }
+        }
+        if (found) best = candidate;
+    }
+    return best;
+}
+@@@LANG java
+public static int findMaximumXOR(int[] nums) {
+    int best = 0, mask = 0;
+    for (int bit = 30; bit >= 0; bit--) {
+        mask |= 1 << bit;
+        Set<Integer> prefixes = new HashSet<>();
+        for (int x : nums) prefixes.add(x & mask);
+        int candidate = best | (1 << bit);
+        for (int p : prefixes) {
+            if (prefixes.contains(candidate ^ p)) {
+                best = candidate;
+                break;
+            }
+        }
+    }
+    return best;
+}
+@@@LANG cpp
+int findMaximumXOR(vector<int>& nums) {
+    int best = 0, mask = 0;
+    for (int bit = 30; bit >= 0; bit--) {
+        mask |= 1 << bit;
+        unordered_set<int> prefixes;
+        for (int x : nums) prefixes.insert(x & mask);
+        int candidate = best | (1 << bit);
+        for (int p : prefixes) {
+            if (prefixes.count(candidate ^ p) > 0) {
+                best = candidate;
+                break;
+            }
+        }
+    }
+    return best;
+}
+@@@LANG c
+int findMaximumXOR(int* nums, int numsSize) {
+    int best = 0;
+    for (int i = 0; i < numsSize; i++) {
+        for (int j = i + 1; j < numsSize; j++) {
+            int value = nums[i] ^ nums[j];
+            if (value > best) best = value;
+        }
+    }
+    return best;
+}
+@@@LANG csharp
+public static int FindMaximumXOR(int[] nums)
+{
+    int best = 0, mask = 0;
+    for (int bit = 30; bit >= 0; bit--)
+    {
+        mask |= 1 << bit;
+        var prefixes = new HashSet<int>();
+        foreach (int x in nums) prefixes.Add(x & mask);
+        int candidate = best | (1 << bit);
+        foreach (int p in prefixes)
+        {
+            if (prefixes.Contains(candidate ^ p))
+            {
+                best = candidate;
+                break;
+            }
+        }
+    }
+    return best;
+}
+@@@LANG go
+func findMaximumXOR(nums []int) int {
+	best, mask := 0, 0
+	for bit := 30; bit >= 0; bit-- {
+		mask |= 1 << uint(bit)
+		prefixes := map[int]bool{}
+		for _, x := range nums {
+			prefixes[x&mask] = true
+		}
+		candidate := best | (1 << uint(bit))
+		for p := range prefixes {
+			if prefixes[candidate^p] {
+				best = candidate
+				break
+			}
+		}
+	}
+	return best
+}
+@@@LANG kotlin
+fun findMaximumXOR(nums: IntArray): Int {
+    var best = 0
+    var mask = 0
+    for (bit in 30 downTo 0) {
+        mask = mask or (1 shl bit)
+        val prefixes = HashSet<Int>()
+        for (x in nums) prefixes.add(x and mask)
+        val candidate = best or (1 shl bit)
+        for (p in prefixes) {
+            if (prefixes.contains(candidate xor p)) {
+                best = candidate
+                break
+            }
+        }
+    }
+    return best
+}
+@@@LANG swift
+func findMaximumXOR(_ nums: [Int]) -> Int {
+    var best = 0
+    var mask = 0
+    var bit = 30
+    while bit >= 0 {
+        mask |= (1 << bit)
+        var prefixes = Set<Int>()
+        for x in nums { prefixes.insert(x & mask) }
+        let candidate = best | (1 << bit)
+        for p in prefixes {
+            if prefixes.contains(candidate ^ p) {
+                best = candidate
+                break
+            }
+        }
+        bit -= 1
+    }
+    return best
+}
+@@@LANG rust
+use std::collections::HashSet;
+
+fn findMaximumXOR(nums: Vec<i32>) -> i32 {
+    let mut best = 0i32;
+    let mut mask = 0i32;
+    for bit in (0..31).rev() {
+        mask |= 1 << bit;
+        let mut prefixes: HashSet<i32> = HashSet::new();
+        for x in nums.iter() {
+            prefixes.insert(*x & mask);
+        }
+        let candidate = best | (1 << bit);
+        for p in prefixes.iter() {
+            if prefixes.contains(&(candidate ^ *p)) {
+                best = candidate;
+                break;
+            }
+        }
+    }
+    best
+}
+@@@LANG php
+function findMaximumXOR($nums) {
+    $best = 0;
+    $mask = 0;
+    for ($bit = 30; $bit >= 0; $bit--) {
+        $mask |= 1 << $bit;
+        $prefixes = array();
+        foreach ($nums as $x) $prefixes[$x & $mask] = true;
+        $candidate = $best | (1 << $bit);
+        foreach ($prefixes as $p => $ignored) {
+            if (isset($prefixes[$candidate ^ $p])) {
+                $best = $candidate;
+                break;
+            }
+        }
+    }
+    return $best;
+}
+@@@LANG ruby
+def findMaximumXOR(nums)
+  best = 0
+  mask = 0
+  30.downto(0) do |bit|
+    mask |= 1 << bit
+    prefixes = {}
+    nums.each { |x| prefixes[x & mask] = true }
+    candidate = best | (1 << bit)
+    prefixes.each_key do |p|
+      if prefixes[candidate ^ p]
+        best = candidate
+        break
+      end
+    end
+  end
+  best
+end
+
+@@@PROBLEM number-complement
+@@@LANG typescript
+function findComplement(num: number): number {
+    var mask = 0;
+    var v = num;
+    while (v > 0) {
+        mask = mask * 2 + 1;
+        v = Math.floor(v / 2);
+    }
+    return mask - num;
+}
+@@@LANG java
+public static int findComplement(int num) {
+    long mask = 0;
+    long v = num;
+    while (v > 0) {
+        mask = mask * 2 + 1;
+        v /= 2;
+    }
+    return (int) (mask - num);
+}
+@@@LANG cpp
+int findComplement(int num) {
+    long long mask = 0;
+    long long v = num;
+    while (v > 0) {
+        mask = mask * 2 + 1;
+        v /= 2;
+    }
+    return (int) (mask - num);
+}
+@@@LANG c
+int findComplement(int num) {
+    long long mask = 0;
+    long long v = num;
+    while (v > 0) {
+        mask = mask * 2 + 1;
+        v /= 2;
+    }
+    return (int) (mask - num);
+}
+@@@LANG csharp
+public static int FindComplement(int num)
+{
+    long mask = 0;
+    long v = num;
+    while (v > 0)
+    {
+        mask = mask * 2 + 1;
+        v /= 2;
+    }
+    return (int) (mask - num);
+}
+@@@LANG go
+func findComplement(num int) int {
+	mask := 0
+	v := num
+	for v > 0 {
+		mask = mask*2 + 1
+		v /= 2
+	}
+	return mask - num
+}
+@@@LANG kotlin
+fun findComplement(num: Int): Int {
+    var mask = 0L
+    var v = num.toLong()
+    while (v > 0) {
+        mask = mask * 2 + 1
+        v /= 2
+    }
+    return (mask - num).toInt()
+}
+@@@LANG swift
+func findComplement(_ num: Int) -> Int {
+    var mask = 0
+    var v = num
+    while v > 0 {
+        mask = mask * 2 + 1
+        v /= 2
+    }
+    return mask - num
+}
+@@@LANG rust
+fn findComplement(num: i32) -> i32 {
+    let mut mask: i64 = 0;
+    let mut v: i64 = num as i64;
+    while v > 0 {
+        mask = mask * 2 + 1;
+        v /= 2;
+    }
+    (mask - num as i64) as i32
+}
+@@@LANG php
+function findComplement($num) {
+    $mask = 0;
+    $v = $num;
+    while ($v > 0) {
+        $mask = $mask * 2 + 1;
+        $v = intdiv($v, 2);
+    }
+    return $mask - $num;
+}
+@@@LANG ruby
+def findComplement(num)
+  mask = 0
+  v = num
+  while v > 0
+    mask = mask * 2 + 1
+    v /= 2
+  end
+  mask - num
+end

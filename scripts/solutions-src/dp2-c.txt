@@ -1,0 +1,2317 @@
+@@@PROBLEM combination-sum-iv
+@@@LANG typescript
+function combinationSum4(nums: number[], target: number): number {
+    var dp: number[] = [];
+    for (var k = 0; k <= target; k++) dp.push(0);
+    dp[0] = 1;
+    for (var t = 1; t <= target; t++) {
+        for (var i = 0; i < nums.length; i++) {
+            if (nums[i] <= t) dp[t] += dp[t - nums[i]];
+        }
+    }
+    return dp[target];
+}
+@@@LANG java
+public static int combinationSum4(int[] nums, int target) {
+    int[] dp = new int[target + 1];
+    dp[0] = 1;
+    for (int t = 1; t <= target; t++) {
+        for (int num : nums) {
+            if (num <= t) dp[t] += dp[t - num];
+        }
+    }
+    return dp[target];
+}
+@@@LANG cpp
+int combinationSum4(vector<int>& nums, int target) {
+    vector<long long> dp(target + 1, 0);
+    dp[0] = 1;
+    for (int t = 1; t <= target; t++) {
+        for (int num : nums) {
+            if (num <= t) dp[t] += dp[t - num];
+        }
+    }
+    return (int) dp[target];
+}
+@@@LANG c
+int combinationSum4(int* nums, int numsSize, int target) {
+    long long* dp = (long long*) calloc(target + 1, sizeof(long long));
+    dp[0] = 1;
+    for (int t = 1; t <= target; t++) {
+        for (int i = 0; i < numsSize; i++) {
+            if (nums[i] <= t) dp[t] += dp[t - nums[i]];
+        }
+    }
+    int result = (int) dp[target];
+    free(dp);
+    return result;
+}
+@@@LANG csharp
+public static int CombinationSum4(int[] nums, int target)
+{
+    long[] dp = new long[target + 1];
+    dp[0] = 1;
+    for (int t = 1; t <= target; t++)
+    {
+        foreach (int num in nums)
+        {
+            if (num <= t) dp[t] += dp[t - num];
+        }
+    }
+    return (int) dp[target];
+}
+@@@LANG go
+func combinationSum4(nums []int, target int) int {
+	dp := make([]int, target+1)
+	dp[0] = 1
+	for t := 1; t <= target; t++ {
+		for _, num := range nums {
+			if num <= t {
+				dp[t] += dp[t-num]
+			}
+		}
+	}
+	return dp[target]
+}
+@@@LANG kotlin
+fun combinationSum4(nums: IntArray, target: Int): Int {
+    val dp = LongArray(target + 1)
+    dp[0] = 1
+    for (t in 1..target) {
+        for (num in nums) {
+            if (num <= t) dp[t] += dp[t - num]
+        }
+    }
+    return dp[target].toInt()
+}
+@@@LANG swift
+func combinationSum4(_ nums: [Int], _ target: Int) -> Int {
+    var dp = [Int](repeating: 0, count: target + 1)
+    dp[0] = 1
+    var t = 1
+    while t <= target {
+        for num in nums where num <= t {
+            dp[t] += dp[t - num]
+        }
+        t += 1
+    }
+    return dp[target]
+}
+@@@LANG rust
+fn combinationSum4(nums: Vec<i32>, target: i32) -> i32 {
+    let size = target as usize;
+    let mut dp = vec![0i64; size + 1];
+    dp[0] = 1;
+    for t in 1..=size {
+        for num in nums.iter() {
+            let step = *num as usize;
+            if step <= t {
+                dp[t] += dp[t - step];
+            }
+        }
+    }
+    dp[size] as i32
+}
+@@@LANG php
+function combinationSum4($nums, $target) {
+    $dp = array_fill(0, $target + 1, 0);
+    $dp[0] = 1;
+    for ($t = 1; $t <= $target; $t++) {
+        foreach ($nums as $num) {
+            if ($num <= $t) $dp[$t] += $dp[$t - $num];
+        }
+    }
+    return $dp[$target];
+}
+@@@LANG ruby
+def combinationSum4(nums, target)
+  dp = Array.new(target + 1, 0)
+  dp[0] = 1
+  (1..target).each do |t|
+    nums.each do |num|
+      dp[t] += dp[t - num] if num <= t
+    end
+  end
+  dp[target]
+end
+
+@@@PROBLEM longest-string-chain
+@@@LANG typescript
+function longestStrChain(words: string[]): number {
+    var isPredecessor = function (a: string, b: string): boolean {
+        if (b.length !== a.length + 1) return false;
+        var i = 0;
+        var j = 0;
+        var skips = 0;
+        while (i < a.length && j < b.length) {
+            if (a.charAt(i) === b.charAt(j)) { i++; j++; }
+            else {
+                skips++;
+                j++;
+                if (skips > 1) return false;
+            }
+        }
+        return true;
+    };
+    var sorted = words.slice();
+    sorted.sort(function (a, b) { return a.length - b.length; });
+    var best: number[] = [];
+    for (var k = 0; k < sorted.length; k++) best.push(1);
+    var answer = 1;
+    for (var x = 0; x < sorted.length; x++) {
+        for (var y = 0; y < x; y++) {
+            if (isPredecessor(sorted[y], sorted[x]) && best[y] + 1 > best[x]) best[x] = best[y] + 1;
+        }
+        if (best[x] > answer) answer = best[x];
+    }
+    return answer;
+}
+@@@LANG java
+public static int longestStrChain(String[] words) {
+    String[] sorted = Arrays.copyOf(words, words.length);
+    Arrays.sort(sorted, new Comparator<String>() {
+        public int compare(String a, String b) { return a.length() - b.length(); }
+    });
+    int n = sorted.length;
+    int[] best = new int[n];
+    Arrays.fill(best, 1);
+    int answer = 1;
+    for (int i = 0; i < n; i++) {
+        for (int j = 0; j < i; j++) {
+            if (isPredecessorChain(sorted[j], sorted[i]) && best[j] + 1 > best[i]) best[i] = best[j] + 1;
+        }
+        if (best[i] > answer) answer = best[i];
+    }
+    return answer;
+}
+
+private static boolean isPredecessorChain(String a, String b) {
+    if (b.length() != a.length() + 1) return false;
+    int i = 0, j = 0, skips = 0;
+    while (i < a.length() && j < b.length()) {
+        if (a.charAt(i) == b.charAt(j)) { i++; j++; }
+        else {
+            skips++;
+            j++;
+            if (skips > 1) return false;
+        }
+    }
+    return true;
+}
+@@@LANG cpp
+static bool isPredecessorChain(const string& a, const string& b) {
+    if (b.size() != a.size() + 1) return false;
+    size_t i = 0, j = 0;
+    int skips = 0;
+    while (i < a.size() && j < b.size()) {
+        if (a[i] == b[j]) { i++; j++; }
+        else {
+            skips++;
+            j++;
+            if (skips > 1) return false;
+        }
+    }
+    return true;
+}
+
+int longestStrChain(vector<string>& words) {
+    vector<string> sorted = words;
+    sort(sorted.begin(), sorted.end(), [](const string& a, const string& b) {
+        return a.size() < b.size();
+    });
+    int n = (int) sorted.size();
+    vector<int> best(n, 1);
+    int answer = 1;
+    for (int i = 0; i < n; i++) {
+        for (int j = 0; j < i; j++) {
+            if (isPredecessorChain(sorted[j], sorted[i]) && best[j] + 1 > best[i]) best[i] = best[j] + 1;
+        }
+        answer = max(answer, best[i]);
+    }
+    return answer;
+}
+@@@LANG c
+static bool isPredecessorChain(const char* a, const char* b) {
+    int la = (int) strlen(a);
+    int lb = (int) strlen(b);
+    if (lb != la + 1) return false;
+    int i = 0, j = 0, skips = 0;
+    while (i < la && j < lb) {
+        if (a[i] == b[j]) { i++; j++; }
+        else {
+            skips++;
+            j++;
+            if (skips > 1) return false;
+        }
+    }
+    return true;
+}
+
+int longestStrChain(char** words, int wordsSize) {
+    char** sorted = (char**) malloc(sizeof(char*) * wordsSize);
+    for (int i = 0; i < wordsSize; i++) sorted[i] = words[i];
+    for (int i = 1; i < wordsSize; i++) {
+        char* key = sorted[i];
+        int j = i - 1;
+        while (j >= 0 && (int) strlen(sorted[j]) > (int) strlen(key)) {
+            sorted[j + 1] = sorted[j];
+            j--;
+        }
+        sorted[j + 1] = key;
+    }
+    int* best = (int*) malloc(sizeof(int) * wordsSize);
+    for (int i = 0; i < wordsSize; i++) best[i] = 1;
+    int answer = 1;
+    for (int i = 0; i < wordsSize; i++) {
+        for (int j = 0; j < i; j++) {
+            if (isPredecessorChain(sorted[j], sorted[i]) && best[j] + 1 > best[i]) best[i] = best[j] + 1;
+        }
+        if (best[i] > answer) answer = best[i];
+    }
+    free(sorted);
+    free(best);
+    return answer;
+}
+@@@LANG csharp
+public static int LongestStrChain(string[] words)
+{
+    string[] sorted = (string[]) words.Clone();
+    Array.Sort(sorted, delegate (string a, string b) { return a.Length - b.Length; });
+    int n = sorted.Length;
+    int[] best = new int[n];
+    for (int i = 0; i < n; i++) best[i] = 1;
+    int answer = 1;
+    for (int i = 0; i < n; i++)
+    {
+        for (int j = 0; j < i; j++)
+        {
+            if (IsPredecessorChain(sorted[j], sorted[i]) && best[j] + 1 > best[i]) best[i] = best[j] + 1;
+        }
+        if (best[i] > answer) answer = best[i];
+    }
+    return answer;
+}
+
+private static bool IsPredecessorChain(string a, string b)
+{
+    if (b.Length != a.Length + 1) return false;
+    int i = 0, j = 0, skips = 0;
+    while (i < a.Length && j < b.Length)
+    {
+        if (a[i] == b[j]) { i++; j++; }
+        else
+        {
+            skips++;
+            j++;
+            if (skips > 1) return false;
+        }
+    }
+    return true;
+}
+@@@LANG go
+func longestStrChain(words []string) int {
+	isPredecessor := func(a, b string) bool {
+		if len(b) != len(a)+1 {
+			return false
+		}
+		i, j, skips := 0, 0, 0
+		for i < len(a) && j < len(b) {
+			if a[i] == b[j] {
+				i++
+				j++
+			} else {
+				skips++
+				j++
+				if skips > 1 {
+					return false
+				}
+			}
+		}
+		return true
+	}
+	sorted := make([]string, len(words))
+	copy(sorted, words)
+	sort.Slice(sorted, func(i, j int) bool { return len(sorted[i]) < len(sorted[j]) })
+	best := make([]int, len(sorted))
+	for i := range best {
+		best[i] = 1
+	}
+	answer := 1
+	for i := 0; i < len(sorted); i++ {
+		for j := 0; j < i; j++ {
+			if isPredecessor(sorted[j], sorted[i]) && best[j]+1 > best[i] {
+				best[i] = best[j] + 1
+			}
+		}
+		if best[i] > answer {
+			answer = best[i]
+		}
+	}
+	return answer
+}
+@@@LANG kotlin
+fun longestStrChain(words: Array<String>): Int {
+    fun isPredecessor(a: String, b: String): Boolean {
+        if (b.length != a.length + 1) return false
+        var i = 0
+        var j = 0
+        var skips = 0
+        while (i < a.length && j < b.length) {
+            if (a[i] == b[j]) {
+                i++
+                j++
+            } else {
+                skips++
+                j++
+                if (skips > 1) return false
+            }
+        }
+        return true
+    }
+    val sorted = words.sortedBy { it.length }
+    val best = IntArray(sorted.size) { 1 }
+    var answer = 1
+    for (i in sorted.indices) {
+        for (j in 0 until i) {
+            if (isPredecessor(sorted[j], sorted[i]) && best[j] + 1 > best[i]) best[i] = best[j] + 1
+        }
+        if (best[i] > answer) answer = best[i]
+    }
+    return answer
+}
+@@@LANG swift
+func longestStrChain(_ words: [String]) -> Int {
+    func isPredecessor(_ a: [Character], _ b: [Character]) -> Bool {
+        if b.count != a.count + 1 { return false }
+        var i = 0
+        var j = 0
+        var skips = 0
+        while i < a.count && j < b.count {
+            if a[i] == b[j] {
+                i += 1
+                j += 1
+            } else {
+                skips += 1
+                j += 1
+                if skips > 1 { return false }
+            }
+        }
+        return true
+    }
+    let sorted = words.sorted { $0.count < $1.count }.map { Array($0) }
+    var best = [Int](repeating: 1, count: sorted.count)
+    var answer = 1
+    for i in 0..<sorted.count {
+        for j in 0..<i {
+            if isPredecessor(sorted[j], sorted[i]) && best[j] + 1 > best[i] { best[i] = best[j] + 1 }
+        }
+        if best[i] > answer { answer = best[i] }
+    }
+    return answer
+}
+@@@LANG rust
+fn longestStrChain(words: Vec<String>) -> i32 {
+    fn is_predecessor(a: &[u8], b: &[u8]) -> bool {
+        if b.len() != a.len() + 1 {
+            return false;
+        }
+        let mut i = 0;
+        let mut j = 0;
+        let mut skips = 0;
+        while i < a.len() && j < b.len() {
+            if a[i] == b[j] {
+                i += 1;
+                j += 1;
+            } else {
+                skips += 1;
+                j += 1;
+                if skips > 1 {
+                    return false;
+                }
+            }
+        }
+        true
+    }
+    let mut sorted: Vec<String> = words.clone();
+    sorted.sort_by(|a, b| a.len().cmp(&b.len()));
+    let n = sorted.len();
+    let mut best = vec![1i32; n];
+    let mut answer = 1;
+    for i in 0..n {
+        for j in 0..i {
+            if is_predecessor(sorted[j].as_bytes(), sorted[i].as_bytes()) && best[j] + 1 > best[i] {
+                best[i] = best[j] + 1;
+            }
+        }
+        if best[i] > answer {
+            answer = best[i];
+        }
+    }
+    answer
+}
+@@@LANG php
+function longestStrChain($words) {
+    $isPredecessor = function ($a, $b) {
+        if (strlen($b) !== strlen($a) + 1) return false;
+        $i = 0;
+        $j = 0;
+        $skips = 0;
+        while ($i < strlen($a) && $j < strlen($b)) {
+            if ($a[$i] === $b[$j]) { $i++; $j++; }
+            else {
+                $skips++;
+                $j++;
+                if ($skips > 1) return false;
+            }
+        }
+        return true;
+    };
+    $sorted = $words;
+    usort($sorted, function ($a, $b) { return strlen($a) - strlen($b); });
+    $n = count($sorted);
+    $best = array_fill(0, $n, 1);
+    $answer = 1;
+    for ($i = 0; $i < $n; $i++) {
+        for ($j = 0; $j < $i; $j++) {
+            if ($isPredecessor($sorted[$j], $sorted[$i]) && $best[$j] + 1 > $best[$i]) {
+                $best[$i] = $best[$j] + 1;
+            }
+        }
+        if ($best[$i] > $answer) $answer = $best[$i];
+    }
+    return $answer;
+}
+@@@LANG ruby
+def longestStrChain(words)
+  is_predecessor = lambda do |a, b|
+    next false if b.length != a.length + 1
+    i = 0
+    j = 0
+    skips = 0
+    while i < a.length && j < b.length
+      if a[i] == b[j]
+        i += 1
+        j += 1
+      else
+        skips += 1
+        j += 1
+        next false if skips > 1
+      end
+    end
+    true
+  end
+  sorted = words.sort_by(&:length)
+  best = Array.new(sorted.length, 1)
+  answer = 1
+  (0...sorted.length).each do |i|
+    (0...i).each do |j|
+      best[i] = best[j] + 1 if is_predecessor.call(sorted[j], sorted[i]) && best[j] + 1 > best[i]
+    end
+    answer = best[i] if best[i] > answer
+  end
+  answer
+end
+
+@@@PROBLEM minimum-cost-for-tickets
+@@@LANG typescript
+function mincostTickets(days: number[], costs: number[]): number {
+    var last = days[days.length - 1];
+    var travel: boolean[] = [];
+    for (var k = 0; k <= last; k++) travel.push(false);
+    for (var i = 0; i < days.length; i++) travel[days[i]] = true;
+    var dp: number[] = [];
+    for (var m = 0; m <= last; m++) dp.push(0);
+    for (var d = 1; d <= last; d++) {
+        if (!travel[d]) {
+            dp[d] = dp[d - 1];
+        } else {
+            var one = dp[d - 1] + costs[0];
+            var seven = dp[Math.max(0, d - 7)] + costs[1];
+            var thirty = dp[Math.max(0, d - 30)] + costs[2];
+            dp[d] = Math.min(one, Math.min(seven, thirty));
+        }
+    }
+    return dp[last];
+}
+@@@LANG java
+public static int mincostTickets(int[] days, int[] costs) {
+    int last = days[days.length - 1];
+    boolean[] travel = new boolean[last + 1];
+    for (int d : days) travel[d] = true;
+    int[] dp = new int[last + 1];
+    for (int d = 1; d <= last; d++) {
+        if (!travel[d]) {
+            dp[d] = dp[d - 1];
+        } else {
+            int one = dp[d - 1] + costs[0];
+            int seven = dp[Math.max(0, d - 7)] + costs[1];
+            int thirty = dp[Math.max(0, d - 30)] + costs[2];
+            dp[d] = Math.min(one, Math.min(seven, thirty));
+        }
+    }
+    return dp[last];
+}
+@@@LANG cpp
+int mincostTickets(vector<int>& days, vector<int>& costs) {
+    int last = days.back();
+    vector<char> travel(last + 1, 0);
+    for (int d : days) travel[d] = 1;
+    vector<int> dp(last + 1, 0);
+    for (int d = 1; d <= last; d++) {
+        if (!travel[d]) {
+            dp[d] = dp[d - 1];
+        } else {
+            int one = dp[d - 1] + costs[0];
+            int seven = dp[max(0, d - 7)] + costs[1];
+            int thirty = dp[max(0, d - 30)] + costs[2];
+            dp[d] = min(one, min(seven, thirty));
+        }
+    }
+    return dp[last];
+}
+@@@LANG c
+int mincostTickets(int* days, int daysSize, int* costs, int costsSize) {
+    int last = days[daysSize - 1];
+    char* travel = (char*) calloc(last + 1, 1);
+    for (int i = 0; i < daysSize; i++) travel[days[i]] = 1;
+    int* dp = (int*) calloc(last + 1, sizeof(int));
+    for (int d = 1; d <= last; d++) {
+        if (!travel[d]) {
+            dp[d] = dp[d - 1];
+        } else {
+            int a = d - 7 > 0 ? d - 7 : 0;
+            int b = d - 30 > 0 ? d - 30 : 0;
+            int one = dp[d - 1] + costs[0];
+            int seven = dp[a] + costs[1];
+            int thirty = dp[b] + costs[2];
+            int best = one < seven ? one : seven;
+            if (thirty < best) best = thirty;
+            dp[d] = best;
+        }
+    }
+    int result = dp[last];
+    free(travel);
+    free(dp);
+    return result;
+}
+@@@LANG csharp
+public static int MincostTickets(int[] days, int[] costs)
+{
+    int last = days[days.Length - 1];
+    bool[] travel = new bool[last + 1];
+    foreach (int d in days) travel[d] = true;
+    int[] dp = new int[last + 1];
+    for (int d = 1; d <= last; d++)
+    {
+        if (!travel[d])
+        {
+            dp[d] = dp[d - 1];
+        }
+        else
+        {
+            int one = dp[d - 1] + costs[0];
+            int seven = dp[Math.Max(0, d - 7)] + costs[1];
+            int thirty = dp[Math.Max(0, d - 30)] + costs[2];
+            dp[d] = Math.Min(one, Math.Min(seven, thirty));
+        }
+    }
+    return dp[last];
+}
+@@@LANG go
+func mincostTickets(days []int, costs []int) int {
+	last := days[len(days)-1]
+	travel := make([]bool, last+1)
+	for _, d := range days {
+		travel[d] = true
+	}
+	dp := make([]int, last+1)
+	for d := 1; d <= last; d++ {
+		if !travel[d] {
+			dp[d] = dp[d-1]
+			continue
+		}
+		a := d - 7
+		if a < 0 {
+			a = 0
+		}
+		b := d - 30
+		if b < 0 {
+			b = 0
+		}
+		best := dp[d-1] + costs[0]
+		if dp[a]+costs[1] < best {
+			best = dp[a] + costs[1]
+		}
+		if dp[b]+costs[2] < best {
+			best = dp[b] + costs[2]
+		}
+		dp[d] = best
+	}
+	return dp[last]
+}
+@@@LANG kotlin
+fun mincostTickets(days: IntArray, costs: IntArray): Int {
+    val last = days[days.size - 1]
+    val travel = BooleanArray(last + 1)
+    for (d in days) travel[d] = true
+    val dp = IntArray(last + 1)
+    for (d in 1..last) {
+        if (!travel[d]) {
+            dp[d] = dp[d - 1]
+        } else {
+            val one = dp[d - 1] + costs[0]
+            val seven = dp[maxOf(0, d - 7)] + costs[1]
+            val thirty = dp[maxOf(0, d - 30)] + costs[2]
+            dp[d] = minOf(one, seven, thirty)
+        }
+    }
+    return dp[last]
+}
+@@@LANG swift
+func mincostTickets(_ days: [Int], _ costs: [Int]) -> Int {
+    let last = days[days.count - 1]
+    var travel = [Bool](repeating: false, count: last + 1)
+    for d in days { travel[d] = true }
+    var dp = [Int](repeating: 0, count: last + 1)
+    var d = 1
+    while d <= last {
+        if !travel[d] {
+            dp[d] = dp[d - 1]
+        } else {
+            let one = dp[d - 1] + costs[0]
+            let seven = dp[max(0, d - 7)] + costs[1]
+            let thirty = dp[max(0, d - 30)] + costs[2]
+            dp[d] = min(one, min(seven, thirty))
+        }
+        d += 1
+    }
+    return dp[last]
+}
+@@@LANG rust
+fn mincostTickets(days: Vec<i32>, costs: Vec<i32>) -> i32 {
+    let last = days[days.len() - 1] as usize;
+    let mut travel = vec![false; last + 1];
+    for d in days.iter() {
+        travel[*d as usize] = true;
+    }
+    let mut dp = vec![0i32; last + 1];
+    for d in 1..=last {
+        if !travel[d] {
+            dp[d] = dp[d - 1];
+        } else {
+            let a = if d >= 7 { d - 7 } else { 0 };
+            let b = if d >= 30 { d - 30 } else { 0 };
+            let one = dp[d - 1] + costs[0];
+            let seven = dp[a] + costs[1];
+            let thirty = dp[b] + costs[2];
+            let mut best = one;
+            if seven < best {
+                best = seven;
+            }
+            if thirty < best {
+                best = thirty;
+            }
+            dp[d] = best;
+        }
+    }
+    dp[last]
+}
+@@@LANG php
+function mincostTickets($days, $costs) {
+    $last = $days[count($days) - 1];
+    $travel = array_fill(0, $last + 1, false);
+    foreach ($days as $d) $travel[$d] = true;
+    $dp = array_fill(0, $last + 1, 0);
+    for ($d = 1; $d <= $last; $d++) {
+        if (!$travel[$d]) {
+            $dp[$d] = $dp[$d - 1];
+        } else {
+            $one = $dp[$d - 1] + $costs[0];
+            $seven = $dp[max(0, $d - 7)] + $costs[1];
+            $thirty = $dp[max(0, $d - 30)] + $costs[2];
+            $dp[$d] = min($one, $seven, $thirty);
+        }
+    }
+    return $dp[$last];
+}
+@@@LANG ruby
+def mincostTickets(days, costs)
+  last = days[-1]
+  travel = Array.new(last + 1, false)
+  days.each { |d| travel[d] = true }
+  dp = Array.new(last + 1, 0)
+  (1..last).each do |d|
+    if !travel[d]
+      dp[d] = dp[d - 1]
+    else
+      one = dp[d - 1] + costs[0]
+      seven = dp[[0, d - 7].max] + costs[1]
+      thirty = dp[[0, d - 30].max] + costs[2]
+      dp[d] = [one, seven, thirty].min
+    end
+  end
+  dp[last]
+end
+
+@@@PROBLEM maximum-sum-circular-subarray
+@@@LANG typescript
+function maxSubarraySumCircular(nums: number[]): number {
+    var total = 0;
+    var maxSum = -2000000;
+    var curMax = 0;
+    var minSum = 2000000;
+    var curMin = 0;
+    for (var i = 0; i < nums.length; i++) {
+        total += nums[i];
+        curMax = Math.max(nums[i], curMax + nums[i]);
+        if (curMax > maxSum) maxSum = curMax;
+        curMin = Math.min(nums[i], curMin + nums[i]);
+        if (curMin < minSum) minSum = curMin;
+    }
+    if (maxSum < 0) return maxSum;
+    return Math.max(maxSum, total - minSum);
+}
+@@@LANG java
+public static int maxSubarraySumCircular(int[] nums) {
+    int total = 0;
+    int maxSum = -2000000, curMax = 0;
+    int minSum = 2000000, curMin = 0;
+    for (int x : nums) {
+        total += x;
+        curMax = Math.max(x, curMax + x);
+        maxSum = Math.max(maxSum, curMax);
+        curMin = Math.min(x, curMin + x);
+        minSum = Math.min(minSum, curMin);
+    }
+    if (maxSum < 0) return maxSum;
+    return Math.max(maxSum, total - minSum);
+}
+@@@LANG cpp
+int maxSubarraySumCircular(vector<int>& nums) {
+    int total = 0;
+    int maxSum = -2000000, curMax = 0;
+    int minSum = 2000000, curMin = 0;
+    for (int x : nums) {
+        total += x;
+        curMax = max(x, curMax + x);
+        maxSum = max(maxSum, curMax);
+        curMin = min(x, curMin + x);
+        minSum = min(minSum, curMin);
+    }
+    if (maxSum < 0) return maxSum;
+    return max(maxSum, total - minSum);
+}
+@@@LANG c
+int maxSubarraySumCircular(int* nums, int numsSize) {
+    int total = 0;
+    int maxSum = -2000000, curMax = 0;
+    int minSum = 2000000, curMin = 0;
+    for (int i = 0; i < numsSize; i++) {
+        int x = nums[i];
+        total += x;
+        curMax = curMax + x > x ? curMax + x : x;
+        if (curMax > maxSum) maxSum = curMax;
+        curMin = curMin + x < x ? curMin + x : x;
+        if (curMin < minSum) minSum = curMin;
+    }
+    if (maxSum < 0) return maxSum;
+    int wrap = total - minSum;
+    return maxSum > wrap ? maxSum : wrap;
+}
+@@@LANG csharp
+public static int MaxSubarraySumCircular(int[] nums)
+{
+    int total = 0;
+    int maxSum = -2000000, curMax = 0;
+    int minSum = 2000000, curMin = 0;
+    foreach (int x in nums)
+    {
+        total += x;
+        curMax = Math.Max(x, curMax + x);
+        maxSum = Math.Max(maxSum, curMax);
+        curMin = Math.Min(x, curMin + x);
+        minSum = Math.Min(minSum, curMin);
+    }
+    if (maxSum < 0) return maxSum;
+    return Math.Max(maxSum, total - minSum);
+}
+@@@LANG go
+func maxSubarraySumCircular(nums []int) int {
+	total := 0
+	maxSum, curMax := -2000000, 0
+	minSum, curMin := 2000000, 0
+	for _, x := range nums {
+		total += x
+		if curMax+x > x {
+			curMax = curMax + x
+		} else {
+			curMax = x
+		}
+		if curMax > maxSum {
+			maxSum = curMax
+		}
+		if curMin+x < x {
+			curMin = curMin + x
+		} else {
+			curMin = x
+		}
+		if curMin < minSum {
+			minSum = curMin
+		}
+	}
+	if maxSum < 0 {
+		return maxSum
+	}
+	wrap := total - minSum
+	if maxSum > wrap {
+		return maxSum
+	}
+	return wrap
+}
+@@@LANG kotlin
+fun maxSubarraySumCircular(nums: IntArray): Int {
+    var total = 0
+    var maxSum = -2000000
+    var curMax = 0
+    var minSum = 2000000
+    var curMin = 0
+    for (x in nums) {
+        total += x
+        curMax = maxOf(x, curMax + x)
+        if (curMax > maxSum) maxSum = curMax
+        curMin = minOf(x, curMin + x)
+        if (curMin < minSum) minSum = curMin
+    }
+    if (maxSum < 0) return maxSum
+    return maxOf(maxSum, total - minSum)
+}
+@@@LANG swift
+func maxSubarraySumCircular(_ nums: [Int]) -> Int {
+    var total = 0
+    var maxSum = -2000000
+    var curMax = 0
+    var minSum = 2000000
+    var curMin = 0
+    for x in nums {
+        total += x
+        curMax = max(x, curMax + x)
+        if curMax > maxSum { maxSum = curMax }
+        curMin = min(x, curMin + x)
+        if curMin < minSum { minSum = curMin }
+    }
+    if maxSum < 0 { return maxSum }
+    return max(maxSum, total - minSum)
+}
+@@@LANG rust
+fn maxSubarraySumCircular(nums: Vec<i32>) -> i32 {
+    let mut total = 0;
+    let mut max_sum = -2000000;
+    let mut cur_max = 0;
+    let mut min_sum = 2000000;
+    let mut cur_min = 0;
+    for x in nums.iter() {
+        total += *x;
+        cur_max = if cur_max + *x > *x { cur_max + *x } else { *x };
+        if cur_max > max_sum {
+            max_sum = cur_max;
+        }
+        cur_min = if cur_min + *x < *x { cur_min + *x } else { *x };
+        if cur_min < min_sum {
+            min_sum = cur_min;
+        }
+    }
+    if max_sum < 0 {
+        return max_sum;
+    }
+    let wrap = total - min_sum;
+    if max_sum > wrap { max_sum } else { wrap }
+}
+@@@LANG php
+function maxSubarraySumCircular($nums) {
+    $total = 0;
+    $maxSum = -2000000;
+    $curMax = 0;
+    $minSum = 2000000;
+    $curMin = 0;
+    foreach ($nums as $x) {
+        $total += $x;
+        $curMax = max($x, $curMax + $x);
+        if ($curMax > $maxSum) $maxSum = $curMax;
+        $curMin = min($x, $curMin + $x);
+        if ($curMin < $minSum) $minSum = $curMin;
+    }
+    if ($maxSum < 0) return $maxSum;
+    return max($maxSum, $total - $minSum);
+}
+@@@LANG ruby
+def maxSubarraySumCircular(nums)
+  total = 0
+  max_sum = -2000000
+  cur_max = 0
+  min_sum = 2000000
+  cur_min = 0
+  nums.each do |x|
+    total += x
+    cur_max = [x, cur_max + x].max
+    max_sum = cur_max if cur_max > max_sum
+    cur_min = [x, cur_min + x].min
+    min_sum = cur_min if cur_min < min_sum
+  end
+  return max_sum if max_sum < 0
+  [max_sum, total - min_sum].max
+end
+
+@@@PROBLEM best-sightseeing-pair
+@@@LANG typescript
+function maxScoreSightseeingPair(values: number[]): number {
+    var best = -2000000;
+    var bestLeft = values[0];
+    for (var j = 1; j < values.length; j++) {
+        var candidate = bestLeft + values[j] - j;
+        if (candidate > best) best = candidate;
+        if (values[j] + j > bestLeft) bestLeft = values[j] + j;
+    }
+    return best;
+}
+@@@LANG java
+public static int maxScoreSightseeingPair(int[] values) {
+    int best = -2000000, bestLeft = values[0];
+    for (int j = 1; j < values.length; j++) {
+        best = Math.max(best, bestLeft + values[j] - j);
+        bestLeft = Math.max(bestLeft, values[j] + j);
+    }
+    return best;
+}
+@@@LANG cpp
+int maxScoreSightseeingPair(vector<int>& values) {
+    int best = -2000000, bestLeft = values[0];
+    for (int j = 1; j < (int) values.size(); j++) {
+        best = max(best, bestLeft + values[j] - j);
+        bestLeft = max(bestLeft, values[j] + j);
+    }
+    return best;
+}
+@@@LANG c
+int maxScoreSightseeingPair(int* values, int valuesSize) {
+    int best = -2000000, bestLeft = values[0];
+    for (int j = 1; j < valuesSize; j++) {
+        int candidate = bestLeft + values[j] - j;
+        if (candidate > best) best = candidate;
+        if (values[j] + j > bestLeft) bestLeft = values[j] + j;
+    }
+    return best;
+}
+@@@LANG csharp
+public static int MaxScoreSightseeingPair(int[] values)
+{
+    int best = -2000000, bestLeft = values[0];
+    for (int j = 1; j < values.Length; j++)
+    {
+        best = Math.Max(best, bestLeft + values[j] - j);
+        bestLeft = Math.Max(bestLeft, values[j] + j);
+    }
+    return best;
+}
+@@@LANG go
+func maxScoreSightseeingPair(values []int) int {
+	best, bestLeft := -2000000, values[0]
+	for j := 1; j < len(values); j++ {
+		if bestLeft+values[j]-j > best {
+			best = bestLeft + values[j] - j
+		}
+		if values[j]+j > bestLeft {
+			bestLeft = values[j] + j
+		}
+	}
+	return best
+}
+@@@LANG kotlin
+fun maxScoreSightseeingPair(values: IntArray): Int {
+    var best = -2000000
+    var bestLeft = values[0]
+    for (j in 1 until values.size) {
+        val candidate = bestLeft + values[j] - j
+        if (candidate > best) best = candidate
+        if (values[j] + j > bestLeft) bestLeft = values[j] + j
+    }
+    return best
+}
+@@@LANG swift
+func maxScoreSightseeingPair(_ values: [Int]) -> Int {
+    var best = -2000000
+    var bestLeft = values[0]
+    var j = 1
+    while j < values.count {
+        let candidate = bestLeft + values[j] - j
+        if candidate > best { best = candidate }
+        if values[j] + j > bestLeft { bestLeft = values[j] + j }
+        j += 1
+    }
+    return best
+}
+@@@LANG rust
+fn maxScoreSightseeingPair(values: Vec<i32>) -> i32 {
+    let mut best = -2000000;
+    let mut best_left = values[0];
+    for j in 1..values.len() {
+        let idx = j as i32;
+        let candidate = best_left + values[j] - idx;
+        if candidate > best {
+            best = candidate;
+        }
+        if values[j] + idx > best_left {
+            best_left = values[j] + idx;
+        }
+    }
+    best
+}
+@@@LANG php
+function maxScoreSightseeingPair($values) {
+    $best = -2000000;
+    $bestLeft = $values[0];
+    for ($j = 1; $j < count($values); $j++) {
+        $candidate = $bestLeft + $values[$j] - $j;
+        if ($candidate > $best) $best = $candidate;
+        if ($values[$j] + $j > $bestLeft) $bestLeft = $values[$j] + $j;
+    }
+    return $best;
+}
+@@@LANG ruby
+def maxScoreSightseeingPair(values)
+  best = -2000000
+  best_left = values[0]
+  (1...values.length).each do |j|
+    candidate = best_left + values[j] - j
+    best = candidate if candidate > best
+    best_left = values[j] + j if values[j] + j > best_left
+  end
+  best
+end
+
+@@@PROBLEM number-of-dice-rolls-with-target-sum
+@@@LANG typescript
+function numRollsToTarget(n: number, k: number, target: number): number {
+    var MOD = 1000000007;
+    var dp: number[] = [];
+    for (var a = 0; a <= target; a++) dp.push(0);
+    dp[0] = 1;
+    for (var die = 1; die <= n; die++) {
+        var next: number[] = [];
+        for (var b = 0; b <= target; b++) next.push(0);
+        for (var t = 1; t <= target; t++) {
+            var sum = 0;
+            for (var face = 1; face <= k && face <= t; face++) {
+                sum = (sum + dp[t - face]) % MOD;
+            }
+            next[t] = sum;
+        }
+        dp = next;
+    }
+    return dp[target];
+}
+@@@LANG java
+public static int numRollsToTarget(int n, int k, int target) {
+    final int MOD = 1000000007;
+    int[] dp = new int[target + 1];
+    dp[0] = 1;
+    for (int die = 1; die <= n; die++) {
+        int[] next = new int[target + 1];
+        for (int t = 1; t <= target; t++) {
+            int sum = 0;
+            for (int face = 1; face <= k && face <= t; face++) {
+                sum = (sum + dp[t - face]) % MOD;
+            }
+            next[t] = sum;
+        }
+        dp = next;
+    }
+    return dp[target];
+}
+@@@LANG cpp
+int numRollsToTarget(int n, int k, int target) {
+    const int MOD = 1000000007;
+    vector<int> dp(target + 1, 0);
+    dp[0] = 1;
+    for (int die = 1; die <= n; die++) {
+        vector<int> next(target + 1, 0);
+        for (int t = 1; t <= target; t++) {
+            int sum = 0;
+            for (int face = 1; face <= k && face <= t; face++) {
+                sum = (sum + dp[t - face]) % MOD;
+            }
+            next[t] = sum;
+        }
+        dp = next;
+    }
+    return dp[target];
+}
+@@@LANG c
+int numRollsToTarget(int n, int k, int target) {
+    const int MOD = 1000000007;
+    int* dp = (int*) calloc(target + 1, sizeof(int));
+    int* next = (int*) calloc(target + 1, sizeof(int));
+    dp[0] = 1;
+    for (int die = 1; die <= n; die++) {
+        for (int t = 0; t <= target; t++) next[t] = 0;
+        for (int t = 1; t <= target; t++) {
+            int sum = 0;
+            for (int face = 1; face <= k && face <= t; face++) {
+                sum = (sum + dp[t - face]) % MOD;
+            }
+            next[t] = sum;
+        }
+        for (int t = 0; t <= target; t++) dp[t] = next[t];
+    }
+    int result = dp[target];
+    free(dp);
+    free(next);
+    return result;
+}
+@@@LANG csharp
+public static int NumRollsToTarget(int n, int k, int target)
+{
+    const int MOD = 1000000007;
+    int[] dp = new int[target + 1];
+    dp[0] = 1;
+    for (int die = 1; die <= n; die++)
+    {
+        int[] next = new int[target + 1];
+        for (int t = 1; t <= target; t++)
+        {
+            int sum = 0;
+            for (int face = 1; face <= k && face <= t; face++)
+            {
+                sum = (sum + dp[t - face]) % MOD;
+            }
+            next[t] = sum;
+        }
+        dp = next;
+    }
+    return dp[target];
+}
+@@@LANG go
+func numRollsToTarget(n int, k int, target int) int {
+	const MOD = 1000000007
+	dp := make([]int, target+1)
+	dp[0] = 1
+	for die := 1; die <= n; die++ {
+		next := make([]int, target+1)
+		for t := 1; t <= target; t++ {
+			sum := 0
+			for face := 1; face <= k && face <= t; face++ {
+				sum = (sum + dp[t-face]) % MOD
+			}
+			next[t] = sum
+		}
+		dp = next
+	}
+	return dp[target]
+}
+@@@LANG kotlin
+fun numRollsToTarget(n: Int, k: Int, target: Int): Int {
+    val MOD = 1000000007
+    var dp = IntArray(target + 1)
+    dp[0] = 1
+    for (die in 1..n) {
+        val next = IntArray(target + 1)
+        for (t in 1..target) {
+            var sum = 0
+            var face = 1
+            while (face <= k && face <= t) {
+                sum = (sum + dp[t - face]) % MOD
+                face++
+            }
+            next[t] = sum
+        }
+        dp = next
+    }
+    return dp[target]
+}
+@@@LANG swift
+func numRollsToTarget(_ n: Int, _ k: Int, _ target: Int) -> Int {
+    let MOD = 1000000007
+    var dp = [Int](repeating: 0, count: target + 1)
+    dp[0] = 1
+    var die = 1
+    while die <= n {
+        var next = [Int](repeating: 0, count: target + 1)
+        var t = 1
+        while t <= target {
+            var sum = 0
+            var face = 1
+            while face <= k && face <= t {
+                sum = (sum + dp[t - face]) % MOD
+                face += 1
+            }
+            next[t] = sum
+            t += 1
+        }
+        dp = next
+        die += 1
+    }
+    return dp[target]
+}
+@@@LANG rust
+fn numRollsToTarget(n: i32, k: i32, target: i32) -> i32 {
+    let modulus = 1000000007i64;
+    let size = target as usize;
+    let mut dp = vec![0i64; size + 1];
+    dp[0] = 1;
+    for _ in 0..n {
+        let mut next = vec![0i64; size + 1];
+        for t in 1..=size {
+            let mut sum = 0i64;
+            let mut face = 1usize;
+            while face <= k as usize && face <= t {
+                sum = (sum + dp[t - face]) % modulus;
+                face += 1;
+            }
+            next[t] = sum;
+        }
+        dp = next;
+    }
+    dp[size] as i32
+}
+@@@LANG php
+function numRollsToTarget($n, $k, $target) {
+    $MOD = 1000000007;
+    $dp = array_fill(0, $target + 1, 0);
+    $dp[0] = 1;
+    for ($die = 1; $die <= $n; $die++) {
+        $next = array_fill(0, $target + 1, 0);
+        for ($t = 1; $t <= $target; $t++) {
+            $sum = 0;
+            for ($face = 1; $face <= $k && $face <= $t; $face++) {
+                $sum = ($sum + $dp[$t - $face]) % $MOD;
+            }
+            $next[$t] = $sum;
+        }
+        $dp = $next;
+    }
+    return $dp[$target];
+}
+@@@LANG ruby
+def numRollsToTarget(n, k, target)
+  mod = 1000000007
+  dp = Array.new(target + 1, 0)
+  dp[0] = 1
+  n.times do
+    nxt = Array.new(target + 1, 0)
+    (1..target).each do |t|
+      sum = 0
+      face = 1
+      while face <= k && face <= t
+        sum = (sum + dp[t - face]) % mod
+        face += 1
+      end
+      nxt[t] = sum
+    end
+    dp = nxt
+  end
+  dp[target]
+end
+
+@@@PROBLEM longest-turbulent-subarray
+@@@LANG typescript
+function maxTurbulenceSize(arr: number[]): number {
+    var best = 1;
+    var up = 1;
+    var down = 1;
+    for (var i = 1; i < arr.length; i++) {
+        if (arr[i] > arr[i - 1]) {
+            var prevDown = down;
+            up = prevDown + 1;
+            down = 1;
+        } else if (arr[i] < arr[i - 1]) {
+            var prevUp = up;
+            down = prevUp + 1;
+            up = 1;
+        } else {
+            up = 1;
+            down = 1;
+        }
+        var cur = Math.max(up, down);
+        if (cur > best) best = cur;
+    }
+    return best;
+}
+@@@LANG java
+public static int maxTurbulenceSize(int[] arr) {
+    int best = 1, up = 1, down = 1;
+    for (int i = 1; i < arr.length; i++) {
+        if (arr[i] > arr[i - 1]) {
+            int prevDown = down;
+            up = prevDown + 1;
+            down = 1;
+        } else if (arr[i] < arr[i - 1]) {
+            int prevUp = up;
+            down = prevUp + 1;
+            up = 1;
+        } else {
+            up = 1;
+            down = 1;
+        }
+        best = Math.max(best, Math.max(up, down));
+    }
+    return best;
+}
+@@@LANG cpp
+int maxTurbulenceSize(vector<int>& arr) {
+    int best = 1, up = 1, down = 1;
+    for (int i = 1; i < (int) arr.size(); i++) {
+        if (arr[i] > arr[i - 1]) {
+            int prevDown = down;
+            up = prevDown + 1;
+            down = 1;
+        } else if (arr[i] < arr[i - 1]) {
+            int prevUp = up;
+            down = prevUp + 1;
+            up = 1;
+        } else {
+            up = 1;
+            down = 1;
+        }
+        best = max(best, max(up, down));
+    }
+    return best;
+}
+@@@LANG c
+int maxTurbulenceSize(int* arr, int arrSize) {
+    int best = 1, up = 1, down = 1;
+    for (int i = 1; i < arrSize; i++) {
+        if (arr[i] > arr[i - 1]) {
+            int prevDown = down;
+            up = prevDown + 1;
+            down = 1;
+        } else if (arr[i] < arr[i - 1]) {
+            int prevUp = up;
+            down = prevUp + 1;
+            up = 1;
+        } else {
+            up = 1;
+            down = 1;
+        }
+        int cur = up > down ? up : down;
+        if (cur > best) best = cur;
+    }
+    return best;
+}
+@@@LANG csharp
+public static int MaxTurbulenceSize(int[] arr)
+{
+    int best = 1, up = 1, down = 1;
+    for (int i = 1; i < arr.Length; i++)
+    {
+        if (arr[i] > arr[i - 1])
+        {
+            int prevDown = down;
+            up = prevDown + 1;
+            down = 1;
+        }
+        else if (arr[i] < arr[i - 1])
+        {
+            int prevUp = up;
+            down = prevUp + 1;
+            up = 1;
+        }
+        else
+        {
+            up = 1;
+            down = 1;
+        }
+        best = Math.Max(best, Math.Max(up, down));
+    }
+    return best;
+}
+@@@LANG go
+func maxTurbulenceSize(arr []int) int {
+	best, up, down := 1, 1, 1
+	for i := 1; i < len(arr); i++ {
+		if arr[i] > arr[i-1] {
+			prevDown := down
+			up = prevDown + 1
+			down = 1
+		} else if arr[i] < arr[i-1] {
+			prevUp := up
+			down = prevUp + 1
+			up = 1
+		} else {
+			up = 1
+			down = 1
+		}
+		cur := up
+		if down > cur {
+			cur = down
+		}
+		if cur > best {
+			best = cur
+		}
+	}
+	return best
+}
+@@@LANG kotlin
+fun maxTurbulenceSize(arr: IntArray): Int {
+    var best = 1
+    var up = 1
+    var down = 1
+    for (i in 1 until arr.size) {
+        if (arr[i] > arr[i - 1]) {
+            val prevDown = down
+            up = prevDown + 1
+            down = 1
+        } else if (arr[i] < arr[i - 1]) {
+            val prevUp = up
+            down = prevUp + 1
+            up = 1
+        } else {
+            up = 1
+            down = 1
+        }
+        val cur = if (up > down) up else down
+        if (cur > best) best = cur
+    }
+    return best
+}
+@@@LANG swift
+func maxTurbulenceSize(_ arr: [Int]) -> Int {
+    var best = 1
+    var up = 1
+    var down = 1
+    var i = 1
+    while i < arr.count {
+        if arr[i] > arr[i - 1] {
+            let prevDown = down
+            up = prevDown + 1
+            down = 1
+        } else if arr[i] < arr[i - 1] {
+            let prevUp = up
+            down = prevUp + 1
+            up = 1
+        } else {
+            up = 1
+            down = 1
+        }
+        let cur = max(up, down)
+        if cur > best { best = cur }
+        i += 1
+    }
+    return best
+}
+@@@LANG rust
+fn maxTurbulenceSize(arr: Vec<i32>) -> i32 {
+    let mut best = 1;
+    let mut up = 1;
+    let mut down = 1;
+    for i in 1..arr.len() {
+        if arr[i] > arr[i - 1] {
+            let prev_down = down;
+            up = prev_down + 1;
+            down = 1;
+        } else if arr[i] < arr[i - 1] {
+            let prev_up = up;
+            down = prev_up + 1;
+            up = 1;
+        } else {
+            up = 1;
+            down = 1;
+        }
+        let cur = if up > down { up } else { down };
+        if cur > best {
+            best = cur;
+        }
+    }
+    best
+}
+@@@LANG php
+function maxTurbulenceSize($arr) {
+    $best = 1;
+    $up = 1;
+    $down = 1;
+    for ($i = 1; $i < count($arr); $i++) {
+        if ($arr[$i] > $arr[$i - 1]) {
+            $prevDown = $down;
+            $up = $prevDown + 1;
+            $down = 1;
+        } else if ($arr[$i] < $arr[$i - 1]) {
+            $prevUp = $up;
+            $down = $prevUp + 1;
+            $up = 1;
+        } else {
+            $up = 1;
+            $down = 1;
+        }
+        $cur = max($up, $down);
+        if ($cur > $best) $best = $cur;
+    }
+    return $best;
+}
+@@@LANG ruby
+def maxTurbulenceSize(arr)
+  best = 1
+  up = 1
+  down = 1
+  (1...arr.length).each do |i|
+    if arr[i] > arr[i - 1]
+      prev_down = down
+      up = prev_down + 1
+      down = 1
+    elsif arr[i] < arr[i - 1]
+      prev_up = up
+      down = prev_up + 1
+      up = 1
+    else
+      up = 1
+      down = 1
+    end
+    cur = [up, down].max
+    best = cur if cur > best
+  end
+  best
+end
+
+@@@PROBLEM maximum-length-of-pair-chain
+@@@LANG typescript
+function findLongestChain(pairs: number[][]): number {
+    var sorted = pairs.slice();
+    sorted.sort(function (a, b) { return a[1] - b[1]; });
+    var count = 0;
+    var cur = -2000000;
+    for (var i = 0; i < sorted.length; i++) {
+        if (sorted[i][0] > cur) {
+            count++;
+            cur = sorted[i][1];
+        }
+    }
+    return count;
+}
+@@@LANG java
+public static int findLongestChain(int[][] pairs) {
+    int[][] sorted = Arrays.copyOf(pairs, pairs.length);
+    Arrays.sort(sorted, new Comparator<int[]>() {
+        public int compare(int[] a, int[] b) { return a[1] - b[1]; }
+    });
+    int count = 0, cur = -2000000;
+    for (int[] p : sorted) {
+        if (p[0] > cur) {
+            count++;
+            cur = p[1];
+        }
+    }
+    return count;
+}
+@@@LANG cpp
+int findLongestChain(vector<vector<int>>& pairs) {
+    vector<vector<int>> sorted = pairs;
+    sort(sorted.begin(), sorted.end(), [](const vector<int>& a, const vector<int>& b) {
+        return a[1] < b[1];
+    });
+    int count = 0, cur = -2000000;
+    for (vector<int>& p : sorted) {
+        if (p[0] > cur) {
+            count++;
+            cur = p[1];
+        }
+    }
+    return count;
+}
+@@@LANG c
+int findLongestChain(int** pairs, int pairsSize, int* pairsColSize) {
+    int** sorted = (int**) malloc(sizeof(int*) * pairsSize);
+    for (int i = 0; i < pairsSize; i++) sorted[i] = pairs[i];
+    for (int i = 1; i < pairsSize; i++) {
+        int* key = sorted[i];
+        int j = i - 1;
+        while (j >= 0 && sorted[j][1] > key[1]) {
+            sorted[j + 1] = sorted[j];
+            j--;
+        }
+        sorted[j + 1] = key;
+    }
+    int count = 0;
+    int cur = -2000000;
+    for (int i = 0; i < pairsSize; i++) {
+        if (sorted[i][0] > cur) {
+            count++;
+            cur = sorted[i][1];
+        }
+    }
+    free(sorted);
+    return count;
+}
+@@@LANG csharp
+public static int FindLongestChain(int[][] pairs)
+{
+    int[][] sorted = (int[][]) pairs.Clone();
+    Array.Sort(sorted, delegate (int[] a, int[] b) { return a[1] - b[1]; });
+    int count = 0, cur = -2000000;
+    foreach (int[] p in sorted)
+    {
+        if (p[0] > cur)
+        {
+            count++;
+            cur = p[1];
+        }
+    }
+    return count;
+}
+@@@LANG go
+func findLongestChain(pairs [][]int) int {
+	sorted := make([][]int, len(pairs))
+	copy(sorted, pairs)
+	sort.Slice(sorted, func(i, j int) bool { return sorted[i][1] < sorted[j][1] })
+	count := 0
+	cur := -2000000
+	for _, p := range sorted {
+		if p[0] > cur {
+			count++
+			cur = p[1]
+		}
+	}
+	return count
+}
+@@@LANG kotlin
+fun findLongestChain(pairs: Array<IntArray>): Int {
+    val sorted = pairs.sortedBy { it[1] }
+    var count = 0
+    var cur = -2000000
+    for (p in sorted) {
+        if (p[0] > cur) {
+            count++
+            cur = p[1]
+        }
+    }
+    return count
+}
+@@@LANG swift
+func findLongestChain(_ pairs: [[Int]]) -> Int {
+    let sorted = pairs.sorted { $0[1] < $1[1] }
+    var count = 0
+    var cur = -2000000
+    for p in sorted {
+        if p[0] > cur {
+            count += 1
+            cur = p[1]
+        }
+    }
+    return count
+}
+@@@LANG rust
+fn findLongestChain(pairs: Vec<Vec<i32>>) -> i32 {
+    let mut sorted = pairs.clone();
+    sorted.sort_by(|a, b| a[1].cmp(&b[1]));
+    let mut count = 0;
+    let mut cur = -2000000;
+    for p in sorted.iter() {
+        if p[0] > cur {
+            count += 1;
+            cur = p[1];
+        }
+    }
+    count
+}
+@@@LANG php
+function findLongestChain($pairs) {
+    $sorted = $pairs;
+    usort($sorted, function ($a, $b) { return $a[1] - $b[1]; });
+    $count = 0;
+    $cur = -2000000;
+    foreach ($sorted as $p) {
+        if ($p[0] > $cur) {
+            $count++;
+            $cur = $p[1];
+        }
+    }
+    return $count;
+}
+@@@LANG ruby
+def findLongestChain(pairs)
+  sorted = pairs.sort_by { |p| p[1] }
+  count = 0
+  cur = -2000000
+  sorted.each do |p|
+    if p[0] > cur
+      count += 1
+      cur = p[1]
+    end
+  end
+  count
+end
+
+@@@PROBLEM 2-keys-keyboard
+@@@LANG typescript
+function minSteps(n: number): number {
+    var steps = 0;
+    for (var factor = 2; factor * factor <= n; factor++) {
+        while (n % factor === 0) {
+            steps += factor;
+            n /= factor;
+        }
+    }
+    if (n > 1) steps += n;
+    return steps;
+}
+@@@LANG java
+public static int minSteps(int n) {
+    int steps = 0;
+    for (int factor = 2; factor * factor <= n; factor++) {
+        while (n % factor == 0) {
+            steps += factor;
+            n /= factor;
+        }
+    }
+    if (n > 1) steps += n;
+    return steps;
+}
+@@@LANG cpp
+int minSteps(int n) {
+    int steps = 0;
+    for (int factor = 2; factor * factor <= n; factor++) {
+        while (n % factor == 0) {
+            steps += factor;
+            n /= factor;
+        }
+    }
+    if (n > 1) steps += n;
+    return steps;
+}
+@@@LANG c
+int minSteps(int n) {
+    int steps = 0;
+    for (int factor = 2; factor * factor <= n; factor++) {
+        while (n % factor == 0) {
+            steps += factor;
+            n /= factor;
+        }
+    }
+    if (n > 1) steps += n;
+    return steps;
+}
+@@@LANG csharp
+public static int MinSteps(int n)
+{
+    int steps = 0;
+    for (int factor = 2; factor * factor <= n; factor++)
+    {
+        while (n % factor == 0)
+        {
+            steps += factor;
+            n /= factor;
+        }
+    }
+    if (n > 1) steps += n;
+    return steps;
+}
+@@@LANG go
+func minSteps(n int) int {
+	steps := 0
+	for factor := 2; factor*factor <= n; factor++ {
+		for n%factor == 0 {
+			steps += factor
+			n /= factor
+		}
+	}
+	if n > 1 {
+		steps += n
+	}
+	return steps
+}
+@@@LANG kotlin
+fun minSteps(n: Int): Int {
+    var rest = n
+    var steps = 0
+    var factor = 2
+    while (factor * factor <= rest) {
+        while (rest % factor == 0) {
+            steps += factor
+            rest /= factor
+        }
+        factor++
+    }
+    if (rest > 1) steps += rest
+    return steps
+}
+@@@LANG swift
+func minSteps(_ n: Int) -> Int {
+    var rest = n
+    var steps = 0
+    var factor = 2
+    while factor * factor <= rest {
+        while rest % factor == 0 {
+            steps += factor
+            rest /= factor
+        }
+        factor += 1
+    }
+    if rest > 1 { steps += rest }
+    return steps
+}
+@@@LANG rust
+fn minSteps(n: i32) -> i32 {
+    let mut rest = n;
+    let mut steps = 0;
+    let mut factor = 2;
+    while factor * factor <= rest {
+        while rest % factor == 0 {
+            steps += factor;
+            rest /= factor;
+        }
+        factor += 1;
+    }
+    if rest > 1 {
+        steps += rest;
+    }
+    steps
+}
+@@@LANG php
+function minSteps($n) {
+    $steps = 0;
+    for ($factor = 2; $factor * $factor <= $n; $factor++) {
+        while ($n % $factor === 0) {
+            $steps += $factor;
+            $n = intdiv($n, $factor);
+        }
+    }
+    if ($n > 1) $steps += $n;
+    return $steps;
+}
+@@@LANG ruby
+def minSteps(n)
+  steps = 0
+  factor = 2
+  while factor * factor <= n
+    while n % factor == 0
+      steps += factor
+      n /= factor
+    end
+    factor += 1
+  end
+  steps += n if n > 1
+  steps
+end
+
+@@@PROBLEM count-vowels-permutation
+@@@LANG typescript
+function countVowelPermutation(n: number): number {
+    var MOD = 1000000007;
+    var a = 1;
+    var e = 1;
+    var i = 1;
+    var o = 1;
+    var u = 1;
+    for (var step = 1; step < n; step++) {
+        var na = (e + i + u) % MOD;
+        var ne = (a + i) % MOD;
+        var ni = (e + o) % MOD;
+        var no = i % MOD;
+        var nu = (i + o) % MOD;
+        a = na;
+        e = ne;
+        i = ni;
+        o = no;
+        u = nu;
+    }
+    return (a + e + i + o + u) % MOD;
+}
+@@@LANG java
+public static int countVowelPermutation(int n) {
+    final long MOD = 1000000007L;
+    long a = 1, e = 1, i = 1, o = 1, u = 1;
+    for (int step = 1; step < n; step++) {
+        long na = (e + i + u) % MOD;
+        long ne = (a + i) % MOD;
+        long ni = (e + o) % MOD;
+        long no = i % MOD;
+        long nu = (i + o) % MOD;
+        a = na; e = ne; i = ni; o = no; u = nu;
+    }
+    return (int) ((a + e + i + o + u) % MOD);
+}
+@@@LANG cpp
+int countVowelPermutation(int n) {
+    const long long MOD = 1000000007LL;
+    long long a = 1, e = 1, i = 1, o = 1, u = 1;
+    for (int step = 1; step < n; step++) {
+        long long na = (e + i + u) % MOD;
+        long long ne = (a + i) % MOD;
+        long long ni = (e + o) % MOD;
+        long long no = i % MOD;
+        long long nu = (i + o) % MOD;
+        a = na; e = ne; i = ni; o = no; u = nu;
+    }
+    return (int) ((a + e + i + o + u) % MOD);
+}
+@@@LANG c
+int countVowelPermutation(int n) {
+    const long long MOD = 1000000007LL;
+    long long a = 1, e = 1, i = 1, o = 1, u = 1;
+    for (int step = 1; step < n; step++) {
+        long long na = (e + i + u) % MOD;
+        long long ne = (a + i) % MOD;
+        long long ni = (e + o) % MOD;
+        long long no = i % MOD;
+        long long nu = (i + o) % MOD;
+        a = na; e = ne; i = ni; o = no; u = nu;
+    }
+    return (int) ((a + e + i + o + u) % MOD);
+}
+@@@LANG csharp
+public static int CountVowelPermutation(int n)
+{
+    const long MOD = 1000000007L;
+    long a = 1, e = 1, i = 1, o = 1, u = 1;
+    for (int step = 1; step < n; step++)
+    {
+        long na = (e + i + u) % MOD;
+        long ne = (a + i) % MOD;
+        long ni = (e + o) % MOD;
+        long no = i % MOD;
+        long nu = (i + o) % MOD;
+        a = na; e = ne; i = ni; o = no; u = nu;
+    }
+    return (int) ((a + e + i + o + u) % MOD);
+}
+@@@LANG go
+func countVowelPermutation(n int) int {
+	const MOD = 1000000007
+	a, e, i, o, u := 1, 1, 1, 1, 1
+	for step := 1; step < n; step++ {
+		na := (e + i + u) % MOD
+		ne := (a + i) % MOD
+		ni := (e + o) % MOD
+		no := i % MOD
+		nu := (i + o) % MOD
+		a, e, i, o, u = na, ne, ni, no, nu
+	}
+	return (a + e + i + o + u) % MOD
+}
+@@@LANG kotlin
+fun countVowelPermutation(n: Int): Int {
+    val MOD = 1000000007L
+    var a = 1L
+    var e = 1L
+    var i = 1L
+    var o = 1L
+    var u = 1L
+    for (step in 1 until n) {
+        val na = (e + i + u) % MOD
+        val ne = (a + i) % MOD
+        val ni = (e + o) % MOD
+        val no = i % MOD
+        val nu = (i + o) % MOD
+        a = na; e = ne; i = ni; o = no; u = nu
+    }
+    return ((a + e + i + o + u) % MOD).toInt()
+}
+@@@LANG swift
+func countVowelPermutation(_ n: Int) -> Int {
+    let MOD = 1000000007
+    var a = 1
+    var e = 1
+    var i = 1
+    var o = 1
+    var u = 1
+    var step = 1
+    while step < n {
+        let na = (e + i + u) % MOD
+        let ne = (a + i) % MOD
+        let ni = (e + o) % MOD
+        let no = i % MOD
+        let nu = (i + o) % MOD
+        a = na
+        e = ne
+        i = ni
+        o = no
+        u = nu
+        step += 1
+    }
+    return (a + e + i + o + u) % MOD
+}
+@@@LANG rust
+fn countVowelPermutation(n: i32) -> i32 {
+    let modulus = 1000000007i64;
+    let mut a = 1i64;
+    let mut e = 1i64;
+    let mut i = 1i64;
+    let mut o = 1i64;
+    let mut u = 1i64;
+    for _ in 1..n {
+        let na = (e + i + u) % modulus;
+        let ne = (a + i) % modulus;
+        let ni = (e + o) % modulus;
+        let no = i % modulus;
+        let nu = (i + o) % modulus;
+        a = na;
+        e = ne;
+        i = ni;
+        o = no;
+        u = nu;
+    }
+    ((a + e + i + o + u) % modulus) as i32
+}
+@@@LANG php
+function countVowelPermutation($n) {
+    $MOD = 1000000007;
+    $a = 1; $e = 1; $i = 1; $o = 1; $u = 1;
+    for ($step = 1; $step < $n; $step++) {
+        $na = ($e + $i + $u) % $MOD;
+        $ne = ($a + $i) % $MOD;
+        $ni = ($e + $o) % $MOD;
+        $no = $i % $MOD;
+        $nu = ($i + $o) % $MOD;
+        $a = $na; $e = $ne; $i = $ni; $o = $no; $u = $nu;
+    }
+    return ($a + $e + $i + $o + $u) % $MOD;
+}
+@@@LANG ruby
+def countVowelPermutation(n)
+  mod = 1000000007
+  a = e = i = o = u = 1
+  (1...n).each do
+    na = (e + i + u) % mod
+    ne = (a + i) % mod
+    ni = (e + o) % mod
+    no = i % mod
+    nu = (i + o) % mod
+    a = na
+    e = ne
+    i = ni
+    o = no
+    u = nu
+  end
+  (a + e + i + o + u) % mod
+end
+
+@@@PROBLEM knight-dialer
+@@@LANG typescript
+function knightDialer(n: number): number {
+    var MOD = 1000000007;
+    var moves = [[4, 6], [6, 8], [7, 9], [4, 8], [3, 9, 0], [], [1, 7, 0], [2, 6], [1, 3], [2, 4]];
+    var dp: number[] = [];
+    for (var k = 0; k < 10; k++) dp.push(1);
+    for (var step = 1; step < n; step++) {
+        var next: number[] = [];
+        for (var d = 0; d < 10; d++) next.push(0);
+        for (var digit = 0; digit < 10; digit++) {
+            for (var m = 0; m < moves[digit].length; m++) {
+                next[digit] = (next[digit] + dp[moves[digit][m]]) % MOD;
+            }
+        }
+        dp = next;
+    }
+    var total = 0;
+    for (var x = 0; x < 10; x++) total = (total + dp[x]) % MOD;
+    return total;
+}
+@@@LANG java
+public static int knightDialer(int n) {
+    final int MOD = 1000000007;
+    int[][] moves = {{4, 6}, {6, 8}, {7, 9}, {4, 8}, {3, 9, 0}, {}, {1, 7, 0}, {2, 6}, {1, 3}, {2, 4}};
+    int[] dp = new int[10];
+    Arrays.fill(dp, 1);
+    for (int step = 1; step < n; step++) {
+        int[] next = new int[10];
+        for (int digit = 0; digit < 10; digit++) {
+            for (int to : moves[digit]) {
+                next[digit] = (next[digit] + dp[to]) % MOD;
+            }
+        }
+        dp = next;
+    }
+    int total = 0;
+    for (int d = 0; d < 10; d++) total = (total + dp[d]) % MOD;
+    return total;
+}
+@@@LANG cpp
+int knightDialer(int n) {
+    const int MOD = 1000000007;
+    vector<vector<int>> moves = {{4, 6}, {6, 8}, {7, 9}, {4, 8}, {3, 9, 0}, {}, {1, 7, 0}, {2, 6}, {1, 3}, {2, 4}};
+    vector<int> dp(10, 1);
+    for (int step = 1; step < n; step++) {
+        vector<int> next(10, 0);
+        for (int digit = 0; digit < 10; digit++) {
+            for (int to : moves[digit]) {
+                next[digit] = (next[digit] + dp[to]) % MOD;
+            }
+        }
+        dp = next;
+    }
+    int total = 0;
+    for (int d = 0; d < 10; d++) total = (total + dp[d]) % MOD;
+    return total;
+}
+@@@LANG c
+int knightDialer(int n) {
+    const int MOD = 1000000007;
+    int moves[10][3] = {
+        {4, 6, -1}, {6, 8, -1}, {7, 9, -1}, {4, 8, -1}, {3, 9, 0},
+        {-1, -1, -1}, {1, 7, 0}, {2, 6, -1}, {1, 3, -1}, {2, 4, -1}
+    };
+    int dp[10];
+    int next[10];
+    for (int d = 0; d < 10; d++) dp[d] = 1;
+    for (int step = 1; step < n; step++) {
+        for (int d = 0; d < 10; d++) next[d] = 0;
+        for (int digit = 0; digit < 10; digit++) {
+            for (int m = 0; m < 3; m++) {
+                if (moves[digit][m] < 0) continue;
+                next[digit] = (next[digit] + dp[moves[digit][m]]) % MOD;
+            }
+        }
+        for (int d = 0; d < 10; d++) dp[d] = next[d];
+    }
+    int total = 0;
+    for (int d = 0; d < 10; d++) total = (total + dp[d]) % MOD;
+    return total;
+}
+@@@LANG csharp
+public static int KnightDialer(int n)
+{
+    const int MOD = 1000000007;
+    int[][] moves = new int[][] {
+        new int[] {4, 6}, new int[] {6, 8}, new int[] {7, 9}, new int[] {4, 8},
+        new int[] {3, 9, 0}, new int[] {}, new int[] {1, 7, 0}, new int[] {2, 6},
+        new int[] {1, 3}, new int[] {2, 4}
+    };
+    int[] dp = new int[10];
+    for (int d = 0; d < 10; d++) dp[d] = 1;
+    for (int step = 1; step < n; step++)
+    {
+        int[] next = new int[10];
+        for (int digit = 0; digit < 10; digit++)
+        {
+            foreach (int to in moves[digit])
+            {
+                next[digit] = (next[digit] + dp[to]) % MOD;
+            }
+        }
+        dp = next;
+    }
+    int total = 0;
+    for (int d = 0; d < 10; d++) total = (total + dp[d]) % MOD;
+    return total;
+}
+@@@LANG go
+func knightDialer(n int) int {
+	const MOD = 1000000007
+	moves := [][]int{{4, 6}, {6, 8}, {7, 9}, {4, 8}, {3, 9, 0}, {}, {1, 7, 0}, {2, 6}, {1, 3}, {2, 4}}
+	dp := make([]int, 10)
+	for d := range dp {
+		dp[d] = 1
+	}
+	for step := 1; step < n; step++ {
+		next := make([]int, 10)
+		for digit := 0; digit < 10; digit++ {
+			for _, to := range moves[digit] {
+				next[digit] = (next[digit] + dp[to]) % MOD
+			}
+		}
+		dp = next
+	}
+	total := 0
+	for d := 0; d < 10; d++ {
+		total = (total + dp[d]) % MOD
+	}
+	return total
+}
+@@@LANG kotlin
+fun knightDialer(n: Int): Int {
+    val MOD = 1000000007
+    val moves = arrayOf(
+        intArrayOf(4, 6), intArrayOf(6, 8), intArrayOf(7, 9), intArrayOf(4, 8),
+        intArrayOf(3, 9, 0), intArrayOf(), intArrayOf(1, 7, 0), intArrayOf(2, 6),
+        intArrayOf(1, 3), intArrayOf(2, 4)
+    )
+    var dp = IntArray(10) { 1 }
+    for (step in 1 until n) {
+        val next = IntArray(10)
+        for (digit in 0 until 10) {
+            for (to in moves[digit]) {
+                next[digit] = (next[digit] + dp[to]) % MOD
+            }
+        }
+        dp = next
+    }
+    var total = 0
+    for (d in 0 until 10) total = (total + dp[d]) % MOD
+    return total
+}
+@@@LANG swift
+func knightDialer(_ n: Int) -> Int {
+    let MOD = 1000000007
+    let moves: [[Int]] = [[4, 6], [6, 8], [7, 9], [4, 8], [3, 9, 0], [], [1, 7, 0], [2, 6], [1, 3], [2, 4]]
+    var dp = [Int](repeating: 1, count: 10)
+    var step = 1
+    while step < n {
+        var next = [Int](repeating: 0, count: 10)
+        for digit in 0..<10 {
+            for to in moves[digit] {
+                next[digit] = (next[digit] + dp[to]) % MOD
+            }
+        }
+        dp = next
+        step += 1
+    }
+    var total = 0
+    for d in 0..<10 { total = (total + dp[d]) % MOD }
+    return total
+}
+@@@LANG rust
+fn knightDialer(n: i32) -> i32 {
+    let modulus = 1000000007i64;
+    let moves: Vec<Vec<usize>> = vec![
+        vec![4, 6], vec![6, 8], vec![7, 9], vec![4, 8], vec![3, 9, 0],
+        vec![], vec![1, 7, 0], vec![2, 6], vec![1, 3], vec![2, 4],
+    ];
+    let mut dp = vec![1i64; 10];
+    for _ in 1..n {
+        let mut next = vec![0i64; 10];
+        for digit in 0..10 {
+            for to in moves[digit].iter() {
+                next[digit] = (next[digit] + dp[*to]) % modulus;
+            }
+        }
+        dp = next;
+    }
+    let mut total = 0i64;
+    for d in 0..10 {
+        total = (total + dp[d]) % modulus;
+    }
+    total as i32
+}
+@@@LANG php
+function knightDialer($n) {
+    $MOD = 1000000007;
+    $moves = array(
+        array(4, 6), array(6, 8), array(7, 9), array(4, 8), array(3, 9, 0),
+        array(), array(1, 7, 0), array(2, 6), array(1, 3), array(2, 4)
+    );
+    $dp = array_fill(0, 10, 1);
+    for ($step = 1; $step < $n; $step++) {
+        $next = array_fill(0, 10, 0);
+        for ($digit = 0; $digit < 10; $digit++) {
+            foreach ($moves[$digit] as $to) {
+                $next[$digit] = ($next[$digit] + $dp[$to]) % $MOD;
+            }
+        }
+        $dp = $next;
+    }
+    $total = 0;
+    for ($d = 0; $d < 10; $d++) $total = ($total + $dp[$d]) % $MOD;
+    return $total;
+}
+@@@LANG ruby
+def knightDialer(n)
+  mod = 1000000007
+  moves = [[4, 6], [6, 8], [7, 9], [4, 8], [3, 9, 0], [], [1, 7, 0], [2, 6], [1, 3], [2, 4]]
+  dp = Array.new(10, 1)
+  (1...n).each do
+    nxt = Array.new(10, 0)
+    (0...10).each do |digit|
+      moves[digit].each do |to|
+        nxt[digit] = (nxt[digit] + dp[to]) % mod
+      end
+    end
+    dp = nxt
+  end
+  dp.sum % mod
+end

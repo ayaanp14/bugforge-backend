@@ -1,0 +1,1899 @@
+@@@PROBLEM interleaving-string
+@@@LANG typescript
+function isInterleave(s1: string, s2: string, s3: string): boolean {
+    var m = s1.length;
+    var n = s2.length;
+    if (m + n !== s3.length) return false;
+    var dp: boolean[][] = [];
+    for (var i = 0; i <= m; i++) {
+        var row: boolean[] = [];
+        for (var j = 0; j <= n; j++) row.push(false);
+        dp.push(row);
+    }
+    dp[0][0] = true;
+    for (var a = 0; a <= m; a++) {
+        for (var b = 0; b <= n; b++) {
+            if (a > 0 && dp[a - 1][b] && s1.charAt(a - 1) === s3.charAt(a + b - 1)) dp[a][b] = true;
+            if (b > 0 && dp[a][b - 1] && s2.charAt(b - 1) === s3.charAt(a + b - 1)) dp[a][b] = true;
+        }
+    }
+    return dp[m][n];
+}
+@@@LANG java
+public static boolean isInterleave(String s1, String s2, String s3) {
+    int m = s1.length(), n = s2.length();
+    if (m + n != s3.length()) return false;
+    boolean[][] dp = new boolean[m + 1][n + 1];
+    dp[0][0] = true;
+    for (int i = 0; i <= m; i++) {
+        for (int j = 0; j <= n; j++) {
+            if (i > 0 && dp[i - 1][j] && s1.charAt(i - 1) == s3.charAt(i + j - 1)) dp[i][j] = true;
+            if (j > 0 && dp[i][j - 1] && s2.charAt(j - 1) == s3.charAt(i + j - 1)) dp[i][j] = true;
+        }
+    }
+    return dp[m][n];
+}
+@@@LANG cpp
+bool isInterleave(string s1, string s2, string s3) {
+    int m = (int) s1.size(), n = (int) s2.size();
+    if (m + n != (int) s3.size()) return false;
+    vector<vector<bool>> dp(m + 1, vector<bool>(n + 1, false));
+    dp[0][0] = true;
+    for (int i = 0; i <= m; i++) {
+        for (int j = 0; j <= n; j++) {
+            if (i > 0 && dp[i - 1][j] && s1[i - 1] == s3[i + j - 1]) dp[i][j] = true;
+            if (j > 0 && dp[i][j - 1] && s2[j - 1] == s3[i + j - 1]) dp[i][j] = true;
+        }
+    }
+    return dp[m][n];
+}
+@@@LANG c
+bool isInterleave(const char* s1, const char* s2, const char* s3) {
+    int m = (int) strlen(s1), n = (int) strlen(s2);
+    if (m + n != (int) strlen(s3)) return false;
+    char* dp = (char*) calloc((m + 1) * (n + 1), 1);
+    dp[0] = 1;
+    for (int i = 0; i <= m; i++) {
+        for (int j = 0; j <= n; j++) {
+            int idx = i * (n + 1) + j;
+            if (i > 0 && dp[(i - 1) * (n + 1) + j] && s1[i - 1] == s3[i + j - 1]) dp[idx] = 1;
+            if (j > 0 && dp[i * (n + 1) + j - 1] && s2[j - 1] == s3[i + j - 1]) dp[idx] = 1;
+        }
+    }
+    bool result = dp[m * (n + 1) + n] != 0;
+    free(dp);
+    return result;
+}
+@@@LANG csharp
+public static bool IsInterleave(string s1, string s2, string s3)
+{
+    int m = s1.Length, n = s2.Length;
+    if (m + n != s3.Length) return false;
+    bool[][] dp = new bool[m + 1][];
+    for (int i = 0; i <= m; i++) dp[i] = new bool[n + 1];
+    dp[0][0] = true;
+    for (int i = 0; i <= m; i++)
+    {
+        for (int j = 0; j <= n; j++)
+        {
+            if (i > 0 && dp[i - 1][j] && s1[i - 1] == s3[i + j - 1]) dp[i][j] = true;
+            if (j > 0 && dp[i][j - 1] && s2[j - 1] == s3[i + j - 1]) dp[i][j] = true;
+        }
+    }
+    return dp[m][n];
+}
+@@@LANG go
+func isInterleave(s1 string, s2 string, s3 string) bool {
+	m, n := len(s1), len(s2)
+	if m+n != len(s3) {
+		return false
+	}
+	dp := make([][]bool, m+1)
+	for i := range dp {
+		dp[i] = make([]bool, n+1)
+	}
+	dp[0][0] = true
+	for i := 0; i <= m; i++ {
+		for j := 0; j <= n; j++ {
+			if i > 0 && dp[i-1][j] && s1[i-1] == s3[i+j-1] {
+				dp[i][j] = true
+			}
+			if j > 0 && dp[i][j-1] && s2[j-1] == s3[i+j-1] {
+				dp[i][j] = true
+			}
+		}
+	}
+	return dp[m][n]
+}
+@@@LANG kotlin
+fun isInterleave(s1: String, s2: String, s3: String): Boolean {
+    val m = s1.length
+    val n = s2.length
+    if (m + n != s3.length) return false
+    val dp = Array(m + 1) { BooleanArray(n + 1) }
+    dp[0][0] = true
+    for (i in 0..m) {
+        for (j in 0..n) {
+            if (i > 0 && dp[i - 1][j] && s1[i - 1] == s3[i + j - 1]) dp[i][j] = true
+            if (j > 0 && dp[i][j - 1] && s2[j - 1] == s3[i + j - 1]) dp[i][j] = true
+        }
+    }
+    return dp[m][n]
+}
+@@@LANG swift
+func isInterleave(_ s1: String, _ s2: String, _ s3: String) -> Bool {
+    let a = Array(s1)
+    let b = Array(s2)
+    let c = Array(s3)
+    let m = a.count
+    let n = b.count
+    if m + n != c.count { return false }
+    var dp = [[Bool]](repeating: [Bool](repeating: false, count: n + 1), count: m + 1)
+    dp[0][0] = true
+    for i in 0...m {
+        for j in 0...n {
+            if i > 0 && dp[i - 1][j] && a[i - 1] == c[i + j - 1] { dp[i][j] = true }
+            if j > 0 && dp[i][j - 1] && b[j - 1] == c[i + j - 1] { dp[i][j] = true }
+        }
+    }
+    return dp[m][n]
+}
+@@@LANG rust
+fn isInterleave(s1: String, s2: String, s3: String) -> bool {
+    let a = s1.as_bytes();
+    let b = s2.as_bytes();
+    let c = s3.as_bytes();
+    let m = a.len();
+    let n = b.len();
+    if m + n != c.len() {
+        return false;
+    }
+    let mut dp = vec![vec![false; n + 1]; m + 1];
+    dp[0][0] = true;
+    for i in 0..=m {
+        for j in 0..=n {
+            if i > 0 && dp[i - 1][j] && a[i - 1] == c[i + j - 1] {
+                dp[i][j] = true;
+            }
+            if j > 0 && dp[i][j - 1] && b[j - 1] == c[i + j - 1] {
+                dp[i][j] = true;
+            }
+        }
+    }
+    dp[m][n]
+}
+@@@LANG php
+function isInterleave($s1, $s2, $s3) {
+    $m = strlen($s1);
+    $n = strlen($s2);
+    if ($m + $n !== strlen($s3)) return false;
+    $dp = array();
+    for ($i = 0; $i <= $m; $i++) $dp[] = array_fill(0, $n + 1, false);
+    $dp[0][0] = true;
+    for ($i = 0; $i <= $m; $i++) {
+        for ($j = 0; $j <= $n; $j++) {
+            if ($i > 0 && $dp[$i - 1][$j] && $s1[$i - 1] === $s3[$i + $j - 1]) $dp[$i][$j] = true;
+            if ($j > 0 && $dp[$i][$j - 1] && $s2[$j - 1] === $s3[$i + $j - 1]) $dp[$i][$j] = true;
+        }
+    }
+    return $dp[$m][$n];
+}
+@@@LANG ruby
+def isInterleave(s1, s2, s3)
+  m = s1.length
+  n = s2.length
+  return false if m + n != s3.length
+  dp = Array.new(m + 1) { Array.new(n + 1, false) }
+  dp[0][0] = true
+  (0..m).each do |i|
+    (0..n).each do |j|
+      dp[i][j] = true if i > 0 && dp[i - 1][j] && s1[i - 1] == s3[i + j - 1]
+      dp[i][j] = true if j > 0 && dp[i][j - 1] && s2[j - 1] == s3[i + j - 1]
+    end
+  end
+  dp[m][n]
+end
+
+@@@PROBLEM minimum-falling-path-sum
+@@@LANG typescript
+function minFallingPathSum(matrix: number[][]): number {
+    var n = matrix.length;
+    var dp = matrix[0].slice();
+    for (var r = 1; r < n; r++) {
+        var next: number[] = [];
+        for (var c = 0; c < n; c++) {
+            var best = dp[c];
+            if (c > 0 && dp[c - 1] < best) best = dp[c - 1];
+            if (c + 1 < n && dp[c + 1] < best) best = dp[c + 1];
+            next.push(matrix[r][c] + best);
+        }
+        dp = next;
+    }
+    var answer = dp[0];
+    for (var k = 1; k < n; k++) {
+        if (dp[k] < answer) answer = dp[k];
+    }
+    return answer;
+}
+@@@LANG java
+public static int minFallingPathSum(int[][] matrix) {
+    int n = matrix.length;
+    int[] dp = Arrays.copyOf(matrix[0], n);
+    for (int r = 1; r < n; r++) {
+        int[] next = new int[n];
+        for (int c = 0; c < n; c++) {
+            int best = dp[c];
+            if (c > 0) best = Math.min(best, dp[c - 1]);
+            if (c + 1 < n) best = Math.min(best, dp[c + 1]);
+            next[c] = matrix[r][c] + best;
+        }
+        dp = next;
+    }
+    int answer = dp[0];
+    for (int c = 1; c < n; c++) answer = Math.min(answer, dp[c]);
+    return answer;
+}
+@@@LANG cpp
+int minFallingPathSum(vector<vector<int>>& matrix) {
+    int n = (int) matrix.size();
+    vector<int> dp = matrix[0];
+    for (int r = 1; r < n; r++) {
+        vector<int> next(n, 0);
+        for (int c = 0; c < n; c++) {
+            int best = dp[c];
+            if (c > 0) best = min(best, dp[c - 1]);
+            if (c + 1 < n) best = min(best, dp[c + 1]);
+            next[c] = matrix[r][c] + best;
+        }
+        dp = next;
+    }
+    return *min_element(dp.begin(), dp.end());
+}
+@@@LANG c
+int minFallingPathSum(int** matrix, int matrixSize, int* matrixColSize) {
+    int n = matrixSize;
+    int* dp = (int*) malloc(sizeof(int) * n);
+    int* next = (int*) malloc(sizeof(int) * n);
+    for (int c = 0; c < n; c++) dp[c] = matrix[0][c];
+    for (int r = 1; r < n; r++) {
+        for (int c = 0; c < n; c++) {
+            int best = dp[c];
+            if (c > 0 && dp[c - 1] < best) best = dp[c - 1];
+            if (c + 1 < n && dp[c + 1] < best) best = dp[c + 1];
+            next[c] = matrix[r][c] + best;
+        }
+        for (int c = 0; c < n; c++) dp[c] = next[c];
+    }
+    int answer = dp[0];
+    for (int c = 1; c < n; c++) {
+        if (dp[c] < answer) answer = dp[c];
+    }
+    free(dp);
+    free(next);
+    return answer;
+}
+@@@LANG csharp
+public static int MinFallingPathSum(int[][] matrix)
+{
+    int n = matrix.Length;
+    int[] dp = (int[]) matrix[0].Clone();
+    for (int r = 1; r < n; r++)
+    {
+        int[] next = new int[n];
+        for (int c = 0; c < n; c++)
+        {
+            int best = dp[c];
+            if (c > 0) best = Math.Min(best, dp[c - 1]);
+            if (c + 1 < n) best = Math.Min(best, dp[c + 1]);
+            next[c] = matrix[r][c] + best;
+        }
+        dp = next;
+    }
+    int answer = dp[0];
+    for (int c = 1; c < n; c++) answer = Math.Min(answer, dp[c]);
+    return answer;
+}
+@@@LANG go
+func minFallingPathSum(matrix [][]int) int {
+	n := len(matrix)
+	dp := make([]int, n)
+	copy(dp, matrix[0])
+	for r := 1; r < n; r++ {
+		next := make([]int, n)
+		for c := 0; c < n; c++ {
+			best := dp[c]
+			if c > 0 && dp[c-1] < best {
+				best = dp[c-1]
+			}
+			if c+1 < n && dp[c+1] < best {
+				best = dp[c+1]
+			}
+			next[c] = matrix[r][c] + best
+		}
+		dp = next
+	}
+	answer := dp[0]
+	for c := 1; c < n; c++ {
+		if dp[c] < answer {
+			answer = dp[c]
+		}
+	}
+	return answer
+}
+@@@LANG kotlin
+fun minFallingPathSum(matrix: Array<IntArray>): Int {
+    val n = matrix.size
+    var dp = matrix[0].copyOf()
+    for (r in 1 until n) {
+        val next = IntArray(n)
+        for (c in 0 until n) {
+            var best = dp[c]
+            if (c > 0 && dp[c - 1] < best) best = dp[c - 1]
+            if (c + 1 < n && dp[c + 1] < best) best = dp[c + 1]
+            next[c] = matrix[r][c] + best
+        }
+        dp = next
+    }
+    var answer = dp[0]
+    for (c in 1 until n) {
+        if (dp[c] < answer) answer = dp[c]
+    }
+    return answer
+}
+@@@LANG swift
+func minFallingPathSum(_ matrix: [[Int]]) -> Int {
+    let n = matrix.count
+    var dp = matrix[0]
+    var r = 1
+    while r < n {
+        var next = [Int](repeating: 0, count: n)
+        for c in 0..<n {
+            var best = dp[c]
+            if c > 0 && dp[c - 1] < best { best = dp[c - 1] }
+            if c + 1 < n && dp[c + 1] < best { best = dp[c + 1] }
+            next[c] = matrix[r][c] + best
+        }
+        dp = next
+        r += 1
+    }
+    var answer = dp[0]
+    for c in 1..<max(n, 1) where c < n {
+        if dp[c] < answer { answer = dp[c] }
+    }
+    return answer
+}
+@@@LANG rust
+fn minFallingPathSum(matrix: Vec<Vec<i32>>) -> i32 {
+    let n = matrix.len();
+    let mut dp = matrix[0].clone();
+    for r in 1..n {
+        let mut next = vec![0i32; n];
+        for c in 0..n {
+            let mut best = dp[c];
+            if c > 0 && dp[c - 1] < best {
+                best = dp[c - 1];
+            }
+            if c + 1 < n && dp[c + 1] < best {
+                best = dp[c + 1];
+            }
+            next[c] = matrix[r][c] + best;
+        }
+        dp = next;
+    }
+    let mut answer = dp[0];
+    for c in 1..n {
+        if dp[c] < answer {
+            answer = dp[c];
+        }
+    }
+    answer
+}
+@@@LANG php
+function minFallingPathSum($matrix) {
+    $n = count($matrix);
+    $dp = $matrix[0];
+    for ($r = 1; $r < $n; $r++) {
+        $next = array();
+        for ($c = 0; $c < $n; $c++) {
+            $best = $dp[$c];
+            if ($c > 0 && $dp[$c - 1] < $best) $best = $dp[$c - 1];
+            if ($c + 1 < $n && $dp[$c + 1] < $best) $best = $dp[$c + 1];
+            $next[] = $matrix[$r][$c] + $best;
+        }
+        $dp = $next;
+    }
+    return min($dp);
+}
+@@@LANG ruby
+def minFallingPathSum(matrix)
+  n = matrix.length
+  dp = matrix[0].dup
+  (1...n).each do |r|
+    nxt = (0...n).map do |c|
+      best = dp[c]
+      best = dp[c - 1] if c > 0 && dp[c - 1] < best
+      best = dp[c + 1] if c + 1 < n && dp[c + 1] < best
+      matrix[r][c] + best
+    end
+    dp = nxt
+  end
+  dp.min
+end
+
+@@@PROBLEM triangle
+@@@LANG typescript
+function minimumTotal(triangle: number[][]): number {
+    var n = triangle.length;
+    var dp = triangle[n - 1].slice();
+    for (var r = n - 2; r >= 0; r--) {
+        for (var c = 0; c <= r; c++) {
+            dp[c] = triangle[r][c] + Math.min(dp[c], dp[c + 1]);
+        }
+    }
+    return dp[0];
+}
+@@@LANG java
+public static int minimumTotal(int[][] triangle) {
+    int n = triangle.length;
+    int[] dp = Arrays.copyOf(triangle[n - 1], n);
+    for (int r = n - 2; r >= 0; r--) {
+        for (int c = 0; c <= r; c++) {
+            dp[c] = triangle[r][c] + Math.min(dp[c], dp[c + 1]);
+        }
+    }
+    return dp[0];
+}
+@@@LANG cpp
+int minimumTotal(vector<vector<int>>& triangle) {
+    int n = (int) triangle.size();
+    vector<int> dp = triangle[n - 1];
+    for (int r = n - 2; r >= 0; r--) {
+        for (int c = 0; c <= r; c++) {
+            dp[c] = triangle[r][c] + min(dp[c], dp[c + 1]);
+        }
+    }
+    return dp[0];
+}
+@@@LANG c
+int minimumTotal(int** triangle, int triangleSize, int* triangleColSize) {
+    int n = triangleSize;
+    int* dp = (int*) malloc(sizeof(int) * n);
+    for (int c = 0; c < n; c++) dp[c] = triangle[n - 1][c];
+    for (int r = n - 2; r >= 0; r--) {
+        for (int c = 0; c <= r; c++) {
+            int best = dp[c] < dp[c + 1] ? dp[c] : dp[c + 1];
+            dp[c] = triangle[r][c] + best;
+        }
+    }
+    int result = dp[0];
+    free(dp);
+    return result;
+}
+@@@LANG csharp
+public static int MinimumTotal(int[][] triangle)
+{
+    int n = triangle.Length;
+    int[] dp = (int[]) triangle[n - 1].Clone();
+    for (int r = n - 2; r >= 0; r--)
+    {
+        for (int c = 0; c <= r; c++)
+        {
+            dp[c] = triangle[r][c] + Math.Min(dp[c], dp[c + 1]);
+        }
+    }
+    return dp[0];
+}
+@@@LANG go
+func minimumTotal(triangle [][]int) int {
+	n := len(triangle)
+	dp := make([]int, n)
+	copy(dp, triangle[n-1])
+	for r := n - 2; r >= 0; r-- {
+		for c := 0; c <= r; c++ {
+			best := dp[c]
+			if dp[c+1] < best {
+				best = dp[c+1]
+			}
+			dp[c] = triangle[r][c] + best
+		}
+	}
+	return dp[0]
+}
+@@@LANG kotlin
+fun minimumTotal(triangle: Array<IntArray>): Int {
+    val n = triangle.size
+    val dp = triangle[n - 1].copyOf()
+    for (r in n - 2 downTo 0) {
+        for (c in 0..r) {
+            dp[c] = triangle[r][c] + if (dp[c] < dp[c + 1]) dp[c] else dp[c + 1]
+        }
+    }
+    return dp[0]
+}
+@@@LANG swift
+func minimumTotal(_ triangle: [[Int]]) -> Int {
+    let n = triangle.count
+    var dp = triangle[n - 1]
+    var r = n - 2
+    while r >= 0 {
+        for c in 0...r {
+            dp[c] = triangle[r][c] + min(dp[c], dp[c + 1])
+        }
+        r -= 1
+    }
+    return dp[0]
+}
+@@@LANG rust
+fn minimumTotal(triangle: Vec<Vec<i32>>) -> i32 {
+    let n = triangle.len();
+    let mut dp = triangle[n - 1].clone();
+    let mut r = n as i32 - 2;
+    while r >= 0 {
+        let row = r as usize;
+        for c in 0..=row {
+            let best = if dp[c] < dp[c + 1] { dp[c] } else { dp[c + 1] };
+            dp[c] = triangle[row][c] + best;
+        }
+        r -= 1;
+    }
+    dp[0]
+}
+@@@LANG php
+function minimumTotal($triangle) {
+    $n = count($triangle);
+    $dp = $triangle[$n - 1];
+    for ($r = $n - 2; $r >= 0; $r--) {
+        for ($c = 0; $c <= $r; $c++) {
+            $dp[$c] = $triangle[$r][$c] + min($dp[$c], $dp[$c + 1]);
+        }
+    }
+    return $dp[0];
+}
+@@@LANG ruby
+def minimumTotal(triangle)
+  n = triangle.length
+  dp = triangle[n - 1].dup
+  (n - 2).downto(0) do |r|
+    (0..r).each do |c|
+      dp[c] = triangle[r][c] + [dp[c], dp[c + 1]].min
+    end
+  end
+  dp[0]
+end
+
+@@@PROBLEM perfect-squares
+@@@LANG typescript
+function numSquares(n: number): number {
+    var dp: number[] = [];
+    for (var k = 0; k <= n; k++) dp.push(n + 1);
+    dp[0] = 0;
+    for (var i = 1; i <= n; i++) {
+        for (var j = 1; j * j <= i; j++) {
+            if (dp[i - j * j] + 1 < dp[i]) dp[i] = dp[i - j * j] + 1;
+        }
+    }
+    return dp[n];
+}
+@@@LANG java
+public static int numSquares(int n) {
+    int[] dp = new int[n + 1];
+    Arrays.fill(dp, n + 1);
+    dp[0] = 0;
+    for (int i = 1; i <= n; i++) {
+        for (int k = 1; k * k <= i; k++) {
+            dp[i] = Math.min(dp[i], dp[i - k * k] + 1);
+        }
+    }
+    return dp[n];
+}
+@@@LANG cpp
+int numSquares(int n) {
+    vector<int> dp(n + 1, n + 1);
+    dp[0] = 0;
+    for (int i = 1; i <= n; i++) {
+        for (int k = 1; k * k <= i; k++) {
+            dp[i] = min(dp[i], dp[i - k * k] + 1);
+        }
+    }
+    return dp[n];
+}
+@@@LANG c
+int numSquares(int n) {
+    int* dp = (int*) malloc(sizeof(int) * (n + 1));
+    for (int i = 0; i <= n; i++) dp[i] = n + 1;
+    dp[0] = 0;
+    for (int i = 1; i <= n; i++) {
+        for (int k = 1; k * k <= i; k++) {
+            if (dp[i - k * k] + 1 < dp[i]) dp[i] = dp[i - k * k] + 1;
+        }
+    }
+    int result = dp[n];
+    free(dp);
+    return result;
+}
+@@@LANG csharp
+public static int NumSquares(int n)
+{
+    int[] dp = new int[n + 1];
+    for (int i = 0; i <= n; i++) dp[i] = n + 1;
+    dp[0] = 0;
+    for (int i = 1; i <= n; i++)
+    {
+        for (int k = 1; k * k <= i; k++)
+        {
+            dp[i] = Math.Min(dp[i], dp[i - k * k] + 1);
+        }
+    }
+    return dp[n];
+}
+@@@LANG go
+func numSquares(n int) int {
+	dp := make([]int, n+1)
+	for i := range dp {
+		dp[i] = n + 1
+	}
+	dp[0] = 0
+	for i := 1; i <= n; i++ {
+		for k := 1; k*k <= i; k++ {
+			if dp[i-k*k]+1 < dp[i] {
+				dp[i] = dp[i-k*k] + 1
+			}
+		}
+	}
+	return dp[n]
+}
+@@@LANG kotlin
+fun numSquares(n: Int): Int {
+    val dp = IntArray(n + 1) { n + 1 }
+    dp[0] = 0
+    for (i in 1..n) {
+        var k = 1
+        while (k * k <= i) {
+            if (dp[i - k * k] + 1 < dp[i]) dp[i] = dp[i - k * k] + 1
+            k++
+        }
+    }
+    return dp[n]
+}
+@@@LANG swift
+func numSquares(_ n: Int) -> Int {
+    var dp = [Int](repeating: n + 1, count: n + 1)
+    dp[0] = 0
+    for i in 1...max(n, 1) where i <= n {
+        var k = 1
+        while k * k <= i {
+            if dp[i - k * k] + 1 < dp[i] { dp[i] = dp[i - k * k] + 1 }
+            k += 1
+        }
+    }
+    return dp[n]
+}
+@@@LANG rust
+fn numSquares(n: i32) -> i32 {
+    let size = n as usize;
+    let mut dp = vec![n + 1; size + 1];
+    dp[0] = 0;
+    for i in 1..=size {
+        let mut k = 1usize;
+        while k * k <= i {
+            if dp[i - k * k] + 1 < dp[i] {
+                dp[i] = dp[i - k * k] + 1;
+            }
+            k += 1;
+        }
+    }
+    dp[size]
+}
+@@@LANG php
+function numSquares($n) {
+    $dp = array_fill(0, $n + 1, $n + 1);
+    $dp[0] = 0;
+    for ($i = 1; $i <= $n; $i++) {
+        for ($k = 1; $k * $k <= $i; $k++) {
+            if ($dp[$i - $k * $k] + 1 < $dp[$i]) $dp[$i] = $dp[$i - $k * $k] + 1;
+        }
+    }
+    return $dp[$n];
+}
+@@@LANG ruby
+def numSquares(n)
+  dp = Array.new(n + 1, n + 1)
+  dp[0] = 0
+  (1..n).each do |i|
+    k = 1
+    while k * k <= i
+      dp[i] = dp[i - k * k] + 1 if dp[i - k * k] + 1 < dp[i]
+      k += 1
+    end
+  end
+  dp[n]
+end
+
+@@@PROBLEM integer-break
+@@@LANG typescript
+function integerBreak(n: number): number {
+    var dp: number[] = [];
+    for (var k = 0; k <= n; k++) dp.push(0);
+    dp[1] = 1;
+    for (var i = 2; i <= n; i++) {
+        for (var j = 1; j < i; j++) {
+            var candidate = Math.max(j * (i - j), j * dp[i - j]);
+            if (candidate > dp[i]) dp[i] = candidate;
+        }
+    }
+    return dp[n];
+}
+@@@LANG java
+public static int integerBreak(int n) {
+    int[] dp = new int[n + 1];
+    dp[1] = 1;
+    for (int i = 2; i <= n; i++) {
+        for (int k = 1; k < i; k++) {
+            dp[i] = Math.max(dp[i], Math.max(k * (i - k), k * dp[i - k]));
+        }
+    }
+    return dp[n];
+}
+@@@LANG cpp
+int integerBreak(int n) {
+    vector<int> dp(n + 1, 0);
+    dp[1] = 1;
+    for (int i = 2; i <= n; i++) {
+        for (int k = 1; k < i; k++) {
+            dp[i] = max(dp[i], max(k * (i - k), k * dp[i - k]));
+        }
+    }
+    return dp[n];
+}
+@@@LANG c
+int integerBreak(int n) {
+    int* dp = (int*) calloc(n + 1, sizeof(int));
+    dp[1] = 1;
+    for (int i = 2; i <= n; i++) {
+        for (int k = 1; k < i; k++) {
+            int a = k * (i - k);
+            int b = k * dp[i - k];
+            int candidate = a > b ? a : b;
+            if (candidate > dp[i]) dp[i] = candidate;
+        }
+    }
+    int result = dp[n];
+    free(dp);
+    return result;
+}
+@@@LANG csharp
+public static int IntegerBreak(int n)
+{
+    int[] dp = new int[n + 1];
+    dp[1] = 1;
+    for (int i = 2; i <= n; i++)
+    {
+        for (int k = 1; k < i; k++)
+        {
+            dp[i] = Math.Max(dp[i], Math.Max(k * (i - k), k * dp[i - k]));
+        }
+    }
+    return dp[n];
+}
+@@@LANG go
+func integerBreak(n int) int {
+	dp := make([]int, n+1)
+	dp[1] = 1
+	for i := 2; i <= n; i++ {
+		for k := 1; k < i; k++ {
+			a := k * (i - k)
+			b := k * dp[i-k]
+			candidate := a
+			if b > candidate {
+				candidate = b
+			}
+			if candidate > dp[i] {
+				dp[i] = candidate
+			}
+		}
+	}
+	return dp[n]
+}
+@@@LANG kotlin
+fun integerBreak(n: Int): Int {
+    val dp = IntArray(n + 1)
+    dp[1] = 1
+    for (i in 2..n) {
+        for (k in 1 until i) {
+            val candidate = maxOf(k * (i - k), k * dp[i - k])
+            if (candidate > dp[i]) dp[i] = candidate
+        }
+    }
+    return dp[n]
+}
+@@@LANG swift
+func integerBreak(_ n: Int) -> Int {
+    var dp = [Int](repeating: 0, count: n + 1)
+    dp[1] = 1
+    var i = 2
+    while i <= n {
+        for k in 1..<i {
+            let candidate = max(k * (i - k), k * dp[i - k])
+            if candidate > dp[i] { dp[i] = candidate }
+        }
+        i += 1
+    }
+    return dp[n]
+}
+@@@LANG rust
+fn integerBreak(n: i32) -> i32 {
+    let size = n as usize;
+    let mut dp = vec![0i32; size + 1];
+    dp[1] = 1;
+    for i in 2..=size {
+        for k in 1..i {
+            let a = (k * (i - k)) as i32;
+            let b = k as i32 * dp[i - k];
+            let candidate = if a > b { a } else { b };
+            if candidate > dp[i] {
+                dp[i] = candidate;
+            }
+        }
+    }
+    dp[size]
+}
+@@@LANG php
+function integerBreak($n) {
+    $dp = array_fill(0, $n + 1, 0);
+    $dp[1] = 1;
+    for ($i = 2; $i <= $n; $i++) {
+        for ($k = 1; $k < $i; $k++) {
+            $candidate = max($k * ($i - $k), $k * $dp[$i - $k]);
+            if ($candidate > $dp[$i]) $dp[$i] = $candidate;
+        }
+    }
+    return $dp[$n];
+}
+@@@LANG ruby
+def integerBreak(n)
+  dp = Array.new(n + 1, 0)
+  dp[1] = 1
+  (2..n).each do |i|
+    (1...i).each do |k|
+      candidate = [k * (i - k), k * dp[i - k]].max
+      dp[i] = candidate if candidate > dp[i]
+    end
+  end
+  dp[n]
+end
+
+@@@PROBLEM ugly-number-ii
+@@@LANG typescript
+function nthUglyNumber(n: number): number {
+    var ugly: number[] = [];
+    for (var k = 0; k < n; k++) ugly.push(1);
+    var i2 = 0;
+    var i3 = 0;
+    var i5 = 0;
+    for (var i = 1; i < n; i++) {
+        var next = Math.min(ugly[i2] * 2, Math.min(ugly[i3] * 3, ugly[i5] * 5));
+        ugly[i] = next;
+        if (next === ugly[i2] * 2) i2++;
+        if (next === ugly[i3] * 3) i3++;
+        if (next === ugly[i5] * 5) i5++;
+    }
+    return ugly[n - 1];
+}
+@@@LANG java
+public static int nthUglyNumber(int n) {
+    int[] ugly = new int[n];
+    ugly[0] = 1;
+    int i2 = 0, i3 = 0, i5 = 0;
+    for (int i = 1; i < n; i++) {
+        int next = Math.min(ugly[i2] * 2, Math.min(ugly[i3] * 3, ugly[i5] * 5));
+        ugly[i] = next;
+        if (next == ugly[i2] * 2) i2++;
+        if (next == ugly[i3] * 3) i3++;
+        if (next == ugly[i5] * 5) i5++;
+    }
+    return ugly[n - 1];
+}
+@@@LANG cpp
+int nthUglyNumber(int n) {
+    vector<int> ugly(n, 1);
+    int i2 = 0, i3 = 0, i5 = 0;
+    for (int i = 1; i < n; i++) {
+        int next = min(ugly[i2] * 2, min(ugly[i3] * 3, ugly[i5] * 5));
+        ugly[i] = next;
+        if (next == ugly[i2] * 2) i2++;
+        if (next == ugly[i3] * 3) i3++;
+        if (next == ugly[i5] * 5) i5++;
+    }
+    return ugly[n - 1];
+}
+@@@LANG c
+int nthUglyNumber(int n) {
+    int* ugly = (int*) malloc(sizeof(int) * n);
+    ugly[0] = 1;
+    int i2 = 0, i3 = 0, i5 = 0;
+    for (int i = 1; i < n; i++) {
+        int a = ugly[i2] * 2, b = ugly[i3] * 3, c = ugly[i5] * 5;
+        int next = a < b ? a : b;
+        if (c < next) next = c;
+        ugly[i] = next;
+        if (next == a) i2++;
+        if (next == b) i3++;
+        if (next == c) i5++;
+    }
+    int result = ugly[n - 1];
+    free(ugly);
+    return result;
+}
+@@@LANG csharp
+public static int NthUglyNumber(int n)
+{
+    int[] ugly = new int[n];
+    ugly[0] = 1;
+    int i2 = 0, i3 = 0, i5 = 0;
+    for (int i = 1; i < n; i++)
+    {
+        int next = Math.Min(ugly[i2] * 2, Math.Min(ugly[i3] * 3, ugly[i5] * 5));
+        ugly[i] = next;
+        if (next == ugly[i2] * 2) i2++;
+        if (next == ugly[i3] * 3) i3++;
+        if (next == ugly[i5] * 5) i5++;
+    }
+    return ugly[n - 1];
+}
+@@@LANG go
+func nthUglyNumber(n int) int {
+	ugly := make([]int, n)
+	ugly[0] = 1
+	i2, i3, i5 := 0, 0, 0
+	for i := 1; i < n; i++ {
+		a, b, c := ugly[i2]*2, ugly[i3]*3, ugly[i5]*5
+		next := a
+		if b < next {
+			next = b
+		}
+		if c < next {
+			next = c
+		}
+		ugly[i] = next
+		if next == a {
+			i2++
+		}
+		if next == b {
+			i3++
+		}
+		if next == c {
+			i5++
+		}
+	}
+	return ugly[n-1]
+}
+@@@LANG kotlin
+fun nthUglyNumber(n: Int): Int {
+    val ugly = IntArray(n)
+    ugly[0] = 1
+    var i2 = 0
+    var i3 = 0
+    var i5 = 0
+    for (i in 1 until n) {
+        val a = ugly[i2] * 2
+        val b = ugly[i3] * 3
+        val c = ugly[i5] * 5
+        val next = minOf(a, b, c)
+        ugly[i] = next
+        if (next == a) i2++
+        if (next == b) i3++
+        if (next == c) i5++
+    }
+    return ugly[n - 1]
+}
+@@@LANG swift
+func nthUglyNumber(_ n: Int) -> Int {
+    var ugly = [Int](repeating: 1, count: n)
+    var i2 = 0
+    var i3 = 0
+    var i5 = 0
+    var i = 1
+    while i < n {
+        let a = ugly[i2] * 2
+        let b = ugly[i3] * 3
+        let c = ugly[i5] * 5
+        let next = min(a, min(b, c))
+        ugly[i] = next
+        if next == a { i2 += 1 }
+        if next == b { i3 += 1 }
+        if next == c { i5 += 1 }
+        i += 1
+    }
+    return ugly[n - 1]
+}
+@@@LANG rust
+fn nthUglyNumber(n: i32) -> i32 {
+    let size = n as usize;
+    let mut ugly = vec![1i32; size];
+    let mut i2 = 0usize;
+    let mut i3 = 0usize;
+    let mut i5 = 0usize;
+    for i in 1..size {
+        let a = ugly[i2] * 2;
+        let b = ugly[i3] * 3;
+        let c = ugly[i5] * 5;
+        let mut next = a;
+        if b < next {
+            next = b;
+        }
+        if c < next {
+            next = c;
+        }
+        ugly[i] = next;
+        if next == a {
+            i2 += 1;
+        }
+        if next == b {
+            i3 += 1;
+        }
+        if next == c {
+            i5 += 1;
+        }
+    }
+    ugly[size - 1]
+}
+@@@LANG php
+function nthUglyNumber($n) {
+    $ugly = array_fill(0, $n, 1);
+    $i2 = 0;
+    $i3 = 0;
+    $i5 = 0;
+    for ($i = 1; $i < $n; $i++) {
+        $a = $ugly[$i2] * 2;
+        $b = $ugly[$i3] * 3;
+        $c = $ugly[$i5] * 5;
+        $next = min($a, $b, $c);
+        $ugly[$i] = $next;
+        if ($next === $a) $i2++;
+        if ($next === $b) $i3++;
+        if ($next === $c) $i5++;
+    }
+    return $ugly[$n - 1];
+}
+@@@LANG ruby
+def nthUglyNumber(n)
+  ugly = Array.new(n, 1)
+  i2 = 0
+  i3 = 0
+  i5 = 0
+  (1...n).each do |i|
+    a = ugly[i2] * 2
+    b = ugly[i3] * 3
+    c = ugly[i5] * 5
+    nxt = [a, b, c].min
+    ugly[i] = nxt
+    i2 += 1 if nxt == a
+    i3 += 1 if nxt == b
+    i5 += 1 if nxt == c
+  end
+  ugly[n - 1]
+end
+
+@@@PROBLEM count-numbers-with-unique-digits
+@@@LANG typescript
+function countNumbersWithUniqueDigits(n: number): number {
+    if (n === 0) return 1;
+    var total = 10;
+    var current = 9;
+    for (var digits = 2; digits <= n && digits <= 10; digits++) {
+        current *= 11 - digits;
+        total += current;
+    }
+    return total;
+}
+@@@LANG java
+public static int countNumbersWithUniqueDigits(int n) {
+    if (n == 0) return 1;
+    int total = 10, current = 9;
+    for (int digits = 2; digits <= n && digits <= 10; digits++) {
+        current *= 11 - digits;
+        total += current;
+    }
+    return total;
+}
+@@@LANG cpp
+int countNumbersWithUniqueDigits(int n) {
+    if (n == 0) return 1;
+    int total = 10, current = 9;
+    for (int digits = 2; digits <= n && digits <= 10; digits++) {
+        current *= 11 - digits;
+        total += current;
+    }
+    return total;
+}
+@@@LANG c
+int countNumbersWithUniqueDigits(int n) {
+    if (n == 0) return 1;
+    int total = 10, current = 9;
+    for (int digits = 2; digits <= n && digits <= 10; digits++) {
+        current *= 11 - digits;
+        total += current;
+    }
+    return total;
+}
+@@@LANG csharp
+public static int CountNumbersWithUniqueDigits(int n)
+{
+    if (n == 0) return 1;
+    int total = 10, current = 9;
+    for (int digits = 2; digits <= n && digits <= 10; digits++)
+    {
+        current *= 11 - digits;
+        total += current;
+    }
+    return total;
+}
+@@@LANG go
+func countNumbersWithUniqueDigits(n int) int {
+	if n == 0 {
+		return 1
+	}
+	total, current := 10, 9
+	for digits := 2; digits <= n && digits <= 10; digits++ {
+		current *= 11 - digits
+		total += current
+	}
+	return total
+}
+@@@LANG kotlin
+fun countNumbersWithUniqueDigits(n: Int): Int {
+    if (n == 0) return 1
+    var total = 10
+    var current = 9
+    var digits = 2
+    while (digits <= n && digits <= 10) {
+        current *= 11 - digits
+        total += current
+        digits++
+    }
+    return total
+}
+@@@LANG swift
+func countNumbersWithUniqueDigits(_ n: Int) -> Int {
+    if n == 0 { return 1 }
+    var total = 10
+    var current = 9
+    var digits = 2
+    while digits <= n && digits <= 10 {
+        current *= 11 - digits
+        total += current
+        digits += 1
+    }
+    return total
+}
+@@@LANG rust
+fn countNumbersWithUniqueDigits(n: i32) -> i32 {
+    if n == 0 {
+        return 1;
+    }
+    let mut total = 10;
+    let mut current = 9;
+    let mut digits = 2;
+    while digits <= n && digits <= 10 {
+        current *= 11 - digits;
+        total += current;
+        digits += 1;
+    }
+    total
+}
+@@@LANG php
+function countNumbersWithUniqueDigits($n) {
+    if ($n === 0) return 1;
+    $total = 10;
+    $current = 9;
+    for ($digits = 2; $digits <= $n && $digits <= 10; $digits++) {
+        $current *= 11 - $digits;
+        $total += $current;
+    }
+    return $total;
+}
+@@@LANG ruby
+def countNumbersWithUniqueDigits(n)
+  return 1 if n == 0
+  total = 10
+  current = 9
+  digits = 2
+  while digits <= n && digits <= 10
+    current *= 11 - digits
+    total += current
+    digits += 1
+  end
+  total
+end
+
+@@@PROBLEM stone-game
+@@@LANG typescript
+function stoneGame(piles: number[]): boolean {
+    var n = piles.length;
+    var dp: number[][] = [];
+    for (var i = 0; i < n; i++) {
+        var row: number[] = [];
+        for (var j = 0; j < n; j++) row.push(0);
+        dp.push(row);
+    }
+    for (var k = 0; k < n; k++) dp[k][k] = piles[k];
+    for (var len = 2; len <= n; len++) {
+        for (var a = 0; a + len - 1 < n; a++) {
+            var b = a + len - 1;
+            dp[a][b] = Math.max(piles[a] - dp[a + 1][b], piles[b] - dp[a][b - 1]);
+        }
+    }
+    return dp[0][n - 1] > 0;
+}
+@@@LANG java
+public static boolean stoneGame(int[] piles) {
+    int n = piles.length;
+    int[][] dp = new int[n][n];
+    for (int i = 0; i < n; i++) dp[i][i] = piles[i];
+    for (int len = 2; len <= n; len++) {
+        for (int i = 0; i + len - 1 < n; i++) {
+            int j = i + len - 1;
+            dp[i][j] = Math.max(piles[i] - dp[i + 1][j], piles[j] - dp[i][j - 1]);
+        }
+    }
+    return dp[0][n - 1] > 0;
+}
+@@@LANG cpp
+bool stoneGame(vector<int>& piles) {
+    int n = (int) piles.size();
+    vector<vector<int>> dp(n, vector<int>(n, 0));
+    for (int i = 0; i < n; i++) dp[i][i] = piles[i];
+    for (int len = 2; len <= n; len++) {
+        for (int i = 0; i + len - 1 < n; i++) {
+            int j = i + len - 1;
+            dp[i][j] = max(piles[i] - dp[i + 1][j], piles[j] - dp[i][j - 1]);
+        }
+    }
+    return dp[0][n - 1] > 0;
+}
+@@@LANG c
+bool stoneGame(int* piles, int pilesSize) {
+    int n = pilesSize;
+    int* dp = (int*) calloc(n * n, sizeof(int));
+    for (int i = 0; i < n; i++) dp[i * n + i] = piles[i];
+    for (int len = 2; len <= n; len++) {
+        for (int i = 0; i + len - 1 < n; i++) {
+            int j = i + len - 1;
+            int left = piles[i] - dp[(i + 1) * n + j];
+            int right = piles[j] - dp[i * n + j - 1];
+            dp[i * n + j] = left > right ? left : right;
+        }
+    }
+    bool result = dp[n - 1] > 0;
+    free(dp);
+    return result;
+}
+@@@LANG csharp
+public static bool StoneGame(int[] piles)
+{
+    int n = piles.Length;
+    int[][] dp = new int[n][];
+    for (int i = 0; i < n; i++) dp[i] = new int[n];
+    for (int i = 0; i < n; i++) dp[i][i] = piles[i];
+    for (int len = 2; len <= n; len++)
+    {
+        for (int i = 0; i + len - 1 < n; i++)
+        {
+            int j = i + len - 1;
+            dp[i][j] = Math.Max(piles[i] - dp[i + 1][j], piles[j] - dp[i][j - 1]);
+        }
+    }
+    return dp[0][n - 1] > 0;
+}
+@@@LANG go
+func stoneGame(piles []int) bool {
+	n := len(piles)
+	dp := make([][]int, n)
+	for i := range dp {
+		dp[i] = make([]int, n)
+	}
+	for i := 0; i < n; i++ {
+		dp[i][i] = piles[i]
+	}
+	for length := 2; length <= n; length++ {
+		for i := 0; i+length-1 < n; i++ {
+			j := i + length - 1
+			left := piles[i] - dp[i+1][j]
+			right := piles[j] - dp[i][j-1]
+			if left > right {
+				dp[i][j] = left
+			} else {
+				dp[i][j] = right
+			}
+		}
+	}
+	return dp[0][n-1] > 0
+}
+@@@LANG kotlin
+fun stoneGame(piles: IntArray): Boolean {
+    val n = piles.size
+    val dp = Array(n) { IntArray(n) }
+    for (i in 0 until n) dp[i][i] = piles[i]
+    for (len in 2..n) {
+        for (i in 0..n - len) {
+            val j = i + len - 1
+            dp[i][j] = maxOf(piles[i] - dp[i + 1][j], piles[j] - dp[i][j - 1])
+        }
+    }
+    return dp[0][n - 1] > 0
+}
+@@@LANG swift
+func stoneGame(_ piles: [Int]) -> Bool {
+    let n = piles.count
+    var dp = [[Int]](repeating: [Int](repeating: 0, count: n), count: n)
+    for i in 0..<n { dp[i][i] = piles[i] }
+    var len = 2
+    while len <= n {
+        var i = 0
+        while i + len - 1 < n {
+            let j = i + len - 1
+            dp[i][j] = max(piles[i] - dp[i + 1][j], piles[j] - dp[i][j - 1])
+            i += 1
+        }
+        len += 1
+    }
+    return dp[0][n - 1] > 0
+}
+@@@LANG rust
+fn stoneGame(piles: Vec<i32>) -> bool {
+    let n = piles.len();
+    let mut dp = vec![vec![0i32; n]; n];
+    for i in 0..n {
+        dp[i][i] = piles[i];
+    }
+    for len in 2..=n {
+        for i in 0..=(n - len) {
+            let j = i + len - 1;
+            let left = piles[i] - dp[i + 1][j];
+            let right = piles[j] - dp[i][j - 1];
+            dp[i][j] = if left > right { left } else { right };
+        }
+    }
+    dp[0][n - 1] > 0
+}
+@@@LANG php
+function stoneGame($piles) {
+    $n = count($piles);
+    $dp = array();
+    for ($i = 0; $i < $n; $i++) $dp[] = array_fill(0, $n, 0);
+    for ($i = 0; $i < $n; $i++) $dp[$i][$i] = $piles[$i];
+    for ($len = 2; $len <= $n; $len++) {
+        for ($i = 0; $i + $len - 1 < $n; $i++) {
+            $j = $i + $len - 1;
+            $dp[$i][$j] = max($piles[$i] - $dp[$i + 1][$j], $piles[$j] - $dp[$i][$j - 1]);
+        }
+    }
+    return $dp[0][$n - 1] > 0;
+}
+@@@LANG ruby
+def stoneGame(piles)
+  n = piles.length
+  dp = Array.new(n) { Array.new(n, 0) }
+  (0...n).each { |i| dp[i][i] = piles[i] }
+  (2..n).each do |len|
+    (0..(n - len)).each do |i|
+      j = i + len - 1
+      dp[i][j] = [piles[i] - dp[i + 1][j], piles[j] - dp[i][j - 1]].max
+    end
+  end
+  dp[0][n - 1] > 0
+end
+
+@@@PROBLEM divisor-game
+@@@LANG typescript
+function divisorGame(n: number): boolean {
+    return n % 2 === 0;
+}
+@@@LANG java
+public static boolean divisorGame(int n) {
+    return n % 2 == 0;
+}
+@@@LANG cpp
+bool divisorGame(int n) {
+    return n % 2 == 0;
+}
+@@@LANG c
+bool divisorGame(int n) {
+    return n % 2 == 0;
+}
+@@@LANG csharp
+public static bool DivisorGame(int n)
+{
+    return n % 2 == 0;
+}
+@@@LANG go
+func divisorGame(n int) bool {
+	return n%2 == 0
+}
+@@@LANG kotlin
+fun divisorGame(n: Int): Boolean {
+    return n % 2 == 0
+}
+@@@LANG swift
+func divisorGame(_ n: Int) -> Bool {
+    return n % 2 == 0
+}
+@@@LANG rust
+fn divisorGame(n: i32) -> bool {
+    n % 2 == 0
+}
+@@@LANG php
+function divisorGame($n) {
+    return $n % 2 === 0;
+}
+@@@LANG ruby
+def divisorGame(n)
+  n.even?
+end
+
+@@@PROBLEM last-stone-weight-ii
+@@@LANG typescript
+function lastStoneWeightII(stones: number[]): number {
+    var total = 0;
+    for (var i = 0; i < stones.length; i++) total += stones[i];
+    var half = Math.floor(total / 2);
+    var dp: boolean[] = [];
+    for (var k = 0; k <= half; k++) dp.push(false);
+    dp[0] = true;
+    for (var s = 0; s < stones.length; s++) {
+        for (var w = half; w >= stones[s]; w--) {
+            if (dp[w - stones[s]]) dp[w] = true;
+        }
+    }
+    for (var v = half; v >= 0; v--) {
+        if (dp[v]) return total - 2 * v;
+    }
+    return total;
+}
+@@@LANG java
+public static int lastStoneWeightII(int[] stones) {
+    int total = 0;
+    for (int s : stones) total += s;
+    int half = total / 2;
+    boolean[] dp = new boolean[half + 1];
+    dp[0] = true;
+    for (int s : stones) {
+        for (int w = half; w >= s; w--) {
+            if (dp[w - s]) dp[w] = true;
+        }
+    }
+    for (int w = half; w >= 0; w--) {
+        if (dp[w]) return total - 2 * w;
+    }
+    return total;
+}
+@@@LANG cpp
+int lastStoneWeightII(vector<int>& stones) {
+    int total = 0;
+    for (int s : stones) total += s;
+    int half = total / 2;
+    vector<char> dp(half + 1, 0);
+    dp[0] = 1;
+    for (int s : stones) {
+        for (int w = half; w >= s; w--) {
+            if (dp[w - s]) dp[w] = 1;
+        }
+    }
+    for (int w = half; w >= 0; w--) {
+        if (dp[w]) return total - 2 * w;
+    }
+    return total;
+}
+@@@LANG c
+int lastStoneWeightII(int* stones, int stonesSize) {
+    int total = 0;
+    for (int i = 0; i < stonesSize; i++) total += stones[i];
+    int half = total / 2;
+    char* dp = (char*) calloc(half + 1, 1);
+    dp[0] = 1;
+    for (int i = 0; i < stonesSize; i++) {
+        for (int w = half; w >= stones[i]; w--) {
+            if (dp[w - stones[i]]) dp[w] = 1;
+        }
+    }
+    int result = total;
+    for (int w = half; w >= 0; w--) {
+        if (dp[w]) { result = total - 2 * w; break; }
+    }
+    free(dp);
+    return result;
+}
+@@@LANG csharp
+public static int LastStoneWeightII(int[] stones)
+{
+    int total = 0;
+    foreach (int s in stones) total += s;
+    int half = total / 2;
+    bool[] dp = new bool[half + 1];
+    dp[0] = true;
+    foreach (int s in stones)
+    {
+        for (int w = half; w >= s; w--)
+        {
+            if (dp[w - s]) dp[w] = true;
+        }
+    }
+    for (int w = half; w >= 0; w--)
+    {
+        if (dp[w]) return total - 2 * w;
+    }
+    return total;
+}
+@@@LANG go
+func lastStoneWeightII(stones []int) int {
+	total := 0
+	for _, s := range stones {
+		total += s
+	}
+	half := total / 2
+	dp := make([]bool, half+1)
+	dp[0] = true
+	for _, s := range stones {
+		for w := half; w >= s; w-- {
+			if dp[w-s] {
+				dp[w] = true
+			}
+		}
+	}
+	for w := half; w >= 0; w-- {
+		if dp[w] {
+			return total - 2*w
+		}
+	}
+	return total
+}
+@@@LANG kotlin
+fun lastStoneWeightII(stones: IntArray): Int {
+    var total = 0
+    for (s in stones) total += s
+    val half = total / 2
+    val dp = BooleanArray(half + 1)
+    dp[0] = true
+    for (s in stones) {
+        var w = half
+        while (w >= s) {
+            if (dp[w - s]) dp[w] = true
+            w--
+        }
+    }
+    var w = half
+    while (w >= 0) {
+        if (dp[w]) return total - 2 * w
+        w--
+    }
+    return total
+}
+@@@LANG swift
+func lastStoneWeightII(_ stones: [Int]) -> Int {
+    var total = 0
+    for s in stones { total += s }
+    let half = total / 2
+    var dp = [Bool](repeating: false, count: half + 1)
+    dp[0] = true
+    for s in stones {
+        var w = half
+        while w >= s {
+            if dp[w - s] { dp[w] = true }
+            w -= 1
+        }
+    }
+    var w = half
+    while w >= 0 {
+        if dp[w] { return total - 2 * w }
+        w -= 1
+    }
+    return total
+}
+@@@LANG rust
+fn lastStoneWeightII(stones: Vec<i32>) -> i32 {
+    let total: i32 = stones.iter().sum();
+    let half = (total / 2) as usize;
+    let mut dp = vec![false; half + 1];
+    dp[0] = true;
+    for s in stones.iter() {
+        let step = *s as usize;
+        let mut w = half as i32;
+        while w >= *s {
+            let idx = w as usize;
+            if dp[idx - step] {
+                dp[idx] = true;
+            }
+            w -= 1;
+        }
+    }
+    let mut w = half as i32;
+    while w >= 0 {
+        if dp[w as usize] {
+            return total - 2 * w;
+        }
+        w -= 1;
+    }
+    total
+}
+@@@LANG php
+function lastStoneWeightII($stones) {
+    $total = array_sum($stones);
+    $half = intdiv($total, 2);
+    $dp = array_fill(0, $half + 1, false);
+    $dp[0] = true;
+    foreach ($stones as $s) {
+        for ($w = $half; $w >= $s; $w--) {
+            if ($dp[$w - $s]) $dp[$w] = true;
+        }
+    }
+    for ($w = $half; $w >= 0; $w--) {
+        if ($dp[$w]) return $total - 2 * $w;
+    }
+    return $total;
+}
+@@@LANG ruby
+def lastStoneWeightII(stones)
+  total = stones.sum
+  half = total / 2
+  dp = Array.new(half + 1, false)
+  dp[0] = true
+  stones.each do |s|
+    w = half
+    while w >= s
+      dp[w] = true if dp[w - s]
+      w -= 1
+    end
+  end
+  w = half
+  while w >= 0
+    return total - 2 * w if dp[w]
+    w -= 1
+  end
+  total
+end
+
+@@@PROBLEM ones-and-zeroes
+@@@LANG typescript
+function findMaxForm(strs: string[], m: number, n: number): number {
+    var dp: number[][] = [];
+    for (var i = 0; i <= m; i++) {
+        var row: number[] = [];
+        for (var j = 0; j <= n; j++) row.push(0);
+        dp.push(row);
+    }
+    for (var s = 0; s < strs.length; s++) {
+        var zeros = 0;
+        var ones = 0;
+        for (var k = 0; k < strs[s].length; k++) {
+            if (strs[s].charAt(k) === "0") zeros++;
+            else ones++;
+        }
+        for (var a = m; a >= zeros; a--) {
+            for (var b = n; b >= ones; b--) {
+                var candidate = dp[a - zeros][b - ones] + 1;
+                if (candidate > dp[a][b]) dp[a][b] = candidate;
+            }
+        }
+    }
+    return dp[m][n];
+}
+@@@LANG java
+public static int findMaxForm(String[] strs, int m, int n) {
+    int[][] dp = new int[m + 1][n + 1];
+    for (String s : strs) {
+        int zeros = 0, ones = 0;
+        for (int k = 0; k < s.length(); k++) {
+            if (s.charAt(k) == '0') zeros++;
+            else ones++;
+        }
+        for (int i = m; i >= zeros; i--) {
+            for (int j = n; j >= ones; j--) {
+                dp[i][j] = Math.max(dp[i][j], dp[i - zeros][j - ones] + 1);
+            }
+        }
+    }
+    return dp[m][n];
+}
+@@@LANG cpp
+int findMaxForm(vector<string>& strs, int m, int n) {
+    vector<vector<int>> dp(m + 1, vector<int>(n + 1, 0));
+    for (string& s : strs) {
+        int zeros = 0, ones = 0;
+        for (char c : s) {
+            if (c == '0') zeros++;
+            else ones++;
+        }
+        for (int i = m; i >= zeros; i--) {
+            for (int j = n; j >= ones; j--) {
+                dp[i][j] = max(dp[i][j], dp[i - zeros][j - ones] + 1);
+            }
+        }
+    }
+    return dp[m][n];
+}
+@@@LANG c
+int findMaxForm(char** strs, int strsSize, int m, int n) {
+    int* dp = (int*) calloc((m + 1) * (n + 1), sizeof(int));
+    for (int s = 0; s < strsSize; s++) {
+        int zeros = 0, ones = 0;
+        for (int k = 0; strs[s][k] != '\0'; k++) {
+            if (strs[s][k] == '0') zeros++;
+            else ones++;
+        }
+        for (int i = m; i >= zeros; i--) {
+            for (int j = n; j >= ones; j--) {
+                int candidate = dp[(i - zeros) * (n + 1) + (j - ones)] + 1;
+                if (candidate > dp[i * (n + 1) + j]) dp[i * (n + 1) + j] = candidate;
+            }
+        }
+    }
+    int result = dp[m * (n + 1) + n];
+    free(dp);
+    return result;
+}
+@@@LANG csharp
+public static int FindMaxForm(string[] strs, int m, int n)
+{
+    int[][] dp = new int[m + 1][];
+    for (int i = 0; i <= m; i++) dp[i] = new int[n + 1];
+    foreach (string s in strs)
+    {
+        int zeros = 0, ones = 0;
+        foreach (char c in s)
+        {
+            if (c == '0') zeros++;
+            else ones++;
+        }
+        for (int i = m; i >= zeros; i--)
+        {
+            for (int j = n; j >= ones; j--)
+            {
+                dp[i][j] = Math.Max(dp[i][j], dp[i - zeros][j - ones] + 1);
+            }
+        }
+    }
+    return dp[m][n];
+}
+@@@LANG go
+func findMaxForm(strs []string, m int, n int) int {
+	dp := make([][]int, m+1)
+	for i := range dp {
+		dp[i] = make([]int, n+1)
+	}
+	for _, s := range strs {
+		zeros, ones := 0, 0
+		for i := 0; i < len(s); i++ {
+			if s[i] == '0' {
+				zeros++
+			} else {
+				ones++
+			}
+		}
+		for i := m; i >= zeros; i-- {
+			for j := n; j >= ones; j-- {
+				if dp[i-zeros][j-ones]+1 > dp[i][j] {
+					dp[i][j] = dp[i-zeros][j-ones] + 1
+				}
+			}
+		}
+	}
+	return dp[m][n]
+}
+@@@LANG kotlin
+fun findMaxForm(strs: Array<String>, m: Int, n: Int): Int {
+    val dp = Array(m + 1) { IntArray(n + 1) }
+    for (s in strs) {
+        var zeros = 0
+        var ones = 0
+        for (c in s) {
+            if (c == '0') zeros++ else ones++
+        }
+        var i = m
+        while (i >= zeros) {
+            var j = n
+            while (j >= ones) {
+                val candidate = dp[i - zeros][j - ones] + 1
+                if (candidate > dp[i][j]) dp[i][j] = candidate
+                j--
+            }
+            i--
+        }
+    }
+    return dp[m][n]
+}
+@@@LANG swift
+func findMaxForm(_ strs: [String], _ m: Int, _ n: Int) -> Int {
+    var dp = [[Int]](repeating: [Int](repeating: 0, count: n + 1), count: m + 1)
+    for s in strs {
+        var zeros = 0
+        var ones = 0
+        for c in s {
+            if c == "0" { zeros += 1 } else { ones += 1 }
+        }
+        var i = m
+        while i >= zeros {
+            var j = n
+            while j >= ones {
+                let candidate = dp[i - zeros][j - ones] + 1
+                if candidate > dp[i][j] { dp[i][j] = candidate }
+                j -= 1
+            }
+            i -= 1
+        }
+    }
+    return dp[m][n]
+}
+@@@LANG rust
+fn findMaxForm(strs: Vec<String>, m: i32, n: i32) -> i32 {
+    let rows = m as usize;
+    let cols = n as usize;
+    let mut dp = vec![vec![0i32; cols + 1]; rows + 1];
+    for s in strs.iter() {
+        let mut zeros = 0usize;
+        let mut ones = 0usize;
+        for b in s.as_bytes().iter() {
+            if *b == b'0' {
+                zeros += 1;
+            } else {
+                ones += 1;
+            }
+        }
+        if zeros > rows || ones > cols {
+            continue;
+        }
+        let mut i = rows;
+        while i >= zeros {
+            let mut j = cols;
+            while j >= ones {
+                let candidate = dp[i - zeros][j - ones] + 1;
+                if candidate > dp[i][j] {
+                    dp[i][j] = candidate;
+                }
+                if j == ones {
+                    break;
+                }
+                j -= 1;
+            }
+            if i == zeros {
+                break;
+            }
+            i -= 1;
+        }
+    }
+    dp[rows][cols]
+}
+@@@LANG php
+function findMaxForm($strs, $m, $n) {
+    $dp = array();
+    for ($i = 0; $i <= $m; $i++) $dp[] = array_fill(0, $n + 1, 0);
+    foreach ($strs as $s) {
+        $zeros = substr_count($s, "0");
+        $ones = strlen($s) - $zeros;
+        for ($i = $m; $i >= $zeros; $i--) {
+            for ($j = $n; $j >= $ones; $j--) {
+                $candidate = $dp[$i - $zeros][$j - $ones] + 1;
+                if ($candidate > $dp[$i][$j]) $dp[$i][$j] = $candidate;
+            }
+        }
+    }
+    return $dp[$m][$n];
+}
+@@@LANG ruby
+def findMaxForm(strs, m, n)
+  dp = Array.new(m + 1) { Array.new(n + 1, 0) }
+  strs.each do |s|
+    zeros = s.count("0")
+    ones = s.length - zeros
+    i = m
+    while i >= zeros
+      j = n
+      while j >= ones
+        candidate = dp[i - zeros][j - ones] + 1
+        dp[i][j] = candidate if candidate > dp[i][j]
+        j -= 1
+      end
+      i -= 1
+    end
+  end
+  dp[m][n]
+end

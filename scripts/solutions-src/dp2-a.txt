@@ -1,0 +1,1851 @@
+@@@PROBLEM delete-and-earn
+@@@LANG typescript
+function deleteAndEarn(nums: number[]): number {
+    var maxV = 0;
+    for (var i = 0; i < nums.length; i++) {
+        if (nums[i] > maxV) maxV = nums[i];
+    }
+    var points: number[] = [];
+    for (var k = 0; k <= maxV; k++) points.push(0);
+    for (var j = 0; j < nums.length; j++) points[nums[j]] += nums[j];
+    var take = 0;
+    var skip = 0;
+    for (var v = 1; v <= maxV; v++) {
+        var newTake = skip + points[v];
+        var newSkip = Math.max(skip, take);
+        take = newTake;
+        skip = newSkip;
+    }
+    return Math.max(take, skip);
+}
+@@@LANG java
+public static int deleteAndEarn(int[] nums) {
+    int maxV = 0;
+    for (int x : nums) maxV = Math.max(maxV, x);
+    int[] points = new int[maxV + 1];
+    for (int x : nums) points[x] += x;
+    int take = 0, skip = 0;
+    for (int v = 1; v <= maxV; v++) {
+        int newTake = skip + points[v];
+        int newSkip = Math.max(skip, take);
+        take = newTake;
+        skip = newSkip;
+    }
+    return Math.max(take, skip);
+}
+@@@LANG cpp
+int deleteAndEarn(vector<int>& nums) {
+    int maxV = 0;
+    for (int x : nums) maxV = max(maxV, x);
+    vector<int> points(maxV + 1, 0);
+    for (int x : nums) points[x] += x;
+    int take = 0, skip = 0;
+    for (int v = 1; v <= maxV; v++) {
+        int newTake = skip + points[v];
+        int newSkip = max(skip, take);
+        take = newTake;
+        skip = newSkip;
+    }
+    return max(take, skip);
+}
+@@@LANG c
+int deleteAndEarn(int* nums, int numsSize) {
+    int maxV = 0;
+    for (int i = 0; i < numsSize; i++) {
+        if (nums[i] > maxV) maxV = nums[i];
+    }
+    int* points = (int*) calloc(maxV + 1, sizeof(int));
+    for (int i = 0; i < numsSize; i++) points[nums[i]] += nums[i];
+    int take = 0, skip = 0;
+    for (int v = 1; v <= maxV; v++) {
+        int newTake = skip + points[v];
+        int newSkip = skip > take ? skip : take;
+        take = newTake;
+        skip = newSkip;
+    }
+    free(points);
+    return take > skip ? take : skip;
+}
+@@@LANG csharp
+public static int DeleteAndEarn(int[] nums)
+{
+    int maxV = 0;
+    foreach (int x in nums) maxV = Math.Max(maxV, x);
+    int[] points = new int[maxV + 1];
+    foreach (int x in nums) points[x] += x;
+    int take = 0, skip = 0;
+    for (int v = 1; v <= maxV; v++)
+    {
+        int newTake = skip + points[v];
+        int newSkip = Math.Max(skip, take);
+        take = newTake;
+        skip = newSkip;
+    }
+    return Math.Max(take, skip);
+}
+@@@LANG go
+func deleteAndEarn(nums []int) int {
+	maxV := 0
+	for _, x := range nums {
+		if x > maxV {
+			maxV = x
+		}
+	}
+	points := make([]int, maxV+1)
+	for _, x := range nums {
+		points[x] += x
+	}
+	take, skip := 0, 0
+	for v := 1; v <= maxV; v++ {
+		newTake := skip + points[v]
+		newSkip := skip
+		if take > newSkip {
+			newSkip = take
+		}
+		take = newTake
+		skip = newSkip
+	}
+	if take > skip {
+		return take
+	}
+	return skip
+}
+@@@LANG kotlin
+fun deleteAndEarn(nums: IntArray): Int {
+    val maxV = nums.max()!!
+    val points = IntArray(maxV + 1)
+    for (x in nums) points[x] += x
+    var take = 0
+    var skip = 0
+    for (v in 1..maxV) {
+        val newTake = skip + points[v]
+        val newSkip = if (skip > take) skip else take
+        take = newTake
+        skip = newSkip
+    }
+    return if (take > skip) take else skip
+}
+@@@LANG swift
+func deleteAndEarn(_ nums: [Int]) -> Int {
+    var maxV = 0
+    for x in nums where x > maxV { maxV = x }
+    var points = [Int](repeating: 0, count: maxV + 1)
+    for x in nums { points[x] += x }
+    var take = 0
+    var skip = 0
+    for v in 1...max(maxV, 1) where v <= maxV {
+        let newTake = skip + points[v]
+        let newSkip = max(skip, take)
+        take = newTake
+        skip = newSkip
+    }
+    return max(take, skip)
+}
+@@@LANG rust
+fn deleteAndEarn(nums: Vec<i32>) -> i32 {
+    let mut max_v = 0;
+    for x in nums.iter() {
+        if *x > max_v {
+            max_v = *x;
+        }
+    }
+    let mut points = vec![0i32; (max_v + 1) as usize];
+    for x in nums.iter() {
+        points[*x as usize] += *x;
+    }
+    let mut take = 0;
+    let mut skip = 0;
+    for v in 1..=max_v {
+        let new_take = skip + points[v as usize];
+        let new_skip = if skip > take { skip } else { take };
+        take = new_take;
+        skip = new_skip;
+    }
+    if take > skip { take } else { skip }
+}
+@@@LANG php
+function deleteAndEarn($nums) {
+    $maxV = max($nums);
+    $points = array_fill(0, $maxV + 1, 0);
+    foreach ($nums as $x) $points[$x] += $x;
+    $take = 0;
+    $skip = 0;
+    for ($v = 1; $v <= $maxV; $v++) {
+        $newTake = $skip + $points[$v];
+        $newSkip = max($skip, $take);
+        $take = $newTake;
+        $skip = $newSkip;
+    }
+    return max($take, $skip);
+}
+@@@LANG ruby
+def deleteAndEarn(nums)
+  max_v = nums.max
+  points = Array.new(max_v + 1, 0)
+  nums.each { |x| points[x] += x }
+  take = 0
+  skip = 0
+  (1..max_v).each do |v|
+    new_take = skip + points[v]
+    new_skip = [skip, take].max
+    take = new_take
+    skip = new_skip
+  end
+  [take, skip].max
+end
+
+@@@PROBLEM best-time-to-buy-and-sell-stock-with-cooldown
+@@@LANG typescript
+function maxProfit(prices: number[]): number {
+    var NEG = -1000000;
+    var hold = NEG;
+    var sold = 0;
+    var rest = 0;
+    for (var i = 0; i < prices.length; i++) {
+        var prevSold = sold;
+        sold = hold + prices[i];
+        hold = Math.max(hold, rest - prices[i]);
+        rest = Math.max(rest, prevSold);
+    }
+    return Math.max(sold, rest);
+}
+@@@LANG java
+public static int maxProfit(int[] prices) {
+    final int NEG = -1000000;
+    int hold = NEG, sold = 0, rest = 0;
+    for (int price : prices) {
+        int prevSold = sold;
+        sold = hold + price;
+        hold = Math.max(hold, rest - price);
+        rest = Math.max(rest, prevSold);
+    }
+    return Math.max(sold, rest);
+}
+@@@LANG cpp
+int maxProfit(vector<int>& prices) {
+    const int NEG = -1000000;
+    int hold = NEG, sold = 0, rest = 0;
+    for (int price : prices) {
+        int prevSold = sold;
+        sold = hold + price;
+        hold = max(hold, rest - price);
+        rest = max(rest, prevSold);
+    }
+    return max(sold, rest);
+}
+@@@LANG c
+int maxProfit(int* prices, int pricesSize) {
+    int hold = -1000000, sold = 0, rest = 0;
+    for (int i = 0; i < pricesSize; i++) {
+        int prevSold = sold;
+        sold = hold + prices[i];
+        int candidate = rest - prices[i];
+        if (candidate > hold) hold = candidate;
+        if (prevSold > rest) rest = prevSold;
+    }
+    return sold > rest ? sold : rest;
+}
+@@@LANG csharp
+public static int MaxProfit(int[] prices)
+{
+    int hold = -1000000, sold = 0, rest = 0;
+    foreach (int price in prices)
+    {
+        int prevSold = sold;
+        sold = hold + price;
+        hold = Math.Max(hold, rest - price);
+        rest = Math.Max(rest, prevSold);
+    }
+    return Math.Max(sold, rest);
+}
+@@@LANG go
+func maxProfit(prices []int) int {
+	hold, sold, rest := -1000000, 0, 0
+	for _, price := range prices {
+		prevSold := sold
+		sold = hold + price
+		if rest-price > hold {
+			hold = rest - price
+		}
+		if prevSold > rest {
+			rest = prevSold
+		}
+	}
+	if sold > rest {
+		return sold
+	}
+	return rest
+}
+@@@LANG kotlin
+fun maxProfit(prices: IntArray): Int {
+    var hold = -1000000
+    var sold = 0
+    var rest = 0
+    for (price in prices) {
+        val prevSold = sold
+        sold = hold + price
+        hold = if (rest - price > hold) rest - price else hold
+        rest = if (prevSold > rest) prevSold else rest
+    }
+    return if (sold > rest) sold else rest
+}
+@@@LANG swift
+func maxProfit(_ prices: [Int]) -> Int {
+    var hold = -1000000
+    var sold = 0
+    var rest = 0
+    for price in prices {
+        let prevSold = sold
+        sold = hold + price
+        hold = max(hold, rest - price)
+        rest = max(rest, prevSold)
+    }
+    return max(sold, rest)
+}
+@@@LANG rust
+fn maxProfit(prices: Vec<i32>) -> i32 {
+    let mut hold = -1000000;
+    let mut sold = 0;
+    let mut rest = 0;
+    for price in prices.iter() {
+        let prev_sold = sold;
+        sold = hold + *price;
+        if rest - *price > hold {
+            hold = rest - *price;
+        }
+        if prev_sold > rest {
+            rest = prev_sold;
+        }
+    }
+    if sold > rest { sold } else { rest }
+}
+@@@LANG php
+function maxProfit($prices) {
+    $hold = -1000000;
+    $sold = 0;
+    $rest = 0;
+    foreach ($prices as $price) {
+        $prevSold = $sold;
+        $sold = $hold + $price;
+        $hold = max($hold, $rest - $price);
+        $rest = max($rest, $prevSold);
+    }
+    return max($sold, $rest);
+}
+@@@LANG ruby
+def maxProfit(prices)
+  hold = -1000000
+  sold = 0
+  rest = 0
+  prices.each do |price|
+    prev_sold = sold
+    sold = hold + price
+    hold = [hold, rest - price].max
+    rest = [rest, prev_sold].max
+  end
+  [sold, rest].max
+end
+
+@@@PROBLEM best-time-to-buy-and-sell-stock-with-transaction-fee
+@@@LANG typescript
+function maxProfit(prices: number[], fee: number): number {
+    var cash = 0;
+    var hold = -prices[0];
+    for (var i = 1; i < prices.length; i++) {
+        cash = Math.max(cash, hold + prices[i] - fee);
+        hold = Math.max(hold, cash - prices[i]);
+    }
+    return cash;
+}
+@@@LANG java
+public static int maxProfit(int[] prices, int fee) {
+    int cash = 0, hold = -prices[0];
+    for (int i = 1; i < prices.length; i++) {
+        cash = Math.max(cash, hold + prices[i] - fee);
+        hold = Math.max(hold, cash - prices[i]);
+    }
+    return cash;
+}
+@@@LANG cpp
+int maxProfit(vector<int>& prices, int fee) {
+    int cash = 0, hold = -prices[0];
+    for (size_t i = 1; i < prices.size(); i++) {
+        cash = max(cash, hold + prices[i] - fee);
+        hold = max(hold, cash - prices[i]);
+    }
+    return cash;
+}
+@@@LANG c
+int maxProfit(int* prices, int pricesSize, int fee) {
+    int cash = 0, hold = -prices[0];
+    for (int i = 1; i < pricesSize; i++) {
+        int candidate = hold + prices[i] - fee;
+        if (candidate > cash) cash = candidate;
+        int keep = cash - prices[i];
+        if (keep > hold) hold = keep;
+    }
+    return cash;
+}
+@@@LANG csharp
+public static int MaxProfit(int[] prices, int fee)
+{
+    int cash = 0, hold = -prices[0];
+    for (int i = 1; i < prices.Length; i++)
+    {
+        cash = Math.Max(cash, hold + prices[i] - fee);
+        hold = Math.Max(hold, cash - prices[i]);
+    }
+    return cash;
+}
+@@@LANG go
+func maxProfit(prices []int, fee int) int {
+	cash, hold := 0, -prices[0]
+	for i := 1; i < len(prices); i++ {
+		if hold+prices[i]-fee > cash {
+			cash = hold + prices[i] - fee
+		}
+		if cash-prices[i] > hold {
+			hold = cash - prices[i]
+		}
+	}
+	return cash
+}
+@@@LANG kotlin
+fun maxProfit(prices: IntArray, fee: Int): Int {
+    var cash = 0
+    var hold = -prices[0]
+    for (i in 1 until prices.size) {
+        val candidate = hold + prices[i] - fee
+        if (candidate > cash) cash = candidate
+        val keep = cash - prices[i]
+        if (keep > hold) hold = keep
+    }
+    return cash
+}
+@@@LANG swift
+func maxProfit(_ prices: [Int], _ fee: Int) -> Int {
+    var cash = 0
+    var hold = -prices[0]
+    var i = 1
+    while i < prices.count {
+        cash = max(cash, hold + prices[i] - fee)
+        hold = max(hold, cash - prices[i])
+        i += 1
+    }
+    return cash
+}
+@@@LANG rust
+fn maxProfit(prices: Vec<i32>, fee: i32) -> i32 {
+    let mut cash = 0;
+    let mut hold = -prices[0];
+    for i in 1..prices.len() {
+        if hold + prices[i] - fee > cash {
+            cash = hold + prices[i] - fee;
+        }
+        if cash - prices[i] > hold {
+            hold = cash - prices[i];
+        }
+    }
+    cash
+}
+@@@LANG php
+function maxProfit($prices, $fee) {
+    $cash = 0;
+    $hold = -$prices[0];
+    for ($i = 1; $i < count($prices); $i++) {
+        $cash = max($cash, $hold + $prices[$i] - $fee);
+        $hold = max($hold, $cash - $prices[$i]);
+    }
+    return $cash;
+}
+@@@LANG ruby
+def maxProfit(prices, fee)
+  cash = 0
+  hold = -prices[0]
+  (1...prices.length).each do |i|
+    cash = [cash, hold + prices[i] - fee].max
+    hold = [hold, cash - prices[i]].max
+  end
+  cash
+end
+
+@@@PROBLEM best-time-to-buy-and-sell-stock-iii
+@@@LANG typescript
+function maxProfit(prices: number[]): number {
+    var NEG = -1000000;
+    var buy1 = NEG;
+    var sell1 = 0;
+    var buy2 = NEG;
+    var sell2 = 0;
+    for (var i = 0; i < prices.length; i++) {
+        buy1 = Math.max(buy1, -prices[i]);
+        sell1 = Math.max(sell1, buy1 + prices[i]);
+        buy2 = Math.max(buy2, sell1 - prices[i]);
+        sell2 = Math.max(sell2, buy2 + prices[i]);
+    }
+    return sell2;
+}
+@@@LANG java
+public static int maxProfit(int[] prices) {
+    int buy1 = -1000000, sell1 = 0, buy2 = -1000000, sell2 = 0;
+    for (int price : prices) {
+        buy1 = Math.max(buy1, -price);
+        sell1 = Math.max(sell1, buy1 + price);
+        buy2 = Math.max(buy2, sell1 - price);
+        sell2 = Math.max(sell2, buy2 + price);
+    }
+    return sell2;
+}
+@@@LANG cpp
+int maxProfit(vector<int>& prices) {
+    int buy1 = -1000000, sell1 = 0, buy2 = -1000000, sell2 = 0;
+    for (int price : prices) {
+        buy1 = max(buy1, -price);
+        sell1 = max(sell1, buy1 + price);
+        buy2 = max(buy2, sell1 - price);
+        sell2 = max(sell2, buy2 + price);
+    }
+    return sell2;
+}
+@@@LANG c
+int maxProfit(int* prices, int pricesSize) {
+    int buy1 = -1000000, sell1 = 0, buy2 = -1000000, sell2 = 0;
+    for (int i = 0; i < pricesSize; i++) {
+        int p = prices[i];
+        if (-p > buy1) buy1 = -p;
+        if (buy1 + p > sell1) sell1 = buy1 + p;
+        if (sell1 - p > buy2) buy2 = sell1 - p;
+        if (buy2 + p > sell2) sell2 = buy2 + p;
+    }
+    return sell2;
+}
+@@@LANG csharp
+public static int MaxProfit(int[] prices)
+{
+    int buy1 = -1000000, sell1 = 0, buy2 = -1000000, sell2 = 0;
+    foreach (int price in prices)
+    {
+        buy1 = Math.Max(buy1, -price);
+        sell1 = Math.Max(sell1, buy1 + price);
+        buy2 = Math.Max(buy2, sell1 - price);
+        sell2 = Math.Max(sell2, buy2 + price);
+    }
+    return sell2;
+}
+@@@LANG go
+func maxProfit(prices []int) int {
+	buy1, sell1, buy2, sell2 := -1000000, 0, -1000000, 0
+	for _, p := range prices {
+		if -p > buy1 {
+			buy1 = -p
+		}
+		if buy1+p > sell1 {
+			sell1 = buy1 + p
+		}
+		if sell1-p > buy2 {
+			buy2 = sell1 - p
+		}
+		if buy2+p > sell2 {
+			sell2 = buy2 + p
+		}
+	}
+	return sell2
+}
+@@@LANG kotlin
+fun maxProfit(prices: IntArray): Int {
+    var buy1 = -1000000
+    var sell1 = 0
+    var buy2 = -1000000
+    var sell2 = 0
+    for (p in prices) {
+        if (-p > buy1) buy1 = -p
+        if (buy1 + p > sell1) sell1 = buy1 + p
+        if (sell1 - p > buy2) buy2 = sell1 - p
+        if (buy2 + p > sell2) sell2 = buy2 + p
+    }
+    return sell2
+}
+@@@LANG swift
+func maxProfit(_ prices: [Int]) -> Int {
+    var buy1 = -1000000
+    var sell1 = 0
+    var buy2 = -1000000
+    var sell2 = 0
+    for p in prices {
+        buy1 = max(buy1, -p)
+        sell1 = max(sell1, buy1 + p)
+        buy2 = max(buy2, sell1 - p)
+        sell2 = max(sell2, buy2 + p)
+    }
+    return sell2
+}
+@@@LANG rust
+fn maxProfit(prices: Vec<i32>) -> i32 {
+    let mut buy1 = -1000000;
+    let mut sell1 = 0;
+    let mut buy2 = -1000000;
+    let mut sell2 = 0;
+    for p in prices.iter() {
+        if -*p > buy1 {
+            buy1 = -*p;
+        }
+        if buy1 + *p > sell1 {
+            sell1 = buy1 + *p;
+        }
+        if sell1 - *p > buy2 {
+            buy2 = sell1 - *p;
+        }
+        if buy2 + *p > sell2 {
+            sell2 = buy2 + *p;
+        }
+    }
+    sell2
+}
+@@@LANG php
+function maxProfit($prices) {
+    $buy1 = -1000000;
+    $sell1 = 0;
+    $buy2 = -1000000;
+    $sell2 = 0;
+    foreach ($prices as $p) {
+        $buy1 = max($buy1, -$p);
+        $sell1 = max($sell1, $buy1 + $p);
+        $buy2 = max($buy2, $sell1 - $p);
+        $sell2 = max($sell2, $buy2 + $p);
+    }
+    return $sell2;
+}
+@@@LANG ruby
+def maxProfit(prices)
+  buy1 = -1000000
+  sell1 = 0
+  buy2 = -1000000
+  sell2 = 0
+  prices.each do |p|
+    buy1 = [buy1, -p].max
+    sell1 = [sell1, buy1 + p].max
+    buy2 = [buy2, sell1 - p].max
+    sell2 = [sell2, buy2 + p].max
+  end
+  sell2
+end
+
+@@@PROBLEM maximum-length-of-repeated-subarray
+@@@LANG typescript
+function findLength(nums1: number[], nums2: number[]): number {
+    var m = nums1.length;
+    var n = nums2.length;
+    var dp: number[][] = [];
+    for (var i = 0; i <= m; i++) {
+        var row: number[] = [];
+        for (var j = 0; j <= n; j++) row.push(0);
+        dp.push(row);
+    }
+    var best = 0;
+    for (var a = 1; a <= m; a++) {
+        for (var b = 1; b <= n; b++) {
+            if (nums1[a - 1] === nums2[b - 1]) {
+                dp[a][b] = dp[a - 1][b - 1] + 1;
+                if (dp[a][b] > best) best = dp[a][b];
+            }
+        }
+    }
+    return best;
+}
+@@@LANG java
+public static int findLength(int[] nums1, int[] nums2) {
+    int m = nums1.length, n = nums2.length;
+    int[][] dp = new int[m + 1][n + 1];
+    int best = 0;
+    for (int i = 1; i <= m; i++) {
+        for (int j = 1; j <= n; j++) {
+            if (nums1[i - 1] == nums2[j - 1]) {
+                dp[i][j] = dp[i - 1][j - 1] + 1;
+                if (dp[i][j] > best) best = dp[i][j];
+            }
+        }
+    }
+    return best;
+}
+@@@LANG cpp
+int findLength(vector<int>& nums1, vector<int>& nums2) {
+    int m = (int) nums1.size(), n = (int) nums2.size();
+    vector<vector<int>> dp(m + 1, vector<int>(n + 1, 0));
+    int best = 0;
+    for (int i = 1; i <= m; i++) {
+        for (int j = 1; j <= n; j++) {
+            if (nums1[i - 1] == nums2[j - 1]) {
+                dp[i][j] = dp[i - 1][j - 1] + 1;
+                best = max(best, dp[i][j]);
+            }
+        }
+    }
+    return best;
+}
+@@@LANG c
+int findLength(int* nums1, int nums1Size, int* nums2, int nums2Size) {
+    int m = nums1Size, n = nums2Size;
+    int* prev = (int*) calloc(n + 1, sizeof(int));
+    int* cur = (int*) calloc(n + 1, sizeof(int));
+    int best = 0;
+    for (int i = 1; i <= m; i++) {
+        for (int j = 1; j <= n; j++) {
+            if (nums1[i - 1] == nums2[j - 1]) {
+                cur[j] = prev[j - 1] + 1;
+                if (cur[j] > best) best = cur[j];
+            } else {
+                cur[j] = 0;
+            }
+        }
+        for (int j = 0; j <= n; j++) {
+            prev[j] = cur[j];
+            cur[j] = 0;
+        }
+    }
+    free(prev);
+    free(cur);
+    return best;
+}
+@@@LANG csharp
+public static int FindLength(int[] nums1, int[] nums2)
+{
+    int m = nums1.Length, n = nums2.Length;
+    int[][] dp = new int[m + 1][];
+    for (int i = 0; i <= m; i++) dp[i] = new int[n + 1];
+    int best = 0;
+    for (int i = 1; i <= m; i++)
+    {
+        for (int j = 1; j <= n; j++)
+        {
+            if (nums1[i - 1] == nums2[j - 1])
+            {
+                dp[i][j] = dp[i - 1][j - 1] + 1;
+                if (dp[i][j] > best) best = dp[i][j];
+            }
+        }
+    }
+    return best;
+}
+@@@LANG go
+func findLength(nums1 []int, nums2 []int) int {
+	m, n := len(nums1), len(nums2)
+	dp := make([][]int, m+1)
+	for i := range dp {
+		dp[i] = make([]int, n+1)
+	}
+	best := 0
+	for i := 1; i <= m; i++ {
+		for j := 1; j <= n; j++ {
+			if nums1[i-1] == nums2[j-1] {
+				dp[i][j] = dp[i-1][j-1] + 1
+				if dp[i][j] > best {
+					best = dp[i][j]
+				}
+			}
+		}
+	}
+	return best
+}
+@@@LANG kotlin
+fun findLength(nums1: IntArray, nums2: IntArray): Int {
+    val m = nums1.size
+    val n = nums2.size
+    val dp = Array(m + 1) { IntArray(n + 1) }
+    var best = 0
+    for (i in 1..m) {
+        for (j in 1..n) {
+            if (nums1[i - 1] == nums2[j - 1]) {
+                dp[i][j] = dp[i - 1][j - 1] + 1
+                if (dp[i][j] > best) best = dp[i][j]
+            }
+        }
+    }
+    return best
+}
+@@@LANG swift
+func findLength(_ nums1: [Int], _ nums2: [Int]) -> Int {
+    let m = nums1.count
+    let n = nums2.count
+    var dp = [[Int]](repeating: [Int](repeating: 0, count: n + 1), count: m + 1)
+    var best = 0
+    for i in 1...max(m, 1) where i <= m {
+        for j in 1...max(n, 1) where j <= n {
+            if nums1[i - 1] == nums2[j - 1] {
+                dp[i][j] = dp[i - 1][j - 1] + 1
+                if dp[i][j] > best { best = dp[i][j] }
+            }
+        }
+    }
+    return best
+}
+@@@LANG rust
+fn findLength(nums1: Vec<i32>, nums2: Vec<i32>) -> i32 {
+    let m = nums1.len();
+    let n = nums2.len();
+    let mut dp = vec![vec![0i32; n + 1]; m + 1];
+    let mut best = 0;
+    for i in 1..=m {
+        for j in 1..=n {
+            if nums1[i - 1] == nums2[j - 1] {
+                dp[i][j] = dp[i - 1][j - 1] + 1;
+                if dp[i][j] > best {
+                    best = dp[i][j];
+                }
+            }
+        }
+    }
+    best
+}
+@@@LANG php
+function findLength($nums1, $nums2) {
+    $m = count($nums1);
+    $n = count($nums2);
+    $dp = array();
+    for ($i = 0; $i <= $m; $i++) $dp[] = array_fill(0, $n + 1, 0);
+    $best = 0;
+    for ($i = 1; $i <= $m; $i++) {
+        for ($j = 1; $j <= $n; $j++) {
+            if ($nums1[$i - 1] === $nums2[$j - 1]) {
+                $dp[$i][$j] = $dp[$i - 1][$j - 1] + 1;
+                if ($dp[$i][$j] > $best) $best = $dp[$i][$j];
+            }
+        }
+    }
+    return $best;
+}
+@@@LANG ruby
+def findLength(nums1, nums2)
+  m = nums1.length
+  n = nums2.length
+  dp = Array.new(m + 1) { Array.new(n + 1, 0) }
+  best = 0
+  (1..m).each do |i|
+    (1..n).each do |j|
+      next unless nums1[i - 1] == nums2[j - 1]
+      dp[i][j] = dp[i - 1][j - 1] + 1
+      best = dp[i][j] if dp[i][j] > best
+    end
+  end
+  best
+end
+
+@@@PROBLEM longest-arithmetic-subsequence-of-given-difference
+@@@LANG typescript
+function longestSubsequence(arr: number[], difference: number): number {
+    var best: { [key: string]: number } = {};
+    var answer = 0;
+    for (var i = 0; i < arr.length; i++) {
+        var prevKey = String(arr[i] - difference);
+        var prev = best[prevKey] === undefined ? 0 : best[prevKey];
+        var len = prev + 1;
+        best[String(arr[i])] = len;
+        if (len > answer) answer = len;
+    }
+    return answer;
+}
+@@@LANG java
+public static int longestSubsequence(int[] arr, int difference) {
+    Map<Integer, Integer> best = new HashMap<>();
+    int answer = 0;
+    for (int x : arr) {
+        int len = best.getOrDefault(x - difference, 0) + 1;
+        best.put(x, len);
+        if (len > answer) answer = len;
+    }
+    return answer;
+}
+@@@LANG cpp
+int longestSubsequence(vector<int>& arr, int difference) {
+    unordered_map<int, int> best;
+    int answer = 0;
+    for (int x : arr) {
+        int len = 1;
+        auto it = best.find(x - difference);
+        if (it != best.end()) len = it->second + 1;
+        best[x] = len;
+        answer = max(answer, len);
+    }
+    return answer;
+}
+@@@LANG c
+int longestSubsequence(int* arr, int arrSize, int difference) {
+    int* best = (int*) calloc(arrSize, sizeof(int));
+    int answer = 0;
+    for (int i = 0; i < arrSize; i++) {
+        int len = 1;
+        for (int j = i - 1; j >= 0; j--) {
+            if (arr[j] == arr[i] - difference && best[j] + 1 > len) len = best[j] + 1;
+        }
+        best[i] = len;
+        if (len > answer) answer = len;
+    }
+    free(best);
+    return answer;
+}
+@@@LANG csharp
+public static int LongestSubsequence(int[] arr, int difference)
+{
+    var best = new Dictionary<int, int>();
+    int answer = 0;
+    foreach (int x in arr)
+    {
+        int prev = best.ContainsKey(x - difference) ? best[x - difference] : 0;
+        int len = prev + 1;
+        best[x] = len;
+        if (len > answer) answer = len;
+    }
+    return answer;
+}
+@@@LANG go
+func longestSubsequence(arr []int, difference int) int {
+	best := make(map[int]int)
+	answer := 0
+	for _, x := range arr {
+		length := best[x-difference] + 1
+		best[x] = length
+		if length > answer {
+			answer = length
+		}
+	}
+	return answer
+}
+@@@LANG kotlin
+fun longestSubsequence(arr: IntArray, difference: Int): Int {
+    val best = HashMap<Int, Int>()
+    var answer = 0
+    for (x in arr) {
+        val len = (best[x - difference] ?: 0) + 1
+        best[x] = len
+        if (len > answer) answer = len
+    }
+    return answer
+}
+@@@LANG swift
+func longestSubsequence(_ arr: [Int], _ difference: Int) -> Int {
+    var best: [Int: Int] = [:]
+    var answer = 0
+    for x in arr {
+        let len = (best[x - difference] ?? 0) + 1
+        best[x] = len
+        if len > answer { answer = len }
+    }
+    return answer
+}
+@@@LANG rust
+fn longestSubsequence(arr: Vec<i32>, difference: i32) -> i32 {
+    use std::collections::HashMap;
+    let mut best: HashMap<i32, i32> = HashMap::new();
+    let mut answer = 0;
+    for x in arr.iter() {
+        let len = *best.get(&(*x - difference)).unwrap_or(&0) + 1;
+        best.insert(*x, len);
+        if len > answer {
+            answer = len;
+        }
+    }
+    answer
+}
+@@@LANG php
+function longestSubsequence($arr, $difference) {
+    $best = array();
+    $answer = 0;
+    foreach ($arr as $x) {
+        $prevKey = $x - $difference;
+        $prev = isset($best[$prevKey]) ? $best[$prevKey] : 0;
+        $len = $prev + 1;
+        $best[$x] = $len;
+        if ($len > $answer) $answer = $len;
+    }
+    return $answer;
+}
+@@@LANG ruby
+def longestSubsequence(arr, difference)
+  best = Hash.new(0)
+  answer = 0
+  arr.each do |x|
+    len = best[x - difference] + 1
+    best[x] = len
+    answer = len if len > answer
+  end
+  answer
+end
+
+@@@PROBLEM number-of-longest-increasing-subsequence
+@@@LANG typescript
+function findNumberOfLIS(nums: number[]): number {
+    var n = nums.length;
+    var len: number[] = [];
+    var count: number[] = [];
+    for (var k = 0; k < n; k++) { len.push(1); count.push(1); }
+    var best = 1;
+    for (var i = 0; i < n; i++) {
+        for (var j = 0; j < i; j++) {
+            if (nums[j] < nums[i]) {
+                if (len[j] + 1 > len[i]) {
+                    len[i] = len[j] + 1;
+                    count[i] = count[j];
+                } else if (len[j] + 1 === len[i]) {
+                    count[i] += count[j];
+                }
+            }
+        }
+        if (len[i] > best) best = len[i];
+    }
+    var total = 0;
+    for (var m = 0; m < n; m++) {
+        if (len[m] === best) total += count[m];
+    }
+    return total;
+}
+@@@LANG java
+public static int findNumberOfLIS(int[] nums) {
+    int n = nums.length;
+    int[] len = new int[n];
+    int[] count = new int[n];
+    Arrays.fill(len, 1);
+    Arrays.fill(count, 1);
+    int best = 1;
+    for (int i = 0; i < n; i++) {
+        for (int j = 0; j < i; j++) {
+            if (nums[j] < nums[i]) {
+                if (len[j] + 1 > len[i]) {
+                    len[i] = len[j] + 1;
+                    count[i] = count[j];
+                } else if (len[j] + 1 == len[i]) {
+                    count[i] += count[j];
+                }
+            }
+        }
+        if (len[i] > best) best = len[i];
+    }
+    int total = 0;
+    for (int i = 0; i < n; i++) {
+        if (len[i] == best) total += count[i];
+    }
+    return total;
+}
+@@@LANG cpp
+int findNumberOfLIS(vector<int>& nums) {
+    int n = (int) nums.size();
+    vector<int> len(n, 1), count(n, 1);
+    int best = 1;
+    for (int i = 0; i < n; i++) {
+        for (int j = 0; j < i; j++) {
+            if (nums[j] < nums[i]) {
+                if (len[j] + 1 > len[i]) {
+                    len[i] = len[j] + 1;
+                    count[i] = count[j];
+                } else if (len[j] + 1 == len[i]) {
+                    count[i] += count[j];
+                }
+            }
+        }
+        best = max(best, len[i]);
+    }
+    int total = 0;
+    for (int i = 0; i < n; i++) {
+        if (len[i] == best) total += count[i];
+    }
+    return total;
+}
+@@@LANG c
+int findNumberOfLIS(int* nums, int numsSize) {
+    int n = numsSize;
+    int* len = (int*) malloc(sizeof(int) * n);
+    int* count = (int*) malloc(sizeof(int) * n);
+    for (int i = 0; i < n; i++) { len[i] = 1; count[i] = 1; }
+    int best = 1;
+    for (int i = 0; i < n; i++) {
+        for (int j = 0; j < i; j++) {
+            if (nums[j] < nums[i]) {
+                if (len[j] + 1 > len[i]) {
+                    len[i] = len[j] + 1;
+                    count[i] = count[j];
+                } else if (len[j] + 1 == len[i]) {
+                    count[i] += count[j];
+                }
+            }
+        }
+        if (len[i] > best) best = len[i];
+    }
+    int total = 0;
+    for (int i = 0; i < n; i++) {
+        if (len[i] == best) total += count[i];
+    }
+    free(len);
+    free(count);
+    return total;
+}
+@@@LANG csharp
+public static int FindNumberOfLIS(int[] nums)
+{
+    int n = nums.Length;
+    int[] len = new int[n];
+    int[] count = new int[n];
+    for (int i = 0; i < n; i++) { len[i] = 1; count[i] = 1; }
+    int best = 1;
+    for (int i = 0; i < n; i++)
+    {
+        for (int j = 0; j < i; j++)
+        {
+            if (nums[j] < nums[i])
+            {
+                if (len[j] + 1 > len[i])
+                {
+                    len[i] = len[j] + 1;
+                    count[i] = count[j];
+                }
+                else if (len[j] + 1 == len[i])
+                {
+                    count[i] += count[j];
+                }
+            }
+        }
+        if (len[i] > best) best = len[i];
+    }
+    int total = 0;
+    for (int i = 0; i < n; i++)
+    {
+        if (len[i] == best) total += count[i];
+    }
+    return total;
+}
+@@@LANG go
+func findNumberOfLIS(nums []int) int {
+	n := len(nums)
+	length := make([]int, n)
+	count := make([]int, n)
+	for i := range length {
+		length[i] = 1
+		count[i] = 1
+	}
+	best := 1
+	for i := 0; i < n; i++ {
+		for j := 0; j < i; j++ {
+			if nums[j] < nums[i] {
+				if length[j]+1 > length[i] {
+					length[i] = length[j] + 1
+					count[i] = count[j]
+				} else if length[j]+1 == length[i] {
+					count[i] += count[j]
+				}
+			}
+		}
+		if length[i] > best {
+			best = length[i]
+		}
+	}
+	total := 0
+	for i := 0; i < n; i++ {
+		if length[i] == best {
+			total += count[i]
+		}
+	}
+	return total
+}
+@@@LANG kotlin
+fun findNumberOfLIS(nums: IntArray): Int {
+    val n = nums.size
+    val len = IntArray(n) { 1 }
+    val count = IntArray(n) { 1 }
+    var best = 1
+    for (i in 0 until n) {
+        for (j in 0 until i) {
+            if (nums[j] < nums[i]) {
+                if (len[j] + 1 > len[i]) {
+                    len[i] = len[j] + 1
+                    count[i] = count[j]
+                } else if (len[j] + 1 == len[i]) {
+                    count[i] += count[j]
+                }
+            }
+        }
+        if (len[i] > best) best = len[i]
+    }
+    var total = 0
+    for (i in 0 until n) {
+        if (len[i] == best) total += count[i]
+    }
+    return total
+}
+@@@LANG swift
+func findNumberOfLIS(_ nums: [Int]) -> Int {
+    let n = nums.count
+    var len = [Int](repeating: 1, count: n)
+    var count = [Int](repeating: 1, count: n)
+    var best = 1
+    for i in 0..<n {
+        for j in 0..<i {
+            if nums[j] < nums[i] {
+                if len[j] + 1 > len[i] {
+                    len[i] = len[j] + 1
+                    count[i] = count[j]
+                } else if len[j] + 1 == len[i] {
+                    count[i] += count[j]
+                }
+            }
+        }
+        if len[i] > best { best = len[i] }
+    }
+    var total = 0
+    for i in 0..<n where len[i] == best { total += count[i] }
+    return total
+}
+@@@LANG rust
+fn findNumberOfLIS(nums: Vec<i32>) -> i32 {
+    let n = nums.len();
+    let mut len = vec![1i32; n];
+    let mut count = vec![1i32; n];
+    let mut best = 1;
+    for i in 0..n {
+        for j in 0..i {
+            if nums[j] < nums[i] {
+                if len[j] + 1 > len[i] {
+                    len[i] = len[j] + 1;
+                    count[i] = count[j];
+                } else if len[j] + 1 == len[i] {
+                    count[i] += count[j];
+                }
+            }
+        }
+        if len[i] > best {
+            best = len[i];
+        }
+    }
+    let mut total = 0;
+    for i in 0..n {
+        if len[i] == best {
+            total += count[i];
+        }
+    }
+    total
+}
+@@@LANG php
+function findNumberOfLIS($nums) {
+    $n = count($nums);
+    $len = array_fill(0, $n, 1);
+    $count = array_fill(0, $n, 1);
+    $best = 1;
+    for ($i = 0; $i < $n; $i++) {
+        for ($j = 0; $j < $i; $j++) {
+            if ($nums[$j] < $nums[$i]) {
+                if ($len[$j] + 1 > $len[$i]) {
+                    $len[$i] = $len[$j] + 1;
+                    $count[$i] = $count[$j];
+                } else if ($len[$j] + 1 === $len[$i]) {
+                    $count[$i] += $count[$j];
+                }
+            }
+        }
+        if ($len[$i] > $best) $best = $len[$i];
+    }
+    $total = 0;
+    for ($i = 0; $i < $n; $i++) {
+        if ($len[$i] === $best) $total += $count[$i];
+    }
+    return $total;
+}
+@@@LANG ruby
+def findNumberOfLIS(nums)
+  n = nums.length
+  len = Array.new(n, 1)
+  count = Array.new(n, 1)
+  best = 1
+  (0...n).each do |i|
+    (0...i).each do |j|
+      next unless nums[j] < nums[i]
+      if len[j] + 1 > len[i]
+        len[i] = len[j] + 1
+        count[i] = count[j]
+      elsif len[j] + 1 == len[i]
+        count[i] += count[j]
+      end
+    end
+    best = len[i] if len[i] > best
+  end
+  total = 0
+  (0...n).each { |i| total += count[i] if len[i] == best }
+  total
+end
+
+@@@PROBLEM wiggle-subsequence
+@@@LANG typescript
+function wiggleMaxLength(nums: number[]): number {
+    if (nums.length < 2) return nums.length;
+    var up = 1;
+    var down = 1;
+    for (var i = 1; i < nums.length; i++) {
+        if (nums[i] > nums[i - 1]) up = down + 1;
+        else if (nums[i] < nums[i - 1]) down = up + 1;
+    }
+    return Math.max(up, down);
+}
+@@@LANG java
+public static int wiggleMaxLength(int[] nums) {
+    if (nums.length < 2) return nums.length;
+    int up = 1, down = 1;
+    for (int i = 1; i < nums.length; i++) {
+        if (nums[i] > nums[i - 1]) up = down + 1;
+        else if (nums[i] < nums[i - 1]) down = up + 1;
+    }
+    return Math.max(up, down);
+}
+@@@LANG cpp
+int wiggleMaxLength(vector<int>& nums) {
+    if (nums.size() < 2) return (int) nums.size();
+    int up = 1, down = 1;
+    for (size_t i = 1; i < nums.size(); i++) {
+        if (nums[i] > nums[i - 1]) up = down + 1;
+        else if (nums[i] < nums[i - 1]) down = up + 1;
+    }
+    return max(up, down);
+}
+@@@LANG c
+int wiggleMaxLength(int* nums, int numsSize) {
+    if (numsSize < 2) return numsSize;
+    int up = 1, down = 1;
+    for (int i = 1; i < numsSize; i++) {
+        if (nums[i] > nums[i - 1]) up = down + 1;
+        else if (nums[i] < nums[i - 1]) down = up + 1;
+    }
+    return up > down ? up : down;
+}
+@@@LANG csharp
+public static int WiggleMaxLength(int[] nums)
+{
+    if (nums.Length < 2) return nums.Length;
+    int up = 1, down = 1;
+    for (int i = 1; i < nums.Length; i++)
+    {
+        if (nums[i] > nums[i - 1]) up = down + 1;
+        else if (nums[i] < nums[i - 1]) down = up + 1;
+    }
+    return Math.Max(up, down);
+}
+@@@LANG go
+func wiggleMaxLength(nums []int) int {
+	if len(nums) < 2 {
+		return len(nums)
+	}
+	up, down := 1, 1
+	for i := 1; i < len(nums); i++ {
+		if nums[i] > nums[i-1] {
+			up = down + 1
+		} else if nums[i] < nums[i-1] {
+			down = up + 1
+		}
+	}
+	if up > down {
+		return up
+	}
+	return down
+}
+@@@LANG kotlin
+fun wiggleMaxLength(nums: IntArray): Int {
+    if (nums.size < 2) return nums.size
+    var up = 1
+    var down = 1
+    for (i in 1 until nums.size) {
+        if (nums[i] > nums[i - 1]) up = down + 1
+        else if (nums[i] < nums[i - 1]) down = up + 1
+    }
+    return if (up > down) up else down
+}
+@@@LANG swift
+func wiggleMaxLength(_ nums: [Int]) -> Int {
+    if nums.count < 2 { return nums.count }
+    var up = 1
+    var down = 1
+    for i in 1..<nums.count {
+        if nums[i] > nums[i - 1] { up = down + 1 }
+        else if nums[i] < nums[i - 1] { down = up + 1 }
+    }
+    return max(up, down)
+}
+@@@LANG rust
+fn wiggleMaxLength(nums: Vec<i32>) -> i32 {
+    if nums.len() < 2 {
+        return nums.len() as i32;
+    }
+    let mut up = 1;
+    let mut down = 1;
+    for i in 1..nums.len() {
+        if nums[i] > nums[i - 1] {
+            up = down + 1;
+        } else if nums[i] < nums[i - 1] {
+            down = up + 1;
+        }
+    }
+    if up > down { up } else { down }
+}
+@@@LANG php
+function wiggleMaxLength($nums) {
+    $n = count($nums);
+    if ($n < 2) return $n;
+    $up = 1;
+    $down = 1;
+    for ($i = 1; $i < $n; $i++) {
+        if ($nums[$i] > $nums[$i - 1]) $up = $down + 1;
+        else if ($nums[$i] < $nums[$i - 1]) $down = $up + 1;
+    }
+    return max($up, $down);
+}
+@@@LANG ruby
+def wiggleMaxLength(nums)
+  return nums.length if nums.length < 2
+  up = 1
+  down = 1
+  (1...nums.length).each do |i|
+    if nums[i] > nums[i - 1]
+      up = down + 1
+    elsif nums[i] < nums[i - 1]
+      down = up + 1
+    end
+  end
+  [up, down].max
+end
+
+@@@PROBLEM arithmetic-slices
+@@@LANG typescript
+function numberOfArithmeticSlices(nums: number[]): number {
+    var total = 0;
+    var cur = 0;
+    for (var i = 2; i < nums.length; i++) {
+        if (nums[i] - nums[i - 1] === nums[i - 1] - nums[i - 2]) {
+            cur++;
+            total += cur;
+        } else {
+            cur = 0;
+        }
+    }
+    return total;
+}
+@@@LANG java
+public static int numberOfArithmeticSlices(int[] nums) {
+    int total = 0, cur = 0;
+    for (int i = 2; i < nums.length; i++) {
+        if (nums[i] - nums[i - 1] == nums[i - 1] - nums[i - 2]) {
+            cur++;
+            total += cur;
+        } else {
+            cur = 0;
+        }
+    }
+    return total;
+}
+@@@LANG cpp
+int numberOfArithmeticSlices(vector<int>& nums) {
+    int total = 0, cur = 0;
+    for (int i = 2; i < (int) nums.size(); i++) {
+        if (nums[i] - nums[i - 1] == nums[i - 1] - nums[i - 2]) {
+            cur++;
+            total += cur;
+        } else {
+            cur = 0;
+        }
+    }
+    return total;
+}
+@@@LANG c
+int numberOfArithmeticSlices(int* nums, int numsSize) {
+    int total = 0, cur = 0;
+    for (int i = 2; i < numsSize; i++) {
+        if (nums[i] - nums[i - 1] == nums[i - 1] - nums[i - 2]) {
+            cur++;
+            total += cur;
+        } else {
+            cur = 0;
+        }
+    }
+    return total;
+}
+@@@LANG csharp
+public static int NumberOfArithmeticSlices(int[] nums)
+{
+    int total = 0, cur = 0;
+    for (int i = 2; i < nums.Length; i++)
+    {
+        if (nums[i] - nums[i - 1] == nums[i - 1] - nums[i - 2])
+        {
+            cur++;
+            total += cur;
+        }
+        else
+        {
+            cur = 0;
+        }
+    }
+    return total;
+}
+@@@LANG go
+func numberOfArithmeticSlices(nums []int) int {
+	total, cur := 0, 0
+	for i := 2; i < len(nums); i++ {
+		if nums[i]-nums[i-1] == nums[i-1]-nums[i-2] {
+			cur++
+			total += cur
+		} else {
+			cur = 0
+		}
+	}
+	return total
+}
+@@@LANG kotlin
+fun numberOfArithmeticSlices(nums: IntArray): Int {
+    var total = 0
+    var cur = 0
+    for (i in 2 until nums.size) {
+        if (nums[i] - nums[i - 1] == nums[i - 1] - nums[i - 2]) {
+            cur++
+            total += cur
+        } else {
+            cur = 0
+        }
+    }
+    return total
+}
+@@@LANG swift
+func numberOfArithmeticSlices(_ nums: [Int]) -> Int {
+    var total = 0
+    var cur = 0
+    var i = 2
+    while i < nums.count {
+        if nums[i] - nums[i - 1] == nums[i - 1] - nums[i - 2] {
+            cur += 1
+            total += cur
+        } else {
+            cur = 0
+        }
+        i += 1
+    }
+    return total
+}
+@@@LANG rust
+fn numberOfArithmeticSlices(nums: Vec<i32>) -> i32 {
+    let mut total = 0;
+    let mut cur = 0;
+    if nums.len() < 3 {
+        return 0;
+    }
+    for i in 2..nums.len() {
+        if nums[i] - nums[i - 1] == nums[i - 1] - nums[i - 2] {
+            cur += 1;
+            total += cur;
+        } else {
+            cur = 0;
+        }
+    }
+    total
+}
+@@@LANG php
+function numberOfArithmeticSlices($nums) {
+    $total = 0;
+    $cur = 0;
+    for ($i = 2; $i < count($nums); $i++) {
+        if ($nums[$i] - $nums[$i - 1] === $nums[$i - 1] - $nums[$i - 2]) {
+            $cur++;
+            $total += $cur;
+        } else {
+            $cur = 0;
+        }
+    }
+    return $total;
+}
+@@@LANG ruby
+def numberOfArithmeticSlices(nums)
+  total = 0
+  cur = 0
+  (2...nums.length).each do |i|
+    if nums[i] - nums[i - 1] == nums[i - 1] - nums[i - 2]
+      cur += 1
+      total += cur
+    else
+      cur = 0
+    end
+  end
+  total
+end
+
+@@@PROBLEM count-sorted-vowel-strings
+@@@LANG typescript
+function countVowelStrings(n: number): number {
+    var dp = [1, 1, 1, 1, 1];
+    for (var step = 1; step < n; step++) {
+        for (var i = 3; i >= 0; i--) dp[i] += dp[i + 1];
+    }
+    return dp[0] + dp[1] + dp[2] + dp[3] + dp[4];
+}
+@@@LANG java
+public static int countVowelStrings(int n) {
+    int[] dp = {1, 1, 1, 1, 1};
+    for (int step = 1; step < n; step++) {
+        for (int i = 3; i >= 0; i--) dp[i] += dp[i + 1];
+    }
+    return dp[0] + dp[1] + dp[2] + dp[3] + dp[4];
+}
+@@@LANG cpp
+int countVowelStrings(int n) {
+    int dp[5] = {1, 1, 1, 1, 1};
+    for (int step = 1; step < n; step++) {
+        for (int i = 3; i >= 0; i--) dp[i] += dp[i + 1];
+    }
+    return dp[0] + dp[1] + dp[2] + dp[3] + dp[4];
+}
+@@@LANG c
+int countVowelStrings(int n) {
+    int dp[5] = {1, 1, 1, 1, 1};
+    for (int step = 1; step < n; step++) {
+        for (int i = 3; i >= 0; i--) dp[i] += dp[i + 1];
+    }
+    return dp[0] + dp[1] + dp[2] + dp[3] + dp[4];
+}
+@@@LANG csharp
+public static int CountVowelStrings(int n)
+{
+    int[] dp = { 1, 1, 1, 1, 1 };
+    for (int step = 1; step < n; step++)
+    {
+        for (int i = 3; i >= 0; i--) dp[i] += dp[i + 1];
+    }
+    return dp[0] + dp[1] + dp[2] + dp[3] + dp[4];
+}
+@@@LANG go
+func countVowelStrings(n int) int {
+	dp := [5]int{1, 1, 1, 1, 1}
+	for step := 1; step < n; step++ {
+		for i := 3; i >= 0; i-- {
+			dp[i] += dp[i+1]
+		}
+	}
+	return dp[0] + dp[1] + dp[2] + dp[3] + dp[4]
+}
+@@@LANG kotlin
+fun countVowelStrings(n: Int): Int {
+    val dp = intArrayOf(1, 1, 1, 1, 1)
+    for (step in 1 until n) {
+        for (i in 3 downTo 0) dp[i] += dp[i + 1]
+    }
+    return dp[0] + dp[1] + dp[2] + dp[3] + dp[4]
+}
+@@@LANG swift
+func countVowelStrings(_ n: Int) -> Int {
+    var dp = [1, 1, 1, 1, 1]
+    var step = 1
+    while step < n {
+        var i = 3
+        while i >= 0 {
+            dp[i] += dp[i + 1]
+            i -= 1
+        }
+        step += 1
+    }
+    return dp[0] + dp[1] + dp[2] + dp[3] + dp[4]
+}
+@@@LANG rust
+fn countVowelStrings(n: i32) -> i32 {
+    let mut dp = [1i32; 5];
+    for _ in 1..n {
+        let mut i: i32 = 3;
+        while i >= 0 {
+            dp[i as usize] += dp[(i + 1) as usize];
+            i -= 1;
+        }
+    }
+    dp[0] + dp[1] + dp[2] + dp[3] + dp[4]
+}
+@@@LANG php
+function countVowelStrings($n) {
+    $dp = array(1, 1, 1, 1, 1);
+    for ($step = 1; $step < $n; $step++) {
+        for ($i = 3; $i >= 0; $i--) $dp[$i] += $dp[$i + 1];
+    }
+    return $dp[0] + $dp[1] + $dp[2] + $dp[3] + $dp[4];
+}
+@@@LANG ruby
+def countVowelStrings(n)
+  dp = [1, 1, 1, 1, 1]
+  (1...n).each do
+    3.downto(0) { |i| dp[i] += dp[i + 1] }
+  end
+  dp.sum
+end
+
+@@@PROBLEM delete-operation-for-two-strings
+@@@LANG typescript
+function minDistance(word1: string, word2: string): number {
+    var m = word1.length;
+    var n = word2.length;
+    var dp: number[][] = [];
+    for (var i = 0; i <= m; i++) {
+        var row: number[] = [];
+        for (var j = 0; j <= n; j++) row.push(0);
+        dp.push(row);
+    }
+    for (var a = 1; a <= m; a++) {
+        for (var b = 1; b <= n; b++) {
+            if (word1.charAt(a - 1) === word2.charAt(b - 1)) dp[a][b] = dp[a - 1][b - 1] + 1;
+            else dp[a][b] = Math.max(dp[a - 1][b], dp[a][b - 1]);
+        }
+    }
+    return m + n - 2 * dp[m][n];
+}
+@@@LANG java
+public static int minDistance(String word1, String word2) {
+    int m = word1.length(), n = word2.length();
+    int[][] dp = new int[m + 1][n + 1];
+    for (int i = 1; i <= m; i++) {
+        for (int j = 1; j <= n; j++) {
+            if (word1.charAt(i - 1) == word2.charAt(j - 1)) dp[i][j] = dp[i - 1][j - 1] + 1;
+            else dp[i][j] = Math.max(dp[i - 1][j], dp[i][j - 1]);
+        }
+    }
+    return m + n - 2 * dp[m][n];
+}
+@@@LANG cpp
+int minDistance(string word1, string word2) {
+    int m = (int) word1.size(), n = (int) word2.size();
+    vector<vector<int>> dp(m + 1, vector<int>(n + 1, 0));
+    for (int i = 1; i <= m; i++) {
+        for (int j = 1; j <= n; j++) {
+            if (word1[i - 1] == word2[j - 1]) dp[i][j] = dp[i - 1][j - 1] + 1;
+            else dp[i][j] = max(dp[i - 1][j], dp[i][j - 1]);
+        }
+    }
+    return m + n - 2 * dp[m][n];
+}
+@@@LANG c
+int minDistance(const char* word1, const char* word2) {
+    int m = (int) strlen(word1), n = (int) strlen(word2);
+    int* prev = (int*) calloc(n + 1, sizeof(int));
+    int* cur = (int*) calloc(n + 1, sizeof(int));
+    for (int i = 1; i <= m; i++) {
+        cur[0] = 0;
+        for (int j = 1; j <= n; j++) {
+            if (word1[i - 1] == word2[j - 1]) cur[j] = prev[j - 1] + 1;
+            else cur[j] = prev[j] > cur[j - 1] ? prev[j] : cur[j - 1];
+        }
+        for (int j = 0; j <= n; j++) prev[j] = cur[j];
+    }
+    int lcs = prev[n];
+    free(prev);
+    free(cur);
+    return m + n - 2 * lcs;
+}
+@@@LANG csharp
+public static int MinDistance(string word1, string word2)
+{
+    int m = word1.Length, n = word2.Length;
+    int[][] dp = new int[m + 1][];
+    for (int i = 0; i <= m; i++) dp[i] = new int[n + 1];
+    for (int i = 1; i <= m; i++)
+    {
+        for (int j = 1; j <= n; j++)
+        {
+            if (word1[i - 1] == word2[j - 1]) dp[i][j] = dp[i - 1][j - 1] + 1;
+            else dp[i][j] = Math.Max(dp[i - 1][j], dp[i][j - 1]);
+        }
+    }
+    return m + n - 2 * dp[m][n];
+}
+@@@LANG go
+func minDistance(word1 string, word2 string) int {
+	m, n := len(word1), len(word2)
+	dp := make([][]int, m+1)
+	for i := range dp {
+		dp[i] = make([]int, n+1)
+	}
+	for i := 1; i <= m; i++ {
+		for j := 1; j <= n; j++ {
+			if word1[i-1] == word2[j-1] {
+				dp[i][j] = dp[i-1][j-1] + 1
+			} else if dp[i-1][j] > dp[i][j-1] {
+				dp[i][j] = dp[i-1][j]
+			} else {
+				dp[i][j] = dp[i][j-1]
+			}
+		}
+	}
+	return m + n - 2*dp[m][n]
+}
+@@@LANG kotlin
+fun minDistance(word1: String, word2: String): Int {
+    val m = word1.length
+    val n = word2.length
+    val dp = Array(m + 1) { IntArray(n + 1) }
+    for (i in 1..m) {
+        for (j in 1..n) {
+            dp[i][j] = if (word1[i - 1] == word2[j - 1]) dp[i - 1][j - 1] + 1
+            else if (dp[i - 1][j] > dp[i][j - 1]) dp[i - 1][j] else dp[i][j - 1]
+        }
+    }
+    return m + n - 2 * dp[m][n]
+}
+@@@LANG swift
+func minDistance(_ word1: String, _ word2: String) -> Int {
+    let a = Array(word1)
+    let b = Array(word2)
+    let m = a.count
+    let n = b.count
+    var dp = [[Int]](repeating: [Int](repeating: 0, count: n + 1), count: m + 1)
+    var i = 1
+    while i <= m {
+        var j = 1
+        while j <= n {
+            if a[i - 1] == b[j - 1] { dp[i][j] = dp[i - 1][j - 1] + 1 }
+            else { dp[i][j] = max(dp[i - 1][j], dp[i][j - 1]) }
+            j += 1
+        }
+        i += 1
+    }
+    return m + n - 2 * dp[m][n]
+}
+@@@LANG rust
+fn minDistance(word1: String, word2: String) -> i32 {
+    let a = word1.as_bytes();
+    let b = word2.as_bytes();
+    let m = a.len();
+    let n = b.len();
+    let mut dp = vec![vec![0i32; n + 1]; m + 1];
+    for i in 1..=m {
+        for j in 1..=n {
+            dp[i][j] = if a[i - 1] == b[j - 1] {
+                dp[i - 1][j - 1] + 1
+            } else if dp[i - 1][j] > dp[i][j - 1] {
+                dp[i - 1][j]
+            } else {
+                dp[i][j - 1]
+            };
+        }
+    }
+    (m + n) as i32 - 2 * dp[m][n]
+}
+@@@LANG php
+function minDistance($word1, $word2) {
+    $m = strlen($word1);
+    $n = strlen($word2);
+    $dp = array();
+    for ($i = 0; $i <= $m; $i++) $dp[] = array_fill(0, $n + 1, 0);
+    for ($i = 1; $i <= $m; $i++) {
+        for ($j = 1; $j <= $n; $j++) {
+            if ($word1[$i - 1] === $word2[$j - 1]) $dp[$i][$j] = $dp[$i - 1][$j - 1] + 1;
+            else $dp[$i][$j] = max($dp[$i - 1][$j], $dp[$i][$j - 1]);
+        }
+    }
+    return $m + $n - 2 * $dp[$m][$n];
+}
+@@@LANG ruby
+def minDistance(word1, word2)
+  m = word1.length
+  n = word2.length
+  dp = Array.new(m + 1) { Array.new(n + 1, 0) }
+  (1..m).each do |i|
+    (1..n).each do |j|
+      dp[i][j] = if word1[i - 1] == word2[j - 1]
+                   dp[i - 1][j - 1] + 1
+                 else
+                   [dp[i - 1][j], dp[i][j - 1]].max
+                 end
+    end
+  end
+  m + n - 2 * dp[m][n]
+end

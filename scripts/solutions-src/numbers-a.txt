@@ -1,0 +1,1254 @@
+@@@PROBLEM reverse-integer
+@@@LANG typescript
+function reverse(x: number): number {
+    var sign = x < 0 ? -1 : 1;
+    var n = Math.abs(x);
+    var result = 0;
+    while (n > 0) {
+        result = result * 10 + (n % 10);
+        n = Math.floor(n / 10);
+    }
+    result *= sign;
+    if (result < -2147483648 || result > 2147483647) return 0;
+    return result;
+}
+@@@LANG java
+public static int reverse(int x) {
+    int sign = x < 0 ? -1 : 1;
+    long n = Math.abs((long) x);
+    long result = 0;
+    while (n > 0) {
+        result = result * 10 + n % 10;
+        n /= 10;
+    }
+    result *= sign;
+    if (result < Integer.MIN_VALUE || result > Integer.MAX_VALUE) return 0;
+    return (int) result;
+}
+@@@LANG cpp
+int reverse(int x) {
+    int sign = x < 0 ? -1 : 1;
+    long long n = (long long) x;
+    if (n < 0) n = -n;
+    long long result = 0;
+    while (n > 0) {
+        result = result * 10 + n % 10;
+        n /= 10;
+    }
+    result *= sign;
+    if (result < -2147483648LL || result > 2147483647LL) return 0;
+    return (int) result;
+}
+@@@LANG c
+int reverse(int x) {
+    int sign = x < 0 ? -1 : 1;
+    long long n = (long long) x;
+    if (n < 0) n = -n;
+    long long result = 0;
+    while (n > 0) {
+        result = result * 10 + n % 10;
+        n /= 10;
+    }
+    result *= sign;
+    if (result < -2147483648LL || result > 2147483647LL) return 0;
+    return (int) result;
+}
+@@@LANG csharp
+public static int Reverse(int x)
+{
+    int sign = x < 0 ? -1 : 1;
+    long n = Math.Abs((long) x);
+    long result = 0;
+    while (n > 0)
+    {
+        result = result * 10 + n % 10;
+        n /= 10;
+    }
+    result *= sign;
+    if (result < int.MinValue || result > int.MaxValue) return 0;
+    return (int) result;
+}
+@@@LANG go
+func reverse(x int) int {
+	sign := 1
+	if x < 0 {
+		sign = -1
+		x = -x
+	}
+	result := 0
+	for x > 0 {
+		result = result*10 + x%10
+		x /= 10
+	}
+	result *= sign
+	if result < -2147483648 || result > 2147483647 {
+		return 0
+	}
+	return result
+}
+@@@LANG kotlin
+fun reverse(x: Int): Int {
+    val sign = if (x < 0) -1L else 1L
+    var n = Math.abs(x.toLong())
+    var result = 0L
+    while (n > 0) {
+        result = result * 10 + n % 10
+        n /= 10
+    }
+    result *= sign
+    if (result < -2147483648L || result > 2147483647L) return 0
+    return result.toInt()
+}
+@@@LANG swift
+func reverse(_ x: Int) -> Int {
+    let sign = x < 0 ? -1 : 1
+    var n = x < 0 ? -x : x
+    var result = 0
+    while n > 0 {
+        result = result * 10 + n % 10
+        n /= 10
+    }
+    result *= sign
+    if result < -2147483648 || result > 2147483647 { return 0 }
+    return result
+}
+@@@LANG rust
+fn reverse(x: i32) -> i32 {
+    let sign: i64 = if x < 0 { -1 } else { 1 };
+    let mut n = (x as i64).abs();
+    let mut result: i64 = 0;
+    while n > 0 {
+        result = result * 10 + n % 10;
+        n /= 10;
+    }
+    result *= sign;
+    if result < -2147483648 || result > 2147483647 {
+        return 0;
+    }
+    result as i32
+}
+@@@LANG php
+function reverse($x) {
+    $sign = $x < 0 ? -1 : 1;
+    $n = abs($x);
+    $result = 0;
+    while ($n > 0) {
+        $result = $result * 10 + $n % 10;
+        $n = intdiv($n, 10);
+    }
+    $result *= $sign;
+    if ($result < -2147483648 || $result > 2147483647) return 0;
+    return $result;
+}
+@@@LANG ruby
+def reverse(x)
+  sign = x < 0 ? -1 : 1
+  n = x.abs
+  result = 0
+  while n > 0
+    result = result * 10 + n % 10
+    n /= 10
+  end
+  result *= sign
+  return 0 if result < -2147483648 || result > 2147483647
+  result
+end
+
+@@@PROBLEM palindrome-number
+@@@LANG typescript
+function isPalindrome(x: number): boolean {
+    if (x < 0) return false;
+    var n = x;
+    var rev = 0;
+    while (n > 0) {
+        rev = rev * 10 + (n % 10);
+        n = Math.floor(n / 10);
+    }
+    return rev === x;
+}
+@@@LANG java
+public static boolean isPalindrome(int x) {
+    if (x < 0) return false;
+    int n = x;
+    long rev = 0;
+    while (n > 0) {
+        rev = rev * 10 + n % 10;
+        n /= 10;
+    }
+    return rev == (long) x;
+}
+@@@LANG cpp
+bool isPalindrome(int x) {
+    if (x < 0) return false;
+    int n = x;
+    long long rev = 0;
+    while (n > 0) {
+        rev = rev * 10 + n % 10;
+        n /= 10;
+    }
+    return rev == (long long) x;
+}
+@@@LANG c
+bool isPalindrome(int x) {
+    if (x < 0) return false;
+    int n = x;
+    long long rev = 0;
+    while (n > 0) {
+        rev = rev * 10 + n % 10;
+        n /= 10;
+    }
+    return rev == (long long) x;
+}
+@@@LANG csharp
+public static bool IsPalindrome(int x)
+{
+    if (x < 0) return false;
+    int n = x;
+    long rev = 0;
+    while (n > 0)
+    {
+        rev = rev * 10 + n % 10;
+        n /= 10;
+    }
+    return rev == (long) x;
+}
+@@@LANG go
+func isPalindrome(x int) bool {
+	if x < 0 {
+		return false
+	}
+	n, rev := x, 0
+	for n > 0 {
+		rev = rev*10 + n%10
+		n /= 10
+	}
+	return rev == x
+}
+@@@LANG kotlin
+fun isPalindrome(x: Int): Boolean {
+    if (x < 0) return false
+    var n = x
+    var rev = 0L
+    while (n > 0) {
+        rev = rev * 10 + n % 10
+        n /= 10
+    }
+    return rev == x.toLong()
+}
+@@@LANG swift
+func isPalindrome(_ x: Int) -> Bool {
+    if x < 0 { return false }
+    var n = x
+    var rev = 0
+    while n > 0 {
+        rev = rev * 10 + n % 10
+        n /= 10
+    }
+    return rev == x
+}
+@@@LANG rust
+fn isPalindrome(x: i32) -> bool {
+    if x < 0 {
+        return false;
+    }
+    let mut n = x as i64;
+    let mut rev: i64 = 0;
+    while n > 0 {
+        rev = rev * 10 + n % 10;
+        n /= 10;
+    }
+    rev == x as i64
+}
+@@@LANG php
+function isPalindrome($x) {
+    if ($x < 0) return false;
+    $n = $x;
+    $rev = 0;
+    while ($n > 0) {
+        $rev = $rev * 10 + $n % 10;
+        $n = intdiv($n, 10);
+    }
+    return $rev === $x;
+}
+@@@LANG ruby
+def isPalindrome(x)
+  return false if x < 0
+  n = x
+  rev = 0
+  while n > 0
+    rev = rev * 10 + n % 10
+    n /= 10
+  end
+  rev == x
+end
+
+@@@PROBLEM count-primes
+@@@LANG typescript
+function countPrimes(n: number): number {
+    if (n < 3) return 0;
+    var sieve: boolean[] = [];
+    for (var k = 0; k < n; k++) sieve.push(false);
+    var count = 0;
+    for (var i = 2; i < n; i++) {
+        if (!sieve[i]) {
+            count++;
+            for (var j = i * i; j < n; j += i) sieve[j] = true;
+        }
+    }
+    return count;
+}
+@@@LANG java
+public static int countPrimes(int n) {
+    if (n < 3) return 0;
+    boolean[] sieve = new boolean[n];
+    int count = 0;
+    for (int i = 2; i < n; i++) {
+        if (!sieve[i]) {
+            count++;
+            for (long j = (long) i * i; j < n; j += i) sieve[(int) j] = true;
+        }
+    }
+    return count;
+}
+@@@LANG cpp
+int countPrimes(int n) {
+    if (n < 3) return 0;
+    vector<char> sieve(n, 0);
+    int count = 0;
+    for (int i = 2; i < n; i++) {
+        if (!sieve[i]) {
+            count++;
+            for (long long j = (long long) i * i; j < n; j += i) sieve[j] = 1;
+        }
+    }
+    return count;
+}
+@@@LANG c
+int countPrimes(int n) {
+    if (n < 3) return 0;
+    char* sieve = (char*) calloc(n, 1);
+    int count = 0;
+    for (int i = 2; i < n; i++) {
+        if (!sieve[i]) {
+            count++;
+            for (long long j = (long long) i * i; j < n; j += i) sieve[j] = 1;
+        }
+    }
+    free(sieve);
+    return count;
+}
+@@@LANG csharp
+public static int CountPrimes(int n)
+{
+    if (n < 3) return 0;
+    bool[] sieve = new bool[n];
+    int count = 0;
+    for (int i = 2; i < n; i++)
+    {
+        if (!sieve[i])
+        {
+            count++;
+            for (long j = (long) i * i; j < n; j += i) sieve[(int) j] = true;
+        }
+    }
+    return count;
+}
+@@@LANG go
+func countPrimes(n int) int {
+	if n < 3 {
+		return 0
+	}
+	sieve := make([]bool, n)
+	count := 0
+	for i := 2; i < n; i++ {
+		if !sieve[i] {
+			count++
+			for j := i * i; j < n; j += i {
+				sieve[j] = true
+			}
+		}
+	}
+	return count
+}
+@@@LANG kotlin
+fun countPrimes(n: Int): Int {
+    if (n < 3) return 0
+    val sieve = BooleanArray(n)
+    var count = 0
+    for (i in 2 until n) {
+        if (!sieve[i]) {
+            count++
+            var j = i.toLong() * i
+            while (j < n) {
+                sieve[j.toInt()] = true
+                j += i
+            }
+        }
+    }
+    return count
+}
+@@@LANG swift
+func countPrimes(_ n: Int) -> Int {
+    if n < 3 { return 0 }
+    var sieve = [Bool](repeating: false, count: n)
+    var count = 0
+    var i = 2
+    while i < n {
+        if !sieve[i] {
+            count += 1
+            var j = i * i
+            while j < n {
+                sieve[j] = true
+                j += i
+            }
+        }
+        i += 1
+    }
+    return count
+}
+@@@LANG rust
+fn countPrimes(n: i32) -> i32 {
+    if n < 3 {
+        return 0;
+    }
+    let limit = n as usize;
+    let mut sieve = vec![false; limit];
+    let mut count = 0;
+    let mut i: usize = 2;
+    while i < limit {
+        if !sieve[i] {
+            count += 1;
+            let mut j = i * i;
+            while j < limit {
+                sieve[j] = true;
+                j += i;
+            }
+        }
+        i += 1;
+    }
+    count
+}
+@@@LANG php
+function countPrimes($n) {
+    if ($n < 3) return 0;
+    $sieve = array_fill(0, $n, false);
+    $count = 0;
+    for ($i = 2; $i < $n; $i++) {
+        if (!$sieve[$i]) {
+            $count++;
+            for ($j = $i * $i; $j < $n; $j += $i) $sieve[$j] = true;
+        }
+    }
+    return $count;
+}
+@@@LANG ruby
+def countPrimes(n)
+  return 0 if n < 3
+  sieve = Array.new(n, false)
+  count = 0
+  i = 2
+  while i < n
+    unless sieve[i]
+      count += 1
+      j = i * i
+      while j < n
+        sieve[j] = true
+        j += i
+      end
+    end
+    i += 1
+  end
+  count
+end
+
+@@@PROBLEM happy-number
+@@@LANG typescript
+function isHappy(n: number): boolean {
+    var seen: { [key: string]: boolean } = {};
+    while (n !== 1 && seen[String(n)] !== true) {
+        seen[String(n)] = true;
+        var total = 0;
+        var x = n;
+        while (x > 0) {
+            var d = x % 10;
+            total += d * d;
+            x = Math.floor(x / 10);
+        }
+        n = total;
+    }
+    return n === 1;
+}
+@@@LANG java
+public static boolean isHappy(int n) {
+    Set<Integer> seen = new HashSet<>();
+    while (n != 1 && !seen.contains(n)) {
+        seen.add(n);
+        int total = 0;
+        int x = n;
+        while (x > 0) {
+            int d = x % 10;
+            total += d * d;
+            x /= 10;
+        }
+        n = total;
+    }
+    return n == 1;
+}
+@@@LANG cpp
+bool isHappy(int n) {
+    unordered_set<int> seen;
+    while (n != 1 && seen.count(n) == 0) {
+        seen.insert(n);
+        int total = 0;
+        int x = n;
+        while (x > 0) {
+            int d = x % 10;
+            total += d * d;
+            x /= 10;
+        }
+        n = total;
+    }
+    return n == 1;
+}
+@@@LANG c
+static int squareDigitSum(int x) {
+    int total = 0;
+    while (x > 0) {
+        int d = x % 10;
+        total += d * d;
+        x /= 10;
+    }
+    return total;
+}
+
+bool isHappy(int n) {
+    int slow = n;
+    int fast = squareDigitSum(n);
+    while (fast != 1 && slow != fast) {
+        slow = squareDigitSum(slow);
+        fast = squareDigitSum(squareDigitSum(fast));
+    }
+    return fast == 1;
+}
+@@@LANG csharp
+public static bool IsHappy(int n)
+{
+    var seen = new HashSet<int>();
+    while (n != 1 && !seen.Contains(n))
+    {
+        seen.Add(n);
+        int total = 0;
+        int x = n;
+        while (x > 0)
+        {
+            int d = x % 10;
+            total += d * d;
+            x /= 10;
+        }
+        n = total;
+    }
+    return n == 1;
+}
+@@@LANG go
+func isHappy(n int) bool {
+	seen := make(map[int]bool)
+	for n != 1 && !seen[n] {
+		seen[n] = true
+		total := 0
+		x := n
+		for x > 0 {
+			d := x % 10
+			total += d * d
+			x /= 10
+		}
+		n = total
+	}
+	return n == 1
+}
+@@@LANG kotlin
+fun isHappy(n: Int): Boolean {
+    var cur = n
+    val seen = HashSet<Int>()
+    while (cur != 1 && !seen.contains(cur)) {
+        seen.add(cur)
+        var total = 0
+        var x = cur
+        while (x > 0) {
+            val d = x % 10
+            total += d * d
+            x /= 10
+        }
+        cur = total
+    }
+    return cur == 1
+}
+@@@LANG swift
+func isHappy(_ n: Int) -> Bool {
+    var cur = n
+    var seen = Set<Int>()
+    while cur != 1 && !seen.contains(cur) {
+        seen.insert(cur)
+        var total = 0
+        var x = cur
+        while x > 0 {
+            let d = x % 10
+            total += d * d
+            x /= 10
+        }
+        cur = total
+    }
+    return cur == 1
+}
+@@@LANG rust
+fn isHappy(n: i32) -> bool {
+    use std::collections::HashSet;
+    let mut cur = n;
+    let mut seen: HashSet<i32> = HashSet::new();
+    while cur != 1 && !seen.contains(&cur) {
+        seen.insert(cur);
+        let mut total = 0;
+        let mut x = cur;
+        while x > 0 {
+            let d = x % 10;
+            total += d * d;
+            x /= 10;
+        }
+        cur = total;
+    }
+    cur == 1
+}
+@@@LANG php
+function isHappy($n) {
+    $seen = array();
+    while ($n !== 1 && !isset($seen[$n])) {
+        $seen[$n] = true;
+        $total = 0;
+        $x = $n;
+        while ($x > 0) {
+            $d = $x % 10;
+            $total += $d * $d;
+            $x = intdiv($x, 10);
+        }
+        $n = $total;
+    }
+    return $n === 1;
+}
+@@@LANG ruby
+def isHappy(n)
+  seen = {}
+  while n != 1 && !seen[n]
+    seen[n] = true
+    total = 0
+    x = n
+    while x > 0
+      d = x % 10
+      total += d * d
+      x /= 10
+    end
+    n = total
+  end
+  n == 1
+end
+
+@@@PROBLEM ugly-number
+@@@LANG typescript
+function isUgly(n: number): boolean {
+    if (n <= 0) return false;
+    var factors = [2, 3, 5];
+    for (var i = 0; i < factors.length; i++) {
+        while (n % factors[i] === 0) n /= factors[i];
+    }
+    return n === 1;
+}
+@@@LANG java
+public static boolean isUgly(int n) {
+    if (n <= 0) return false;
+    int[] factors = {2, 3, 5};
+    for (int f : factors) {
+        while (n % f == 0) n /= f;
+    }
+    return n == 1;
+}
+@@@LANG cpp
+bool isUgly(int n) {
+    if (n <= 0) return false;
+    int factors[3] = {2, 3, 5};
+    for (int i = 0; i < 3; i++) {
+        while (n % factors[i] == 0) n /= factors[i];
+    }
+    return n == 1;
+}
+@@@LANG c
+bool isUgly(int n) {
+    if (n <= 0) return false;
+    int factors[3] = {2, 3, 5};
+    for (int i = 0; i < 3; i++) {
+        while (n % factors[i] == 0) n /= factors[i];
+    }
+    return n == 1;
+}
+@@@LANG csharp
+public static bool IsUgly(int n)
+{
+    if (n <= 0) return false;
+    int[] factors = { 2, 3, 5 };
+    foreach (int f in factors)
+    {
+        while (n % f == 0) n /= f;
+    }
+    return n == 1;
+}
+@@@LANG go
+func isUgly(n int) bool {
+	if n <= 0 {
+		return false
+	}
+	for _, f := range []int{2, 3, 5} {
+		for n%f == 0 {
+			n /= f
+		}
+	}
+	return n == 1
+}
+@@@LANG kotlin
+fun isUgly(n: Int): Boolean {
+    if (n <= 0) return false
+    var cur = n
+    for (f in intArrayOf(2, 3, 5)) {
+        while (cur % f == 0) cur /= f
+    }
+    return cur == 1
+}
+@@@LANG swift
+func isUgly(_ n: Int) -> Bool {
+    if n <= 0 { return false }
+    var cur = n
+    for f in [2, 3, 5] {
+        while cur % f == 0 { cur /= f }
+    }
+    return cur == 1
+}
+@@@LANG rust
+fn isUgly(n: i32) -> bool {
+    if n <= 0 {
+        return false;
+    }
+    let mut cur = n;
+    for f in [2, 3, 5].iter() {
+        while cur % f == 0 {
+            cur /= f;
+        }
+    }
+    cur == 1
+}
+@@@LANG php
+function isUgly($n) {
+    if ($n <= 0) return false;
+    foreach (array(2, 3, 5) as $f) {
+        while ($n % $f === 0) $n = intdiv($n, $f);
+    }
+    return $n === 1;
+}
+@@@LANG ruby
+def isUgly(n)
+  return false if n <= 0
+  [2, 3, 5].each do |f|
+    n /= f while n % f == 0
+  end
+  n == 1
+end
+
+@@@PROBLEM add-digits
+@@@LANG typescript
+function addDigits(num: number): number {
+    if (num === 0) return 0;
+    return 1 + (num - 1) % 9;
+}
+@@@LANG java
+public static int addDigits(int num) {
+    if (num == 0) return 0;
+    return 1 + (num - 1) % 9;
+}
+@@@LANG cpp
+int addDigits(int num) {
+    if (num == 0) return 0;
+    return 1 + (num - 1) % 9;
+}
+@@@LANG c
+int addDigits(int num) {
+    if (num == 0) return 0;
+    return 1 + (num - 1) % 9;
+}
+@@@LANG csharp
+public static int AddDigits(int num)
+{
+    if (num == 0) return 0;
+    return 1 + (num - 1) % 9;
+}
+@@@LANG go
+func addDigits(num int) int {
+	if num == 0 {
+		return 0
+	}
+	return 1 + (num-1)%9
+}
+@@@LANG kotlin
+fun addDigits(num: Int): Int {
+    if (num == 0) return 0
+    return 1 + (num - 1) % 9
+}
+@@@LANG swift
+func addDigits(_ num: Int) -> Int {
+    if num == 0 { return 0 }
+    return 1 + (num - 1) % 9
+}
+@@@LANG rust
+fn addDigits(num: i32) -> i32 {
+    if num == 0 {
+        return 0;
+    }
+    1 + (num - 1) % 9
+}
+@@@LANG php
+function addDigits($num) {
+    if ($num === 0) return 0;
+    return 1 + ($num - 1) % 9;
+}
+@@@LANG ruby
+def addDigits(num)
+  return 0 if num == 0
+  1 + (num - 1) % 9
+end
+
+@@@PROBLEM fizz-buzz
+@@@LANG typescript
+function fizzBuzz(n: number): string[] {
+    var out: string[] = [];
+    for (var i = 1; i <= n; i++) {
+        if (i % 15 === 0) out.push("FizzBuzz");
+        else if (i % 3 === 0) out.push("Fizz");
+        else if (i % 5 === 0) out.push("Buzz");
+        else out.push(String(i));
+    }
+    return out;
+}
+@@@LANG java
+public static String[] fizzBuzz(int n) {
+    String[] out = new String[n];
+    for (int i = 1; i <= n; i++) {
+        if (i % 15 == 0) out[i - 1] = "FizzBuzz";
+        else if (i % 3 == 0) out[i - 1] = "Fizz";
+        else if (i % 5 == 0) out[i - 1] = "Buzz";
+        else out[i - 1] = String.valueOf(i);
+    }
+    return out;
+}
+@@@LANG cpp
+vector<string> fizzBuzz(int n) {
+    vector<string> out;
+    for (int i = 1; i <= n; i++) {
+        if (i % 15 == 0) out.push_back("FizzBuzz");
+        else if (i % 3 == 0) out.push_back("Fizz");
+        else if (i % 5 == 0) out.push_back("Buzz");
+        else out.push_back(to_string(i));
+    }
+    return out;
+}
+@@@LANG c
+char** fizzBuzz(int n, int* returnSize) {
+    char** out = (char**) malloc(sizeof(char*) * n);
+    for (int i = 1; i <= n; i++) {
+        char* s = (char*) malloc(16);
+        if (i % 15 == 0) strcpy(s, "FizzBuzz");
+        else if (i % 3 == 0) strcpy(s, "Fizz");
+        else if (i % 5 == 0) strcpy(s, "Buzz");
+        else sprintf(s, "%d", i);
+        out[i - 1] = s;
+    }
+    *returnSize = n;
+    return out;
+}
+@@@LANG csharp
+public static string[] FizzBuzz(int n)
+{
+    string[] out_ = new string[n];
+    for (int i = 1; i <= n; i++)
+    {
+        if (i % 15 == 0) out_[i - 1] = "FizzBuzz";
+        else if (i % 3 == 0) out_[i - 1] = "Fizz";
+        else if (i % 5 == 0) out_[i - 1] = "Buzz";
+        else out_[i - 1] = i.ToString();
+    }
+    return out_;
+}
+@@@LANG go
+func fizzBuzz(n int) []string {
+	out := make([]string, 0, n)
+	for i := 1; i <= n; i++ {
+		if i%15 == 0 {
+			out = append(out, "FizzBuzz")
+		} else if i%3 == 0 {
+			out = append(out, "Fizz")
+		} else if i%5 == 0 {
+			out = append(out, "Buzz")
+		} else {
+			out = append(out, strconv.Itoa(i))
+		}
+	}
+	return out
+}
+@@@LANG kotlin
+fun fizzBuzz(n: Int): Array<String> {
+    val out = ArrayList<String>()
+    for (i in 1..n) {
+        if (i % 15 == 0) out.add("FizzBuzz")
+        else if (i % 3 == 0) out.add("Fizz")
+        else if (i % 5 == 0) out.add("Buzz")
+        else out.add(i.toString())
+    }
+    return out.toTypedArray()
+}
+@@@LANG swift
+func fizzBuzz(_ n: Int) -> [String] {
+    var out: [String] = []
+    var i = 1
+    while i <= n {
+        if i % 15 == 0 { out.append("FizzBuzz") }
+        else if i % 3 == 0 { out.append("Fizz") }
+        else if i % 5 == 0 { out.append("Buzz") }
+        else { out.append(String(i)) }
+        i += 1
+    }
+    return out
+}
+@@@LANG rust
+fn fizzBuzz(n: i32) -> Vec<String> {
+    let mut out: Vec<String> = Vec::new();
+    for i in 1..=n {
+        if i % 15 == 0 {
+            out.push(String::from("FizzBuzz"));
+        } else if i % 3 == 0 {
+            out.push(String::from("Fizz"));
+        } else if i % 5 == 0 {
+            out.push(String::from("Buzz"));
+        } else {
+            out.push(i.to_string());
+        }
+    }
+    out
+}
+@@@LANG php
+function fizzBuzz($n) {
+    $out = array();
+    for ($i = 1; $i <= $n; $i++) {
+        if ($i % 15 === 0) $out[] = "FizzBuzz";
+        else if ($i % 3 === 0) $out[] = "Fizz";
+        else if ($i % 5 === 0) $out[] = "Buzz";
+        else $out[] = strval($i);
+    }
+    return $out;
+}
+@@@LANG ruby
+def fizzBuzz(n)
+  out = []
+  (1..n).each do |i|
+    if i % 15 == 0
+      out << "FizzBuzz"
+    elsif i % 3 == 0
+      out << "Fizz"
+    elsif i % 5 == 0
+      out << "Buzz"
+    else
+      out << i.to_s
+    end
+  end
+  out
+end
+
+@@@PROBLEM power-of-two
+@@@LANG typescript
+function isPowerOfTwo(n: number): boolean {
+    return n > 0 && (n & (n - 1)) === 0;
+}
+@@@LANG java
+public static boolean isPowerOfTwo(int n) {
+    return n > 0 && (n & (n - 1)) == 0;
+}
+@@@LANG cpp
+bool isPowerOfTwo(int n) {
+    return n > 0 && (n & (n - 1)) == 0;
+}
+@@@LANG c
+bool isPowerOfTwo(int n) {
+    return n > 0 && (n & (n - 1)) == 0;
+}
+@@@LANG csharp
+public static bool IsPowerOfTwo(int n)
+{
+    return n > 0 && (n & (n - 1)) == 0;
+}
+@@@LANG go
+func isPowerOfTwo(n int) bool {
+	return n > 0 && n&(n-1) == 0
+}
+@@@LANG kotlin
+fun isPowerOfTwo(n: Int): Boolean {
+    return n > 0 && (n and (n - 1)) == 0
+}
+@@@LANG swift
+func isPowerOfTwo(_ n: Int) -> Bool {
+    return n > 0 && (n & (n - 1)) == 0
+}
+@@@LANG rust
+fn isPowerOfTwo(n: i32) -> bool {
+    n > 0 && (n & (n - 1)) == 0
+}
+@@@LANG php
+function isPowerOfTwo($n) {
+    return $n > 0 && ($n & ($n - 1)) === 0;
+}
+@@@LANG ruby
+def isPowerOfTwo(n)
+  n > 0 && (n & (n - 1)) == 0
+end
+
+@@@PROBLEM power-of-three
+@@@LANG typescript
+function isPowerOfThree(n: number): boolean {
+    return n > 0 && 1162261467 % n === 0;
+}
+@@@LANG java
+public static boolean isPowerOfThree(int n) {
+    return n > 0 && 1162261467 % n == 0;
+}
+@@@LANG cpp
+bool isPowerOfThree(int n) {
+    return n > 0 && 1162261467 % n == 0;
+}
+@@@LANG c
+bool isPowerOfThree(int n) {
+    return n > 0 && 1162261467 % n == 0;
+}
+@@@LANG csharp
+public static bool IsPowerOfThree(int n)
+{
+    return n > 0 && 1162261467 % n == 0;
+}
+@@@LANG go
+func isPowerOfThree(n int) bool {
+	return n > 0 && 1162261467%n == 0
+}
+@@@LANG kotlin
+fun isPowerOfThree(n: Int): Boolean {
+    return n > 0 && 1162261467 % n == 0
+}
+@@@LANG swift
+func isPowerOfThree(_ n: Int) -> Bool {
+    return n > 0 && 1162261467 % n == 0
+}
+@@@LANG rust
+fn isPowerOfThree(n: i32) -> bool {
+    n > 0 && 1162261467 % n == 0
+}
+@@@LANG php
+function isPowerOfThree($n) {
+    return $n > 0 && 1162261467 % $n === 0;
+}
+@@@LANG ruby
+def isPowerOfThree(n)
+  n > 0 && 1162261467 % n == 0
+end
+
+@@@PROBLEM factorial-trailing-zeroes
+@@@LANG typescript
+function trailingZeroes(n: number): number {
+    var count = 0;
+    for (var power = 5; power <= n; power *= 5) {
+        count += Math.floor(n / power);
+    }
+    return count;
+}
+@@@LANG java
+public static int trailingZeroes(int n) {
+    int count = 0;
+    for (long power = 5; power <= n; power *= 5) {
+        count += n / power;
+    }
+    return count;
+}
+@@@LANG cpp
+int trailingZeroes(int n) {
+    int count = 0;
+    for (long long power = 5; power <= n; power *= 5) {
+        count += n / power;
+    }
+    return count;
+}
+@@@LANG c
+int trailingZeroes(int n) {
+    int count = 0;
+    for (long long power = 5; power <= n; power *= 5) {
+        count += (int) (n / power);
+    }
+    return count;
+}
+@@@LANG csharp
+public static int TrailingZeroes(int n)
+{
+    int count = 0;
+    for (long power = 5; power <= n; power *= 5)
+    {
+        count += (int) (n / power);
+    }
+    return count;
+}
+@@@LANG go
+func trailingZeroes(n int) int {
+	count := 0
+	for power := 5; power <= n; power *= 5 {
+		count += n / power
+	}
+	return count
+}
+@@@LANG kotlin
+fun trailingZeroes(n: Int): Int {
+    var count = 0
+    var power = 5L
+    while (power <= n) {
+        count += (n / power).toInt()
+        power *= 5
+    }
+    return count
+}
+@@@LANG swift
+func trailingZeroes(_ n: Int) -> Int {
+    var count = 0
+    var power = 5
+    while power <= n {
+        count += n / power
+        power *= 5
+    }
+    return count
+}
+@@@LANG rust
+fn trailingZeroes(n: i32) -> i32 {
+    let mut count: i64 = 0;
+    let mut power: i64 = 5;
+    let big = n as i64;
+    while power <= big {
+        count += big / power;
+        power *= 5;
+    }
+    count as i32
+}
+@@@LANG php
+function trailingZeroes($n) {
+    $count = 0;
+    for ($power = 5; $power <= $n; $power *= 5) {
+        $count += intdiv($n, $power);
+    }
+    return $count;
+}
+@@@LANG ruby
+def trailingZeroes(n)
+  count = 0
+  power = 5
+  while power <= n
+    count += n / power
+    power *= 5
+  end
+  count
+end
+
+@@@PROBLEM excel-sheet-column-number
+@@@LANG typescript
+function titleToNumber(columnTitle: string): number {
+    var n = 0;
+    for (var i = 0; i < columnTitle.length; i++) {
+        n = n * 26 + (columnTitle.charCodeAt(i) - 64);
+    }
+    return n;
+}
+@@@LANG java
+public static int titleToNumber(String columnTitle) {
+    int n = 0;
+    for (int i = 0; i < columnTitle.length(); i++) {
+        n = n * 26 + (columnTitle.charAt(i) - 'A' + 1);
+    }
+    return n;
+}
+@@@LANG cpp
+int titleToNumber(string columnTitle) {
+    int n = 0;
+    for (size_t i = 0; i < columnTitle.size(); i++) {
+        n = n * 26 + (columnTitle[i] - 'A' + 1);
+    }
+    return n;
+}
+@@@LANG c
+int titleToNumber(const char* columnTitle) {
+    int n = 0;
+    for (int i = 0; columnTitle[i] != '\0'; i++) {
+        n = n * 26 + (columnTitle[i] - 'A' + 1);
+    }
+    return n;
+}
+@@@LANG csharp
+public static int TitleToNumber(string columnTitle)
+{
+    int n = 0;
+    for (int i = 0; i < columnTitle.Length; i++)
+    {
+        n = n * 26 + (columnTitle[i] - 'A' + 1);
+    }
+    return n;
+}
+@@@LANG go
+func titleToNumber(columnTitle string) int {
+	n := 0
+	for i := 0; i < len(columnTitle); i++ {
+		n = n*26 + int(columnTitle[i]-'A') + 1
+	}
+	return n
+}
+@@@LANG kotlin
+fun titleToNumber(columnTitle: String): Int {
+    var n = 0
+    for (ch in columnTitle) {
+        n = n * 26 + (ch - 'A' + 1)
+    }
+    return n
+}
+@@@LANG swift
+func titleToNumber(_ columnTitle: String) -> Int {
+    var n = 0
+    for byte in Array(columnTitle.utf8) {
+        n = n * 26 + (Int(byte) - 65 + 1)
+    }
+    return n
+}
+@@@LANG rust
+fn titleToNumber(columnTitle: String) -> i32 {
+    let mut n = 0;
+    for byte in columnTitle.as_bytes() {
+        n = n * 26 + (*byte as i32 - 65 + 1);
+    }
+    n
+}
+@@@LANG php
+function titleToNumber($columnTitle) {
+    $n = 0;
+    $len = strlen($columnTitle);
+    for ($i = 0; $i < $len; $i++) {
+        $n = $n * 26 + (ord($columnTitle[$i]) - 65 + 1);
+    }
+    return $n;
+}
+@@@LANG ruby
+def titleToNumber(columnTitle)
+  n = 0
+  columnTitle.each_char do |ch|
+    n = n * 26 + (ch.ord - 65 + 1)
+  end
+  n
+end

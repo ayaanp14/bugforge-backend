@@ -1,0 +1,1806 @@
+@@@PROBLEM partition-array-into-disjoint-intervals
+@@@LANG typescript
+function partitionDisjoint(nums: number[]): number {
+    var leftMax = nums[0];
+    var curMax = nums[0];
+    var cut = 1;
+    for (var i = 1; i < nums.length; i++) {
+        if (nums[i] > curMax) curMax = nums[i];
+        if (nums[i] < leftMax) {
+            leftMax = curMax;
+            cut = i + 1;
+        }
+    }
+    return cut;
+}
+@@@LANG java
+public static int partitionDisjoint(int[] nums) {
+    int leftMax = nums[0], curMax = nums[0], cut = 1;
+    for (int i = 1; i < nums.length; i++) {
+        curMax = Math.max(curMax, nums[i]);
+        if (nums[i] < leftMax) {
+            leftMax = curMax;
+            cut = i + 1;
+        }
+    }
+    return cut;
+}
+@@@LANG cpp
+int partitionDisjoint(vector<int>& nums) {
+    int leftMax = nums[0], curMax = nums[0], cut = 1;
+    for (int i = 1; i < (int) nums.size(); i++) {
+        curMax = max(curMax, nums[i]);
+        if (nums[i] < leftMax) {
+            leftMax = curMax;
+            cut = i + 1;
+        }
+    }
+    return cut;
+}
+@@@LANG c
+int partitionDisjoint(int* nums, int numsSize) {
+    int leftMax = nums[0], curMax = nums[0], cut = 1;
+    for (int i = 1; i < numsSize; i++) {
+        if (nums[i] > curMax) curMax = nums[i];
+        if (nums[i] < leftMax) {
+            leftMax = curMax;
+            cut = i + 1;
+        }
+    }
+    return cut;
+}
+@@@LANG csharp
+public static int PartitionDisjoint(int[] nums)
+{
+    int leftMax = nums[0], curMax = nums[0], cut = 1;
+    for (int i = 1; i < nums.Length; i++)
+    {
+        curMax = Math.Max(curMax, nums[i]);
+        if (nums[i] < leftMax)
+        {
+            leftMax = curMax;
+            cut = i + 1;
+        }
+    }
+    return cut;
+}
+@@@LANG go
+func partitionDisjoint(nums []int) int {
+	leftMax, curMax, cut := nums[0], nums[0], 1
+	for i := 1; i < len(nums); i++ {
+		if nums[i] > curMax {
+			curMax = nums[i]
+		}
+		if nums[i] < leftMax {
+			leftMax = curMax
+			cut = i + 1
+		}
+	}
+	return cut
+}
+@@@LANG kotlin
+fun partitionDisjoint(nums: IntArray): Int {
+    var leftMax = nums[0]
+    var curMax = nums[0]
+    var cut = 1
+    for (i in 1 until nums.size) {
+        if (nums[i] > curMax) curMax = nums[i]
+        if (nums[i] < leftMax) {
+            leftMax = curMax
+            cut = i + 1
+        }
+    }
+    return cut
+}
+@@@LANG swift
+func partitionDisjoint(_ nums: [Int]) -> Int {
+    var leftMax = nums[0]
+    var curMax = nums[0]
+    var cut = 1
+    for i in 1..<max(nums.count, 1) {
+        if nums[i] > curMax { curMax = nums[i] }
+        if nums[i] < leftMax {
+            leftMax = curMax
+            cut = i + 1
+        }
+    }
+    return cut
+}
+@@@LANG rust
+fn partitionDisjoint(nums: Vec<i32>) -> i32 {
+    let mut left_max = nums[0];
+    let mut cur_max = nums[0];
+    let mut cut = 1;
+    for i in 1..nums.len() {
+        if nums[i] > cur_max {
+            cur_max = nums[i];
+        }
+        if nums[i] < left_max {
+            left_max = cur_max;
+            cut = (i + 1) as i32;
+        }
+    }
+    cut
+}
+@@@LANG php
+function partitionDisjoint($nums) {
+    $leftMax = $nums[0];
+    $curMax = $nums[0];
+    $cut = 1;
+    for ($i = 1; $i < count($nums); $i++) {
+        if ($nums[$i] > $curMax) $curMax = $nums[$i];
+        if ($nums[$i] < $leftMax) {
+            $leftMax = $curMax;
+            $cut = $i + 1;
+        }
+    }
+    return $cut;
+}
+@@@LANG ruby
+def partitionDisjoint(nums)
+  left_max = nums[0]
+  cur_max = nums[0]
+  cut = 1
+  (1...nums.length).each do |i|
+    cur_max = nums[i] if nums[i] > cur_max
+    if nums[i] < left_max
+      left_max = cur_max
+      cut = i + 1
+    end
+  end
+  cut
+end
+
+@@@PROBLEM k-closest-points-to-origin
+@@@LANG typescript
+function kClosest(points: number[][], k: number): number[][] {
+    var sorted = points.slice().sort(function (a, b) {
+        var da = a[0] * a[0] + a[1] * a[1];
+        var db = b[0] * b[0] + b[1] * b[1];
+        if (da !== db) return da - db;
+        if (a[0] !== b[0]) return a[0] - b[0];
+        return a[1] - b[1];
+    });
+    return sorted.slice(0, k);
+}
+@@@LANG java
+public static int[][] kClosest(int[][] points, int k) {
+    int[][] s = points.clone();
+    Arrays.sort(s, (a, b) -> {
+        int da = a[0] * a[0] + a[1] * a[1];
+        int db = b[0] * b[0] + b[1] * b[1];
+        if (da != db) return da - db;
+        if (a[0] != b[0]) return a[0] - b[0];
+        return a[1] - b[1];
+    });
+    return Arrays.copyOfRange(s, 0, k);
+}
+@@@LANG cpp
+vector<vector<int>> kClosest(vector<vector<int>>& points, int k) {
+    vector<vector<int>> s = points;
+    sort(s.begin(), s.end(), [](const vector<int>& a, const vector<int>& b) {
+        int da = a[0] * a[0] + a[1] * a[1];
+        int db = b[0] * b[0] + b[1] * b[1];
+        if (da != db) return da < db;
+        if (a[0] != b[0]) return a[0] < b[0];
+        return a[1] < b[1];
+    });
+    s.resize(k);
+    return s;
+}
+@@@LANG c
+static int cmpClosestPoint(const void* a, const void* b) {
+    const int* x = *(const int**) a;
+    const int* y = *(const int**) b;
+    int dx = x[0] * x[0] + x[1] * x[1];
+    int dy = y[0] * y[0] + y[1] * y[1];
+    if (dx != dy) return (dx > dy) - (dx < dy);
+    if (x[0] != y[0]) return (x[0] > y[0]) - (x[0] < y[0]);
+    return (x[1] > y[1]) - (x[1] < y[1]);
+}
+
+int** kClosest(int** points, int pointsSize, int* pointsColSize, int k, int* returnSize, int** returnColumnSizes) {
+    int** s = (int**) malloc((pointsSize > 0 ? pointsSize : 1) * sizeof(int*));
+    for (int i = 0; i < pointsSize; i++) s[i] = points[i];
+    qsort(s, pointsSize, sizeof(int*), cmpClosestPoint);
+    int** out = (int**) malloc((k > 0 ? k : 1) * sizeof(int*));
+    int* cols = (int*) malloc((k > 0 ? k : 1) * sizeof(int));
+    for (int i = 0; i < k; i++) {
+        out[i] = (int*) malloc(2 * sizeof(int));
+        out[i][0] = s[i][0];
+        out[i][1] = s[i][1];
+        cols[i] = 2;
+    }
+    free(s);
+    *returnSize = k;
+    *returnColumnSizes = cols;
+    return out;
+}
+@@@LANG csharp
+public static int[][] KClosest(int[][] points, int k)
+{
+    var s = new List<int[]>(points);
+    s.Sort((a, b) =>
+    {
+        int da = a[0] * a[0] + a[1] * a[1];
+        int db = b[0] * b[0] + b[1] * b[1];
+        if (da != db) return da.CompareTo(db);
+        if (a[0] != b[0]) return a[0].CompareTo(b[0]);
+        return a[1].CompareTo(b[1]);
+    });
+    return s.GetRange(0, k).ToArray();
+}
+@@@LANG go
+func kClosest(points [][]int, k int) [][]int {
+	s := append([][]int{}, points...)
+	sort.Slice(s, func(a, b int) bool {
+		da := s[a][0]*s[a][0] + s[a][1]*s[a][1]
+		db := s[b][0]*s[b][0] + s[b][1]*s[b][1]
+		if da != db {
+			return da < db
+		}
+		if s[a][0] != s[b][0] {
+			return s[a][0] < s[b][0]
+		}
+		return s[a][1] < s[b][1]
+	})
+	return s[:k]
+}
+@@@LANG kotlin
+fun kClosest(points: Array<IntArray>, k: Int): Array<IntArray> {
+    val s = points.sortedWith(Comparator { a, b ->
+        val da = a[0] * a[0] + a[1] * a[1]
+        val db = b[0] * b[0] + b[1] * b[1]
+        when {
+            da != db -> da - db
+            a[0] != b[0] -> a[0] - b[0]
+            else -> a[1] - b[1]
+        }
+    })
+    return s.subList(0, k).toTypedArray()
+}
+@@@LANG swift
+func kClosest(_ points: [[Int]], _ k: Int) -> [[Int]] {
+    let s = points.sorted { a, b in
+        let da = a[0] * a[0] + a[1] * a[1]
+        let db = b[0] * b[0] + b[1] * b[1]
+        if da != db { return da < db }
+        if a[0] != b[0] { return a[0] < b[0] }
+        return a[1] < b[1]
+    }
+    return Array(s.prefix(k))
+}
+@@@LANG rust
+fn kClosest(points: Vec<Vec<i32>>, k: i32) -> Vec<Vec<i32>> {
+    let mut s = points.clone();
+    s.sort_by(|a, b| {
+        let da = a[0] * a[0] + a[1] * a[1];
+        let db = b[0] * b[0] + b[1] * b[1];
+        if da != db {
+            da.cmp(&db)
+        } else if a[0] != b[0] {
+            a[0].cmp(&b[0])
+        } else {
+            a[1].cmp(&b[1])
+        }
+    });
+    s.truncate(k as usize);
+    s
+}
+@@@LANG php
+function kClosest($points, $k) {
+    $s = $points;
+    usort($s, function($a, $b) {
+        $da = $a[0] * $a[0] + $a[1] * $a[1];
+        $db = $b[0] * $b[0] + $b[1] * $b[1];
+        if ($da != $db) return $da - $db;
+        if ($a[0] != $b[0]) return $a[0] - $b[0];
+        return $a[1] - $b[1];
+    });
+    return array_slice($s, 0, $k);
+}
+@@@LANG ruby
+def kClosest(points, k)
+  points.sort_by { |p| [p[0] * p[0] + p[1] * p[1], p[0], p[1]] }.first(k)
+end
+
+@@@PROBLEM top-k-frequent-words
+@@@LANG typescript
+function topKFrequent(words: string[], k: number): string[] {
+    var count: { [key: string]: number } = {};
+    for (var i = 0; i < words.length; i++) {
+        count[words[i]] = (count[words[i]] || 0) + 1;
+    }
+    var unique: string[] = [];
+    for (var w in count) {
+        if (Object.prototype.hasOwnProperty.call(count, w)) unique.push(w);
+    }
+    unique.sort(function (a, b) {
+        if (count[a] !== count[b]) return count[b] - count[a];
+        if (a < b) return -1;
+        if (a > b) return 1;
+        return 0;
+    });
+    return unique.slice(0, k);
+}
+@@@LANG java
+public static String[] topKFrequent(String[] words, int k) {
+    Map<String, Integer> count = new HashMap<>();
+    for (String w : words) count.put(w, count.getOrDefault(w, 0) + 1);
+    List<String> unique = new ArrayList<>(count.keySet());
+    Collections.sort(unique, (a, b) -> {
+        int ca = count.get(a), cb = count.get(b);
+        if (ca != cb) return cb - ca;
+        return a.compareTo(b);
+    });
+    return unique.subList(0, k).toArray(new String[0]);
+}
+@@@LANG cpp
+vector<string> topKFrequent(vector<string>& words, int k) {
+    unordered_map<string, int> count;
+    for (const string& w : words) count[w]++;
+    vector<string> unique;
+    for (const auto& kv : count) unique.push_back(kv.first);
+    sort(unique.begin(), unique.end(), [&](const string& a, const string& b) {
+        int ca = count[a], cb = count[b];
+        if (ca != cb) return ca > cb;
+        return a < b;
+    });
+    unique.resize(k);
+    return unique;
+}
+@@@LANG c
+typedef struct {
+    char word[16];
+    int count;
+} WordCount;
+
+static int cmpWordCount(const void* a, const void* b) {
+    const WordCount* x = (const WordCount*) a;
+    const WordCount* y = (const WordCount*) b;
+    if (x->count != y->count) return y->count - x->count;
+    return strcmp(x->word, y->word);
+}
+
+char** topKFrequent(char** words, int wordsSize, int k, int* returnSize) {
+    WordCount* wc = (WordCount*) malloc((size_t) (wordsSize > 0 ? wordsSize : 1) * sizeof(WordCount));
+    int m = 0;
+    for (int i = 0; i < wordsSize; i++) {
+        int found = -1;
+        for (int j = 0; j < m; j++) {
+            if (strcmp(wc[j].word, words[i]) == 0) {
+                found = j;
+                break;
+            }
+        }
+        if (found >= 0) {
+            wc[found].count++;
+        } else {
+            strcpy(wc[m].word, words[i]);
+            wc[m].count = 1;
+            m++;
+        }
+    }
+    qsort(wc, m, sizeof(WordCount), cmpWordCount);
+    char** out = (char**) malloc((size_t) (k > 0 ? k : 1) * sizeof(char*));
+    for (int i = 0; i < k; i++) {
+        out[i] = (char*) malloc(16);
+        strcpy(out[i], wc[i].word);
+    }
+    free(wc);
+    *returnSize = k;
+    return out;
+}
+@@@LANG csharp
+public static string[] TopKFrequent(string[] words, int k)
+{
+    var count = new Dictionary<string, int>();
+    foreach (string w in words)
+    {
+        if (count.ContainsKey(w)) count[w]++;
+        else count[w] = 1;
+    }
+    var unique = new List<string>(count.Keys);
+    unique.Sort((a, b) =>
+    {
+        if (count[a] != count[b]) return count[b].CompareTo(count[a]);
+        return string.CompareOrdinal(a, b);
+    });
+    return unique.GetRange(0, k).ToArray();
+}
+@@@LANG go
+func topKFrequent(words []string, k int) []string {
+	count := map[string]int{}
+	for _, w := range words {
+		count[w]++
+	}
+	unique := []string{}
+	for w := range count {
+		unique = append(unique, w)
+	}
+	sort.Slice(unique, func(a, b int) bool {
+		if count[unique[a]] != count[unique[b]] {
+			return count[unique[a]] > count[unique[b]]
+		}
+		return unique[a] < unique[b]
+	})
+	return unique[:k]
+}
+@@@LANG kotlin
+fun topKFrequent(words: Array<String>, k: Int): Array<String> {
+    val count = HashMap<String, Int>()
+    for (w in words) count[w] = (count[w] ?: 0) + 1
+    val unique = count.keys.sortedWith(Comparator { a, b ->
+        val ca = count[a]!!
+        val cb = count[b]!!
+        if (ca != cb) cb - ca else a.compareTo(b)
+    })
+    return unique.subList(0, k).toTypedArray()
+}
+@@@LANG swift
+func topKFrequent(_ words: [String], _ k: Int) -> [String] {
+    var count: [String: Int] = [:]
+    for w in words { count[w] = (count[w] ?? 0) + 1 }
+    let unique = count.keys.sorted { a, b in
+        let ca = count[a]!
+        let cb = count[b]!
+        if ca != cb { return ca > cb }
+        return a < b
+    }
+    return Array(unique.prefix(k))
+}
+@@@LANG rust
+use std::collections::HashMap;
+
+fn topKFrequent(words: Vec<String>, k: i32) -> Vec<String> {
+    let mut count: HashMap<String, i32> = HashMap::new();
+    for w in words.iter() {
+        *count.entry(w.clone()).or_insert(0) += 1;
+    }
+    let mut unique: Vec<String> = count.keys().cloned().collect();
+    unique.sort_by(|a, b| {
+        let ca = count[a];
+        let cb = count[b];
+        if ca != cb {
+            cb.cmp(&ca)
+        } else {
+            a.cmp(b)
+        }
+    });
+    unique.truncate(k as usize);
+    unique
+}
+@@@LANG php
+function topKFrequent($words, $k) {
+    $count = array();
+    foreach ($words as $w) {
+        if (isset($count[$w])) $count[$w]++;
+        else $count[$w] = 1;
+    }
+    $unique = array_keys($count);
+    $unique = array_map('strval', $unique);
+    usort($unique, function($a, $b) use ($count) {
+        if ($count[$a] != $count[$b]) return $count[$b] - $count[$a];
+        return strcmp($a, $b);
+    });
+    return array_slice($unique, 0, $k);
+}
+@@@LANG ruby
+def topKFrequent(words, k)
+  count = Hash.new(0)
+  words.each { |w| count[w] += 1 }
+  count.keys.sort { |a, b| count[a] != count[b] ? count[b] <=> count[a] : a <=> b }.first(k)
+end
+
+@@@PROBLEM sort-array-by-increasing-frequency
+@@@LANG typescript
+function frequencySort(nums: number[]): number[] {
+    var count: { [key: string]: number } = {};
+    for (var i = 0; i < nums.length; i++) {
+        var key = String(nums[i]);
+        count[key] = (count[key] || 0) + 1;
+    }
+    return nums.slice().sort(function (a, b) {
+        var ca = count[String(a)];
+        var cb = count[String(b)];
+        if (ca !== cb) return ca - cb;
+        return b - a;
+    });
+}
+@@@LANG java
+public static int[] frequencySort(int[] nums) {
+    Map<Integer, Integer> count = new HashMap<>();
+    for (int x : nums) count.put(x, count.getOrDefault(x, 0) + 1);
+    Integer[] boxed = new Integer[nums.length];
+    for (int i = 0; i < nums.length; i++) boxed[i] = nums[i];
+    Arrays.sort(boxed, (a, b) -> {
+        int ca = count.get(a), cb = count.get(b);
+        if (ca != cb) return ca - cb;
+        return b - a;
+    });
+    int[] out = new int[nums.length];
+    for (int i = 0; i < nums.length; i++) out[i] = boxed[i];
+    return out;
+}
+@@@LANG cpp
+vector<int> frequencySort(vector<int>& nums) {
+    unordered_map<int, int> count;
+    for (int x : nums) count[x]++;
+    vector<int> out = nums;
+    sort(out.begin(), out.end(), [&](int a, int b) {
+        int ca = count[a], cb = count[b];
+        if (ca != cb) return ca < cb;
+        return a > b;
+    });
+    return out;
+}
+@@@LANG c
+static int gFreqCount[201];
+
+static int cmpFreqSort(const void* a, const void* b) {
+    int x = *(const int*) a;
+    int y = *(const int*) b;
+    int cx = gFreqCount[x + 100];
+    int cy = gFreqCount[y + 100];
+    if (cx != cy) return cx - cy;
+    return y - x;
+}
+
+int* frequencySort(int* nums, int numsSize, int* returnSize) {
+    for (int i = 0; i < 201; i++) gFreqCount[i] = 0;
+    for (int i = 0; i < numsSize; i++) gFreqCount[nums[i] + 100]++;
+    int* out = (int*) malloc((numsSize > 0 ? numsSize : 1) * sizeof(int));
+    for (int i = 0; i < numsSize; i++) out[i] = nums[i];
+    qsort(out, numsSize, sizeof(int), cmpFreqSort);
+    *returnSize = numsSize;
+    return out;
+}
+@@@LANG csharp
+public static int[] FrequencySort(int[] nums)
+{
+    var count = new Dictionary<int, int>();
+    foreach (int x in nums)
+    {
+        if (count.ContainsKey(x)) count[x]++;
+        else count[x] = 1;
+    }
+    var list = new List<int>(nums);
+    list.Sort((a, b) =>
+    {
+        if (count[a] != count[b]) return count[a].CompareTo(count[b]);
+        return b.CompareTo(a);
+    });
+    return list.ToArray();
+}
+@@@LANG go
+func frequencySort(nums []int) []int {
+	count := map[int]int{}
+	for _, x := range nums {
+		count[x]++
+	}
+	out := append([]int{}, nums...)
+	sort.Slice(out, func(a, b int) bool {
+		if count[out[a]] != count[out[b]] {
+			return count[out[a]] < count[out[b]]
+		}
+		return out[a] > out[b]
+	})
+	return out
+}
+@@@LANG kotlin
+fun frequencySort(nums: IntArray): IntArray {
+    val count = HashMap<Int, Int>()
+    for (x in nums) count[x] = (count[x] ?: 0) + 1
+    val sorted = nums.toTypedArray().sortedWith(Comparator { a, b ->
+        val ca = count[a]!!
+        val cb = count[b]!!
+        if (ca != cb) ca - cb else b - a
+    })
+    return sorted.toIntArray()
+}
+@@@LANG swift
+func frequencySort(_ nums: [Int]) -> [Int] {
+    var count: [Int: Int] = [:]
+    for x in nums { count[x] = (count[x] ?? 0) + 1 }
+    return nums.sorted { a, b in
+        let ca = count[a]!
+        let cb = count[b]!
+        if ca != cb { return ca < cb }
+        return a > b
+    }
+}
+@@@LANG rust
+use std::collections::HashMap;
+
+fn frequencySort(nums: Vec<i32>) -> Vec<i32> {
+    let mut count: HashMap<i32, i32> = HashMap::new();
+    for x in nums.iter() {
+        *count.entry(*x).or_insert(0) += 1;
+    }
+    let mut out = nums.clone();
+    out.sort_by(|a, b| {
+        let ca = count[a];
+        let cb = count[b];
+        if ca != cb {
+            ca.cmp(&cb)
+        } else {
+            b.cmp(a)
+        }
+    });
+    out
+}
+@@@LANG php
+function frequencySort($nums) {
+    $count = array();
+    foreach ($nums as $x) {
+        if (isset($count[$x])) $count[$x]++;
+        else $count[$x] = 1;
+    }
+    $out = $nums;
+    usort($out, function($a, $b) use ($count) {
+        if ($count[$a] != $count[$b]) return $count[$a] - $count[$b];
+        return $b - $a;
+    });
+    return $out;
+}
+@@@LANG ruby
+def frequencySort(nums)
+  count = Hash.new(0)
+  nums.each { |x| count[x] += 1 }
+  nums.sort_by { |x| [count[x], -x] }
+end
+
+@@@PROBLEM kth-smallest-element-in-a-sorted-matrix
+@@@LANG typescript
+function kthSmallest(matrix: number[][], k: number): number {
+    var flat: number[] = [];
+    for (var r = 0; r < matrix.length; r++) {
+        for (var c = 0; c < matrix[r].length; c++) flat.push(matrix[r][c]);
+    }
+    flat.sort(function (a, b) { return a - b; });
+    return flat[k - 1];
+}
+@@@LANG java
+public static int kthSmallest(int[][] matrix, int k) {
+    int n = matrix.length;
+    int[] flat = new int[n * n];
+    int idx = 0;
+    for (int[] row : matrix) {
+        for (int v : row) flat[idx++] = v;
+    }
+    Arrays.sort(flat);
+    return flat[k - 1];
+}
+@@@LANG cpp
+int kthSmallest(vector<vector<int>>& matrix, int k) {
+    vector<int> flat;
+    for (const auto& row : matrix) {
+        for (int v : row) flat.push_back(v);
+    }
+    sort(flat.begin(), flat.end());
+    return flat[k - 1];
+}
+@@@LANG c
+static int cmpKthAsc(const void* a, const void* b) {
+    int x = *(const int*) a;
+    int y = *(const int*) b;
+    return (x > y) - (x < y);
+}
+
+int kthSmallest(int** matrix, int matrixSize, int* matrixColSize, int k) {
+    int total = 0;
+    for (int r = 0; r < matrixSize; r++) total += matrixColSize[r];
+    int* flat = (int*) malloc((total > 0 ? total : 1) * sizeof(int));
+    int idx = 0;
+    for (int r = 0; r < matrixSize; r++) {
+        for (int c = 0; c < matrixColSize[r]; c++) flat[idx++] = matrix[r][c];
+    }
+    qsort(flat, total, sizeof(int), cmpKthAsc);
+    int answer = flat[k - 1];
+    free(flat);
+    return answer;
+}
+@@@LANG csharp
+public static int KthSmallest(int[][] matrix, int k)
+{
+    var flat = new List<int>();
+    foreach (int[] row in matrix)
+    {
+        foreach (int v in row) flat.Add(v);
+    }
+    flat.Sort();
+    return flat[k - 1];
+}
+@@@LANG go
+func kthSmallest(matrix [][]int, k int) int {
+	flat := []int{}
+	for _, row := range matrix {
+		flat = append(flat, row...)
+	}
+	sort.Ints(flat)
+	return flat[k-1]
+}
+@@@LANG kotlin
+fun kthSmallest(matrix: Array<IntArray>, k: Int): Int {
+    val flat = ArrayList<Int>()
+    for (row in matrix) {
+        for (v in row) flat.add(v)
+    }
+    flat.sort()
+    return flat[k - 1]
+}
+@@@LANG swift
+func kthSmallest(_ matrix: [[Int]], _ k: Int) -> Int {
+    var flat: [Int] = []
+    for row in matrix {
+        for v in row { flat.append(v) }
+    }
+    flat.sort()
+    return flat[k - 1]
+}
+@@@LANG rust
+fn kthSmallest(matrix: Vec<Vec<i32>>, k: i32) -> i32 {
+    let mut flat: Vec<i32> = Vec::new();
+    for row in matrix.iter() {
+        for v in row.iter() {
+            flat.push(*v);
+        }
+    }
+    flat.sort();
+    flat[(k - 1) as usize]
+}
+@@@LANG php
+function kthSmallest($matrix, $k) {
+    $flat = array();
+    foreach ($matrix as $row) {
+        foreach ($row as $v) $flat[] = $v;
+    }
+    sort($flat);
+    return $flat[$k - 1];
+}
+@@@LANG ruby
+def kthSmallest(matrix, k)
+  matrix.flatten.sort[k - 1]
+end
+
+@@@PROBLEM find-k-closest-elements
+@@@LANG typescript
+function findClosestElements(arr: number[], k: number, x: number): number[] {
+    var lo = 0;
+    var hi = arr.length - k;
+    while (lo < hi) {
+        var mid = Math.floor((lo + hi) / 2);
+        if (x - arr[mid] > arr[mid + k] - x) lo = mid + 1;
+        else hi = mid;
+    }
+    return arr.slice(lo, lo + k);
+}
+@@@LANG java
+public static int[] findClosestElements(int[] arr, int k, int x) {
+    int lo = 0, hi = arr.length - k;
+    while (lo < hi) {
+        int mid = (lo + hi) / 2;
+        if (x - arr[mid] > arr[mid + k] - x) lo = mid + 1;
+        else hi = mid;
+    }
+    return Arrays.copyOfRange(arr, lo, lo + k);
+}
+@@@LANG cpp
+vector<int> findClosestElements(vector<int>& arr, int k, int x) {
+    int lo = 0, hi = (int) arr.size() - k;
+    while (lo < hi) {
+        int mid = (lo + hi) / 2;
+        if (x - arr[mid] > arr[mid + k] - x) lo = mid + 1;
+        else hi = mid;
+    }
+    return vector<int>(arr.begin() + lo, arr.begin() + lo + k);
+}
+@@@LANG c
+int* findClosestElements(int* arr, int arrSize, int k, int x, int* returnSize) {
+    int lo = 0, hi = arrSize - k;
+    while (lo < hi) {
+        int mid = (lo + hi) / 2;
+        if (x - arr[mid] > arr[mid + k] - x) lo = mid + 1;
+        else hi = mid;
+    }
+    int* out = (int*) malloc((k > 0 ? k : 1) * sizeof(int));
+    for (int i = 0; i < k; i++) out[i] = arr[lo + i];
+    *returnSize = k;
+    return out;
+}
+@@@LANG csharp
+public static int[] FindClosestElements(int[] arr, int k, int x)
+{
+    int lo = 0, hi = arr.Length - k;
+    while (lo < hi)
+    {
+        int mid = (lo + hi) / 2;
+        if (x - arr[mid] > arr[mid + k] - x) lo = mid + 1;
+        else hi = mid;
+    }
+    int[] out_ = new int[k];
+    Array.Copy(arr, lo, out_, 0, k);
+    return out_;
+}
+@@@LANG go
+func findClosestElements(arr []int, k int, x int) []int {
+	lo, hi := 0, len(arr)-k
+	for lo < hi {
+		mid := (lo + hi) / 2
+		if x-arr[mid] > arr[mid+k]-x {
+			lo = mid + 1
+		} else {
+			hi = mid
+		}
+	}
+	return arr[lo : lo+k]
+}
+@@@LANG kotlin
+fun findClosestElements(arr: IntArray, k: Int, x: Int): IntArray {
+    var lo = 0
+    var hi = arr.size - k
+    while (lo < hi) {
+        val mid = (lo + hi) / 2
+        if (x - arr[mid] > arr[mid + k] - x) lo = mid + 1 else hi = mid
+    }
+    return arr.copyOfRange(lo, lo + k)
+}
+@@@LANG swift
+func findClosestElements(_ arr: [Int], _ k: Int, _ x: Int) -> [Int] {
+    var lo = 0
+    var hi = arr.count - k
+    while lo < hi {
+        let mid = (lo + hi) / 2
+        if x - arr[mid] > arr[mid + k] - x {
+            lo = mid + 1
+        } else {
+            hi = mid
+        }
+    }
+    return Array(arr[lo..<(lo + k)])
+}
+@@@LANG rust
+fn findClosestElements(arr: Vec<i32>, k: i32, x: i32) -> Vec<i32> {
+    let ks = k as usize;
+    let mut lo = 0usize;
+    let mut hi = arr.len() - ks;
+    while lo < hi {
+        let mid = (lo + hi) / 2;
+        if x - arr[mid] > arr[mid + ks] - x {
+            lo = mid + 1;
+        } else {
+            hi = mid;
+        }
+    }
+    arr[lo..lo + ks].to_vec()
+}
+@@@LANG php
+function findClosestElements($arr, $k, $x) {
+    $lo = 0;
+    $hi = count($arr) - $k;
+    while ($lo < $hi) {
+        $mid = intdiv($lo + $hi, 2);
+        if ($x - $arr[$mid] > $arr[$mid + $k] - $x) $lo = $mid + 1;
+        else $hi = $mid;
+    }
+    return array_slice($arr, $lo, $k);
+}
+@@@LANG ruby
+def findClosestElements(arr, k, x)
+  lo = 0
+  hi = arr.length - k
+  while lo < hi
+    mid = (lo + hi) / 2
+    if x - arr[mid] > arr[mid + k] - x
+      lo = mid + 1
+    else
+      hi = mid
+    end
+  end
+  arr[lo, k]
+end
+
+@@@PROBLEM minimum-absolute-difference
+@@@LANG typescript
+function minimumAbsDifference(arr: number[]): number[][] {
+    var s = arr.slice().sort(function (a, b) { return a - b; });
+    var best = s[1] - s[0];
+    for (var i = 2; i < s.length; i++) {
+        var d = s[i] - s[i - 1];
+        if (d < best) best = d;
+    }
+    var out: number[][] = [];
+    for (var j = 1; j < s.length; j++) {
+        if (s[j] - s[j - 1] === best) out.push([s[j - 1], s[j]]);
+    }
+    return out;
+}
+@@@LANG java
+public static int[][] minimumAbsDifference(int[] arr) {
+    int[] s = arr.clone();
+    Arrays.sort(s);
+    int best = s[1] - s[0];
+    for (int i = 2; i < s.length; i++) best = Math.min(best, s[i] - s[i - 1]);
+    List<int[]> out = new ArrayList<>();
+    for (int i = 1; i < s.length; i++) {
+        if (s[i] - s[i - 1] == best) out.add(new int[]{s[i - 1], s[i]});
+    }
+    return out.toArray(new int[0][]);
+}
+@@@LANG cpp
+vector<vector<int>> minimumAbsDifference(vector<int>& arr) {
+    vector<int> s = arr;
+    sort(s.begin(), s.end());
+    int best = s[1] - s[0];
+    for (int i = 2; i < (int) s.size(); i++) best = min(best, s[i] - s[i - 1]);
+    vector<vector<int>> out;
+    for (int i = 1; i < (int) s.size(); i++) {
+        if (s[i] - s[i - 1] == best) out.push_back(vector<int>{s[i - 1], s[i]});
+    }
+    return out;
+}
+@@@LANG c
+static int cmpAbsDiffAsc(const void* a, const void* b) {
+    int x = *(const int*) a;
+    int y = *(const int*) b;
+    return (x > y) - (x < y);
+}
+
+int** minimumAbsDifference(int* arr, int arrSize, int* returnSize, int** returnColumnSizes) {
+    int* s = (int*) malloc((size_t) arrSize * sizeof(int));
+    for (int i = 0; i < arrSize; i++) s[i] = arr[i];
+    qsort(s, arrSize, sizeof(int), cmpAbsDiffAsc);
+    int best = s[1] - s[0];
+    for (int i = 2; i < arrSize; i++) {
+        if (s[i] - s[i - 1] < best) best = s[i] - s[i - 1];
+    }
+    int** out = (int**) malloc((size_t) arrSize * sizeof(int*));
+    int* cols = (int*) malloc((size_t) arrSize * sizeof(int));
+    int count = 0;
+    for (int i = 1; i < arrSize; i++) {
+        if (s[i] - s[i - 1] == best) {
+            int* row = (int*) malloc(2 * sizeof(int));
+            row[0] = s[i - 1];
+            row[1] = s[i];
+            out[count] = row;
+            cols[count] = 2;
+            count++;
+        }
+    }
+    free(s);
+    *returnSize = count;
+    *returnColumnSizes = cols;
+    return out;
+}
+@@@LANG csharp
+public static int[][] MinimumAbsDifference(int[] arr)
+{
+    int[] s = (int[]) arr.Clone();
+    Array.Sort(s);
+    int best = s[1] - s[0];
+    for (int i = 2; i < s.Length; i++) best = Math.Min(best, s[i] - s[i - 1]);
+    var out_ = new List<int[]>();
+    for (int i = 1; i < s.Length; i++)
+    {
+        if (s[i] - s[i - 1] == best) out_.Add(new int[] { s[i - 1], s[i] });
+    }
+    return out_.ToArray();
+}
+@@@LANG go
+func minimumAbsDifference(arr []int) [][]int {
+	s := append([]int{}, arr...)
+	sort.Ints(s)
+	best := s[1] - s[0]
+	for i := 2; i < len(s); i++ {
+		if s[i]-s[i-1] < best {
+			best = s[i] - s[i-1]
+		}
+	}
+	out := [][]int{}
+	for i := 1; i < len(s); i++ {
+		if s[i]-s[i-1] == best {
+			out = append(out, []int{s[i-1], s[i]})
+		}
+	}
+	return out
+}
+@@@LANG kotlin
+fun minimumAbsDifference(arr: IntArray): Array<IntArray> {
+    val s = arr.sortedArray()
+    var best = s[1] - s[0]
+    for (i in 2 until s.size) {
+        if (s[i] - s[i - 1] < best) best = s[i] - s[i - 1]
+    }
+    val out = ArrayList<IntArray>()
+    for (i in 1 until s.size) {
+        if (s[i] - s[i - 1] == best) out.add(intArrayOf(s[i - 1], s[i]))
+    }
+    return out.toTypedArray()
+}
+@@@LANG swift
+func minimumAbsDifference(_ arr: [Int]) -> [[Int]] {
+    let s = arr.sorted()
+    var best = s[1] - s[0]
+    for i in 2..<max(s.count, 2) where i < s.count {
+        if s[i] - s[i - 1] < best { best = s[i] - s[i - 1] }
+    }
+    var out: [[Int]] = []
+    for i in 1..<s.count {
+        if s[i] - s[i - 1] == best { out.append([s[i - 1], s[i]]) }
+    }
+    return out
+}
+@@@LANG rust
+fn minimumAbsDifference(arr: Vec<i32>) -> Vec<Vec<i32>> {
+    let mut s = arr.clone();
+    s.sort();
+    let mut best = s[1] - s[0];
+    for i in 2..s.len() {
+        if s[i] - s[i - 1] < best {
+            best = s[i] - s[i - 1];
+        }
+    }
+    let mut out: Vec<Vec<i32>> = Vec::new();
+    for i in 1..s.len() {
+        if s[i] - s[i - 1] == best {
+            out.push(vec![s[i - 1], s[i]]);
+        }
+    }
+    out
+}
+@@@LANG php
+function minimumAbsDifference($arr) {
+    $s = $arr;
+    sort($s);
+    $best = $s[1] - $s[0];
+    for ($i = 2; $i < count($s); $i++) {
+        if ($s[$i] - $s[$i - 1] < $best) $best = $s[$i] - $s[$i - 1];
+    }
+    $out = array();
+    for ($i = 1; $i < count($s); $i++) {
+        if ($s[$i] - $s[$i - 1] === $best) $out[] = array($s[$i - 1], $s[$i]);
+    }
+    return $out;
+}
+@@@LANG ruby
+def minimumAbsDifference(arr)
+  s = arr.sort
+  best = (1...s.length).map { |i| s[i] - s[i - 1] }.min
+  (1...s.length).select { |i| s[i] - s[i - 1] == best }.map { |i| [s[i - 1], s[i]] }
+end
+
+@@@PROBLEM maximum-product-of-three-numbers
+@@@LANG typescript
+function maximumProduct(nums: number[]): number {
+    var a = nums.slice().sort(function (x, y) { return x - y; });
+    var n = a.length;
+    var highThree = a[n - 1] * a[n - 2] * a[n - 3];
+    var twoLow = a[0] * a[1] * a[n - 1];
+    return Math.max(highThree, twoLow);
+}
+@@@LANG java
+public static int maximumProduct(int[] nums) {
+    int[] a = nums.clone();
+    Arrays.sort(a);
+    int n = a.length;
+    return Math.max(a[n - 1] * a[n - 2] * a[n - 3], a[0] * a[1] * a[n - 1]);
+}
+@@@LANG cpp
+int maximumProduct(vector<int>& nums) {
+    vector<int> a = nums;
+    sort(a.begin(), a.end());
+    int n = (int) a.size();
+    return max(a[n - 1] * a[n - 2] * a[n - 3], a[0] * a[1] * a[n - 1]);
+}
+@@@LANG c
+static int cmpProdAsc(const void* a, const void* b) {
+    int x = *(const int*) a;
+    int y = *(const int*) b;
+    return (x > y) - (x < y);
+}
+
+int maximumProduct(int* nums, int numsSize) {
+    int* a = (int*) malloc((size_t) numsSize * sizeof(int));
+    for (int i = 0; i < numsSize; i++) a[i] = nums[i];
+    qsort(a, numsSize, sizeof(int), cmpProdAsc);
+    int n = numsSize;
+    int highThree = a[n - 1] * a[n - 2] * a[n - 3];
+    int twoLow = a[0] * a[1] * a[n - 1];
+    free(a);
+    return highThree > twoLow ? highThree : twoLow;
+}
+@@@LANG csharp
+public static int MaximumProduct(int[] nums)
+{
+    int[] a = (int[]) nums.Clone();
+    Array.Sort(a);
+    int n = a.Length;
+    return Math.Max(a[n - 1] * a[n - 2] * a[n - 3], a[0] * a[1] * a[n - 1]);
+}
+@@@LANG go
+func maximumProduct(nums []int) int {
+	a := append([]int{}, nums...)
+	sort.Ints(a)
+	n := len(a)
+	highThree := a[n-1] * a[n-2] * a[n-3]
+	twoLow := a[0] * a[1] * a[n-1]
+	if highThree > twoLow {
+		return highThree
+	}
+	return twoLow
+}
+@@@LANG kotlin
+fun maximumProduct(nums: IntArray): Int {
+    val a = nums.sortedArray()
+    val n = a.size
+    val highThree = a[n - 1] * a[n - 2] * a[n - 3]
+    val twoLow = a[0] * a[1] * a[n - 1]
+    return if (highThree > twoLow) highThree else twoLow
+}
+@@@LANG swift
+func maximumProduct(_ nums: [Int]) -> Int {
+    let a = nums.sorted()
+    let n = a.count
+    return max(a[n - 1] * a[n - 2] * a[n - 3], a[0] * a[1] * a[n - 1])
+}
+@@@LANG rust
+fn maximumProduct(nums: Vec<i32>) -> i32 {
+    let mut a = nums.clone();
+    a.sort();
+    let n = a.len();
+    let high_three = a[n - 1] * a[n - 2] * a[n - 3];
+    let two_low = a[0] * a[1] * a[n - 1];
+    if high_three > two_low { high_three } else { two_low }
+}
+@@@LANG php
+function maximumProduct($nums) {
+    $a = $nums;
+    sort($a);
+    $n = count($a);
+    return max($a[$n - 1] * $a[$n - 2] * $a[$n - 3], $a[0] * $a[1] * $a[$n - 1]);
+}
+@@@LANG ruby
+def maximumProduct(nums)
+  a = nums.sort
+  n = a.length
+  [a[n - 1] * a[n - 2] * a[n - 3], a[0] * a[1] * a[n - 1]].max
+end
+
+@@@PROBLEM sort-integers-by-the-number-of-1-bits
+@@@LANG typescript
+function sortByBits(arr: number[]): number[] {
+    var popcount = function (x: number): number {
+        var count = 0;
+        var v = x;
+        while (v > 0) {
+            count += v & 1;
+            v >>>= 1;
+        }
+        return count;
+    };
+    return arr.slice().sort(function (a, b) {
+        var pa = popcount(a);
+        var pb = popcount(b);
+        if (pa !== pb) return pa - pb;
+        return a - b;
+    });
+}
+@@@LANG java
+public static int[] sortByBits(int[] arr) {
+    Integer[] boxed = new Integer[arr.length];
+    for (int i = 0; i < arr.length; i++) boxed[i] = arr[i];
+    Arrays.sort(boxed, (a, b) -> {
+        int pa = Integer.bitCount(a), pb = Integer.bitCount(b);
+        if (pa != pb) return pa - pb;
+        return a - b;
+    });
+    int[] out = new int[arr.length];
+    for (int i = 0; i < arr.length; i++) out[i] = boxed[i];
+    return out;
+}
+@@@LANG cpp
+vector<int> sortByBits(vector<int>& arr) {
+    vector<int> out = arr;
+    sort(out.begin(), out.end(), [](int a, int b) {
+        int pa = __builtin_popcount((unsigned) a);
+        int pb = __builtin_popcount((unsigned) b);
+        if (pa != pb) return pa < pb;
+        return a < b;
+    });
+    return out;
+}
+@@@LANG c
+static int popcountBits(int x) {
+    int c = 0;
+    unsigned v = (unsigned) x;
+    while (v > 0) {
+        c += (int) (v & 1u);
+        v >>= 1;
+    }
+    return c;
+}
+
+static int cmpByBits(const void* a, const void* b) {
+    int x = *(const int*) a;
+    int y = *(const int*) b;
+    int px = popcountBits(x);
+    int py = popcountBits(y);
+    if (px != py) return px - py;
+    return (x > y) - (x < y);
+}
+
+int* sortByBits(int* arr, int arrSize, int* returnSize) {
+    int* out = (int*) malloc((arrSize > 0 ? arrSize : 1) * sizeof(int));
+    for (int i = 0; i < arrSize; i++) out[i] = arr[i];
+    qsort(out, arrSize, sizeof(int), cmpByBits);
+    *returnSize = arrSize;
+    return out;
+}
+@@@LANG csharp
+public static int[] SortByBits(int[] arr)
+{
+    Func<int, int> popcount = x =>
+    {
+        int c = 0;
+        uint v = (uint) x;
+        while (v > 0)
+        {
+            c += (int) (v & 1u);
+            v >>= 1;
+        }
+        return c;
+    };
+    var list = new List<int>(arr);
+    list.Sort((a, b) =>
+    {
+        int pa = popcount(a), pb = popcount(b);
+        if (pa != pb) return pa.CompareTo(pb);
+        return a.CompareTo(b);
+    });
+    return list.ToArray();
+}
+@@@LANG go
+func sortByBits(arr []int) []int {
+	popcount := func(x int) int {
+		c := 0
+		v := x
+		for v > 0 {
+			c += v & 1
+			v >>= 1
+		}
+		return c
+	}
+	out := append([]int{}, arr...)
+	sort.Slice(out, func(a, b int) bool {
+		pa, pb := popcount(out[a]), popcount(out[b])
+		if pa != pb {
+			return pa < pb
+		}
+		return out[a] < out[b]
+	})
+	return out
+}
+@@@LANG kotlin
+fun sortByBits(arr: IntArray): IntArray {
+    fun popcount(x: Int): Int {
+        var c = 0
+        var v = x
+        while (v > 0) {
+            c += v and 1
+            v = v shr 1
+        }
+        return c
+    }
+    val sorted = arr.toTypedArray().sortedWith(Comparator { a, b ->
+        val pa = popcount(a)
+        val pb = popcount(b)
+        if (pa != pb) pa - pb else a - b
+    })
+    return sorted.toIntArray()
+}
+@@@LANG swift
+func sortByBits(_ arr: [Int]) -> [Int] {
+    func popcount(_ x: Int) -> Int {
+        var c = 0
+        var v = x
+        while v > 0 {
+            c += v & 1
+            v >>= 1
+        }
+        return c
+    }
+    return arr.sorted { a, b in
+        let pa = popcount(a)
+        let pb = popcount(b)
+        if pa != pb { return pa < pb }
+        return a < b
+    }
+}
+@@@LANG rust
+fn popcount_bits(x: i32) -> i32 {
+    let mut c = 0;
+    let mut v = x;
+    while v > 0 {
+        c += v & 1;
+        v >>= 1;
+    }
+    c
+}
+
+fn sortByBits(arr: Vec<i32>) -> Vec<i32> {
+    let mut out = arr.clone();
+    out.sort_by(|a, b| {
+        let pa = popcount_bits(*a);
+        let pb = popcount_bits(*b);
+        if pa != pb {
+            pa.cmp(&pb)
+        } else {
+            a.cmp(b)
+        }
+    });
+    out
+}
+@@@LANG php
+function sortByBits($arr) {
+    $popcount = function($x) {
+        $c = 0;
+        $v = $x;
+        while ($v > 0) {
+            $c += $v & 1;
+            $v >>= 1;
+        }
+        return $c;
+    };
+    $out = $arr;
+    usort($out, function($a, $b) use ($popcount) {
+        $pa = $popcount($a);
+        $pb = $popcount($b);
+        if ($pa != $pb) return $pa - $pb;
+        return $a - $b;
+    });
+    return $out;
+}
+@@@LANG ruby
+def sortByBits(arr)
+  arr.sort_by { |x| [x.to_s(2).count("1"), x] }
+end
+
+@@@PROBLEM sort-even-and-odd-indices-independently
+@@@LANG typescript
+function sortEvenOdd(nums: number[]): number[] {
+    var evens: number[] = [];
+    var odds: number[] = [];
+    for (var i = 0; i < nums.length; i++) {
+        if (i % 2 === 0) evens.push(nums[i]);
+        else odds.push(nums[i]);
+    }
+    evens.sort(function (a, b) { return a - b; });
+    odds.sort(function (a, b) { return b - a; });
+    var out: number[] = [];
+    for (var j = 0; j < nums.length; j++) {
+        out.push(j % 2 === 0 ? evens[j / 2] : odds[(j - 1) / 2]);
+    }
+    return out;
+}
+@@@LANG java
+public static int[] sortEvenOdd(int[] nums) {
+    int evenCount = (nums.length + 1) / 2;
+    int oddCount = nums.length / 2;
+    int[] evens = new int[evenCount];
+    int[] odds = new int[oddCount];
+    int e = 0, o = 0;
+    for (int i = 0; i < nums.length; i++) {
+        if (i % 2 == 0) evens[e++] = nums[i];
+        else odds[o++] = nums[i];
+    }
+    Arrays.sort(evens);
+    Arrays.sort(odds);
+    int[] out = new int[nums.length];
+    for (int i = 0; i < nums.length; i++) {
+        out[i] = i % 2 == 0 ? evens[i / 2] : odds[oddCount - 1 - (i - 1) / 2];
+    }
+    return out;
+}
+@@@LANG cpp
+vector<int> sortEvenOdd(vector<int>& nums) {
+    vector<int> evens, odds;
+    for (int i = 0; i < (int) nums.size(); i++) {
+        if (i % 2 == 0) evens.push_back(nums[i]);
+        else odds.push_back(nums[i]);
+    }
+    sort(evens.begin(), evens.end());
+    sort(odds.begin(), odds.end(), greater<int>());
+    vector<int> out;
+    for (int i = 0; i < (int) nums.size(); i++) {
+        out.push_back(i % 2 == 0 ? evens[i / 2] : odds[(i - 1) / 2]);
+    }
+    return out;
+}
+@@@LANG c
+static int cmpEvenOddAsc(const void* a, const void* b) {
+    int x = *(const int*) a;
+    int y = *(const int*) b;
+    return (x > y) - (x < y);
+}
+
+static int cmpEvenOddDesc(const void* a, const void* b) {
+    int x = *(const int*) a;
+    int y = *(const int*) b;
+    return (y > x) - (y < x);
+}
+
+int* sortEvenOdd(int* nums, int numsSize, int* returnSize) {
+    int evenCount = (numsSize + 1) / 2;
+    int oddCount = numsSize / 2;
+    int* evens = (int*) malloc((evenCount > 0 ? evenCount : 1) * sizeof(int));
+    int* odds = (int*) malloc((oddCount > 0 ? oddCount : 1) * sizeof(int));
+    int e = 0, o = 0;
+    for (int i = 0; i < numsSize; i++) {
+        if (i % 2 == 0) evens[e++] = nums[i];
+        else odds[o++] = nums[i];
+    }
+    qsort(evens, evenCount, sizeof(int), cmpEvenOddAsc);
+    qsort(odds, oddCount, sizeof(int), cmpEvenOddDesc);
+    int* out = (int*) malloc((numsSize > 0 ? numsSize : 1) * sizeof(int));
+    for (int i = 0; i < numsSize; i++) {
+        out[i] = i % 2 == 0 ? evens[i / 2] : odds[(i - 1) / 2];
+    }
+    free(evens);
+    free(odds);
+    *returnSize = numsSize;
+    return out;
+}
+@@@LANG csharp
+public static int[] SortEvenOdd(int[] nums)
+{
+    var evens = new List<int>();
+    var odds = new List<int>();
+    for (int i = 0; i < nums.Length; i++)
+    {
+        if (i % 2 == 0) evens.Add(nums[i]);
+        else odds.Add(nums[i]);
+    }
+    evens.Sort();
+    odds.Sort((a, b) => b.CompareTo(a));
+    int[] out_ = new int[nums.Length];
+    for (int i = 0; i < nums.Length; i++)
+    {
+        out_[i] = i % 2 == 0 ? evens[i / 2] : odds[(i - 1) / 2];
+    }
+    return out_;
+}
+@@@LANG go
+func sortEvenOdd(nums []int) []int {
+	evens := []int{}
+	odds := []int{}
+	for i := 0; i < len(nums); i++ {
+		if i%2 == 0 {
+			evens = append(evens, nums[i])
+		} else {
+			odds = append(odds, nums[i])
+		}
+	}
+	sort.Ints(evens)
+	sort.Sort(sort.Reverse(sort.IntSlice(odds)))
+	out := make([]int, len(nums))
+	for i := 0; i < len(nums); i++ {
+		if i%2 == 0 {
+			out[i] = evens[i/2]
+		} else {
+			out[i] = odds[(i-1)/2]
+		}
+	}
+	return out
+}
+@@@LANG kotlin
+fun sortEvenOdd(nums: IntArray): IntArray {
+    val evens = ArrayList<Int>()
+    val odds = ArrayList<Int>()
+    for (i in nums.indices) {
+        if (i % 2 == 0) evens.add(nums[i]) else odds.add(nums[i])
+    }
+    evens.sort()
+    odds.sortDescending()
+    val out = IntArray(nums.size)
+    for (i in nums.indices) {
+        out[i] = if (i % 2 == 0) evens[i / 2] else odds[(i - 1) / 2]
+    }
+    return out
+}
+@@@LANG swift
+func sortEvenOdd(_ nums: [Int]) -> [Int] {
+    var evens: [Int] = []
+    var odds: [Int] = []
+    for i in 0..<nums.count {
+        if i % 2 == 0 { evens.append(nums[i]) } else { odds.append(nums[i]) }
+    }
+    evens.sort()
+    odds.sort(by: >)
+    var out: [Int] = []
+    for i in 0..<nums.count {
+        out.append(i % 2 == 0 ? evens[i / 2] : odds[(i - 1) / 2])
+    }
+    return out
+}
+@@@LANG rust
+fn sortEvenOdd(nums: Vec<i32>) -> Vec<i32> {
+    let mut evens: Vec<i32> = Vec::new();
+    let mut odds: Vec<i32> = Vec::new();
+    for i in 0..nums.len() {
+        if i % 2 == 0 {
+            evens.push(nums[i]);
+        } else {
+            odds.push(nums[i]);
+        }
+    }
+    evens.sort();
+    odds.sort_by(|a, b| b.cmp(a));
+    let mut out: Vec<i32> = Vec::new();
+    for i in 0..nums.len() {
+        if i % 2 == 0 {
+            out.push(evens[i / 2]);
+        } else {
+            out.push(odds[(i - 1) / 2]);
+        }
+    }
+    out
+}
+@@@LANG php
+function sortEvenOdd($nums) {
+    $evens = array();
+    $odds = array();
+    for ($i = 0; $i < count($nums); $i++) {
+        if ($i % 2 == 0) $evens[] = $nums[$i];
+        else $odds[] = $nums[$i];
+    }
+    sort($evens);
+    rsort($odds);
+    $out = array();
+    for ($i = 0; $i < count($nums); $i++) {
+        $out[] = $i % 2 == 0 ? $evens[intdiv($i, 2)] : $odds[intdiv($i - 1, 2)];
+    }
+    return $out;
+}
+@@@LANG ruby
+def sortEvenOdd(nums)
+  evens = nums.each_with_index.select { |_, i| i.even? }.map(&:first).sort
+  odds = nums.each_with_index.select { |_, i| i.odd? }.map(&:first).sort.reverse
+  (0...nums.length).map { |i| i.even? ? evens[i / 2] : odds[(i - 1) / 2] }
+end
+
+@@@PROBLEM minimum-number-of-platforms
+@@@LANG typescript
+function findPlatform(arrival: number[], departure: number[]): number {
+    var arr = arrival.slice().sort(function (a, b) { return a - b; });
+    var dep = departure.slice().sort(function (a, b) { return a - b; });
+    var i = 0, j = 0, platforms = 0, best = 0;
+    while (i < arr.length) {
+        if (arr[i] <= dep[j]) {
+            platforms++;
+            i++;
+            if (platforms > best) best = platforms;
+        } else {
+            platforms--;
+            j++;
+        }
+    }
+    return best;
+}
+@@@LANG java
+public static int findPlatform(int[] arrival, int[] departure) {
+    int[] arr = arrival.clone();
+    int[] dep = departure.clone();
+    Arrays.sort(arr);
+    Arrays.sort(dep);
+    int i = 0, j = 0, platforms = 0, best = 0;
+    while (i < arr.length) {
+        if (arr[i] <= dep[j]) {
+            platforms++;
+            i++;
+            best = Math.max(best, platforms);
+        } else {
+            platforms--;
+            j++;
+        }
+    }
+    return best;
+}
+@@@LANG cpp
+int findPlatform(vector<int>& arrival, vector<int>& departure) {
+    vector<int> arr = arrival;
+    vector<int> dep = departure;
+    sort(arr.begin(), arr.end());
+    sort(dep.begin(), dep.end());
+    int i = 0, j = 0, platforms = 0, best = 0;
+    while (i < (int) arr.size()) {
+        if (arr[i] <= dep[j]) {
+            platforms++;
+            i++;
+            best = max(best, platforms);
+        } else {
+            platforms--;
+            j++;
+        }
+    }
+    return best;
+}
+@@@LANG c
+static int cmpPlatformAsc(const void* a, const void* b) {
+    int x = *(const int*) a;
+    int y = *(const int*) b;
+    return (x > y) - (x < y);
+}
+
+int findPlatform(int* arrival, int arrivalSize, int* departure, int departureSize) {
+    int* arr = (int*) malloc((arrivalSize > 0 ? arrivalSize : 1) * sizeof(int));
+    int* dep = (int*) malloc((departureSize > 0 ? departureSize : 1) * sizeof(int));
+    for (int i = 0; i < arrivalSize; i++) arr[i] = arrival[i];
+    for (int i = 0; i < departureSize; i++) dep[i] = departure[i];
+    qsort(arr, arrivalSize, sizeof(int), cmpPlatformAsc);
+    qsort(dep, departureSize, sizeof(int), cmpPlatformAsc);
+    int i = 0, j = 0, platforms = 0, best = 0;
+    while (i < arrivalSize) {
+        if (arr[i] <= dep[j]) {
+            platforms++;
+            i++;
+            if (platforms > best) best = platforms;
+        } else {
+            platforms--;
+            j++;
+        }
+    }
+    free(arr);
+    free(dep);
+    return best;
+}
+@@@LANG csharp
+public static int FindPlatform(int[] arrival, int[] departure)
+{
+    int[] arr = (int[]) arrival.Clone();
+    int[] dep = (int[]) departure.Clone();
+    Array.Sort(arr);
+    Array.Sort(dep);
+    int i = 0, j = 0, platforms = 0, best = 0;
+    while (i < arr.Length)
+    {
+        if (arr[i] <= dep[j])
+        {
+            platforms++;
+            i++;
+            best = Math.Max(best, platforms);
+        }
+        else
+        {
+            platforms--;
+            j++;
+        }
+    }
+    return best;
+}
+@@@LANG go
+func findPlatform(arrival []int, departure []int) int {
+	arr := append([]int{}, arrival...)
+	dep := append([]int{}, departure...)
+	sort.Ints(arr)
+	sort.Ints(dep)
+	i, j, platforms, best := 0, 0, 0, 0
+	for i < len(arr) {
+		if arr[i] <= dep[j] {
+			platforms++
+			i++
+			if platforms > best {
+				best = platforms
+			}
+		} else {
+			platforms--
+			j++
+		}
+	}
+	return best
+}
+@@@LANG kotlin
+fun findPlatform(arrival: IntArray, departure: IntArray): Int {
+    val arr = arrival.sortedArray()
+    val dep = departure.sortedArray()
+    var i = 0
+    var j = 0
+    var platforms = 0
+    var best = 0
+    while (i < arr.size) {
+        if (arr[i] <= dep[j]) {
+            platforms++
+            i++
+            if (platforms > best) best = platforms
+        } else {
+            platforms--
+            j++
+        }
+    }
+    return best
+}
+@@@LANG swift
+func findPlatform(_ arrival: [Int], _ departure: [Int]) -> Int {
+    let arr = arrival.sorted()
+    let dep = departure.sorted()
+    var i = 0
+    var j = 0
+    var platforms = 0
+    var best = 0
+    while i < arr.count {
+        if arr[i] <= dep[j] {
+            platforms += 1
+            i += 1
+            if platforms > best { best = platforms }
+        } else {
+            platforms -= 1
+            j += 1
+        }
+    }
+    return best
+}
+@@@LANG rust
+fn findPlatform(arrival: Vec<i32>, departure: Vec<i32>) -> i32 {
+    let mut arr = arrival.clone();
+    let mut dep = departure.clone();
+    arr.sort();
+    dep.sort();
+    let mut i = 0usize;
+    let mut j = 0usize;
+    let mut platforms = 0;
+    let mut best = 0;
+    while i < arr.len() {
+        if arr[i] <= dep[j] {
+            platforms += 1;
+            i += 1;
+            if platforms > best {
+                best = platforms;
+            }
+        } else {
+            platforms -= 1;
+            j += 1;
+        }
+    }
+    best
+}
+@@@LANG php
+function findPlatform($arrival, $departure) {
+    $arr = $arrival;
+    $dep = $departure;
+    sort($arr);
+    sort($dep);
+    $i = 0;
+    $j = 0;
+    $platforms = 0;
+    $best = 0;
+    while ($i < count($arr)) {
+        if ($arr[$i] <= $dep[$j]) {
+            $platforms++;
+            $i++;
+            if ($platforms > $best) $best = $platforms;
+        } else {
+            $platforms--;
+            $j++;
+        }
+    }
+    return $best;
+}
+@@@LANG ruby
+def findPlatform(arrival, departure)
+  arr = arrival.sort
+  dep = departure.sort
+  i = 0
+  j = 0
+  platforms = 0
+  best = 0
+  while i < arr.length
+    if arr[i] <= dep[j]
+      platforms += 1
+      i += 1
+      best = platforms if platforms > best
+    else
+      platforms -= 1
+      j += 1
+    end
+  end
+  best
+end

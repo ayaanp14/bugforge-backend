@@ -14,6 +14,18 @@ import { INTERVAL_PROBLEMS } from "./intervals.js";
 import { GRAPH_PROBLEMS } from "./graphs.js";
 import { BACKTRACKING_PROBLEMS } from "./backtracking.js";
 
+// ── Real hiring-round problems, company names carried in tags ──────
+import { NUMBER_PROBLEMS } from "./numbers.js";
+import { ARRAY2_PROBLEMS } from "./arrays2.js";
+import { STRING2_PROBLEMS } from "./strings2.js";
+import { SLIDING_PROBLEMS } from "./sliding.js";
+import { MATRIX2_PROBLEMS } from "./matrices2.js";
+import { DP2_PROBLEMS } from "./dp2.js";
+import { GREEDY2_PROBLEMS } from "./greedy2.js";
+import { STACKS2_PROBLEMS } from "./stacks2.js";
+import { BITS2_PROBLEMS } from "./bits2.js";
+import { GRAPHS2_PROBLEMS } from "./graphs2.js";
+
 export const CATALOG: CatalogProblem[] = [
   ...ARRAY_PROBLEMS,
   ...STRING_PROBLEMS,
@@ -27,4 +39,14 @@ export const CATALOG: CatalogProblem[] = [
   ...INTERVAL_PROBLEMS,
   ...GRAPH_PROBLEMS,
   ...BACKTRACKING_PROBLEMS,
+  ...NUMBER_PROBLEMS,
+  ...ARRAY2_PROBLEMS,
+  ...STRING2_PROBLEMS,
+  ...SLIDING_PROBLEMS,
+  ...MATRIX2_PROBLEMS,
+  ...DP2_PROBLEMS,
+  ...GREEDY2_PROBLEMS,
+  ...STACKS2_PROBLEMS,
+  ...BITS2_PROBLEMS,
+  ...GRAPHS2_PROBLEMS,
 ];

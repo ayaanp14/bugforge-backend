@@ -1,0 +1,31 @@
+@@@PROBLEM longest-string-chain
+@@@LANG ruby
+def longestStrChain(words)
+  is_predecessor = lambda do |a, b|
+    return false if b.length != a.length + 1
+    i = 0
+    j = 0
+    skips = 0
+    while i < a.length && j < b.length
+      if a[i] == b[j]
+        i += 1
+        j += 1
+      else
+        skips += 1
+        return false if skips > 1
+        j += 1
+      end
+    end
+    i == a.length
+  end
+  sorted = words.sort_by(&:length)
+  best = Array.new(sorted.length, 1)
+  answer = 1
+  (0...sorted.length).each do |i|
+    (0...i).each do |j|
+      best[i] = best[j] + 1 if is_predecessor.call(sorted[j], sorted[i]) && best[j] + 1 > best[i]
+    end
+    answer = best[i] if best[i] > answer
+  end
+  answer
+end
