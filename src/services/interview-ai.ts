@@ -1010,6 +1010,11 @@ export async function analyzeVoiceTranscript(
         `- This is speech, so expect filler, false starts and transcription errors. ` +
         `Judge the engineering, not the fluency, and do not penalise a mangled word that is obviously ` +
         `the right term misheard.\n` +
+        `- The interview may have been conducted in English, Hindi, or a mix of the two, and either ` +
+        `side may switch language mid-way. Score exactly the same either way: an idea explained ` +
+        `correctly in Hindi is worth what it is worth in English, and answering in Hindi is never ` +
+        `itself a weakness. Write every field you produce — question, answer, feedback, missed — in ` +
+        `English regardless, since the report is read later as text.\n` +
         `- A question the candidate never really answered scores accordingly, with verdict "no_answer".\n` +
         `- Score on the same scale you would apply to a written answer for this experience band.`,
     },
