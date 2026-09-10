@@ -18,7 +18,15 @@ const adapter = new PrismaMariaDb({
   // allowed to fetch the server's public key or every connection fails.
   allowPublicKeyRetrieval: true,
   connectTimeout: 20000,
-  acquireTimeout: 30000,
+  // How long a query waits for a free pooled connection. Thirty seconds only
+  // ever meant a request that was going to fail took thirty seconds to say so;
+  // if the pool is saturated for ten, it is not clearing in twenty more.
+  acquireTimeout: 10000,
+  // Seconds an idle connection may sit in the pool before the driver closes it
+  // itself. The shared host enforces its own `wait_timeout`; a connection it
+  // has already dropped looks pooled and healthy until the next query fails on
+  // it, so this stays comfortably under the server's limit.
+  idleTimeout: 60,
 });
 
 export const prisma = new PrismaClient({ adapter });

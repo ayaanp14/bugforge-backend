@@ -1,5 +1,5 @@
 import * as crypto from "crypto";
-import bcrypt from "bcryptjs";
+import { JWT_SECRET } from "./secrets.js";
 
 /**
  * One-time codes for password reset.
@@ -30,10 +30,35 @@ const TTL_MS = 5 * 60 * 1000;
 /** Six digits is a million possibilities; this keeps online guessing hopeless. */
 const MAX_ATTEMPTS = 5;
 
+/**
+ * The key the codes are MACed under.
+ *
+ * bcrypt was the wrong tool here. Its cost is the point when a hash may leak
+ * and be attacked offline for as long as the attacker likes; these hashes
+ * never leave this process and die in five minutes, so the ~90ms of blocked
+ * event loop it charged per hash and per guess protected nothing. A keyed
+ * HMAC gives the same guarantee — no code recoverable from the map without
+ * the key — at microsecond cost, and the five-attempt limit is still what
+ * makes online guessing hopeless.
+ *
+ * Derived from the session secret with a label rather than used raw, so a
+ * MAC minted here can never be mistaken for anything else signed by it.
+ *
+ * Deploying this change orphans any code hashed by the old bcrypt build:
+ * verification simply fails and the user asks for a fresh one. Acceptable for
+ * a five-minute code.
+ */
+const OTP_KEY = crypto.createHmac("sha256", JWT_SECRET).update("otp-challenge-v1").digest();
+
+/** The code is bound to its handle, so identical codes never share a MAC. */
+function macOf(token: string, otp: string): Buffer {
+  return crypto.createHmac("sha256", OTP_KEY).update(`${token}:${otp}`).digest();
+}
+
 interface Challenge {
   /** Null for an address with no account: the flow still runs, nothing matches. */
   email: string | null;
-  otpHash: string;
+  otpMac: Buffer;
   expiresAt: number;
   attempts: number;
 }
@@ -68,8 +93,7 @@ export async function issueChallenge(email: string | null, otp: string): Promise
   sweep(now);
 
   const token = crypto.randomBytes(32).toString("base64url");
-  const otpHash = await bcrypt.hash(otp, 10);
-  challenges.set(token, { email, otpHash, expiresAt: now + TTL_MS, attempts: 0 });
+  challenges.set(token, { email, otpMac: macOf(token, otp), expiresAt: now + TTL_MS, attempts: 0 });
 
   if (email) {
     const previous = latestForEmail.get(email);
@@ -103,7 +127,9 @@ export async function consumeChallenge(token: string, otp: string): Promise<Chal
   }
 
   challenge.attempts += 1;
-  const matches = await bcrypt.compare(otp, challenge.otpHash);
+  // Constant-time: both digests are the same length by construction, so the
+  // comparison cannot leak how many leading bytes matched.
+  const matches = crypto.timingSafeEqual(macOf(token, otp), challenge.otpMac);
 
   // A challenge for an unknown address can never succeed, but it is compared
   // anyway so the work done — and the time taken — does not give it away.

@@ -71,16 +71,19 @@ router.post("/", requireAuth, async (req: any, res) => {
     const input = parsed.value;
 
     if (input.kind === "interview") {
-      const session = await prisma.mockInterviewSession.findFirst({
-        where: { id: input.sessionId as string, userId },
-        select: { id: true },
-      });
+      // The ownership check and the "already rated" lookup are independent
+      // reads, so they overlap rather than queue.
+      const [session, existing] = await Promise.all([
+        prisma.mockInterviewSession.findFirst({
+          where: { id: input.sessionId as string, userId },
+          select: { id: true },
+        }),
+        prisma.feedback.findFirst({
+          where: { userId, kind: "interview", sessionId: input.sessionId as string },
+          select: { id: true },
+        }),
+      ]);
       if (!session) return res.status(404).json({ error: "That interview was not found on this account" });
-
-      const existing = await prisma.feedback.findFirst({
-        where: { userId, kind: "interview", sessionId: session.id },
-        select: { id: true },
-      });
       const data = { rating: input.rating, comment: input.comment, tags: input.tags, path: input.path };
       const feedback = existing
         ? await prisma.feedback.update({ where: { id: existing.id }, data })

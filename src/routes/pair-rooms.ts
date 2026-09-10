@@ -7,11 +7,47 @@ import { banStore } from "../lib/banStore.js";
 
 const router = Router();
 
+/**
+ * The problem as a pair room embeds it: the same slice the workspace gets from
+ * GET /api/problems/:slug. Never the answer key (`referenceSolution`,
+ * `referenceLanguage`), and not the editorial or its solutions either — those
+ * are the two heaviest columns on the row and nothing in a room reads them.
+ */
+const ROOM_PROBLEM_SELECT = {
+  id: true,
+  title: true,
+  slug: true,
+  description: true,
+  difficulty: true,
+  tags: true,
+  timeLimitMs: true,
+  memoryLimitMb: true,
+  isPublished: true,
+  createdAt: true,
+  starterCode: true,
+  signature: true,
+  hints: true,
+  testCases: {
+    where: { isHidden: false },
+    orderBy: { orderIndex: "asc" },
+  },
+} as const;
+
+/** How long a room can sit unopened before the lobby stops advertising it. */
+const LOBBY_WINDOW_MS = 24 * 60 * 60 * 1000;
+
+/** The most rooms the lobby lists at once. */
+const LOBBY_TAKE = 50;
+
 // GET /api/pair-rooms — List active pair programming rooms
 router.get("/", async (_req, res) => {
   try {
+    // A host who created a room and never opened the socket leaves it "waiting"
+    // forever; this list used to grow by every one of them. `startedAt` is set
+    // at creation (below) and again when the session actually starts, so a
+    // day-old waiting room is one nobody is coming back to.
     const rooms = await prisma.pairRoom.findMany({
-      where: { status: "waiting" },
+      where: { status: "waiting", startedAt: { gte: new Date(Date.now() - LOBBY_WINDOW_MS) } },
       include: {
         creator: {
           select: { id: true, name: true, avatar_url: true }
@@ -20,7 +56,8 @@ router.get("/", async (_req, res) => {
           select: { title: true, difficulty: true }
         }
       },
-      orderBy: { startedAt: "desc" }
+      orderBy: { startedAt: "desc" },
+      take: LOBBY_TAKE,
     });
 
     res.json(rooms);
@@ -43,9 +80,9 @@ router.post("/", requireAuth, async (req, res) => {
     // Only generate inviteCode for private rooms. The code is the only thing
     // gating entry, so it comes from the cryptographic generator.
     const rawInviteCode = mode === "private" ? generateInviteCode() : null;
-    
+
     const inviteCode = encodeCode(rawInviteCode);
-    
+
     const room = await prisma.pairRoom.create({
       data: {
         problemId,
@@ -54,6 +91,9 @@ router.post("/", requireAuth, async (req, res) => {
         createdBy: userId,
         inviteCode,
         status: "waiting",
+        // The row has no createdAt; this is what the lobby ages rooms by until
+        // a guest arrives and the join below restamps it as the real start.
+        startedAt: new Date(),
         participants: {
           create: {
             userId,
@@ -62,14 +102,7 @@ router.post("/", requireAuth, async (req, res) => {
         }
       },
       include: {
-        problem: {
-          include: { 
-            testCases: {
-              where: { isHidden: false },
-              orderBy: { orderIndex: "asc" }
-            } 
-          }
-        }
+        problem: { select: ROOM_PROBLEM_SELECT }
       }
     });
 
@@ -91,14 +124,7 @@ router.get("/:id", requireAuth, async (req, res) => {
         creator: {
           select: { name: true, avatar_url: true }
         },
-        problem: {
-          include: { 
-            testCases: {
-              where: { isHidden: false },
-              orderBy: { orderIndex: "asc" }
-            } 
-          }
-        },
+        problem: { select: ROOM_PROBLEM_SELECT },
         participants: {
           include: {
             user: {
@@ -116,7 +142,7 @@ router.get("/:id", requireAuth, async (req, res) => {
     // Security: only expose recoveryCode to the host/creator
     const userId = (req as any).user.userId;
     const isHost = room.createdBy === userId;
-    
+
     const responseData = {
       ...room,
       recoveryCode: isHost ? room.recoveryCode : null
@@ -150,17 +176,17 @@ router.post("/:id/join", requireAuth, async (req, res) => {
     // Check if user was kicked (kickedUserIds is a Json array on MySQL)
     const kickedIds = (room.kickedUserIds as string[] | null) ?? [];
     const isKicked = kickedIds.includes(userId);
-    
+
     // If kicked, they MUST provide the recoveryCode correctly
     if (isKicked) {
       const storedRecovery = decodeCode(room.recoveryCode);
       if (!passcode || passcode.toUpperCase() !== storedRecovery) {
-        return res.status(403).json({ 
-          error: "KICKED_RECOVERY_REQUIRED", 
-          message: "You have been removed from this room. Please enter the recovery passcode provided by the host to re-join." 
+        return res.status(403).json({
+          error: "KICKED_RECOVERY_REQUIRED",
+          message: "You have been removed from this room. Please enter the recovery passcode provided by the host to re-join."
         });
       }
-      
+
       // If recovery code is correct, remove from kicked list
       await prisma.pairRoom.update({
         where: { id },

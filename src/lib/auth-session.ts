@@ -82,7 +82,7 @@ export async function generateUsername(baseName: string): Promise<string> {
     username = "user_" + Math.random().toString(36).substring(2, 7);
   }
 
-  const existing = await prisma.user.findFirst({ where: { username } });
+  const existing = await prisma.user.findFirst({ where: { username }, select: { id: true } });
   if (existing) {
     username += "_" + Math.random().toString(36).substring(2, 5);
   }
@@ -101,12 +101,56 @@ export function fireRegistrationWebhook(user: { email: string | null; username: 
   }).catch((err) => console.error("[auth] Registration webhook error:", err));
 }
 
+/** What a verified session token says about its holder. */
+export interface SessionClaims {
+  userId: string;
+  email: string;
+  /** Issued-at, in seconds. Added by the library on every token we mint. */
+  iat?: number;
+}
+
+/**
+ * The claims inside a session JWT, or null if it is not one we issued, has
+ * expired, or names no account. This is the one place a Bearer token, a
+ * `__session` cookie or a socket handshake is checked; the HTTP middleware and
+ * the socket layer both go through it so they cannot drift apart.
+ *
+ * Signature and expiry only. Whether the account has since revoked its
+ * sessions is a separate, cached question — see `isSessionRevoked`.
+ */
+export function readSessionToken(token: string): SessionClaims | null {
+  try {
+    const payload = jwt.verify(token, JWT_SECRET, { algorithms: ["HS256"] }) as Partial<SessionClaims>;
+    if (typeof payload.userId !== "string" || !payload.userId) return null;
+    return { userId: payload.userId, email: payload.email ?? "", iat: payload.iat };
+  } catch {
+    return null;
+  }
+}
+
 /** True if the token is a well-formed, unexpired session JWT we issued. */
 export function verifySessionToken(token: string): boolean {
-  try {
-    jwt.verify(token, JWT_SECRET, { algorithms: ["HS256"] });
-    return true;
-  } catch {
-    return false;
+  return readSessionToken(token) !== null;
+}
+
+/**
+ * The named cookie out of a raw `Cookie` header, for the socket handshake,
+ * which never passes through cookie-parser. Enough of RFC 6265 for our own
+ * cookie: split on `;`, first `=` separates name from value, value is
+ * percent-decoded the way Express encoded it.
+ */
+export function cookieFromHeader(header: string | undefined, name: string): string | null {
+  if (!header) return null;
+  for (const part of header.split(";")) {
+    const eq = part.indexOf("=");
+    if (eq < 0) continue;
+    if (part.slice(0, eq).trim() !== name) continue;
+    const raw = part.slice(eq + 1).trim();
+    try {
+      return decodeURIComponent(raw);
+    } catch {
+      return raw;
+    }
   }
+  return null;
 }

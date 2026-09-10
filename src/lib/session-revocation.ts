@@ -1,4 +1,5 @@
 import { prisma } from "./prisma.js";
+import { broadcastSignal, onSignal } from "./cache.js";
 
 /**
  * Refusing sessions that were issued before an account's last revocation.
@@ -11,13 +12,21 @@ import { prisma } from "./prisma.js";
  * against it.
  *
  * Doing that naively would add a database read to every request, so the answer
- * is cached briefly. The window is short enough that a revoked token dies
- * within seconds, and the instance that performs the revocation clears its own
- * entry immediately, so in the ordinary case it is instant.
+ * is cached. The instance that performs a revocation drops its own entry at
+ * once and tells every other instance to do the same over the cache
+ * invalidation channel, so in the ordinary case it is instant everywhere; the
+ * TTL is only the backstop for a write that bypassed both.
  */
 
-/** Short enough that a revocation takes effect while you are still reading the page. */
-const CACHE_TTL_MS = 10_000;
+/**
+ * Three minutes. Against a ~500ms database this was the single largest
+ * recurring cost per signed-in user at the old ten seconds, and with the
+ * broadcast below the TTL no longer decides how fast a revocation lands.
+ */
+const CACHE_TTL_MS = 180_000;
+
+/** Signal name on the invalidation channel; the payload is the user id. */
+const REVOKED_SIGNAL = "session-revoked";
 
 interface Entry {
   /** Epoch milliseconds, or null when the account has never revoked. */
@@ -26,6 +35,12 @@ interface Entry {
 }
 
 const cache = new Map<string, Entry>();
+
+/**
+ * Cold lookups in progress, so a page that fires a dozen authenticated
+ * requests at once issues one query for the user rather than a dozen.
+ */
+const inFlight = new Map<string, Promise<number | null>>();
 
 /** Keeps the map from growing without bound on a long-running process. */
 const MAX_ENTRIES = 50_000;
@@ -37,6 +52,40 @@ async function load(userId: string): Promise<number | null> {
   });
   return row?.sessionsValidFrom ? row.sessionsValidFrom.getTime() : null;
 }
+
+/**
+ * One lookup per user at a time. The result is only cached if this promise is
+ * still the registered one when it settles: a revocation that lands mid-flight
+ * removes it (see `forget`), so a read that started before the write can never
+ * overwrite the fresh answer with the old one.
+ */
+function loadOnce(userId: string): Promise<number | null> {
+  const pending = inFlight.get(userId);
+  if (pending) return pending;
+
+  const promise = load(userId).then((validFrom) => {
+    if (inFlight.get(userId) === promise) {
+      if (cache.size >= MAX_ENTRIES) cache.clear();
+      cache.set(userId, { validFrom, fetchedAt: Date.now() });
+    }
+    return validFrom;
+  });
+  promise.finally(() => {
+    if (inFlight.get(userId) === promise) inFlight.delete(userId);
+  }).catch(() => {
+    /* surfaced to the caller through `promise` itself */
+  });
+  inFlight.set(userId, promise);
+  return promise;
+}
+
+function forget(userId: string): void {
+  cache.delete(userId);
+  inFlight.delete(userId);
+}
+
+// Another instance revoked: drop whatever this one remembers about the account.
+onSignal(REVOKED_SIGNAL, forget);
 
 /**
  * True when this token is older than the account's last revocation.
@@ -60,13 +109,11 @@ export async function isSessionRevoked(userId: string, issuedAt: number | undefi
     validFrom = cached.validFrom;
   } else {
     try {
-      validFrom = await load(userId);
+      validFrom = await loadOnce(userId);
     } catch (err) {
       console.error("[session] revocation check failed, allowing the request:", (err as Error).message);
       return false;
     }
-    if (cache.size >= MAX_ENTRIES) cache.clear();
-    cache.set(userId, { validFrom, fetchedAt: now });
   }
 
   if (validFrom === null) return false;
@@ -86,19 +133,22 @@ export async function isSessionRevoked(userId: string, issuedAt: number | undefi
  */
 export async function revokeSessions(userId: string): Promise<void> {
   await prisma.user.update({ where: { id: userId }, data: { sessionsValidFrom: new Date() } });
-  cache.delete(userId);
+  forgetSessions(userId);
 }
 
 /**
- * Drops the cached answer for one account, for callers that have already
- * written `sessionsValidFrom` themselves — the password reset does it in the
- * same statement as the new hash, so the two cannot land apart.
+ * Drops the cached answer for one account, here and on every other instance,
+ * for callers that have already written `sessionsValidFrom` themselves — the
+ * password reset does it in the same statement as the new hash, so the two
+ * cannot land apart.
  */
 export function forgetSessions(userId: string): void {
-  cache.delete(userId);
+  forget(userId);
+  broadcastSignal(REVOKED_SIGNAL, userId);
 }
 
 /** Test seam. */
 export function clearRevocationCache(): void {
   cache.clear();
+  inFlight.clear();
 }

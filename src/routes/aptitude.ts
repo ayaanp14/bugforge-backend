@@ -3,6 +3,7 @@ import { prisma } from "../lib/prisma.js";
 import { optionalAuth, requireAuth } from "../middleware/auth.js";
 import { questionBySlug, questionIndex, topicOrder } from "../services/aptitude-bank.js";
 import { cachedShared } from "../lib/cache.js";
+import { browserCache } from "../lib/http-cache.js";
 import { APTITUDE_CATEGORIES, APTITUDE_DIFFICULTIES, APTITUDE_TOPICS, aptitudeTopic, type AptitudeDifficulty } from "../lib/aptitude-topics.js";
 
 /**
@@ -21,21 +22,25 @@ type Status = "new" | "attempted" | "solved";
 const PAGE_SIZE = 15;
 const MAX_PAGE_SIZE = 50;
 
-/** The candidate's standing on every question they have touched. */
+/**
+ * The candidate's standing on every question they have touched.
+ *
+ * Two GROUP BYs — one row per question with its attempt count, and the subset
+ * answered correctly at least once — rather than every attempt row the user
+ * ever made, ordered, and reduced in JS. Both read the
+ * (userId, questionId, createdAt) index and nothing else.
+ */
 async function progressFor(userId: string | null) {
-  const byQuestion = new Map<string, { correct: boolean; attempts: number; last: { selected: number | null; correct: boolean; createdAt: Date } }>();
+  const byQuestion = new Map<string, { correct: boolean; attempts: number }>();
   if (!userId) return byQuestion;
-  const rows = await prisma.aptitudeAttempt.findMany({
-    where: { userId },
-    orderBy: { createdAt: "asc" },
-    select: { questionId: true, selected: true, correct: true, createdAt: true },
-  });
-  for (const row of rows) {
-    const entry = byQuestion.get(row.questionId) ?? { correct: false, attempts: 0, last: row };
-    entry.correct = entry.correct || row.correct;
-    entry.attempts += 1;
-    entry.last = row;
-    byQuestion.set(row.questionId, entry);
+  const [attempts, solvedRows] = await Promise.all([
+    prisma.aptitudeAttempt.groupBy({ by: ["questionId"], where: { userId }, _count: { _all: true } }),
+    prisma.aptitudeAttempt.groupBy({ by: ["questionId"], where: { userId, correct: true } }),
+  ]);
+  for (const row of attempts) byQuestion.set(row.questionId, { correct: false, attempts: row._count._all });
+  for (const row of solvedRows) {
+    const entry = byQuestion.get(row.questionId);
+    if (entry) entry.correct = true;
   }
   return byQuestion;
 }
@@ -47,7 +52,7 @@ const statusOf = (entry: { correct: boolean } | undefined): Status => (entry ? (
  * GET /api/aptitude/topics
  * The syllabus with question counts and, when signed in, progress per topic.
  */
-router.get("/topics", optionalAuth, async (req: any, res) => {
+router.get("/topics", optionalAuth, browserCache(120), async (req: any, res) => {
   try {
     const userId: string | null = req.user?.userId ?? null;
     const [questions, progress] = await Promise.all([questionIndex(), progressFor(userId)]);
@@ -107,7 +112,7 @@ router.get("/topics", optionalAuth, async (req: any, res) => {
  * topic rather than the loaded page, so the "solved" count does not shrink to
  * whatever happens to be on screen.
  */
-router.get("/questions", optionalAuth, async (req: any, res) => {
+router.get("/questions", optionalAuth, browserCache(120), async (req: any, res) => {
   try {
     const topicId = typeof req.query.topic === "string" ? req.query.topic : "";
     const topic = aptitudeTopic(topicId);
@@ -184,7 +189,7 @@ router.get("/questions", optionalAuth, async (req: any, res) => {
  * The question with its hints and neighbours. The answer and solution are
  * included only once the candidate has attempted it.
  */
-router.get("/questions/:slug", optionalAuth, async (req: any, res) => {
+router.get("/questions/:slug", optionalAuth, browserCache(120), async (req: any, res) => {
   try {
     const question = await questionBySlug(req.params.slug);
     if (!question) return res.status(404).json({ error: "Question not found" });
@@ -241,7 +246,17 @@ router.get("/questions/:slug", optionalAuth, async (req: any, res) => {
  */
 router.post("/questions/:slug/attempt", requireAuth, async (req: any, res) => {
   try {
-    const question = await prisma.aptitudeQuestion.findUnique({ where: { slug: req.params.slug } });
+    const slug = String(req.params.slug);
+    const userId: string = req.user.userId;
+    // The question is seeded content and comes from the same shared cache the
+    // detail page warms, so in the usual case this tier is only the count —
+    // which reaches the question through its slug rather than waiting on the
+    // row for an id. The attempt just recorded is then the count plus one,
+    // instead of a third round trip to ask again.
+    const [question, priorAttempts] = await Promise.all([
+      questionBySlug(slug),
+      prisma.aptitudeAttempt.count({ where: { userId, question: { slug } } }),
+    ]);
     if (!question) return res.status(404).json({ error: "Question not found" });
 
     const body = (req.body ?? {}) as Record<string, unknown>;
@@ -256,9 +271,8 @@ router.post("/questions/:slug/attempt", requireAuth, async (req: any, res) => {
 
     const correct = selected !== null && selected === question.answer;
     await prisma.aptitudeAttempt.create({
-      data: { userId: req.user.userId, questionId: question.id, selected, correct, timeSec, usedHints },
+      data: { userId, questionId: question.id, selected, correct, timeSec, usedHints },
     });
-    const count = await prisma.aptitudeAttempt.count({ where: { userId: req.user.userId, questionId: question.id } });
 
     res.status(201).json({
       correct,
@@ -266,7 +280,7 @@ router.post("/questions/:slug/attempt", requireAuth, async (req: any, res) => {
       answer: question.answer,
       solution: question.solution,
       approach: question.approach,
-      attempts: count,
+      attempts: priorAttempts + 1,
     });
   } catch (error: any) {
     console.error("Aptitude attempt error:", error?.message);

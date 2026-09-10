@@ -1,6 +1,7 @@
+import { Prisma } from "@prisma/client";
 import { prisma } from "../lib/prisma.js";
 import { cached, cachedShared, invalidate } from "../lib/cache.js";
-import { getDashboardUser, getSocialCounts, invalidateMe } from "./me.js";
+import { getDashboardUser, invalidateMe } from "./me.js";
 
 /**
  * Query functions shared by the per-widget /api/me routes and the aggregated
@@ -30,8 +31,10 @@ const tagsOf = (row: { tags: unknown }): string[] => (Array.isArray(row.tags) ? 
  * The published catalogue is identical for every user, so it is fetched once per
  * TTL window rather than once per dashboard load. Previously this was re-read on
  * every request, 600 rows at a time, including a JSON tags column per row.
+ *
+ * Shared with GET /api/problems, whose plain first page is this list's head.
  */
-function getCatalogue(): Promise<CatalogueRow[]> {
+export function getCatalogue(): Promise<CatalogueRow[]> {
   return cached("catalogue:published", 120_000, () =>
     prisma.problem.findMany({
       where: { isPublished: true },
@@ -162,16 +165,28 @@ export async function getHeatmap(userId: string) {
   oneYearAgo.setDate(today.getDate() - 364);
   oneYearAgo.setHours(0, 0, 0, 0);
 
-  const submissions = await prisma.submission.findMany({
-    where: { userId, verdict: "ACCEPTED", submittedAt: { gte: oneYearAgo, lte: today } },
-    select: { submittedAt: true },
-  });
+  // One row per active day, counted by the database, instead of every accepted
+  // submission of the year shipped over and bucketed here. Prisma stores the
+  // timestamp as UTC, so the day it falls on is the same one the old
+  // `toISOString().split("T")[0]` produced. Uses the (userId, verdict,
+  // submittedAt) index; COUNT arrives as a BigInt.
+  const rows = await prisma.$queryRaw<Array<{ d: string; n: bigint | number }>>(Prisma.sql`
+    SELECT DATE_FORMAT(\`submittedAt\`, '%Y-%m-%d') AS d, COUNT(*) AS n
+    FROM \`Submission\`
+    WHERE \`userId\` = ${userId}
+      AND \`verdict\` = 'ACCEPTED'
+      AND \`submittedAt\` >= ${oneYearAgo}
+      AND \`submittedAt\` <= ${today}
+    GROUP BY d
+  `);
 
   const dailyCounts: Record<string, number> = {};
-  submissions.forEach((s) => {
-    const dateStr = s.submittedAt.toISOString().split("T")[0];
-    dailyCounts[dateStr] = (dailyCounts[dateStr] || 0) + 1;
-  });
+  let totalSubmissions = 0;
+  for (const row of rows) {
+    const n = Number(row.n);
+    dailyCounts[row.d] = n;
+    totalSubmissions += n;
+  }
 
   const dates: string[] = [];
   for (let i = 0; i < 365; i++) {
@@ -194,7 +209,7 @@ export async function getHeatmap(userId: string) {
   });
 
   return {
-    totalSubmissions: submissions.length,
+    totalSubmissions,
     activeDays,
     maxStreak,
     currentStreak,
@@ -203,21 +218,27 @@ export async function getHeatmap(userId: string) {
 }
 
 // ── Rank ────────────────────────────────────────────────────────
-export async function getRank(userId: string, type = "combined") {
-  const user = await prisma.user.findUnique({
-    where: { id: userId },
-    select: { xp: true, questionsXp: true, bugsXp: true },
-  });
-  if (!user) return { rank: null as number | null };
+/** The XP column each leaderboard ranks by — whitelisted before it is spliced into SQL. */
+const RANK_COLUMN = { combined: "xp", questions: "questionsXp", bugs: "bugsXp" } as const;
 
-  let rank: number | null = null;
-  if (type === "questions") {
-    rank = user.questionsXp > 0 ? (await prisma.user.count({ where: { questionsXp: { gt: user.questionsXp } } })) + 1 : null;
-  } else if (type === "bugs") {
-    rank = user.bugsXp > 0 ? (await prisma.user.count({ where: { bugsXp: { gt: user.bugsXp } } })) + 1 : null;
-  } else {
-    rank = user.xp > 0 ? (await prisma.user.count({ where: { xp: { gt: user.xp } } })) + 1 : null;
-  }
+export async function getRank(userId: string, type = "combined") {
+  const column = RANK_COLUMN[type === "questions" ? "questions" : type === "bugs" ? "bugs" : "combined"];
+  const col = Prisma.raw("`" + column + "`");
+
+  // The user's score and the number of users above it, in one statement. This
+  // was two dependent round trips — read the score, then count — for a number
+  // the database can compute from the score without handing it back first.
+  // Reads the index on the column both times.
+  const rows = await prisma.$queryRaw<Array<{ score: number; above: bigint | number }>>(Prisma.sql`
+    SELECT u.${col} AS score,
+           (SELECT COUNT(*) FROM \`User\` WHERE ${col} > u.${col}) AS above
+    FROM \`User\` u
+    WHERE u.\`id\` = ${userId}
+  `);
+
+  const row = rows[0];
+  if (!row) return { rank: null as number | null };
+  const rank: number | null = Number(row.score) > 0 ? Number(row.above) + 1 : null;
   return { rank };
 }
 
@@ -277,7 +298,13 @@ async function queryLeaderboard(type: "combined" | "questions" | "bugs") {
 }
 
 // ── Pairing history (closed rooms the user took part in) ────────
-export async function getPairingHistory(userId: string, page = 1, limit = 10) {
+/**
+ * `withCode` decides whether the last submission's source travels with each
+ * room. The pairing page needs it (its "view code" button opens the file), the
+ * dashboard's arena card only reads the verdict — and the dashboard payload is
+ * cached whole, so a MediumText per room there is paid for on every load.
+ */
+export async function getPairingHistory(userId: string, page = 1, limit = 10, withCode = true) {
   const skip = (page - 1) * limit;
   const where = { status: "closed", participants: { some: { userId } } };
 
@@ -290,7 +317,7 @@ export async function getPairingHistory(userId: string, page = 1, limit = 10) {
         problem: { select: { title: true, difficulty: true } },
         participants: { select: { userId: true, user: { select: { name: true, avatar_url: true } } } },
         submissions: {
-          select: { verdict: true, code: true, language: true, submittedAt: true },
+          select: { verdict: true, code: withCode, language: true, submittedAt: true },
           orderBy: { submittedAt: "desc" },
           take: 1,
         },
@@ -365,6 +392,52 @@ export function countSavedInterviews(userId: string) {
   return prisma.savedInterview.count({ where: { userId } });
 }
 
+// ── Per-user counters, one statement ────────────────────────────
+/**
+ * Followers, following, posts and saved interviews are four COUNTs over four
+ * indexed columns. Each is cheap; what is not cheap is four round trips to a
+ * remote database, so they travel as sub-selects of one statement. COUNT
+ * arrives as a BigInt and is narrowed before it reaches JSON.
+ */
+async function queryUserCounters(userId: string) {
+  const rows = await prisma.$queryRaw<
+    Array<{ followers: bigint | number; following: bigint | number; posts: bigint | number; savedInterviews: bigint | number }>
+  >(Prisma.sql`
+    SELECT
+      (SELECT COUNT(*) FROM \`Follow\` WHERE \`followingId\` = ${userId}) AS followers,
+      (SELECT COUNT(*) FROM \`Follow\` WHERE \`followerId\` = ${userId}) AS following,
+      (SELECT COUNT(*) FROM \`Post\` WHERE \`userId\` = ${userId}) AS posts,
+      (SELECT COUNT(*) FROM \`SavedInterview\` WHERE \`userId\` = ${userId}) AS savedInterviews
+  `);
+  const row = rows[0];
+  return {
+    social: {
+      followers: Number(row?.followers ?? 0),
+      following: Number(row?.following ?? 0),
+      posts: Number(row?.posts ?? 0),
+    },
+    savedInterviews: Number(row?.savedInterviews ?? 0),
+  };
+}
+
+/** Followers / following / posts — the dashboard hero and the community's social card. */
+export async function querySocialCounts(userId: string) {
+  const rows = await prisma.$queryRaw<
+    Array<{ followers: bigint | number; following: bigint | number; posts: bigint | number }>
+  >(Prisma.sql`
+    SELECT
+      (SELECT COUNT(*) FROM \`Follow\` WHERE \`followingId\` = ${userId}) AS followers,
+      (SELECT COUNT(*) FROM \`Follow\` WHERE \`followerId\` = ${userId}) AS following,
+      (SELECT COUNT(*) FROM \`Post\` WHERE \`userId\` = ${userId}) AS posts
+  `);
+  const row = rows[0];
+  return {
+    followers: Number(row?.followers ?? 0),
+    following: Number(row?.following ?? 0),
+    posts: Number(row?.posts ?? 0),
+  };
+}
+
 // ── Tiny problem insights for the dashboard (instead of shipping the list) ──
 /** Pure computation over an already-loaded ProblemState — issues no queries. */
 export function computeProblemInsights(state: ProblemState) {
@@ -416,10 +489,10 @@ const dashboardKey = (userId: string) => `dash:v1:${userId}`;
 
 /**
  * Drop everything cached about a user — the dashboard aggregate and /api/me.
- * Call after anything that changes what they show (a submission, an XP award)
- * so the next read is rebuilt rather than served stale. Without this the TTL
- * would be the only thing correcting it, and a user who just solved a problem
- * would watch their own stats fail to move.
+ * Call after anything that changes what they show (a submission, an XP award,
+ * a follow, a post) so the next read is rebuilt rather than served stale.
+ * Without this the TTL would be the only thing correcting it, and a user who
+ * just solved a problem would watch their own stats fail to move.
  *
  * Both are cleared together because they are built from the same underlying
  * facts: forgetting one leaves the header and the page below it disagreeing.
@@ -430,15 +503,15 @@ export function invalidateDashboard(userId: string): void {
 }
 
 /**
- * Cached across instances and restarts. Composing this payload costs ~18 queries
- * against a remote database, which is far more than one Redis round trip, so it
- * is the one thing here worth going over the network for.
+ * Cached across instances and restarts. Composing this payload costs ~15
+ * statements against a remote database, which is far more than one Redis round
+ * trip, so it is the one thing here worth going over the network for.
  *
  * Dates serialise to ISO strings through Redis. That matches what res.json()
  * produces on a cache miss, so the HTTP response is byte-identical either way.
  */
 export async function getDashboard(userId: string) {
-  // 5 minutes, not 60s: a miss costs ~18 round trips at ~500ms each against the
+  // 5 minutes, not 60s: a miss costs ~15 round trips at ~500ms each against the
   // remote database, so misses are what to avoid. Freshness is preserved by
   // invalidateDashboard() firing on every submission rather than by a short TTL.
   return cachedShared(dashboardKey(userId), 300, () => buildDashboard(userId));
@@ -448,9 +521,10 @@ async function buildDashboard(userId: string) {
   // difficultyStats and problemInsights both describe the same thing — which
   // published problems this user has solved — so the state behind them is loaded
   // once here and reduced twice, instead of each running its own pair of queries.
+  // The four per-user counters (social + saved interviews) are one statement.
   const [
     me,
-    social,
+    counters,
     problemState,
     submissions,
     heatmap,
@@ -459,23 +533,22 @@ async function buildDashboard(userId: string) {
     pairing,
     continueSolving,
     bugInsights,
-    savedInterviews,
   ] = await Promise.all([
     getDashboardUser(userId),
-    getSocialCounts(userId),
+    queryUserCounters(userId),
     loadProblemState(userId),
     getSubmissionHistory(userId, 1, 5),
     getHeatmap(userId),
     getRank(userId, "combined"),
     getLeaderboard("combined"),
-    getPairingHistory(userId, 1, 3),
+    getPairingHistory(userId, 1, 3, false),
     getContinueSolving(userId),
     getBugInsights(),
-    countSavedInterviews(userId),
   ]);
 
   const difficultyStats = computeDifficultyStats(problemState);
   const problemInsights = computeProblemInsights(problemState);
+  const { social, savedInterviews } = counters;
 
   return { me, social, difficultyStats, submissions, heatmap, rank, leaderboard, pairing, continueSolving, problemInsights, bugInsights, savedInterviews };
 }

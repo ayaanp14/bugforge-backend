@@ -138,14 +138,35 @@ async function postCompletion(
 }
 
 /**
+ * The JSON Schema for a Zod schema, computed once per schema object.
+ *
+ * Every schema in this file is a module-level constant, yet `toJSONSchema`
+ * was walking it afresh on every call — twice per turn when structured
+ * outputs are off, once for the prompt and once for the format. It is pure,
+ * so the result is memoised against the schema itself; a WeakMap so a schema
+ * built ad hoc somewhere would still be collectable.
+ *
+ * `$schema` is stripped here, once: Zod emits it, some gateways reject it.
+ */
+const jsonSchemaCache = new WeakMap<z.ZodType, Record<string, unknown>>();
+
+function jsonSchemaOf(schema: z.ZodType): Record<string, unknown> {
+  let cached = jsonSchemaCache.get(schema);
+  if (!cached) {
+    const { $schema, ...rest } = z.toJSONSchema(schema) as Record<string, unknown>;
+    void $schema;
+    cached = rest;
+    jsonSchemaCache.set(schema, cached);
+  }
+  return cached;
+}
+
+/**
  * A strict JSON Schema for the response format. Zod already emits `required`
- * and `additionalProperties: false`; only the `$schema` key has to go, which
- * some gateways reject outright.
+ * and `additionalProperties: false`.
  */
 function responseFormat(schema: z.ZodType, name: string) {
-  const { $schema, ...jsonSchema } = z.toJSONSchema(schema) as Record<string, unknown>;
-  void $schema;
-  return { type: "json_schema" as const, json_schema: { name, schema: jsonSchema, strict: true } };
+  return { type: "json_schema" as const, json_schema: { name, schema: jsonSchemaOf(schema), strict: true } };
 }
 
 /** What the model layer is actually talking to — for logs and the smoke test. */
@@ -623,7 +644,7 @@ async function ask<S extends z.ZodType>(
           role: "system",
           content:
             `Reply with a single JSON object and nothing else — no prose before or after, no markdown fence. ` +
-            `It must validate against this JSON Schema:\n\n${JSON.stringify(z.toJSONSchema(schema), null, 2)}`,
+            `It must validate against this JSON Schema:\n\n${JSON.stringify(jsonSchemaOf(schema), null, 2)}`,
         },
       ];
 

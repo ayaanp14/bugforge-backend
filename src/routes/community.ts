@@ -1,7 +1,11 @@
 import { Router } from "express";
+import { randomUUID } from "node:crypto";
+import { Prisma } from "@prisma/client";
 import { prisma } from "../lib/prisma.js";
 import { requireAuth } from "../middleware/auth.js";
-import { cachedShared } from "../lib/cache.js";
+import { cached, cachedShared, invalidate } from "../lib/cache.js";
+import { invalidateUnread } from "../services/notifications.js";
+import { invalidateDashboard, querySocialCounts } from "../services/dashboard.js";
 
 const router = Router();
 
@@ -53,6 +57,9 @@ function extractMentions(text: string): string[] {
  * Create a notification unless the same person already has an unread one of
  * this type pointing at the same place. Likes and mentions can repeat on a busy
  * post; the bell should say "someone liked this", not repeat it eleven times.
+ *
+ * Either branch is a write the unread badge has to hear about — its count is
+ * held in-process (see services/notifications) and would otherwise lag.
  */
 async function notifyOnce(input: { userId: string; type: string; title: string; body: string; href: string }) {
   const existing = await prisma.notification.findFirst({
@@ -61,10 +68,15 @@ async function notifyOnce(input: { userId: string; type: string; title: string; 
   });
   if (existing) {
     await prisma.notification.update({ where: { id: existing.id }, data: { title: input.title, body: input.body, createdAt: new Date() } });
+    invalidateUnread(input.userId);
     return;
   }
   await prisma.notification.create({ data: { ...input } });
+  invalidateUnread(input.userId);
 }
+
+/** The most people one post or comment can notify at once. */
+const MENTION_FANOUT = 10;
 
 /** Fire-and-forget @mention notifications for a post or comment body. */
 function notifyMentions(fromUserId: string, text: string, href: string, context: string) {
@@ -76,16 +88,23 @@ function notifyMentions(fromUserId: string, text: string, href: string, context:
       prisma.user.findMany({ where: { username: { in: names } }, select: { id: true } }),
     ]);
     const who = me?.username || me?.name || "Someone";
-    for (const t of targets) {
-      if (t.id === fromUserId) continue;
-      await notifyOnce({
-        userId: t.id,
-        type: "mention",
-        title: `${who} mentioned you`,
-        body: `${who} mentioned you in ${context}: “${text.slice(0, 80)}${text.length > 80 ? "…" : ""}”`,
-        href,
-      });
-    }
+    // Each recipient's notification is independent of the others', so they are
+    // written together rather than one after another. The mention cap already
+    // keeps the fan-out small; the slice is the hard ceiling.
+    await Promise.all(
+      targets
+        .filter((t) => t.id !== fromUserId)
+        .slice(0, MENTION_FANOUT)
+        .map((t) =>
+          notifyOnce({
+            userId: t.id,
+            type: "mention",
+            title: `${who} mentioned you`,
+            body: `${who} mentioned you in ${context}: “${text.slice(0, 80)}${text.length > 80 ? "…" : ""}”`,
+            href,
+          }),
+        ),
+    );
   })().catch(() => {});
 }
 
@@ -97,24 +116,49 @@ const postHref = (postId: string) => `/community/p/${postId}`;
 const AFFINITY = { post: 5, comment: 4, like: 3, follow: 1 } as const;
 const AFFINITY_DAILY_DECAY = 0.95;
 
-/** Fire-and-forget: bump the user's affinity for these tags. */
+/**
+ * Fire-and-forget: bump the user's affinity for these tags.
+ *
+ * One statement for every tag rather than an upsert per tag: the unique
+ * (userId, tag) key turns the insert into an increment for rows that already
+ * exist. Prisma would normally fill `id` and `updatedAt`; raw SQL has to
+ * supply both, and the id only needs to be unique, not a cuid.
+ */
 function bumpAffinity(userId: string, tags: string[], weight: number) {
   if (tags.length === 0) return;
-  void (async () => {
-    for (const tag of tags) {
-      await prisma.tagAffinity.upsert({
-        where: { userId_tag: { userId, tag } },
-        update: { score: { increment: weight } },
-        create: { userId, tag, score: weight },
-      });
-    }
-  })().catch(() => {});
+  const rows = tags.map((tag) => Prisma.sql`(${randomUUID()}, ${userId}, ${tag}, ${weight}, NOW(3))`);
+  void prisma
+    .$executeRaw(Prisma.sql`
+      INSERT INTO \`TagAffinity\` (\`id\`, \`userId\`, \`tag\`, \`score\`, \`updatedAt\`)
+      VALUES ${Prisma.join(rows)}
+      ON DUPLICATE KEY UPDATE \`score\` = \`score\` + VALUES(\`score\`), \`updatedAt\` = NOW(3)
+    `)
+    .catch(() => {});
 }
 
 /** Read-time decay so interests fade without a cron. */
 function decayed(score: number, updatedAt: Date): number {
   const days = Math.max(0, (Date.now() - updatedAt.getTime()) / 86400000);
   return score * Math.pow(AFFINITY_DAILY_DECAY, days);
+}
+
+// ── Who the viewer follows ──────────────────────────────────────────
+
+/**
+ * The viewer's following list, memoised in-process for 30 s.
+ *
+ * Read by the feed, the suggestions rail and the composed rails endpoint —
+ * usually within the same page load — and one indexed query is still a ~500ms
+ * round trip. Memory only: this is exactly the cheap, hot, per-instance value
+ * the in-process tier is for. The follow toggle drops it.
+ */
+const followsKey = (userId: string) => `follows:v1:${userId}`;
+
+function followingIdsOf(userId: string): Promise<string[]> {
+  return cached(followsKey(userId), 30_000, async () => {
+    const rows = await prisma.follow.findMany({ where: { followerId: userId }, select: { followingId: true } });
+    return rows.map((f) => f.followingId);
+  });
 }
 
 // ── Ranking ("For you") ─────────────────────────────────────────────
@@ -202,6 +246,70 @@ const POST_INCLUDE = {
   tags: { select: { tag: true } },
 } as const;
 
+/** A post is visible if it's public, mine, or followers-only from someone I follow. */
+function visibleTo(userId: string, followingIds: string[]) {
+  return {
+    OR: [
+      { visibility: "public" },
+      { userId },
+      { visibility: "followers", userId: { in: followingIds } },
+    ],
+  };
+}
+
+/**
+ * The "For you" candidate window — every public post of the last fortnight, up
+ * to the cap — is the same rows for every viewer, and it was the feed's single
+ * heaviest read: two hundred posts with author, counts and tags, per request.
+ * It now comes from the shared tier for 30 s. Only the posts a viewer alone
+ * can see (their own, and followers-only ones from people they follow) are
+ * asked for live, and those are few.
+ *
+ * Keyed by tag as well, since a tag filter narrows the window.
+ */
+const publicCandidatesKey = (tag: string | null) =>
+  tag ? `feed:candidates:public:v1:tag:${tag}` : "feed:candidates:public:v1";
+
+/** A row that crossed Redis carries its dates as strings; the ranking calls getTime() on them. */
+function reviveDates(p: Candidate): Candidate {
+  return { ...p, createdAt: new Date(p.createdAt), editedAt: p.editedAt ? new Date(p.editedAt) : p.editedAt ?? null };
+}
+
+async function publicCandidates(tag: string | null): Promise<Candidate[]> {
+  const rows = await cachedShared(publicCandidatesKey(tag), 30, async () => {
+    const since = new Date(Date.now() - RANK.candidateDays * 86400000);
+    return (await prisma.post.findMany({
+      where: { visibility: "public", createdAt: { gte: since }, ...(tag ? { tags: { some: { tag } } } : {}) },
+      orderBy: { createdAt: "desc" },
+      take: RANK.candidateCap,
+      include: POST_INCLUDE,
+    })) as unknown as Candidate[];
+  });
+  return rows.map(reviveDates);
+}
+
+/**
+ * The viewer's own slice of the window: their non-public posts, and
+ * followers-only posts by people they follow. Expressed through the relation
+ * so it needs nothing loaded first and can share a tier with everything else.
+ */
+function privateCandidates(userId: string, tag: string | null): Promise<Candidate[]> {
+  const since = new Date(Date.now() - RANK.candidateDays * 86400000);
+  return prisma.post.findMany({
+    where: {
+      AND: [
+        { createdAt: { gte: since } },
+        { visibility: { not: "public" } },
+        { OR: [{ userId }, { visibility: "followers", user: { followers: { some: { followerId: userId } } } }] },
+        ...(tag ? [{ tags: { some: { tag } } }] : []),
+      ],
+    },
+    orderBy: { createdAt: "desc" },
+    take: RANK.candidateCap,
+    include: POST_INCLUDE,
+  }) as unknown as Promise<Candidate[]>;
+}
+
 /** Poll options as authored, defensively normalised. */
 function pollOptions(meta: unknown): string[] {
   const raw = (meta as { poll?: { options?: unknown } } | null)?.poll?.options;
@@ -281,31 +389,22 @@ router.get("/feed", requireAuth, async (req, res) => {
     const skip = Math.max(0, parseInt(String(req.query.skip ?? "0"), 10) || 0);
     const take = Math.min(MAX_TAKE, Math.max(1, parseInt(String(req.query.take ?? "20"), 10) || 20));
 
-    // Who I follow — for the "following" scope, visibility, and ranking.
-    const myFollows = await prisma.follow.findMany({
-      where: { followerId: userId },
-      select: { followingId: true },
-    });
-    const followingIds = myFollows.map((f) => f.followingId);
-
-    // A post is visible if it's public, mine, or followers-only from someone I follow.
-    const visibleTo = [
-      { visibility: "public" },
-      { userId },
-      { visibility: "followers", userId: { in: followingIds } },
-    ];
-
-    const baseAnd: object[] = [{ OR: visibleTo }];
-    if (scope === "following") baseAnd.push({ userId: { in: [...followingIds, userId] } });
-    if (scope === "saved") baseAnd.push({ saves: { some: { userId } } });
-    if (tagFilter) baseAnd.push({ tags: { some: { tag: tagFilter } } });
+    const baseAndFor = (followingIds: string[]) => {
+      const baseAnd: object[] = [visibleTo(userId, followingIds)];
+      if (scope === "following") baseAnd.push({ userId: { in: [...followingIds, userId] } });
+      if (scope === "saved") baseAnd.push({ saves: { some: { userId } } });
+      if (tagFilter) baseAnd.push({ tags: { some: { tag: tagFilter } } });
+      return baseAnd;
+    };
 
     let page: Candidate[];
+    let followingIds: string[];
 
     if (scope === "following" || scope === "saved") {
       // Following and saved stay strictly chronological — people expect it.
+      followingIds = await followingIdsOf(userId);
       page = (await prisma.post.findMany({
-        where: { AND: baseAnd },
+        where: { AND: baseAndFor(followingIds) },
         orderBy: { createdAt: "desc" },
         skip,
         take,
@@ -313,17 +412,25 @@ router.get("/feed", requireAuth, async (req, res) => {
       })) as unknown as Candidate[];
     } else {
       // "For you": rank recent candidates, then fill with older posts chronologically.
-      const since = new Date(Date.now() - RANK.candidateDays * 86400000);
-      const candidates = (await prisma.post.findMany({
-        where: { AND: [...baseAnd, { createdAt: { gte: since } }] },
-        orderBy: { createdAt: "desc" },
-        take: RANK.candidateCap,
-        include: POST_INCLUDE,
-      })) as unknown as Candidate[];
+      // Everything the ranking needs that does not depend on the candidates
+      // themselves — who I follow, the shared window, my private slice of it,
+      // my tag affinities — is one tier, where it used to be three.
+      const [follows, shared, mine, affRows] = await Promise.all([
+        followingIdsOf(userId),
+        publicCandidates(tagFilter),
+        privateCandidates(userId, tagFilter),
+        prisma.tagAffinity.findMany({ where: { userId } }),
+      ]);
+      followingIds = follows;
+
+      // The two halves are disjoint (public against everything else), so the
+      // union is a merge by recency, cut to the cap the single query applied.
+      const candidates = [...shared, ...mine]
+        .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
+        .slice(0, RANK.candidateCap);
 
       const authorIds = [...new Set(candidates.map((p) => p.userId))];
-      const [affRows, mutualRows, followerGroups] = await Promise.all([
-        prisma.tagAffinity.findMany({ where: { userId } }),
+      const [mutualRows, followerGroups] = await Promise.all([
         authorIds.length
           ? prisma.follow.findMany({ where: { followerId: { in: authorIds }, followingId: userId }, select: { followerId: true } })
           : Promise.resolve([] as { followerId: string }[]),
@@ -350,8 +457,9 @@ router.get("/feed", requireAuth, async (req, res) => {
 
       // Backfill with older posts (chronological) once the ranked window is exhausted.
       if (page.length < take) {
+        const since = new Date(Date.now() - RANK.candidateDays * 86400000);
         const older = (await prisma.post.findMany({
-          where: { AND: [...baseAnd, { createdAt: { lt: since } }] },
+          where: { AND: [...baseAndFor(followingIds), { createdAt: { lt: since } }] },
           orderBy: { createdAt: "desc" },
           skip: Math.max(0, skip - ranked.length),
           take: take - page.length,
@@ -448,6 +556,8 @@ router.post("/posts", requireAuth, async (req, res) => {
     }
     bumpAffinity(userId, tags, AFFINITY.post);
     notifyMentions(userId, text, postHref(post.id), "a post");
+    // The dashboard hero counts posts.
+    invalidateDashboard(userId);
 
     res.json({
       id: post.id,
@@ -489,6 +599,7 @@ router.delete("/posts/:id", requireAuth, async (req, res) => {
       return;
     }
     await prisma.post.delete({ where: { id } });
+    invalidateDashboard(userId);
     res.json({ success: true });
   } catch (err) {
     console.error("DELETE /api/community/posts/:id error:", err);
@@ -556,23 +667,17 @@ router.get("/posts/:id", requireAuth, async (req, res) => {
       res.status(404).json({ error: "Post not found" });
       return;
     }
-    // Same visibility rules the feed applies, enforced for the direct link too.
-    if (post.visibility !== "public" && post.userId !== userId) {
-      const follows =
-        post.visibility === "followers" &&
-        (await prisma.follow.findUnique({
-          where: { followerId_followingId: { followerId: userId, followingId: post.userId } },
-          select: { id: true },
-        }));
-      if (!follows) {
-        res.status(403).json({ error: "This post isn't shared with you" });
-        return;
-      }
-    }
+    // One lookup serves both the visibility gate and the card's follow state;
+    // it used to be asked twice in a row.
     const following = await prisma.follow.findUnique({
       where: { followerId_followingId: { followerId: userId, followingId: post.userId } },
       select: { id: true },
     });
+    // Same visibility rules the feed applies, enforced for the direct link too.
+    if (post.visibility !== "public" && post.userId !== userId && !(post.visibility === "followers" && following)) {
+      res.status(403).json({ error: "This post isn't shared with you" });
+      return;
+    }
     const [payload] = await decoratePosts(userId, [post], new Set(following ? [post.userId] : []));
     res.json(payload);
   } catch (err) {
@@ -586,17 +691,17 @@ router.post("/posts/:id/save", requireAuth, async (req, res) => {
   try {
     const userId = req.user!.userId;
     const postId = String(req.params.id);
-    const existing = await prisma.savedPost.findUnique({ where: { postId_userId: { postId, userId } } });
-    if (existing) {
-      await prisma.savedPost.delete({ where: { id: existing.id } });
-    } else {
+    // Delete first: an unsave is then one statement, and a save is the insert
+    // that follows when nothing was there to delete.
+    const removed = await prisma.savedPost.deleteMany({ where: { postId, userId } });
+    if (removed.count === 0) {
       try {
         await prisma.savedPost.create({ data: { postId, userId } });
       } catch (e: any) {
         if (e?.code !== "P2002") throw e; // double-click race
       }
     }
-    res.json({ saved: !existing });
+    res.json({ saved: removed.count === 0 });
   } catch (err) {
     console.error("POST /api/community/posts/:id/save error:", err);
     res.status(500).json({ error: "Internal server error" });
@@ -609,7 +714,14 @@ router.post("/posts/:id/vote", requireAuth, async (req, res) => {
     const userId = req.user!.userId;
     const postId = String(req.params.id);
     const option = Number((req.body as { option?: unknown }).option);
-    const post = await prisma.post.findUnique({ where: { id: postId }, select: { meta: true } });
+    // The poll, the viewer's existing vote and the current tallies are
+    // independent reads, so they share a tier; the tallies after the vote are
+    // then arithmetic on what was just read rather than a third round trip.
+    const [post, mine, groups] = await Promise.all([
+      prisma.post.findUnique({ where: { id: postId }, select: { meta: true } }),
+      prisma.pollVote.findUnique({ where: { postId_userId: { postId, userId } }, select: { option: true } }),
+      prisma.pollVote.groupBy({ by: ["option"], where: { postId }, _count: { _all: true } }),
+    ]);
     if (!post) {
       res.status(404).json({ error: "Post not found" });
       return;
@@ -628,11 +740,13 @@ router.post("/posts/:id/vote", requireAuth, async (req, res) => {
       update: { option },
       create: { postId, userId, option },
     });
-    const groups = await prisma.pollVote.groupBy({ by: ["option"], where: { postId }, _count: { _all: true } });
     const counts = new Map(groups.map((g) => [g.option, g._count._all]));
+    // A changed vote moves one off the old option; a new or changed vote adds one.
+    if (mine && mine.option !== option) counts.set(mine.option, Math.max(0, (counts.get(mine.option) ?? 0) - 1));
+    if (!mine || mine.option !== option) counts.set(option, (counts.get(option) ?? 0) + 1);
     res.json({
       options: options.map((text, i) => ({ text, votes: counts.get(i) ?? 0 })),
-      totalVotes: groups.reduce((sum, g) => sum + g._count._all, 0),
+      totalVotes: [...counts.values()].reduce((sum, n) => sum + n, 0),
       myVote: option,
     });
   } catch (err) {
@@ -713,11 +827,16 @@ router.post("/posts/:id/like", requireAuth, async (req, res) => {
   try {
     const userId = req.user!.userId;
     const postId = String(req.params.id);
-    const existing = await prisma.postLike.findUnique({
-      where: { postId_userId: { postId, userId } },
-    });
+    // The pre-read and the current count are independent, so they travel
+    // together; the count after the toggle is then arithmetic rather than a
+    // third round trip.
+    const [existing, likeCount] = await Promise.all([
+      prisma.postLike.findUnique({ where: { postId_userId: { postId, userId } }, select: { id: true } }),
+      prisma.postLike.count({ where: { postId } }),
+    ]);
     if (existing) {
-      await prisma.postLike.delete({ where: { id: existing.id } });
+      // deleteMany: a like that vanished between the read and now is a no-op, not an error.
+      await prisma.postLike.deleteMany({ where: { id: existing.id } });
     } else {
       try {
         await prisma.postLike.create({ data: { postId, userId } });
@@ -731,14 +850,15 @@ router.post("/posts/:id/like", requireAuth, async (req, res) => {
         .catch(() => {});
 
       // One rolling "respect" notification per post, refreshed rather than
-      // repeated — ten likes should not mean ten rows in the bell.
+      // repeated — ten likes should not mean ten rows in the bell. The count
+      // read above predates this like, so it is already "everyone else".
+      const others = likeCount;
       void (async () => {
         const [post, me] = await Promise.all([
           prisma.post.findUnique({ where: { id: postId }, select: { userId: true } }),
           prisma.user.findUnique({ where: { id: userId }, select: { username: true, name: true } }),
         ]);
         if (!post || post.userId === userId) return;
-        const others = (await prisma.postLike.count({ where: { postId } })) - 1;
         const who = me?.username || me?.name || "Someone";
         await notifyOnce({
           userId: post.userId,
@@ -749,8 +869,7 @@ router.post("/posts/:id/like", requireAuth, async (req, res) => {
         });
       })().catch(() => {});
     }
-    const likeCount = await prisma.postLike.count({ where: { postId } });
-    res.json({ liked: !existing, likeCount });
+    res.json({ liked: !existing, likeCount: existing ? Math.max(0, likeCount - 1) : likeCount + 1 });
   } catch (err) {
     console.error("POST /api/community/posts/:id/like error:", err);
     res.status(500).json({ error: "Internal server error" });
@@ -889,9 +1008,13 @@ router.post("/comments/:id/like", requireAuth, async (req, res) => {
   try {
     const userId = req.user!.userId;
     const commentId = String(req.params.id);
-    const existing = await prisma.postCommentLike.findUnique({ where: { commentId_userId: { commentId, userId } } });
+    // Same shape as a post like: read and count together, then one write.
+    const [existing, likeCount] = await Promise.all([
+      prisma.postCommentLike.findUnique({ where: { commentId_userId: { commentId, userId } }, select: { id: true } }),
+      prisma.postCommentLike.count({ where: { commentId } }),
+    ]);
     if (existing) {
-      await prisma.postCommentLike.delete({ where: { id: existing.id } });
+      await prisma.postCommentLike.deleteMany({ where: { id: existing.id } });
     } else {
       try {
         await prisma.postCommentLike.create({ data: { commentId, userId } });
@@ -899,8 +1022,7 @@ router.post("/comments/:id/like", requireAuth, async (req, res) => {
         if (e?.code !== "P2002") throw e;
       }
     }
-    const likeCount = await prisma.postCommentLike.count({ where: { commentId } });
-    res.json({ liked: !existing, likeCount });
+    res.json({ liked: !existing, likeCount: existing ? Math.max(0, likeCount - 1) : likeCount + 1 });
   } catch (err) {
     console.error("POST /api/community/comments/:id/like error:", err);
     res.status(500).json({ error: "Internal server error" });
@@ -943,16 +1065,20 @@ router.post("/follow/:userId", requireAuth, async (req, res) => {
       res.status(400).json({ error: "You can't follow yourself" });
       return;
     }
-    const target = await prisma.user.findUnique({ where: { id: followingId }, select: { id: true, username: true } });
+    // Does the target exist, do I already follow them, and how many do — three
+    // independent reads in one tier, then a single write. The follower count
+    // after the toggle is arithmetic on the one just read.
+    const [target, existing, followers] = await Promise.all([
+      prisma.user.findUnique({ where: { id: followingId }, select: { id: true, username: true } }),
+      prisma.follow.findUnique({ where: { followerId_followingId: { followerId, followingId } }, select: { id: true } }),
+      prisma.follow.count({ where: { followingId } }),
+    ]);
     if (!target) {
       res.status(404).json({ error: "User not found" });
       return;
     }
-    const existing = await prisma.follow.findUnique({
-      where: { followerId_followingId: { followerId, followingId } },
-    });
     if (existing) {
-      await prisma.follow.delete({ where: { id: existing.id } });
+      await prisma.follow.deleteMany({ where: { id: existing.id } });
     } else {
       try {
         await prisma.follow.create({ data: { followerId, followingId } });
@@ -971,9 +1097,11 @@ router.post("/follow/:userId", requireAuth, async (req, res) => {
         .then((rows) => bumpAffinity(followerId, [...new Set(rows.map((r) => r.tag))].slice(0, 5), AFFINITY.follow))
         .catch(() => {});
 
-      const me = await prisma.user.findUnique({ where: { id: followerId }, select: { username: true, name: true } });
-      void prisma.notification
-        .create({
+      // The bell on the other side. Off the response path; the unread badge is
+      // told, or it would keep serving the old count.
+      void (async () => {
+        const me = await prisma.user.findUnique({ where: { id: followerId }, select: { username: true, name: true } });
+        await prisma.notification.create({
           data: {
             userId: followingId,
             type: "new_follower",
@@ -981,27 +1109,265 @@ router.post("/follow/:userId", requireAuth, async (req, res) => {
             body: `${me?.username || me?.name || "Someone"} started following you.`,
             href: "/community",
           },
-        })
-        .catch(() => {});
+        });
+        invalidateUnread(followingId);
+      })().catch(() => {});
     }
-    const followers = await prisma.follow.count({ where: { followingId } });
-    res.json({ following: !existing, followers });
+
+    // A follow moves both users' hero counts, and this viewer's cached
+    // following list — which the feed and the suggestions rail read.
+    invalidate(followsKey(followerId));
+    invalidateDashboard(followerId);
+    invalidateDashboard(followingId);
+
+    res.json({ following: !existing, followers: existing ? Math.max(0, followers - 1) : followers + 1 });
   } catch (err) {
     console.error("POST /api/community/follow/:userId error:", err);
     res.status(500).json({ error: "Internal server error" });
   }
 });
 
+// ── The sidebar rails ───────────────────────────────────────────────
+//
+// Each rail keeps its own endpoint, and GET /rails composes all five in one
+// round trip for the page that shows them together. The bodies live in these
+// functions so the two paths cannot drift: a rail's JSON is the function's
+// return value, whichever route served it.
+
+/** My social card: followers/following/posts counts — one statement, three sub-selects. */
+const socialCardFor = (userId: string) => querySocialCounts(userId);
+
+/** Lightweight activity stats for the sidebar. */
+function getPulse() {
+  // Global counters, identical for every viewer — four queries that were
+  // recomputed per request. 60s keeps "posts today" feeling live enough.
+  return cachedShared("community:pulse", 60, async () => {
+    const dayAgo = new Date(Date.now() - 24 * 3600 * 1000);
+    const weekAgo = new Date(Date.now() - 7 * 24 * 3600 * 1000);
+    const [postsToday, winsThisWeek, activeCoders, totalCoders] = await Promise.all([
+      prisma.post.count({ where: { createdAt: { gte: dayAgo } } }),
+      prisma.post.count({ where: { type: "achievement", createdAt: { gte: weekAgo } } }),
+      // One row per author, grouped by the database, rather than a DISTINCT
+      // that still walks the week's posts to produce them.
+      prisma.post.groupBy({ by: ["userId"], where: { createdAt: { gte: weekAgo } } }),
+      prisma.user.count(),
+    ]);
+    return { postsToday, winsThisWeek, activeCoders: activeCoders.length, totalCoders };
+  });
+}
+
+/** Top tags of the last 7 days, with a per-day sparkline each. */
+function getTrending() {
+  // A groupBy over a week of public posts, same answer for everyone.
+  // Trending lists don't need to move faster than every five minutes.
+  return cachedShared("community:trending", 300, async () => {
+    const weekAgo = new Date(Date.now() - 7 * 24 * 3600 * 1000);
+    const groups = await prisma.postTag.groupBy({
+      by: ["tag"],
+      where: { post: { createdAt: { gte: weekAgo }, visibility: "public" } },
+      _count: { _all: true },
+      orderBy: { _count: { tag: "desc" } },
+      take: 10,
+    });
+    const top = groups.map((g) => g.tag);
+    if (top.length === 0) return [];
+
+    // One pass over the week's rows for the sparklines, bucketed by day here
+    // rather than seven grouped queries per tag.
+    const rows = await prisma.postTag.findMany({
+      where: { tag: { in: top }, post: { createdAt: { gte: weekAgo }, visibility: "public" } },
+      select: { tag: true, post: { select: { createdAt: true } } },
+    });
+    const startOfToday = new Date();
+    startOfToday.setHours(0, 0, 0, 0);
+    const series = new Map(top.map((t) => [t, Array(7).fill(0) as number[]]));
+    for (const r of rows) {
+      const dayIndex = 6 - Math.floor((startOfToday.getTime() - new Date(r.post.createdAt).setHours(0, 0, 0, 0)) / 86400000);
+      if (dayIndex >= 0 && dayIndex < 7) series.get(r.tag)![dayIndex] += 1;
+    }
+    return groups.map((g) => ({ tag: g.tag, posts: g._count._all, series: series.get(g.tag) ?? Array(7).fill(0) }));
+  });
+}
+
+/** Most active users I don't follow yet, ranked by why they're worth following. */
+async function suggestionsFor(userId: string) {
+  // The pool leaves out people already followed through the relation itself,
+  // so it does not have to wait for the following list to be loaded first —
+  // the three reads here are one tier, where they used to be three.
+  const [followingIds, me, pool] = await Promise.all([
+    followingIdsOf(userId),
+    prisma.user.findUnique({ where: { id: userId }, select: { instituteName: true } }),
+    // A wider pool than we show, then ranked by *why* they're worth following.
+    prisma.user.findMany({
+      where: { id: { not: userId }, followers: { none: { followerId: userId } } },
+      orderBy: { xp: "desc" },
+      take: 40,
+      select: { ...AUTHOR_SELECT, instituteName: true },
+    }),
+  ]);
+  const poolIds = pool.map((u) => u.id);
+
+  const [mutualRows, followerGroups, postGroups] = await Promise.all([
+    // People I follow who follow them: the "2 mutuals" line
+    followingIds.length && poolIds.length
+      ? prisma.follow.findMany({
+          where: { followerId: { in: followingIds }, followingId: { in: poolIds } },
+          select: { followingId: true },
+        })
+      : Promise.resolve([] as { followingId: string }[]),
+    poolIds.length
+      ? prisma.follow.groupBy({ by: ["followingId"], where: { followingId: { in: poolIds } }, _count: { _all: true } })
+      : Promise.resolve([] as { followingId: string; _count: { _all: number } }[]),
+    poolIds.length
+      ? prisma.post.groupBy({ by: ["userId"], where: { userId: { in: poolIds } }, _count: { _all: true } })
+      : Promise.resolve([] as { userId: string; _count: { _all: number } }[]),
+  ]);
+
+  const mutuals = new Map<string, number>();
+  for (const m of mutualRows) mutuals.set(m.followingId, (mutuals.get(m.followingId) ?? 0) + 1);
+  const followers = new Map(followerGroups.map((g) => [g.followingId, g._count._all]));
+  const posts = new Map(postGroups.map((g) => [g.userId, g._count._all]));
+
+  return pool
+    .map((u) => {
+      const mutual = mutuals.get(u.id) ?? 0;
+      const sameInstitute = !!me?.instituteName && u.instituteName === me.instituteName;
+      const postCount = posts.get(u.id) ?? 0;
+      const score =
+        mutual * 3 +
+        (sameInstitute ? 2.5 : 0) +
+        Math.min(2, Math.log1p(postCount)) +
+        Math.min(1.5, Math.log1p(u.xp) / 4);
+      const reason = mutual
+        ? `${mutual} mutual${mutual === 1 ? "" : "s"}`
+        : sameInstitute
+          ? u.instituteName!
+          : postCount > 0
+            ? `${postCount} post${postCount === 1 ? "" : "s"}`
+            : "New here";
+      return {
+        id: u.id, name: u.name, username: u.username, avatar_url: u.avatar_url, xp: u.xp,
+        reason, mutuals: mutual, followers: followers.get(u.id) ?? 0, posts: postCount,
+        score,
+      };
+    })
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 5)
+    .map(({ score, ...rest }) => rest);
+}
+
+/** The dojo's week in one card, plus today's hunts. */
+function getBulletin() {
+  // Every viewer sees the same digest, and it only has to be as fresh as the
+  // window it describes — five minutes is plenty for a weekly summary.
+  return cachedShared("community:bulletin", 300, async () => {
+    const weekAgo = new Date(Date.now() - 7 * 24 * 3600 * 1000);
+    const startOfToday = new Date();
+    startOfToday.setHours(0, 0, 0, 0);
+
+    // Prisma's groupBy signature widens badly across a seven-way Promise.all;
+    // the shapes are simple enough to state once here.
+    type ChallengeCount = { challengeId: string; _count: { _all: number } };
+    type ProblemCount = { problemId: string; _count: { _all: number } };
+    type UserCount = { userId: string; _count: { _all: number } };
+
+    const [bugGroups, problemGroups, bugWarriors, problemWarriors, todayBugs, postsThisWeek, newWarriors] =
+      (await Promise.all([
+        prisma.bugSubmission.groupBy({
+          by: ["challengeId"],
+          where: { verdict: "ACCEPTED", submittedAt: { gte: weekAgo } },
+          _count: { _all: true },
+          orderBy: { _count: { challengeId: "desc" } },
+          take: 3,
+        }),
+        prisma.submission.groupBy({
+          by: ["problemId"],
+          where: { verdict: "ACCEPTED", submittedAt: { gte: weekAgo } },
+          _count: { _all: true },
+          orderBy: { _count: { problemId: "desc" } },
+          take: 3,
+        }),
+        prisma.bugSubmission.groupBy({
+          by: ["userId"],
+          where: { verdict: "ACCEPTED", submittedAt: { gte: weekAgo } },
+          _count: { _all: true },
+        }),
+        prisma.submission.groupBy({
+          by: ["userId"],
+          where: { verdict: "ACCEPTED", submittedAt: { gte: weekAgo } },
+          _count: { _all: true },
+        }),
+        prisma.bugSubmission.groupBy({
+          by: ["challengeId"],
+          where: { verdict: "ACCEPTED", submittedAt: { gte: startOfToday } },
+          _count: { _all: true },
+          orderBy: { _count: { challengeId: "desc" } },
+          take: 3,
+        }),
+        prisma.post.count({ where: { createdAt: { gte: weekAgo } } }),
+        prisma.user.count({ where: { createdAt: { gte: weekAgo } } }),
+      ])) as [ChallengeCount[], ProblemCount[], UserCount[], UserCount[], ChallengeCount[], number, number];
+
+    // Titles for everything referenced above, in two lookups.
+    const challengeIds = [...new Set([...bugGroups, ...todayBugs].map((g) => g.challengeId))];
+    const [challenges, problems] = await Promise.all([
+      challengeIds.length
+        ? prisma.bugChallenge.findMany({ where: { id: { in: challengeIds } }, select: { id: true, title: true, difficulty: true } })
+        : Promise.resolve([] as { id: string; title: string; difficulty: string }[]),
+      problemGroups.length
+        ? prisma.problem.findMany({
+            where: { id: { in: problemGroups.map((g) => g.problemId) } },
+            select: { id: true, title: true, slug: true, difficulty: true },
+          })
+        : Promise.resolve([] as { id: string; title: string; slug: string; difficulty: string }[]),
+    ]);
+    const challengeById = new Map(challenges.map((c) => [c.id, c]));
+    const problemById = new Map(problems.map((p) => [p.id, p]));
+
+    // Most solves this week across both arenas
+    const byWarrior = new Map<string, number>();
+    for (const g of [...bugWarriors, ...problemWarriors]) {
+      byWarrior.set(g.userId, (byWarrior.get(g.userId) ?? 0) + g._count._all);
+    }
+    const [topWarriorId, topWarriorSolves] = [...byWarrior.entries()].sort((a, b) => b[1] - a[1])[0] ?? [null, 0];
+    const topWarrior = topWarriorId
+      ? await prisma.user.findUnique({ where: { id: topWarriorId }, select: AUTHOR_SELECT })
+      : null;
+
+    const solvesThisWeek =
+      bugWarriors.reduce((n, g) => n + g._count._all, 0) + problemWarriors.reduce((n, g) => n + g._count._all, 0);
+
+    return {
+      hunts: bugGroups
+        .map((g) => {
+          const c = challengeById.get(g.challengeId);
+          return c ? { id: c.id, title: c.title, difficulty: c.difficulty, solves: g._count._all } : null;
+        })
+        .filter(Boolean),
+      problems: problemGroups
+        .map((g) => {
+          const p = problemById.get(g.problemId);
+          return p ? { slug: p.slug, title: p.title, difficulty: p.difficulty, solves: g._count._all } : null;
+        })
+        .filter(Boolean),
+      today: todayBugs
+        .map((g) => {
+          const c = challengeById.get(g.challengeId);
+          return c ? { id: c.id, title: c.title, difficulty: c.difficulty, solves: g._count._all } : null;
+        })
+        .filter(Boolean),
+      topWarrior: topWarrior ? { ...topWarrior, solves: topWarriorSolves } : null,
+      solvesThisWeek,
+      postsThisWeek,
+      newWarriors,
+    };
+  });
+}
+
 // GET /api/community/me — my social card (followers/following/posts counts)
 router.get("/me", requireAuth, async (req, res) => {
   try {
-    const userId = req.user!.userId;
-    const [followers, following, posts] = await Promise.all([
-      prisma.follow.count({ where: { followingId: userId } }),
-      prisma.follow.count({ where: { followerId: userId } }),
-      prisma.post.count({ where: { userId } }),
-    ]);
-    res.json({ followers, following, posts });
+    res.json(await socialCardFor(req.user!.userId));
   } catch (err) {
     console.error("GET /api/community/me error:", err);
     res.status(500).json({ error: "Internal server error" });
@@ -1011,24 +1377,7 @@ router.get("/me", requireAuth, async (req, res) => {
 // GET /api/community/pulse — lightweight activity stats for the sidebar
 router.get("/pulse", requireAuth, async (_req, res) => {
   try {
-    // Global counters, identical for every viewer — four queries that were
-    // recomputed per request. 60s keeps "posts today" feeling live enough.
-    const pulse = await cachedShared("community:pulse", 60, async () => {
-      const dayAgo = new Date(Date.now() - 24 * 3600 * 1000);
-      const weekAgo = new Date(Date.now() - 7 * 24 * 3600 * 1000);
-      const [postsToday, winsThisWeek, activeCoders, totalCoders] = await Promise.all([
-        prisma.post.count({ where: { createdAt: { gte: dayAgo } } }),
-        prisma.post.count({ where: { type: "achievement", createdAt: { gte: weekAgo } } }),
-        prisma.post.findMany({
-          where: { createdAt: { gte: weekAgo } },
-          select: { userId: true },
-          distinct: ["userId"],
-        }),
-        prisma.user.count(),
-      ]);
-      return { postsToday, winsThisWeek, activeCoders: activeCoders.length, totalCoders };
-    });
-    res.json(pulse);
+    res.json(await getPulse());
   } catch (err) {
     console.error("GET /api/community/pulse error:", err);
     res.status(500).json({ error: "Internal server error" });
@@ -1038,36 +1387,7 @@ router.get("/pulse", requireAuth, async (_req, res) => {
 // GET /api/community/tags/trending — top tags of the last 7 days
 router.get("/tags/trending", requireAuth, async (_req, res) => {
   try {
-    // A groupBy over a week of public posts, same answer for everyone.
-    // Trending lists don't need to move faster than every five minutes.
-    const trending = await cachedShared("community:trending", 300, async () => {
-      const weekAgo = new Date(Date.now() - 7 * 24 * 3600 * 1000);
-      const groups = await prisma.postTag.groupBy({
-        by: ["tag"],
-        where: { post: { createdAt: { gte: weekAgo }, visibility: "public" } },
-        _count: { _all: true },
-        orderBy: { _count: { tag: "desc" } },
-        take: 10,
-      });
-      const top = groups.map((g) => g.tag);
-      if (top.length === 0) return [];
-
-      // One pass over the week's rows for the sparklines, bucketed by day here
-      // rather than seven grouped queries per tag.
-      const rows = await prisma.postTag.findMany({
-        where: { tag: { in: top }, post: { createdAt: { gte: weekAgo }, visibility: "public" } },
-        select: { tag: true, post: { select: { createdAt: true } } },
-      });
-      const startOfToday = new Date();
-      startOfToday.setHours(0, 0, 0, 0);
-      const series = new Map(top.map((t) => [t, Array(7).fill(0) as number[]]));
-      for (const r of rows) {
-        const dayIndex = 6 - Math.floor((startOfToday.getTime() - new Date(r.post.createdAt).setHours(0, 0, 0, 0)) / 86400000);
-        if (dayIndex >= 0 && dayIndex < 7) series.get(r.tag)![dayIndex] += 1;
-      }
-      return groups.map((g) => ({ tag: g.tag, posts: g._count._all, series: series.get(g.tag) ?? Array(7).fill(0) }));
-    });
-    res.json(trending);
+    res.json(await getTrending());
   } catch (err) {
     console.error("GET /api/community/tags/trending error:", err);
     res.status(500).json({ error: "Internal server error" });
@@ -1077,73 +1397,7 @@ router.get("/tags/trending", requireAuth, async (_req, res) => {
 // GET /api/community/suggestions — most active users I don't follow yet
 router.get("/suggestions", requireAuth, async (req, res) => {
   try {
-    const userId = req.user!.userId;
-    const following = await prisma.follow.findMany({
-      where: { followerId: userId },
-      select: { followingId: true },
-    });
-    const followingIds = following.map((f) => f.followingId);
-    const exclude = [userId, ...followingIds];
-    const me = await prisma.user.findUnique({ where: { id: userId }, select: { instituteName: true } });
-
-    // A wider pool than we show, then ranked by *why* they're worth following.
-    const pool = await prisma.user.findMany({
-      where: { id: { notIn: exclude } },
-      orderBy: { xp: "desc" },
-      take: 40,
-      select: { ...AUTHOR_SELECT, instituteName: true },
-    });
-    const poolIds = pool.map((u) => u.id);
-
-    const [mutualRows, followerGroups, postGroups] = await Promise.all([
-      // People I follow who follow them: the "2 mutuals" line
-      followingIds.length && poolIds.length
-        ? prisma.follow.findMany({
-            where: { followerId: { in: followingIds }, followingId: { in: poolIds } },
-            select: { followingId: true },
-          })
-        : Promise.resolve([] as { followingId: string }[]),
-      poolIds.length
-        ? prisma.follow.groupBy({ by: ["followingId"], where: { followingId: { in: poolIds } }, _count: { _all: true } })
-        : Promise.resolve([] as { followingId: string; _count: { _all: number } }[]),
-      poolIds.length
-        ? prisma.post.groupBy({ by: ["userId"], where: { userId: { in: poolIds } }, _count: { _all: true } })
-        : Promise.resolve([] as { userId: string; _count: { _all: number } }[]),
-    ]);
-
-    const mutuals = new Map<string, number>();
-    for (const m of mutualRows) mutuals.set(m.followingId, (mutuals.get(m.followingId) ?? 0) + 1);
-    const followers = new Map(followerGroups.map((g) => [g.followingId, g._count._all]));
-    const posts = new Map(postGroups.map((g) => [g.userId, g._count._all]));
-
-    const ranked = pool
-      .map((u) => {
-        const mutual = mutuals.get(u.id) ?? 0;
-        const sameInstitute = !!me?.instituteName && u.instituteName === me.instituteName;
-        const postCount = posts.get(u.id) ?? 0;
-        const score =
-          mutual * 3 +
-          (sameInstitute ? 2.5 : 0) +
-          Math.min(2, Math.log1p(postCount)) +
-          Math.min(1.5, Math.log1p(u.xp) / 4);
-        const reason = mutual
-          ? `${mutual} mutual${mutual === 1 ? "" : "s"}`
-          : sameInstitute
-            ? u.instituteName!
-            : postCount > 0
-              ? `${postCount} post${postCount === 1 ? "" : "s"}`
-              : "New here";
-        return {
-          id: u.id, name: u.name, username: u.username, avatar_url: u.avatar_url, xp: u.xp,
-          reason, mutuals: mutual, followers: followers.get(u.id) ?? 0, posts: postCount,
-          score,
-        };
-      })
-      .sort((a, b) => b.score - a.score)
-      .slice(0, 5)
-      .map(({ score, ...rest }) => rest);
-
-    res.json(ranked);
+    res.json(await suggestionsFor(req.user!.userId));
   } catch (err) {
     console.error("GET /api/community/suggestions error:", err);
     res.status(500).json({ error: "Internal server error" });
@@ -1153,113 +1407,31 @@ router.get("/suggestions", requireAuth, async (req, res) => {
 // GET /api/community/bulletin — the dojo's week in one card, plus today's hunts
 router.get("/bulletin", requireAuth, async (_req, res) => {
   try {
-    // Every viewer sees the same digest, and it only has to be as fresh as the
-    // window it describes — five minutes is plenty for a weekly summary.
-    const bulletin = await cachedShared("community:bulletin", 300, async () => {
-      const weekAgo = new Date(Date.now() - 7 * 24 * 3600 * 1000);
-      const startOfToday = new Date();
-      startOfToday.setHours(0, 0, 0, 0);
-
-      // Prisma's groupBy signature widens badly across a seven-way Promise.all;
-      // the shapes are simple enough to state once here.
-      type ChallengeCount = { challengeId: string; _count: { _all: number } };
-      type ProblemCount = { problemId: string; _count: { _all: number } };
-      type UserCount = { userId: string; _count: { _all: number } };
-
-      const [bugGroups, problemGroups, bugWarriors, problemWarriors, todayBugs, postsThisWeek, newWarriors] =
-        (await Promise.all([
-          prisma.bugSubmission.groupBy({
-            by: ["challengeId"],
-            where: { verdict: "ACCEPTED", submittedAt: { gte: weekAgo } },
-            _count: { _all: true },
-            orderBy: { _count: { challengeId: "desc" } },
-            take: 3,
-          }),
-          prisma.submission.groupBy({
-            by: ["problemId"],
-            where: { verdict: "ACCEPTED", submittedAt: { gte: weekAgo } },
-            _count: { _all: true },
-            orderBy: { _count: { problemId: "desc" } },
-            take: 3,
-          }),
-          prisma.bugSubmission.groupBy({
-            by: ["userId"],
-            where: { verdict: "ACCEPTED", submittedAt: { gte: weekAgo } },
-            _count: { _all: true },
-          }),
-          prisma.submission.groupBy({
-            by: ["userId"],
-            where: { verdict: "ACCEPTED", submittedAt: { gte: weekAgo } },
-            _count: { _all: true },
-          }),
-          prisma.bugSubmission.groupBy({
-            by: ["challengeId"],
-            where: { verdict: "ACCEPTED", submittedAt: { gte: startOfToday } },
-            _count: { _all: true },
-            orderBy: { _count: { challengeId: "desc" } },
-            take: 3,
-          }),
-          prisma.post.count({ where: { createdAt: { gte: weekAgo } } }),
-          prisma.user.count({ where: { createdAt: { gte: weekAgo } } }),
-        ])) as [ChallengeCount[], ProblemCount[], UserCount[], UserCount[], ChallengeCount[], number, number];
-
-      // Titles for everything referenced above, in two lookups.
-      const challengeIds = [...new Set([...bugGroups, ...todayBugs].map((g) => g.challengeId))];
-      const [challenges, problems] = await Promise.all([
-        challengeIds.length
-          ? prisma.bugChallenge.findMany({ where: { id: { in: challengeIds } }, select: { id: true, title: true, difficulty: true } })
-          : Promise.resolve([] as { id: string; title: string; difficulty: string }[]),
-        problemGroups.length
-          ? prisma.problem.findMany({
-              where: { id: { in: problemGroups.map((g) => g.problemId) } },
-              select: { id: true, title: true, slug: true, difficulty: true },
-            })
-          : Promise.resolve([] as { id: string; title: string; slug: string; difficulty: string }[]),
-      ]);
-      const challengeById = new Map(challenges.map((c) => [c.id, c]));
-      const problemById = new Map(problems.map((p) => [p.id, p]));
-
-      // Most solves this week across both arenas
-      const byWarrior = new Map<string, number>();
-      for (const g of [...bugWarriors, ...problemWarriors]) {
-        byWarrior.set(g.userId, (byWarrior.get(g.userId) ?? 0) + g._count._all);
-      }
-      const [topWarriorId, topWarriorSolves] = [...byWarrior.entries()].sort((a, b) => b[1] - a[1])[0] ?? [null, 0];
-      const topWarrior = topWarriorId
-        ? await prisma.user.findUnique({ where: { id: topWarriorId }, select: AUTHOR_SELECT })
-        : null;
-
-      const solvesThisWeek =
-        bugWarriors.reduce((n, g) => n + g._count._all, 0) + problemWarriors.reduce((n, g) => n + g._count._all, 0);
-
-      return {
-        hunts: bugGroups
-          .map((g) => {
-            const c = challengeById.get(g.challengeId);
-            return c ? { id: c.id, title: c.title, difficulty: c.difficulty, solves: g._count._all } : null;
-          })
-          .filter(Boolean),
-        problems: problemGroups
-          .map((g) => {
-            const p = problemById.get(g.problemId);
-            return p ? { slug: p.slug, title: p.title, difficulty: p.difficulty, solves: g._count._all } : null;
-          })
-          .filter(Boolean),
-        today: todayBugs
-          .map((g) => {
-            const c = challengeById.get(g.challengeId);
-            return c ? { id: c.id, title: c.title, difficulty: c.difficulty, solves: g._count._all } : null;
-          })
-          .filter(Boolean),
-        topWarrior: topWarrior ? { ...topWarrior, solves: topWarriorSolves } : null,
-        solvesThisWeek,
-        postsThisWeek,
-        newWarriors,
-      };
-    });
-    res.json(bulletin);
+    res.json(await getBulletin());
   } catch (err) {
     console.error("GET /api/community/bulletin error:", err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// GET /api/community/rails — every sidebar rail in one round trip
+router.get("/rails", requireAuth, async (req, res) => {
+  try {
+    const userId = req.user!.userId;
+    // Each value is exactly what its own endpoint returns for this caller; the
+    // page used to make five requests for them and now makes one. Three of the
+    // five are shared-cache hits in the usual case, so the wall clock is the
+    // slower of the two per-user rails.
+    const [me, suggestions, pulse, trending, bulletin] = await Promise.all([
+      socialCardFor(userId),
+      suggestionsFor(userId),
+      getPulse(),
+      getTrending(),
+      getBulletin(),
+    ]);
+    res.json({ me, suggestions, pulse, trending, bulletin });
+  } catch (err) {
+    console.error("GET /api/community/rails error:", err);
     res.status(500).json({ error: "Internal server error" });
   }
 });

@@ -205,6 +205,11 @@ model Submission {
   // counts (userId+verdict, with submittedAt for the date range).
   @@index([userId, submittedAt])
   @@index([userId, verdict, submittedAt])
+  // Per-problem lookups (prevSolved on submit, a problem's attempt history, duel
+  // settlement) otherwise walk the whole userId prefix; the global verdict index
+  // serves the community bulletin group-bys, which were a full table scan.
+  @@index([userId, problemId, submittedAt])
+  @@index([verdict, submittedAt])
 }
 
 model BugChallenge {
@@ -224,6 +229,11 @@ model BugChallenge {
   files       ChallengeFile[]
   tests       ChallengeTest[]
   duels       Duel[]
+
+  // The catalogue reads: published-by-category ordered by difficulty (bug hunts
+  // index) and published-newest-first (duel picks, dashboard counts).
+  @@index([isPublished, category, difficulty])
+  @@index([isPublished, createdAt])
 }
 
 model ChallengeFile {
@@ -260,6 +270,11 @@ model BugSubmission {
   user          User         @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, submittedAt])
+  // alreadySolved / quota / duel checks filter by challenge; streak, stats and
+  // the "me" payload filter by verdict; the bulletin groups the whole table.
+  @@index([userId, challengeId, submittedAt])
+  @@index([userId, verdict, submittedAt])
+  @@index([verdict, submittedAt])
 }
 
 model PairRoom {
@@ -278,6 +293,11 @@ model PairRoom {
   problem         Problem           @relation(fields: [problemId], references: [id], onDelete: Cascade)
   participants    RoomParticipant[]
   submissions     Submission[]
+
+  // The public waiting list and the dashboard's closed-room history both
+  // filter on status and sort on a timestamp; without these they scan.
+  @@index([status, startedAt])
+  @@index([status, endedAt])
 }
 
 model RoomParticipant {
@@ -561,6 +581,8 @@ model Notification {
 
   @@index([userId, isRead])
   @@index([userId, createdAt])
+  // One-shot dedupe (createNotificationOnce / notifyOnce) looks up by type.
+  @@index([userId, type])
 }
 
 // ── Kumite: 1v1 and 2v2 duels over a random problem or bug hunt ──────────
@@ -591,7 +613,9 @@ model Duel {
   challenge    BugChallenge?     @relation(fields: [challengeId], references: [id], onDelete: SetNull)
   participants DuelParticipant[]
 
-  @@index([status, mode, kind, visibility])
+  // The queue scan also bounds and orders by createdAt; the trailing column
+  // lets MySQL stop at the range instead of filesorting the matches.
+  @@index([status, mode, kind, visibility, createdAt])
   @@index([createdBy])
   @@index([createdAt])
 }
@@ -943,6 +967,8 @@ model MockAttempt {
 
   @@index([userId, status, startedAt])
   @@index([testId, submittedAt])
+  // The attempt list is "all of mine, newest first" with no status filter.
+  @@index([userId, startedAt])
 }
 
 /// One answer within a sitting. Upserted as the candidate moves about, so the

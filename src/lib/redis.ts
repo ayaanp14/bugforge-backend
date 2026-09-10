@@ -42,6 +42,11 @@ function connect(): Redis | null {
     connectTimeout: 5000,
     maxRetriesPerRequest: 1,
     retryStrategy: (times: number) => Math.min(times * 500, 10_000),
+    // Fail fast while disconnected. With the queue on, every command issued
+    // during an outage sat waiting for a reconnect that might never come, so
+    // each cache miss cost the full guard timeout below before it fell through
+    // to the database. Rejecting immediately turns an outage into a plain miss.
+    enableOfflineQueue: false,
   });
 
   client.on("error", (err: Error) => {
@@ -125,15 +130,25 @@ export function subscribeInvalidations(onKey: (key: string) => void): void {
   const r = connect();
   if (!r || subscriber) return;
 
-  subscriber = r.duplicate();
-  subscriber.on("error", () => {
+  const sub = r.duplicate();
+  subscriber = sub;
+  sub.on("error", () => {
     /* the main connection already logs; a dead subscriber only costs freshness */
   });
-  subscriber.on("message", (channel: string, message: string) => {
+  sub.on("message", (channel: string, message: string) => {
     if (channel === INVALIDATION_CHANNEL) onKey(message);
   });
-  void subscriber.subscribe(INVALIDATION_CHANNEL).catch(() => {
-    /* retries with the connection */
+  // The offline queue is off, so a SUBSCRIBE sent before the socket is up would
+  // be refused outright rather than held. Issue it on every `ready` instead:
+  // that covers the first connection and every reconnect after an outage
+  // (ioredis re-subscribes on its own too; a repeated SUBSCRIBE is harmless).
+  sub.on("ready", () => {
+    void sub.subscribe(INVALIDATION_CHANNEL).catch(() => {
+      /* the next ready will try again */
+    });
+  });
+  void sub.connect().catch(() => {
+    /* unreachable for now — the retry strategy keeps trying in the background */
   });
 }
 
@@ -155,12 +170,19 @@ export async function warmRedis(): Promise<void> {
   }
 }
 
-/** For graceful shutdown; safe to call when Redis was never used. */
-export async function redisQuit(): Promise<void> {
+/**
+ * For graceful shutdown; safe to call when Redis was never used.
+ *
+ * QUIT is only sent over a live connection. On one that is still connecting or
+ * mid-retry the command would be refused (no offline queue), and the connect it
+ * kicked off would keep the process alive — so those are simply torn down.
+ */
+export async function closeRedis(): Promise<void> {
   for (const c of [subscriber, client]) {
     if (!c) continue;
     try {
-      await c.quit();
+      if (c.status === "ready") await c.quit();
+      else c.disconnect();
     } catch {
       c.disconnect();
     }

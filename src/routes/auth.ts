@@ -22,7 +22,7 @@ router.post("/register", async (req, res) => {
 
   try {
     // Check if user already exists
-    const existingUser = await prisma.user.findUnique({ where: { email } });
+    const existingUser = await prisma.user.findUnique({ where: { email }, select: { id: true } });
     if (existingUser) {
       res.status(400).json({ error: "Email already registered." });
       return;
@@ -30,7 +30,7 @@ router.post("/register", async (req, res) => {
 
     // Check if username already exists
     if (username) {
-      const existingUsername = await prisma.user.findUnique({ where: { username } });
+      const existingUsername = await prisma.user.findUnique({ where: { username }, select: { id: true } });
       if (existingUsername) {
         res.status(400).json({ error: "Username already taken." });
         return;
@@ -46,7 +46,8 @@ router.post("/register", async (req, res) => {
         username: finalUsername,
         password_hash: hashedPassword,
         provider: "email",
-      }
+      },
+      select: { id: true, email: true, username: true },
     });
 
     // Seed the in-app welcome notification
@@ -85,14 +86,17 @@ router.post("/login", async (req, res) => {
   }
 
   try {
-    // Find user by email or username
+    // Find user by email or username. Only what the check and the response
+    // need: the full row drags the readme and every profile-link Text column
+    // across a ~500ms link for nothing.
     const user = await prisma.user.findFirst({
       where: {
         OR: [
           { email: identifier },
           { username: identifier }
         ]
-      }
+      },
+      select: { id: true, email: true, username: true, name: true, avatar_url: true, password_hash: true },
     });
 
     if (!user || !user.password_hash) {
@@ -142,7 +146,7 @@ router.post("/forgot-password", async (req, res) => {
   }
 
   try {
-    const user = await prisma.user.findUnique({ where: { email } });
+    const user = await prisma.user.findUnique({ where: { email }, select: { id: true } });
 
     // A code is minted either way. The handle below carries no information, so
     // an address with no account produces an identical response and this

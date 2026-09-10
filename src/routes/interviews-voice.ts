@@ -14,7 +14,7 @@ import {
   stateOf,
 } from "../lib/voice-transcript.js";
 import { voiceDurationMinutes } from "../lib/interview-duration.js";
-import { finalizeInterview } from "../services/interview-completion.js";
+import { finalizeInterview, invalidateInterviewHistory } from "../services/interview-completion.js";
 import {
   buildContext,
   realtimeProvider,
@@ -363,6 +363,7 @@ router.post("/session/:sessionId/voice/complete", requireAuth, async (req: any, 
         where: { id: session.id },
         data: { status: "abandoned", completedAt: endedAt, endedAt, durationSec },
       });
+      invalidateInterviewHistory(session.userId);
       return res.json({ success: true, abandoned: true, session: abandoned });
     }
 
@@ -376,6 +377,7 @@ router.post("/session/:sessionId/voice/complete", requireAuth, async (req: any, 
         where: { id: session.id },
         data: { status: "abandoned", completedAt: endedAt, endedAt, durationSec },
       });
+      invalidateInterviewHistory(session.userId);
       return res.json({ success: true, abandoned: true, session: abandoned });
     }
 
@@ -414,7 +416,7 @@ router.post("/session/:sessionId/voice/complete", requireAuth, async (req: any, 
       // The budget becomes the count that actually fitted in the time. A spoken
       // round never had a target to miss, so a report reading "6 of 8" would be
       // describing a shortfall that does not exist.
-      { id: session.id, questionBudget: stored.length },
+      { id: session.id, userId: session.userId, questionBudget: stored.length },
       config,
       stored,
       usage,

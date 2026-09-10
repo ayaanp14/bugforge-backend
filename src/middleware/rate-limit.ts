@@ -59,7 +59,20 @@ export function rateLimit(options: RateLimitOptions): RequestHandler {
     for (const [key, bucket] of buckets) if (bucket.resetAt <= now) buckets.delete(key);
   };
 
+  // Expired buckets are also cleared on a timer, not only once the cap is hit,
+  // so a quiet process does not sit on thousands of dead entries. unref() so
+  // the timer never holds a script or a test run open.
+  setInterval(() => sweep(Date.now()), windowMs).unref();
+
   return function limiter(req: Request, res: Response, next: NextFunction): void {
+    // A CORS preflight is the browser's question, not the caller's request,
+    // and `cors` is mounted ahead of every limiter so one never gets here.
+    // Kept as a guard in case that order ever changes.
+    if (req.method === "OPTIONS") {
+      next();
+      return;
+    }
+
     const now = Date.now();
     if (buckets.size > MAX_KEYS) sweep(now);
 

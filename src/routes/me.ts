@@ -2,7 +2,7 @@ import { Router } from "express";
 import { requireAuth } from "../middleware/auth.js";
 import { prisma } from "../lib/prisma.js";
 import { getHeatmap, getSubmissionHistory, getPairingHistory, getDifficultyStats, getRank, getDashboard } from "../services/dashboard.js";
-import { ensureBaseline, listNotifications, countUnread, markAllRead } from "../services/notifications.js";
+import { ensureBaseline, listNotifications, getUnreadCount, markAllRead } from "../services/notifications.js";
 import { getMePayload, invalidateMe } from "../services/me.js";
 
 const router = Router();
@@ -94,10 +94,11 @@ router.get("/username-check", requireAuth, async (req, res) => {
   try {
     // 2. Uniqueness Check (Excluding self)
     const existingUser = await prisma.user.findFirst({
-      where: { 
+      where: {
         username: { equals: username },
         id: { not: req.user!.userId }
-      }
+      },
+      select: { id: true },
     });
 
     if (existingUser) {
@@ -117,14 +118,15 @@ router.get("/", requireAuth, async (req, res) => {
     const userId = req.user!.userId;
 
     // The profile row and trends are cached (they change only on submissions and
-    // profile edits). The unread badge is NOT: it has to be right the moment a
-    // notification lands, so it is read live, in parallel with the cache lookup.
+    // profile edits). The unread badge is cached separately, with a hard expiry
+    // and invalidation on every write, so it is right the moment a notification
+    // lands without costing a COUNT per page load.
     const [payload, unreadNotifications] = await Promise.all([
       getMePayload(userId),
       // Fail-soft: a notification-subsystem problem must never break /api/me,
       // since the whole app treats a failed /api/me as "not logged in".
-      countUnread(userId).catch((err) => {
-        console.error("GET /api/me countUnread error:", err);
+      getUnreadCount(userId).catch((err) => {
+        console.error("GET /api/me getUnreadCount error:", err);
         return 0;
       }),
     ]);
@@ -161,10 +163,11 @@ router.patch("/", requireAuth, async (req, res) => {
     // 2. Explicit Uniqueness Check
     if (username.length > 0) {
       const existingUser = await prisma.user.findFirst({
-        where: { 
+        where: {
           username: { equals: username },
           id: { not: req.user!.userId }
-        }
+        },
+        select: { id: true },
       });
       if (existingUser) {
         res.status(400).json({ error: "Username is already taken." });
@@ -287,7 +290,7 @@ router.get("/notifications", requireAuth, async (req, res) => {
     await ensureBaseline(userId);
     const [notifications, unreadCount] = await Promise.all([
       listNotifications(userId),
-      countUnread(userId),
+      getUnreadCount(userId),
     ]);
     res.json({ notifications, unreadCount });
   } catch (err) {

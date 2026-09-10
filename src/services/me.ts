@@ -156,7 +156,7 @@ async function buildMePayload(userId: string) {
     let newUsername = baseName.toLowerCase().replace(/\s+/g, "_").replace(/[^a-z0-9_]/g, "");
     if (newUsername.length < 3) newUsername = "user_" + Math.random().toString(36).substring(2, 7);
 
-    const existing = await prisma.user.findFirst({ where: { username: newUsername } });
+    const existing = await prisma.user.findFirst({ where: { username: newUsername }, select: { id: true } });
     if (existing) newUsername += "_" + Math.random().toString(36).substring(2, 5);
 
     user = await prisma.user.update({

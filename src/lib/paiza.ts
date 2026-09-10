@@ -27,10 +27,17 @@ const PAIZA_REQUEST_TIMEOUT_MS = Math.max(
   10000,
   parseInt(process.env["PAIZA_REQUEST_TIMEOUT_MS"] ?? "45000", 10) || 45000
 );
+// Steady-state gap between status polls, once the short opening waits below
+// have been used up.
 const PAIZA_POLL_INTERVAL_MS = Math.max(
   150,
   parseInt(process.env["PAIZA_POLL_INTERVAL_MS"] ?? "450", 10) || 450
 );
+// An interpreted one-liner is often done before the first poll can land, so
+// the early waits are short and lengthen towards the steady interval. A fixed
+// 450 ms meant every run, however trivial, paid at least that on top of the
+// engine's own time.
+const PAIZA_POLL_BACKOFF_MS = [150, 250, 400];
 const PAIZA_DEBUG_LOGS = process.env["PAIZA_DEBUG_LOGS"] === "true";
 
 /** Our language keys → Paiza language ids. */
@@ -51,6 +58,10 @@ const PAIZA_LANGUAGES: Record<string, string> = {
 };
 
 // ── Global throttle: each caller reserves the next free time slot ──
+// Only runner *creation* goes through here (guest limits are undocumented, so
+// creates are paced at one per interval); status polls are not throttled. A
+// caller arriving when the slot is already free takes it at once — the wait
+// is only ever the remainder of somebody else's interval.
 let nextSlot = 0;
 async function throttled<T>(fn: () => Promise<T>): Promise<T> {
   const now = Date.now();
@@ -202,6 +213,12 @@ export async function submitBatchToPaiza(
   return tokens;
 }
 
+/** How long to wait before poll number `attempt` (the first check is immediate). */
+function pollDelay(attempt: number): number {
+  const early = PAIZA_POLL_BACKOFF_MS[attempt];
+  return early === undefined ? PAIZA_POLL_INTERVAL_MS : Math.min(early, PAIZA_POLL_INTERVAL_MS);
+}
+
 export async function pollPaiza(token: string, maxAttempts = 120): Promise<Judge0Result> {
   const submission = pendingSubmissions.get(token) ?? ({ source_code: "", language_id: 0 } as Judge0Submission);
 
@@ -231,7 +248,7 @@ export async function pollPaiza(token: string, maxAttempts = 120): Promise<Judge
       return toJudge0Result(details, submission);
     }
 
-    await new Promise((resolve) => setTimeout(resolve, PAIZA_POLL_INTERVAL_MS));
+    await new Promise((resolve) => setTimeout(resolve, pollDelay(attempt)));
   }
 
   pendingSubmissions.delete(token);

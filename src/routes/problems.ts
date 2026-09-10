@@ -3,6 +3,8 @@ import slugify from "slugify";
 import { prisma } from "../lib/prisma.js";
 import { requireAuth, optionalAuth, adminOnly } from "../middleware/auth.js";
 import { cachedShared, invalidate } from "../lib/cache.js";
+import { browserCache } from "../lib/http-cache.js";
+import { getCatalogue, listProblemsWithStatus, loadProblemState, type ProblemState } from "../services/dashboard.js";
 
 const router = Router();
 
@@ -15,20 +17,97 @@ const router = Router();
  */
 const problemKey = (slug: string) => `problem:v1:${slug}`;
 
+/**
+ * The editorial and its per-language solutions live under their own key. They
+ * are the two largest columns on the row — a MediumText walkthrough and a Json
+ * of thirteen reference programs — and the workspace only reads them when the
+ * Editorial tab is opened, so they are fetched (and cached) on demand rather
+ * than shipped with every statement.
+ */
+const editorialKey = (slug: string) => `problem:editorial:v1:${slug}`;
+
 /** After any admin write, so the next reader sees the edit rather than the TTL. */
 function invalidateProblem(slug: string): void {
   invalidate(problemKey(slug));
+  invalidate(editorialKey(slug));
   // The catalogue carries titles, tags and difficulty, all of which an edit can
   // move, and publishing or retiring a problem changes its membership outright.
   invalidate("catalogue:published");
 }
 
+/** Rows per list page, and the most a caller may ask for at once. */
+const MAX_TAKE = 100;
+
+/** The columns a list row carries — the same slice the cached catalogue holds. */
+const LIST_SELECT = {
+  id: true,
+  title: true,
+  slug: true,
+  difficulty: true,
+  tags: true,
+  createdAt: true,
+  timeLimitMs: true,
+} as const;
+
+/**
+ * Everything the workspace reads off a problem, and nothing it does not.
+ *
+ * Deliberately absent: `referenceSolution` and `referenceLanguage` (the answer
+ * key, which has no business on the wire at all), and `editorial` plus
+ * `solutions`, which GET /:slug/editorial serves on demand. Pair rooms embed
+ * the same slice — see routes/pair-rooms.ts.
+ */
+const PROBLEM_DETAIL_SELECT = {
+  id: true,
+  title: true,
+  slug: true,
+  description: true,
+  difficulty: true,
+  tags: true,
+  timeLimitMs: true,
+  memoryLimitMb: true,
+  isPublished: true,
+  createdAt: true,
+  starterCode: true,
+  signature: true,
+  hints: true,
+  testCases: {
+    where: { isHidden: false },
+    select: { id: true, input: true, expectedOutput: true, orderIndex: true },
+    orderBy: { orderIndex: "asc" },
+  },
+} as const;
+
+const statusOf = (state: ProblemState | null, id: string) =>
+  state === null ? "UNSOLVED" : state.solved.has(id) ? "SOLVED" : state.attempted.has(id) ? "ATTEMPTING" : "UNSOLVED";
+
 // 1. GET /api/problems — List all published problems with pagination and filtering
-router.get("/", optionalAuth, async (req, res) => {
+router.get("/", optionalAuth, browserCache(60), async (req, res) => {
   try {
     const { difficulty, tag, search, status, skip, take, sortBy, maxTime } = req.query;
-    const skipNum = skip ? parseInt(skip as string) : 0;
-    const takeNum = take ? parseInt(take as string) : 100;
+    const skipNum = Math.max(0, parseInt(String(skip ?? "0")) || 0);
+    // Clamped: without a ceiling one request could ask for the whole catalogue.
+    const takeNum = Math.min(MAX_TAKE, Math.max(1, parseInt(String(take ?? "")) || MAX_TAKE));
+    const userId = req.user?.userId ?? null;
+
+    // The status filter only means something for a signed-in reader; anyone
+    // else gets the unfiltered list, which is what they always got.
+    const statusFilter = userId && (status === "solved" || status === "unsolved") ? status : null;
+
+    // The plain first page — no filter, newest first — is the same slice of the
+    // catalogue for everyone, and that catalogue is already held in memory for
+    // the dashboard. Serve it from there: one parallel tier (the two solve-state
+    // GROUP BYs) for a signed-in reader, no round trip at all for a visitor.
+    const isDefaultSort = !sortBy || sortBy === "newest";
+    const isPlainFirstPage =
+      isDefaultSort && skipNum === 0 && !difficulty && !tag && !search && !maxTime && !statusFilter;
+    if (isPlainFirstPage) {
+      const result = userId
+        ? await listProblemsWithStatus(userId, takeNum)
+        : (await getCatalogue()).slice(0, takeNum).map((p) => ({ ...p, status: "UNSOLVED" }));
+      res.json(result);
+      return;
+    }
 
     const where: any = {
       isPublished: true,
@@ -52,22 +131,12 @@ router.get("/", optionalAuth, async (req, res) => {
       ];
     }
 
-    // Handle Status Filtering (Solved/Unsolved)
-    if (req.user && (status === "solved" || status === "unsolved")) {
-      const solvedSubmissions = await prisma.submission.findMany({
-        where: {
-          userId: req.user.userId,
-          verdict: "ACCEPTED",
-        },
-        select: { problemId: true },
-      });
-      const solvedIds = solvedSubmissions.map(s => s.problemId);
-
-      if (status === "solved") {
-        where.id = { in: solvedIds };
-      } else {
-        where.id = { notIn: solvedIds };
-      }
+    // Solved / unsolved as a relation filter inside the same query, rather than
+    // loading every accepted submission the user ever made to build an id list.
+    if (statusFilter === "solved") {
+      where.submissions = { some: { userId, verdict: "ACCEPTED" } };
+    } else if (statusFilter === "unsolved") {
+      where.submissions = { none: { userId, verdict: "ACCEPTED" } };
     }
 
     // Determine Sort Order
@@ -76,14 +145,26 @@ router.get("/", optionalAuth, async (req, res) => {
     else if (sortBy === "title-asc") orderBy = { title: "asc" };
     else if (sortBy === "title-desc") orderBy = { title: "desc" };
 
+    // The reader's solve state is two GROUP BYs over their own submissions —
+    // one row per problem touched, index-only — and it does not depend on which
+    // page comes back, so it overlaps the page query instead of following it.
+    // Previously this was a third round trip that fetched every submission row
+    // for the page's problems.
+    const statePromise: Promise<ProblemState | null> = userId ? loadProblemState(userId) : Promise.resolve(null);
+
     let problems;
+    let state: ProblemState | null;
 
     if (sortBy === "shuffled") {
       // 1. Fetch all published IDs matching filters
-      const matchingProblems = await prisma.problem.findMany({
-        where,
-        select: { id: true },
-      });
+      const [matchingProblems, loaded] = await Promise.all([
+        prisma.problem.findMany({
+          where,
+          select: { id: true },
+        }),
+        statePromise,
+      ]);
+      state = loaded;
 
       // 2. Shuffle IDs deterministically. The client sends one `seed` for a
       //    whole browsing session, so every page slices the SAME order —
@@ -115,61 +196,27 @@ router.get("/", optionalAuth, async (req, res) => {
       // 4. Fetch full data for these IDs (maintain shuffled order)
       const data = await prisma.problem.findMany({
         where: { id: { in: pageIds } },
-        select: {
-          id: true,
-          title: true,
-          slug: true,
-          difficulty: true,
-          tags: true,
-          createdAt: true,
-          timeLimitMs: true,
-        },
+        select: LIST_SELECT,
       });
 
       // Mapping objects back to shuffled order
       problems = pageIds.map(id => data.find(p => p.id === id)).filter((p): p is NonNullable<typeof p> => !!p);
     } else {
-      problems = await prisma.problem.findMany({
-        where,
-        select: {
-          id: true,
-          title: true,
-          slug: true,
-          difficulty: true,
-          tags: true,
-          createdAt: true,
-          timeLimitMs: true,
-        },
-        orderBy,
-        skip: skipNum,
-        take: takeNum,
-      });
-    }
-
-    // Determine solved status for the current response set
-    let statusMap: Record<string, string> = {}; // problemId -> "SOLVED" | "ATTEMPTING"
-    if (req.user) {
-      const submissions = await prisma.submission.findMany({
-        where: {
-          userId: req.user.userId,
-          problemId: { in: problems.map((p: any) => p.id) }
-        },
-        select: { problemId: true, verdict: true },
-      });
-
-      submissions.forEach(sub => {
-        const current = statusMap[sub.problemId];
-        if (sub.verdict === "ACCEPTED") {
-          statusMap[sub.problemId] = "SOLVED";
-        } else if (current !== "SOLVED") {
-          statusMap[sub.problemId] = "ATTEMPTING";
-        }
-      });
+      [problems, state] = await Promise.all([
+        prisma.problem.findMany({
+          where,
+          select: LIST_SELECT,
+          orderBy,
+          skip: skipNum,
+          take: takeNum,
+        }),
+        statePromise,
+      ]);
     }
 
     const result = problems.map((p) => ({
       ...p,
-      status: statusMap[p.id] || "UNSOLVED",
+      status: statusOf(state, p.id),
     }));
 
     res.json(result);
@@ -180,7 +227,7 @@ router.get("/", optionalAuth, async (req, res) => {
 });
 
 // 2. GET /api/problems/[slug] — Problem detail
-router.get("/:slug", optionalAuth, async (req, res) => {
+router.get("/:slug", optionalAuth, browserCache(120, { shared: true }), async (req, res) => {
   try {
     const { slug } = req.params;
     // Nothing below depends on who is asking — the draft, the timer and the
@@ -189,13 +236,7 @@ router.get("/:slug", optionalAuth, async (req, res) => {
     const payload = await cachedShared(problemKey(String(slug)), 600, async () => {
       const problem = await prisma.problem.findUnique({
         where: { slug: String(slug) },
-        include: {
-          testCases: {
-            where: { isHidden: false },
-            select: { id: true, input: true, expectedOutput: true, orderIndex: true },
-            orderBy: { orderIndex: "asc" },
-          },
-        },
+        select: PROBLEM_DETAIL_SELECT,
       });
 
       if (!problem || !problem.isPublished) return null;
@@ -229,6 +270,32 @@ router.get("/:slug", optionalAuth, async (req, res) => {
     res.json(payload);
   } catch (err) {
     console.error("GET /api/problems/:slug error:", err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// 2b. GET /api/problems/[slug]/editorial — The walkthrough and reference solutions
+//     Loaded by the workspace when the Editorial tab opens, not with the statement.
+router.get("/:slug/editorial", optionalAuth, browserCache(300, { shared: true }), async (req, res) => {
+  try {
+    const { slug } = req.params;
+    const payload = await cachedShared(editorialKey(String(slug)), 600, async () => {
+      const problem = await prisma.problem.findUnique({
+        where: { slug: String(slug) },
+        select: { isPublished: true, editorial: true, solutions: true },
+      });
+      if (!problem || !problem.isPublished) return null;
+      return { editorial: problem.editorial, solutions: problem.solutions };
+    });
+
+    if (!payload) {
+      res.status(404).json({ error: "Problem not found" });
+      return;
+    }
+
+    res.json(payload);
+  } catch (err) {
+    console.error("GET /api/problems/:slug/editorial error:", err);
     res.status(500).json({ error: "Internal server error" });
   }
 });
@@ -506,6 +573,9 @@ router.post("/:slug/timer", requireAuth, async (req, res) => {
   }
 });
 
+/** The most recent attempts a reader can page back through on one problem. */
+const SUBMISSION_HISTORY_TAKE = 50;
+
 // 13. GET /api/problems/:slug/submissions — Get user's submission history for a problem
 router.get("/:slug/submissions", requireAuth, async (req, res) => {
   try {
@@ -518,12 +588,16 @@ router.get("/:slug/submissions", requireAuth, async (req, res) => {
       return;
     }
 
+    // `code` stays: the Submissions tab opens a selected attempt in a read-only
+    // editor. What is bounded is the count — without a ceiling a determined
+    // solver's every attempt, each a MediumText, came back on every tab open.
     const submissions = await prisma.submission.findMany({
       where: {
         userId,
         problemId: problem.id,
       },
       orderBy: { submittedAt: "desc" },
+      take: SUBMISSION_HISTORY_TAKE,
     });
 
     res.json(submissions);

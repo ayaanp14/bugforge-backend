@@ -15,21 +15,55 @@ import { FIRST_SOLVE, createNotificationOnce, streakMilestone } from "../service
 import { invalidateDashboard } from "../services/dashboard.js";
 import { emitDuelActivity, settleDuelForSubmission } from "../lib/duels.js";
 import { ENGINE_DOWN_MESSAGE, isEngineDown } from "../lib/engine-error.js";
+// The judge's slice of a problem — limits, signature, reference solution — and
+// its test suite, both held in memory rather than pulled (~1 MB of hidden
+// cases) out of the database on every Run and Submit.
+import { getJudgeProblem, getJudgeSuite, type JudgeProblem } from "../lib/test-suite-cache.js";
 
 const router = Router();
+
+// Per-request judge logging is useful when an engine misbehaves and noise the
+// rest of the time.
+const JUDGE_DEBUG_LOGS = process.env["JUDGE_DEBUG_LOGS"] === "true";
 
 interface CustomTestCase {
   input: string;
   expectedOutput?: string;
 }
 
+/**
+ * A custom case typed without an expected output gets one from the reference
+ * solution — one batched reference execution covers all of them. Best effort:
+ * a reference that fails to run leaves the case with an empty expectation
+ * rather than failing the user's own run.
+ */
+async function fillExpectedOutputs(problem: JudgeProblem, cases: CustomTestCase[]): Promise<void> {
+  const casesToGen = cases.filter((tc) => !tc.expectedOutput);
+  if (casesToGen.length === 0) return;
+  if (!problem.referenceSolution || !problem.referenceLanguage || !LANGUAGE_MAP[problem.referenceLanguage]) return;
+  try {
+    const ref = await runBatch(
+      problem.referenceSolution,
+      problem.referenceLanguage,
+      casesToGen.map((tc) => ({ input: tc.input, expectedOutput: "" })),
+      { timeLimitMs: problem.timeLimitMs, memoryLimitMb: problem.memoryLimitMb },
+    );
+    ref.perCase.forEach((r, i) => {
+      casesToGen[i].expectedOutput = (r.actualOutput || "").trim();
+    });
+  } catch (err) {
+    console.error("Failed to generate expected outputs:", err);
+  }
+}
+
 // 9. POST /api/run — Run code against visible test cases
 // Limited after requireAuth so the budget is per account, not per address:
 // people on one campus network should not share one allowance.
 router.post("/run", requireAuth, executionLimiter, async (req, res) => {
-  console.log(`[POST /api/run] Received request from user ${req.user?.userId}`);
+  if (JUDGE_DEBUG_LOGS) console.log(`[POST /api/run] Received request from user ${req.user?.userId}`);
   try {
-    const { code, language, problemId, customTestCases } = req.body;
+    const { code, language, customTestCases } = req.body;
+    const problemId = typeof req.body.problemId === "string" ? req.body.problemId : "";
 
     const languageId = LANGUAGE_MAP[language as string];
     if (!languageId) {
@@ -37,11 +71,11 @@ router.post("/run", requireAuth, executionLimiter, async (req, res) => {
       return;
     }
 
-    const problem = await prisma.problem.findUnique({
-      where: { id: problemId },
-      include: { testCases: { where: { isHidden: false } } },
-    }) as any;
-
+    if (!problemId) {
+      res.status(404).json({ error: "Problem not found" });
+      return;
+    }
+    const [problem, suite] = await Promise.all([getJudgeProblem(problemId), getJudgeSuite(problemId)]);
     if (!problem) {
       res.status(404).json({ error: "Problem not found" });
       return;
@@ -52,28 +86,12 @@ router.post("/run", requireAuth, executionLimiter, async (req, res) => {
 
     const limits = { timeLimitMs: problem.timeLimitMs, memoryLimitMb: problem.memoryLimitMb };
     const finalCustomCases: CustomTestCase[] = (customTestCases || []).map((tc: any) => ({ ...tc }));
+    await fillExpectedOutputs(problem, finalCustomCases);
 
-    // Generate expected outputs for custom cases from the reference solution
-    // (one batched reference execution covers all of them)
-    const casesToGen = finalCustomCases.filter((tc: CustomTestCase) => !tc.expectedOutput);
-    if (casesToGen.length > 0 && problem.referenceSolution && problem.referenceLanguage && LANGUAGE_MAP[problem.referenceLanguage]) {
-      try {
-        const ref = await runBatch(
-          problem.referenceSolution,
-          problem.referenceLanguage,
-          casesToGen.map((tc) => ({ input: tc.input, expectedOutput: "" })),
-          limits
-        );
-        ref.perCase.forEach((r, i) => {
-          casesToGen[i].expectedOutput = (r.actualOutput || "").trim();
-        });
-      } catch (err) {
-        console.error("Failed to generate expected outputs:", err);
-      }
-    }
-
+    // Run is the visible cases only; the hidden ones are the grade.
+    const visibleCases = suite.filter((c) => !c.isHidden);
     const allTestCases = [
-      ...problem.testCases,
+      ...visibleCases,
       ...finalCustomCases.map((tc: CustomTestCase, idx: number) => ({
         id: `custom-${idx}`,
         input: tc.input,
@@ -95,13 +113,13 @@ router.post("/run", requireAuth, executionLimiter, async (req, res) => {
     const batch = await runBatch(
       executedCode,
       language as string,
-      allTestCases.map((tc: any) => ({ input: tc.input, expectedOutput: tc.expectedOutput })),
+      allTestCases.map((tc) => ({ input: tc.input, expectedOutput: tc.expectedOutput })),
       limits
     );
     // Per-case timing isn't observable in a single run; report the average.
     const perCaseRuntime = Math.round(batch.runtimeMs / allTestCases.length);
 
-    const results = allTestCases.map((tc: any, i: number) => {
+    const results = allTestCases.map((tc, i) => {
       const r = batch.perCase[i];
       return {
         input: tc.input,
@@ -119,7 +137,7 @@ router.post("/run", requireAuth, executionLimiter, async (req, res) => {
 
     // …and how it went. Only the official cases count, so a custom case cannot
     // be used to fake a scary-looking score at the opponent.
-    const officialCount = problem.testCases.length;
+    const officialCount = visibleCases.length;
     void emitDuelActivity(
       req.user!.userId,
       { problemId },
@@ -142,72 +160,92 @@ router.post("/run", requireAuth, executionLimiter, async (req, res) => {
   }
 });
 
-// 10. POST /api/submit — Submit code against all test cases
-router.post("/submit", requireAuth, executionLimiter, async (req, res) => {
-  console.log(`[POST /api/submit] Received request from user ${req.user?.userId}`);
-  try {
-    const { code, language, problemId, customTestCases, roomId } = req.body;
-    let userId = req.user!.userId;
+/**
+ * Streak bookkeeping from the stats row as it stood before this solve.
+ * Day boundaries are local to the server, as they always were here.
+ */
+function nextStreak(stats: { lastActive: Date; currentStreak: number; longestStreak: number } | null) {
+  if (!stats) return { currentStreak: 1, longestStreak: 1 };
 
-    // Handle pairing mode: credits go to host
-    if (roomId) {
-      const room = await prisma.pairRoom.findUnique({
-        where: { id: roomId },
-        select: { createdBy: true }
-      });
-      if (room) {
-        userId = room.createdBy;
-        console.log(`[POST /api/submit] Pairing mode: Awarding credits to host ${userId}`);
-      }
-    }
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const lastActiveDate = new Date(stats.lastActive);
+  lastActiveDate.setHours(0, 0, 0, 0);
+  const diffDays = Math.floor((today.getTime() - lastActiveDate.getTime()) / (1000 * 60 * 60 * 24));
+
+  // Already active today keeps the streak; active yesterday extends it; a gap resets it.
+  const currentStreak = diffDays === 0 ? stats.currentStreak : diffDays === 1 ? stats.currentStreak + 1 : 1;
+  return { currentStreak, longestStreak: Math.max(currentStreak, stats.longestStreak) };
+}
+
+// 10. POST /api/submit — Submit code against all test cases
+//
+// Shape of the request: every read the verdict will need is fetched before
+// the engine is called (and overlaps it), the verdict is written in one
+// transaction, the response goes out, and only then do the duel, the
+// notification bell and the dashboard cache hear about it. The user is
+// waiting on the verdict; nobody is waiting on the bookkeeping.
+router.post("/submit", requireAuth, executionLimiter, async (req, res) => {
+  if (JUDGE_DEBUG_LOGS) console.log(`[POST /api/submit] Received request from user ${req.user?.userId}`);
+  try {
+    const { code, language, customTestCases, roomId } = req.body;
+    const problemId = typeof req.body.problemId === "string" ? req.body.problemId : "";
+    let userId = req.user!.userId;
 
     const languageId = LANGUAGE_MAP[language as string];
     if (!languageId) {
       res.status(400).json({ error: "Unsupported language" });
       return;
     }
+    if (!problemId) {
+      res.status(404).json({ error: "Problem not found" });
+      return;
+    }
 
-    // The tensest moment in a duel: the other side is submitting.
-    void emitDuelActivity(userId, { problemId }, { type: "submitting" });
-
-    const problem = await prisma.problem.findUnique({
-      where: { id: problemId },
-      include: { testCases: true },
-    }) as any;
+    // Pairing mode credits the host, so the room decides whose history the
+    // solve lands in; it is read alongside the problem rather than before it.
+    const [problem, suite, room] = await Promise.all([
+      getJudgeProblem(problemId),
+      getJudgeSuite(problemId),
+      roomId
+        ? prisma.pairRoom.findUnique({ where: { id: roomId }, select: { createdBy: true } })
+        : Promise.resolve(null),
+    ]);
+    if (room) {
+      userId = room.createdBy;
+      if (JUDGE_DEBUG_LOGS) console.log(`[POST /api/submit] Pairing mode: Awarding credits to host ${userId}`);
+    }
 
     if (!problem) {
       res.status(404).json({ error: "Problem not found" });
       return;
     }
 
-    let verdict = "ACCEPTED";
-    let passedCases = 0;
-    let maxRuntime = 0;
-    let maxMemory = 0;
+    // The tensest moment in a duel: the other side is submitting.
+    void emitDuelActivity(userId, { problemId }, { type: "submitting" });
+
+    // Whether this would be a first solve, and the streak row it would move,
+    // are only needed once there is a verdict — so they overlap the engine
+    // run instead of queueing behind it. (A user who lands two accepted
+    // submissions in the same second could see both counted as the first;
+    // the rate limiter makes that a curiosity rather than a loophole.)
+    const history = Promise.all([
+      prisma.submission.findFirst({
+        where: { userId, problemId, verdict: "ACCEPTED" },
+        select: { id: true },
+      }),
+      prisma.userStats.findUnique({ where: { userId } }),
+    ]);
+    // Awaited after the engine; this only stops an early failure from
+    // surfacing as an unhandled rejection in the meantime.
+    history.catch(() => {});
 
     const limits = { timeLimitMs: problem.timeLimitMs, memoryLimitMb: problem.memoryLimitMb };
     const finalCustomCases: CustomTestCase[] = (customTestCases || []).map((tc: any) => ({ ...tc }));
-
-    // Generate expected outputs for custom cases from the reference solution
-    const casesToGen = finalCustomCases.filter((tc: CustomTestCase) => !tc.expectedOutput);
-    if (casesToGen.length > 0 && problem.referenceSolution && problem.referenceLanguage && LANGUAGE_MAP[problem.referenceLanguage]) {
-      try {
-        const ref = await runBatch(
-          problem.referenceSolution,
-          problem.referenceLanguage,
-          casesToGen.map((tc) => ({ input: tc.input, expectedOutput: "" })),
-          limits
-        );
-        ref.perCase.forEach((r, i) => {
-          casesToGen[i].expectedOutput = (r.actualOutput || "").trim();
-        });
-      } catch (err) {
-        console.error("Failed to generate expected outputs:", err);
-      }
-    }
+    await fillExpectedOutputs(problem, finalCustomCases);
 
     const allTestCases = [
-      ...problem.testCases,
+      ...suite,
       ...finalCustomCases.map((tc: CustomTestCase, idx: number) => ({
         id: `custom-submit-${idx}`,
         input: tc.input,
@@ -215,6 +253,7 @@ router.post("/submit", requireAuth, executionLimiter, async (req, res) => {
         isHidden: true // Treat custom cases as hidden during submit UI
       }))
     ];
+    const totalCases = suite.length; // Only count official cases for ranking
 
     // One batched execution for every test case (1 compile + 1 run)
     const driver = problem.signature
@@ -224,21 +263,29 @@ router.post("/submit", requireAuth, executionLimiter, async (req, res) => {
     const batch = await runBatch(
       executedCode,
       language as string,
-      allTestCases.map((tc: any) => ({ input: tc.input, expectedOutput: tc.expectedOutput })),
+      allTestCases.map((tc) => ({ input: tc.input, expectedOutput: tc.expectedOutput })),
       limits
     );
-    maxRuntime = batch.runtimeMs;
-    maxMemory = batch.memoryKb;
-    passedCases = batch.perCase.filter((r) => r.passed).length;
+    const maxRuntime = batch.runtimeMs;
+    const maxMemory = batch.memoryKb;
+    const passedCases = batch.perCase.filter((r) => r.passed).length;
     const firstFailure = batch.perCase.find((r) => !r.passed);
-    verdict = firstFailure ? firstFailure.verdict : "ACCEPTED";
+    const verdict = firstFailure ? firstFailure.verdict : "ACCEPTED";
     // Compiler output / stderr of the first failing case, for the submissions UI
     const errorDetail = firstFailure
       ? remapDiagnostics((firstFailure.compile_output || firstFailure.stderr || "").trim() || null, driver ? driver.toEditorLine : null)
       : null;
 
-    // Save submission
-    const submission = await prisma.submission.create({
+    const [prevSolved, stats] = await history;
+
+    // Award XP and update stats if first ACCEPTED solve
+    const firstSolve = verdict === "ACCEPTED" && !prevSolved;
+    const xpMap: Record<string, number> = { easy: 10, medium: 20, hard: 30 };
+    const awardedXp = firstSolve ? (xpMap[problem.difficulty.toLowerCase()] ?? 10) : 0;
+    const streak = nextStreak(stats);
+
+    // The submission row, the XP and the streak land together or not at all.
+    const submissionCreate = prisma.submission.create({
       data: {
         userId,
         problemId,
@@ -249,125 +296,80 @@ router.post("/submit", requireAuth, executionLimiter, async (req, res) => {
         runtimeMs: maxRuntime,
         memoryKb: maxMemory,
         passedCases,
-        totalCases: problem.testCases.length, // Only count official cases for ranking
+        totalCases,
       },
     });
-
-    // The dashboard aggregate is cached; this submission just changed it.
-    invalidateDashboard(userId);
-
-    // If this solve landed inside a duel, the duel is decided right here — the
-    // Kumite never waits for the client to tell it what the judge already knows.
-    await settleDuelForSubmission(
-      userId,
-      { problemId },
-      { verdict, passed: passedCases, total: problem.testCases.length },
-    );
-
-    // Award XP and update stats if first ACCEPTED solve
-    let awardedXp = 0;
-    let firstSolve = false;
-    if (verdict === "ACCEPTED") {
-      const prevSolved = await prisma.submission.findFirst({
-        where: {
-          userId,
-          problemId,
-          verdict: "ACCEPTED",
-          id: { not: submission.id },
-        },
-      });
-
-      if (!prevSolved) {
-        const xpMap: Record<string, number> = { easy: 10, medium: 20, hard: 30 };
-        const xpAwarded = xpMap[problem.difficulty.toLowerCase()] ?? 10;
-        awardedXp = xpAwarded;
-        firstSolve = true;
-
-        await prisma.user.update({
-          where: { id: userId },
-          data: {
-            xp: { increment: xpAwarded },
-            questionsXp: { increment: xpAwarded },
-            // Rating climbs with every first solve — powers the tier bar
-            rating: { increment: xpAwarded },
-          },
-        });
-
-        const stats = await prisma.userStats.findUnique({ where: { userId } });
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-
-        let newStreak = 1;
-        let newLongestStreak = 1;
-
-        if (stats) {
-          const lastActiveDate = new Date(stats.lastActive);
-          lastActiveDate.setHours(0, 0, 0, 0);
-
-          const diffTime = today.getTime() - lastActiveDate.getTime();
-          const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-
-          if (diffDays === 0) {
-            // Already active today, keep streak
-            newStreak = stats.currentStreak;
-          } else if (diffDays === 1) {
-            // Active yesterday, increment
-            newStreak = stats.currentStreak + 1;
-          } else {
-            // Gap in activity, reset
-            newStreak = 1;
-          }
-          newLongestStreak = Math.max(newStreak, stats.longestStreak);
-
-          await prisma.userStats.update({
-            where: { userId },
+    const [submission] = firstSolve
+      ? await prisma.$transaction([
+          submissionCreate,
+          prisma.user.update({
+            where: { id: userId },
             data: {
+              xp: { increment: awardedXp },
+              questionsXp: { increment: awardedXp },
+              // Rating climbs with every first solve — powers the tier bar
+              rating: { increment: awardedXp },
+            },
+          }),
+          prisma.userStats.upsert({
+            where: { userId },
+            update: {
               problemsSolved: { increment: 1 },
-              currentStreak: newStreak,
-              longestStreak: newLongestStreak,
+              currentStreak: streak.currentStreak,
+              longestStreak: streak.longestStreak,
               lastActive: new Date(),
             },
-          });
-
-          // First-ever solve + streak milestones land in the notifications bell
-          if (stats.problemsSolved === 0) {
-            void createNotificationOnce(userId, FIRST_SOLVE);
-          }
-          const milestone = streakMilestone(newStreak);
-          if (milestone) {
-            void createNotificationOnce(userId, milestone);
-          }
-        } else {
-          // First time stats
-          await prisma.userStats.create({
-            data: {
+            create: {
               userId,
               problemsSolved: 1,
               currentStreak: 1,
               longestStreak: 1,
               lastActive: new Date(),
             },
-          });
-
-          // Very first solve on a brand-new stats row
-          void createNotificationOnce(userId, FIRST_SOLVE);
-        }
-      }
-    }
+          }),
+        ])
+      : await prisma.$transaction([submissionCreate]);
 
     res.json({
       verdict,
       awardedXp,
       firstSolve,
       passedCases,
-      totalCases: problem.testCases.length,
-      customResults: batch.perCase.slice(problem.testCases.length), // Return custom results separately if needed
+      totalCases,
+      customResults: batch.perCase.slice(totalCases), // Return custom results separately if needed
       errorDetail,
       runtimeMs: maxRuntime,
       memoryKb: maxMemory,
       submissionId: submission.id,
     });
+
+    // ── After the response ──────────────────────────────────────────
+    // The dashboard aggregate is cached; this submission just changed it.
+    invalidateDashboard(userId);
+
+    // If this solve landed inside a duel, the duel is decided right here — the
+    // Kumite never waits for the client to tell it what the judge already knows.
+    settleDuelForSubmission(userId, { problemId }, { verdict, passed: passedCases, total: totalCases }).catch((err) =>
+      console.error("POST /api/submit — duel settlement failed:", err),
+    );
+
+    // First-ever solve + streak milestones land in the notifications bell
+    if (firstSolve) {
+      if (!stats || stats.problemsSolved === 0) {
+        createNotificationOnce(userId, FIRST_SOLVE).catch((err) => console.error("POST /api/submit — notification failed:", err));
+      }
+      const milestone = stats ? streakMilestone(streak.currentStreak) : null;
+      if (milestone) {
+        createNotificationOnce(userId, milestone).catch((err) => console.error("POST /api/submit — notification failed:", err));
+      }
+    }
   } catch (err) {
+    // The verdict may already be on its way; the bookkeeping after it must
+    // not be able to answer twice.
+    if (res.headersSent) {
+      console.error("POST /api/submit — after-response error:", err);
+      return;
+    }
     if (isEngineDown(err)) {
       console.error("POST /api/submit — engine down:", err.message);
       res.status(503).json({ error: ENGINE_DOWN_MESSAGE, engineDown: true });

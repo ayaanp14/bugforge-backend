@@ -5,15 +5,24 @@ import { cached, cachedShared } from "../lib/cache.js";
 /**
  * Query layer for the bug-hunts index.
  *
- * The page shows one section per category, each paginated independently, so
- * filtering and slicing happen in SQL rather than by shipping the whole
- * catalogue to the browser and cutting it there.
+ * The page shows one section per category, each paginated independently. The
+ * catalogue is small (hundreds of rows, each a handful of short columns) and
+ * seeded, so it is read once per TTL into a shared cache and every view —
+ * filtering, per-category slicing, the sidebar totals — is cut from that copy
+ * in JS. Only the user's own solved set is asked for live.
+ *
+ * Before this the index ran a groupBy, then a second groupBy, then one query
+ * per category, then the sidebar's four aggregates: four dependent tiers at
+ * ~500ms each. Now it is one parallel tier of two reads, one of them a cache hit.
  */
 
 export const DEFAULT_PAGE_SIZE = 10;
 
 /** Sections render in this order; anything else falls through to the end. */
 const CATEGORY_ORDER = ["frontend", "backend", "database"];
+
+/** The shared list is seeded content; five minutes matches the id-order cache below. */
+const CATALOGUE_TTL_SECONDS = 300;
 
 export type BugHuntFilters = {
   search?: string;
@@ -33,45 +42,65 @@ const SUMMARY_SELECT = {
   createdAt: true,
 } satisfies Prisma.BugChallengeSelect;
 
+type Row = Prisma.BugChallengeGetPayload<{ select: typeof SUMMARY_SELECT }>;
+
 /**
- * Build the WHERE clause for the active filters.
+ * Every published challenge's summary row, in display order.
  *
- * `tags` is a JSON column on MySQL, so the tag dropdown uses `array_contains`
- * (exact match) while free-text search has to reach the same column through
- * JSON_SEARCH — hence the id pre-resolution, which keeps the rest of the query
- * in Prisma instead of hand-writing the whole thing as raw SQL.
+ * Ordered by the database rather than re-sorted here so the sequence is the
+ * one MySQL's collation produces — the same one every "Load more" slice used
+ * to come back in. A row that crossed Redis carries its date as a string; it
+ * is revived so the shape a caller sees never depends on which tier answered.
  */
-async function buildWhere(filters: BugHuntFilters): Promise<Prisma.BugChallengeWhereInput> {
-  const where: Prisma.BugChallengeWhereInput = { isPublished: true };
-
-  if (filters.difficulty && filters.difficulty !== "all") where.difficulty = filters.difficulty;
-  if (filters.language && filters.language !== "all") where.language = filters.language;
-  if (filters.tag && filters.tag !== "all") {
-    where.tags = { array_contains: filters.tag };
-  }
-
-  const q = filters.search?.trim();
-  if (q) {
-    const tagMatches = await prisma.$queryRaw<{ id: string }[]>`
-      SELECT id FROM BugChallenge
-      WHERE isPublished = true AND JSON_SEARCH(tags, 'one', ${`%${q}%`}) IS NOT NULL
-    `;
-    where.OR = [
-      { title: { contains: q } },
-      { origin: { contains: q } },
-      ...(tagMatches.length ? [{ id: { in: tagMatches.map((r) => r.id) } }] : []),
-    ];
-  }
-
-  return where;
+async function publishedRows(): Promise<Row[]> {
+  const rows = await cachedShared("bug:rows:v1", CATALOGUE_TTL_SECONDS, () =>
+    prisma.bugChallenge.findMany({
+      where: { isPublished: true },
+      select: SUMMARY_SELECT,
+      orderBy: [{ difficulty: "asc" }, { title: "asc" }],
+    }),
+  );
+  return rows.map((r) => (r.createdAt instanceof Date ? r : { ...r, createdAt: new Date(r.createdAt) }));
 }
 
-/** Ids the user has already fixed, so rows can render their solved state. */
+const tagsOf = (row: Row): string[] =>
+  Array.isArray(row.tags) ? row.tags.filter((t): t is string => typeof t === "string") : [];
+
+/** Case-insensitive equality, which is what MySQL's default collation gave the old `where`. */
+const same = (a: string, b: string) => a.toLowerCase() === b.toLowerCase();
+
+/**
+ * The active filters, applied to one row.
+ *
+ * Mirrors the old WHERE clause: difficulty and language compare the way the
+ * collation did (case-insensitively), the tag dropdown wants an exact tag, and
+ * free-text search reaches the title, the origin and any tag.
+ */
+function matches(row: Row, filters: BugHuntFilters): boolean {
+  if (filters.difficulty && filters.difficulty !== "all" && !same(row.difficulty, filters.difficulty)) return false;
+  if (filters.language && filters.language !== "all" && !same(row.language, filters.language)) return false;
+  if (filters.tag && filters.tag !== "all" && !tagsOf(row).includes(filters.tag)) return false;
+
+  const q = filters.search?.trim().toLowerCase();
+  if (q) {
+    return (
+      row.title.toLowerCase().includes(q) ||
+      (row.origin ?? "").toLowerCase().includes(q) ||
+      tagsOf(row).some((t) => t.toLowerCase().includes(q))
+    );
+  }
+  return true;
+}
+
+/**
+ * Ids the user has already fixed, so rows can render their solved state. One
+ * row per challenge rather than one per accepted submission.
+ */
 async function solvedIdsFor(userId: string | undefined): Promise<Set<string>> {
   if (!userId) return new Set();
-  const rows = await prisma.bugSubmission.findMany({
+  const rows = await prisma.bugSubmission.groupBy({
+    by: ["challengeId"],
     where: { userId, verdict: "ACCEPTED" },
-    select: { challengeId: true },
   });
   return new Set(rows.map((r) => r.challengeId));
 }
@@ -81,7 +110,6 @@ const orderRank = (category: string) => {
   return i === -1 ? CATEGORY_ORDER.length : i;
 };
 
-type Row = Prisma.BugChallengeGetPayload<{ select: typeof SUMMARY_SELECT }>;
 const withSolved = (rows: Row[], solved: Set<string>) =>
   rows.map((r) => ({ ...r, solved: solved.has(r.id) }));
 
@@ -94,49 +122,38 @@ export async function getBugHuntIndex(
   limit: number,
   userId?: string,
 ) {
-  const where = await buildWhere(filters);
+  const [rows, solved] = await Promise.all([publishedRows(), solvedIdsFor(userId)]);
 
-  const [counts, solved] = await Promise.all([
-    prisma.bugChallenge.groupBy({ by: ["category"], where, _count: { _all: true } }),
-    solvedIdsFor(userId),
-  ]);
+  const filtered = rows.filter((r) => matches(r, filters));
+
+  // Rows are already in display order, so grouping preserves it within a
+  // category; only the categories themselves need placing.
+  const byCategory = new Map<string, Row[]>();
+  for (const r of filtered) {
+    const bucket = byCategory.get(r.category) ?? [];
+    bucket.push(r);
+    byCategory.set(r.category, bucket);
+  }
+
+  const ordered = [...byCategory.keys()].sort(
+    (a, b) => orderRank(a) - orderRank(b) || a.localeCompare(b),
+  );
 
   // Solved-per-category for the section headers. Counted across the whole
   // category, not just the first page, or "3 / 26" would change as you paginate.
-  const solvedByCategory = new Map<string, number>();
-  if (solved.size > 0) {
-    const rows = await prisma.bugChallenge.groupBy({
-      by: ["category"],
-      where: { ...where, id: { in: [...solved] } },
-      _count: { _all: true },
-    });
-    for (const r of rows) solvedByCategory.set(r.category, r._count._all);
-  }
-
-  const ordered = counts.sort(
-    (a, b) => orderRank(a.category) - orderRank(b.category) || a.category.localeCompare(b.category),
-  );
-
-  const groups = await Promise.all(
-    ordered.map(async (c) => ({
-      category: c.category,
-      total: c._count._all,
-      solved: solvedByCategory.get(c.category) ?? 0,
-      items: withSolved(
-        await prisma.bugChallenge.findMany({
-          where: { ...where, category: c.category },
-          select: SUMMARY_SELECT,
-          orderBy: [{ difficulty: "asc" }, { title: "asc" }],
-          take: limit,
-        }),
-        solved,
-      ),
-    })),
-  );
+  const groups = ordered.map((category) => {
+    const items = byCategory.get(category)!;
+    return {
+      category,
+      total: items.length,
+      solved: items.reduce((n, r) => n + (solved.has(r.id) ? 1 : 0), 0),
+      items: withSolved(items.slice(0, limit), solved),
+    };
+  });
 
   return {
     groups,
-    ...(await getCatalogueSummary(solved)),
+    ...catalogueSummary(rows, solved),
   };
 }
 
@@ -148,103 +165,58 @@ export async function getBugHuntPage(
   offset: number,
   userId?: string,
 ) {
-  const where = { ...(await buildWhere(filters)), category };
+  const [rows, solved] = await Promise.all([publishedRows(), solvedIdsFor(userId)]);
 
-  const [items, total, solved] = await Promise.all([
-    prisma.bugChallenge.findMany({
-      where,
-      select: SUMMARY_SELECT,
-      orderBy: [{ difficulty: "asc" }, { title: "asc" }],
-      skip: offset,
-      take: limit,
-    }),
-    prisma.bugChallenge.count({ where }),
-    solvedIdsFor(userId),
-  ]);
+  const items = rows.filter((r) => same(r.category, category) && matches(r, filters));
 
-  return { category, total, offset, items: withSolved(items, solved) };
-}
-
-type SharedCatalogue = {
-  total: number;
-  byLanguage: { language: string; total: number }[];
-  byDifficulty: { difficulty: string; total: number }[];
-  tags: string[];
-};
-
-/**
- * The half of the summary that is identical for every user.
- *
- * Four aggregates plus a full read of the `tags` column — the tag list can't be
- * done as a groupBy because tags is a JSON array, so building the filter
- * dropdown means touching every row. That is well over the ~300ms Redis costs,
- * which is what earns it a place in the shared tier rather than memory alone.
- *
- * Deliberately unfiltered: this describes the whole catalogue, not the current
- * view, which is how the sidebar behaved when the browser held every record.
- */
-function getSharedCatalogue(): Promise<SharedCatalogue> {
-  return cachedShared("bug:catalogue", 300, async () => {
-    const where: Prisma.BugChallengeWhereInput = { isPublished: true };
-
-    const [total, byLanguage, byDifficulty, tagRows] = await Promise.all([
-      prisma.bugChallenge.count({ where }),
-      prisma.bugChallenge.groupBy({ by: ["language"], where, _count: { _all: true } }),
-      prisma.bugChallenge.groupBy({ by: ["difficulty"], where, _count: { _all: true } }),
-      prisma.bugChallenge.findMany({ where, select: { tags: true } }),
-    ]);
-
-    const tagSet = new Set<string>();
-    for (const row of tagRows) {
-      if (Array.isArray(row.tags)) {
-        for (const t of row.tags) if (typeof t === "string") tagSet.add(t);
-      }
-    }
-
-    return {
-      total,
-      byLanguage: byLanguage.map((l) => ({ language: l.language, total: l._count._all })),
-      byDifficulty: byDifficulty.map((d) => ({ difficulty: d.difficulty, total: d._count._all })),
-      tags: [...tagSet].sort(),
-    };
-  });
+  return { category, total: items.length, offset, items: withSolved(items.slice(offset, offset + limit), solved) };
 }
 
 /**
  * Catalogue totals with this user's solved counts layered on.
  *
- * The shared half is cached and therefore handed to every caller — so this maps
- * it into fresh objects rather than assigning onto them. Mutating a cached
- * value would leak one user's solved counts to everyone until the TTL expired.
+ * Deliberately unfiltered: this describes the whole catalogue, not the current
+ * view, which is how the sidebar behaved when the browser held every record.
+ * The tag list can't come from a groupBy because tags is a JSON array, which
+ * is one more reason the whole list is what gets cached rather than aggregates.
+ *
+ * Everything here is a fresh object. The rows are the shared cached copy and
+ * are never assigned onto — mutating them would leak one user's solved counts
+ * to everyone until the TTL expired.
  */
-async function getCatalogueSummary(solved: Set<string>) {
-  const [shared, solvedRows] = await Promise.all([
-    getSharedCatalogue(),
-    solved.size > 0
-      ? prisma.bugChallenge.findMany({
-          where: { isPublished: true, id: { in: [...solved] } },
-          select: { language: true, difficulty: true },
-        })
-      : Promise.resolve([]),
-  ]);
+function catalogueSummary(rows: Row[], solved: Set<string>) {
+  const byLanguage = new Map<string, { total: number; solved: number }>();
+  const byDifficulty = new Map<string, { total: number; solved: number }>();
+  const tagSet = new Set<string>();
+  let solvedTotal = 0;
 
-  const countSolved = (key: "language" | "difficulty", value: string) =>
-    solvedRows.filter((r) => r[key] === value).length;
+  const bump = (map: Map<string, { total: number; solved: number }>, key: string, isSolved: boolean) => {
+    const entry = map.get(key) ?? { total: 0, solved: 0 };
+    entry.total += 1;
+    if (isSolved) entry.solved += 1;
+    map.set(key, entry);
+  };
+
+  for (const r of rows) {
+    const isSolved = solved.has(r.id);
+    if (isSolved) solvedTotal += 1;
+    bump(byLanguage, r.language, isSolved);
+    bump(byDifficulty, r.difficulty, isSolved);
+    for (const t of tagsOf(r)) tagSet.add(t);
+  }
 
   return {
     summary: {
-      total: shared.total,
-      solved: solvedRows.length,
-      byLanguage: shared.byLanguage.map((l) => ({
-        ...l,
-        solved: countSolved("language", l.language),
-      })),
-      byDifficulty: shared.byDifficulty.map((d) => ({
-        ...d,
-        solved: countSolved("difficulty", d.difficulty),
-      })),
+      total: rows.length,
+      solved: solvedTotal,
+      byLanguage: [...byLanguage.entries()]
+        .sort(([a], [b]) => a.localeCompare(b))
+        .map(([language, counts]) => ({ language, ...counts })),
+      byDifficulty: [...byDifficulty.entries()]
+        .sort(([a], [b]) => a.localeCompare(b))
+        .map(([difficulty, counts]) => ({ difficulty, ...counts })),
     },
-    tags: shared.tags,
+    tags: [...tagSet].sort(),
   };
 }
 

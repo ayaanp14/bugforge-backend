@@ -1,4 +1,4 @@
-import { Router } from "express";
+import { Router, type RequestHandler } from "express";
 import { prisma } from "../lib/prisma.js";
 import { optionalAuth, requireAuth } from "../middleware/auth.js";
 import { aptitudeTopic, aptitudeCategory } from "../lib/aptitude-topics.js";
@@ -7,7 +7,9 @@ import { LANGUAGE_MAP } from "../lib/judge0.js";
 import { runBatch } from "../lib/batch-judge.js";
 import { buildDriver, remapDiagnostics, type Language as DriverLanguage, type Signature } from "../lib/driver-codegen.js";
 import { ENGINE_DOWN_MESSAGE, isEngineDown } from "../lib/engine-error.js";
-import { cachedShared } from "../lib/cache.js";
+import { cached, cachedShared } from "../lib/cache.js";
+import { browserCache } from "../lib/http-cache.js";
+import { getJudgeProblem, getJudgeSuite, type JudgeProblem } from "../lib/test-suite-cache.js";
 import { codingPool, questionIndex } from "../services/aptitude-bank.js";
 
 /**
@@ -22,6 +24,34 @@ import { codingPool, questionIndex } from "../services/aptitude-bank.js";
 const router = Router();
 
 type AttemptRow = Awaited<ReturnType<typeof prisma.mockAttempt.findFirst>>;
+
+/**
+ * What an attempt needs of its pattern. Every attempt read — and that means
+ * every autosave — used to carry the whole MockTest row, instructions and
+ * blurb included; this is the handful of columns the handlers actually touch.
+ */
+const ATTEMPT_TEST_SELECT = {
+  id: true,
+  slug: true,
+  name: true,
+  company: true,
+  negativeMark: true,
+  sectionalTiming: true,
+  totalQuestions: true,
+} as const;
+
+/**
+ * The catalogue is the same bytes for every signed-out visitor, so their
+ * browser may keep it. A signed-in copy carries the caller's own sittings and
+ * the resume link, which the SPA refetches the moment one of them changes —
+ * a browser cache would hand back the copy from before that.
+ */
+const publicCatalogueCache = browserCache(120);
+const cacheWhenAnonymous: RequestHandler = (req, res, next) =>
+  req.user ? next() : publicCatalogueCache(req, res, next);
+
+/** Questions are seeded content: the answer key for one is the same for the whole sitting and every other. */
+const QUESTION_TTL_MS = 15 * 60_000;
 
 const sectionPlans = (sections: Array<{ key: string; name: string; orderIndex: number; durationSec: number; questionCount: number; instructions: string | null; kind?: string; marksPerQuestion?: number; blueprint: unknown }>): SectionPlan[] =>
   sections.map((section) => ({
@@ -92,7 +122,7 @@ const testPattern = (slug: string) =>
 async function finishAttempt(attemptId: string, reason: "submitted" | "expired") {
   const attempt = await prisma.mockAttempt.findUnique({
     where: { id: attemptId },
-    include: { test: true, answers: true, codeAnswers: true },
+    include: { test: { select: ATTEMPT_TEST_SELECT }, answers: true, codeAnswers: true },
   });
   if (!attempt) return null;
   if (attempt.status !== "in-progress") return attempt;
@@ -182,7 +212,7 @@ async function finishAttempt(attemptId: string, reason: "submitted" | "expired")
       skippedCount,
       sectionScores,
     },
-    include: { test: true, answers: true },
+    include: { test: { select: ATTEMPT_TEST_SELECT }, answers: true },
   });
 }
 
@@ -212,7 +242,7 @@ async function syncAttempt(attempt: NonNullable<AttemptRow> & { test: any }) {
     const updated = await prisma.mockAttempt.update({
       where: { id: attempt.id },
       data: { currentSection: nextIndex, sectionEndsAt: endsAt },
-      include: { test: true },
+      include: { test: { select: ATTEMPT_TEST_SELECT } },
     });
     // The new section may itself already have lapsed while the tab was closed.
     return syncAttempt(updated as any);
@@ -227,7 +257,7 @@ async function syncAttempt(attempt: NonNullable<AttemptRow> & { test: any }) {
  * GET /api/tests
  * Every published pattern, with the candidate's history on each.
  */
-router.get("/", optionalAuth, async (req: any, res) => {
+router.get("/", optionalAuth, cacheWhenAnonymous, async (req: any, res) => {
   try {
     const userId: string | null = req.user?.userId ?? null;
     const [tests, attempts] = await Promise.all([
@@ -278,7 +308,7 @@ router.get("/", optionalAuth, async (req: any, res) => {
  * GET /api/tests/:slug
  * One pattern in full, for the instructions screen.
  */
-router.get("/:slug", optionalAuth, async (req: any, res) => {
+router.get("/:slug", optionalAuth, cacheWhenAnonymous, async (req: any, res) => {
   try {
     const test = await testPattern(req.params.slug);
     if (!test) return res.status(404).json({ error: "Test not found" });
@@ -401,7 +431,7 @@ router.post("/:slug/start", requireAuth, async (req: any, res) => {
 
 /** Loads an attempt that belongs to the caller, synced to the clock. */
 async function loadOwnAttempt(id: string, userId: string) {
-  const attempt = await prisma.mockAttempt.findFirst({ where: { id, userId }, include: { test: true } });
+  const attempt = await prisma.mockAttempt.findFirst({ where: { id, userId }, include: { test: { select: ATTEMPT_TEST_SELECT } } });
   if (!attempt) return null;
   return syncAttempt(attempt as any);
 }
@@ -581,7 +611,12 @@ router.put("/attempts/:id/answer", requireAuth, async (req: any, res) => {
       return res.status(409).json({ error: "That section is closed" });
     }
 
-    const question = await prisma.aptitudeQuestion.findUnique({ where: { id: questionId }, select: { answer: true, options: true } });
+    // The key and the option count, remembered: one round trip per click
+    // where there were two, since the attempt read above is the one that
+    // cannot be skipped.
+    const question = await cached(`mock:question:${questionId}`, QUESTION_TTL_MS, () =>
+      prisma.aptitudeQuestion.findUnique({ where: { id: questionId }, select: { answer: true, options: true } }),
+    );
     if (!question) return res.status(404).json({ error: "Question not found" });
 
     const raw = body["selected"];
@@ -612,10 +647,15 @@ router.put("/attempts/:id/answer", requireAuth, async (req: any, res) => {
 /**
  * Resolves a coding problem inside a live sitting, or the reason it cannot be
  * touched. Every coding endpoint starts here so the rules are stated once.
+ *
+ * Deliberately says nothing about the problem itself: the autosave only has
+ * to know the problem is on this paper and the section is open. Loading the
+ * problem and its suite here — as this once did, hidden cases and all — made
+ * every keystroke's save pay for a megabyte the judge was not going to run.
  */
 type CodingContext =
   | { ok: false; status: number; message: string }
-  | { ok: true; attempt: NonNullable<AttemptRow>; sectionIndex: number; problem: any; marks: number };
+  | { ok: true; attempt: NonNullable<AttemptRow>; sectionIndex: number; marks: number };
 
 async function codingContext(attemptId: string, userId: string, problemId: string): Promise<CodingContext> {
   const refuse = (status: number, message: string): CodingContext => ({ ok: false, status, message });
@@ -630,16 +670,22 @@ async function codingContext(attemptId: string, userId: string, problemId: strin
   if (sectionIndex < 0) return refuse(400, "That problem is not on this paper");
   if (test.sectionalTiming && sectionIndex !== attempt.currentSection) return refuse(409, "That section is closed");
 
-  const problem = await prisma.problem.findUnique({
-    where: { id: problemId },
-    include: { testCases: { orderBy: { orderIndex: "asc" } } },
-  });
-  if (!problem) return refuse(404, "Problem not found");
-  return { ok: true, attempt, sectionIndex, problem, marks: paper[sectionIndex].marksPerQuestion ?? 1 };
+  return { ok: true, attempt, sectionIndex, marks: paper[sectionIndex].marksPerQuestion ?? 1 };
+}
+
+/**
+ * The problem as the judge sees it — limits and signature — with its suite,
+ * both from the in-process cache (src/lib/test-suite-cache.ts). Fetched
+ * alongside the sitting rather than after it: neither depends on the other.
+ */
+async function judgeArena(problemId: string) {
+  if (!problemId) return null;
+  const [problem, cases] = await Promise.all([getJudgeProblem(problemId), getJudgeSuite(problemId)]);
+  return problem ? { problem, cases } : null;
 }
 
 /** Compiles and runs one submission against the given cases, in one batch. */
-async function judge(problem: any, code: string, language: string, cases: Array<{ input: string; expectedOutput: string }>) {
+async function judge(problem: JudgeProblem, code: string, language: string, cases: Array<{ input: string; expectedOutput: string }>) {
   const driver = problem.signature ? buildDriver(language as DriverLanguage, problem.signature as Signature, code) : null;
   const batch = await runBatch(
     driver ? driver.code : code,
@@ -699,16 +745,17 @@ router.post("/attempts/:id/run", requireAuth, async (req: any, res) => {
   try {
     const body = (req.body ?? {}) as Record<string, unknown>;
     const problemId = String(body["problemId"] ?? "");
-    const context = await codingContext(req.params.id, req.user.userId, problemId);
+    const [context, arena] = await Promise.all([codingContext(req.params.id, req.user.userId, problemId), judgeArena(problemId)]);
     if (!context.ok) return res.status(context.status).json({ error: context.message });
+    if (!arena) return res.status(404).json({ error: "Problem not found" });
 
     const language = String(body["language"] ?? "python");
     if (!LANGUAGE_MAP[language]) return res.status(400).json({ error: "Unsupported language" });
     const code = String(body["code"] ?? "");
-    const visible = context.problem.testCases.filter((c: any) => !c.isHidden);
+    const visible = arena.cases.filter((c) => !c.isHidden);
     if (!visible.length) return res.json({ results: [], verdict: "ACCEPTED", passed: 0, total: 0 });
 
-    const result = await judge(context.problem, code, language, visible);
+    const result = await judge(arena.problem, code, language, visible);
     res.json({
       verdict: result.verdict,
       passed: result.passed,
@@ -740,16 +787,17 @@ router.post("/attempts/:id/submit-code", requireAuth, async (req: any, res) => {
   try {
     const body = (req.body ?? {}) as Record<string, unknown>;
     const problemId = String(body["problemId"] ?? "");
-    const context = await codingContext(req.params.id, req.user.userId, problemId);
+    const [context, arena] = await Promise.all([codingContext(req.params.id, req.user.userId, problemId), judgeArena(problemId)]);
     if (!context.ok) return res.status(context.status).json({ error: context.message });
+    if (!arena) return res.status(404).json({ error: "Problem not found" });
 
     const language = String(body["language"] ?? "python");
     if (!LANGUAGE_MAP[language]) return res.status(400).json({ error: "Unsupported language" });
     const code = String(body["code"] ?? "");
-    const cases = context.problem.testCases;
+    const cases = arena.cases;
     if (!cases.length) return res.status(503).json({ error: "This problem has no test cases" });
 
-    const result = await judge(context.problem, code, language, cases);
+    const result = await judge(arena.problem, code, language, cases);
     const existing = await prisma.mockCodeAnswer.findUnique({
       where: { attemptId_problemId: { attemptId: context.attempt.id, problemId } },
     });

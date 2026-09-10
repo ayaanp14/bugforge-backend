@@ -17,7 +17,13 @@ import {
   type Usage,
 } from "../services/interview-ai.js";
 import { realtimeProvider } from "../services/realtime-interview.js";
-import { finalizeInterview, usageIncrement } from "../services/interview-completion.js";
+import { cachedShared } from "../lib/cache.js";
+import {
+  finalizeInterview,
+  interviewHistoryKey,
+  invalidateInterviewHistory,
+  usageIncrement,
+} from "../services/interview-completion.js";
 
 const router = Router();
 
@@ -163,6 +169,9 @@ router.delete("/:id", requireAuth, async (req: any, res) => {
     await prisma.savedInterview.delete({
       where: { id },
     });
+
+    // Its sessions went with it, and the history analytics counted them.
+    invalidateInterviewHistory(req.user.userId);
 
     res.json({ success: true, message: "Interview configuration deleted" });
   } catch (error) {
@@ -319,6 +328,9 @@ router.post("/start", requireAuth, async (req: any, res) => {
         },
       });
 
+      // A new row changes the session count and the activity calendar.
+      invalidateInterviewHistory(req.user.userId);
+
       return res.json({
         success: true,
         message: "Voice interview session created",
@@ -338,6 +350,7 @@ router.post("/start", requireAuth, async (req: any, res) => {
         questionBudget: budget,
       },
     });
+    invalidateInterviewHistory(req.user.userId);
 
     const { question, usage } = await openInterview(config, budget, wantsCode(config));
     const language = languageFor(config);
@@ -777,6 +790,7 @@ router.post("/session/:sessionId/complete", requireAuth, async (req: any, res) =
         where: { id: session.id },
         data: { status: "abandoned", completedAt: new Date() },
       });
+      invalidateInterviewHistory(session.userId);
       return res.json({ success: true, abandoned: true, session: abandoned });
     }
 
@@ -1130,6 +1144,56 @@ function hideLiveMarks<T extends { status: string; questions: unknown[] }>(sessi
 }
 
 /**
+ * The two halves of the history response that span every session — the career
+ * analytics and the filter options — computed from one read of up to
+ * ANALYTICS_CAP sessions with every mark and every `missed` list. That is by
+ * far the heaviest query on the page, and it was run on every first-page load.
+ * The result is cached per user and dropped whenever a session is opened,
+ * closed or deleted (see services/interview-completion), so between those
+ * moments a page load pays for the page and nothing else.
+ */
+async function historyExtras(userId: string) {
+  // Deliberately unfiltered: "your average across every round" must not
+  // change because the list below it is filtered to one role.
+  const everything = await prisma.mockInterviewSession.findMany({
+    where: { userId },
+    orderBy: { createdAt: "desc" },
+    take: ANALYTICS_CAP,
+    select: {
+      id: true,
+      status: true,
+      questionBudget: true,
+      overallScore: true,
+      createdAt: true,
+      completedAt: true,
+      savedInterview: {
+        select: { roleId: true, roundId: true, difficulty: true, focusAreaIds: true },
+      },
+      questions: { select: ANALYTICS_QUESTION, orderBy: { orderIndex: "asc" } },
+    },
+  });
+  const all = hideLiveMarks(everything);
+
+  return {
+    analytics: careerAnalytics(all),
+    // The filter controls are driven from the whole history, not the page —
+    // a role filter that only lists the roles on screen is no filter at all.
+    filters: {
+      roles: [...new Set(all.map((s) => s.savedInterview.roleId))],
+      focusAreas: [
+        ...new Set(all.flatMap((s) => (s.savedInterview.focusAreaIds as string[] | null) ?? [])),
+      ],
+      statusCounts: {
+        all: all.length,
+        completed: all.filter((s) => s.status === "completed").length,
+        abandoned: all.filter((s) => s.status === "abandoned").length,
+        started: all.filter((s) => s.status === "started").length,
+      },
+    },
+  };
+}
+
+/**
  * @route   GET /api/interviews/history
  * @desc    One page of past sessions, plus (on the first page) the analytics
  *          and filter options that span every session
@@ -1195,42 +1259,13 @@ router.get("/history", requireAuth, async (req: any, res) => {
     };
 
     if (wantsAnalytics) {
-      // Deliberately unfiltered: "your average across every round" must not
-      // change because the list below it is filtered to one role.
-      const everything = await prisma.mockInterviewSession.findMany({
-        where: { userId: req.user.userId },
-        orderBy: { createdAt: "desc" },
-        take: ANALYTICS_CAP,
-        select: {
-          id: true,
-          status: true,
-          questionBudget: true,
-          overallScore: true,
-          createdAt: true,
-          completedAt: true,
-          savedInterview: {
-            select: { roleId: true, roundId: true, difficulty: true, focusAreaIds: true },
-          },
-          questions: { select: ANALYTICS_QUESTION, orderBy: { orderIndex: "asc" } },
-        },
-      });
-      const all = hideLiveMarks(everything);
-
-      body["analytics"] = careerAnalytics(all);
-      // The filter controls are driven from the whole history, not the page —
-      // a role filter that only lists the roles on screen is no filter at all.
-      body["filters"] = {
-        roles: [...new Set(all.map((s) => s.savedInterview.roleId))],
-        focusAreas: [
-          ...new Set(all.flatMap((s) => (s.savedInterview.focusAreaIds as string[] | null) ?? [])),
-        ],
-        statusCounts: {
-          all: all.length,
-          completed: all.filter((s) => s.status === "completed").length,
-          abandoned: all.filter((s) => s.status === "abandoned").length,
-          started: all.filter((s) => s.status === "started").length,
-        },
-      };
+      // Dates inside serialise to ISO strings through Redis, which is what
+      // res.json() produces on a miss, so the response is the same either way.
+      const extras = await cachedShared(interviewHistoryKey(req.user.userId), 300, () =>
+        historyExtras(req.user.userId),
+      );
+      body["analytics"] = extras.analytics;
+      body["filters"] = extras.filters;
     }
 
     res.json(body);
@@ -1264,9 +1299,7 @@ router.get("/session/:sessionId", requireAuth, async (req: any, res) => {
 
     // While the interview is still live the stored scores stay server-side —
     // resuming a session must not hand back the marks for answers already
-    // given. They are released together with the report once it closes. Note
-    // `session` carries its own nested copy of the questions, so both the
-    // nested and the top-level list have to be blanked, not just one.
+    // given. They are released together with the report once it closes.
     const live = session.status !== "completed";
     const questions = live
       ? asked.map((q) => ({
@@ -1278,15 +1311,20 @@ router.get("/session/:sessionId", requireAuth, async (req: any, res) => {
         }))
       : asked;
 
+    // The list travels once, at the top level — that is what both the web and
+    // the mobile client read. `session` used to carry a second, nested copy of
+    // the same rows (each with a MediumText answer), doubling every report load.
+    const { questions: stored, ...sessionRow } = session;
+
     res.json({
-      session: { ...session, questions },
+      session: sessionRow,
       questions,
       language: languageFor(configFrom(session.savedInterview)),
       setup: configFrom(session.savedInterview),
       status: session.status,
       completedAt: session.completedAt,
       startedAt: session.createdAt,
-      report: session.status === "completed" ? reportOf(session, session.questions) : null,
+      report: session.status === "completed" ? reportOf(session, stored) : null,
       progress: { asked: asked.length, total: session.questionBudget },
     });
   } catch (error: any) {

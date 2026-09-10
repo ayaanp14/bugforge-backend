@@ -11,6 +11,7 @@ import {
   type BillingPeriod,
 } from "../lib/plans.js";
 import { entitlementFor } from "../services/entitlements.js";
+import { browserCache } from "../lib/http-cache.js";
 import {
   createOrder,
   fetchOrder,
@@ -43,8 +44,11 @@ function asPeriod(value: unknown): BillingPeriod {
  * @route   GET /api/billing/plans
  * @desc    The pricing table. Public — it is a marketing page.
  * @access  Public
+ *
+ * The catalogue is a constant and `checkoutEnabled` a deployment setting, so
+ * the browser may keep its copy for a while.
  */
-router.get("/plans", (_req, res) => {
+router.get("/plans", browserCache(300, { shared: true }), (_req, res) => {
   res.json({
     plans: PLANS,
     currency: "INR",

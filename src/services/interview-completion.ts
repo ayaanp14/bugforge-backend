@@ -1,4 +1,5 @@
 import { prisma } from "../lib/prisma.js";
+import { invalidate } from "../lib/cache.js";
 import { writeReport, type InterviewConfig, type Usage } from "./interview-ai.js";
 
 /**
@@ -21,6 +22,18 @@ export interface ScoredQuestion {
   missed: unknown;
 }
 
+/**
+ * The career analytics on GET /api/interviews/history are computed over every
+ * session the user has (up to a cap) and cached under this key. They change
+ * only when a session is opened, closed or deleted, so those are the moments
+ * that drop the entry — each of which routes through here.
+ */
+export const interviewHistoryKey = (userId: string) => `interviews:analytics:v1:${userId}`;
+
+export function invalidateInterviewHistory(userId: string): void {
+  invalidate(interviewHistoryKey(userId));
+}
+
 /** Folds one call's usage into the session's running totals. */
 export function usageIncrement(usage: Usage) {
   return {
@@ -37,7 +50,7 @@ export function usageIncrement(usage: Usage) {
  * average is scaled once, here, rather than at each call site.
  */
 export async function finalizeInterview(
-  session: { id: string; questionBudget: number },
+  session: { id: string; userId: string; questionBudget: number },
   config: InterviewConfig,
   scored: ScoredQuestion[],
   /** Anything already spent getting to this point — the voice breakdown call. */
@@ -86,7 +99,7 @@ export async function finalizeInterview(
       }
     : usage;
 
-  return prisma.mockInterviewSession.update({
+  const completed = await prisma.mockInterviewSession.update({
     where: { id: session.id },
     data: {
       status: "completed",
@@ -101,4 +114,9 @@ export async function finalizeInterview(
       ...usageIncrement(total),
     },
   });
+
+  // A closed round moves the averages, the timeline and the status counts.
+  invalidateInterviewHistory(session.userId);
+
+  return completed;
 }

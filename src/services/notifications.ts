@@ -1,4 +1,5 @@
 import { prisma } from "../lib/prisma.js";
+import { broadcastSignal, onSignal } from "../lib/cache.js";
 
 /**
  * In-app notifications (the bell in the top nav).
@@ -6,6 +7,58 @@ import { prisma } from "../lib/prisma.js";
  * per user via createNotificationOnce, so triggers can fire repeatedly
  * without spamming.
  */
+
+/* ── the unread badge ──────────────────────────────────────────────────── */
+
+/**
+ * The unread count is read on every /api/me, which the SPA calls on every
+ * load, and against a ~500ms database that COUNT was the whole visible cost
+ * of the request once the rest of the payload was cached.
+ *
+ * So it is cached here — but deliberately not through lib/cache.ts. That tier
+ * serves stale-while-revalidate, which is right for a dashboard and wrong for
+ * a badge: the first read after a new notification would return the old count
+ * while refreshing behind it, and the bell would silently lag. This map has a
+ * hard expiry instead, and every write path in this file drops the entry, so
+ * the badge is exact for anything written through here. The TTL only bounds
+ * the lag of a write that went around this module.
+ */
+const UNREAD_TTL_MS = 120_000;
+const UNREAD_MAX_ENTRIES = 5000;
+const UNREAD_SIGNAL = "unread";
+
+const unread = new Map<string, { count: number; expiresAt: number }>();
+
+function dropUnread(userId: string): void {
+  unread.delete(userId);
+}
+
+// Another instance wrote a notification for this user: forget our count.
+onSignal(UNREAD_SIGNAL, dropUnread);
+
+/**
+ * Drop the cached badge count after any notification write. Exported so a
+ * route that writes `prisma.notification` directly (community likes, mentions,
+ * follows) can keep the badge honest without routing through this file.
+ */
+export function invalidateUnread(userId: string): void {
+  dropUnread(userId);
+  broadcastSignal(UNREAD_SIGNAL, userId);
+}
+
+/** The badge count, from cache when it is recent enough. */
+export async function getUnreadCount(userId: string): Promise<number> {
+  const now = Date.now();
+  const hit = unread.get(userId);
+  if (hit && hit.expiresAt > now) return hit.count;
+
+  const count = await countUnread(userId);
+  // Bounded the cheap way: a full clear at the cap costs one COUNT per active
+  // user afterwards, which is the state a fresh process starts in anyway.
+  if (unread.size >= UNREAD_MAX_ENTRIES) unread.clear();
+  unread.set(userId, { count, expiresAt: now + UNREAD_TTL_MS });
+  return count;
+}
 
 export interface NotificationInput {
   type: string;
@@ -49,9 +102,11 @@ export function streakMilestone(days: number): NotificationInput | null {
 
 export async function createNotification(userId: string, input: NotificationInput) {
   try {
-    return await prisma.notification.create({
+    const created = await prisma.notification.create({
       data: { userId, type: input.type, title: input.title, body: input.body, href: input.href ?? null },
     });
+    invalidateUnread(userId);
+    return created;
   } catch (err) {
     console.error(`createNotification(${input.type}) error:`, err);
     return null;
@@ -83,23 +138,17 @@ export function listNotifications(userId: string, limit = 30) {
 }
 
 /**
- * The badge count on every /api/me. Deliberately NOT cached.
- *
- * It was, briefly. But the cache layer serves stale-while-revalidate, which is
- * right for a dashboard and wrong for a notification badge: the first read after
- * a new notification returns the old count while refreshing behind it, so the
- * bell silently lags. Any write from outside this process makes that worse.
- *
- * This is one COUNT against the (userId, isRead) index, and the route already
- * runs it in parallel with the cached payload, so it costs no extra wall-clock
- * time. Correctness here is worth more than the round trip.
+ * The live COUNT against the (userId, isRead) index. Routes should read
+ * `getUnreadCount` instead; this is what fills it.
  */
 export function countUnread(userId: string) {
   return prisma.notification.count({ where: { userId, isRead: false } });
 }
 
-export function markAllRead(userId: string) {
-  return prisma.notification.updateMany({ where: { userId, isRead: false }, data: { isRead: true } });
+export async function markAllRead(userId: string) {
+  const result = await prisma.notification.updateMany({ where: { userId, isRead: false }, data: { isRead: true } });
+  invalidateUnread(userId);
+  return result;
 }
 
 /** Backfill for accounts that predate the notification system. */

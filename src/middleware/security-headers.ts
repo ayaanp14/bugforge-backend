@@ -46,9 +46,8 @@ export function securityHeaders(_req: Request, res: Response, next: NextFunction
   // Stop the browser resolving hostnames found in responses.
   res.setHeader("X-DNS-Prefetch-Control", "off");
 
-  // Hide the implementation. Not a defence in itself, but there is no reason
-  // to tell a scanner which framework and version to look up.
-  res.removeHeader("X-Powered-By");
+  // X-Powered-By is switched off once for the whole app in index.ts
+  // (`app.disable("x-powered-by")`) rather than stripped here per response.
 
   // Only meaningful over TLS, and setting it locally would poison the
   // developer's browser into refusing plain http on localhost.

@@ -395,6 +395,9 @@ type SocialUserRecord = {
   avatar_url: string | null;
 };
 
+/** The same fields, as a Prisma select, so no read here pulls the whole row. */
+const SOCIAL_USER_SELECT = { id: true, email: true, username: true, name: true, avatar_url: true } as const;
+
 type SocialUserResult =
   | { error: "account_exists" | "not_registered" }
   | { record: SocialUserRecord };
@@ -404,7 +407,7 @@ type SocialUserResult =
  * account. Mirrors the old NextAuth signIn callback, intent guards included.
  */
 async function upsertSocialUser(args: UpsertArgs): Promise<SocialUserResult> {
-  let dbUser = await prisma.user.findUnique({ where: { email: args.email } });
+  let dbUser = await prisma.user.findUnique({ where: { email: args.email }, select: SOCIAL_USER_SELECT });
 
   if (args.intent === "register" && dbUser) {
     return { error: "account_exists" as const };
@@ -423,6 +426,7 @@ async function upsertSocialUser(args: UpsertArgs): Promise<SocialUserResult> {
         avatar_url: args.avatarUrl,
         provider: args.provider,
       },
+      select: SOCIAL_USER_SELECT,
     });
 
     void createNotificationOnce(dbUser.id, WELCOME);
@@ -435,7 +439,7 @@ async function upsertSocialUser(args: UpsertArgs): Promise<SocialUserResult> {
     if (!dbUser.username) {
       updateData.username = await generateUsername(args.name || "user");
     }
-    dbUser = await prisma.user.update({ where: { email: args.email }, data: updateData });
+    dbUser = await prisma.user.update({ where: { email: args.email }, data: updateData, select: SOCIAL_USER_SELECT });
   }
 
   try {

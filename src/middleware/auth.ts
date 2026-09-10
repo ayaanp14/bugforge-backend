@@ -1,13 +1,17 @@
 import type { Request, Response, NextFunction } from "express";
-import jwt from "jsonwebtoken";
-import { JWT_SECRET } from "../lib/secrets.js";
+import { readSessionToken, SESSION_COOKIE } from "../lib/auth-session.js";
 import { isSessionRevoked } from "../lib/session-revocation.js";
 
-interface JwtPayload {
-  userId: string;
-  email: string;
-  /** Issued-at, in seconds. Added by the library on every token we mint. */
-  iat?: number;
+/**
+ * The session token on a request: the Authorization header first (required
+ * cross-domain in production), the `__session` cookie as the same-site / local
+ * dev fallback.
+ */
+function tokenOf(req: Request): string | null {
+  const authHeader = req.headers.authorization;
+  const headerToken = authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : null;
+  const cookieToken = (req.cookies as Record<string, string | undefined> | undefined)?.[SESSION_COOKIE];
+  return headerToken || cookieToken || null;
 }
 
 export async function requireAuth(
@@ -15,12 +19,7 @@ export async function requireAuth(
   res: Response,
   next: NextFunction
 ): Promise<void> {
-  // Try Authorization header first (required for cross-domain / production)
-  const authHeader = req.headers.authorization;
-  const headerToken = authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : null;
-  // Fallback to cookie for same-site / local dev
-  const cookieToken = (req.cookies as Record<string, string | undefined>).__session;
-  const token = headerToken || cookieToken;
+  const token = tokenOf(req);
 
   if (!token) {
     console.warn("Auth check failed: No token in Authorization header or __session cookie.");
@@ -28,53 +27,47 @@ export async function requireAuth(
     return;
   }
 
-  try {
-    const payload = jwt.verify(token, JWT_SECRET, { algorithms: ["HS256"] }) as JwtPayload;
-    
-    if (!payload.userId) {
-      console.error("Auth check failed: Payload missing userId", payload);
-      res.status(401).json({ error: "Invalid session payload" });
-      return;
-    }
-
-    // A valid signature is not enough on its own: the account may have ended
-    // every session since this token was issued, which is what a password
-    // reset does.
-    if (await isSessionRevoked(payload.userId, payload.iat)) {
-      res.status(401).json({ error: "Session ended. Please sign in again." });
-      return;
-    }
-
-    req.user = { userId: payload.userId, email: payload.email };
-    next();
-  } catch (err) {
-    console.error("Auth check failed: JWT verification error:", (err as Error).message);
+  const claims = readSessionToken(token);
+  if (!claims) {
+    console.error("Auth check failed: JWT verification error");
     res.status(401).json({ error: "Invalid or expired session" });
+    return;
   }
+
+  // A valid signature is not enough on its own: the account may have ended
+  // every session since this token was issued, which is what a password
+  // reset does.
+  if (await isSessionRevoked(claims.userId, claims.iat)) {
+    res.status(401).json({ error: "Session ended. Please sign in again." });
+    return;
+  }
+
+  req.user = { userId: claims.userId, email: claims.email };
+  next();
 }
 
-export function optionalAuth(
+/**
+ * Attaches the user when there is a valid session and carries on either way.
+ *
+ * Applies the same revocation check as `requireAuth`. Skipping it here used to
+ * mean a token the account had ended still personalised every public page —
+ * the problem list, the aptitude bank — for whoever held it, which is exactly
+ * the holder a password reset is meant to lock out.
+ */
+export async function optionalAuth(
   req: Request,
   _res: Response,
   next: NextFunction
-): void {
-  const authHeader = req.headers.authorization;
-  const headerToken = authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : null;
-  const cookieToken = (req.cookies as Record<string, string | undefined>).__session;
-  const token = headerToken || cookieToken;
-
+): Promise<void> {
+  const token = tokenOf(req);
   if (!token) {
-    return next();
+    next();
+    return;
   }
 
-  try {
-    const payload = jwt.verify(token, JWT_SECRET, { algorithms: ["HS256"] }) as JwtPayload;
-
-    if (payload.userId) {
-      req.user = { userId: payload.userId, email: payload.email };
-    }
-  } catch (err) {
-    console.warn("Optional auth warning (ignoring):", (err as Error).message);
+  const claims = readSessionToken(token);
+  if (claims && !(await isSessionRevoked(claims.userId, claims.iat))) {
+    req.user = { userId: claims.userId, email: claims.email };
   }
   next();
 }

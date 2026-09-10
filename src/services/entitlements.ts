@@ -45,10 +45,15 @@ export function dayStart(now = new Date()): Date {
 
 /**
  * Whether this account belongs to the creator (see ownerEmails in lib/plans).
- * Read from the user row rather than the session token so it holds for every
- * caller and every token, however old.
+ *
+ * Read from the user row so it holds for every caller and every token,
+ * however old. A caller that already has the email — every authenticated
+ * route does, from `req.user` — may pass it and skip the round trip: the
+ * token's email is the row's email as of sign-in, and an owner's email does
+ * not change under them.
  */
-export async function isOwnerAccount(userId: string): Promise<boolean> {
+export async function isOwnerAccount(userId: string, email?: string | null): Promise<boolean> {
+  if (email) return isOwnerEmail(email);
   const user = await prisma.user.findUnique({ where: { id: userId }, select: { email: true } });
   return isOwnerEmail(user?.email);
 }
@@ -66,9 +71,9 @@ export async function isOwnerAccount(userId: string): Promise<boolean> {
  * one that runs longest wins, which is always the one the user paid most
  * recently for.
  */
-export async function activePlan(userId: string): Promise<{ plan: Plan; currentPeriodEnd: Date | null }> {
+export async function activePlan(userId: string, email?: string | null): Promise<{ plan: Plan; currentPeriodEnd: Date | null }> {
   const [owner, subscription] = await Promise.all([
-    isOwnerAccount(userId),
+    isOwnerAccount(userId, email),
     prisma.subscription.findFirst({
       where: { userId, status: "active", currentPeriodEnd: { gt: new Date() } },
       orderBy: { currentPeriodEnd: "desc" },
@@ -94,12 +99,14 @@ export async function interviewsThisWeek(userId: string): Promise<number> {
  * Distinct, not submissions: a bug hunt is not one shot, and charging a day's
  * allowance for every failed run would make the quota punish iteration — which
  * is the thing the module exists to teach.
+ *
+ * Grouped in SQL rather than `distinct` in the client, which fetched every
+ * submission of the day and deduplicated it here.
  */
 export async function bugsToday(userId: string): Promise<number> {
-  const rows = await prisma.bugSubmission.findMany({
+  const rows = await prisma.bugSubmission.groupBy({
+    by: ["challengeId"],
     where: { userId, submittedAt: { gte: dayStart() } },
-    select: { challengeId: true },
-    distinct: ["challengeId"],
   });
   return rows.length;
 }
@@ -176,19 +183,25 @@ export async function checkVoiceDuration(
  * A challenge already worked today is always allowed through, however many
  * times it is submitted — otherwise the first failed attempt would lock the
  * candidate out of finishing it.
+ *
+ * The three lookups do not depend on one another, so they go out together:
+ * one round trip where there were four, and none at all for an owner whose
+ * email the caller already had.
  */
-export async function checkBugQuota(userId: string, challengeId: string): Promise<QuotaDenial | null> {
-  const { plan } = await activePlan(userId);
+export async function checkBugQuota(userId: string, challengeId: string, email?: string | null): Promise<QuotaDenial | null> {
+  if (email && isOwnerEmail(email)) return null;
+
+  const [{ plan }, already, used] = await Promise.all([
+    activePlan(userId, email),
+    prisma.bugSubmission.findFirst({
+      where: { userId, challengeId, submittedAt: { gte: dayStart() } },
+      select: { id: true },
+    }),
+    bugsToday(userId),
+  ]);
   const limit = plan.entitlements.bugsPerDay;
   if (limit === null) return null;
-
-  const already = await prisma.bugSubmission.findFirst({
-    where: { userId, challengeId, submittedAt: { gte: dayStart() } },
-    select: { id: true },
-  });
   if (already) return null;
-
-  const used = await bugsToday(userId);
   if (!atLimit(used, limit)) return null;
 
   return {

@@ -3,7 +3,7 @@ import { prisma } from "../lib/prisma.js";
 import { optionalAuth, requireAuth } from "../middleware/auth.js";
 import { judgeBugProject, type BugFile, type BugLanguage } from "../lib/bug-judge.js";
 import { invalidateDashboard } from "../services/dashboard.js";
-import { emitDuelActivity, settleDuelForSubmission } from "../lib/duels.js";
+import { emitDuelActivity, findLiveDuelFor, settleDuelForSubmission } from "../lib/duels.js";
 import { ENGINE_DOWN_MESSAGE, isEngineDown } from "../lib/engine-error.js";
 import { checkBugQuota } from "../services/entitlements.js";
 import {
@@ -16,6 +16,14 @@ import {
 const router = Router();
 
 const BUG_XP = 50;
+
+/** What the judge needs of a challenge: the files to merge and the tests to run, nothing of the prose. */
+const JUDGE_CHALLENGE_SELECT = {
+  id: true,
+  isPublished: true,
+  language: true,
+  files: { select: { filePath: true, content: true, isEditable: true } },
+} as const;
 
 /**
  * GET /api/bug-challenges — the paginated hunts index.
@@ -69,13 +77,49 @@ router.get("/:id/neighbours", optionalAuth, async (req, res) => {
   }
 });
 
+/**
+ * Consecutive days (ending today or yesterday) with at least one accepted
+ * fix, from the distinct days themselves — grouped in SQL, newest first,
+ * rather than every accepted row the user has ever written being fetched and
+ * bucketed here. 400 days is longer than any streak anybody will hold.
+ *
+ * UTC days, as before: DATE() of a DATETIME Prisma stores in UTC.
+ */
+async function bugStreakDays(userId: string): Promise<number> {
+  const rows = await prisma.$queryRaw<Array<{ d: Date | string }>>`
+    SELECT DATE(\`submittedAt\`) AS d
+    FROM \`BugSubmission\`
+    WHERE \`userId\` = ${userId} AND \`verdict\` = 'ACCEPTED'
+    GROUP BY d
+    ORDER BY d DESC
+    LIMIT 400
+  `;
+  // The driver hands a DATE back as either a Date at midnight or "YYYY-MM-DD";
+  // both become a day number the same way the old bucketing did.
+  const dayOf = (d: Date | string) =>
+    d instanceof Date
+      ? Math.floor(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()) / 86400000)
+      : Math.floor(Date.parse(`${String(d).slice(0, 10)}T00:00:00Z`) / 86400000);
+  const days = rows.map((r) => dayOf(r.d)).filter((n) => Number.isFinite(n));
+
+  const today = Math.floor(Date.now() / 86400000);
+  let cursor = days[0] === today ? today : today - 1;
+  let streak = 0;
+  for (const day of days) {
+    if (day !== cursor) break;
+    streak++;
+    cursor--;
+  }
+  return streak;
+}
+
 // GET /api/bug-challenges/stats/me — personal analytics for the hunts page
 // (declared before /:id so "stats" is never treated as a challenge id)
 router.get("/stats/me", requireAuth, async (req, res) => {
   try {
     const userId = req.user!.userId;
 
-    const [recent, accepted, totalSubmissions] = await Promise.all([
+    const [recent, streak, totalSubmissions] = await Promise.all([
       prisma.bugSubmission.findMany({
         where: { userId },
         orderBy: { submittedAt: "desc" },
@@ -89,22 +133,9 @@ router.get("/stats/me", requireAuth, async (req, res) => {
           challenge: { select: { id: true, title: true } },
         },
       }),
-      // Debugging streak: consecutive UTC days (ending today or yesterday)
-      // with at least one ACCEPTED bug fix.
-      prisma.bugSubmission.findMany({
-        where: { userId, verdict: "ACCEPTED" },
-        select: { submittedAt: true },
-      }),
+      bugStreakDays(userId),
       prisma.bugSubmission.count({ where: { userId } }),
     ]);
-    const days = new Set(accepted.map((s) => Math.floor(s.submittedAt.getTime() / 86400000)));
-    const today = Math.floor(Date.now() / 86400000);
-    let streak = 0;
-    let cursor = days.has(today) ? today : today - 1;
-    while (days.has(cursor)) {
-      streak++;
-      cursor--;
-    }
 
     res.json({
       streakDays: streak,
@@ -126,12 +157,15 @@ router.get("/stats/me", requireAuth, async (req, res) => {
 });
 
 // GET /api/bug-challenges/:id — Full challenge: files, report, visible tests
+//
+// Not browser-cached: `solved`, `submissions` and `activeDuelId` are the
+// caller's own, and a stale copy of any of them is worse than the round trip.
 router.get("/:id", optionalAuth, async (req, res) => {
   try {
     const challengeId = String(req.params.id);
 
-    // One parallel batch instead of three sequential round-trips
-    const [challenge, hiddenCount, submissions] = await Promise.all([
+    // One parallel batch instead of four sequential round-trips
+    const [challenge, hiddenCount, submissions, liveDuel] = await Promise.all([
       prisma.bugChallenge.findUnique({
         where: { id: challengeId },
         include: {
@@ -151,6 +185,11 @@ router.get("/:id", optionalAuth, async (req, res) => {
             take: 20,
           })
         : Promise.resolve([]),
+      // The duel this hunt is the arena of, if the caller is fighting one —
+      // so the workspace can send them to the room without asking the duel
+      // API separately on every open. Gated by the in-process tracker, so for
+      // everyone not duelling it costs nothing.
+      req.user ? findLiveDuelFor(req.user.userId, { challengeId }) : Promise.resolve(null),
     ]);
 
     if (!challenge || !challenge.isPublished) {
@@ -163,6 +202,9 @@ router.get("/:id", optionalAuth, async (req, res) => {
     res.json({
       solved,
       submissions,
+      // Contract with the workspace: the caller's live duel on this very
+      // hunt, or null (also null when signed out).
+      activeDuelId: liveDuel?.id ?? null,
       id: challenge.id,
       title: challenge.title,
       difficulty: challenge.difficulty,
@@ -203,7 +245,10 @@ router.post("/:id/run", requireAuth, async (req, res) => {
 
     const challenge = await prisma.bugChallenge.findUnique({
       where: { id: String(req.params.id) },
-      include: { files: true, tests: { where: { isHidden: false } } },
+      select: {
+        ...JUDGE_CHALLENGE_SELECT,
+        tests: { where: { isHidden: false }, select: { name: true, runCommand: true } },
+      },
     });
     if (!challenge || !challenge.isPublished) {
       res.status(404).json({ error: "Challenge not found" });
@@ -244,24 +289,39 @@ router.post("/:id/run", requireAuth, async (req, res) => {
 });
 
 // POST /api/bug-challenges/:id/submit — Run ALL tests (visible + hidden)
+//
+// Same shape as the problem judge's submit: every read the verdict will need
+// goes out together before the engine is asked, the verdict is written in one
+// transaction, the response leaves, and the duel, the dashboard cache and the
+// bell are told afterwards.
 router.post("/:id/submit", requireAuth, async (req, res) => {
   try {
     const { editedFiles, timeTakenSecs } = req.body as { editedFiles?: Record<string, string>; timeTakenSecs?: number };
     const userId = req.user!.userId;
-
-    const challenge = await prisma.bugChallenge.findUnique({
-      where: { id: String(req.params.id) },
-      include: { files: true, tests: true },
-    });
-    if (!challenge || !challenge.isPublished) {
-      res.status(404).json({ error: "Challenge not found" });
-      return;
-    }
+    const challengeId = String(req.params.id);
 
     // A bug already worked today is always allowed through, so the daily
     // allowance buys distinct challenges rather than attempts — the first
     // failed run must not lock someone out of finishing what they started.
-    const quota = await checkBugQuota(userId, challenge.id);
+    // The quota needs only the id, so it is checked alongside the load.
+    const [challenge, alreadySolved, quota] = await Promise.all([
+      prisma.bugChallenge.findUnique({
+        where: { id: challengeId },
+        select: {
+          ...JUDGE_CHALLENGE_SELECT,
+          tests: { select: { name: true, runCommand: true, isHidden: true } },
+        },
+      }),
+      prisma.bugSubmission.findFirst({
+        where: { userId, challengeId, verdict: "ACCEPTED" },
+        select: { id: true },
+      }),
+      checkBugQuota(userId, challengeId, req.user!.email),
+    ]);
+    if (!challenge || !challenge.isPublished) {
+      res.status(404).json({ error: "Challenge not found" });
+      return;
+    }
     if (quota) {
       res.status(402).json(quota);
       return;
@@ -283,12 +343,11 @@ router.post("/:id/submit", requireAuth, async (req, res) => {
       hiddenNames.has(r.name) ? { ...r, detail: r.passed ? "" : "Hidden test failed" } : r
     );
 
-    const alreadySolved = await prisma.bugSubmission.findFirst({
-      where: { userId, challengeId: challenge.id, verdict: "ACCEPTED" },
-      select: { id: true },
-    });
+    const firstSolve = result.verdict === "ACCEPTED" && !alreadySolved;
+    const awardedXp = firstSolve ? BUG_XP : 0;
 
-    await prisma.bugSubmission.create({
+    // The submission row, the XP and the stats land together or not at all.
+    const submissionCreate = prisma.bugSubmission.create({
       data: {
         userId,
         challengeId: challenge.id,
@@ -299,39 +358,48 @@ router.post("/:id/submit", requireAuth, async (req, res) => {
         timeTakenSecs: typeof timeTakenSecs === "number" ? Math.max(0, Math.round(timeTakenSecs)) : null,
       },
     });
+    if (firstSolve) {
+      await prisma.$transaction([
+        submissionCreate,
+        prisma.user.update({
+          where: { id: userId },
+          data: {
+            xp: { increment: BUG_XP },
+            bugsXp: { increment: BUG_XP },
+            // Rating climbs with every first fix — powers the tier bar
+            rating: { increment: BUG_XP },
+          },
+        }),
+        prisma.userStats.upsert({
+          where: { userId },
+          update: { bugsFixed: { increment: 1 }, lastActive: new Date() },
+          create: { userId, bugsFixed: 1 },
+        }),
+      ]);
+    } else {
+      await submissionCreate;
+    }
 
+    res.json({ ...result, results: publicResults, awardedXp, firstSolve });
+
+    // ── After the response ──────────────────────────────────────────
     // The dashboard aggregate is cached; this submission just changed it.
     invalidateDashboard(userId);
 
     // If this fix landed inside a duel, the duel is decided right here — the
     // Kumite never waits for the client to tell it what the judge already knows.
-    await settleDuelForSubmission(
+    settleDuelForSubmission(
       userId,
       { challengeId: challenge.id },
       { verdict: result.verdict, passed: result.passedTests, total: result.totalTests },
-    );
-
-    let awardedXp = 0;
-    if (result.verdict === "ACCEPTED" && !alreadySolved) {
-      awardedXp = BUG_XP;
-      await prisma.user.update({
-        where: { id: userId },
-        data: {
-          xp: { increment: BUG_XP },
-          bugsXp: { increment: BUG_XP },
-          // Rating climbs with every first fix — powers the tier bar
-          rating: { increment: BUG_XP },
-        },
-      });
-      await prisma.userStats.upsert({
-        where: { userId },
-        update: { bugsFixed: { increment: 1 }, lastActive: new Date() },
-        create: { userId, bugsFixed: 1 },
-      });
-    }
-
-    res.json({ ...result, results: publicResults, awardedXp, firstSolve: result.verdict === "ACCEPTED" && !alreadySolved });
+    ).catch((err) => console.error("POST /api/bug-challenges/:id/submit — duel settlement failed:", err));
   } catch (err) {
+    // The verdict may already be on its way; the bookkeeping after it must
+    // not be able to answer twice.
+    if (res.headersSent) {
+      console.error("POST /api/bug-challenges/:id/submit — after-response error:", err);
+      return;
+    }
     if (isEngineDown(err)) {
       console.error("POST /api/bug-challenges/:id/submit — engine down:", err.message);
       res.status(503).json({ error: ENGINE_DOWN_MESSAGE, engineDown: true });
