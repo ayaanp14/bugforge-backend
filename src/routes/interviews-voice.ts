@@ -429,7 +429,21 @@ router.post("/session/:sessionId/voice/complete", requireAuth, async (req: any, 
       questionsScored: stored.length,
     });
   } catch (error: any) {
-    console.error("[voice] completion failed:", error?.message);
+    // The message alone was not enough to diagnose this from Railway logs: a
+    // failure here can come from the breakdown call, the question write or the
+    // report call, and they read alike. The session id is what makes the row
+    // findable afterwards, and Prisma's `code` separates a database problem
+    // (P1001/P2024 — this shared host aborts connections constantly) from a
+    // model one.
+    console.error(
+      `[voice] completion failed for ${sessionId}:`,
+      JSON.stringify({
+        name: error?.name,
+        code: error?.code,
+        message: error?.message,
+        stack: String(error?.stack ?? "").split("\n").slice(0, 4).join(" | "),
+      }),
+    );
     res.status(500).json({ error: "Failed to close the voice interview" });
   }
 });
