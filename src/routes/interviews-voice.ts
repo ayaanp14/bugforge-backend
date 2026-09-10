@@ -383,29 +383,44 @@ router.post("/session/:sessionId/voice/complete", requireAuth, async (req: any, 
 
     // The rows the rest of the product already knows how to read. Written after
     // the fact, but shaped exactly like the ones a typed round writes as it goes.
-    await prisma.$transaction(
-      questions.map((q, index) =>
-        prisma.mockInterviewQuestion.upsert({
-          where: { sessionId_orderIndex: { sessionId: session.id, orderIndex: index } },
-          update: {},
-          create: {
-            sessionId: session.id,
-            orderIndex: index,
-            questionText: q.question,
-            userAnswer: q.answer,
-            topic: q.topic,
-            difficulty: q.difficulty,
-            focusArea: q.focusArea,
-            expectedSkills: q.expectedSkills,
-            evaluationScore: q.score,
-            verdict: q.verdict,
-            feedback: q.feedback,
-            missed: q.missed,
-            status: "evaluated",
-          },
-        }),
-      ),
-    );
+    //
+    // One statement, not one per question. This was a $transaction of N upserts,
+    // which is N sequential round trips to a database ~500ms away: a thirteen
+    // question breakdown spent 5806ms inside a transaction Prisma expires at
+    // 5000ms, and the rollback could not run on the expired transaction either
+    // (P2028), so a single row survived and the round was stranded "started"
+    // with a torn write behind it. It only ever passed locally because a
+    // localhost database answers in well under a millisecond.
+    //
+    // Any rows here belong to an attempt that failed — a round that succeeded
+    // returned at the `completed` check above — and the breakdown is a model
+    // call, so a retry produces different questions. Keeping the survivors of
+    // the last attempt would score a report against two different breakdowns
+    // spliced together, so the slate is cleared first. One extra round trip.
+    await prisma.mockInterviewQuestion.deleteMany({ where: { sessionId: session.id } });
+
+    // `skipDuplicates` keeps exactly the old semantics — the upserts declared
+    // `update: {}`, so an existing row was already left untouched — and makes a
+    // retry after a partial write safe. One INSERT is atomic on its own, so the
+    // transaction wrapper is not replaced by anything.
+    await prisma.mockInterviewQuestion.createMany({
+      data: questions.map((q, index) => ({
+        sessionId: session.id,
+        orderIndex: index,
+        questionText: q.question,
+        userAnswer: q.answer,
+        topic: q.topic,
+        difficulty: q.difficulty,
+        focusArea: q.focusArea,
+        expectedSkills: q.expectedSkills,
+        evaluationScore: q.score,
+        verdict: q.verdict,
+        feedback: q.feedback,
+        missed: q.missed,
+        status: "evaluated",
+      })),
+      skipDuplicates: true,
+    });
 
     const stored = await prisma.mockInterviewQuestion.findMany({
       where: { sessionId: session.id, status: "evaluated" },
