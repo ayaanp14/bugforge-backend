@@ -159,8 +159,17 @@ export const OWNER_PLAN: Plan = {
   ],
 };
 
-/** The creator's address is always an owner; OWNER_EMAILS adds more, comma-separated. */
-const DEFAULT_OWNER_EMAILS = ["ayaanpathan14@gmail.com"];
+/**
+ * Addresses that are always owners; OWNER_EMAILS adds more, comma-separated.
+ *
+ * Kept in code rather than only in the environment so the same accounts are
+ * owners locally, in CI and in production without a dashboard step — an owner
+ * who is one only on Railway is an owner nobody can test against.
+ *
+ * Lower-case entries only: ownerEmails() lower-cases the env additions but not
+ * these, and isOwnerEmail() compares against a lower-cased input.
+ */
+const DEFAULT_OWNER_EMAILS = ["ayaanpathan14@gmail.com", "kingsenterprises1414@gmail.com"];
 
 export function ownerEmails(env: NodeJS.ProcessEnv = process.env): Set<string> {
   const extra = (env["OWNER_EMAILS"] ?? "")
