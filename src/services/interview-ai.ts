@@ -628,6 +628,37 @@ function hedged<T>(label: string, run: (controller: AbortController) => Promise<
   });
 }
 
+/**
+ * A question call, with the main model as a safety net.
+ *
+ * The question model is the one piece of configuration that can be pointed at
+ * an arbitrary model name, and getting it wrong used to be fatal: a model the
+ * account cannot serve answers 404, `openInterview` throws, and /start returns
+ * 500 for every candidate until someone notices. That is far too much blast
+ * radius for a latency optimisation.
+ *
+ * So a failure here costs a slow turn rather than a broken interview: whatever
+ * went wrong — unavailable model, a refusal, JSON it could not hold to — the
+ * question is asked again on the model that writes everything else. The error
+ * is logged either way, so a misconfiguration is loud in the logs instead of
+ * silently doubling every turn's latency.
+ */
+async function askQuestion<S extends z.ZodType>(
+  messages: InputItem[],
+  schema: S,
+  name: string,
+): Promise<{ parsed: z.infer<S>; usage: Usage }> {
+  if (QUESTION_MODEL === MODEL) return ask(messages, schema, name);
+  try {
+    return await ask(messages, schema, name, MAX_OUTPUT_TOKENS, QUESTION_MODEL);
+  } catch (error: any) {
+    console.error(
+      `[interview] ${name} failed on ${QUESTION_MODEL} (${error?.message}) — retrying on ${MODEL}`,
+    );
+    return ask(messages, schema, name, MAX_OUTPUT_TOKENS, MODEL);
+  }
+}
+
 /** Strips ```json fences a chatty model wraps its JSON in. */
 function unfence(text: string) {
   const fenced = text.match(/```(?:json)?\s*([\s\S]*?)```/i);
@@ -735,7 +766,7 @@ async function ask<S extends z.ZodType>(
 export async function openInterview(config: InterviewConfig, budget: number, wantsCode: boolean) {
   const input = prefix(config, budget, []);
   input.push({ role: "user", content: "Begin the interview. Ask question 1." });
-  const { parsed, usage } = await ask(input, questionSchema(wantsCode), "first_turn", MAX_OUTPUT_TOKENS, QUESTION_MODEL);
+  const { parsed, usage } = await askQuestion(input, questionSchema(wantsCode), "first_turn");
   return { question: parsed.question as InterviewQuestion, usage };
 }
 
@@ -805,7 +836,7 @@ export async function askNextQuestion(
       // Every token generated here is a token the candidate waits through.
       `Keep the question itself to one to three sentences.`,
   });
-  const { parsed, usage } = await ask(input, questionSchema(wantsCode), "next_question", MAX_OUTPUT_TOKENS, QUESTION_MODEL);
+  const { parsed, usage } = await askQuestion(input, questionSchema(wantsCode), "next_question");
   return { nextQuestion: parsed.question as InterviewQuestion, usage };
 }
 
@@ -842,7 +873,7 @@ export async function prefetchQuestion(
       `since you cannot yet know how the current answer goes. ` +
       `Keep the question itself to one to three sentences.`,
   });
-  const { parsed, usage } = await ask(input, questionSchema(wantsCode), "prefetch_question", MAX_OUTPUT_TOKENS, QUESTION_MODEL);
+  const { parsed, usage } = await askQuestion(input, questionSchema(wantsCode), "prefetch_question");
   return { nextQuestion: parsed.question as InterviewQuestion, usage };
 }
 
