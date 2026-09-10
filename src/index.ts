@@ -576,6 +576,43 @@ app.get("/health", (_req, res) => {
   res.json({ status: "ok", timestamp: new Date().toISOString() });
 });
 
+/**
+ * The last word on any error no route handled.
+ *
+ * Express 5 forwards a rejected promise from any handler here automatically,
+ * and its built-in handler answers 500 while printing nothing when NODE_ENV is
+ * production. That is how `/voice/complete` could return 500 with no trace of
+ * it in the Railway logs at all — the failure was real, the record of it was
+ * not. Every unhandled error in the API had the same blind spot; this closes
+ * it for all of them rather than for one route.
+ *
+ * The response body stays deliberately vague: the detail belongs in the log,
+ * not in something a caller can read.
+ */
+app.use((err: any, req: express.Request, res: express.Response, _next: express.NextFunction) => {
+  console.error(
+    `[unhandled] ${req.method} ${req.originalUrl}:`,
+    JSON.stringify({
+      name: err?.name,
+      // Prisma puts its P-codes here, which separates a database failure from
+      // anything else at a glance.
+      code: err?.code,
+      message: err?.message ?? String(err),
+      stack: String(err?.stack ?? "").split("\n").slice(0, 6).join(" | "),
+    }),
+  );
+  if (res.headersSent) return;
+  res.status(500).json({ error: "Internal server error" });
+});
+
+/**
+ * A rejection nobody awaited would otherwise take the process down silently
+ * under Node's default, losing every in-flight interview with it.
+ */
+process.on("unhandledRejection", (reason: any) => {
+  console.error("[unhandledRejection]", reason?.stack ?? reason?.message ?? String(reason));
+});
+
 httpServer.listen(PORT, () => {
   // Open the cache connection now so the first real request does not pay for it,
   // and start honouring invalidations published by other instances.
