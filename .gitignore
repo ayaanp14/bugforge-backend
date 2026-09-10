@@ -28,3 +28,6 @@ tmp/
 .env.test.local
 .env.production.local
 .env*.local
+
+# Benchmark scratch — local tooling, not part of the build.
+scratch/

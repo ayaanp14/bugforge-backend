@@ -30,6 +30,24 @@ const BASE_URL = process.env.NVIDIA_BASE_URL || "https://integrate.api.nvidia.co
 const MODEL = process.env.INTERVIEW_MODEL || "nvidia/nemotron-3-super-120b-a12b";
 
 /**
+ * The model that writes questions, which is the only model on the critical
+ * path.
+ *
+ * Marking and the report are generated behind the response — the candidate is
+ * reading or typing while they run, and nothing waits on them. Writing the
+ * next question is different: when the prefetch has not landed by the time an
+ * answer arrives, `/answer` blocks on this call and the candidate watches a
+ * spinner for however long it takes.
+ *
+ * Those two jobs do not need the same model. Scoring an answer against a
+ * rubric is the hard one and keeps the large model; asking the next question
+ * from a transcript is comparatively light, and a smaller model answers it
+ * several times faster. Unset, this is the main model and behaviour is
+ * unchanged — set INTERVIEW_QUESTION_MODEL to split them.
+ */
+const QUESTION_MODEL = process.env.INTERVIEW_QUESTION_MODEL || MODEL;
+
+/**
  * Nemotron decodes at roughly twenty tokens a second on the free tier, so a
  * long reply legitimately takes a minute. The ceiling exists for the request
  * that has stopped moving altogether, not for the slow one.
@@ -52,13 +70,17 @@ const RATE = {
  * ignores it — so for those we ask for JSON in the prompt and validate the
  * reply ourselves. Set INTERVIEW_STRUCTURED_OUTPUTS=off to force that path.
  */
-const STRUCTURED_OUTPUTS = (() => {
+function structuredOutputsFor(model: string): boolean {
   const flag = (process.env.INTERVIEW_STRUCTURED_OUTPUTS || "auto").toLowerCase();
   if (flag === "on") return true;
   if (flag === "off") return false;
   // Known not to enforce a schema. Everything else is assumed to.
-  return !/nemotron-3-ultra|nemotron-3\.5-lightning/i.test(MODEL);
-})();
+  return !/nemotron-3-ultra|nemotron-3\.5-lightning/i.test(model);
+}
+
+/** Resolved per model: the question model may enforce schemas when the marking
+ *  model does not, or the other way round. */
+const STRUCTURED_OUTPUTS = structuredOutputsFor(MODEL);
 
 /* ── the NVIDIA client ─────────────────────────────────────────────────── */
 
@@ -173,8 +195,11 @@ function responseFormat(schema: z.ZodType, name: string) {
 export function providerInfo() {
   return {
     model: MODEL,
+    questionModel: QUESTION_MODEL,
+    split: QUESTION_MODEL !== MODEL,
     baseUrl: BASE_URL,
     structuredOutputs: STRUCTURED_OUTPUTS,
+    questionStructuredOutputs: structuredOutputsFor(QUESTION_MODEL),
     free: RATE.input === 0 && RATE.output === 0,
   };
 }
@@ -635,8 +660,11 @@ async function ask<S extends z.ZodType>(
   name: string,
   /** Overrides the shared ceiling for the rare call that writes far more. */
   maxTokens = MAX_OUTPUT_TOKENS,
+  /** Which model answers. Questions use the fast one; everything else the main. */
+  model: string = MODEL,
 ): Promise<{ parsed: z.infer<S>; usage: Usage }> {
-  const outgoing: InputItem[] = STRUCTURED_OUTPUTS
+  const structured = model === MODEL ? STRUCTURED_OUTPUTS : structuredOutputsFor(model);
+  const outgoing: InputItem[] = structured
     ? messages
     : [
         ...messages,
@@ -649,11 +677,11 @@ async function ask<S extends z.ZodType>(
       ];
 
   const request = {
-    model: MODEL,
+    model,
     messages: outgoing,
     max_completion_tokens: maxTokens,
     ...(REASONING_EFFORT === "default" ? {} : { reasoning_effort: REASONING_EFFORT }),
-    ...(STRUCTURED_OUTPUTS ? { response_format: responseFormat(schema, name) } : {}),
+    ...(structured ? { response_format: responseFormat(schema, name) } : {}),
   };
 
   const startedAt = Date.now();
@@ -669,7 +697,7 @@ async function ask<S extends z.ZodType>(
     const ms = Date.now() - startedAt;
     const out = response.usage?.completion_tokens ?? 0;
     console.log(
-      `[interview] ${name} ${ms}ms | out=${out} in=${response.usage?.prompt_tokens ?? 0}` +
+      `[interview] ${name} ${ms}ms via ${model} | out=${out} in=${response.usage?.prompt_tokens ?? 0}` +
         ` cached=${response.usage?.prompt_tokens_details?.cached_tokens ?? 0}` +
         ` | ${out && ms ? (out / (ms / 1000)).toFixed(1) : "?"} tok/s`,
     );
@@ -707,7 +735,7 @@ async function ask<S extends z.ZodType>(
 export async function openInterview(config: InterviewConfig, budget: number, wantsCode: boolean) {
   const input = prefix(config, budget, []);
   input.push({ role: "user", content: "Begin the interview. Ask question 1." });
-  const { parsed, usage } = await ask(input, questionSchema(wantsCode), "first_turn");
+  const { parsed, usage } = await ask(input, questionSchema(wantsCode), "first_turn", MAX_OUTPUT_TOKENS, QUESTION_MODEL);
   return { question: parsed.question as InterviewQuestion, usage };
 }
 
@@ -777,7 +805,7 @@ export async function askNextQuestion(
       // Every token generated here is a token the candidate waits through.
       `Keep the question itself to one to three sentences.`,
   });
-  const { parsed, usage } = await ask(input, questionSchema(wantsCode), "next_question");
+  const { parsed, usage } = await ask(input, questionSchema(wantsCode), "next_question", MAX_OUTPUT_TOKENS, QUESTION_MODEL);
   return { nextQuestion: parsed.question as InterviewQuestion, usage };
 }
 
@@ -814,7 +842,7 @@ export async function prefetchQuestion(
       `since you cannot yet know how the current answer goes. ` +
       `Keep the question itself to one to three sentences.`,
   });
-  const { parsed, usage } = await ask(input, questionSchema(wantsCode), "prefetch_question");
+  const { parsed, usage } = await ask(input, questionSchema(wantsCode), "prefetch_question", MAX_OUTPUT_TOKENS, QUESTION_MODEL);
   return { nextQuestion: parsed.question as InterviewQuestion, usage };
 }
 
