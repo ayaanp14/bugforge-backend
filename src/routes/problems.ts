@@ -5,7 +5,7 @@ import { requireAuth, optionalAuth, adminOnly } from "../middleware/auth.js";
 import { cachedShared, invalidate } from "../lib/cache.js";
 import { browserCache } from "../lib/http-cache.js";
 import { getCatalogue, listProblemsWithStatus, loadProblemState, type ProblemState } from "../services/dashboard.js";
-import { COMPANY_TAGS } from "../lib/companies.js";
+import { isCompanyTag } from "../lib/companies.js";
 
 const router = Router();
 
@@ -233,23 +233,37 @@ router.get("/", optionalAuth, browserCache(60), async (req, res) => {
 });
 
 /**
- * GET /api/problems/companies — every hiring company in the catalogue with how
- * many published problems carry its tag, most-asked first. Counted over the
- * in-memory catalogue (already held for the dashboard), so no round trip.
- * Declared before /:slug so the path is not read as a problem slug.
+ * How many published problems carry each tag that passes `keep`, most-used
+ * first. Counted over the in-memory catalogue (already held for the
+ * dashboard), so neither chip strip costs a round trip.
  */
+async function countTags(keep: (tag: string) => boolean): Promise<Array<{ name: string; count: number }>> {
+  const catalogue = await getCatalogue();
+  const counts = new Map<string, number>();
+  for (const row of catalogue) {
+    const tags = Array.isArray(row.tags) ? (row.tags as string[]) : [];
+    for (const t of tags) if (keep(t)) counts.set(t, (counts.get(t) ?? 0) + 1);
+  }
+  return [...counts.entries()]
+    .map(([name, count]) => ({ name, count }))
+    .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
+}
+
+// The two chip strips on the catalogue page. Both are declared before /:slug
+// so the paths are not read as problem slugs. Tags split cleanly in two: a
+// tag is a hiring company or it is a topic ("Array", "Bit Manipulation").
+router.get("/topics", browserCache(300, { shared: true }), async (_req, res) => {
+  try {
+    res.json(await countTags((t) => !isCompanyTag(t)));
+  } catch (err) {
+    console.error("GET /api/problems/topics error:", err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 router.get("/companies", browserCache(300, { shared: true }), async (_req, res) => {
   try {
-    const catalogue = await getCatalogue();
-    const counts = new Map<string, number>();
-    for (const row of catalogue) {
-      const tags = Array.isArray(row.tags) ? (row.tags as string[]) : [];
-      for (const t of tags) if (COMPANY_TAGS.includes(t)) counts.set(t, (counts.get(t) ?? 0) + 1);
-    }
-    const companies = [...counts.entries()]
-      .map(([name, count]) => ({ name, count }))
-      .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
-    res.json(companies);
+    res.json(await countTags(isCompanyTag));
   } catch (err) {
     console.error("GET /api/problems/companies error:", err);
     res.status(500).json({ error: "Internal server error" });
