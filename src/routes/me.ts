@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { requireAuth } from "../middleware/auth.js";
+import { isAdminEmail, requireAuth } from "../middleware/auth.js";
 import { prisma } from "../lib/prisma.js";
 import { getHeatmap, getSubmissionHistory, getPairingHistory, getDifficultyStats, getRank, getDashboard, invalidateDashboard } from "../services/dashboard.js";
 import { ensureBaseline, listNotifications, getUnreadCount, markAllRead } from "../services/notifications.js";
@@ -147,7 +147,9 @@ router.get("/", requireAuth, async (req, res) => {
       return;
     }
 
-    res.json({ ...payload, unreadNotifications });
+    // Derived from the token's email, not cached with the payload: whether the
+    // account menu shows "Admin" must not lag a change to ADMIN_EMAIL.
+    res.json({ ...payload, unreadNotifications, isAdmin: isAdminEmail(req.user!.email) });
   } catch (err) {
     console.error("GET /api/me error:", err);
     res.status(500).json({ error: "Internal server error" });
@@ -160,8 +162,29 @@ router.patch("/", requireAuth, async (req, res) => {
   const { 
     username, instituteName, avatar_url, name, 
     gender, location, birthday, website, 
-    github, linkedin, twitter, readme 
+    github, linkedin, twitter, readme,
+    remindStreak, remindDailyKata, weeklyDigest,
   } = req.body;
+
+  // Reminder switches: a boolean or absent. Anything else is a bad request
+  // rather than a silently coerced "true".
+  const flag = (value: unknown, field: string): boolean | undefined | { error: string } => {
+    if (value === undefined) return undefined;
+    if (typeof value !== "boolean") return { error: `${field} must be true or false.` };
+    return value;
+  };
+  const flags = {
+    remindStreak: flag(remindStreak, "remindStreak"),
+    remindDailyKata: flag(remindDailyKata, "remindDailyKata"),
+    weeklyDigest: flag(weeklyDigest, "weeklyDigest"),
+  };
+  for (const value of Object.values(flags)) {
+    if (value && typeof value === "object") {
+      res.status(400).json({ error: value.error });
+      return;
+    }
+  }
+  const prefs = flags as Record<keyof typeof flags, boolean | undefined>;
 
   // Every field is optional, but a field that is sent has a shape. They used
   // to be written as received: a non-string `username` reached `.length` and
@@ -247,6 +270,9 @@ router.patch("/", requireAuth, async (req, res) => {
         linkedin: or(clean.linkedin),
         twitter: or(clean.twitter),
         readme: or(clean.readme),
+        remindStreak: prefs.remindStreak,
+        remindDailyKata: prefs.remindDailyKata,
+        weeklyDigest: prefs.weeklyDigest,
       },
     });
 

@@ -1,6 +1,7 @@
 import type { Request, Response, NextFunction } from "express";
 import { readSessionToken, SESSION_COOKIE } from "../lib/auth-session.js";
 import { isSessionRevoked } from "../lib/session-revocation.js";
+import { isOwnerEmail } from "../lib/plans.js";
 
 /**
  * The session token on a request: the Authorization header first (required
@@ -72,18 +73,28 @@ export async function optionalAuth(
   next();
 }
 
+/**
+ * Who may open the admin panel and its routes: the ADMIN_EMAIL account, and
+ * the owner accounts from lib/plans (the creators, who already bypass every
+ * quota — there is no sense in an account that is exempt from billing but
+ * cannot read the billing table). Case-insensitive: addresses are lower-cased
+ * at registration now, and a token minted before that (or an ADMIN_EMAIL typed
+ * with a capital) must not lock the admin out of their own routes.
+ */
+export function isAdminEmail(email: string | null | undefined, env: NodeJS.ProcessEnv = process.env): boolean {
+  if (!email) return false;
+  const normalised = email.trim().toLowerCase();
+  const adminEmail = (env["ADMIN_EMAIL"] ?? "").trim().toLowerCase();
+  return (adminEmail !== "" && normalised === adminEmail) || isOwnerEmail(normalised, env);
+}
+
 export function adminOnly(
   req: Request,
   res: Response,
   next: NextFunction
 ): void {
-  const adminEmail = (process.env["ADMIN_EMAIL"] ?? "ADMIN_NOT_SET").trim().toLowerCase();
-
-  // Case-insensitive: addresses are lower-cased at registration now, and a
-  // token minted before that (or an ADMIN_EMAIL typed with a capital) must
-  // not lock the admin out of their own routes.
-  if (!req.user || (req.user.email ?? "").trim().toLowerCase() !== adminEmail) {
-    console.warn(`Admin access denied for: ${req.user?.email}. Required: ${adminEmail}`);
+  if (!req.user || !isAdminEmail(req.user.email)) {
+    console.warn(`Admin access denied for: ${req.user?.email}`);
     res.status(403).json({ error: "Forbidden — Admin access required" });
     return;
   }

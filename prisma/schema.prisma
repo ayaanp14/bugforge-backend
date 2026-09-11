@@ -72,6 +72,13 @@ model User {
   linkedin           String?                @db.Text
   twitter            String?                @db.Text
   readme             String?                @db.Text
+  /// Reminder channels the account has left on. Booleans rather than a Json
+  /// blob because the reminder jobs filter on them in SQL: "everyone with a
+  /// live streak who has not opted out" must be one indexed query, not a scan
+  /// that parses every row's preferences.
+  remindStreak       Boolean                @default(true)
+  remindDailyKata    Boolean                @default(true)
+  weeklyDigest       Boolean                @default(true)
   accounts           Account[]
   bugSubmissions     BugSubmission[]
   codeDrafts         CodeDraft[]
@@ -1071,4 +1078,88 @@ model DailyContestEntry {
   @@index([contestId, penaltySec])
   /// Month standings sum points over a date range.
   @@index([date, points])
+}
+
+// ── Telemetry: what breaks, and what gets used ───────────────────────────
+//
+// Both tables are written fire-and-forget and read only by the admin panel.
+// They are our own rather than a hosted error tracker for two reasons: the
+// SPA's CSP whitelists exactly one origin for connect-src (the API), so a
+// third-party ingest would mean opening it; and a row per occurrence costs
+// nothing while the numbers are small, which they are. If volume ever makes
+// this the wrong shape, the write sites are lib/telemetry.ts on the API and
+// lib/telemetry.ts in the SPA — two files, not a codebase.
+
+/// One error, wherever it happened: an unhandled route error or a 5xx on the
+/// API, an uncaught exception or a render crash in the browser.
+model ErrorReport {
+  id          String   @id @default(cuid())
+  /// "api" | "web" | "android"
+  source      String   @db.VarChar(16)
+  /// "unhandled" | "response" | "rejection" | "window" | "render" | "chunk"
+  kind        String   @db.VarChar(24)
+  message     String   @db.Text
+  stack       String?  @db.Text
+  /// Route or page the error surfaced on.
+  path        String?  @db.VarChar(512)
+  /// SHA-1 of source + kind + the message with numbers and ids stripped +
+  /// the first stack frame. Groups repeats of the same defect, which is what
+  /// the panel lists; an individual occurrence is one row under it.
+  fingerprint String   @db.VarChar(40)
+  /// Plain column, not a relation: an error must outlive the account it hit.
+  userId      String?
+  userAgent   String?  @db.VarChar(512)
+  /// Deploy identifier when the client knows one (the Vercel commit sha).
+  release     String?  @db.VarChar(64)
+  /// Anything else worth keeping: HTTP status, the component stack, a request id.
+  meta        Json?
+  createdAt   DateTime @default(now())
+
+  /// The panel: groups over a window, then that group's recent occurrences.
+  @@index([createdAt])
+  @@index([fingerprint, createdAt])
+  @@index([source, createdAt])
+}
+
+/// One thing a person did: a page view, a submit, a checkout started.
+model AppEvent {
+  id        String   @id @default(cuid())
+  /// Snake-case verb, e.g. "page_view", "submit", "checkout_start".
+  name      String   @db.VarChar(64)
+  /// Plain column (see ErrorReport.userId).
+  userId    String?
+  /// Anonymous per-tab id, so a visitor's steps line up before they sign in.
+  sessionId String?  @db.VarChar(40)
+  /// Where it happened, with ids replaced by their route pattern
+  /// ("/challenges/:slug") so a hundred problems are one row on the chart.
+  path      String?  @db.VarChar(512)
+  /// "web" | "android" | "api" (server-side events such as a granted subscription)
+  platform  String   @default("web") @db.VarChar(16)
+  props     Json?
+  createdAt DateTime @default(now())
+
+  /// Daily actives are a DISTINCT over (userId) in a date range; feature use
+  /// is a GROUP BY name in the same range.
+  @@index([createdAt])
+  @@index([name, createdAt])
+  @@index([userId, createdAt])
+}
+
+/// One execution of a scheduled job (lib/scheduler.ts).
+///
+/// The id is `<job>:<period>` — "streak_at_risk:2026-09-11" — and inserting it
+/// is how a run is claimed: the primary key refuses a second instance that
+/// wakes in the same window, so the table is both the lock and the log. No
+/// Redis needed, and a restart mid-window does not send everything twice.
+model JobRun {
+  id         String    @id @db.VarChar(80)
+  job        String    @db.VarChar(40)
+  period     String    @db.VarChar(32)
+  startedAt  DateTime  @default(now())
+  finishedAt DateTime?
+  /// What the run did, for the panel: rows notified, mails sent, and so on.
+  result     Json?
+  error      String?   @db.Text
+
+  @@index([job, startedAt])
 }

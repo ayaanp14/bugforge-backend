@@ -152,6 +152,36 @@ export async function createNotificationOnce(userId: string, input: Notification
   return job;
 }
 
+/**
+ * The one-shot rule applied to many users at once, for the reminder jobs.
+ *
+ * `createNotificationOnce` is two round trips per user; a job that touches a
+ * thousand accounts against a ~500 ms database would run for the better part
+ * of twenty minutes. This asks once who already has the type (a dated type,
+ * "streak_at_risk_2026-09-11", so a job re-run for the same day writes
+ * nothing) and inserts the rest in one statement. Returns the ids that were
+ * newly written — the ones an email should follow.
+ */
+export async function createNotificationsOnce(
+  type: string,
+  rows: Array<{ userId: string; title: string; body: string; href?: string | null }>,
+): Promise<string[]> {
+  if (rows.length === 0) return [];
+  const ids = rows.map((r) => r.userId);
+  const existing = await prisma.notification.findMany({
+    where: { type, userId: { in: ids } },
+    select: { userId: true },
+  });
+  const done = new Set(existing.map((e) => e.userId));
+  const fresh = rows.filter((r) => !done.has(r.userId));
+  if (fresh.length === 0) return [];
+  await prisma.notification.createMany({
+    data: fresh.map((r) => ({ userId: r.userId, type, title: r.title, body: r.body, href: r.href ?? null })),
+  });
+  for (const r of fresh) invalidateUnread(r.userId);
+  return fresh.map((r) => r.userId);
+}
+
 export function listNotifications(userId: string, limit = 30) {
   return prisma.notification.findMany({
     where: { userId },

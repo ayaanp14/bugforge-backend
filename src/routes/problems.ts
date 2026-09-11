@@ -29,7 +29,7 @@ const problemKey = (slug: string) => `problem:v1:${slug}`;
 const editorialKey = (slug: string) => `problem:editorial:v1:${slug}`;
 
 /** After any admin write, so the next reader sees the edit rather than the TTL. */
-function invalidateProblem(slug: string): void {
+export function invalidateProblem(slug: string): void {
   invalidate(problemKey(slug));
   invalidate(editorialKey(slug));
   // The catalogue carries titles, tags and difficulty, all of which an edit can

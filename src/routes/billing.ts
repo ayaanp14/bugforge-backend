@@ -5,12 +5,13 @@ import { requireAuth } from "../middleware/auth.js";
 import {
   PLANS,
   isPaidPlan,
-  periodEnd,
   planFor,
   priceOf,
   tierOf,
   type BillingPeriod,
 } from "../lib/plans.js";
+import { applyWebhookEvent, grantAccess } from "../services/billing.js";
+import { trackServerEvent } from "../lib/telemetry.js";
 import { entitlementFor } from "../services/entitlements.js";
 import { browserCache } from "../lib/http-cache.js";
 import {
@@ -171,6 +172,8 @@ router.post("/checkout", requireAuth, async (req: any, res) => {
       data: { paymentSessionId: created.paymentSessionId },
     });
 
+    trackServerEvent("checkout_order_created", { planId: plan.id, period, amount }, user.id);
+
     res.json({
       orderId,
       paymentSessionId: created.paymentSessionId,
@@ -190,76 +193,8 @@ router.post("/checkout", requireAuth, async (req: any, res) => {
 });
 
 /* ── granting access ───────────────────────────────────────────────────── */
-
-/**
- * Marks an order paid and extends the subscription.
- *
- * Idempotent by design. Cashfree may deliver the same webhook more than once,
- * and the return handler races it — so the first writer flips the row out of
- * "created" inside a transaction, and every later caller sees a row that is
- * already paid and does nothing. Without that, one payment could grant two
- * months.
- *
- * A period is *extended* rather than replaced when one is already running, so
- * renewing early never destroys time the user has paid for.
- *
- * "failed" is claimable too. A Cashfree order outlives a single payment
- * attempt: a declined card sends a FAILED webhook, the buyer retries on the
- * same order and pays, and a SUCCESS webhook follows. Claiming only from
- * "created" meant that second webhook matched nothing, no subscription was
- * written, and /verify — seeing the gateway say PAID — told the buyer their
- * plan was active. Paid, no access.
- */
-async function grantAccess(orderId: string, paymentId: string | null, raw: unknown): Promise<boolean> {
-  const claimed = await prisma.paymentOrder.updateMany({
-    where: { id: orderId, status: { in: ["created", "failed"] } },
-    data: { status: "paid", providerPaymentId: paymentId, raw: (raw ?? {}) as object },
-  });
-
-  // Someone else already processed this order.
-  if (claimed.count === 0) return false;
-
-  const order = await prisma.paymentOrder.findUnique({ where: { id: orderId } });
-  if (!order) return false;
-
-  const now = new Date();
-  const existing = await prisma.subscription.findFirst({
-    where: { userId: order.userId, status: "active", currentPeriodEnd: { gt: now } },
-    orderBy: { currentPeriodEnd: "desc" },
-  });
-
-  const period = order.period as BillingPeriod;
-
-  if (existing && existing.planId === order.planId) {
-    // Same plan again: add another period to the end of the current one.
-    await prisma.subscription.update({
-      where: { id: existing.id },
-      data: { currentPeriodEnd: periodEnd(existing.currentPeriodEnd, period), orderId },
-    });
-    return true;
-  }
-
-  // A different plan supersedes whatever is running. The remaining time on the
-  // old one is not refunded here — an upgrade mid-period is a product decision,
-  // and silently discarding it in a webhook is not the place to make it.
-  if (existing) {
-    await prisma.subscription.update({ where: { id: existing.id }, data: { status: "cancelled" } });
-  }
-
-  await prisma.subscription.create({
-    data: {
-      userId: order.userId,
-      planId: order.planId,
-      period,
-      status: "active",
-      startedAt: now,
-      currentPeriodEnd: periodEnd(now, period),
-      orderId,
-    },
-  });
-
-  return true;
-}
+// grantAccess and applyWebhookEvent live in services/billing.ts so the money
+// path is testable without a database; this file only verifies and parses.
 
 /**
  * @route   POST /api/billing/webhook
@@ -292,29 +227,8 @@ router.post("/webhook", async (req, res) => {
   res.json({ received: true });
 
   try {
-    if (event.orderId && event.paymentStatus === "SUCCESS") {
-      const granted = await grantAccess(event.orderId, event.paymentId, event);
-      console.log(`[billing] webhook ${event.type} order=${event.orderId} granted=${granted}`);
-    } else if (event.orderId && event.paymentStatus === "FAILED") {
-      await prisma.paymentOrder.updateMany({
-        where: { id: event.orderId, status: "created" },
-        data: { status: "failed", raw: (event ?? {}) as object },
-      });
-    } else if (event.orderId && event.refundStatus === "SUCCESS") {
-      // Money went back: whatever this order bought stops. These events were
-      // logged and ignored, so a refunded month stayed active to its end.
-      const [orders, subscriptions] = await Promise.all([
-        prisma.paymentOrder.updateMany({
-          where: { id: event.orderId, status: "paid" },
-          data: { status: "refunded", raw: (event ?? {}) as object },
-        }),
-        prisma.subscription.updateMany({
-          where: { orderId: event.orderId, status: "active" },
-          data: { status: "cancelled" },
-        }),
-      ]);
-      console.log(`[billing] refund on order=${event.orderId}: orders=${orders.count} subscriptions=${subscriptions.count}`);
-    }
+    const outcome = await applyWebhookEvent(prisma, event);
+    console.log(`[billing] webhook ${event.type} order=${event.orderId} → ${outcome}`);
   } catch (error: any) {
     console.error("[billing] webhook processing failed:", error?.message);
   }
@@ -345,7 +259,7 @@ router.post("/orders/:orderId/verify", requireAuth, async (req: any, res) => {
     const remote = await fetchOrder(order.id);
 
     if (remote.status === "PAID") {
-      const granted = await grantAccess(order.id, null, remote.raw);
+      const granted = await grantAccess(prisma, order.id, null, remote.raw);
       if (granted) return res.json({ status: "paid", planId: order.planId });
       // The gateway says paid but nothing here would take the claim: the row
       // is in a state grantAccess does not own (a concurrent webhook won the

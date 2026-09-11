@@ -24,6 +24,8 @@ import feedbackRouter from "./routes/feedback.js";
 import aptitudeRouter from "./routes/aptitude.js";
 import mockTestsRouter from "./routes/mock-tests.js";
 import contestsRouter from "./routes/contests.js";
+import eventsRouter from "./routes/events.js";
+import adminRouter from "./routes/admin.js";
 import { todayContest } from "./services/daily-contest.js";
 import { optionalAuth } from "./middleware/auth.js";
 import { platformGuard } from "./middleware/platformGuard.js";
@@ -37,6 +39,9 @@ import { encodeCode } from "./lib/obfuscation.js";
 import { generateRecoveryCode } from "./lib/room-codes.js";
 import { readSessionToken, cookieFromHeader, SESSION_COOKIE } from "./lib/auth-session.js";
 import { isSessionRevoked } from "./lib/session-revocation.js";
+import { describeError, errorTelemetry, noteRequestError, reportError } from "./lib/telemetry.js";
+import { startScheduler } from "./lib/scheduler.js";
+import { registerReminderJobs } from "./services/reminders.js";
 
 const app = express();
 const httpServer = createServer(app);
@@ -682,6 +687,14 @@ app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 
 /**
+ * Every 5xx this API answers becomes an ErrorReport row, with the error the
+ * route logged attached (see lib/telemetry.ts). After the parsers so a body
+ * that fails to parse is reported by the final handler below with its status,
+ * not here as a bare 400.
+ */
+app.use(errorTelemetry);
+
+/**
  * Guessing a credential is the attack these limits exist for, so they are
  * mounted ahead of the auth routes rather than inside them. Asking for a code
  * is limited harder still, because it also sends mail in our name.
@@ -713,6 +726,8 @@ app.use("/api/feedback", feedbackRouter);
 app.use("/api/aptitude", aptitudeRouter);
 app.use("/api/tests", mockTestsRouter);
 app.use("/api/contests", contestsRouter);
+app.use("/api/events", eventsRouter);
+app.use("/api/admin", adminRouter);
 app.use("/api", executionRouter); 
 
 // GET /api/username-check (Public, non-NextAuth)
@@ -777,6 +792,8 @@ app.get("/health", (_req, res) => {
  * not in something a caller can read.
  */
 app.use((err: any, req: express.Request, res: express.Response, _next: express.NextFunction) => {
+  // The 5xx hook reads this back when the response finishes.
+  noteRequestError(err);
   console.error(
     `[unhandled] ${req.method} ${req.originalUrl}:`,
     JSON.stringify({
@@ -810,6 +827,8 @@ app.use((err: any, req: express.Request, res: express.Response, _next: express.N
  */
 process.on("unhandledRejection", (reason: any) => {
   console.error("[unhandledRejection]", reason?.stack ?? reason?.message ?? String(reason));
+  const described = describeError(reason);
+  reportError({ source: "api", kind: "rejection", message: described.message, stack: described.stack, meta: { name: described.name, code: described.code } });
 });
 
 httpServer.listen(PORT, () => {
@@ -824,6 +843,9 @@ httpServer.listen(PORT, () => {
   const materialiseToday = () => todayContest().catch((err) => console.error("daily contest:", err));
   void materialiseToday();
   setInterval(materialiseToday, 10 * 60_000).unref();
+  // The reminder jobs (streak at risk, today's kata, the weekly digest).
+  registerReminderJobs();
+  startScheduler();
   console.log(`🚀 Backend & WebSocket running on port: ${PORT}`);
   console.log(`   Auth:   POST /api/auth/login`);
   console.log(`   Me:     GET /api/me`);
