@@ -19,5 +19,15 @@ export function emitToRoom(room: string, event: string, payload?: unknown): void
   }
 }
 
+/** How many sockets are in a room right now; 0 when there is no server. */
+export async function socketsInRoom(room: string): Promise<number> {
+  try {
+    return io ? (await io.in(room).fetchSockets()).length : 0;
+  } catch (err) {
+    console.error(`socketsInRoom(${room}) failed:`, err);
+    return 0;
+  }
+}
+
 /** The socket.io room every participant of a duel listens on. */
 export const duelRoom = (duelId: string) => `duel:${duelId}`;

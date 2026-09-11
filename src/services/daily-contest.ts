@@ -226,6 +226,13 @@ export async function recordContestSubmission(
   }
 
   if (verdict !== "ACCEPTED") {
+    // A build failure never ran against a case, so it says nothing about the
+    // answer; charging five minutes for a missing semicolon is not what the
+    // penalty is for (and no contest platform does). Wrong answers, crashes
+    // and timeouts still count.
+    if (verdict === "COMPILATION_ERROR") {
+      return { date: contest.date, solved: false, timeTakenSec: null, wrongAttempts: entry.wrongAttempts ?? 0, rank: null, points: 0 };
+    }
     const bumped = await prisma.dailyContestEntry.update({
       where: { contestId_userId: key },
       data: { wrongAttempts: { increment: 1 } },

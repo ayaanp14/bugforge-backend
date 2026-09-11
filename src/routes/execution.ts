@@ -364,56 +364,75 @@ router.post("/submit", requireAuth, executionLimiter, async (req, res) => {
     const [prevSolved, stats] = await history;
 
     // Award XP and update stats if first ACCEPTED solve
-    const firstSolve = verdict === "ACCEPTED" && !prevSolved;
     const xpMap: Record<string, number> = { easy: 10, medium: 20, hard: 30 };
-    const awardedXp = firstSolve ? (xpMap[problem.difficulty.toLowerCase()] ?? 10) : 0;
+    const prize = xpMap[problem.difficulty.toLowerCase()] ?? 10;
     const streak = nextStreak(stats);
 
+    const submissionData = {
+      userId,
+      problemId,
+      roomId: pairRoomId, // Link to the pairing room if applicable
+      code,
+      language: language as string,
+      verdict,
+      runtimeMs: maxRuntime,
+      memoryKb: maxMemory,
+      passedCases,
+      totalCases,
+    };
+
     // The submission row, the XP and the streak land together or not at all.
-    const submissionCreate = prisma.submission.create({
-      data: {
-        userId,
-        problemId,
-        roomId: pairRoomId, // Link to the pairing room if applicable
-        code,
-        language: language as string,
-        verdict,
-        runtimeMs: maxRuntime,
-        memoryKb: maxMemory,
-        passedCases,
-        totalCases,
-      },
-    });
-    const [submission] = firstSolve
-      ? await prisma.$transaction([
-          submissionCreate,
-          prisma.user.update({
-            where: { id: userId },
-            data: {
-              xp: { increment: awardedXp },
-              questionsXp: { increment: awardedXp },
-              // Rating climbs with every first solve — powers the tier bar
-              rating: { increment: awardedXp },
-            },
-          }),
-          prisma.userStats.upsert({
-            where: { userId },
-            update: {
-              problemsSolved: { increment: 1 },
-              currentStreak: streak.currentStreak,
-              longestStreak: streak.longestStreak,
-              lastActive: new Date(),
-            },
-            create: {
-              userId,
-              problemsSolved: 1,
-              currentStreak: 1,
-              longestStreak: 1,
-              lastActive: new Date(),
-            },
-          }),
-        ])
-      : await prisma.$transaction([submissionCreate]);
+    //
+    // The "was this the first solve" read above overlapped the engine run,
+    // which is fine for every submission but the one racing another accepted
+    // submission from the same account (two tabs, a double-click that beat
+    // the button). Both used to be paid. When a payout is on the table the
+    // user's row is locked and the question asked once more under the lock,
+    // so exactly one of them pays.
+    let firstSolve = false;
+    let submission: { id: string; submittedAt: Date };
+    if (verdict === "ACCEPTED" && !prevSolved) {
+      const outcome = await prisma.$transaction(async (tx) => {
+        await tx.$queryRaw`SELECT id FROM \`User\` WHERE id = ${userId} FOR UPDATE`;
+        const already = await tx.submission.findFirst({
+          where: { userId, problemId, verdict: "ACCEPTED" },
+          select: { id: true },
+        });
+        const row = await tx.submission.create({ data: submissionData });
+        if (already) return { row, paid: false };
+        await tx.user.update({
+          where: { id: userId },
+          data: {
+            xp: { increment: prize },
+            questionsXp: { increment: prize },
+            // Rating climbs with every first solve — powers the tier bar
+            rating: { increment: prize },
+          },
+        });
+        await tx.userStats.upsert({
+          where: { userId },
+          update: {
+            problemsSolved: { increment: 1 },
+            currentStreak: streak.currentStreak,
+            longestStreak: streak.longestStreak,
+            lastActive: new Date(),
+          },
+          create: {
+            userId,
+            problemsSolved: 1,
+            currentStreak: 1,
+            longestStreak: 1,
+            lastActive: new Date(),
+          },
+        });
+        return { row, paid: true };
+      });
+      submission = outcome.row;
+      firstSolve = outcome.paid;
+    } else {
+      submission = await prisma.submission.create({ data: submissionData });
+    }
+    const awardedXp = firstSolve ? prize : 0;
 
     // The daily contest hears about the verdict before the response, not
     // after it like the duel: the workspace shows the rank and the clock in

@@ -61,18 +61,38 @@ function extractMentions(text: string): string[] {
  * Either branch is a write the unread badge has to hear about — its count is
  * held in-process (see services/notifications) and would otherwise lag.
  */
+const notifyInFlight = new Map<string, Promise<void>>();
+
 async function notifyOnce(input: { userId: string; type: string; title: string; body: string; href: string }) {
-  const existing = await prisma.notification.findFirst({
-    where: { userId: input.userId, type: input.type, href: input.href, isRead: false },
-    select: { id: true },
-  });
-  if (existing) {
-    await prisma.notification.update({ where: { id: existing.id }, data: { title: input.title, body: input.body, createdAt: new Date() } });
+  // Two likes landing in the same instant both found no row and both wrote
+  // one; the second waits for the first and then takes the update branch.
+  const key = `${input.userId}:${input.type}:${input.href}`;
+  const pending = notifyInFlight.get(key);
+  if (pending) await pending.catch(() => undefined);
+
+  const write = async () => {
+    const existing = await prisma.notification.findFirst({
+      where: { userId: input.userId, type: input.type, href: input.href, isRead: false },
+      select: { id: true },
+    });
+    if (existing) {
+      await prisma.notification.update({ where: { id: existing.id }, data: { title: input.title, body: input.body, createdAt: new Date() } });
+      invalidateUnread(input.userId);
+      return;
+    }
+    await prisma.notification.create({ data: { ...input } });
     invalidateUnread(input.userId);
-    return;
+  };
+
+  // Registered before it is awaited, and released only if it is still the
+  // registered one — a later caller may have replaced it while this ran.
+  const job = write();
+  notifyInFlight.set(key, job);
+  try {
+    await job;
+  } finally {
+    if (notifyInFlight.get(key) === job) notifyInFlight.delete(key);
   }
-  await prisma.notification.create({ data: { ...input } });
-  invalidateUnread(input.userId);
 }
 
 /** The most people one post or comment can notify at once. */

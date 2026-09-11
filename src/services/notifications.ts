@@ -113,19 +113,43 @@ export async function createNotification(userId: string, input: NotificationInpu
   }
 }
 
+/**
+ * One-shot creates in flight, by (user, type).
+ *
+ * The check-then-create below has no unique index behind it (the row's
+ * (userId, type) is an index, not a constraint, because most types repeat),
+ * so two concurrent first calls — StrictMode's doubled effect, two tabs on
+ * one instance — both saw nothing and both inserted a "welcome". Single-
+ * flighting the pair per key closes the race on the instance, which is where
+ * it happens; a second instance is a second copy at worst, not a flood.
+ */
+const oneShotInFlight = new Map<string, Promise<unknown>>();
+
 /** Create only if the user has never received a notification of this type. */
 export async function createNotificationOnce(userId: string, input: NotificationInput) {
-  try {
-    const existing = await prisma.notification.findFirst({
-      where: { userId, type: input.type },
-      select: { id: true },
-    });
-    if (existing) return null;
-    return await createNotification(userId, input);
-  } catch (err) {
-    console.error(`createNotificationOnce(${input.type}) error:`, err);
+  const key = `${userId}:${input.type}`;
+  const pending = oneShotInFlight.get(key);
+  if (pending) {
+    await pending.catch(() => undefined);
     return null;
   }
+  const job = (async () => {
+    try {
+      const existing = await prisma.notification.findFirst({
+        where: { userId, type: input.type },
+        select: { id: true },
+      });
+      if (existing) return null;
+      return await createNotification(userId, input);
+    } catch (err) {
+      console.error(`createNotificationOnce(${input.type}) error:`, err);
+      return null;
+    } finally {
+      oneShotInFlight.delete(key);
+    }
+  })();
+  oneShotInFlight.set(key, job);
+  return job;
 }
 
 export function listNotifications(userId: string, limit = 30) {

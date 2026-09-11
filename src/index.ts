@@ -286,8 +286,20 @@ io.on("connection", (socket) => {
   if (socket.data.userId) socket.join(`user_${socket.data.userId}`);
 
   // ── Kumite: one room per duel, so /api/duels can push straight to both sides
-  socket.on("join-duel", (duelId: string) => {
-    if (typeof duelId === "string" && duelId) socket.join(duelRoom(duelId));
+  //
+  // Seated warriors only. The room carries the live scoreboard and the
+  // "opponent is submitting" nudges; any socket used to be able to subscribe
+  // to any duel by id and watch a stranger's fight tick by.
+  socket.on("join-duel", async (duelId: string) => {
+    if (typeof duelId !== "string" || !duelId) return;
+    const userId = socket.data.userId;
+    if (!userId) return;
+    try {
+      const seat = await prisma.duelParticipant.findFirst({ where: { duelId, userId }, select: { id: true } });
+      if (seat) socket.join(duelRoom(duelId));
+    } catch (err) {
+      console.error("join-duel error:", err);
+    }
   });
   socket.on("leave-duel", (duelId: string) => {
     if (typeof duelId === "string" && duelId) socket.leave(duelRoom(duelId));

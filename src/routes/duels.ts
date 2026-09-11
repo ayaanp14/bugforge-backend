@@ -78,11 +78,38 @@ function publishedIds(kind: string): Promise<string[]> {
       );
 }
 
-/** Pick the arena: a random published problem, or a random published hunt. */
-async function pickTarget(kind: string): Promise<{ problemId?: string; challengeId?: string } | null> {
+/**
+ * Pick the arena: a random published problem, or a random published hunt —
+ * never one a seated warrior has already solved. A draw that landed on a
+ * kata one side had an accepted submission for was over in one click (their
+ * saved draft is the solution); the other side never had a chance. Falls
+ * back to the whole catalogue only when every arena has been solved.
+ */
+async function pickTarget(kind: string, participantIds: string[] = []): Promise<{ problemId?: string; challengeId?: string } | null> {
   const ids = await publishedIds(kind);
   if (ids.length === 0) return null;
-  const id = ids[Math.floor(Math.random() * ids.length)];
+
+  let solved = new Set<string>();
+  if (participantIds.length > 0) {
+    if (kind === "bug") {
+      const rows = await prisma.bugSubmission.findMany({
+        where: { userId: { in: participantIds }, verdict: "ACCEPTED" },
+        select: { challengeId: true },
+        distinct: ["challengeId"],
+      });
+      solved = new Set(rows.map((r) => r.challengeId));
+    } else {
+      const rows = await prisma.submission.findMany({
+        where: { userId: { in: participantIds }, verdict: "ACCEPTED" },
+        select: { problemId: true },
+        distinct: ["problemId"],
+      });
+      solved = new Set(rows.map((r) => r.problemId));
+    }
+  }
+  const fresh = ids.filter((id) => !solved.has(id));
+  const pool = fresh.length > 0 ? fresh : ids;
+  const id = pool[Math.floor(Math.random() * pool.length)];
   return kind === "bug" ? { challengeId: id } : { problemId: id };
 }
 
@@ -98,7 +125,7 @@ async function startIfFull(duel: DuelWithParticipants) {
   if (duel.status !== "waiting") return null;
   if (duel.participants.length < capacityOf(duel.mode)) return null;
 
-  const target = await pickTarget(duel.kind);
+  const target = await pickTarget(duel.kind, duel.participants.map((p) => p.userId));
   if (!target) return null;
 
   const claimed = await prisma.duel.updateMany({
@@ -147,7 +174,10 @@ async function takeSeat(duelId: string, userId: string, rating: number): Promise
       // Taking the last seat of a public duel starts the fight in the same
       // write as the band; a private room waits for everyone to press Ready.
       const full = ratings.length >= capacity;
-      const target = full && duel.visibility === "public" ? await pickTarget(duel.kind) : null;
+      const target =
+        full && duel.visibility === "public"
+          ? await pickTarget(duel.kind, [...duel.participants.map((p) => p.userId), userId])
+          : null;
 
       await tx.duelParticipant.create({ data: { duelId, userId, team } });
       await tx.duel.update({

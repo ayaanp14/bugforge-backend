@@ -204,10 +204,29 @@ export function priceOf(plan: Plan, period: BillingPeriod): number {
   return period === "yearly" ? plan.yearly : plan.monthly;
 }
 
-/** How long a paid period runs. Months are calendar months, not 30 days. */
+/**
+ * Where a plan sits in the ladder — its position in PLANS, so the order the
+ * pricing page shows is the order the tiers rank in. Used to refuse a
+ * checkout that would replace a running plan with a lesser one.
+ */
+export function tierOf(id: string | null | undefined): number {
+  return PLANS.findIndex((plan) => plan.id === id);
+}
+
+/**
+ * How long a paid period runs. Months are calendar months, not 30 days.
+ *
+ * Clamped to the month: `setMonth(+1)` from 31 January landed on 3 March,
+ * so a subscription bought at the end of a month ran three days short of
+ * the next one. A month from the 31st is now the last day of the next month.
+ */
 export function periodEnd(from: Date, period: BillingPeriod): Date {
   const end = new Date(from);
+  const day = end.getDate();
+  end.setDate(1);
   if (period === "yearly") end.setFullYear(end.getFullYear() + 1);
   else end.setMonth(end.getMonth() + 1);
+  const lastDay = new Date(end.getFullYear(), end.getMonth() + 1, 0).getDate();
+  end.setDate(Math.min(day, lastDay));
   return end;
 }

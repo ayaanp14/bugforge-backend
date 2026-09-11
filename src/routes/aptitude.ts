@@ -270,9 +270,20 @@ router.post("/questions/:slug/attempt", requireAuth, async (req: any, res) => {
     const usedHints = Number.isInteger(body["usedHints"]) ? Math.max(0, Math.min(4, body["usedHints"] as number)) : 0;
 
     const correct = selected !== null && selected === question.answer;
-    await prisma.aptitudeAttempt.create({
-      data: { userId, questionId: question.id, selected, correct, timeSec, usedHints },
+
+    // The same answer to the same question inside a few seconds is a retry
+    // — the response was lost on the way back and the client asked again —
+    // not a second attempt. It used to become a second row, inflating the
+    // attempt count and the topic stats.
+    const recent = await prisma.aptitudeAttempt.findFirst({
+      where: { userId, questionId: question.id, selected, createdAt: { gte: new Date(Date.now() - 10_000) } },
+      select: { id: true },
     });
+    if (!recent) {
+      await prisma.aptitudeAttempt.create({
+        data: { userId, questionId: question.id, selected, correct, timeSec, usedHints },
+      });
+    }
 
     res.status(201).json({
       correct,
@@ -280,7 +291,7 @@ router.post("/questions/:slug/attempt", requireAuth, async (req: any, res) => {
       answer: question.answer,
       solution: question.solution,
       approach: question.approach,
-      attempts: priorAttempts + 1,
+      attempts: recent ? priorAttempts : priorAttempts + 1,
     });
   } catch (error: any) {
     console.error("Aptitude attempt error:", error?.message);

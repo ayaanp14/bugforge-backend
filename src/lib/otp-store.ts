@@ -1,5 +1,6 @@
 import * as crypto from "crypto";
 import { JWT_SECRET } from "./secrets.js";
+import { redisDel, redisGetJSON, redisSetJSON } from "./redis.js";
 
 /**
  * One-time codes for password reset.
@@ -18,10 +19,11 @@ import { JWT_SECRET } from "./secrets.js";
  * attempt counter, so the only way to find the code is to guess it online
  * against a limit.
  *
- * This is process-local, which is the same scope the previous active-token map
- * had. It is correct for a single instance; running more than one would need
- * this moved to Redis or a table, and a candidate could otherwise land on an
- * instance that has never heard of their challenge.
+ * The map is process-local and is the fast path. Every challenge is also
+ * mirrored into Redis (when there is one) for its five-minute life, so a
+ * redeploy mid-reset — or a second instance — does not turn a code the user
+ * is holding into "invalid or expired". Redis is optional infrastructure
+ * here as everywhere: without it the behaviour is exactly the old one.
  */
 
 /** Codes live five minutes, matching what the email tells the user. */
@@ -67,6 +69,37 @@ const challenges = new Map<string, Challenge>();
 /** So a second request for the same address retires the first code. */
 const latestForEmail = new Map<string, string>();
 
+/** The Redis mirror: the same record, MAC as base64 for JSON. */
+interface StoredChallenge {
+  email: string | null;
+  otpMac: string;
+  expiresAt: number;
+  attempts: number;
+}
+const redisKey = (token: string) => `otp:v1:${token}`;
+
+function mirror(token: string, challenge: Challenge): void {
+  const ttl = Math.max(1, Math.ceil((challenge.expiresAt - Date.now()) / 1000));
+  const stored: StoredChallenge = {
+    email: challenge.email,
+    otpMac: challenge.otpMac.toString("base64"),
+    expiresAt: challenge.expiresAt,
+    attempts: challenge.attempts,
+  };
+  void redisSetJSON(redisKey(token), stored, ttl);
+}
+
+async function recall(token: string): Promise<Challenge | null> {
+  const stored = await redisGetJSON<StoredChallenge>(redisKey(token));
+  if (!stored || typeof stored.otpMac !== "string") return null;
+  return {
+    email: stored.email ?? null,
+    otpMac: Buffer.from(stored.otpMac, "base64"),
+    expiresAt: Number(stored.expiresAt) || 0,
+    attempts: Number(stored.attempts) || 0,
+  };
+}
+
 function sweep(now: number): void {
   for (const [token, challenge] of challenges) {
     if (challenge.expiresAt <= now) {
@@ -93,11 +126,16 @@ export async function issueChallenge(email: string | null, otp: string): Promise
   sweep(now);
 
   const token = crypto.randomBytes(32).toString("base64url");
-  challenges.set(token, { email, otpMac: macOf(token, otp), expiresAt: now + TTL_MS, attempts: 0 });
+  const challenge: Challenge = { email, otpMac: macOf(token, otp), expiresAt: now + TTL_MS, attempts: 0 };
+  challenges.set(token, challenge);
+  mirror(token, challenge);
 
   if (email) {
     const previous = latestForEmail.get(email);
-    if (previous) challenges.delete(previous);
+    if (previous) {
+      challenges.delete(previous);
+      void redisDel(redisKey(previous));
+    }
     latestForEmail.set(email, token);
   }
   return token;
@@ -115,14 +153,26 @@ export async function consumeChallenge(token: string, otp: string): Promise<Chal
   const now = Date.now();
   sweep(now);
 
-  const challenge = challenges.get(token);
+  // Not in this process (a restart, another instance): the mirror may
+  // still have it. Adopted into the map so the attempt count is tracked
+  // here from now on.
+  let challenge = challenges.get(token);
+  if (!challenge) {
+    const recalled = await recall(token);
+    if (recalled) {
+      challenge = recalled;
+      challenges.set(token, challenge);
+    }
+  }
   if (!challenge) return { ok: false, reason: "unknown" };
   if (challenge.expiresAt <= now) {
     challenges.delete(token);
+    void redisDel(redisKey(token));
     return { ok: false, reason: "expired" };
   }
   if (challenge.attempts >= MAX_ATTEMPTS) {
     challenges.delete(token);
+    void redisDel(redisKey(token));
     return { ok: false, reason: "exhausted" };
   }
 
@@ -134,12 +184,19 @@ export async function consumeChallenge(token: string, otp: string): Promise<Chal
   // A challenge for an unknown address can never succeed, but it is compared
   // anyway so the work done — and the time taken — does not give it away.
   if (!matches || !challenge.email) {
-    if (challenge.attempts >= MAX_ATTEMPTS) challenges.delete(token);
+    if (challenge.attempts >= MAX_ATTEMPTS) {
+      challenges.delete(token);
+      void redisDel(redisKey(token));
+    } else {
+      // The guess budget follows the record, not the process.
+      mirror(token, challenge);
+    }
     return { ok: false, reason: "mismatch" };
   }
 
   challenges.delete(token);
   latestForEmail.delete(challenge.email);
+  void redisDel(redisKey(token));
   return { ok: true, email: challenge.email };
 }
 

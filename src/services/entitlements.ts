@@ -27,20 +27,42 @@ export interface Entitlement {
   usage: Usage;
 }
 
-/** Monday 00:00 local. A "week" the candidate recognises, not a rolling 168h. */
+/**
+ * The clock the quotas run on.
+ *
+ * "Come back tomorrow" and "come back on Monday" mean the candidate's
+ * tomorrow and Monday. The windows used to roll at the server's midnight —
+ * UTC on Railway — which is 05:30 in India, where the product is sold (the
+ * prices are in rupees): a bug hunt used at 6 am was not back until 5:30 the
+ * next morning. Fixed to IST rather than read per user, so the same instant
+ * is the same day for everyone and the count queries stay one range.
+ */
+const QUOTA_UTC_OFFSET_MS = Number(process.env["QUOTA_UTC_OFFSET_MINUTES"] ?? 330) * 60_000;
+
+/** The instant's calendar fields in the quota zone. */
+function zoned(now: Date): Date {
+  return new Date(now.getTime() + QUOTA_UTC_OFFSET_MS);
+}
+
+/** Back from zone-local fields to the real instant. */
+function unzoned(local: Date): Date {
+  return new Date(local.getTime() - QUOTA_UTC_OFFSET_MS);
+}
+
+/** Monday 00:00 in the quota zone. A "week" the candidate recognises, not a rolling 168h. */
 export function weekStart(now = new Date()): Date {
-  const start = new Date(now);
-  // getDay() is 0 for Sunday, which belongs to the week that began six days ago.
-  const offset = (start.getDay() + 6) % 7;
-  start.setDate(start.getDate() - offset);
-  start.setHours(0, 0, 0, 0);
-  return start;
+  const start = zoned(now);
+  // getUTCDay() is 0 for Sunday, which belongs to the week that began six days ago.
+  const offset = (start.getUTCDay() + 6) % 7;
+  start.setUTCDate(start.getUTCDate() - offset);
+  start.setUTCHours(0, 0, 0, 0);
+  return unzoned(start);
 }
 
 export function dayStart(now = new Date()): Date {
-  const start = new Date(now);
-  start.setHours(0, 0, 0, 0);
-  return start;
+  const start = zoned(now);
+  start.setUTCHours(0, 0, 0, 0);
+  return unzoned(start);
 }
 
 /**

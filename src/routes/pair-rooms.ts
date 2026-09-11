@@ -3,7 +3,7 @@ import { prisma } from "../lib/prisma.js";
 import { encodeCode, decodeCode } from "../lib/obfuscation.js";
 import { generateInviteCode } from "../lib/room-codes.js";
 import { requireAuth } from "../middleware/auth.js";
-import { emitToRoom } from "../lib/realtime.js";
+import { emitToRoom, socketsInRoom } from "../lib/realtime.js";
 
 const router = Router();
 
@@ -38,6 +38,31 @@ const LOBBY_WINDOW_MS = 24 * 60 * 60 * 1000;
 
 /** The most rooms the lobby lists at once. */
 const LOBBY_TAKE = 50;
+
+/**
+ * How long a room may sit with nobody connected before a read closes it.
+ *
+ * The socket layer closes a room twenty seconds after its last socket
+ * leaves — but that timer lives in the process, so a restart with rooms
+ * mid-grace left them "active" for good, and a room whose sockets never
+ * arrived (the host created it and closed the tab) was never closed at all.
+ * Lazily, on read, in the same spirit as duels: nobody looks, nobody minds;
+ * the moment somebody does, a room that has been empty for this long is over.
+ */
+const EMPTY_ROOM_TTL_MS = 60 * 60 * 1000;
+
+async function closeIfAbandoned<T extends { id: string; status: string; startedAt: Date | null; endedAt: Date | null }>(room: T): Promise<T> {
+  if (room.status === "closed") return room;
+  const since = room.startedAt?.getTime() ?? 0;
+  if (Date.now() - since < EMPTY_ROOM_TTL_MS) return room;
+  if ((await socketsInRoom(room.id)) > 0) return room;
+  const endedAt = new Date();
+  await prisma.pairRoom.updateMany({
+    where: { id: room.id, status: { not: "closed" } },
+    data: { status: "closed", endedAt },
+  });
+  return { ...room, status: "closed", endedAt };
+}
 
 // GET /api/pair-rooms — List active pair programming rooms
 router.get("/", requireAuth, async (_req, res) => {
@@ -137,7 +162,7 @@ router.get("/:id", requireAuth, async (req, res) => {
   const id = req.params.id as string;
 
   try {
-    const room = await prisma.pairRoom.findUnique({
+    const found = await prisma.pairRoom.findUnique({
       where: { id },
       include: {
         creator: {
@@ -154,9 +179,10 @@ router.get("/:id", requireAuth, async (req, res) => {
       }
     });
 
-    if (!room) {
+    if (!found) {
       return res.status(404).json({ error: "Room not found" });
     }
+    const room = await closeIfAbandoned(found);
 
     // Security: only expose the codes to the host/creator. The invite code
     // used to ride along for everyone — a guest could read it out of the
@@ -196,7 +222,7 @@ router.post("/:id/join", requireAuth, async (req, res) => {
     }
     // A closed room stays closed. Joining one by URL used to seat the caller
     // and, if they were the second person, flip it back to "active".
-    if (room.status === "closed") {
+    if ((await closeIfAbandoned(room)).status === "closed") {
       return res.status(410).json({ error: "This room has ended" });
     }
 

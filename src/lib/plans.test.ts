@@ -114,6 +114,15 @@ describe("periodEnd", () => {
     assert.ok(end < new Date("2026-03-10T10:00:00Z"));
   });
 
+  it("clamps to the last day of a shorter month rather than rolling into the next", () => {
+    const end = periodEnd(new Date("2026-01-31T10:00:00Z"), "monthly");
+    assert.equal(end.getMonth(), 1); // February, not March
+    assert.equal(end.getDate(), 28);
+    const fromMarch = periodEnd(new Date("2026-03-31T10:00:00Z"), "monthly");
+    assert.equal(fromMarch.getMonth(), 3);
+    assert.equal(fromMarch.getDate(), 30);
+  });
+
   it("adds a year for a yearly period", () => {
     const end = periodEnd(new Date("2026-05-10T00:00:00Z"), "yearly");
     assert.equal(end.getFullYear(), 2027);
@@ -126,27 +135,28 @@ describe("periodEnd", () => {
   });
 });
 
+// The windows are anchored to IST (UTC+05:30) whatever the server's zone, so
+// the expectations are written as instants rather than local fields.
 describe("quota windows", () => {
-  it("starts the week on Monday", () => {
-    // A Wednesday.
-    const start = weekStart(new Date("2026-09-09T15:00:00"));
-    assert.equal(start.getDay(), 1);
-    assert.equal(start.getHours(), 0);
-    assert.equal(start.getMinutes(), 0);
+  it("starts the week on Monday 00:00 IST", () => {
+    // A Wednesday afternoon in India.
+    const start = weekStart(new Date("2026-09-09T15:00:00+05:30"));
+    assert.equal(start.toISOString(), new Date("2026-09-07T00:00:00+05:30").toISOString());
   });
 
   it("puts Sunday in the week that began six days earlier, not a new one", () => {
-    const sunday = new Date("2026-09-13T23:00:00");
+    const sunday = new Date("2026-09-13T23:00:00+05:30");
     const start = weekStart(sunday);
-    assert.equal(start.getDay(), 1);
     // Monday the 7th, not the 14th.
-    assert.equal(start.getDate(), 7);
+    assert.equal(start.toISOString(), new Date("2026-09-07T00:00:00+05:30").toISOString());
   });
 
-  it("starts the day at local midnight", () => {
-    const start = dayStart(new Date("2026-09-09T23:59:00"));
-    assert.equal(start.getHours(), 0);
-    assert.equal(start.getDate(), 9);
+  it("starts the day at IST midnight, not the server's", () => {
+    const start = dayStart(new Date("2026-09-09T23:59:00+05:30"));
+    assert.equal(start.toISOString(), new Date("2026-09-09T00:00:00+05:30").toISOString());
+    // 01:00 IST is still 19:30 UTC the day before; the window must not have rolled.
+    const early = dayStart(new Date("2026-09-10T01:00:00+05:30"));
+    assert.equal(early.toISOString(), new Date("2026-09-10T00:00:00+05:30").toISOString());
   });
 });
 

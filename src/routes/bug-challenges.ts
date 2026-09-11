@@ -393,7 +393,12 @@ router.post("/:id/submit", requireAuth, executionLimiter, async (req, res) => {
         verdict: result.verdict,
         passedTests: result.passedTests,
         totalTests: result.totalTests,
-        timeTakenSecs: typeof timeTakenSecs === "number" ? Math.max(0, Math.round(timeTakenSecs)) : null,
+        // Client-reported (there is no server-side timer for hunts), so at
+        // least bounded: a day, not whatever number was typed into the request.
+        timeTakenSecs:
+          typeof timeTakenSecs === "number" && Number.isFinite(timeTakenSecs)
+            ? Math.min(24 * 3600, Math.max(0, Math.round(timeTakenSecs)))
+            : null,
       },
     });
     if (firstSolve) {

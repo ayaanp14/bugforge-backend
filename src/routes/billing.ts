@@ -8,6 +8,7 @@ import {
   periodEnd,
   planFor,
   priceOf,
+  tierOf,
   type BillingPeriod,
 } from "../lib/plans.js";
 import { entitlementFor } from "../services/entitlements.js";
@@ -121,6 +122,24 @@ router.post("/checkout", requireAuth, async (req: any, res) => {
       select: { id: true, name: true, email: true },
     });
     if (!user) return res.status(404).json({ error: "Account not found" });
+
+    // A running higher plan is not replaced by a lesser one. grantAccess
+    // cancels whatever is active when a different plan is paid for, with no
+    // proration — so a Pro subscriber who clicked Starter by mistake would
+    // have paid to lose what they had. Renewing the same plan, or moving up,
+    // is fine; moving down waits until the current period ends.
+    const running = await prisma.subscription.findFirst({
+      where: { userId: user.id, status: "active", currentPeriodEnd: { gt: new Date() } },
+      orderBy: { currentPeriodEnd: "desc" },
+      select: { planId: true, currentPeriodEnd: true },
+    });
+    if (running && tierOf(plan.id) < tierOf(running.planId)) {
+      return res.status(409).json({
+        error: `You are on ${planFor(running.planId).name} until ${running.currentPeriodEnd.toDateString()}. A lower plan can be chosen once it ends.`,
+        currentPlanId: running.planId,
+        currentPeriodEnd: running.currentPeriodEnd,
+      });
+    }
 
     // Our id, not the gateway's: the row exists before the gateway is told
     // anything, so a webhook for an unknown order is rejected rather than
