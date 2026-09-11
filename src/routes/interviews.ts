@@ -839,7 +839,9 @@ router.post("/session/:sessionId/answer", requireAuth, async (req: any, res) => 
 
 /**
  * @route   POST /api/interviews/session/:sessionId/complete
- * @desc    Close the session and build its report
+ * @desc    Close the session and build its report. Answers with the same
+ *          payload as GET /session/:id (plus `abandoned` / `alreadyCompleted`),
+ *          which is what the report route renders.
  * @access  Private
  *
  * Every number here is computed from rows already on disk. The model is only
@@ -856,6 +858,62 @@ const completing = new Map<string, Promise<CompleteOutcome>>();
 
 type CompleteOutcome = { status: number; body: Record<string, unknown> };
 
+/** The rows the closing step and the report route both read. */
+function loadSessionRows(sessionId: string) {
+  return prisma.mockInterviewSession.findUnique({
+    where: { id: sessionId },
+    include: { savedInterview: true, questions: { orderBy: { orderIndex: "asc" } } },
+  });
+}
+type SessionRows = NonNullable<Awaited<ReturnType<typeof loadSessionRows>>>;
+
+/**
+ * A session as the report route reads it: the row, the questions that were
+ * asked (marks withheld while the round is live), the setup, and the report
+ * once there is one. Closing a round answers with this same shape, so the
+ * client can put the response straight into the cache behind the report
+ * route and paint it on arrival instead of fetching the rows it was just
+ * sent — one MySQL round trip (~500 ms from Railway) and one skeleton fewer
+ * at the moment the candidate is waiting for a score.
+ */
+function sessionPayload(session: SessionRows) {
+  // A prefetched question has been written but not asked. It is on disk only
+  // so that submitting an answer is instant, and handing it out here would
+  // let a candidate read the rest of the interview out of the network tab.
+  const asked = session.questions.filter((q) => q.status !== "prefetched");
+
+  // While the interview is still live the stored scores stay server-side —
+  // resuming a session must not hand back the marks for answers already
+  // given. They are released together with the report once it closes.
+  const live = session.status !== "completed";
+  const questions = live
+    ? asked.map((q) => ({
+        ...q,
+        evaluationScore: null,
+        feedback: null,
+        verdict: null,
+        missed: [],
+      }))
+    : asked;
+
+  // The list travels once, at the top level — that is what both the web and
+  // the mobile client read. `session` used to carry a second, nested copy of
+  // the same rows (each with a MediumText answer), doubling every report load.
+  const { questions: stored, ...sessionRow } = session;
+
+  return {
+    session: sessionRow,
+    questions,
+    language: languageFor(configFrom(session.savedInterview)),
+    setup: configFrom(session.savedInterview),
+    status: session.status,
+    completedAt: session.completedAt,
+    startedAt: session.createdAt,
+    report: session.status === "completed" ? reportOf(session, stored) : null,
+    progress: { asked: asked.length, total: session.questionBudget },
+  };
+}
+
 async function completeWrittenSession(sessionId: string, userId: string): Promise<CompleteOutcome> {
   // A turn hands back its question before its mark is written, so the last
   // one or two answers may still be scoring when the candidate closes the
@@ -863,20 +921,14 @@ async function completeWrittenSession(sessionId: string, userId: string): Promis
   // than starting a second copy of it below.
   await settleMarking(sessionId);
 
-  let session = await prisma.mockInterviewSession.findUnique({
-    where: { id: sessionId },
-    include: {
-      savedInterview: true,
-      questions: { orderBy: { orderIndex: "asc" } },
-    },
-  });
+  let session = await loadSessionRows(sessionId);
 
   if (!session) return { status: 404, body: { error: "Session not found" } };
   if (session.userId !== userId) {
     return { status: 403, body: { error: "You do not have permission to close this session" } };
   }
   if (session.status === "completed") {
-    return { status: 200, body: { success: true, alreadyCompleted: true, report: reportOf(session, session.questions) } };
+    return { status: 200, body: { success: true, alreadyCompleted: true, ...sessionPayload(session) } };
   }
   if (session.status !== "started") {
     return { status: 409, body: { error: "This interview was already closed" } };
@@ -913,10 +965,7 @@ async function completeWrittenSession(sessionId: string, userId: string): Promis
       }),
     );
 
-    session = await prisma.mockInterviewSession.findUnique({
-      where: { id: sessionId },
-      include: { savedInterview: true, questions: { orderBy: { orderIndex: "asc" } } },
-    });
+    session = await loadSessionRows(sessionId);
     if (!session) return { status: 404, body: { error: "Session not found" } };
   }
 
@@ -930,7 +979,14 @@ async function completeWrittenSession(sessionId: string, userId: string): Promis
       data: { status: "abandoned", completedAt: new Date() },
     });
     invalidateInterviewHistory(session.userId);
-    return { status: 200, body: { success: true, abandoned: true, session: abandoned } };
+    return {
+      status: 200,
+      body: {
+        success: true,
+        abandoned: true,
+        ...sessionPayload({ ...abandoned, savedInterview: session.savedInterview, questions: session.questions }),
+      },
+    };
   }
 
   // Answers exist that could not be marked — the provider was down, or
@@ -951,7 +1007,13 @@ async function completeWrittenSession(sessionId: string, userId: string): Promis
   }
 
   const completed = await finalizeInterview(session, configFrom(session.savedInterview), scored);
-  return { status: 200, body: { success: true, report: reportOf(completed, scored) } };
+  return {
+    status: 200,
+    body: {
+      success: true,
+      ...sessionPayload({ ...completed, savedInterview: session.savedInterview, questions: session.questions }),
+    },
+  };
 }
 
 router.post("/session/:sessionId/complete", requireAuth, async (req: any, res) => {
@@ -1455,51 +1517,14 @@ router.get("/history", requireAuth, async (req: any, res) => {
  */
 router.get("/session/:sessionId", requireAuth, async (req: any, res) => {
   try {
-    const session = await prisma.mockInterviewSession.findUnique({
-      where: { id: req.params.sessionId },
-      include: { savedInterview: true, questions: { orderBy: { orderIndex: "asc" } } },
-    });
+    const session = await loadSessionRows(req.params.sessionId);
 
     if (!session) return res.status(404).json({ error: "Session not found" });
     if (session.userId !== req.user.userId) {
       return res.status(403).json({ error: "You do not have permission to view this session" });
     }
 
-    // A prefetched question has been written but not asked. It is on disk only
-    // so that submitting an answer is instant, and handing it out here would
-    // let a candidate read the rest of the interview out of the network tab.
-    const asked = session.questions.filter((q) => q.status !== "prefetched");
-
-    // While the interview is still live the stored scores stay server-side —
-    // resuming a session must not hand back the marks for answers already
-    // given. They are released together with the report once it closes.
-    const live = session.status !== "completed";
-    const questions = live
-      ? asked.map((q) => ({
-          ...q,
-          evaluationScore: null,
-          feedback: null,
-          verdict: null,
-          missed: [],
-        }))
-      : asked;
-
-    // The list travels once, at the top level — that is what both the web and
-    // the mobile client read. `session` used to carry a second, nested copy of
-    // the same rows (each with a MediumText answer), doubling every report load.
-    const { questions: stored, ...sessionRow } = session;
-
-    res.json({
-      session: sessionRow,
-      questions,
-      language: languageFor(configFrom(session.savedInterview)),
-      setup: configFrom(session.savedInterview),
-      status: session.status,
-      completedAt: session.completedAt,
-      startedAt: session.createdAt,
-      report: session.status === "completed" ? reportOf(session, stored) : null,
-      progress: { asked: asked.length, total: session.questionBudget },
-    });
+    res.json(sessionPayload(session));
   } catch (error: any) {
     console.error("Error fetching interview session:", error?.message);
     res.status(500).json({ error: "Failed to fetch interview session" });
