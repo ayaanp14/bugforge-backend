@@ -23,6 +23,8 @@ import duelsRouter from "./routes/duels.js";
 import feedbackRouter from "./routes/feedback.js";
 import aptitudeRouter from "./routes/aptitude.js";
 import mockTestsRouter from "./routes/mock-tests.js";
+import contestsRouter from "./routes/contests.js";
+import { todayContest } from "./services/daily-contest.js";
 import { optionalAuth } from "./middleware/auth.js";
 import { platformGuard } from "./middleware/platformGuard.js";
 import { securityHeaders } from "./middleware/security-headers.js";
@@ -526,6 +528,7 @@ app.use("/api/duels", duelsRouter);
 app.use("/api/feedback", feedbackRouter);
 app.use("/api/aptitude", aptitudeRouter);
 app.use("/api/tests", mockTestsRouter);
+app.use("/api/contests", contestsRouter);
 app.use("/api", executionRouter); 
 
 // GET /api/username-check (Public, non-NextAuth)
@@ -618,6 +621,13 @@ httpServer.listen(PORT, () => {
   // and start honouring invalidations published by other instances.
   void warmRedis();
   startCacheInvalidationListener();
+  // The day's kata exists from the moment the day does, not from the first
+  // visitor: the first request of a day would otherwise pay for the pick, and
+  // a day nobody visited would have no contest to backfill. Idempotent and
+  // cached, so the timer costs one memory read most of the time.
+  const materialiseToday = () => todayContest().catch((err) => console.error("daily contest:", err));
+  void materialiseToday();
+  setInterval(materialiseToday, 10 * 60_000).unref();
   console.log(`🚀 Backend & WebSocket running on port: ${PORT}`);
   console.log(`   Auth:   POST /api/auth/login`);
   console.log(`   Me:     GET /api/me`);

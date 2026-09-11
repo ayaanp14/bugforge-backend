@@ -100,6 +100,7 @@ model User {
   feedback           Feedback[]
   aptitudeAttempts   AptitudeAttempt[]
   mockAttempts       MockAttempt[]
+  dailyContests      DailyContestEntry[]
 
   // Rank is a COUNT of users above you and the leaderboard is an ORDER BY on the
   // same columns; without these both are full table scans on every dashboard load.
@@ -134,6 +135,7 @@ model Problem {
   submissions       Submission[]
   testCases         TestCase[]
   problemTimers     ProblemTimer[]
+  dailyContests     DailyContest[]
   mockCodeAnswers   MockCodeAnswer[]
 
   duels Duel[]
@@ -1017,4 +1019,56 @@ model MockCodeAnswer {
 
   @@unique([attemptId, problemId])
   @@index([attemptId, sectionIndex])
+}
+
+
+// ── Daily contest: one kata a day, ranked like a contest ─────────────────────
+
+/// The kata of one UTC day. A row is created the first time anyone asks for
+/// that day (see services/daily-contest.ts: the pick is a deterministic hash
+/// of the date over the catalogue, so two instances racing produce the same
+/// row and the unique on `date` settles it). `date` is "YYYY-MM-DD": a string
+/// sorts and ranges the way a day does, without the timezone shifts a
+/// DateTime column invites.
+model DailyContest {
+  id         String              @id @default(cuid())
+  date       String              @unique @db.VarChar(10)
+  problemId  String
+  difficulty String
+  createdAt  DateTime            @default(now())
+  problem    Problem             @relation(fields: [problemId], references: [id], onDelete: Cascade)
+  entries    DailyContestEntry[]
+
+  /// "Not used in the last year" when picking a kata reads this by problem.
+  @@index([problemId, date])
+}
+
+/// One warrior's sitting of one day's kata. The clock starts when the
+/// workspace is opened on the contest day (startedAt) and stops at the first
+/// accepted submission; every rejected one before it adds five minutes, the
+/// way a contest penalises wrong submissions. `date` is copied from the
+/// contest so streaks and month standings read one index and never join.
+model DailyContestEntry {
+  id            String       @id @default(cuid())
+  contestId     String
+  userId        String
+  date          String       @db.VarChar(10)
+  startedAt     DateTime     @default(now())
+  solvedAt      DateTime?
+  timeTakenSec  Int?
+  wrongAttempts Int          @default(0)
+  /// timeTakenSec + 300 × wrongAttempts — the day's ranking key, lower first.
+  penaltySec    Int?
+  /// 3 / 4 / 5 for easy / medium / hard, awarded on solve; the season key.
+  points        Int          @default(0)
+  contest       DailyContest @relation(fields: [contestId], references: [id], onDelete: Cascade)
+  user          User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([contestId, userId])
+  /// Streak and calendar: the user's days, solved or not, in date order.
+  @@index([userId, date])
+  /// The day's board and the rank-of-me count both order solvers by penalty.
+  @@index([contestId, penaltySec])
+  /// Month standings sum points over a date range.
+  @@index([date, points])
 }

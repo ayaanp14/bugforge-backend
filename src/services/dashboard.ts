@@ -2,6 +2,9 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "../lib/prisma.js";
 import { cached, cachedShared, invalidate } from "../lib/cache.js";
 import { getDashboardUser, invalidateMe } from "./me.js";
+// daily-contest imports getCatalogue from here; both sides only call the other
+// at request time (function declarations, live bindings), so the cycle is inert.
+import { contestSnapshot } from "./daily-contest.js";
 
 /**
  * Query functions shared by the per-widget /api/me routes and the aggregated
@@ -533,6 +536,7 @@ async function buildDashboard(userId: string) {
     pairing,
     continueSolving,
     bugInsights,
+    dailyContest,
   ] = await Promise.all([
     getDashboardUser(userId),
     queryUserCounters(userId),
@@ -544,11 +548,12 @@ async function buildDashboard(userId: string) {
     getPairingHistory(userId, 1, 3, false),
     getContinueSolving(userId),
     getBugInsights(),
+    contestSnapshot(userId),
   ]);
 
   const difficultyStats = computeDifficultyStats(problemState);
   const problemInsights = computeProblemInsights(problemState);
   const { social, savedInterviews } = counters;
 
-  return { me, social, difficultyStats, submissions, heatmap, rank, leaderboard, pairing, continueSolving, problemInsights, bugInsights, savedInterviews };
+  return { me, social, difficultyStats, submissions, heatmap, rank, leaderboard, pairing, continueSolving, problemInsights, bugInsights, savedInterviews, dailyContest };
 }

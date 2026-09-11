@@ -14,6 +14,7 @@ import { buildDriver, remapDiagnostics, type Language as DriverLanguage, type Si
 import { FIRST_SOLVE, createNotificationOnce, streakMilestone } from "../services/notifications.js";
 import { invalidateDashboard } from "../services/dashboard.js";
 import { emitDuelActivity, settleDuelForSubmission } from "../lib/duels.js";
+import { recordContestSubmission } from "../services/daily-contest.js";
 import { ENGINE_DOWN_MESSAGE, isEngineDown } from "../lib/engine-error.js";
 // The judge's slice of a problem — limits, signature, reference solution — and
 // its test suite, both held in memory rather than pulled (~1 MB of hidden
@@ -330,6 +331,16 @@ router.post("/submit", requireAuth, executionLimiter, async (req, res) => {
         ])
       : await prisma.$transaction([submissionCreate]);
 
+    // The daily contest hears about the verdict before the response, not
+    // after it like the duel: the workspace shows the rank and the clock in
+    // the same breath as the verdict. One cached comparison for every other
+    // problem; a row update only when this is today's kata and the warrior
+    // has entered.
+    const dailyContest = await recordContestSubmission(userId, problemId, verdict, submission.submittedAt).catch((err) => {
+      console.error("POST /api/submit — daily contest failed:", err);
+      return null;
+    });
+
     res.json({
       verdict,
       awardedXp,
@@ -341,6 +352,7 @@ router.post("/submit", requireAuth, executionLimiter, async (req, res) => {
       runtimeMs: maxRuntime,
       memoryKb: maxMemory,
       submissionId: submission.id,
+      dailyContest,
     });
 
     // ── After the response ──────────────────────────────────────────
