@@ -252,7 +252,7 @@ async function countTags(keep: (tag: string) => boolean): Promise<Array<{ name: 
 
 // The catalogue page's masthead: how big the catalogue is and how far the
 // reader has got. The list above returns at most MAX_TAKE rows, so a hero that
-// counted the page it was given said "100 katas" over a 598-problem catalogue.
+// counted the page it was given said "100 problems" over a 598-problem catalogue.
 // Both numbers are already in memory or index-only (see loadProblemState).
 router.get("/summary", optionalAuth, browserCache(60), async (req, res) => {
   try {

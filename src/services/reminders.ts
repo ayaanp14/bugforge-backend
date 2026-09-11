@@ -12,7 +12,7 @@
  *                      today. In-app and email. The highest-intent nudge there
  *                      is, so it is the one that gets mail.
  *  - daily_kata      — morning, IST, once the UTC contest day has rolled:
- *                      today's kata for everyone active this fortnight. In-app
+ *                      today's problem for everyone active this fortnight. In-app
  *                      only — a daily email is how a product gets marked spam.
  *  - weekly_digest   — Monday morning, IST: the week's numbers and one nudge.
  *                      In-app and email.
@@ -48,7 +48,7 @@ export function streakAtRiskPeriod(now: Date): string | null {
 
 /**
  * 06:00–09:00 in the product zone, keyed by the *UTC* contest day — by then
- * the day has rolled (00:00 UTC is 05:30 IST) and today's kata exists.
+ * the day has rolled (00:00 UTC is 05:30 IST) and today's problem exists.
  */
 export function dailyKataPeriod(now: Date): string | null {
   const h = zonedHour(now);
@@ -77,12 +77,12 @@ export function streakAtRiskContent(streak: number): ReminderContent {
   const days = streak === 1 ? "1-day" : `${streak}-day`;
   return {
     title: `Your ${days} streak ends at midnight 🔥`,
-    body: "One accepted solve before midnight keeps it alive. Today's kata is the quickest way in.",
+    body: "One accepted solve before midnight keeps it alive. Today's problem is the quickest way in.",
     href: "/contests",
     subject: `Your ${days} CodeKairo streak ends tonight`,
     text:
       `You have not solved anything today, and your ${days} streak ends at midnight.\n\n` +
-      `One accepted solve keeps it alive — today's kata is a ten-minute way in:\n${FRONTEND_URL}/contests\n\n` +
+      `One accepted solve keeps it alive — today's problem is a ten-minute way in:\n${FRONTEND_URL}/contests\n\n` +
       UNSUBSCRIBE_LINE,
   };
 }
@@ -90,11 +90,11 @@ export function streakAtRiskContent(streak: number): ReminderContent {
 export function dailyKataContent(contest: { title: string; difficulty: string }): ReminderContent {
   const difficulty = contest.difficulty.charAt(0).toUpperCase() + contest.difficulty.slice(1).toLowerCase();
   return {
-    title: `Today's kata: ${contest.title} (${difficulty})`,
+    title: `Today's problem: ${contest.title} (${difficulty})`,
     body: "The daily contest is open until midnight UTC. Solve it on the clock to rank and keep your contest streak.",
     href: "/contests",
-    subject: `Today's kata: ${contest.title}`,
-    text: `${contest.title} (${difficulty}) is today's kata.\n${FRONTEND_URL}/contests\n\n${UNSUBSCRIBE_LINE}`,
+    subject: `Today's problem: ${contest.title}`,
+    text: `${contest.title} (${difficulty}) is today's problem.\n${FRONTEND_URL}/contests\n\n${UNSUBSCRIBE_LINE}`,
   };
 }
 
@@ -114,24 +114,24 @@ export interface WeekStats {
 const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
 
 export function weeklyDigestContent(name: string | null, s: WeekStats): ReminderContent {
-  const parts = [plural(s.solved, "kata", "katas"), plural(s.bugs, "bug", "bugs")];
+  const parts = [plural(s.solved, "problem", "problems"), plural(s.bugs, "bug", "bugs")];
   if (s.contestPoints > 0) parts.push(`${s.contestPoints} contest ${s.contestPoints === 1 ? "point" : "points"}`);
   const line = parts.join(", ");
   const quiet = s.solved === 0 && s.bugs === 0;
   const nudge = quiet
-    ? "A quiet week. Today's kata takes ten minutes and starts a new streak."
+    ? "A quiet week. Today's problem takes ten minutes and starts a new streak."
     : s.streak > 0
-      ? `Your ${s.streak}-day streak is alive — today's kata keeps it that way.`
-      : "Keep the blade sharp: today's kata is waiting.";
+      ? `Your ${s.streak}-day streak is alive — today's problem keeps it that way.`
+      : "Keep the streak going: today's problem is waiting.";
   const greeting = name ? `${name.split(" ")[0]}, here` : "Here";
   return {
-    title: "Your week in the dojo 📜",
+    title: "Your week on CodeKairo",
     body: `${line} this week${s.streak > 0 ? ` · ${s.streak}-day streak` : ""}. ${nudge}`,
     href: "/",
-    subject: quiet ? "A quiet week in the dojo" : `This week: ${line}`,
+    subject: quiet ? "A quiet week on CodeKairo" : `This week: ${line}`,
     text:
       `${greeting} is your week on CodeKairo:\n\n` +
-      `  Katas solved:    ${s.solved}\n` +
+      `  Problems solved: ${s.solved}\n` +
       `  Bugs fixed:      ${s.bugs}\n` +
       `  Contest points:  ${s.contestPoints}\n` +
       `  Streak:          ${s.streak} ${s.streak === 1 ? "day" : "days"}\n` +
@@ -233,10 +233,10 @@ const streakAtRisk: Job = {
   },
 };
 
-/** Today's kata, to everyone who has been around this fortnight. In-app only. */
+/** Today's problem, to everyone who has been around this fortnight. In-app only. */
 const dailyKata: Job = {
   name: "daily_kata",
-  description: "Morning (IST) announcement of today's kata to everyone active in the last 14 days. In-app only.",
+  description: "Morning (IST) announcement of today's problem to everyone active in the last 14 days. In-app only.",
   periodOf: dailyKataPeriod,
   async run(now) {
     const contest = await ensureContest(dayOf(now));
@@ -264,7 +264,7 @@ const dailyKata: Job = {
       if (rows.length < BATCH) break;
       cursor = rows[rows.length - 1].id;
     }
-    return { notified, kata: contest.problem.slug };
+    return { notified, problem: contest.problem.slug };
   },
 };
 
@@ -305,7 +305,7 @@ async function weekStatsFor(userIds: string[], since: Date, sinceDay: string, no
 /** Monday's digest to everyone active this month. In-app + email. */
 const weeklyDigest: Job = {
   name: "weekly_digest",
-  description: "Monday morning (IST) summary of the week — katas, bugs, contest points, streak — to everyone active in the last 30 days. In-app + email.",
+  description: "Monday morning (IST) summary of the week — problems, bugs, contest points, streak — to everyone active in the last 30 days. In-app + email.",
   periodOf: weeklyDigestPeriod,
   async run(now) {
     const weekBegan = weekStart(now);

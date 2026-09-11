@@ -1,5 +1,5 @@
 /**
- * Kumite — duels. Two warriors (or two pairs) get the same random problem and
+ * Duels. Two players (or two pairs) get the same random problem and
  * the first accepted submission takes it.
  *
  * Matchmaking has no queue table: a duel row sitting at status "waiting" with a
@@ -80,8 +80,8 @@ function publishedIds(kind: string): Promise<string[]> {
 
 /**
  * Pick the arena: a random published problem, or a random published hunt —
- * never one a seated warrior has already solved. A draw that landed on a
- * kata one side had an accepted submission for was over in one click (their
+ * never one a seated player has already solved. A draw that landed on a
+ * problem one side had an accepted submission for was over in one click (their
  * saved draft is the solution); the other side never had a chance. Falls
  * back to the whole catalogue only when every arena has been solved.
  */
@@ -117,7 +117,7 @@ async function pickTarget(kind: string, participantIds: string[] = []): Promise<
  * Fill the arena and start the clock once every seat is taken.
  *
  * The start is a conditional write on the row, not on the copy in hand: two
- * warriors pressing Ready at the same instant both read a full, all-ready
+ * players pressing Ready at the same instant both read a full, all-ready
  * duel and both came through here — two arenas drawn, the second overwriting
  * the first after `duel-started` had already gone out with it.
  */
@@ -146,7 +146,7 @@ async function startIfFull(duel: DuelWithParticipants) {
  * The duel row is locked for the duration so two arrivals for the last seat
  * are seated one after the other: the second re-reads a full duel and is
  * turned away. Without the lock both passed the capacity check on their own
- * stale copy and a 1v1 ended up with three warriors, both late ones on team
+ * stale copy and a 1v1 ended up with three players, both late ones on team
  * two.
  */
 type SeatOutcome =
@@ -211,7 +211,7 @@ router.post("/queue", requireAuth, async (req, res) => {
     const [existing, me, open] = await Promise.all([
       // Already in something live? Hand it back rather than double-queueing —
       // unless it turns out to be already decided, in which case it stops
-      // standing between this warrior and the next fight.
+      // standing between this player and the next fight.
       prisma.duel.findFirst({
         where: { status: { in: ["waiting", "active"] }, participants: { some: { userId } } },
         include: DUEL_INCLUDE,
@@ -224,7 +224,7 @@ router.post("/queue", requireAuth, async (req, res) => {
           mode,
           kind,
           NOT: { participants: { some: { userId } } },
-          // Never seat somebody opposite a warrior who closed the tab. Those rows
+          // Never seat somebody opposite a player who closed the tab. Those rows
           // are cancelled the next time their owner looks; until then they are
           // simply not offered.
           createdAt: { gte: freshPublicSince() },
@@ -266,7 +266,7 @@ router.post("/queue", requireAuth, async (req, res) => {
       return;
     }
 
-    // Nobody to fight, or a second queue request from this warrior racing
+    // Nobody to fight, or a second queue request from this player racing
     // the first: the row it created is the one to hand back, never a twin.
     const mine = await prisma.duel.findFirst({
       where: { status: "waiting", participants: { some: { userId } } },
@@ -485,7 +485,7 @@ router.get("/:id", requireAuth, async (req, res) => {
  * GET /api/duels/:id/solution — the code that took the duel.
  *
  * Losing should teach you something, so once a duel is over its participants
- * can read the winning submission: the accepted code for a kata, or the files
+ * can read the winning submission: the accepted code for a problem, or the files
  * the winner actually changed for a hunt. Only participants, only after the
  * final bell.
  */
@@ -708,7 +708,7 @@ router.post("/:id/forfeit", requireAuth, async (req, res) => {
       ]);
       forgetDuel(id);
       // A walkover still pays the side that stayed — the consolation rate,
-      // not a full prize, since no kata was solved. It used to pay nothing at
+      // not a full prize, since no problem was solved. It used to pay nothing at
       // all, so being forfeited against was worth less than losing.
       if (claim.count > 0 && opponentTeam !== null) {
         const winners = duel.participants.filter((p) => p.team === opponentTeam).map((p) => p.userId);

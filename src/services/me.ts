@@ -2,13 +2,13 @@ import { prisma } from "../lib/prisma.js";
 import { cachedShared, invalidate } from "../lib/cache.js";
 import { daysBetween } from "../lib/clock.js";
 
-// Zero-based dojo ladder: rating ≡ lifetime XP, so the bar moves from solve #1
+// Zero-based rank ladder: rating ≡ lifetime XP, so the bar moves from solve #1
 export function getTierTitle(rating: number) {
   if (rating < 100) return "Novice";
-  if (rating < 400) return "Ninja";
-  if (rating < 900) return "Samurai";
-  if (rating < 1500) return "Sensei";
-  return "Shogun";
+  if (rating < 400) return "Apprentice";
+  if (rating < 900) return "Adept";
+  if (rating < 1500) return "Expert";
+  return "Master";
 }
 
 export type UserTrends = { xpThisWeek: number; solvedToday: number; bugsFixedThisWeek: number };

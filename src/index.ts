@@ -290,9 +290,9 @@ io.on("connection", (socket) => {
   // not the client remembers to identify itself.
   if (socket.data.userId) socket.join(`user_${socket.data.userId}`);
 
-  // ── Kumite: one room per duel, so /api/duels can push straight to both sides
+  // ── Duels: one room per duel, so /api/duels can push straight to both sides
   //
-  // Seated warriors only. The room carries the live scoreboard and the
+  // Seated players only. The room carries the live scoreboard and the
   // "opponent is submitting" nudges; any socket used to be able to subscribe
   // to any duel by id and watch a stranger's fight tick by.
   socket.on("join-duel", async (duelId: string) => {
@@ -836,14 +836,14 @@ httpServer.listen(PORT, () => {
   // and start honouring invalidations published by other instances.
   void warmRedis();
   startCacheInvalidationListener();
-  // The day's kata exists from the moment the day does, not from the first
+  // The day's problem exists from the moment the day does, not from the first
   // visitor: the first request of a day would otherwise pay for the pick, and
   // a day nobody visited would have no contest to backfill. Idempotent and
   // cached, so the timer costs one memory read most of the time.
   const materialiseToday = () => todayContest().catch((err) => console.error("daily contest:", err));
   void materialiseToday();
   setInterval(materialiseToday, 10 * 60_000).unref();
-  // The reminder jobs (streak at risk, today's kata, the weekly digest).
+  // The reminder jobs (streak at risk, today's problem, the weekly digest).
   registerReminderJobs();
   startScheduler();
   console.log(`🚀 Backend & WebSocket running on port: ${PORT}`);

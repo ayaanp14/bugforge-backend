@@ -430,7 +430,7 @@ router.post("/:id/submit", requireAuth, executionLimiter, async (req, res) => {
     invalidateDashboard(userId);
 
     // If this fix landed inside a duel, the duel is decided right here — the
-    // Kumite never waits for the client to tell it what the judge already knows.
+    // Duels never wait for the client to tell it what the judge already knows.
     settleDuelForSubmission(
       userId,
       { challengeId: challenge.id },

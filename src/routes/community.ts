@@ -528,7 +528,7 @@ router.post("/posts", requireAuth, communityWriteLimiter, async (req, res) => {
 
     // An achievement is a claim about the judge's records, and the card the
     // feed draws — title, difficulty, XP — is built from what the client sent.
-    // It used to be stored as given: anyone could post "Solved <hard kata>
+    // It used to be stored as given: anyone could post "Solved <hard problem>
     // +30 XP" with no submission behind it. Now the solve is looked up and
     // the card's facts are taken from the row, not the request.
     let verifiedAchievement: Record<string, unknown> | null = null;
@@ -1358,7 +1358,7 @@ async function suggestionsFor(userId: string) {
     .map(({ score, ...rest }) => rest);
 }
 
-/** The dojo's week in one card, plus today's hunts. */
+/** The platform's week in one card, plus today's hunts. */
 function getBulletin() {
   // Every viewer sees the same digest, and it only has to be as fresh as the
   // window it describes — five minutes is plenty for a weekly summary.
@@ -1506,7 +1506,7 @@ router.get("/suggestions", requireAuth, async (req, res) => {
   }
 });
 
-// GET /api/community/bulletin — the dojo's week in one card, plus today's hunts
+// GET /api/community/bulletin — the platform's week in one card, plus today's hunts
 router.get("/bulletin", requireAuth, async (_req, res) => {
   try {
     res.json(await getBulletin());

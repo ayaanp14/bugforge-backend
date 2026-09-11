@@ -20,12 +20,12 @@ import {
 /**
  * The daily contest. Reads are cheap and cached in the service; the one write
  * a client can make is entering today's contest, which the workspace does on
- * its own when it opens the day's kata. Verdicts reach the contest through
+ * its own when it opens the day's problem. Verdicts reach the contest through
  * the judge (routes/execution.ts), never through here.
  */
 const router = Router();
 
-/** Today's kata, the reader's sitting of it, and their streak. */
+/** Today's problem, the reader's sitting of it, and their streak. */
 router.get("/daily", optionalAuth, browserCache(30), async (req, res) => {
   try {
     const today = todayUtc();
@@ -48,7 +48,7 @@ router.get("/daily", optionalAuth, browserCache(30), async (req, res) => {
       me,
       streak,
       board,
-      // An earlier solve of this kata, which the contest does not count.
+      // An earlier solve of this problem, which the contest does not count.
       solvedBefore,
     });
   } catch (err) {
@@ -74,7 +74,7 @@ router.get("/daily/calendar", optionalAuth, browserCache(60), async (req, res) =
 
 /**
  * Enter today's contest. Idempotent: the workspace calls it every time the
- * day's kata is opened, and only the first call starts the clock. A past day
+ * day's problem is opened, and only the first call starts the clock. A past day
  * cannot be entered — its board is closed.
  */
 router.post("/daily/:date/enter", requireAuth, async (req, res) => {
@@ -99,7 +99,7 @@ router.post("/daily/:date/enter", requireAuth, async (req, res) => {
   }
 });
 
-/** A day's board: the kata, its solvers fastest first, and the reader's line. */
+/** A day's board: the problem, its solvers fastest first, and the reader's line. */
 router.get("/daily/:date", optionalAuth, browserCache(30), async (req, res) => {
   try {
     const date = String(req.params.date);

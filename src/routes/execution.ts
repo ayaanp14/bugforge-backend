@@ -438,7 +438,7 @@ router.post("/submit", requireAuth, executionLimiter, async (req, res) => {
     // The daily contest hears about the verdict before the response, not
     // after it like the duel: the workspace shows the rank and the clock in
     // the same breath as the verdict. One cached comparison for every other
-    // problem; a row update only when this is today's kata and the warrior
+    // problem; a row update only when this is today's problem and the user
     // has entered.
     const dailyContest = await recordContestSubmission(userId, problemId, verdict, submission.submittedAt).catch((err) => {
       console.error("POST /api/submit — daily contest failed:", err);
@@ -464,7 +464,7 @@ router.post("/submit", requireAuth, executionLimiter, async (req, res) => {
     invalidateDashboard(userId);
 
     // If this solve landed inside a duel, the duel is decided right here — the
-    // Kumite never waits for the client to tell it what the judge already knows.
+    // Duels never wait for the client to tell it what the judge already knows.
     settleDuelForSubmission(userId, { problemId }, { verdict, passed: passedCases, total: totalCases }).catch((err) =>
       console.error("POST /api/submit — duel settlement failed:", err),
     );

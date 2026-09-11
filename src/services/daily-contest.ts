@@ -1,15 +1,15 @@
 /**
- * The daily contest: one kata a day, ranked the way a contest ranks.
+ * The daily contest: one problem a day, ranked the way a contest ranks.
  *
  * Modelled on LeetCode's daily challenge and its contest scoring. Every UTC
- * day has one problem; the clock for a warrior starts when they open the
+ * day has one problem; the clock for a user starts when they open the
  * workspace on that day and stops at their first accepted submission, and
  * each rejected submission before it costs five minutes — so the day's board
  * orders solvers by `timeTakenSec + 300 × wrongAttempts`. A solve is worth
  * 3 / 4 / 5 points by difficulty, and the month's standings sum those.
  * Streaks count consecutive days solved, which is what the calendar draws.
  *
- * None of this touches XP or the Hall of Masters: the contest is its own
+ * None of this touches XP or the leaderboard: the contest is its own
  * ladder, on purpose.
  */
 import { prisma } from "../lib/prisma.js";
@@ -22,7 +22,7 @@ const DAY_MS = 86_400_000;
 const DIFFICULTY_BY_WEEKDAY = ["hard", "easy", "medium", "easy", "medium", "medium", "hard"] as const;
 const POINTS: Record<string, number> = { easy: 3, medium: 4, hard: 5 };
 const WRONG_PENALTY_SEC = 300;
-/** A kata is not offered again for this long. */
+/** A problem is not offered again for this long. */
 const REUSE_AFTER_DAYS = 365;
 
 export const CONTEST_PROBLEM_SELECT = {
@@ -63,9 +63,9 @@ export function weekdayDifficulty(date: string): (typeof DIFFICULTY_BY_WEEKDAY)[
   return DIFFICULTY_BY_WEEKDAY[new Date(date + "T00:00:00Z").getUTCDay()];
 }
 
-/* ── the day's kata ────────────────────────────────────────────────── */
+/* ── the day's problem ─────────────────────────────────────────────── */
 
-/** FNV-1a over the date: the same day picks the same kata on every instance. */
+/** FNV-1a over the date: the same day picks the same problem on every instance. */
 function hashDay(date: string): number {
   let h = 2166136261 >>> 0;
   for (let i = 0; i < date.length; i++) h = Math.imul(h ^ date.charCodeAt(i), 16777619) >>> 0;
@@ -85,7 +85,7 @@ function findContest(date: string) {
 
 /**
  * The contest for a day, created on first request. Only today and the past
- * are ever materialised — a future day's kata stays unknown until the day
+ * are ever materialised — a future day's problem stays unknown until the day
  * comes, so nobody can prepare for it, though its difficulty is public (it is
  * a function of the weekday).
  */
@@ -104,8 +104,8 @@ export async function ensureContest(date: string): Promise<ContestRow | null> {
     ]);
     const used = new Set(recent.map((r) => r.problemId));
     const wanted = weekdayDifficulty(date);
-    // Sorted by id so the hash lands on the same kata whatever order the
-    // catalogue query returned; fall back to any unused kata, then to any.
+    // Sorted by id so the hash lands on the same problem whatever order the
+    // catalogue query returned; fall back to any unused problem, then to any.
     let pool = catalogue.filter((p) => p.difficulty.toLowerCase() === wanted && !used.has(p.id));
     if (pool.length === 0) pool = catalogue.filter((p) => !used.has(p.id));
     if (pool.length === 0) pool = [...catalogue];
@@ -127,7 +127,7 @@ export function todayContest() {
   return ensureContest(todayUtc());
 }
 
-/* ── the warrior's sitting ─────────────────────────────────────────── */
+/* ── the user's sitting ────────────────────────────────────────────── */
 
 export const ENTRY_SELECT = {
   id: true,
@@ -158,8 +158,8 @@ export async function enterContest(userId: string, contest: ContestRow) {
 }
 
 /**
- * Whether the reader solved this kata on an earlier day, in the Training
- * Grounds. It earns nothing here — the contest counts only an accepted
+ * Whether the reader solved this problem on an earlier day, in the problem
+ * catalogue. It earns nothing here — the contest counts only an accepted
  * submission made on the contest day, after entering — but the card says so
  * rather than letting them wonder why the old tick did not carry over.
  */
@@ -194,7 +194,7 @@ export interface ContestSubmissionOutcome {
 
 /**
  * Called by the judge for every problem submission. Cheap unless the problem
- * is today's kata and the warrior has entered: then a solve closes the entry
+ * is today's problem and the user has entered: then a solve closes the entry
  * and a miss adds to its penalty. Returns what the workspace shows, or null
  * when the submission had nothing to do with the contest.
  */
@@ -207,7 +207,7 @@ export async function recordContestSubmission(
   const contest = await todayContest();
   if (!contest || contest.problemId !== problemId) return null;
   // Only a verdict from the contest day counts — never an older solve of the
-  // same kata carried over, and not a submission that lands after midnight.
+  // same problem carried over, and not a submission that lands after midnight.
   if (dayOf(at) !== contest.date) return null;
   const key = { contestId: contest.id, userId };
   const entry = await prisma.dailyContestEntry.findUnique({ where: { contestId_userId: key }, select: ENTRY_SELECT });
@@ -475,7 +475,7 @@ export async function calendarMonth(month: string, userId: string | null, today 
 
 /* ── the dashboard's slice ─────────────────────────────────────────── */
 
-/** What the home dashboard shows: today's kata, whether it is done, and the streak. */
+/** What the home dashboard shows: today's problem, whether it is done, and the streak. */
 export async function contestSnapshot(userId: string) {
   const today = todayUtc();
   const [contest, streak] = await Promise.all([ensureContest(today), contestStreak(userId, today)]);

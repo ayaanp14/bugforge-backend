@@ -43,7 +43,7 @@ export const winXp = (difficulty?: string | null) => WIN_XP[(difficulty ?? "").t
  * Every participant's room polls the duel every few seconds, and both sides
  * poll the same row. Two seconds is shorter than any poll interval, so a
  * reader never sees anything older than it would have between two of its own
- * ticks — while two warriors polling in step share one query instead of two.
+ * ticks — while two players polling in step share one query instead of two.
  *
  * Every writer in this file and in routes/duels.ts calls `forgetDuel` after
  * its update, and takes `fresh` when it is about to decide something on what
@@ -179,7 +179,7 @@ export async function findLiveDuelFor(userId: string, target: DuelTarget): Promi
 export type JudgeResult = { verdict: string; passed: number; total: number };
 
 /**
- * Record one warrior's verdict against a live duel and, if it is the first
+ * Record one player's verdict against a live duel and, if it is the first
  * accepted one, end the duel and pay everyone out. Returns the duel as it now
  * stands, or null when there was nothing to apply.
  *
@@ -244,7 +244,7 @@ export async function applyDuelResult(
   const losers = duel.participants.filter((p) => p.team !== me.team).map((p) => p.userId);
 
   // One statement per team per table, all independent, rather than two
-  // updates per warrior in a row (eleven round trips for a 2v2).
+  // updates per player in a row (eleven round trips for a 2v2).
   await Promise.all([
     prisma.duelParticipant.updateMany({ where: { duelId, team: me.team }, data: { xpAwarded: prize } }),
     prisma.duelParticipant.updateMany({ where: { duelId, team: { not: me.team } }, data: { xpAwarded: consolation } }),
@@ -270,7 +270,7 @@ export async function applyDuelResult(
 }
 
 /**
- * Live shoulder-glancing: tell the other side what this warrior is doing.
+ * Live shoulder-glancing: tell the other side what this player is doing.
  *
  * It comes from the judges rather than the browsers for the same reason the
  * verdict does — a client could otherwise announce "5/5, submitting now" purely
@@ -325,7 +325,7 @@ function isStaleWaiting(duel: { status: string; visibility: string; createdAt: D
  * How long a fight may run without a decision.
  *
  * An active duel had no expiry either. When the other side closed the tab,
- * the warrior who stayed was stuck: /queue and /me/state kept handing the
+ * the player who stayed was stuck: /queue and /me/state kept handing the
  * live duel back, and the only way out was to forfeit — a loss on the record
  * for being the one who did not leave. After this long the fight is called
  * on the scoreboard instead: more hidden tests passed wins, a tie is a draw,
@@ -392,7 +392,7 @@ export async function expireIfStale<T extends LoadedDuel>(duel: T): Promise<T | 
 
 /**
  * Self-healing: an active duel whose target already has an accepted submission
- * from one of its warriors is over — it just hasn't been told. Reading a duel
+ * from one of its players is over — it just hasn't been told. Reading a duel
  * runs this first, so a fight that was solved in another tab (or before the
  * judges settled duels themselves) still ends the moment anyone looks at it.
  */
