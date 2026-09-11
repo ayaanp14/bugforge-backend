@@ -169,7 +169,7 @@ export const OWNER_PLAN: Plan = {
  * Lower-case entries only: ownerEmails() lower-cases the env additions but not
  * these, and isOwnerEmail() compares against a lower-cased input.
  */
-const DEFAULT_OWNER_EMAILS = ["ayaanpathan14@gmail.com", "kingsenterprises1414@gmail.com"];
+const DEFAULT_OWNER_EMAILS = ["ayaanpathan14@gmail.com", "kingsenterprises1414@gmail.com", "veerendraverma1234@gmail.com"];
 
 export function ownerEmails(env: NodeJS.ProcessEnv = process.env): Set<string> {
   const extra = (env["OWNER_EMAILS"] ?? "")
