@@ -1,4 +1,5 @@
 import axios from "axios";
+import { ExecutionEngineError } from "./engine-error.js";
 
 const JUDGE0_BASE_URL = process.env["JUDGE0_URL"] || "http://localhost:2358";
 const JUDGE0_REQUEST_TIMEOUT_MS = Math.max(
@@ -373,6 +374,9 @@ for (const __chunk of __chunks) {
 }
 __outLines.push("__CODEXA_STATS__ " + (Date.now() - __t0) + " " + Math.round(process.memoryUsage().rss / 1024));
 const __joined = __outLines.join("\\n") + "\\n";
+// Everything the solution printed on its own sits above this line; the judge
+// reads only what follows it (src/lib/batch.ts BEGIN_MARKER).
+process.stdout.write("__CODEXA_BEGIN__\\n");
 if (__joined.length > 65536) {
   const __zlib = require("zlib");
   process.stdout.write("__CODEXA_GZ__\\n" + __zlib.gzipSync(Buffer.from(__joined)).toString("base64") + "\\n");
@@ -483,6 +487,9 @@ except Exception:
     __peak_kb = 0
 __out_lines.append("__CODEXA_STATS__ %d %d" % (int((__time_mod.time() - __t0) * 1000), __peak_kb))
 __joined = "\\n".join(__out_lines) + "\\n"
+# Everything the solution printed on its own sits above this line; the judge
+# reads only what follows it (src/lib/batch.ts BEGIN_MARKER).
+sys.stdout.write("__CODEXA_BEGIN__\\n")
 if len(__joined) > 65536:
     import gzip
     import base64
@@ -570,7 +577,12 @@ export async function submitToJudge0(submission: Judge0Submission, rawLanguage: 
     }
   }
 
-  throw lastError;
+  // Every retry failed to get a token: the engine could not be reached or
+  // refused to accept work. That is the engine's failure, not the code's —
+  // raised as such so the executor fails over and the route answers 503
+  // with the "engine is down" copy, rather than a raw axios error and a 500.
+  const detail = lastError instanceof Error ? lastError.message : String(lastError);
+  throw new ExecutionEngineError("judge0", detail);
 }
 
 export async function submitBatchToJudge0(
@@ -671,10 +683,20 @@ export async function getBatchJudge0Results(tokens: string[]): Promise<Array<Jud
   return response.data.submissions.map((s) => decodeJudge0Result(s));
 }
 
+/**
+ * How many consecutive poll failures mean the engine is gone rather than
+ * slow. A poll that threw was swallowed and retried up to `maxAttempts`
+ * times — 120 × (5 s timeout + interval) was ten minutes of a disabled Run
+ * button before a dead Judge0 was reported, and then as a plain Error.
+ */
+const JUDGE0_POLL_FAILURE_LIMIT = 5;
+
 export async function pollJudge0(token: string, maxAttempts = 30): Promise<Judge0Result> {
+  let consecutiveFailures = 0;
   for (let i = 0; i < maxAttempts; i++) {
     try {
       const result = await getJudge0Result(token);
+      consecutiveFailures = 0;
       if (result.status.id > 2) {
         if (JUDGE0_DEBUG_LOGS) {
           console.log(`Judge0 Execution Result (Token: ${token}, Status: ${result.status.description}):`);
@@ -693,10 +715,16 @@ export async function pollJudge0(token: string, maxAttempts = 30): Promise<Judge
       if (JUDGE0_DEBUG_LOGS) {
         console.warn(`Polling attempt ${i+1} failed:`, err);
       }
+      consecutiveFailures += 1;
+      if (consecutiveFailures >= JUDGE0_POLL_FAILURE_LIMIT) {
+        throw new ExecutionEngineError("judge0", `polling failed ${consecutiveFailures} times: ${(err as Error)?.message ?? err}`);
+      }
     }
     await new Promise((resolve) => setTimeout(resolve, JUDGE0_POLL_INTERVAL_MS));
   }
-  throw new Error("Judge0 execution timed out after polling.");
+  // The engine answered every poll but never finished the run: a stuck
+  // worker. Still the engine's failure, so still the 503 path.
+  throw new ExecutionEngineError("judge0", "execution never completed while polling");
 }
 
 export async function pollBatchJudge0(tokens: string[], maxAttempts = 30): Promise<Array<Judge0Result & { token: string }>> {
@@ -717,5 +745,5 @@ export async function pollBatchJudge0(tokens: string[], maxAttempts = 30): Promi
     await new Promise((resolve) => setTimeout(resolve, JUDGE0_POLL_INTERVAL_MS));
   }
 
-  throw new Error("Judge0 batch execution timed out after polling.");
+  throw new ExecutionEngineError("judge0", "batch execution never completed while polling");
 }

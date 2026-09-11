@@ -150,11 +150,19 @@ router.get("/session/:sessionId/voice", requireAuth, async (req: any, res) => {
     const state = stateOf(session.voiceState);
 
     // A reload mid-interview should not lose what has already been said.
-    const events = await prisma.interviewEvent.findMany({
-      where: { sessionId: session.id, type: "transcript" },
-      orderBy: { sequence: "asc" },
-      select: { sequence: true, speaker: true, text: true, questionNumber: true },
-    });
+    // The high-water mark is taken over *every* event type: lifecycle rows
+    // (question_started, connection_lost, …) consume sequence numbers too,
+    // and computing it from the transcript alone handed a resumed client
+    // numbers already taken — its new lines then hit the unique constraint
+    // and `skipDuplicates` silently dropped them.
+    const [events, highWater] = await Promise.all([
+      prisma.interviewEvent.findMany({
+        where: { sessionId: session.id, type: "transcript" },
+        orderBy: { sequence: "asc" },
+        select: { sequence: true, speaker: true, text: true, questionNumber: true },
+      }),
+      prisma.interviewEvent.aggregate({ where: { sessionId: session.id }, _max: { sequence: true } }),
+    ]);
 
     res.json({
       session: {
@@ -171,7 +179,7 @@ router.get("/session/:sessionId/voice", requireAuth, async (req: any, res) => {
       state,
       transcript: events,
       /** Where a resumed client must continue counting from. */
-      nextSequence: events.length ? Math.max(...events.map((e) => e.sequence)) + 1 : 1,
+      nextSequence: (highWater._max.sequence ?? 0) + 1,
       /** Seconds already burned, so a resumed round does not restart the clock. */
       elapsedSec: session.startedAt
         ? Math.max(0, Math.round((Date.now() - session.startedAt.getTime()) / 1000))
@@ -199,8 +207,15 @@ router.post("/session/:sessionId/voice/session", requireAuth, async (req: any, r
     if (!check.ok) return res.status(check.status).json({ error: check.error });
 
     const session = check.data;
-    if (session.status === "completed") {
-      return res.status(409).json({ error: "This interview has already been completed" });
+    if (session.status !== "started") {
+      return res.status(409).json({ error: "This interview has already been closed" });
+    }
+    // The clock is the server's too. The client stops itself when its own
+    // count runs out, but a session reopened after the budget had elapsed
+    // could still mint a credential and keep talking for free.
+    const limitSec = session.durationLimitSec ?? DEFAULT_LIMIT_SEC;
+    if (session.startedAt && Date.now() - session.startedAt.getTime() > (limitSec + 120) * 1000) {
+      return res.status(409).json({ error: "This interview's time is up. End it to get your report.", expired: true });
     }
 
     const provider = realtimeProvider();
@@ -339,6 +354,9 @@ router.post("/session/:sessionId/voice/complete", requireAuth, async (req: any, 
     if (session.status === "completed") {
       return res.json({ success: true, alreadyCompleted: true });
     }
+    if (session.status !== "started") {
+      return res.status(409).json({ error: "This interview was already closed" });
+    }
 
     // Anything the client managed to flush on its way out is already written;
     // this is simply the last read of it.
@@ -372,13 +390,17 @@ router.post("/session/:sessionId/voice/complete", requireAuth, async (req: any, 
 
     const { questions, usage } = await analyzeVoiceTranscript(config, budget, lines);
 
+    // Enough was said to score (the word count above passed) and yet the
+    // analysis found no questions: that is the model failing, not the
+    // candidate walking out. Filing it as abandoned threw away a real round
+    // for good; the session stays open and the candidate is asked to try
+    // closing it again.
     if (questions.length === 0) {
-      const abandoned = await prisma.mockInterviewSession.update({
-        where: { id: session.id },
-        data: { status: "abandoned", completedAt: endedAt, endedAt, durationSec },
+      console.error(`[voice] analysis returned no questions for session ${session.id} (${spokenWords} candidate words)`);
+      return res.status(503).json({
+        error: "Your interview could not be scored right now. Nothing is lost — try ending it again in a moment.",
+        retryable: true,
       });
-      invalidateInterviewHistory(session.userId);
-      return res.json({ success: true, abandoned: true, session: abandoned });
     }
 
     // The rows the rest of the product already knows how to read. Written after

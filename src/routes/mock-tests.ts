@@ -200,8 +200,12 @@ async function finishAttempt(attemptId: string, reason: "submitted" | "expired")
   // A negative total is not a meaningful score to show a candidate.
   const finalScore = Math.max(0, Math.round(score * 100) / 100);
 
-  return prisma.mockAttempt.update({
-    where: { id: attemptId },
+  // Claimed on the row, not on the copy read above: a submit racing the lazy
+  // expiry both read "in-progress" and both wrote — the same marks twice,
+  // with `status` whichever landed last. The first writer closes it; the
+  // second reads back what the first wrote.
+  const claimed = await prisma.mockAttempt.updateMany({
+    where: { id: attemptId, status: "in-progress" },
     data: {
       status: reason,
       submittedAt: new Date(),
@@ -212,6 +216,10 @@ async function finishAttempt(attemptId: string, reason: "submitted" | "expired")
       skippedCount,
       sectionScores,
     },
+  });
+  if (claimed.count === 0) console.warn(`[mock-tests] attempt ${attemptId} was closed by a concurrent writer`);
+  return prisma.mockAttempt.findUnique({
+    where: { id: attemptId },
     include: { test: { select: ATTEMPT_TEST_SELECT }, answers: true },
   });
 }

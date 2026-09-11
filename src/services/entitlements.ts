@@ -86,10 +86,26 @@ export async function activePlan(userId: string, email?: string | null): Promise
   return { plan: planFor(subscription.planId), currentPeriodEnd: subscription.currentPeriodEnd };
 }
 
-/** Interviews started since Monday, both written and spoken. */
+/**
+ * Interviews used since Monday, both written and spoken.
+ *
+ * "Used", not "created": a round the candidate never actually sat — opened
+ * and abandoned before the first answer, or left "started" by a refresh or a
+ * model failure at the door — should not cost a slot. What counts is a
+ * closed round, a written round with at least one answer on disk, or a
+ * spoken round whose audio actually began.
+ */
 export async function interviewsThisWeek(userId: string): Promise<number> {
   return prisma.mockInterviewSession.count({
-    where: { userId, createdAt: { gte: weekStart() } },
+    where: {
+      userId,
+      createdAt: { gte: weekStart() },
+      OR: [
+        { status: "completed" },
+        { questions: { some: { userAnswer: { not: null } } } },
+        { mode: "voice", startedAt: { not: null } },
+      ],
+    },
   });
 }
 

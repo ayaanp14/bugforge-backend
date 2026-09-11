@@ -35,14 +35,20 @@ function equalDigests(a: string, b: string): boolean {
   return crypto.timingSafeEqual(left, right);
 }
 
+/** How far a request's timestamp may sit from the server clock. */
+export const SIGNATURE_WINDOW_MS = 60_000;
+
+/** True when the stamp is a number inside the replay window. */
+export function isTimestampFresh(timestamp: string): boolean {
+  const requestTime = Number.parseInt(timestamp, 10);
+  return !Number.isNaN(requestTime) && Math.abs(Date.now() - requestTime) <= SIGNATURE_WINDOW_MS;
+}
+
 /** Verifies a signature and its timestamp. */
 export function verifySignature(signature: string, method: string, path: string, timestamp: string): boolean {
   // A signature is only good for a short window, so one captured from a log
   // cannot be replayed indefinitely.
-  const now = Date.now();
-  const requestTime = Number.parseInt(timestamp, 10);
-
-  if (Number.isNaN(requestTime) || Math.abs(now - requestTime) > 60_000) {
+  if (!isTimestampFresh(timestamp)) {
     console.warn("Signature verification failed: timestamp expired or invalid");
     return false;
   }

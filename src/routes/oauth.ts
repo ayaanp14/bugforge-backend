@@ -319,11 +319,20 @@ router.get("/google/callback", async (req, res) => {
       res.redirect(failureUrl(intent, "oauth_failed"));
       return;
     }
+    // A Google identity is only trusted for an address Google has verified.
+    // Sign-in links to an existing account by email, so an unverified one
+    // (a Workspace account whose owner never confirmed it, a typo'd alias)
+    // could otherwise claim a password account it does not own.
+    if (profile.email_verified === false) {
+      console.warn("[auth] Google identity with unverified email refused");
+      res.redirect(failureUrl(intent, "oauth_failed"));
+      return;
+    }
 
     // Google sign-in auto-registers: there is no "not_registered" case here,
     // matching how the old popup behaved.
     const result = await upsertSocialUser({
-      email: profile.email,
+      email: profile.email.trim().toLowerCase(),
       intent: "register-or-login",
       name: profile.name ?? null,
       avatarUrl: profile.picture ?? null,

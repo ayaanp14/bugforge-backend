@@ -1,7 +1,9 @@
 import { Router } from "express";
 import { prisma } from "../lib/prisma.js";
 import { optionalAuth, requireAuth } from "../middleware/auth.js";
+import { executionLimiter } from "../middleware/rate-limit.js";
 import { judgeBugProject, type BugFile, type BugLanguage } from "../lib/bug-judge.js";
+import { containsReservedMarker } from "../lib/batch.js";
 import { invalidateDashboard } from "../services/dashboard.js";
 import { emitDuelActivity, findLiveDuelFor, settleDuelForSubmission } from "../lib/duels.js";
 import { ENGINE_DOWN_MESSAGE, isEngineDown } from "../lib/engine-error.js";
@@ -228,6 +230,27 @@ router.get("/:id", optionalAuth, async (req, res) => {
 
 /** Merge the hunter's edited files over the challenge's originals.
  *  Locked files always come from the DB — client copies are ignored. */
+/**
+ * Edits are taken as given, but a file that mentions the batch protocol's
+ * markers is refused before anything runs: a hunt's expected output is the
+ * constant "PASS", so printing it followed by the case sentinel from any
+ * editable file used to pass every hidden test. The judge also ignores
+ * whatever a project prints ahead of the harness's own block; this is the
+ * cheap half of that defence. Null when a value is not a string.
+ */
+function readEditedFiles(raw: unknown): { files: Record<string, string> } | { error: string } {
+  if (raw == null) return { files: {} };
+  if (typeof raw !== "object" || Array.isArray(raw)) return { error: "editedFiles must be an object of path → content" };
+  const files: Record<string, string> = {};
+  for (const [path, content] of Object.entries(raw as Record<string, unknown>)) {
+    if (typeof content !== "string") return { error: `File ${path} must be a string` };
+    if (content.length > 200_000) return { error: `File ${path} is too large` };
+    if (containsReservedMarker(content)) return { error: "Files must not contain the reserved marker __CODEXA_" };
+    files[path] = content;
+  }
+  return { files };
+}
+
 function mergeFiles(
   original: Array<{ filePath: string; content: string; isEditable: boolean }>,
   edited: Record<string, string> | undefined
@@ -239,9 +262,18 @@ function mergeFiles(
 }
 
 // POST /api/bug-challenges/:id/run — Run the VISIBLE tests only
-router.post("/:id/run", requireAuth, async (req, res) => {
+//
+// Behind the same per-user execution budget as the problem judge. These two
+// routes sat under only the general limiter, so the bug workspace could drive
+// ten times as many engine runs a minute as the problem workspace.
+router.post("/:id/run", requireAuth, executionLimiter, async (req, res) => {
   try {
-    const { editedFiles } = req.body as { editedFiles?: Record<string, string> };
+    const edited = readEditedFiles((req.body as { editedFiles?: unknown }).editedFiles);
+    if ("error" in edited) {
+      res.status(400).json({ error: edited.error });
+      return;
+    }
+    const editedFiles = edited.files;
 
     const challenge = await prisma.bugChallenge.findUnique({
       where: { id: String(req.params.id) },
@@ -294,9 +326,15 @@ router.post("/:id/run", requireAuth, async (req, res) => {
 // goes out together before the engine is asked, the verdict is written in one
 // transaction, the response leaves, and the duel, the dashboard cache and the
 // bell are told afterwards.
-router.post("/:id/submit", requireAuth, async (req, res) => {
+router.post("/:id/submit", requireAuth, executionLimiter, async (req, res) => {
   try {
-    const { editedFiles, timeTakenSecs } = req.body as { editedFiles?: Record<string, string>; timeTakenSecs?: number };
+    const { timeTakenSecs } = req.body as { timeTakenSecs?: number };
+    const edited = readEditedFiles((req.body as { editedFiles?: unknown }).editedFiles);
+    if ("error" in edited) {
+      res.status(400).json({ error: edited.error });
+      return;
+    }
+    const editedFiles = edited.files;
     const userId = req.user!.userId;
     const challengeId = String(req.params.id);
 

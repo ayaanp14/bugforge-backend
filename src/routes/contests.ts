@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { optionalAuth, requireAuth } from "../middleware/auth.js";
 import { browserCache } from "../lib/http-cache.js";
+import { invalidateDashboard } from "../services/dashboard.js";
 import {
   calendarMonth,
   contestStreak,
@@ -89,6 +90,8 @@ router.post("/daily/:date/enter", requireAuth, async (req, res) => {
       return;
     }
     const entry = await enterContest(req.user!.userId, contest);
+    // The dashboard's contest band shows whether today is entered.
+    invalidateDashboard(req.user!.userId);
     res.json({ contest: { id: contest.id, date: contest.date, difficulty: contest.difficulty, problem: contest.problem }, entry });
   } catch (err) {
     console.error("POST /api/contests/daily/:date/enter error:", err);

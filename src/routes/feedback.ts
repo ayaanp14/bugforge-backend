@@ -91,6 +91,18 @@ router.post("/", requireAuth, async (req: any, res) => {
       return res.status(existing ? 200 : 201).json({ feedback });
     }
 
+    // The prompt is rationed (one platform rating a month), and the client
+    // honours that — but the route did not, so a scripted caller could
+    // insert rows without limit. One a day is the server's own floor: enough
+    // slack for a genuine second thought, no room for a flood.
+    const recent = await prisma.feedback.findFirst({
+      where: { userId, kind: "platform", createdAt: { gte: new Date(Date.now() - 24 * 60 * 60 * 1000) } },
+      select: { id: true },
+    });
+    if (recent) {
+      return res.status(429).json({ error: "Thanks — you have already rated the platform today." });
+    }
+
     const feedback = await prisma.feedback.create({
       data: {
         userId,

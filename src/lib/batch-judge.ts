@@ -1,6 +1,6 @@
 import { LANGUAGE_MAP } from "./judge0.js";
 import { EXECUTOR_ENGINE, pollResult, submitCode } from "./executor.js";
-import { ERROR_MARKER, GZIP_OUTPUT_LANGS, buildBatchStdin, decodeBatchStdout, encodeBatchStdin, extractBatchStats, splitBatchStdout } from "./batch.js";
+import { ERROR_MARKER, GZIP_OUTPUT_LANGS, buildBatchStdin, decodeBatchStdout, encodeBatchStdin, extractBatchStats, isolateDriverOutput, splitBatchStdout } from "./batch.js";
 
 /**
  * Runs user code against ALL test cases in a single engine execution
@@ -28,6 +28,8 @@ export interface BatchRunResult {
   perCase: CaseVerdict[];
   runtimeMs: number;
   memoryKb: number;
+  /** What the user's own code printed, kept apart from the judged block. */
+  userStdout: string | null;
 }
 
 const normalize = (v: string | null | undefined) => (v ?? "").trim();
@@ -101,10 +103,12 @@ export async function runBatch(
   const all = await Promise.all(
     chunks.map((chunk) => runSingleBatch(code, language, chunk, limits))
   );
+  const printed = all.map((b) => b.userStdout).filter((s): s is string => Boolean(s));
   return {
     perCase: all.flatMap((b) => b.perCase),
     runtimeMs: all.reduce((sum, b) => sum + b.runtimeMs, 0),
     memoryKb: Math.max(...all.map((b) => b.memoryKb)),
+    userStdout: printed.length ? printed.join("\n") : null,
   };
 }
 
@@ -132,8 +136,12 @@ async function runSingleBatch(
   );
   const result = await pollResult(token, 120);
 
-  // Prefer the driver's self-reported stats (Wandbox reports none of its own)
-  const stats = extractBatchStats(decodeBatchStdout(result.stdout));
+  // The user's own prints come off the front first: they are theirs to see,
+  // not the judge's to grade, and a gzipped block is only recognisable once
+  // they are gone. Then the driver's self-reported stats (Wandbox reports
+  // none of its own).
+  const { driver: driverStdout, user: userStdout } = isolateDriverOutput(result.stdout);
+  const stats = extractBatchStats(decodeBatchStdout(driverStdout));
   const engineRuntimeMs = result.time ? Math.round(parseFloat(result.time) * 1000) : 0;
   const totalRuntimeMs = stats.runtimeMs ?? engineRuntimeMs;
   const memoryKb = stats.memoryKb || result.memory || 0;
@@ -154,6 +162,7 @@ async function runSingleBatch(
       })),
       runtimeMs: totalRuntimeMs,
       memoryKb,
+      userStdout,
     };
   }
 
@@ -196,5 +205,5 @@ async function runSingleBatch(
     };
   });
 
-  return { perCase, runtimeMs: totalRuntimeMs, memoryKb };
+  return { perCase, runtimeMs: totalRuntimeMs, memoryKb, userStdout };
 }

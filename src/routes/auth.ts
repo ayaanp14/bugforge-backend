@@ -11,14 +11,64 @@ import { forgetSessions } from "../lib/session-revocation.js";
 
 const router = Router();
 
+/* ── input shapes ─────────────────────────────────────────────────────── */
+//
+// Nothing here was checked beyond "present". A non-string reached Prisma and
+// 500ed; an email with a leading space made a second account for the same
+// person; a username could be anything — including somebody else's email
+// address, which /login matched first and used to shadow that person's
+// sign-in. The reset screen promised an eight-character password the server
+// never asked for.
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const USERNAME_RE = /^[a-z0-9_]{3,20}$/;
+const MIN_PASSWORD = 8;
+const MAX_PASSWORD = 128;
+
+/** A trimmed, lower-cased address, or null when it is not one. */
+function readEmail(raw: unknown): string | null {
+  if (typeof raw !== "string") return null;
+  const email = raw.trim().toLowerCase();
+  return email.length <= 254 && EMAIL_RE.test(email) ? email : null;
+}
+
+/** A usable password, or the reason it is not. */
+function passwordProblem(raw: unknown): string | null {
+  if (typeof raw !== "string") return "Password is required.";
+  if (raw.length < MIN_PASSWORD) return `Use at least ${MIN_PASSWORD} characters.`;
+  if (raw.length > MAX_PASSWORD) return `Passwords are limited to ${MAX_PASSWORD} characters.`;
+  return null;
+}
+
+/** A normalised handle, `null` for "none given", or an error string. */
+function readUsername(raw: unknown): string | null | { error: string } {
+  if (raw == null || raw === "") return null;
+  if (typeof raw !== "string") return { error: "Username must be text." };
+  const username = raw.trim().toLowerCase();
+  if (!USERNAME_RE.test(username)) return { error: "Usernames are 3–20 characters: letters, numbers and underscores." };
+  return username;
+}
+
 // POST /api/auth/register
 router.post("/register", async (req, res) => {
-  const { username, email, password } = req.body;
+  const email = readEmail(req.body?.email);
+  const password = req.body?.password;
+  const handle = readUsername(req.body?.username);
 
-  if (!email || !password) {
-    res.status(400).json({ error: "Email and password are required." });
+  if (!email) {
+    res.status(400).json({ error: "Enter a valid email address." });
     return;
   }
+  const weak = passwordProblem(password);
+  if (weak) {
+    res.status(400).json({ error: weak });
+    return;
+  }
+  if (handle && typeof handle === "object") {
+    res.status(400).json({ error: handle.error });
+    return;
+  }
+  const username = handle;
 
   try {
     // Check if user already exists
@@ -40,15 +90,27 @@ router.post("/register", async (req, res) => {
     const finalUsername = username || await generateUsername(email.split("@")[0]);
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    const user = await prisma.user.create({
-      data: {
-        email,
-        username: finalUsername,
-        password_hash: hashedPassword,
-        provider: "email",
-      },
-      select: { id: true, email: true, username: true },
-    });
+    let user;
+    try {
+      user = await prisma.user.create({
+        data: {
+          email,
+          username: finalUsername,
+          password_hash: hashedPassword,
+          provider: "email",
+        },
+        select: { id: true, email: true, username: true },
+      });
+    } catch (err) {
+      // Two registrations for the same address in the same instant: the
+      // unique index catches what the check above could not, and the answer
+      // is the same one it would have given.
+      if ((err as { code?: string }).code === "P2002") {
+        res.status(400).json({ error: "Email or username already registered." });
+        return;
+      }
+      throw err;
+    }
 
     // Seed the in-app welcome notification
     void createNotificationOnce(user.id, WELCOME);
@@ -78,24 +140,24 @@ router.post("/register", async (req, res) => {
 
 // POST /api/auth/login
 router.post("/login", async (req, res) => {
-  const { identifier, password } = req.body; // identifier can be email or username
+  const rawIdentifier = req.body?.identifier; // identifier can be email or username
+  const password = req.body?.password;
 
-  if (!identifier || !password) {
+  if (typeof rawIdentifier !== "string" || !rawIdentifier.trim() || typeof password !== "string" || !password) {
     res.status(400).json({ error: "Identifier and password are required." });
     return;
   }
+  // Trimmed and lower-cased like registration, so a trailing space pasted
+  // into the field does not read as the wrong account.
+  const identifier = rawIdentifier.trim().toLowerCase();
 
   try {
     // Find user by email or username. Only what the check and the response
     // need: the full row drags the readme and every profile-link Text column
-    // across a ~500ms link for nothing.
+    // across a ~500ms link for nothing. An address goes to the email column
+    // only, so a username can never stand in for someone else's email.
     const user = await prisma.user.findFirst({
-      where: {
-        OR: [
-          { email: identifier },
-          { username: identifier }
-        ]
-      },
+      where: identifier.includes("@") ? { email: identifier } : { username: identifier },
       select: { id: true, email: true, username: true, name: true, avatar_url: true, password_hash: true },
     });
 
@@ -136,12 +198,22 @@ router.post("/logout", (req, res) => {
   res.json({ message: "Logout successful" });
 });
 
+// GET /api/auth/time — the server clock, for a client whose own is wrong.
+//
+// Under /api/auth so the platform guard lets it through unsigned: it exists
+// for the device that cannot produce a valid signature because its clock is
+// outside the guard's window. The client stores the offset and signs with it.
+router.get("/time", (_req, res) => {
+  res.setHeader("Cache-Control", "no-store");
+  res.json({ now: Date.now() });
+});
+
 // POST /api/auth/forgot-password
 router.post("/forgot-password", async (req, res) => {
-  const { email } = req.body;
+  const email = readEmail(req.body?.email);
 
   if (!email) {
-    res.status(400).json({ error: "Email is required." });
+    res.status(400).json({ error: "Enter a valid email address." });
     return;
   }
 
@@ -211,19 +283,42 @@ router.post("/verify-otp", async (req, res) => {
 
 // POST /api/auth/reset-password
 router.post("/reset-password", async (req, res) => {
-  const { newPassword, resetToken } = req.body;
+  const { newPassword, resetToken } = req.body ?? {};
 
-  if (!newPassword || !resetToken) {
+  if (typeof resetToken !== "string" || !resetToken) {
     res.status(400).json({ error: "New password and reset token are required." });
+    return;
+  }
+  const weak = passwordProblem(newPassword);
+  if (weak) {
+    res.status(400).json({ error: weak });
     return;
   }
 
   try {
     // Verify the reset token
-    const payload = jwt.verify(resetToken, JWT_SECRET) as { email: string; purpose: string };
-    
+    const payload = jwt.verify(resetToken, JWT_SECRET) as { email: string; purpose: string; iat?: number };
+
     if (payload.purpose !== "password_reset") {
       res.status(400).json({ error: "Invalid token purpose." });
+      return;
+    }
+
+    // One reset per token. A reset stamps `sessionsValidFrom`, so a token
+    // minted before that stamp has already been spent — it stayed good for
+    // its full ten minutes before, and anyone who had captured it could set
+    // the password a second time.
+    const account = await prisma.user.findUnique({
+      where: { email: payload.email },
+      select: { id: true, sessionsValidFrom: true },
+    });
+    if (!account) {
+      res.status(400).json({ error: "Invalid or expired reset session." });
+      return;
+    }
+    const issuedAt = (payload.iat ?? 0) * 1000;
+    if (account.sessionsValidFrom && issuedAt <= account.sessionsValidFrom.getTime()) {
+      res.status(400).json({ error: "This reset link has already been used. Request a new code." });
       return;
     }
 
@@ -232,7 +327,7 @@ router.post("/reset-password", async (req, res) => {
     // a token, and leaving them signed in would defeat the point of resetting.
     const hashedPassword = await bcrypt.hash(newPassword, 10);
     const updated = await prisma.user.update({
-      where: { email: payload.email },
+      where: { id: account.id },
       data: { password_hash: hashedPassword, sessionsValidFrom: new Date() },
       select: { id: true },
     });

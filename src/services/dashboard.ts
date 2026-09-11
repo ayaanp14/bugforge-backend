@@ -256,9 +256,12 @@ export async function getLeaderboard(type = "combined") {
 }
 
 async function queryLeaderboard(type: "combined" | "questions" | "bugs") {
-  let orderBy: Record<string, "desc"> = { xp: "desc" };
-  if (type === "questions") orderBy = { questionsXp: "desc" };
-  if (type === "bugs") orderBy = { bugsXp: "desc" };
+  let column: "xp" | "questionsXp" | "bugsXp" = "xp";
+  if (type === "questions") column = "questionsXp";
+  if (type === "bugs") column = "bugsXp";
+  // Ties break on seniority, so two users on the same XP keep the same
+  // order between cache refreshes instead of swapping places at random.
+  const orderBy = [{ [column]: "desc" as const }, { createdAt: "asc" as const }];
 
   const [topUsers, totalUsers] = await Promise.all([
     prisma.user.findMany({

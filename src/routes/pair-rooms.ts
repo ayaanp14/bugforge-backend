@@ -3,7 +3,7 @@ import { prisma } from "../lib/prisma.js";
 import { encodeCode, decodeCode } from "../lib/obfuscation.js";
 import { generateInviteCode } from "../lib/room-codes.js";
 import { requireAuth } from "../middleware/auth.js";
-import { banStore } from "../lib/banStore.js";
+import { emitToRoom } from "../lib/realtime.js";
 
 const router = Router();
 
@@ -40,27 +40,40 @@ const LOBBY_WINDOW_MS = 24 * 60 * 60 * 1000;
 const LOBBY_TAKE = 50;
 
 // GET /api/pair-rooms — List active pair programming rooms
-router.get("/", async (_req, res) => {
+router.get("/", requireAuth, async (_req, res) => {
   try {
     // A host who created a room and never opened the socket leaves it "waiting"
     // forever; this list used to grow by every one of them. `startedAt` is set
     // at creation (below) and again when the session actually starts, so a
     // day-old waiting room is one nobody is coming back to.
+    //
+    // Selected, not spread: the whole row carried `inviteCode` and
+    // `recoveryCode` to anyone who asked (and the route was open to anyone),
+    // and the "obfuscation" on them is a base64 prefix — so every private
+    // room's passcode was one lobby request away.
     const rooms = await prisma.pairRoom.findMany({
       where: { status: "waiting", startedAt: { gte: new Date(Date.now() - LOBBY_WINDOW_MS) } },
-      include: {
+      select: {
+        id: true,
+        mode: true,
+        status: true,
+        maxParticipants: true,
+        startedAt: true,
+        createdBy: true,
+        problemId: true,
         creator: {
           select: { id: true, name: true, avatar_url: true }
         },
         problem: {
           select: { title: true, difficulty: true }
-        }
+        },
+        _count: { select: { participants: true } },
       },
       orderBy: { startedAt: "desc" },
       take: LOBBY_TAKE,
     });
 
-    res.json(rooms);
+    res.json(rooms.map(({ _count, ...room }) => ({ ...room, participantCount: _count.participants })));
   } catch (err) {
     console.error("GET /api/pair-rooms error:", err);
     res.status(500).json({ error: "Internal server error" });
@@ -72,11 +85,17 @@ router.post("/", requireAuth, async (req, res) => {
   const { problemId, mode, maxParticipants } = req.body;
   const userId = (req as any).user.userId;
 
-  if (!problemId || !mode) {
+  if (typeof problemId !== "string" || !problemId || (mode !== "private" && mode !== "collaborative")) {
     return res.status(400).json({ error: "Missing problemId or mode" });
   }
+  // Two to four seats. A room with zero (or a thousand) seats used to be
+  // accepted as typed.
+  const seats = Number.isInteger(maxParticipants) ? Math.min(4, Math.max(2, maxParticipants as number)) : 2;
 
   try {
+    const problem = await prisma.problem.findFirst({ where: { id: problemId, isPublished: true }, select: { id: true } });
+    if (!problem) return res.status(404).json({ error: "Problem not found" });
+
     // Only generate inviteCode for private rooms. The code is the only thing
     // gating entry, so it comes from the cryptographic generator.
     const rawInviteCode = mode === "private" ? generateInviteCode() : null;
@@ -87,7 +106,7 @@ router.post("/", requireAuth, async (req, res) => {
       data: {
         problemId,
         mode,
-        maxParticipants: (typeof maxParticipants === "number" ? maxParticipants : 2),
+        maxParticipants: seats,
         createdBy: userId,
         inviteCode,
         status: "waiting",
@@ -139,12 +158,15 @@ router.get("/:id", requireAuth, async (req, res) => {
       return res.status(404).json({ error: "Room not found" });
     }
 
-    // Security: only expose recoveryCode to the host/creator
+    // Security: only expose the codes to the host/creator. The invite code
+    // used to ride along for everyone — a guest could read it out of the
+    // payload and hand a private room to anyone.
     const userId = (req as any).user.userId;
     const isHost = room.createdBy === userId;
 
     const responseData = {
       ...room,
+      inviteCode: isHost ? room.inviteCode : null,
       recoveryCode: isHost ? room.recoveryCode : null
     };
 
@@ -171,6 +193,11 @@ router.post("/:id/join", requireAuth, async (req, res) => {
 
     if (!room) {
       return res.status(404).json({ error: "Room not found" });
+    }
+    // A closed room stays closed. Joining one by URL used to seat the caller
+    // and, if they were the second person, flip it back to "active".
+    if (room.status === "closed") {
+      return res.status(410).json({ error: "This room has ended" });
     }
 
     // Check if user was kicked (kickedUserIds is a Json array on MySQL)
@@ -217,15 +244,25 @@ router.post("/:id/join", requireAuth, async (req, res) => {
          return res.status(403).json({ error: "Room is full" });
        }
 
+       // The seat is taken inside a transaction that re-counts: two joins
+       // racing for the last seat both passed the check above and both sat
+       // down. Serializable so the two counts cannot interleave.
        try {
-         await prisma.roomParticipant.create({
-           data: {
-             roomId: id,
-             userId,
-             role: "guest"
-           }
-         });
+         await prisma.$transaction(async (tx) => {
+           const seated = await tx.roomParticipant.count({ where: { roomId: id } });
+           if (seated >= room.maxParticipants) throw new Error("ROOM_FULL");
+           await tx.roomParticipant.create({
+             data: {
+               roomId: id,
+               userId,
+               role: "guest"
+             }
+           });
+         }, { isolationLevel: "Serializable" });
        } catch (e) {
+         if ((e as Error).message === "ROOM_FULL") {
+           return res.status(403).json({ error: "Room is full" });
+         }
          // Unique (roomId, userId) violation — a concurrent join request
          // already added this user; treat as an idempotent success.
          if ((e as { code?: string }).code !== "P2002") throw e;
@@ -268,6 +305,9 @@ router.delete("/:id", requireAuth, async (req, res) => {
     await prisma.pairRoom.delete({
       where: { id }
     });
+    // Anyone still sitting in it is told, the same way a soft close tells
+    // them; the row is gone, so their next request would only 404.
+    emitToRoom(id, "room-ended", { slug: null });
 
     res.status(204).send();
   } catch (err) {

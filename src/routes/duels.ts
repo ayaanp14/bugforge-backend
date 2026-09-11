@@ -23,7 +23,9 @@ import {
   loadDuel,
   markUserInDuel,
   reconcileDuel,
+  winXp,
 } from "../lib/duels.js";
+import { invalidateDashboard } from "../services/dashboard.js";
 
 const router = Router();
 
@@ -84,7 +86,14 @@ async function pickTarget(kind: string): Promise<{ problemId?: string; challenge
   return kind === "bug" ? { challengeId: id } : { problemId: id };
 }
 
-/** Fill the arena and start the clock once every seat is taken. */
+/**
+ * Fill the arena and start the clock once every seat is taken.
+ *
+ * The start is a conditional write on the row, not on the copy in hand: two
+ * warriors pressing Ready at the same instant both read a full, all-ready
+ * duel and both came through here — two arenas drawn, the second overwriting
+ * the first after `duel-started` had already gone out with it.
+ */
 async function startIfFull(duel: DuelWithParticipants) {
   if (duel.status !== "waiting") return null;
   if (duel.participants.length < capacityOf(duel.mode)) return null;
@@ -92,14 +101,71 @@ async function startIfFull(duel: DuelWithParticipants) {
   const target = await pickTarget(duel.kind);
   if (!target) return null;
 
-  await prisma.duel.update({
-    where: { id: duel.id },
+  const claimed = await prisma.duel.updateMany({
+    where: { id: duel.id, status: "waiting" },
     data: { ...target, status: "active", startedAt: new Date() },
   });
   forgetDuel(duel.id);
   const started = await loadDuel(duel.id, true);
+  // The other caller drew the arena; theirs was announced.
+  if (claimed.count === 0) return started;
   emitToRoom(duelRoom(duel.id), "duel-started", started);
   return started;
+}
+
+/**
+ * Takes a seat in a waiting duel, or reports why not.
+ *
+ * The duel row is locked for the duration so two arrivals for the last seat
+ * are seated one after the other: the second re-reads a full duel and is
+ * turned away. Without the lock both passed the capacity check on their own
+ * stale copy and a 1v1 ended up with three warriors, both late ones on team
+ * two.
+ */
+type SeatOutcome =
+  | { ok: true; started: boolean }
+  | { ok: false; reason: "gone" | "started" | "full" | "seated" };
+
+async function takeSeat(duelId: string, userId: string, rating: number): Promise<SeatOutcome> {
+  const seat = async (): Promise<SeatOutcome> =>
+    prisma.$transaction(async (tx): Promise<SeatOutcome> => {
+      await tx.$queryRaw`SELECT id FROM \`Duel\` WHERE id = ${duelId} FOR UPDATE`;
+      const duel = await tx.duel.findUnique({
+        where: { id: duelId },
+        include: { participants: { select: { userId: true, team: true, user: { select: { rating: true } } } } },
+      });
+      if (!duel) return { ok: false, reason: "gone" };
+      if (duel.status !== "waiting") return { ok: false, reason: "started" };
+      if (duel.participants.some((p) => p.userId === userId)) return { ok: false, reason: "seated" };
+      const capacity = capacityOf(duel.mode);
+      if (duel.participants.length >= capacity) return { ok: false, reason: "full" };
+
+      const team = nextTeam(duel.participants, duel.mode);
+      // Keep the band honest as the seats fill.
+      const ratings = [...duel.participants.map((p) => p.user.rating ?? 1200), rating];
+      const band = Math.round(ratings.reduce((n, r) => n + r, 0) / ratings.length);
+      // Taking the last seat of a public duel starts the fight in the same
+      // write as the band; a private room waits for everyone to press Ready.
+      const full = ratings.length >= capacity;
+      const target = full && duel.visibility === "public" ? await pickTarget(duel.kind) : null;
+
+      await tx.duelParticipant.create({ data: { duelId, userId, team } });
+      await tx.duel.update({
+        where: { id: duelId },
+        data: { ratingBand: band, ...(target ? { ...target, status: "active", startedAt: new Date() } : {}) },
+      });
+      return { ok: true, started: Boolean(target) };
+    });
+
+  try {
+    return await seat();
+  } catch (err) {
+    // A deadlock or a write conflict under the lock: one more try sees the
+    // other arrival's seat and decides cleanly.
+    const code = (err as { code?: string }).code;
+    if (code === "P2034" || code === "P2002") return seat();
+    throw err;
+  }
 }
 
 // POST /api/duels/queue — find a fair opponent, or wait as one
@@ -154,32 +220,31 @@ router.post("/queue", requireAuth, async (req, res) => {
     }
 
     const rating = me?.rating ?? 1200;
-    const match = open.find(
-      (d) => d.participants.length < capacityOf(d.mode) && withinBand(d, rating),
-    );
+    // The first open duel in band that still has the seat when the lock is
+    // taken. One that filled between the list and the seat is skipped, not
+    // over-filled.
+    for (const candidate of open) {
+      if (candidate.participants.length >= capacityOf(candidate.mode) || !withinBand(candidate, rating)) continue;
+      const outcome = await takeSeat(candidate.id, userId, rating);
+      if (!outcome.ok) continue;
 
-    if (match) {
-      const team = nextTeam(match.participants, match.mode);
-      // Keep the band honest as the seats fill.
-      const ratings = [...match.participants.map((p) => p.user.rating ?? 1200), rating];
-      const band = Math.round(ratings.reduce((n, r) => n + r, 0) / ratings.length);
-      // Taking the last seat starts the fight in the same write as the band.
-      const full = ratings.length >= capacityOf(match.mode);
-      const target = full ? await pickTarget(match.kind) : null;
-
-      await Promise.all([
-        prisma.duelParticipant.create({ data: { duelId: match.id, userId, team } }),
-        prisma.duel.update({
-          where: { id: match.id },
-          data: { ratingBand: band, ...(target ? { ...target, status: "active", startedAt: new Date() } : {}) },
-        }),
-      ]);
-      forgetDuel(match.id);
+      forgetDuel(candidate.id);
       markUserInDuel(userId);
-
-      const joined = await loadDuel(match.id, true);
-      emitToRoom(duelRoom(match.id), target ? "duel-started" : "duel-update", joined);
+      const joined = await loadDuel(candidate.id, true);
+      emitToRoom(duelRoom(candidate.id), outcome.started ? "duel-started" : "duel-update", joined);
       res.json(joined);
+      return;
+    }
+
+    // Nobody to fight, or a second queue request from this warrior racing
+    // the first: the row it created is the one to hand back, never a twin.
+    const mine = await prisma.duel.findFirst({
+      where: { status: "waiting", participants: { some: { userId } } },
+      include: DUEL_INCLUDE,
+    });
+    if (mine) {
+      markUserInDuel(userId);
+      res.json(mine);
       return;
     }
 
@@ -276,27 +341,30 @@ router.post("/rooms/join", requireAuth, async (req, res) => {
     }
     const duel = await prisma.duel.findUnique({
       where: { roomCode: code },
-      include: { participants: { select: { userId: true, team: true } } },
+      select: { id: true },
     });
     if (!duel) {
       res.status(404).json({ error: "No room with that code" });
       return;
     }
-    if (duel.status !== "waiting") {
-      res.status(400).json({ error: "That duel has already started" });
-      return;
-    }
-    const already = duel.participants.some((p) => p.userId === userId);
-    if (!already) {
-      if (duel.participants.length >= capacityOf(duel.mode)) {
+    const me = await prisma.user.findUnique({ where: { id: userId }, select: { rating: true } });
+    const outcome = await takeSeat(duel.id, userId, me?.rating ?? 1200);
+    if (!outcome.ok) {
+      if (outcome.reason === "started") {
+        res.status(400).json({ error: "That duel has already started" });
+        return;
+      }
+      if (outcome.reason === "full") {
         res.status(400).json({ error: "That room is full" });
         return;
       }
-      await prisma.duelParticipant.create({
-        data: { duelId: duel.id, userId, team: nextTeam(duel.participants, duel.mode) },
-      });
-      forgetDuel(duel.id);
+      if (outcome.reason === "gone") {
+        res.status(404).json({ error: "No room with that code" });
+        return;
+      }
+      // "seated": already in — walking back in is fine.
     }
+    forgetDuel(duel.id);
     markUserInDuel(userId);
     const joined = await loadDuel(duel.id, true);
     emitToRoom(duelRoom(duel.id), "duel-update", joined);
@@ -369,6 +437,9 @@ router.get("/:id", requireAuth, async (req, res) => {
       if (now - (lastReconcile.get(id) ?? 0) >= RECONCILE_EVERY_MS) {
         lastReconcile.set(id, now);
         duel = await reconcileDuel(duel);
+        // A fight past its time is called here, where both rooms are polling,
+        // rather than only when one of them next opens the lobby.
+        duel = (await expireIfStale(duel)) ?? duel;
       }
     } else {
       lastReconcile.delete(id);
@@ -592,18 +663,32 @@ router.post("/:id/forfeit", requireAuth, async (req, res) => {
 
     if (duel.status === "active") {
       const opponentTeam = duel.participants.find((p) => p.team !== me.team)?.team ?? null;
-      // Two rows, no dependency between them.
-      await Promise.all([
+      // The close is guarded the way the settle path is: a forfeit that lands
+      // as the other side's accepted submission is being paid out must not
+      // rewrite the winner after the fact.
+      const [, claim] = await Promise.all([
         prisma.duelParticipant.update({
           where: { id: me.id },
           data: { verdict: disqualified ? "DISQUALIFIED" : "FORFEIT", finishedAt: new Date() },
         }),
-        prisma.duel.update({
-          where: { id },
+        prisma.duel.updateMany({
+          where: { id, status: "active", winnerTeam: null },
           data: { status: "finished", endedAt: new Date(), winnerTeam: opponentTeam },
         }),
       ]);
       forgetDuel(id);
+      // A walkover still pays the side that stayed — the consolation rate,
+      // not a full prize, since no kata was solved. It used to pay nothing at
+      // all, so being forfeited against was worth less than losing.
+      if (claim.count > 0 && opponentTeam !== null) {
+        const winners = duel.participants.filter((p) => p.team === opponentTeam).map((p) => p.userId);
+        const prize = Math.round(winXp(duel.problem?.difficulty ?? duel.challenge?.difficulty) * 0.5);
+        await Promise.all([
+          prisma.duelParticipant.updateMany({ where: { duelId: id, team: opponentTeam }, data: { xpAwarded: prize } }),
+          prisma.user.updateMany({ where: { id: { in: winners } }, data: { xp: { increment: prize } } }),
+        ]);
+        for (const userId of winners) invalidateDashboard(userId);
+      }
       for (const p of duel.participants) clearUserInDuel(p.userId);
       const finished = await loadDuel(id, true);
       emitToRoom(duelRoom(id), "duel-finished", finished);

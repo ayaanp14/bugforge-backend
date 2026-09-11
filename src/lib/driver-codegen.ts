@@ -36,6 +36,10 @@ export interface Signature {
 const SENTINEL = "__CODEXA_CASE__";
 const ERR = "__CODEXA_ERROR__:";
 const GZ = "__CODEXA_GZ__";
+// Printed on its own line right before the driver's block. The judge reads
+// only what follows the last one, so whatever the user's code printed on its
+// own is theirs to see and not the judge's to grade (src/lib/batch.ts).
+const BEGIN = "__CODEXA_BEGIN__";
 const GZIN = "__CODEXA_GZIN__"; // length 15; large stdin arrives as marker + base64(gzip)
 // Buffered output beyond this size is gzip+base64'd so any suite fits the
 // engine's stdout cap in one run (languages with stdlib gzip only).
@@ -128,6 +132,7 @@ function tsDriver(sig: Signature): string {
     "}",
     '_out.push("__CODEXA_STATS__ " + (Date.now() - _t0) + " " + Math.round(_process.memoryUsage().rss / 1024));',
     'const _joined = _out.join("\\n") + "\\n";',
+    `_process.stdout.write("${BEGIN}\\n");`,
     `if (_joined.length > ${GZ_THRESHOLD}) {`,
     '    const _zlib = _require("zlib");',
     `    _process.stdout.write("${GZ}\\n" + _zlib.gzipSync(_Buffer.from(_joined)).toString("base64") + "\\n");`,
@@ -262,6 +267,7 @@ function javaFile(sig: Signature, fn: string): string {
     "        long __mem = (Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory()) / 1024;",
     '        OUT.append("__CODEXA_STATS__ " + (System.currentTimeMillis() - __t0) + " " + __mem + "\\n");',
     "        String joined = OUT.toString();",
+    `        System.out.println("${BEGIN}");`,
     `        if (joined.length() > ${GZ_THRESHOLD}) {`,
     "            try {",
     "                java.io.ByteArrayOutputStream bos = new java.io.ByteArrayOutputStream();",
@@ -354,12 +360,14 @@ function cppFile(sig: Signature, fn: string): string {
     return `            int ${p.name} = stoi(lines[${i}]);`;
   });
   const call = `${sig.funcName}(${sig.params.map((p) => p.name).join(", ")})`;
+  // Results are buffered and written once at the end, after the user's code
+  // has finished with stdout, so nothing it prints can land in the block.
   const print =
-    sig.returns === "int[]" ? `cout << fmtIntArray(${call}) << endl;`
-    : sig.returns === "int[][]" ? `cout << fmtIntMatrix(${call}) << endl;`
-    : sig.returns === "string[]" ? `cout << fmtStringArray(${call}) << endl;`
-    : sig.returns === "bool" ? `cout << (${call} ? "true" : "false") << endl;`
-    : `cout << ${call} << endl;`;
+    sig.returns === "int[]" ? `__OUT << fmtIntArray(${call}) << "\\n";`
+    : sig.returns === "int[][]" ? `__OUT << fmtIntMatrix(${call}) << "\\n";`
+    : sig.returns === "string[]" ? `__OUT << fmtStringArray(${call}) << "\\n";`
+    : sig.returns === "bool" ? `__OUT << (${call} ? "true" : "false") << "\\n";`
+    : `__OUT << ${call} << "\\n";`;
   return [
     "#include <bits/stdc++.h>",
     "#include <sys/resource.h>",
@@ -370,6 +378,7 @@ function cppFile(sig: Signature, fn: string): string {
     CPP_HELPERS,
     "",
     "int main() {",
+    "    ostringstream __OUT;",
     "    vector<vector<string>> cases;",
     "    vector<string> cur;",
     "    string line;",
@@ -389,14 +398,18 @@ function cppFile(sig: Signature, fn: string): string {
     ...parse,
     `            ${print}`,
     "        } catch (...) {",
-    `            cout << "${ERR} runtime error" << endl;`,
+    `            __OUT << "${ERR} runtime error\\n";`,
     "        }",
-    `        cout << "${SENTINEL}" << endl;`,
+    `        __OUT << "${SENTINEL}\\n";`,
     "    }",
     "    struct rusage __ru;",
     "    getrusage(RUSAGE_SELF, &__ru);",
     "    long __cpu_ms = (__ru.ru_utime.tv_sec + __ru.ru_stime.tv_sec) * 1000 + (__ru.ru_utime.tv_usec + __ru.ru_stime.tv_usec) / 1000;",
-    '    printf("__CODEXA_STATS__ %ld %ld\\n", __cpu_ms, __ru.ru_maxrss);',
+    '    __OUT << "__CODEXA_STATS__ " << __cpu_ms << " " << __ru.ru_maxrss << "\\n";',
+    "    cout.flush();",
+    "    fflush(stdout);",
+    `    cout << "${BEGIN}\\n" << __OUT.str();`,
+    "    cout.flush();",
     "    return 0;",
     "}",
   ].join("\n");
@@ -451,15 +464,35 @@ static void strip_string(char* s) {
     }
     memmove(s, start, strlen(start) + 1);
 }
+// Results are buffered and written once at the end, after the user's code
+// has finished with stdout, so nothing it prints can land in the block.
+static char* __obuf = NULL;
+static size_t __olen = 0, __ocap = 0;
+static void __emit(const char* fmt, ...) {
+    va_list ap, ap2;
+    va_start(ap, fmt);
+    va_copy(ap2, ap);
+    int need = vsnprintf(NULL, 0, fmt, ap);
+    va_end(ap);
+    if (need < 0) { va_end(ap2); return; }
+    if (__olen + (size_t)need + 1 > __ocap) {
+        if (__ocap == 0) __ocap = 65536;
+        while (__olen + (size_t)need + 1 > __ocap) __ocap *= 2;
+        __obuf = (char*)realloc(__obuf, __ocap);
+    }
+    vsnprintf(__obuf + __olen, __ocap - __olen, fmt, ap2);
+    va_end(ap2);
+    __olen += (size_t)need;
+}
 static void print_int_array(const int* a, int n) {
-    printf("[");
-    for (int i = 0; i < n; i++) { if (i) printf(","); printf("%d", a[i]); }
-    printf("]\\n");
+    __emit("[");
+    for (int i = 0; i < n; i++) { if (i) __emit(","); __emit("%d", a[i]); }
+    __emit("]\\n");
 }
 static void print_string_array(char** a, int n) {
-    printf("[");
-    for (int i = 0; i < n; i++) { if (i) printf(","); printf("\\"%s\\"", a[i]); }
-    printf("]\\n");
+    __emit("[");
+    for (int i = 0; i < n; i++) { if (i) __emit(","); __emit("\\"%s\\"", a[i]); }
+    __emit("]\\n");
 }
 static int parse_int_matrix(const char* s, int*** out, int** colSizes) {
     int cap = 8, n = 0;
@@ -488,14 +521,14 @@ static int parse_int_matrix(const char* s, int*** out, int** colSizes) {
     return n;
 }
 static void print_int_matrix(int** m, int n, const int* colSizes) {
-    printf("[");
+    __emit("[");
     for (int i = 0; i < n; i++) {
-        if (i) printf(",");
-        printf("[");
-        for (int j = 0; j < colSizes[i]; j++) { if (j) printf(","); printf("%d", m[i][j]); }
-        printf("]");
+        if (i) __emit(",");
+        __emit("[");
+        for (int j = 0; j < colSizes[i]; j++) { if (j) __emit(","); __emit("%d", m[i][j]); }
+        __emit("]");
     }
-    printf("]\\n");
+    __emit("]\\n");
 }`;
 
 /** LeetCode-style C parameter list: arrays carry a size, array returns carry returnSize. */
@@ -567,17 +600,18 @@ function cFile(sig: Signature, fn: string): string {
     callArgs.push("&returnSize");
     callBody.push("            int returnSize = 0;", `            char** result = ${sig.funcName}(${callArgs.join(", ")});`, "            print_string_array(result, returnSize);");
   } else if (sig.returns === "bool") {
-    callBody.push(`            printf(${sig.funcName}(${callArgs.join(", ")}) ? "true\\n" : "false\\n");`);
+    callBody.push(`            __emit(${sig.funcName}(${callArgs.join(", ")}) ? "true\\n" : "false\\n");`);
   } else if (sig.returns === "string") {
-    callBody.push(`            printf("%s\\n", ${sig.funcName}(${callArgs.join(", ")}));`);
+    callBody.push(`            __emit("%s\\n", ${sig.funcName}(${callArgs.join(", ")}));`);
   } else {
-    callBody.push(`            printf("%d\\n", ${sig.funcName}(${callArgs.join(", ")}));`);
+    callBody.push(`            __emit("%d\\n", ${sig.funcName}(${callArgs.join(", ")}));`);
   }
   return [
     "#include <stdio.h>",
     "#include <stdlib.h>",
     "#include <string.h>",
     "#include <stdbool.h>",
+    "#include <stdarg.h>",
     "#include <sys/resource.h>",
     "",
     fn,
@@ -620,7 +654,7 @@ function cFile(sig: Signature, fn: string): string {
     "                char** lines = &allLines[start];",
     ...parse,
     ...callBody,
-    `                printf("${SENTINEL}\\n");`,
+    `                __emit("${SENTINEL}\\n");`,
     "            }",
     "            start = idx + 1;",
     "        }",
@@ -628,7 +662,11 @@ function cFile(sig: Signature, fn: string): string {
     "    struct rusage __ru;",
     "    getrusage(RUSAGE_SELF, &__ru);",
     "    long __cpu_ms = (__ru.ru_utime.tv_sec + __ru.ru_stime.tv_sec) * 1000 + (__ru.ru_utime.tv_usec + __ru.ru_stime.tv_usec) / 1000;",
-    '    printf("__CODEXA_STATS__ %ld %ld\\n", __cpu_ms, __ru.ru_maxrss);',
+    '    __emit("__CODEXA_STATS__ %ld %ld\\n", __cpu_ms, __ru.ru_maxrss);',
+    "    fflush(stdout);",
+    `    fputs("${BEGIN}\\n", stdout);`,
+    "    if (__obuf != NULL) fwrite(__obuf, 1, __olen, stdout);",
+    "    fflush(stdout);",
     "    return 0;",
     "}",
   ].join("\n");
@@ -766,6 +804,7 @@ function csFile(sig: Signature, fn: string): string {
     "        }",
     '        OUT.Append("__CODEXA_STATS__ " + (Environment.TickCount - __t0) + " " + (GC.GetTotalMemory(false) / 1024) + "\\n");',
     "        string joined = OUT.ToString();",
+    `        Console.WriteLine("${BEGIN}");`,
     `        if (joined.Length > ${GZ_THRESHOLD})`,
     "        {",
     "            using (var ms = new System.IO.MemoryStream())",
@@ -893,6 +932,7 @@ function goFile(sig: Signature, fn: string): string {
     "\truntime.ReadMemStats(&__ms)",
     '\tout = append(out, fmt.Sprintf("__CODEXA_STATS__ %d %d", time.Since(__t0).Milliseconds(), __ms.Sys/1024))',
     '\tjoined := strings.Join(out, "\\n") + "\\n"',
+    `\tfmt.Println("${BEGIN}")`,
     `\tif len(joined) > ${GZ_THRESHOLD} {`,
     "\t\tvar buf bytes.Buffer",
     "\t\tzw := gzip.NewWriter(&buf)",
@@ -1007,6 +1047,7 @@ function ktFile(sig: Signature, fn: string): string {
     "    val __mem = (Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory()) / 1024",
     '    OUT.append("__CODEXA_STATS__ " + (System.currentTimeMillis() - __t0) + " " + __mem + "\\n")',
     "    val joined = OUT.toString()",
+    `    println("${BEGIN}")`,
     `    if (joined.length > ${GZ_THRESHOLD}) {`,
     "        val bos = java.io.ByteArrayOutputStream()",
     "        val gz = java.util.zip.GZIPOutputStream(bos)",
@@ -1092,11 +1133,13 @@ function swFile(sig: Signature, fn: string): string {
     return `    let ${p.name} = Int(lines[${i}].trimmingCharacters(in: .whitespaces)) ?? 0`;
   });
   const call = `${sig.funcName}(${sig.params.map((p) => p.name).join(", ")})`;
+  // Results are buffered and written once at the end, after the user's code
+  // has finished with stdout, so nothing it prints can land in the block.
   const print =
-    sig.returns === "int[]" ? `print(fmtIntArray(${call}))`
-    : sig.returns === "int[][]" ? `print(fmtIntMatrix(${call}))`
-    : sig.returns === "string[]" ? `print(fmtStringArray(${call}))`
-    : `print(${call})`;
+    sig.returns === "int[]" ? `__out += fmtIntArray(${call}) + "\\n"`
+    : sig.returns === "int[][]" ? `__out += fmtIntMatrix(${call}) + "\\n"`
+    : sig.returns === "string[]" ? `__out += fmtStringArray(${call}) + "\\n"`
+    : `__out += String(describing: ${call}) + "\\n"`;
   return [
     "import Foundation",
     "",
@@ -1105,6 +1148,7 @@ function swFile(sig: Signature, fn: string): string {
     SW_HELPERS,
     "",
     "let __t0 = Date()",
+    "var __out = \"\"",
     "var allLines: [String] = []",
     "while let line = readLine() {",
     "    allLines.append(line.trimmingCharacters(in: .whitespaces))",
@@ -1122,9 +1166,12 @@ function swFile(sig: Signature, fn: string): string {
     "for lines in cases {",
     ...parse,
     `    ${print}`,
-    `    print("${SENTINEL}")`,
+    `    __out += "${SENTINEL}\\n"`,
     "}",
-    'print("__CODEXA_STATS__ \\(Int(Date().timeIntervalSince(__t0) * 1000)) 0")',
+    '__out += "__CODEXA_STATS__ \\(Int(Date().timeIntervalSince(__t0) * 1000)) 0\\n"',
+    `print("${BEGIN}")`,
+    "print(__out, terminator: \"\")",
+    "fflush(stdout)",
   ].join("\n");
 }
 
@@ -1213,14 +1260,17 @@ function rsFile(sig: Signature, fn: string): string {
     return `        let ${p.name}: i32 = lines[${i}].trim().parse().unwrap();`;
   });
   const call = `${sig.funcName}(${sig.params.map((p) => p.name).join(", ")})`;
+  // Results are buffered and written once at the end, after the user's code
+  // has finished with stdout, so nothing it prints can land in the block.
   const print =
-    sig.returns === "int[]" ? `println!("{}", fmt_int_array(&${call}));`
-    : sig.returns === "int[][]" ? `println!("{}", fmt_int_matrix(&${call}));`
-    : sig.returns === "string[]" ? `println!("{}", fmt_string_array(&${call}));`
-    : `println!("{}", ${call});`;
+    sig.returns === "int[]" ? `__out.push_str(&format!("{}\\n", fmt_int_array(&${call})));`
+    : sig.returns === "int[][]" ? `__out.push_str(&format!("{}\\n", fmt_int_matrix(&${call})));`
+    : sig.returns === "string[]" ? `__out.push_str(&format!("{}\\n", fmt_string_array(&${call})));`
+    : `__out.push_str(&format!("{}\\n", ${call}));`;
   return [
     "#![allow(non_snake_case, dead_code, unused_variables, unused_mut)]",
     "use std::io::Read;",
+    "use std::io::Write;",
     "",
     fn,
     "",
@@ -1228,6 +1278,7 @@ function rsFile(sig: Signature, fn: string): string {
     "",
     "fn main() {",
     "    let __t0 = std::time::Instant::now();",
+    "    let mut __out = String::new();",
     "    let mut input = String::new();",
     "    std::io::stdin().read_to_string(&mut input).unwrap();",
     "    let mut cases: Vec<Vec<String>> = Vec::new();",
@@ -1244,10 +1295,15 @@ function rsFile(sig: Signature, fn: string): string {
     "    for lines in &cases {",
     ...parse,
     `        ${print}`,
-    `        println!("${SENTINEL}");`,
+    `        __out.push_str("${SENTINEL}\\n");`,
     "    }",
     '    let __mem: i64 = std::fs::read_to_string("/proc/self/status").ok().and_then(|s| s.lines().find(|l| l.starts_with("VmHWM:")).and_then(|l| l.split_whitespace().nth(1).and_then(|v| v.parse().ok()))).unwrap_or(0);',
-    '    println!("__CODEXA_STATS__ {} {}", __t0.elapsed().as_millis(), __mem);',
+    '    __out.push_str(&format!("__CODEXA_STATS__ {} {}\\n", __t0.elapsed().as_millis(), __mem));',
+    "    let __stdout = std::io::stdout();",
+    "    let mut __lock = __stdout.lock();",
+    `    let _ = __lock.write_all(b"${BEGIN}\\n");`,
+    "    let _ = __lock.write_all(__out.as_bytes());",
+    "    let _ = __lock.flush();",
     "}",
   ].join("\n");
 }
@@ -1301,6 +1357,7 @@ function phpFile(sig: Signature, fn: string): string {
     "}",
     '$out[] = "__CODEXA_STATS__ " . intval((microtime(true) - $__t0) * 1000) . " " . intval(memory_get_peak_usage(true) / 1024);',
     '$joined = implode("\\n", $out) . "\\n";',
+    `echo "${BEGIN}\\n";`,
     `if (strlen($joined) > ${GZ_THRESHOLD} && function_exists("gzencode")) {`,
     `    echo "${GZ}\\n" . base64_encode(gzencode($joined)) . "\\n";`,
     "} else {",
@@ -1368,6 +1425,7 @@ function rbFile(sig: Signature, fn: string): string {
     "end",
     'out_lines << "__CODEXA_STATS__ #{((Process.clock_gettime(Process::CLOCK_MONOTONIC) - __t0) * 1000).to_i} #{__mem}"',
     'joined = out_lines.join("\\n") + "\\n"',
+    `puts "${BEGIN}"`,
     `if joined.length > ${GZ_THRESHOLD}`,
     `  puts "${GZ}"`,
     '  puts [Zlib.gzip(joined)].pack("m0")',

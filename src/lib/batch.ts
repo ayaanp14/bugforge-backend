@@ -17,6 +17,48 @@ export const ERROR_MARKER = "__CODEXA_ERROR__:";
 export const GZIP_MARKER = "__CODEXA_GZ__";
 export const GZIN_MARKER = "__CODEXA_GZIN__";
 export const STATS_MARKER = "__CODEXA_STATS__";
+/**
+ * Printed by a driver on its own line immediately before its result block.
+ *
+ * The drivers buffer their own output and write it once at the end, but the
+ * user's code shares the process's stdout, so a stray `console.log` (or a
+ * deliberate one) landed in front of the block and was split and judged as
+ * if the driver had written it. A bug hunt's expected output is the constant
+ * "PASS", so printing `PASS` + CASE_SENTINEL from any editable file passed
+ * every hidden test. The judge now keeps only what follows the *last* BEGIN
+ * line: the driver writes after the user's code has finished, so its marker
+ * is always the final one. Whatever came before is the user's own stdout and
+ * is handed back to them as such rather than judged.
+ */
+export const BEGIN_MARKER = "__CODEXA_BEGIN__";
+
+/** Every marker shares this prefix; source that contains it is refused up front. */
+const RESERVED_PREFIX = "__CODEXA_";
+
+/**
+ * True when submitted source mentions the protocol's markers. Not a security
+ * boundary on its own (a string can be assembled at runtime) — it is the
+ * cheap half of the defence above, and it also stops an honest solution
+ * from tripping over the sentinel by accident.
+ */
+export function containsReservedMarker(code: string): boolean {
+  return code.includes(RESERVED_PREFIX);
+}
+
+/**
+ * Splits a run's stdout into the driver's block and what the user's own code
+ * printed before it. A driver that never printed BEGIN (an older harness) is
+ * taken whole, exactly as before.
+ */
+export function isolateDriverOutput(stdout: string | null): { driver: string | null; user: string | null } {
+  if (!stdout) return { driver: stdout, user: null };
+  const at = stdout.lastIndexOf(BEGIN_MARKER);
+  if (at === -1) return { driver: stdout, user: null };
+  const lineEnd = stdout.indexOf("\n", at);
+  const driver = lineEnd === -1 ? "" : stdout.slice(lineEnd + 1);
+  const user = stdout.slice(0, at);
+  return { driver, user: user.trim() ? user : null };
+}
 
 /**
  * Drivers self-report "STATS_MARKER <runtimeMs> <peakMemoryKb>" as their last

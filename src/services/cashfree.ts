@@ -199,6 +199,8 @@ export interface WebhookEvent {
   orderId: string | null;
   paymentStatus: string | null;
   paymentId: string | null;
+  /** Set on refund events: "SUCCESS" once the money has gone back. */
+  refundStatus: string | null;
 }
 
 export function parseWebhook(body: unknown): WebhookEvent {
@@ -207,16 +209,21 @@ export function parseWebhook(body: unknown): WebhookEvent {
     data?: {
       order?: { order_id?: string };
       payment?: { payment_status?: string; cf_payment_id?: string | number };
+      // Refund events carry the order under the refund, not `data.order`.
+      refund?: { order_id?: string; refund_status?: string; cf_payment_id?: string | number };
     };
   };
 
   return {
     type: payload?.type ?? "UNKNOWN",
-    orderId: payload?.data?.order?.order_id ?? null,
+    orderId: payload?.data?.order?.order_id ?? payload?.data?.refund?.order_id ?? null,
     paymentStatus: payload?.data?.payment?.payment_status ?? null,
     paymentId:
       payload?.data?.payment?.cf_payment_id !== undefined
         ? String(payload.data.payment.cf_payment_id)
-        : null,
+        : payload?.data?.refund?.cf_payment_id !== undefined
+          ? String(payload.data.refund.cf_payment_id)
+          : null,
+    refundStatus: payload?.data?.refund?.refund_status ?? null,
   };
 }

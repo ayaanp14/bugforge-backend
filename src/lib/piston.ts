@@ -1,5 +1,6 @@
 import axios from "axios";
 import { wrapCode, type Judge0Result, type Judge0Submission } from "./judge0.js";
+import { ExecutionEngineError } from "./engine-error.js";
 
 /**
  * Free execution engine: the public Piston API (https://emkc.org).
@@ -112,12 +113,21 @@ async function postExecuteWithRetry(body: Record<string, unknown>): Promise<Pist
     } catch (err: unknown) {
       lastError = err;
       const status = axios.isAxiosError(err) ? err.response?.status : undefined;
-      // 429 = rate limited: back off and retry; anything else fails fast
-      if (status !== 429) throw err;
+      // 429 = rate limited: back off and retry; anything else fails fast.
+      // A 4xx that is not a rate limit is a bad request (unsupported
+      // language, oversized body) — the code's problem, surfaced as is. No
+      // response at all, or a 5xx, is the engine's, so the executor can fail
+      // over and the route can say "the engine is down".
+      if (status !== 429) {
+        if (status === undefined || status >= 500) {
+          throw new ExecutionEngineError("piston", err instanceof Error ? err.message : String(err));
+        }
+        throw err;
+      }
       await new Promise((resolve) => setTimeout(resolve, attempt * 750));
     }
   }
-  throw lastError;
+  throw new ExecutionEngineError("piston", `rate limited: ${lastError instanceof Error ? lastError.message : String(lastError)}`);
 }
 
 function toJudge0Result(data: PistonResponse, submission: Judge0Submission): Judge0Result {

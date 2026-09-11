@@ -1,5 +1,5 @@
 import type { Request, Response, NextFunction } from "express";
-import { verifySignature } from "../lib/crypto.js";
+import { isTimestampFresh, verifySignature } from "../lib/crypto.js";
 
 /**
  * Middleware to block any requests not originating from the platform
@@ -34,12 +34,18 @@ export function platformGuard(req: Request, res: Response, next: NextFunction) {
   const isVerified = verifySignature(signature, req.method, req.path, timestamp);
 
   if (!isVerified) {
-    console.warn(`[Guard] Signature verification failed`, { 
-      method: req.method, 
-      path: req.path, 
-      timestamp 
+    console.warn(`[Guard] Signature verification failed`, {
+      method: req.method,
+      path: req.path,
+      timestamp
     });
-    return res.status(403).json({ error: "Access Denied: Strict Origin Verification Failed" });
+    // A stale stamp is the one failure the client can fix by itself: a device
+    // clock a minute or more out signed every request into this branch, and
+    // since /api/auth is exempt the user could log in and then do nothing
+    // else. Named, so the client re-syncs against /api/auth/time and retries
+    // rather than treating it as a dead session.
+    const code = isTimestampFresh(timestamp) ? "signature" : "timestamp";
+    return res.status(403).json({ error: "Access Denied: Strict Origin Verification Failed", code, serverTime: Date.now() });
   }
 
   next();

@@ -302,6 +302,9 @@ ${cases}
         }
         long __mem = (Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory()) / 1024;
         OUT.append("__CODEXA_STATS__ " + (System.currentTimeMillis() - __t0) + " " + __mem + "\\n");
+        // The project's own prints sit above this line; the judge reads only
+        // what follows it (src/lib/batch.ts BEGIN_MARKER).
+        System.out.println("__CODEXA_BEGIN__");
         System.out.print(OUT);
     }
 }`;

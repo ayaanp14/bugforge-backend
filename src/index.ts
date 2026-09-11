@@ -141,6 +141,68 @@ const socketMetadata = new Map<string, { roomId: string, userId: string, isHost:
 // Room cleanup timers to avoid closing on brief refresh
 const roomCleanupTimers = new Map<string, NodeJS.Timeout>();
 
+/** Host-gone timers, by room: after the grace period the seat passes on. */
+const hostReassignTimers = new Map<string, NodeJS.Timeout>();
+
+/** Sockets seated in a room for one account. */
+function seatsOf(roomId: string, userId: string): number {
+  let n = 0;
+  for (const meta of socketMetadata.values()) if (meta.roomId === roomId && meta.userId === userId) n += 1;
+  return n;
+}
+
+/**
+ * The host's sockets have all gone. Give them the same grace a refresh gets,
+ * then hand the room to whoever has been seated longest — a guest used to be
+ * left in a headless room with no kick, no close and no recovery code, and
+ * the host's absence was not even announced.
+ */
+function scheduleHostReassign(roomId: string, hostId: string) {
+  const pending = hostReassignTimers.get(roomId);
+  if (pending) clearTimeout(pending);
+  hostReassignTimers.set(
+    roomId,
+    setTimeout(async () => {
+      hostReassignTimers.delete(roomId);
+      try {
+        if (seatsOf(roomId, hostId) > 0) return;
+        const room = await prisma.pairRoom.findUnique({
+          where: { id: roomId },
+          include: { participants: { include: { user: { select: { name: true, avatar_url: true } } }, orderBy: { joinedAt: "asc" } } },
+        });
+        if (!room || room.status === "closed") return;
+        if (room.participants.find((p) => p.role === "host")?.userId !== hostId) return;
+        // The longest-seated participant who is actually here.
+        const heir = room.participants.find((p) => p.userId !== hostId && seatsOf(roomId, p.userId) > 0);
+        if (!heir) return;
+
+        await prisma.$transaction([
+          prisma.roomParticipant.updateMany({ where: { roomId, userId: hostId }, data: { role: "guest" } }),
+          prisma.roomParticipant.updateMany({ where: { roomId, userId: heir.userId }, data: { role: "host" } }),
+          // The REST reads and the submit credit follow `createdBy`.
+          prisma.pairRoom.update({ where: { id: roomId }, data: { createdBy: heir.userId } }),
+        ]);
+        for (const [, meta] of socketMetadata) {
+          if (meta.roomId !== roomId) continue;
+          meta.isHost = meta.userId === heir.userId;
+        }
+        io.to(roomId).emit(
+          "participant-update",
+          room.participants.map((p) => ({
+            userId: p.userId,
+            name: p.user.name,
+            avatar_url: p.user.avatar_url,
+            role: p.userId === heir.userId ? "host" : "guest",
+          })),
+        );
+        io.to(roomId).emit("host-changed", { userId: heir.userId, name: heir.user.name });
+      } catch (err) {
+        console.error("host reassignment error:", err);
+      }
+    }, 20000),
+  );
+}
+
 async function softDeleteRoom(roomId: string, slug: string) {
   try {
     console.log(`🧹 Soft-deleting room ${roomId} (status -> closed)`);
@@ -151,6 +213,11 @@ async function softDeleteRoom(roomId: string, slug: string) {
     io.to(roomId).emit("room-ended", { slug });
     roomLatestCode.delete(roomId);
     roomAudioParticipants.delete(roomId);
+    const handover = hostReassignTimers.get(roomId);
+    if (handover) {
+      clearTimeout(handover);
+      hostReassignTimers.delete(roomId);
+    }
   } catch (err) {
     console.error("Soft delete room error:", err);
   }
@@ -164,12 +231,23 @@ async function handleParticipantLeave(roomId: string, userId: string, slug: stri
     if (socketsInRoom.length === 0) {
       // Last person left, start cleanup timer
       if (roomCleanupTimers.has(roomId)) clearTimeout(roomCleanupTimers.get(roomId)!);
-      
-      const timer = setTimeout(() => {
-        softDeleteRoom(roomId, slug);
+
+      const timer = setTimeout(async () => {
         roomCleanupTimers.delete(roomId);
+        // The grace period exists so a refresh does not close the room, so
+        // the room must be checked again when it ends: the timer was armed
+        // when the last socket left, and nothing cancelled it when that
+        // socket came back. A solo host who pressed F5 was back in two
+        // seconds and still got "the host has ended the session" at twenty.
+        try {
+          const stillThere = await io.in(roomId).fetchSockets();
+          if (stillThere.length > 0) return;
+        } catch (err) {
+          console.error("room grace re-check error:", err);
+        }
+        softDeleteRoom(roomId, slug);
       }, 20000); // 20 second grace period for refresh
-      
+
       roomCleanupTimers.set(roomId, timer);
     }
   } catch (err) {
@@ -215,16 +293,29 @@ io.on("connection", (socket) => {
     if (typeof duelId === "string" && duelId) socket.leave(duelRoom(duelId));
   });
 
-  socket.on("join-room", async (roomId: string, claimedUserId: string) => {
-    // The verified identity wins over whatever the client says it is; the
-    // claim is only used for sockets that connected without a session.
-    const userId = socket.data.userId ?? claimedUserId;
-    socket.join(roomId);
+  /**
+   * The room this socket has been admitted to, if it is the one named.
+   *
+   * Every room event used to relay to whatever `roomId` the payload named:
+   * a socket that had never joined — a stranger with a room id off the
+   * lobby, a kicked participant coming back over the socket alone — could
+   * read the live buffer, overwrite it, and flip the partner's Run spinner.
+   * Admission is decided once, in `join-room`, against the participant
+   * table, and everything after that checks it here.
+   */
+  const admittedTo = (roomId: unknown) => {
+    const meta = socketMetadata.get(socket.id);
+    return meta && typeof roomId === "string" && meta.roomId === roomId ? meta : null;
+  };
 
-    // Push the room's current code straight to the joining socket.
-    const latestCode = roomLatestCode.get(roomId);
-    if (latestCode) socket.emit("code-update", latestCode);
-    socketDebug(`👤 Client ${socket.id} (User: ${userId}) joined room: ${roomId}`);
+  socket.on("join-room", async (roomId: string) => {
+    // Only a verified socket can be seated: the identity is the participant
+    // row, and a claim from the client is not one.
+    const userId = socket.data.userId;
+    if (!userId || typeof roomId !== "string" || !roomId) {
+      socket.emit("join-denied", { reason: "unauthenticated" });
+      return;
+    }
 
     try {
       const room = await prisma.pairRoom.findUnique({
@@ -237,81 +328,128 @@ io.on("connection", (socket) => {
         }
       });
 
-      if (room) {
-        const participant = room.participants.find((p: any) => p.userId === userId);
-        if (participant) {
-          socketMetadata.set(socket.id, { 
-            roomId, 
-            userId, 
-            isHost: participant.role === "host",
-            slug: room.problem.slug
-          });
-        }
-        const participants = room.participants.map((p: any) => ({
-          userId: p.userId,
-          name: p.user.name,
-          avatar_url: p.user.avatar_url,
-          role: p.role
-        }));
-        io.to(roomId).emit("participant-update", participants);
+      const participant = room?.participants.find((p: any) => p.userId === userId);
+      if (!room || !participant || room.status === "closed") {
+        socket.emit("join-denied", { reason: !room ? "not_found" : room.status === "closed" ? "closed" : "not_participant" });
+        return;
       }
+
+      // Seated. A socket that was in another room moves out of it first.
+      const previous = socketMetadata.get(socket.id);
+      if (previous && previous.roomId !== roomId) socket.leave(previous.roomId);
+      socket.join(roomId);
+      socketMetadata.set(socket.id, {
+        roomId,
+        userId,
+        isHost: participant.role === "host",
+        slug: room.problem.slug
+      });
+
+      // Somebody is here: the close-on-empty timer, if one was armed by the
+      // socket this replaces, is off — and so is the host handover if this
+      // is the host coming back.
+      const pending = roomCleanupTimers.get(roomId);
+      if (pending) {
+        clearTimeout(pending);
+        roomCleanupTimers.delete(roomId);
+      }
+      if (participant.role === "host") {
+        const handover = hostReassignTimers.get(roomId);
+        if (handover) {
+          clearTimeout(handover);
+          hostReassignTimers.delete(roomId);
+        }
+      }
+
+      // Push the room's current code straight to the joining socket.
+      const latestCode = roomLatestCode.get(roomId);
+      if (latestCode) socket.emit("code-update", latestCode);
+      socketDebug(`👤 Client ${socket.id} (User: ${userId}) joined room: ${roomId}`);
+
+      const participants = room.participants.map((p: any) => ({
+        userId: p.userId,
+        name: p.user.name,
+        avatar_url: p.user.avatar_url,
+        role: p.role
+      }));
+      io.to(roomId).emit("participant-update", participants);
     } catch (err) {
       console.error("Socket join-room error:", err);
     }
   });
 
   socket.on("identify-user", (claimedUserId: string) => {
+    // The account room was joined on connect from the verified token. A claim
+    // from the client is never honoured: `user_<id>` carries that account's
+    // private events (a kick, the audio call's signalling), and an anonymous
+    // socket could name anyone and receive them.
     const verified = socket.data.userId;
-    if (verified) {
-      // Already joined on connect. A client naming some other account gets
-      // ignored rather than granted: that room carries private events.
-      if (typeof claimedUserId === "string" && claimedUserId && claimedUserId !== verified) {
-        socketDebug(`🆔 Socket ${socket.id} claimed user ${claimedUserId} but is verified as ${verified}; ignoring`);
-      }
-      return;
+    if (typeof claimedUserId === "string" && claimedUserId && claimedUserId !== verified) {
+      socketDebug(`🆔 Socket ${socket.id} claimed user ${claimedUserId} (verified: ${verified ?? "none"}); ignoring`);
     }
-    // Anonymous handshake (a client not yet sending auth.token): the claim is
-    // all there is to go on, as before.
-    if (typeof claimedUserId !== "string" || !claimedUserId) return;
-    socket.join(`user_${claimedUserId}`);
-    socketDebug(`🆔 Socket ${socket.id} identified as user ${claimedUserId} (unverified)`);
   });
 
   socket.on("user-joined-notify", ({ roomId, name }: { roomId: string, name: string }) => {
-    socket.to(roomId).emit("user-joined", { name });
+    if (!admittedTo(roomId)) return;
+    socket.to(roomId).emit("user-joined", { name: typeof name === "string" ? name.slice(0, 80) : "Someone" });
   });
 
   socket.on("code-update", ({ roomId, code }: { roomId: string, code: string }) => {
+    if (!admittedTo(roomId) || typeof code !== "string") return;
+    // The buffer is bounded: it is held for every live room and a client can
+    // send anything up to the socket's own frame limit.
+    if (code.length > 200_000) return;
     roomLatestCode.set(roomId, code);
     socket.to(roomId).emit("code-update", code);
   });
 
-  socket.on("cursor-update", ({ roomId, userId, cursor }: { roomId: string, userId: string, cursor: any }) => {
-    socket.to(roomId).emit("cursor-update", { userId, cursor });
+  socket.on("cursor-update", ({ roomId, cursor }: { roomId: string, userId: string, cursor: any }) => {
+    // Identity comes from the seat, not the payload.
+    const meta = admittedTo(roomId);
+    if (!meta) return;
+    socket.to(roomId).emit("cursor-update", { userId: meta.userId, cursor });
   });
 
   socket.on("chat-message", ({ roomId, message }: { roomId: string, message: any }) => {
-    io.to(roomId).emit("chat-message", message);
+    const meta = admittedTo(roomId);
+    if (!meta || !message || typeof message !== "object") return;
+    const text = typeof message.text === "string" ? message.text.slice(0, 2000) : "";
+    if (!text.trim()) return;
+    // The sender is stamped server-side so a message cannot be attributed to
+    // the partner; the display name still travels for rendering.
+    io.to(roomId).emit("chat-message", { ...message, text, senderId: meta.userId });
   });
 
-  socket.on("typing", ({ roomId, userId, name, isTyping }: { roomId: string, userId: string, name: string, isTyping: boolean }) => {
-    socket.to(roomId).emit("partner-typing", { userId, name, isTyping });
+  socket.on("typing", ({ roomId, name, isTyping }: { roomId: string, userId: string, name: string, isTyping: boolean }) => {
+    const meta = admittedTo(roomId);
+    if (!meta) return;
+    socket.to(roomId).emit("partner-typing", { userId: meta.userId, name, isTyping: Boolean(isTyping) });
   });
 
   socket.on("remote-run-start", ({ roomId }: { roomId: string }) => {
+    if (!admittedTo(roomId)) return;
     socket.to(roomId).emit("remote-run-start");
   });
 
-  socket.on("remote-run-results", ({ roomId, results }: { roomId: string, results: any }) => {
-    socket.to(roomId).emit("remote-run-results", { results });
+  // The whole payload is forwarded: the client sends `timingInsights`
+  // alongside `results` and the partner reads both, but only `results`
+  // used to make it across.
+  socket.on("remote-run-results", ({ roomId, ...payload }: { roomId: string, results: any, timingInsights?: any, error?: string }) => {
+    if (!admittedTo(roomId)) return;
+    socket.to(roomId).emit("remote-run-results", payload);
   });
 
   socket.on("remote-submit-start", ({ roomId }: { roomId: string }) => {
+    if (!admittedTo(roomId)) return;
     socket.to(roomId).emit("remote-submit-start");
   });
 
-  socket.on("remote-submit-results", ({ roomId, results }: { roomId: string, results: any }) => {
-    socket.to(roomId).emit("remote-submit-results", results);
+  // The client nests the verdict under `results` and the partner reads it
+  // flat (`data.verdict`), as it always has; `timingInsights` and `error`
+  // ride alongside.
+  socket.on("remote-submit-results", ({ roomId, results, timingInsights, error }: { roomId: string, results?: any, timingInsights?: any, error?: string }) => {
+    if (!admittedTo(roomId)) return;
+    socket.to(roomId).emit("remote-submit-results", { ...(results && typeof results === "object" ? results : {}), timingInsights, error });
   });
 
   socket.on("kick-participant", async ({ roomId, targetUserId }: { roomId: string, targetUserId: string }) => {
@@ -342,24 +480,35 @@ io.on("connection", (socket) => {
         where: { roomId, userId: targetUserId }
       });
 
-      const currentRoom = await prisma.pairRoom.findUnique({ where: { id: roomId }, select: { recoveryCode: true } });
+      // A kicked participant must not be able to guess — or remember — their
+      // way back in, so the recovery code is a fresh one on every kick. It
+      // used to be re-encoded in place: `encodeCode(existing)` wrapped the
+      // already-encoded value a second time, so from the second kick on the
+      // host was reading out a base64 blob that could never match, and the
+      // code never actually changed.
+      const recoveryCode = generateRecoveryCode();
       await prisma.pairRoom.update({
         where: { id: roomId },
         data: {
           kickedUserIds: {
             push: targetUserId
           },
-          // A kicked participant must not be able to guess their way back in.
-          recoveryCode: encodeCode(currentRoom?.recoveryCode || generateRecoveryCode())
+          recoveryCode: encodeCode(recoveryCode)
         }
       });
 
       // 3. Notify the target user specifically
       io.to(`user_${targetUserId}`).emit("kicked-from-room");
 
-      // 4. Force their socket(s) to leave the room channel, and the call
+      // 4. Force their socket(s) to leave the room channel, and the call. The
+      //    seat is revoked too, so the socket cannot keep relaying into the
+      //    room it was just removed from.
       const targetSockets = await io.in(`user_${targetUserId}`).fetchSockets();
-      targetSockets.forEach(s => s.leave(roomId));
+      for (const s of targetSockets) {
+        s.leave(roomId);
+        const seat = socketMetadata.get(s.id);
+        if (seat && seat.roomId === roomId) socketMetadata.delete(s.id);
+      }
       dropAudioParticipant(roomId, targetUserId);
 
       // 5. Update the room's participant list for everyone else
@@ -380,9 +529,13 @@ io.on("connection", (socket) => {
           role: p.role
         }));
         io.to(roomId).emit("participant-update", participants);
-        io.to(roomId).emit("kicked-update", { 
-          kickedUserIds: room.kickedUserIds, 
-          recoveryCode: room.recoveryCode 
+        // The kicked list is everyone's business; the recovery code is the
+        // host's alone (the REST read hides it from guests for the same
+        // reason), so it goes to the host's account room, not the room.
+        io.to(roomId).emit("kicked-update", { kickedUserIds: room.kickedUserIds, recoveryCode: null });
+        io.to(`user_${requesterId}`).emit("kicked-update", {
+          kickedUserIds: room.kickedUserIds,
+          recoveryCode: room.recoveryCode
         });
       }
     } catch (err) {
@@ -391,46 +544,64 @@ io.on("connection", (socket) => {
   });
 
   socket.on("host-leaving", async ({ roomId }: { roomId: string }) => {
-    const meta = socketMetadata.get(socket.id);
+    // `isHost` was decided in join-room against the participant table for a
+    // verified socket, so this cannot be reached by naming the host's id.
+    const meta = admittedTo(roomId);
     if (meta && meta.isHost) {
       socketDebug(`📢 Host explicitly closing room: ${roomId}`);
       await softDeleteRoom(roomId, meta.slug);
     }
   });
 
-  socket.on("leave-room", async ({ roomId, userId }: { roomId: string, userId: string }) => {
-    const meta = socketMetadata.get(socket.id);
+  socket.on("leave-room", async ({ roomId }: { roomId: string, userId?: string }) => {
+    const meta = admittedTo(roomId);
     if (meta) {
-      socketDebug(`👤 User ${userId} explicitly left room ${roomId}`);
+      socketDebug(`👤 User ${meta.userId} explicitly left room ${roomId}`);
       socket.leave(roomId);
+      socketMetadata.delete(socket.id);
       dropAudioParticipant(roomId, meta.userId);
-      await handleParticipantLeave(roomId, userId, meta.slug);
+      if (meta.isHost && seatsOf(roomId, meta.userId) === 0) scheduleHostReassign(roomId, meta.userId);
+      await handleParticipantLeave(roomId, meta.userId, meta.slug);
     }
   });
 
   // --- Audio Signaling ---
+  //
+  // Every event here is scoped to the seat: who is on the call, and whose
+  // signalling a socket may relay, both come from `join-room`, never from
+  // the payload. An anonymous socket could otherwise name any account and
+  // receive — or answer — that account's WebRTC offers.
 
-  socket.on("join-audio", ({ roomId, userId }: { roomId: string, userId: string }) => {
+  socket.on("join-audio", ({ roomId }: { roomId: string, userId?: string }) => {
+    const meta = admittedTo(roomId);
+    if (!meta) return;
     let call = roomAudioParticipants.get(roomId);
     if (!call) {
       call = new Set();
       roomAudioParticipants.set(roomId, call);
     }
-    call.add(userId);
+    call.add(meta.userId);
 
-    socket.to(roomId).emit("user-joined-audio", { userId });
+    socket.to(roomId).emit("user-joined-audio", { userId: meta.userId });
     io.to(roomId).emit("audio-participants-update", Array.from(call));
   });
 
-  socket.on("audio-signal", ({ roomId, targetUserId, signal, fromUserId }: any) => {
-    io.to(`user_${targetUserId}`).emit("audio-signal", { signal, fromUserId });
+  socket.on("audio-signal", ({ roomId, targetUserId, signal }: any) => {
+    const meta = admittedTo(roomId);
+    if (!meta || typeof targetUserId !== "string" || !targetUserId) return;
+    // Only to somebody on this room's call.
+    if (!roomAudioParticipants.get(roomId)?.has(targetUserId)) return;
+    io.to(`user_${targetUserId}`).emit("audio-signal", { signal, fromUserId: meta.userId });
   });
 
-  socket.on("leave-audio", ({ roomId, userId }: { roomId: string, userId: string }) => {
-    dropAudioParticipant(roomId, userId);
+  socket.on("leave-audio", ({ roomId }: { roomId: string, userId?: string }) => {
+    const meta = admittedTo(roomId);
+    if (!meta) return;
+    dropAudioParticipant(roomId, meta.userId);
   });
 
   socket.on("get-audio-participants", (roomId: string) => {
+    if (!admittedTo(roomId)) return;
     socket.emit("audio-participants-update", Array.from(roomAudioParticipants.get(roomId) || []));
   });
 
@@ -438,11 +609,12 @@ io.on("connection", (socket) => {
     socketDebug(`🔌 Client disconnected: ${socket.id}`);
     const meta = socketMetadata.get(socket.id);
     if (meta) {
+      socketMetadata.delete(socket.id);
       // A dropped socket is off the call whether or not it said goodbye.
       dropAudioParticipant(meta.roomId, meta.userId);
+      if (meta.isHost && seatsOf(meta.roomId, meta.userId) === 0) scheduleHostReassign(meta.roomId, meta.userId);
       // Check if room should be closed
       await handleParticipantLeave(meta.roomId, meta.userId, meta.slug);
-      socketMetadata.delete(socket.id);
     }
   });
 });

@@ -6,6 +6,7 @@ import { cachedShared, invalidate } from "../lib/cache.js";
 import { browserCache } from "../lib/http-cache.js";
 import { getCatalogue, listProblemsWithStatus, loadProblemState, type ProblemState } from "../services/dashboard.js";
 import { isCompanyTag } from "../lib/companies.js";
+import { LANGUAGE_MAP } from "../lib/judge0.js";
 
 const router = Router();
 
@@ -490,8 +491,13 @@ router.delete("/:slug/test-cases/:testCaseId", requireAuth, adminOnly, async (re
 router.get("/:slug/draft", requireAuth, async (req, res) => {
   try {
     const { slug } = req.params;
-    const language = req.query.language as string;
+    const language = req.query.language;
     const userId = req.user!.userId;
+    // A missing language reached the compound unique as `undefined` and 500ed.
+    if (typeof language !== "string" || !LANGUAGE_MAP[language]) {
+      res.status(400).json({ error: "Unsupported language" });
+      return;
+    }
 
     const problem = await prisma.problem.findUnique({ where: { slug: String(slug) }, select: { id: true } });
     if (!problem) {
@@ -520,8 +526,24 @@ router.get("/:slug/draft", requireAuth, async (req, res) => {
 router.post("/:problemId/draft", requireAuth, async (req, res) => {
   try {
     const problemId = req.params.problemId as string;
-    const { code, language } = req.body as { code: string; language: string };
+    const { code, language } = req.body as { code?: unknown; language?: unknown };
     const userId = req.user!.userId;
+
+    // Shape first: a non-string reached Prisma and 500ed, and an unknown
+    // problem id hit the foreign key the same way.
+    if (typeof code !== "string" || code.length > 65_536) {
+      res.status(400).json({ error: "Draft code must be a string of at most 64 KB" });
+      return;
+    }
+    if (typeof language !== "string" || !LANGUAGE_MAP[language]) {
+      res.status(400).json({ error: "Unsupported language" });
+      return;
+    }
+    const exists = await prisma.problem.findUnique({ where: { id: problemId }, select: { id: true } });
+    if (!exists) {
+      res.status(404).json({ error: "Problem not found" });
+      return;
+    }
 
     const draft = await prisma.codeDraft.upsert({
       where: {
@@ -591,8 +613,17 @@ router.get("/:slug/timer", requireAuth, async (req, res) => {
 router.post("/:slug/timer", requireAuth, async (req, res) => {
   try {
     const { slug } = req.params;
-    const { action, elapsedSeconds } = req.body;
+    const { action } = req.body ?? {};
     const userId = req.user!.userId;
+
+    if (!["start", "pause", "end", "reset"].includes(action)) {
+      res.status(400).json({ error: "Unknown timer action" });
+      return;
+    }
+    // A whole number of seconds within a week; a string or a negative value
+    // used to reach the integer column and 500.
+    const raw = Number(req.body?.elapsedSeconds);
+    const elapsedSeconds = Number.isFinite(raw) ? Math.min(7 * 24 * 3600, Math.max(0, Math.round(raw))) : 0;
 
     const problem = await prisma.problem.findUnique({ where: { slug: String(slug) }, select: { id: true } });
     if (!problem) {
@@ -607,13 +638,13 @@ router.post("/:slug/timer", requireAuth, async (req, res) => {
         isRunning: true,
         lastStartedAt: new Date(),
         // We sync the elapsed seconds from client just in case
-        elapsedSeconds: elapsedSeconds ?? 0,
+        elapsedSeconds,
       };
     } else if (action === "pause" || action === "end") {
       updateData = {
         isRunning: false,
         lastStartedAt: null,
-        elapsedSeconds: elapsedSeconds,
+        elapsedSeconds,
       };
     } else if (action === "reset") {
       updateData = {

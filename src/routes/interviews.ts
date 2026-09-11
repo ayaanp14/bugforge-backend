@@ -18,6 +18,7 @@ import {
 } from "../services/interview-ai.js";
 import { realtimeProvider } from "../services/realtime-interview.js";
 import { cachedShared } from "../lib/cache.js";
+import { invalidateDashboard } from "../services/dashboard.js";
 import {
   finalizeInterview,
   interviewHistoryKey,
@@ -60,6 +61,10 @@ router.post("/save", requireAuth, async (req: any, res) => {
         focusAreaIds: focusAreaIds || [],
       },
     });
+
+    // The dashboard lists saved templates; it used to keep the pre-save copy
+    // for its TTL.
+    invalidateDashboard(req.user.userId);
 
     res.json({
       success: true,
@@ -172,6 +177,7 @@ router.delete("/:id", requireAuth, async (req: any, res) => {
 
     // Its sessions went with it, and the history analytics counted them.
     invalidateInterviewHistory(req.user.userId);
+    invalidateDashboard(req.user.userId);
 
     res.json({ success: true, message: "Interview configuration deleted" });
   } catch (error) {
@@ -342,38 +348,70 @@ router.post("/start", requireAuth, async (req: any, res) => {
       });
     }
 
+    const language = languageFor(config);
+
+    // A round already open on this template is handed back, not duplicated.
+    // The session page used to open on `?savedInterviewId=` and POST here on
+    // every mount, so a refresh mid-interview created a second row (and a
+    // second opening question) and left the first one "started" forever —
+    // each one a slot off the weekly quota. The client now rewrites its URL
+    // to `?sessionId=` as well, so this is the server-side half of the same
+    // fix: whichever way the page is reopened, it lands in the same room.
+    const open = await prisma.mockInterviewSession.findFirst({
+      where: { userId: req.user.userId, savedInterviewId: template.id, status: "started", mode: "written" },
+      orderBy: { createdAt: "desc" },
+      include: { questions: { orderBy: { orderIndex: "asc" } } },
+    });
+    if (open) {
+      const pending = open.questions.find((q) => q.status === "pending") ?? null;
+      const { questions, ...session } = open;
+      return res.json({
+        success: true,
+        resumed: true,
+        message: "Interview session resumed",
+        session,
+        question: pending,
+        mode: "written",
+        language,
+        setup: config,
+        progress: { asked: pending ? pending.orderIndex + 1 : questions.length, total: open.questionBudget },
+      });
+    }
+
+    // The opening question is written before the row exists: a model failure
+    // here used to leave a "started" session with no questions behind — one
+    // that showed in history as an open round and counted against the quota.
+    const { question, usage } = await openInterview(config, budget, wantsCode(config));
+
     const session = await prisma.mockInterviewSession.create({
       data: {
         userId: req.user.userId,
         savedInterviewId: template.id,
         status: "started",
         questionBudget: budget,
+        // The opening question's cost, on the row from the start.
+        promptTokens: usage.promptTokens,
+        cachedTokens: usage.cachedTokens,
+        completionTokens: usage.completionTokens,
+        reasoningTokens: usage.reasoningTokens,
+        costMicros: usage.costMicros,
       },
     });
     invalidateInterviewHistory(req.user.userId);
 
-    const { question, usage } = await openInterview(config, budget, wantsCode(config));
-    const language = languageFor(config);
-
-    const [firstQuestion] = await prisma.$transaction([
-      prisma.mockInterviewQuestion.create({
-        data: {
-          sessionId: session.id,
-          questionText: question.question,
-          topic: question.topic,
-          difficulty: question.difficulty,
-          focusArea: question.focusArea,
-          starterCode: starterCodeFor(question.starterCode ?? "", language),
-          expectedSkills: question.expectedSkills,
-          status: "pending",
-          orderIndex: 0,
-        },
-      }),
-      prisma.mockInterviewSession.update({
-        where: { id: session.id },
-        data: usageIncrement(usage),
-      }),
-    ]);
+    const firstQuestion = await prisma.mockInterviewQuestion.create({
+      data: {
+        sessionId: session.id,
+        questionText: question.question,
+        topic: question.topic,
+        difficulty: question.difficulty,
+        focusArea: question.focusArea,
+        starterCode: starterCodeFor(question.starterCode ?? "", language),
+        expectedSkills: question.expectedSkills,
+        status: "pending",
+        orderIndex: 0,
+      },
+    });
 
     // Question two starts being written now, while the candidate is still
     // reading question one. By the time they submit it is already on disk.
@@ -601,20 +639,46 @@ router.post("/session/:sessionId/answer", requireAuth, async (req: any, res) => 
     if (session.userId !== req.user.userId) {
       return res.status(403).json({ error: "You do not have permission to answer in this session" });
     }
-    if (session.status === "completed") {
+    if (session.status !== "started") {
       return res.status(409).json({ error: "This interview has already finished" });
     }
 
     const current = session.questions.find((q) => q.id === questionId);
     if (!current) return res.status(404).json({ error: "Question not found in this session" });
-    // Anything past "pending" has already been submitted. A turn that failed
-    // mid-flight never leaves this state, so a retry is still allowed.
-    if (current.status !== "pending") {
-      return res.status(409).json({ error: "That question has already been answered" });
+    if (current.status === "prefetched") {
+      return res.status(409).json({ error: "That question has not been asked yet" });
     }
 
     const config = configFrom(session.savedInterview);
     const budget = session.questionBudget;
+    const language = languageFor(config);
+
+    // Already submitted. The answer is written before the next question is
+    // generated, so a turn whose generation failed leaves the row "answered"
+    // with nothing after it — and the candidate retrying from the "not saved"
+    // message must not be told "already answered" and left with nowhere to go.
+    // Where the round has moved on (the other tab answered, the prefetch
+    // landed), hand back where it is; where it has not, carry on below as if
+    // this were the first submit, minus the write.
+    const alreadyAnswered = current.status !== "pending";
+    if (alreadyAnswered) {
+      const moved = session.questions.find(
+        (q) => q.orderIndex === current.orderIndex + 1 && q.status === "pending",
+      );
+      if (moved) {
+        return res.json({
+          success: true,
+          stale: true,
+          nextQuestion: moved,
+          language,
+          done: false,
+          progress: { asked: moved.orderIndex + 1, total: budget },
+        });
+      }
+      if (current.orderIndex + 1 >= budget) {
+        return res.json({ success: true, stale: true, nextQuestion: null, language, done: true, progress: { asked: budget, total: budget } });
+      }
+    }
     // Everything already asked and answered, in order — the cached prefix.
     // A turn whose score has not landed yet still belongs in the transcript;
     // what makes it history is the answer, not the mark.
@@ -628,11 +692,15 @@ router.post("/session/:sessionId/answer", requireAuth, async (req: any, res) => 
 
     // The answer is recorded first and on its own. Nothing here is scored —
     // marking happens once, at /complete — so this write is the entire cost of
-    // a turn when the next question was prefetched in time.
-    await prisma.mockInterviewQuestion.update({
-      where: { id: current.id },
-      data: { userAnswer: answer, status: "answered" },
-    });
+    // a turn when the next question was prefetched in time. A retry keeps the
+    // answer that already landed.
+    if (!alreadyAnswered) {
+      await prisma.mockInterviewQuestion.update({
+        where: { id: current.id },
+        data: { userAnswer: answer, status: "answered" },
+      });
+    }
+    const recorded = alreadyAnswered ? (current.userAnswer ?? answer) : answer;
 
     let nextQuestion = null;
 
@@ -650,33 +718,45 @@ router.post("/session/:sessionId/answer", requireAuth, async (req: any, res) => 
         const turn = await askNextQuestion(
           config,
           budget,
-          [...transcript, { questionText: current.questionText, userAnswer: answer }],
+          [...transcript, { questionText: current.questionText, userAnswer: recorded }],
           current.questionText,
-          answer,
+          recorded,
           asked,
           wantsCode(config),
         );
         const next = turn.nextQuestion;
-        [ready] = await prisma.$transaction([
-          prisma.mockInterviewQuestion.create({
-            data: {
-              sessionId: session.id,
-              questionText: next.question,
-              topic: next.topic,
-              difficulty: next.difficulty,
-              focusArea: next.focusArea,
-              starterCode: starterCodeFor(next.starterCode ?? "", languageFor(config)),
-              expectedSkills: next.expectedSkills,
-              status: "pending",
-              orderIndex: nextIndex,
-            },
-          }),
-          prisma.mockInterviewSession.update({
-            where: { id: session.id },
-            data: usageIncrement(turn.usage),
-          }),
-        ]);
-      } else if (ready.status === "prefetched") {
+        try {
+          [ready] = await prisma.$transaction([
+            prisma.mockInterviewQuestion.create({
+              data: {
+                sessionId: session.id,
+                questionText: next.question,
+                topic: next.topic,
+                difficulty: next.difficulty,
+                focusArea: next.focusArea,
+                starterCode: starterCodeFor(next.starterCode ?? "", language),
+                expectedSkills: next.expectedSkills,
+                status: "pending",
+                orderIndex: nextIndex,
+              },
+            }),
+            prisma.mockInterviewSession.update({
+              where: { id: session.id },
+              data: usageIncrement(turn.usage),
+            }),
+          ]);
+        } catch (error: any) {
+          // A prefetch on another instance, or a retry racing this one, wrote
+          // the slot first. Theirs is the question; this generation is waste,
+          // not a failure.
+          if (error?.code !== "P2002") throw error;
+          ready = await prisma.mockInterviewQuestion.findUnique({
+            where: { sessionId_orderIndex: { sessionId: session.id, orderIndex: nextIndex } },
+          });
+          if (!ready) throw error;
+        }
+      }
+      if (ready.status === "prefetched") {
         // Hand it over: it is the candidate's question now.
         ready = await prisma.mockInterviewQuestion.update({
           where: { id: ready.id },
@@ -686,13 +766,16 @@ router.post("/session/:sessionId/answer", requireAuth, async (req: any, res) => 
 
       nextQuestion = ready;
 
-      const history = [...transcript, { questionText: current.questionText, userAnswer: answer }];
+      const history = [...transcript, { questionText: current.questionText, userAnswer: recorded }];
 
       // Both of these run while the candidate reads and types, and neither is
       // on the path back to them. The question goes first because a missing one
-      // is a visible wait; the mark is not needed until the round closes.
+      // is a visible wait; the mark is not needed until the round closes. A
+      // retried turn whose mark already landed is not marked again.
       prefetchAhead(session, config, history, ready.questionText, nextIndex + 1);
-      markInBackground(session, config, transcript, current, answer, nextIndex + 1);
+      if (current.evaluationScore === null) {
+        markInBackground(session, config, transcript, current, recorded, nextIndex + 1);
+      }
     }
 
     // No score is returned, and the last answer's has not even been computed. A
@@ -702,7 +785,7 @@ router.post("/session/:sessionId/answer", requireAuth, async (req: any, res) => 
     res.json({
       success: true,
       nextQuestion,
-      language: languageFor(config),
+      language,
       done: isLast,
       progress: { asked: isLast ? budget : asked + 1, total: budget },
     });
@@ -721,82 +804,125 @@ router.post("/session/:sessionId/answer", requireAuth, async (req: any, res) => 
  * asked for prose, and only over feedback it has already written — which is why
  * the closing report costs a fraction of a single interview turn.
  */
+/**
+ * Closes in flight, by session. Two tabs (or a double click that beat the
+ * button's disabled state) closing the same round used to each mark and each
+ * write a report — two model calls for one interview. The second caller now
+ * waits on the first and gets the same answer.
+ */
+const completing = new Map<string, Promise<CompleteOutcome>>();
+
+type CompleteOutcome = { status: number; body: Record<string, unknown> };
+
+async function completeWrittenSession(sessionId: string, userId: string): Promise<CompleteOutcome> {
+  // A turn hands back its question before its mark is written, so the last
+  // one or two answers may still be scoring when the candidate closes the
+  // round. Let anything still running finish before reading the rows, rather
+  // than starting a second copy of it below.
+  await settleMarking(sessionId);
+
+  let session = await prisma.mockInterviewSession.findUnique({
+    where: { id: sessionId },
+    include: {
+      savedInterview: true,
+      questions: { orderBy: { orderIndex: "asc" } },
+    },
+  });
+
+  if (!session) return { status: 404, body: { error: "Session not found" } };
+  if (session.userId !== userId) {
+    return { status: 403, body: { error: "You do not have permission to close this session" } };
+  }
+  if (session.status === "completed") {
+    return { status: 200, body: { success: true, alreadyCompleted: true, report: reportOf(session, session.questions) } };
+  }
+  if (session.status !== "started") {
+    return { status: 409, body: { error: "This interview was already closed" } };
+  }
+  // A spoken round is closed by /voice/complete, which scores the transcript.
+  // Closing it here would find no question rows and file it as walked-out.
+  if (session.mode === "voice") {
+    return { status: 400, body: { error: "This is a voice interview; close it from the voice room" } };
+  }
+
+  // Whatever the idle windows did not cover — in the normal case just the
+  // final answer, which had no window after it, plus anything a failed
+  // background mark or a restart left behind. Concurrent, so this costs the
+  // slowest one rather than the sum.
+  const unmarked = session.questions.filter((q) => q.userAnswer !== null && q.evaluationScore === null);
+  if (unmarked.length > 0) {
+    const config = configFrom(session.savedInterview);
+    const budget = session.questionBudget;
+    const ordered = session.questions;
+
+    await Promise.allSettled(
+      unmarked.map(async (question) => {
+        const transcript = ordered
+          .filter((q) => q.orderIndex < question.orderIndex && q.userAnswer !== null)
+          .map((q) => ({ questionText: q.questionText, userAnswer: q.userAnswer }));
+        const { evaluation, usage } = await evaluateAnswer(
+          config,
+          budget,
+          transcript,
+          question.questionText,
+          question.userAnswer as string,
+        );
+        await storeEvaluation(session!.id, question.id, evaluation, usage);
+      }),
+    );
+
+    session = await prisma.mockInterviewSession.findUnique({
+      where: { id: sessionId },
+      include: { savedInterview: true, questions: { orderBy: { orderIndex: "asc" } } },
+    });
+    if (!session) return { status: 404, body: { error: "Session not found" } };
+  }
+
+  const answered = session.questions.filter((q) => q.userAnswer !== null);
+  const scored = session.questions.filter((q) => q.status === "evaluated" && q.evaluationScore !== null);
+
+  // Walked out before answering anything: close it, no report, no model call.
+  if (answered.length === 0) {
+    const abandoned = await prisma.mockInterviewSession.update({
+      where: { id: session.id },
+      data: { status: "abandoned", completedAt: new Date() },
+    });
+    invalidateInterviewHistory(session.userId);
+    return { status: 200, body: { success: true, abandoned: true, session: abandoned } };
+  }
+
+  // Answers exist that could not be marked — the provider was down, or
+  // refused past its retries. Closing anyway used to file a fully answered
+  // round as "abandoned" (nothing scored) or write a report with those
+  // answers silently missing (some scored). Neither is recoverable once the
+  // status flips, so the round stays open and the candidate is asked to try
+  // again in a moment.
+  if (scored.length < answered.length) {
+    return {
+      status: 503,
+      body: {
+        error: "Your answers could not be scored right now. Nothing is lost — try closing the round again in a moment.",
+        retryable: true,
+        unmarked: answered.length - scored.length,
+      },
+    };
+  }
+
+  const completed = await finalizeInterview(session, configFrom(session.savedInterview), scored);
+  return { status: 200, body: { success: true, report: reportOf(completed, scored) } };
+}
+
 router.post("/session/:sessionId/complete", requireAuth, async (req: any, res) => {
   const { sessionId } = req.params;
 
   try {
-    // A turn hands back its question before its mark is written, so the last
-    // one or two answers may still be scoring when the candidate closes the
-    // round. Read the rows only once that work has finished.
-    // Most answers were marked while the candidate was working on the next
-    // question. Let anything still running finish before reading the rows,
-    // rather than starting a second copy of it below.
-    await settleMarking(sessionId);
-
-    let session = await prisma.mockInterviewSession.findUnique({
-      where: { id: sessionId },
-      include: {
-        savedInterview: true,
-        questions: { orderBy: { orderIndex: "asc" } },
-      },
-    });
-
-    if (!session) return res.status(404).json({ error: "Session not found" });
-    if (session.userId !== req.user.userId) {
-      return res.status(403).json({ error: "You do not have permission to close this session" });
+    let job = completing.get(sessionId);
+    if (!job) {
+      job = completeWrittenSession(sessionId, req.user.userId).finally(() => completing.delete(sessionId));
+      completing.set(sessionId, job);
     }
-    if (session.status === "completed") {
-      return res.json({ success: true, alreadyCompleted: true, report: reportOf(session, session.questions) });
-    }
-
-    // Whatever the idle windows did not cover — in the normal case just the
-    // final answer, which had no window after it, plus anything a failed
-    // background mark or a restart left behind. Concurrent, so this costs the
-    // slowest one rather than the sum.
-    const unmarked = session.questions.filter((q) => q.userAnswer !== null && q.evaluationScore === null);
-    if (unmarked.length > 0) {
-      const config = configFrom(session.savedInterview);
-      const budget = session.questionBudget;
-      const ordered = session.questions;
-
-      await Promise.allSettled(
-        unmarked.map(async (question) => {
-          const transcript = ordered
-            .filter((q) => q.orderIndex < question.orderIndex && q.userAnswer !== null)
-            .map((q) => ({ questionText: q.questionText, userAnswer: q.userAnswer }));
-          const { evaluation, usage } = await evaluateAnswer(
-            config,
-            budget,
-            transcript,
-            question.questionText,
-            question.userAnswer as string,
-          );
-          await storeEvaluation(session!.id, question.id, evaluation, usage);
-        }),
-      );
-
-      session = await prisma.mockInterviewSession.findUnique({
-        where: { id: sessionId },
-        include: { savedInterview: true, questions: { orderBy: { orderIndex: "asc" } } },
-      });
-      if (!session) return res.status(404).json({ error: "Session not found" });
-    }
-
-    const scored = session.questions.filter((q) => q.status === "evaluated" && q.evaluationScore !== null);
-
-    // Walked out before answering anything: close it, no report, no model call.
-    if (scored.length === 0) {
-      const abandoned = await prisma.mockInterviewSession.update({
-        where: { id: session.id },
-        data: { status: "abandoned", completedAt: new Date() },
-      });
-      invalidateInterviewHistory(session.userId);
-      return res.json({ success: true, abandoned: true, session: abandoned });
-    }
-
-    const completed = await finalizeInterview(session, configFrom(session.savedInterview), scored);
-
-    res.json({ success: true, report: reportOf(completed, scored) });
+    const outcome = await job;
+    res.status(outcome.status).json(outcome.body);
   } catch (error: any) {
     console.error("Error completing interview session:", error?.message);
     res.status(500).json({ error: "Failed to complete interview session" });
@@ -855,6 +981,7 @@ type AnalyticsQuestion = HistoryQuestion & {
 type HistorySession<Q extends HistoryQuestion = HistoryQuestion> = {
   id: string;
   status: string;
+  mode?: string;
   questionBudget: number;
   overallScore: number | null;
   createdAt: Date;
@@ -917,6 +1044,9 @@ function summaryOf(session: HistorySession) {
   return {
     id: session.id,
     status: session.status,
+    // Which room an open round resumes in: the history list used to send every
+    // "started" row to the written page, which closed a spoken round unscored.
+    mode: session.mode ?? "written",
     createdAt: session.createdAt,
     roleId: session.savedInterview.roleId,
     roundId: session.savedInterview.roundId,
@@ -1238,6 +1368,7 @@ router.get("/history", requireAuth, async (req: any, res) => {
         select: {
           id: true,
           status: true,
+          mode: true,
           questionBudget: true,
           overallScore: true,
           createdAt: true,

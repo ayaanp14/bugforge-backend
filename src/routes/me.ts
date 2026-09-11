@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { requireAuth } from "../middleware/auth.js";
 import { prisma } from "../lib/prisma.js";
-import { getHeatmap, getSubmissionHistory, getPairingHistory, getDifficultyStats, getRank, getDashboard } from "../services/dashboard.js";
+import { getHeatmap, getSubmissionHistory, getPairingHistory, getDifficultyStats, getRank, getDashboard, invalidateDashboard } from "../services/dashboard.js";
 import { ensureBaseline, listNotifications, getUnreadCount, markAllRead } from "../services/notifications.js";
 import { getMePayload, invalidateMe } from "../services/me.js";
 
@@ -152,52 +152,99 @@ router.patch("/", requireAuth, async (req, res) => {
     github, linkedin, twitter, readme 
   } = req.body;
 
+  // Every field is optional, but a field that is sent has a shape. They used
+  // to be written as received: a non-string `username` reached `.length` and
+  // 500ed, an empty one was stored (and the *second* person to do that got
+  // "already taken"), and the link fields accepted anything — including a
+  // `javascript:` URL for the profile page to render.
+  const text = (value: unknown, max: number, field: string): string | null | { error: string } => {
+    if (value === undefined) return null;
+    if (value === null) return "";
+    if (typeof value !== "string") return { error: `${field} must be text.` };
+    if (value.length > max) return { error: `${field} is limited to ${max} characters.` };
+    return value.trim();
+  };
+  const link = (value: unknown, field: string): string | null | { error: string } => {
+    const raw = text(value, 300, field);
+    if (raw === null || typeof raw === "object" || raw === "") return raw;
+    if (!/^https?:\/\/[^\s]+$/i.test(raw)) return { error: `${field} must be an http(s) link.` };
+    return raw;
+  };
+  const fields = {
+    username: text(username, 20, "Username"),
+    instituteName: text(instituteName, 120, "Institute"),
+    avatar_url: text(avatar_url, 2048, "Avatar"),
+    name: text(name, 80, "Name"),
+    gender: text(gender, 32, "Gender"),
+    location: text(location, 120, "Location"),
+    website: link(website, "Website"),
+    github: link(github, "GitHub"),
+    linkedin: link(linkedin, "LinkedIn"),
+    twitter: link(twitter, "Twitter"),
+    readme: text(readme, 20_000, "Readme"),
+  };
+  for (const value of Object.values(fields)) {
+    if (value && typeof value === "object") {
+      res.status(400).json({ error: value.error });
+      return;
+    }
+  }
+  const clean = fields as Record<keyof typeof fields, string | null>;
+  // Only an http(s) URL or a bundled avatar path may be an avatar.
+  if (clean.avatar_url && !/^(https?:\/\/[^\s]+|\/[^\s]*)$/i.test(clean.avatar_url)) {
+    res.status(400).json({ error: "Avatar must be a link." });
+    return;
+  }
+
   // 1. Strict Username Validation (No spaces, no special characters)
-  if (username !== undefined) {
-    const usernameRegex = /^[a-zA-Z0-9_]+$/;
-    if (username.length > 0 && !usernameRegex.test(username)) {
-      res.status(400).json({ error: "Username can only contain letters, numbers, and underscores." });
+  if (clean.username !== null) {
+    const usernameRegex = /^[a-z0-9_]{3,20}$/;
+    clean.username = clean.username.toLowerCase();
+    if (!usernameRegex.test(clean.username)) {
+      res.status(400).json({ error: "Usernames are 3–20 characters: letters, numbers and underscores." });
       return;
     }
 
     // 2. Explicit Uniqueness Check
-    if (username.length > 0) {
-      const existingUser = await prisma.user.findFirst({
-        where: {
-          username: { equals: username },
-          id: { not: req.user!.userId }
-        },
-        select: { id: true },
-      });
-      if (existingUser) {
-        res.status(400).json({ error: "Username is already taken." });
-        return;
-      }
+    const existingUser = await prisma.user.findFirst({
+      where: {
+        username: { equals: clean.username },
+        id: { not: req.user!.userId }
+      },
+      select: { id: true },
+    });
+    if (existingUser) {
+      res.status(400).json({ error: "Username is already taken." });
+      return;
     }
   }
 
   try {
+    const or = (value: string | null) => (value === null ? undefined : value);
     const updatedUser = await prisma.user.update({
       where: { id: req.user!.userId },
       data: {
-        username: username !== undefined ? username : undefined,
-        instituteName: instituteName !== undefined ? instituteName : undefined,
-        avatar_url: avatar_url !== undefined ? avatar_url : undefined,
-        name: name !== undefined ? name : undefined,
-        gender: gender !== undefined ? gender : undefined,
-        location: location !== undefined ? location : undefined,
+        username: or(clean.username),
+        instituteName: or(clean.instituteName),
+        avatar_url: or(clean.avatar_url),
+        name: or(clean.name),
+        gender: or(clean.gender),
+        location: or(clean.location),
         birthday: birthday !== undefined ? (birthday && !isNaN(Date.parse(birthday)) ? new Date(birthday) : null) : undefined,
-        website: website !== undefined ? website : undefined,
-        github: github !== undefined ? github : undefined,
-        linkedin: linkedin !== undefined ? linkedin : undefined,
-        twitter: twitter !== undefined ? twitter : undefined,
-        readme: readme !== undefined ? readme : undefined,
+        website: or(clean.website),
+        github: or(clean.github),
+        linkedin: or(clean.linkedin),
+        twitter: or(clean.twitter),
+        readme: or(clean.readme),
       },
     });
 
     // The profile just changed — drop the cached /api/me so the next read
-    // reflects it instead of serving the pre-edit copy for the TTL.
+    // reflects it instead of serving the pre-edit copy for the TTL. The
+    // dashboard carries its own copy of the name and avatar and preferred it,
+    // so the hero kept the old identity for up to five minutes.
     invalidateMe(req.user!.userId);
+    invalidateDashboard(req.user!.userId);
 
     res.json(updatedUser);
   } catch (err: any) {

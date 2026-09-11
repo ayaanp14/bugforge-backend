@@ -6,6 +6,7 @@ import { LANGUAGE_MAP } from "../lib/judge0.js";
 // All test cases run in ONE engine execution (1 compile + 1 run) and are
 // judged server-side — see src/lib/batch-judge.ts.
 import { runBatch } from "../lib/batch-judge.js";
+import { containsReservedMarker } from "../lib/batch.js";
 // The editor holds only the solution stub; the language driver (I/O parsing,
 // batching, gzip, stats) is wrapped around it here at execution time.
 // buildDriver also hands back the line map that turns engine-reported
@@ -30,6 +31,32 @@ const JUDGE_DEBUG_LOGS = process.env["JUDGE_DEBUG_LOGS"] === "true";
 interface CustomTestCase {
   input: string;
   expectedOutput?: string;
+}
+
+/**
+ * Bounds on what one request may ask the judge to do. The body limit alone
+ * (512 kb) left room for a few thousand custom cases, each without an
+ * expected output costing a reference-solution run, all inside one
+ * rate-limit token; and a non-string `code` reached the driver and threw.
+ */
+const MAX_CODE_CHARS = 65_536;
+const MAX_CUSTOM_CASES = 10;
+const MAX_CUSTOM_INPUT_CHARS = 4_096;
+
+function readCustomCases(raw: unknown): CustomTestCase[] | null {
+  if (raw == null) return [];
+  if (!Array.isArray(raw)) return null;
+  if (raw.length > MAX_CUSTOM_CASES) return null;
+  const cases: CustomTestCase[] = [];
+  for (const tc of raw) {
+    if (!tc || typeof tc !== "object") return null;
+    const input = (tc as { input?: unknown }).input;
+    const expected = (tc as { expectedOutput?: unknown }).expectedOutput;
+    if (typeof input !== "string" || input.length > MAX_CUSTOM_INPUT_CHARS) return null;
+    if (expected != null && (typeof expected !== "string" || expected.length > MAX_CUSTOM_INPUT_CHARS)) return null;
+    cases.push({ input, ...(typeof expected === "string" ? { expectedOutput: expected } : {}) });
+  }
+  return cases;
 }
 
 /**
@@ -63,12 +90,25 @@ async function fillExpectedOutputs(problem: JudgeProblem, cases: CustomTestCase[
 router.post("/run", requireAuth, executionLimiter, async (req, res) => {
   if (JUDGE_DEBUG_LOGS) console.log(`[POST /api/run] Received request from user ${req.user?.userId}`);
   try {
-    const { code, language, customTestCases } = req.body;
+    const { code, language } = req.body;
     const problemId = typeof req.body.problemId === "string" ? req.body.problemId : "";
 
     const languageId = LANGUAGE_MAP[language as string];
     if (!languageId) {
       res.status(400).json({ error: "Unsupported language" });
+      return;
+    }
+    if (typeof code !== "string" || code.length > MAX_CODE_CHARS) {
+      res.status(400).json({ error: "Code must be a string of at most 64 KB" });
+      return;
+    }
+    if (containsReservedMarker(code)) {
+      res.status(400).json({ error: "Code must not contain the reserved marker __CODEXA_" });
+      return;
+    }
+    const customTestCases = readCustomCases(req.body.customTestCases);
+    if (!customTestCases) {
+      res.status(400).json({ error: `Custom test cases: at most ${MAX_CUSTOM_CASES}, each a string input under ${MAX_CUSTOM_INPUT_CHARS} characters` });
       return;
     }
 
@@ -86,7 +126,7 @@ router.post("/run", requireAuth, executionLimiter, async (req, res) => {
     void emitDuelActivity(req.user!.userId, { problemId }, { type: "running" });
 
     const limits = { timeLimitMs: problem.timeLimitMs, memoryLimitMb: problem.memoryLimitMb };
-    const finalCustomCases: CustomTestCase[] = (customTestCases || []).map((tc: any) => ({ ...tc }));
+    const finalCustomCases: CustomTestCase[] = customTestCases.map((tc) => ({ ...tc }));
     await fillExpectedOutputs(problem, finalCustomCases);
 
     // Run is the visible cases only; the hidden ones are the grade.
@@ -136,6 +176,10 @@ router.post("/run", requireAuth, executionLimiter, async (req, res) => {
       };
     });
 
+    // What the solution printed on its own — a debug `console.log`, say —
+    // travels beside the results instead of being judged as one of them.
+    const stdout = batch.userStdout;
+
     // …and how it went. Only the official cases count, so a custom case cannot
     // be used to fake a scary-looking score at the opponent.
     const officialCount = visibleCases.length;
@@ -149,7 +193,7 @@ router.post("/run", requireAuth, executionLimiter, async (req, res) => {
       },
     );
 
-    res.json({ results });
+    res.json({ results, stdout });
   } catch (err) {
     if (isEngineDown(err)) {
       console.error("POST /api/run — engine down:", err.message);
@@ -189,13 +233,26 @@ function nextStreak(stats: { lastActive: Date; currentStreak: number; longestStr
 router.post("/submit", requireAuth, executionLimiter, async (req, res) => {
   if (JUDGE_DEBUG_LOGS) console.log(`[POST /api/submit] Received request from user ${req.user?.userId}`);
   try {
-    const { code, language, customTestCases, roomId } = req.body;
+    const { code, language, roomId } = req.body;
     const problemId = typeof req.body.problemId === "string" ? req.body.problemId : "";
     let userId = req.user!.userId;
 
     const languageId = LANGUAGE_MAP[language as string];
     if (!languageId) {
       res.status(400).json({ error: "Unsupported language" });
+      return;
+    }
+    if (typeof code !== "string" || code.length > MAX_CODE_CHARS) {
+      res.status(400).json({ error: "Code must be a string of at most 64 KB" });
+      return;
+    }
+    if (containsReservedMarker(code)) {
+      res.status(400).json({ error: "Code must not contain the reserved marker __CODEXA_" });
+      return;
+    }
+    const customTestCases = readCustomCases(req.body.customTestCases);
+    if (!customTestCases) {
+      res.status(400).json({ error: `Custom test cases: at most ${MAX_CUSTOM_CASES}, each a string input under ${MAX_CUSTOM_INPUT_CHARS} characters` });
       return;
     }
     if (!problemId) {
@@ -205,13 +262,27 @@ router.post("/submit", requireAuth, executionLimiter, async (req, res) => {
 
     // Pairing mode credits the host, so the room decides whose history the
     // solve lands in; it is read alongside the problem rather than before it.
+    // The room id comes from the client, so it is only honoured when the
+    // caller is actually seated in that room and the room is still live —
+    // otherwise any request could name any room and hand its host XP, a
+    // streak day, a duel win and a contest solve. A room that fails the check
+    // is simply not a pairing submit: the solve lands on the caller.
     const [problem, suite, room] = await Promise.all([
       getJudgeProblem(problemId),
       getJudgeSuite(problemId),
-      roomId
-        ? prisma.pairRoom.findUnique({ where: { id: roomId }, select: { createdBy: true } })
+      typeof roomId === "string" && roomId
+        ? prisma.pairRoom.findFirst({
+            where: {
+              id: roomId,
+              problemId,
+              status: { in: ["waiting", "active"] },
+              participants: { some: { userId: req.user!.userId } },
+            },
+            select: { id: true, createdBy: true },
+          })
         : Promise.resolve(null),
     ]);
+    const pairRoomId = room?.id ?? null;
     if (room) {
       userId = room.createdBy;
       if (JUDGE_DEBUG_LOGS) console.log(`[POST /api/submit] Pairing mode: Awarding credits to host ${userId}`);
@@ -241,8 +312,16 @@ router.post("/submit", requireAuth, executionLimiter, async (req, res) => {
     // surfacing as an unhandled rejection in the meantime.
     history.catch(() => {});
 
+    // A problem with no official cases cannot be graded; /run already
+    // returns nothing for it, and /submit must not hand out an ACCEPTED (and
+    // the XP behind it) for whatever was typed.
+    if (suite.length === 0) {
+      res.status(400).json({ error: "This problem has no test cases to judge against yet" });
+      return;
+    }
+
     const limits = { timeLimitMs: problem.timeLimitMs, memoryLimitMb: problem.memoryLimitMb };
-    const finalCustomCases: CustomTestCase[] = (customTestCases || []).map((tc: any) => ({ ...tc }));
+    const finalCustomCases: CustomTestCase[] = customTestCases.map((tc) => ({ ...tc }));
     await fillExpectedOutputs(problem, finalCustomCases);
 
     const allTestCases = [
@@ -269,8 +348,13 @@ router.post("/submit", requireAuth, executionLimiter, async (req, res) => {
     );
     const maxRuntime = batch.runtimeMs;
     const maxMemory = batch.memoryKb;
-    const passedCases = batch.perCase.filter((r) => r.passed).length;
-    const firstFailure = batch.perCase.find((r) => !r.passed);
+    // Only the official suite decides the verdict. The custom cases ride in
+    // the same execution so the user sees them judged, but they are the
+    // user's own — one added and left blank used to fail a correct solution,
+    // and a passing one pushed `passedCases` past `totalCases`.
+    const official = batch.perCase.slice(0, totalCases);
+    const passedCases = official.filter((r) => r.passed).length;
+    const firstFailure = official.find((r) => !r.passed);
     const verdict = firstFailure ? firstFailure.verdict : "ACCEPTED";
     // Compiler output / stderr of the first failing case, for the submissions UI
     const errorDetail = firstFailure
@@ -290,7 +374,7 @@ router.post("/submit", requireAuth, executionLimiter, async (req, res) => {
       data: {
         userId,
         problemId,
-        roomId, // Link to the pairing room if applicable
+        roomId: pairRoomId, // Link to the pairing room if applicable
         code,
         language: language as string,
         verdict,

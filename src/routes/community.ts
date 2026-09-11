@@ -1,4 +1,4 @@
-import { Router } from "express";
+import { Router, type Response } from "express";
 import { randomUUID } from "node:crypto";
 import { Prisma } from "@prisma/client";
 import { prisma } from "../lib/prisma.js";
@@ -504,6 +504,47 @@ router.post("/posts", requireAuth, async (req, res) => {
       res.status(400).json({ error: "Posts are limited to 2000 characters" });
       return;
     }
+
+    // An achievement is a claim about the judge's records, and the card the
+    // feed draws — title, difficulty, XP — is built from what the client sent.
+    // It used to be stored as given: anyone could post "Solved <hard kata>
+    // +30 XP" with no submission behind it. Now the solve is looked up and
+    // the card's facts are taken from the row, not the request.
+    let verifiedAchievement: Record<string, unknown> | null = null;
+    if (hasAchievement) {
+      const kind = meta!.kind === "bug" ? "bug" : "problem";
+      if (kind === "bug") {
+        const challengeId = typeof meta!.challengeId === "string" ? meta!.challengeId : "";
+        const solved = challengeId
+          ? await prisma.bugSubmission.findFirst({
+              where: { userId, challengeId, verdict: "ACCEPTED" },
+              select: { challenge: { select: { title: true, difficulty: true } } },
+            })
+          : null;
+        if (!solved) {
+          res.status(400).json({ error: "You can only share a hunt you have fixed" });
+          return;
+        }
+        verifiedAchievement = { kind, challengeId, title: solved.challenge.title, difficulty: solved.challenge.difficulty };
+      } else {
+        const slug = typeof meta!.slug === "string" ? meta!.slug : "";
+        const solved = slug
+          ? await prisma.submission.findFirst({
+              where: { userId, verdict: "ACCEPTED", problem: { slug } },
+              select: { problem: { select: { title: true, difficulty: true } } },
+            })
+          : null;
+        if (!solved) {
+          res.status(400).json({ error: "You can only share a problem you have solved" });
+          return;
+        }
+        verifiedAchievement = { kind, slug, title: solved.problem.title, difficulty: solved.problem.difficulty };
+      }
+      // XP is display only, and bounded so the card cannot boast a number the
+      // catalogue never pays.
+      const xp = Number(meta!.xp);
+      if (Number.isFinite(xp) && xp > 0 && xp <= 100) verifiedAchievement.xp = Math.round(xp);
+    }
     if (wantsPoll && pollChoices.length < 2) {
       res.status(400).json({ error: "A poll needs at least two options" });
       return;
@@ -527,9 +568,9 @@ router.post("/posts", requireAuth, async (req, res) => {
 
     // Auto-tags for achievement shares: kind, difficulty, and the problem's topics
     const autoTags: string[] = [];
-    if (hasAchievement) {
-      autoTags.push(meta!.kind === "bug" ? "bughunt" : "challenge");
-      if (typeof meta!.difficulty === "string") autoTags.push(meta!.difficulty as string);
+    if (verifiedAchievement) {
+      autoTags.push(verifiedAchievement.kind === "bug" ? "bughunt" : "challenge");
+      if (typeof verifiedAchievement.difficulty === "string") autoTags.push(verifiedAchievement.difficulty);
       if (typeof meta!.slug === "string") {
         try {
           const problem = await prisma.problem.findUnique({ where: { slug: meta!.slug as string }, select: { tags: true } });
@@ -542,7 +583,7 @@ router.post("/posts", requireAuth, async (req, res) => {
     if (topic) autoTags.push(topic);
     const tags = extractTags(text, autoTags);
 
-    const postMeta: Record<string, unknown> = hasAchievement ? { ...(meta as object) } : {};
+    const postMeta: Record<string, unknown> = verifiedAchievement ? { ...verifiedAchievement } : {};
     if (topic) postMeta.topic = topic;
     if (type === "poll") postMeta.poll = { options: pollChoices };
     if (ask) postMeta.ask = ask;
@@ -686,11 +727,46 @@ router.get("/posts/:id", requireAuth, async (req, res) => {
   }
 });
 
+/**
+ * Whether a viewer may interact with a post, by the feed's own visibility
+ * rules. The permalink enforced them; the like, save, vote, report and
+ * comment routes did not, so anyone holding a private post's id could read
+ * its thread and write into it. `null` when the post does not exist, so a
+ * like on a just-deleted post is a 404 rather than the foreign-key 500 it
+ * used to be.
+ */
+async function canSeePost(postId: string, userId: string): Promise<boolean | null> {
+  const post = await prisma.post.findUnique({ where: { id: postId }, select: { userId: true, visibility: true } });
+  if (!post) return null;
+  if (post.visibility === "public" || post.userId === userId) return true;
+  if (post.visibility !== "followers") return false;
+  const following = await prisma.follow.findUnique({
+    where: { followerId_followingId: { followerId: userId, followingId: post.userId } },
+    select: { id: true },
+  });
+  return Boolean(following);
+}
+
+/** The two refusals every interaction route shares. Returns false after answering. */
+async function gatePost(res: Response, postId: string, userId: string): Promise<boolean> {
+  const allowed = await canSeePost(postId, userId);
+  if (allowed === null) {
+    res.status(404).json({ error: "Post not found" });
+    return false;
+  }
+  if (!allowed) {
+    res.status(403).json({ error: "This post isn't shared with you" });
+    return false;
+  }
+  return true;
+}
+
 // POST /api/community/posts/:id/save — toggle bookmark (private to the saver)
 router.post("/posts/:id/save", requireAuth, async (req, res) => {
   try {
     const userId = req.user!.userId;
     const postId = String(req.params.id);
+    if (!(await gatePost(res, postId, userId))) return;
     // Delete first: an unsave is then one statement, and a save is the insert
     // that follows when nothing was there to delete.
     const removed = await prisma.savedPost.deleteMany({ where: { postId, userId } });
@@ -713,6 +789,7 @@ router.post("/posts/:id/vote", requireAuth, async (req, res) => {
   try {
     const userId = req.user!.userId;
     const postId = String(req.params.id);
+    if (!(await gatePost(res, postId, userId))) return;
     const option = Number((req.body as { option?: unknown }).option);
     // The poll, the viewer's existing vote and the current tallies are
     // independent reads, so they share a tier; the tallies after the vote are
@@ -760,6 +837,7 @@ router.post("/posts/:id/report", requireAuth, async (req, res) => {
   try {
     const userId = req.user!.userId;
     const postId = String(req.params.id);
+    if (!(await gatePost(res, postId, userId))) return;
     const reason = String((req.body as { reason?: string }).reason ?? "other").slice(0, 60);
     const post = await prisma.post.findUnique({ where: { id: postId }, select: { userId: true } });
     if (!post) {
@@ -827,6 +905,7 @@ router.post("/posts/:id/like", requireAuth, async (req, res) => {
   try {
     const userId = req.user!.userId;
     const postId = String(req.params.id);
+    if (!(await gatePost(res, postId, userId))) return;
     // The pre-read and the current count are independent, so they travel
     // together; the count after the toggle is then arithmetic rather than a
     // third round trip.
@@ -881,6 +960,7 @@ router.get("/posts/:id/comments", requireAuth, async (req, res) => {
   try {
     const userId = req.user!.userId;
     const postId = String(req.params.id);
+    if (!(await gatePost(res, postId, userId))) return;
     const [comments, post] = await Promise.all([
       prisma.postComment.findMany({
         where: { postId },
@@ -919,6 +999,7 @@ router.post("/posts/:id/comments", requireAuth, async (req, res) => {
   try {
     const userId = req.user!.userId;
     const postId = String(req.params.id);
+    if (!(await gatePost(res, postId, userId))) return;
     const text = String((req.body as { content?: string }).content ?? "").trim();
     if (!text) {
       res.status(400).json({ error: "Write a comment first" });

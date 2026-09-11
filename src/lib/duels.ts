@@ -322,13 +322,59 @@ function isStaleWaiting(duel: { status: string; visibility: string; createdAt: D
 }
 
 /**
- * Closes a waiting duel nobody came back to, and reports it as no longer live.
+ * How long a fight may run without a decision.
+ *
+ * An active duel had no expiry either. When the other side closed the tab,
+ * the warrior who stayed was stuck: /queue and /me/state kept handing the
+ * live duel back, and the only way out was to forfeit — a loss on the record
+ * for being the one who did not leave. After this long the fight is called
+ * on the scoreboard instead: more hidden tests passed wins, a tie is a draw,
+ * and nobody's rating moves.
+ */
+const ACTIVE_TTL_MS = Number(process.env.DUEL_ACTIVE_TTL_MS ?? 45 * 60_000);
+
+function isStaleActive(duel: { status: string; startedAt: Date | null } | null) {
+  if (!duel || duel.status !== "active" || !duel.startedAt) return false;
+  return Date.now() - new Date(duel.startedAt).getTime() > ACTIVE_TTL_MS;
+}
+
+/**
+ * Closes a duel nobody is going to finish, and reports it as no longer live.
  *
  * Lazily, on read, in the same spirit as `reconcileDuel` — a duel nobody looks
  * at harms nobody, and the moment anyone does look, it stops standing in the
  * way. That also means no sweeper to schedule and no cron to forget.
+ *
+ * A waiting duel is cancelled. An active one past its time is *finished* on
+ * the scoreboard, so it lands in both records rather than vanishing.
  */
 export async function expireIfStale<T extends LoadedDuel>(duel: T): Promise<T | null> {
+  if (isStaleActive(duel)) {
+    const byTeam = new Map<number, number>();
+    for (const p of duel!.participants) byTeam.set(p.team, (byTeam.get(p.team) ?? 0) + (p.passed ?? 0));
+    const ranked = [...byTeam.entries()].sort((a, b) => b[1] - a[1]);
+    const winnerTeam = ranked.length > 1 && ranked[0][1] > ranked[1][1] ? ranked[0][0] : null;
+    try {
+      // Guarded like the settle path: a submission landing at the same moment
+      // keeps its verdict.
+      await prisma.duel.updateMany({
+        where: { id: duel!.id, status: "active", winnerTeam: null },
+        data: { status: "finished", endedAt: new Date(), winnerTeam },
+      });
+      await prisma.duelParticipant.updateMany({
+        where: { duelId: duel!.id, verdict: null },
+        data: { verdict: "TIMED_OUT" },
+      });
+    } catch (err) {
+      console.error("expireIfStale (active) error:", (err as Error).message);
+    }
+    forgetDuel(duel!.id);
+    for (const p of duel!.participants) clearUserInDuel(p.userId);
+    const finished = await loadDuel(duel!.id, true);
+    emitToRoom(duelRoom(duel!.id), "duel-finished", finished);
+    return (finished as T) ?? null;
+  }
+
   if (!isStaleWaiting(duel)) return duel;
   try {
     await prisma.duel.update({

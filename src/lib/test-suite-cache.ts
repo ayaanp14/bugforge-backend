@@ -108,10 +108,15 @@ export function getJudgeSuite(problemId: string): Promise<JudgeCase[]> {
   );
 }
 
-/** The judge's slice of the Problem row (see JUDGE_PROBLEM_SELECT), or null when there is no such problem. */
+/**
+ * The judge's slice of the Problem row (see JUDGE_PROBLEM_SELECT), or null
+ * when there is no such problem — or it is unpublished. A retired problem
+ * 404s on its page but its id still worked here, so it could be run and
+ * submitted (and paid XP for) from the network tab.
+ */
 export function getJudgeProblem(problemId: string): Promise<JudgeProblem | null> {
   return problems.get(problemId, () =>
-    prisma.problem.findUnique({ where: { id: problemId }, select: JUDGE_PROBLEM_SELECT }),
+    prisma.problem.findFirst({ where: { id: problemId, isPublished: true }, select: JUDGE_PROBLEM_SELECT }),
   );
 }
 
