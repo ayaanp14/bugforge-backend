@@ -28,7 +28,7 @@ export const DP3_PROBLEMS: CatalogProblem[] = [
       slug: "paint-fence",
       title: "Paint Fence",
       difficulty: "MEDIUM" as const,
-      tags: ["Dynamic Programming", "LeetCode 276", "Amazon", "Google"],
+      tags: ["Dynamic Programming", "Amazon", "Google"],
       signature: {
         funcName: "numWays",
         params: [{ name: "n", type: "int" as const }, { name: "k", type: "int" as const }],
@@ -109,7 +109,7 @@ export const DP3_PROBLEMS: CatalogProblem[] = [
       slug: "paint-house",
       title: "Paint House",
       difficulty: "MEDIUM" as const,
-      tags: ["Array", "Dynamic Programming", "LeetCode 256", "Amazon", "Facebook", "LinkedIn"],
+      tags: ["Array", "Dynamic Programming", "Amazon", "Facebook", "LinkedIn"],
       signature: { funcName: "minCost", params: [{ name: "costs", type: "int[][]" as const }], returns: "int" as const },
       description: describe(
         "A row of `n` houses must each be painted red, blue or green. `costs[i] = [red, blue, green]` gives the cost of each colour for house `i`.\n\n**No two adjacent houses may share a colour.** Return the minimum total cost.",
@@ -186,7 +186,7 @@ export const DP3_PROBLEMS: CatalogProblem[] = [
       slug: "domino-and-tromino-tiling",
       title: "Domino and Tromino Tiling",
       difficulty: "MEDIUM" as const,
-      tags: ["Dynamic Programming", "LeetCode 790", "Amazon", "Google"],
+      tags: ["Dynamic Programming", "Amazon", "Google"],
       signature: { funcName: "numTilings", params: [{ name: "n", type: "int" as const }], returns: "int" as const },
       description: describe(
         "You have two tile shapes: a **2×1 domino** and an **L-shaped tromino** (three squares). Both may be rotated.\n\nReturn the number of ways to tile a `2 × n` board, modulo `10^9 + 7`. Two tilings differ if some pair of 4-directionally adjacent cells is covered by the same tile in one tiling and not the other.",
@@ -261,7 +261,7 @@ export const DP3_PROBLEMS: CatalogProblem[] = [
       slug: "unique-binary-search-trees",
       title: "Unique Binary Search Trees",
       difficulty: "MEDIUM" as const,
-      tags: ["Dynamic Programming", "Math", "LeetCode 96", "Amazon", "Google", "Adobe"],
+      tags: ["Dynamic Programming", "Math", "Amazon", "Google", "Adobe"],
       signature: { funcName: "numTrees", params: [{ name: "n", type: "int" as const }], returns: "int" as const },
       description: describe(
         "Given an integer `n`, return the number of **structurally distinct** binary search trees that hold exactly the values `1` through `n`.",
@@ -337,7 +337,7 @@ export const DP3_PROBLEMS: CatalogProblem[] = [
       slug: "longest-palindromic-subsequence",
       title: "Longest Palindromic Subsequence",
       difficulty: "MEDIUM" as const,
-      tags: ["String", "Dynamic Programming", "LeetCode 516", "Amazon", "Uber", "Adobe"],
+      tags: ["String", "Dynamic Programming", "Amazon", "Uber", "Adobe"],
       signature: { funcName: "longestPalindromeSubseq", params: [{ name: "s", type: "string" as const }], returns: "int" as const },
       description: describe(
         "Given a string `s`, return the length of its longest **palindromic subsequence**.\n\nA subsequence is formed by deleting zero or more characters without reordering the rest.",
@@ -415,7 +415,7 @@ export const DP3_PROBLEMS: CatalogProblem[] = [
       slug: "minimum-insertion-steps-to-make-a-string-palindrome",
       title: "Minimum Insertion Steps to Make a String Palindrome",
       difficulty: "HARD" as const,
-      tags: ["String", "Dynamic Programming", "LeetCode 1312", "Amazon", "Google"],
+      tags: ["String", "Dynamic Programming", "Amazon", "Google"],
       signature: { funcName: "minInsertions", params: [{ name: "s", type: "string" as const }], returns: "int" as const },
       description: describe(
         "Given a string `s`, you may insert any character at any position in one step.\n\nReturn the **minimum number of insertions** needed to make `s` a palindrome.",
@@ -491,7 +491,7 @@ export const DP3_PROBLEMS: CatalogProblem[] = [
       slug: "minimum-ascii-delete-sum-for-two-strings",
       title: "Minimum ASCII Delete Sum for Two Strings",
       difficulty: "MEDIUM" as const,
-      tags: ["String", "Dynamic Programming", "LeetCode 712", "Amazon", "Google"],
+      tags: ["String", "Dynamic Programming", "Amazon", "Google"],
       signature: {
         funcName: "minimumDeleteSum",
         params: [{ name: "s1", type: "string" as const }, { name: "s2", type: "string" as const }],
@@ -573,7 +573,7 @@ export const DP3_PROBLEMS: CatalogProblem[] = [
       slug: "uncrossed-lines",
       title: "Uncrossed Lines",
       difficulty: "MEDIUM" as const,
-      tags: ["Array", "Dynamic Programming", "LeetCode 1035", "Amazon", "Google"],
+      tags: ["Array", "Dynamic Programming", "Amazon", "Google"],
       signature: {
         funcName: "maxUncrossedLines",
         params: [{ name: "nums1", type: "int[]" as const }, { name: "nums2", type: "int[]" as const }],
@@ -659,7 +659,7 @@ export const DP3_PROBLEMS: CatalogProblem[] = [
       slug: "max-dot-product-of-two-subsequences",
       title: "Max Dot Product Between Two Subsequences",
       difficulty: "HARD" as const,
-      tags: ["Array", "Dynamic Programming", "LeetCode 1458", "Amazon", "Google"],
+      tags: ["Array", "Dynamic Programming", "Amazon", "Google"],
       signature: {
         funcName: "maxDotProduct",
         params: [{ name: "nums1", type: "int[]" as const }, { name: "nums2", type: "int[]" as const }],
@@ -740,7 +740,7 @@ export const DP3_PROBLEMS: CatalogProblem[] = [
       slug: "distinct-subsequences",
       title: "Distinct Subsequences",
       difficulty: "HARD" as const,
-      tags: ["String", "Dynamic Programming", "LeetCode 115", "Amazon", "Google", "Bloomberg"],
+      tags: ["String", "Dynamic Programming", "Amazon", "Google", "Bloomberg"],
       signature: {
         funcName: "numDistinct",
         params: [{ name: "s", type: "string" as const }, { name: "t", type: "string" as const }],
@@ -823,7 +823,7 @@ export const DP3_PROBLEMS: CatalogProblem[] = [
       slug: "wildcard-matching",
       title: "Wildcard Matching",
       difficulty: "HARD" as const,
-      tags: ["String", "Dynamic Programming", "Greedy", "LeetCode 44", "Amazon", "Google", "Facebook"],
+      tags: ["String", "Dynamic Programming", "Greedy", "Amazon", "Google", "Facebook"],
       signature: {
         funcName: "isMatch",
         params: [{ name: "s", type: "string" as const }, { name: "p", type: "string" as const }],
@@ -917,7 +917,7 @@ export const DP3_PROBLEMS: CatalogProblem[] = [
       slug: "palindrome-partitioning-ii",
       title: "Palindrome Partitioning II",
       difficulty: "HARD" as const,
-      tags: ["String", "Dynamic Programming", "LeetCode 132", "Amazon", "Google", "Adobe"],
+      tags: ["String", "Dynamic Programming", "Amazon", "Google", "Adobe"],
       signature: { funcName: "minCut", params: [{ name: "s", type: "string" as const }], returns: "int" as const },
       description: describe(
         "Given a string `s`, partition it so that **every** part is a palindrome.\n\nReturn the **minimum number of cuts** needed.",
@@ -999,7 +999,7 @@ export const DP3_PROBLEMS: CatalogProblem[] = [
       slug: "count-number-of-teams",
       title: "Count Number of Teams",
       difficulty: "MEDIUM" as const,
-      tags: ["Array", "Dynamic Programming", "LeetCode 1395", "Amazon", "Google"],
+      tags: ["Array", "Dynamic Programming", "Amazon", "Google"],
       signature: { funcName: "numTeams", params: [{ name: "rating", type: "int[]" as const }], returns: "int" as const },
       description: describe(
         "There are `n` soldiers standing in a line with **distinct** ratings.\n\nA team is a triple of indices `i < j < k` whose ratings are either strictly increasing (`rating[i] < rating[j] < rating[k]`) or strictly decreasing.\n\nReturn the number of such teams.",
@@ -1084,7 +1084,7 @@ export const DP3_PROBLEMS: CatalogProblem[] = [
       slug: "stone-game-iii",
       title: "Stone Game III",
       difficulty: "HARD" as const,
-      tags: ["Array", "Dynamic Programming", "Game Theory", "LeetCode 1406", "Amazon", "Google"],
+      tags: ["Array", "Dynamic Programming", "Game Theory", "Amazon", "Google"],
       signature: { funcName: "stoneGameIII", params: [{ name: "stoneValue", type: "int[]" as const }], returns: "string" as const },
       description: describe(
         "Alice and Bob take turns with a row of stones, Alice first. On a turn a player takes **1, 2 or 3** stones from the **front** of the row and adds their values to their score. Values may be negative.\n\nBoth play optimally to maximise their own score. Return `\"Alice\"`, `\"Bob\"` or `\"Tie\"`.",
@@ -1159,7 +1159,7 @@ export const DP3_PROBLEMS: CatalogProblem[] = [
       slug: "stone-game-iv",
       title: "Stone Game IV",
       difficulty: "HARD" as const,
-      tags: ["Math", "Dynamic Programming", "Game Theory", "LeetCode 1510", "Amazon", "Google"],
+      tags: ["Math", "Dynamic Programming", "Game Theory", "Amazon", "Google"],
       signature: { funcName: "winnerSquareGame", params: [{ name: "n", type: "int" as const }], returns: "bool" as const },
       description: describe(
         "Alice and Bob take turns with a pile of `n` stones, Alice first. On each turn a player must remove a **non-zero square number** of stones (1, 4, 9, 16, …).\n\nA player who cannot move loses. Both play optimally. Return `true` if Alice wins.",

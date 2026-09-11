@@ -29,7 +29,7 @@ export const MATH3_PROBLEMS: CatalogProblem[] = [
       slug: "add-to-array-form-of-integer",
       title: "Add to Array-Form of Integer",
       difficulty: "EASY" as const,
-      tags: ["Array", "Math", "LeetCode 989", "Amazon", "Google", "Microsoft"],
+      tags: ["Array", "Math", "Amazon", "Google", "Microsoft"],
       signature: {
         funcName: "addToArrayForm",
         params: [{ name: "num", type: "int[]" as const }, { name: "k", type: "int" as const }],
@@ -103,7 +103,7 @@ export const MATH3_PROBLEMS: CatalogProblem[] = [
       slug: "count-of-matches-in-tournament",
       title: "Count of Matches in Tournament",
       difficulty: "EASY" as const,
-      tags: ["Math", "Simulation", "LeetCode 1688", "Amazon", "TCS"],
+      tags: ["Math", "Simulation", "Amazon", "TCS"],
       signature: { funcName: "numberOfMatches", params: [{ name: "n", type: "int" as const }], returns: "int" as const },
       description: describe(
         "A tournament starts with `n` teams and runs in rounds:\n\n- If the current number of teams is **even**, they pair up: `n/2` matches are played and `n/2` teams advance.\n- If it is **odd**, one team gets a bye: `(n-1)/2` matches are played and `(n-1)/2 + 1` teams advance.\n\nReturn the total number of matches played until one winner remains.",
@@ -175,7 +175,7 @@ export const MATH3_PROBLEMS: CatalogProblem[] = [
       slug: "number-of-steps-to-reduce-a-number-in-binary-representation-to-one",
       title: "Number of Steps to Reduce a Number in Binary Representation to One",
       difficulty: "MEDIUM" as const,
-      tags: ["String", "Bit Manipulation", "Simulation", "LeetCode 1404", "Amazon", "Google"],
+      tags: ["String", "Bit Manipulation", "Simulation", "Amazon", "Google"],
       signature: { funcName: "numSteps", params: [{ name: "s", type: "string" as const }], returns: "int" as const },
       description: describe(
         "You are given the binary representation of an integer as a string `s`.\n\nReduce it to `1` using these steps:\n\n- If the number is **even**, divide it by 2.\n- If it is **odd**, add 1 to it.\n\nReturn the number of steps required. The input is guaranteed to have no leading zeros other than the number `\"1\"` itself.",
@@ -246,7 +246,7 @@ export const MATH3_PROBLEMS: CatalogProblem[] = [
       slug: "minimum-sum-of-four-digit-number-after-splitting-digits",
       title: "Minimum Sum of Four Digit Number After Splitting Digits",
       difficulty: "EASY" as const,
-      tags: ["Math", "Greedy", "Sorting", "LeetCode 2160", "Amazon", "Adobe"],
+      tags: ["Math", "Greedy", "Sorting", "Amazon", "Adobe"],
       signature: { funcName: "minimumSum", params: [{ name: "num", type: "int" as const }], returns: "int" as const },
       description: describe(
         "You are given a four-digit integer `num`. Split its digits into two new integers `new1` and `new2`, using **all four digits** exactly once between them.\n\nLeading zeros are allowed, and a new integer may have one or two digits. Return the minimum possible value of `new1 + new2`.",
@@ -320,7 +320,7 @@ export const MATH3_PROBLEMS: CatalogProblem[] = [
       slug: "three-divisors",
       title: "Three Divisors",
       difficulty: "EASY" as const,
-      tags: ["Math", "Number Theory", "LeetCode 1952", "Amazon", "TCS"],
+      tags: ["Math", "Number Theory", "Amazon", "TCS"],
       signature: { funcName: "isThree", params: [{ name: "n", type: "int" as const }], returns: "bool" as const },
       description: describe(
         "Given an integer `n`, return `true` if it has **exactly three** positive divisors, and `false` otherwise.",
@@ -403,7 +403,7 @@ export const MATH3_PROBLEMS: CatalogProblem[] = [
       slug: "sum-of-digits-of-string-after-convert",
       title: "Sum of Digits of String After Convert",
       difficulty: "EASY" as const,
-      tags: ["String", "Simulation", "LeetCode 1945", "Amazon", "Adobe"],
+      tags: ["String", "Simulation", "Amazon", "Adobe"],
       signature: {
         funcName: "getLucky",
         params: [{ name: "s", type: "string" as const }, { name: "k", type: "int" as const }],
@@ -479,7 +479,7 @@ export const MATH3_PROBLEMS: CatalogProblem[] = [
       slug: "check-if-number-is-a-sum-of-powers-of-three",
       title: "Check if Number is a Sum of Powers of Three",
       difficulty: "MEDIUM" as const,
-      tags: ["Math", "Number Theory", "LeetCode 1780", "Amazon", "Google"],
+      tags: ["Math", "Number Theory", "Amazon", "Google"],
       signature: { funcName: "checkPowersOfThree", params: [{ name: "n", type: "int" as const }], returns: "bool" as const },
       description: describe(
         "Given an integer `n`, return `true` if it can be written as the sum of **distinct** powers of three.\n\nA power of three is `3^i` for some integer `i >= 0`.",
@@ -560,7 +560,7 @@ export const MATH3_PROBLEMS: CatalogProblem[] = [
       slug: "sum-of-digits-in-base-k",
       title: "Sum of Digits in Base K",
       difficulty: "EASY" as const,
-      tags: ["Math", "LeetCode 1837", "Amazon", "Infosys"],
+      tags: ["Math", "Amazon", "Infosys"],
       signature: {
         funcName: "sumBase",
         params: [{ name: "n", type: "int" as const }, { name: "k", type: "int" as const }],
@@ -646,7 +646,7 @@ export const MATH3_PROBLEMS: CatalogProblem[] = [
       slug: "smallest-value-of-the-rearranged-number",
       title: "Smallest Value of the Rearranged Number",
       difficulty: "MEDIUM" as const,
-      tags: ["Math", "Sorting", "LeetCode 2165", "Amazon", "Adobe"],
+      tags: ["Math", "Sorting", "Amazon", "Adobe"],
       signature: { funcName: "smallestNumber", params: [{ name: "num", type: "int" as const }], returns: "int" as const },
       description: describe(
         "You are given an integer `num`. Rearrange its digits to produce the **smallest** possible value, keeping the sign of `num`.\n\nThe result must not have leading zeros.",
@@ -725,7 +725,7 @@ export const MATH3_PROBLEMS: CatalogProblem[] = [
       slug: "count-integers-with-even-digit-sum",
       title: "Count Integers With Even Digit Sum",
       difficulty: "EASY" as const,
-      tags: ["Math", "Simulation", "LeetCode 2180", "Amazon", "TCS"],
+      tags: ["Math", "Simulation", "Amazon", "TCS"],
       signature: { funcName: "countEven", params: [{ name: "num", type: "int" as const }], returns: "int" as const },
       description: describe(
         "Given a positive integer `num`, return the count of integers in the range `[1, num]` whose **digit sum is even**.",
@@ -794,7 +794,7 @@ export const MATH3_PROBLEMS: CatalogProblem[] = [
       slug: "reach-a-number",
       title: "Reach a Number",
       difficulty: "MEDIUM" as const,
-      tags: ["Math", "Binary Search", "LeetCode 754", "Amazon", "Google"],
+      tags: ["Math", "Binary Search", "Amazon", "Google"],
       signature: { funcName: "reachNumber", params: [{ name: "target", type: "int" as const }], returns: "int" as const },
       description: describe(
         "You start at position `0` on an infinite number line and want to reach `target`.\n\nOn the `i`-th move (1-indexed) you take exactly `i` steps, choosing to go **left or right**. Return the minimum number of moves needed to land exactly on `target`.",
@@ -861,7 +861,7 @@ export const MATH3_PROBLEMS: CatalogProblem[] = [
       slug: "minimum-operations-to-make-array-equal",
       title: "Minimum Operations to Make Array Equal",
       difficulty: "MEDIUM" as const,
-      tags: ["Math", "LeetCode 1551", "Amazon", "Adobe"],
+      tags: ["Math", "Amazon", "Adobe"],
       signature: { funcName: "minOperations", params: [{ name: "n", type: "int" as const }], returns: "int" as const },
       description: describe(
         "You have an array `arr` of length `n` where `arr[i] = 2 * i + 1` for every `i`, so `arr` is `[1, 3, 5, …, 2n-1]`.\n\nIn one operation you pick two indices `x` and `y`, subtract 1 from `arr[x]` and add 1 to `arr[y]`. Return the **minimum number of operations** needed to make all elements equal. It is always possible.",
@@ -935,7 +935,7 @@ export const MATH3_PROBLEMS: CatalogProblem[] = [
       slug: "count-square-sum-triples",
       title: "Count Square Sum Triples",
       difficulty: "EASY" as const,
-      tags: ["Math", "Enumeration", "LeetCode 1925", "Amazon", "TCS"],
+      tags: ["Math", "Enumeration", "Amazon", "TCS"],
       signature: { funcName: "countTriples", params: [{ name: "n", type: "int" as const }], returns: "int" as const },
       description: describe(
         "A **square triple** is an ordered triple `(a, b, c)` of positive integers with `a² + b² = c²`.\n\nGiven an integer `n`, return the number of square triples with `1 <= a, b, c <= n`. Order matters, so `(3,4,5)` and `(4,3,5)` count separately.",
@@ -1011,7 +1011,7 @@ export const MATH3_PROBLEMS: CatalogProblem[] = [
       slug: "maximum-number-of-balls-in-a-box",
       title: "Maximum Number of Balls in a Box",
       difficulty: "EASY" as const,
-      tags: ["Math", "Hash Table", "Counting", "LeetCode 1742", "Amazon", "Infosys"],
+      tags: ["Math", "Hash Table", "Counting", "Amazon", "Infosys"],
       signature: {
         funcName: "countBalls",
         params: [{ name: "lowLimit", type: "int" as const }, { name: "highLimit", type: "int" as const }],
@@ -1089,7 +1089,7 @@ export const MATH3_PROBLEMS: CatalogProblem[] = [
       slug: "check-if-it-is-a-straight-line",
       title: "Check If It Is a Straight Line",
       difficulty: "EASY" as const,
-      tags: ["Array", "Math", "Geometry", "LeetCode 1232", "Amazon", "Google", "Facebook"],
+      tags: ["Array", "Math", "Geometry", "Amazon", "Google", "Facebook"],
       signature: { funcName: "checkStraightLine", params: [{ name: "coordinates", type: "int[][]" as const }], returns: "bool" as const },
       description: describe(
         "You are given an array `coordinates` where `coordinates[i] = [x, y]` is a point in the plane.\n\nReturn `true` if all the points lie on a single straight line.",
@@ -1187,7 +1187,7 @@ export const MATH3_PROBLEMS: CatalogProblem[] = [
       slug: "largest-odd-number-in-string",
       title: "Largest Odd Number in String",
       difficulty: "EASY" as const,
-      tags: ["String", "Math", "Greedy", "LeetCode 1903", "Amazon", "Adobe"],
+      tags: ["String", "Math", "Greedy", "Amazon", "Adobe"],
       signature: { funcName: "largestOddNumber", params: [{ name: "num", type: "string" as const }], returns: "string" as const },
       description: describe(
         "You are given a string `num` of digits. Return the **largest-valued odd** integer that is a non-empty **substring** of `num`, as a string.\n\nIf no odd substring exists, return the empty string.",
@@ -1258,7 +1258,7 @@ export const MATH3_PROBLEMS: CatalogProblem[] = [
       slug: "number-of-employees-who-met-the-target",
       title: "Number of Employees Who Met the Target",
       difficulty: "EASY" as const,
-      tags: ["Array", "LeetCode 2798", "Amazon", "TCS", "Capgemini"],
+      tags: ["Array", "Amazon", "TCS", "Capgemini"],
       signature: {
         funcName: "numberOfEmployeesWhoMetTarget",
         params: [{ name: "hours", type: "int[]" as const }, { name: "target", type: "int" as const }],
@@ -1335,7 +1335,7 @@ export const MATH3_PROBLEMS: CatalogProblem[] = [
       slug: "divisible-and-non-divisible-sums-difference",
       title: "Divisible and Non-Divisible Sums Difference",
       difficulty: "EASY" as const,
-      tags: ["Math", "LeetCode 2894", "Amazon", "TCS"],
+      tags: ["Math", "Amazon", "TCS"],
       signature: {
         funcName: "differenceOfSums",
         params: [{ name: "n", type: "int" as const }, { name: "m", type: "int" as const }],
@@ -1408,7 +1408,7 @@ export const MATH3_PROBLEMS: CatalogProblem[] = [
       slug: "account-balance-after-rounded-purchase",
       title: "Account Balance After Rounded Purchase",
       difficulty: "EASY" as const,
-      tags: ["Math", "LeetCode 2806", "Amazon", "Infosys"],
+      tags: ["Math", "Amazon", "Infosys"],
       signature: { funcName: "accountBalanceAfterPurchase", params: [{ name: "purchaseAmount", type: "int" as const }], returns: "int" as const },
       description: describe(
         "You start with a balance of `100`. A purchase of `purchaseAmount` is charged after being **rounded to the nearest multiple of 10**; a tie rounds **up** (so 15 becomes 20).\n\nReturn the balance after the purchase.",
@@ -1481,7 +1481,7 @@ export const MATH3_PROBLEMS: CatalogProblem[] = [
       slug: "furthest-point-from-origin",
       title: "Furthest Point From Origin",
       difficulty: "EASY" as const,
-      tags: ["String", "Greedy", "LeetCode 2833", "Amazon", "Adobe"],
+      tags: ["String", "Greedy", "Amazon", "Adobe"],
       signature: { funcName: "furthestDistanceFromOrigin", params: [{ name: "moves", type: "string" as const }], returns: "int" as const },
       description: describe(
         "You start at position 0 on a number line and are given a string `moves` of characters `'L'`, `'R'` and `'_'`.\n\nEach `'L'` moves one step left, each `'R'` one step right, and each `'_'` may be taken as **either** direction.\n\nReturn the furthest distance from the origin that can be reached after making all the moves.",
@@ -1548,7 +1548,7 @@ export const MATH3_PROBLEMS: CatalogProblem[] = [
       slug: "find-the-winning-player-in-coin-game",
       title: "Find the Winning Player in Coin Game",
       difficulty: "EASY" as const,
-      tags: ["Math", "Game Theory", "LeetCode 3222", "Amazon", "Google"],
+      tags: ["Math", "Game Theory", "Amazon", "Google"],
       signature: {
         funcName: "losingPlayer",
         params: [{ name: "x", type: "int" as const }, { name: "y", type: "int" as const }],
@@ -1616,7 +1616,7 @@ export const MATH3_PROBLEMS: CatalogProblem[] = [
       slug: "find-the-maximum-achievable-number",
       title: "Find the Maximum Achievable Number",
       difficulty: "EASY" as const,
-      tags: ["Math", "LeetCode 2769", "Amazon", "TCS"],
+      tags: ["Math", "Amazon", "TCS"],
       signature: {
         funcName: "theMaximumAchievableX",
         params: [{ name: "num", type: "int" as const }, { name: "t", type: "int" as const }],
@@ -1689,7 +1689,7 @@ export const MATH3_PROBLEMS: CatalogProblem[] = [
       slug: "ant-on-the-boundary",
       title: "Ant on the Boundary",
       difficulty: "EASY" as const,
-      tags: ["Array", "Prefix Sum", "Simulation", "LeetCode 3028", "Amazon", "TCS"],
+      tags: ["Array", "Prefix Sum", "Simulation", "Amazon", "TCS"],
       signature: { funcName: "returnToBoundary", params: [{ name: "nums", type: "int[]" as const }], returns: "int" as const },
       description: describe(
         "An ant starts on a boundary and reads `nums` left to right. A negative value moves it that many units **left**; a positive value moves it that many units **right**.\n\nThe ant only checks whether it is back on the boundary **after** fully completing each move. Return how many times it lands on the boundary.",
@@ -1762,7 +1762,7 @@ export const MATH3_PROBLEMS: CatalogProblem[] = [
       slug: "count-tested-devices-after-test-operations",
       title: "Count Tested Devices After Test Operations",
       difficulty: "EASY" as const,
-      tags: ["Array", "Simulation", "Counting", "LeetCode 2960", "Amazon", "Adobe"],
+      tags: ["Array", "Simulation", "Counting", "Amazon", "Adobe"],
       signature: { funcName: "countTestedDevices", params: [{ name: "batteryPercentages", type: "int[]" as const }], returns: "int" as const },
       description: describe(
         "You test `n` devices in order, `0` to `n - 1`. At device `i`:\n\n- If `batteryPercentages[i] > 0`, count it as tested and **decrease by 1** the battery of every device after it, never going below 0.\n- Otherwise skip it.\n\nReturn the number of devices tested.",
@@ -1836,7 +1836,7 @@ export const MATH3_PROBLEMS: CatalogProblem[] = [
       slug: "distribute-money-to-maximum-children",
       title: "Distribute Money to Maximum Children",
       difficulty: "EASY" as const,
-      tags: ["Math", "Greedy", "LeetCode 2591", "Amazon", "Google"],
+      tags: ["Math", "Greedy", "Amazon", "Google"],
       signature: {
         funcName: "distMoney",
         params: [{ name: "money", type: "int" as const }, { name: "children", type: "int" as const }],
@@ -1917,7 +1917,7 @@ export const MATH3_PROBLEMS: CatalogProblem[] = [
       slug: "minimum-right-shifts-to-sort-the-array",
       title: "Minimum Right Shifts to Sort the Array",
       difficulty: "EASY" as const,
-      tags: ["Array", "LeetCode 2855", "Amazon", "Adobe"],
+      tags: ["Array", "Amazon", "Adobe"],
       signature: { funcName: "minimumRightShifts", params: [{ name: "nums", type: "int[]" as const }], returns: "int" as const },
       description: describe(
         "A **right shift** moves every element one position to the right, with the last element wrapping around to the front.\n\nGiven an array `nums` of **distinct** positive integers, return the minimum number of right shifts that sorts it in increasing order, or `-1` if no number of shifts can.",
@@ -1997,7 +1997,7 @@ export const MATH3_PROBLEMS: CatalogProblem[] = [
       slug: "points-that-intersect-with-cars",
       title: "Points That Intersect With Cars",
       difficulty: "EASY" as const,
-      tags: ["Array", "Prefix Sum", "LeetCode 2848", "Amazon", "TCS"],
+      tags: ["Array", "Prefix Sum", "Amazon", "TCS"],
       signature: { funcName: "numberOfPoints", params: [{ name: "nums", type: "int[][]" as const }], returns: "int" as const },
       description: describe(
         "You are given a 2D array `nums` where `nums[i] = [start, end]` means the `i`-th car is parked on the integer points from `start` to `end`, **inclusive**.\n\nReturn the number of integer points covered by **any** part of a car.",
@@ -2073,7 +2073,7 @@ export const MATH3_PROBLEMS: CatalogProblem[] = [
       slug: "maximum-odd-binary-number",
       title: "Maximum Odd Binary Number",
       difficulty: "EASY" as const,
-      tags: ["String", "Greedy", "LeetCode 2864", "Amazon", "Google"],
+      tags: ["String", "Greedy", "Amazon", "Google"],
       signature: { funcName: "maximumOddBinaryNumber", params: [{ name: "s", type: "string" as const }], returns: "string" as const },
       description: describe(
         "You are given a binary string `s` containing **at least one** `'1'`.\n\nRearrange its bits to form the **maximum odd** binary number possible. The result may have leading zeros. Return it as a string.",
@@ -2144,7 +2144,7 @@ export const MATH3_PROBLEMS: CatalogProblem[] = [
       slug: "remove-trailing-zeros-from-a-string",
       title: "Remove Trailing Zeros From a String",
       difficulty: "EASY" as const,
-      tags: ["String", "LeetCode 2710", "Amazon", "TCS"],
+      tags: ["String", "Amazon", "TCS"],
       signature: { funcName: "removeTrailingZeros", params: [{ name: "num", type: "string" as const }], returns: "string" as const },
       description: describe(
         "Given a positive integer represented as the string `num`, remove its **trailing** zeros and return the result.",
@@ -2223,7 +2223,7 @@ export const MATH3_PROBLEMS: CatalogProblem[] = [
       slug: "count-symmetric-integers",
       title: "Count Symmetric Integers",
       difficulty: "EASY" as const,
-      tags: ["Math", "Enumeration", "LeetCode 2843", "Amazon", "Infosys"],
+      tags: ["Math", "Enumeration", "Amazon", "Infosys"],
       signature: {
         funcName: "countSymmetricIntegers",
         params: [{ name: "low", type: "int" as const }, { name: "high", type: "int" as const }],
@@ -2294,7 +2294,7 @@ export const MATH3_PROBLEMS: CatalogProblem[] = [
       slug: "smallest-even-multiple",
       title: "Smallest Even Multiple",
       difficulty: "EASY" as const,
-      tags: ["Math", "Number Theory", "LeetCode 2413", "Amazon", "TCS"],
+      tags: ["Math", "Number Theory", "Amazon", "TCS"],
       signature: { funcName: "smallestEvenMultiple", params: [{ name: "n", type: "int" as const }], returns: "int" as const },
       description: describe(
         "Given a positive integer `n`, return the **smallest positive integer** that is a multiple of both `2` and `n`.",
@@ -2362,7 +2362,7 @@ export const MATH3_PROBLEMS: CatalogProblem[] = [
       slug: "number-of-common-factors",
       title: "Number of Common Factors",
       difficulty: "EASY" as const,
-      tags: ["Math", "Number Theory", "Enumeration", "LeetCode 2427", "Amazon", "Infosys"],
+      tags: ["Math", "Number Theory", "Enumeration", "Amazon", "Infosys"],
       signature: {
         funcName: "commonFactors",
         params: [{ name: "a", type: "int" as const }, { name: "b", type: "int" as const }],
@@ -2438,7 +2438,7 @@ export const MATH3_PROBLEMS: CatalogProblem[] = [
       slug: "count-the-digits-that-divide-a-number",
       title: "Count the Digits That Divide a Number",
       difficulty: "EASY" as const,
-      tags: ["Math", "LeetCode 2520", "Amazon", "TCS", "Capgemini"],
+      tags: ["Math", "Amazon", "TCS", "Capgemini"],
       signature: { funcName: "countDigits", params: [{ name: "num", type: "int" as const }], returns: "int" as const },
       description: describe(
         "Given an integer `num`, return the number of its digits that **divide** `num` exactly.\n\nA digit `d` divides `num` if `num % d == 0`. Digits equal to `0` never divide anything and are simply skipped.",

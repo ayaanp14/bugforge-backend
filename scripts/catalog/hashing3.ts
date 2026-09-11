@@ -28,7 +28,7 @@ export const HASHING3_PROBLEMS: CatalogProblem[] = [
       slug: "unique-number-of-occurrences",
       title: "Unique Number of Occurrences",
       difficulty: "EASY" as const,
-      tags: ["Array", "Hash Table", "LeetCode 1207", "Amazon", "TCS"],
+      tags: ["Array", "Hash Table", "Amazon", "TCS"],
       signature: { funcName: "uniqueOccurrences", params: [{ name: "arr", type: "int[]" as const }], returns: "bool" as const },
       description: describe(
         "Given an array of integers `arr`, return `true` if the number of occurrences of each value is **unique** — no two distinct values occur the same number of times.",
@@ -99,7 +99,7 @@ export const HASHING3_PROBLEMS: CatalogProblem[] = [
       slug: "sum-of-unique-elements",
       title: "Sum of Unique Elements",
       difficulty: "EASY" as const,
-      tags: ["Array", "Hash Table", "Counting", "LeetCode 1748", "Amazon", "Infosys"],
+      tags: ["Array", "Hash Table", "Counting", "Amazon", "Infosys"],
       signature: { funcName: "sumOfUnique", params: [{ name: "nums", type: "int[]" as const }], returns: "int" as const },
       description: describe(
         "An element is **unique** if it appears exactly once in the array.\n\nGiven an integer array `nums`, return the sum of all its unique elements.",
@@ -171,7 +171,7 @@ export const HASHING3_PROBLEMS: CatalogProblem[] = [
       slug: "count-elements-with-maximum-frequency",
       title: "Count Elements With Maximum Frequency",
       difficulty: "EASY" as const,
-      tags: ["Array", "Hash Table", "Counting", "LeetCode 3005", "Amazon", "TCS"],
+      tags: ["Array", "Hash Table", "Counting", "Amazon", "TCS"],
       signature: { funcName: "maxFrequencyElements", params: [{ name: "nums", type: "int[]" as const }], returns: "int" as const },
       description: describe(
         "Given an array of positive integers `nums`, return the **total number of elements** that have the maximum frequency.\n\nIf several values tie for the highest frequency, every one of their occurrences is counted.",
@@ -250,7 +250,7 @@ export const HASHING3_PROBLEMS: CatalogProblem[] = [
       slug: "minimum-index-sum-of-two-lists",
       title: "Minimum Index Sum of Two Lists",
       difficulty: "EASY" as const,
-      tags: ["Array", "String", "Hash Table", "LeetCode 599", "Amazon", "Yelp"],
+      tags: ["Array", "String", "Hash Table", "Amazon", "Yelp"],
       signature: {
         funcName: "findRestaurant",
         params: [{ name: "list1", type: "string[]" as const }, { name: "list2", type: "string[]" as const }],
@@ -343,7 +343,7 @@ export const HASHING3_PROBLEMS: CatalogProblem[] = [
       slug: "keyboard-row",
       title: "Keyboard Row",
       difficulty: "EASY" as const,
-      tags: ["Array", "String", "Hash Table", "LeetCode 500", "Amazon", "Mathworks"],
+      tags: ["Array", "String", "Hash Table", "Amazon", "Mathworks"],
       signature: { funcName: "findWords", params: [{ name: "words", type: "string[]" as const }], returns: "string[]" as const },
       description: describe(
         "Given an array of strings `words`, return those that can be typed using letters from **only one row** of an American QWERTY keyboard.\n\nThe rows are:\n\n```\nqwertyuiop\nasdfghjkl\nzxcvbnm\n```\n\nCase is ignored. Return the qualifying words in their original order.",
@@ -433,7 +433,7 @@ export const HASHING3_PROBLEMS: CatalogProblem[] = [
       slug: "find-common-characters",
       title: "Find Common Characters",
       difficulty: "EASY" as const,
-      tags: ["Array", "String", "Hash Table", "LeetCode 1002", "Amazon", "Adobe"],
+      tags: ["Array", "String", "Hash Table", "Amazon", "Adobe"],
       signature: { funcName: "commonChars", params: [{ name: "words", type: "string[]" as const }], returns: "string[]" as const },
       description: describe(
         "Given an array of strings `words`, return every character that appears in **all** of them, **including duplicates**.\n\nA character appearing twice in every word appears twice in the answer. Return the characters in **alphabetical order**, each as a one-character string.",
@@ -506,7 +506,7 @@ export const HASHING3_PROBLEMS: CatalogProblem[] = [
       slug: "n-repeated-element-in-size-2n-array",
       title: "N-Repeated Element in Size 2N Array",
       difficulty: "EASY" as const,
-      tags: ["Array", "Hash Table", "LeetCode 961", "Amazon", "Adobe"],
+      tags: ["Array", "Hash Table", "Amazon", "Adobe"],
       signature: { funcName: "repeatedNTimes", params: [{ name: "nums", type: "int[]" as const }], returns: "int" as const },
       description: describe(
         "You are given an array `nums` of length `2n` containing `n + 1` distinct values, exactly one of which appears `n` times.\n\nReturn that repeated value.",
@@ -583,7 +583,7 @@ export const HASHING3_PROBLEMS: CatalogProblem[] = [
       slug: "rank-transform-of-an-array",
       title: "Rank Transform of an Array",
       difficulty: "EASY" as const,
-      tags: ["Array", "Hash Table", "Sorting", "LeetCode 1331", "Amazon", "Google"],
+      tags: ["Array", "Hash Table", "Sorting", "Amazon", "Google"],
       signature: { funcName: "arrayRankTransform", params: [{ name: "arr", type: "int[]" as const }], returns: "int[]" as const },
       description: describe(
         "Replace each element of `arr` with its **rank**, where:\n\n- ranks start at 1,\n- a larger element has a larger rank,\n- equal elements share the same rank,\n- ranks are as small as possible.\n\nReturn the transformed array.",
@@ -658,7 +658,7 @@ export const HASHING3_PROBLEMS: CatalogProblem[] = [
       slug: "maximum-number-of-pairs-in-array",
       title: "Maximum Number of Pairs in Array",
       difficulty: "EASY" as const,
-      tags: ["Array", "Hash Table", "Counting", "LeetCode 2341", "Amazon", "TCS"],
+      tags: ["Array", "Hash Table", "Counting", "Amazon", "TCS"],
       signature: { funcName: "numberOfPairs", params: [{ name: "nums", type: "int[]" as const }], returns: "int[]" as const },
       description: describe(
         "Repeatedly remove **two equal** elements from `nums` and form a pair, until no two equal elements remain.\n\nReturn `[pairs, leftovers]` — the number of pairs formed and the number of elements still in the array.",
@@ -731,7 +731,7 @@ export const HASHING3_PROBLEMS: CatalogProblem[] = [
       slug: "largest-positive-integer-that-exists-with-its-negative",
       title: "Largest Positive Integer That Exists With Its Negative",
       difficulty: "EASY" as const,
-      tags: ["Array", "Hash Table", "Two Pointers", "LeetCode 2441", "Amazon", "Adobe"],
+      tags: ["Array", "Hash Table", "Two Pointers", "Amazon", "Adobe"],
       signature: { funcName: "findMaxK", params: [{ name: "nums", type: "int[]" as const }], returns: "int" as const },
       description: describe(
         "Given an integer array `nums` that does not contain `0`, return the **largest positive** integer `k` such that `-k` also appears in the array.\n\nIf no such `k` exists, return `-1`.",

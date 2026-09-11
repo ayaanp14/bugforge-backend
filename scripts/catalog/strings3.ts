@@ -19,7 +19,7 @@ export const STRING3_PROBLEMS: CatalogProblem[] = [
       slug: "to-lower-case",
       title: "To Lower Case",
       difficulty: "EASY" as const,
-      tags: ["String", "LeetCode 709", "Amazon", "TCS", "Infosys"],
+      tags: ["String", "Amazon", "TCS", "Infosys"],
       signature: { funcName: "toLowerCase", params: [{ name: "s", type: "string" as const }], returns: "string" as const },
       description: describe(
         "Given a string `s`, return it with every uppercase letter converted to lowercase. All other characters are left unchanged.\n\nSolve it without relying on a built-in case-conversion routine.",
@@ -95,7 +95,7 @@ export const STRING3_PROBLEMS: CatalogProblem[] = [
       slug: "reverse-only-letters",
       title: "Reverse Only Letters",
       difficulty: "EASY" as const,
-      tags: ["String", "Two Pointers", "LeetCode 917", "Amazon", "Adobe"],
+      tags: ["String", "Two Pointers", "Amazon", "Adobe"],
       signature: { funcName: "reverseOnlyLetters", params: [{ name: "s", type: "string" as const }], returns: "string" as const },
       description: describe(
         "Given a string `s`, reverse the order of the **English letters** in it while leaving every non-letter character at its original index.\n\nReturn the resulting string.",
@@ -172,7 +172,7 @@ export const STRING3_PROBLEMS: CatalogProblem[] = [
       slug: "long-pressed-name",
       title: "Long Pressed Name",
       difficulty: "EASY" as const,
-      tags: ["String", "Two Pointers", "LeetCode 925", "Amazon", "Google"],
+      tags: ["String", "Two Pointers", "Amazon", "Google"],
       signature: {
         funcName: "isLongPressedName",
         params: [{ name: "name", type: "string" as const }, { name: "typed", type: "string" as const }],
@@ -262,7 +262,7 @@ export const STRING3_PROBLEMS: CatalogProblem[] = [
       slug: "unique-morse-code-words",
       title: "Unique Morse Code Words",
       difficulty: "EASY" as const,
-      tags: ["Array", "String", "Hash Table", "LeetCode 804", "Amazon", "Google"],
+      tags: ["Array", "String", "Hash Table", "Amazon", "Google"],
       signature: { funcName: "uniqueMorseRepresentations", params: [{ name: "words", type: "string[]" as const }], returns: "int" as const },
       description: describe(
         "Each lowercase letter maps to a Morse code string:\n\n```\na .-      b -...    c -.-.    d -..     e .       f ..-.    g --.\nh ....    i ..      j .---    k -.-     l .-..    m --      n -.\no ---     p .--.    q --.-    r .-.     s ...     t -       u ..-\nv ...-    w .--     x -..-    y -.--    z --..\n```\n\nThe **transformation** of a word is the concatenation of its letters' codes — for example `\"cab\"` becomes `\"-.-..--...\"`.\n\nGiven an array `words`, return the number of **distinct** transformations among them.",
@@ -339,7 +339,7 @@ export const STRING3_PROBLEMS: CatalogProblem[] = [
       slug: "goat-latin",
       title: "Goat Latin",
       difficulty: "EASY" as const,
-      tags: ["String", "LeetCode 824", "Amazon", "Adobe"],
+      tags: ["String", "Amazon", "Adobe"],
       signature: { funcName: "toGoatLatin", params: [{ name: "sentence", type: "string" as const }], returns: "string" as const },
       description: describe(
         "Convert a sentence to **Goat Latin**, a made-up language with these rules applied to each word:\n\n1. If the word begins with a vowel (`a`, `e`, `i`, `o`, `u`, in either case), append `\"ma\"`.\n2. Otherwise move the first letter to the end and then append `\"ma\"`.\n3. Append one `\"a\"` for the first word, two for the second, and so on — the `i`-th word (1-indexed) gets `i` copies of `\"a\"`.\n\nWords are separated by single spaces. Return the converted sentence.",
@@ -422,7 +422,7 @@ export const STRING3_PROBLEMS: CatalogProblem[] = [
       slug: "verifying-an-alien-dictionary",
       title: "Verifying an Alien Dictionary",
       difficulty: "EASY" as const,
-      tags: ["Array", "String", "Hash Table", "LeetCode 953", "Facebook", "Amazon", "Google"],
+      tags: ["Array", "String", "Hash Table", "Facebook", "Amazon", "Google"],
       signature: {
         funcName: "isAlienSorted",
         params: [{ name: "words", type: "string[]" as const }, { name: "order", type: "string" as const }],
@@ -509,7 +509,7 @@ export const STRING3_PROBLEMS: CatalogProblem[] = [
       slug: "greatest-common-divisor-of-strings",
       title: "Greatest Common Divisor of Strings",
       difficulty: "EASY" as const,
-      tags: ["String", "Math", "LeetCode 1071", "Amazon", "Google", "Microsoft"],
+      tags: ["String", "Math", "Amazon", "Google", "Microsoft"],
       signature: {
         funcName: "gcdOfStrings",
         params: [{ name: "str1", type: "string" as const }, { name: "str2", type: "string" as const }],
@@ -585,7 +585,7 @@ export const STRING3_PROBLEMS: CatalogProblem[] = [
       slug: "remove-vowels-from-a-string",
       title: "Remove Vowels from a String",
       difficulty: "EASY" as const,
-      tags: ["String", "LeetCode 1119", "Amazon", "TCS", "Infosys"],
+      tags: ["String", "Amazon", "TCS", "Infosys"],
       signature: { funcName: "removeVowels", params: [{ name: "s", type: "string" as const }], returns: "string" as const },
       description: describe(
         "Given a string `s` of lowercase English letters, return `s` with every vowel (`a`, `e`, `i`, `o`, `u`) removed.",
@@ -656,7 +656,7 @@ export const STRING3_PROBLEMS: CatalogProblem[] = [
       slug: "count-substrings-with-only-one-distinct-letter",
       title: "Count Substrings with Only One Distinct Letter",
       difficulty: "EASY" as const,
-      tags: ["String", "Math", "LeetCode 1180", "Amazon", "Adobe"],
+      tags: ["String", "Math", "Amazon", "Adobe"],
       signature: { funcName: "countLetters", params: [{ name: "s", type: "string" as const }], returns: "int" as const },
       description: describe(
         "Given a string `s`, return the number of substrings that contain **only one distinct letter**.\n\nSubstrings are counted by position, so identical substrings occurring at different places count separately.",
@@ -732,7 +732,7 @@ export const STRING3_PROBLEMS: CatalogProblem[] = [
       slug: "check-if-a-word-occurs-as-a-prefix-of-any-word-in-a-sentence",
       title: "Check If a Word Occurs As a Prefix of Any Word in a Sentence",
       difficulty: "EASY" as const,
-      tags: ["String", "LeetCode 1455", "Amazon", "Wipro"],
+      tags: ["String", "Amazon", "Wipro"],
       signature: {
         funcName: "isPrefixOfWord",
         params: [{ name: "sentence", type: "string" as const }, { name: "searchWord", type: "string" as const }],
@@ -815,7 +815,7 @@ export const STRING3_PROBLEMS: CatalogProblem[] = [
       slug: "thousand-separator",
       title: "Thousand Separator",
       difficulty: "EASY" as const,
-      tags: ["String", "LeetCode 1556", "Amazon", "TCS"],
+      tags: ["String", "Amazon", "TCS"],
       signature: { funcName: "thousandSeparator", params: [{ name: "n", type: "int" as const }], returns: "string" as const },
       description: describe(
         "Given a non-negative integer `n`, return its decimal representation with a dot (`.`) inserted as the thousands separator — every three digits, counting from the right.",
@@ -886,7 +886,7 @@ export const STRING3_PROBLEMS: CatalogProblem[] = [
       slug: "maximum-repeating-substring",
       title: "Maximum Repeating Substring",
       difficulty: "EASY" as const,
-      tags: ["String", "LeetCode 1668", "Amazon", "Adobe"],
+      tags: ["String", "Amazon", "Adobe"],
       signature: {
         funcName: "maxRepeating",
         params: [{ name: "sequence", type: "string" as const }, { name: "word", type: "string" as const }],
@@ -972,7 +972,7 @@ export const STRING3_PROBLEMS: CatalogProblem[] = [
       slug: "number-of-different-integers-in-a-string",
       title: "Number of Different Integers in a String",
       difficulty: "EASY" as const,
-      tags: ["String", "Hash Table", "LeetCode 1805", "Amazon", "Google"],
+      tags: ["String", "Hash Table", "Amazon", "Google"],
       signature: { funcName: "numDifferentIntegers", params: [{ name: "word", type: "string" as const }], returns: "int" as const },
       description: describe(
         "You are given a string `word` of digits and lowercase letters. Replace every maximal run of letters with a single space, then read off the integers that remain.\n\nReturn how many **different** integers appear. Leading zeros are ignored, so `\"01\"` and `\"1\"` are the same integer.",
@@ -1054,7 +1054,7 @@ export const STRING3_PROBLEMS: CatalogProblem[] = [
       slug: "replace-all-digits-with-characters",
       title: "Replace All Digits with Characters",
       difficulty: "EASY" as const,
-      tags: ["String", "LeetCode 1844", "Amazon", "Infosys"],
+      tags: ["String", "Amazon", "Infosys"],
       signature: { funcName: "replaceDigits", params: [{ name: "s", type: "string" as const }], returns: "string" as const },
       description: describe(
         "You are given a 0-indexed string `s` whose **even** indices hold lowercase letters and whose **odd** indices hold digits.\n\nFor every odd index `i`, replace `s[i]` with the letter obtained by shifting `s[i-1]` forward by `s[i]` positions in the alphabet. Shifting never goes past `'z'`.\n\nReturn the resulting string.",
@@ -1128,7 +1128,7 @@ export const STRING3_PROBLEMS: CatalogProblem[] = [
       slug: "determine-color-of-a-chessboard-square",
       title: "Determine Color of a Chessboard Square",
       difficulty: "EASY" as const,
-      tags: ["Math", "String", "LeetCode 1812", "Amazon", "Adobe"],
+      tags: ["Math", "String", "Amazon", "Adobe"],
       signature: { funcName: "squareIsWhite", params: [{ name: "coordinates", type: "string" as const }], returns: "bool" as const },
       description: describe(
         "You are given `coordinates`, a two-character string naming a square on a standard chessboard — a file letter `a`-`h` followed by a rank digit `1`-`8`.\n\nReturn `true` if that square is **white** and `false` if it is black. On a standard board, `a1` is black.",
@@ -1199,7 +1199,7 @@ export const STRING3_PROBLEMS: CatalogProblem[] = [
       slug: "check-if-word-equals-summation-of-two-words",
       title: "Check If Word Equals Summation of Two Words",
       difficulty: "EASY" as const,
-      tags: ["String", "Math", "LeetCode 1880", "Amazon", "TCS"],
+      tags: ["String", "Math", "Amazon", "TCS"],
       signature: {
         funcName: "isSumEqual",
         params: [
@@ -1288,7 +1288,7 @@ export const STRING3_PROBLEMS: CatalogProblem[] = [
       slug: "maximum-number-of-words-you-can-type",
       title: "Maximum Number of Words You Can Type",
       difficulty: "EASY" as const,
-      tags: ["String", "Hash Table", "LeetCode 1935", "Amazon", "Cognizant"],
+      tags: ["String", "Hash Table", "Amazon", "Cognizant"],
       signature: {
         funcName: "canBeTypedWords",
         params: [{ name: "text", type: "string" as const }, { name: "brokenLetters", type: "string" as const }],
@@ -1367,7 +1367,7 @@ export const STRING3_PROBLEMS: CatalogProblem[] = [
       slug: "redistribute-characters-to-make-all-strings-equal",
       title: "Redistribute Characters to Make All Strings Equal",
       difficulty: "EASY" as const,
-      tags: ["Array", "String", "Counting", "LeetCode 1897", "Amazon", "Adobe"],
+      tags: ["Array", "String", "Counting", "Amazon", "Adobe"],
       signature: { funcName: "makeEqual", params: [{ name: "words", type: "string[]" as const }], returns: "bool" as const },
       description: describe(
         "You are given an array of strings `words`. In one operation you may take **any** character from **any** word and move it into **any** word (possibly the same one).\n\nReturn `true` if some sequence of such operations can make all the strings equal.",
@@ -1452,7 +1452,7 @@ export const STRING3_PROBLEMS: CatalogProblem[] = [
       slug: "remove-palindromic-subsequences",
       title: "Remove Palindromic Subsequences",
       difficulty: "EASY" as const,
-      tags: ["String", "Two Pointers", "LeetCode 1332", "Amazon", "Google"],
+      tags: ["String", "Two Pointers", "Amazon", "Google"],
       signature: { funcName: "removePalindromeSub", params: [{ name: "s", type: "string" as const }], returns: "int" as const },
       description: describe(
         "You are given a string `s` made only of the letters `'a'` and `'b'`.\n\nIn one step you may delete any **palindromic subsequence** from `s` — the remaining characters close up. Return the minimum number of steps needed to make `s` empty.",
@@ -1538,7 +1538,7 @@ export const STRING3_PROBLEMS: CatalogProblem[] = [
       slug: "longest-nice-substring",
       title: "Longest Nice Substring",
       difficulty: "EASY" as const,
-      tags: ["String", "Divide and Conquer", "LeetCode 1763", "Amazon", "Microsoft"],
+      tags: ["String", "Divide and Conquer", "Amazon", "Microsoft"],
       signature: { funcName: "longestNiceSubstring", params: [{ name: "s", type: "string" as const }], returns: "string" as const },
       description: describe(
         "A string is **nice** if, for every letter it contains, it contains **both** the uppercase and the lowercase form. `\"abABB\"` is nice; `\"abA\"` is not, because `b` appears without `B`.\n\nReturn the longest nice **substring** of `s`. If there are several of the same maximum length, return the one that starts **earliest**. If none exists, return the empty string.",
@@ -1611,7 +1611,7 @@ export const STRING3_PROBLEMS: CatalogProblem[] = [
       slug: "score-of-a-string",
       title: "Score of a String",
       difficulty: "EASY" as const,
-      tags: ["String", "LeetCode 3110", "Amazon", "TCS"],
+      tags: ["String", "Amazon", "TCS"],
       signature: { funcName: "scoreOfString", params: [{ name: "s", type: "string" as const }], returns: "int" as const },
       description: describe(
         "The **score** of a string is the sum of the absolute differences between the ASCII values of every pair of adjacent characters.\n\nGiven a string `s`, return its score.",
@@ -1685,7 +1685,7 @@ export const STRING3_PROBLEMS: CatalogProblem[] = [
       slug: "count-common-words-with-one-occurrence",
       title: "Count Common Words With One Occurrence",
       difficulty: "EASY" as const,
-      tags: ["Array", "String", "Hash Table", "LeetCode 2085", "Amazon", "Infosys"],
+      tags: ["Array", "String", "Hash Table", "Amazon", "Infosys"],
       signature: {
         funcName: "countWords",
         params: [{ name: "words1", type: "string[]" as const }, { name: "words2", type: "string[]" as const }],
@@ -1762,7 +1762,7 @@ export const STRING3_PROBLEMS: CatalogProblem[] = [
       slug: "check-if-all-as-appears-before-all-bs",
       title: "Check if All A's Appears Before All B's",
       difficulty: "EASY" as const,
-      tags: ["String", "LeetCode 2124", "Amazon", "TCS"],
+      tags: ["String", "Amazon", "TCS"],
       signature: { funcName: "checkString", params: [{ name: "s", type: "string" as const }], returns: "bool" as const },
       description: describe(
         "Given a string `s` consisting only of the letters `'a'` and `'b'`, return `true` if **every** `'a'` appears before **every** `'b'`.",
@@ -1838,7 +1838,7 @@ export const STRING3_PROBLEMS: CatalogProblem[] = [
       slug: "capitalize-the-title",
       title: "Capitalize the Title",
       difficulty: "EASY" as const,
-      tags: ["String", "LeetCode 2129", "Amazon", "Adobe"],
+      tags: ["String", "Amazon", "Adobe"],
       signature: { funcName: "capitalizeTitle", params: [{ name: "title", type: "string" as const }], returns: "string" as const },
       description: describe(
         "You are given a string `title` of words separated by single spaces. Capitalise it as follows:\n\n- Words of length 1 or 2 become entirely lowercase.\n- Longer words become lowercase except for their first letter, which is uppercased.\n\nReturn the capitalised title.",
@@ -1916,7 +1916,7 @@ export const STRING3_PROBLEMS: CatalogProblem[] = [
       slug: "find-first-palindromic-string-in-the-array",
       title: "Find First Palindromic String in the Array",
       difficulty: "EASY" as const,
-      tags: ["Array", "String", "Two Pointers", "LeetCode 2108", "Amazon", "TCS"],
+      tags: ["Array", "String", "Two Pointers", "Amazon", "TCS"],
       signature: { funcName: "firstPalindrome", params: [{ name: "words", type: "string[]" as const }], returns: "string" as const },
       description: describe(
         "Given an array of strings `words`, return the **first** string in it that is a palindrome. If none is, return the empty string.",
@@ -1998,7 +1998,7 @@ export const STRING3_PROBLEMS: CatalogProblem[] = [
       slug: "minimum-number-of-operations-to-convert-time",
       title: "Minimum Number of Operations to Convert Time",
       difficulty: "EASY" as const,
-      tags: ["String", "Greedy", "LeetCode 2224", "Amazon", "Adobe"],
+      tags: ["String", "Greedy", "Amazon", "Adobe"],
       signature: {
         funcName: "convertTime",
         params: [{ name: "current", type: "string" as const }, { name: "correct", type: "string" as const }],
@@ -2080,7 +2080,7 @@ export const STRING3_PROBLEMS: CatalogProblem[] = [
       slug: "largest-3-same-digit-number-in-string",
       title: "Largest 3-Same-Digit Number in String",
       difficulty: "EASY" as const,
-      tags: ["String", "LeetCode 2264", "Amazon", "Wipro"],
+      tags: ["String", "Amazon", "Wipro"],
       signature: { funcName: "largestGoodInteger", params: [{ name: "num", type: "string" as const }], returns: "string" as const },
       description: describe(
         "A **good** substring is a length-3 substring of `num` whose three digits are all the same.\n\nGiven a digit string `num`, return the largest good substring as a string, or the empty string if there is none. The answer keeps its three characters, so `\"000\"` is a valid answer.",
@@ -2156,7 +2156,7 @@ export const STRING3_PROBLEMS: CatalogProblem[] = [
       slug: "percentage-of-letter-in-string",
       title: "Percentage of Letter in String",
       difficulty: "EASY" as const,
-      tags: ["String", "LeetCode 2278", "Amazon", "TCS"],
+      tags: ["String", "Amazon", "TCS"],
       signature: {
         funcName: "percentageLetter",
         params: [{ name: "s", type: "string" as const }, { name: "letter", type: "string" as const }],
@@ -2231,7 +2231,7 @@ export const STRING3_PROBLEMS: CatalogProblem[] = [
       slug: "first-letter-to-appear-twice",
       title: "First Letter to Appear Twice",
       difficulty: "EASY" as const,
-      tags: ["String", "Hash Table", "LeetCode 2351", "Amazon", "Infosys"],
+      tags: ["String", "Hash Table", "Amazon", "Infosys"],
       signature: { funcName: "repeatedCharacter", params: [{ name: "s", type: "string" as const }], returns: "string" as const },
       description: describe(
         "Given a string `s` of lowercase English letters, return the first letter whose **second occurrence** comes earliest.\n\nThe input is guaranteed to contain at least one repeated letter.",
@@ -2316,7 +2316,7 @@ export const STRING3_PROBLEMS: CatalogProblem[] = [
       slug: "odd-string-difference",
       title: "Odd String Difference",
       difficulty: "EASY" as const,
-      tags: ["Array", "String", "Hash Table", "LeetCode 2451", "Amazon", "Adobe"],
+      tags: ["Array", "String", "Hash Table", "Amazon", "Adobe"],
       signature: { funcName: "oddString", params: [{ name: "words", type: "string[]" as const }], returns: "string" as const },
       description: describe(
         "You are given an array `words` of strings that all have the **same length** `n`.\n\nThe **difference array** of a string `s` is the array `[s[1]-s[0], s[2]-s[1], …, s[n-1]-s[n-2]]` of character-code differences.\n\nAll but one of the strings share the same difference array. Return the odd one out.",
@@ -2420,7 +2420,7 @@ export const STRING3_PROBLEMS: CatalogProblem[] = [
       slug: "maximum-value-of-a-string-in-an-array",
       title: "Maximum Value of a String in an Array",
       difficulty: "EASY" as const,
-      tags: ["Array", "String", "LeetCode 2496", "Amazon", "TCS"],
+      tags: ["Array", "String", "Amazon", "TCS"],
       signature: { funcName: "maximumValue", params: [{ name: "strs", type: "string[]" as const }], returns: "int" as const },
       description: describe(
         "The **value** of an alphanumeric string is defined as follows:\n\n- If it consists only of digits, its value is that number (leading zeros allowed).\n- Otherwise its value is its length.\n\nGiven an array `strs`, return the maximum value among its strings.",
@@ -2503,7 +2503,7 @@ export const STRING3_PROBLEMS: CatalogProblem[] = [
       slug: "split-strings-by-separator",
       title: "Split Strings by Separator",
       difficulty: "EASY" as const,
-      tags: ["Array", "String", "LeetCode 2788", "Amazon", "Adobe"],
+      tags: ["Array", "String", "Amazon", "Adobe"],
       signature: {
         funcName: "splitWordsBySeparator",
         params: [{ name: "words", type: "string[]" as const }, { name: "separator", type: "string" as const }],
@@ -2589,7 +2589,7 @@ export const STRING3_PROBLEMS: CatalogProblem[] = [
       slug: "permutation-difference-between-two-strings",
       title: "Permutation Difference between Two Strings",
       difficulty: "EASY" as const,
-      tags: ["String", "Hash Table", "LeetCode 3146", "Amazon", "Google"],
+      tags: ["String", "Hash Table", "Amazon", "Google"],
       signature: {
         funcName: "findPermutationDifference",
         params: [{ name: "s", type: "string" as const }, { name: "t", type: "string" as const }],

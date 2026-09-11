@@ -25,7 +25,7 @@ export const ARRAY3_PROBLEMS: CatalogProblem[] = [
       slug: "second-largest-element",
       title: "Second Largest Element",
       difficulty: "EASY" as const,
-      tags: ["Array", "GFG", "TCS", "Infosys", "Wipro"],
+      tags: ["Array", "TCS", "Infosys", "Wipro"],
       signature: { funcName: "getSecondLargest", params: [{ name: "arr", type: "int[]" as const }], returns: "int" as const },
       description: describe(
         "Given an array `arr` of positive integers, return the **second largest distinct value** in it.\n\nIf every element is the same — so no second distinct value exists — return `-1`.",
@@ -106,7 +106,7 @@ export const ARRAY3_PROBLEMS: CatalogProblem[] = [
       slug: "leaders-in-an-array",
       title: "Leaders in an Array",
       difficulty: "EASY" as const,
-      tags: ["Array", "GFG", "TCS", "Accenture", "Amazon"],
+      tags: ["Array", "TCS", "Accenture", "Amazon"],
       signature: { funcName: "leaders", params: [{ name: "arr", type: "int[]" as const }], returns: "int[]" as const },
       description: describe(
         "An element of `arr` is a **leader** if it is greater than or equal to every element to its right. The rightmost element is always a leader.\n\nReturn all leaders in the **order they appear** in the array (left to right).",
@@ -181,7 +181,7 @@ export const ARRAY3_PROBLEMS: CatalogProblem[] = [
       slug: "equilibrium-point",
       title: "Equilibrium Point",
       difficulty: "EASY" as const,
-      tags: ["Array", "Prefix Sum", "GFG", "TCS", "Capgemini"],
+      tags: ["Array", "Prefix Sum", "TCS", "Capgemini"],
       signature: { funcName: "equilibriumPoint", params: [{ name: "arr", type: "int[]" as const }], returns: "int" as const },
       description: describe(
         "An index `i` is an **equilibrium point** if the sum of `arr[0..i-1]` equals the sum of `arr[i+1..n-1]`. The element at `i` itself belongs to neither side.\n\nReturn the **smallest** such index, or `-1` if there is none. Indices are 0-based; an empty side sums to `0`.",
@@ -265,7 +265,7 @@ export const ARRAY3_PROBLEMS: CatalogProblem[] = [
       slug: "minimum-moves-to-equal-array-elements",
       title: "Minimum Moves to Equal Array Elements",
       difficulty: "MEDIUM" as const,
-      tags: ["Array", "Math", "LeetCode 453", "Amazon", "Indeed"],
+      tags: ["Array", "Math", "Amazon", "Indeed"],
       signature: { funcName: "minMoves", params: [{ name: "nums", type: "int[]" as const }], returns: "int" as const },
       description: describe(
         "Given an integer array `nums` of size `n`, return the **minimum number of moves** required to make all elements equal.\n\nIn one move you may increment `n - 1` elements of the array by `1`.",
@@ -337,7 +337,7 @@ export const ARRAY3_PROBLEMS: CatalogProblem[] = [
       slug: "minimum-moves-to-equal-array-elements-ii",
       title: "Minimum Moves to Equal Array Elements II",
       difficulty: "MEDIUM" as const,
-      tags: ["Array", "Math", "Sorting", "LeetCode 462", "Amazon", "Google"],
+      tags: ["Array", "Math", "Sorting", "Amazon", "Google"],
       signature: { funcName: "minMoves2", params: [{ name: "nums", type: "int[]" as const }], returns: "int" as const },
       description: describe(
         "Given an integer array `nums` of size `n`, return the **minimum number of moves** required to make all elements equal.\n\nIn one move you may increment **or** decrement a single element by `1`.",
@@ -416,7 +416,7 @@ export const ARRAY3_PROBLEMS: CatalogProblem[] = [
       slug: "non-decreasing-array",
       title: "Non-decreasing Array",
       difficulty: "MEDIUM" as const,
-      tags: ["Array", "Greedy", "LeetCode 665", "Amazon", "Google", "Facebook"],
+      tags: ["Array", "Greedy", "Amazon", "Google", "Facebook"],
       signature: { funcName: "checkPossibility", params: [{ name: "nums", type: "int[]" as const }], returns: "bool" as const },
       description: describe(
         "Given an array `nums`, return `true` if it can be made **non-decreasing** by modifying **at most one** element.\n\nAn array is non-decreasing if `nums[i] <= nums[i + 1]` holds for every `i`.",
@@ -498,7 +498,7 @@ export const ARRAY3_PROBLEMS: CatalogProblem[] = [
       slug: "monotonic-array",
       title: "Monotonic Array",
       difficulty: "EASY" as const,
-      tags: ["Array", "LeetCode 896", "Facebook", "Amazon"],
+      tags: ["Array", "Facebook", "Amazon"],
       signature: { funcName: "isMonotonic", params: [{ name: "nums", type: "int[]" as const }], returns: "bool" as const },
       description: describe(
         "An array is **monotonic** if it is entirely non-increasing or entirely non-decreasing.\n\nGiven an integer array `nums`, return `true` if it is monotonic and `false` otherwise.",
@@ -577,7 +577,7 @@ export const ARRAY3_PROBLEMS: CatalogProblem[] = [
       slug: "k-diff-pairs-in-an-array",
       title: "K-diff Pairs in an Array",
       difficulty: "MEDIUM" as const,
-      tags: ["Array", "Hash Table", "LeetCode 532", "Amazon", "Microsoft"],
+      tags: ["Array", "Hash Table", "Amazon", "Microsoft"],
       signature: { funcName: "findPairs", params: [{ name: "nums", type: "int[]" as const }, { name: "k", type: "int" as const }], returns: "int" as const },
       description: describe(
         "Given an integer array `nums` and an integer `k`, return the number of **unique k-diff pairs** in the array.\n\nA k-diff pair is a pair `(nums[i], nums[j])` with `i != j` and `|nums[i] - nums[j]| == k`. Two pairs are the same if they consist of the same two **values**, so `(1,3)` and `(3,1)` count once.",
@@ -657,7 +657,7 @@ export const ARRAY3_PROBLEMS: CatalogProblem[] = [
       slug: "fair-candy-swap",
       title: "Fair Candy Swap",
       difficulty: "EASY" as const,
-      tags: ["Array", "Hash Table", "LeetCode 888", "Amazon", "Google"],
+      tags: ["Array", "Hash Table", "Amazon", "Google"],
       signature: {
         funcName: "fairCandySwap",
         params: [{ name: "aliceSizes", type: "int[]" as const }, { name: "bobSizes", type: "int[]" as const }],
@@ -756,7 +756,7 @@ export const ARRAY3_PROBLEMS: CatalogProblem[] = [
       slug: "x-of-a-kind-in-a-deck-of-cards",
       title: "X of a Kind in a Deck of Cards",
       difficulty: "EASY" as const,
-      tags: ["Array", "Math", "Number Theory", "LeetCode 914", "Amazon", "Google"],
+      tags: ["Array", "Math", "Number Theory", "Amazon", "Google"],
       signature: { funcName: "hasGroupsSizeX", params: [{ name: "deck", type: "int[]" as const }], returns: "bool" as const },
       description: describe(
         "You are given a deck of cards where `deck[i]` is the number written on the `i`-th card.\n\nReturn `true` if the whole deck can be split into groups such that **every group has the same size `x >= 2`** and **all cards in a group carry the same number**.",
@@ -848,7 +848,7 @@ export const ARRAY3_PROBLEMS: CatalogProblem[] = [
       slug: "partition-array-into-three-parts-with-equal-sum",
       title: "Partition Array Into Three Parts With Equal Sum",
       difficulty: "EASY" as const,
-      tags: ["Array", "Greedy", "Prefix Sum", "LeetCode 1013", "Amazon"],
+      tags: ["Array", "Greedy", "Prefix Sum", "Amazon"],
       signature: { funcName: "canThreePartsEqualSum", params: [{ name: "arr", type: "int[]" as const }], returns: "bool" as const },
       description: describe(
         "Given an array of integers `arr`, return `true` if it can be partitioned into **three non-empty contiguous parts** with equal sums.\n\nFormally, you need indices `i < j` with `i + 1 < j` such that `arr[0..i]`, `arr[i+1..j-1]` and `arr[j..n-1]` all have the same sum.",
@@ -936,7 +936,7 @@ export const ARRAY3_PROBLEMS: CatalogProblem[] = [
       slug: "duplicate-zeros",
       title: "Duplicate Zeros",
       difficulty: "EASY" as const,
-      tags: ["Array", "Two Pointers", "LeetCode 1089", "Amazon", "Bloomberg"],
+      tags: ["Array", "Two Pointers", "Amazon", "Bloomberg"],
       signature: { funcName: "duplicateZeros", params: [{ name: "arr", type: "int[]" as const }], returns: "int[]" as const },
       description: describe(
         "Given a **fixed-length** array `arr`, duplicate every occurrence of `0`, shifting the remaining elements to the right.\n\nElements pushed past the end of the array are discarded — the length never changes. Return the resulting array.",
@@ -1014,7 +1014,7 @@ export const ARRAY3_PROBLEMS: CatalogProblem[] = [
       slug: "distribute-candies-to-people",
       title: "Distribute Candies to People",
       difficulty: "EASY" as const,
-      tags: ["Array", "Math", "Simulation", "LeetCode 1103", "Amazon"],
+      tags: ["Array", "Math", "Simulation", "Amazon"],
       signature: {
         funcName: "distributeCandies",
         params: [{ name: "candies", type: "int" as const }, { name: "numPeople", type: "int" as const }],
@@ -1093,7 +1093,7 @@ export const ARRAY3_PROBLEMS: CatalogProblem[] = [
       slug: "replace-elements-with-greatest-element-on-right-side",
       title: "Replace Elements with Greatest Element on Right Side",
       difficulty: "EASY" as const,
-      tags: ["Array", "LeetCode 1299", "Amazon", "Google"],
+      tags: ["Array", "Amazon", "Google"],
       signature: { funcName: "replaceElements", params: [{ name: "arr", type: "int[]" as const }], returns: "int[]" as const },
       description: describe(
         "Given an array `arr`, replace every element with the **greatest element among the elements to its right**, and replace the last element with `-1`.\n\nReturn the resulting array.",
@@ -1168,7 +1168,7 @@ export const ARRAY3_PROBLEMS: CatalogProblem[] = [
       slug: "find-n-unique-integers-sum-up-to-zero",
       title: "Find N Unique Integers Sum up to Zero",
       difficulty: "EASY" as const,
-      tags: ["Array", "Math", "LeetCode 1304", "Amazon", "Adobe"],
+      tags: ["Array", "Math", "Amazon", "Adobe"],
       signature: { funcName: "sumZero", params: [{ name: "n", type: "int" as const }], returns: "int[]" as const },
       description: describe(
         "Given an integer `n`, return an array of `n` **unique** integers that sum to `0`.\n\nMany such arrays exist; return the one whose values are packed as tightly around zero as possible, listed in **strictly increasing order**. Concretely: for odd `n` that is `[-(n-1)/2, …, 0, …, (n-1)/2]`, and for even `n` it is the same range with `0` removed.",
@@ -1237,7 +1237,7 @@ export const ARRAY3_PROBLEMS: CatalogProblem[] = [
       slug: "minimum-value-to-get-positive-step-by-step-sum",
       title: "Minimum Value to Get Positive Step by Step Sum",
       difficulty: "EASY" as const,
-      tags: ["Array", "Prefix Sum", "LeetCode 1413", "Amazon", "Microsoft"],
+      tags: ["Array", "Prefix Sum", "Amazon", "Microsoft"],
       signature: { funcName: "minStartValue", params: [{ name: "nums", type: "int[]" as const }], returns: "int" as const },
       description: describe(
         "You start with some positive integer `startValue` and walk left to right through `nums`, adding each element to a running total.\n\nReturn the **minimum positive** `startValue` such that the running total is never less than `1` at any point.",
@@ -1311,7 +1311,7 @@ export const ARRAY3_PROBLEMS: CatalogProblem[] = [
       slug: "find-lucky-integer-in-an-array",
       title: "Find Lucky Integer in an Array",
       difficulty: "EASY" as const,
-      tags: ["Array", "Hash Table", "Counting", "LeetCode 1394", "Amazon"],
+      tags: ["Array", "Hash Table", "Counting", "Amazon"],
       signature: { funcName: "findLucky", params: [{ name: "arr", type: "int[]" as const }], returns: "int" as const },
       description: describe(
         "An integer is **lucky** if its value equals the number of times it appears in the array.\n\nGiven an array of integers `arr`, return the **largest** lucky integer, or `-1` if none exists.",
@@ -1402,7 +1402,7 @@ export const ARRAY3_PROBLEMS: CatalogProblem[] = [
       slug: "count-largest-group",
       title: "Count Largest Group",
       difficulty: "EASY" as const,
-      tags: ["Math", "Hash Table", "LeetCode 1399", "Amazon", "Adobe"],
+      tags: ["Math", "Hash Table", "Amazon", "Adobe"],
       signature: { funcName: "countLargestGroup", params: [{ name: "n", type: "int" as const }], returns: "int" as const },
       description: describe(
         "Take every integer from `1` to `n` and group them by their **digit sum** — all numbers whose digits add to the same value land in the same group.\n\nReturn how many groups have the **largest** size.",
@@ -1478,7 +1478,7 @@ export const ARRAY3_PROBLEMS: CatalogProblem[] = [
       slug: "minimum-subsequence-in-non-increasing-order",
       title: "Minimum Subsequence in Non-Increasing Order",
       difficulty: "EASY" as const,
-      tags: ["Array", "Greedy", "Sorting", "LeetCode 1403", "Amazon"],
+      tags: ["Array", "Greedy", "Sorting", "Amazon"],
       signature: { funcName: "minSubsequence", params: [{ name: "nums", type: "int[]" as const }], returns: "int[]" as const },
       description: describe(
         "Given an array of positive integers `nums`, pick a subsequence whose sum is **strictly greater** than the sum of the elements you leave behind.\n\nAmong all such subsequences choose the one with the **fewest elements**; if several tie, choose the one with the **largest sum**. The answer is unique — return it sorted in **non-increasing** order.",
@@ -1552,7 +1552,7 @@ export const ARRAY3_PROBLEMS: CatalogProblem[] = [
       slug: "teemo-attacking",
       title: "Teemo Attacking",
       difficulty: "EASY" as const,
-      tags: ["Array", "Simulation", "LeetCode 495", "Amazon", "Riot Games"],
+      tags: ["Array", "Simulation", "Amazon", "Riot Games"],
       signature: {
         funcName: "findPoisonedDuration",
         params: [{ name: "timeSeries", type: "int[]" as const }, { name: "duration", type: "int" as const }],
@@ -1634,7 +1634,7 @@ export const ARRAY3_PROBLEMS: CatalogProblem[] = [
       slug: "check-if-all-1s-are-at-least-length-k-places-away",
       title: "Check If All 1's Are at Least Length K Places Away",
       difficulty: "EASY" as const,
-      tags: ["Array", "LeetCode 1437", "Amazon", "Facebook"],
+      tags: ["Array", "Amazon", "Facebook"],
       signature: {
         funcName: "kLengthApart",
         params: [{ name: "nums", type: "int[]" as const }, { name: "k", type: "int" as const }],
@@ -1710,7 +1710,7 @@ export const ARRAY3_PROBLEMS: CatalogProblem[] = [
       slug: "number-of-students-doing-homework-at-a-given-time",
       title: "Number of Students Doing Homework at a Given Time",
       difficulty: "EASY" as const,
-      tags: ["Array", "LeetCode 1450", "Amazon", "TCS"],
+      tags: ["Array", "Amazon", "TCS"],
       signature: {
         funcName: "busyStudent",
         params: [
@@ -1796,7 +1796,7 @@ export const ARRAY3_PROBLEMS: CatalogProblem[] = [
       slug: "sign-of-the-product-of-an-array",
       title: "Sign of the Product of an Array",
       difficulty: "EASY" as const,
-      tags: ["Array", "Math", "LeetCode 1822", "Amazon", "TCS"],
+      tags: ["Array", "Math", "Amazon", "TCS"],
       signature: { funcName: "arraySign", params: [{ name: "nums", type: "int[]" as const }], returns: "int" as const },
       description: describe(
         "Let `product` be the product of every value in `nums`.\n\nReturn `1` if `product` is positive, `-1` if it is negative, and `0` if it is zero.",
@@ -1869,7 +1869,7 @@ export const ARRAY3_PROBLEMS: CatalogProblem[] = [
       slug: "minimum-operations-to-make-the-array-increasing",
       title: "Minimum Operations to Make the Array Increasing",
       difficulty: "EASY" as const,
-      tags: ["Array", "Greedy", "LeetCode 1827", "Amazon", "Microsoft"],
+      tags: ["Array", "Greedy", "Amazon", "Microsoft"],
       signature: { funcName: "minOperations", params: [{ name: "nums", type: "int[]" as const }], returns: "int" as const },
       description: describe(
         "You are given an integer array `nums`. In one operation you may increment any single element by `1`.\n\nReturn the **minimum number of operations** needed to make `nums` **strictly increasing** — that is, `nums[i] < nums[i+1]` for every `i`.",
@@ -1945,7 +1945,7 @@ export const ARRAY3_PROBLEMS: CatalogProblem[] = [
       slug: "minimum-distance-to-the-target-element",
       title: "Minimum Distance to the Target Element",
       difficulty: "EASY" as const,
-      tags: ["Array", "LeetCode 1848", "Amazon", "Infosys"],
+      tags: ["Array", "Amazon", "Infosys"],
       signature: {
         funcName: "getMinDistance",
         params: [
@@ -2029,7 +2029,7 @@ export const ARRAY3_PROBLEMS: CatalogProblem[] = [
       slug: "maximum-population-year",
       title: "Maximum Population Year",
       difficulty: "EASY" as const,
-      tags: ["Array", "Prefix Sum", "Counting", "LeetCode 1854", "Amazon"],
+      tags: ["Array", "Prefix Sum", "Counting", "Amazon"],
       signature: { funcName: "maximumPopulation", params: [{ name: "logs", type: "int[][]" as const }], returns: "int" as const },
       description: describe(
         "You are given a 2D array `logs` where `logs[i] = [birth, death]` records one person's birth and death years.\n\nA person is counted as alive during every year `y` with `birth <= y < death` — the birth year counts, the death year does not.\n\nReturn the **earliest** year with the maximum population.",
@@ -2108,7 +2108,7 @@ export const ARRAY3_PROBLEMS: CatalogProblem[] = [
       slug: "maximum-difference-between-increasing-elements",
       title: "Maximum Difference Between Increasing Elements",
       difficulty: "EASY" as const,
-      tags: ["Array", "LeetCode 2016", "Amazon", "Google"],
+      tags: ["Array", "Amazon", "Google"],
       signature: { funcName: "maximumDifference", params: [{ name: "nums", type: "int[]" as const }], returns: "int" as const },
       description: describe(
         "Given a 0-indexed array `nums`, find indices `i < j` with `nums[i] < nums[j]` that maximise `nums[j] - nums[i]`.\n\nReturn that maximum difference, or `-1` if no such pair exists.",
@@ -2192,7 +2192,7 @@ export const ARRAY3_PROBLEMS: CatalogProblem[] = [
       slug: "find-original-array-from-doubled-array",
       title: "Find Original Array From Doubled Array",
       difficulty: "MEDIUM" as const,
-      tags: ["Array", "Greedy", "Sorting", "Hash Table", "LeetCode 2007", "Amazon", "Google"],
+      tags: ["Array", "Greedy", "Sorting", "Hash Table", "Amazon", "Google"],
       signature: { funcName: "findOriginalArray", params: [{ name: "changed", type: "int[]" as const }], returns: "int[]" as const },
       description: describe(
         "An array `changed` is a **doubled array** if it was built from some array `original` by appending twice the value of every element and then shuffling the result.\n\nGiven `changed`, return `original` sorted in **ascending order**. If `changed` is not a doubled array, return an empty array.",
@@ -2274,7 +2274,7 @@ export const ARRAY3_PROBLEMS: CatalogProblem[] = [
       slug: "count-operations-to-obtain-zero",
       title: "Count Operations to Obtain Zero",
       difficulty: "EASY" as const,
-      tags: ["Math", "Simulation", "LeetCode 2169", "Amazon", "Adobe"],
+      tags: ["Math", "Simulation", "Amazon", "Adobe"],
       signature: {
         funcName: "countOperations",
         params: [{ name: "num1", type: "int" as const }, { name: "num2", type: "int" as const }],
@@ -2353,7 +2353,7 @@ export const ARRAY3_PROBLEMS: CatalogProblem[] = [
       slug: "count-equal-and-divisible-pairs-in-an-array",
       title: "Count Equal and Divisible Pairs in an Array",
       difficulty: "EASY" as const,
-      tags: ["Array", "LeetCode 2176", "Amazon", "Wipro"],
+      tags: ["Array", "Amazon", "Wipro"],
       signature: {
         funcName: "countPairs",
         params: [{ name: "nums", type: "int[]" as const }, { name: "k", type: "int" as const }],
@@ -2429,7 +2429,7 @@ export const ARRAY3_PROBLEMS: CatalogProblem[] = [
       slug: "divide-array-into-equal-pairs",
       title: "Divide Array Into Equal Pairs",
       difficulty: "EASY" as const,
-      tags: ["Array", "Hash Table", "Bit Manipulation", "LeetCode 2206", "Amazon", "TCS"],
+      tags: ["Array", "Hash Table", "Bit Manipulation", "Amazon", "TCS"],
       signature: { funcName: "divideArray", params: [{ name: "nums", type: "int[]" as const }], returns: "bool" as const },
       description: describe(
         "You are given an integer array `nums` of length `2 * n`.\n\nReturn `true` if it can be split into `n` pairs such that **both elements of every pair are equal**, and each element is used exactly once.",
@@ -2514,7 +2514,7 @@ export const ARRAY3_PROBLEMS: CatalogProblem[] = [
       slug: "chocolate-distribution-problem",
       title: "Chocolate Distribution Problem",
       difficulty: "EASY" as const,
-      tags: ["Array", "Sorting", "Sliding Window", "GFG", "TCS", "Wipro", "Accenture"],
+      tags: ["Array", "Sorting", "Sliding Window", "TCS", "Wipro", "Accenture"],
       signature: {
         funcName: "findMinDiff",
         params: [{ name: "arr", type: "int[]" as const }, { name: "m", type: "int" as const }],
@@ -2598,7 +2598,7 @@ export const ARRAY3_PROBLEMS: CatalogProblem[] = [
       slug: "union-of-two-sorted-arrays",
       title: "Union of Two Sorted Arrays",
       difficulty: "EASY" as const,
-      tags: ["Array", "Two Pointers", "GFG", "TCS", "Infosys", "Capgemini"],
+      tags: ["Array", "Two Pointers", "TCS", "Infosys", "Capgemini"],
       signature: {
         funcName: "findUnion",
         params: [{ name: "a", type: "int[]" as const }, { name: "b", type: "int[]" as const }],
