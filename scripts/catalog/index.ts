@@ -26,6 +26,13 @@ import { STACKS2_PROBLEMS } from "./stacks2.js";
 import { BITS2_PROBLEMS } from "./bits2.js";
 import { GRAPHS2_PROBLEMS } from "./graphs2.js";
 
+// ── Wave 3 — LeetCode / GFG / PrepInsta / CodeChef classics ──
+import { ARRAY3_PROBLEMS } from "./arrays3.js";
+import { STRING3_PROBLEMS } from "./strings3.js";
+import { MATH3_PROBLEMS } from "./math3.js";
+import { DP3_PROBLEMS } from "./dp3.js";
+import { HASHING3_PROBLEMS } from "./hashing3.js";
+
 export const CATALOG: CatalogProblem[] = [
   ...ARRAY_PROBLEMS,
   ...STRING_PROBLEMS,
@@ -49,4 +56,9 @@ export const CATALOG: CatalogProblem[] = [
   ...STACKS2_PROBLEMS,
   ...BITS2_PROBLEMS,
   ...GRAPHS2_PROBLEMS,
+  ...ARRAY3_PROBLEMS,
+  ...STRING3_PROBLEMS,
+  ...MATH3_PROBLEMS,
+  ...DP3_PROBLEMS,
+  ...HASHING3_PROBLEMS,
 ];
