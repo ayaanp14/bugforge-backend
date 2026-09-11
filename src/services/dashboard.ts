@@ -1,6 +1,7 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "../lib/prisma.js";
 import { cached, cachedShared, invalidate } from "../lib/cache.js";
+import { CALENDAR_UTC_OFFSET_MINUTES, dayKey, dayStart } from "../lib/clock.js";
 import { getDashboardUser, invalidateMe } from "./me.js";
 // daily-contest imports getCatalogue from here; both sides only call the other
 // at request time (function declarations, live bindings), so the cycle is inert.
@@ -162,19 +163,20 @@ export async function getSubmissionHistory(userId: string, page = 1, limit = 10)
 
 // ── 365-day accepted-solution heatmap ───────────────────────────
 export async function getHeatmap(userId: string) {
-  const today = new Date();
-  today.setHours(23, 59, 59, 999);
-  const oneYearAgo = new Date();
-  oneYearAgo.setDate(today.getDate() - 364);
-  oneYearAgo.setHours(0, 0, 0, 0);
+  // The 365 days end today in the product calendar (lib/clock.ts, IST), and
+  // every submission is bucketed into that same calendar in SQL. Days used to
+  // be UTC on both sides — Prisma stores UTC and DATE_FORMAT read it as such
+  // — so a solve at 1 am IST lit the previous day's square and the streak the
+  // squares add up to disagreed with the one on the profile.
+  const todayStart = dayStart(new Date());
+  const oneYearAgo = new Date(todayStart.getTime() - 364 * 86_400_000);
+  const today = new Date(todayStart.getTime() + 86_400_000 - 1);
 
   // One row per active day, counted by the database, instead of every accepted
-  // submission of the year shipped over and bucketed here. Prisma stores the
-  // timestamp as UTC, so the day it falls on is the same one the old
-  // `toISOString().split("T")[0]` produced. Uses the (userId, verdict,
-  // submittedAt) index; COUNT arrives as a BigInt.
+  // submission of the year shipped over and bucketed here. Uses the (userId,
+  // verdict, submittedAt) index; COUNT arrives as a BigInt.
   const rows = await prisma.$queryRaw<Array<{ d: string; n: bigint | number }>>(Prisma.sql`
-    SELECT DATE_FORMAT(\`submittedAt\`, '%Y-%m-%d') AS d, COUNT(*) AS n
+    SELECT DATE_FORMAT(DATE_ADD(\`submittedAt\`, INTERVAL ${CALENDAR_UTC_OFFSET_MINUTES} MINUTE), '%Y-%m-%d') AS d, COUNT(*) AS n
     FROM \`Submission\`
     WHERE \`userId\` = ${userId}
       AND \`verdict\` = 'ACCEPTED'
@@ -193,9 +195,7 @@ export async function getHeatmap(userId: string) {
 
   const dates: string[] = [];
   for (let i = 0; i < 365; i++) {
-    const d = new Date(oneYearAgo);
-    d.setDate(oneYearAgo.getDate() + i);
-    dates.push(d.toISOString().split("T")[0]);
+    dates.push(dayKey(new Date(oneYearAgo.getTime() + i * 86_400_000)));
   }
 
   let maxStreak = 0;

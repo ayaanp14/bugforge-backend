@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { prisma } from "../lib/prisma.js";
 import { optionalAuth } from "../middleware/auth.js";
+import { publicFormLimiter } from "../middleware/rate-limit.js";
 import { CAMPUS_APPLIED, createNotificationOnce } from "../services/notifications.js";
 
 /**
@@ -42,7 +43,10 @@ function email(raw: unknown): string | null {
  * @desc    Apply to the campus ambassador programme
  * @access  Public (platform-signed)
  */
-router.post("/apply", optionalAuth, async (req: any, res) => {
+// Behind its own limiter: this is a public write that creates a row, and the
+// general allowance (hundreds a minute) let a script fill the applications
+// table with invented addresses.
+router.post("/apply", publicFormLimiter, optionalAuth, async (req: any, res) => {
   try {
     const name = text(req.body?.name, 120);
     const address = email(req.body?.email);
@@ -75,22 +79,34 @@ router.post("/apply", optionalAuth, async (req: any, res) => {
       });
     }
 
-    const application = await prisma.campusAmbassador.create({
-      data: {
-        name: name as string,
-        email: address as string,
-        college: college as string,
-        why: why as string,
-        phone: text(req.body?.phone, 32),
-        city: text(req.body?.city, 120),
-        graduationYear: text(req.body?.graduationYear, 12),
-        linkedin: text(req.body?.linkedin, 300),
-        instagram: text(req.body?.instagram, 300),
-        reach: text(req.body?.reach, 1000),
-        userId: req.user?.userId ?? null,
-      },
-      select: { id: true, createdAt: true },
-    });
+    let application: { id: string; createdAt: Date };
+    try {
+      application = await prisma.campusAmbassador.create({
+        data: {
+          name: name as string,
+          email: address as string,
+          college: college as string,
+          why: why as string,
+          phone: text(req.body?.phone, 32),
+          city: text(req.body?.city, 120),
+          graduationYear: text(req.body?.graduationYear, 12),
+          linkedin: text(req.body?.linkedin, 300),
+          instagram: text(req.body?.instagram, 300),
+          reach: text(req.body?.reach, 1000),
+          userId: req.user?.userId ?? null,
+        },
+        select: { id: true, createdAt: true },
+      });
+    } catch (err) {
+      // A double submit that beat the check above: the same sentence, not a 500.
+      if ((err as { code?: string }).code === "P2002") {
+        return res.status(409).json({
+          error: "We already have an application from this email — we'll be in touch.",
+          alreadyApplied: true,
+        });
+      }
+      throw err;
+    }
 
     // A signed-in applicant gets told in-app too, so the confirmation survives
     // them closing the tab.

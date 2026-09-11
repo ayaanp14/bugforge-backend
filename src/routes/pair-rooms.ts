@@ -39,6 +39,9 @@ const LOBBY_WINDOW_MS = 24 * 60 * 60 * 1000;
 /** The most rooms the lobby lists at once. */
 const LOBBY_TAKE = 50;
 
+/** Waiting rooms one account may have open at a time. */
+const MAX_WAITING_ROOMS_PER_USER = 3;
+
 /**
  * How long a room may sit with nobody connected before a read closes it.
  *
@@ -120,6 +123,17 @@ router.post("/", requireAuth, async (req, res) => {
   try {
     const problem = await prisma.problem.findFirst({ where: { id: problemId, isPublished: true }, select: { id: true } });
     if (!problem) return res.status(404).json({ error: "Problem not found" });
+
+    // A person opens a room and waits in it; they do not need five. Nothing
+    // capped it, and every unopened one sat in the lobby for a day.
+    const waiting = await prisma.pairRoom.count({
+      where: { createdBy: userId, status: "waiting", startedAt: { gte: new Date(Date.now() - LOBBY_WINDOW_MS) } },
+    });
+    if (waiting >= MAX_WAITING_ROOMS_PER_USER) {
+      return res.status(409).json({
+        error: `You already have ${waiting} rooms waiting for a partner. Join one of those, or close them, before opening another.`,
+      });
+    }
 
     // Only generate inviteCode for private rooms. The code is the only thing
     // gating entry, so it comes from the cryptographic generator.

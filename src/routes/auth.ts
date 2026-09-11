@@ -158,11 +158,23 @@ router.post("/login", async (req, res) => {
     // only, so a username can never stand in for someone else's email.
     const user = await prisma.user.findFirst({
       where: identifier.includes("@") ? { email: identifier } : { username: identifier },
-      select: { id: true, email: true, username: true, name: true, avatar_url: true, password_hash: true },
+      select: { id: true, email: true, username: true, name: true, avatar_url: true, password_hash: true, provider: true },
     });
 
-    if (!user || !user.password_hash) {
+    if (!user) {
       res.status(401).json({ error: "Invalid credentials." });
+      return;
+    }
+    // An account made with Google or GitHub has no password. "Invalid
+    // credentials" sent those people round in circles; the register form
+    // already confirms the address exists, so naming the way in gives
+    // nothing away.
+    if (!user.password_hash) {
+      const via = user.provider === "google" ? "Google" : user.provider === "github" ? "GitHub" : "a social login";
+      res.status(401).json({
+        error: `This account signs in with ${via}. Use that button, or set a password with "Forgot password".`,
+        provider: user.provider,
+      });
       return;
     }
 

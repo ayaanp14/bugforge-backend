@@ -7,6 +7,17 @@ import { getMePayload, invalidateMe } from "../services/me.js";
 
 const router = Router();
 
+/**
+ * Page and page size from the query string, bounded. `?limit=100000` used to
+ * pull a whole history in one query and `?page=-3` reached Prisma as a
+ * negative skip and 500ed.
+ */
+function pageArgs(query: Record<string, unknown>, defaultLimit: number): { page: number; limit: number } {
+  const page = Math.max(1, parseInt(String(query["page"] ?? ""), 10) || 1);
+  const limit = Math.min(100, Math.max(1, parseInt(String(query["limit"] ?? ""), 10) || defaultLimit));
+  return { page, limit };
+}
+
 // GET /api/me/activity — stats for bar graph (DEPRECATED, using heatmap instead)
 router.get("/activity", requireAuth, async (req, res) => {
   try {
@@ -287,8 +298,7 @@ router.get("/submissions/:id", requireAuth, async (req, res) => {
 // GET /api/me/submissions — detailed history of all attempts
 router.get("/submissions", requireAuth, async (req, res) => {
   try {
-    const page = parseInt(req.query.page as string) || 1;
-    const limit = parseInt(req.query.limit as string) || 10;
+    const { page, limit } = pageArgs(req.query, 10);
     res.json(await getSubmissionHistory(req.user!.userId, page, limit));
   } catch (err) {
     console.error("GET /api/me/submissions error:", err);
@@ -299,8 +309,7 @@ router.get("/submissions", requireAuth, async (req, res) => {
 // GET /api/me/pairing-history — returns sessions where the user was a participant (paginated)
 router.get("/pairing-history", requireAuth, async (req, res) => {
   try {
-    const page = parseInt(req.query["page"] as string) || 1;
-    const limit = parseInt(req.query["limit"] as string) || 10;
+    const { page, limit } = pageArgs(req.query, 10);
     res.json(await getPairingHistory(req.user!.userId, page, limit));
   } catch (err) {
     console.error("GET /api/me/pairing-history error:", err);

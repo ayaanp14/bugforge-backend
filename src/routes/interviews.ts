@@ -28,6 +28,9 @@ import {
 
 const router = Router();
 
+/** The most saved setups one account keeps. */
+const MAX_SAVED_TEMPLATES = 30;
+
 /**
  * @route   POST /api/interviews/save
  * @desc    Save a custom interview configuration for the current user
@@ -44,11 +47,23 @@ router.post("/save", requireAuth, async (req: any, res) => {
     focusAreaIds,
   } = req.body;
 
-  if (!roleId || !roundId) {
+  if (typeof roleId !== "string" || typeof roundId !== "string" || !roleId.trim() || !roundId.trim()) {
     return res.status(400).json({ error: "Missing required fields: roleId and roundId are mandatory." });
+  }
+  if (roleId.length > 80 || roundId.length > 80) {
+    return res.status(400).json({ error: "Role and round names are limited to 80 characters." });
   }
 
   try {
+    // Templates are a short list on the builder and the dashboard; nothing
+    // capped it, so one account could grow the list without limit.
+    const owned = await prisma.savedInterview.count({ where: { userId: req.user.userId } });
+    if (owned >= MAX_SAVED_TEMPLATES) {
+      return res.status(409).json({
+        error: `You can keep up to ${MAX_SAVED_TEMPLATES} saved setups. Delete one you no longer use to add another.`,
+      });
+    }
+
     const savedInterview = await prisma.savedInterview.create({
       data: {
         userId: req.user.userId,
@@ -171,6 +186,21 @@ router.delete("/:id", requireAuth, async (req: any, res) => {
       return res.status(403).json({ error: "You do not have permission to delete this configuration" });
     }
 
+    // Sessions cascade with the template (the relation is required, so they
+    // cannot be left behind). A single unconfirmed click on a trash icon used
+    // to take every interview and report ever sat on the setup with it. The
+    // caller now has to say so: the first request reports what would go, and
+    // only `purge: true` — sent after a confirmation — actually deletes.
+    const sessions = await prisma.mockInterviewSession.count({ where: { savedInterviewId: id } });
+    const purge = req.body?.purge === true || req.query["purge"] === "true";
+    if (sessions > 0 && !purge) {
+      return res.status(409).json({
+        error: `This setup has ${sessions} interview${sessions === 1 ? "" : "s"} in your history. Deleting it removes them and their reports too.`,
+        sessions,
+        requiresPurge: true,
+      });
+    }
+
     await prisma.savedInterview.delete({
       where: { id },
     });
@@ -179,7 +209,7 @@ router.delete("/:id", requireAuth, async (req: any, res) => {
     invalidateInterviewHistory(req.user.userId);
     invalidateDashboard(req.user.userId);
 
-    res.json({ success: true, message: "Interview configuration deleted" });
+    res.json({ success: true, message: "Interview configuration deleted", removedSessions: sessions });
   } catch (error) {
     console.error("Error deleting interview:", error);
     res.status(500).json({ error: "Failed to delete interview configuration" });
@@ -280,7 +310,7 @@ router.post("/start", requireAuth, async (req: any, res) => {
   // has always run, so an older client that sends no mode is unaffected.
   const mode = req.body?.mode === "voice" ? "voice" : "written";
 
-  if (!savedInterviewId) {
+  if (typeof savedInterviewId !== "string" || !savedInterviewId) {
     return res.status(400).json({ error: "savedInterviewId is required to start an interview" });
   }
 

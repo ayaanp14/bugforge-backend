@@ -1,4 +1,5 @@
 import type { Request, Response, NextFunction, RequestHandler } from "express";
+import { createHash } from "node:crypto";
 
 /**
  * Request rate limiting.
@@ -143,8 +144,49 @@ export const executionLimiter = rateLimit({
 /**
  * Everything else. Loose enough that ordinary use never notices, tight enough
  * that a scraper walking the whole catalogue is slowed down.
+ *
+ * Keyed by session where there is one, by address otherwise. This limiter
+ * runs ahead of the auth middleware, so `req.user` is not available; the
+ * bearer token itself is the key — hashed, since it is a credential. The
+ * audience is Indian college students, and a computer lab is thirty people
+ * behind one NAT address: a dashboard load is a dozen requests, and a class
+ * opening the site together used to exhaust the address's allowance in
+ * seconds and 429 everyone in the room. A forged token only buys the forger
+ * a bucket of their own, which an address hop would have bought anyway.
  */
+function sessionOrAddress(req: Request): string {
+  const auth = req.headers.authorization;
+  if (auth && auth.startsWith("Bearer ") && auth.length > 20) {
+    return `s:${createHash("sha256").update(auth.slice(7)).digest("base64url").slice(0, 24)}`;
+  }
+  return `a:${addressOf(req)}`;
+}
+
 export const generalLimiter = rateLimit({
   windowMs: 60 * 1000,
   max: 300,
+  keyOf: sessionOrAddress,
+});
+
+/**
+ * Posting and commenting. Mounted after `requireAuth`, so keyed by account:
+ * the feed had no per-person write limit at all, and one account could fill
+ * it — and everyone's notification bell, through mentions — at the general
+ * allowance of hundreds a minute.
+ */
+export const communityWriteLimiter = rateLimit({
+  windowMs: 10 * 60 * 1000,
+  max: 40,
+  message: "You are posting very quickly. Give it a few minutes.",
+  keyOf: (req) => (req as Request & { user?: { userId: string } }).user?.userId ?? addressOf(req),
+});
+
+/**
+ * Unauthenticated writes that create rows — an application form that anyone
+ * on the internet may post to. Tight per address: a person applies once.
+ */
+export const publicFormLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 5,
+  message: "Too many submissions from this address. Try again later.",
 });

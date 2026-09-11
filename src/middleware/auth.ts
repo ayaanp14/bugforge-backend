@@ -77,9 +77,12 @@ export function adminOnly(
   res: Response,
   next: NextFunction
 ): void {
-  const adminEmail = process.env["ADMIN_EMAIL"] ?? "ADMIN_NOT_SET";
-  
-  if (!req.user || req.user.email !== adminEmail) {
+  const adminEmail = (process.env["ADMIN_EMAIL"] ?? "ADMIN_NOT_SET").trim().toLowerCase();
+
+  // Case-insensitive: addresses are lower-cased at registration now, and a
+  // token minted before that (or an ADMIN_EMAIL typed with a capital) must
+  // not lock the admin out of their own routes.
+  if (!req.user || (req.user.email ?? "").trim().toLowerCase() !== adminEmail) {
     console.warn(`Admin access denied for: ${req.user?.email}. Required: ${adminEmail}`);
     res.status(403).json({ error: "Forbidden — Admin access required" });
     return;

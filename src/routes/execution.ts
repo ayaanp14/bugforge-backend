@@ -21,6 +21,7 @@ import { ENGINE_DOWN_MESSAGE, isEngineDown } from "../lib/engine-error.js";
 // its test suite, both held in memory rather than pulled (~1 MB of hidden
 // cases) out of the database on every Run and Submit.
 import { getJudgeProblem, getJudgeSuite, type JudgeProblem } from "../lib/test-suite-cache.js";
+import { daysBetween } from "../lib/clock.js";
 
 const router = Router();
 
@@ -207,16 +208,16 @@ router.post("/run", requireAuth, executionLimiter, async (req, res) => {
 
 /**
  * Streak bookkeeping from the stats row as it stood before this solve.
- * Day boundaries are local to the server, as they always were here.
+ *
+ * Day boundaries come from the product calendar (lib/clock.ts, IST), not the
+ * server's zone: on Railway that was UTC, so a solve at 1 am IST counted
+ * toward the previous day and a candidate who solved every evening and once
+ * after midnight watched their streak reset.
  */
 function nextStreak(stats: { lastActive: Date; currentStreak: number; longestStreak: number } | null) {
   if (!stats) return { currentStreak: 1, longestStreak: 1 };
 
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const lastActiveDate = new Date(stats.lastActive);
-  lastActiveDate.setHours(0, 0, 0, 0);
-  const diffDays = Math.floor((today.getTime() - lastActiveDate.getTime()) / (1000 * 60 * 60 * 24));
+  const diffDays = daysBetween(new Date(stats.lastActive), new Date());
 
   // Already active today keeps the streak; active yesterday extends it; a gap resets it.
   const currentStreak = diffDays === 0 ? stats.currentStreak : diffDays === 1 ? stats.currentStreak + 1 : 1;

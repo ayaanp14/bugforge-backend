@@ -419,18 +419,33 @@ router.post("/:slug/start", requireAuth, async (req: any, res) => {
       ? new Date(Math.min(now.getTime() + paper[0].durationSec * 1000, expiresAt.getTime()))
       : null;
 
-    const attempt = await prisma.mockAttempt.create({
-      data: {
-        userId: req.user.userId,
-        testId: test.id,
-        startedAt: now,
-        expiresAt,
-        sectionEndsAt,
-        currentSection: 0,
-        paper: paper as any,
-      },
+    // One sitting per test at a time, even when two tabs press Start in the
+    // same instant: the user's row is locked and the "already running" check
+    // repeated under it. Two attempts used to be created, each with its own
+    // paper and clock, and the runner showed whichever URL was opened last.
+    const userId: string = req.user.userId;
+    const outcome = await prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT id FROM \`User\` WHERE id = ${userId} FOR UPDATE`;
+      const running = await tx.mockAttempt.findFirst({
+        where: { userId, testId: test.id, status: "in-progress" },
+        select: { id: true },
+      });
+      if (running) return { attemptId: running.id, resumed: true };
+      const attempt = await tx.mockAttempt.create({
+        data: {
+          userId,
+          testId: test.id,
+          startedAt: now,
+          expiresAt,
+          sectionEndsAt,
+          currentSection: 0,
+          paper: paper as any,
+        },
+        select: { id: true },
+      });
+      return { attemptId: attempt.id, resumed: false };
     });
-    res.status(201).json({ attemptId: attempt.id, resumed: false });
+    res.status(outcome.resumed ? 200 : 201).json(outcome);
   } catch (error: any) {
     console.error("Mock test start error:", error?.message);
     res.status(500).json({ error: "Could not start the test" });

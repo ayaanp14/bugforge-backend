@@ -789,7 +789,19 @@ app.use((err: any, req: express.Request, res: express.Response, _next: express.N
     }),
   );
   if (res.headersSent) return;
-  res.status(500).json({ error: "Internal server error" });
+  // The body parser's own refusals are the caller's problem, not ours, and
+  // they carry a status: a paste bigger than the 512 kb limit, or a body
+  // that is not JSON, used to come back as "Internal server error".
+  const status = typeof err?.status === "number" && err.status >= 400 && err.status < 500 ? err.status : 500;
+  if (status === 413) {
+    res.status(413).json({ error: "That request is too large. Code and inputs are limited to 512 KB in total." });
+    return;
+  }
+  if (status === 400 && err?.type === "entity.parse.failed") {
+    res.status(400).json({ error: "The request body was not valid JSON." });
+    return;
+  }
+  res.status(status).json({ error: status === 500 ? "Internal server error" : err?.message ?? "Bad request" });
 });
 
 /**

@@ -3,6 +3,7 @@ import { randomUUID } from "node:crypto";
 import { Prisma } from "@prisma/client";
 import { prisma } from "../lib/prisma.js";
 import { requireAuth } from "../middleware/auth.js";
+import { communityWriteLimiter } from "../middleware/rate-limit.js";
 import { cached, cachedShared, invalidate } from "../lib/cache.js";
 import { invalidateUnread } from "../services/notifications.js";
 import { invalidateDashboard, querySocialCounts } from "../services/dashboard.js";
@@ -497,7 +498,7 @@ router.get("/feed", requireAuth, async (req, res) => {
 });
 
 // POST /api/community/posts — a status/story, or an achievement share (meta set)
-router.post("/posts", requireAuth, async (req, res) => {
+router.post("/posts", requireAuth, communityWriteLimiter, async (req, res) => {
   try {
     const userId = req.user!.userId;
     const { content, meta, visibility, type: rawType } = req.body as {
@@ -1015,7 +1016,7 @@ router.get("/posts/:id/comments", requireAuth, async (req, res) => {
 });
 
 // POST /api/community/posts/:id/comments
-router.post("/posts/:id/comments", requireAuth, async (req, res) => {
+router.post("/posts/:id/comments", requireAuth, communityWriteLimiter, async (req, res) => {
   try {
     const userId = req.user!.userId;
     const postId = String(req.params.id);

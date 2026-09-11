@@ -1,5 +1,6 @@
 import { prisma } from "../lib/prisma.js";
 import { cachedShared, invalidate } from "../lib/cache.js";
+import { daysBetween } from "../lib/clock.js";
 
 // Zero-based dojo ladder: rating ≡ lifetime XP, so the bar moves from solve #1
 export function getTierTitle(rating: number) {
@@ -138,11 +139,9 @@ async function buildMePayload(userId: string) {
   // this only on a cache miss is fine: the write is idempotent and the cached
   // copy already carries the corrected value.
   if (user.stats) {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const lastActive = new Date(user.stats.lastActive);
-    lastActive.setHours(0, 0, 0, 0);
-    const diffDays = Math.floor((today.getTime() - lastActive.getTime()) / 86400000);
+    // Same calendar the judge extends the streak on (lib/clock.ts), or the
+    // two would disagree around midnight.
+    const diffDays = daysBetween(new Date(user.stats.lastActive), new Date());
 
     if (diffDays > 1 && user.stats.currentStreak > 0) {
       await prisma.userStats.update({ where: { userId: user.id }, data: { currentStreak: 0 } });
@@ -206,11 +205,7 @@ export async function getDashboardUser(userId: string) {
 
   // Display-adjust a stale streak (the /api/me route persists the reset)
   if (user.stats) {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const lastActive = new Date(user.stats.lastActive);
-    lastActive.setHours(0, 0, 0, 0);
-    const diffDays = Math.floor((today.getTime() - lastActive.getTime()) / 86400000);
+    const diffDays = daysBetween(new Date(user.stats.lastActive), new Date());
     if (diffDays > 1 && user.stats.currentStreak > 0) {
       user.stats.currentStreak = 0;
     }

@@ -28,42 +28,15 @@ export interface Entitlement {
 }
 
 /**
- * The clock the quotas run on.
- *
- * "Come back tomorrow" and "come back on Monday" mean the candidate's
- * tomorrow and Monday. The windows used to roll at the server's midnight —
- * UTC on Railway — which is 05:30 in India, where the product is sold (the
- * prices are in rupees): a bug hunt used at 6 am was not back until 5:30 the
- * next morning. Fixed to IST rather than read per user, so the same instant
- * is the same day for everyone and the count queries stay one range.
+ * The clock the quotas run on: the product calendar in lib/clock.ts (IST by
+ * default). "Come back tomorrow" and "come back on Monday" mean the
+ * candidate's tomorrow and Monday; the windows used to roll at the server's
+ * midnight — UTC on Railway, 05:30 in India — so a bug hunt used at 6 am was
+ * not back until 5:30 the next morning. Re-exported so the tests and the
+ * older call sites keep their names.
  */
-const QUOTA_UTC_OFFSET_MS = Number(process.env["QUOTA_UTC_OFFSET_MINUTES"] ?? 330) * 60_000;
-
-/** The instant's calendar fields in the quota zone. */
-function zoned(now: Date): Date {
-  return new Date(now.getTime() + QUOTA_UTC_OFFSET_MS);
-}
-
-/** Back from zone-local fields to the real instant. */
-function unzoned(local: Date): Date {
-  return new Date(local.getTime() - QUOTA_UTC_OFFSET_MS);
-}
-
-/** Monday 00:00 in the quota zone. A "week" the candidate recognises, not a rolling 168h. */
-export function weekStart(now = new Date()): Date {
-  const start = zoned(now);
-  // getUTCDay() is 0 for Sunday, which belongs to the week that began six days ago.
-  const offset = (start.getUTCDay() + 6) % 7;
-  start.setUTCDate(start.getUTCDate() - offset);
-  start.setUTCHours(0, 0, 0, 0);
-  return unzoned(start);
-}
-
-export function dayStart(now = new Date()): Date {
-  const start = zoned(now);
-  start.setUTCHours(0, 0, 0, 0);
-  return unzoned(start);
-}
+import { dayStart, weekStart } from "../lib/clock.js";
+export { dayStart, weekStart };
 
 /**
  * Whether this account belongs to the creator (see ownerEmails in lib/plans).
