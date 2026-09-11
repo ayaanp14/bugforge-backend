@@ -5,6 +5,7 @@ import { requireAuth, optionalAuth, adminOnly } from "../middleware/auth.js";
 import { cachedShared, invalidate } from "../lib/cache.js";
 import { browserCache } from "../lib/http-cache.js";
 import { getCatalogue, listProblemsWithStatus, loadProblemState, type ProblemState } from "../services/dashboard.js";
+import { COMPANY_TAGS } from "../lib/companies.js";
 
 const router = Router();
 
@@ -84,7 +85,7 @@ const statusOf = (state: ProblemState | null, id: string) =>
 // 1. GET /api/problems — List all published problems with pagination and filtering
 router.get("/", optionalAuth, browserCache(60), async (req, res) => {
   try {
-    const { difficulty, tag, search, status, skip, take, sortBy, maxTime } = req.query;
+    const { difficulty, tag, company, search, status, skip, take, sortBy, maxTime } = req.query;
     const skipNum = Math.max(0, parseInt(String(skip ?? "0")) || 0);
     // Clamped: without a ceiling one request could ask for the whole catalogue.
     const takeNum = Math.min(MAX_TAKE, Math.max(1, parseInt(String(take ?? "")) || MAX_TAKE));
@@ -100,7 +101,7 @@ router.get("/", optionalAuth, browserCache(60), async (req, res) => {
     // GROUP BYs) for a signed-in reader, no round trip at all for a visitor.
     const isDefaultSort = !sortBy || sortBy === "newest";
     const isPlainFirstPage =
-      isDefaultSort && skipNum === 0 && !difficulty && !tag && !search && !maxTime && !statusFilter;
+      isDefaultSort && skipNum === 0 && !difficulty && !tag && !company && !search && !maxTime && !statusFilter;
     if (isPlainFirstPage) {
       const result = userId
         ? await listProblemsWithStatus(userId, takeNum)
@@ -122,6 +123,11 @@ router.get("/", optionalAuth, browserCache(60), async (req, res) => {
         ...(where.AND ?? []),
         ...tags.map((t: string) => ({ tags: { array_contains: [t] } })),
       ];
+    }
+    // A company is just another entry in the same tags array; it gets its own
+    // parameter so the catalogue page's company chips read as what they are.
+    if (typeof company === "string" && company) {
+      where.AND = [...(where.AND ?? []), { tags: { array_contains: [company] } }];
     }
     if (maxTime) where.timeLimitMs = { lte: parseInt(maxTime as string) };
     if (search) {
@@ -222,6 +228,30 @@ router.get("/", optionalAuth, browserCache(60), async (req, res) => {
     res.json(result);
   } catch (err) {
     console.error("GET /api/problems error:", err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+/**
+ * GET /api/problems/companies — every hiring company in the catalogue with how
+ * many published problems carry its tag, most-asked first. Counted over the
+ * in-memory catalogue (already held for the dashboard), so no round trip.
+ * Declared before /:slug so the path is not read as a problem slug.
+ */
+router.get("/companies", browserCache(300, { shared: true }), async (_req, res) => {
+  try {
+    const catalogue = await getCatalogue();
+    const counts = new Map<string, number>();
+    for (const row of catalogue) {
+      const tags = Array.isArray(row.tags) ? (row.tags as string[]) : [];
+      for (const t of tags) if (COMPANY_TAGS.includes(t)) counts.set(t, (counts.get(t) ?? 0) + 1);
+    }
+    const companies = [...counts.entries()]
+      .map(([name, count]) => ({ name, count }))
+      .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
+    res.json(companies);
+  } catch (err) {
+    console.error("GET /api/problems/companies error:", err);
     res.status(500).json({ error: "Internal server error" });
   }
 });
