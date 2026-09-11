@@ -249,6 +249,34 @@ async function countTags(keep: (tag: string) => boolean): Promise<Array<{ name: 
     .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
 }
 
+// The catalogue page's masthead: how big the catalogue is and how far the
+// reader has got. The list above returns at most MAX_TAKE rows, so a hero that
+// counted the page it was given said "100 katas" over a 598-problem catalogue.
+// Both numbers are already in memory or index-only (see loadProblemState).
+router.get("/summary", optionalAuth, browserCache(60), async (req, res) => {
+  try {
+    const userId = req.user?.userId ?? null;
+    if (!userId) {
+      res.json({ total: (await getCatalogue()).length, solved: 0, attempted: 0 });
+      return;
+    }
+    const state = await loadProblemState(userId);
+    // Counted over the catalogue, not the raw sets: an accepted submission on
+    // a problem since unpublished should not make the reader's tally exceed
+    // what is on the page.
+    let solved = 0;
+    let attempted = 0;
+    for (const p of state.catalogue) {
+      if (state.solved.has(p.id)) solved += 1;
+      else if (state.attempted.has(p.id)) attempted += 1;
+    }
+    res.json({ total: state.catalogue.length, solved, attempted });
+  } catch (err) {
+    console.error("GET /api/problems/summary error:", err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 // The two chip strips on the catalogue page. Both are declared before /:slug
 // so the paths are not read as problem slugs. Tags split cleanly in two: a
 // tag is a hiring company or it is a topic ("Array", "Bit Manipulation").
