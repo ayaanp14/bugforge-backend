@@ -141,6 +141,18 @@ router.patch("/:id", requireAuth, async (req: any, res) => {
       return res.status(403).json({ error: "You do not have permission to update this configuration" });
     }
 
+    // Every turn of a round reads its configuration from this row, so editing
+    // it under an open round changed the interviewer's role, depth and focus
+    // for the questions that followed — and the report's header — half-way
+    // through. The round has to close first.
+    const open = await prisma.mockInterviewSession.count({ where: { savedInterviewId: id, status: "started" } });
+    if (open > 0) {
+      return res.status(409).json({
+        error: "This setup has an interview in progress. Finish or close that round before editing it.",
+        openSessions: open,
+      });
+    }
+
     const updatedInterview = await prisma.savedInterview.update({
       where: { id },
       data: {
