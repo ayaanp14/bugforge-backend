@@ -13,6 +13,7 @@ import { containsReservedMarker } from "../lib/batch.js";
 // positions back into the editor's own line numbers (remapDiagnostics).
 import { buildDriver, remapDiagnostics, type Language as DriverLanguage, type Signature } from "../lib/driver-codegen.js";
 import { FIRST_SOLVE, createNotificationOnce, streakMilestone } from "../services/notifications.js";
+import { announceStageIfCleared } from "../services/roadmap.js";
 import { invalidateDashboard } from "../services/dashboard.js";
 import { emitDuelActivity, settleDuelForSubmission } from "../lib/duels.js";
 import { recordContestSubmission } from "../services/daily-contest.js";
@@ -478,6 +479,9 @@ router.post("/submit", requireAuth, executionLimiter, async (req, res) => {
       if (milestone) {
         createNotificationOnce(userId, milestone).catch((err) => console.error("POST /api/submit — notification failed:", err));
       }
+      // A first solve may be the one that clears a roadmap stage (and unlocks
+      // the next); the service recounts from the table, so it is exact.
+      announceStageIfCleared(userId, problemId).catch((err) => console.error("POST /api/submit — roadmap notification failed:", err));
     }
   } catch (err) {
     // The verdict may already be on its way; the bookkeeping after it must

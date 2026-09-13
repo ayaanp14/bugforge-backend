@@ -117,26 +117,26 @@ model User {
 }
 
 model Problem {
-  id                String           @id @default(cuid())
+  id                String                @id @default(cuid())
   title             String
-  slug              String           @unique
-  description       String           @db.MediumText
+  slug              String                @unique
+  description       String                @db.MediumText
   difficulty        String
-  tags              Json             @default("[]")
-  timeLimitMs       Int              @default(2000)
-  memoryLimitMb     Int              @default(256)
-  editorial         String?          @db.MediumText
-  isPublished       Boolean          @default(false)
-  createdAt         DateTime         @default(now())
+  tags              Json                  @default("[]")
+  timeLimitMs       Int                   @default(2000)
+  memoryLimitMb     Int                   @default(256)
+  editorial         String?               @db.MediumText
+  isPublished       Boolean               @default(false)
+  createdAt         DateTime              @default(now())
   starterCode       Json?
   signature         Json?
-  referenceSolution String?          @db.MediumText
+  referenceSolution String?               @db.MediumText
   referenceLanguage String?
   /// Editorial reference solutions keyed by language ("python", "cpp", …).
   /// Drives the Editorial tab's language picker; only validated languages are
   /// written here, so a missing key means "not authored yet", not "broken".
   solutions         Json?
-  hints             Json             @default("[]")
+  hints             Json                  @default("[]")
   codeDrafts        CodeDraft[]
   pairRooms         PairRoom[]
   submissions       Submission[]
@@ -144,6 +144,7 @@ model Problem {
   problemTimers     ProblemTimer[]
   dailyContests     DailyContest[]
   mockCodeAnswers   MockCodeAnswer[]
+  roadmapStages     RoadmapStageProblem[]
 
   duels Duel[]
 
@@ -1028,7 +1029,6 @@ model MockCodeAnswer {
   @@index([attemptId, sectionIndex])
 }
 
-
 // ── Daily contest: one kata a day, ranked like a contest ─────────────────────
 
 /// The kata of one UTC day. A row is created the first time anyone asks for
@@ -1162,4 +1162,58 @@ model JobRun {
   error      String?   @db.Text
 
   @@index([job, startedAt])
+}
+
+/// The DSA roadmap's tiers: the four bands the road is drawn in, in order.
+/// Authored content, seeded by scripts/seed-roadmap.ts from
+/// scripts/roadmap-data.ts (the same pattern as the catalogue and the bug
+/// hunts); `key` is the stable handle the seed upserts by.
+model RoadmapTier {
+  id       String         @id @default(cuid())
+  key      String         @unique @db.VarChar(40)
+  title    String
+  blurb    String         @db.Text
+  position Int
+  stages   RoadmapStage[]
+
+  @@index([position])
+}
+
+/// One stage of the roadmap: a handful of problems, cleared when `required`
+/// of them have an ACCEPTED submission, and open only once the stage before
+/// it (by `position`) is cleared. Progress is never stored here — it is
+/// derived from Submission rows by services/roadmap.ts. `key` is stable
+/// (notification types and client node keys use it); `position` orders the
+/// road and may be renumbered by a re-seed.
+model RoadmapStage {
+  id          String                @id @default(cuid())
+  key         String                @unique @db.VarChar(60)
+  title       String
+  blurb       String                @db.Text
+  icon        String                @db.VarChar(40)
+  position    Int
+  required    Int
+  isPublished Boolean               @default(true)
+  tierId      String
+  tier        RoadmapTier           @relation(fields: [tierId], references: [id], onDelete: Cascade)
+  problems    RoadmapStageProblem[]
+  createdAt   DateTime              @default(now())
+  updatedAt   DateTime              @updatedAt
+
+  @@index([isPublished, position])
+}
+
+/// A problem's place in a stage. A problem sits in at most one stage — the
+/// road never asks for the same solve twice — so `problemId` is unique on
+/// its own as well as with the stage.
+model RoadmapStageProblem {
+  id        String       @id @default(cuid())
+  stageId   String
+  problemId String       @unique
+  position  Int
+  stage     RoadmapStage @relation(fields: [stageId], references: [id], onDelete: Cascade)
+  problem   Problem      @relation(fields: [problemId], references: [id], onDelete: Cascade)
+
+  @@unique([stageId, problemId])
+  @@index([stageId, position])
 }

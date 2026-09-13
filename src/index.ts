@@ -24,6 +24,8 @@ import feedbackRouter from "./routes/feedback.js";
 import aptitudeRouter from "./routes/aptitude.js";
 import mockTestsRouter from "./routes/mock-tests.js";
 import contestsRouter from "./routes/contests.js";
+import roadmapRouter from "./routes/roadmap.js";
+import { checkRoadmapSeeded } from "./services/roadmap.js";
 import eventsRouter from "./routes/events.js";
 import adminRouter from "./routes/admin.js";
 import { todayContest } from "./services/daily-contest.js";
@@ -756,6 +758,7 @@ app.use("/api/feedback", feedbackRouter);
 app.use("/api/aptitude", aptitudeRouter);
 app.use("/api/tests", mockTestsRouter);
 app.use("/api/contests", contestsRouter);
+app.use("/api/roadmap", roadmapRouter);
 app.use("/api/events", eventsRouter);
 app.use("/api/admin", adminRouter);
 app.use("/api", executionRouter); 
@@ -873,6 +876,9 @@ httpServer.listen(PORT, () => {
   const materialiseToday = () => todayContest().catch((err) => console.error("daily contest:", err));
   void materialiseToday();
   setInterval(materialiseToday, 10 * 60_000).unref();
+  // A road with no stages is a missing seed (scripts/seed-roadmap.ts) —
+  // said once here, at boot, rather than as an empty page later.
+  void checkRoadmapSeeded().catch((err) => console.error("roadmap check:", err));
   // The reminder jobs (streak at risk, today's problem, the weekly digest).
   registerReminderJobs();
   startScheduler();
