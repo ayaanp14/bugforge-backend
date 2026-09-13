@@ -146,6 +146,17 @@ const socketMetadata = new Map<string, { roomId: string, userId: string, isHost:
 // Room cleanup timers to avoid closing on brief refresh
 const roomCleanupTimers = new Map<string, NodeJS.Timeout>();
 
+/**
+ * How long an empty room waits before it closes. It covers a refresh (two
+ * seconds) and, since it is the only thing between a solo host and "the
+ * host has ended the session", a dropped connection too: a Wi-Fi roam or a
+ * phone switching to mobile data takes twenty to forty seconds to come
+ * back, and at twenty the host returned to a closed room and a lobby. The
+ * socket client's own reconnect backoff tops out at five seconds, so a
+ * minute after the network is back the seat is retaken.
+ */
+const ROOM_EMPTY_GRACE_MS = 60_000;
+
 /** Host-gone timers, by room: after the grace period the seat passes on. */
 const hostReassignTimers = new Map<string, NodeJS.Timeout>();
 
@@ -251,7 +262,7 @@ async function handleParticipantLeave(roomId: string, userId: string, slug: stri
           console.error("room grace re-check error:", err);
         }
         softDeleteRoom(roomId, slug);
-      }, 20000); // 20 second grace period for refresh
+      }, ROOM_EMPTY_GRACE_MS);
 
       roomCleanupTimers.set(roomId, timer);
     }
@@ -325,12 +336,24 @@ io.on("connection", (socket) => {
     return meta && typeof roomId === "string" && meta.roomId === roomId ? meta : null;
   };
 
-  socket.on("join-room", async (roomId: string) => {
+  /**
+   * `ack`, when the client passes one, answers with the seat and the room's
+   * current buffer instead of pushing the buffer as a `code-update`. A client
+   * coming back from a dropped connection has edits the server never saw
+   * (socket.io flushes what it buffered while offline *before* this handler
+   * re-seats the new socket, so those were refused as unadmitted) — pushed
+   * blindly, the stale buffer replaced them in the editor. With the ack the
+   * client compares and decides; a client that sends no ack (older builds)
+   * gets the push as before.
+   */
+  socket.on("join-room", async (roomId: string, ack?: unknown) => {
+    const reply = typeof ack === "function" ? (ack as (r: { ok: boolean; reason?: string; code?: string | null }) => void) : null;
     // Only a verified socket can be seated: the identity is the participant
     // row, and a claim from the client is not one.
     const userId = socket.data.userId;
     if (!userId || typeof roomId !== "string" || !roomId) {
       socket.emit("join-denied", { reason: "unauthenticated" });
+      reply?.({ ok: false, reason: "unauthenticated" });
       return;
     }
 
@@ -347,7 +370,9 @@ io.on("connection", (socket) => {
 
       const participant = room?.participants.find((p: any) => p.userId === userId);
       if (!room || !participant || room.status === "closed") {
-        socket.emit("join-denied", { reason: !room ? "not_found" : room.status === "closed" ? "closed" : "not_participant" });
+        const reason = !room ? "not_found" : room.status === "closed" ? "closed" : "not_participant";
+        socket.emit("join-denied", { reason });
+        reply?.({ ok: false, reason });
         return;
       }
 
@@ -378,9 +403,11 @@ io.on("connection", (socket) => {
         }
       }
 
-      // Push the room's current code straight to the joining socket.
+      // The room's current code goes straight to the joining socket: through
+      // the ack where the client asked for one, as a push otherwise.
       const latestCode = roomLatestCode.get(roomId);
-      if (latestCode) socket.emit("code-update", latestCode);
+      if (reply) reply({ ok: true, code: latestCode ?? null });
+      else if (latestCode) socket.emit("code-update", latestCode);
       socketDebug(`👤 Client ${socket.id} (User: ${userId}) joined room: ${roomId}`);
 
       const participants = room.participants.map((p: any) => ({
@@ -392,6 +419,9 @@ io.on("connection", (socket) => {
       io.to(roomId).emit("participant-update", participants);
     } catch (err) {
       console.error("Socket join-room error:", err);
+      // A client waiting on the ack must hear something, or it sits on a
+      // socket that is connected but not seated.
+      reply?.({ ok: false, reason: "error" });
     }
   });
 

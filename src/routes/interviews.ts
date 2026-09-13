@@ -31,6 +31,9 @@ const router = Router();
 /** The most saved setups one account keeps. */
 const MAX_SAVED_TEMPLATES = 30;
 
+/** The longest written answer accepted — a few pages, or a full solution with commentary. */
+const MAX_ANSWER_CHARS = 20_000;
+
 /**
  * @route   POST /api/interviews/save
  * @desc    Save a custom interview configuration for the current user
@@ -666,6 +669,13 @@ router.post("/session/:sessionId/answer", requireAuth, async (req: any, res) => 
 
   if (!questionId || typeof answer !== "string" || !answer.trim()) {
     return res.status(400).json({ error: "questionId and a non-empty answer are required" });
+  }
+  // Bounded: the answer is fed back to the model as context for every later
+  // turn and for the marks. Past this it is not an interview answer, and a
+  // pasted file would overflow the context window, fail the next-question
+  // call and leave the round stuck on this question with nowhere to go.
+  if (answer.length > MAX_ANSWER_CHARS) {
+    return res.status(400).json({ error: `That answer is too long — keep it under ${MAX_ANSWER_CHARS.toLocaleString("en-US")} characters.` });
   }
 
   try {
