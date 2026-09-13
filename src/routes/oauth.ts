@@ -373,14 +373,17 @@ router.get("/google/callback", async (req, res) => {
  *
  * Replaces the old Next route of the same name. It only echoes a cookie the
  * browser already holds after verifying it — it never mints a new session.
+ *
+ * "No session" is answered with 200 `{ token: null }`, not 401. This is a
+ * query, not a gate: the SPA probes it from every protected page (and the
+ * 404 page) a signed-out visitor lands on, reads the body, and treats null as
+ * "nobody is signed in". The 401 it used to send added nothing the body did
+ * not say, but Chrome reports every non-2xx fetch as a red "Failed to load
+ * resource" console error, so each such visit looked like a broken site.
  */
 router.get("/session-token", (req, res) => {
   const token = (req.cookies as Record<string, string | undefined>)?.[SESSION_COOKIE];
-  if (!token || !verifySessionToken(token)) {
-    res.status(401).json({ token: null });
-    return;
-  }
-  res.json({ token });
+  res.json({ token: token && verifySessionToken(token) ? token : null });
 });
 
 type UpsertArgs = {
