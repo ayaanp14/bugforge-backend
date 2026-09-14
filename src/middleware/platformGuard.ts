@@ -6,7 +6,10 @@ import { isTimestampFresh, verifySignature } from "../lib/crypto.js";
  */
 export function platformGuard(req: Request, res: Response, next: NextFunction) {
   // 1. Skip checks for health or public diagnostic routes
-  // Also skip /api/auth routes which are public entry points and handled by NextAuth
+  // /api/auth is exempt too: sign-in, sign-up and the OAuth callbacks are the
+  // public entry points, and the OAuth callbacks arrive by redirect from the
+  // provider, which cannot sign. Nothing there trusts the cookie for a write
+  // (see routes/auth.ts), so the exemption is not a CSRF path.
   // The payment webhook is called by Cashfree, which cannot sign our platform
   // HMAC. It authenticates itself instead with its own signature header, which
   // the route verifies before touching anything — see routes/billing.ts.

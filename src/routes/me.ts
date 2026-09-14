@@ -3,7 +3,10 @@ import { isAdminEmail, requireAuth } from "../middleware/auth.js";
 import { prisma } from "../lib/prisma.js";
 import { getHeatmap, getSubmissionHistory, getPairingHistory, getDifficultyStats, getRank, getDashboard, invalidateDashboard } from "../services/dashboard.js";
 import { ensureBaseline, listNotifications, getUnreadCount, markAllRead } from "../services/notifications.js";
-import { getMePayload, invalidateMe } from "../services/me.js";
+import { ME_SELECT, getMePayload, invalidateMe } from "../services/me.js";
+import { hashPassword, passwordProblem, verifyPassword } from "../lib/passwords.js";
+import { forgetSessions } from "../lib/session-revocation.js";
+import { establishSession } from "../lib/auth-session.js";
 
 const router = Router();
 
@@ -274,6 +277,10 @@ router.patch("/", requireAuth, async (req, res) => {
         remindDailyKata: prefs.remindDailyKata,
         weeklyDigest: prefs.weeklyDigest,
       },
+      // The response used to be the row as Prisma returned it, which put the
+      // password hash and the session-revocation stamp in the browser's
+      // Redux store after every profile save.
+      select: ME_SELECT,
     });
 
     // The profile just changed — drop the cached /api/me so the next read
@@ -292,6 +299,76 @@ router.patch("/", requireAuth, async (req, res) => {
     }
     res.status(500).json({ error: "Internal server error" });
   }
+});
+
+/**
+ * POST /api/me/password — change the password while signed in.
+ *
+ * Under /api/me rather than /api/auth on purpose: /api/auth is exempt from
+ * the platform guard, and a route that trusts the `__session` cookie there
+ * would be reachable from a cross-site form. Here the guard's custom headers
+ * force a preflight, which CORS refuses for any other origin.
+ *
+ * The current password is required even though the caller is signed in — a
+ * session left open on a shared machine must not be enough to set a new
+ * one. Every other session is ended, the way a reset does, and this one is
+ * re-issued so the person who made the change stays signed in.
+ *
+ * An account with no password (a social sign-in) cannot set one here for the
+ * same reason: that would turn any stolen session into a permanent
+ * credential. "Forgot password" proves the inbox first.
+ */
+router.post("/password", requireAuth, async (req, res) => {
+  const body = req.body && typeof req.body === "object" ? (req.body as Record<string, unknown>) : {};
+  const currentPassword = body["currentPassword"];
+  const newPassword = body["newPassword"];
+
+  if (typeof currentPassword !== "string" || !currentPassword) {
+    res.status(400).json({ error: "Enter your current password." });
+    return;
+  }
+  const weak = passwordProblem(newPassword);
+  if (weak) {
+    res.status(400).json({ error: weak });
+    return;
+  }
+  if (newPassword === currentPassword) {
+    res.status(400).json({ error: "Choose a password you have not used here before." });
+    return;
+  }
+
+  const user = await prisma.user.findUnique({
+    where: { id: req.user!.userId },
+    select: { id: true, email: true, password_hash: true },
+  });
+  if (!user) {
+    res.status(404).json({ error: "Account not found." });
+    return;
+  }
+  if (!user.password_hash) {
+    res.status(400).json({ error: 'This account has no password yet. Use "Forgot password" on the sign-in page to set one.' });
+    return;
+  }
+  if (!(await verifyPassword(currentPassword, user.password_hash))) {
+    res.status(401).json({ error: "The current password is not right." });
+    return;
+  }
+
+  // The stamp is floored to the second because a JWT's `iat` is whole
+  // seconds: stamped at 12:00:00.500, a replacement token minted at
+  // 12:00:00 would read as older than the stamp and be refused on its first
+  // use. Flooring lets the token minted below survive; the price is that a
+  // token minted earlier in this same second survives too, which is nobody.
+  const stamp = new Date(Math.floor(Date.now() / 1000) * 1000);
+  await prisma.user.update({
+    where: { id: user.id },
+    data: { password_hash: await hashPassword(newPassword as string), sessionsValidFrom: stamp },
+    select: { id: true },
+  });
+  forgetSessions(user.id);
+  const token = establishSession(res, user);
+
+  res.json({ message: "Password updated. Other devices have been signed out.", token });
 });
 
 // GET /api/me/submissions/:id?type=problem|bug — the code of ONE submission,

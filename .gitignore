@@ -31,3 +31,11 @@ tmp/
 
 # Benchmark scratch — local tooling, not part of the build.
 scratch/
+
+# Every env variant, including backups and renames (.env.postgres.bak once
+# carried the live JWT secret into a public repository). Only the example
+# template is tracked.
+.env.*
+*.env
+*.env.bak
+!.env.example

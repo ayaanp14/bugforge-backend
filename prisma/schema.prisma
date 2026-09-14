@@ -108,6 +108,7 @@ model User {
   aptitudeAttempts   AptitudeAttempt[]
   mockAttempts       MockAttempt[]
   dailyContests      DailyContestEntry[]
+  revokedSessions    RevokedSession[]
 
   // Rank is a COUNT of users above you and the leaderboard is an ORDER BY on the
   // same columns; without these both are full table scans on every dashboard load.
@@ -1143,6 +1144,27 @@ model AppEvent {
   @@index([createdAt])
   @@index([name, createdAt])
   @@index([userId, createdAt])
+}
+
+/// One session token that was signed out before it expired.
+///
+/// A JWT cannot be taken back once handed out: signing out used to clear the
+/// cookie and the SPA's copy and nothing more, so a token that had leaked
+/// stayed good for its full thirty days. Every token now carries a `jti`, and
+/// signing out writes it here until the token would have expired anyway —
+/// after that the row is dead weight and the sweep job removes it. Read
+/// through the per-user revocation cache (lib/session-revocation.ts), never
+/// once per request.
+model RevokedSession {
+  jti       String   @id @db.VarChar(64)
+  userId    String
+  /// The token's own `exp`; the row is pointless after it.
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
 }
 
 /// One execution of a scheduled job (lib/scheduler.ts).

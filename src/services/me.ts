@@ -81,7 +81,8 @@ export function invalidateMe(userId: string): void {
   invalidate(meKey(userId));
 }
 
-const ME_SELECT = {
+/** The profile columns a client may see. Every route that answers with a user row selects these — never the row itself, which carries the password hash. */
+export const ME_SELECT = {
   id: true,
   name: true,
   username: true,

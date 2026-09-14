@@ -1,4 +1,5 @@
 import type { Response } from "express";
+import crypto from "node:crypto";
 import jwt from "jsonwebtoken";
 import { prisma } from "./prisma.js";
 
@@ -37,17 +38,33 @@ const COOKIE_OPTIONS = {
 export type SessionUser = { id: string; email: string | null };
 
 /**
- * HS256 `{ userId, email }` — the shape backend middleware already verifies.
+ * HS256 `{ userId, email, jti, iat, exp }` — the shape the middleware verifies.
  *
  * The expiry is the important part. Without it a leaked token was valid for
  * ever and signing out could not take it back, because nothing about a JWT is
- * stored server-side to revoke. Tokens minted before this change carry no
- * `exp` and still verify, so nobody is signed out by the upgrade.
+ * stored server-side to revoke. The `jti` is what makes signing out mean
+ * something now: it is the handle `RevokedSession` records, so one token can
+ * be ended without ending every other device's.
+ *
+ * `claims` lets a caller re-mint a token it already holds the claims of — the
+ * OAuth handoff (lib/handoff-store.ts) stores claims rather than the token
+ * itself, so the store never holds a usable credential. With every claim
+ * pinned the output is byte-for-byte the original token.
  */
-export function signSession(user: SessionUser): string {
+export function signSession(user: SessionUser, claims?: Pick<SessionClaims, "jti" | "iat" | "exp">): string {
+  if (claims) {
+    // Same key order the library uses when it adds the claims itself, so
+    // the encoding — not only the meaning — matches the original.
+    return jwt.sign(
+      { userId: user.id, email: user.email, iat: claims.iat, exp: claims.exp, jti: claims.jti },
+      JWT_SECRET,
+      { algorithm: "HS256" },
+    );
+  }
   return jwt.sign({ userId: user.id, email: user.email }, JWT_SECRET, {
     algorithm: "HS256",
     expiresIn: SESSION_TTL,
+    jwtid: crypto.randomUUID(),
   });
 }
 
@@ -105,8 +122,12 @@ export function fireRegistrationWebhook(user: { email: string | null; username: 
 export interface SessionClaims {
   userId: string;
   email: string;
-  /** Issued-at, in seconds. Added by the library on every token we mint. */
-  iat?: number;
+  /** Issued-at, in seconds. */
+  iat: number;
+  /** Expiry, in seconds. */
+  exp: number;
+  /** The token's own id — what signing out revokes. */
+  jti: string;
 }
 
 /**
@@ -117,12 +138,21 @@ export interface SessionClaims {
  *
  * Signature and expiry only. Whether the account has since revoked its
  * sessions is a separate, cached question — see `isSessionRevoked`.
+ *
+ * A token with no `exp`, `iat` or `jti` is refused outright. The first two
+ * generations of tokens lacked them (no expiry at all, then expiry but no id)
+ * and were tolerated so an upgrade signed nobody out; the price was that a
+ * token from that era could neither expire nor be revoked on sign-out, which
+ * is the exact property a leaked one needs. Everyone signs in again once
+ * after this ships, which is what a secret rotation costs too.
  */
 export function readSessionToken(token: string): SessionClaims | null {
   try {
     const payload = jwt.verify(token, JWT_SECRET, { algorithms: ["HS256"] }) as Partial<SessionClaims>;
     if (typeof payload.userId !== "string" || !payload.userId) return null;
-    return { userId: payload.userId, email: payload.email ?? "", iat: payload.iat };
+    if (typeof payload.exp !== "number" || typeof payload.iat !== "number") return null;
+    if (typeof payload.jti !== "string" || !payload.jti || payload.jti.length > 64) return null;
+    return { userId: payload.userId, email: payload.email ?? "", iat: payload.iat, exp: payload.exp, jti: payload.jti };
   } catch {
     return null;
   }

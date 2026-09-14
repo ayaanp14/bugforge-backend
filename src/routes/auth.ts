@@ -1,5 +1,4 @@
 import { Router } from "express";
-import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { prisma } from "../lib/prisma.js";
 import { optionalAuth } from "../middleware/auth.js";
@@ -7,7 +6,10 @@ import { WELCOME, createNotificationOnce } from "../services/notifications.js";
 import { establishSession, clearSessionCookie, generateUsername } from "../lib/auth-session.js";
 import { JWT_SECRET } from "../lib/secrets.js";
 import { consumeChallenge, generateOtp, issueChallenge } from "../lib/otp-store.js";
-import { forgetSessions } from "../lib/session-revocation.js";
+import { forgetSessions, revokeSession } from "../lib/session-revocation.js";
+import { burnCompare, hashPassword, needsRehash, passwordProblem, verifyPassword } from "../lib/passwords.js";
+import { emailVerificationRequired, sendAuthCode } from "../lib/auth-mail.js";
+import { redeemHandoff } from "../lib/handoff-store.js";
 
 const router = Router();
 
@@ -22,8 +24,6 @@ const router = Router();
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const USERNAME_RE = /^[a-z0-9_]{3,20}$/;
-const MIN_PASSWORD = 8;
-const MAX_PASSWORD = 128;
 
 /** A trimmed, lower-cased address, or null when it is not one. */
 function readEmail(raw: unknown): string | null {
@@ -32,13 +32,6 @@ function readEmail(raw: unknown): string | null {
   return email.length <= 254 && EMAIL_RE.test(email) ? email : null;
 }
 
-/** A usable password, or the reason it is not. */
-function passwordProblem(raw: unknown): string | null {
-  if (typeof raw !== "string") return "Password is required.";
-  if (raw.length < MIN_PASSWORD) return `Use at least ${MIN_PASSWORD} characters.`;
-  if (raw.length > MAX_PASSWORD) return `Passwords are limited to ${MAX_PASSWORD} characters.`;
-  return null;
-}
 
 /** A normalised handle, `null` for "none given", or an error string. */
 function readUsername(raw: unknown): string | null | { error: string } {
@@ -49,11 +42,48 @@ function readUsername(raw: unknown): string | null | { error: string } {
   return username;
 }
 
+/** Express 5 leaves `req.body` undefined when nothing was parsed. */
+const bodyOf = (req: { body?: unknown }): Record<string, unknown> =>
+  req.body && typeof req.body === "object" ? (req.body as Record<string, unknown>) : {};
+
+/* ── email verification ───────────────────────────────────────────────── */
+//
+// A password account has to prove it can read its address before it can
+// sign in. Until it does, the address is a stranger's for every purpose
+// that matters: reset codes would go there, reminders would go there, and
+// the real owner could never register. The proof is a six-digit code
+// through the same challenge store as the reset flow, under its own
+// purpose so the two can never be swapped.
+//
+// An account that was registered but never verified is inert — it cannot
+// sign in — so squatting an address gains nothing: the owner's "forgot
+// password" reaches their inbox, and a successful reset is itself proof of
+// ownership, so it marks the address verified.
+
+/** What the client needs to show the code screen. */
+interface VerificationChallenge {
+  required: true;
+  email: string;
+  /** Opaque handle to quote back with the code. */
+  otpToken: string;
+}
+
+/** Mint a verification code for an address and send it. */
+async function beginVerification(email: string): Promise<VerificationChallenge> {
+  const otp = generateOtp();
+  const otpToken = await issueChallenge("verify_email", email, otp);
+  await sendAuthCode(email, otp, "verify_email");
+  return { required: true, email, otpToken };
+}
+
+const UNVERIFIED_MESSAGE = "Confirm your email address to sign in. We have sent a new code to your inbox.";
+
 // POST /api/auth/register
 router.post("/register", async (req, res) => {
-  const email = readEmail(req.body?.email);
-  const password = req.body?.password;
-  const handle = readUsername(req.body?.username);
+  const body = bodyOf(req);
+  const email = readEmail(body["email"]);
+  const password = body["password"];
+  const handle = readUsername(body["username"]);
 
   if (!email) {
     res.status(400).json({ error: "Enter a valid email address." });
@@ -88,7 +118,7 @@ router.post("/register", async (req, res) => {
     }
 
     const finalUsername = username || await generateUsername(email.split("@")[0]);
-    const hashedPassword = await bcrypt.hash(password, 10);
+    const hashedPassword = await hashPassword(password as string);
 
     let user: { id: string; email: string | null; username: string | null };
     try {
@@ -116,7 +146,7 @@ router.post("/register", async (req, res) => {
     void createNotificationOnce(user.id, WELCOME);
 
     // Trigger registration webhook
-    const registrationWebhookUrl = process.env.REGISTRATION_FLOW_URL;
+    const registrationWebhookUrl = process.env["REGISTRATION_FLOW_URL"];
     if (registrationWebhookUrl) {
       fetch(registrationWebhookUrl, {
         method: "POST",
@@ -128,9 +158,12 @@ router.post("/register", async (req, res) => {
       }).catch(err => console.error("Registration webhook error:", err));
     }
 
-    res.status(201).json({ 
-      message: "User registered successfully", 
-      userId: user.id 
+    const verification = emailVerificationRequired() ? await beginVerification(email) : { required: false as const };
+
+    res.status(201).json({
+      message: verification.required ? "Account created. Enter the code we emailed you to finish." : "User registered successfully",
+      userId: user.id,
+      verification,
     });
   } catch (err) {
     console.error("Registration error:", err);
@@ -140,8 +173,9 @@ router.post("/register", async (req, res) => {
 
 // POST /api/auth/login
 router.post("/login", async (req, res) => {
-  const rawIdentifier = req.body?.identifier; // identifier can be email or username
-  const password = req.body?.password;
+  const body = bodyOf(req);
+  const rawIdentifier = body["identifier"]; // identifier can be email or username
+  const password = body["password"];
 
   if (typeof rawIdentifier !== "string" || !rawIdentifier.trim() || typeof password !== "string" || !password) {
     res.status(400).json({ error: "Identifier and password are required." });
@@ -158,10 +192,22 @@ router.post("/login", async (req, res) => {
     // only, so a username can never stand in for someone else's email.
     const user = await prisma.user.findFirst({
       where: identifier.includes("@") ? { email: identifier } : { username: identifier },
-      select: { id: true, email: true, username: true, name: true, avatar_url: true, password_hash: true, provider: true },
+      select: {
+        id: true,
+        email: true,
+        username: true,
+        name: true,
+        avatar_url: true,
+        password_hash: true,
+        provider: true,
+        emailVerified: true,
+      },
     });
 
     if (!user) {
+      // Costs what a real compare costs, so the answer's timing does not
+      // say whether the account exists.
+      await burnCompare(password);
       res.status(401).json({ error: "Invalid credentials." });
       return;
     }
@@ -178,10 +224,27 @@ router.post("/login", async (req, res) => {
       return;
     }
 
-    const isPasswordValid = await bcrypt.compare(password, user.password_hash);
+    const isPasswordValid = await verifyPassword(password, user.password_hash);
     if (!isPasswordValid) {
       res.status(401).json({ error: "Invalid credentials." });
       return;
+    }
+
+    // Right password, unconfirmed address: a fresh code goes out and the
+    // client shows the code screen. Only after the password check, so a
+    // stranger who knows the address cannot make us mail it by guessing.
+    if (emailVerificationRequired() && !user.emailVerified && user.email) {
+      const verification = await beginVerification(user.email);
+      res.status(403).json({ error: UNVERIFIED_MESSAGE, code: "email_unverified", verification });
+      return;
+    }
+
+    // A hash made at the old, lower cost is rewritten now that the password
+    // is in hand. Off the response path: the sign-in is already decided.
+    if (needsRehash(user.password_hash)) {
+      hashPassword(password)
+        .then((password_hash) => prisma.user.update({ where: { id: user.id }, data: { password_hash }, select: { id: true } }))
+        .catch((err) => console.error("[auth] password rehash failed:", (err as Error).message));
     }
 
     // Same token format and cookie flags as every other sign-in path
@@ -204,10 +267,117 @@ router.post("/login", async (req, res) => {
   }
 });
 
+// POST /api/auth/verify-email — the code from the sign-up mail.
+//
+// Success signs the person in: they set the password a moment ago and have
+// just shown they hold the inbox, which is more than the login route asks.
+router.post("/verify-email", async (req, res) => {
+  const body = bodyOf(req);
+  const otp = body["otp"];
+  const otpToken = body["otpToken"];
+  if (typeof otp !== "string" || !otp || typeof otpToken !== "string" || !otpToken) {
+    res.status(400).json({ error: "Code and token are required." });
+    return;
+  }
+
+  try {
+    const outcome = await consumeChallenge("verify_email", otpToken, otp);
+    if (!outcome.ok) {
+      res.status(400).json({ error: "Invalid or expired code." });
+      return;
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { email: outcome.email },
+      select: { id: true, email: true, username: true, name: true, avatar_url: true, emailVerified: true },
+    });
+    if (!user) {
+      res.status(400).json({ error: "Invalid or expired code." });
+      return;
+    }
+    if (!user.emailVerified) {
+      await prisma.user.update({ where: { id: user.id }, data: { emailVerified: new Date() }, select: { id: true } });
+    }
+
+    const token = establishSession(res, user);
+    res.json({
+      message: "Email confirmed.",
+      user: { id: user.id, email: user.email, username: user.username, name: user.name, avatar_url: user.avatar_url },
+      token,
+    });
+  } catch (err) {
+    console.error("Email verification error:", err);
+    res.status(500).json({ error: "Could not confirm your email right now." });
+  }
+});
+
+// POST /api/auth/resend-verification
+//
+// Answers the same way whether or not the address has an account, or has
+// already been confirmed: a handle comes back either way, and only an
+// unconfirmed account is actually sent a code.
+router.post("/resend-verification", async (req, res) => {
+  const email = readEmail(bodyOf(req)["email"]);
+  if (!email) {
+    res.status(400).json({ error: "Enter a valid email address." });
+    return;
+  }
+
+  try {
+    const user = await prisma.user.findUnique({ where: { email }, select: { emailVerified: true, password_hash: true } });
+    const pending = Boolean(user && !user.emailVerified && user.password_hash);
+    const otp = generateOtp();
+    const otpToken = await issueChallenge("verify_email", pending ? email : null, otp);
+    if (pending) await sendAuthCode(email, otp, "verify_email");
+    res.json({ message: "If that address is waiting to be confirmed, a new code is on its way.", otpToken });
+  } catch (err) {
+    console.error("Resend verification error:", err);
+    res.status(500).json({ error: "Could not send a code right now." });
+  }
+});
+
 // POST /api/auth/logout
-router.post("/logout", (req, res) => {
+//
+// The token this request carried is ended on the server, not merely
+// forgotten by the client. Without a token there is nothing to end and the
+// cookie is cleared anyway; with one that has already been ended, likewise.
+//
+// Only a token in the Authorization header is ended. This route sits outside
+// the platform guard, so a cross-site form could reach it with the victim's
+// cookie attached and — if the cookie alone counted — sign them out at will.
+// A header cannot be set by a form, and both clients send one.
+router.post("/logout", optionalAuth, async (req, res) => {
+  if (req.user && req.headers.authorization?.startsWith("Bearer ")) {
+    try {
+      await revokeSession(req.user.userId, req.user.sessionId, req.user.sessionExpiresAt);
+    } catch (err) {
+      // The client is signing out regardless; a write that failed here is
+      // logged, not turned into a sign-out that "did not work".
+      console.error("[auth] could not record sign-out:", (err as Error).message);
+    }
+  }
   clearSessionCookie(res);
   res.json({ message: "Logout successful" });
+});
+
+// POST /api/auth/handoff — the second half of a social sign-in.
+//
+// The OAuth callback lands the browser on the SPA with a one-time code in
+// the URL rather than the session itself (lib/handoff-store.ts); the SPA
+// posts the code here and gets the token. Once.
+router.post("/handoff", async (req, res) => {
+  const code = bodyOf(req)["code"];
+  if (typeof code !== "string" || !code || code.length > 128) {
+    res.status(400).json({ error: "Sign-in code is required." });
+    return;
+  }
+  const token = await redeemHandoff(code);
+  if (!token) {
+    res.status(400).json({ error: "This sign-in link has expired. Please try again." });
+    return;
+  }
+  res.setHeader("Cache-Control", "no-store");
+  res.json({ token });
 });
 
 // GET /api/auth/time — the server clock, for a client whose own is wrong.
@@ -222,7 +392,7 @@ router.get("/time", (_req, res) => {
 
 // POST /api/auth/forgot-password
 router.post("/forgot-password", async (req, res) => {
-  const email = readEmail(req.body?.email);
+  const email = readEmail(bodyOf(req)["email"]);
 
   if (!email) {
     res.status(400).json({ error: "Enter a valid email address." });
@@ -236,17 +406,10 @@ router.post("/forgot-password", async (req, res) => {
     // an address with no account produces an identical response and this
     // endpoint cannot be used to discover who has registered.
     const otp = generateOtp();
-    const otpToken = await issueChallenge(user ? email : null, otp);
+    const otpToken = await issueChallenge("password_reset", user ? email : null, otp);
 
     // Only a real account is ever sent a code.
-    if (user) {
-      const webhookUrl = "https://flow.sokt.io/func/scriPfBslH2w";
-      await fetch(webhookUrl, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, otp }),
-      }).catch((err) => console.error("[auth] OTP delivery failed:", err));
-    }
+    if (user) await sendAuthCode(email, otp, "password_reset");
 
     res.json({
       message: "If an account with that email exists, an OTP has been sent.",
@@ -261,15 +424,17 @@ router.post("/forgot-password", async (req, res) => {
 
 // POST /api/auth/verify-otp
 router.post("/verify-otp", async (req, res) => {
-  const { otp, otpToken } = req.body;
+  const body = bodyOf(req);
+  const otp = body["otp"];
+  const otpToken = body["otpToken"];
 
-  if (!otp || !otpToken) {
+  if (typeof otp !== "string" || !otp || typeof otpToken !== "string" || !otpToken) {
     res.status(400).json({ error: "OTP and token are required." });
     return;
   }
 
   try {
-    const outcome = await consumeChallenge(String(otpToken), String(otp));
+    const outcome = await consumeChallenge("password_reset", otpToken, otp);
 
     if (!outcome.ok) {
       // The reason is deliberately not passed on. Telling a caller that their
@@ -281,7 +446,10 @@ router.post("/verify-otp", async (req, res) => {
 
     // Ten minutes to choose a new password, and this token is the only thing
     // that authorises the change.
-    const resetToken = jwt.sign({ email: outcome.email, purpose: "password_reset" }, JWT_SECRET, { expiresIn: "10m" });
+    const resetToken = jwt.sign({ email: outcome.email, purpose: "password_reset" }, JWT_SECRET, {
+      algorithm: "HS256",
+      expiresIn: "10m",
+    });
 
     res.json({
       message: "OTP verified successfully.",
@@ -295,7 +463,9 @@ router.post("/verify-otp", async (req, res) => {
 
 // POST /api/auth/reset-password
 router.post("/reset-password", async (req, res) => {
-  const { newPassword, resetToken } = req.body ?? {};
+  const body = bodyOf(req);
+  const newPassword = body["newPassword"];
+  const resetToken = body["resetToken"];
 
   if (typeof resetToken !== "string" || !resetToken) {
     res.status(400).json({ error: "New password and reset token are required." });
@@ -308,10 +478,15 @@ router.post("/reset-password", async (req, res) => {
   }
 
   try {
-    // Verify the reset token
-    const payload = jwt.verify(resetToken, JWT_SECRET) as { email: string; purpose: string; iat?: number };
+    // Verify the reset token. The algorithm is pinned as it is for sessions:
+    // the library would otherwise accept any HMAC variant the header named.
+    const payload = jwt.verify(resetToken, JWT_SECRET, { algorithms: ["HS256"] }) as {
+      email?: unknown;
+      purpose?: unknown;
+      iat?: number;
+    };
 
-    if (payload.purpose !== "password_reset") {
+    if (payload.purpose !== "password_reset" || typeof payload.email !== "string") {
       res.status(400).json({ error: "Invalid token purpose." });
       return;
     }
@@ -322,7 +497,7 @@ router.post("/reset-password", async (req, res) => {
     // the password a second time.
     const account = await prisma.user.findUnique({
       where: { email: payload.email },
-      select: { id: true, sessionsValidFrom: true },
+      select: { id: true, sessionsValidFrom: true, emailVerified: true },
     });
     if (!account) {
       res.status(400).json({ error: "Invalid or expired reset session." });
@@ -337,10 +512,17 @@ router.post("/reset-password", async (req, res) => {
     // The new password and the end of every existing session are written
     // together. Whoever prompted the reset is usually someone who already has
     // a token, and leaving them signed in would defeat the point of resetting.
-    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    //
+    // Reading the code out of the inbox is the same proof the sign-up flow
+    // asks for, so an address that was never confirmed is confirmed now.
+    const hashedPassword = await hashPassword(newPassword as string);
     const updated = await prisma.user.update({
       where: { id: account.id },
-      data: { password_hash: hashedPassword, sessionsValidFrom: new Date() },
+      data: {
+        password_hash: hashedPassword,
+        sessionsValidFrom: new Date(),
+        ...(account.emailVerified ? {} : { emailVerified: new Date() }),
+      },
       select: { id: true },
     });
     forgetSessions(updated.id);
@@ -353,4 +535,3 @@ router.post("/reset-password", async (req, res) => {
 });
 
 export default router;
-

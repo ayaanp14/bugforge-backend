@@ -7,8 +7,10 @@ import {
   generateUsername,
   fireRegistrationWebhook,
   verifySessionToken,
+  readSessionToken,
   SESSION_COOKIE,
 } from "../lib/auth-session.js";
+import { issueHandoff } from "../lib/handoff-store.js";
 
 /**
  * Social sign-in, ported off NextAuth.
@@ -57,6 +59,22 @@ const asIntent = (value: unknown): Intent => (value === "register" ? "register" 
 /** Where the user lands after a failed social sign-in. */
 const failureUrl = (intent: Intent, error: string) =>
   `${FRONTEND_URL}/${intent === "register" ? "register" : "login"}?error=${error}`;
+
+/**
+ * Where the browser lands after a successful one.
+ *
+ * The SPA cannot read the `__session` cookie the API just set — different
+ * origin in production — so it has to be handed the token. It used to be
+ * handed the token itself in the URL; now it gets a one-minute, single-use
+ * code and exchanges it at POST /api/auth/handoff (lib/handoff-store.ts), so
+ * the credential never sits in history or a request log.
+ */
+function handoffUrl(token: string): string {
+  const claims = readSessionToken(token);
+  if (!claims) throw new Error("freshly minted session token did not verify");
+  const code = issueHandoff({ id: claims.userId, email: claims.email || null }, claims);
+  return `${FRONTEND_URL}/auth/callback?code=${encodeURIComponent(code)}`;
+}
 
 /** Callback URL registered with the provider's OAuth app. */
 function callbackUri(
@@ -159,41 +177,41 @@ router.get("/github/callback", async (req, res) => {
       avatar_url?: string | null;
     };
 
-    // GitHub omits the email from /user when it is private - ask explicitly.
-    let email = profile.email ?? null;
-    if (!email) {
-      const emailsRes = await fetch("https://api.github.com/user/emails", { headers: ghHeaders });
-      if (emailsRes.ok) {
-        const emails = (await emailsRes.json()) as {
-          email: string;
-          primary: boolean;
-          verified: boolean;
-        }[];
-        email =
-          emails.find((e) => e.primary && e.verified)?.email ??
-          emails.find((e) => e.verified)?.email ??
-          null;
-      }
+    // The address comes from /user/emails, never from the profile's public
+    // email field. Sign-in links to an existing account by address, so the
+    // address has to be one GitHub has verified belongs to this person; the
+    // profile field used to be trusted as-is, and whatever GitHub's own rules
+    // about it are, they are not ours to rely on. The profile's public
+    // address is preferred when it is among the verified ones, else the
+    // primary, else any verified one.
+    let email: string | null = null;
+    const emailsRes = await fetch("https://api.github.com/user/emails", { headers: ghHeaders });
+    if (emailsRes.ok) {
+      const emails = ((await emailsRes.json()) as { email: string; primary: boolean; verified: boolean }[]).filter(
+        (e) => e.verified && typeof e.email === "string",
+      );
+      const publicAddress = profile.email?.trim().toLowerCase() ?? null;
+      email =
+        emails.find((e) => publicAddress && e.email.toLowerCase() === publicAddress)?.email ??
+        emails.find((e) => e.primary)?.email ??
+        emails[0]?.email ??
+        null;
     }
 
     if (!email) {
+      console.warn("[auth] GitHub identity with no verified email refused");
       res.redirect(failureUrl(intent, "oauth_failed"));
       return;
     }
 
     const result = await upsertSocialUser({
-      email,
+      email: email.trim().toLowerCase(),
       intent,
       name: profile.name ?? profile.login,
       avatarUrl: profile.avatar_url ?? null,
       provider: "github",
       providerAccountId: String(profile.id),
       accountType: "oauth",
-      tokens: {
-        access_token: accessToken,
-        token_type: tokenData.token_type ?? null,
-        scope: tokenData.scope ?? null,
-      },
     });
 
     if ("error" in result) {
@@ -201,10 +219,7 @@ router.get("/github/callback", async (req, res) => {
       return;
     }
 
-    const token = establishSession(res, result.record);
-    // Hand the token to the SPA's /auth/callback, which mirrors it into
-    // localStorage — the cookie alone can't be read cross-domain.
-    res.redirect(`${FRONTEND_URL}/auth/callback?token=${encodeURIComponent(token)}`);
+    res.redirect(handoffUrl(establishSession(res, result.record)));
   } catch (err) {
     console.error("[auth] GitHub callback error:", err);
     res.redirect(failureUrl(intent, "oauth_failed"));
@@ -339,16 +354,6 @@ router.get("/google/callback", async (req, res) => {
       provider: "google",
       providerAccountId: profile.sub,
       accountType: "oidc",
-      tokens: {
-        access_token: accessToken,
-        id_token: tokenData.id_token ?? null,
-        refresh_token: tokenData.refresh_token ?? null,
-        token_type: tokenData.token_type ?? null,
-        scope: tokenData.scope ?? null,
-        expires_at: tokenData.expires_in
-          ? Math.floor(Date.now() / 1000) + tokenData.expires_in
-          : null,
-      },
     });
 
     if ("error" in result) {
@@ -356,8 +361,7 @@ router.get("/google/callback", async (req, res) => {
       return;
     }
 
-    const token = establishSession(res, result.record);
-    res.redirect(`${FRONTEND_URL}/auth/callback?token=${encodeURIComponent(token)}`);
+    res.redirect(handoffUrl(establishSession(res, result.record)));
   } catch (err) {
     console.error("[auth] Google callback error:", err);
     res.redirect(failureUrl(intent, "oauth_failed"));
@@ -395,7 +399,6 @@ type UpsertArgs = {
   provider: string;
   providerAccountId: string;
   accountType: string;
-  tokens: Record<string, string | number | null>;
 };
 
 /** Fields every caller needs off the resolved user. */
@@ -408,7 +411,7 @@ type SocialUserRecord = {
 };
 
 /** The same fields, as a Prisma select, so no read here pulls the whole row. */
-const SOCIAL_USER_SELECT = { id: true, email: true, username: true, name: true, avatar_url: true } as const;
+const SOCIAL_USER_SELECT = { id: true, email: true, username: true, name: true, avatar_url: true, emailVerified: true } as const;
 
 type SocialUserResult =
   | { error: "account_exists" | "not_registered" }
@@ -428,6 +431,11 @@ async function upsertSocialUser(args: UpsertArgs): Promise<SocialUserResult> {
     return { error: "not_registered" as const };
   }
 
+  // Both providers only ever hand over an address they have verified (the
+  // callbacks above refuse anything else), which is the same proof the
+  // sign-up code asks for — so a social account is born verified, and a
+  // password account that was still waiting on its code is verified by the
+  // social sign-in that just matched it.
   if (!dbUser) {
     const username = await generateUsername(args.name || "user");
     dbUser = await prisma.user.create({
@@ -437,6 +445,7 @@ async function upsertSocialUser(args: UpsertArgs): Promise<SocialUserResult> {
         name: args.name,
         avatar_url: args.avatarUrl,
         provider: args.provider,
+        emailVerified: new Date(),
       },
       select: SOCIAL_USER_SELECT,
     });
@@ -444,16 +453,23 @@ async function upsertSocialUser(args: UpsertArgs): Promise<SocialUserResult> {
     void createNotificationOnce(dbUser.id, WELCOME);
     fireRegistrationWebhook(dbUser);
   } else {
-    const updateData: { name: string | null; avatar_url: string | null; username?: string } = {
+    const updateData: { name: string | null; avatar_url: string | null; username?: string; emailVerified?: Date } = {
       name: args.name || dbUser.name,
       avatar_url: args.avatarUrl || dbUser.avatar_url,
     };
     if (!dbUser.username) {
       updateData.username = await generateUsername(args.name || "user");
     }
+    if (!dbUser.emailVerified) updateData.emailVerified = new Date();
     dbUser = await prisma.user.update({ where: { email: args.email }, data: updateData, select: SOCIAL_USER_SELECT });
   }
 
+  // The link row records that this provider identity belongs to this
+  // account, and nothing more. The provider's access, refresh and id tokens
+  // used to be stored on it too, though nothing ever read them back: they
+  // were only ever a liability, sitting in plain text on a shared database
+  // host. Rows written before this change still hold them — the backfill
+  // script clears those.
   try {
     await prisma.account.upsert({
       where: {
@@ -462,13 +478,12 @@ async function upsertSocialUser(args: UpsertArgs): Promise<SocialUserResult> {
           providerAccountId: args.providerAccountId,
         },
       },
-      update: args.tokens,
+      update: { access_token: null, refresh_token: null, id_token: null, expires_at: null },
       create: {
         userId: dbUser.id,
         type: args.accountType,
         provider: args.provider,
         providerAccountId: args.providerAccountId,
-        ...args.tokens,
       },
     });
   } catch (err) {

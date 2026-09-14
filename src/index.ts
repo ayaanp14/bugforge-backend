@@ -32,7 +32,7 @@ import { todayContest } from "./services/daily-contest.js";
 import { optionalAuth } from "./middleware/auth.js";
 import { platformGuard } from "./middleware/platformGuard.js";
 import { securityHeaders } from "./middleware/security-headers.js";
-import { authLimiter, generalLimiter, otpRequestLimiter } from "./middleware/rate-limit.js";
+import { authLimiter, generalLimiter, loginAccountLimiter, otpRequestLimiter } from "./middleware/rate-limit.js";
 import { prisma } from "./lib/prisma.js";
 import { setIo, duelRoom } from "./lib/realtime.js";
 import { warmRedis, closeRedis } from "./lib/redis.js";
@@ -40,9 +40,9 @@ import { startCacheInvalidationListener } from "./lib/cache.js";
 import { encodeCode } from "./lib/obfuscation.js";
 import { generateRecoveryCode } from "./lib/room-codes.js";
 import { readSessionToken, cookieFromHeader, SESSION_COOKIE } from "./lib/auth-session.js";
-import { isSessionRevoked } from "./lib/session-revocation.js";
+import { isSessionRevoked, revokedSessionsSweep } from "./lib/session-revocation.js";
 import { describeError, errorTelemetry, noteRequestError, reportError } from "./lib/telemetry.js";
-import { startScheduler } from "./lib/scheduler.js";
+import { registerJob, startScheduler } from "./lib/scheduler.js";
 import { registerReminderJobs } from "./services/reminders.js";
 
 const app = express();
@@ -133,7 +133,7 @@ io.use(async (socket, next) => {
       (typeof fromAuth === "string" && fromAuth) ||
       cookieFromHeader(socket.handshake.headers.cookie, SESSION_COOKIE);
     const claims = token ? readSessionToken(token) : null;
-    if (claims && !(await isSessionRevoked(claims.userId, claims.iat))) {
+    if (claims && !(await isSessionRevoked(claims.userId, claims.iat, claims.jti))) {
       socket.data.userId = claims.userId;
     }
   } catch (err) {
@@ -714,8 +714,13 @@ app.use(platformGuard);
 
 // Above the 100kb default: a mock-test autosave carries every answer and code
 // buffer of a sitting, and a bug-hunt submit carries a whole project's files.
+//
+// JSON only. No client sends a form-encoded body, and accepting one was a
+// small hole: /api/auth/* is exempt from the platform guard, so a cross-site
+// HTML form — which can only send form encoding — could post to those routes
+// with the victim's `__session` cookie attached. Without the parser its body
+// is nothing.
 app.use(express.json({ limit: "512kb" }));
-app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 
 /**
@@ -729,14 +734,29 @@ app.use(errorTelemetry);
 /**
  * Guessing a credential is the attack these limits exist for, so they are
  * mounted ahead of the auth routes rather than inside them. Asking for a code
- * is limited harder still, because it also sends mail in our name.
+ * is limited harder still, because it also sends mail in our name. The login
+ * form is limited twice: per address, and per account named, so a guess
+ * spread across many addresses still runs into a ceiling.
  *
  * `/session-token` is excluded: the SPA calls it on every load to read the
  * token behind its own cookie, and it grants nothing to a caller who does not
- * already hold that cookie.
+ * already hold that cookie. `/handoff` and `/logout` are covered by the
+ * general limiter alone — a handoff code is 256 random bits, not guessable,
+ * and a sign-out grants nothing.
  */
-app.use(["/api/auth/login", "/api/auth/register", "/api/auth/verify-otp", "/api/auth/reset-password"], authLimiter);
-app.use("/api/auth/forgot-password", otpRequestLimiter);
+app.use(
+  [
+    "/api/auth/login",
+    "/api/auth/register",
+    "/api/auth/verify-otp",
+    "/api/auth/reset-password",
+    "/api/auth/verify-email",
+    "/api/me/password",
+  ],
+  authLimiter,
+);
+app.use("/api/auth/login", loginAccountLimiter);
+app.use(["/api/auth/forgot-password", "/api/auth/resend-verification"], otpRequestLimiter);
 
 // Routes
 app.use("/api/auth", authRouter);
@@ -881,6 +901,7 @@ httpServer.listen(PORT, () => {
   void checkRoadmapSeeded().catch((err) => console.error("roadmap check:", err));
   // The reminder jobs (streak at risk, today's problem, the weekly digest).
   registerReminderJobs();
+  registerJob(revokedSessionsSweep);
   startScheduler();
   console.log(`🚀 Backend & WebSocket running on port: ${PORT}`);
   console.log(`   Auth:   POST /api/auth/login`);

@@ -3,7 +3,7 @@ import { JWT_SECRET } from "./secrets.js";
 import { redisDel, redisGetJSON, redisSetJSON } from "./redis.js";
 
 /**
- * One-time codes for password reset.
+ * One-time codes: password reset and email verification.
  *
  * The previous design was stateless: it bcrypt-hashed the six-digit code, put
  * that hash inside a JWT, and returned the JWT to whoever asked for a reset.
@@ -57,7 +57,15 @@ function macOf(token: string, otp: string): Buffer {
   return crypto.createHmac("sha256", OTP_KEY).update(`${token}:${otp}`).digest();
 }
 
+/**
+ * What a code proves. A challenge is issued for one purpose and can only be
+ * consumed for that purpose: a reset code cannot verify an address, and a
+ * verification code cannot open the reset flow.
+ */
+export type ChallengePurpose = "password_reset" | "verify_email";
+
 interface Challenge {
+  purpose: ChallengePurpose;
   /** Null for an address with no account: the flow still runs, nothing matches. */
   email: string | null;
   otpMac: Buffer;
@@ -71,16 +79,20 @@ const latestForEmail = new Map<string, string>();
 
 /** The Redis mirror: the same record, MAC as base64 for JSON. */
 interface StoredChallenge {
+  purpose: ChallengePurpose;
   email: string | null;
   otpMac: string;
   expiresAt: number;
   attempts: number;
 }
-const redisKey = (token: string) => `otp:v1:${token}`;
+const redisKey = (token: string) => `otp:v2:${token}`;
+/** One live code per address per purpose. */
+const emailKey = (purpose: ChallengePurpose, email: string) => `${purpose}:${email}`;
 
 function mirror(token: string, challenge: Challenge): void {
   const ttl = Math.max(1, Math.ceil((challenge.expiresAt - Date.now()) / 1000));
   const stored: StoredChallenge = {
+    purpose: challenge.purpose,
     email: challenge.email,
     otpMac: challenge.otpMac.toString("base64"),
     expiresAt: challenge.expiresAt,
@@ -92,7 +104,9 @@ function mirror(token: string, challenge: Challenge): void {
 async function recall(token: string): Promise<Challenge | null> {
   const stored = await redisGetJSON<StoredChallenge>(redisKey(token));
   if (!stored || typeof stored.otpMac !== "string") return null;
+  if (stored.purpose !== "password_reset" && stored.purpose !== "verify_email") return null;
   return {
+    purpose: stored.purpose,
     email: stored.email ?? null,
     otpMac: Buffer.from(stored.otpMac, "base64"),
     expiresAt: Number(stored.expiresAt) || 0,
@@ -104,7 +118,9 @@ function sweep(now: number): void {
   for (const [token, challenge] of challenges) {
     if (challenge.expiresAt <= now) {
       challenges.delete(token);
-      if (challenge.email && latestForEmail.get(challenge.email) === token) latestForEmail.delete(challenge.email);
+      if (challenge.email && latestForEmail.get(emailKey(challenge.purpose, challenge.email)) === token) {
+        latestForEmail.delete(emailKey(challenge.purpose, challenge.email));
+      }
     }
   }
 }
@@ -121,22 +137,22 @@ export function generateOtp(): string {
  * response is identical either way and cannot be used to test which addresses
  * are registered.
  */
-export async function issueChallenge(email: string | null, otp: string): Promise<string> {
+export async function issueChallenge(purpose: ChallengePurpose, email: string | null, otp: string): Promise<string> {
   const now = Date.now();
   sweep(now);
 
   const token = crypto.randomBytes(32).toString("base64url");
-  const challenge: Challenge = { email, otpMac: macOf(token, otp), expiresAt: now + TTL_MS, attempts: 0 };
+  const challenge: Challenge = { purpose, email, otpMac: macOf(token, otp), expiresAt: now + TTL_MS, attempts: 0 };
   challenges.set(token, challenge);
   mirror(token, challenge);
 
   if (email) {
-    const previous = latestForEmail.get(email);
+    const previous = latestForEmail.get(emailKey(purpose, email));
     if (previous) {
       challenges.delete(previous);
       void redisDel(redisKey(previous));
     }
-    latestForEmail.set(email, token);
+    latestForEmail.set(emailKey(purpose, email), token);
   }
   return token;
 }
@@ -149,7 +165,7 @@ export type ChallengeResult =
  * Checks a code. Consumes the challenge on success, and counts the attempt on
  * failure so the guess budget actually runs out.
  */
-export async function consumeChallenge(token: string, otp: string): Promise<ChallengeResult> {
+export async function consumeChallenge(purpose: ChallengePurpose, token: string, otp: string): Promise<ChallengeResult> {
   const now = Date.now();
   sweep(now);
 
@@ -164,7 +180,9 @@ export async function consumeChallenge(token: string, otp: string): Promise<Chal
       challenges.set(token, challenge);
     }
   }
-  if (!challenge) return { ok: false, reason: "unknown" };
+  // A handle for the other purpose is as good as no handle: it is not
+  // consumed, and it is not told apart from one that never existed.
+  if (!challenge || challenge.purpose !== purpose) return { ok: false, reason: "unknown" };
   if (challenge.expiresAt <= now) {
     challenges.delete(token);
     void redisDel(redisKey(token));
@@ -195,7 +213,7 @@ export async function consumeChallenge(token: string, otp: string): Promise<Chal
   }
 
   challenges.delete(token);
-  latestForEmail.delete(challenge.email);
+  latestForEmail.delete(emailKey(challenge.purpose, challenge.email));
   void redisDel(redisKey(token));
   return { ok: true, email: challenge.email };
 }

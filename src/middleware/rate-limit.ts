@@ -122,6 +122,33 @@ export const authLimiter = rateLimit({
   skipSuccessful: true,
 });
 
+/**
+ * The same budget again, per account rather than per address.
+ *
+ * `authLimiter` alone stops one machine from guessing; it does nothing about
+ * a thousand machines each spending nineteen guesses on the same account,
+ * which is what a credential-stuffing run looks like. Keyed on the
+ * identifier the body names (lower-cased, as the route reads it), so the
+ * account itself has a ceiling wherever the attempts come from. A correct
+ * password refunds its attempt, and the window is short, so the worst a
+ * stranger can do by spending it is keep the owner waiting a quarter of an
+ * hour — not lock them out.
+ *
+ * Mounted after `express.json`, so the body is there to read; a request with
+ * no identifier falls back to the address bucket and is refused by the route.
+ */
+export const loginAccountLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  message: "Too many sign-in attempts for this account. Try again in a few minutes.",
+  skipSuccessful: true,
+  keyOf: (req) => {
+    const raw = (req.body as { identifier?: unknown; email?: unknown } | undefined)?.identifier
+      ?? (req.body as { email?: unknown } | undefined)?.email;
+    return typeof raw === "string" && raw.trim() ? `u:${raw.trim().toLowerCase().slice(0, 254)}` : `a:${addressOf(req)}`;
+  },
+});
+
 /** Asking for a code by email, which also sends mail on our behalf. */
 export const otpRequestLimiter = rateLimit({
   windowMs: 60 * 60 * 1000,

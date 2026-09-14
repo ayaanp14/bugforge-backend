@@ -38,12 +38,12 @@ export async function requireAuth(
   // A valid signature is not enough on its own: the account may have ended
   // every session since this token was issued, which is what a password
   // reset does.
-  if (await isSessionRevoked(claims.userId, claims.iat)) {
+  if (await isSessionRevoked(claims.userId, claims.iat, claims.jti)) {
     res.status(401).json({ error: "Session ended. Please sign in again." });
     return;
   }
 
-  req.user = { userId: claims.userId, email: claims.email };
+  req.user = { userId: claims.userId, email: claims.email, sessionId: claims.jti, sessionExpiresAt: claims.exp };
   next();
 }
 
@@ -67,8 +67,8 @@ export async function optionalAuth(
   }
 
   const claims = readSessionToken(token);
-  if (claims && !(await isSessionRevoked(claims.userId, claims.iat))) {
-    req.user = { userId: claims.userId, email: claims.email };
+  if (claims && !(await isSessionRevoked(claims.userId, claims.iat, claims.jti))) {
+    req.user = { userId: claims.userId, email: claims.email, sessionId: claims.jti, sessionExpiresAt: claims.exp };
   }
   next();
 }
