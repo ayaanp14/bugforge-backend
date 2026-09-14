@@ -1609,6 +1609,7 @@ function readinessFor(average: number) {
 type ReportQuestion = {
   orderIndex: number;
   questionText: string;
+  followUps: unknown;
   topic: string | null;
   difficulty: string | null;
   focusArea: string | null;
@@ -1704,6 +1705,7 @@ function analyticsOf(questions: ReportQuestion[]) {
     questions: scored.map((q, i) => ({
       order: i + 1,
       question: q.questionText,
+      followUps: ((q.followUps as string[] | null) ?? []),
       topic: prettyLabel(q.topic ?? "general"),
       difficulty: q.difficulty,
       score: q.evaluationScore,

@@ -4,10 +4,10 @@ import { requireAuth } from "../middleware/auth.js";
 import { prettyLabel } from "../lib/interview-labels.js";
 import {
   analyzeVoiceTranscript,
-  questionBudgetFor,
   type InterviewConfig,
 } from "../services/interview-ai.js";
 import {
+  askingTurnCount,
   candidateWordCount,
   coalesce,
   sanitizeEvents,
@@ -397,9 +397,12 @@ router.post("/session/:sessionId/voice/complete", requireAuth, async (req: any, 
     }
 
     const config = configFrom(session.savedInterview);
-    const budget = session.questionBudget || questionBudgetFor(config.difficulty);
 
-    const { questions, usage } = await analyzeVoiceTranscript(config, budget, lines);
+    // Not `session.questionBudget`: on a spoken round that is the placeholder
+    // from /start (four for ten minutes), and handing it to the breakdown as
+    // the interview's question count had a forty-turn round scored as four
+    // rows. The transcript is the only thing that knows how many were asked.
+    const { questions, usage } = await analyzeVoiceTranscript(config, lines, askingTurnCount(lines));
 
     // Enough was said to score (the word count above passed) and yet the
     // analysis found no questions: that is the model failing, not the
@@ -441,6 +444,7 @@ router.post("/session/:sessionId/voice/complete", requireAuth, async (req: any, 
         sessionId: session.id,
         orderIndex: index,
         questionText: q.question,
+        followUps: q.followUps,
         userAnswer: q.answer,
         topic: q.topic,
         difficulty: q.difficulty,

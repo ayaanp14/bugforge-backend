@@ -441,6 +441,12 @@ model MockInterviewQuestion {
   verdict         String?
   /// Points a strong answer would have covered and this one did not.
   missed          Json                 @default("[]")
+  /// Spoken rounds only: the probes the interviewer asked on this same answer
+  /// ("did you check the logs?"), quoted one sentence each. They are scored as
+  /// part of this row rather than as questions of their own, and listed so the
+  /// report accounts for everything the candidate heard asked. A written round
+  /// never asks a follow-up, so its rows keep the default.
+  followUps       Json                 @default("[]")
   starterCode     String?              @db.Text
   expectedSkills  Json                 @default("[]")
   status          String               @default("pending") // pending, answered, evaluated

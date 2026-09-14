@@ -73,6 +73,21 @@ export function coalesce(events: Array<{ speaker: string; text: string | null }>
   return lines;
 }
 
+/**
+ * Interviewer turns that asked for something. The same reading the live room
+ * uses to advance its "Question N" counter, so the number the candidate watched
+ * climb and the number the breakdown is held to are the same one. A coalesced
+ * turn holding several questions still counts once — it is the model's job to
+ * split those, and this only has to be a floor the breakdown must account for.
+ */
+export function askingTurnCount(lines: SpokenLine[]): number {
+  return lines.filter(
+    (line) =>
+      line.speaker === "interviewer" &&
+      (/\?/.test(line.text) || /\btell me\b|\bwalk me\b|\bexplain\b/i.test(line.text)),
+  ).length;
+}
+
 /** Words the candidate actually contributed — the bar for "worth scoring". */
 export function candidateWordCount(lines: SpokenLine[]): number {
   return lines

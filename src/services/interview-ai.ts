@@ -402,7 +402,7 @@ export interface TranscriptTurn {
  * relevant when the round asks for code, and an unchosen stack must not read
  * as "JavaScript, then".
  */
-function configBlock(config: InterviewConfig, budget: number) {
+function configBlock(config: InterviewConfig, budget: number | null) {
   const stackChosen = config.stackFocusIds.length > 0;
   return [
     `Target role: ${prettyLabel(config.roleId)}`,
@@ -413,7 +413,14 @@ function configBlock(config: InterviewConfig, budget: number) {
     `Stack focus: ${stackChosen ? config.stackFocusIds.map(prettyLabel).join(", ") : "none chosen — do not assume a language or stack; ask what the role itself demands"}`,
     `Focus areas: ${config.focusAreaIds.map(prettyLabel).join(", ") || "none chosen — the role decides the topics"}`,
     `Editor language for starter code, if a question asks for code: ${config.language ?? "javascript"}${stackChosen ? "" : " (a default, because no stack was chosen — only use it when the role and round genuinely call for code)"}`,
-    `Total questions in this interview: ${budget}`,
+    // A spoken round has no count: it ran against a clock, and how many
+    // questions fitted is only known once the transcript is read. Stating a
+    // number here anyway — the live round's placeholder, 4 for ten minutes —
+    // had the breakdown model fold a forty-turn conversation into exactly four
+    // rows to match it.
+    budget === null
+      ? "Total questions in this interview: not fixed in advance — the round ran against a clock, and the transcript decides how many were asked"
+      : `Total questions in this interview: ${budget}`,
   ].join("\n");
 }
 
@@ -961,6 +968,13 @@ export async function writeReport(
  */
 const SpokenTurn = z.object({
   question: z.string(),
+  /**
+   * The probes folded into this entry, quoted one sentence each. Asked for
+   * partly so the report can list them, and partly because having to account
+   * for every interviewer turn somewhere is what stops the model quietly
+   * dropping the ones it did not fancy scoring.
+   */
+  followUps: z.array(z.string()),
   answer: z.string(),
   topic: z.string(),
   focusArea: z.string(),
@@ -993,14 +1007,22 @@ export interface SpokenLine {
  * finished transcript cold, with the same rubric that marks every written
  * answer, which is what makes the two modes comparable at all.
  *
- * Follow-ups are folded into the question that prompted them: a probe and its
- * answer are evidence about one topic, not a separate question the candidate
- * was asked.
+ * Only a probe folds into the question before it — "why", "did you check the
+ * logs", "what happened next" — because a probe and its answer are evidence
+ * about one thing. Anything that asks about something new is its own entry.
+ * The earlier rule ("one entry per substantive question, fold each follow-up
+ * in") plus a stated question count had a ten-minute round in which the
+ * interviewer asked forty-odd things — Kubernetes, container networking, cost,
+ * isolation, script versioning, live-migration impact — come back as four
+ * theme-shaped rows, and the candidate rightly asked where the rest went.
+ *
+ * `askingTurns` is how many interviewer turns asked for something, counted
+ * from the transcript; it is the calibration the breakdown is held to.
  */
 export async function analyzeVoiceTranscript(
   config: InterviewConfig,
-  budget: number,
   lines: SpokenLine[],
+  askingTurns: number,
 ) {
   const conversation = lines
     .map((line) => `${line.speaker === "interviewer" ? "INTERVIEWER" : "CANDIDATE"}: ${line.text}`)
@@ -1008,7 +1030,7 @@ export async function analyzeVoiceTranscript(
 
   const input: InputItem[] = [
     { role: "system", content: RUBRIC },
-    { role: "system", content: configBlock(config, budget) },
+    { role: "system", content: configBlock(config, null) },
     {
       role: "user",
       content:
@@ -1016,10 +1038,28 @@ export async function analyzeVoiceTranscript(
         `Break it into the questions that were actually asked and score each one.\n\n` +
         `${conversation}\n\n---\n` +
         `Rules for the breakdown:\n` +
-        `- One entry per substantive question. Fold each follow-up into the question that prompted it: ` +
-        `the answer field should capture everything the candidate said on that thread.\n` +
-        `- Skip greetings, the closing, and any exchange that was not a question about engineering.\n` +
-        `- Quote the question roughly as it was asked, cleaned up into one sentence.\n` +
+        `- Every distinct question the interviewer asked is its own entry, in the order it was asked. ` +
+        `The interviewer asked for something in ${askingTurns} separate turns, and every one of those ` +
+        `turns must appear in the breakdown — either as an entry's question or in an entry's followUps.\n` +
+        `- Fold a turn into the entry before it ONLY when it is a probe on the same answer: "why", ` +
+        `"what happened next", "did you check the logs", a request to clarify or go deeper into the ` +
+        `same story. Put each folded probe in that entry's followUps — one English sentence each, ` +
+        `cleaned up rather than copied verbatim — and put everything the candidate said across the ` +
+        `probes into that entry's answer.\n` +
+        `- A turn that asks about something new is a new entry, even when the interviewer says "also" ` +
+        `or "by the way" or stays in the same area. Moving from a monitoring tool to how its alerts ` +
+        `were configured, from containers-versus-VMs to Kubernetes, from a deployment story to how ` +
+        `scripts are versioned — each of those is a new question. When in doubt, split: a report that ` +
+        `lists what was asked is worth more than one that merges it into themes.\n` +
+        `- Do not compress the round into a handful of themes. There is no target count and the ` +
+        `difficulty tier does not set one; a conversation that moved through a dozen things is a ` +
+        `dozen entries.\n` +
+        `- Skip greetings, the closing, and any exchange that was not a question about the job. ` +
+        `An offer of what to talk about next — "anything else you would like to discuss?", "shall ` +
+        `we talk about Terraform?" — is housekeeping, not a question, and must not become an entry ` +
+        `that scores zero.\n` +
+        `- Quote each question roughly as it was asked, cleaned up into one sentence; the same for ` +
+        `each follow-up.\n` +
         `- The answer field summarises what the candidate actually said, in their own terms. ` +
         `Do not improve it, and do not credit them with anything they did not say.\n` +
         `- This is speech, so expect filler, false starts and transcription errors. ` +
@@ -1028,21 +1068,24 @@ export async function analyzeVoiceTranscript(
         `- The interview may have been conducted in English, Hindi, or a mix of the two, and either ` +
         `side may switch language mid-way. Score exactly the same either way: an idea explained ` +
         `correctly in Hindi is worth what it is worth in English, and answering in Hindi is never ` +
-        `itself a weakness. Write every field you produce — question, answer, feedback, missed — in ` +
-        `English regardless, since the report is read later as text.\n` +
+        `itself a weakness. Write every field you produce — question, followUps, answer, feedback, ` +
+        `missed — in English regardless, since the report is read later as text.\n` +
         `- A question the candidate never really answered scores accordingly, with verdict "no_answer".\n` +
         `- Score on the same scale you would apply to a written answer for this experience band.`,
     },
   ];
 
-  // A nine-question breakdown carries nine sets of feedback, which is several
+  // A breakdown carries one set of feedback per question, which is several
   // times what any single written call emits — the shared ceiling would cut it
-  // off mid-object and fail validation.
+  // off mid-object and fail validation. Now that every distinct question is
+  // its own entry a thirty-minute round can run to twenty-odd of them, at
+  // roughly 250 tokens each with the follow-ups quoted; 16K leaves room for
+  // that without reserving the model's whole window.
   const { parsed, usage } = await ask(
     input,
     SpokenBreakdown,
     "voice_breakdown",
-    Number(process.env.INTERVIEW_VOICE_MAX_OUTPUT_TOKENS ?? 12_000),
+    Number(process.env.INTERVIEW_VOICE_MAX_OUTPUT_TOKENS ?? 16_000),
   );
   return { questions: parsed.questions, usage };
 }

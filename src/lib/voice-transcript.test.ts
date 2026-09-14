@@ -2,6 +2,7 @@ import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 
 import {
+  askingTurnCount,
   candidateWordCount,
   coalesce,
   EMPTY_STATE,
@@ -74,6 +75,24 @@ describe("candidateWordCount", () => {
 
   it("is zero when the candidate never spoke", () => {
     assert.equal(candidateWordCount([{ speaker: "interviewer", text: "Anyone there?" }]), 0);
+  });
+});
+
+describe("askingTurnCount", () => {
+  it("counts interviewer turns that ask for something, however they ask", () => {
+    const count = askingTurnCount([
+      { speaker: "interviewer", text: "Hi Tabassum, I'm a senior cloud engineer here." },
+      { speaker: "interviewer", text: "Can you tell me about a time you automated a deployment?" },
+      { speaker: "candidate", text: "Sure, so what happened was?" },
+      { speaker: "interviewer", text: "Walk me through the rollback." },
+      { speaker: "interviewer", text: "Sahi hai. Kya tumne logs check kiye?" },
+      { speaker: "interviewer", text: "Thank you for joining us today." },
+    ]);
+    assert.equal(count, 3);
+  });
+
+  it("is zero for a round in which nothing was asked", () => {
+    assert.equal(askingTurnCount([{ speaker: "candidate", text: "Hello? Anyone?" }]), 0);
   });
 });
 
