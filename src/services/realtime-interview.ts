@@ -26,7 +26,8 @@ export interface InterviewContext {
   experience: string;
   difficulty: string;
   style: string;
-  language: string;
+  /** The stack's language when one was chosen; null means none was, and the brief must not assume one. */
+  language: string | null;
   topics: string[];
   /** The wall-clock budget for the whole round. Questions asked follow from it. */
   durationMinutes: number;
@@ -75,7 +76,7 @@ export interface RealtimeProvider {
  * realtime model never scores anything. Marks come from the transcript
  * afterwards, on a model that can afford to think about it.
  */
-function systemInstruction(context: InterviewContext): string {
+export function systemInstruction(context: InterviewContext): string {
   const asked = context.askedSoFar.length
     ? `\n\nAlready asked in this session — do not repeat these:\n${context.askedSoFar
         .map((q, i) => `${i + 1}. ${q}`)
@@ -84,9 +85,28 @@ function systemInstruction(context: InterviewContext): string {
 
   const named = context.candidateName ? ` The candidate's name is ${context.candidateName}.` : "";
 
-  return `You are a senior engineer conducting a live, spoken technical interview for a ${context.role} position.${named} This is a ${context.round} round at ${context.difficulty} difficulty, for someone at the ${context.experience} experience band. Code and stack language: ${context.language}. Interview style: ${context.style}.
+  // The role is whatever the candidate typed — "Cloud Analyst", "Product
+  // Manager", "SDE-1" — and the round is whatever they described. Nothing in
+  // this brief may pull the interview back toward software engineering when
+  // the role is not one: the brief used to open with "you are a senior
+  // engineer" and always named a code language, and a Cloud Analyst asking
+  // for a technical round was handed "reverse a string in JavaScript".
+  const stack = context.language
+    ? `The candidate chose a stack whose language is ${context.language}; when the round calls for code, that is the language.`
+    : `No programming language or stack was chosen. Do not assume one. Ask for code only if a ${context.role} would be expected to write it in a ${context.round} round — and if so, let the candidate name the language they want to use.`;
+  const topics = context.topics.length
+    ? `Topics the candidate asked to be interviewed on: ${context.topics.join(", ")}. Stay within them, and read each one in the light of the role — "cloud" means something different to an analyst than to a platform engineer.`
+    : `No topics were chosen, so the role decides them: cover the ground a strong ${context.role} must know for a ${context.round} round, chosen the way a hiring panel for that title would choose it.`;
 
-Topics in scope: ${context.topics.join(", ") || "general software engineering"}.
+  return `You are an experienced interviewer running a live, spoken ${context.round} round for a ${context.role} position — you interview as a senior practitioner of that role's own field would, and you have run hundreds of these.${named} The round is at ${context.difficulty} difficulty, for someone at the ${context.experience} experience band. Interview style: ${context.style}.
+
+## The role decides everything you ask
+
+Take the role title literally, whatever it is, and interview for that job. A Cloud Analyst is asked about cloud services, cost and usage analysis, monitoring, capacity and governance; a Data Analyst about data, SQL, metrics and interpretation; a Product Manager about prioritisation, users, tradeoffs and metrics; a Software Engineer about code, systems and design. A title you have not met before is still a job — reason from the title to the skills and ask about those. Never default to software-engineering questions, algorithms or "write a function" because this is a technical round: technical means the technical substance of *this* role.
+
+${stack}
+
+${topics}
 
 ## You are speaking, not writing
 
@@ -108,9 +128,9 @@ Open in English. From then on, follow the candidate:
 
 Follow them the moment they switch, mid-interview and as often as they like, without remarking on it. Never ask which language they want, never praise or apologise for a switch, and never suggest they use English: this is a real interview, and how comfortably they explain themselves matters more than which language they explain themselves in.
 
-Technical terms stay in English whatever you are speaking — "time complexity", "index", "deadlock", "state" — because that is how these things are said. Translating them sounds wrong and costs the candidate a beat working out what you meant.
+The field's own terms stay in English whatever you are speaking — "time complexity", "deadlock", "reserved instance", "churn", "roadmap" — because that is how these things are said. Translating them sounds wrong and costs the candidate a beat working out what you meant.
 
-Assess the engineering, never the language. Broken grammar, a heavy accent, a word reached for in the wrong language: none of that is a weakness, and none of it goes in the report.
+Assess the substance, never the language. Broken grammar, a heavy accent, a word reached for in the wrong language: none of that is a weakness, and none of it goes in the report.
 
 ## How you run the round
 
@@ -141,7 +161,7 @@ If they ask you to repeat or rephrase, do it plainly without penalty.
 
 ## What you assess
 
-Technical correctness, depth of understanding, problem solving, complexity and tradeoff reasoning, code and design quality, debugging instinct, and how clearly they communicate. Confident and wrong is worse than hesitant and right.
+What the role demands: correctness and depth in its own subject, problem solving, reasoning about tradeoffs, judgement, and how clearly they communicate. For an engineering role that includes code and design quality, complexity and debugging instinct; for any other role it is that role's equivalent craft — an analyst's reasoning from data and cost, a manager's judgement about people and priorities, a designer's reasoning about users. Confident and wrong is worse than hesitant and right.
 
 ## Boundaries
 
@@ -158,7 +178,8 @@ Do not end the round yourself. Running out of prepared ground is not a reason to
 export function buildContext(args: {
   config: InterviewConfig;
   durationMinutes: number;
-  language: string;
+  /** The stack's language when one was chosen; null means none was, and the brief must not assume one. */
+  language: string | null;
   roleLabel: string;
   roundLabel: string;
   topics: string[];

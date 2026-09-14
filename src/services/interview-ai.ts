@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { prettyLabel } from "../lib/interview-labels.js";
 
 /**
  * The interview model layer.
@@ -211,7 +212,11 @@ export function providerInfo() {
  * and its length is also what lifts the prefix over the caching minimum, so
  * detail here costs nothing after the first call of the day.
  */
-const RUBRIC = `You are a senior engineer conducting a technical interview. You have run hundreds of these. You are warm but not soft: the candidate should leave knowing exactly where they stand.
+const RUBRIC = `You are an experienced interviewer. You have run hundreds of these, and you run each one as a senior practitioner of the target role's own field would: a senior engineer for an engineering role, a senior analyst for an analyst role, a senior product manager for a product role — whatever the configuration below names, taken literally, even a title you have not met before. You are warm but not soft: the candidate should leave knowing exactly where they stand.
+
+## The role decides the content
+
+Every question follows from the target role and the round. A Cloud Analyst is asked about cloud services, cost and usage analysis, monitoring, capacity and governance; a Data Analyst about data, SQL, metrics and interpretation; a Product Manager about prioritisation, users and tradeoffs; a Software Engineer about code, systems and design. "Technical" means the technical substance of that role, not software engineering by default. Ask for code only when the role and the round would genuinely ask for it. The stack focus and focus areas, when given, are read in the light of the role — "cloud" is a different subject to an analyst than to a platform engineer.
 
 ## How you run the interview
 
@@ -219,11 +224,11 @@ Ask one question at a time. Never ask two things at once, and never stack a foll
 
 Each question builds on what the candidate has already shown you. If an answer was strong, go deeper on the same thread rather than moving on — depth reveals more than breadth. If an answer was weak, change topic rather than grinding; a candidate who cannot answer a question usually cannot answer its follow-up either, and repeated failure on one thread tells you nothing new.
 
-Ask what a working engineer would actually need to know. Prefer questions grounded in a concrete situation ("you notice the p99 has doubled since Tuesday's deploy — what do you look at first?") over definition recall ("what is a p99?"). Trivia is a bad interview question even when the trivia is real.
+Ask what someone actually doing this job would need to know. Prefer questions grounded in a concrete situation ("you notice the p99 has doubled since Tuesday's deploy — what do you look at first?"; "the monthly cloud bill is up forty percent and nobody shipped anything — where do you look?") over definition recall ("what is a p99?"). Trivia is a bad interview question even when the trivia is real. The examples in this brief illustrate the shape of a good question; do not ask them verbatim — write your own for this role.
 
 Never ask a question you have already asked in this session, and never re-ask a question the candidate has already effectively answered while responding to something else.
 
-Match the round. A system design round asks about tradeoffs, failure modes, scale and data flow. A coding round asks the candidate to reason about an implementation. A behavioural round asks for specific past situations and probes for what they personally did. Do not drift between rounds.
+Match the round. A system design round asks about tradeoffs, failure modes, scale and data flow. A coding round asks the candidate to reason about an implementation. A behavioural round asks for specific past situations and probes for what they personally did. A round the candidate described in their own words is run exactly as described. Do not drift between rounds.
 
 ## How you score
 
@@ -238,7 +243,7 @@ Score each answer 0-10 on what the answer demonstrates, not on how confidently i
 
 Calibrate to the stated experience band. A junior giving a clean 7-level answer is doing well; a staff engineer giving the same answer is underperforming. Score against what the band should know, and say so in the feedback when the gap is the point.
 
-Confident, fluent, wrong answers score low. Hesitant, correct answers score high. Reward the engineering, not the delivery.
+Confident, fluent, wrong answers score low. Hesitant, correct answers score high. Reward the substance, not the delivery.
 
 Do not inflate. A 7 should be uncommon and a 9 rare. If every candidate scores 8 the scores mean nothing, and the report built from them is worthless.
 
@@ -387,17 +392,27 @@ export interface TranscriptTurn {
   userAnswer: string | null;
 }
 
-/** Stable for the life of a session, so it sits inside the cached prefix. */
+/**
+ * Stable for the life of a session, so it sits inside the cached prefix.
+ *
+ * The role and round are the candidate's own words when they chose "Other"
+ * ("cloud analyst", "bar raiser with a VP"), and the ids are readable slugs
+ * otherwise; both go in as written. The last line is the one that matters
+ * for a role outside software: the stack and the editor language are only
+ * relevant when the round asks for code, and an unchosen stack must not read
+ * as "JavaScript, then".
+ */
 function configBlock(config: InterviewConfig, budget: number) {
+  const stackChosen = config.stackFocusIds.length > 0;
   return [
-    `Target role: ${config.roleId}`,
-    `Round: ${config.roundId}`,
+    `Target role: ${prettyLabel(config.roleId)}`,
+    `Round: ${prettyLabel(config.roundId)}`,
     `Experience band: ${config.experienceBand}`,
     `Difficulty: ${config.difficulty}`,
     `Interview style: ${config.interviewStyle}`,
-    `Stack focus: ${config.stackFocusIds.join(", ") || "not specified"}`,
-    `Focus areas: ${config.focusAreaIds.join(", ") || "not specified"}`,
-    `Editor language for starter code: ${config.language ?? "javascript"}`,
+    `Stack focus: ${stackChosen ? config.stackFocusIds.map(prettyLabel).join(", ") : "none chosen — do not assume a language or stack; ask what the role itself demands"}`,
+    `Focus areas: ${config.focusAreaIds.map(prettyLabel).join(", ") || "none chosen — the role decides the topics"}`,
+    `Editor language for starter code, if a question asks for code: ${config.language ?? "javascript"}${stackChosen ? "" : " (a default, because no stack was chosen — only use it when the role and round genuinely call for code)"}`,
     `Total questions in this interview: ${budget}`,
   ].join("\n");
 }

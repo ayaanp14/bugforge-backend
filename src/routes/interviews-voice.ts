@@ -99,7 +99,13 @@ function configFrom(template: Guarded["session"]["savedInterview"]): InterviewCo
   };
 }
 
-/** Monaco/stack language, mirroring the written round's mapping. */
+/**
+ * The stack's language, mirroring the written round's mapping — but null, not
+ * "JavaScript", when no stack was chosen. The written round needs a default
+ * because its editor has to open in something; the spoken round has no editor,
+ * and a default here told the interviewer that a Cloud Analyst's round was in
+ * JavaScript.
+ */
 const STACK_LANGUAGE: Record<string, string> = {
   "react-next": "TypeScript",
   mern: "JavaScript",
@@ -114,11 +120,11 @@ const STACK_LANGUAGE: Record<string, string> = {
   security: "JavaScript",
 };
 
-function languageFor(config: InterviewConfig) {
+function languageFor(config: InterviewConfig): string | null {
   for (const id of config.stackFocusIds) {
     if (STACK_LANGUAGE[id]) return STACK_LANGUAGE[id];
   }
-  return "JavaScript";
+  return null;
 }
 
 /**
@@ -127,10 +133,15 @@ function languageFor(config: InterviewConfig) {
  */
 const DEFAULT_LIMIT_SEC = voiceDurationMinutes(undefined) * 60;
 
-/** The topic list the interviewer is briefed on — stacks first, then focus. */
+/**
+ * The topic list the interviewer is briefed on — stacks first, then focus.
+ * Empty when nothing was chosen: the brief then derives the topics from the
+ * role. It used to fall back to the round's own name, which as a "topic" told
+ * the model nothing except "technical", and "technical" it read as "code".
+ */
 function topicsFor(config: InterviewConfig) {
   const topics = [...config.stackFocusIds, ...config.focusAreaIds].map(prettyLabel);
-  return topics.length ? [...new Set(topics)] : [prettyLabel(config.roundId)];
+  return [...new Set(topics)];
 }
 
 /* ── bootstrap ─────────────────────────────────────────────────────────── */
