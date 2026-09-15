@@ -1,7 +1,7 @@
 import { Router } from "express";
-import { requireAuth } from "../middleware/auth.js";
+import { optionalAuth, requireAuth } from "../middleware/auth.js";
 import { rateLimit } from "../middleware/rate-limit.js";
-import { AssistantError, clearHistory, history, reply } from "../services/assistant.js";
+import { AssistantError, clearHistory, history, reply, type AssistantTurn } from "../services/assistant.js";
 import { checkAssistantQuota } from "../services/entitlements.js";
 
 /**
@@ -18,10 +18,15 @@ import { checkAssistantQuota } from "../services/entitlements.js";
 
 const router = Router();
 
-/** A burst guard under the daily allowance: a page's worth of questions a minute, not a script's. */
+/**
+ * The only brake: a burst guard against scripts. There is no daily
+ * allowance on any plan, signed in or not — the assistant is meant to be
+ * asked freely — but the model behind it is a free tier shared by everyone,
+ * and thirty questions a minute is a loop, not a person.
+ */
 const burstLimiter = rateLimit({
   windowMs: 60 * 1000,
-  max: 12,
+  max: 30,
   message: "You are asking very quickly. Give it a moment.",
   keyOf: (req) => (req as typeof req & { user?: { userId: string } }).user?.userId ?? req.ip ?? "unknown",
 });
@@ -49,17 +54,21 @@ router.delete("/", requireAuth, async (req: any, res) => {
 /**
  * @route   POST /api/assistant/chat
  * @desc    Ask a question; the answer streams back as SSE
- * @access  Private
+ * @access  Public (signed in gets the account context and a stored thread)
  *
  * Events: `token` {t} as the answer is written, then `done` {messageId, used,
  * limit}, or `error` {error} if the model failed. A refusal (the daily
  * allowance) is an ordinary 402 JSON answer, since nothing has streamed yet.
+ * A visitor sends `history` — their own recent turns — since nothing is
+ * stored for them; `used`/`limit` come back null for them.
  */
-router.post("/chat", requireAuth, burstLimiter, async (req: any, res) => {
+router.post("/chat", optionalAuth, burstLimiter, async (req: any, res) => {
   const message = typeof req.body?.message === "string" ? req.body.message : "";
   if (!message.trim()) return res.status(400).json({ error: "Write a question first." });
+  const userId: string | null = req.user?.userId ?? null;
+  const carried: AssistantTurn[] = userId ? [] : Array.isArray(req.body?.history) ? req.body.history.slice(-20) : [];
 
-  const quota = await checkAssistantQuota(req.user.userId);
+  const quota = userId ? await checkAssistantQuota(userId) : { denial: null, used: null, limit: null };
   if (quota.denial) return res.status(402).json(quota.denial);
 
   res.status(200);
@@ -73,15 +82,15 @@ router.post("/chat", requireAuth, burstLimiter, async (req: any, res) => {
   };
 
   try {
-    const { messageId } = await reply(req.user.userId, message, (t) => send("token", { t }));
-    send("done", { messageId, used: quota.used + 1, limit: quota.limit });
+    const { messageId } = await reply(userId, message, (t) => send("token", { t }), carried);
+    send("done", { messageId, used: quota.used === null ? null : quota.used + 1, limit: quota.limit });
   } catch (err) {
     const status = err instanceof AssistantError ? err.status : 500;
     const text = err instanceof AssistantError ? err.message : "The assistant could not answer — try again.";
     // The stream is the only channel left once headers have gone; the
     // failure is still worth a line in the log, since the client only sees
     // the sentence.
-    if (status >= 500) console.error(`[assistant] ${req.user.userId}:`, (err as Error)?.message);
+    if (status >= 500) console.error(`[assistant] ${userId ?? "visitor"}:`, (err as Error)?.message);
     send("error", { error: text, status });
   } finally {
     res.end();

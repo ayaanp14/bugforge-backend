@@ -26,9 +26,10 @@ export interface PlanEntitlements {
   /** Duels per day. Unlimited on every plan, including free. */
   duelsPerDay: number | null;
   /**
-   * Messages to the site assistant per day. The model behind it is a free
-   * tier shared by every account (the same one that runs the interviews),
-   * so the allowance is what keeps one person from spending everyone's.
+   * Messages to the site assistant per day. Unlimited on every plan by
+   * decision — the assistant is meant to be asked freely — and kept as a
+   * field so a cap can be set per plan again without touching the routes.
+   * A burst guard in routes/assistant.ts is the only brake, against scripts.
    */
   assistantMessagesPerDay: number | null;
 }
@@ -62,7 +63,7 @@ export const PLANS: Plan[] = [
       bugsPerDay: 1,
       problemsPerDay: null,
       duelsPerDay: null,
-      assistantMessagesPerDay: 30,
+      assistantMessagesPerDay: null,
     },
     highlights: [
       "Unlimited DSA problem solving",
@@ -83,7 +84,7 @@ export const PLANS: Plan[] = [
       bugsPerDay: 5,
       problemsPerDay: null,
       duelsPerDay: null,
-      assistantMessagesPerDay: 100,
+      assistantMessagesPerDay: null,
     },
     highlights: [
       "Unlimited DSA problem solving",
@@ -105,7 +106,7 @@ export const PLANS: Plan[] = [
       bugsPerDay: 20,
       problemsPerDay: null,
       duelsPerDay: null,
-      assistantMessagesPerDay: 300,
+      assistantMessagesPerDay: null,
     },
     highlights: [
       "Unlimited DSA problem solving",

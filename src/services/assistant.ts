@@ -57,7 +57,7 @@ function plansSection(): string {
     const e = p.entitlements;
     return [
       `- **${p.name}** — ${p.monthly === 0 ? "free" : `₹${p.monthly}/month or ₹${p.yearly}/year`}. ${p.tagline}`,
-      `  ${fmtLimit(e.interviewsPerWeek, "mock interviews a week")}; voice rounds of ${e.voiceDurationsMin.join("/")} minutes; ${fmtLimit(e.bugsPerDay, "bug hunts a day")}; ${fmtLimit(e.assistantMessagesPerDay, "assistant messages a day")}; unlimited problems and duels.`,
+      `  ${fmtLimit(e.interviewsPerWeek, "mock interviews a week")}; voice rounds of ${e.voiceDurationsMin.join("/")} minutes; ${fmtLimit(e.bugsPerDay, "bug hunts a day")}; unlimited problems, duels and assistant messages.`,
       `  Highlights: ${p.highlights.join("; ")}.`,
     ].join("\n");
   });
@@ -133,6 +133,17 @@ async function accountBlock(userId: string): Promise<string> {
   };
   return `# This account (live, as of now)\n\n${JSON.stringify(account, null, 1)}`;
 }
+
+/**
+ * Stands in for the account block when nobody is signed in: the model still
+ * knows the product, and knows that "my streak" cannot be answered — and
+ * what to say instead.
+ */
+const VISITOR_BLOCK =
+  "# This visitor\n\nNobody is signed in. Answer questions about the product from the briefing. " +
+  "If they ask about their own account — progress, plan, streak, allowances — say that needs an account and " +
+  "point to [sign in](/login) or [create a free account](/register), with one sentence on what they would see. " +
+  "Do not guess at a plan or a standing.";
 
 export interface AssistantTurn {
   role: "user" | "assistant";
@@ -257,11 +268,29 @@ async function attemptStream(body: Record<string, unknown>, signal: AbortSignal,
  * a 200 stream, is tried again as long as no token has reached the client
  * yet — once one has, the answer is what it is, and a failure is reported.
  */
-export async function reply(userId: string, message: string, onToken: (text: string) => void): Promise<{ answer: string; messageId: string }> {
+export async function reply(
+  userId: string | null,
+  message: string,
+  onToken: (text: string) => void,
+  /** A visitor's own recent turns, carried by the client since nothing is stored for them. */
+  carried: AssistantTurn[] = [],
+): Promise<{ answer: string; messageId: string | null }> {
   const text = message.trim().slice(0, MAX_MESSAGE_CHARS);
   if (!text) throw new AssistantError("Write a question first.", 400);
 
-  const [prefix, account, past] = await Promise.all([systemPrefix(), accountBlock(userId), history(userId)]);
+  // Signed in: the account block and the stored conversation. A visitor: the
+  // visitor block and whatever turns the client sent — bounded, and only the
+  // shape the model needs, since a client can send anything.
+  const [prefix, account, past] = userId
+    ? await Promise.all([systemPrefix(), accountBlock(userId), history(userId)])
+    : [
+        await systemPrefix(),
+        VISITOR_BLOCK,
+        carried
+          .filter((t) => (t.role === "user" || t.role === "assistant") && typeof t.content === "string")
+          .slice(-HISTORY_TURNS)
+          .map((t) => ({ role: t.role, content: t.content.slice(0, MAX_MESSAGE_CHARS) })),
+      ];
   const { model } = providerConfig();
   const body = {
     // The interviews' model unless a deployment points the assistant elsewhere.
@@ -306,7 +335,7 @@ export async function reply(userId: string, message: string, onToken: (text: str
         outcome.inBandError ? `The assistant's model is busy: ${outcome.inBandError}` : "The assistant returned an empty answer — try again.",
         503,
       );
-      console.error(`[assistant] no answer for ${userId} (attempt ${attempt + 1}): ${outcome.seen.replace(/\s+/g, " ").slice(-300)}`);
+      console.error(`[assistant] no answer for ${userId ?? "visitor"} (attempt ${attempt + 1}): ${outcome.seen.replace(/\s+/g, " ").slice(-300)}`);
     }
     if (!answer.trim()) throw last ?? new AssistantError("The assistant is unavailable.", 503);
   } finally {
@@ -314,6 +343,9 @@ export async function reply(userId: string, message: string, onToken: (text: str
   }
 
   const trimmed = answer.trim();
+  // Nothing is kept for a visitor: no account to attach it to, and the
+  // client carries the thread for the length of the tab.
+  if (!userId) return { answer: trimmed, messageId: null };
   const [, row] = await prisma.$transaction([
     prisma.assistantMessage.create({ data: { userId, role: "user", content: text } }),
     prisma.assistantMessage.create({ data: { userId, role: "assistant", content: trimmed }, select: { id: true } }),
