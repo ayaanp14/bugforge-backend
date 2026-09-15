@@ -93,6 +93,7 @@ model User {
   subscriptions      Subscription[]
   paymentOrders      PaymentOrder[]
   notifications      Notification[]
+  roadmapRewards     RoadmapReward[]
   posts              Post[]
   postComments       PostComment[]
   postLikes          PostLike[]
@@ -1202,9 +1203,31 @@ model RoadmapTier {
   title    String
   blurb    String         @db.Text
   position Int
+  /// What the chest at the tier's end pays when every stage in it is
+  /// cleared. Content, like the title — set in scripts/roadmap-data.ts.
+  rewardXp Int            @default(0)
   stages   RoadmapStage[]
 
   @@index([position])
+}
+
+/// A tier's chest, opened: written once per (user, tier) when every stage of
+/// the tier is cleared, by services/roadmap.ts. Standing on the road is never
+/// stored — it is derived from Submission rows — but this row has to be,
+/// because the XP it paid cannot be derived twice: the unique pair is what
+/// makes the payout one-shot, and the row is the badge on the profile and
+/// the claim behind a shared win. Keyed by the tier's stable `key`, not its
+/// id, and with no relation to RoadmapTier: a re-seed that prunes a tier must
+/// not take an earned reward with it.
+model RoadmapReward {
+  id       String   @id @default(cuid())
+  userId   String
+  tierKey  String   @db.VarChar(40)
+  xp       Int
+  earnedAt DateTime @default(now())
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, tierKey])
 }
 
 /// One stage of the roadmap: a handful of problems, cleared when `required`

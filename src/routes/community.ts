@@ -20,6 +20,11 @@ const MAX_TAKE = 30;
 const TAG_RE = /#([a-z0-9_]{2,30})/gi;
 const MAX_TAGS = 8;
 
+/** The tag an achievement share always carries, by what was achieved. */
+function achievementTag(kind: unknown): string {
+  return kind === "bug" ? "bughunt" : kind === "roadmap" ? "roadmap" : "challenge";
+}
+
 /** Pull #hashtags out of post text (lowercased, deduped) plus auto-tags. */
 function extractTags(text: string, extra: string[] = []): string[] {
   const set = new Set<string>();
@@ -533,8 +538,25 @@ router.post("/posts", requireAuth, communityWriteLimiter, async (req, res) => {
     // the card's facts are taken from the row, not the request.
     let verifiedAchievement: Record<string, unknown> | null = null;
     if (hasAchievement) {
-      const kind = meta!.kind === "bug" ? "bug" : "problem";
-      if (kind === "bug") {
+      const kind = meta!.kind === "bug" ? "bug" : meta!.kind === "roadmap" ? "roadmap" : "problem";
+      if (kind === "roadmap") {
+        // A tier's chest: the claim is the RoadmapReward row the road wrote
+        // when the tier was cleared, and the card's facts — the tier's name,
+        // what the chest paid — come from it and the seeded tier, not the
+        // request. Nothing to link the card to but the road itself.
+        const tierKey = typeof meta!.tier === "string" ? meta!.tier : "";
+        const [reward, tier] = tierKey
+          ? await Promise.all([
+              prisma.roadmapReward.findUnique({ where: { userId_tierKey: { userId, tierKey } }, select: { xp: true } }),
+              prisma.roadmapTier.findUnique({ where: { key: tierKey }, select: { title: true } }),
+            ])
+          : [null, null];
+        if (!reward || !tier) {
+          res.status(400).json({ error: "You can only share a chest you have opened" });
+          return;
+        }
+        verifiedAchievement = { kind, tier: tierKey, title: tier.title, xp: reward.xp };
+      } else if (kind === "bug") {
         const challengeId = typeof meta!.challengeId === "string" ? meta!.challengeId : "";
         const solved = challengeId
           ? await prisma.bugSubmission.findFirst({
@@ -562,9 +584,12 @@ router.post("/posts", requireAuth, communityWriteLimiter, async (req, res) => {
         verifiedAchievement = { kind, slug, title: solved.problem.title, difficulty: solved.problem.difficulty };
       }
       // XP is display only, and bounded so the card cannot boast a number the
-      // catalogue never pays.
-      const xp = Number(meta!.xp);
-      if (Number.isFinite(xp) && xp > 0 && xp <= 100) verifiedAchievement.xp = Math.round(xp);
+      // catalogue never pays. A chest's XP is already the row's, not the
+      // request's.
+      if (kind !== "roadmap") {
+        const xp = Number(meta!.xp);
+        if (Number.isFinite(xp) && xp > 0 && xp <= 100) verifiedAchievement.xp = Math.round(xp);
+      }
     }
     if (wantsPoll && pollChoices.length < 2) {
       res.status(400).json({ error: "A poll needs at least two options" });
@@ -590,7 +615,7 @@ router.post("/posts", requireAuth, communityWriteLimiter, async (req, res) => {
     // Auto-tags for achievement shares: kind, difficulty, and the problem's topics
     const autoTags: string[] = [];
     if (verifiedAchievement) {
-      autoTags.push(verifiedAchievement.kind === "bug" ? "bughunt" : "challenge");
+      autoTags.push(achievementTag(verifiedAchievement.kind));
       if (typeof verifiedAchievement.difficulty === "string") autoTags.push(verifiedAchievement.difficulty);
       if (typeof meta!.slug === "string") {
         try {
@@ -698,7 +723,7 @@ router.patch("/posts/:id", requireAuth, async (req, res) => {
     const meta = (post.meta ?? {}) as Record<string, unknown>;
     const keep: string[] = [];
     if (typeof meta.topic === "string") keep.push(meta.topic);
-    if (post.type === "achievement") keep.push(meta.kind === "bug" ? "bughunt" : "challenge");
+    if (post.type === "achievement") keep.push(achievementTag(meta.kind));
     if (post.type === "question") keep.push("help");
     if (post.type === "poll") keep.push("poll");
     const tags = extractTags(text, keep);

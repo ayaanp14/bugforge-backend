@@ -41,12 +41,19 @@ export interface RoadmapStageSeed {
   required: number;
 }
 
-/** The tiers, in the order the road is drawn. */
-export const ROADMAP_TIERS: Array<{ key: RoadmapTier; title: string; blurb: string }> = [
-  { key: "foundations", title: "Foundations", blurb: "Arrays, hashing, strings and the two-pointer family. Everything after this assumes them." },
-  { key: "core", title: "Core techniques", blurb: "The data structures and search patterns most interview rounds are built on." },
-  { key: "advanced", title: "Advanced", blurb: "Bits, recursion and graphs — where the harder rounds start." },
-  { key: "mastery", title: "Mastery", blurb: "Dynamic programming and the capstone: the problems that decide the final round." },
+/**
+ * The tiers, in the order the road is drawn.
+ *
+ * `rewardXp` is what the chest at the tier's end pays, once, when every
+ * stage of the tier is cleared (services/roadmap.ts). Rising with the tier
+ * so the last chest is worth the walk — and small next to what the solves
+ * themselves pay (10–30 each), since the road is the guide, not the prize.
+ */
+export const ROADMAP_TIERS: Array<{ key: RoadmapTier; title: string; blurb: string; rewardXp: number }> = [
+  { key: "foundations", title: "Foundations", blurb: "Arrays, hashing, strings and the two-pointer family. Everything after this assumes them.", rewardXp: 30 },
+  { key: "core", title: "Core techniques", blurb: "The data structures and search patterns most interview rounds are built on.", rewardXp: 50 },
+  { key: "advanced", title: "Advanced", blurb: "Bits, recursion and graphs — where the harder rounds start.", rewardXp: 80 },
+  { key: "mastery", title: "Mastery", blurb: "Dynamic programming and the capstone: the problems that decide the final round.", rewardXp: 100 },
 ];
 
 /** The stages, in road order. */
@@ -412,6 +419,11 @@ export const ROADMAP_SLUGS: string[] = [...new Set(ROADMAP.flatMap((s) => s.prob
  */
 export function validateRoadmap(): string[] {
   const tiers = new Set(ROADMAP_TIERS.map((t) => t.key));
+  for (const tier of ROADMAP_TIERS) {
+    if (!Number.isInteger(tier.rewardXp) || tier.rewardXp <= 0) {
+      throw new Error(`roadmap: tier "${tier.key}" pays ${tier.rewardXp} XP — a chest must be worth something`);
+    }
+  }
   const keys = new Set<string>();
   const seen = new Map<string, string>();
   for (const stage of ROADMAP) {
