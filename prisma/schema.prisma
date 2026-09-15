@@ -94,6 +94,7 @@ model User {
   paymentOrders      PaymentOrder[]
   notifications      Notification[]
   roadmapRewards     RoadmapReward[]
+  assistantMessages  AssistantMessage[]
   posts              Post[]
   postComments       PostComment[]
   postLikes          PostLike[]
@@ -1197,6 +1198,24 @@ model JobRun {
   error      String?   @db.Text
 
   @@index([job, startedAt])
+}
+
+/// The site assistant's conversation with an account, one row per turn.
+/// Stored so the dock reopens where it left off, and so the daily allowance
+/// is a count of rows like every quota in services/entitlements.ts — never
+/// a counter. "Clear conversation" hides rows rather than deleting them:
+/// a deleted row would hand the allowance back.
+model AssistantMessage {
+  id        String   @id @default(cuid())
+  userId    String
+  /// "user" | "assistant"
+  role      String   @db.VarChar(12)
+  content   String   @db.Text
+  cleared   Boolean  @default(false)
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
 }
 
 /// The DSA roadmap's tiers: the four bands the road is drawn in, in order.

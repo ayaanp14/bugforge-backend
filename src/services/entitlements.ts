@@ -22,6 +22,8 @@ export interface Usage {
   bugsToday: number;
   /** Bonus mock interviews still unspent: the roadmap's chests, less the rounds sat on them. */
   interviewCredits: number;
+  /** Messages sent to the site assistant since the day began. */
+  assistantMessagesToday: number;
 }
 
 export interface Entitlement {
@@ -151,17 +153,27 @@ export async function bugsToday(userId: string): Promise<number> {
   return rows.length;
 }
 
+/**
+ * Messages the account has sent the assistant today. Every row counts,
+ * cleared or not: "clear conversation" hides history, it does not refill
+ * the day's allowance.
+ */
+export async function assistantMessagesToday(userId: string): Promise<number> {
+  return prisma.assistantMessage.count({ where: { userId, role: "user", createdAt: { gte: dayStart() } } });
+}
+
 export async function entitlementFor(userId: string): Promise<Entitlement> {
-  const [{ plan, currentPeriodEnd }, interviews, bugs, credits] = await Promise.all([
+  const [{ plan, currentPeriodEnd }, interviews, bugs, credits, assistant] = await Promise.all([
     activePlan(userId),
     interviewsThisWeek(userId),
     bugsToday(userId),
     interviewCredits(userId),
+    assistantMessagesToday(userId),
   ]);
   return {
     plan,
     currentPeriodEnd,
-    usage: { interviewsThisWeek: interviews, bugsToday: bugs, interviewCredits: credits },
+    usage: { interviewsThisWeek: interviews, bugsToday: bugs, interviewCredits: credits, assistantMessagesToday: assistant },
   };
 }
 
@@ -206,6 +218,28 @@ export async function checkInterviewQuota(userId: string): Promise<{ denial: Quo
       upgrade: true,
     },
     onCredit: false,
+  };
+}
+
+/**
+ * The assistant's daily allowance. Checked before the model is called, so a
+ * refusal costs no tokens off the shared free tier.
+ */
+export async function checkAssistantQuota(userId: string): Promise<{ denial: QuotaDenial | null; used: number; limit: number | null }> {
+  const [{ plan }, used] = await Promise.all([activePlan(userId), assistantMessagesToday(userId)]);
+  const limit = plan.entitlements.assistantMessagesPerDay;
+  if (!atLimit(used, limit)) return { denial: null, used, limit };
+  return {
+    denial: {
+      error: `You have used today's ${limit} assistant messages on the ${plan.name} plan. Upgrade for more, or ask again tomorrow.`,
+      reason: "quota_exceeded",
+      limit,
+      used,
+      planId: plan.id,
+      upgrade: true,
+    },
+    used,
+    limit,
   };
 }
 

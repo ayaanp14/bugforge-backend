@@ -80,6 +80,10 @@ router.get("/me", requireAuth, async (req: any, res) => {
             : Math.max(0, entitlement.plan.entitlements.interviewsPerWeek - entitlement.usage.interviewsThisWeek),
         /** Bonus rounds from the roadmap's chests, spent only once the allowance above is. */
         bonusInterviews: entitlement.usage.interviewCredits,
+        assistantMessagesToday:
+          entitlement.plan.entitlements.assistantMessagesPerDay === null
+            ? null
+            : Math.max(0, entitlement.plan.entitlements.assistantMessagesPerDay - entitlement.usage.assistantMessagesToday),
         bugsToday:
           entitlement.plan.entitlements.bugsPerDay === null
             ? null

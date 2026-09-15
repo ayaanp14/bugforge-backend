@@ -117,6 +117,16 @@ function apiKey() {
   return key;
 }
 
+/**
+ * The provider as configured, for the other caller of it (services/assistant.ts):
+ * same host, same key, same default model, so there is one place to point at
+ * a different deployment. Read at call time — the key is checked lazily so a
+ * process without one still boots for everything that is not the model.
+ */
+export function providerConfig() {
+  return { baseUrl: BASE_URL, model: MODEL, key: apiKey() };
+}
+
 async function postCompletion(
   body: Record<string, unknown>,
   controller = new AbortController(),
