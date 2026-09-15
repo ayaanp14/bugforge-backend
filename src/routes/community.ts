@@ -10,7 +10,10 @@ import { invalidateDashboard, querySocialCounts } from "../services/dashboard.js
 
 const router = Router();
 
-const AUTHOR_SELECT = { id: true, name: true, username: true, avatar_url: true, xp: true } as const;
+// The chests an author has opened ride on every author: the feed wears
+// them as a frame round the avatar and a count beside the rank. Keys only
+// — a handful of short rows per author, joined by the same query.
+const AUTHOR_SELECT = { id: true, name: true, username: true, avatar_url: true, xp: true, roadmapRewards: { select: { tierKey: true } } } as const;
 
 /** Feed page size cap. */
 const MAX_TAKE = 30;

@@ -342,7 +342,10 @@ router.post("/start", requireAuth, async (req: any, res) => {
     // Metered before anything is created, so a refusal leaves no orphan row and
     // costs no model call.
     const quota = await checkInterviewQuota(req.user.userId);
-    if (quota) return res.status(402).json(quota);
+    if (quota.denial) return res.status(402).json(quota.denial);
+    // Past the plan's weekly allowance on a roadmap credit: the row is
+    // stamped so the credit, not the allowance, is what this round spends.
+    const onCredit = quota.onCredit;
 
     const config = configFrom(template);
     const budget = questionBudgetFor(config.difficulty);
@@ -373,6 +376,7 @@ router.post("/start", requireAuth, async (req: any, res) => {
           // by /voice/complete.
           questionBudget: estimatedQuestions(durationMin),
           mode: "voice",
+          onCredit,
           provider: provider.id,
           realtimeModel: provider.model,
           durationLimitSec: durationMin * 60,
@@ -434,6 +438,7 @@ router.post("/start", requireAuth, async (req: any, res) => {
         savedInterviewId: template.id,
         status: "started",
         questionBudget: budget,
+        onCredit,
         // The opening question's cost, on the row from the start.
         promptTokens: usage.promptTokens,
         cachedTokens: usage.cachedTokens,

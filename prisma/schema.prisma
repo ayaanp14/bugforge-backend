@@ -374,6 +374,12 @@ model MockInterviewSession {
   // session, and the default keeps every row written before voice existed
   // reading as what it actually was.
   mode             String    @default("written") // "written" | "voice"
+  /// Admitted on a roadmap chest's bonus session rather than the plan's
+  /// weekly allowance. Set at /start when the allowance was already used;
+  /// the credit is spent only if the round is actually sat (the same rule
+  /// the weekly count applies), so a round abandoned at the door costs
+  /// nothing — services/entitlements.ts counts these rows to find the balance.
+  onCredit         Boolean   @default(false)
   /// Realtime vendor, kept as data so a second provider needs no migration.
   provider         String?
   /// The exact realtime model that ran, for cost attribution after the fact.
@@ -1203,10 +1209,13 @@ model RoadmapTier {
   title    String
   blurb    String         @db.Text
   position Int
-  /// What the chest at the tier's end pays when every stage in it is
-  /// cleared. Content, like the title — set in scripts/roadmap-data.ts.
-  rewardXp Int            @default(0)
-  stages   RoadmapStage[]
+  /// What the chest at the tier's end holds when every stage in it is
+  /// cleared: XP (paid to `xp` and `rating` alike) and bonus mock-interview
+  /// sessions, spent only once the plan's weekly allowance is used up.
+  /// Content, like the title — set in scripts/roadmap-data.ts.
+  rewardXp         Int            @default(0)
+  interviewCredits Int            @default(0)
+  stages           RoadmapStage[]
 
   @@index([position])
 }
@@ -1220,12 +1229,16 @@ model RoadmapTier {
 /// id, and with no relation to RoadmapTier: a re-seed that prunes a tier must
 /// not take an earned reward with it.
 model RoadmapReward {
-  id       String   @id @default(cuid())
-  userId   String
-  tierKey  String   @db.VarChar(40)
-  xp       Int
-  earnedAt DateTime @default(now())
-  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id               String   @id @default(cuid())
+  userId           String
+  tierKey          String   @db.VarChar(40)
+  xp               Int
+  /// Bonus mock interviews this chest granted. The balance is derived, never
+  /// counted down: granted here, spent by MockInterviewSession rows opened
+  /// `onCredit` that were actually sat (services/entitlements.ts).
+  interviewCredits Int      @default(0)
+  earnedAt         DateTime @default(now())
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, tierKey])
 }

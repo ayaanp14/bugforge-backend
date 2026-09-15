@@ -106,6 +106,8 @@ export const ME_SELECT = {
   rating: true,
   provider: true,
   createdAt: true,
+  /** The roadmap chests opened — the frame and the flair the account wears. */
+  roadmapRewards: { select: { tierKey: true } },
   stats: {
     select: {
       problemsSolved: true,
@@ -192,6 +194,7 @@ export async function getDashboardUser(userId: string) {
         bugsXp: true,
         rating: true,
         createdAt: true,
+        roadmapRewards: { select: { tierKey: true } },
         stats: {
           select: {
             problemsSolved: true,

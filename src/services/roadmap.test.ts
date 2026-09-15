@@ -14,8 +14,8 @@ const problem = (id: string) => ({ id, slug: id, title: id, difficulty: "easy" }
 
 const road: RoadDefinition = {
   tiers: [
-    { id: "foundations", title: "Foundations", blurb: "", rewardXp: 30 },
-    { id: "core", title: "Core techniques", blurb: "", rewardXp: 50 },
+    { id: "foundations", title: "Foundations", blurb: "", rewardXp: 30, interviewCredits: 1 },
+    { id: "core", title: "Core techniques", blurb: "", rewardXp: 50, interviewCredits: 1 },
   ],
   stages: [
     { id: "arrays", key: "arrays", title: "Arrays", blurb: "", tier: "foundations", icon: "layers", required: 2, problems: [problem("a1"), problem("a2"), problem("a3")] },
@@ -60,7 +60,7 @@ describe("clearedTiers", () => {
   });
 
   it("never clears a tier with no stages behind it", () => {
-    const empty: RoadDefinition = { tiers: [{ id: "ghost", title: "Ghost", blurb: "", rewardXp: 10 }], stages: [] };
+    const empty: RoadDefinition = { tiers: [{ id: "ghost", title: "Ghost", blurb: "", rewardXp: 10, interviewCredits: 0 }], stages: [] };
     assert.deepEqual(clearedTiers(empty, walk(empty, new Set())), []);
   });
 });

@@ -44,16 +44,21 @@ export interface RoadmapStageSeed {
 /**
  * The tiers, in the order the road is drawn.
  *
- * `rewardXp` is what the chest at the tier's end pays, once, when every
- * stage of the tier is cleared (services/roadmap.ts). Rising with the tier
- * so the last chest is worth the walk — and small next to what the solves
- * themselves pay (10–30 each), since the road is the guide, not the prize.
+ * What the chest at the tier's end holds, once, when every stage of the
+ * tier is cleared (services/roadmap.ts): `rewardXp` is paid to the
+ * account's XP and its rating alike — rising with the tier so the last
+ * chest is worth the walk, and small next to what the solves themselves pay
+ * (10–30 each), since the road is the guide, not the prize; `interviewCredits`
+ * are bonus mock-interview sessions, spent only after the plan's weekly
+ * allowance is used up, which on the free plan (two a week) is the one thing
+ * here worth money. Opening a chest also lifts the fog one tier further down
+ * the road — that part is the map's rule, not content.
  */
-export const ROADMAP_TIERS: Array<{ key: RoadmapTier; title: string; blurb: string; rewardXp: number }> = [
-  { key: "foundations", title: "Foundations", blurb: "Arrays, hashing, strings and the two-pointer family. Everything after this assumes them.", rewardXp: 30 },
-  { key: "core", title: "Core techniques", blurb: "The data structures and search patterns most interview rounds are built on.", rewardXp: 50 },
-  { key: "advanced", title: "Advanced", blurb: "Bits, recursion and graphs — where the harder rounds start.", rewardXp: 80 },
-  { key: "mastery", title: "Mastery", blurb: "Dynamic programming and the capstone: the problems that decide the final round.", rewardXp: 100 },
+export const ROADMAP_TIERS: Array<{ key: RoadmapTier; title: string; blurb: string; rewardXp: number; interviewCredits: number }> = [
+  { key: "foundations", title: "Foundations", blurb: "Arrays, hashing, strings and the two-pointer family. Everything after this assumes them.", rewardXp: 30, interviewCredits: 1 },
+  { key: "core", title: "Core techniques", blurb: "The data structures and search patterns most interview rounds are built on.", rewardXp: 50, interviewCredits: 1 },
+  { key: "advanced", title: "Advanced", blurb: "Bits, recursion and graphs — where the harder rounds start.", rewardXp: 80, interviewCredits: 2 },
+  { key: "mastery", title: "Mastery", blurb: "Dynamic programming and the capstone: the problems that decide the final round.", rewardXp: 100, interviewCredits: 3 },
 ];
 
 /** The stages, in road order. */
@@ -422,6 +427,9 @@ export function validateRoadmap(): string[] {
   for (const tier of ROADMAP_TIERS) {
     if (!Number.isInteger(tier.rewardXp) || tier.rewardXp <= 0) {
       throw new Error(`roadmap: tier "${tier.key}" pays ${tier.rewardXp} XP — a chest must be worth something`);
+    }
+    if (!Number.isInteger(tier.interviewCredits) || tier.interviewCredits < 0) {
+      throw new Error(`roadmap: tier "${tier.key}" grants ${tier.interviewCredits} interview credits`);
     }
   }
   const keys = new Set<string>();

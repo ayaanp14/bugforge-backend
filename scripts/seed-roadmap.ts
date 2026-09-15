@@ -30,7 +30,7 @@ async function main() {
   const unpublished = slugs.filter((s) => bySlug.get(s) && !bySlug.get(s)!.isPublished);
 
   console.log(`${ROADMAP_TIERS.length} tiers · ${ROADMAP.length} stages · ${slugs.length} problems`);
-  console.log(`  chests: ${ROADMAP_TIERS.map((t) => `${t.key} +${t.rewardXp} XP`).join(" · ")}`);
+  console.log(`  chests: ${ROADMAP_TIERS.map((t) => `${t.key} +${t.rewardXp} XP, ${t.interviewCredits} interview${t.interviewCredits === 1 ? "" : "s"}`).join(" · ")}`);
   for (const stage of ROADMAP) {
     const ramp = stage.problems.map((p) => bySlug.get(p)?.difficulty?.[0] ?? "?").join("");
     console.log(`  ${stage.key.padEnd(16)} ${ramp}  ${stage.required} of ${stage.problems.length} to clear`);
@@ -49,8 +49,8 @@ async function main() {
   for (const [position, tier] of ROADMAP_TIERS.entries()) {
     const row = await prisma.roadmapTier.upsert({
       where: { key: tier.key },
-      create: { key: tier.key, title: tier.title, blurb: tier.blurb, position, rewardXp: tier.rewardXp },
-      update: { title: tier.title, blurb: tier.blurb, position, rewardXp: tier.rewardXp },
+      create: { key: tier.key, title: tier.title, blurb: tier.blurb, position, rewardXp: tier.rewardXp, interviewCredits: tier.interviewCredits },
+      update: { title: tier.title, blurb: tier.blurb, position, rewardXp: tier.rewardXp, interviewCredits: tier.interviewCredits },
       select: { id: true },
     });
     tierIds.set(tier.key, row.id);

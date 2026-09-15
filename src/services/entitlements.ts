@@ -1,3 +1,4 @@
+import { Prisma } from "@prisma/client";
 import { prisma } from "../lib/prisma.js";
 import { FREE_PLAN, OWNER_PLAN, isOwnerEmail, planFor, type Plan } from "../lib/plans.js";
 
@@ -16,8 +17,11 @@ import { FREE_PLAN, OWNER_PLAN, isOwnerEmail, planFor, type Plan } from "../lib/
  */
 
 export interface Usage {
+  /** Rounds sat this week on the plan's own allowance — bonus rounds not included. */
   interviewsThisWeek: number;
   bugsToday: number;
+  /** Bonus mock interviews still unspent: the roadmap's chests, less the rounds sat on them. */
+  interviewCredits: number;
 }
 
 export interface Entitlement {
@@ -90,18 +94,43 @@ export async function activePlan(userId: string, email?: string | null): Promise
  * closed round, a written round with at least one answer on disk, or a
  * spoken round whose audio actually began.
  */
+/** A round that was actually sat — see `interviewsThisWeek`. */
+const SAT_ROUND: Prisma.MockInterviewSessionWhereInput = {
+  OR: [
+    { status: "completed" },
+    { questions: { some: { userAnswer: { not: null } } } },
+    { mode: "voice", startedAt: { not: null } },
+  ],
+};
+
 export async function interviewsThisWeek(userId: string): Promise<number> {
   return prisma.mockInterviewSession.count({
     where: {
       userId,
       createdAt: { gte: weekStart() },
-      OR: [
-        { status: "completed" },
-        { questions: { some: { userAnswer: { not: null } } } },
-        { mode: "voice", startedAt: { not: null } },
-      ],
+      // A round admitted on a roadmap credit is not the plan's to count; it
+      // has its own ledger below.
+      onCredit: false,
+      ...SAT_ROUND,
     },
   });
+}
+
+/**
+ * Bonus mock interviews from the roadmap's chests, less the ones spent.
+ *
+ * Derived, like every quota here: granted is the sum over RoadmapReward
+ * rows, spent is the count of rounds opened `onCredit` that were actually
+ * sat — the same rule the weekly count applies, so a bonus round abandoned
+ * at the door is not a bonus round lost. No counter to keep in step with
+ * either table.
+ */
+export async function interviewCredits(userId: string): Promise<number> {
+  const [granted, spent] = await Promise.all([
+    prisma.roadmapReward.aggregate({ where: { userId }, _sum: { interviewCredits: true } }),
+    prisma.mockInterviewSession.count({ where: { userId, onCredit: true, ...SAT_ROUND } }),
+  ]);
+  return Math.max(0, (granted._sum.interviewCredits ?? 0) - spent);
 }
 
 /**
@@ -123,15 +152,16 @@ export async function bugsToday(userId: string): Promise<number> {
 }
 
 export async function entitlementFor(userId: string): Promise<Entitlement> {
-  const [{ plan, currentPeriodEnd }, interviews, bugs] = await Promise.all([
+  const [{ plan, currentPeriodEnd }, interviews, bugs, credits] = await Promise.all([
     activePlan(userId),
     interviewsThisWeek(userId),
     bugsToday(userId),
+    interviewCredits(userId),
   ]);
   return {
     plan,
     currentPeriodEnd,
-    usage: { interviewsThisWeek: interviews, bugsToday: bugs },
+    usage: { interviewsThisWeek: interviews, bugsToday: bugs, interviewCredits: credits },
   };
 }
 
@@ -151,21 +181,31 @@ const atLimit = (used: number, limit: number | null) => limit !== null && used >
 /**
  * Interview quota. Checked before a session row is created, so a refusal costs
  * nothing and leaves no half-started interview behind.
+ *
+ * The plan's allowance goes first; once it is used up a roadmap credit, if
+ * there is one, admits the round `onCredit` — the caller stamps the session
+ * so the credit is spent by that row and not by the plan's count. Only then
+ * is the candidate refused.
  */
-export async function checkInterviewQuota(userId: string): Promise<QuotaDenial | null> {
+export async function checkInterviewQuota(userId: string): Promise<{ denial: QuotaDenial | null; onCredit: boolean }> {
   const [{ plan }, used] = await Promise.all([activePlan(userId), interviewsThisWeek(userId)]);
   const limit = plan.entitlements.interviewsPerWeek;
-  if (!atLimit(used, limit)) return null;
+  if (!atLimit(used, limit)) return { denial: null, onCredit: false };
+
+  if ((await interviewCredits(userId)) > 0) return { denial: null, onCredit: true };
 
   return {
-    error:
-      `You have used all ${limit} mock interviews on the ${plan.name} plan this week. ` +
-      `Upgrade for more, or come back on Monday.`,
-    reason: "quota_exceeded",
-    limit,
-    used,
-    planId: plan.id,
-    upgrade: true,
+    denial: {
+      error:
+        `You have used all ${limit} mock interviews on the ${plan.name} plan this week. ` +
+        `Upgrade for more, clear a tier of the DSA roadmap for a bonus round, or come back on Monday.`,
+      reason: "quota_exceeded",
+      limit,
+      used,
+      planId: plan.id,
+      upgrade: true,
+    },
+    onCredit: false,
   };
 }
 

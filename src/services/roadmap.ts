@@ -44,8 +44,10 @@ export interface TierDefinition {
   id: string;
   title: string;
   blurb: string;
-  /** What the chest at the tier's end pays. */
+  /** What the chest at the tier's end pays, to XP and rating alike. */
   rewardXp: number;
+  /** Bonus mock-interview sessions the chest holds. */
+  interviewCredits: number;
 }
 
 export interface RoadDefinition {
@@ -100,6 +102,7 @@ export interface RoadmapBadge {
   tier: string;
   title: string;
   xp: number;
+  interviewCredits: number;
   earnedAt: Date | null;
 }
 
@@ -114,7 +117,7 @@ const DEFINITION_KEY = "roadmap:definition";
 export async function roadDefinition(): Promise<RoadDefinition> {
   const road = await cached(DEFINITION_KEY, 5 * 60 * 1000, async () => {
     const [tiers, stages] = await Promise.all([
-      prisma.roadmapTier.findMany({ orderBy: { position: "asc" }, select: { key: true, title: true, blurb: true, rewardXp: true } }),
+      prisma.roadmapTier.findMany({ orderBy: { position: "asc" }, select: { key: true, title: true, blurb: true, rewardXp: true, interviewCredits: true } }),
       prisma.roadmapStage.findMany({
         where: { isPublished: true },
         orderBy: { position: "asc" },
@@ -138,7 +141,7 @@ export async function roadDefinition(): Promise<RoadDefinition> {
       }),
     ]);
     return {
-      tiers: tiers.map((t) => ({ id: t.key, title: t.title, blurb: t.blurb, rewardXp: t.rewardXp })),
+      tiers: tiers.map((t) => ({ id: t.key, title: t.title, blurb: t.blurb, rewardXp: t.rewardXp, interviewCredits: t.interviewCredits })),
       stages: stages.map((s) => ({
         id: s.key,
         key: s.key,
@@ -237,22 +240,26 @@ export async function claimTierRewards(userId: string, road: RoadDefinition, sta
   const owed = earned.filter((key) => !paid.some((p) => p.tierKey === key));
   if (owed.length === 0) return [];
 
-  const opened: Array<{ tier: string; title: string; xp: number }> = [];
+  const opened: Array<{ tier: string; title: string; xp: number; interviewCredits: number }> = [];
   for (const key of owed) {
     const tier = road.tiers.find((t) => t.id === key)!;
     try {
       await prisma.$transaction(async (tx) => {
-        await tx.roadmapReward.create({ data: { userId, tierKey: key, xp: tier.rewardXp } });
-        // `xp` alone: the leaderboard and the profile total read it. The
-        // per-source buckets (questionsXp, bugsXp) are what the solves
-        // themselves pay, and a chest is neither.
-        await tx.user.update({ where: { id: userId }, data: { xp: { increment: tier.rewardXp } } });
+        await tx.roadmapReward.create({ data: { userId, tierKey: key, xp: tier.rewardXp, interviewCredits: tier.interviewCredits } });
+        // `xp` (the leaderboard and the profile total) and `rating` (the
+        // rank ladder — the Novice → Apprentice bar on the home hero), the
+        // way a first solve pays both. Not the per-source buckets
+        // (questionsXp, bugsXp): those are what the solves themselves pay,
+        // and a chest is neither. The interview credits are on the reward
+        // row, not the user: the balance is derived by counting
+        // (services/entitlements.ts), so there is nothing to keep in step.
+        await tx.user.update({ where: { id: userId }, data: { xp: { increment: tier.rewardXp }, rating: { increment: tier.rewardXp } } });
       });
     } catch (err) {
       if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") continue;
       throw err;
     }
-    opened.push({ tier: key, title: tier.title, xp: tier.rewardXp });
+    opened.push({ tier: key, title: tier.title, xp: tier.rewardXp, interviewCredits: tier.interviewCredits });
   }
   if (opened.length === 0) return [];
 
@@ -262,17 +269,20 @@ export async function claimTierRewards(userId: string, road: RoadDefinition, sta
 
   const last = road.tiers[road.tiers.length - 1]?.id;
   await Promise.all(
-    opened.map((reward) =>
-      createNotificationOnce(userId, {
+    opened.map((reward) => {
+      const sessions = reward.interviewCredits > 0
+        ? ` and ${reward.interviewCredits} bonus mock interview${reward.interviewCredits === 1 ? "" : "s"}`
+        : "";
+      return createNotificationOnce(userId, {
         type: `roadmap_tier_cleared:${reward.tier}`,
         title: reward.tier === last ? `The road is yours 🏆 +${reward.xp} XP` : `Chest opened: ${reward.title} 🎁 +${reward.xp} XP`,
         body:
           reward.tier === last
-            ? `Every stage of the DSA roadmap is cleared. The last chest paid ${reward.xp} XP — share the win from the road.`
-            : `Every ${reward.title} stage is cleared, and the chest at the tier's end paid ${reward.xp} XP. Open it on the road to share the win.`,
+            ? `Every stage of the DSA roadmap is cleared. The last chest held ${reward.xp} XP${sessions} — your certificate and the win to share are on the road.`
+            : `Every ${reward.title} stage is cleared. The chest held ${reward.xp} XP${sessions}, and the road ahead is revealed a tier further. Open it on the road to share the win.`,
         href: "/roadmap",
-      }),
-    ),
+      });
+    }),
   );
   return opened;
 }
@@ -316,6 +326,7 @@ export async function roadmapBadgesFor(userId: string): Promise<RoadmapBadge[]> 
     tier: tier.id,
     title: tier.title,
     xp: tier.rewardXp,
+    interviewCredits: tier.interviewCredits,
     earnedAt: rewards.find((r) => r.tierKey === tier.id)?.earnedAt ?? null,
   }));
 }
