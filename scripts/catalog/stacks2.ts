@@ -7,7 +7,7 @@
  * JS solutions must be Node 12-safe: no ??, ?., replaceAll, .at() or .flat().
  */
 
-import { bool, describe, fmtIntArr, fmtIntMat, fmtStrArr, pick, ri, shuffle, type CatalogProblem, type Rng } from "./types.js";
+import { bool, describe, explain, fmtIntArr, fmtIntMat, fmtStrArr, pick, ri, shuffle, type CatalogProblem, type Rng } from "./types.js";
 
 const randArr = (rng: Rng, n: number, lo: number, hi: number) =>
   Array.from({ length: n }, () => ri(rng, lo, hi));
@@ -104,6 +104,19 @@ export const STACKS2_PROBLEMS: CatalogProblem[] = [
         }
         return { input: fmtStrArr(ops), expectedOutput: String(ref(ops)) };
       },
+      editorial: explain({
+        idea: "The record is a stack: `C` pops, `+` and `D` read the top one or two entries and push a new value, a number pushes itself.",
+        steps: [
+          "For each operation, push the number, push `top + second`, push `2 · top`, or pop.",
+          "Return the sum of the stack.",
+        ],
+        why: "Every operation refers only to the most recent scores, so last-in-first-out is exactly the right structure.",
+        time: "O(n)",
+        space: "O(n)",
+        pitfalls: [
+          "`+` needs two entries on the stack; the input guarantees they exist.",
+        ],
+      }),
       solutions: {
         python: `def calPoints(operations) -> int:\n    stack = []\n    for op in operations:\n        if op == "+":\n            stack.append(stack[-1] + stack[-2])\n        elif op == "D":\n            stack.append(2 * stack[-1])\n        elif op == "C":\n            stack.pop()\n        else:\n            stack.append(int(op))\n    return sum(stack)`,
         javascript: `var calPoints = function(operations) {\n    const stack = [];\n    for (let i = 0; i < operations.length; i++) {\n        const op = operations[i];\n        if (op === "+") stack.push(stack[stack.length - 1] + stack[stack.length - 2]);\n        else if (op === "D") stack.push(2 * stack[stack.length - 1]);\n        else if (op === "C") stack.pop();\n        else stack.push(parseInt(op, 10));\n    }\n    let sum = 0;\n    for (let i = 0; i < stack.length; i++) sum += stack[i];\n    return sum;\n};`,
@@ -168,6 +181,19 @@ export const STACKS2_PROBLEMS: CatalogProblem[] = [
         const s = randStr(rng, 1, 40, alphabet);
         return { input: `"${s}"`, expectedOutput: ref(s) };
       },
+      editorial: explain({
+        idea: "Push characters onto a stack, cancelling when the incoming character is the same letter as the top in the opposite case.",
+        steps: [
+          "For each `ch`: if the stack top differs from `ch` but matches it case-insensitively, pop; otherwise push.",
+          "Join the stack.",
+        ],
+        why: "Deleting a bad pair can expose a new bad pair around it, which the stack handles automatically since the top is always the most recent surviving character. The final string is unique, so any deletion order works.",
+        time: "O(n)",
+        space: "O(n)",
+        pitfalls: [
+          "`stack[-1] != ch` is needed so `aa` is not treated as a bad pair.",
+        ],
+      }),
       solutions: {
         python: `def makeGood(s: str) -> str:\n    stack = []\n    for ch in s:\n        if stack and stack[-1] != ch and stack[-1].lower() == ch.lower():\n            stack.pop()\n        else:\n            stack.append(ch)\n    return "".join(stack)`,
         javascript: `var makeGood = function(s) {\n    const stack = [];\n    for (let i = 0; i < s.length; i++) {\n        const c = s.charAt(i);\n        if (stack.length > 0) {\n            const top = stack[stack.length - 1];\n            if (top !== c && top.toLowerCase() === c.toLowerCase()) {\n                stack.pop();\n                continue;\n            }\n        }\n        stack.push(c);\n    }\n    return stack.join("");\n};`,
@@ -226,6 +252,19 @@ export const STACKS2_PROBLEMS: CatalogProblem[] = [
         const s = randStr(rng, 1, 40, "()");
         return { input: `"${s}"`, expectedOutput: String(ref(s)) };
       },
+      editorial: explain({
+        idea: "Count unmatched opens as you scan; a `)` with none waiting needs an insertion immediately, and every open left at the end needs one too.",
+        steps: [
+          "For `(`, increment `open`; for `)`, decrement if `open > 0`, else increment `needed`.",
+          "Return `needed + open`.",
+        ],
+        why: "An unmatched `)` can only be fixed by a `(` before it, and each leftover `(` by a `)` after it; the greedy match never wastes a bracket.",
+        time: "O(n)",
+        space: "O(1)",
+        pitfalls: [
+          "A stack is unnecessary — only its size matters.",
+        ],
+      }),
       solutions: {
         python: `def minAddToMakeValid(s: str) -> int:\n    open_count = 0\n    needed = 0\n    for ch in s:\n        if ch == "(":\n            open_count += 1\n        elif open_count > 0:\n            open_count -= 1\n        else:\n            needed += 1\n    return needed + open_count`,
         javascript: `var minAddToMakeValid = function(s) {\n    let open = 0, needed = 0;\n    for (let i = 0; i < s.length; i++) {\n        if (s.charAt(i) === "(") open++;\n        else if (open > 0) open--;\n        else needed++;\n    }\n    return needed + open;\n};`,
@@ -292,6 +331,20 @@ export const STACKS2_PROBLEMS: CatalogProblem[] = [
         const s = randStr(rng, 1, 40, rng() < 0.5 ? "()ab" : "(())abc");
         return { input: `"${s}"`, expectedOutput: ref(s) };
       },
+      editorial: explain({
+        idea: "One pass with a stack of unmatched `(` indices: a `)` with an empty stack is marked for removal on the spot, and every index left on the stack is removed at the end.",
+        steps: [
+          "Walk the string; push indices of `(`, pop on `)` when possible, else mark the `)`.",
+          "Mark every index remaining on the stack.",
+          "Rebuild the string from the unmarked characters.",
+        ],
+        why: "The greedy matching pairs each `)` with the nearest available `(`; the brackets left unmatched are exactly the minimum set whose removal balances the string.",
+        time: "O(n)",
+        space: "O(n)",
+        pitfalls: [
+          "Letters are never removed; only the marked brackets are dropped.",
+        ],
+      }),
       solutions: {
         python: `def minRemoveToMakeValid(s: str) -> str:\n    keep = [True] * len(s)\n    open_idx = []\n    for i, ch in enumerate(s):\n        if ch == "(":\n            open_idx.append(i)\n        elif ch == ")":\n            if open_idx:\n                open_idx.pop()\n            else:\n                keep[i] = False\n    for i in open_idx:\n        keep[i] = False\n    return "".join(ch for ch, k in zip(s, keep) if k)`,
         javascript: `var minRemoveToMakeValid = function(s) {\n    const keep = [];\n    for (let i = 0; i < s.length; i++) keep.push(true);\n    const openIdx = [];\n    for (let i = 0; i < s.length; i++) {\n        const c = s.charAt(i);\n        if (c === "(") openIdx.push(i);\n        else if (c === ")") {\n            if (openIdx.length > 0) openIdx.pop();\n            else keep[i] = false;\n        }\n    }\n    for (let i = 0; i < openIdx.length; i++) keep[openIdx[i]] = false;\n    let out = "";\n    for (let i = 0; i < s.length; i++) {\n        if (keep[i]) out += s.charAt(i);\n    }\n    return out;\n};`,
@@ -352,6 +405,20 @@ export const STACKS2_PROBLEMS: CatalogProblem[] = [
         const s = randBalanced(rng, ri(rng, 1, 15));
         return { input: `"${s}"`, expectedOutput: String(ref(s)) };
       },
+      editorial: explain({
+        idea: "Keep a stack of partial scores, one frame per open bracket; on `)`, pop the frame and add `1` (if it was empty) or `2 · inner` to the frame below.",
+        steps: [
+          "Start `stack = [0]`.",
+          "On `(`, push 0; on `)`, pop `inner` and add `1 if inner == 0 else 2 · inner` to the new top.",
+          "Return `stack[0]`.",
+        ],
+        why: "Each frame accumulates the `A + B` sum of its siblings; closing a frame applies the `(A)` doubling rule, with the base case `()` scoring 1.",
+        time: "O(n)",
+        space: "O(n)",
+        pitfalls: [
+          "The O(1)-space trick counts each `()` as `2^depth` where depth is the number of enclosing brackets.",
+        ],
+      }),
       solutions: {
         python: `def scoreOfParentheses(s: str) -> int:\n    stack = [0]\n    for ch in s:\n        if ch == "(":\n            stack.append(0)\n        else:\n            inner = stack.pop()\n            stack[-1] += 1 if inner == 0 else 2 * inner\n    return stack[0]`,
         javascript: `var scoreOfParentheses = function(s) {\n    const stack = [0];\n    for (let i = 0; i < s.length; i++) {\n        if (s.charAt(i) === "(") {\n            stack.push(0);\n        } else {\n            const inner = stack.pop();\n            const value = inner === 0 ? 1 : 2 * inner;\n            stack[stack.length - 1] += value;\n        }\n    }\n    return stack[0];\n};`,
@@ -432,6 +499,20 @@ export const STACKS2_PROBLEMS: CatalogProblem[] = [
         }
         return { input: `"${s}"`, expectedOutput: bool(ref(s)) };
       },
+      editorial: explain({
+        idea: "Every insertion places `abc` contiguously, so a valid string always contains an `abc` to delete. Push characters; on `c`, the top two must be `a`, `b`.",
+        steps: [
+          "For `a` or `b`, push.",
+          "For `c`, pop two and require them to be `b` then `a`; fail otherwise.",
+          "Return whether the stack is empty.",
+        ],
+        why: "Reversing the insertion process by repeatedly deleting `abc` works in any order, and the stack finds the leftmost-completed one each time.",
+        time: "O(n)",
+        space: "O(n)",
+        pitfalls: [
+          "A length not divisible by 3 can be rejected immediately.",
+        ],
+      }),
       solutions: {
         python: `def isValid(s: str) -> bool:\n    stack = []\n    for ch in s:\n        if ch == "c":\n            if len(stack) < 2:\n                return False\n            b = stack.pop()\n            a = stack.pop()\n            if a != "a" or b != "b":\n                return False\n        else:\n            stack.append(ch)\n    return len(stack) == 0`,
         javascript: `var isValid = function(s) {\n    const stack = [];\n    for (let i = 0; i < s.length; i++) {\n        const c = s.charAt(i);\n        if (c === "c") {\n            if (stack.length < 2) return false;\n            const b = stack.pop();\n            const a = stack.pop();\n            if (a !== "a" || b !== "b") return false;\n        } else {\n            stack.push(c);\n        }\n    }\n    return stack.length === 0;\n};`,
@@ -496,6 +577,19 @@ export const STACKS2_PROBLEMS: CatalogProblem[] = [
         });
         return { input: fmtStrArr(logs), expectedOutput: String(ref(logs)) };
       },
+      editorial: explain({
+        idea: "Only the depth matters: `x/` adds one, `../` subtracts one (floored at zero), `./` does nothing.",
+        steps: [
+          "Walk the log updating `depth`.",
+          "Return `depth`.",
+        ],
+        why: "The number of `../` needed to return to the root equals the current depth, and the floor at zero models `../` at the root being a no-op.",
+        time: "O(n)",
+        space: "O(1)",
+        pitfalls: [
+          "Folder names are irrelevant.",
+        ],
+      }),
       solutions: {
         python: `def minOperations(logs) -> int:\n    depth = 0\n    for op in logs:\n        if op == "../":\n            depth = max(0, depth - 1)\n        elif op != "./":\n            depth += 1\n    return depth`,
         javascript: `var minOperations = function(logs) {\n    let depth = 0;\n    for (let i = 0; i < logs.length; i++) {\n        const op = logs[i];\n        if (op === "../") {\n            if (depth > 0) depth--;\n        } else if (op !== "./") {\n            depth++;\n        }\n    }\n    return depth;\n};`,
@@ -562,6 +656,18 @@ export const STACKS2_PROBLEMS: CatalogProblem[] = [
         const target = Array.from(chosen).sort((a, b) => a - b);
         return { input: `${fmtIntArr(target)}\n${n}`, expectedOutput: fmtStrArr(ref(target, n)) };
       },
+      editorial: explain({
+        idea: "Walk the stream `1..n` with a pointer into `target`: every value that is not the next target is pushed and popped, the target value is pushed, and stop after the last target.",
+        steps: [
+          "For each `want` in `target`: while `value < want`, emit `Push, Pop` and increment; then emit `Push` and increment.",
+        ],
+        why: "The stream is consumed in order and `target` is increasing, so each intermediate number must be pushed and immediately removed. Stopping at the last target avoids useless trailing operations.",
+        time: "O(n)",
+        space: "O(n) for the output",
+        pitfalls: [
+          "Iterating all the way to `n` emits extra pushes after the target is complete.",
+        ],
+      }),
       solutions: {
         python: `def buildArray(target, n: int):\n    out = []\n    value = 1\n    for want in target:\n        while value < want:\n            out.append("Push")\n            out.append("Pop")\n            value += 1\n        out.append("Push")\n        value += 1\n    return out`,
         javascript: `var buildArray = function(target, n) {\n    const out = [];\n    let value = 1;\n    for (let i = 0; i < target.length; i++) {\n        while (value < target[i]) {\n            out.push("Push");\n            out.push("Pop");\n            value++;\n        }\n        out.push("Push");\n        value++;\n    }\n    return out;\n};`,
@@ -622,6 +728,19 @@ export const STACKS2_PROBLEMS: CatalogProblem[] = [
         const prices = randArr(rng, ri(rng, 1, 40), 1, rng() < 0.5 ? 10 : 1000);
         return { input: fmtIntArr(prices), expectedOutput: fmtIntArr(ref(prices)) };
       },
+      editorial: explain({
+        idea: "Next smaller-or-equal element with a monotonic stack: indices waiting for a discount sit on the stack with increasing prices; a new price pays off every index whose price is at least as large.",
+        steps: [
+          "For each `i`, while the stack top's price `>= prices[i]`, pop `j` and set `out[j] = prices[j] - prices[i]`.",
+          "Push `i`.",
+        ],
+        why: "The first later index with a price ≤ the current one is by definition the first that pops it; indices never popped keep their full price.",
+        time: "O(n)",
+        space: "O(n)",
+        pitfalls: [
+          "Use `>=`, not `>` — an equal price counts as a discount.",
+        ],
+      }),
       solutions: {
         python: `def finalPrices(prices):\n    out = list(prices)\n    stack = []\n    for i, price in enumerate(prices):\n        while stack and prices[stack[-1]] >= price:\n            j = stack.pop()\n            out[j] = prices[j] - price\n        stack.append(i)\n    return out`,
         javascript: `var finalPrices = function(prices) {\n    const out = prices.slice();\n    const stack = [];\n    for (let i = 0; i < prices.length; i++) {\n        while (stack.length > 0 && prices[stack[stack.length - 1]] >= prices[i]) {\n            const j = stack.pop();\n            out[j] = prices[j] - prices[i];\n        }\n        stack.push(i);\n    }\n    return out;\n};`,
@@ -696,6 +815,20 @@ export const STACKS2_PROBLEMS: CatalogProblem[] = [
         const arr = randArr(rng, ri(rng, 1, 100), 1, rng() < 0.5 ? 12 : 10000);
         return { input: fmtIntArr(arr), expectedOutput: String(ref(arr)) };
       },
+      editorial: explain({
+        idea: "Count how many subarrays each element is the minimum of: `left[i]` choices of start, `right[i]` choices of end, found with two monotonic-stack passes using strict/non-strict comparisons to break ties.",
+        steps: [
+          "Left pass: pop while `arr[top] > arr[i]`; `left[i] = i - top` (or `i + 1`).",
+          "Right pass: pop while `arr[top] >= arr[i]`; `right[i] = top - i` (or `n - i`).",
+          "Sum `arr[i] · left[i] · right[i]` modulo `10⁹ + 7`.",
+        ],
+        why: "`left[i]` is the distance to the previous strictly smaller element and `right[i]` the distance to the next smaller-or-equal one, so `arr[i]` is the minimum of exactly `left[i] · right[i]` subarrays with equal minima assigned to exactly one index.",
+        time: "O(n)",
+        space: "O(n)",
+        pitfalls: [
+          "Using the same comparison on both sides double-counts subarrays with repeated minima.",
+        ],
+      }),
       solutions: {
         python: `def sumSubarrayMins(arr) -> int:\n    MOD = 1000000007\n    n = len(arr)\n    left = [0] * n\n    right = [0] * n\n    stack = []\n    for i in range(n):\n        while stack and arr[stack[-1]] > arr[i]:\n            stack.pop()\n        left[i] = i + 1 if not stack else i - stack[-1]\n        stack.append(i)\n    stack = []\n    for i in range(n - 1, -1, -1):\n        while stack and arr[stack[-1]] >= arr[i]:\n            stack.pop()\n        right[i] = n - i if not stack else stack[-1] - i\n        stack.append(i)\n    total = 0\n    for i in range(n):\n        total = (total + arr[i] * left[i] * right[i]) % MOD\n    return total`,
         javascript: `var sumSubarrayMins = function(arr) {\n    const MOD = 1000000007;\n    const n = arr.length;\n    const left = [], right = [];\n    for (let i = 0; i < n; i++) {\n        left.push(0);\n        right.push(0);\n    }\n    let stack = [];\n    for (let i = 0; i < n; i++) {\n        while (stack.length > 0 && arr[stack[stack.length - 1]] > arr[i]) stack.pop();\n        left[i] = stack.length === 0 ? i + 1 : i - stack[stack.length - 1];\n        stack.push(i);\n    }\n    stack = [];\n    for (let i = n - 1; i >= 0; i--) {\n        while (stack.length > 0 && arr[stack[stack.length - 1]] >= arr[i]) stack.pop();\n        right[i] = stack.length === 0 ? n - i : stack[stack.length - 1] - i;\n        stack.push(i);\n    }\n    let total = 0;\n    for (let i = 0; i < n; i++) {\n        total = (total + arr[i] * left[i] * right[i]) % MOD;\n    }\n    return total;\n};`,
@@ -757,6 +890,20 @@ export const STACKS2_PROBLEMS: CatalogProblem[] = [
         const nums = randArr(rng, ri(rng, 1, 40), -hi, hi);
         return { input: fmtIntArr(nums), expectedOutput: bool(ref(nums)) };
       },
+      editorial: explain({
+        idea: "Scan from the right with a decreasing stack of candidates for the `3`; values popped by a larger element are candidates for the `2` — keep the largest — and any element smaller than that is the `1`.",
+        steps: [
+          "For `x` from right to left: if `x < third`, return `true`.",
+          "While the stack top is less than `x`, pop it into `third`.",
+          "Push `x`.",
+        ],
+        why: "`third` is always the largest value that has a larger element to its right (the `3` that popped it), so the first `x` below `third` completes a `1 < 2 < 3` pattern with `i < j < k`.",
+        time: "O(n)",
+        space: "O(n)",
+        pitfalls: [
+          "Initialise `third` to `-∞` so nothing matches before a real `2` exists.",
+        ],
+      }),
       solutions: {
         python: `def find132pattern(nums) -> bool:\n    stack = []\n    third = float("-inf")\n    for x in reversed(nums):\n        if x < third:\n            return True\n        while stack and stack[-1] < x:\n            third = stack.pop()\n        stack.append(x)\n    return False`,
         javascript: `var find132pattern = function(nums) {\n    const stack = [];\n    let third = -Infinity;\n    for (let i = nums.length - 1; i >= 0; i--) {\n        if (nums[i] < third) return true;\n        while (stack.length > 0 && stack[stack.length - 1] < nums[i]) {\n            third = stack.pop();\n        }\n        stack.push(nums[i]);\n    }\n    return false;\n};`,
@@ -819,6 +966,19 @@ export const STACKS2_PROBLEMS: CatalogProblem[] = [
         const nums = randArr(rng, ri(rng, 1, 40), 0, rng() < 0.5 ? 12 : 50000);
         return { input: fmtIntArr(nums), expectedOutput: String(ref(nums)) };
       },
+      editorial: explain({
+        idea: "Only a strictly decreasing prefix can supply the widest ramp's left end. Build that stack of candidate starts, then scan from the right popping every start the current value can reach.",
+        steps: [
+          "Forward pass: push `i` when `nums[i]` is smaller than the current stack top's value.",
+          "Backward pass over `j`: while `nums[top] <= nums[j]`, pop and update `best = j - top`.",
+        ],
+        why: "A later, larger start is dominated by an earlier, smaller one, so the decreasing prefix holds every useful left end; scanning `j` from the right guarantees the first `j` that reaches a start gives its maximal width.",
+        time: "O(n)",
+        space: "O(n)",
+        pitfalls: [
+          "Each start is popped once, so the two passes are linear despite the nested loop.",
+        ],
+      }),
       solutions: {
         python: `def maxWidthRamp(nums) -> int:\n    stack = []\n    for i, x in enumerate(nums):\n        if not stack or nums[stack[-1]] > x:\n            stack.append(i)\n    best = 0\n    for j in range(len(nums) - 1, -1, -1):\n        while stack and nums[stack[-1]] <= nums[j]:\n            i = stack.pop()\n            best = max(best, j - i)\n    return best`,
         javascript: `var maxWidthRamp = function(nums) {\n    const stack = [];\n    for (let i = 0; i < nums.length; i++) {\n        if (stack.length === 0 || nums[stack[stack.length - 1]] > nums[i]) stack.push(i);\n    }\n    let best = 0;\n    for (let j = nums.length - 1; j >= 0; j--) {\n        while (stack.length > 0 && nums[stack[stack.length - 1]] <= nums[j]) {\n            const i = stack.pop();\n            if (j - i > best) best = j - i;\n        }\n    }\n    return best;\n};`,
@@ -887,6 +1047,20 @@ export const STACKS2_PROBLEMS: CatalogProblem[] = [
         const n = roll < 0.25 ? ri(rng, 1, 99) : roll < 0.6 ? ri(rng, 1, 1000000) : ri(rng, 1, 2147483647);
         return { input: String(n), expectedOutput: String(ref(n)) };
       },
+      editorial: explain({
+        idea: "Next permutation on the digit string: find the pivot from the right, swap it with the smallest larger digit after it, reverse the suffix, then check the 32-bit bound.",
+        steps: [
+          "Find the rightmost `i` with `d[i] < d[i+1]`; return -1 if none.",
+          "Find the rightmost `j > i` with `d[j] > d[i]` and swap.",
+          "Reverse `d[i+1:]` and rebuild the number, returning -1 if it exceeds `2³¹ - 1`.",
+        ],
+        why: "The suffix after the pivot is the largest arrangement of its digits, so the next number must raise the pivot minimally and then minimise the suffix, which is what the swap-and-reverse does.",
+        time: "O(digits)",
+        space: "O(digits)",
+        pitfalls: [
+          "The overflow check must happen even though the input fits.",
+        ],
+      }),
       solutions: {
         python: `def nextGreaterElement(n: int) -> int:\n    digits = [int(c) for c in str(n)]\n    i = len(digits) - 2\n    while i >= 0 and digits[i] >= digits[i + 1]:\n        i -= 1\n    if i < 0:\n        return -1\n    j = len(digits) - 1\n    while digits[j] <= digits[i]:\n        j -= 1\n    digits[i], digits[j] = digits[j], digits[i]\n    digits[i + 1:] = reversed(digits[i + 1:])\n    value = 0\n    for d in digits:\n        value = value * 10 + d\n        if value > 2147483647:\n            return -1\n    return value`,
         javascript: `var nextGreaterElement = function(n) {\n    const digits = String(n).split("").map(Number);\n    let i = digits.length - 2;\n    while (i >= 0 && digits[i] >= digits[i + 1]) i--;\n    if (i < 0) return -1;\n    let j = digits.length - 1;\n    while (digits[j] <= digits[i]) j--;\n    const t = digits[i];\n    digits[i] = digits[j];\n    digits[j] = t;\n    const tail = digits.slice(i + 1).reverse();\n    const out = digits.slice(0, i + 1).concat(tail);\n    let value = 0;\n    for (let k = 0; k < out.length; k++) {\n        value = value * 10 + out[k];\n        if (value > 2147483647) return -1;\n    }\n    return value;\n};`,
@@ -961,6 +1135,19 @@ export const STACKS2_PROBLEMS: CatalogProblem[] = [
         }
         return { input: `${fmtIntArr(pushed)}\n${fmtIntArr(popped)}`, expectedOutput: bool(ref(pushed, popped)) };
       },
+      editorial: explain({
+        idea: "Simulate: push in order and, after each push, pop greedily while the top matches the next expected pop. The sequences are valid iff the stack ends empty.",
+        steps: [
+          "For each `x` in `pushed`, push it, then pop while `top == popped[j]`, advancing `j`.",
+          "Return whether the stack is empty.",
+        ],
+        why: "If the top equals the next value to pop and you do not pop it now, it becomes buried and can never be popped in the right order, so the greedy pop is forced and the simulation is exact.",
+        time: "O(n)",
+        space: "O(n)",
+        pitfalls: [
+          "Values are distinct, so matching by value is unambiguous.",
+        ],
+      }),
       solutions: {
         python: `def validateStackSequences(pushed, popped) -> bool:\n    stack = []\n    j = 0\n    for x in pushed:\n        stack.append(x)\n        while stack and j < len(popped) and stack[-1] == popped[j]:\n            stack.pop()\n            j += 1\n    return len(stack) == 0`,
         javascript: `var validateStackSequences = function(pushed, popped) {\n    const stack = [];\n    let j = 0;\n    for (let i = 0; i < pushed.length; i++) {\n        stack.push(pushed[i]);\n        while (stack.length > 0 && j < popped.length && stack[stack.length - 1] === popped[j]) {\n            stack.pop();\n            j++;\n        }\n    }\n    return stack.length === 0;\n};`,
@@ -1025,6 +1212,20 @@ export const STACKS2_PROBLEMS: CatalogProblem[] = [
         const s = rng() < 0.3 ? randBalanced(rng, ri(rng, 0, 20)) : randStr(rng, 0, 40, "()");
         return { input: `"${s}"`, expectedOutput: String(ref(s)) };
       },
+      editorial: explain({
+        idea: "Keep a stack of indices seeded with `-1` as the base of the current valid run; push `(` indices, pop on `)`, and either record `i - newTop` or, if the stack empties, push `i` as the new base.",
+        steps: [
+          "Start `stack = [-1]`.",
+          "On `(`, push `i`; on `)`, pop; if empty, push `i`; else `best = max(best, i - stack[-1])`.",
+          "Return `best`.",
+        ],
+        why: "The top of the stack after a successful pop is the index just before the current valid run began, so `i - top` is its length. An unmatched `)` resets the base because nothing valid can span it.",
+        time: "O(n)",
+        space: "O(n)",
+        pitfalls: [
+          "The two-counter O(1) approach scans both directions to handle `(()` and `())` symmetrically.",
+        ],
+      }),
       solutions: {
         python: `def longestValidParentheses(s: str) -> int:\n    stack = [-1]\n    best = 0\n    for i, ch in enumerate(s):\n        if ch == "(":\n            stack.append(i)\n        else:\n            stack.pop()\n            if not stack:\n                stack.append(i)\n            else:\n                best = max(best, i - stack[-1])\n    return best`,
         javascript: `var longestValidParentheses = function(s) {\n    const stack = [-1];\n    let best = 0;\n    for (let i = 0; i < s.length; i++) {\n        if (s.charAt(i) === "(") {\n            stack.push(i);\n        } else {\n            stack.pop();\n            if (stack.length === 0) {\n                stack.push(i);\n            } else {\n                const len = i - stack[stack.length - 1];\n                if (len > best) best = len;\n            }\n        }\n    }\n    return best;\n};`,
@@ -1118,6 +1319,19 @@ export const STACKS2_PROBLEMS: CatalogProblem[] = [
         }
         return { input: `"${s}"`, expectedOutput: String(ref(s)) };
       },
+      editorial: explain({
+        idea: "Push each term onto a stack — negated after `-`, multiplied or divided into the previous top after `*` / `/` — and sum the stack at the end.",
+        steps: [
+          "Accumulate digits into `num`; on an operator (or the end), apply the *previous* operator: push `±num`, or replace the top with `top * num` / `top / num` truncated toward zero.",
+          "Reset `num`, remember the operator, and finally return `sum(stack)`.",
+        ],
+        why: "Multiplication and division bind tighter, so applying them immediately to the last term respects precedence; addition and subtraction are deferred to the final sum.",
+        time: "O(n)",
+        space: "O(n)",
+        pitfalls: [
+          "Python's `//` floors, so a negative top needs `abs(a) // num` with the sign restored.",
+        ],
+      }),
       solutions: {
         python: `def calculate(s: str) -> int:\n    stack = []\n    num = 0\n    sign = "+"\n    for i, ch in enumerate(s):\n        if ch.isdigit():\n            num = num * 10 + int(ch)\n        if (ch != " " and not ch.isdigit()) or i == len(s) - 1:\n            if sign == "+":\n                stack.append(num)\n            elif sign == "-":\n                stack.append(-num)\n            elif sign == "*":\n                stack.append(stack.pop() * num)\n            else:\n                a = stack.pop()\n                q = abs(a) // num\n                stack.append(q if a >= 0 else -q)\n            sign = ch\n            num = 0\n    return sum(stack)`,
         javascript: `var calculate = function(s) {\n    const stack = [];\n    let num = 0;\n    let sign = "+";\n    for (let i = 0; i < s.length; i++) {\n        const c = s.charAt(i);\n        const isDigit = c >= "0" && c <= "9";\n        if (isDigit) num = num * 10 + (c.charCodeAt(0) - 48);\n        if ((c !== " " && !isDigit) || i === s.length - 1) {\n            if (sign === "+") {\n                stack.push(num);\n            } else if (sign === "-") {\n                stack.push(-num);\n            } else if (sign === "*") {\n                stack.push(stack.pop() * num);\n            } else {\n                const q = stack.pop() / num;\n                stack.push(q < 0 ? Math.ceil(q) : Math.floor(q));\n            }\n            sign = c;\n            num = 0;\n        }\n    }\n    let total = 0;\n    for (let i = 0; i < stack.length; i++) total += stack[i];\n    return total;\n};`,
@@ -1189,6 +1403,20 @@ export const STACKS2_PROBLEMS: CatalogProblem[] = [
         if (s === "") s = "a";
         return { input: `"${s}"`, expectedOutput: ref(s) };
       },
+      editorial: explain({
+        idea: "Keep a stack of character buffers, one per bracket level; `(` opens a new buffer, `)` reverses the top buffer and appends it to the one below.",
+        steps: [
+          "Start with one empty buffer.",
+          "On `(`, push a new buffer; on `)`, pop, reverse, and extend the new top; otherwise append the letter.",
+          "Join the base buffer.",
+        ],
+        why: "Innermost pairs close first, so their contents are reversed before being reversed again by an enclosing pair — exactly the specified semantics.",
+        time: "O(n²) worst case, O(n) typical",
+        space: "O(n)",
+        pitfalls: [
+          "The linear trick precomputes matching brackets and walks the string flipping direction at each bracket.",
+        ],
+      }),
       solutions: {
         python: `def reverseParentheses(s: str) -> str:\n    stack = [[]]\n    for ch in s:\n        if ch == "(":\n            stack.append([])\n        elif ch == ")":\n            inner = stack.pop()\n            inner.reverse()\n            stack[-1].extend(inner)\n        else:\n            stack[-1].append(ch)\n    return "".join(stack[0])`,
         javascript: `var reverseParentheses = function(s) {\n    const stack = [[]];\n    for (let i = 0; i < s.length; i++) {\n        const c = s.charAt(i);\n        if (c === "(") {\n            stack.push([]);\n        } else if (c === ")") {\n            const inner = stack.pop();\n            inner.reverse();\n            const top = stack[stack.length - 1];\n            for (let j = 0; j < inner.length; j++) top.push(inner[j]);\n        } else {\n            stack[stack.length - 1].push(c);\n        }\n    }\n    return stack[0].join("");\n};`,
@@ -1247,6 +1475,18 @@ export const STACKS2_PROBLEMS: CatalogProblem[] = [
         const k = ri(rng, 0, n - 1);
         return { input: `${fmtIntArr(tickets)}\n${k}`, expectedOutput: String(ref(tickets, k)) };
       },
+      editorial: explain({
+        idea: "Count each person's contribution directly: someone at or before `k` buys at most `tickets[k]` before `k` finishes, someone after `k` at most `tickets[k] - 1`.",
+        steps: [
+          "Sum `min(tickets[i], tickets[k])` for `i <= k` and `min(tickets[i], tickets[k] - 1)` for `i > k`.",
+        ],
+        why: "Person `k` finishes during their `tickets[k]`-th round; everyone ahead has had exactly that many turns, everyone behind one fewer.",
+        time: "O(n)",
+        space: "O(1)",
+        pitfalls: [
+          "Simulating the queue is also correct but `O(n · max(tickets))`.",
+        ],
+      }),
       solutions: {
         python: `def timeRequiredToBuy(tickets, k: int) -> int:\n    time = 0\n    for i, want in enumerate(tickets):\n        if i <= k:\n            time += min(want, tickets[k])\n        else:\n            time += min(want, tickets[k] - 1)\n    return time`,
         javascript: `var timeRequiredToBuy = function(tickets, k) {\n    let time = 0;\n    for (let i = 0; i < tickets.length; i++) {\n        if (i <= k) time += Math.min(tickets[i], tickets[k]);\n        else time += Math.min(tickets[i], tickets[k] - 1);\n    }\n    return time;\n};`,
@@ -1311,6 +1551,19 @@ export const STACKS2_PROBLEMS: CatalogProblem[] = [
         const deck = shuffle(rng, Array.from(values));
         return { input: fmtIntArr(deck), expectedOutput: fmtIntArr(ref(deck)) };
       },
+      editorial: explain({
+        idea: "Run the reveal procedure on the slot indices `0..n-1` to learn the order in which positions are revealed, then fill those positions with the sorted values.",
+        steps: [
+          "Sort the deck and put `0..n-1` in a queue.",
+          "For each sorted value: pop a slot and assign the value; if slots remain, move the next slot to the back.",
+        ],
+        why: "The reveal order is a fixed permutation of positions independent of the card values, so assigning increasing values to positions in reveal order produces the required deck.",
+        time: "O(n log n)",
+        space: "O(n)",
+        pitfalls: [
+          "Do the rotate step only when the queue is non-empty after the pop.",
+        ],
+      }),
       solutions: {
         python: `from collections import deque\n\ndef deckRevealedIncreasing(deck):\n    ordered = sorted(deck)\n    slots = deque(range(len(deck)))\n    out = [0] * len(deck)\n    for value in ordered:\n        out[slots.popleft()] = value\n        if slots:\n            slots.append(slots.popleft())\n    return out`,
         javascript: `var deckRevealedIncreasing = function(deck) {\n    const sorted = deck.slice().sort(function(a, b) { return a - b; });\n    const slots = [];\n    for (let i = 0; i < deck.length; i++) slots.push(i);\n    const out = [];\n    for (let i = 0; i < deck.length; i++) out.push(0);\n    let head = 0;\n    for (let i = 0; i < sorted.length; i++) {\n        out[slots[head++]] = sorted[i];\n        if (head < slots.length) {\n            slots.push(slots[head++]);\n        }\n    }\n    return out;\n};`,
@@ -1376,6 +1629,20 @@ export const STACKS2_PROBLEMS: CatalogProblem[] = [
         const senate = randStr(rng, 1, 40, "RD");
         return { input: `"${senate}"`, expectedOutput: ref(senate) };
       },
+      editorial: explain({
+        idea: "A senator's best move is to ban the next opposing senator in turn order. Keep a queue of indices per party; the smaller index bans the other and rejoins with index `+ n` for the next round.",
+        steps: [
+          "Fill two queues with the indices of `R` and `D`.",
+          "While both are non-empty, pop one from each; the smaller index survives and is re-pushed as `i + n`.",
+          "Return the party with senators left.",
+        ],
+        why: "Banning the nearest upcoming opponent removes the most imminent threat, and adding `n` preserves round order so the simulation is exact.",
+        time: "O(n)",
+        space: "O(n)",
+        pitfalls: [
+          "Re-pushing without the `+ n` offset breaks the round ordering.",
+        ],
+      }),
       solutions: {
         python: `from collections import deque\n\ndef predictPartyVictory(senate: str) -> str:\n    n = len(senate)\n    radiant = deque(i for i, ch in enumerate(senate) if ch == "R")\n    dire = deque(i for i, ch in enumerate(senate) if ch == "D")\n    while radiant and dire:\n        r = radiant.popleft()\n        d = dire.popleft()\n        if r < d:\n            radiant.append(r + n)\n        else:\n            dire.append(d + n)\n    return "Radiant" if radiant else "Dire"`,
         javascript: `var predictPartyVictory = function(senate) {\n    const n = senate.length;\n    const radiant = [], dire = [];\n    for (let i = 0; i < n; i++) {\n        if (senate.charAt(i) === "R") radiant.push(i);\n        else dire.push(i);\n    }\n    let r = 0, d = 0;\n    while (r < radiant.length && d < dire.length) {\n        const ri = radiant[r++];\n        const di = dire[d++];\n        if (ri < di) radiant.push(ri + n);\n        else dire.push(di + n);\n    }\n    return r < radiant.length ? "Radiant" : "Dire";\n};`,
@@ -1437,6 +1704,20 @@ export const STACKS2_PROBLEMS: CatalogProblem[] = [
         const sandwiches = randArr(rng, n, 0, 1);
         return { input: `${fmtIntArr(students)}\n${fmtIntArr(sandwiches)}`, expectedOutput: String(ref(students, sandwiches)) };
       },
+      editorial: explain({
+        idea: "Rotating the queue never changes which preferences remain, so count how many students want each kind and serve sandwiches from the top while someone wants it.",
+        steps: [
+          "Count students wanting 0 and 1.",
+          "Walk the sandwich stack: stop at the first kind nobody wants; otherwise serve and decrement.",
+          "Return `n - served`.",
+        ],
+        why: "If any student wants the top sandwich, the queue will eventually rotate that student to the front; if none does, the process stalls forever.",
+        time: "O(n)",
+        space: "O(1)",
+        pitfalls: [
+          "The queue's order is irrelevant — only the counts matter.",
+        ],
+      }),
       solutions: {
         python: `def countStudents(students, sandwiches) -> int:\n    want = [0, 0]\n    for s in students:\n        want[s] += 1\n    served = 0\n    for kind in sandwiches:\n        if want[kind] == 0:\n            break\n        want[kind] -= 1\n        served += 1\n    return len(students) - served`,
         javascript: `var countStudents = function(students, sandwiches) {\n    const want = [0, 0];\n    for (let i = 0; i < students.length; i++) want[students[i]]++;\n    let served = 0;\n    for (let i = 0; i < sandwiches.length; i++) {\n        if (want[sandwiches[i]] === 0) break;\n        want[sandwiches[i]]--;\n        served++;\n    }\n    return students.length - served;\n};`,
@@ -1496,6 +1777,19 @@ export const STACKS2_PROBLEMS: CatalogProblem[] = [
         const s = randStr(rng, 1, 40, alphabet);
         return { input: `"${s}"`, expectedOutput: String(ref(s)) };
       },
+      editorial: explain({
+        idea: "Push characters on a stack, cancelling `B` on `A` and `D` on `C`; the final stack size is the answer.",
+        steps: [
+          "For each `ch`, pop if it completes `AB` or `CD` with the top; else push.",
+          "Return the stack length.",
+        ],
+        why: "Removal order does not affect the final length, and the stack always removes a pair as soon as it forms, exposing any new pair underneath.",
+        time: "O(n)",
+        space: "O(n)",
+        pitfalls: [
+          "Other letters simply stay on the stack and block matches across them.",
+        ],
+      }),
       solutions: {
         python: `def minLength(s: str) -> int:\n    stack = []\n    for ch in s:\n        if stack and ((ch == "B" and stack[-1] == "A") or (ch == "D" and stack[-1] == "C")):\n            stack.pop()\n        else:\n            stack.append(ch)\n    return len(stack)`,
         javascript: `var minLength = function(s) {\n    const stack = [];\n    for (let i = 0; i < s.length; i++) {\n        const c = s.charAt(i);\n        const top = stack.length > 0 ? stack[stack.length - 1] : "";\n        if ((c === "B" && top === "A") || (c === "D" && top === "C")) stack.pop();\n        else stack.push(c);\n    }\n    return stack.length;\n};`,
@@ -1564,6 +1858,19 @@ export const STACKS2_PROBLEMS: CatalogProblem[] = [
         }
         return { input: `"${s}"`, expectedOutput: ref(s) };
       },
+      editorial: explain({
+        idea: "Each star deletes the most recently kept character — a stack pop.",
+        steps: [
+          "Push letters; pop on `*`.",
+          "Join what remains.",
+        ],
+        why: "The closest non-star character to the left of a star is always the current stack top.",
+        time: "O(n)",
+        space: "O(n)",
+        pitfalls: [
+          "The input guarantees every star has a character to remove.",
+        ],
+      }),
       solutions: {
         python: `def removeStars(s: str) -> str:\n    stack = []\n    for ch in s:\n        if ch == "*":\n            stack.pop()\n        else:\n            stack.append(ch)\n    return "".join(stack)`,
         javascript: `var removeStars = function(s) {\n    const stack = [];\n    for (let i = 0; i < s.length; i++) {\n        if (s.charAt(i) === "*") stack.pop();\n        else stack.push(s.charAt(i));\n    }\n    return stack.join("");\n};`,
@@ -1625,6 +1932,19 @@ export const STACKS2_PROBLEMS: CatalogProblem[] = [
         const nums = randArr(rng, ri(rng, 1, 40), -1000, 1000);
         return { input: fmtIntArr(nums), expectedOutput: String(ref(nums)) };
       },
+      editorial: explain({
+        idea: "Fix the left end and extend right, keeping a running min and max; each extension adds `max - min` in O(1).",
+        steps: [
+          "For each `i`, set `lo = hi = nums[i]`.",
+          "For each `j >= i`, update `lo`, `hi` and add `hi - lo`.",
+        ],
+        why: "Every subarray is visited exactly once, and its range is maintained incrementally as it grows.",
+        time: "O(n²)",
+        space: "O(1)",
+        pitfalls: [
+          "For O(n), compute Σ subarray maximums minus Σ subarray minimums with two monotonic-stack passes.",
+        ],
+      }),
       solutions: {
         python: `def subArrayRanges(nums) -> int:\n    total = 0\n    n = len(nums)\n    for i in range(n):\n        lo = hi = nums[i]\n        for j in range(i, n):\n            lo = min(lo, nums[j])\n            hi = max(hi, nums[j])\n            total += hi - lo\n    return total`,
         javascript: `var subArrayRanges = function(nums) {\n    let total = 0;\n    for (let i = 0; i < nums.length; i++) {\n        let lo = nums[i], hi = nums[i];\n        for (let j = i; j < nums.length; j++) {\n            if (nums[j] < lo) lo = nums[j];\n            if (nums[j] > hi) hi = nums[j];\n            total += hi - lo;\n        }\n    }\n    return total;\n};`,
@@ -1682,6 +2002,19 @@ export const STACKS2_PROBLEMS: CatalogProblem[] = [
         const arr = shuffle(rng, Array.from({ length: n }, (_, i) => i));
         return { input: fmtIntArr(arr), expectedOutput: String(ref(arr)) };
       },
+      editorial: explain({
+        idea: "A chunk can end at `i` exactly when the prefix holds the values `0..i`, which for a permutation means the running maximum equals `i`.",
+        steps: [
+          "Sweep with `running = max(running, arr[i])`.",
+          "Count every `i` where `running == i`.",
+        ],
+        why: "A permutation prefix of length `i + 1` with maximum `i` must contain exactly `0..i`, so it sorts into place independently of the rest; cutting at every such point maximises the count.",
+        time: "O(n)",
+        space: "O(1)",
+        pitfalls: [
+          "For non-permutation inputs the general version compares prefix max with suffix min.",
+        ],
+      }),
       solutions: {
         python: `def maxChunksToSorted(arr) -> int:\n    chunks = 0\n    running = -1\n    for i, x in enumerate(arr):\n        running = max(running, x)\n        if running == i:\n            chunks += 1\n    return chunks`,
         javascript: `var maxChunksToSorted = function(arr) {\n    let chunks = 0, running = -1;\n    for (let i = 0; i < arr.length; i++) {\n        if (arr[i] > running) running = arr[i];\n        if (running === i) chunks++;\n    }\n    return chunks;\n};`,
@@ -1750,6 +2083,18 @@ export const STACKS2_PROBLEMS: CatalogProblem[] = [
         const heights = shuffle(rng, Array.from(values));
         return { input: fmtIntArr(heights), expectedOutput: fmtIntArr(ref(heights)) };
       },
+      editorial: explain({
+        idea: "Scan from the right with a stack of heights increasing from top to bottom; everyone popped by the current person is visible, and the remaining top (if any) is visible too and blocks the rest.",
+        steps: [
+          "For `i` from the end: pop while `top < heights[i]`, counting each; add 1 if the stack is non-empty; record the count; push `heights[i]`.",
+        ],
+        why: "The stack holds the people to the right who are not blocked by someone taller between them and `i`; those shorter than `i` are seen and then permanently hidden behind `i`, and the first taller one is seen but blocks everything beyond.",
+        time: "O(n)",
+        space: "O(n)",
+        pitfalls: [
+          "Heights are distinct, so strict comparisons are unambiguous.",
+        ],
+      }),
       solutions: {
         python: `def canSeePersonsCount(heights):\n    n = len(heights)\n    out = [0] * n\n    stack = []\n    for i in range(n - 1, -1, -1):\n        seen = 0\n        while stack and stack[-1] < heights[i]:\n            stack.pop()\n            seen += 1\n        if stack:\n            seen += 1\n        out[i] = seen\n        stack.append(heights[i])\n    return out`,
         javascript: `var canSeePersonsCount = function(heights) {\n    const n = heights.length;\n    const out = [];\n    for (let i = 0; i < n; i++) out.push(0);\n    const stack = [];\n    for (let i = n - 1; i >= 0; i--) {\n        let seen = 0;\n        while (stack.length > 0 && stack[stack.length - 1] < heights[i]) {\n            stack.pop();\n            seen++;\n        }\n        if (stack.length > 0) seen++;\n        out[i] = seen;\n        stack.push(heights[i]);\n    }\n    return out;\n};`,
@@ -1818,6 +2163,18 @@ export const STACKS2_PROBLEMS: CatalogProblem[] = [
         const part = randStr(rng, 1, 4, alphabet);
         return { input: `"${s}"\n"${part}"`, expectedOutput: ref(s, part) };
       },
+      editorial: explain({
+        idea: "Push characters onto a stack and, after each push, delete the top `|part|` characters if they spell `part`.",
+        steps: [
+          "For each `ch`, push it; if the stack's tail equals `part`, remove it.",
+        ],
+        why: "Removing the leftmost occurrence first is equivalent to removing each occurrence as soon as it is completed, and the stack detects occurrences that only appear after an earlier removal.",
+        time: "O(n · m)",
+        space: "O(n)",
+        pitfalls: [
+          "Repeatedly calling `replace` is simpler but quadratic in the number of removals.",
+        ],
+      }),
       solutions: {
         python: `def removeOccurrences(s: str, part: str) -> str:\n    stack = []\n    m = len(part)\n    for ch in s:\n        stack.append(ch)\n        if len(stack) >= m and "".join(stack[-m:]) == part:\n            del stack[-m:]\n    return "".join(stack)`,
         javascript: `var removeOccurrences = function(s, part) {\n    const stack = [];\n    const m = part.length;\n    for (let i = 0; i < s.length; i++) {\n        stack.push(s.charAt(i));\n        if (stack.length >= m) {\n            let match = true;\n            for (let j = 0; j < m; j++) {\n                if (stack[stack.length - m + j] !== part.charAt(j)) {\n                    match = false;\n                    break;\n                }\n            }\n            if (match) stack.length -= m;\n        }\n    }\n    return stack.join("");\n};`,
@@ -1878,6 +2235,19 @@ export const STACKS2_PROBLEMS: CatalogProblem[] = [
         const s = shuffle(rng, chars).join("");
         return { input: `"${s}"`, expectedOutput: String(ref(s)) };
       },
+      editorial: explain({
+        idea: "Cancel matched pairs; what remains is `]]…[[` with `u` unmatched of each, and one swap fixes two of them, so the answer is `⌈u / 2⌉`.",
+        steps: [
+          "Scan counting unmatched `[`; a `]` cancels one if available.",
+          "Return `(unmatched + 1) // 2`.",
+        ],
+        why: "After cancelling, the leftover is `u` closers followed by `u` openers; swapping the first `]` with the last `[` balances two pairs at once, and no swap can fix more than two.",
+        time: "O(n)",
+        space: "O(1)",
+        pitfalls: [
+          "The count of unmatched `]` equals the count of unmatched `[` because the totals are equal.",
+        ],
+      }),
       solutions: {
         python: `def minSwaps(s: str) -> int:\n    unmatched = 0\n    for ch in s:\n        if ch == "[":\n            unmatched += 1\n        elif unmatched > 0:\n            unmatched -= 1\n    return (unmatched + 1) // 2`,
         javascript: `var minSwaps = function(s) {\n    let unmatched = 0;\n    for (let i = 0; i < s.length; i++) {\n        if (s.charAt(i) === "[") unmatched++;\n        else if (unmatched > 0) unmatched--;\n    }\n    return Math.floor((unmatched + 1) / 2);\n};`,
@@ -1951,6 +2321,20 @@ export const STACKS2_PROBLEMS: CatalogProblem[] = [
         const y = ri(rng, 1, 10000);
         return { input: `"${s}"\n${x}\n${y}`, expectedOutput: String(ref(s, x, y)) };
       },
+      editorial: explain({
+        idea: "Remove the higher-scoring pair greedily first with a stack, then sweep the leftover removing the other pair.",
+        steps: [
+          "Pick `first` as the pair with the larger score.",
+          "Sweep `s` with a stack popping and scoring whenever `top + ch == first`.",
+          "Sweep the remaining string the same way for the other pair.",
+        ],
+        why: "Whenever an `ab` and a `ba` compete for the same letters, taking the more valuable one never reduces the total number of pairs removable, so greedy by value is optimal; each sweep removes every pair reachable after cancellations.",
+        time: "O(n)",
+        space: "O(n)",
+        pitfalls: [
+          "Letters other than `a`/`b` stay on the stack and separate segments.",
+        ],
+      }),
       solutions: {
         python: `def maximumGain(s: str, x: int, y: int) -> int:\n    first = "ab" if x >= y else "ba"\n    second = "ba" if x >= y else "ab"\n    total = 0\n\n    def sweep(text, pair, score):\n        nonlocal total\n        stack = []\n        for ch in text:\n            if stack and stack[-1] == pair[0] and ch == pair[1]:\n                stack.pop()\n                total += score\n            else:\n                stack.append(ch)\n        return "".join(stack)\n\n    rest = sweep(s, first, max(x, y))\n    sweep(rest, second, min(x, y))\n    return total`,
         javascript: `var maximumGain = function(s, x, y) {\n    const first = x >= y ? "ab" : "ba";\n    const second = x >= y ? "ba" : "ab";\n    let total = 0;\n    const sweep = function(input, pair, score) {\n        const stack = [];\n        for (let i = 0; i < input.length; i++) {\n            if (stack.length > 0 && stack[stack.length - 1] === pair.charAt(0) && input.charAt(i) === pair.charAt(1)) {\n                stack.pop();\n                total += score;\n            } else {\n                stack.push(input.charAt(i));\n            }\n        }\n        return stack.join("");\n    };\n    const rest = sweep(s, first, Math.max(x, y));\n    sweep(rest, second, Math.min(x, y));\n    return total;\n};`,
@@ -2009,6 +2393,19 @@ export const STACKS2_PROBLEMS: CatalogProblem[] = [
         const properties = Array.from({ length: ri(rng, 2, 40) }, () => [ri(rng, 1, hi), ri(rng, 1, hi)]);
         return { input: fmtIntMat(properties), expectedOutput: String(ref(properties)) };
       },
+      editorial: explain({
+        idea: "Sort by attack descending with ties by defense ascending, then sweep tracking the maximum defense seen; a character with lower defense than that is weak.",
+        steps: [
+          "Sort by `(-attack, defense)`.",
+          "For each character, if `defense < maxDefense`, count it weak; else update `maxDefense`.",
+        ],
+        why: "Every earlier character has strictly greater attack, except ties, which the ascending-defense tie-break places so that an equal-attack character never has a larger defense before it. A larger defense seen earlier therefore comes from a strictly stronger character.",
+        time: "O(n log n)",
+        space: "O(n)",
+        pitfalls: [
+          "Ties by defense *descending* would wrongly mark equal-attack characters weak.",
+        ],
+      }),
       solutions: {
         python: `def numberOfWeakCharacters(properties) -> int:\n    ordered = sorted(properties, key=lambda p: (-p[0], p[1]))\n    max_defense = 0\n    weak = 0\n    for _, defense in ordered:\n        if defense < max_defense:\n            weak += 1\n        else:\n            max_defense = defense\n    return weak`,
         javascript: `var numberOfWeakCharacters = function(properties) {\n    const sorted = properties.slice().sort(function(a, b) {\n        return a[0] !== b[0] ? b[0] - a[0] : a[1] - b[1];\n    });\n    let maxDefense = 0, weak = 0;\n    for (let i = 0; i < sorted.length; i++) {\n        if (sorted[i][1] < maxDefense) weak++;\n        else maxDefense = sorted[i][1];\n    }\n    return weak;\n};`,
@@ -2079,6 +2476,20 @@ export const STACKS2_PROBLEMS: CatalogProblem[] = [
         const k = ri(rng, 2, 6);
         return { input: `"${s}"\n${k}`, expectedOutput: ref(s, k) };
       },
+      editorial: explain({
+        idea: "Stack of `(character, run length)` frames; extend the top when the character matches, pop the frame when its length reaches `k`.",
+        steps: [
+          "For each `ch`: increment the top's count if it matches, else push `[ch, 1]`.",
+          "If the top's count equals `k`, pop it.",
+          "Expand the frames into the answer.",
+        ],
+        why: "Removing a run can join the runs on either side, and the frame stack keeps the left neighbour on top so the join is detected on the next character.",
+        time: "O(n)",
+        space: "O(n)",
+        pitfalls: [
+          "Storing individual characters instead of counts makes the `k`-check `O(k)` each time.",
+        ],
+      }),
       solutions: {
         python: `def removeDuplicates(s: str, k: int) -> str:\n    stack = []\n    for ch in s:\n        if stack and stack[-1][0] == ch:\n            stack[-1][1] += 1\n        else:\n            stack.append([ch, 1])\n        if stack[-1][1] == k:\n            stack.pop()\n    return "".join(ch * count for ch, count in stack)`,
         javascript: `var removeDuplicates = function(s, k) {\n    const chars = [], counts = [];\n    for (let i = 0; i < s.length; i++) {\n        const c = s.charAt(i);\n        if (chars.length > 0 && chars[chars.length - 1] === c) {\n            counts[counts.length - 1]++;\n        } else {\n            chars.push(c);\n            counts.push(1);\n        }\n        if (counts[counts.length - 1] === k) {\n            chars.pop();\n            counts.pop();\n        }\n    }\n    let out = "";\n    for (let i = 0; i < chars.length; i++) {\n        for (let j = 0; j < counts[i]; j++) out += chars[i];\n    }\n    return out;\n};`,
@@ -2147,6 +2558,20 @@ export const STACKS2_PROBLEMS: CatalogProblem[] = [
         const s = randStr(rng, 1, 40, rng() < 0.5 ? "()" : "())");
         return { input: `"${s}"`, expectedOutput: String(ref(s)) };
       },
+      editorial: explain({
+        idea: "Track `need`, the number of `)` still owed. `(` adds 2; if that makes `need` odd, a lone `)` was left dangling — insert one. A `)` with nothing owed needs a `(` inserted before it.",
+        steps: [
+          "On `(`: `need += 2`; if `need` is odd, `res += 1`, `need -= 1`.",
+          "On `)`: `need -= 1`; if `need < 0`, `res += 1` and `need = 1`.",
+          "Return `res + need`.",
+        ],
+        why: "Each `(` must be followed by exactly two `)`; an odd `need` when a new `(` starts means the previous group had a single `)`, which must be completed before the new group. A `)` with no open group requires an inserted `(`, after which one more `)` is still owed.",
+        time: "O(n)",
+        space: "O(1)",
+        pitfalls: [
+          "Whatever is owed at the end is appended, not forgotten.",
+        ],
+      }),
       solutions: {
         python: `def minInsertions(s: str) -> int:\n    res = 0\n    need = 0\n    for ch in s:\n        if ch == "(":\n            need += 2\n            if need % 2 == 1:\n                res += 1\n                need -= 1\n        else:\n            need -= 1\n            if need < 0:\n                res += 1\n                need = 1\n    return res + need`,
         javascript: `var minInsertions = function(s) {\n    let res = 0;\n    let need = 0;\n    for (let i = 0; i < s.length; i++) {\n        if (s.charAt(i) === "(") {\n            need += 2;\n            if (need % 2 === 1) {\n                res++;\n                need--;\n            }\n        } else {\n            need--;\n            if (need < 0) {\n                res++;\n                need = 1;\n            }\n        }\n    }\n    return res + need;\n};`,
@@ -2207,6 +2632,19 @@ export const STACKS2_PROBLEMS: CatalogProblem[] = [
         const heights = randArr(rng, ri(rng, 1, 40), 1, rng() < 0.5 ? 10 : 1000000000);
         return { input: fmtIntArr(heights), expectedOutput: fmtIntArr(ref(heights)) };
       },
+      editorial: explain({
+        idea: "Scan from the right keeping the tallest so far; a building has a view iff it is strictly taller than that maximum.",
+        steps: [
+          "For `i` from the end, if `heights[i] > tallest`, record `i` and update `tallest`.",
+          "Reverse the recorded indices.",
+        ],
+        why: "\"Every building to the right is strictly shorter\" is the same as \"taller than the running maximum of the suffix\".",
+        time: "O(n)",
+        space: "O(n) for the output",
+        pitfalls: [
+          "The rightmost building always has a view.",
+        ],
+      }),
       solutions: {
         python: `def findBuildings(heights):\n    out = []\n    tallest = 0\n    for i in range(len(heights) - 1, -1, -1):\n        if heights[i] > tallest:\n            out.append(i)\n            tallest = heights[i]\n    out.reverse()\n    return out`,
         javascript: `var findBuildings = function(heights) {\n    const out = [];\n    let tallest = 0;\n    for (let i = heights.length - 1; i >= 0; i--) {\n        if (heights[i] > tallest) {\n            out.push(i);\n            tallest = heights[i];\n        }\n    }\n    out.reverse();\n    return out;\n};`,

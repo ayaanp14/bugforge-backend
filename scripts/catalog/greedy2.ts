@@ -7,7 +7,7 @@
  * JS solutions must be Node 12-safe: no ??, ?., replaceAll, .at() or .flat().
  */
 
-import { bool, describe, fmtIntArr, fmtIntMat, fmtStrArr, ri, shuffle, type CatalogProblem, type Rng } from "./types.js";
+import { bool, describe, explain, fmtIntArr, fmtIntMat, fmtStrArr, ri, shuffle, type CatalogProblem, type Rng } from "./types.js";
 
 const randArr = (rng: Rng, n: number, lo: number, hi: number) =>
   Array.from({ length: n }, () => ri(rng, lo, hi));
@@ -59,6 +59,20 @@ export const GREEDY2_PROBLEMS: CatalogProblem[] = [
         const s = randArr(rng, ri(rng, 1, 40), 1, rng() < 0.6 ? 12 : 1000);
         return { input: `${fmtIntArr(g)}\n${fmtIntArr(s)}`, expectedOutput: String(ref(g, s)) };
       },
+      editorial: explain({
+        idea: "Sort both lists and walk them with two pointers, giving the smallest cookie that satisfies the least greedy remaining child.",
+        steps: [
+          "Sort `g` and `s`.",
+          "With `i` over children and `j` over cookies: if `s[j] >= g[i]`, content child `i` (advance `i`); always advance `j`.",
+          "Return `i`.",
+        ],
+        why: "If an optimal assignment gives a larger cookie to the least greedy child while a smaller sufficient one exists, swapping them keeps every child content — so the smallest sufficient cookie is never a bad choice, and a cookie too small for the least greedy child is useless to everyone.",
+        time: "O(n log n + m log m)",
+        space: "O(1) beyond the sorts",
+        pitfalls: [
+          "Advance the cookie pointer even when the cookie is skipped, or the loop stalls.",
+        ],
+      }),
       solutions: {
         python: `def findContentChildren(g, s) -> int:\n    greed = sorted(g)\n    sizes = sorted(s)\n    i = j = 0\n    while i < len(greed) and j < len(sizes):\n        if sizes[j] >= greed[i]:\n            i += 1\n        j += 1\n    return i`,
         javascript: `var findContentChildren = function(g, s) {\n    const greed = g.slice().sort(function(a, b) { return a - b; });\n    const sizes = s.slice().sort(function(a, b) { return a - b; });\n    let i = 0, j = 0;\n    while (i < greed.length && j < sizes.length) {\n        if (sizes[j] >= greed[i]) i++;\n        j++;\n    }\n    return i;\n};`,
@@ -115,6 +129,19 @@ export const GREEDY2_PROBLEMS: CatalogProblem[] = [
         const costs = Array.from({ length: n }, () => [ri(rng, 1, 1000), ri(rng, 1, 1000)]);
         return { input: fmtIntMat(costs), expectedOutput: String(ref(costs)) };
       },
+      editorial: explain({
+        idea: "Send everyone to B, then upgrade the `n` people whose A-minus-B difference is smallest (most negative). Sorting by that difference and splitting in half does it.",
+        steps: [
+          "Sort by `costA - costB`.",
+          "Sum `costA` for the first half and `costB` for the second half.",
+        ],
+        why: "Exactly `n` must go to A, so the choice is which `n`. Relative to an all-B baseline, sending person `i` to A changes the total by `costA - costB`; choosing the `n` smallest deltas minimises the total.",
+        time: "O(n log n)",
+        space: "O(n)",
+        pitfalls: [
+          "Picking each person's cheaper city independently ignores the exactly-`n` constraint.",
+        ],
+      }),
       solutions: {
         python: `def twoCitySchedCost(costs) -> int:\n    ordered = sorted(costs, key=lambda c: c[0] - c[1])\n    half = len(ordered) // 2\n    return sum(c[0] for c in ordered[:half]) + sum(c[1] for c in ordered[half:])`,
         javascript: `var twoCitySchedCost = function(costs) {\n    const sorted = costs.slice().sort(function(a, b) { return (a[0] - a[1]) - (b[0] - b[1]); });\n    const half = sorted.length / 2;\n    let total = 0;\n    for (let i = 0; i < sorted.length; i++) {\n        total += i < half ? sorted[i][0] : sorted[i][1];\n    }\n    return total;\n};`,
@@ -177,6 +204,19 @@ export const GREEDY2_PROBLEMS: CatalogProblem[] = [
         const people = shuffle(rng, queue.map((p) => p.slice()));
         return { input: fmtIntMat(people), expectedOutput: fmtIntMat(ref(people)) };
       },
+      editorial: explain({
+        idea: "Place tallest first: shorter people inserted later are invisible to them. Sort by height descending (ties by `k` ascending) and insert each person at index `k`.",
+        steps: [
+          "Sort by `(-h, k)`.",
+          "For each person, insert at position `k` in the output list.",
+        ],
+        why: "When a person is inserted, everyone already placed is at least as tall, so the count of taller-or-equal people in front is exactly the insertion index. Later, shorter insertions do not change that count.",
+        time: "O(n²)",
+        space: "O(n)",
+        pitfalls: [
+          "Ties must break by `k` ascending so equal heights are inserted in the right order.",
+        ],
+      }),
       solutions: {
         python: `def reconstructQueue(people):\n    ordered = sorted(people, key=lambda p: (-p[0], p[1]))\n    out = []\n    for person in ordered:\n        out.insert(person[1], person)\n    return out`,
         javascript: `var reconstructQueue = function(people) {\n    const sorted = people.slice().sort(function(a, b) {\n        return b[0] !== a[0] ? b[0] - a[0] : a[1] - b[1];\n    });\n    const out = [];\n    for (let i = 0; i < sorted.length; i++) {\n        out.splice(sorted[i][1], 0, sorted[i]);\n    }\n    return out;\n};`,
@@ -241,6 +281,20 @@ export const GREEDY2_PROBLEMS: CatalogProblem[] = [
         const arr = randArr(rng, n, 1, rng() < 0.7 ? 8 : 100000);
         return { input: fmtIntArr(arr), expectedOutput: String(ref(arr)) };
       },
+      editorial: explain({
+        idea: "Removing a value removes all its copies, so sort the frequencies descending and take the largest until at least half the array is gone.",
+        steps: [
+          "Count frequencies.",
+          "Sort them descending and accumulate; stop when the total reaches `n / 2`.",
+          "Return how many were taken.",
+        ],
+        why: "Each chosen value removes its full frequency; to reach the threshold with the fewest choices, take the largest frequencies first (exchange argument).",
+        time: "O(n log n)",
+        space: "O(n)",
+        pitfalls: [
+          "`n` is even by the constraints, so `n // 2` is exact.",
+        ],
+      }),
       solutions: {
         python: `def minSetSize(arr) -> int:\n    count = {}\n    for x in arr:\n        count[x] = count.get(x, 0) + 1\n    freqs = sorted(count.values(), reverse=True)\n    removed = chosen = 0\n    half = len(arr) // 2\n    for f in freqs:\n        removed += f\n        chosen += 1\n        if removed >= half:\n            break\n    return chosen`,
         javascript: `var minSetSize = function(arr) {\n    const count = new Map();\n    for (let i = 0; i < arr.length; i++) {\n        count.set(arr[i], (count.get(arr[i]) || 0) + 1);\n    }\n    const freqs = [];\n    count.forEach(function(c) { freqs.push(c); });\n    freqs.sort(function(a, b) { return b - a; });\n    let removed = 0, chosen = 0;\n    const half = arr.length / 2;\n    for (let i = 0; i < freqs.length; i++) {\n        removed += freqs[i];\n        chosen++;\n        if (removed >= half) break;\n    }\n    return chosen;\n};`,
@@ -300,6 +354,19 @@ export const GREEDY2_PROBLEMS: CatalogProblem[] = [
         const truckSize = ri(rng, 1, 1000);
         return { input: `${fmtIntMat(boxTypes)}\n${truckSize}`, expectedOutput: String(ref(boxTypes, truckSize)) };
       },
+      editorial: explain({
+        idea: "Every box occupies one slot, so fill the truck with the highest-units boxes first.",
+        steps: [
+          "Sort box types by units per box descending.",
+          "For each type, take `min(remaining, count)` boxes and add their units; stop when the truck is full.",
+        ],
+        why: "Replacing any loaded box with an unloaded box of higher units never reduces the total, so the greedy order is optimal (a fractional knapsack with unit weights).",
+        time: "O(n log n)",
+        space: "O(1) beyond the sort",
+        pitfalls: [
+          "The last type may be taken partially — clamp to the remaining slots.",
+        ],
+      }),
       solutions: {
         python: `def maximumUnits(boxTypes, truckSize: int) -> int:\n    ordered = sorted(boxTypes, key=lambda b: -b[1])\n    remaining = truckSize\n    total = 0\n    for count, units in ordered:\n        if remaining <= 0:\n            break\n        take = min(remaining, count)\n        total += take * units\n        remaining -= take\n    return total`,
         javascript: `var maximumUnits = function(boxTypes, truckSize) {\n    const sorted = boxTypes.slice().sort(function(a, b) { return b[1] - a[1]; });\n    let remaining = truckSize, total = 0;\n    for (let i = 0; i < sorted.length && remaining > 0; i++) {\n        const take = Math.min(remaining, sorted[i][0]);\n        total += take * sorted[i][1];\n        remaining -= take;\n    }\n    return total;\n};`,
@@ -360,6 +427,19 @@ export const GREEDY2_PROBLEMS: CatalogProblem[] = [
         const s = randStr(rng, 1, 40, rng() < 0.6 ? "abcde" : LOWER);
         return { input: `"${s}"`, expectedOutput: String(ref(s)) };
       },
+      editorial: explain({
+        idea: "Only the 26 frequencies matter. Process them keeping a set of used frequencies; while a frequency collides, decrement it (one deletion each) until it is free or zero.",
+        steps: [
+          "Count letters.",
+          "For each non-zero count `f`: while `f > 0` and `f` is used, `f -= 1` and count a deletion; then mark `f` used if positive.",
+        ],
+        why: "A collision must be resolved by lowering one of the two frequencies, and lowering to the next free value below is the cheapest fix; processing in descending order (or any order with the while loop) never forces extra deletions because a frequency dropped to zero removes the letter entirely, which is always allowed.",
+        time: "O(n + 26²)",
+        space: "O(26)",
+        pitfalls: [
+          "Dropping a frequency to 0 is fine — it just means deleting every copy of that letter.",
+        ],
+      }),
       solutions: {
         python: `def minDeletions(s: str) -> int:\n    count = [0] * 26\n    for ch in s:\n        count[ord(ch) - 97] += 1\n    used = set()\n    deletions = 0\n    for f in count:\n        while f > 0 and f in used:\n            f -= 1\n            deletions += 1\n        if f > 0:\n            used.add(f)\n    return deletions`,
         javascript: `var minDeletions = function(s) {\n    const count = new Array(26).fill(0);\n    for (let i = 0; i < s.length; i++) count[s.charCodeAt(i) - 97]++;\n    const used = new Set();\n    let deletions = 0;\n    for (let c = 0; c < 26; c++) {\n        let f = count[c];\n        while (f > 0 && used.has(f)) {\n            f--;\n            deletions++;\n        }\n        if (f > 0) used.add(f);\n    }\n    return deletions;\n};`,
@@ -419,6 +499,19 @@ export const GREEDY2_PROBLEMS: CatalogProblem[] = [
         const t = rng() < 0.3 ? shuffle(rng, s.split("")).join("") : randStr(rng, n, n, alphabet);
         return { input: `"${s}"\n"${t}"`, expectedOutput: String(ref(s, t)) };
       },
+      editorial: explain({
+        idea: "Count each letter in `s` minus its count in `t`; the sum of the positive differences is how many characters `t` must change.",
+        steps: [
+          "Add 1 per letter of `s`, subtract 1 per letter of `t` in a 26-slot array.",
+          "Sum the positive entries.",
+        ],
+        why: "Each letter `s` has more of must be written into `t` by one replacement, and because the lengths are equal the surplus letters in `t` supply exactly that many slots.",
+        time: "O(n)",
+        space: "O(1)",
+        pitfalls: [
+          "Summing absolute differences double-counts; positive (or negative) side only.",
+        ],
+      }),
       solutions: {
         python: `def minSteps(s: str, t: str) -> int:\n    count = [0] * 26\n    for ch in s:\n        count[ord(ch) - 97] += 1\n    for ch in t:\n        count[ord(ch) - 97] -= 1\n    return sum(c for c in count if c > 0)`,
         javascript: `var minSteps = function(s, t) {\n    const count = new Array(26).fill(0);\n    for (let i = 0; i < s.length; i++) count[s.charCodeAt(i) - 97]++;\n    for (let i = 0; i < t.length; i++) count[t.charCodeAt(i) - 97]--;\n    let steps = 0;\n    for (let c = 0; c < 26; c++) {\n        if (count[c] > 0) steps += count[c];\n    }\n    return steps;\n};`,
@@ -478,6 +571,19 @@ export const GREEDY2_PROBLEMS: CatalogProblem[] = [
         });
         return { input: fmtIntMat(intervals), expectedOutput: String(ref(intervals)) };
       },
+      editorial: explain({
+        idea: "Sort by left ascending, ties by right descending; then an interval survives only if its right endpoint exceeds the largest right endpoint seen so far.",
+        steps: [
+          "Sort by `(l, -r)`.",
+          "Walk with `right = -1`; when `r > right`, count it and set `right = r`.",
+        ],
+        why: "After sorting, every earlier interval starts at or before the current one, so the current interval is covered exactly when some earlier interval also reaches at least as far right. The tie-break puts the covering interval first when lefts are equal.",
+        time: "O(n log n)",
+        space: "O(1) beyond the sort",
+        pitfalls: [
+          "Ties by right *ascending* would count the covered interval before its cover.",
+        ],
+      }),
       solutions: {
         python: `def removeCoveredIntervals(intervals) -> int:\n    ordered = sorted(intervals, key=lambda p: (p[0], -p[1]))\n    count = 0\n    right = -1\n    for l, r in ordered:\n        if r > right:\n            count += 1\n            right = r\n    return count`,
         javascript: `var removeCoveredIntervals = function(intervals) {\n    const sorted = intervals.slice().sort(function(a, b) {\n        return a[0] !== b[0] ? a[0] - b[0] : b[1] - a[1];\n    });\n    let count = 0, right = -1;\n    for (let i = 0; i < sorted.length; i++) {\n        if (sorted[i][1] > right) {\n            count++;\n            right = sorted[i][1];\n        }\n    }\n    return count;\n};`,
@@ -537,6 +643,19 @@ export const GREEDY2_PROBLEMS: CatalogProblem[] = [
         const coins = ri(rng, 1, 100000);
         return { input: `${fmtIntArr(costs)}\n${coins}`, expectedOutput: String(ref(costs, coins)) };
       },
+      editorial: explain({
+        idea: "Every bar counts the same, so buy the cheapest bars first until the next one is unaffordable.",
+        steps: [
+          "Sort prices ascending.",
+          "Spend while `price <= coins`, counting bars.",
+        ],
+        why: "Swapping any bought bar for a cheaper unbought one never reduces the count, so the cheapest-first prefix is optimal.",
+        time: "O(n log n)",
+        space: "O(1) beyond the sort",
+        pitfalls: [
+          "Prices are bounded, so a counting sort makes it linear.",
+        ],
+      }),
       solutions: {
         python: `def maxIceCream(costs, coins: int) -> int:\n    bought = 0\n    for price in sorted(costs):\n        if price > coins:\n            break\n        coins -= price\n        bought += 1\n    return bought`,
         javascript: `var maxIceCream = function(costs, coins) {\n    const sorted = costs.slice().sort(function(a, b) { return a - b; });\n    let bought = 0, left = coins;\n    for (let i = 0; i < sorted.length; i++) {\n        if (sorted[i] > left) break;\n        left -= sorted[i];\n        bought++;\n    }\n    return bought;\n};`,
@@ -593,6 +712,19 @@ export const GREEDY2_PROBLEMS: CatalogProblem[] = [
         const position = randArr(rng, ri(rng, 1, 40), 1, rng() < 0.5 ? 10 : 1000000000);
         return { input: fmtIntArr(position), expectedOutput: String(ref(position)) };
       },
+      editorial: explain({
+        idea: "Moves of 2 are free, so all even-position chips can gather for free and so can all odd ones; then the smaller group crosses over at 1 per chip.",
+        steps: [
+          "Count chips at even positions.",
+          "Return `min(even, total - even)`.",
+        ],
+        why: "Parity is the only invariant a free move cannot change; merging the two parity classes costs one unit per chip that changes parity, and moving the smaller class is cheapest.",
+        time: "O(n)",
+        space: "O(1)",
+        pitfalls: [
+          "The actual positions beyond their parity are irrelevant.",
+        ],
+      }),
       solutions: {
         python: `def minCostToMoveChips(position) -> int:\n    even = sum(1 for p in position if p % 2 == 0)\n    return min(even, len(position) - even)`,
         javascript: `var minCostToMoveChips = function(position) {\n    let even = 0, odd = 0;\n    for (let i = 0; i < position.length; i++) {\n        if (position[i] % 2 === 0) even++;\n        else odd++;\n    }\n    return Math.min(even, odd);\n};`,
@@ -648,6 +780,21 @@ export const GREEDY2_PROBLEMS: CatalogProblem[] = [
         const nums = Array.from({ length: n }, () => (rng() < 0.2 ? 0 : ri(rng, 0, rng() < 0.5 ? 99 : 1000000000)));
         return { input: fmtIntArr(nums), expectedOutput: ref(nums) };
       },
+      editorial: explain({
+        idea: "Sort the numbers as strings with the comparator \"`a` before `b` iff `a + b > b + a`\", then concatenate.",
+        steps: [
+          "Convert to strings.",
+          "Sort with the concatenation comparator.",
+          "If the first is `\"0\"`, return `\"0\"`; else join.",
+        ],
+        why: "The comparator is a valid total order (it is transitive, which follows from comparing `a·10^|b| + b` against `b·10^|a| + a`), and any adjacent pair out of that order could be swapped to increase the result — so the sorted order is maximal.",
+        time: "O(n log n · L)",
+        space: "O(n · L)",
+        pitfalls: [
+          "Neither numeric nor lexicographic order works (`3` vs `30` vs `34`).",
+          "`[0, 0]` must return `\"0\"`, not `\"00\"`.",
+        ],
+      }),
       solutions: {
         python: `import functools\n\ndef largestNumber(nums) -> str:\n    strs = [str(x) for x in nums]\n    strs.sort(key=functools.cmp_to_key(lambda a, b: (b + a > a + b) - (b + a < a + b)))\n    if strs[0] == "0":\n        return "0"\n    return "".join(strs)`,
         javascript: `var largestNumber = function(nums) {\n    const strs = nums.map(function(x) { return String(x); });\n    strs.sort(function(a, b) {\n        const ab = a + b;\n        const ba = b + a;\n        if (ba < ab) return -1;\n        if (ba > ab) return 1;\n        return 0;\n    });\n    if (strs[0] === "0") return "0";\n    return strs.join("");\n};`,
@@ -703,6 +850,19 @@ export const GREEDY2_PROBLEMS: CatalogProblem[] = [
         const piles = randArr(rng, 3 * ri(rng, 1, 10), 1, 10000);
         return { input: fmtIntArr(piles), expectedOutput: String(ref(piles)) };
       },
+      editorial: explain({
+        idea: "Sort. Pair each of the largest piles with the one just below it (Alice takes the larger, you the next), and sacrifice the smallest piles to Bob. You take every second pile from the top for `n / 3` rounds.",
+        steps: [
+          "Sort ascending.",
+          "Sum `ordered[n - 2 - 2i]` for `i` in `0 .. n/3 - 1`.",
+        ],
+        why: "Bob's pile in each triple should be as small as possible, so the `n/3` smallest piles go to him. Among the remaining `2n/3`, you get the second largest of each triple, and pairing consecutive sorted piles maximises the sum of the second-largest picks.",
+        time: "O(n log n)",
+        space: "O(1) beyond the sort",
+        pitfalls: [
+          "Taking the top `n/3` piles for yourself is impossible — Alice always outranks you within a triple.",
+        ],
+      }),
       solutions: {
         python: `def maxCoins(piles) -> int:\n    ordered = sorted(piles)\n    n = len(ordered)\n    return sum(ordered[n - 2 - 2 * i] for i in range(n // 3))`,
         javascript: `var maxCoins = function(piles) {\n    const sorted = piles.slice().sort(function(a, b) { return a - b; });\n    const rounds = sorted.length / 3;\n    let total = 0;\n    for (let i = 0; i < rounds; i++) {\n        total += sorted[sorted.length - 2 - 2 * i];\n    }\n    return total;\n};`,
@@ -762,6 +922,19 @@ export const GREEDY2_PROBLEMS: CatalogProblem[] = [
         const nums = shuffle(rng, values);
         return { input: fmtIntArr(nums), expectedOutput: fmtIntArr(ref(nums)) };
       },
+      editorial: explain({
+        idea: "Split evens and odds in original order, then interleave: k-th even at `2k`, k-th odd at `2k + 1`.",
+        steps: [
+          "Filter evens and odds (order preserved).",
+          "Zip them into the output alternately.",
+        ],
+        why: "The halves are equal in size, so the zip fills every index, and filtering preserves the required relative order within each parity class.",
+        time: "O(n)",
+        space: "O(n)",
+        pitfalls: [
+          "The in-place swap version is O(1) space but does not preserve order, which this variant requires.",
+        ],
+      }),
       solutions: {
         python: `def sortArrayByParityII(nums):\n    evens = [x for x in nums if x % 2 == 0]\n    odds = [x for x in nums if x % 2 != 0]\n    out = []\n    for e, o in zip(evens, odds):\n        out.append(e)\n        out.append(o)\n    return out`,
         javascript: `var sortArrayByParityII = function(nums) {\n    const evens = [], odds = [];\n    for (let i = 0; i < nums.length; i++) {\n        if (nums[i] % 2 === 0) evens.push(nums[i]);\n        else odds.push(nums[i]);\n    }\n    const out = [];\n    for (let i = 0; i < evens.length; i++) {\n        out.push(evens[i]);\n        out.push(odds[i]);\n    }\n    return out;\n};`,
@@ -821,6 +994,19 @@ export const GREEDY2_PROBLEMS: CatalogProblem[] = [
         const nums = shuffle(rng, values);
         return { input: fmtIntArr(nums), expectedOutput: fmtIntArr(ref(nums)) };
       },
+      editorial: explain({
+        idea: "Split positives and negatives in original order and interleave, positives at even indices.",
+        steps: [
+          "Filter positives and negatives.",
+          "Emit `pos[k], neg[k]` for each `k`.",
+        ],
+        why: "Equal counts guarantee the interleave is exact, and filtering preserves relative order.",
+        time: "O(n)",
+        space: "O(n)",
+        pitfalls: [
+          "Two cursors over the original array writing into a preallocated output achieve the same in one pass.",
+        ],
+      }),
       solutions: {
         python: `def rearrangeArray(nums):\n    pos = [x for x in nums if x > 0]\n    neg = [x for x in nums if x < 0]\n    out = []\n    for p, n in zip(pos, neg):\n        out.append(p)\n        out.append(n)\n    return out`,
         javascript: `var rearrangeArray = function(nums) {\n    const pos = [], neg = [];\n    for (let i = 0; i < nums.length; i++) {\n        if (nums[i] > 0) pos.push(nums[i]);\n        else neg.push(nums[i]);\n    }\n    const out = [];\n    for (let i = 0; i < pos.length; i++) {\n        out.push(pos[i]);\n        out.push(neg[i]);\n    }\n    return out;\n};`,
@@ -876,6 +1062,20 @@ export const GREEDY2_PROBLEMS: CatalogProblem[] = [
         const nums = randArr(rng, ri(rng, 3, 40), 1, rng() < 0.5 ? 20 : 1000);
         return { input: fmtIntArr(nums), expectedOutput: String(ref(nums)) };
       },
+      editorial: explain({
+        idea: "Sort descending; the first consecutive triple with `a < b + c` (largest side strictly less than the sum of the other two) has the largest perimeter.",
+        steps: [
+          "Sort descending.",
+          "For each `i`, if `a[i] < a[i+1] + a[i+2]`, return their sum.",
+          "Return 0.",
+        ],
+        why: "For a fixed largest side, the two next-largest sides give the best chance of satisfying the inequality and the largest perimeter; if they fail, no other pair with that largest side succeeds, so moving on is safe.",
+        time: "O(n log n)",
+        space: "O(1) beyond the sort",
+        pitfalls: [
+          "The inequality is strict — degenerate triangles have zero area.",
+        ],
+      }),
       solutions: {
         python: `def largestPerimeter(nums) -> int:\n    ordered = sorted(nums, reverse=True)\n    for i in range(len(ordered) - 2):\n        if ordered[i] < ordered[i + 1] + ordered[i + 2]:\n            return ordered[i] + ordered[i + 1] + ordered[i + 2]\n    return 0`,
         javascript: `var largestPerimeter = function(nums) {\n    const sorted = nums.slice().sort(function(a, b) { return b - a; });\n    for (let i = 0; i + 2 < sorted.length; i++) {\n        if (sorted[i] < sorted[i + 1] + sorted[i + 2]) {\n            return sorted[i] + sorted[i + 1] + sorted[i + 2];\n        }\n    }\n    return 0;\n};`,
@@ -936,6 +1136,19 @@ export const GREEDY2_PROBLEMS: CatalogProblem[] = [
         const nums = randArr(rng, ri(rng, 3, 30), 0, rng() < 0.5 ? 15 : 1000);
         return { input: fmtIntArr(nums), expectedOutput: String(ref(nums)) };
       },
+      editorial: explain({
+        idea: "Sort; fix the largest side `k` and run two pointers over the prefix: when `a[i] + a[j] > a[k]`, all indices between `i` and `j` also work with `j`, adding `j - i` at once.",
+        steps: [
+          "Sort ascending.",
+          "For `k` from the end down to 2: `i = 0`, `j = k - 1`; if `a[i] + a[j] > a[k]`, add `j - i` and decrement `j`; else increment `i`.",
+        ],
+        why: "With the largest side fixed, only `a + b > c` needs checking. If `a[i] + a[j]` exceeds `a[k]`, so does `a[i'] + a[j]` for every `i' > i`, which is the batch count; otherwise `a[i]` is too small for this `j` and every smaller `j`.",
+        time: "O(n²)",
+        space: "O(1) beyond the sort",
+        pitfalls: [
+          "Zero-length sides can never form a triangle; the strict inequality excludes them automatically.",
+        ],
+      }),
       solutions: {
         python: `def triangleNumber(nums) -> int:\n    ordered = sorted(nums)\n    count = 0\n    for k in range(len(ordered) - 1, 1, -1):\n        i, j = 0, k - 1\n        while i < j:\n            if ordered[i] + ordered[j] > ordered[k]:\n                count += j - i\n                j -= 1\n            else:\n                i += 1\n    return count`,
         javascript: `var triangleNumber = function(nums) {\n    const sorted = nums.slice().sort(function(a, b) { return a - b; });\n    let count = 0;\n    for (let k = sorted.length - 1; k >= 2; k--) {\n        let i = 0, j = k - 1;\n        while (i < j) {\n            if (sorted[i] + sorted[j] > sorted[k]) {\n                count += j - i;\n                j--;\n            } else {\n                i++;\n            }\n        }\n    }\n    return count;\n};`,
@@ -1000,6 +1213,19 @@ export const GREEDY2_PROBLEMS: CatalogProblem[] = [
         const num = rng() < 0.25 ? ri(rng, 0, 99) : ri(rng, 0, 100000000);
         return { input: String(num), expectedOutput: String(ref(num)) };
       },
+      editorial: explain({
+        idea: "Scan from the left for the first position that can be raised; swap in the largest digit that appears later, taking its rightmost occurrence.",
+        steps: [
+          "Record the last index of each digit.",
+          "For each position `i`, for `bigger` from 9 down to `digit + 1`: if `bigger` occurs after `i`, swap with its last occurrence and return.",
+        ],
+        why: "Raising the most significant possible position gives the biggest gain; among candidates for that position the largest digit wins; and taking the rightmost occurrence moves the smaller digit as far right as possible.",
+        time: "O(digits)",
+        space: "O(1)",
+        pitfalls: [
+          "Swapping with the *first* occurrence of the bigger digit can be worse — `1993` → `9913`, not `9193`.",
+        ],
+      }),
       solutions: {
         python: `def maximumSwap(num: int) -> int:\n    digits = list(str(num))\n    last = {int(d): i for i, d in enumerate(digits)}\n    for i, d in enumerate(digits):\n        for bigger in range(9, int(d), -1):\n            if last.get(bigger, -1) > i:\n                j = last[bigger]\n                digits[i], digits[j] = digits[j], digits[i]\n                return int("".join(digits))\n    return num`,
         javascript: `var maximumSwap = function(num) {\n    const digits = String(num).split("");\n    const lastIndex = new Array(10).fill(-1);\n    for (let i = 0; i < digits.length; i++) lastIndex[Number(digits[i])] = i;\n    for (let i = 0; i < digits.length; i++) {\n        for (let d = 9; d > Number(digits[i]); d--) {\n            if (lastIndex[d] > i) {\n                const j = lastIndex[d];\n                const t = digits[i];\n                digits[i] = digits[j];\n                digits[j] = t;\n                return parseInt(digits.join(""), 10);\n            }\n        }\n    }\n    return num;\n};`,
@@ -1060,6 +1286,20 @@ export const GREEDY2_PROBLEMS: CatalogProblem[] = [
         const n = rng() < 0.25 ? ri(rng, 0, 99) : ri(rng, 0, 100000000);
         return { input: String(n), expectedOutput: String(ref(n)) };
       },
+      editorial: explain({
+        idea: "Scan right to left; wherever a digit is smaller than its predecessor, decrement the predecessor and mark the position; then set everything after the last mark to 9.",
+        steps: [
+          "For `i` from the end down to 1, if `d[i-1] > d[i]`: `d[i-1] -= 1`, `mark = i`.",
+          "Set `d[j] = 9` for `j >= mark`.",
+          "Parse the digits.",
+        ],
+        why: "The largest monotone number ≤ `n` shares the longest possible prefix with `n`; at the first break the prefix digit must drop by one, and the suffix is then free to be all 9s. Scanning right to left resolves cascades (`332 → 299`).",
+        time: "O(digits)",
+        space: "O(digits)",
+        pitfalls: [
+          "A left-to-right scan misses cascades where the decrement creates a new break.",
+        ],
+      }),
       solutions: {
         python: `def monotoneIncreasingDigits(n: int) -> int:\n    digits = [int(c) for c in str(n)]\n    mark = len(digits)\n    for i in range(len(digits) - 1, 0, -1):\n        if digits[i - 1] > digits[i]:\n            digits[i - 1] -= 1\n            mark = i\n    for i in range(mark, len(digits)):\n        digits[i] = 9\n    return int("".join(str(d) for d in digits))`,
         javascript: `var monotoneIncreasingDigits = function(n) {\n    const digits = String(n).split("").map(Number);\n    let mark = digits.length;\n    for (let i = digits.length - 1; i > 0; i--) {\n        if (digits[i - 1] > digits[i]) {\n            digits[i - 1]--;\n            mark = i;\n        }\n    }\n    for (let i = mark; i < digits.length; i++) digits[i] = 9;\n    return parseInt(digits.join(""), 10);\n};`,
@@ -1124,6 +1364,19 @@ export const GREEDY2_PROBLEMS: CatalogProblem[] = [
         const s = randStr(rng, 1, 40, rng() < 0.6 ? "abcd" : "abcdefgh");
         return { input: `"${s}"`, expectedOutput: ref(s) };
       },
+      editorial: explain({
+        idea: "Build the answer on a monotonic stack: before pushing a character, pop any larger top that still occurs later, and skip characters already on the stack.",
+        steps: [
+          "Record the last index of each character.",
+          "For each `ch`: skip if already on the stack; while the top is greater than `ch` and its last index is beyond `i`, pop it; push `ch`.",
+        ],
+        why: "Popping a larger character that reappears later never loses it and makes the prefix smaller; refusing to pop one that does not reappear preserves the every-letter-once guarantee. The stack is therefore the lexicographically smallest valid subsequence.",
+        time: "O(n)",
+        space: "O(26)",
+        pitfalls: [
+          "Forgetting the \"occurs later\" check drops letters permanently.",
+        ],
+      }),
       solutions: {
         python: `def removeDuplicateLetters(s: str) -> str:\n    last = {ch: i for i, ch in enumerate(s)}\n    stack = []\n    in_stack = set()\n    for i, ch in enumerate(s):\n        if ch in in_stack:\n            continue\n        while stack and stack[-1] > ch and last[stack[-1]] > i:\n            in_stack.discard(stack.pop())\n        stack.append(ch)\n        in_stack.add(ch)\n    return "".join(stack)`,
         javascript: `var removeDuplicateLetters = function(s) {\n    const lastIndex = new Map();\n    for (let i = 0; i < s.length; i++) lastIndex.set(s[i], i);\n    const stack = [];\n    const inStack = new Set();\n    for (let i = 0; i < s.length; i++) {\n        const c = s[i];\n        if (inStack.has(c)) continue;\n        while (stack.length > 0 && stack[stack.length - 1] > c && lastIndex.get(stack[stack.length - 1]) > i) {\n            inStack.delete(stack.pop());\n        }\n        stack.push(c);\n        inStack.add(c);\n    }\n    return stack.join("");\n};`,
@@ -1182,6 +1435,18 @@ export const GREEDY2_PROBLEMS: CatalogProblem[] = [
         const k = ri(rng, 0, rng() < 0.5 ? 100 : 10000);
         return { input: `${fmtIntArr(nums)}\n${k}`, expectedOutput: String(ref(nums, k)) };
       },
+      editorial: explain({
+        idea: "Only the extremes matter: raise the minimum by `k`, lower the maximum by `k`, and clamp at zero.",
+        steps: [
+          "Return `max(0, max(nums) - min(nums) - 2k)`.",
+        ],
+        why: "Every element can be shifted independently, and any element between the new min and max can be left alone or moved inside; if the shifted extremes cross, everything can be made equal.",
+        time: "O(n)",
+        space: "O(1)",
+        pitfalls: [
+          "Without the clamp the answer goes negative when `2k` exceeds the spread.",
+        ],
+      }),
       solutions: {
         python: `def smallestRangeI(nums, k: int) -> int:\n    return max(0, max(nums) - min(nums) - 2 * k)`,
         javascript: `var smallestRangeI = function(nums, k) {\n    let lo = nums[0], hi = nums[0];\n    for (let i = 1; i < nums.length; i++) {\n        if (nums[i] < lo) lo = nums[i];\n        if (nums[i] > hi) hi = nums[i];\n    }\n    const span = hi - lo - 2 * k;\n    return span > 0 ? span : 0;\n};`,
@@ -1247,6 +1512,19 @@ export const GREEDY2_PROBLEMS: CatalogProblem[] = [
         const neededTime = randArr(rng, n, 1, 10000);
         return { input: `"${colors}"\n${fmtIntArr(neededTime)}`, expectedOutput: String(ref(colors, neededTime)) };
       },
+      editorial: explain({
+        idea: "Balloons only conflict within a run of one colour, and each run must shrink to a single balloon — keep the most expensive one.",
+        steps: [
+          "Scan runs of equal colour.",
+          "For each run add `sum(times) - max(times)`.",
+        ],
+        why: "Runs are independent, and within a run removing all but the costliest balloon is the cheapest way to leave exactly one.",
+        time: "O(n)",
+        space: "O(1)",
+        pitfalls: [
+          "The equivalent single-pass form keeps a running max per run and adds the smaller of each adjacent equal pair.",
+        ],
+      }),
       solutions: {
         python: `def minCost(colors: str, neededTime) -> int:\n    total = 0\n    i = 0\n    while i < len(colors):\n        j = i\n        run_sum = 0\n        run_max = 0\n        while j < len(colors) and colors[j] == colors[i]:\n            run_sum += neededTime[j]\n            run_max = max(run_max, neededTime[j])\n            j += 1\n        total += run_sum - run_max\n        i = j\n    return total`,
         javascript: `var minCost = function(colors, neededTime) {\n    let total = 0;\n    let i = 0;\n    while (i < colors.length) {\n        let j = i, sum = 0, maxT = 0;\n        while (j < colors.length && colors[j] === colors[i]) {\n            sum += neededTime[j];\n            if (neededTime[j] > maxT) maxT = neededTime[j];\n            j++;\n        }\n        total += sum - maxT;\n        i = j;\n    }\n    return total;\n};`,
@@ -1307,6 +1585,19 @@ export const GREEDY2_PROBLEMS: CatalogProblem[] = [
         const s = randStr(rng, 2, 40, "01");
         return { input: `"${s}"`, expectedOutput: String(ref(s)) };
       },
+      editorial: explain({
+        idea: "Count the total ones, then sweep the split point: a `0` on the left adds to the left score, a `1` moving left subtracts from the right score.",
+        steps: [
+          "`rightOnes = count of '1'`, `zeros = 0`.",
+          "For `i` from 0 to `n - 2`: update `zeros` or `rightOnes` for `s[i]`, then `best = max(best, zeros + rightOnes)`.",
+        ],
+        why: "Each split's score is determined by what has crossed the boundary so far, and both counts update in O(1) per step.",
+        time: "O(n)",
+        space: "O(1)",
+        pitfalls: [
+          "Stop before the last index so the right part stays non-empty.",
+        ],
+      }),
       solutions: {
         python: `def maxScore(s: str) -> int:\n    right_ones = s.count("1")\n    zeros = 0\n    best = -1\n    for i in range(len(s) - 1):\n        if s[i] == "0":\n            zeros += 1\n        else:\n            right_ones -= 1\n        best = max(best, zeros + right_ones)\n    return best`,
         javascript: `var maxScore = function(s) {\n    let ones = 0;\n    for (let i = 0; i < s.length; i++) {\n        if (s[i] === "1") ones++;\n    }\n    let zeros = 0, best = -1, rightOnes = ones;\n    for (let i = 0; i < s.length - 1; i++) {\n        if (s[i] === "0") zeros++;\n        else rightOnes--;\n        const score = zeros + rightOnes;\n        if (score > best) best = score;\n    }\n    return best;\n};`,
@@ -1363,6 +1654,20 @@ export const GREEDY2_PROBLEMS: CatalogProblem[] = [
         const nums = randArr(rng, ri(rng, 2, 40), 0, rng() < 0.5 ? 10 : 1000);
         return { input: fmtIntArr(nums), expectedOutput: String(ref(nums)) };
       },
+      editorial: explain({
+        idea: "Track the max of the committed left part and the max seen so far; any element smaller than the left max forces the cut past it, at which point the left max becomes the overall max.",
+        steps: [
+          "Start `leftMax = curMax = nums[0]`, `cut = 1`.",
+          "For each `i`: update `curMax`; if `nums[i] < leftMax`, set `leftMax = curMax` and `cut = i + 1`.",
+          "Return `cut`.",
+        ],
+        why: "The cut must be after every element smaller than something before it; when such an element is found, everything up to it joins the left part, whose max is then the running max. The last such event fixes the shortest valid left.",
+        time: "O(n)",
+        space: "O(1)",
+        pitfalls: [
+          "The alternative uses prefix-max and suffix-min arrays and returns the first `i` with `prefixMax[i] <= suffixMin[i+1]`.",
+        ],
+      }),
       solutions: {
         python: `def partitionDisjoint(nums) -> int:\n    left_max = cur_max = nums[0]\n    cut = 1\n    for i in range(1, len(nums)):\n        cur_max = max(cur_max, nums[i])\n        if nums[i] < left_max:\n            left_max = cur_max\n            cut = i + 1\n    return cut`,
         javascript: `var partitionDisjoint = function(nums) {\n    let leftMax = nums[0], curMax = nums[0], cut = 1;\n    for (let i = 1; i < nums.length; i++) {\n        if (nums[i] > curMax) curMax = nums[i];\n        if (nums[i] < leftMax) {\n            leftMax = curMax;\n            cut = i + 1;\n        }\n    }\n    return cut;\n};`,
@@ -1423,6 +1728,19 @@ export const GREEDY2_PROBLEMS: CatalogProblem[] = [
         const k = ri(rng, 1, n);
         return { input: `${fmtIntMat(points)}\n${k}`, expectedOutput: fmtIntMat(ref(points, k)) };
       },
+      editorial: explain({
+        idea: "Sort by squared distance with the specified `(x, y)` tie-break and take the first `k`.",
+        steps: [
+          "Sort points by `(x² + y², x, y)`.",
+          "Return the first `k`.",
+        ],
+        why: "Squared distance is monotone in distance, so it orders identically without square roots or floating point; the tie-break is part of the specification.",
+        time: "O(n log n)",
+        space: "O(n)",
+        pitfalls: [
+          "A max-heap of size `k` or quickselect improves large inputs, but the tie-break must still be applied.",
+        ],
+      }),
       solutions: {
         python: `def kClosest(points, k: int):\n    ordered = sorted(points, key=lambda p: (p[0] * p[0] + p[1] * p[1], p[0], p[1]))\n    return ordered[:k]`,
         javascript: `var kClosest = function(points, k) {\n    const sorted = points.slice().sort(function(a, b) {\n        const da = a[0] * a[0] + a[1] * a[1];\n        const db = b[0] * b[0] + b[1] * b[1];\n        if (da !== db) return da - db;\n        if (a[0] !== b[0]) return a[0] - b[0];\n        return a[1] - b[1];\n    });\n    return sorted.slice(0, k);\n};`,
@@ -1487,6 +1805,20 @@ export const GREEDY2_PROBLEMS: CatalogProblem[] = [
         const k = ri(rng, 1, distinct);
         return { input: `${fmtStrArr(words)}\n${k}`, expectedOutput: fmtStrArr(ref(words, k)) };
       },
+      editorial: explain({
+        idea: "Count words, sort the distinct ones by `(frequency descending, word ascending)`, and take the first `k`.",
+        steps: [
+          "Count with a map.",
+          "Sort keys by `(-count, word)`.",
+          "Return the first `k`.",
+        ],
+        why: "The composite key implements exactly the required order; a heap of size `k` with the same comparator gives `O(n log k)`.",
+        time: "O(n log n)",
+        space: "O(n)",
+        pitfalls: [
+          "The tie-break is lexicographic on the word, not insertion order.",
+        ],
+      }),
       solutions: {
         python: `def topKFrequent(words, k: int):\n    count = {}\n    for w in words:\n        count[w] = count.get(w, 0) + 1\n    ordered = sorted(count.keys(), key=lambda w: (-count[w], w))\n    return ordered[:k]`,
         javascript: `var topKFrequent = function(words, k) {\n    const count = new Map();\n    for (let i = 0; i < words.length; i++) {\n        count.set(words[i], (count.get(words[i]) || 0) + 1);\n    }\n    const unique = [];\n    count.forEach(function(_, w) { unique.push(w); });\n    unique.sort(function(a, b) {\n        const ca = count.get(a), cb = count.get(b);\n        if (ca !== cb) return cb - ca;\n        if (a < b) return -1;\n        if (a > b) return 1;\n        return 0;\n    });\n    return unique.slice(0, k);\n};`,
@@ -1544,6 +1876,19 @@ export const GREEDY2_PROBLEMS: CatalogProblem[] = [
         const nums = randArr(rng, ri(rng, 1, 40), -100, rng() < 0.6 ? -90 : 100);
         return { input: fmtIntArr(nums), expectedOutput: fmtIntArr(ref(nums)) };
       },
+      editorial: explain({
+        idea: "Count occurrences, then sort the original array by `(count ascending, value descending)`.",
+        steps: [
+          "Count each value.",
+          "Sort `nums` with key `(count[x], -x)`.",
+        ],
+        why: "Sorting the array itself keeps every copy, and the composite key encodes both rules.",
+        time: "O(n log n)",
+        space: "O(n)",
+        pitfalls: [
+          "Sorting the distinct values and expanding also works but is more bookkeeping.",
+        ],
+      }),
       solutions: {
         python: `def frequencySort(nums):\n    count = {}\n    for x in nums:\n        count[x] = count.get(x, 0) + 1\n    return sorted(nums, key=lambda x: (count[x], -x))`,
         javascript: `var frequencySort = function(nums) {\n    const count = new Map();\n    for (let i = 0; i < nums.length; i++) {\n        count.set(nums[i], (count.get(nums[i]) || 0) + 1);\n    }\n    return nums.slice().sort(function(a, b) {\n        const ca = count.get(a), cb = count.get(b);\n        if (ca !== cb) return ca - cb;\n        return b - a;\n    });\n};`,
@@ -1609,6 +1954,19 @@ export const GREEDY2_PROBLEMS: CatalogProblem[] = [
         const k = ri(rng, 1, n * n);
         return { input: `${fmtIntMat(matrix)}\n${k}`, expectedOutput: String(ref(matrix, k)) };
       },
+      editorial: explain({
+        idea: "Flatten and sort, then index `k - 1`.",
+        steps: [
+          "Collect all `n²` values.",
+          "Sort and return the `(k-1)`-th.",
+        ],
+        why: "The k-th smallest counting duplicates is by definition position `k - 1` in the sorted multiset.",
+        time: "O(n² log n)",
+        space: "O(n²)",
+        pitfalls: [
+          "A min-heap seeded with the first column pops `k` times in `O(k log n)`; binary search on the value with a staircase count is `O(n log(range))`.",
+        ],
+      }),
       solutions: {
         python: `def kthSmallest(matrix, k: int) -> int:\n    flat = [v for row in matrix for v in row]\n    flat.sort()\n    return flat[k - 1]`,
         javascript: `var kthSmallest = function(matrix, k) {\n    const flat = [];\n    for (let r = 0; r < matrix.length; r++) {\n        for (let c = 0; c < matrix[r].length; c++) flat.push(matrix[r][c]);\n    }\n    flat.sort(function(a, b) { return a - b; });\n    return flat[k - 1];\n};`,
@@ -1669,6 +2027,20 @@ export const GREEDY2_PROBLEMS: CatalogProblem[] = [
         const x = ri(rng, 1, rng() < 0.5 ? 50 : 10000);
         return { input: `${fmtIntArr(arr)}\n${k}\n${x}`, expectedOutput: fmtIntArr(ref(arr, k, x)) };
       },
+      editorial: explain({
+        idea: "The answer is a contiguous window of length `k`; binary search its left edge in `0 .. n - k` by comparing the distance of the window's left end with the element just past its right end.",
+        steps: [
+          "Set `lo = 0`, `hi = n - k`.",
+          "While `lo < hi`: `mid = (lo + hi) / 2`; if `x - arr[mid] > arr[mid + k] - x`, `lo = mid + 1`; else `hi = mid`.",
+          "Return `arr[lo : lo + k]`.",
+        ],
+        why: "Sliding the window right swaps `arr[mid]` for `arr[mid + k]`, which is an improvement exactly when the left element is further from `x` (ties keep the smaller value). That predicate is monotone in `mid`, so binary search finds the optimal edge.",
+        time: "O(log(n - k) + k)",
+        space: "O(k)",
+        pitfalls: [
+          "Use `>` not `>=` so ties prefer the left window, matching the \"smaller wins\" rule.",
+        ],
+      }),
       solutions: {
         python: `def findClosestElements(arr, k: int, x: int):\n    lo, hi = 0, len(arr) - k\n    while lo < hi:\n        mid = (lo + hi) // 2\n        if x - arr[mid] > arr[mid + k] - x:\n            lo = mid + 1\n        else:\n            hi = mid\n    return arr[lo:lo + k]`,
         javascript: `var findClosestElements = function(arr, k, x) {\n    let lo = 0, hi = arr.length - k;\n    while (lo < hi) {\n        const mid = Math.floor((lo + hi) / 2);\n        if (x - arr[mid] > arr[mid + k] - x) lo = mid + 1;\n        else hi = mid;\n    }\n    return arr.slice(lo, lo + k);\n};`,
@@ -1734,6 +2106,20 @@ export const GREEDY2_PROBLEMS: CatalogProblem[] = [
         const arr = shuffle(rng, Array.from(values));
         return { input: fmtIntArr(arr), expectedOutput: fmtIntMat(ref(arr)) };
       },
+      editorial: explain({
+        idea: "After sorting, the minimum difference occurs between adjacent elements; find it, then collect every adjacent pair achieving it.",
+        steps: [
+          "Sort.",
+          "Compute the minimum adjacent gap.",
+          "Emit `[a[i-1], a[i]]` for every `i` with that gap.",
+        ],
+        why: "Any two non-adjacent sorted elements bracket an adjacent pair with a gap no larger, so adjacent pairs suffice; sorted order also yields the required output order.",
+        time: "O(n log n)",
+        space: "O(n)",
+        pitfalls: [
+          "Values are distinct, so the gap is never zero.",
+        ],
+      }),
       solutions: {
         python: `def minimumAbsDifference(arr):\n    ordered = sorted(arr)\n    best = min(ordered[i] - ordered[i - 1] for i in range(1, len(ordered)))\n    return [[ordered[i - 1], ordered[i]] for i in range(1, len(ordered))\n            if ordered[i] - ordered[i - 1] == best]`,
         javascript: `var minimumAbsDifference = function(arr) {\n    const sorted = arr.slice().sort(function(a, b) { return a - b; });\n    let best = Infinity;\n    for (let i = 1; i < sorted.length; i++) {\n        const d = sorted[i] - sorted[i - 1];\n        if (d < best) best = d;\n    }\n    const out = [];\n    for (let i = 1; i < sorted.length; i++) {\n        if (sorted[i] - sorted[i - 1] === best) out.push([sorted[i - 1], sorted[i]]);\n    }\n    return out;\n};`,
@@ -1789,6 +2175,19 @@ export const GREEDY2_PROBLEMS: CatalogProblem[] = [
         const nums = randArr(rng, ri(rng, 3, 40), -1000, 1000);
         return { input: fmtIntArr(nums), expectedOutput: String(ref(nums)) };
       },
+      editorial: explain({
+        idea: "Either the three largest values or the two most negative with the largest; take the bigger product.",
+        steps: [
+          "Sort.",
+          "Return `max(a[-1]·a[-2]·a[-3], a[0]·a[1]·a[-1])`.",
+        ],
+        why: "A maximum product uses either zero or two negatives; with zero negatives the three largest win, with two negatives the most negative pair times the largest positive wins. No other combination can exceed both.",
+        time: "O(n log n)",
+        space: "O(1) beyond the sort",
+        pitfalls: [
+          "Tracking the top three and bottom two in one pass makes it O(n).",
+        ],
+      }),
       solutions: {
         python: `def maximumProduct(nums) -> int:\n    a = sorted(nums)\n    return max(a[-1] * a[-2] * a[-3], a[0] * a[1] * a[-1])`,
         javascript: `var maximumProduct = function(nums) {\n    const a = nums.slice().sort(function(x, y) { return x - y; });\n    const n = a.length;\n    const highThree = a[n - 1] * a[n - 2] * a[n - 3];\n    const twoLow = a[0] * a[1] * a[n - 1];\n    return Math.max(highThree, twoLow);\n};`,
@@ -1847,6 +2246,19 @@ export const GREEDY2_PROBLEMS: CatalogProblem[] = [
         const arr = randArr(rng, ri(rng, 1, 40), 0, 10000);
         return { input: fmtIntArr(arr), expectedOutput: fmtIntArr(ref(arr)) };
       },
+      editorial: explain({
+        idea: "Sort with key `(popcount, value)`.",
+        steps: [
+          "Compute each value's set-bit count.",
+          "Sort by `(bits, value)`.",
+        ],
+        why: "The composite key implements the two-level order directly.",
+        time: "O(n log n)",
+        space: "O(n)",
+        pitfalls: [
+          "`x & (x - 1)` clears the lowest set bit — a loop that runs once per bit.",
+        ],
+      }),
       solutions: {
         python: `def sortByBits(arr):\n    return sorted(arr, key=lambda x: (bin(x).count("1"), x))`,
         javascript: `var sortByBits = function(arr) {\n    const popcount = function(x) {\n        let count = 0, v = x;\n        while (v > 0) {\n            count += v & 1;\n            v >>>= 1;\n        }\n        return count;\n    };\n    return arr.slice().sort(function(a, b) {\n        const pa = popcount(a), pb = popcount(b);\n        return pa !== pb ? pa - pb : a - b;\n    });\n};`,
@@ -1904,6 +2316,19 @@ export const GREEDY2_PROBLEMS: CatalogProblem[] = [
         const nums = randArr(rng, ri(rng, 1, 40), 1, rng() < 0.5 ? 8 : 1000);
         return { input: fmtIntArr(nums), expectedOutput: fmtIntArr(ref(nums)) };
       },
+      editorial: explain({
+        idea: "Split by index parity, sort evens ascending and odds descending, then write them back into their slots.",
+        steps: [
+          "`evens = sorted(nums[0::2])`, `odds = sorted(nums[1::2], reverse=True)`.",
+          "Rebuild: index `i` takes `evens[i/2]` when even, `odds[i/2]` when odd.",
+        ],
+        why: "The two index classes are independent, so sorting each separately and reinterleaving satisfies both conditions.",
+        time: "O(n log n)",
+        space: "O(n)",
+        pitfalls: [
+          "Values are bounded by 100, so counting sort per class is linear if needed.",
+        ],
+      }),
       solutions: {
         python: `def sortEvenOdd(nums):\n    evens = sorted(nums[0::2])\n    odds = sorted(nums[1::2], reverse=True)\n    out = []\n    for i in range(len(nums)):\n        out.append(evens[i // 2] if i % 2 == 0 else odds[i // 2])\n    return out`,
         javascript: `var sortEvenOdd = function(nums) {\n    const evens = [], odds = [];\n    for (let i = 0; i < nums.length; i++) {\n        if (i % 2 === 0) evens.push(nums[i]);\n        else odds.push(nums[i]);\n    }\n    evens.sort(function(a, b) { return a - b; });\n    odds.sort(function(a, b) { return b - a; });\n    const out = [];\n    for (let i = 0; i < nums.length; i++) {\n        out.push(i % 2 === 0 ? evens[i / 2] : odds[(i - 1) / 2]);\n    }\n    return out;\n};`,
@@ -1969,6 +2394,20 @@ export const GREEDY2_PROBLEMS: CatalogProblem[] = [
         }
         return { input: `${fmtIntArr(arrival)}\n${fmtIntArr(departure)}`, expectedOutput: String(ref(arrival, departure)) };
       },
+      editorial: explain({
+        idea: "Trains need not be matched — only how many are present at any moment matters. Sort arrivals and departures separately and sweep with two pointers.",
+        steps: [
+          "Sort both arrays.",
+          "While arrivals remain: if `arr[i] <= dep[j]`, a train arrives — increment platforms and `i`, update the max; else a train leaves — decrement platforms and `j`.",
+          "Return the maximum.",
+        ],
+        why: "The number of trains present at time `t` is arrivals ≤ `t` minus departures < `t`; the merge of the two sorted streams visits every event in time order and the running count peaks at the answer. `<=` counts an arrival coinciding with a departure as needing its own platform.",
+        time: "O(n log n)",
+        space: "O(1) beyond the sorts",
+        pitfalls: [
+          "Using `<` instead of `<=` under-counts when a train arrives exactly as another leaves.",
+        ],
+      }),
       solutions: {
         python: `def findPlatform(arrival, departure) -> int:\n    arr = sorted(arrival)\n    dep = sorted(departure)\n    i = j = platforms = best = 0\n    while i < len(arr):\n        if arr[i] <= dep[j]:\n            platforms += 1\n            i += 1\n            best = max(best, platforms)\n        else:\n            platforms -= 1\n            j += 1\n    return best`,
         javascript: `var findPlatform = function(arrival, departure) {\n    const arr = arrival.slice().sort(function(a, b) { return a - b; });\n    const dep = departure.slice().sort(function(a, b) { return a - b; });\n    let i = 0, j = 0, platforms = 0, best = 0;\n    while (i < arr.length) {\n        if (arr[i] <= dep[j]) {\n            platforms++;\n            i++;\n            if (platforms > best) best = platforms;\n        } else {\n            platforms--;\n            j++;\n        }\n    }\n    return best;\n};`,

@@ -3,6 +3,7 @@
  *
  *   npx tsx scripts/seed-catalog.ts --seed [--count 5000] [--only <slug,slug,…>]
  *   npx tsx scripts/seed-catalog.ts --validate [--only <slug>] [--lang js|py|all|<language>]
+ *   npx tsx scripts/seed-catalog.ts --editorials [--only <slug,slug,…>]
  *
  * Each problem gets: description/hints/signature, stub-only starter code for
  * all 13 languages, Python reference solution, visible example cases, and
@@ -10,6 +11,8 @@
  * solutions against every DB case through the real execution path
  * (applyDriver → runBatch); `--lang all` covers every language authored,
  * which is what gates a language appearing in the editorial's picker.
+ * `--editorials` rewrites only the editorial prose + solutions map of problems
+ * already seeded, leaving their test suites alone.
  */
 
 import "dotenv/config";
@@ -113,6 +116,38 @@ async function seed() {
   console.log(`Done: ${done} problems.`);
 }
 
+/**
+ * --editorials: write only `editorial` + `solutions` for already-seeded
+ * problems. Prose changes are frequent and touch nothing the judge reads;
+ * running --seed for them would delete and recreate ~5 000 identical test
+ * cases per problem, which against the ~500 ms/round-trip prod host turns a
+ * three-minute update into hours. Same two columns backfill-editorials.ts
+ * confines itself to, for the same reason.
+ */
+async function editorials() {
+  const list = specs();
+  console.log(`Updating editorials for ${list.length} catalog problems…`);
+  let done = 0, skipped = 0;
+  for (const spec of list) {
+    const editorial = spec.editorial ?? null;
+    const solutions = solutionsJson(spec.solutions);
+    for (let attempt = 1; ; attempt++) {
+      try {
+        const r = await prisma.problem.updateMany({ where: { slug: spec.slug }, data: { editorial, solutions } });
+        if (r.count === 0) { skipped++; console.log(`  SKIP ${spec.slug} (not seeded)`); }
+        break;
+      } catch (e) {
+        if (attempt >= 4) throw e;
+        console.log(`  retry ${attempt} for ${spec.slug}: ${(e as Error).message.slice(0, 100)}`);
+        await new Promise((r) => setTimeout(r, 3000 * attempt));
+      }
+    }
+    done++;
+    if (done % 50 === 0 || done === list.length) console.log(`  ${done}/${list.length} (latest: ${spec.slug})`);
+  }
+  console.log(`Done: ${done - skipped} updated${skipped ? `, ${skipped} not seeded` : ""}.`);
+}
+
 async function validate() {
   const list = specs();
   const langArg = opt("lang");
@@ -175,9 +210,10 @@ async function validate() {
 (async () => {
   console.log(`Catalog size: ${CATALOG.length} problems.`);
   if (flag("seed")) await seed();
+  if (flag("editorials")) await editorials();
   if (flag("validate")) await validate();
-  if (!flag("seed") && !flag("validate")) {
-    console.log("usage: tsx scripts/seed-catalog.ts --seed [--count N] [--only slug] | --validate [--only slug]");
+  if (!flag("seed") && !flag("editorials") && !flag("validate")) {
+    console.log("usage: tsx scripts/seed-catalog.ts --seed [--count N] [--only slug] | --editorials [--only slug] | --validate [--only slug]");
   }
   await prisma.$disconnect();
 })();

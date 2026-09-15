@@ -6,7 +6,7 @@
  * JS solutions must be Node 12-safe: no ??, ?., replaceAll, .at() or .flat().
  */
 
-import { bool, describe, fmtIntArr, ri, shuffle, type CatalogProblem, type Rng } from "./types.js";
+import { bool, describe, explain, fmtIntArr, ri, shuffle, type CatalogProblem, type Rng } from "./types.js";
 
 /** A random array of `n` values drawn from [lo, hi]. */
 const randArr = (rng: Rng, n: number, lo: number, hi: number) =>
@@ -75,6 +75,21 @@ export const ARRAY2_PROBLEMS: CatalogProblem[] = [
         const nums = [3, 3];
         return { input: `${fmtIntArr(nums)}\n6`, expectedOutput: "[0,1]" };
       },
+      editorial: explain({
+        idea: "For each element the partner it needs is `target - x`. A hash map from value to index answers \"have I seen the partner?\" in O(1), so one pass finds the pair.",
+        steps: [
+          "Walk the array with a map `seen` from value to index.",
+          "For element `x` at `i`, compute `need = target - x`; if `need` is in the map, return `[seen[need], i]`.",
+          "Otherwise store `seen[x] = i` and continue.",
+        ],
+        why: "When the second member of the unique pair is reached, its partner was inserted earlier, so the lookup succeeds exactly once. Checking before inserting guarantees an element is never matched with itself, and the earlier index is naturally the smaller one.",
+        time: "O(n)",
+        space: "O(n)",
+        pitfalls: [
+          "Inserting before the lookup lets `target = 2·x` match `x` with itself.",
+          "Sorting first finds a pair but loses the original indices.",
+        ],
+      }),
       solutions: {
         python: `def twoSum(nums, target):\n    seen = {}\n    for i, x in enumerate(nums):\n        need = target - x\n        if need in seen:\n            return [seen[need], i]\n        seen[x] = i\n    return []`,
         javascript: `var twoSum = function(nums, target) {\n    const seen = new Map();\n    for (let i = 0; i < nums.length; i++) {\n        const need = target - nums[i];\n        if (seen.has(need)) return [seen.get(need), i];\n        seen.set(nums[i], i);\n    }\n    return [];\n};`,
@@ -124,6 +139,21 @@ export const ARRAY2_PROBLEMS: CatalogProblem[] = [
         const nums = rng() < 0.5 ? randArr(rng, n, -20, 20) : randArr(rng, n, -1000, 1000);
         return { input: fmtIntArr(nums), expectedOutput: bool(ref(nums)) };
       },
+      editorial: explain({
+        idea: "Insert each value into a hash set and stop at the first one that is already present.",
+        steps: [
+          "Keep an empty set.",
+          "For each `x`: if it is in the set, return `true`; otherwise add it.",
+          "Return `false` after the loop.",
+        ],
+        why: "A value is in the set exactly when an earlier copy was seen, so the first hit is a duplicate and no hit means all distinct.",
+        time: "O(n)",
+        space: "O(n)",
+        pitfalls: [
+          "Sorting and checking neighbours is `O(n log n)` with no extra memory — a fair trade when memory is tight.",
+          "Comparing `len(set(nums))` with `len(nums)` also works but cannot exit early.",
+        ],
+      }),
       solutions: {
         python: `def containsDuplicate(nums):\n    seen = set()\n    for x in nums:\n        if x in seen:\n            return True\n        seen.add(x)\n    return False`,
         javascript: `var containsDuplicate = function(nums) {\n    const seen = new Set();\n    for (let i = 0; i < nums.length; i++) {\n        if (seen.has(nums[i])) return true;\n        seen.add(nums[i]);\n    }\n    return false;\n};`,
@@ -182,6 +212,21 @@ export const ARRAY2_PROBLEMS: CatalogProblem[] = [
         const k = ri(rng, 0, 8);
         return { input: `${fmtIntArr(nums)}\n${k}`, expectedOutput: bool(ref(nums, k)) };
       },
+      editorial: explain({
+        idea: "Only the most recent index of each value matters: any older copy is further away. Keep a map from value to its last index and check the gap on every repeat.",
+        steps: [
+          "Scan with a map `last` from value to index.",
+          "At index `i`, if `x` is in `last` and `i - last[x] <= k`, return `true`.",
+          "Set `last[x] = i` and continue; return `false` at the end.",
+        ],
+        why: "If some pair of equal values sits within `k`, the later of the two sees the earlier one (or an even closer copy) as `last[x]`, so the check fires. Overwriting with the newer index can only shrink future gaps.",
+        time: "O(n)",
+        space: "O(n)",
+        pitfalls: [
+          "The condition is `<= k`, not `< k`.",
+          "A sliding window with a set of the last `k` values is equivalent and bounds memory by `k`.",
+        ],
+      }),
       solutions: {
         python: `def containsNearbyDuplicate(nums, k):\n    last = {}\n    for i, x in enumerate(nums):\n        if x in last and i - last[x] <= k:\n            return True\n        last[x] = i\n    return False`,
         javascript: `var containsNearbyDuplicate = function(nums, k) {\n    const last = new Map();\n    for (let i = 0; i < nums.length; i++) {\n        if (last.has(nums[i]) && i - last.get(nums[i]) <= k) return true;\n        last.set(nums[i], i);\n    }\n    return false;\n};`,
@@ -255,6 +300,22 @@ export const ARRAY2_PROBLEMS: CatalogProblem[] = [
         }
         return { input: `"${s}"\n"${t}"`, expectedOutput: bool(ref(s, t)) };
       },
+      editorial: explain({
+        idea: "Two strings are anagrams exactly when every letter occurs the same number of times in each. Count the letters of `s`, then let `t` consume them.",
+        steps: [
+          "Return `false` if the lengths differ.",
+          "Increment a 26-slot count for each letter of `s`.",
+          "Decrement for each letter of `t`; the moment a count goes negative, return `false`.",
+          "Return `true`.",
+        ],
+        why: "With equal lengths, if no count goes negative then `t` never uses a letter more often than `s` supplies it, and since the totals match no letter can be under-used either — the multisets are identical.",
+        time: "O(n)",
+        space: "O(1) — 26 counters",
+        pitfalls: [
+          "Sorting both strings and comparing is `O(n log n)`; correct but slower.",
+          "For Unicode inputs replace the fixed array with a hash map.",
+        ],
+      }),
       solutions: {
         python: `def isAnagram(s: str, t: str) -> bool:\n    if len(s) != len(t):\n        return False\n    count = [0] * 26\n    for ch in s:\n        count[ord(ch) - 97] += 1\n    for ch in t:\n        idx = ord(ch) - 97\n        count[idx] -= 1\n        if count[idx] < 0:\n            return False\n    return True`,
         javascript: `var isAnagram = function(s, t) {\n    if (s.length !== t.length) return false;\n    const count = new Array(26).fill(0);\n    for (let i = 0; i < s.length; i++) count[s.charCodeAt(i) - 97]++;\n    for (let i = 0; i < t.length; i++) {\n        const idx = t.charCodeAt(i) - 97;\n        count[idx]--;\n        if (count[idx] < 0) return false;\n    }\n    return true;\n};`,
@@ -310,6 +371,21 @@ export const ARRAY2_PROBLEMS: CatalogProblem[] = [
         const b = randArr(rng, ri(rng, 1, 30), 0, 60);
         return { input: `${fmtIntArr(a)}\n${fmtIntArr(b)}`, expectedOutput: fmtIntArr(ref(a, b)) };
       },
+      editorial: explain({
+        idea: "Turn both arrays into sets, intersect them, and sort the result.",
+        steps: [
+          "Build a set from each array.",
+          "Take the intersection.",
+          "Sort and return.",
+        ],
+        why: "Sets discard duplicates, which is exactly the \"listed once\" requirement, and the intersection keeps a value only if both arrays contain it.",
+        time: "O(n + m + k log k) where `k` is the answer size",
+        space: "O(n + m)",
+        pitfalls: [
+          "Without a set for the hits, a value present twice in the second array is reported twice.",
+          "The answer must be sorted — hash-set iteration order is arbitrary.",
+        ],
+      }),
       solutions: {
         python: `def intersection(nums1, nums2):\n    return sorted(set(nums1) & set(nums2))`,
         javascript: `var intersection = function(nums1, nums2) {\n    const setB = new Set(nums2);\n    const out = new Set();\n    for (let i = 0; i < nums1.length; i++) {\n        if (setB.has(nums1[i])) out.add(nums1[i]);\n    }\n    return Array.from(out).sort(function(a, b) { return a - b; });\n};`,
@@ -369,6 +445,21 @@ export const ARRAY2_PROBLEMS: CatalogProblem[] = [
         const b = randArr(rng, ri(rng, 1, 30), 0, 20);
         return { input: `${fmtIntArr(a)}\n${fmtIntArr(b)}`, expectedOutput: fmtIntArr(ref(a, b)) };
       },
+      editorial: explain({
+        idea: "Multiplicity means a set is not enough. Count the first array, then walk the second and take a value only while its remaining count is positive.",
+        steps: [
+          "Build `count[value]` from `nums1`.",
+          "For each `x` in `nums2`, if `count[x] > 0`, append `x` and decrement.",
+          "Sort the collected values.",
+        ],
+        why: "Each take decrements the budget for that value, so it is emitted `min(count1, count2)` times — the multiset intersection.",
+        time: "O(n + m + k log k)",
+        space: "O(n)",
+        pitfalls: [
+          "Count the smaller array if memory matters; the logic is symmetric.",
+          "If both arrays are already sorted, two pointers do it with no map.",
+        ],
+      }),
       solutions: {
         python: `def intersect(nums1, nums2):\n    count = {}\n    for x in nums1:\n        count[x] = count.get(x, 0) + 1\n    out = []\n    for x in nums2:\n        if count.get(x, 0) > 0:\n            out.append(x)\n            count[x] -= 1\n    out.sort()\n    return out`,
         javascript: `var intersect = function(nums1, nums2) {\n    const count = new Map();\n    for (let i = 0; i < nums1.length; i++) {\n        count.set(nums1[i], (count.get(nums1[i]) || 0) + 1);\n    }\n    const out = [];\n    for (let i = 0; i < nums2.length; i++) {\n        const c = count.get(nums2[i]) || 0;\n        if (c > 0) {\n            out.push(nums2[i]);\n            count.set(nums2[i], c - 1);\n        }\n    }\n    return out.sort(function(a, b) { return a - b; });\n};`,
@@ -431,6 +522,21 @@ export const ARRAY2_PROBLEMS: CatalogProblem[] = [
         const nums = shuffle(rng, singles.concat(dups, dups));
         return { input: fmtIntArr(nums), expectedOutput: fmtIntArr(ref(nums)) };
       },
+      editorial: explain({
+        idea: "Values are confined to `1..n`, so a counting array of size `n + 1` records each value's frequency; report those counted twice.",
+        steps: [
+          "Allocate `count` of size `n + 1`.",
+          "Increment `count[x]` for each element.",
+          "Collect every `v` in `1..n` with `count[v] == 2`, in increasing order.",
+        ],
+        why: "Iterating `v` from 1 to `n` visits values in sorted order, so the output is sorted without an explicit sort.",
+        time: "O(n)",
+        space: "O(n)",
+        pitfalls: [
+          "For O(1) extra space, negate `nums[|v| - 1]` as a visited mark and report `|v|` when the slot is already negative — then sort the result.",
+          "A hash set works but the bounded range makes the array strictly better.",
+        ],
+      }),
       solutions: {
         python: `def findDuplicates(nums):\n    count = [0] * (len(nums) + 1)\n    for x in nums:\n        count[x] += 1\n    return [v for v in range(1, len(nums) + 1) if count[v] == 2]`,
         javascript: `var findDuplicates = function(nums) {\n    const count = new Array(nums.length + 1).fill(0);\n    for (let i = 0; i < nums.length; i++) count[nums[i]]++;\n    const out = [];\n    for (let v = 1; v <= nums.length; v++) {\n        if (count[v] === 2) out.push(v);\n    }\n    return out;\n};`,
@@ -495,6 +601,21 @@ export const ARRAY2_PROBLEMS: CatalogProblem[] = [
         shuffle(rng, nums);
         return { input: fmtIntArr(nums), expectedOutput: fmtIntArr(ref(nums)) };
       },
+      editorial: explain({
+        idea: "Count how often each of `1..n` appears: the duplicate is the value counted twice, the missing one the value counted zero times.",
+        steps: [
+          "Tally each element into `count[1..n]`.",
+          "Walk `v` from 1 to `n`, recording the `v` with count 2 and the `v` with count 0.",
+          "Return `[dup, missing]`.",
+        ],
+        why: "Exactly one value was written over another, so precisely one count is 2 and one is 0, and every other is 1.",
+        time: "O(n)",
+        space: "O(n)",
+        pitfalls: [
+          "The order of the pair is fixed: duplicate first.",
+          "The sum/sum-of-squares algebra is O(1) space but easy to get wrong; the counting array is the clean answer.",
+        ],
+      }),
       solutions: {
         python: `def findErrorNums(nums):\n    n = len(nums)\n    count = [0] * (n + 1)\n    for x in nums:\n        count[x] += 1\n    dup = missing = 0\n    for v in range(1, n + 1):\n        if count[v] == 2:\n            dup = v\n        elif count[v] == 0:\n            missing = v\n    return [dup, missing]`,
         javascript: `var findErrorNums = function(nums) {\n    const n = nums.length;\n    const count = new Array(n + 1).fill(0);\n    for (let i = 0; i < n; i++) count[nums[i]]++;\n    let dup = 0, missing = 0;\n    for (let v = 1; v <= n; v++) {\n        if (count[v] === 2) dup = v;\n        else if (count[v] === 0) missing = v;\n    }\n    return [dup, missing];\n};`,
@@ -559,6 +680,21 @@ export const ARRAY2_PROBLEMS: CatalogProblem[] = [
         const nums = rng() < 0.4 ? randArr(rng, n, 0, 3) : randArr(rng, n, 0, 30);
         return { input: fmtIntArr(nums), expectedOutput: fmtIntArr(ref(nums)) };
       },
+      editorial: explain({
+        idea: "Find the rightmost position that can still be increased, raise it by the smallest possible amount, then make the suffix after it as small as possible.",
+        steps: [
+          "Scan from the right for the first `i` with `nums[i] < nums[i + 1]`; the suffix after `i` is non-increasing.",
+          "If such `i` exists, find the rightmost `j > i` with `nums[j] > nums[i]` and swap them.",
+          "Reverse the suffix starting at `i + 1`.",
+        ],
+        why: "The suffix after `i` is the largest arrangement of its elements, so no larger permutation shares the prefix through `i`. Swapping in the smallest larger value at `i` gives the least possible increase there, and the suffix stays non-increasing, so reversing it yields the smallest completion. When no `i` exists the array is the last permutation and reversing everything wraps to the first.",
+        time: "O(n)",
+        space: "O(1)",
+        pitfalls: [
+          "The comparisons must be `>=` / `<=` when scanning so equal elements are skipped correctly.",
+          "Forgetting the reverse produces *a* larger permutation, not the *next* one.",
+        ],
+      }),
       solutions: {
         python: `def nextPermutation(nums):\n    nums = list(nums)\n    n = len(nums)\n    i = n - 2\n    while i >= 0 and nums[i] >= nums[i + 1]:\n        i -= 1\n    if i >= 0:\n        j = n - 1\n        while nums[j] <= nums[i]:\n            j -= 1\n        nums[i], nums[j] = nums[j], nums[i]\n    left, right = i + 1, n - 1\n    while left < right:\n        nums[left], nums[right] = nums[right], nums[left]\n        left += 1\n        right -= 1\n    return nums`,
         javascript: `var nextPermutation = function(nums) {\n    const a = nums.slice();\n    const n = a.length;\n    let i = n - 2;\n    while (i >= 0 && a[i] >= a[i + 1]) i--;\n    if (i >= 0) {\n        let j = n - 1;\n        while (a[j] <= a[i]) j--;\n        const t = a[i]; a[i] = a[j]; a[j] = t;\n    }\n    for (let l = i + 1, r = n - 1; l < r; l++, r--) {\n        const t = a[l]; a[l] = a[r]; a[r] = t;\n    }\n    return a;\n};`,
@@ -618,6 +754,21 @@ export const ARRAY2_PROBLEMS: CatalogProblem[] = [
         const nums = rng() < 0.5 ? randArr(rng, n, -4, 4) : randArr(rng, n, -1000, 1000);
         return { input: fmtIntArr(nums), expectedOutput: String(ref(nums)) };
       },
+      editorial: explain({
+        idea: "The total never changes, so with a running left sum the right sum is `total - left - nums[i]` and each index is tested in O(1).",
+        steps: [
+          "Compute `total`.",
+          "Walk `i` with `left = 0`; if `left == total - left - nums[i]`, return `i`.",
+          "Add `nums[i]` to `left`; return `-1` after the loop.",
+        ],
+        why: "At index `i` the left sum excludes `nums[i]` and the right sum is everything else, which is exactly the identity used. Returning at the first match gives the leftmost pivot.",
+        time: "O(n)",
+        space: "O(1)",
+        pitfalls: [
+          "Add `nums[i]` to `left` *after* the comparison.",
+          "Index 0 with a zero-sum remainder is a valid pivot.",
+        ],
+      }),
       solutions: {
         python: `def pivotIndex(nums):\n    total = sum(nums)\n    left = 0\n    for i, x in enumerate(nums):\n        if left == total - left - x:\n            return i\n        left += x\n    return -1`,
         javascript: `var pivotIndex = function(nums) {\n    let total = 0;\n    for (let i = 0; i < nums.length; i++) total += nums[i];\n    let left = 0;\n    for (let i = 0; i < nums.length; i++) {\n        if (left === total - left - nums[i]) return i;\n        left += nums[i];\n    }\n    return -1;\n};`,
@@ -671,6 +822,19 @@ export const ARRAY2_PROBLEMS: CatalogProblem[] = [
         const nums = randArr(rng, ri(rng, 1, 40), -1000, 1000);
         return { input: fmtIntArr(nums), expectedOutput: fmtIntArr(ref(nums)) };
       },
+      editorial: explain({
+        idea: "Each prefix sum is the previous prefix sum plus the current element — one accumulator, one pass.",
+        steps: [
+          "Start `total = 0`.",
+          "For each `x`, add it to `total` and append `total`.",
+        ],
+        why: "`runningSum[i] = runningSum[i - 1] + nums[i]` by definition, so a single accumulator carries all the needed state.",
+        time: "O(n)",
+        space: "O(n) for the output (O(1) if done in place)",
+        pitfalls: [
+          "Recomputing each prefix from scratch is `O(n²)`.",
+        ],
+      }),
       solutions: {
         python: `def runningSum(nums):\n    out = []\n    total = 0\n    for x in nums:\n        total += x\n        out.append(total)\n    return out`,
         javascript: `var runningSum = function(nums) {\n    const out = [];\n    let total = 0;\n    for (let i = 0; i < nums.length; i++) {\n        total += nums[i];\n        out.push(total);\n    }\n    return out;\n};`,
@@ -729,6 +893,21 @@ export const ARRAY2_PROBLEMS: CatalogProblem[] = [
         const nums = randArr(rng, ri(rng, 1, 40), 0, 100);
         return { input: fmtIntArr(nums), expectedOutput: fmtIntArr(ref(nums)) };
       },
+      editorial: explain({
+        idea: "Values are bounded by 100, so tally them and take a prefix sum: `prefix[v]` then equals the number of elements strictly below `v`.",
+        steps: [
+          "Tally with an offset: `count[x + 1] += 1`.",
+          "Prefix-sum the tally so `count[v]` holds how many values are `< v`.",
+          "Map each `x` to `count[x]`.",
+        ],
+        why: "After the shift, `count[v]` sums the frequencies of `0..v-1`, which is precisely the count of strictly smaller elements.",
+        time: "O(n + 100)",
+        space: "O(100)",
+        pitfalls: [
+          "The `+ 1` offset is what makes the comparison strict; without it you count `<=`.",
+          "The `O(n²)` double loop passes but is not the intended solution.",
+        ],
+      }),
       solutions: {
         python: `def smallerNumbersThanCurrent(nums):\n    count = [0] * 102\n    for x in nums:\n        count[x + 1] += 1\n    for v in range(1, 102):\n        count[v] += count[v - 1]\n    return [count[x] for x in nums]`,
         javascript: `var smallerNumbersThanCurrent = function(nums) {\n    const count = new Array(102).fill(0);\n    for (let i = 0; i < nums.length; i++) count[nums[i] + 1]++;\n    for (let v = 1; v < 102; v++) count[v] += count[v - 1];\n    const out = [];\n    for (let i = 0; i < nums.length; i++) out.push(count[nums[i]]);\n    return out;\n};`,
@@ -785,6 +964,19 @@ export const ARRAY2_PROBLEMS: CatalogProblem[] = [
         const nums = randArr(rng, ri(rng, 1, 40), 1, rng() < 0.5 ? 8 : 100);
         return { input: fmtIntArr(nums), expectedOutput: String(ref(nums)) };
       },
+      editorial: explain({
+        idea: "Each new occurrence of a value pairs with every earlier occurrence, so add the running count of that value before incrementing it.",
+        steps: [
+          "Keep `count[value]`.",
+          "For each `x`, add `count[x]` to the answer, then increment `count[x]`.",
+        ],
+        why: "Summing the pre-increment counts over all occurrences of a value with total frequency `c` gives `0 + 1 + … + (c - 1) = c(c - 1)/2`, the number of unordered pairs.",
+        time: "O(n)",
+        space: "O(n)",
+        pitfalls: [
+          "Incrementing before adding double-counts each element with itself.",
+        ],
+      }),
       solutions: {
         python: `def numIdenticalPairs(nums):\n    count = {}\n    total = 0\n    for x in nums:\n        total += count.get(x, 0)\n        count[x] = count.get(x, 0) + 1\n    return total`,
         javascript: `var numIdenticalPairs = function(nums) {\n    const count = new Map();\n    let total = 0;\n    for (let i = 0; i < nums.length; i++) {\n        const seen = count.get(nums[i]) || 0;\n        total += seen;\n        count.set(nums[i], seen + 1);\n    }\n    return total;\n};`,
@@ -838,6 +1030,18 @@ export const ARRAY2_PROBLEMS: CatalogProblem[] = [
         const nums = randArr(rng, 2 * n, 1, 1000);
         return { input: `${fmtIntArr(nums)}\n${n}`, expectedOutput: fmtIntArr(ref(nums, n)) };
       },
+      editorial: explain({
+        idea: "`x_i` lives at index `i` and `y_i` at index `i + n`; emit them alternately.",
+        steps: [
+          "For `i` in `0..n-1`, append `nums[i]` then `nums[i + n]`.",
+        ],
+        why: "The input layout puts the two halves back to back, so a single index addresses both members of each pair.",
+        time: "O(n)",
+        space: "O(n) for the output",
+        pitfalls: [
+          "An in-place version packs two values per slot using bit shifts; only worth it if extra space is forbidden.",
+        ],
+      }),
       solutions: {
         python: `def shuffle(nums, n):\n    out = []\n    for i in range(n):\n        out.append(nums[i])\n        out.append(nums[i + n])\n    return out`,
         javascript: `var shuffle = function(nums, n) {\n    const out = [];\n    for (let i = 0; i < n; i++) {\n        out.push(nums[i]);\n        out.push(nums[i + n]);\n    }\n    return out;\n};`,
@@ -889,6 +1093,18 @@ export const ARRAY2_PROBLEMS: CatalogProblem[] = [
         const nums = shuffle(rng, Array.from({ length: n }, (_, i) => i));
         return { input: fmtIntArr(nums), expectedOutput: fmtIntArr(ref(nums)) };
       },
+      editorial: explain({
+        idea: "Each output is a double lookup: `ans[i] = nums[nums[i]]`.",
+        steps: [
+          "For each `i`, read `nums[i]` and use it as an index back into `nums`.",
+        ],
+        why: "Because `nums` is a permutation, `nums[i]` is always a valid index, and reading from the original array keeps every lookup correct.",
+        time: "O(n)",
+        space: "O(n)",
+        pitfalls: [
+          "Overwriting `nums` while iterating corrupts later reads; the in-place trick stores `old + n·new` and divides out in a second pass.",
+        ],
+      }),
       solutions: {
         python: `def buildArray(nums):\n    return [nums[nums[i]] for i in range(len(nums))]`,
         javascript: `var buildArray = function(nums) {\n    const out = [];\n    for (let i = 0; i < nums.length; i++) out.push(nums[nums[i]]);\n    return out;\n};`,
@@ -936,6 +1152,18 @@ export const ARRAY2_PROBLEMS: CatalogProblem[] = [
         const nums = randArr(rng, ri(rng, 1, 40), 1, 1000);
         return { input: fmtIntArr(nums), expectedOutput: fmtIntArr(ref(nums)) };
       },
+      editorial: explain({
+        idea: "The answer is the array followed by itself.",
+        steps: [
+          "Return `nums + nums` (or loop over the input twice, appending).",
+        ],
+        why: "`ans[i] = nums[i]` and `ans[i + n] = nums[i]` is the definition of concatenation with itself.",
+        time: "O(n)",
+        space: "O(n)",
+        pitfalls: [
+          "Iterating with index `i % n` up to `2n` is the same thing without a library call.",
+        ],
+      }),
       solutions: {
         python: `def getConcatenation(nums):\n    return list(nums) + list(nums)`,
         javascript: `var getConcatenation = function(nums) {\n    return nums.concat(nums);\n};`,
@@ -992,6 +1220,18 @@ export const ARRAY2_PROBLEMS: CatalogProblem[] = [
         for (let i = 0; i < pairs; i++) { nums.push(ri(rng, 1, 6)); nums.push(ri(rng, 1, 40)); }
         return { input: fmtIntArr(nums), expectedOutput: fmtIntArr(ref(nums)) };
       },
+      editorial: explain({
+        idea: "Walk the input two entries at a time; the first is a repeat count, the second the value to repeat.",
+        steps: [
+          "For `i = 0, 2, 4, …`, append `nums[i]` copies of `nums[i + 1]`.",
+        ],
+        why: "Run-length encoding is a sequence of `(freq, val)` pairs, and decoding is just expanding each pair in order.",
+        time: "O(total output length)",
+        space: "O(total output length)",
+        pitfalls: [
+          "Swapping the roles of the pair (value, then count) is the common slip.",
+        ],
+      }),
       solutions: {
         python: `def decompressRLElist(nums):\n    out = []\n    for i in range(0, len(nums), 2):\n        out.extend([nums[i + 1]] * nums[i])\n    return out`,
         javascript: `var decompressRLElist = function(nums) {\n    const out = [];\n    for (let i = 0; i < nums.length; i += 2) {\n        for (let k = 0; k < nums[i]; k++) out.push(nums[i + 1]);\n    }\n    return out;\n};`,
@@ -1046,6 +1286,19 @@ export const ARRAY2_PROBLEMS: CatalogProblem[] = [
         const index = Array.from({ length: n }, (_, i) => ri(rng, 0, i));
         return { input: `${fmtIntArr(nums)}\n${fmtIntArr(index)}`, expectedOutput: fmtIntArr(ref(nums, index)) };
       },
+      editorial: explain({
+        idea: "Simulate literally: insert `nums[i]` at position `index[i]` in a growing list.",
+        steps: [
+          "Start with an empty list.",
+          "For each `(value, pos)` pair in order, insert `value` at `pos`, shifting later elements right.",
+        ],
+        why: "The guarantee `index[i] <= i` means the position always exists at the moment of insertion, so the simulation never goes out of range.",
+        time: "O(n²) worst case for the shifts",
+        space: "O(n)",
+        pitfalls: [
+          "Assignment (`target[pos] = value`) instead of insertion overwrites rather than shifts.",
+        ],
+      }),
       solutions: {
         python: `def createTargetArray(nums, index):\n    out = []\n    for value, pos in zip(nums, index):\n        out.insert(pos, value)\n    return out`,
         javascript: `var createTargetArray = function(nums, index) {\n    const out = [];\n    for (let i = 0; i < nums.length; i++) {\n        out.splice(index[i], 0, nums[i]);\n    }\n    return out;\n};`,
@@ -1098,6 +1351,19 @@ export const ARRAY2_PROBLEMS: CatalogProblem[] = [
         const gain = randArr(rng, ri(rng, 1, 40), -100, 100);
         return { input: fmtIntArr(gain), expectedOutput: String(ref(gain)) };
       },
+      editorial: explain({
+        idea: "Altitudes are prefix sums of `gain` starting at 0; track the running sum and the best seen, seeded with 0.",
+        steps: [
+          "Start `cur = best = 0`.",
+          "For each gain, add it to `cur` and update `best`.",
+        ],
+        why: "The altitude after step `i` is the sum of the first `i` gains, and the starting point counts as a visited altitude, which is why `best` begins at 0 rather than at the first prefix.",
+        time: "O(n)",
+        space: "O(1)",
+        pitfalls: [
+          "Seeding `best` with the first prefix sum misses the case where every altitude is negative and the answer is 0.",
+        ],
+      }),
       solutions: {
         python: `def largestAltitude(gain):\n    cur = best = 0\n    for g in gain:\n        cur += g\n        if cur > best:\n            best = cur\n    return best`,
         javascript: `var largestAltitude = function(gain) {\n    let cur = 0, best = 0;\n    for (let i = 0; i < gain.length; i++) {\n        cur += gain[i];\n        if (cur > best) best = cur;\n    }\n    return best;\n};`,
@@ -1156,6 +1422,19 @@ export const ARRAY2_PROBLEMS: CatalogProblem[] = [
         const arr = randArr(rng, ri(rng, 1, 30), 1, 1000);
         return { input: fmtIntArr(arr), expectedOutput: String(ref(arr)) };
       },
+      editorial: explain({
+        idea: "Count how many odd-length subarrays contain each element, then multiply. Element `i` sits in `(i + 1)·(n - i)` subarrays, and just over half of those have odd length.",
+        steps: [
+          "For each `i`, compute `occurrences = ((i + 1)·(n - i) + 1) // 2`.",
+          "Add `occurrences × arr[i]` to the total.",
+        ],
+        why: "A subarray containing `i` is fixed by a left endpoint in `[0, i]` and a right endpoint in `[i, n-1]`. Pairing lengths `L` and `L + 1` shows odd and even lengths alternate, so odd ones number `⌈total/2⌉`.",
+        time: "O(n)",
+        space: "O(1)",
+        pitfalls: [
+          "Enumerating every subarray is `O(n²)` (fine here) or `O(n³)` if you re-sum each — the contribution formula is what the problem is testing.",
+        ],
+      }),
       solutions: {
         python: `def sumOddLengthSubarrays(arr):\n    n = len(arr)\n    total = 0\n    for i, x in enumerate(arr):\n        occurrences = ((i + 1) * (n - i) + 1) // 2\n        total += occurrences * x\n    return total`,
         javascript: `var sumOddLengthSubarrays = function(arr) {\n    const n = arr.length;\n    let total = 0;\n    for (let i = 0; i < n; i++) {\n        const occurrences = Math.floor(((i + 1) * (n - i) + 1) / 2);\n        total += occurrences * arr[i];\n    }\n    return total;\n};`,
@@ -1212,6 +1491,19 @@ export const ARRAY2_PROBLEMS: CatalogProblem[] = [
         const nums = Array.from({ length: n }, () => (rng() < 0.6 ? 1 : 0));
         return { input: fmtIntArr(nums), expectedOutput: String(ref(nums)) };
       },
+      editorial: explain({
+        idea: "Keep the length of the current run of 1s; it grows on a 1 and resets on a 0. Update the best after every element.",
+        steps: [
+          "Start `run = best = 0`.",
+          "For each `x`: `run = run + 1` if `x == 1` else `0`; then `best = max(best, run)`.",
+        ],
+        why: "Every maximal run of 1s is fully counted before a 0 resets it, and updating `best` on every step catches a run that reaches the end of the array.",
+        time: "O(n)",
+        space: "O(1)",
+        pitfalls: [
+          "Updating `best` only when a 0 is seen misses a trailing run.",
+        ],
+      }),
       solutions: {
         python: `def findMaxConsecutiveOnes(nums):\n    best = run = 0\n    for x in nums:\n        run = run + 1 if x == 1 else 0\n        if run > best:\n            best = run\n    return best`,
         javascript: `var findMaxConsecutiveOnes = function(nums) {\n    let best = 0, run = 0;\n    for (let i = 0; i < nums.length; i++) {\n        run = nums[i] === 1 ? run + 1 : 0;\n        if (run > best) best = run;\n    }\n    return best;\n};`,
@@ -1266,6 +1558,20 @@ export const ARRAY2_PROBLEMS: CatalogProblem[] = [
         const nums = rng() < 0.5 ? randArr(rng, n, -5, 5) : randArr(rng, n, -1000, 1000);
         return { input: fmtIntArr(nums), expectedOutput: String(ref(nums)) };
       },
+      editorial: explain({
+        idea: "Deduplicate, sort descending, and read the third entry — falling back to the maximum when fewer than three distinct values exist.",
+        steps: [
+          "Build the set of distinct values and sort it descending.",
+          "Return the third element if there are at least three, otherwise the first.",
+        ],
+        why: "\"Third maximum\" is defined over distinct values, so deduplication must precede the ranking; the fallback rule is spelled out in the statement.",
+        time: "O(n log n)",
+        space: "O(n)",
+        pitfalls: [
+          "For O(n), carry three running maxima and skip a value equal to one already held — the sentinel for \"unset\" must lie outside the int range.",
+          "`[2,2,3,1]` has three distinct values (1 is the answer), but `[1,2]` does not.",
+        ],
+      }),
       solutions: {
         python: `def thirdMax(nums):\n    distinct = sorted(set(nums), reverse=True)\n    return distinct[2] if len(distinct) >= 3 else distinct[0]`,
         javascript: `var thirdMax = function(nums) {\n    const distinct = Array.from(new Set(nums)).sort(function(a, b) { return b - a; });\n    return distinct.length >= 3 ? distinct[2] : distinct[0];\n};`,
@@ -1331,6 +1637,21 @@ export const ARRAY2_PROBLEMS: CatalogProblem[] = [
         const n = ri(rng, 0, Math.max(1, Math.floor(len / 2)));
         return { input: `${fmtIntArr(bed)}\n${n}`, expectedOutput: bool(ref(bed, n)) };
       },
+      editorial: explain({
+        idea: "Greedy left to right: plant in any empty plot whose neighbours are empty, treating out-of-range positions as empty.",
+        steps: [
+          "Walk the bed; at `i`, plant if `bed[i] == 0`, `i == 0 or bed[i-1] == 0`, and `i == last or bed[i+1] == 0`.",
+          "Mark the plot planted and count.",
+          "Return `planted >= n`.",
+        ],
+        why: "Planting at the earliest legal plot never hurts: it blocks only `i + 1`, and any optimal arrangement that skips `i` for `i + 1` can swap to `i` without losing a flower. Repeating the exchange shows greedy is maximal.",
+        time: "O(n)",
+        space: "O(1) if mutating a copy",
+        pitfalls: [
+          "Forgetting to mark the plot after planting lets the next plot plant adjacent to it.",
+          "Stop early once `planted >= n` if you like — the count only grows.",
+        ],
+      }),
       solutions: {
         python: `def canPlaceFlowers(flowerbed, n) -> bool:\n    bed = list(flowerbed)\n    planted = 0\n    for i in range(len(bed)):\n        if bed[i] == 0 and (i == 0 or bed[i - 1] == 0) and (i == len(bed) - 1 or bed[i + 1] == 0):\n            bed[i] = 1\n            planted += 1\n    return planted >= n`,
         javascript: `var canPlaceFlowers = function(flowerbed, n) {\n    const bed = flowerbed.slice();\n    let planted = 0;\n    for (let i = 0; i < bed.length; i++) {\n        if (bed[i] === 0 && (i === 0 || bed[i - 1] === 0) && (i === bed.length - 1 || bed[i + 1] === 0)) {\n            bed[i] = 1;\n            planted++;\n        }\n    }\n    return planted >= n;\n};`,
@@ -1399,6 +1720,20 @@ export const ARRAY2_PROBLEMS: CatalogProblem[] = [
         const nums = randArr(rng, ri(rng, 1, 40), 0, rng() < 0.5 ? 6 : 40);
         return { input: fmtIntArr(nums), expectedOutput: String(ref(nums)) };
       },
+      editorial: explain({
+        idea: "A subarray with the full degree must contain every occurrence of some most-frequent value, so its shortest form runs from that value's first index to its last.",
+        steps: [
+          "In one pass record `first[x]`, `last[x]` and `count[x]`.",
+          "Compute `degree = max(count)`.",
+          "Return the minimum `last[x] - first[x] + 1` over values with `count[x] == degree`.",
+        ],
+        why: "Any window that omits one occurrence of `x` has fewer than `degree` copies of `x`, so it must instead reach the degree via another value whose span is then what we measure. Taking the minimum span across all maximal-frequency values covers every candidate.",
+        time: "O(n)",
+        space: "O(n)",
+        pitfalls: [
+          "Only values with the full degree count; the span of a lower-frequency value is irrelevant.",
+        ],
+      }),
       solutions: {
         python: `def findShortestSubArray(nums):\n    first, last, count = {}, {}, {}\n    for i, x in enumerate(nums):\n        if x not in first:\n            first[x] = i\n        last[x] = i\n        count[x] = count.get(x, 0) + 1\n    degree = max(count.values())\n    return min(last[x] - first[x] + 1 for x in count if count[x] == degree)`,
         javascript: `var findShortestSubArray = function(nums) {\n    const first = new Map(), last = new Map(), count = new Map();\n    for (let i = 0; i < nums.length; i++) {\n        if (!first.has(nums[i])) first.set(nums[i], i);\n        last.set(nums[i], i);\n        count.set(nums[i], (count.get(nums[i]) || 0) + 1);\n    }\n    let degree = 0;\n    count.forEach(function(c) { if (c > degree) degree = c; });\n    let best = nums.length;\n    count.forEach(function(c, value) {\n        if (c === degree) {\n            const span = last.get(value) - first.get(value) + 1;\n            if (span < best) best = span;\n        }\n    });\n    return best;\n};`,
@@ -1457,6 +1792,20 @@ export const ARRAY2_PROBLEMS: CatalogProblem[] = [
         const nums = randArr(rng, ri(rng, 1, 40), rng() < 0.6 ? -5 : -1000, rng() < 0.6 ? 5 : 1000);
         return { input: fmtIntArr(nums), expectedOutput: String(ref(nums)) };
       },
+      editorial: explain({
+        idea: "A harmonious subsequence uses exactly two values `v` and `v + 1` and can take every copy of both, so the answer is the largest `count[v] + count[v + 1]` where both are present.",
+        steps: [
+          "Count occurrences of every value.",
+          "For each `v` with `v + 1` also present, compute `count[v] + count[v + 1]`.",
+          "Return the maximum, or 0 if no such pair exists.",
+        ],
+        why: "Order never restricts a subsequence, so only multiplicities matter; requiring both values present enforces that max − min is exactly 1 rather than 0.",
+        time: "O(n)",
+        space: "O(n)",
+        pitfalls: [
+          "Counting a lone value (no `v + 1`) as harmonious is the classic wrong answer — a constant array returns 0.",
+        ],
+      }),
       solutions: {
         python: `def findLHS(nums):\n    count = {}\n    for x in nums:\n        count[x] = count.get(x, 0) + 1\n    best = 0\n    for v, c in count.items():\n        if v + 1 in count:\n            best = max(best, c + count[v + 1])\n    return best`,
         javascript: `var findLHS = function(nums) {\n    const count = new Map();\n    for (let i = 0; i < nums.length; i++) {\n        count.set(nums[i], (count.get(nums[i]) || 0) + 1);\n    }\n    let best = 0;\n    count.forEach(function(c, v) {\n        const higher = count.get(v + 1);\n        if (higher !== undefined && c + higher > best) best = c + higher;\n    });\n    return best;\n};`,
@@ -1508,6 +1857,19 @@ export const ARRAY2_PROBLEMS: CatalogProblem[] = [
         if (rng() < 0.4) for (let i = 0; i < n; i++) candyType[i] = ri(rng, 1, 4);
         return { input: fmtIntArr(candyType), expectedOutput: String(ref(candyType)) };
       },
+      editorial: explain({
+        idea: "She is capped by both the allowance `n / 2` and the number of distinct types; the answer is the smaller of the two.",
+        steps: [
+          "Count distinct types with a set.",
+          "Return `min(distinct, n / 2)`.",
+        ],
+        why: "If there are at least `n / 2` types she can pick one candy of `n / 2` different types; otherwise she can take one of each type and still be under the limit.",
+        time: "O(n)",
+        space: "O(n)",
+        pitfalls: [
+          "`n` is even by the constraints; integer division is exact.",
+        ],
+      }),
       solutions: {
         python: `def distributeCandies(candyType):\n    return min(len(set(candyType)), len(candyType) // 2)`,
         javascript: `var distributeCandies = function(candyType) {\n    const types = new Set(candyType).size;\n    const half = candyType.length / 2;\n    return types < half ? types : half;\n};`,
@@ -1572,6 +1934,22 @@ export const ARRAY2_PROBLEMS: CatalogProblem[] = [
         }
         return { input: fmtIntArr(nums), expectedOutput: String(ref(nums)) };
       },
+      editorial: explain({
+        idea: "Compare the array with its sorted copy: everything outside the first and last mismatches is already in its final place.",
+        steps: [
+          "Sort a copy.",
+          "Advance `left` while `nums[left] == sorted[left]`.",
+          "Retreat `right` while `nums[right] == sorted[right]`.",
+          "Return 0 if `left` ran off the end, else `right - left + 1`.",
+        ],
+        why: "Positions where the original already matches its sorted counterpart need not move, and the window between the outermost mismatches is the minimal region whose sort fixes the array.",
+        time: "O(n log n)",
+        space: "O(n)",
+        pitfalls: [
+          "The O(n) version sweeps right tracking the running max (the last index below it is the right edge) and left tracking the running min for the left edge.",
+          "An already-sorted array must return 0, not 1.",
+        ],
+      }),
       solutions: {
         python: `def findUnsortedSubarray(nums):\n    sorted_nums = sorted(nums)\n    left, right = 0, len(nums) - 1\n    while left < len(nums) and nums[left] == sorted_nums[left]:\n        left += 1\n    while right > left and nums[right] == sorted_nums[right]:\n        right -= 1\n    return 0 if left >= len(nums) else right - left + 1`,
         javascript: `var findUnsortedSubarray = function(nums) {\n    const sorted = nums.slice().sort(function(a, b) { return a - b; });\n    let left = 0, right = nums.length - 1;\n    while (left < nums.length && nums[left] === sorted[left]) left++;\n    while (right > left && nums[right] === sorted[right]) right--;\n    return left >= nums.length ? 0 : right - left + 1;\n};`,
@@ -1625,6 +2003,20 @@ export const ARRAY2_PROBLEMS: CatalogProblem[] = [
         const nums = randArr(rng, ri(rng, 1, 40), 0, 1000);
         return { input: fmtIntArr(nums), expectedOutput: fmtIntArr(ref(nums)) };
       },
+      editorial: explain({
+        idea: "Collect evens and odds in separate lists, preserving order within each, then concatenate.",
+        steps: [
+          "Filter the evens in order.",
+          "Filter the odds in order.",
+          "Return `evens + odds`.",
+        ],
+        why: "Filtering preserves relative order, which is what makes the partition stable.",
+        time: "O(n)",
+        space: "O(n)",
+        pitfalls: [
+          "The in-place two-pointer swap reorders elements within each group and fails the stability requirement here.",
+        ],
+      }),
       solutions: {
         python: `def sortArrayByParity(nums):\n    evens = [x for x in nums if x % 2 == 0]\n    odds = [x for x in nums if x % 2 != 0]\n    return evens + odds`,
         javascript: `var sortArrayByParity = function(nums) {\n    const evens = [], odds = [];\n    for (let i = 0; i < nums.length; i++) {\n        if (nums[i] % 2 === 0) evens.push(nums[i]);\n        else odds.push(nums[i]);\n    }\n    return evens.concat(odds);\n};`,
@@ -1679,6 +2071,20 @@ export const ARRAY2_PROBLEMS: CatalogProblem[] = [
         const heights = randArr(rng, ri(rng, 1, 40), 1, 100);
         return { input: fmtIntArr(heights), expectedOutput: String(ref(heights)) };
       },
+      editorial: explain({
+        idea: "Sort a copy to get the expected line and count positions that disagree with the original.",
+        steps: [
+          "Sort a copy of `heights`.",
+          "Count indices `i` with `heights[i] != expected[i]`.",
+        ],
+        why: "The expected line is by definition the sorted order; comparing index by index counts exactly the students standing in the wrong slot.",
+        time: "O(n log n)",
+        space: "O(n)",
+        pitfalls: [
+          "Heights are ≤ 100, so a counting sort makes this `O(n + 100)`.",
+          "Sorting in place destroys the original you must compare against.",
+        ],
+      }),
       solutions: {
         python: `def heightChecker(heights):\n    expected = sorted(heights)\n    return sum(1 for i in range(len(heights)) if heights[i] != expected[i])`,
         javascript: `var heightChecker = function(heights) {\n    const expected = heights.slice().sort(function(a, b) { return a - b; });\n    let count = 0;\n    for (let i = 0; i < heights.length; i++) {\n        if (heights[i] !== expected[i]) count++;\n    }\n    return count;\n};`,
@@ -1744,6 +2150,21 @@ export const ARRAY2_PROBLEMS: CatalogProblem[] = [
         shuffle(rng, arr1);
         return { input: `${fmtIntArr(arr1)}\n${fmtIntArr(arr2)}`, expectedOutput: fmtIntArr(ref(arr1, arr2)) };
       },
+      editorial: explain({
+        idea: "The order in `arr2` defines a rank for each known value; sort the known elements by rank and the unknown ones numerically, then join.",
+        steps: [
+          "Build `rank[value] = position in arr2`.",
+          "Sort the elements of `arr1` that have a rank by that rank.",
+          "Sort the remaining elements numerically and append.",
+        ],
+        why: "Sorting by rank reproduces `arr2`'s order with duplicates kept together, and the leftover group is specified to be ascending.",
+        time: "O(n log n)",
+        space: "O(n)",
+        pitfalls: [
+          "A counting sort over the bounded value range avoids the comparison sort entirely.",
+          "Values in `arr2` are distinct, so ranks are unambiguous.",
+        ],
+      }),
       solutions: {
         python: `def relativeSortArray(arr1, arr2):\n    rank = {v: i for i, v in enumerate(arr2)}\n    known = sorted([x for x in arr1 if x in rank], key=lambda x: rank[x])\n    rest = sorted(x for x in arr1 if x not in rank)\n    return known + rest`,
         javascript: `var relativeSortArray = function(arr1, arr2) {\n    const rank = new Map();\n    for (let i = 0; i < arr2.length; i++) rank.set(arr2[i], i);\n    const known = [], rest = [];\n    for (let i = 0; i < arr1.length; i++) {\n        if (rank.has(arr1[i])) known.push(arr1[i]);\n        else rest.push(arr1[i]);\n    }\n    known.sort(function(a, b) { return rank.get(a) - rank.get(b); });\n    rest.sort(function(a, b) { return a - b; });\n    return known.concat(rest);\n};`,
@@ -1800,6 +2221,21 @@ export const ARRAY2_PROBLEMS: CatalogProblem[] = [
         const citations = rng() < 0.6 ? randArr(rng, n, 0, 12) : randArr(rng, n, 0, 1000);
         return { input: fmtIntArr(citations), expectedOutput: String(ref(citations)) };
       },
+      editorial: explain({
+        idea: "Sort descending; the paper at 0-based index `i` is the `(i + 1)`-th best, and if it has at least `i + 1` citations then `h = i + 1` is achievable. Take the largest such `i + 1`.",
+        steps: [
+          "Sort citations in descending order.",
+          "For each `i`, if `ordered[i] >= i + 1`, set `h = i + 1`.",
+          "Return `h`.",
+        ],
+        why: "In descending order the first `i + 1` papers all have at least `ordered[i]` citations, so the condition certifies `h = i + 1`. The condition is monotone — once it fails it stays failed — so the last success is the maximum.",
+        time: "O(n log n)",
+        space: "O(n)",
+        pitfalls: [
+          "A bucket count over `0..n` gives O(n).",
+          "An all-zero array has h-index 0.",
+        ],
+      }),
       solutions: {
         python: `def hIndex(citations):\n    ordered = sorted(citations, reverse=True)\n    h = 0\n    for i, c in enumerate(ordered):\n        if c >= i + 1:\n            h = i + 1\n    return h`,
         javascript: `var hIndex = function(citations) {\n    const ordered = citations.slice().sort(function(a, b) { return b - a; });\n    let h = 0;\n    for (let i = 0; i < ordered.length; i++) {\n        if (ordered[i] >= i + 1) h = i + 1;\n    }\n    return h;\n};`,
@@ -1861,6 +2297,21 @@ export const ARRAY2_PROBLEMS: CatalogProblem[] = [
         else if (rng() < 0.2) { nums = randArr(rng, n, -3, 3); }
         return { input: fmtIntArr(nums), expectedOutput: bool(ref(nums)) };
       },
+      editorial: explain({
+        idea: "Track `first`, the smallest value so far, and `second`, the smallest value that already has something smaller before it. Any element larger than `second` completes a triple.",
+        steps: [
+          "Initialise `first = second = +∞`.",
+          "For each `x`: if `x <= first`, set `first = x`; else if `x <= second`, set `second = x`; else return `true`.",
+          "Return `false`.",
+        ],
+        why: "`second` is only ever set when a smaller `first` preceded it, so an `x > second` has two smaller predecessors in order. Lowering `first` afterwards is safe: `second` still records that a valid pair existed earlier.",
+        time: "O(n)",
+        space: "O(1)",
+        pitfalls: [
+          "Using strict `<` instead of `<=` lets equal values slip through as an \"increase\".",
+          "The final `first` may sit to the right of `second` — that does not invalidate the answer.",
+        ],
+      }),
       solutions: {
         python: `def increasingTriplet(nums) -> bool:\n    first = second = float("inf")\n    for x in nums:\n        if x <= first:\n            first = x\n        elif x <= second:\n            second = x\n        else:\n            return True\n    return False`,
         javascript: `var increasingTriplet = function(nums) {\n    let first = Infinity, second = Infinity;\n    for (let i = 0; i < nums.length; i++) {\n        if (nums[i] <= first) first = nums[i];\n        else if (nums[i] <= second) second = nums[i];\n        else return true;\n    }\n    return false;\n};`,
@@ -1918,6 +2369,21 @@ export const ARRAY2_PROBLEMS: CatalogProblem[] = [
         const nums = rng() < 0.6 ? randArr(rng, n, -4, 4) : randArr(rng, n, -1000, 1000);
         return { input: fmtIntArr(nums), expectedOutput: fmtIntArr(ref(nums)) };
       },
+      editorial: explain({
+        idea: "Count every value and keep those whose count strictly exceeds `n / 3`; at most two can qualify.",
+        steps: [
+          "Tally occurrences in a map.",
+          "Filter values with `count > n / 3`.",
+          "Sort and return.",
+        ],
+        why: "Three values each appearing more than `n / 3` times would total more than `n` elements, so the filter yields at most two.",
+        time: "O(n)",
+        space: "O(n)",
+        pitfalls: [
+          "Use a strict comparison; exactly `n / 3` occurrences does not qualify.",
+          "Boyer–Moore with two candidates plus a verification pass gives O(1) space.",
+        ],
+      }),
       solutions: {
         python: `def majorityElement(nums):\n    count = {}\n    for x in nums:\n        count[x] = count.get(x, 0) + 1\n    threshold = len(nums) / 3\n    return sorted(v for v, c in count.items() if c > threshold)`,
         javascript: `var majorityElement = function(nums) {\n    const count = new Map();\n    for (let i = 0; i < nums.length; i++) {\n        count.set(nums[i], (count.get(nums[i]) || 0) + 1);\n    }\n    const out = [];\n    const threshold = nums.length / 3;\n    count.forEach(function(c, v) { if (c > threshold) out.push(v); });\n    return out.sort(function(a, b) { return a - b; });\n};`,

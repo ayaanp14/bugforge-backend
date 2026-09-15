@@ -6,7 +6,7 @@
  * JS solutions must be Node 12-safe: no ??, ?., replaceAll, .at() or .flat().
  */
 
-import { bool, describe, fmtIntArr, fmtIntMat, ri, shuffle, type CatalogProblem, type Rng } from "./types.js";
+import { bool, describe, explain, fmtIntArr, fmtIntMat, ri, shuffle, type CatalogProblem, type Rng } from "./types.js";
 
 /** A random r×c matrix with values drawn from [lo, hi]. */
 const randMat = (rng: Rng, r: number, c: number, lo: number, hi: number) =>
@@ -57,6 +57,21 @@ export const MATRIX2_PROBLEMS: CatalogProblem[] = [
         const n = ri(rng, 1, 9);
         return { input: String(n), expectedOutput: fmtIntMat(ref(n)) };
       },
+      editorial: explain({
+        idea: "Keep four boundaries and fill the outer ring in four passes — right along the top, down the right, left along the bottom, up the left — shrinking a boundary after each pass.",
+        steps: [
+          "Set `top = 0`, `bottom = n - 1`, `left = 0`, `right = n - 1` and a counter `v = 1`.",
+          "While `top <= bottom` and `left <= right`: fill row `top` from `left` to `right`, then `top++`; fill column `right` from `top` to `bottom`, then `right--`.",
+          "If `top <= bottom`, fill row `bottom` right-to-left and `bottom--`; if `left <= right`, fill column `left` bottom-to-top and `left++`.",
+        ],
+        why: "Each pass writes exactly the cells of one edge of the current unfilled rectangle, and shrinking the boundary afterwards ensures no cell is written twice. The re-checks before the bottom and left passes prevent double-writing when the remaining region is a single row or column.",
+        time: "O(n²)",
+        space: "O(n²) for the output",
+        pitfalls: [
+          "Skipping the mid-loop re-checks writes the centre row twice on odd `n`.",
+          "The same boundary loop reads an arbitrary `m × n` matrix in spiral order — it is the general Spiral Matrix technique.",
+        ],
+      }),
       solutions: {
         python: `def generateMatrix(n: int):\n    m = [[0] * n for _ in range(n)]\n    top, bottom, left, right = 0, n - 1, 0, n - 1\n    v = 1\n    while top <= bottom and left <= right:\n        for c in range(left, right + 1):\n            m[top][c] = v\n            v += 1\n        top += 1\n        for r in range(top, bottom + 1):\n            m[r][right] = v\n            v += 1\n        right -= 1\n        if top <= bottom:\n            for c in range(right, left - 1, -1):\n                m[bottom][c] = v\n                v += 1\n            bottom -= 1\n        if left <= right:\n            for r in range(bottom, top - 1, -1):\n                m[r][left] = v\n                v += 1\n            left += 1\n    return m`,
         javascript: `var generateMatrix = function(n) {\n    const m = [];\n    for (let i = 0; i < n; i++) m.push(new Array(n).fill(0));\n    let top = 0, bottom = n - 1, left = 0, right = n - 1, v = 1;\n    while (top <= bottom && left <= right) {\n        for (let c = left; c <= right; c++) m[top][c] = v++;\n        top++;\n        for (let r = top; r <= bottom; r++) m[r][right] = v++;\n        right--;\n        if (top <= bottom) {\n            for (let c = right; c >= left; c--) m[bottom][c] = v++;\n            bottom--;\n        }\n        if (left <= right) {\n            for (let r = bottom; r >= top; r--) m[r][left] = v++;\n            left++;\n        }\n    }\n    return m;\n};`,
@@ -121,6 +136,20 @@ export const MATRIX2_PROBLEMS: CatalogProblem[] = [
         const mat = randMat(rng, ri(rng, 1, 8), ri(rng, 1, 8), -100, 100);
         return { input: fmtIntMat(mat), expectedOutput: fmtIntArr(ref(mat)) };
       },
+      editorial: explain({
+        idea: "Cells on an anti-diagonal share `r + c`. Walk the `rows + cols - 1` diagonals in order of that sum, going up-right on even sums and down-left on odd ones.",
+        steps: [
+          "For each `d` from 0 to `rows + cols - 2`, compute the diagonal's starting cell.",
+          "Even `d`: start at `(min(d, rows-1), d - r)` and step `r--, c++` while in bounds.",
+          "Odd `d`: start at `(d - c, min(d, cols-1))` and step `r++, c--` while in bounds.",
+        ],
+        why: "Fixing `r + c = d` enumerates one anti-diagonal; choosing the starting corner by clamping to the grid edge handles rectangular matrices where diagonals start on the bottom or right border. Alternating direction reproduces the zigzag.",
+        time: "O(m · n)",
+        space: "O(m · n) for the output",
+        pitfalls: [
+          "Bucketing cells by `r + c` and reversing every other bucket is simpler to write and equally fast.",
+        ],
+      }),
       solutions: {
         python: `def findDiagonalOrder(mat):\n    rows, cols = len(mat), len(mat[0])\n    out = []\n    for d in range(rows + cols - 1):\n        if d % 2 == 0:\n            r = d if d < rows else rows - 1\n            c = d - r\n            while r >= 0 and c < cols:\n                out.append(mat[r][c])\n                r -= 1\n                c += 1\n        else:\n            c = d if d < cols else cols - 1\n            r = d - c\n            while c >= 0 and r < rows:\n                out.append(mat[r][c])\n                r += 1\n                c -= 1\n    return out`,
         javascript: `var findDiagonalOrder = function(mat) {\n    const rows = mat.length, cols = mat[0].length;\n    const out = [];\n    for (let d = 0; d < rows + cols - 1; d++) {\n        if (d % 2 === 0) {\n            let r = d < rows ? d : rows - 1;\n            let c = d - r;\n            while (r >= 0 && c < cols) {\n                out.push(mat[r][c]);\n                r--;\n                c++;\n            }\n        } else {\n            let c = d < cols ? d : cols - 1;\n            let r = d - c;\n            while (c >= 0 && r < rows) {\n                out.push(mat[r][c]);\n                r++;\n                c--;\n            }\n        }\n    }\n    return out;\n};`,
@@ -186,6 +215,20 @@ export const MATRIX2_PROBLEMS: CatalogProblem[] = [
         }
         return { input: fmtIntMat(mat), expectedOutput: bool(ref(mat)) };
       },
+      editorial: explain({
+        idea: "Every diagonal is constant exactly when every cell equals its up-left neighbour.",
+        steps: [
+          "For `r` from 1 and `c` from 1, compare `matrix[r][c]` with `matrix[r-1][c-1]`.",
+          "Return `false` on the first mismatch, `true` otherwise.",
+        ],
+        why: "Two consecutive cells on a diagonal differ by `(1, 1)`, so checking each such pair covers every adjacent pair on every diagonal, and constancy along a diagonal follows by induction.",
+        time: "O(m · n)",
+        space: "O(1)",
+        pitfalls: [
+          "Starting either loop at 0 reads out of bounds.",
+          "For a matrix streamed one row at a time, compare each row with the previous row shifted by one.",
+        ],
+      }),
       solutions: {
         python: `def isToeplitzMatrix(matrix) -> bool:\n    for r in range(1, len(matrix)):\n        for c in range(1, len(matrix[0])):\n            if matrix[r][c] != matrix[r - 1][c - 1]:\n                return False\n    return True`,
         javascript: `var isToeplitzMatrix = function(matrix) {\n    for (let r = 1; r < matrix.length; r++) {\n        for (let c = 1; c < matrix[0].length; c++) {\n            if (matrix[r][c] !== matrix[r - 1][c - 1]) return false;\n        }\n    }\n    return true;\n};`,
@@ -255,6 +298,20 @@ export const MATRIX2_PROBLEMS: CatalogProblem[] = [
         }
         return { input: `${fmtIntMat(mat)}\n${r}\n${c}`, expectedOutput: fmtIntMat(ref(mat, r, c)) };
       },
+      editorial: explain({
+        idea: "If the element counts match, read the matrix in row order and cut it into rows of length `c`.",
+        steps: [
+          "Return `mat` unchanged if `m · n != r · c`.",
+          "Flatten row by row.",
+          "Slice the flat list into `r` rows of `c` elements.",
+        ],
+        why: "Reshaping preserves the row-major reading order, so the flat sequence is the invariant and only the row breaks move.",
+        time: "O(m · n)",
+        space: "O(m · n)",
+        pitfalls: [
+          "Index arithmetic (`flat[k]` at `(k // n, k % n)` → `(k // c, k % c)`) avoids the intermediate list.",
+        ],
+      }),
       solutions: {
         python: `def matrixReshape(mat, r: int, c: int):\n    rows, cols = len(mat), len(mat[0])\n    if rows * cols != r * c:\n        return mat\n    flat = [v for row in mat for v in row]\n    return [flat[i * c:(i + 1) * c] for i in range(r)]`,
         javascript: `var matrixReshape = function(mat, r, c) {\n    const rows = mat.length, cols = mat[0].length;\n    if (rows * cols !== r * c) return mat;\n    const flat = [];\n    for (let i = 0; i < rows; i++) {\n        for (let j = 0; j < cols; j++) flat.push(mat[i][j]);\n    }\n    const out = [];\n    for (let i = 0; i < r; i++) out.push(flat.slice(i * c, i * c + c));\n    return out;\n};`,
@@ -305,6 +362,18 @@ export const MATRIX2_PROBLEMS: CatalogProblem[] = [
         const image = randMat(rng, n, n, 0, 1);
         return { input: fmtIntMat(image), expectedOutput: fmtIntMat(ref(image)) };
       },
+      editorial: explain({
+        idea: "Reverse each row and invert every bit in the same pass by reading from the right and writing `1 - value`.",
+        steps: [
+          "For each row, build the new row from `reversed(row)` with each value mapped to `1 - v`.",
+        ],
+        why: "Flipping and inverting commute, so combining them into one traversal is safe.",
+        time: "O(n²)",
+        space: "O(n²) for the output (O(1) in place)",
+        pitfalls: [
+          "In place, swap the ends inverting both and, when the pointers meet on a middle cell, invert it exactly once.",
+        ],
+      }),
       solutions: {
         python: `def flipAndInvertImage(image):\n    return [[1 - v for v in reversed(row)] for row in image]`,
         javascript: `var flipAndInvertImage = function(image) {\n    const out = [];\n    for (let i = 0; i < image.length; i++) {\n        const row = [];\n        for (let j = image[i].length - 1; j >= 0; j--) row.push(1 - image[i][j]);\n        out.push(row);\n    }\n    return out;\n};`,
@@ -372,6 +441,20 @@ export const MATRIX2_PROBLEMS: CatalogProblem[] = [
         const img = randMat(rng, ri(rng, 1, 8), ri(rng, 1, 8), 0, 255);
         return { input: fmtIntMat(img), expectedOutput: fmtIntMat(ref(img)) };
       },
+      editorial: explain({
+        idea: "For each cell, average the in-bounds cells of its 3 × 3 neighbourhood, writing into a fresh matrix so later cells still read original values.",
+        steps: [
+          "For each `(r, c)`, loop over the nine offsets `(-1..1, -1..1)`.",
+          "Skip offsets outside the grid; sum the rest and count them.",
+          "Write `total // count` to the output.",
+        ],
+        why: "Counting only the cells actually visited makes corners average four and edges six, exactly as specified, and the floor division rounds down.",
+        time: "O(m · n)",
+        space: "O(m · n)",
+        pitfalls: [
+          "Smoothing in place feeds already-smoothed values into later averages.",
+        ],
+      }),
       solutions: {
         python: `def imageSmoother(img):\n    m, n = len(img), len(img[0])\n    out = []\n    for r in range(m):\n        row = []\n        for c in range(n):\n            total = count = 0\n            for dr in (-1, 0, 1):\n                for dc in (-1, 0, 1):\n                    nr, nc = r + dr, c + dc\n                    if 0 <= nr < m and 0 <= nc < n:\n                        total += img[nr][nc]\n                        count += 1\n            row.append(total // count)\n        out.append(row)\n    return out`,
         javascript: `var imageSmoother = function(img) {\n    const m = img.length, n = img[0].length;\n    const out = [];\n    for (let r = 0; r < m; r++) {\n        const row = [];\n        for (let c = 0; c < n; c++) {\n            let sum = 0, count = 0;\n            for (let dr = -1; dr <= 1; dr++) {\n                for (let dc = -1; dc <= 1; dc++) {\n                    const nr = r + dr, nc = c + dc;\n                    if (nr >= 0 && nr < m && nc >= 0 && nc < n) {\n                        sum += img[nr][nc];\n                        count++;\n                    }\n                }\n            }\n            row.push(Math.floor(sum / count));\n        }\n        out.push(row);\n    }\n    return out;\n};`,
@@ -439,6 +522,21 @@ export const MATRIX2_PROBLEMS: CatalogProblem[] = [
         }
         return { input: fmtIntMat(grid), expectedOutput: String(ref(grid)) };
       },
+      editorial: explain({
+        idea: "Start at the bottom-left corner: a negative there means the rest of its row is negative (add them all, move up); otherwise step right. Each step retires a row or a column.",
+        steps: [
+          "Set `r = m - 1`, `c = 0`.",
+          "If `grid[r][c] < 0`, add `n - c` and decrement `r`; else increment `c`.",
+          "Stop when `r < 0` or `c == n`.",
+        ],
+        why: "Rows are non-increasing, so once a negative appears in a row everything to its right is negative; columns are non-increasing, so if `(r, c)` is non-negative, so is every cell above it in that column, which is why moving right never misses anything.",
+        time: "O(m + n)",
+        space: "O(1)",
+        pitfalls: [
+          "Counting every cell is `O(m · n)` and correct — the staircase walk is what the sorted structure buys.",
+          "Binary search per row gives `O(m log n)`.",
+        ],
+      }),
       solutions: {
         python: `def countNegatives(grid) -> int:\n    m, n = len(grid), len(grid[0])\n    r, c = m - 1, 0\n    count = 0\n    while r >= 0 and c < n:\n        if grid[r][c] < 0:\n            count += n - c\n            r -= 1\n        else:\n            c += 1\n    return count`,
         javascript: `var countNegatives = function(grid) {\n    const m = grid.length, n = grid[0].length;\n    let r = m - 1, c = 0, count = 0;\n    while (r >= 0 && c < n) {\n        if (grid[r][c] < 0) {\n            count += n - c;\n            r--;\n        } else {\n            c++;\n        }\n    }\n    return count;\n};`,
@@ -504,6 +602,20 @@ export const MATRIX2_PROBLEMS: CatalogProblem[] = [
         for (let r = 0; r < m; r++) matrix.push(flat.slice(r * n, r * n + n));
         return { input: fmtIntMat(matrix), expectedOutput: fmtIntArr(ref(matrix)) };
       },
+      editorial: explain({
+        idea: "Collect the minimum of every row and the maximum of every column; a lucky number is in both sets.",
+        steps: [
+          "Build the set of row minima.",
+          "Build the set of column maxima.",
+          "Walk the matrix in row order and emit values in both sets.",
+        ],
+        why: "The definition is exactly the intersection of those two properties, and distinct values mean a set lookup identifies the cell unambiguously.",
+        time: "O(m · n)",
+        space: "O(m + n)",
+        pitfalls: [
+          "At most one lucky number can exist when values are distinct, but the scan is still the clearest formulation.",
+        ],
+      }),
       solutions: {
         python: `def luckyNumbers(matrix):\n    row_min = {min(row) for row in matrix}\n    col_max = {max(col) for col in zip(*matrix)}\n    return [v for row in matrix for v in row if v in row_min and v in col_max]`,
         javascript: `var luckyNumbers = function(matrix) {\n    const m = matrix.length, n = matrix[0].length;\n    const out = [];\n    for (let r = 0; r < m; r++) {\n        let minC = 0;\n        for (let c = 1; c < n; c++) {\n            if (matrix[r][c] < matrix[r][minC]) minC = c;\n        }\n        let isMax = true;\n        for (let rr = 0; rr < m; rr++) {\n            if (matrix[rr][minC] > matrix[r][minC]) { isMax = false; break; }\n        }\n        if (isMax) out.push(matrix[r][minC]);\n    }\n    return out;\n};`,
@@ -569,6 +681,19 @@ export const MATRIX2_PROBLEMS: CatalogProblem[] = [
         const k = ri(rng, 0, 100);
         return { input: `${fmtIntMat(grid)}\n${k}`, expectedOutput: fmtIntMat(ref(grid, k)) };
       },
+      editorial: explain({
+        idea: "Read the grid row-major as a flat list; a shift is a rotation of that list by `k mod (m·n)`.",
+        steps: [
+          "Compute `shift = k % (m · n)` and flatten the grid.",
+          "Fill the output so that flat position `i` holds `flat[(i - shift) mod (m·n)]`.",
+        ],
+        why: "The shift rule (end of a row wraps to the next row, bottom-right wraps to top-left) is precisely a cyclic rotation of the row-major order.",
+        time: "O(m · n)",
+        space: "O(m · n)",
+        pitfalls: [
+          "Reduce `k` first — `k` can be much larger than the grid.",
+        ],
+      }),
       solutions: {
         python: `def shiftGrid(grid, k: int):\n    m, n = len(grid), len(grid[0])\n    total = m * n\n    shift = k % total\n    flat = [v for row in grid for v in row]\n    return [[flat[(r * n + c - shift) % total] for c in range(n)] for r in range(m)]`,
         javascript: `var shiftGrid = function(grid, k) {\n    const m = grid.length, n = grid[0].length, total = m * n;\n    const shift = k % total;\n    const flat = [];\n    for (let r = 0; r < m; r++) {\n        for (let c = 0; c < n; c++) flat.push(grid[r][c]);\n    }\n    const out = [];\n    for (let r = 0; r < m; r++) {\n        const row = [];\n        for (let c = 0; c < n; c++) {\n            const idx = ((r * n + c) - shift + total) % total;\n            row.push(flat[idx]);\n        }\n        out.push(row);\n    }\n    return out;\n};`,
@@ -632,6 +757,20 @@ export const MATRIX2_PROBLEMS: CatalogProblem[] = [
         const k = ri(rng, 1, m);
         return { input: `${fmtIntMat(mat)}\n${k}`, expectedOutput: fmtIntArr(ref(mat, k)) };
       },
+      editorial: explain({
+        idea: "A row's soldier count is its sum; sort row indices by `(count, index)` and take the first `k`.",
+        steps: [
+          "Compute each row's sum.",
+          "Sort indices by `(sum, index)`.",
+          "Return the first `k`.",
+        ],
+        why: "The composite key encodes the weakness order exactly, with the index as tie-breaker.",
+        time: "O(m · n + m log m)",
+        space: "O(m)",
+        pitfalls: [
+          "Since soldiers precede civilians, a binary search per row finds the count in `O(log n)`; a heap of size `k` replaces the full sort.",
+        ],
+      }),
       solutions: {
         python: `def kWeakestRows(mat, k: int):\n    order = sorted(range(len(mat)), key=lambda i: (sum(mat[i]), i))\n    return order[:k]`,
         javascript: `var kWeakestRows = function(mat, k) {\n    const rows = [];\n    for (let i = 0; i < mat.length; i++) {\n        let soldiers = 0;\n        for (let c = 0; c < mat[i].length; c++) soldiers += mat[i][c];\n        rows.push([soldiers, i]);\n    }\n    rows.sort(function(a, b) { return a[0] !== b[0] ? a[0] - b[0] : a[1] - b[1]; });\n    const out = [];\n    for (let i = 0; i < k; i++) out.push(rows[i][1]);\n    return out;\n};`,
@@ -696,6 +835,19 @@ export const MATRIX2_PROBLEMS: CatalogProblem[] = [
         const grid = randMat(rng, n, n, 0, 100);
         return { input: fmtIntMat(grid), expectedOutput: String(ref(grid)) };
       },
+      editorial: explain({
+        idea: "The left/right skyline is each row's maximum and the top/bottom skyline is each column's maximum; a building can rise to `min(rowMax[r], colMax[c])` without altering either.",
+        steps: [
+          "Compute `rowMax` and `colMax`.",
+          "Sum `min(rowMax[r], colMax[c]) - grid[r][c]` over all cells.",
+        ],
+        why: "Raising a cell to that ceiling never exceeds its row's or column's current maximum, so both silhouettes are unchanged; raising it further would change one of them. The ceilings are independent per cell, so the sum is the maximum total.",
+        time: "O(n²)",
+        space: "O(n)",
+        pitfalls: [
+          "The difference is never negative because each cell is at most both maxima.",
+        ],
+      }),
       solutions: {
         python: `def maxIncreaseKeepingSkyline(grid) -> int:\n    row_max = [max(row) for row in grid]\n    col_max = [max(col) for col in zip(*grid)]\n    return sum(min(row_max[r], col_max[c]) - grid[r][c]\n               for r in range(len(grid)) for c in range(len(grid[0])))`,
         javascript: `var maxIncreaseKeepingSkyline = function(grid) {\n    const m = grid.length, n = grid[0].length;\n    const rowMax = [], colMax = [];\n    for (let r = 0; r < m; r++) {\n        let best = grid[r][0];\n        for (let c = 1; c < n; c++) {\n            if (grid[r][c] > best) best = grid[r][c];\n        }\n        rowMax.push(best);\n    }\n    for (let c = 0; c < n; c++) {\n        let best = grid[0][c];\n        for (let r = 1; r < m; r++) {\n            if (grid[r][c] > best) best = grid[r][c];\n        }\n        colMax.push(best);\n    }\n    let total = 0;\n    for (let r = 0; r < m; r++) {\n        for (let c = 0; c < n; c++) {\n            total += Math.min(rowMax[r], colMax[c]) - grid[r][c];\n        }\n    }\n    return total;\n};`,
@@ -757,6 +909,19 @@ export const MATRIX2_PROBLEMS: CatalogProblem[] = [
         const dominoes = Array.from({ length: n }, () => [ri(rng, 1, hi), ri(rng, 1, hi)]);
         return { input: fmtIntMat(dominoes), expectedOutput: String(ref(dominoes)) };
       },
+      editorial: explain({
+        idea: "Normalise each domino with the smaller value first so rotations share a key, then count pairs as you scan: each new domino pairs with every equivalent one already seen.",
+        steps: [
+          "Compute `key = min·10 + max`.",
+          "Add `count[key]` to the total, then increment `count[key]`.",
+        ],
+        why: "Equivalence classes collapse to a single key, and summing the running count for each occurrence yields `c(c-1)/2` pairs per class.",
+        time: "O(n)",
+        space: "O(1) — at most 100 keys",
+        pitfalls: [
+          "Values are ≤ 9, which is what makes the `10·a + b` packing collision-free.",
+        ],
+      }),
       solutions: {
         python: `def numEquivDominoPairs(dominoes) -> int:\n    count = {}\n    total = 0\n    for a, b in dominoes:\n        key = a * 10 + b if a < b else b * 10 + a\n        total += count.get(key, 0)\n        count[key] = count.get(key, 0) + 1\n    return total`,
         javascript: `var numEquivDominoPairs = function(dominoes) {\n    const count = new Map();\n    let total = 0;\n    for (let i = 0; i < dominoes.length; i++) {\n        const a = dominoes[i][0], b = dominoes[i][1];\n        const key = a < b ? a * 10 + b : b * 10 + a;\n        total += count.get(key) || 0;\n        count.set(key, (count.get(key) || 0) + 1);\n    }\n    return total;\n};`,
@@ -830,6 +995,20 @@ export const MATRIX2_PROBLEMS: CatalogProblem[] = [
         const mat = randMat(rng, ri(rng, 1, 8), ri(rng, 1, 8), 1, rng() < 0.5 ? 5 : 100);
         return { input: fmtIntMat(mat), expectedOutput: fmtIntMat(ref(mat)) };
       },
+      editorial: explain({
+        idea: "Cells on a down-right diagonal share `r - c`. Bucket by that key, sort each bucket, and write the sorted values back with a per-diagonal cursor.",
+        steps: [
+          "Group every value by `r - c`.",
+          "Sort each group.",
+          "Walk the matrix again, emitting the next value from the group for `r - c`.",
+        ],
+        why: "The traversal visits each diagonal's cells in top-left to bottom-right order, so consuming each sorted bucket from the front places values in ascending order along the diagonal.",
+        time: "O(m · n · log(min(m, n)))",
+        space: "O(m · n)",
+        pitfalls: [
+          "Values are bounded (≤ 100), so a counting sort per bucket removes the log factor.",
+        ],
+      }),
       solutions: {
         python: `def diagonalSort(mat):\n    m, n = len(mat), len(mat[0])\n    groups = {}\n    for r in range(m):\n        for c in range(n):\n            groups.setdefault(r - c, []).append(mat[r][c])\n    for key in groups:\n        groups[key].sort()\n    cursor = {}\n    out = []\n    for r in range(m):\n        row = []\n        for c in range(n):\n            key = r - c\n            idx = cursor.get(key, 0)\n            row.append(groups[key][idx])\n            cursor[key] = idx + 1\n        out.append(row)\n    return out`,
         javascript: `var diagonalSort = function(mat) {\n    const m = mat.length, n = mat[0].length;\n    const groups = new Map();\n    for (let r = 0; r < m; r++) {\n        for (let c = 0; c < n; c++) {\n            const key = r - c;\n            if (!groups.has(key)) groups.set(key, []);\n            groups.get(key).push(mat[r][c]);\n        }\n    }\n    groups.forEach(function(arr) { arr.sort(function(a, b) { return a - b; }); });\n    const cursor = new Map();\n    const out = [];\n    for (let r = 0; r < m; r++) {\n        const row = [];\n        for (let c = 0; c < n; c++) {\n            const key = r - c;\n            const idx = cursor.get(key) || 0;\n            row.push(groups.get(key)[idx]);\n            cursor.set(key, idx + 1);\n        }\n        out.push(row);\n    }\n    return out;\n};`,
@@ -888,6 +1067,20 @@ export const MATRIX2_PROBLEMS: CatalogProblem[] = [
         const grid = randMat(rng, ri(rng, 1, 8), ri(rng, 1, 8), 0, 200);
         return { input: fmtIntMat(grid), expectedOutput: String(ref(grid)) };
       },
+      editorial: explain({
+        idea: "A cell is entered from above or from the left, so its best cost is its value plus the cheaper of those two predecessors.",
+        steps: [
+          "Fill the first row and first column as running sums — each has one way in.",
+          "For every other cell, `dp[r][c] = grid[r][c] + min(dp[r-1][c], dp[r][c-1])`.",
+          "Return `dp[m-1][n-1]`.",
+        ],
+        why: "With only down and right moves, every path to `(r, c)` passes through exactly one of `(r-1, c)` or `(r, c-1)` last, so the optimal cost decomposes over that choice. Row-major order ensures both predecessors are ready.",
+        time: "O(m · n)",
+        space: "O(m · n), or O(1) extra by overwriting the grid",
+        pitfalls: [
+          "Greedy (always take the smaller neighbour) is wrong — a cheap step can lead into an expensive corridor.",
+        ],
+      }),
       solutions: {
         python: `def minPathSum(grid) -> int:\n    m, n = len(grid), len(grid[0])\n    dp = [row[:] for row in grid]\n    for c in range(1, n):\n        dp[0][c] += dp[0][c - 1]\n    for r in range(1, m):\n        dp[r][0] += dp[r - 1][0]\n    for r in range(1, m):\n        for c in range(1, n):\n            dp[r][c] += min(dp[r - 1][c], dp[r][c - 1])\n    return dp[m - 1][n - 1]`,
         javascript: `var minPathSum = function(grid) {\n    const m = grid.length, n = grid[0].length;\n    const dp = [];\n    for (let r = 0; r < m; r++) dp.push(grid[r].slice());\n    for (let c = 1; c < n; c++) dp[0][c] += dp[0][c - 1];\n    for (let r = 1; r < m; r++) dp[r][0] += dp[r - 1][0];\n    for (let r = 1; r < m; r++) {\n        for (let c = 1; c < n; c++) {\n            dp[r][c] += Math.min(dp[r - 1][c], dp[r][c - 1]);\n        }\n    }\n    return dp[m - 1][n - 1];\n};`,
@@ -951,6 +1144,21 @@ export const MATRIX2_PROBLEMS: CatalogProblem[] = [
         const grid = Array.from({ length: m }, () => Array.from({ length: n }, () => (rng() < 0.25 ? 1 : 0)));
         return { input: fmtIntMat(grid), expectedOutput: String(ref(grid)) };
       },
+      editorial: explain({
+        idea: "Paths to a cell are the sum of paths to the cell above and the cell to the left, except an obstacle cell has zero paths.",
+        steps: [
+          "Return 0 if the start is blocked; otherwise `dp[0][0] = 1`.",
+          "In row-major order, set `dp[r][c] = 0` for an obstacle, else add `dp[r-1][c]` and `dp[r][c-1]` where they exist.",
+          "Return `dp[m-1][n-1]`.",
+        ],
+        why: "Each path ends with a down or right move, so path counts decompose over the last step; zeroing obstacles removes every path through them from all later sums.",
+        time: "O(m · n)",
+        space: "O(m · n), reducible to one row",
+        pitfalls: [
+          "The first row and column are not all ones once an obstacle appears in them — everything after the obstacle is 0.",
+          "A blocked finish yields 0 automatically.",
+        ],
+      }),
       solutions: {
         python: `def uniquePathsWithObstacles(obstacleGrid) -> int:\n    m, n = len(obstacleGrid), len(obstacleGrid[0])\n    if obstacleGrid[0][0] == 1:\n        return 0\n    dp = [[0] * n for _ in range(m)]\n    dp[0][0] = 1\n    for r in range(m):\n        for c in range(n):\n            if obstacleGrid[r][c] == 1:\n                dp[r][c] = 0\n                continue\n            if r > 0:\n                dp[r][c] += dp[r - 1][c]\n            if c > 0:\n                dp[r][c] += dp[r][c - 1]\n    return dp[m - 1][n - 1]`,
         javascript: `var uniquePathsWithObstacles = function(obstacleGrid) {\n    const m = obstacleGrid.length, n = obstacleGrid[0].length;\n    if (obstacleGrid[0][0] === 1) return 0;\n    const dp = [];\n    for (let r = 0; r < m; r++) dp.push(new Array(n).fill(0));\n    dp[0][0] = 1;\n    for (let r = 0; r < m; r++) {\n        for (let c = 0; c < n; c++) {\n            if (obstacleGrid[r][c] === 1) { dp[r][c] = 0; continue; }\n            if (r > 0) dp[r][c] += dp[r - 1][c];\n            if (c > 0) dp[r][c] += dp[r][c - 1];\n        }\n    }\n    return dp[m - 1][n - 1];\n};`,
@@ -1014,6 +1222,20 @@ export const MATRIX2_PROBLEMS: CatalogProblem[] = [
         const matrix = Array.from({ length: rows }, () => Array.from({ length: cols }, () => (rng() < 0.6 ? 1 : 0)));
         return { input: fmtIntMat(matrix), expectedOutput: String(ref(matrix)) };
       },
+      editorial: explain({
+        idea: "Let `dp[r][c]` be the side of the largest all-ones square with bottom-right corner at `(r, c)`; it is `1 + min` of the three squares ending above, left, and up-left.",
+        steps: [
+          "For each cell that is 1: on the first row or column set `dp = 1`, else `dp = 1 + min(dp[r-1][c], dp[r][c-1], dp[r-1][c-1])`.",
+          "Track the largest `dp` value.",
+          "Return `best²`.",
+        ],
+        why: "A `k × k` square ending at `(r, c)` exists iff `(k-1) × (k-1)` squares end at each of the three neighbours — those cover the square minus its bottom-right cell — so the minimum of the three bounds the side and the recurrence is exact.",
+        time: "O(m · n)",
+        space: "O(m · n), reducible to two rows",
+        pitfalls: [
+          "Return the area, not the side.",
+        ],
+      }),
       solutions: {
         python: `def maximalSquare(matrix) -> int:\n    m, n = len(matrix), len(matrix[0])\n    dp = [[0] * n for _ in range(m)]\n    best = 0\n    for r in range(m):\n        for c in range(n):\n            if matrix[r][c] == 1:\n                if r == 0 or c == 0:\n                    dp[r][c] = 1\n                else:\n                    dp[r][c] = min(dp[r - 1][c], dp[r][c - 1], dp[r - 1][c - 1]) + 1\n                best = max(best, dp[r][c])\n    return best * best`,
         javascript: `var maximalSquare = function(matrix) {\n    const m = matrix.length, n = matrix[0].length;\n    const dp = [];\n    for (let r = 0; r < m; r++) dp.push(new Array(n).fill(0));\n    let best = 0;\n    for (let r = 0; r < m; r++) {\n        for (let c = 0; c < n; c++) {\n            if (matrix[r][c] === 1) {\n                if (r === 0 || c === 0) dp[r][c] = 1;\n                else dp[r][c] = Math.min(dp[r - 1][c], dp[r][c - 1], dp[r - 1][c - 1]) + 1;\n                if (dp[r][c] > best) best = dp[r][c];\n            }\n        }\n    }\n    return best * best;\n};`,
@@ -1077,6 +1299,19 @@ export const MATRIX2_PROBLEMS: CatalogProblem[] = [
         const matrix = Array.from({ length: m }, () => Array.from({ length: n }, () => (rng() < 0.65 ? 1 : 0)));
         return { input: fmtIntMat(matrix), expectedOutput: String(ref(matrix)) };
       },
+      editorial: explain({
+        idea: "Reuse the maximal-square recurrence: a cell with `dp = k` is the bottom-right corner of exactly `k` all-ones squares (sides 1 … k), so the answer is the sum of the table.",
+        steps: [
+          "Compute `dp[r][c] = 1 + min(up, left, up-left)` for each 1-cell (1 on the border).",
+          "Accumulate every `dp[r][c]`.",
+        ],
+        why: "Every all-ones square has a unique bottom-right corner, and at that corner squares of every side up to the maximum exist, so summing the maximal sides counts every square exactly once.",
+        time: "O(m · n)",
+        space: "O(m · n)",
+        pitfalls: [
+          "Take the sum, not the maximum, of the table.",
+        ],
+      }),
       solutions: {
         python: `def countSquares(matrix) -> int:\n    m, n = len(matrix), len(matrix[0])\n    dp = [[0] * n for _ in range(m)]\n    total = 0\n    for r in range(m):\n        for c in range(n):\n            if matrix[r][c] == 1:\n                if r == 0 or c == 0:\n                    dp[r][c] = 1\n                else:\n                    dp[r][c] = min(dp[r - 1][c], dp[r][c - 1], dp[r - 1][c - 1]) + 1\n                total += dp[r][c]\n    return total`,
         javascript: `var countSquares = function(matrix) {\n    const m = matrix.length, n = matrix[0].length;\n    const dp = [];\n    for (let r = 0; r < m; r++) dp.push(new Array(n).fill(0));\n    let total = 0;\n    for (let r = 0; r < m; r++) {\n        for (let c = 0; c < n; c++) {\n            if (matrix[r][c] === 1) {\n                if (r === 0 || c === 0) dp[r][c] = 1;\n                else dp[r][c] = Math.min(dp[r - 1][c], dp[r][c - 1], dp[r - 1][c - 1]) + 1;\n                total += dp[r][c];\n            }\n        }\n    }\n    return total;\n};`,
@@ -1133,6 +1368,21 @@ export const MATRIX2_PROBLEMS: CatalogProblem[] = [
         const rowIndex = ri(rng, 0, 30);
         return { input: String(rowIndex), expectedOutput: fmtIntArr(ref(rowIndex)) };
       },
+      editorial: explain({
+        idea: "Only the previous row is needed; update a single array in place from right to left so each slot is read before it is overwritten.",
+        steps: [
+          "Start with `row = [1] * (rowIndex + 1)`.",
+          "For `i` from 1 to `rowIndex`, for `j` from `i - 1` down to 1, set `row[j] += row[j-1]`.",
+          "Return `row`.",
+        ],
+        why: "Row `i` of the triangle is row `i - 1` with each interior entry replaced by the sum of the two above it. Walking right to left guarantees `row[j-1]` is still the old value when `row[j]` is updated.",
+        time: "O(n²)",
+        space: "O(n)",
+        pitfalls: [
+          "Left-to-right updating uses already-updated neighbours and corrupts the row.",
+          "The multiplicative closed form `row[i] = row[i-1] · (n - i + 1) / i` gives O(n).",
+        ],
+      }),
       solutions: {
         python: `def getRow(rowIndex: int):\n    row = [1] * (rowIndex + 1)\n    for i in range(1, rowIndex + 1):\n        for j in range(i - 1, 0, -1):\n            row[j] += row[j - 1]\n    return row`,
         javascript: `var getRow = function(rowIndex) {\n    const row = new Array(rowIndex + 1).fill(1);\n    for (let i = 1; i <= rowIndex; i++) {\n        for (let j = i - 1; j > 0; j--) {\n            row[j] += row[j - 1];\n        }\n    }\n    return row;\n};`,
@@ -1203,6 +1453,20 @@ export const MATRIX2_PROBLEMS: CatalogProblem[] = [
         const board = randMat(rng, ri(rng, 1, 8), ri(rng, 1, 8), 0, 1);
         return { input: fmtIntMat(board), expectedOutput: fmtIntMat(ref(board)) };
       },
+      editorial: explain({
+        idea: "Count each cell's live neighbours from the original board and write the next state into a fresh board, so every update sees the pre-transition state.",
+        steps: [
+          "For each cell, sum the eight in-bounds neighbours.",
+          "A live cell survives with 2 or 3 neighbours; a dead cell is born with exactly 3.",
+          "Return the new board.",
+        ],
+        why: "The rules are defined on the simultaneous previous generation; reading only the original board and writing elsewhere is the simplest way to honour that.",
+        time: "O(m · n)",
+        space: "O(m · n)",
+        pitfalls: [
+          "The in-place variant encodes both generations in one cell (e.g. 2 = dead → live, 3 = live → dead) and decodes in a second pass.",
+        ],
+      }),
       solutions: {
         python: `def gameOfLife(board):\n    m, n = len(board), len(board[0])\n    out = []\n    for r in range(m):\n        row = []\n        for c in range(n):\n            live = 0\n            for dr in (-1, 0, 1):\n                for dc in (-1, 0, 1):\n                    if dr == 0 and dc == 0:\n                        continue\n                    nr, nc = r + dr, c + dc\n                    if 0 <= nr < m and 0 <= nc < n:\n                        live += board[nr][nc]\n            if board[r][c] == 1:\n                row.append(1 if live in (2, 3) else 0)\n            else:\n                row.append(1 if live == 3 else 0)\n        out.append(row)\n    return out`,
         javascript: `var gameOfLife = function(board) {\n    const m = board.length, n = board[0].length;\n    const out = [];\n    for (let r = 0; r < m; r++) {\n        const row = [];\n        for (let c = 0; c < n; c++) {\n            let live = 0;\n            for (let dr = -1; dr <= 1; dr++) {\n                for (let dc = -1; dc <= 1; dc++) {\n                    if (dr === 0 && dc === 0) continue;\n                    const nr = r + dr, nc = c + dc;\n                    if (nr >= 0 && nr < m && nc >= 0 && nc < n) live += board[nr][nc];\n                }\n            }\n            if (board[r][c] === 1) row.push(live === 2 || live === 3 ? 1 : 0);\n            else row.push(live === 3 ? 1 : 0);\n        }\n        out.push(row);\n    }\n    return out;\n};`,
@@ -1270,6 +1534,21 @@ export const MATRIX2_PROBLEMS: CatalogProblem[] = [
         const board = Array.from({ length: rows }, () => Array.from({ length: cols }, () => (rng() < 0.45 ? 1 : 0)));
         return { input: fmtIntMat(board), expectedOutput: fmtIntMat(ref(board)) };
       },
+      editorial: explain({
+        idea: "Invert the question: flood-fill inward from every border `1` to mark the regions that escape; everything unmarked is surrounded.",
+        steps: [
+          "Push every `1` on the four edges onto a stack and mark it safe.",
+          "Pop and spread to four-directional neighbours that are `1` and not yet safe.",
+          "Emit the board with unsafe `1`s flipped to `0`.",
+        ],
+        why: "A region is surrounded iff none of its cells touches the border, which is the same as saying it is unreachable from any border cell through `1`s. The flood fill computes reachability exactly.",
+        time: "O(m · n)",
+        space: "O(m · n)",
+        pitfalls: [
+          "Searching for surrounded regions directly requires knowing whether a fill touched the border before deciding — the inversion avoids that bookkeeping.",
+          "Use an explicit stack; recursion overflows on large boards.",
+        ],
+      }),
       solutions: {
         python: `def solve(board):\n    m, n = len(board), len(board[0])\n    safe = [[False] * n for _ in range(m)]\n    stack = []\n\n    def push(r, c):\n        if 0 <= r < m and 0 <= c < n and board[r][c] == 1 and not safe[r][c]:\n            safe[r][c] = True\n            stack.append((r, c))\n\n    for r in range(m):\n        push(r, 0)\n        push(r, n - 1)\n    for c in range(n):\n        push(0, c)\n        push(m - 1, c)\n    while stack:\n        r, c = stack.pop()\n        push(r - 1, c)\n        push(r + 1, c)\n        push(r, c - 1)\n        push(r, c + 1)\n    return [[board[r][c] if safe[r][c] else 0 for c in range(n)] for r in range(m)]`,
         javascript: `var solve = function(board) {\n    const m = board.length, n = board[0].length;\n    const safe = [];\n    for (let r = 0; r < m; r++) safe.push(new Array(n).fill(false));\n    const stack = [];\n    const push = function(r, c) {\n        if (r >= 0 && r < m && c >= 0 && c < n && board[r][c] === 1 && !safe[r][c]) {\n            safe[r][c] = true;\n            stack.push([r, c]);\n        }\n    };\n    for (let r = 0; r < m; r++) { push(r, 0); push(r, n - 1); }\n    for (let c = 0; c < n; c++) { push(0, c); push(m - 1, c); }\n    while (stack.length > 0) {\n        const cell = stack.pop();\n        push(cell[0] - 1, cell[1]);\n        push(cell[0] + 1, cell[1]);\n        push(cell[0], cell[1] - 1);\n        push(cell[0], cell[1] + 1);\n    }\n    const out = [];\n    for (let r = 0; r < m; r++) {\n        const row = [];\n        for (let c = 0; c < n; c++) row.push(safe[r][c] ? board[r][c] : 0);\n        out.push(row);\n    }\n    return out;\n};`,
@@ -1345,6 +1624,21 @@ export const MATRIX2_PROBLEMS: CatalogProblem[] = [
         const grid = Array.from({ length: m }, () => Array.from({ length: n }, () => (rng() < 0.55 ? 1 : 0)));
         return { input: fmtIntMat(grid), expectedOutput: String(ref(grid)) };
       },
+      editorial: explain({
+        idea: "Flood-fill each unvisited land cell to collect its island, noting whether any cell lies on the border; count the island only if none does.",
+        steps: [
+          "For each unvisited `0`, start a DFS/BFS marking cells seen.",
+          "During the fill, set `closed = false` if a cell is on row 0, row m-1, column 0 or column n-1.",
+          "After the fill, count the island if `closed` is still true.",
+        ],
+        why: "An island is closed exactly when it has no border cell, and the fill visits every cell of the island, so the flag is decided correctly.",
+        time: "O(m · n)",
+        space: "O(m · n)",
+        pitfalls: [
+          "Do not abort the fill on a border cell — the rest of that island must still be marked seen, or it will be recounted.",
+          "Here `0` is land and `1` is water, the reverse of the usual convention.",
+        ],
+      }),
       solutions: {
         python: `def closedIsland(grid) -> int:\n    m, n = len(grid), len(grid[0])\n    seen = [[False] * n for _ in range(m)]\n    count = 0\n    for sr in range(m):\n        for sc in range(n):\n            if grid[sr][sc] != 0 or seen[sr][sc]:\n                continue\n            stack = [(sr, sc)]\n            seen[sr][sc] = True\n            closed = True\n            while stack:\n                r, c = stack.pop()\n                if r == 0 or r == m - 1 or c == 0 or c == n - 1:\n                    closed = False\n                for nr, nc in ((r - 1, c), (r + 1, c), (r, c - 1), (r, c + 1)):\n                    if 0 <= nr < m and 0 <= nc < n and grid[nr][nc] == 0 and not seen[nr][nc]:\n                        seen[nr][nc] = True\n                        stack.append((nr, nc))\n            if closed:\n                count += 1\n    return count`,
         javascript: `var closedIsland = function(grid) {\n    const m = grid.length, n = grid[0].length;\n    const seen = [];\n    for (let r = 0; r < m; r++) seen.push(new Array(n).fill(false));\n    let count = 0;\n    for (let sr = 0; sr < m; sr++) {\n        for (let sc = 0; sc < n; sc++) {\n            if (grid[sr][sc] !== 0 || seen[sr][sc]) continue;\n            const stack = [[sr, sc]];\n            seen[sr][sc] = true;\n            let closed = true;\n            while (stack.length > 0) {\n                const cell = stack.pop();\n                const r = cell[0], c = cell[1];\n                if (r === 0 || r === m - 1 || c === 0 || c === n - 1) closed = false;\n                const steps = [[r - 1, c], [r + 1, c], [r, c - 1], [r, c + 1]];\n                for (let s = 0; s < 4; s++) {\n                    const nr = steps[s][0], nc = steps[s][1];\n                    if (nr >= 0 && nr < m && nc >= 0 && nc < n && grid[nr][nc] === 0 && !seen[nr][nc]) {\n                        seen[nr][nc] = true;\n                        stack.push([nr, nc]);\n                    }\n                }\n            }\n            if (closed) count++;\n        }\n    }\n    return count;\n};`,
@@ -1418,6 +1712,20 @@ export const MATRIX2_PROBLEMS: CatalogProblem[] = [
         }
         return { input: `${fmtIntMat(mat)}\n${fmtIntMat(target)}`, expectedOutput: bool(ref(mat, target)) };
       },
+      editorial: explain({
+        idea: "Only four rotations exist; compare, rotate 90° clockwise, and repeat up to four times.",
+        steps: [
+          "For four iterations: if `cur == target`, return `true`.",
+          "Rotate: `new[r][c] = cur[n-1-c][r]`.",
+          "Return `false`.",
+        ],
+        why: "Rotating four times returns to the start, so checking before each of four rotations covers every distinct orientation.",
+        time: "O(n²)",
+        space: "O(n²)",
+        pitfalls: [
+          "Compare before the first rotation so the zero-rotation case is included.",
+        ],
+      }),
       solutions: {
         python: `def findRotation(mat, target) -> bool:\n    cur = [row[:] for row in mat]\n    n = len(mat)\n    for _ in range(4):\n        if cur == target:\n            return True\n        cur = [[cur[n - 1 - c][r] for c in range(n)] for r in range(n)]\n    return False`,
         javascript: `var findRotation = function(mat, target) {\n    const n = mat.length;\n    let cur = [];\n    for (let r = 0; r < n; r++) cur.push(mat[r].slice());\n    const same = function(a, b) {\n        for (let r = 0; r < n; r++) {\n            for (let c = 0; c < n; c++) {\n                if (a[r][c] !== b[r][c]) return false;\n            }\n        }\n        return true;\n    };\n    for (let k = 0; k < 4; k++) {\n        if (same(cur, target)) return true;\n        const next = [];\n        for (let r = 0; r < n; r++) {\n            const row = [];\n            for (let c = 0; c < n; c++) row.push(cur[n - 1 - c][r]);\n            next.push(row);\n        }\n        cur = next;\n    }\n    return false;\n};`,
@@ -1484,6 +1792,20 @@ export const MATRIX2_PROBLEMS: CatalogProblem[] = [
         }
         return { input: fmtIntMat(grid), expectedOutput: bool(ref(grid)) };
       },
+      editorial: explain({
+        idea: "A cell is on a diagonal iff `r == c` or `r + c == n - 1`; diagonal cells must be non-zero and every other cell must be zero.",
+        steps: [
+          "For each cell compute `onDiagonal`.",
+          "Return `false` if a diagonal cell is 0 or a non-diagonal cell is non-zero.",
+          "Return `true`.",
+        ],
+        why: "The two conditions partition the cells, so one pass with a single branch checks both rules.",
+        time: "O(n²)",
+        space: "O(1)",
+        pitfalls: [
+          "The centre of an odd-sized matrix satisfies both diagonal tests; it is still just a diagonal cell.",
+        ],
+      }),
       solutions: {
         python: `def checkXMatrix(grid) -> bool:\n    n = len(grid)\n    for r in range(n):\n        for c in range(n):\n            on_diagonal = r == c or r + c == n - 1\n            if on_diagonal and grid[r][c] == 0:\n                return False\n            if not on_diagonal and grid[r][c] != 0:\n                return False\n    return True`,
         javascript: `var checkXMatrix = function(grid) {\n    const n = grid.length;\n    for (let r = 0; r < n; r++) {\n        for (let c = 0; c < n; c++) {\n            const onDiagonal = r === c || r + c === n - 1;\n            if (onDiagonal && grid[r][c] === 0) return false;\n            if (!onDiagonal && grid[r][c] !== 0) return false;\n        }\n    }\n    return true;\n};`,
@@ -1540,6 +1862,20 @@ export const MATRIX2_PROBLEMS: CatalogProblem[] = [
         const mat = randMat(rng, ri(rng, 1, 8), ri(rng, 1, 8), 0, 1);
         return { input: fmtIntMat(mat), expectedOutput: fmtIntArr(ref(mat)) };
       },
+      editorial: explain({
+        idea: "Each row's ones count is its sum; scan top to bottom and replace the best only on a strictly greater count.",
+        steps: [
+          "For each row, compute its sum.",
+          "If the sum is greater than the best so far, record the row and the sum.",
+          "Return `[bestRow, bestCount]`.",
+        ],
+        why: "A strict comparison keeps the first row encountered among ties, which is the smallest index.",
+        time: "O(m · n)",
+        space: "O(1)",
+        pitfalls: [
+          "Initialise the best count to -1 so a matrix of all zeros returns row 0 with count 0.",
+        ],
+      }),
       solutions: {
         python: `def rowAndMaximumOnes(mat):\n    best_row, best_count = 0, -1\n    for r, row in enumerate(mat):\n        count = sum(row)\n        if count > best_count:\n            best_count = count\n            best_row = r\n    return [best_row, best_count]`,
         javascript: `var rowAndMaximumOnes = function(mat) {\n    let bestRow = 0, bestCount = -1;\n    for (let r = 0; r < mat.length; r++) {\n        let count = 0;\n        for (let c = 0; c < mat[r].length; c++) count += mat[r][c];\n        if (count > bestCount) {\n            bestCount = count;\n            bestRow = r;\n        }\n    }\n    return [bestRow, bestCount];\n};`,
@@ -1604,6 +1940,18 @@ export const MATRIX2_PROBLEMS: CatalogProblem[] = [
         const grid = randMat(rng, n, n, 1, 100);
         return { input: fmtIntMat(grid), expectedOutput: fmtIntMat(ref(grid)) };
       },
+      editorial: explain({
+        idea: "Anchor each 3 × 3 block at its top-left corner `(i, j)` and take the maximum of its nine cells.",
+        steps: [
+          "For `i, j` in `0 .. n - 3`, compute `max(grid[i+dr][j+dc])` over `dr, dc ∈ {0, 1, 2}`.",
+        ],
+        why: "The block centred at `(i+1, j+1)` spans rows `i..i+2` and columns `j..j+2`, and centres cannot lie on the border, giving an `(n-2) × (n-2)` output.",
+        time: "O(n²)",
+        space: "O(n²) for the output",
+        pitfalls: [
+          "Nothing more clever is needed at this size; a sliding-max would matter only for large blocks.",
+        ],
+      }),
       solutions: {
         python: `def largestLocal(grid):\n    n = len(grid)\n    return [[max(grid[r + dr][c + dc] for dr in range(3) for dc in range(3))\n             for c in range(n - 2)] for r in range(n - 2)]`,
         javascript: `var largestLocal = function(grid) {\n    const n = grid.length;\n    const out = [];\n    for (let r = 0; r < n - 2; r++) {\n        const row = [];\n        for (let c = 0; c < n - 2; c++) {\n            let best = 0;\n            for (let dr = 0; dr < 3; dr++) {\n                for (let dc = 0; dc < 3; dc++) {\n                    if (grid[r + dr][c + dc] > best) best = grid[r + dr][c + dc];\n                }\n            }\n            row.push(best);\n        }\n        out.push(row);\n    }\n    return out;\n};`,
@@ -1666,6 +2014,19 @@ export const MATRIX2_PROBLEMS: CatalogProblem[] = [
         const grid = Array.from({ length: rows }, () => Array.from({ length: cols }, () => (rng() < 0.35 ? 1 : 0)));
         return { input: fmtIntMat(grid), expectedOutput: String(ref(grid)) };
       },
+      editorial: explain({
+        idea: "A server communicates iff its row or its column holds another server, so per-row and per-column tallies decide every cell without a traversal.",
+        steps: [
+          "Compute `rowCount` and `colCount`.",
+          "Count servers where `rowCount[r] > 1` or `colCount[c] > 1`.",
+        ],
+        why: "\"At least one other server in the same row or column\" is exactly the tally condition; no transitivity is involved.",
+        time: "O(m · n)",
+        space: "O(m + n)",
+        pitfalls: [
+          "Do not model this as connected components — the question asks about direct communication only.",
+        ],
+      }),
       solutions: {
         python: `def countServers(grid) -> int:\n    m, n = len(grid), len(grid[0])\n    row_count = [sum(row) for row in grid]\n    col_count = [sum(grid[r][c] for r in range(m)) for c in range(n)]\n    return sum(1 for r in range(m) for c in range(n)\n               if grid[r][c] == 1 and (row_count[r] > 1 or col_count[c] > 1))`,
         javascript: `var countServers = function(grid) {\n    const m = grid.length, n = grid[0].length;\n    const rowCount = new Array(m).fill(0);\n    const colCount = new Array(n).fill(0);\n    for (let r = 0; r < m; r++) {\n        for (let c = 0; c < n; c++) {\n            if (grid[r][c] === 1) {\n                rowCount[r]++;\n                colCount[c]++;\n            }\n        }\n    }\n    let total = 0;\n    for (let r = 0; r < m; r++) {\n        for (let c = 0; c < n; c++) {\n            if (grid[r][c] === 1 && (rowCount[r] > 1 || colCount[c] > 1)) total++;\n        }\n    }\n    return total;\n};`,
@@ -1725,6 +2086,19 @@ export const MATRIX2_PROBLEMS: CatalogProblem[] = [
         const indices = Array.from({ length: ri(rng, 1, 20) }, () => [ri(rng, 0, m - 1), ri(rng, 0, n - 1)]);
         return { input: `${m}\n${n}\n${fmtIntMat(indices)}`, expectedOutput: String(ref(m, n, indices)) };
       },
+      editorial: explain({
+        idea: "Cell `(r, c)` ends at `rowCount[r] + colCount[c]`, which is odd exactly when the two counts have different parity.",
+        steps: [
+          "Tally how many times each row and each column is incremented.",
+          "Count cells where `(rowCount[r] + colCount[c]) % 2 == 1`.",
+        ],
+        why: "Each operation adds one to an entire row and an entire column, so the final value of a cell is the sum of its row's and column's operation counts.",
+        time: "O(m · n + |indices|)",
+        space: "O(m + n)",
+        pitfalls: [
+          "Counting odd rows and odd columns gives O(m + n): `oddRows·(n - oddCols) + oddCols·(m - oddRows)`.",
+        ],
+      }),
       solutions: {
         python: `def oddCells(m: int, n: int, indices) -> int:\n    row_count = [0] * m\n    col_count = [0] * n\n    for r, c in indices:\n        row_count[r] += 1\n        col_count[c] += 1\n    return sum(1 for r in range(m) for c in range(n)\n               if (row_count[r] + col_count[c]) % 2 == 1)`,
         javascript: `var oddCells = function(m, n, indices) {\n    const rowCount = new Array(m).fill(0);\n    const colCount = new Array(n).fill(0);\n    for (let i = 0; i < indices.length; i++) {\n        rowCount[indices[i][0]]++;\n        colCount[indices[i][1]]++;\n    }\n    let odd = 0;\n    for (let r = 0; r < m; r++) {\n        for (let c = 0; c < n; c++) {\n            if ((rowCount[r] + colCount[c]) % 2 === 1) odd++;\n        }\n    }\n    return odd;\n};`,
@@ -1789,6 +2163,19 @@ export const MATRIX2_PROBLEMS: CatalogProblem[] = [
         }
         return { input: `${fmtIntArr(original)}\n${m}\n${n}`, expectedOutput: fmtIntMat(ref(original, m, n)) };
       },
+      editorial: explain({
+        idea: "Possible only when `len == m · n`; then row `r` is the slice `original[r·n : r·n + n]`.",
+        steps: [
+          "Return `[]` if the lengths disagree.",
+          "Slice the array into `m` rows of `n`.",
+        ],
+        why: "Row-major filling maps flat index `k` to `(k // n, k % n)`, which is exactly what consecutive slices of length `n` produce.",
+        time: "O(m · n)",
+        space: "O(m · n)",
+        pitfalls: [
+          "Return an empty 2-D array, not `null`, on mismatch.",
+        ],
+      }),
       solutions: {
         python: `def construct2DArray(original, m: int, n: int):\n    if len(original) != m * n:\n        return []\n    return [original[r * n:(r + 1) * n] for r in range(m)]`,
         javascript: `var construct2DArray = function(original, m, n) {\n    if (original.length !== m * n) return [];\n    const out = [];\n    for (let r = 0; r < m; r++) out.push(original.slice(r * n, r * n + n));\n    return out;\n};`,
@@ -1865,6 +2252,21 @@ export const MATRIX2_PROBLEMS: CatalogProblem[] = [
         }
         return { input: fmtIntMat(board), expectedOutput: bool(ref(board)) };
       },
+      editorial: explain({
+        idea: "Keep nine sets each for rows, columns and boxes; one pass over the 81 cells inserts each digit into its three sets and fails on any collision.",
+        steps: [
+          "For each filled cell compute `box = (r // 3) · 3 + c // 3`.",
+          "Return `false` if the digit is already in `rows[r]`, `cols[c]` or `boxes[box]`.",
+          "Insert it into all three.",
+        ],
+        why: "Validity is exactly \"no digit repeats within any row, column or box\", and a set per group detects repeats as they appear.",
+        time: "O(81)",
+        space: "O(81)",
+        pitfalls: [
+          "The box index formula is the one detail people get wrong — integer-divide both coordinates by 3.",
+          "Bitmasks (nine ints per family) are the compact equivalent.",
+        ],
+      }),
       solutions: {
         python: `def isValidSudoku(board) -> bool:\n    rows = [set() for _ in range(9)]\n    cols = [set() for _ in range(9)]\n    boxes = [set() for _ in range(9)]\n    for r in range(9):\n        for c in range(9):\n            v = board[r][c]\n            if v == 0:\n                continue\n            b = (r // 3) * 3 + c // 3\n            if v in rows[r] or v in cols[c] or v in boxes[b]:\n                return False\n            rows[r].add(v)\n            cols[c].add(v)\n            boxes[b].add(v)\n    return True`,
         javascript: `var isValidSudoku = function(board) {\n    const rows = [], cols = [], boxes = [];\n    for (let i = 0; i < 9; i++) {\n        rows.push(new Set());\n        cols.push(new Set());\n        boxes.push(new Set());\n    }\n    for (let r = 0; r < 9; r++) {\n        for (let c = 0; c < 9; c++) {\n            const v = board[r][c];\n            if (v === 0) continue;\n            const b = Math.floor(r / 3) * 3 + Math.floor(c / 3);\n            if (rows[r].has(v) || cols[c].has(v) || boxes[b].has(v)) return false;\n            rows[r].add(v);\n            cols[c].add(v);\n            boxes[b].add(v);\n        }\n    }\n    return true;\n};`,
@@ -1933,6 +2335,20 @@ export const MATRIX2_PROBLEMS: CatalogProblem[] = [
         const moves = cells.slice(0, take);
         return { input: fmtIntMat(moves), expectedOutput: ref(moves) };
       },
+      editorial: explain({
+        idea: "Replay the moves onto a 3 × 3 board (even turns are A), then test the eight winning lines; only if none wins does the move count decide Draw versus Pending.",
+        steps: [
+          "Fill `board[r][c]` with 1 for A's moves and 2 for B's.",
+          "For each of the 3 rows, 3 columns and 2 diagonals, check for three equal non-zero cells.",
+          "Return the winner, else `\"Draw\"` if 9 moves were played, else `\"Pending\"`.",
+        ],
+        why: "A finished line is the only win condition, and since moves alternate with A first, the parity of the move index identifies the player.",
+        time: "O(1)",
+        space: "O(1)",
+        pitfalls: [
+          "Check for a winner before declaring a draw — a game can be won on the ninth move.",
+        ],
+      }),
       solutions: {
         python: `def tictactoe(moves) -> str:\n    board = [[0] * 3 for _ in range(3)]\n    for i, (r, c) in enumerate(moves):\n        board[r][c] = 1 if i % 2 == 0 else 2\n    lines = [\n        [(0, 0), (0, 1), (0, 2)], [(1, 0), (1, 1), (1, 2)], [(2, 0), (2, 1), (2, 2)],\n        [(0, 0), (1, 0), (2, 0)], [(0, 1), (1, 1), (2, 1)], [(0, 2), (1, 2), (2, 2)],\n        [(0, 0), (1, 1), (2, 2)], [(0, 2), (1, 1), (2, 0)],\n    ]\n    for line in lines:\n        a, b, c = line\n        v = board[a[0]][a[1]]\n        if v != 0 and v == board[b[0]][b[1]] and v == board[c[0]][c[1]]:\n            return "A" if v == 1 else "B"\n    return "Draw" if len(moves) == 9 else "Pending"`,
         javascript: `var tictactoe = function(moves) {\n    const board = [];\n    for (let r = 0; r < 3; r++) board.push(new Array(3).fill(0));\n    for (let i = 0; i < moves.length; i++) {\n        board[moves[i][0]][moves[i][1]] = i % 2 === 0 ? 1 : 2;\n    }\n    const lines = [\n        [[0, 0], [0, 1], [0, 2]], [[1, 0], [1, 1], [1, 2]], [[2, 0], [2, 1], [2, 2]],\n        [[0, 0], [1, 0], [2, 0]], [[0, 1], [1, 1], [2, 1]], [[0, 2], [1, 2], [2, 2]],\n        [[0, 0], [1, 1], [2, 2]], [[0, 2], [1, 1], [2, 0]]\n    ];\n    for (let i = 0; i < lines.length; i++) {\n        const line = lines[i];\n        const v = board[line[0][0]][line[0][1]];\n        if (v !== 0 && v === board[line[1][0]][line[1][1]] && v === board[line[2][0]][line[2][1]]) {\n            return v === 1 ? "A" : "B";\n        }\n    }\n    return moves.length === 9 ? "Draw" : "Pending";\n};`,
@@ -1994,6 +2410,19 @@ export const MATRIX2_PROBLEMS: CatalogProblem[] = [
         const rCenter = ri(rng, 0, rows - 1), cCenter = ri(rng, 0, cols - 1);
         return { input: `${rows}\n${cols}\n${rCenter}\n${cCenter}`, expectedOutput: fmtIntMat(ref(rows, cols, rCenter, cCenter)) };
       },
+      editorial: explain({
+        idea: "Generate every cell and sort by `(distance, row, column)`.",
+        steps: [
+          "List all `[r, c]`.",
+          "Sort with key `(|r - rCenter| + |c - cCenter|, r, c)`.",
+        ],
+        why: "The composite key encodes the required order including the stated tie-break, so a stable comparison sort produces exactly the expected output.",
+        time: "O(rc · log(rc))",
+        space: "O(rc)",
+        pitfalls: [
+          "Distance is bounded by `rows + cols`, so bucket sort by distance is linear if needed.",
+        ],
+      }),
       solutions: {
         python: `def allCellsDistOrder(rows: int, cols: int, rCenter: int, cCenter: int):\n    cells = [[r, c] for r in range(rows) for c in range(cols)]\n    cells.sort(key=lambda cell: (abs(cell[0] - rCenter) + abs(cell[1] - cCenter), cell[0], cell[1]))\n    return cells`,
         javascript: `var allCellsDistOrder = function(rows, cols, rCenter, cCenter) {\n    const cells = [];\n    for (let r = 0; r < rows; r++) {\n        for (let c = 0; c < cols; c++) cells.push([r, c]);\n    }\n    cells.sort(function(a, b) {\n        const da = Math.abs(a[0] - rCenter) + Math.abs(a[1] - cCenter);\n        const db = Math.abs(b[0] - rCenter) + Math.abs(b[1] - cCenter);\n        if (da !== db) return da - db;\n        if (a[0] !== b[0]) return a[0] - b[0];\n        return a[1] - b[1];\n    });\n    return cells;\n};`,
@@ -2058,6 +2487,20 @@ export const MATRIX2_PROBLEMS: CatalogProblem[] = [
         const grid = randMat(rng, n, n, 0, 50);
         return { input: fmtIntMat(grid), expectedOutput: String(ref(grid)) };
       },
+      editorial: explain({
+        idea: "Top view counts non-zero cells; side view sums row maxima; front view sums column maxima.",
+        steps: [
+          "Count cells with height > 0.",
+          "Add the maximum of each row.",
+          "Add the maximum of each column.",
+        ],
+        why: "Looking down, each occupied cell contributes one unit; looking from the side, each row's tallest tower defines that row's silhouette; likewise columns from the front.",
+        time: "O(n²)",
+        space: "O(1)",
+        pitfalls: [
+          "A cell with height 0 contributes nothing to the top view.",
+        ],
+      }),
       solutions: {
         python: `def projectionArea(grid) -> int:\n    n = len(grid)\n    top = sum(1 for r in range(n) for c in range(n) if grid[r][c] > 0)\n    side = sum(max(row) for row in grid)\n    front = sum(max(grid[r][c] for r in range(n)) for c in range(n))\n    return top + front + side`,
         javascript: `var projectionArea = function(grid) {\n    const n = grid.length;\n    let top = 0, front = 0, side = 0;\n    for (let r = 0; r < n; r++) {\n        let rowMax = 0, colMax = 0;\n        for (let c = 0; c < n; c++) {\n            if (grid[r][c] > 0) top++;\n            if (grid[r][c] > rowMax) rowMax = grid[r][c];\n            if (grid[c][r] > colMax) colMax = grid[c][r];\n        }\n        side += rowMax;\n        front += colMax;\n    }\n    return top + front + side;\n};`,
@@ -2121,6 +2564,19 @@ export const MATRIX2_PROBLEMS: CatalogProblem[] = [
         const mat = Array.from({ length: rows }, () => Array.from({ length: cols }, () => (rng() < 0.3 ? 1 : 0)));
         return { input: fmtIntMat(mat), expectedOutput: String(ref(mat)) };
       },
+      editorial: explain({
+        idea: "Precompute row and column sums; a cell is special iff it holds a 1 and both its row sum and column sum equal 1.",
+        steps: [
+          "Compute `rowSum` and `colSum`.",
+          "Count cells with `mat[r][c] == 1`, `rowSum[r] == 1`, `colSum[c] == 1`.",
+        ],
+        why: "\"Every other element in the row and column is 0\" is equivalent to the sums being exactly 1 when the cell itself is 1.",
+        time: "O(m · n)",
+        space: "O(m + n)",
+        pitfalls: [
+          "Rechecking the row and column per cell is `O(m·n·(m+n))` — precompute instead.",
+        ],
+      }),
       solutions: {
         python: `def numSpecial(mat) -> int:\n    m, n = len(mat), len(mat[0])\n    row_sum = [sum(row) for row in mat]\n    col_sum = [sum(mat[r][c] for r in range(m)) for c in range(n)]\n    return sum(1 for r in range(m) for c in range(n)\n               if mat[r][c] == 1 and row_sum[r] == 1 and col_sum[c] == 1)`,
         javascript: `var numSpecial = function(mat) {\n    const m = mat.length, n = mat[0].length;\n    const rowSum = new Array(m).fill(0);\n    const colSum = new Array(n).fill(0);\n    for (let r = 0; r < m; r++) {\n        for (let c = 0; c < n; c++) {\n            rowSum[r] += mat[r][c];\n            colSum[c] += mat[r][c];\n        }\n    }\n    let count = 0;\n    for (let r = 0; r < m; r++) {\n        for (let c = 0; c < n; c++) {\n            if (mat[r][c] === 1 && rowSum[r] === 1 && colSum[c] === 1) count++;\n        }\n    }\n    return count;\n};`,

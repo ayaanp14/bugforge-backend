@@ -6,7 +6,7 @@
  * JS solutions must be Node 12-safe: no ??, ?., replaceAll, .at() or .flat().
  */
 
-import { bool, describe, fmtStrArr, ri, shuffle, type CatalogProblem, type Rng } from "./types.js";
+import { bool, describe, explain, fmtStrArr, ri, shuffle, type CatalogProblem, type Rng } from "./types.js";
 
 const LOWER = "abcdefghijklmnopqrstuvwxyz";
 
@@ -52,6 +52,21 @@ export const STRING2_PROBLEMS: CatalogProblem[] = [
         const s = randStr(rng, 1, 40, LOWER + "ABCDEFGHIJKLMNOPQRSTUVWXYZ");
         return { input: `"${s}"`, expectedOutput: ref(s) };
       },
+      editorial: explain({
+        idea: "Two pointers, one at each end, swap and step inward until they meet.",
+        steps: [
+          "Copy the string into a mutable character array.",
+          "With `left = 0` and `right = n - 1`, swap the two characters and move both pointers inward.",
+          "Stop when `left >= right` and join the array.",
+        ],
+        why: "Each swap places two characters in their final mirrored positions; after `⌊n/2⌋` swaps every character has been exchanged with its mirror. A middle character in an odd-length string is already in place.",
+        time: "O(n)",
+        space: "O(n) for the copy — O(1) extra in the in-place array form",
+        pitfalls: [
+          "Using `<=` as the loop condition swaps the middle character with itself — harmless, just wasteful.",
+          "The classic form mutates an array; a language-level reverse is fine here but is not the technique being tested.",
+        ],
+      }),
       solutions: {
         python: `def reverseString(s: str) -> str:\n    chars = list(s)\n    left, right = 0, len(chars) - 1\n    while left < right:\n        chars[left], chars[right] = chars[right], chars[left]\n        left += 1\n        right -= 1\n    return "".join(chars)`,
         javascript: `var reverseString = function(s) {\n    const chars = s.split("");\n    let left = 0, right = chars.length - 1;\n    while (left < right) {\n        const t = chars[left];\n        chars[left] = chars[right];\n        chars[right] = t;\n        left++;\n        right--;\n    }\n    return chars.join("");\n};`,
@@ -111,6 +126,21 @@ export const STRING2_PROBLEMS: CatalogProblem[] = [
         if (s.trim().length === 0) s = "the sky";
         return { input: `"${s}"`, expectedOutput: ref(s) };
       },
+      editorial: explain({
+        idea: "Tokenise on whitespace — which also discards the empty pieces produced by multiple spaces — reverse the token list, and join with single spaces.",
+        steps: [
+          "Split the string on runs of whitespace, dropping empty pieces.",
+          "Reverse the list of words.",
+          "Join with a single space.",
+        ],
+        why: "Splitting on whitespace runs normalises the spacing for free: leading, trailing and repeated spaces all vanish, leaving only the words. Reversing and rejoining then produces exactly the required format.",
+        time: "O(n)",
+        space: "O(n)",
+        pitfalls: [
+          "Splitting on a single space keeps empty strings for repeated spaces; either filter them or split on runs.",
+          "The O(1)-extra-space variant reverses the whole array, then reverses each word in place, then compacts the spaces.",
+        ],
+      }),
       solutions: {
         python: `def reverseWords(s: str) -> str:\n    return " ".join(reversed(s.split()))`,
         javascript: `var reverseWords = function(s) {\n    const words = s.split(" ").filter(function(w) { return w.length > 0; });\n    words.reverse();\n    return words.join(" ");\n};`,
@@ -161,6 +191,21 @@ export const STRING2_PROBLEMS: CatalogProblem[] = [
         const safe = s.length === 0 ? "code" : s;
         return { input: `"${safe}"`, expectedOutput: ref(safe) };
       },
+      editorial: explain({
+        idea: "Split on the single space, reverse each word independently, and rejoin.",
+        steps: [
+          "Split `s` on `\" \"`.",
+          "Reverse the characters of each piece.",
+          "Join the pieces with a single space.",
+        ],
+        why: "The spacing is guaranteed to be exactly one space between words with none at the ends, so splitting and rejoining preserves the layout while the per-word reversal does the required work.",
+        time: "O(n)",
+        space: "O(n)",
+        pitfalls: [
+          "An in-place two-pointer reverse per word avoids the intermediate list.",
+          "Do not use a whitespace-collapsing split here — it would silently change the spacing.",
+        ],
+      }),
       solutions: {
         python: `def reverseWords(s: str) -> str:\n    return " ".join(word[::-1] for word in s.split(" "))`,
         javascript: `var reverseWords = function(s) {\n    return s.split(" ").map(function(w) {\n        return w.split("").reverse().join("");\n    }).join(" ");\n};`,
@@ -223,6 +268,21 @@ export const STRING2_PROBLEMS: CatalogProblem[] = [
         const s = randStr(rng, 1, 40, LOWER + "AEIOUXYZ");
         return { input: `"${s}"`, expectedOutput: ref(s) };
       },
+      editorial: explain({
+        idea: "Two pointers from each end skip over non-vowels, swap the vowels they land on, and step inward.",
+        steps: [
+          "Copy the string into a character array; set `left = 0`, `right = n - 1`.",
+          "Advance `left` until it points at a vowel; retreat `right` until it points at a vowel.",
+          "If `left < right`, swap and move both inward; repeat until they cross.",
+        ],
+        why: "The sequence of vowel positions is fixed; pairing the k-th vowel from the left with the k-th from the right and swapping reverses the vowel sequence while every other character stays put.",
+        time: "O(n)",
+        space: "O(n) for the copy",
+        pitfalls: [
+          "Include both cases in the vowel set — `A` and `a` both count.",
+          "Both inner loops need the `left < right` guard, or they can run past each other.",
+        ],
+      }),
       solutions: {
         python: `def reverseVowels(s: str) -> str:\n    vowels = set("aeiouAEIOU")\n    chars = list(s)\n    left, right = 0, len(chars) - 1\n    while left < right:\n        while left < right and chars[left] not in vowels:\n            left += 1\n        while left < right and chars[right] not in vowels:\n            right -= 1\n        if left < right:\n            chars[left], chars[right] = chars[right], chars[left]\n            left += 1\n            right -= 1\n    return "".join(chars)`,
         javascript: `var reverseVowels = function(s) {\n    const isVowel = function(c) { return "aeiouAEIOU".indexOf(c) >= 0; };\n    const chars = s.split("");\n    let left = 0, right = chars.length - 1;\n    while (left < right) {\n        while (left < right && !isVowel(chars[left])) left++;\n        while (left < right && !isVowel(chars[right])) right--;\n        if (left < right) {\n            const t = chars[left];\n            chars[left] = chars[right];\n            chars[right] = t;\n            left++;\n            right--;\n        }\n    }\n    return chars.join("");\n};`,
@@ -278,6 +338,21 @@ export const STRING2_PROBLEMS: CatalogProblem[] = [
         const s = randStr(rng, 1, 40, alphabet);
         return { input: `"${s}"`, expectedOutput: String(ref(s)) };
       },
+      editorial: explain({
+        idea: "Uniqueness is only known once the whole string has been read, so tally the letters first and then scan again for the first tally of 1.",
+        steps: [
+          "Count each of the 26 letters.",
+          "Walk the string in order and return the index of the first character whose count is 1.",
+          "Return `-1` if none.",
+        ],
+        why: "The second pass visits indices in increasing order, so the first hit is the leftmost non-repeating character.",
+        time: "O(n)",
+        space: "O(1) — 26 counters",
+        pitfalls: [
+          "A single pass with a set of \"seen once\" values is tempting but cannot know a later duplicate.",
+          "Use a hash map instead of the fixed array for Unicode input.",
+        ],
+      }),
       solutions: {
         python: `def firstUniqChar(s: str) -> int:\n    count = [0] * 26\n    for ch in s:\n        count[ord(ch) - 97] += 1\n    for i, ch in enumerate(s):\n        if count[ord(ch) - 97] == 1:\n            return i\n    return -1`,
         javascript: `var firstUniqChar = function(s) {\n    const count = new Array(26).fill(0);\n    for (let i = 0; i < s.length; i++) count[s.charCodeAt(i) - 97]++;\n    for (let i = 0; i < s.length; i++) {\n        if (count[s.charCodeAt(i) - 97] === 1) return i;\n    }\n    return -1;\n};`,
@@ -342,6 +417,20 @@ export const STRING2_PROBLEMS: CatalogProblem[] = [
         }
         return { input: `"${note}"\n"${magazine}"`, expectedOutput: bool(ref(note, magazine)) };
       },
+      editorial: explain({
+        idea: "Count what the magazine supplies, then spend those counts while reading the note; a count going negative means the magazine cannot cover it.",
+        steps: [
+          "Tally each letter of `magazine`.",
+          "For each letter of `ransomNote`, decrement its count and return `false` if it drops below zero.",
+          "Return `true`.",
+        ],
+        why: "Each letter of the magazine can be used once, so the tally is a budget; the note is buildable exactly when no letter's demand exceeds its budget.",
+        time: "O(n + m)",
+        space: "O(1) — 26 counters",
+        pitfalls: [
+          "An early length check (`len(note) > len(magazine)` → `false`) is a cheap short-circuit.",
+        ],
+      }),
       solutions: {
         python: `def canConstruct(ransomNote: str, magazine: str) -> bool:\n    count = [0] * 26\n    for ch in magazine:\n        count[ord(ch) - 97] += 1\n    for ch in ransomNote:\n        idx = ord(ch) - 97\n        count[idx] -= 1\n        if count[idx] < 0:\n            return False\n    return True`,
         javascript: `var canConstruct = function(ransomNote, magazine) {\n    const count = new Array(26).fill(0);\n    for (let i = 0; i < magazine.length; i++) count[magazine.charCodeAt(i) - 97]++;\n    for (let i = 0; i < ransomNote.length; i++) {\n        const idx = ransomNote.charCodeAt(i) - 97;\n        count[idx]--;\n        if (count[idx] < 0) return false;\n    }\n    return true;\n};`,
@@ -406,6 +495,21 @@ export const STRING2_PROBLEMS: CatalogProblem[] = [
         if (s.trim().length === 0) s = "moon";
         return { input: `"${s}"`, expectedOutput: String(ref(s)) };
       },
+      editorial: explain({
+        idea: "Scan from the right: skip trailing spaces, then count characters until the next space or the start.",
+        steps: [
+          "Set `i` to the last index and move left while `s[i]` is a space.",
+          "Count characters while `i >= 0` and `s[i]` is not a space.",
+          "Return the count.",
+        ],
+        why: "The last word is the final run of non-space characters, and walking backwards reaches it without touching the rest of the string.",
+        time: "O(n) worst case, typically O(length of last word)",
+        space: "O(1)",
+        pitfalls: [
+          "Trailing spaces are the trap — `\"hello \"` has a last word of length 5.",
+          "`split()` and taking the last piece works but allocates every word.",
+        ],
+      }),
       solutions: {
         python: `def lengthOfLastWord(s: str) -> int:\n    i = len(s) - 1\n    while i >= 0 and s[i] == " ":\n        i -= 1\n    length = 0\n    while i >= 0 and s[i] != " ":\n        length += 1\n        i -= 1\n    return length`,
         javascript: `var lengthOfLastWord = function(s) {\n    let i = s.length - 1;\n    while (i >= 0 && s[i] === " ") i--;\n    let len = 0;\n    while (i >= 0 && s[i] !== " ") {\n        len++;\n        i--;\n    }\n    return len;\n};`,
@@ -466,6 +570,20 @@ export const STRING2_PROBLEMS: CatalogProblem[] = [
         else word = randStr(rng, n, n, LOWER + "ABCDEFGHIJ");
         return { input: `"${word}"`, expectedOutput: bool(ref(word)) };
       },
+      editorial: explain({
+        idea: "The number of capitals decides it: all, none, or exactly one that sits at index 0.",
+        steps: [
+          "Count the uppercase letters.",
+          "Return `true` if the count is `0` or equals the length.",
+          "Otherwise return `true` only if the count is `1` and `word[0]` is uppercase.",
+        ],
+        why: "The three legal patterns correspond to capital counts of `n`, `0`, and `1`-at-the-front; any other count or position is illegal.",
+        time: "O(n)",
+        space: "O(1)",
+        pitfalls: [
+          "A single-letter word is legal in either case and falls out of the first check automatically.",
+        ],
+      }),
       solutions: {
         python: `def detectCapitalUse(word: str) -> bool:\n    upper = sum(1 for ch in word if ch.isupper())\n    if upper == len(word) or upper == 0:\n        return True\n    return upper == 1 and word[0].isupper()`,
         javascript: `var detectCapitalUse = function(word) {\n    let upper = 0;\n    for (let i = 0; i < word.length; i++) {\n        const c = word[i];\n        if (c >= "A" && c <= "Z") upper++;\n    }\n    if (upper === word.length || upper === 0) return true;\n    return upper === 1 && word[0] >= "A" && word[0] <= "Z";\n};`,
@@ -535,6 +653,21 @@ export const STRING2_PROBLEMS: CatalogProblem[] = [
         }
         return { input: `"${s}"`, expectedOutput: bool(ref(s)) };
       },
+      editorial: explain({
+        idea: "The repeating unit's length must divide `n` and be at most `n/2`; for each such length, check whether repeating the prefix reproduces the string.",
+        steps: [
+          "For each `length` from 1 to `n // 2`, skip it unless it divides `n`.",
+          "Build `s[:length]` repeated `n / length` times and compare with `s`.",
+          "Return `true` on the first match, `false` if none.",
+        ],
+        why: "If `s` is `u` repeated `k >= 2` times then `|u|` divides `n`, `|u| <= n/2`, and `u` is precisely the prefix of that length — so the check is both necessary and sufficient.",
+        time: "O(n · d(n)) where `d(n)` is the number of divisors",
+        space: "O(n)",
+        pitfalls: [
+          "The one-liner `s in (s + s)[1:-1]` is equivalent and O(n) with a linear-time search.",
+          "Testing non-divisor lengths wastes time and can never match.",
+        ],
+      }),
       solutions: {
         python: `def repeatedSubstringPattern(s: str) -> bool:\n    n = len(s)\n    for length in range(1, n // 2 + 1):\n        if n % length != 0:\n            continue\n        if s[:length] * (n // length) == s:\n            return True\n    return False`,
         javascript: `var repeatedSubstringPattern = function(s) {\n    const n = s.length;\n    for (let len = 1; len <= Math.floor(n / 2); len++) {\n        if (n % len !== 0) continue;\n        const unit = s.slice(0, len);\n        let ok = true;\n        for (let i = len; i < n; i += len) {\n            if (s.slice(i, i + len) !== unit) { ok = false; break; }\n        }\n        if (ok) return true;\n    }\n    return false;\n};`,
@@ -598,6 +731,21 @@ export const STRING2_PROBLEMS: CatalogProblem[] = [
         const n = ri(rng, 1, 22);
         return { input: String(n), expectedOutput: ref(n) };
       },
+      editorial: explain({
+        idea: "There is no closed form; generate each term from the previous by scanning runs of equal digits and writing `count` then `digit`.",
+        steps: [
+          "Start from `\"1\"`.",
+          "Repeat `n - 1` times: walk the current term with `i`; extend `j` while `cur[j] == cur[i]`; append `j - i` and `cur[i]`; set `i = j`.",
+          "Return the final term.",
+        ],
+        why: "Reading a string aloud is exactly run-length encoding with the count written first, and the run scan produces one `(count, digit)` pair per maximal run.",
+        time: "O(total length of the terms)",
+        space: "O(length of the n-th term)",
+        pitfalls: [
+          "Writing the digit before the count inverts the encoding.",
+          "The terms grow roughly 30 % per step; strings, not ints, throughout.",
+        ],
+      }),
       solutions: {
         python: `def countAndSay(n: int) -> str:\n    cur = "1"\n    for _ in range(n - 1):\n        parts = []\n        i = 0\n        while i < len(cur):\n            j = i\n            while j < len(cur) and cur[j] == cur[i]:\n                j += 1\n            parts.append(str(j - i))\n            parts.append(cur[i])\n            i = j\n        cur = "".join(parts)\n    return cur`,
         javascript: `var countAndSay = function(n) {\n    let cur = "1";\n    for (let step = 2; step <= n; step++) {\n        let next = "";\n        let i = 0;\n        while (i < cur.length) {\n            let j = i;\n            while (j < cur.length && cur[j] === cur[i]) j++;\n            next += String(j - i) + cur[i];\n            i = j;\n        }\n        cur = next;\n    }\n    return cur;\n};`,
@@ -665,6 +813,21 @@ export const STRING2_PROBLEMS: CatalogProblem[] = [
         s = s.slice(0, ri(rng, 1, 40));
         return { input: `"${s}"`, expectedOutput: ref(s) };
       },
+      editorial: explain({
+        idea: "Scan runs of identical characters; emit the character, then its length only when the run exceeds one.",
+        steps: [
+          "With `i` at the run start, advance `j` while `chars[j] == chars[i]`.",
+          "Append `chars[i]`; if `j - i > 1`, append the decimal digits of `j - i`.",
+          "Set `i = j` and repeat.",
+        ],
+        why: "Maximal runs partition the string, and the rules specify exactly the character-plus-count representation with the count omitted for singletons.",
+        time: "O(n)",
+        space: "O(n) for the output",
+        pitfalls: [
+          "A count of 10 or more contributes multiple characters — write the full number.",
+          "The in-place array version writes with a separate write pointer and returns the new length.",
+        ],
+      }),
       solutions: {
         python: `def compress(chars: str) -> str:\n    out = []\n    i = 0\n    while i < len(chars):\n        j = i\n        while j < len(chars) and chars[j] == chars[i]:\n            j += 1\n        out.append(chars[i])\n        if j - i > 1:\n            out.append(str(j - i))\n        i = j\n    return "".join(out)`,
         javascript: `var compress = function(chars) {\n    let out = "";\n    let i = 0;\n    while (i < chars.length) {\n        let j = i;\n        while (j < chars.length && chars[j] === chars[i]) j++;\n        out += chars[i];\n        if (j - i > 1) out += String(j - i);\n        i = j;\n    }\n    return out;\n};`,
@@ -723,6 +886,21 @@ export const STRING2_PROBLEMS: CatalogProblem[] = [
         const s = randStr(rng, 1, 40, rng() < 0.5 ? "abcABC" : LOWER + "ABCDEF");
         return { input: `"${s}"`, expectedOutput: String(ref(s)) };
       },
+      editorial: explain({
+        idea: "Pairs of equal letters can be mirrored around the centre; take the even part of every count, and add one more if any count was odd to occupy the middle.",
+        steps: [
+          "Count every character.",
+          "Sum `count - (count % 2)` over all characters.",
+          "If any count is odd, add 1.",
+        ],
+        why: "A palindrome uses each letter an even number of times except at most one letter in the exact centre. Taking the largest even number ≤ each count uses the maximum pairs, and a single odd leftover fills the centre.",
+        time: "O(n)",
+        space: "O(1) — 52 possible letters",
+        pitfalls: [
+          "Case-sensitive: `A` and `a` do not pair.",
+          "Add the centre once, not once per odd count.",
+        ],
+      }),
       solutions: {
         python: `def longestPalindrome(s: str) -> int:\n    count = {}\n    for ch in s:\n        count[ch] = count.get(ch, 0) + 1\n    total = 0\n    has_odd = False\n    for c in count.values():\n        total += c - (c % 2)\n        if c % 2 == 1:\n            has_odd = True\n    return total + (1 if has_odd else 0)`,
         javascript: `var longestPalindrome = function(s) {\n    const count = new Map();\n    for (let i = 0; i < s.length; i++) {\n        count.set(s[i], (count.get(s[i]) || 0) + 1);\n    }\n    let total = 0, hasOdd = false;\n    count.forEach(function(c) {\n        total += c - (c % 2);\n        if (c % 2 === 1) hasOdd = true;\n    });\n    return total + (hasOdd ? 1 : 0);\n};`,
@@ -783,6 +961,22 @@ export const STRING2_PROBLEMS: CatalogProblem[] = [
         const s = randStr(rng, 1, 24, "()*");
         return { input: `"${s}"`, expectedOutput: bool(ref(s)) };
       },
+      editorial: explain({
+        idea: "Track the range of possible open-bracket counts: `lo` treats every star as a closer, `hi` treats every star as an opener. The string is valid if `hi` never goes negative and `lo` can end at 0.",
+        steps: [
+          "Set `lo = hi = 0`.",
+          "For `(`: increment both. For `)`: decrement both. For `*`: `lo -= 1`, `hi += 1`.",
+          "If `hi < 0`, return `false`; clamp `lo` to 0.",
+          "Return `lo == 0`.",
+        ],
+        why: "Every achievable open-count after a prefix lies in `[lo, hi]`, and every integer in that range is achievable because stars can be re-assigned one at a time. `hi < 0` means even all-openers cannot absorb the closers; clamping `lo` discards impossible negative counts. Ending with `0` in range means some assignment balances.",
+        time: "O(n)",
+        space: "O(1)",
+        pitfalls: [
+          "Forgetting to clamp `lo` lets a later `(` \"cancel\" an impossible negative balance.",
+          "Trying every star assignment is exponential; two stacks (one for `(`, one for `*`) is the other linear approach.",
+        ],
+      }),
       solutions: {
         python: `def checkValidString(s: str) -> bool:\n    lo = hi = 0\n    for ch in s:\n        if ch == "(":\n            lo += 1\n            hi += 1\n        elif ch == ")":\n            lo -= 1\n            hi -= 1\n        else:\n            lo -= 1\n            hi += 1\n        if hi < 0:\n            return False\n        if lo < 0:\n            lo = 0\n    return lo == 0`,
         javascript: `var checkValidString = function(s) {\n    let lo = 0, hi = 0;\n    for (let i = 0; i < s.length; i++) {\n        const c = s[i];\n        if (c === "(") { lo++; hi++; }\n        else if (c === ")") { lo--; hi--; }\n        else { lo--; hi++; }\n        if (hi < 0) return false;\n        if (lo < 0) lo = 0;\n    }\n    return lo === 0;\n};`,
@@ -832,6 +1026,18 @@ export const STRING2_PROBLEMS: CatalogProblem[] = [
         const address = parts.join(".");
         return { input: `"${address}"`, expectedOutput: ref(address) };
       },
+      editorial: explain({
+        idea: "Replace every `.` with `[.]`.",
+        steps: [
+          "Return `address.replace(\".\", \"[.]\")`, or rebuild character by character appending three characters for each period.",
+        ],
+        why: "The transformation is a literal substitution with no other rules.",
+        time: "O(n)",
+        space: "O(n)",
+        pitfalls: [
+          "In languages where the replace API takes a regex, escape the period.",
+        ],
+      }),
       solutions: {
         python: `def defangIPaddr(address: str) -> str:\n    return address.replace(".", "[.]")`,
         javascript: `var defangIPaddr = function(address) {\n    return address.split(".").join("[.]");\n};`,
@@ -888,6 +1094,19 @@ export const STRING2_PROBLEMS: CatalogProblem[] = [
         const stones = randStr(rng, 1, 40, pool);
         return { input: `"${jewels}"\n"${stones}"`, expectedOutput: String(ref(jewels, stones)) };
       },
+      editorial: explain({
+        idea: "Put the jewel types in a hash set, then count stones whose type is in the set.",
+        steps: [
+          "Build a set from `jewels`.",
+          "Count the characters of `stones` present in the set.",
+        ],
+        why: "Set membership is O(1), so each stone costs constant time instead of a scan over `jewels`.",
+        time: "O(j + s)",
+        space: "O(j)",
+        pitfalls: [
+          "Case matters — `a` and `A` are different stones.",
+        ],
+      }),
       solutions: {
         python: `def numJewelsInStones(jewels: str, stones: str) -> int:\n    jewel_set = set(jewels)\n    return sum(1 for ch in stones if ch in jewel_set)`,
         javascript: `var numJewelsInStones = function(jewels, stones) {\n    const set = new Set(jewels.split(""));\n    let count = 0;\n    for (let i = 0; i < stones.length; i++) {\n        if (set.has(stones[i])) count++;\n    }\n    return count;\n};`,
@@ -953,6 +1172,20 @@ export const STRING2_PROBLEMS: CatalogProblem[] = [
         if (command.length === 0) command = "G";
         return { input: `"${command}"`, expectedOutput: ref(command) };
       },
+      editorial: explain({
+        idea: "The three tokens never overlap, so two ordered substitutions — `()` → `o`, then `(al)` → `al` — produce the interpretation.",
+        steps: [
+          "Replace every `()` with `o`.",
+          "Replace every `(al)` with `al`.",
+          "Return the result (the `G`s are unchanged).",
+        ],
+        why: "`()` and `(al)` cannot share characters in a valid command, and replacing `()` first never creates or destroys an `(al)`. A left-to-right scan that inspects the character after each `(` is the equivalent single-pass form.",
+        time: "O(n)",
+        space: "O(n)",
+        pitfalls: [
+          "Swapping the order of the two replacements is still safe here; the danger would be a replacement that produces a `(`.",
+        ],
+      }),
       solutions: {
         python: `def interpret(command: str) -> str:\n    return command.replace("()", "o").replace("(al)", "al")`,
         javascript: `var interpret = function(command) {\n    let out = "";\n    let i = 0;\n    while (i < command.length) {\n        if (command[i] === "G") { out += "G"; i += 1; }\n        else if (command[i + 1] === ")") { out += "o"; i += 2; }\n        else { out += "al"; i += 4; }\n    }\n    return out;\n};`,
@@ -1007,6 +1240,20 @@ export const STRING2_PROBLEMS: CatalogProblem[] = [
         const indices = shuffle(rng, Array.from({ length: n }, (_, i) => i));
         return { input: `"${s}"\n[${indices.join(",")}]`, expectedOutput: ref(s, indices) };
       },
+      editorial: explain({
+        idea: "Allocate the output and write each character directly to its destination `indices[i]`.",
+        steps: [
+          "Create an array of `n` empty slots.",
+          "For each `i`, set `out[indices[i]] = s[i]`.",
+          "Join the slots.",
+        ],
+        why: "`indices` is a permutation, so every slot is written exactly once and the result is well defined.",
+        time: "O(n)",
+        space: "O(n)",
+        pitfalls: [
+          "Reading `s[indices[i]]` into slot `i` applies the inverse permutation.",
+        ],
+      }),
       solutions: {
         python: `def restoreString(s: str, indices) -> str:\n    out = [""] * len(s)\n    for i, ch in enumerate(s):\n        out[indices[i]] = ch\n    return "".join(out)`,
         javascript: `var restoreString = function(s, indices) {\n    const out = new Array(s.length).fill("");\n    for (let i = 0; i < s.length; i++) {\n        out[indices[i]] = s[i];\n    }\n    return out.join("");\n};`,
@@ -1074,6 +1321,21 @@ export const STRING2_PROBLEMS: CatalogProblem[] = [
         if (s.length === 0) s = "1+2";
         return { input: `"${s}"`, expectedOutput: String(ref(s)) };
       },
+      editorial: explain({
+        idea: "Only the stack's height matters: count up on `(`, down on `)`, and remember the peak.",
+        steps: [
+          "Set `depth = best = 0`.",
+          "For `(`, increment `depth` and update `best`; for `)`, decrement.",
+          "Return `best`.",
+        ],
+        why: "In a valid parentheses string the running counter equals the number of currently open brackets, and the maximum value it takes is the deepest nesting.",
+        time: "O(n)",
+        space: "O(1)",
+        pitfalls: [
+          "Digits and operators are ignored entirely.",
+          "A string with no parentheses returns 0 naturally.",
+        ],
+      }),
       solutions: {
         python: `def maxDepth(s: str) -> int:\n    depth = best = 0\n    for ch in s:\n        if ch == "(":\n            depth += 1\n            if depth > best:\n                best = depth\n        elif ch == ")":\n            depth -= 1\n    return best`,
         javascript: `var maxDepth = function(s) {\n    let depth = 0, best = 0;\n    for (let i = 0; i < s.length; i++) {\n        if (s[i] === "(") {\n            depth++;\n            if (depth > best) best = depth;\n        } else if (s[i] === ")") {\n            depth--;\n        }\n    }\n    return best;\n};`,
@@ -1132,6 +1394,20 @@ export const STRING2_PROBLEMS: CatalogProblem[] = [
         }
         return { input: `"${sentence}"`, expectedOutput: bool(ref(sentence)) };
       },
+      editorial: explain({
+        idea: "Collect the distinct letters and check whether all 26 are present.",
+        steps: [
+          "Build a set of the characters.",
+          "Return whether its size is 26.",
+        ],
+        why: "The sentence is all lowercase letters, so the set can hold at most 26 values and reaches 26 exactly when every letter appears.",
+        time: "O(n)",
+        space: "O(1)",
+        pitfalls: [
+          "A 26-bit mask compared against `(1 << 26) - 1` avoids the set.",
+          "Anything shorter than 26 characters can be rejected without looking.",
+        ],
+      }),
       solutions: {
         python: `def checkIfPangram(sentence: str) -> bool:\n    return len(set(sentence)) == 26`,
         javascript: `var checkIfPangram = function(sentence) {\n    const seen = new Set();\n    for (let i = 0; i < sentence.length; i++) seen.add(sentence[i]);\n    return seen.size === 26;\n};`,
@@ -1183,6 +1459,19 @@ export const STRING2_PROBLEMS: CatalogProblem[] = [
         const k = ri(rng, 1, words);
         return { input: `"${s}"\n${k}`, expectedOutput: ref(s, k) };
       },
+      editorial: explain({
+        idea: "Split on spaces, keep the first `k` words, and rejoin.",
+        steps: [
+          "Split `s` on `\" \"`.",
+          "Take the first `k` pieces and join with a space.",
+        ],
+        why: "Words are separated by exactly one space with none at the ends, so the split-slice-join round-trips the format.",
+        time: "O(n)",
+        space: "O(n)",
+        pitfalls: [
+          "Without splitting, scan and stop at the `k`-th space — return the prefix before it.",
+        ],
+      }),
       solutions: {
         python: `def truncateSentence(s: str, k: int) -> str:\n    return " ".join(s.split(" ")[:k])`,
         javascript: `var truncateSentence = function(s, k) {\n    return s.split(" ").slice(0, k).join(" ");\n};`,
@@ -1244,6 +1533,20 @@ export const STRING2_PROBLEMS: CatalogProblem[] = [
         const s = shuffle(rng, tagged).join(" ");
         return { input: `"${s}"`, expectedOutput: ref(s) };
       },
+      editorial: explain({
+        idea: "Each word's last character is its 1-based destination; strip it and drop the word into that slot.",
+        steps: [
+          "Split on spaces.",
+          "For each word, write `word[:-1]` into `out[int(word[-1]) - 1]`.",
+          "Join the slots with a space.",
+        ],
+        why: "The position suffix is a permutation of `1..n`, so every slot is filled once and the join restores the original order.",
+        time: "O(n)",
+        space: "O(n)",
+        pitfalls: [
+          "At most 9 words, so the suffix is a single digit — parsing `word[-1]` is enough.",
+        ],
+      }),
       solutions: {
         python: `def sortSentence(s: str) -> str:\n    parts = s.split(" ")\n    out = [""] * len(parts)\n    for word in parts:\n        out[int(word[-1]) - 1] = word[:-1]\n    return " ".join(out)`,
         javascript: `var sortSentence = function(s) {\n    const parts = s.split(" ");\n    const out = new Array(parts.length).fill("");\n    for (let i = 0; i < parts.length; i++) {\n        const w = parts[i];\n        const pos = parseInt(w[w.length - 1], 10);\n        out[pos - 1] = w.slice(0, w.length - 1);\n    }\n    return out.join(" ");\n};`,
@@ -1302,6 +1605,20 @@ export const STRING2_PROBLEMS: CatalogProblem[] = [
         s = s.slice(0, 60);
         return { input: `"${s}"`, expectedOutput: String(ref(s)) };
       },
+      editorial: explain({
+        idea: "Split on whitespace runs and count the non-empty pieces.",
+        steps: [
+          "Split the string on whitespace, discarding empty tokens.",
+          "Return the number of tokens.",
+        ],
+        why: "A segment is a maximal run of non-space characters, which is exactly what a whitespace-run split produces.",
+        time: "O(n)",
+        space: "O(n)",
+        pitfalls: [
+          "To avoid allocating, count characters that are non-space and whose predecessor is a space or the start.",
+          "An empty or all-space string answers 0.",
+        ],
+      }),
       solutions: {
         python: `def countSegments(s: str) -> int:\n    return len(s.split())`,
         javascript: `var countSegments = function(s) {\n    let count = 0;\n    for (let i = 0; i < s.length; i++) {\n        if (s[i] !== " " && (i === 0 || s[i - 1] === " ")) count++;\n    }\n    return count;\n};`,
@@ -1361,6 +1678,21 @@ export const STRING2_PROBLEMS: CatalogProblem[] = [
         const k = ri(rng, 1, 6);
         return { input: `"${s}"\n${k}`, expectedOutput: ref(s, k) };
       },
+      editorial: explain({
+        idea: "Strip dashes and uppercase first; the grouping depends only on that cleaned string. The first group takes `len % k` characters (or `k` if that is zero), the rest take `k` each.",
+        steps: [
+          "Build `clean` from the non-dash characters, uppercased; return `\"\"` if empty.",
+          "Set `first = len(clean) % k or k`.",
+          "Emit `clean[:first]`, then successive chunks of `k`, joined by `-`.",
+        ],
+        why: "Every group after the first must have exactly `k` characters, so the remainder of the length modulo `k` is forced onto the first group; when the length divides evenly, the first group is a full `k`.",
+        time: "O(n)",
+        space: "O(n)",
+        pitfalls: [
+          "An input of only dashes must return an empty string, not `\"-\"`.",
+          "Building from the right in chunks of `k` and reversing avoids the modulo case.",
+        ],
+      }),
       solutions: {
         python: `def licenseKeyFormatting(s: str, k: int) -> str:\n    clean = [ch.upper() for ch in s if ch != "-"]\n    if not clean:\n        return ""\n    first = len(clean) % k or k\n    groups = ["".join(clean[:first])]\n    for i in range(first, len(clean), k):\n        groups.append("".join(clean[i:i + k]))\n    return "-".join(groups)`,
         javascript: `var licenseKeyFormatting = function(s, k) {\n    const clean = [];\n    for (let i = 0; i < s.length; i++) {\n        if (s[i] !== "-") clean.push(s[i].toUpperCase());\n    }\n    if (clean.length === 0) return "";\n    const first = clean.length % k === 0 ? k : clean.length % k;\n    const groups = [clean.slice(0, first).join("")];\n    for (let i = first; i < clean.length; i += k) {\n        groups.push(clean.slice(i, i + k).join(""));\n    }\n    return groups.join("-");\n};`,
@@ -1424,6 +1756,21 @@ export const STRING2_PROBLEMS: CatalogProblem[] = [
         const s = randStr(rng, 1, 30, "abcdefgh");
         return { input: `"${order}"\n"${s}"`, expectedOutput: ref(order, s) };
       },
+      editorial: explain({
+        idea: "Only multiplicities matter for the ordered part: count `s`, emit each letter of `order` as many times as counted, then append the remaining letters of `s` in their original order.",
+        steps: [
+          "Count the characters of `s`.",
+          "For each character of `order`, append it `count` times and remove it from the map.",
+          "Walk `s` once more, appending only characters still in the map.",
+        ],
+        why: "Grouping all copies of each ordered letter is exactly what the custom order requires, and the second pass over `s` — not over the map — is what preserves the relative order of the leftovers.",
+        time: "O(n + m)",
+        space: "O(n)",
+        pitfalls: [
+          "Emitting leftovers from the map iterates in hash order and loses their original sequence.",
+          "`order` has distinct characters, so each is processed once.",
+        ],
+      }),
       solutions: {
         python: `def customSortString(order: str, s: str) -> str:\n    count = {}\n    for ch in s:\n        count[ch] = count.get(ch, 0) + 1\n    parts = []\n    for ch in order:\n        if ch in count:\n            parts.append(ch * count[ch])\n            del count[ch]\n    for ch in s:\n        if ch in count:\n            parts.append(ch)\n    return "".join(parts)`,
         javascript: `var customSortString = function(order, s) {\n    const count = new Map();\n    for (let i = 0; i < s.length; i++) {\n        count.set(s[i], (count.get(s[i]) || 0) + 1);\n    }\n    let out = "";\n    for (let i = 0; i < order.length; i++) {\n        const c = count.get(order[i]);\n        if (c) {\n            for (let k = 0; k < c; k++) out += order[i];\n            count.delete(order[i]);\n        }\n    }\n    for (let i = 0; i < s.length; i++) {\n        if (count.has(s[i])) out += s[i];\n    }\n    return out;\n};`,
@@ -1493,6 +1840,21 @@ export const STRING2_PROBLEMS: CatalogProblem[] = [
         }
         return { input: `"${s}"\n"${goal}"`, expectedOutput: bool(ref(s, goal)) };
       },
+      editorial: explain({
+        idea: "Three cases: different lengths → no; equal strings → a swap must be a no-op, which needs a repeated letter; otherwise exactly two mismatches that mirror each other.",
+        steps: [
+          "Return `false` if the lengths differ.",
+          "If `s == goal`, return whether `s` has a duplicate character.",
+          "Collect the mismatch indices; return `true` iff there are exactly two and `s[i] == goal[j]` and `s[j] == goal[i]`.",
+        ],
+        why: "A swap changes at most two positions, so more than two mismatches is impossible; exactly two mismatches are fixable only if swapping them makes both match; and zero mismatches requires a swap of two equal letters.",
+        time: "O(n)",
+        space: "O(n) for the mismatch list (O(1) with early exit)",
+        pitfalls: [
+          "`s == goal` with all-distinct letters is `false` — `\"ab\"` cannot be swapped into itself.",
+          "One mismatch is always `false`.",
+        ],
+      }),
       solutions: {
         python: `def buddyStrings(s: str, goal: str) -> bool:\n    if len(s) != len(goal):\n        return False\n    if s == goal:\n        return len(set(s)) < len(s)\n    diff = [i for i in range(len(s)) if s[i] != goal[i]]\n    return len(diff) == 2 and s[diff[0]] == goal[diff[1]] and s[diff[1]] == goal[diff[0]]`,
         javascript: `var buddyStrings = function(s, goal) {\n    if (s.length !== goal.length) return false;\n    if (s === goal) {\n        const seen = new Set();\n        for (let i = 0; i < s.length; i++) seen.add(s[i]);\n        return seen.size < s.length;\n    }\n    const diff = [];\n    for (let i = 0; i < s.length; i++) {\n        if (s[i] !== goal[i]) diff.push(i);\n    }\n    return diff.length === 2 && s[diff[0]] === goal[diff[1]] && s[diff[1]] === goal[diff[0]];\n};`,
@@ -1550,6 +1912,19 @@ export const STRING2_PROBLEMS: CatalogProblem[] = [
         }
         return { input: `"${s}"\n"${goal}"`, expectedOutput: bool(ref(s, goal)) };
       },
+      editorial: explain({
+        idea: "Every rotation of `s` is a substring of `s + s`, so check the lengths and search.",
+        steps: [
+          "Return `false` if the lengths differ.",
+          "Return whether `goal` occurs in `s + s`.",
+        ],
+        why: "`s + s` contains each left shift of `s` as a window of length `n` starting at offsets `0..n-1`, and a same-length substring of it must be one of those windows.",
+        time: "O(n) with a linear substring search",
+        space: "O(n)",
+        pitfalls: [
+          "Skipping the length check lets `\"a\"` match inside `\"abab\"`.",
+        ],
+      }),
       solutions: {
         python: `def rotateString(s: str, goal: str) -> bool:\n    return len(s) == len(goal) and goal in s + s`,
         javascript: `var rotateString = function(s, goal) {\n    return s.length === goal.length && (s + s).indexOf(goal) >= 0;\n};`,
@@ -1619,6 +1994,21 @@ export const STRING2_PROBLEMS: CatalogProblem[] = [
         }
         return { input: fmtStrArr(emails), expectedOutput: String(ref(emails)) };
       },
+      editorial: explain({
+        idea: "Normalise each address — cut the local part at the first `+`, delete its periods, keep the domain as is — and count distinct results with a set.",
+        steps: [
+          "Split at `@` into local and domain.",
+          "Truncate local at the first `+`, then remove every `.`.",
+          "Insert `local + \"@\" + domain` into a set; return its size.",
+        ],
+        why: "Two addresses deliver to the same mailbox exactly when their normalised forms are equal, so distinct normalised forms count distinct recipients.",
+        time: "O(total characters)",
+        space: "O(total characters)",
+        pitfalls: [
+          "Apply both rules only to the local part; a `.` or `+` in the domain is significant.",
+          "Cut at `+` before removing periods, or a period after the `+` is removed pointlessly (harmless, but wasted).",
+        ],
+      }),
       solutions: {
         python: `def numUniqueEmails(emails) -> int:\n    seen = set()\n    for email in emails:\n        local, domain = email.split("@")\n        local = local.split("+")[0].replace(".", "")\n        seen.add(local + "@" + domain)\n    return len(seen)`,
         javascript: `var numUniqueEmails = function(emails) {\n    const seen = new Set();\n    for (let i = 0; i < emails.length; i++) {\n        const at = emails[i].indexOf("@");\n        let local = emails[i].slice(0, at);\n        const domain = emails[i].slice(at);\n        const plus = local.indexOf("+");\n        if (plus >= 0) local = local.slice(0, plus);\n        local = local.split(".").join("");\n        seen.add(local + domain);\n    }\n    return seen.size;\n};`,
@@ -1676,6 +2066,20 @@ export const STRING2_PROBLEMS: CatalogProblem[] = [
         const text = randStr(rng, 1, 40, alphabet);
         return { input: `"${text}"`, expectedOutput: String(ref(text)) };
       },
+      editorial: explain({
+        idea: "Each copy needs one `b`, one `a`, two `l`s, two `o`s and one `n`; the scarcest letter after dividing by its requirement is the bottleneck.",
+        steps: [
+          "Count the characters of `text`.",
+          "For each of `b:1, a:1, l:2, o:2, n:1`, compute `count // need`.",
+          "Return the minimum.",
+        ],
+        why: "The number of complete words is limited by whichever letter runs out first, and `count // need` is how many words that letter alone could supply.",
+        time: "O(n)",
+        space: "O(1)",
+        pitfalls: [
+          "Forgetting that `l` and `o` are needed twice doubles the answer.",
+        ],
+      }),
       solutions: {
         python: `def maxNumberOfBalloons(text: str) -> int:\n    count = {}\n    for ch in text:\n        count[ch] = count.get(ch, 0) + 1\n    need = [("b", 1), ("a", 1), ("l", 2), ("o", 2), ("n", 1)]\n    return min(count.get(ch, 0) // k for ch, k in need)`,
         javascript: `var maxNumberOfBalloons = function(text) {\n    const count = {};\n    for (let i = 0; i < text.length; i++) {\n        count[text[i]] = (count[text[i]] || 0) + 1;\n    }\n    const need = [["b", 1], ["a", 1], ["l", 2], ["o", 2], ["n", 1]];\n    let best = Infinity;\n    for (let i = 0; i < need.length; i++) {\n        const have = count[need[i][0]] || 0;\n        const copies = Math.floor(have / need[i][1]);\n        if (copies < best) best = copies;\n    }\n    return best;\n};`,
@@ -1733,6 +2137,21 @@ export const STRING2_PROBLEMS: CatalogProblem[] = [
         const s = randStr(rng, n, n, "aeiouAEIOUbcdfg");
         return { input: `"${s}"`, expectedOutput: bool(ref(s)) };
       },
+      editorial: explain({
+        idea: "Count vowels in each half and compare.",
+        steps: [
+          "Let `half = n / 2`.",
+          "Count vowels (both cases) in `s[:half]` and in `s[half:]`.",
+          "Return whether the counts are equal.",
+        ],
+        why: "\"Alike\" is defined purely by vowel counts; the halves are fixed by the even length.",
+        time: "O(n)",
+        space: "O(1)",
+        pitfalls: [
+          "Include uppercase vowels in the set.",
+          "A single pass with `+1` for the first half and `-1` for the second, checking for zero, avoids two counters.",
+        ],
+      }),
       solutions: {
         python: `def halvesAreAlike(s: str) -> bool:\n    vowels = set("aeiouAEIOU")\n    half = len(s) // 2\n    a = sum(1 for ch in s[:half] if ch in vowels)\n    b = sum(1 for ch in s[half:] if ch in vowels)\n    return a == b`,
         javascript: `var halvesAreAlike = function(s) {\n    const isVowel = function(c) { return "aeiouAEIOU".indexOf(c) >= 0; };\n    const half = s.length / 2;\n    let a = 0, b = 0;\n    for (let i = 0; i < half; i++) {\n        if (isVowel(s[i])) a++;\n    }\n    for (let i = half; i < s.length; i++) {\n        if (isVowel(s[i])) b++;\n    }\n    return a === b;\n};`,
@@ -1806,6 +2225,20 @@ export const STRING2_PROBLEMS: CatalogProblem[] = [
         if (s.length === 0) s = "()";
         return { input: `"${s}"`, expectedOutput: ref(s) };
       },
+      editorial: explain({
+        idea: "Track the depth. An opening bracket seen at depth 0 and a closing bracket that brings the depth back to 0 form the outer layer of a primitive — skip exactly those.",
+        steps: [
+          "Set `depth = 0`.",
+          "For `(`: append it only if `depth > 0`, then increment.",
+          "For `)`: decrement, then append it only if `depth > 0`.",
+        ],
+        why: "A primitive starts where the depth rises from 0 and ends where it returns to 0; the brackets at those two moments are its outermost pair. Every other bracket is interior to some primitive and is kept.",
+        time: "O(n)",
+        space: "O(n) for the output",
+        pitfalls: [
+          "The order of test versus update differs for `(` and `)` — increment after deciding, decrement before deciding.",
+        ],
+      }),
       solutions: {
         python: `def removeOuterParentheses(s: str) -> str:\n    out = []\n    depth = 0\n    for ch in s:\n        if ch == "(":\n            if depth > 0:\n                out.append(ch)\n            depth += 1\n        else:\n            depth -= 1\n            if depth > 0:\n                out.append(ch)\n    return "".join(out)`,
         javascript: `var removeOuterParentheses = function(s) {\n    let out = "";\n    let depth = 0;\n    for (let i = 0; i < s.length; i++) {\n        if (s[i] === "(") {\n            if (depth > 0) out += "(";\n            depth++;\n        } else {\n            depth--;\n            if (depth > 0) out += ")";\n        }\n    }\n    return out;\n};`,
@@ -1867,6 +2300,20 @@ export const STRING2_PROBLEMS: CatalogProblem[] = [
         const s = shuffle(rng, chars).join("");
         return { input: `"${s}"`, expectedOutput: String(ref(s)) };
       },
+      editorial: explain({
+        idea: "Keep a running balance (`+1` for `R`, `-1` for `L`) and cut every time it returns to zero.",
+        steps: [
+          "Set `balance = count = 0`.",
+          "For each character, adjust `balance`; when it hits 0, increment `count`.",
+          "Return `count`.",
+        ],
+        why: "Each return to zero closes a balanced piece, and cutting at the earliest opportunity never prevents later cuts — any balanced string splits into the pieces between successive zero crossings, which is the maximum.",
+        time: "O(n)",
+        space: "O(1)",
+        pitfalls: [
+          "Greedy is exact here because the whole string is guaranteed balanced.",
+        ],
+      }),
       solutions: {
         python: `def balancedStringSplit(s: str) -> int:\n    balance = count = 0\n    for ch in s:\n        balance += 1 if ch == "R" else -1\n        if balance == 0:\n            count += 1\n    return count`,
         javascript: `var balancedStringSplit = function(s) {\n    let balance = 0, count = 0;\n    for (let i = 0; i < s.length; i++) {\n        balance += s[i] === "R" ? 1 : -1;\n        if (balance === 0) count++;\n    }\n    return count;\n};`,
@@ -1928,6 +2375,19 @@ export const STRING2_PROBLEMS: CatalogProblem[] = [
         const word2 = rng() < 0.6 ? chop(full) : chop(randStr(rng, 1, 30, "abc"));
         return { input: `${fmtStrArr(word1)}\n${fmtStrArr(word2)}`, expectedOutput: bool(ref(word1, word2)) };
       },
+      editorial: explain({
+        idea: "Concatenate both arrays and compare the strings.",
+        steps: [
+          "Join `word1` and `word2` into strings.",
+          "Return whether they are equal.",
+        ],
+        why: "An array represents its concatenation by definition, so equality of the joined strings is the required test.",
+        time: "O(total length)",
+        space: "O(total length)",
+        pitfalls: [
+          "Two `(array index, char index)` cursors compare without allocating, if memory matters.",
+        ],
+      }),
       solutions: {
         python: `def arrayStringsAreEqual(word1, word2) -> bool:\n    return "".join(word1) == "".join(word2)`,
         javascript: `var arrayStringsAreEqual = function(word1, word2) {\n    return word1.join("") === word2.join("");\n};`,
@@ -1996,6 +2456,19 @@ export const STRING2_PROBLEMS: CatalogProblem[] = [
         s = s.slice(0, ri(rng, 1, 40));
         return { input: `"${s}"`, expectedOutput: String(ref(s)) };
       },
+      editorial: explain({
+        idea: "Compress the string into run lengths; each adjacent pair of runs contributes `min(prev, cur)` valid substrings.",
+        steps: [
+          "Scan the string, collecting the length of each maximal run of equal characters.",
+          "Sum `min(groups[k-1], groups[k])` over consecutive pairs.",
+        ],
+        why: "A valid substring is `0^m 1^m` or `1^m 0^m`, which must be centred on a boundary between two runs and can extend `m` characters into each — at most the shorter run's length. Different boundaries give different substrings, so the sums add.",
+        time: "O(n)",
+        space: "O(n) for the run list (O(1) keeping just prev/cur)",
+        pitfalls: [
+          "Substrings are counted per occurrence, which the per-boundary sum does automatically.",
+        ],
+      }),
       solutions: {
         python: `def countBinarySubstrings(s: str) -> int:\n    groups = []\n    i = 0\n    while i < len(s):\n        j = i\n        while j < len(s) and s[j] == s[i]:\n            j += 1\n        groups.append(j - i)\n        i = j\n    return sum(min(groups[k - 1], groups[k]) for k in range(1, len(groups)))`,
         javascript: `var countBinarySubstrings = function(s) {\n    const groups = [];\n    let i = 0;\n    while (i < s.length) {\n        let j = i;\n        while (j < s.length && s[j] === s[i]) j++;\n        groups.push(j - i);\n        i = j;\n    }\n    let total = 0;\n    for (let k = 1; k < groups.length; k++) {\n        total += Math.min(groups[k - 1], groups[k]);\n    }\n    return total;\n};`,

@@ -7,7 +7,7 @@
  * JS solutions must be Node 12-safe: no ??, ?., replaceAll, .at() or .flat().
  */
 
-import { bool, describe, fmtIntArr, fmtStrArr, ri, shuffle, type CatalogProblem, type Rng } from "./types.js";
+import { bool, describe, explain, fmtIntArr, fmtStrArr, ri, shuffle, type CatalogProblem, type Rng } from "./types.js";
 
 const randArr = (rng: Rng, n: number, lo: number, hi: number) =>
   Array.from({ length: n }, () => ri(rng, lo, hi));
@@ -75,6 +75,21 @@ export const BITS2_PROBLEMS: CatalogProblem[] = [
         const nums = shuffle(rng, values);
         return { input: fmtIntArr(nums), expectedOutput: String(ref(nums)) };
       },
+      editorial: explain({
+        idea: "Count, for each of the 32 bit positions, how many numbers have that bit set. Every triple contributes a multiple of three, so `count % 3` is the loner's bit.",
+        steps: [
+          "For each bit `0..31`, sum `(x >> bit) & 1` over the array.",
+          "If the sum is not divisible by 3, set that bit in the answer.",
+          "Sign-extend: if bit 31 is set, subtract `2³²`.",
+        ],
+        why: "Bits are independent under counting: the tripled numbers add 0 or 3 to each position's tally, so the residue mod 3 is exactly the single number's bit.",
+        time: "O(32 · n)",
+        space: "O(1)",
+        pitfalls: [
+          "Plain XOR cancels pairs, not triples.",
+          "Forgetting the sign extension returns a large positive value for a negative loner.",
+        ],
+      }),
       solutions: {
         python: `def singleNumber(nums) -> int:\n    answer = 0\n    for bit in range(32):\n        ones = sum((x >> bit) & 1 for x in nums)\n        if ones % 3:\n            answer |= 1 << bit\n    if answer >= (1 << 31):\n        answer -= 1 << 32\n    return answer`,
         javascript: `var singleNumber = function(nums) {\n    let answer = 0;\n    for (let bit = 0; bit < 32; bit++) {\n        let ones = 0;\n        for (let i = 0; i < nums.length; i++) ones += (nums[i] >> bit) & 1;\n        if (ones % 3 !== 0) answer |= 1 << bit;\n    }\n    return answer | 0;\n};`,
@@ -149,6 +164,20 @@ export const BITS2_PROBLEMS: CatalogProblem[] = [
         const nums = shuffle(rng, values);
         return { input: fmtIntArr(nums), expectedOutput: fmtIntArr(ref(nums)) };
       },
+      editorial: explain({
+        idea: "XOR everything to get `a ^ b`; any set bit of that value separates `a` from `b`. Partition the array on the lowest such bit and XOR each group independently.",
+        steps: [
+          "Compute `xorAll` over the array.",
+          "Take `lowBit = xorAll & -xorAll`.",
+          "XOR the numbers with that bit set into `a`, the rest into `b`; return them sorted.",
+        ],
+        why: "Pairs land in the same group and cancel, while `a` and `b` differ at `lowBit` and so land in different groups — each group's XOR is therefore one loner.",
+        time: "O(n)",
+        space: "O(1)",
+        pitfalls: [
+          "`x & -x` isolates the lowest set bit in two's complement.",
+        ],
+      }),
       solutions: {
         python: `def singleNumber(nums):\n    xor_all = 0\n    for x in nums:\n        xor_all ^= x\n    low_bit = xor_all & -xor_all\n    a = b = 0\n    for x in nums:\n        if x & low_bit:\n            a ^= x\n        else:\n            b ^= x\n    return [a, b] if a < b else [b, a]`,
         javascript: `var singleNumber = function(nums) {\n    let xorAll = 0;\n    for (let i = 0; i < nums.length; i++) xorAll ^= nums[i];\n    const lowBit = xorAll & -xorAll;\n    let a = 0, b = 0;\n    for (let i = 0; i < nums.length; i++) {\n        if ((nums[i] & lowBit) !== 0) a ^= nums[i];\n        else b ^= nums[i];\n    }\n    return a < b ? [a, b] : [b, a];\n};`,
@@ -198,6 +227,19 @@ export const BITS2_PROBLEMS: CatalogProblem[] = [
         const n = rng() < 0.3 ? ri(rng, 0, 255) : ri(rng, 0, 2147483647);
         return { input: String(n), expectedOutput: String(popcount(n)) };
       },
+      editorial: explain({
+        idea: "`n & (n - 1)` clears the lowest set bit; loop until zero and count the iterations.",
+        steps: [
+          "While `n != 0`: `n &= n - 1`, increment the count.",
+          "Return the count.",
+        ],
+        why: "Subtracting one borrows through the trailing zeros and flips the lowest set bit, so the AND removes exactly that bit each iteration.",
+        time: "O(popcount)",
+        space: "O(1)",
+        pitfalls: [
+          "In a signed 32-bit language use a logical shift if you shift instead, or the loop never ends for negatives.",
+        ],
+      }),
       solutions: {
         python: `def hammingWeight(n: int) -> int:\n    count = 0\n    while n:\n        n &= n - 1\n        count += 1\n    return count`,
         javascript: `var hammingWeight = function(n) {\n    let count = 0;\n    let v = n >>> 0;\n    while (v > 0) {\n        v &= v - 1;\n        count++;\n    }\n    return count;\n};`,
@@ -252,6 +294,19 @@ export const BITS2_PROBLEMS: CatalogProblem[] = [
         const n = ri(rng, 0, 40);
         return { input: String(n), expectedOutput: fmtIntArr(ref(n)) };
       },
+      editorial: explain({
+        idea: "`i` and `i >> 1` differ only in the lowest bit, so `out[i] = out[i >> 1] + (i & 1)`.",
+        steps: [
+          "Set `out[0] = 0`.",
+          "For `i` from 1 to `n`, `out[i] = out[i >> 1] + (i & 1)`.",
+        ],
+        why: "Shifting right drops the lowest bit, whose value is `i & 1`; the rest of the popcount was already computed for a smaller index.",
+        time: "O(n)",
+        space: "O(n)",
+        pitfalls: [
+          "`out[i] = out[i & (i - 1)] + 1` is the equivalent recurrence via the lowest set bit.",
+        ],
+      }),
       solutions: {
         python: `def countBits(n: int):\n    out = [0] * (n + 1)\n    for i in range(1, n + 1):\n        out[i] = out[i >> 1] + (i & 1)\n    return out`,
         javascript: `var countBits = function(n) {\n    const out = [0];\n    for (let i = 1; i <= n; i++) out.push(out[i >> 1] + (i & 1));\n    return out;\n};`,
@@ -303,6 +358,19 @@ export const BITS2_PROBLEMS: CatalogProblem[] = [
         const y = small ? ri(rng, 0, 255) : ri(rng, 0, 2147483647);
         return { input: `${x}\n${y}`, expectedOutput: String(ref(x, y)) };
       },
+      editorial: explain({
+        idea: "XOR marks the positions where the two numbers differ; count its set bits.",
+        steps: [
+          "Compute `x ^ y`.",
+          "Return its popcount.",
+        ],
+        why: "A bit of the XOR is 1 exactly when the operands disagree there.",
+        time: "O(1)",
+        space: "O(1)",
+        pitfalls: [
+          "Count with `v & (v - 1)` or a builtin popcount.",
+        ],
+      }),
       solutions: {
         python: `def hammingDistance(x: int, y: int) -> int:\n    return bin(x ^ y).count("1")`,
         javascript: `var hammingDistance = function(x, y) {\n    let v = (x ^ y) >>> 0;\n    let count = 0;\n    while (v > 0) {\n        v &= v - 1;\n        count++;\n    }\n    return count;\n};`,
@@ -360,6 +428,19 @@ export const BITS2_PROBLEMS: CatalogProblem[] = [
         const nums = randArr(rng, ri(rng, 1, 40), 0, rng() < 0.5 ? 64 : 1000000000);
         return { input: fmtIntArr(nums), expectedOutput: String(ref(nums)) };
       },
+      editorial: explain({
+        idea: "Handle each bit position separately: if `k` numbers have the bit set, that position contributes `k · (n - k)` to the total over all pairs.",
+        steps: [
+          "For each bit, count the numbers with it set.",
+          "Add `ones · (n - ones)`.",
+        ],
+        why: "Each pair's Hamming distance is a sum over positions, so the total is a sum over positions of the number of pairs that differ there — one from the set group and one from the unset group.",
+        time: "O(31 · n)",
+        space: "O(1)",
+        pitfalls: [
+          "The pairwise `O(n²)` loop is correct but too slow for large `n`.",
+        ],
+      }),
       solutions: {
         python: `def totalHammingDistance(nums) -> int:\n    total = 0\n    n = len(nums)\n    for bit in range(31):\n        ones = sum((x >> bit) & 1 for x in nums)\n        total += ones * (n - ones)\n    return total`,
         javascript: `var totalHammingDistance = function(nums) {\n    let total = 0;\n    for (let bit = 0; bit < 31; bit++) {\n        let ones = 0;\n        for (let i = 0; i < nums.length; i++) ones += (nums[i] >> bit) & 1;\n        total += ones * (nums.length - ones);\n    }\n    return total;\n};`,
@@ -414,6 +495,19 @@ export const BITS2_PROBLEMS: CatalogProblem[] = [
         else n = ri(rng, -2147483648, 2147483647);
         return { input: String(n), expectedOutput: bool(ref(n)) };
       },
+      editorial: explain({
+        idea: "A power of four is a power of two whose single bit sits at an even position; mask with `0x55555555`.",
+        steps: [
+          "Require `n > 0` and `n & (n - 1) == 0`.",
+          "Require `n & 0x55555555 != 0`.",
+        ],
+        why: "`4^x = 2^(2x)`, so the single set bit is at an even index; `0x55555555` has exactly the even-index bits set.",
+        time: "O(1)",
+        space: "O(1)",
+        pitfalls: [
+          "`(n - 1) % 3 == 0` is the arithmetic alternative for the even-position test.",
+        ],
+      }),
       solutions: {
         python: `def isPowerOfFour(n: int) -> bool:\n    return n > 0 and (n & (n - 1)) == 0 and (n & 0x55555555) != 0`,
         javascript: `var isPowerOfFour = function(n) {\n    return n > 0 && (n & (n - 1)) === 0 && (n & 0x55555555) !== 0;\n};`,
@@ -474,6 +568,19 @@ export const BITS2_PROBLEMS: CatalogProblem[] = [
         const right = rng() < 0.3 ? left : ri(rng, left, hi);
         return { input: `${left}\n${right}`, expectedOutput: String(ref(left, right)) };
       },
+      editorial: explain({
+        idea: "Any bit that changes anywhere in the range is ANDed with a 0, so only the common binary prefix of `left` and `right` survives.",
+        steps: [
+          "Shift both right until they are equal, counting shifts.",
+          "Shift the common value back left by that count.",
+        ],
+        why: "If `left` and `right` differ at bit `b`, then somewhere in between bit `b` flips and every lower bit cycles through 0, so all bits from `b` down are cleared; the prefix above `b` is shared by every number in the range.",
+        time: "O(log right)",
+        space: "O(1)",
+        pitfalls: [
+          "Iterating the range is far too slow when `right - left` is large.",
+        ],
+      }),
       solutions: {
         python: `def rangeBitwiseAnd(left: int, right: int) -> int:\n    shift = 0\n    while left != right:\n        left >>= 1\n        right >>= 1\n        shift += 1\n    return left << shift`,
         javascript: `var rangeBitwiseAnd = function(left, right) {\n    let shift = 0;\n    let a = left, b = right;\n    while (a !== b) {\n        a = Math.floor(a / 2);\n        b = Math.floor(b / 2);\n        shift++;\n    }\n    return a * Math.pow(2, shift);\n};`,
@@ -532,6 +639,20 @@ export const BITS2_PROBLEMS: CatalogProblem[] = [
         const b = ri(rng, -1000, 1000);
         return { input: `${a}\n${b}`, expectedOutput: String(ref(a, b)) };
       },
+      editorial: explain({
+        idea: "`a ^ b` is the sum without carries and `(a & b) << 1` is the carry; loop feeding the carry back until it is zero, masking to 32 bits.",
+        steps: [
+          "Mask both operands to 32 bits.",
+          "While `y != 0`: `carry = ((x & y) << 1) & mask`, `x = (x ^ y) & mask`, `y = carry`.",
+          "Reinterpret `x` as signed.",
+        ],
+        why: "Binary addition is exactly XOR plus shifted carry, and each iteration pushes the carry one bit higher, so it vanishes within 32 iterations.",
+        time: "O(32)",
+        space: "O(1)",
+        pitfalls: [
+          "In Python the mask is what makes negative results terminate; in a fixed-width language the shifts wrap naturally.",
+        ],
+      }),
       solutions: {
         python: `def getSum(a: int, b: int) -> int:\n    mask = 0xFFFFFFFF\n    x, y = a & mask, b & mask\n    while y:\n        carry = ((x & y) << 1) & mask\n        x = (x ^ y) & mask\n        y = carry\n    return x if x <= 0x7FFFFFFF else ~(x ^ mask)`,
         javascript: `var getSum = function(a, b) {\n    let x = a | 0, y = b | 0;\n    while (y !== 0) {\n        const carry = (x & y) << 1;\n        x = (x ^ y) | 0;\n        y = carry | 0;\n    }\n    return x | 0;\n};`,
@@ -597,6 +718,19 @@ export const BITS2_PROBLEMS: CatalogProblem[] = [
         const nums = randArr(rng, ri(rng, 1, 40), 0, rng() < 0.5 ? 128 : 1000000000);
         return { input: fmtIntArr(nums), expectedOutput: String(ref(nums)) };
       },
+      editorial: explain({
+        idea: "Build the answer greedily bit by bit from the top: keep the prefixes under a growing mask in a set, and test whether some pair of prefixes XORs to the current candidate.",
+        steps: [
+          "For each bit from 31 down: extend the mask, collect `x & mask` for all `x`.",
+          "Set `candidate = best | (1 << bit)`; if any prefix `p` has `candidate ^ p` in the set, accept `best = candidate`.",
+        ],
+        why: "A higher bit is worth more than all lower bits combined, so committing to the best achievable prefix at each level is optimal; `p ^ q == candidate` is checked in O(1) via `candidate ^ p ∈ set`.",
+        time: "O(32 · n)",
+        space: "O(n)",
+        pitfalls: [
+          "A binary trie is the equivalent structural approach and handles streaming queries.",
+        ],
+      }),
       solutions: {
         python: `def findMaximumXOR(nums) -> int:\n    best = 0\n    mask = 0\n    for bit in range(31, -1, -1):\n        mask |= 1 << bit\n        prefixes = {x & mask for x in nums}\n        candidate = best | (1 << bit)\n        if any((candidate ^ p) in prefixes for p in prefixes):\n            best = candidate\n    return best`,
         javascript: `var findMaximumXOR = function(nums) {\n    let best = 0;\n    let mask = 0;\n    for (let bit = 31; bit >= 0; bit--) {\n        mask = mask | (1 << bit);\n        const prefixes = new Set();\n        for (let i = 0; i < nums.length; i++) prefixes.add((nums[i] & mask) >>> 0);\n        const candidate = (best | (1 << bit)) >>> 0;\n        let found = false;\n        prefixes.forEach(function(p) {\n            if (prefixes.has((candidate ^ p) >>> 0)) found = true;\n        });\n        if (found) best = candidate;\n    }\n    return best | 0;\n};`,
@@ -655,6 +789,19 @@ export const BITS2_PROBLEMS: CatalogProblem[] = [
         const num = rng() < 0.4 ? ri(rng, 1, 255) : ri(rng, 1, 2147483646);
         return { input: String(num), expectedOutput: String(ref(num)) };
       },
+      editorial: explain({
+        idea: "Build a mask of ones exactly as wide as `num`, then XOR.",
+        steps: [
+          "Shift `mask` left inserting ones while a copy of `num` is non-zero.",
+          "Return `mask ^ num`.",
+        ],
+        why: "XOR with all-ones flips every bit; limiting the mask's width keeps leading zeros from becoming ones.",
+        time: "O(log num)",
+        space: "O(1)",
+        pitfalls: [
+          "Flipping all 32 bits gives the wrong answer for anything below `2³¹`.",
+        ],
+      }),
       solutions: {
         python: `def findComplement(num: int) -> int:\n    mask = 0\n    v = num\n    while v:\n        mask = (mask << 1) | 1\n        v >>= 1\n    return mask ^ num`,
         javascript: `var findComplement = function(num) {\n    let mask = 0;\n    let v = num;\n    while (v > 0) {\n        mask = (mask << 1) | 1;\n        v = Math.floor(v / 2);\n    }\n    return (mask ^ num) >>> 0;\n};`,
@@ -718,6 +865,19 @@ export const BITS2_PROBLEMS: CatalogProblem[] = [
         const n = rng() < 0.4 ? ri(rng, 1, 255) : ri(rng, 1, 1000000000);
         return { input: String(n), expectedOutput: String(ref(n)) };
       },
+      editorial: explain({
+        idea: "Walk the bits tracking the position of the previous 1; each new 1 yields a distance.",
+        steps: [
+          "For each bit index, if the bit is set and a previous 1 exists, update `best` with the gap; record the index.",
+          "Return `best`.",
+        ],
+        why: "Adjacent 1s are consecutive set bits, so the gap between each consecutive pair is measured exactly once.",
+        time: "O(log n)",
+        space: "O(1)",
+        pitfalls: [
+          "A single set bit never records a distance and correctly returns 0.",
+        ],
+      }),
       solutions: {
         python: `def binaryGap(n: int) -> int:\n    best = 0\n    last = -1\n    index = 0\n    while n:\n        if n & 1:\n            if last >= 0:\n                best = max(best, index - last)\n            last = index\n        n >>= 1\n        index += 1\n    return best`,
         javascript: `var binaryGap = function(n) {\n    let best = 0;\n    let last = -1;\n    let index = 0;\n    let v = n;\n    while (v > 0) {\n        if (v % 2 === 1) {\n            if (last >= 0 && index - last > best) best = index - last;\n            last = index;\n        }\n        v = Math.floor(v / 2);\n        index++;\n    }\n    return best;\n};`,
@@ -781,6 +941,19 @@ export const BITS2_PROBLEMS: CatalogProblem[] = [
         const right = Math.min(20000, left + ri(rng, 0, 200));
         return { input: `${left}\n${right}`, expectedOutput: String(ref(left, right)) };
       },
+      editorial: explain({
+        idea: "Count set bits of each number in the range and test membership in the small set of primes below 20.",
+        steps: [
+          "For each `v` in `[left, right]`, compute its popcount.",
+          "Count those whose popcount is in `{2, 3, 5, 7, 11, 13, 17, 19}`.",
+        ],
+        why: "A 32-bit number has at most 32 set bits and the constraints keep it under 20, so a hard-coded prime set suffices.",
+        time: "O((right - left) · log right)",
+        space: "O(1)",
+        pitfalls: [
+          "1 is not prime — a power of two does not count.",
+        ],
+      }),
       solutions: {
         python: `def countPrimeSetBits(left: int, right: int) -> int:\n    primes = {2, 3, 5, 7, 11, 13, 17, 19}\n    return sum(1 for v in range(left, right + 1) if bin(v).count("1") in primes)`,
         javascript: `var countPrimeSetBits = function(left, right) {\n    const primes = new Set([2, 3, 5, 7, 11, 13, 17, 19]);\n    let count = 0;\n    for (let v = left; v <= right; v++) {\n        let bits = 0;\n        let x = v;\n        while (x > 0) {\n            bits += x & 1;\n            x >>>= 1;\n        }\n        if (primes.has(bits)) count++;\n    }\n    return count;\n};`,
@@ -841,6 +1014,20 @@ export const BITS2_PROBLEMS: CatalogProblem[] = [
         const num = roll < 0.15 ? 0 : roll < 0.5 ? ri(rng, -1000, 1000) : ri(rng, -2147483648, 2147483647);
         return { input: String(num), expectedOutput: ref(num) };
       },
+      editorial: explain({
+        idea: "Work on the unsigned 32-bit value (add `2³²` to negatives), then peel four bits at a time and map through `0123456789abcdef`.",
+        steps: [
+          "Return `\"0\"` for zero.",
+          "Convert a negative to `num + 2³²`.",
+          "Repeatedly take `v % 16` as a digit and divide by 16, prepending.",
+        ],
+        why: "Two's complement hex is the hex of the unsigned reinterpretation, and each hex digit is exactly four bits.",
+        time: "O(8)",
+        space: "O(1)",
+        pitfalls: [
+          "In a language with arithmetic right shift, mask with `0xF` and use a logical shift, or the loop never ends on negatives.",
+        ],
+      }),
       solutions: {
         python: `def toHex(num: int) -> str:\n    if num == 0:\n        return "0"\n    digits = "0123456789abcdef"\n    v = num if num > 0 else num + (1 << 32)\n    out = ""\n    while v:\n        out = digits[v % 16] + out\n        v //= 16\n    return out`,
         javascript: `var toHex = function(num) {\n    if (num === 0) return "0";\n    const digits = "0123456789abcdef";\n    let v = num < 0 ? num + 4294967296 : num;\n    let out = "";\n    while (v > 0) {\n        out = digits.charAt(v % 16) + out;\n        v = Math.floor(v / 16);\n    }\n    return out;\n};`,
@@ -901,6 +1088,20 @@ export const BITS2_PROBLEMS: CatalogProblem[] = [
         const num = roll < 0.1 ? 0 : roll < 0.5 ? ri(rng, -500, 500) : ri(rng, -10000000, 10000000);
         return { input: String(num), expectedOutput: ref(num) };
       },
+      editorial: explain({
+        idea: "Repeated division by 7 on the absolute value, prepending remainders, with the sign restored at the end.",
+        steps: [
+          "Return `\"0\"` for zero.",
+          "Divide `|num|` by 7 collecting remainders from least significant.",
+          "Prefix `-` if negative.",
+        ],
+        why: "Positional notation in base `b` is obtained by repeated `mod b` / `div b`.",
+        time: "O(log₇ num)",
+        space: "O(log₇ num)",
+        pitfalls: [
+          "Handle zero separately or the loop produces an empty string.",
+        ],
+      }),
       solutions: {
         python: `def convertToBase7(num: int) -> str:\n    if num == 0:\n        return "0"\n    negative = num < 0\n    v = abs(num)\n    out = ""\n    while v:\n        out = str(v % 7) + out\n        v //= 7\n    return "-" + out if negative else out`,
         javascript: `var convertToBase7 = function(num) {\n    if (num === 0) return "0";\n    const negative = num < 0;\n    let v = Math.abs(num);\n    let out = "";\n    while (v > 0) {\n        out = String(v % 7) + out;\n        v = Math.floor(v / 7);\n    }\n    return negative ? "-" + out : out;\n};`,
@@ -950,6 +1151,18 @@ export const BITS2_PROBLEMS: CatalogProblem[] = [
         const n = rng() < 0.4 ? ri(rng, 1, 40) : ri(rng, 1, 1000000000);
         return { input: String(n), expectedOutput: bool(ref(n)) };
       },
+      editorial: explain({
+        idea: "Multiples of four are losing positions: from any other count you can leave a multiple of four, and from a multiple of four every move leaves a non-multiple.",
+        steps: [
+          "Return `n % 4 != 0`.",
+        ],
+        why: "By induction from 0 (a loss for the player to move): from `4k + r` with `r ∈ {1, 2, 3}` take `r` stones; from `4k` any move of 1–3 leaves `4k - 1..4k - 3`, all winning for the opponent.",
+        time: "O(1)",
+        space: "O(1)",
+        pitfalls: [
+          "The DP over `n` positions reproduces this pattern and is a fine way to discover it.",
+        ],
+      }),
       solutions: {
         python: `def canWinNim(n: int) -> bool:\n    return n % 4 != 0`,
         javascript: `var canWinNim = function(n) {\n    return n % 4 !== 0;\n};`,
@@ -1004,6 +1217,18 @@ export const BITS2_PROBLEMS: CatalogProblem[] = [
         const n = ri(rng, 0, 5);
         return { input: String(n), expectedOutput: fmtIntArr(ref(n)) };
       },
+      editorial: explain({
+        idea: "The i-th entry of the standard reflected Gray code is `i ^ (i >> 1)`.",
+        steps: [
+          "Return `[i ^ (i >> 1) for i in 0 .. 2^n - 1]`.",
+        ],
+        why: "Consecutive integers differ in a run of low bits; XORing with the shifted value cancels all but one of those, leaving exactly one bit flip between consecutive entries, and the sequence is a bijection on `0..2^n - 1`.",
+        time: "O(2^n)",
+        space: "O(2^n)",
+        pitfalls: [
+          "The reflect-and-prefix construction produces the same list recursively.",
+        ],
+      }),
       solutions: {
         python: `def grayCode(n: int):\n    return [i ^ (i >> 1) for i in range(1 << n)]`,
         javascript: `var grayCode = function(n) {\n    const total = Math.pow(2, n);\n    const out = [];\n    for (let i = 0; i < total; i++) out.push(i ^ (i >> 1));\n    return out;\n};`,
@@ -1066,6 +1291,18 @@ export const BITS2_PROBLEMS: CatalogProblem[] = [
         const c = ri(rng, 0, hi);
         return { input: `${a}\n${b}\n${c}`, expectedOutput: String(ref(a, b, c)) };
       },
+      editorial: explain({
+        idea: "Bit positions are independent: a target 0 needs every set bit among `a`, `b` cleared (0–2 flips); a target 1 needs one flip only when both are 0.",
+        steps: [
+          "For each bit: if `c`'s bit is 0, add `a_bit + b_bit`; else add 1 if both are 0.",
+        ],
+        why: "OR is computed per position, and flips at one position never affect another, so the minimum is the sum of per-position minima.",
+        time: "O(31)",
+        space: "O(1)",
+        pitfalls: [
+          "When the target is 1 and exactly one input bit is set, no flip is needed.",
+        ],
+      }),
       solutions: {
         python: `def minFlips(a: int, b: int, c: int) -> int:\n    flips = 0\n    for bit in range(31):\n        ab = (a >> bit) & 1\n        bb = (b >> bit) & 1\n        cb = (c >> bit) & 1\n        if cb == 0:\n            flips += ab + bb\n        elif ab == 0 and bb == 0:\n            flips += 1\n    return flips`,
         javascript: `var minFlips = function(a, b, c) {\n    let flips = 0;\n    for (let bit = 0; bit < 31; bit++) {\n        const ab = (a >> bit) & 1;\n        const bb = (b >> bit) & 1;\n        const cb = (c >> bit) & 1;\n        if (cb === 0) flips += ab + bb;\n        else if (ab === 0 && bb === 0) flips += 1;\n    }\n    return flips;\n};`,
@@ -1120,6 +1357,18 @@ export const BITS2_PROBLEMS: CatalogProblem[] = [
         const start = ri(rng, 0, 1000);
         return { input: `${n}\n${start}`, expectedOutput: String(ref(n, start)) };
       },
+      editorial: explain({
+        idea: "Generate `start + 2i` on the fly and XOR into an accumulator.",
+        steps: [
+          "`out = 0`; for `i` in `0..n-1`, `out ^= start + 2i`.",
+        ],
+        why: "The array is defined by a closed form, so it need not be materialised.",
+        time: "O(n)",
+        space: "O(1)",
+        pitfalls: [
+          "An O(1) closed form exists via XOR of a prefix of integers, but is not required.",
+        ],
+      }),
       solutions: {
         python: `def xorOperation(n: int, start: int) -> int:\n    out = 0\n    for i in range(n):\n        out ^= start + 2 * i\n    return out`,
         javascript: `var xorOperation = function(n, start) {\n    let out = 0;\n    for (let i = 0; i < n; i++) out ^= start + 2 * i;\n    return out;\n};`,
@@ -1174,6 +1423,19 @@ export const BITS2_PROBLEMS: CatalogProblem[] = [
         const first = ri(rng, 0, rng() < 0.5 ? 32 : 1000000);
         return { input: `${fmtIntArr(encoded)}\n${first}`, expectedOutput: fmtIntArr(ref(encoded, first)) };
       },
+      editorial: explain({
+        idea: "XOR is self-inverse, so `arr[i+1] = arr[i] ^ encoded[i]`.",
+        steps: [
+          "Start with `[first]`.",
+          "Append `last ^ encoded[i]` for each `i`.",
+        ],
+        why: "From `arr[i] ^ arr[i+1] = encoded[i]`, XORing both sides with `arr[i]` isolates `arr[i+1]`.",
+        time: "O(n)",
+        space: "O(n)",
+        pitfalls: [
+          "The output has one more element than `encoded`.",
+        ],
+      }),
       solutions: {
         python: `def decode(encoded, first: int):\n    out = [first]\n    for x in encoded:\n        out.append(out[-1] ^ x)\n    return out`,
         javascript: `var decode = function(encoded, first) {\n    const out = [first];\n    for (let i = 0; i < encoded.length; i++) out.push(out[i] ^ encoded[i]);\n    return out;\n};`,
@@ -1242,6 +1504,19 @@ export const BITS2_PROBLEMS: CatalogProblem[] = [
         const k = ri(rng, 1, hi - lo + 1);
         return { input: `${lo}\n${hi}\n${k}`, expectedOutput: String(ref(lo, hi, k)) };
       },
+      editorial: explain({
+        idea: "Compute each value's Collatz step count, sort the range by `(power, value)`, and pick the k-th.",
+        steps: [
+          "Define `power(x)` by simulating halving / `3x + 1` until 1.",
+          "Sort `lo..hi` by `(power, value)` and return index `k - 1`.",
+        ],
+        why: "The ordering is fully specified by the composite key, and the Collatz sequence terminates for every value in range.",
+        time: "O((hi - lo) · steps + (hi - lo) log(hi - lo))",
+        space: "O(hi - lo)",
+        pitfalls: [
+          "Memoise `power` if the same values recur — intermediate values can exceed `hi`.",
+        ],
+      }),
       solutions: {
         python: `def getKth(lo: int, hi: int, k: int) -> int:\n    def power(x):\n        steps = 0\n        while x != 1:\n            x = x // 2 if x % 2 == 0 else 3 * x + 1\n            steps += 1\n        return steps\n\n    return sorted(range(lo, hi + 1), key=lambda v: (power(v), v))[k - 1]`,
         javascript: `var getKth = function(lo, hi, k) {\n    const power = function(x) {\n        let steps = 0;\n        let v = x;\n        while (v !== 1) {\n            v = v % 2 === 0 ? v / 2 : 3 * v + 1;\n            steps++;\n        }\n        return steps;\n    };\n    const values = [];\n    for (let v = lo; v <= hi; v++) values.push(v);\n    values.sort(function(a, b) {\n        const pa = power(a), pb = power(b);\n        return pa !== pb ? pa - pb : a - b;\n    });\n    return values[k - 1];\n};`,
@@ -1309,6 +1584,19 @@ export const BITS2_PROBLEMS: CatalogProblem[] = [
         const words = Array.from({ length: ri(rng, 1, 20) }, () => randStr(rng, 1, 10, alphabet));
         return { input: fmtStrArr(words), expectedOutput: String(ref(words)) };
       },
+      editorial: explain({
+        idea: "Encode each word as a 26-bit letter mask; two words share no letter iff the AND of their masks is zero.",
+        steps: [
+          "Build a mask per word.",
+          "For each pair with `masks[i] & masks[j] == 0`, update the best product of lengths.",
+        ],
+        why: "The mask captures the letter set, and set intersection becomes a single AND, so each pair costs O(1).",
+        time: "O(L + n²)",
+        space: "O(n)",
+        pitfalls: [
+          "Keep only the longest word per distinct mask to shrink the pair loop.",
+        ],
+      }),
       solutions: {
         python: `def maxProduct(words) -> int:\n    masks = []\n    for w in words:\n        mask = 0\n        for ch in w:\n            mask |= 1 << (ord(ch) - 97)\n        masks.append(mask)\n    best = 0\n    for i in range(len(words)):\n        for j in range(i + 1, len(words)):\n            if masks[i] & masks[j] == 0:\n                best = max(best, len(words[i]) * len(words[j]))\n    return best`,
         javascript: `var maxProduct = function(words) {\n    const masks = [];\n    for (let i = 0; i < words.length; i++) {\n        let mask = 0;\n        for (let j = 0; j < words[i].length; j++) mask |= 1 << (words[i].charCodeAt(j) - 97);\n        masks.push(mask);\n    }\n    let best = 0;\n    for (let i = 0; i < words.length; i++) {\n        for (let j = i + 1; j < words.length; j++) {\n            if ((masks[i] & masks[j]) === 0) {\n                const product = words[i].length * words[j].length;\n                if (product > best) best = product;\n            }\n        }\n    }\n    return best;\n};`,
@@ -1378,6 +1666,19 @@ export const BITS2_PROBLEMS: CatalogProblem[] = [
         }
         return { input: String(n), expectedOutput: bool(ref(n)) };
       },
+      editorial: explain({
+        idea: "`n ^ (n >> 1)` is all ones exactly when the bits alternate, and `x` is all ones exactly when `x & (x + 1) == 0`.",
+        steps: [
+          "Compute `x = n ^ (n >> 1)`.",
+          "Return `x & (x + 1) == 0`.",
+        ],
+        why: "Adjacent bits differ everywhere iff every bit of `n` differs from the one below it, which the shifted XOR tests; adding one to an all-ones value carries out completely, leaving zero overlap.",
+        time: "O(1)",
+        space: "O(1)",
+        pitfalls: [
+          "A bit-by-bit loop comparing each bit with the previous is the readable alternative.",
+        ],
+      }),
       solutions: {
         python: `def hasAlternatingBits(n: int) -> bool:\n    x = n ^ (n >> 1)\n    return x & (x + 1) == 0`,
         javascript: `var hasAlternatingBits = function(n) {\n    let v = n;\n    let prev = v % 2;\n    v = Math.floor(v / 2);\n    while (v > 0) {\n        const cur = v % 2;\n        if (cur === prev) return false;\n        prev = cur;\n        v = Math.floor(v / 2);\n    }\n    return true;\n};`,
@@ -1436,6 +1737,19 @@ export const BITS2_PROBLEMS: CatalogProblem[] = [
         const n = ri(rng, 1, 300);
         return { input: String(n), expectedOutput: String(ref(n)) };
       },
+      editorial: explain({
+        idea: "Keep a running value modulo `10⁹ + 7`: appending `i` shifts the accumulator left by `i`'s bit width and adds `i`; the width grows only at powers of two.",
+        steps: [
+          "For `i` from 1 to `n`: if `i & (i - 1) == 0`, increment `width`.",
+          "`answer = ((answer << width) + i) % MOD`.",
+        ],
+        why: "Concatenating binary strings is multiplication by `2^width` plus the new value, and modular reduction commutes with those operations.",
+        time: "O(n)",
+        space: "O(1)",
+        pitfalls: [
+          "Use 64-bit arithmetic for the intermediate shift in fixed-width languages.",
+        ],
+      }),
       solutions: {
         python: `def concatenatedBinary(n: int) -> int:\n    MOD = 1000000007\n    answer = 0\n    width = 0\n    for i in range(1, n + 1):\n        if i & (i - 1) == 0:\n            width += 1\n        answer = ((answer << width) + i) % MOD\n    return answer`,
         javascript: `var concatenatedBinary = function(n) {\n    const MOD = 1000000007;\n    let answer = 0;\n    let width = 0;\n    for (let i = 1; i <= n; i++) {\n        if ((i & (i - 1)) === 0) width++;\n        answer = (answer * Math.pow(2, width) + i) % MOD;\n    }\n    return answer;\n};`,
@@ -1511,6 +1825,22 @@ export const BITS2_PROBLEMS: CatalogProblem[] = [
         }
         return { input: `${dividend}\n${divisor}`, expectedOutput: String(ref(dividend, divisor)) };
       },
+      editorial: explain({
+        idea: "Subtract `divisor << shift` for shifts from 31 down to 0, accumulating `1 << shift` into the quotient each time it fits; handle the single overflow case first.",
+        steps: [
+          "Return `2³¹ - 1` for `-2³¹ / -1`.",
+          "Record the sign and take magnitudes.",
+          "For `shift` from 31 down: while `(b << shift) <= a`, subtract and add `1 << shift`.",
+          "Apply the sign.",
+        ],
+        why: "This is binary long division: each shift tests one bit of the quotient, and taking the largest shifts first guarantees the remainder stays below the divisor.",
+        time: "O(32)",
+        space: "O(1)",
+        pitfalls: [
+          "Use 64-bit intermediates for the shifted divisor.",
+          "Subtracting one divisor at a time is `O(quotient)` and times out.",
+        ],
+      }),
       solutions: {
         python: `def divide(dividend: int, divisor: int) -> int:\n    if dividend == -2147483648 and divisor == -1:\n        return 2147483647\n    negative = (dividend < 0) != (divisor < 0)\n    a, b = abs(dividend), abs(divisor)\n    quotient = 0\n    for shift in range(31, -1, -1):\n        if (b << shift) <= a:\n            a -= b << shift\n            quotient += 1 << shift\n    return -quotient if negative else quotient`,
         javascript: `var divide = function(dividend, divisor) {\n    if (dividend === -2147483648 && divisor === -1) return 2147483647;\n    const negative = (dividend < 0) !== (divisor < 0);\n    let a = Math.abs(dividend);\n    const b = Math.abs(divisor);\n    let quotient = 0;\n    for (let shift = 31; shift >= 0; shift--) {\n        const scaled = b * Math.pow(2, shift);\n        if (scaled <= a) {\n            a -= scaled;\n            quotient += Math.pow(2, shift);\n        }\n    }\n    return negative ? -quotient : quotient;\n};`,
@@ -1562,6 +1892,18 @@ export const BITS2_PROBLEMS: CatalogProblem[] = [
         const goal = rng() < 0.15 ? start : ri(rng, 0, hi);
         return { input: `${start}\n${goal}`, expectedOutput: String(ref(start, goal)) };
       },
+      editorial: explain({
+        idea: "Each differing bit needs exactly one flip: popcount of `start ^ goal`.",
+        steps: [
+          "Return the number of set bits in `start ^ goal`.",
+        ],
+        why: "The XOR is 1 precisely at the positions that must change.",
+        time: "O(1)",
+        space: "O(1)",
+        pitfalls: [
+          "Identical to Hamming distance.",
+        ],
+      }),
       solutions: {
         python: `def minBitFlips(start: int, goal: int) -> int:\n    return bin(start ^ goal).count("1")`,
         javascript: `var minBitFlips = function(start, goal) {\n    let v = (start ^ goal) >>> 0;\n    let count = 0;\n    while (v > 0) {\n        v &= v - 1;\n        count++;\n    }\n    return count;\n};`,
@@ -1622,6 +1964,19 @@ export const BITS2_PROBLEMS: CatalogProblem[] = [
         const t = chars.join("");
         return { input: `"${s}"\n"${t}"`, expectedOutput: ref(s, t) };
       },
+      editorial: explain({
+        idea: "XOR the character codes of both strings; every shared letter cancels, leaving the inserted one.",
+        steps: [
+          "XOR all codes of `s` and `t` into one accumulator.",
+          "Return the character with that code.",
+        ],
+        why: "Each letter of `s` appears in `t` as well, so it is XORed twice and vanishes; only the extra letter is XORed once.",
+        time: "O(n)",
+        space: "O(1)",
+        pitfalls: [
+          "Summing codes and subtracting also works; counting letters is the readable alternative.",
+        ],
+      }),
       solutions: {
         python: `def findTheDifference(s: str, t: str) -> str:\n    code = 0\n    for ch in s:\n        code ^= ord(ch)\n    for ch in t:\n        code ^= ord(ch)\n    return chr(code)`,
         javascript: `var findTheDifference = function(s, t) {\n    let code = 0;\n    for (let i = 0; i < s.length; i++) code ^= s.charCodeAt(i);\n    for (let i = 0; i < t.length; i++) code ^= t.charCodeAt(i);\n    return String.fromCharCode(code);\n};`,
@@ -1684,6 +2039,19 @@ export const BITS2_PROBLEMS: CatalogProblem[] = [
         const words = Array.from({ length: ri(rng, 1, 20) }, () => randStr(rng, 1, 10, pool));
         return { input: `"${allowed}"\n${fmtStrArr(words)}`, expectedOutput: String(ref(allowed, words)) };
       },
+      editorial: explain({
+        idea: "Turn `allowed` into a 26-bit mask; a word is consistent iff its own mask has no bit outside it.",
+        steps: [
+          "Build `allowedMask`.",
+          "For each word build `wordMask` and count it if `wordMask & ~allowedMask == 0`.",
+        ],
+        why: "The mask encodes set membership, and `word & ~allowed` isolates letters not in the allowed set.",
+        time: "O(total characters)",
+        space: "O(1)",
+        pitfalls: [
+          "A hash set works equally well; the mask just avoids allocation.",
+        ],
+      }),
       solutions: {
         python: `def countConsistentStrings(allowed: str, words) -> int:\n    mask = 0\n    for ch in allowed:\n        mask |= 1 << (ord(ch) - 97)\n    count = 0\n    for w in words:\n        word_mask = 0\n        for ch in w:\n            word_mask |= 1 << (ord(ch) - 97)\n        if word_mask & ~mask == 0:\n            count += 1\n    return count`,
         javascript: `var countConsistentStrings = function(allowed, words) {\n    let mask = 0;\n    for (let i = 0; i < allowed.length; i++) mask |= 1 << (allowed.charCodeAt(i) - 97);\n    let count = 0;\n    for (let i = 0; i < words.length; i++) {\n        let wordMask = 0;\n        for (let j = 0; j < words[i].length; j++) wordMask |= 1 << (words[i].charCodeAt(j) - 97);\n        if ((wordMask & ~mask) === 0) count++;\n    }\n    return count;\n};`,
@@ -1744,6 +2112,19 @@ export const BITS2_PROBLEMS: CatalogProblem[] = [
         const arr = randArr(rng, ri(rng, 1, 40), 1, rng() < 0.6 ? 8 : 100000000);
         return { input: fmtIntArr(arr), expectedOutput: String(ref(arr)) };
       },
+      editorial: explain({
+        idea: "`a == b` iff `a ^ b == 0`, which is the XOR of the whole span `arr[i..k]`; with prefix XORs that is `prefix[i] == prefix[k+1]`, and any `j` in `(i, k]` works — `k - i` choices.",
+        steps: [
+          "Build `prefix[t] = arr[0] ^ … ^ arr[t-1]`.",
+          "For each `i < k` with `prefix[i] == prefix[k+1]`, add `k - i`.",
+        ],
+        why: "The condition on `(i, j, k)` collapses to a condition on `(i, k)` alone, and `j` ranges freely over the interior positions.",
+        time: "O(n²)",
+        space: "O(n)",
+        pitfalls: [
+          "An O(n) version groups equal prefix values and sums index differences in bulk.",
+        ],
+      }),
       solutions: {
         python: `def countTriplets(arr) -> int:\n    n = len(arr)\n    prefix = [0] * (n + 1)\n    for i in range(n):\n        prefix[i + 1] = prefix[i] ^ arr[i]\n    count = 0\n    for i in range(n):\n        for k in range(i + 1, n):\n            if prefix[i] == prefix[k + 1]:\n                count += k - i\n    return count`,
         javascript: `var countTriplets = function(arr) {\n    const n = arr.length;\n    const prefix = [0];\n    for (let i = 0; i < n; i++) prefix.push(prefix[i] ^ arr[i]);\n    let count = 0;\n    for (let i = 0; i < n; i++) {\n        for (let k = i + 1; k < n; k++) {\n            if (prefix[i] === prefix[k + 1]) count += k - i;\n        }\n    }\n    return count;\n};`,
@@ -1794,6 +2175,18 @@ export const BITS2_PROBLEMS: CatalogProblem[] = [
         const n = roll < 0.3 ? ri(rng, 0, 100) : roll < 0.6 ? Math.pow(ri(rng, 0, 1000), 2) : ri(rng, 0, 1000000000);
         return { input: String(n), expectedOutput: String(ref(n)) };
       },
+      editorial: explain({
+        idea: "Bulb `k` is toggled once per divisor of `k`, so it stays on iff `k` has an odd number of divisors — exactly the perfect squares. Answer: `⌊√n⌋`.",
+        steps: [
+          "Return the integer square root of `n`.",
+        ],
+        why: "Divisors pair up as `(d, k/d)` except when `d = k/d`, so only squares have an odd divisor count; the squares up to `n` number `⌊√n⌋`.",
+        time: "O(1)",
+        space: "O(1)",
+        pitfalls: [
+          "Use an integer square root; floating-point `sqrt` can be off by one at large `n`.",
+        ],
+      }),
       solutions: {
         python: `import math\n\ndef bulbSwitch(n: int) -> int:\n    return math.isqrt(n)`,
         javascript: `var bulbSwitch = function(n) {\n    let root = Math.floor(Math.sqrt(n));\n    while ((root + 1) * (root + 1) <= n) root++;\n    while (root * root > n) root--;\n    return root;\n};`,
@@ -1858,6 +2251,19 @@ export const BITS2_PROBLEMS: CatalogProblem[] = [
         const n = roll < 0.3 ? ri(rng, 1, 200) : roll < 0.6 ? ri(rng, 1, 1000000) : ri(rng, 1, 2147483647);
         return { input: String(n), expectedOutput: String(ref(n)) };
       },
+      editorial: explain({
+        idea: "Skip whole blocks — 9 one-digit numbers, 90 two-digit, 900 three-digit — until `n` lands in the block of `d`-digit numbers, then locate the number and the digit within it.",
+        steps: [
+          "While `n > digits · count`: subtract, then `digits++`, `count *= 10`, `start *= 10`.",
+          "`value = start + (n - 1) // digits`; return digit `(n - 1) % digits` of `value`.",
+        ],
+        why: "Digit positions are consecutive across the numbers of a block, so integer division by the block's digit width maps the offset to a number and the remainder to a digit.",
+        time: "O(log n)",
+        space: "O(1)",
+        pitfalls: [
+          "Use 64-bit arithmetic for `digits · count`.",
+        ],
+      }),
       solutions: {
         python: `def findNthDigit(n: int) -> int:\n    digits = 1\n    count = 9\n    start = 1\n    while n > digits * count:\n        n -= digits * count\n        digits += 1\n        count *= 10\n        start *= 10\n    value = start + (n - 1) // digits\n    return int(str(value)[(n - 1) % digits])`,
         javascript: `var findNthDigit = function(n) {\n    let remaining = n;\n    let digits = 1;\n    let count = 9;\n    let start = 1;\n    while (remaining > digits * count) {\n        remaining -= digits * count;\n        digits++;\n        count *= 10;\n        start *= 10;\n    }\n    const value = start + Math.floor((remaining - 1) / digits);\n    const text = String(value);\n    return Number(text.charAt((remaining - 1) % digits));\n};`,
@@ -1921,6 +2327,19 @@ export const BITS2_PROBLEMS: CatalogProblem[] = [
         const nums = randArr(rng, ri(rng, 1, 40), -100, 100);
         return { input: fmtIntArr(nums), expectedOutput: String(ref(nums)) };
       },
+      editorial: explain({
+        idea: "Relate consecutive rotations: `F(k) = F(k-1) + sum - n · nums[n-k]`, so all `n` values come from one pass after computing `F(0)`.",
+        steps: [
+          "Compute `total` and `F(0)`.",
+          "For `k` from 1 to `n-1`, `F(k) = F(k-1) + total - n · nums[n-k]`; track the max.",
+        ],
+        why: "Rotating right by one increases every element's coefficient by 1 (adding `total`) except the element that wraps from coefficient `n - 1` to 0 (subtracting `n · value`).",
+        time: "O(n)",
+        space: "O(1)",
+        pitfalls: [
+          "Recomputing each `F(k)` from scratch is `O(n²)`.",
+        ],
+      }),
       solutions: {
         python: `def maxRotateFunction(nums) -> int:\n    n = len(nums)\n    total = sum(nums)\n    current = sum(i * x for i, x in enumerate(nums))\n    best = current\n    for k in range(1, n):\n        current = current + total - n * nums[n - k]\n        best = max(best, current)\n    return best`,
         javascript: `var maxRotateFunction = function(nums) {\n    const n = nums.length;\n    let total = 0;\n    let current = 0;\n    for (let i = 0; i < n; i++) {\n        total += nums[i];\n        current += i * nums[i];\n    }\n    let best = current;\n    for (let k = 1; k < n; k++) {\n        current = current + total - n * nums[n - k];\n        if (current > best) best = current;\n    }\n    return best;\n};`,
@@ -1975,6 +2394,19 @@ export const BITS2_PROBLEMS: CatalogProblem[] = [
         const nums = randArr(rng, ri(rng, 1, 20), 1, 20);
         return { input: fmtIntArr(nums), expectedOutput: String(ref(nums)) };
       },
+      editorial: explain({
+        idea: "For each bit that appears in at least one element, exactly half of all subsets have that bit set in their XOR; the answer is `(OR of all) · 2^(n-1)`.",
+        steps: [
+          "OR all elements.",
+          "Shift left by `n - 1`.",
+        ],
+        why: "Fix an element with the bit set; pairing each subset with the one obtained by toggling that element's membership flips the XOR bit, so subsets split evenly. Bits present in no element contribute nothing.",
+        time: "O(n)",
+        space: "O(1)",
+        pitfalls: [
+          "Enumerating `2^n` subsets is fine at this size but misses the point.",
+        ],
+      }),
       solutions: {
         python: `def subsetXORSum(nums) -> int:\n    or_all = 0\n    for x in nums:\n        or_all |= x\n    return or_all << (len(nums) - 1)`,
         javascript: `var subsetXORSum = function(nums) {\n    let orAll = 0;\n    for (let i = 0; i < nums.length; i++) orAll |= nums[i];\n    return orAll * Math.pow(2, nums.length - 1);\n};`,
@@ -2034,6 +2466,19 @@ export const BITS2_PROBLEMS: CatalogProblem[] = [
         const numExchange = ri(rng, 2, 100);
         return { input: `${numBottles}\n${numExchange}`, expectedOutput: String(ref(numBottles, numExchange)) };
       },
+      editorial: explain({
+        idea: "Track bottles drunk and empties held; each exchange turns `numExchange` empties into one full bottle, which becomes one more empty.",
+        steps: [
+          "Start `drunk = empty = numBottles`.",
+          "While `empty >= numExchange`: `fresh = empty // numExchange`; add `fresh` to `drunk`; `empty = empty - fresh · numExchange + fresh`.",
+        ],
+        why: "Exchanging as soon as possible is optimal because bottles are fungible; the loop terminates because each round strictly reduces the empties.",
+        time: "O(log numBottles)",
+        space: "O(1)",
+        pitfalls: [
+          "The closed form `numBottles + (numBottles - 1) // (numExchange - 1)` is equivalent.",
+        ],
+      }),
       solutions: {
         python: `def numWaterBottles(numBottles: int, numExchange: int) -> int:\n    drunk = numBottles\n    empty = numBottles\n    while empty >= numExchange:\n        fresh = empty // numExchange\n        drunk += fresh\n        empty = empty - fresh * numExchange + fresh\n    return drunk`,
         javascript: `var numWaterBottles = function(numBottles, numExchange) {\n    let drunk = numBottles;\n    let empty = numBottles;\n    while (empty >= numExchange) {\n        const fresh = Math.floor(empty / numExchange);\n        drunk += fresh;\n        empty = empty - fresh * numExchange + fresh;\n    }\n    return drunk;\n};`,
@@ -2088,6 +2533,19 @@ export const BITS2_PROBLEMS: CatalogProblem[] = [
         const high = ri(rng, low, hi);
         return { input: `${low}\n${high}`, expectedOutput: String(ref(low, high)) };
       },
+      editorial: explain({
+        idea: "Half the numbers in a range are odd, rounding up when either endpoint is odd.",
+        steps: [
+          "`count = (high - low) // 2`.",
+          "Add 1 if `low` or `high` is odd.",
+        ],
+        why: "The range has `high - low + 1` numbers alternating in parity; the floor of half counts complete even/odd pairs, and an odd endpoint means an unpaired odd remains.",
+        time: "O(1)",
+        space: "O(1)",
+        pitfalls: [
+          "`(high + 1) // 2 - low // 2` is the equivalent prefix-difference form.",
+        ],
+      }),
       solutions: {
         python: `def countOdds(low: int, high: int) -> int:\n    count = (high - low) // 2\n    return count + 1 if low % 2 == 1 or high % 2 == 1 else count`,
         javascript: `var countOdds = function(low, high) {\n    const count = Math.floor((high - low) / 2);\n    return low % 2 === 1 || high % 2 === 1 ? count + 1 : count;\n};`,

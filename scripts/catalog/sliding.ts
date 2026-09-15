@@ -6,7 +6,7 @@
  * JS solutions must be Node 12-safe: no ??, ?., replaceAll, .at() or .flat().
  */
 
-import { bool, describe, fmtIntArr, ri, shuffle, type CatalogProblem, type Rng } from "./types.js";
+import { bool, describe, explain, fmtIntArr, ri, shuffle, type CatalogProblem, type Rng } from "./types.js";
 
 const randArr = (rng: Rng, n: number, lo: number, hi: number) =>
   Array.from({ length: n }, () => ri(rng, lo, hi));
@@ -60,6 +60,21 @@ export const SLIDING_PROBLEMS: CatalogProblem[] = [
         const k = ri(rng, 1, s.length);
         return { input: `"${s}"\n${k}`, expectedOutput: String(ref(s, k)) };
       },
+      editorial: explain({
+        idea: "Consecutive windows of length `k` differ by one character on each side, so maintain a single vowel count and adjust it as the window slides.",
+        steps: [
+          "Count the vowels in the first `k` characters and record it as the best.",
+          "For each `i` from `k` onward, add 1 if `s[i]` is a vowel and subtract 1 if `s[i - k]` is a vowel.",
+          "Update the best after each slide.",
+        ],
+        why: "The window `[i-k+1, i]` is the previous window plus `s[i]` minus `s[i-k]`, so the two adjustments keep the count exact without rescanning. Every window is visited once.",
+        time: "O(n)",
+        space: "O(1)",
+        pitfalls: [
+          "Recounting each window is `O(n·k)`.",
+          "Only lowercase vowels are in the alphabet here; no case handling is needed.",
+        ],
+      }),
       solutions: {
         python: `def maxVowels(s: str, k: int) -> int:\n    vowels = set("aeiou")\n    cur = sum(1 for ch in s[:k] if ch in vowels)\n    best = cur\n    for i in range(k, len(s)):\n        if s[i] in vowels:\n            cur += 1\n        if s[i - k] in vowels:\n            cur -= 1\n        if cur > best:\n            best = cur\n    return best`,
         javascript: `var maxVowels = function(s, k) {\n    const isV = function(c) { return "aeiou".indexOf(c) >= 0; };\n    let cur = 0;\n    for (let i = 0; i < k; i++) {\n        if (isV(s[i])) cur++;\n    }\n    let best = cur;\n    for (let i = k; i < s.length; i++) {\n        if (isV(s[i])) cur++;\n        if (isV(s[i - k])) cur--;\n        if (cur > best) best = cur;\n    }\n    return best;\n};`,
@@ -133,6 +148,20 @@ export const SLIDING_PROBLEMS: CatalogProblem[] = [
         const threshold = ri(rng, 0, 100);
         return { input: `${fmtIntArr(arr)}\n${k}\n${threshold}`, expectedOutput: String(ref(arr, k, threshold)) };
       },
+      editorial: explain({
+        idea: "Avoid division: for positive `k`, `sum / k >= threshold` is equivalent to `sum >= k · threshold`. Slide a fixed window and compare its sum against that bar.",
+        steps: [
+          "Compute `need = k * threshold` and the sum of the first window.",
+          "For each new position, add the entering element and subtract the leaving one.",
+          "Count every window whose sum is at least `need`.",
+        ],
+        why: "The windows overlap by `k - 1` elements, so each sum is the previous sum adjusted by two values. Comparing integers instead of averages sidesteps rounding entirely.",
+        time: "O(n)",
+        space: "O(1)",
+        pitfalls: [
+          "Count the first window before the loop starts.",
+        ],
+      }),
       solutions: {
         python: `def numOfSubarrays(arr, k: int, threshold: int) -> int:\n    need = k * threshold\n    total = sum(arr[:k])\n    count = 1 if total >= need else 0\n    for i in range(k, len(arr)):\n        total += arr[i] - arr[i - k]\n        if total >= need:\n            count += 1\n    return count`,
         javascript: `var numOfSubarrays = function(arr, k, threshold) {\n    const need = k * threshold;\n    let sum = 0;\n    for (let i = 0; i < k; i++) sum += arr[i];\n    let count = sum >= need ? 1 : 0;\n    for (let i = k; i < arr.length; i++) {\n        sum += arr[i] - arr[i - k];\n        if (sum >= need) count++;\n    }\n    return count;\n};`,
@@ -203,6 +232,22 @@ export const SLIDING_PROBLEMS: CatalogProblem[] = [
         const k = rng() < 0.2 ? ri(rng, 0, 3) : ri(rng, 0, 1000000);
         return { input: `${fmtIntArr(nums)}\n${k}`, expectedOutput: String(ref(nums, k)) };
       },
+      editorial: explain({
+        idea: "All values are positive, so a window's product only grows as it widens. Expand the right end, shrink from the left while the product is at least `k`, and count `right - left + 1` subarrays ending at `right`.",
+        steps: [
+          "Return 0 if `k <= 1` — no product of positive integers is below 1.",
+          "For each `right`, multiply `product` by `nums[right]`.",
+          "While `product >= k`, divide out `nums[left]` and advance `left`.",
+          "Add `right - left + 1` to the count.",
+        ],
+        why: "Once the window `[left, right]` has product below `k`, every suffix of it — the subarrays ending at `right` — also does, and there are `right - left + 1` of them. Monotonicity guarantees the left pointer never needs to move backwards.",
+        time: "O(n)",
+        space: "O(1)",
+        pitfalls: [
+          "Without the `k <= 1` guard, the shrink loop can run past `right` when a single element already fails.",
+          "The comparison is strict — `product < k`.",
+        ],
+      }),
       solutions: {
         python: `def numSubarrayProductLessThanK(nums, k: int) -> int:\n    if k <= 1:\n        return 0\n    product, left, count = 1, 0, 0\n    for right, x in enumerate(nums):\n        product *= x\n        while product >= k:\n            product //= nums[left]\n            left += 1\n        count += right - left + 1\n    return count`,
         javascript: `var numSubarrayProductLessThanK = function(nums, k) {\n    if (k <= 1) return 0;\n    let product = 1, left = 0, count = 0;\n    for (let right = 0; right < nums.length; right++) {\n        product *= nums[right];\n        while (product >= k) {\n            product /= nums[left];\n            left++;\n        }\n        count += right - left + 1;\n    }\n    return count;\n};`,
@@ -277,6 +322,21 @@ export const SLIDING_PROBLEMS: CatalogProblem[] = [
         const nums = Array.from({ length: ri(rng, 1, 40) }, () => (rng() < 0.5 ? 0 : 1));
         return { input: fmtIntArr(nums), expectedOutput: String(ref(nums)) };
       },
+      editorial: explain({
+        idea: "Treat 0 as `-1`; a balanced subarray is then a zero-sum subarray, which sits between two positions with equal running sums. Remember the first index of each running sum to maximise the span.",
+        steps: [
+          "Start with `first = {0: -1}` and `balance = 0`.",
+          "For each `i`, add `+1` for a 1 and `-1` for a 0.",
+          "If `balance` was seen before at `j`, the subarray `(j, i]` is balanced — update the best with `i - j`; otherwise record `first[balance] = i`.",
+        ],
+        why: "The sum of `(j, i]` equals `balance[i] - balance[j]`, which is zero exactly when the two running sums match. Keeping the earliest index for each value gives the longest possible subarray ending at `i`.",
+        time: "O(n)",
+        space: "O(n)",
+        pitfalls: [
+          "The seed `{0: -1}` is what allows a balanced prefix starting at index 0 to be measured.",
+          "Overwriting `first[balance]` with a later index shortens later matches.",
+        ],
+      }),
       solutions: {
         python: `def findMaxLength(nums) -> int:\n    first = {0: -1}\n    balance = best = 0\n    for i, x in enumerate(nums):\n        balance += 1 if x == 1 else -1\n        if balance in first:\n            best = max(best, i - first[balance])\n        else:\n            first[balance] = i\n    return best`,
         javascript: `var findMaxLength = function(nums) {\n    const firstAt = new Map();\n    firstAt.set(0, -1);\n    let balance = 0, best = 0;\n    for (let i = 0; i < nums.length; i++) {\n        balance += nums[i] === 1 ? 1 : -1;\n        if (firstAt.has(balance)) {\n            const len = i - firstAt.get(balance);\n            if (len > best) best = len;\n        } else {\n            firstAt.set(balance, i);\n        }\n    }\n    return best;\n};`,
@@ -352,6 +412,22 @@ export const SLIDING_PROBLEMS: CatalogProblem[] = [
         const k = ri(rng, 1, 100);
         return { input: `${fmtIntArr(nums)}\n${k}`, expectedOutput: bool(ref(nums, k)) };
       },
+      editorial: explain({
+        idea: "A subarray sum is divisible by `k` exactly when its two bounding prefix sums have the same remainder mod `k`. Store the earliest index of each remainder and require the two indices to be at least two apart.",
+        steps: [
+          "Start with `first = {0: -1}` and a running `total`.",
+          "At each `i`, compute `r = total % k`.",
+          "If `r` was seen at `j` and `i - j >= 2`, return `true`; if `r` is new, record `first[r] = i`.",
+          "Return `false`.",
+        ],
+        why: "`prefix[i] - prefix[j] ≡ 0 (mod k)` iff the remainders match, and `i - j` is the length of the subarray `(j, i]`. Keeping only the first index of each remainder maximises the length available for the check.",
+        time: "O(n)",
+        space: "O(min(n, k))",
+        pitfalls: [
+          "Do not overwrite an existing remainder's index — a later, closer one can hide a valid longer subarray.",
+          "The `{0: -1}` seed handles a prefix that is itself a multiple of `k`.",
+        ],
+      }),
       solutions: {
         python: `def checkSubarraySum(nums, k: int) -> bool:\n    first = {0: -1}\n    total = 0\n    for i, x in enumerate(nums):\n        total += x\n        r = total % k\n        if r in first:\n            if i - first[r] >= 2:\n                return True\n        else:\n            first[r] = i\n    return False`,
         javascript: `var checkSubarraySum = function(nums, k) {\n    const firstAt = new Map();\n    firstAt.set(0, -1);\n    let sum = 0;\n    for (let i = 0; i < nums.length; i++) {\n        sum += nums[i];\n        const r = ((sum % k) + k) % k;\n        if (firstAt.has(r)) {\n            if (i - firstAt.get(r) >= 2) return true;\n        } else {\n            firstAt.set(r, i);\n        }\n    }\n    return false;\n};`,
@@ -421,6 +497,20 @@ export const SLIDING_PROBLEMS: CatalogProblem[] = [
         const nums = Array.from({ length: ri(rng, 1, 40) }, () => (rng() < 0.7 ? 1 : 0));
         return { input: fmtIntArr(nums), expectedOutput: String(ref(nums)) };
       },
+      editorial: explain({
+        idea: "Slide a window containing at most one zero; the answer for a window is its length minus one, since exactly one element must be deleted.",
+        steps: [
+          "Expand `right`; count zeros in the window.",
+          "While the window holds more than one zero, advance `left` (decrementing the count when a zero leaves).",
+          "Update the best with `right - left` (window length minus one).",
+        ],
+        why: "Deleting the single zero in a window leaves a run of `length - 1` ones; if the window has no zero, deleting any one element still leaves `length - 1`. Every longest answer is contained in some such window.",
+        time: "O(n)",
+        space: "O(1)",
+        pitfalls: [
+          "An all-ones array must return `n - 1`, which the `- 1` handles without a special case.",
+        ],
+      }),
       solutions: {
         python: `def longestSubarray(nums) -> int:\n    left = zeros = best = 0\n    for right, x in enumerate(nums):\n        if x == 0:\n            zeros += 1\n        while zeros > 1:\n            if nums[left] == 0:\n                zeros -= 1\n            left += 1\n        best = max(best, right - left)\n    return best`,
         javascript: `var longestSubarray = function(nums) {\n    let left = 0, zeros = 0, best = 0;\n    for (let right = 0; right < nums.length; right++) {\n        if (nums[right] === 0) zeros++;\n        while (zeros > 1) {\n            if (nums[left] === 0) zeros--;\n            left++;\n        }\n        const len = right - left;\n        if (len > best) best = len;\n    }\n    return best;\n};`,
@@ -506,6 +596,22 @@ export const SLIDING_PROBLEMS: CatalogProblem[] = [
         }
         return { input: `${fmtIntArr(nums)}\n${x}`, expectedOutput: String(ref(nums, x)) };
       },
+      editorial: explain({
+        idea: "Removing from both ends leaves a contiguous middle, so find the **longest** subarray summing to `total - x`; the operations are everything outside it.",
+        steps: [
+          "Compute `target = total - x`; return `-1` if negative, `n` if zero.",
+          "Slide a window: extend `right`, then shrink from the left while the sum exceeds `target`.",
+          "Whenever the sum equals `target`, record the window length.",
+          "Return `n - bestLength`, or `-1` if no window matched.",
+        ],
+        why: "Values are positive, so window sums are monotone in both endpoints and the two-pointer sweep finds every subarray with the exact sum. Minimising removals is the same as maximising what is kept.",
+        time: "O(n)",
+        space: "O(1)",
+        pitfalls: [
+          "`target == 0` means everything must be removed — answer `n`, not `0`.",
+          "A hash map of prefix sums handles the same search when negatives are allowed.",
+        ],
+      }),
       solutions: {
         python: `def minOperations(nums, x: int) -> int:\n    target = sum(nums) - x\n    if target < 0:\n        return -1\n    if target == 0:\n        return len(nums)\n    left = total = 0\n    best = -1\n    for right, value in enumerate(nums):\n        total += value\n        while total > target and left <= right:\n            total -= nums[left]\n            left += 1\n        if total == target:\n            best = max(best, right - left + 1)\n    return -1 if best == -1 else len(nums) - best`,
         javascript: `var minOperations = function(nums, x) {\n    let total = 0;\n    for (let i = 0; i < nums.length; i++) total += nums[i];\n    const target = total - x;\n    if (target < 0) return -1;\n    if (target === 0) return nums.length;\n    let left = 0, sum = 0, best = -1;\n    for (let right = 0; right < nums.length; right++) {\n        sum += nums[right];\n        while (sum > target && left <= right) {\n            sum -= nums[left];\n            left++;\n        }\n        if (sum === target) {\n            const len = right - left + 1;\n            if (len > best) best = len;\n        }\n    }\n    return best === -1 ? -1 : nums.length - best;\n};`,
@@ -576,6 +682,20 @@ export const SLIDING_PROBLEMS: CatalogProblem[] = [
         const nums = randArr(rng, ri(rng, 1, 40), 1, rng() < 0.6 ? 10 : 1000);
         return { input: fmtIntArr(nums), expectedOutput: String(ref(nums)) };
       },
+      editorial: explain({
+        idea: "It is the longest-substring-without-repeats window, scored by sum: keep a set of the window's values and a running sum, and evict from the left whenever the entering value is already present.",
+        steps: [
+          "For each `right`, while `nums[right]` is in the set, remove `nums[left]` from the set and the sum, advance `left`.",
+          "Add `nums[right]` to the set and the sum.",
+          "Update the best with the current sum.",
+        ],
+        why: "The window always holds distinct values, and because every value is positive the best distinct window ending at `right` is the widest one — exactly what the eviction rule maintains.",
+        time: "O(n)",
+        space: "O(n)",
+        pitfalls: [
+          "Evict until the duplicate is gone, not just one element.",
+        ],
+      }),
       solutions: {
         python: `def maximumUniqueSubarray(nums) -> int:\n    seen = set()\n    left = total = best = 0\n    for right, x in enumerate(nums):\n        while x in seen:\n            seen.discard(nums[left])\n            total -= nums[left]\n            left += 1\n        seen.add(x)\n        total += x\n        best = max(best, total)\n    return best`,
         javascript: `var maximumUniqueSubarray = function(nums) {\n    const inWindow = new Set();\n    let left = 0, sum = 0, best = 0;\n    for (let right = 0; right < nums.length; right++) {\n        while (inWindow.has(nums[right])) {\n            inWindow.delete(nums[left]);\n            sum -= nums[left];\n            left++;\n        }\n        inWindow.add(nums[right]);\n        sum += nums[right];\n        if (sum > best) best = sum;\n    }\n    return best;\n};`,
@@ -649,6 +769,20 @@ export const SLIDING_PROBLEMS: CatalogProblem[] = [
         const goal = ri(rng, 0, n);
         return { input: `${fmtIntArr(nums)}\n${goal}`, expectedOutput: String(ref(nums, goal)) };
       },
+      editorial: explain({
+        idea: "Count prefix sums: a subarray ending at `i` sums to `goal` for every earlier prefix equal to `prefix[i] - goal`. Seed the map with `{0: 1}` for subarrays starting at index 0.",
+        steps: [
+          "Maintain `count[prefix]` starting with `{0: 1}`.",
+          "For each element, update the running total and add `count[total - goal]` to the answer.",
+          "Increment `count[total]`.",
+        ],
+        why: "Every subarray is a difference of two prefixes; counting how many earlier prefixes give the right difference counts every valid subarray ending here exactly once.",
+        time: "O(n)",
+        space: "O(n)",
+        pitfalls: [
+          "A two-pointer window struggles here because runs of zeros make many subarrays share a sum; `atMost(goal) - atMost(goal - 1)` is the window-based alternative.",
+        ],
+      }),
       solutions: {
         python: `def numSubarraysWithSum(nums, goal: int) -> int:\n    count = {0: 1}\n    total = answer = 0\n    for x in nums:\n        total += x\n        answer += count.get(total - goal, 0)\n        count[total] = count.get(total, 0) + 1\n    return answer`,
         javascript: `var numSubarraysWithSum = function(nums, goal) {\n    const count = new Map();\n    count.set(0, 1);\n    let sum = 0, total = 0;\n    for (let i = 0; i < nums.length; i++) {\n        sum += nums[i];\n        total += count.get(sum - goal) || 0;\n        count.set(sum, (count.get(sum) || 0) + 1);\n    }\n    return total;\n};`,
@@ -722,6 +856,20 @@ export const SLIDING_PROBLEMS: CatalogProblem[] = [
         const k = ri(rng, 1, n);
         return { input: `${fmtIntArr(nums)}\n${k}`, expectedOutput: String(ref(nums, k)) };
       },
+      editorial: explain({
+        idea: "Only parity matters: map odd to 1 and even to 0, then count subarrays summing to `k` with the prefix-count trick.",
+        steps: [
+          "Maintain `count[oddPrefix]` seeded with `{0: 1}`.",
+          "For each element, add `x % 2` to the running odd count and add `count[odds - k]` to the answer.",
+          "Increment `count[odds]`.",
+        ],
+        why: "A subarray has exactly `k` odds iff its two bounding prefixes differ by `k` in odd count, so the map lookup counts each nice subarray ending at the current index.",
+        time: "O(n)",
+        space: "O(n)",
+        pitfalls: [
+          "Use `x % 2`, not `x & 1`, in languages where negative odd numbers produce `-1` under `%` — or take `abs` first.",
+        ],
+      }),
       solutions: {
         python: `def numberOfSubarrays(nums, k: int) -> int:\n    count = {0: 1}\n    odds = answer = 0\n    for x in nums:\n        odds += x % 2\n        answer += count.get(odds - k, 0)\n        count[odds] = count.get(odds, 0) + 1\n    return answer`,
         javascript: `var numberOfSubarrays = function(nums, k) {\n    const count = new Map();\n    count.set(0, 1);\n    let odds = 0, total = 0;\n    for (let i = 0; i < nums.length; i++) {\n        odds += nums[i] % 2;\n        total += count.get(odds - k) || 0;\n        count.set(odds, (count.get(odds) || 0) + 1);\n    }\n    return total;\n};`,
@@ -790,6 +938,19 @@ export const SLIDING_PROBLEMS: CatalogProblem[] = [
         nums.sort((a, b) => a - b);
         return { input: fmtIntArr(nums), expectedOutput: fmtIntArr(ref(nums)) };
       },
+      editorial: explain({
+        idea: "Keep a value if it differs from the element two places back in the output; that alone enforces \"at most twice\" on a sorted array.",
+        steps: [
+          "Walk the input, appending to `out`.",
+          "Append `x` when `out` has fewer than two elements or `out[-2] != x`.",
+        ],
+        why: "In sorted order, equal values are adjacent; if `out[-2] == x` then `out[-1] == x` too and a third copy would follow. Any other value is a new run or a legitimate second copy.",
+        time: "O(n)",
+        space: "O(1) extra in the in-place write-cursor form",
+        pitfalls: [
+          "Comparing with `out[-1]` only allows one copy — that is the `k = 1` version of the problem.",
+        ],
+      }),
       solutions: {
         python: `def removeDuplicates(nums):\n    out = []\n    for x in nums:\n        if len(out) < 2 or out[-2] != x:\n            out.append(x)\n    return out`,
         javascript: `var removeDuplicates = function(nums) {\n    const out = [];\n    for (let i = 0; i < nums.length; i++) {\n        if (out.length < 2 || out[out.length - 2] !== nums[i]) out.push(nums[i]);\n    }\n    return out;\n};`,
@@ -852,6 +1013,19 @@ export const SLIDING_PROBLEMS: CatalogProblem[] = [
         const value = ri(rng, 0, rng() < 0.5 ? 5 : 50);
         return { input: `${fmtIntArr(nums)}\n${value}`, expectedOutput: fmtIntArr(ref(nums, value)) };
       },
+      editorial: explain({
+        idea: "Copy every element that is not `value` to a write cursor, preserving order.",
+        steps: [
+          "Walk the array with a read cursor.",
+          "Whenever the element differs from `value`, write it at the write cursor and advance.",
+        ],
+        why: "The kept elements are written in the order they are read, so relative order survives, and everything past the write cursor is discarded.",
+        time: "O(n)",
+        space: "O(1) extra in place",
+        pitfalls: [
+          "The swap-with-last variant is fewer writes when `value` is rare, but does not preserve order.",
+        ],
+      }),
       solutions: {
         python: `def removeElement(nums, value: int):\n    out = []\n    for x in nums:\n        if x != value:\n            out.append(x)\n    return out`,
         javascript: `var removeElement = function(nums, value) {\n    const out = [];\n    for (let i = 0; i < nums.length; i++) {\n        if (nums[i] !== value) out.push(nums[i]);\n    }\n    return out;\n};`,
@@ -921,6 +1095,19 @@ export const SLIDING_PROBLEMS: CatalogProblem[] = [
         const b = randStr(rng, 1, 30);
         return { input: `"${a}"\n"${b}"`, expectedOutput: ref(a, b) };
       },
+      editorial: explain({
+        idea: "Loop to the longer length, appending `word1[i]` then `word2[i]` whenever each exists; the tail of the longer word falls out naturally.",
+        steps: [
+          "For `i` in `0 .. max(len1, len2) - 1`: append `word1[i]` if `i < len1`, then `word2[i]` if `i < len2`.",
+          "Join.",
+        ],
+        why: "Alternation is index-by-index interleaving, and the bounds checks make the leftover characters of the longer string append in order once the shorter one runs out.",
+        time: "O(n + m)",
+        space: "O(n + m)",
+        pitfalls: [
+          "Looping to the shorter length and appending the remainder separately also works — just remember both possible tails.",
+        ],
+      }),
       solutions: {
         python: `def mergeAlternately(word1: str, word2: str) -> str:\n    out = []\n    for i in range(max(len(word1), len(word2))):\n        if i < len(word1):\n            out.append(word1[i])\n        if i < len(word2):\n            out.append(word2[i])\n    return "".join(out)`,
         javascript: `var mergeAlternately = function(word1, word2) {\n    let out = "";\n    const n = Math.max(word1.length, word2.length);\n    for (let i = 0; i < n; i++) {\n        if (i < word1.length) out += word1[i];\n        if (i < word2.length) out += word2[i];\n    }\n    return out;\n};`,
@@ -986,6 +1173,19 @@ export const SLIDING_PROBLEMS: CatalogProblem[] = [
         const ch = rng() < 0.8 ? word[ri(rng, 0, word.length - 1)] : "z";
         return { input: `"${word}"\n"${ch}"`, expectedOutput: ref(word, ch) };
       },
+      editorial: explain({
+        idea: "Find the first `ch`; reverse the prefix through that index and keep the rest.",
+        steps: [
+          "Locate `idx = word.find(ch)`; return `word` if `-1`.",
+          "Return `reverse(word[:idx+1]) + word[idx+1:]`.",
+        ],
+        why: "The statement defines the segment as index 0 through the first occurrence inclusive; everything after it is untouched.",
+        time: "O(n)",
+        space: "O(n)",
+        pitfalls: [
+          "Include the matched character in the reversed slice.",
+        ],
+      }),
       solutions: {
         python: `def reversePrefix(word: str, ch: str) -> str:\n    idx = word.find(ch)\n    if idx < 0:\n        return word\n    return word[:idx + 1][::-1] + word[idx + 1:]`,
         javascript: `var reversePrefix = function(word, ch) {\n    const idx = word.indexOf(ch);\n    if (idx < 0) return word;\n    return word.slice(0, idx + 1).split("").reverse().join("") + word.slice(idx + 1);\n};`,
@@ -1066,6 +1266,19 @@ export const SLIDING_PROBLEMS: CatalogProblem[] = [
         }
         return { input: `"${s}"\n"${c}"`, expectedOutput: fmtIntArr(ref(s, c)) };
       },
+      editorial: explain({
+        idea: "Two sweeps: left to right records the distance to the most recent `c`, right to left records the distance to the next `c`; keep the smaller.",
+        steps: [
+          "Sweep forward with `prev = -∞`; on `c` set `prev = i`; write `out[i] = i - prev`.",
+          "Sweep backward with `prev = +∞`; on `c` set `prev = i`; write `out[i] = min(out[i], prev - i)`.",
+        ],
+        why: "The nearest occurrence of `c` to any index is either the closest one on its left or the closest one on its right, and each sweep computes one of those exactly.",
+        time: "O(n)",
+        space: "O(n) for the output",
+        pitfalls: [
+          "The sentinel for \"none yet\" must be far enough away that `i - prev` exceeds any real distance.",
+        ],
+      }),
       solutions: {
         python: `def shortestToChar(s: str, c: str):\n    n = len(s)\n    out = [0] * n\n    prev = -10000\n    for i in range(n):\n        if s[i] == c:\n            prev = i\n        out[i] = i - prev\n    prev = 10000\n    for i in range(n - 1, -1, -1):\n        if s[i] == c:\n            prev = i\n        out[i] = min(out[i], prev - i)\n    return out`,
         javascript: `var shortestToChar = function(s, c) {\n    const n = s.length;\n    const out = new Array(n).fill(0);\n    let prev = -10000;\n    for (let i = 0; i < n; i++) {\n        if (s[i] === c) prev = i;\n        out[i] = i - prev;\n    }\n    prev = 10000;\n    for (let i = n - 1; i >= 0; i--) {\n        if (s[i] === c) prev = i;\n        if (prev - i < out[i]) out[i] = prev - i;\n    }\n    return out;\n};`,
@@ -1141,6 +1354,20 @@ export const SLIDING_PROBLEMS: CatalogProblem[] = [
         }
         return { input: fmtIntArr(arr), expectedOutput: bool(ref(arr)) };
       },
+      editorial: explain({
+        idea: "An arithmetic progression is sorted (or reverse sorted), so sort and check that every adjacent gap equals the first.",
+        steps: [
+          "Sort a copy.",
+          "Return `true` for length ≤ 2.",
+          "Let `d = a[1] - a[0]`; return whether every `a[i] - a[i-1] == d`.",
+        ],
+        why: "If a rearrangement into a progression exists, the sorted order is that progression (with non-negative difference), so checking the sorted order is sufficient as well as necessary.",
+        time: "O(n log n)",
+        space: "O(n)",
+        pitfalls: [
+          "An O(n) version uses min, max and a set: `d = (max - min) / (n - 1)` must be integral and every `min + k·d` present.",
+        ],
+      }),
       solutions: {
         python: `def canMakeArithmeticProgression(arr) -> bool:\n    a = sorted(arr)\n    if len(a) <= 2:\n        return True\n    d = a[1] - a[0]\n    return all(a[i] - a[i - 1] == d for i in range(2, len(a)))`,
         javascript: `var canMakeArithmeticProgression = function(arr) {\n    const a = arr.slice().sort(function(x, y) { return x - y; });\n    if (a.length <= 2) return true;\n    const d = a[1] - a[0];\n    for (let i = 2; i < a.length; i++) {\n        if (a[i] - a[i - 1] !== d) return false;\n    }\n    return true;\n};`,
@@ -1208,6 +1435,20 @@ export const SLIDING_PROBLEMS: CatalogProblem[] = [
         const arr = randArr(rng, ri(rng, 2, 40), rng() < 0.5 ? -10 : -1000, rng() < 0.5 ? 10 : 1000);
         return { input: fmtIntArr(arr), expectedOutput: bool(ref(arr)) };
       },
+      editorial: explain({
+        idea: "Scan with a set of seen values, checking for both `2x` and `x / 2` (only when `x` is even).",
+        steps: [
+          "For each `x`, return `true` if `2x` is in the set, or `x` is even and `x / 2` is in the set.",
+          "Add `x` to the set.",
+        ],
+        why: "A valid pair `(i, j)` is discovered when the later of the two is scanned, whichever role it plays; checking before inserting prevents `x` from matching itself.",
+        time: "O(n)",
+        space: "O(n)",
+        pitfalls: [
+          "Zero needs a second zero — the check-before-insert order gets this right automatically.",
+          "Checking `x / 2` for odd `x` in integer arithmetic matches a value that is not actually the half.",
+        ],
+      }),
       solutions: {
         python: `def checkIfExist(arr) -> bool:\n    seen = set()\n    for x in arr:\n        if 2 * x in seen or (x % 2 == 0 and x // 2 in seen):\n            return True\n        seen.add(x)\n    return False`,
         javascript: `var checkIfExist = function(arr) {\n    const seen = new Set();\n    for (let i = 0; i < arr.length; i++) {\n        const x = arr[i];\n        if (seen.has(2 * x) || (x % 2 === 0 && seen.has(x / 2))) return true;\n        seen.add(x);\n    }\n    return false;\n};`,
@@ -1279,6 +1520,20 @@ export const SLIDING_PROBLEMS: CatalogProblem[] = [
         const k = ri(rng, 1, n);
         return { input: `${fmtIntArr(nums)}\n${k}`, expectedOutput: String(ref(nums, k)) };
       },
+      editorial: explain({
+        idea: "After sorting, the `k` closest scores are adjacent, so slide a window of width `k` and take the smallest span.",
+        steps: [
+          "Return 0 for `k <= 1`.",
+          "Sort; for each `i`, compute `a[i + k - 1] - a[i]`.",
+          "Return the minimum.",
+        ],
+        why: "Any chosen set of `k` values spans at least the gap between its min and max; replacing it with the `k` consecutive sorted values starting at its min can only shrink that gap.",
+        time: "O(n log n)",
+        space: "O(n)",
+        pitfalls: [
+          "The window index runs to `n - k` inclusive.",
+        ],
+      }),
       solutions: {
         python: `def minimumDifference(nums, k: int) -> int:\n    if k <= 1:\n        return 0\n    a = sorted(nums)\n    return min(a[i + k - 1] - a[i] for i in range(len(a) - k + 1))`,
         javascript: `var minimumDifference = function(nums, k) {\n    if (k <= 1) return 0;\n    const a = nums.slice().sort(function(x, y) { return x - y; });\n    let best = Infinity;\n    for (let i = 0; i + k <= a.length; i++) {\n        const d = a[i + k - 1] - a[i];\n        if (d < best) best = d;\n    }\n    return best;\n};`,
@@ -1344,6 +1599,19 @@ export const SLIDING_PROBLEMS: CatalogProblem[] = [
         const nums = randArr(rng, 2 * ri(rng, 1, 20), -1000, 1000);
         return { input: fmtIntArr(nums), expectedOutput: String(ref(nums)) };
       },
+      editorial: explain({
+        idea: "Sort and pair neighbours; the sum of the elements at even indices is the maximum.",
+        steps: [
+          "Sort the array.",
+          "Sum `a[0], a[2], a[4], …`.",
+        ],
+        why: "Each pair discards its larger member, so the total wasted value is minimised by pairing each element with the nearest value above it. In sorted order that is the adjacent-pair pairing, and its minima are exactly the even-index elements.",
+        time: "O(n log n)",
+        space: "O(n)",
+        pitfalls: [
+          "Pairing smallest with largest is the intuitive wrong answer — it wastes the large values entirely.",
+        ],
+      }),
       solutions: {
         python: `def arrayPairSum(nums) -> int:\n    a = sorted(nums)\n    return sum(a[::2])`,
         javascript: `var arrayPairSum = function(nums) {\n    const a = nums.slice().sort(function(x, y) { return x - y; });\n    let sum = 0;\n    for (let i = 0; i < a.length; i += 2) sum += a[i];\n    return sum;\n};`,
@@ -1411,6 +1679,19 @@ export const SLIDING_PROBLEMS: CatalogProblem[] = [
         const nums = randArr(rng, ri(rng, 2, 40), 1, 1000);
         return { input: fmtIntArr(nums), expectedOutput: String(ref(nums)) };
       },
+      editorial: explain({
+        idea: "All values are at least 1, so `(x - 1)` is non-negative and the two largest values give the maximum product.",
+        steps: [
+          "One pass keeping `first` and `second` largest.",
+          "Return `(first - 1) * (second - 1)`.",
+        ],
+        why: "With non-negative factors the product is maximised by maximising both, and indices only need to differ, so equal maxima are fine.",
+        time: "O(n)",
+        space: "O(1)",
+        pitfalls: [
+          "When updating, demote the old `first` to `second` before overwriting.",
+        ],
+      }),
       solutions: {
         python: `def maxProduct(nums) -> int:\n    first = second = -1\n    for x in nums:\n        if x > first:\n            first, second = x, first\n        elif x > second:\n            second = x\n    return (first - 1) * (second - 1)`,
         javascript: `var maxProduct = function(nums) {\n    let first = -1, second = -1;\n    for (let i = 0; i < nums.length; i++) {\n        if (nums[i] > first) {\n            second = first;\n            first = nums[i];\n        } else if (nums[i] > second) {\n            second = nums[i];\n        }\n    }\n    return (first - 1) * (second - 1);\n};`,
@@ -1477,6 +1758,20 @@ export const SLIDING_PROBLEMS: CatalogProblem[] = [
         const arr = Array.from({ length: ri(rng, 1, 40) }, () => (rng() < 0.55 ? 2 * ri(rng, 1, 500) - 1 : 2 * ri(rng, 1, 500)));
         return { input: fmtIntArr(arr), expectedOutput: bool(ref(arr)) };
       },
+      editorial: explain({
+        idea: "Track the length of the current run of odd numbers and return as soon as it reaches three.",
+        steps: [
+          "Set `run = 0`.",
+          "For each `x`: `run = run + 1` if odd else `0`; return `true` when `run >= 3`.",
+          "Return `false`.",
+        ],
+        why: "A run counter resets on any even value, so reaching three certifies three consecutive odds.",
+        time: "O(n)",
+        space: "O(1)",
+        pitfalls: [
+          "Use `x % 2 != 0` so negative odds count.",
+        ],
+      }),
       solutions: {
         python: `def threeConsecutiveOdds(arr) -> bool:\n    run = 0\n    for x in arr:\n        run = run + 1 if x % 2 else 0\n        if run >= 3:\n            return True\n    return False`,
         javascript: `var threeConsecutiveOdds = function(arr) {\n    let run = 0;\n    for (let i = 0; i < arr.length; i++) {\n        run = arr[i] % 2 !== 0 ? run + 1 : 0;\n        if (run >= 3) return true;\n    }\n    return false;\n};`,
@@ -1551,6 +1846,19 @@ export const SLIDING_PROBLEMS: CatalogProblem[] = [
         const c = ri(rng, 0, rng() < 0.5 ? 10 : 1000);
         return { input: `${fmtIntArr(arr)}\n${a}\n${b}\n${c}`, expectedOutput: String(ref(arr, a, b, c)) };
       },
+      editorial: explain({
+        idea: "The array is tiny, so enumerate all `i < j < k`, but check the `(i, j)` condition in the middle loop to skip most of the innermost work.",
+        steps: [
+          "For each `i < j`, skip unless `|arr[i] - arr[j]| <= a`.",
+          "For each `k > j`, count if `|arr[j] - arr[k]| <= b` and `|arr[i] - arr[k]| <= c`.",
+        ],
+        why: "Every triple is examined once and only counted when all three constraints hold; the early `continue` is a constant-factor pruning, not a change in correctness.",
+        time: "O(n³)",
+        space: "O(1)",
+        pitfalls: [
+          "The constraints (`n <= 100`) are what make the cubic loop acceptable.",
+        ],
+      }),
       solutions: {
         python: `def countGoodTriplets(arr, a: int, b: int, c: int) -> int:\n    n = len(arr)\n    count = 0\n    for i in range(n):\n        for j in range(i + 1, n):\n            if abs(arr[i] - arr[j]) > a:\n                continue\n            for k in range(j + 1, n):\n                if abs(arr[j] - arr[k]) <= b and abs(arr[i] - arr[k]) <= c:\n                    count += 1\n    return count`,
         javascript: `var countGoodTriplets = function(arr, a, b, c) {\n    const n = arr.length;\n    let count = 0;\n    for (let i = 0; i < n; i++) {\n        for (let j = i + 1; j < n; j++) {\n            if (Math.abs(arr[i] - arr[j]) > a) continue;\n            for (let k = j + 1; k < n; k++) {\n                if (Math.abs(arr[j] - arr[k]) <= b && Math.abs(arr[i] - arr[k]) <= c) count++;\n            }\n        }\n    }\n    return count;\n};`,
@@ -1618,6 +1926,19 @@ export const SLIDING_PROBLEMS: CatalogProblem[] = [
         const nums = randArr(rng, ri(rng, 1, 40), 0, rng() < 0.6 ? 12 : 1000);
         return { input: fmtIntArr(nums), expectedOutput: String(ref(nums)) };
       },
+      editorial: explain({
+        idea: "`x` cannot exceed `n`, so test every `x` in `0..n` by counting how many elements are at least `x`.",
+        steps: [
+          "For `x` from 0 to `n`, count elements `>= x`.",
+          "Return the first `x` whose count equals `x`; else `-1`.",
+        ],
+        why: "The count of elements `>= x` is non-increasing in `x` while `x` itself increases, so they cross at most once — which is why the answer is unique and a linear scan (or a binary search over sorted input) finds it.",
+        time: "O(n²), or O(n log n) with a sort and binary search",
+        space: "O(1)",
+        pitfalls: [
+          "`x` need not be an element of the array.",
+        ],
+      }),
       solutions: {
         python: `def specialArray(nums) -> int:\n    for x in range(len(nums) + 1):\n        if sum(1 for v in nums if v >= x) == x:\n            return x\n    return -1`,
         javascript: `var specialArray = function(nums) {\n    for (let x = 0; x <= nums.length; x++) {\n        let count = 0;\n        for (let i = 0; i < nums.length; i++) {\n            if (nums[i] >= x) count++;\n        }\n        if (count === x) return x;\n    }\n    return -1;\n};`,
@@ -1686,6 +2007,20 @@ export const SLIDING_PROBLEMS: CatalogProblem[] = [
         if (text.trim().length === 0) text = "code ";
         return { input: `"${text}"`, expectedOutput: ref(text) };
       },
+      editorial: explain({
+        idea: "Count the spaces once; with `w` words there are `w - 1` gaps, each getting `spaces // (w - 1)`, and the remainder trails the last word.",
+        steps: [
+          "Split into words and count the spaces in the original text.",
+          "If there is one word, return it followed by all the spaces.",
+          "Otherwise join with `spaces // (w-1)` spaces and append `spaces % (w-1)` spaces.",
+        ],
+        why: "The space budget is fixed; distributing it as evenly as possible across the gaps maximises the per-gap count, and whatever cannot be distributed evenly is placed at the end by the rules.",
+        time: "O(n)",
+        space: "O(n)",
+        pitfalls: [
+          "Dividing by `w - 1` when `w == 1` is a division by zero — that is why the single-word case is separate.",
+        ],
+      }),
       solutions: {
         python: `def reorderSpaces(text: str) -> str:\n    words = text.split()\n    spaces = text.count(" ")\n    if len(words) == 1:\n        return words[0] + " " * spaces\n    between = spaces // (len(words) - 1)\n    extra = spaces - between * (len(words) - 1)\n    return (" " * between).join(words) + " " * extra`,
         javascript: `var reorderSpaces = function(text) {\n    const words = text.split(" ").filter(function(w) { return w.length > 0; });\n    let spaces = 0;\n    for (let i = 0; i < text.length; i++) {\n        if (text[i] === " ") spaces++;\n    }\n    const pad = function(n) {\n        let s = "";\n        for (let i = 0; i < n; i++) s += " ";\n        return s;\n    };\n    if (words.length === 1) return words[0] + pad(spaces);\n    const between = Math.floor(spaces / (words.length - 1));\n    const extra = spaces - between * (words.length - 1);\n    return words.join(pad(between)) + pad(extra);\n};`,
@@ -1738,6 +2073,19 @@ export const SLIDING_PROBLEMS: CatalogProblem[] = [
         const nums = randArr(rng, ri(rng, 4, 40), 1, 1000);
         return { input: fmtIntArr(nums), expectedOutput: String(ref(nums)) };
       },
+      editorial: explain({
+        idea: "Positive values: the largest product comes from the two biggest numbers, the smallest from the two smallest.",
+        steps: [
+          "Sort.",
+          "Return `a[-1] * a[-2] - a[0] * a[1]`.",
+        ],
+        why: "With all values positive, products are monotone in each factor, so the extremes are attained at the two ends of the sorted order; four distinct indices are guaranteed by `n >= 4`.",
+        time: "O(n log n)",
+        space: "O(n)",
+        pitfalls: [
+          "One pass tracking the top two and bottom two makes it O(n).",
+        ],
+      }),
       solutions: {
         python: `def maxProductDifference(nums) -> int:\n    a = sorted(nums)\n    return a[-1] * a[-2] - a[0] * a[1]`,
         javascript: `var maxProductDifference = function(nums) {\n    const a = nums.slice().sort(function(x, y) { return x - y; });\n    const n = a.length;\n    return a[n - 1] * a[n - 2] - a[0] * a[1];\n};`,
@@ -1795,6 +2143,19 @@ export const SLIDING_PROBLEMS: CatalogProblem[] = [
         const students = randArr(rng, n, 1, 100);
         return { input: `${fmtIntArr(seats)}\n${fmtIntArr(students)}`, expectedOutput: String(ref(seats, students)) };
       },
+      editorial: explain({
+        idea: "Sort both lists and match them index by index; the answer is the sum of absolute differences.",
+        steps: [
+          "Sort `seats` and `students`.",
+          "Sum `|seats[i] - students[i]|`.",
+        ],
+        why: "If two assignments cross (a left student to a right seat and vice versa), uncrossing them never increases the total distance, so the sorted matching is optimal.",
+        time: "O(n log n)",
+        space: "O(n)",
+        pitfalls: [
+          "The lists have equal length by the statement; no padding is needed.",
+        ],
+      }),
       solutions: {
         python: `def minMovesToSeat(seats, students) -> int:\n    return sum(abs(a - b) for a, b in zip(sorted(seats), sorted(students)))`,
         javascript: `var minMovesToSeat = function(seats, students) {\n    const a = seats.slice().sort(function(x, y) { return x - y; });\n    const b = students.slice().sort(function(x, y) { return x - y; });\n    let total = 0;\n    for (let i = 0; i < a.length; i++) total += Math.abs(a[i] - b[i]);\n    return total;\n};`,
@@ -1853,6 +2214,20 @@ export const SLIDING_PROBLEMS: CatalogProblem[] = [
         const target = ri(rng, -50, 50);
         return { input: `${fmtIntArr(nums)}\n${target}`, expectedOutput: String(ref(nums, target)) };
       },
+      editorial: explain({
+        idea: "Sort, then two pointers: if the smallest plus the largest is below the target, every element between also pairs with the smallest, contributing `right - left` pairs at once.",
+        steps: [
+          "Sort; set `left = 0`, `right = n - 1`.",
+          "If `a[left] + a[right] < target`, add `right - left` and advance `left`; otherwise retreat `right`.",
+          "Stop when the pointers meet.",
+        ],
+        why: "When the pair with the largest partner succeeds, all smaller partners succeed too, so the batch count is exact; when it fails, the largest value cannot pair with anything remaining and is retired.",
+        time: "O(n log n)",
+        space: "O(n)",
+        pitfalls: [
+          "The condition involves values only, so sorting does not change the count of index pairs.",
+        ],
+      }),
       solutions: {
         python: `def countPairs(nums, target: int) -> int:\n    a = sorted(nums)\n    left, right, count = 0, len(a) - 1, 0\n    while left < right:\n        if a[left] + a[right] < target:\n            count += right - left\n            left += 1\n        else:\n            right -= 1\n    return count`,
         javascript: `var countPairs = function(nums, target) {\n    const a = nums.slice().sort(function(x, y) { return x - y; });\n    let left = 0, right = a.length - 1, count = 0;\n    while (left < right) {\n        if (a[left] + a[right] < target) {\n            count += right - left;\n            left++;\n        } else {\n            right--;\n        }\n    }\n    return count;\n};`,
@@ -1911,6 +2286,20 @@ export const SLIDING_PROBLEMS: CatalogProblem[] = [
         const b = randArr(rng, ri(rng, 1, 40), 1, 100).sort((x, y) => x - y);
         return { input: `${fmtIntArr(a)}\n${fmtIntArr(b)}`, expectedOutput: String(ref(a, b)) };
       },
+      editorial: explain({
+        idea: "Merge-walk the two sorted arrays: advance the pointer on the smaller value, and the first equality is the smallest common value.",
+        steps: [
+          "Set `i = j = 0`.",
+          "If `nums1[i] == nums2[j]`, return it; else advance the pointer on the smaller value.",
+          "Return `-1` when either array runs out.",
+        ],
+        why: "Both pointers only move forward past values that cannot be common, so the first match is the minimum common element.",
+        time: "O(n + m)",
+        space: "O(1)",
+        pitfalls: [
+          "A hash set of one array is O(n + m) time but O(n) space; the merge uses none.",
+        ],
+      }),
       solutions: {
         python: `def getCommon(nums1, nums2) -> int:\n    i = j = 0\n    while i < len(nums1) and j < len(nums2):\n        if nums1[i] == nums2[j]:\n            return nums1[i]\n        if nums1[i] < nums2[j]:\n            i += 1\n        else:\n            j += 1\n    return -1`,
         javascript: `var getCommon = function(nums1, nums2) {\n    let i = 0, j = 0;\n    while (i < nums1.length && j < nums2.length) {\n        if (nums1[i] === nums2[j]) return nums1[i];\n        if (nums1[i] < nums2[j]) i++;\n        else j++;\n    }\n    return -1;\n};`,
@@ -1969,6 +2358,19 @@ export const SLIDING_PROBLEMS: CatalogProblem[] = [
         const nums = randArr(rng, ri(rng, 2, 40), 0, rng() < 0.6 ? 4 : 1000);
         return { input: fmtIntArr(nums), expectedOutput: fmtIntArr(ref(nums)) };
       },
+      editorial: explain({
+        idea: "Simulate the merge pass strictly left to right, then compact the non-zero values to the front and pad with zeros.",
+        steps: [
+          "For `i` from 0 to `n - 2`: if `a[i] == a[i+1]` and non-zero, double `a[i]` and zero `a[i+1]`.",
+          "Collect non-zero values in order and append zeros to restore the length.",
+        ],
+        why: "The operations are defined in index order and each can influence the next comparison (a just-zeroed slot never merges again), so the simulation must not be reordered; the final shift is a stable partition.",
+        time: "O(n)",
+        space: "O(n)",
+        pitfalls: [
+          "Zeros never merge with each other.",
+        ],
+      }),
       solutions: {
         python: `def applyOperations(nums):\n    a = list(nums)\n    for i in range(len(a) - 1):\n        if a[i] == a[i + 1] and a[i] != 0:\n            a[i] *= 2\n            a[i + 1] = 0\n    out = [x for x in a if x != 0]\n    out.extend([0] * (len(a) - len(out)))\n    return out`,
         javascript: `var applyOperations = function(nums) {\n    const a = nums.slice();\n    for (let i = 0; i + 1 < a.length; i++) {\n        if (a[i] === a[i + 1] && a[i] !== 0) {\n            a[i] *= 2;\n            a[i + 1] = 0;\n        }\n    }\n    const out = [];\n    for (let i = 0; i < a.length; i++) {\n        if (a[i] !== 0) out.push(a[i]);\n    }\n    while (out.length < a.length) out.push(0);\n    return out;\n};`,
@@ -2029,6 +2431,19 @@ export const SLIDING_PROBLEMS: CatalogProblem[] = [
         const nums = randArr(rng, ri(rng, 1, 40), 1, 1000);
         return { input: fmtIntArr(nums), expectedOutput: fmtIntArr(ref(nums)) };
       },
+      editorial: explain({
+        idea: "One total plus a running left sum gives the right sum as `total - left - nums[i]`.",
+        steps: [
+          "Compute `total`.",
+          "Walk with `left = 0`; write `|left - (total - left - x)|`; then add `x` to `left`.",
+        ],
+        why: "Every element is in exactly one of left, current, or right, so the identity is exact and no second prefix array is needed.",
+        time: "O(n)",
+        space: "O(n) for the output",
+        pitfalls: [
+          "Update `left` after computing the answer for the current index.",
+        ],
+      }),
       solutions: {
         python: `def leftRightDifference(nums):\n    total = sum(nums)\n    out = []\n    left = 0\n    for x in nums:\n        right = total - left - x\n        out.append(abs(left - right))\n        left += x\n    return out`,
         javascript: `var leftRightDifference = function(nums) {\n    let total = 0;\n    for (let i = 0; i < nums.length; i++) total += nums[i];\n    const out = [];\n    let left = 0;\n    for (let i = 0; i < nums.length; i++) {\n        const right = total - left - nums[i];\n        out.push(Math.abs(left - right));\n        left += nums[i];\n    }\n    return out;\n};`,
@@ -2085,6 +2500,20 @@ export const SLIDING_PROBLEMS: CatalogProblem[] = [
         const nums = randArr(rng, ri(rng, 1, 40), 1, 10000);
         return { input: fmtIntArr(nums), expectedOutput: String(ref(nums)) };
       },
+      editorial: explain({
+        idea: "Accumulate the element sum and the digit sum, then return the absolute difference.",
+        steps: [
+          "Sum the elements.",
+          "Sum every decimal digit of every element.",
+          "Return `|elementSum - digitSum|`.",
+        ],
+        why: "Both are direct folds over the input; the digit sum of a number never exceeds the number, so the difference is non-negative.",
+        time: "O(n · digits)",
+        space: "O(1)",
+        pitfalls: [
+          "Peel digits with `% 10` / `// 10` if you prefer to avoid strings.",
+        ],
+      }),
       solutions: {
         python: `def differenceOfSum(nums) -> int:\n    element_sum = sum(nums)\n    digit_sum = sum(int(ch) for x in nums for ch in str(x))\n    return abs(element_sum - digit_sum)`,
         javascript: `var differenceOfSum = function(nums) {\n    let elementSum = 0, digitSum = 0;\n    for (let i = 0; i < nums.length; i++) {\n        elementSum += nums[i];\n        let x = nums[i];\n        while (x > 0) {\n            digitSum += x % 10;\n            x = Math.floor(x / 10);\n        }\n    }\n    return Math.abs(elementSum - digitSum);\n};`,
@@ -2145,6 +2574,19 @@ export const SLIDING_PROBLEMS: CatalogProblem[] = [
         const diff = ri(rng, 1, rng() < 0.5 ? 6 : 50);
         return { input: `${fmtIntArr(nums)}\n${diff}`, expectedOutput: String(ref(nums, diff)) };
       },
+      editorial: explain({
+        idea: "Strictly increasing means a value determines its index, so put every value in a set and count `x` with both `x + diff` and `x + 2·diff` present.",
+        steps: [
+          "Build a set of the values.",
+          "Count elements `x` where `x + diff` and `x + 2*diff` are in the set.",
+        ],
+        why: "Each arithmetic triple is uniquely identified by its smallest element, and strict monotonicity guarantees the three values appear in index order.",
+        time: "O(n)",
+        space: "O(n)",
+        pitfalls: [
+          "Without strict increase, duplicate values would need multiplicity handling.",
+        ],
+      }),
       solutions: {
         python: `def arithmeticTriplets(nums, diff: int) -> int:\n    present = set(nums)\n    return sum(1 for x in nums if x + diff in present and x + 2 * diff in present)`,
         javascript: `var arithmeticTriplets = function(nums, diff) {\n    const present = new Set(nums);\n    let count = 0;\n    for (let i = 0; i < nums.length; i++) {\n        if (present.has(nums[i] + diff) && present.has(nums[i] + 2 * diff)) count++;\n    }\n    return count;\n};`,
@@ -2206,6 +2648,20 @@ export const SLIDING_PROBLEMS: CatalogProblem[] = [
         }
         return { input: fmtIntArr(nums), expectedOutput: String(ref(nums)) };
       },
+      editorial: explain({
+        idea: "Count positives and negatives separately, ignoring zeros, and return the larger.",
+        steps: [
+          "Count `x > 0` and `x < 0`.",
+          "Return the maximum.",
+        ],
+        why: "Zero is neither positive nor negative, so the two strict comparisons partition the relevant elements exactly.",
+        time: "O(n)",
+        space: "O(1)",
+        pitfalls: [
+          "Because the array is sorted, two binary searches (first `>= 0`, first `> 0`) give O(log n).",
+        ],
+      }),
+
       solutions: {
         python: `def maximumCount(nums) -> int:\n    pos = sum(1 for x in nums if x > 0)\n    neg = sum(1 for x in nums if x < 0)\n    return max(pos, neg)`,
         javascript: `var maximumCount = function(nums) {\n    let pos = 0, neg = 0;\n    for (let i = 0; i < nums.length; i++) {\n        if (nums[i] > 0) pos++;\n        else if (nums[i] < 0) neg++;\n    }\n    return pos > neg ? pos : neg;\n};`,

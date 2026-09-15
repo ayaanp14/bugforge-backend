@@ -6,7 +6,7 @@
  * JS solutions must be Node 12-safe: no ??, ?., replaceAll, .at() or .flat().
  */
 
-import { bool, describe, fmtIntArr, fmtIntMat, fmtStrArr, ri, shuffle, type CatalogProblem, type Rng } from "./types.js";
+import { bool, describe, explain, fmtIntArr, fmtIntMat, fmtStrArr, ri, shuffle, type CatalogProblem, type Rng } from "./types.js";
 
 const randArr = (rng: Rng, n: number, lo: number, hi: number) =>
   Array.from({ length: n }, () => ri(rng, lo, hi));
@@ -61,6 +61,20 @@ export const DP2_PROBLEMS: CatalogProblem[] = [
         const nums = randArr(rng, ri(rng, 1, 40), 1, rng() < 0.6 ? 12 : 100);
         return { input: fmtIntArr(nums), expectedOutput: String(ref(nums)) };
       },
+      editorial: explain({
+        idea: "Taking a value means taking every copy of it, so collapse the array into `points[v] = v · count(v)`. Adjacent values conflict, and the problem is House Robber over that array.",
+        steps: [
+          "Build `points` indexed by value.",
+          "Walk values from 1 to `max`: `take = skip + points[v]`, `skip = max(skip, take_prev)`.",
+          "Return `max(take, skip)`.",
+        ],
+        why: "Copies of the same value never delete each other, so choosing a value is all-or-nothing. Choosing `v` forbids `v ± 1` and nothing else, which is exactly the no-two-adjacent constraint the rolling `take/skip` pair solves optimally.",
+        time: "O(n + max)",
+        space: "O(max)",
+        pitfalls: [
+          "A sorted map of distinct values handles sparse large values; the dense array is simplest when the range is small.",
+        ],
+      }),
       solutions: {
         python: `def deleteAndEarn(nums) -> int:\n    max_v = max(nums)\n    points = [0] * (max_v + 1)\n    for x in nums:\n        points[x] += x\n    take = skip = 0\n    for v in range(1, max_v + 1):\n        take, skip = skip + points[v], max(skip, take)\n    return max(take, skip)`,
         javascript: `var deleteAndEarn = function(nums) {\n    let maxV = 0;\n    for (let i = 0; i < nums.length; i++) {\n        if (nums[i] > maxV) maxV = nums[i];\n    }\n    const points = new Array(maxV + 1).fill(0);\n    for (let i = 0; i < nums.length; i++) points[nums[i]] += nums[i];\n    let take = 0, skip = 0;\n    for (let v = 1; v <= maxV; v++) {\n        const newTake = skip + points[v];\n        const newSkip = Math.max(skip, take);\n        take = newTake;\n        skip = newSkip;\n    }\n    return Math.max(take, skip);\n};`,
@@ -119,6 +133,21 @@ export const DP2_PROBLEMS: CatalogProblem[] = [
         const prices = randArr(rng, ri(rng, 1, 40), 0, rng() < 0.6 ? 20 : 1000);
         return { input: fmtIntArr(prices), expectedOutput: String(ref(prices)) };
       },
+      editorial: explain({
+        idea: "Three states per day — `hold` (own a share), `sold` (sold today), `rest` (own nothing, free to buy) — with the cooldown enforced by feeding `rest` from the *previous* day's `sold`.",
+        steps: [
+          "Initialise `hold = -∞`, `sold = 0`, `rest = 0`.",
+          "For each price: `sold = hold + price`; `hold = max(hold, rest - price)`; `rest = max(rest, prevSold)`.",
+          "Return `max(sold, rest)`.",
+        ],
+        why: "Every day the trader is in exactly one state, and each transition is the best of its legal predecessors. Buying is only allowed from `rest`, and `rest` only absorbs `sold` one day later, which is precisely the one-day cooldown.",
+        time: "O(n)",
+        space: "O(1)",
+        pitfalls: [
+          "Save the previous `sold` before overwriting it, or the cooldown silently disappears.",
+          "The answer is never `hold` — ending with an unsold share is dominated.",
+        ],
+      }),
       solutions: {
         python: `def maxProfit(prices) -> int:\n    hold = float("-inf")\n    sold = 0\n    rest = 0\n    for price in prices:\n        prev_sold = sold\n        sold = hold + price\n        hold = max(hold, rest - price)\n        rest = max(rest, prev_sold)\n    return max(sold, rest)`,
         javascript: `var maxProfit = function(prices) {\n    let hold = -Infinity, sold = 0, rest = 0;\n    for (let i = 0; i < prices.length; i++) {\n        const prevSold = sold;\n        sold = hold + prices[i];\n        hold = Math.max(hold, rest - prices[i]);\n        rest = Math.max(rest, prevSold);\n    }\n    return Math.max(sold, rest);\n};`,
@@ -176,6 +205,20 @@ export const DP2_PROBLEMS: CatalogProblem[] = [
         const fee = ri(rng, 0, rng() < 0.6 ? 10 : 1000);
         return { input: `${fmtIntArr(prices)}\n${fee}`, expectedOutput: String(ref(prices, fee)) };
       },
+      editorial: explain({
+        idea: "Two running values: `cash` (best profit holding nothing) and `hold` (best profit holding a share). Charge the fee on the sale so each round trip pays exactly once.",
+        steps: [
+          "Start `cash = 0`, `hold = -prices[0]`.",
+          "For each later price: `cash = max(cash, hold + price - fee)`; `hold = max(hold, cash - price)`.",
+          "Return `cash`.",
+        ],
+        why: "With at most one share, the state is binary and each day either keeps the state or switches it at the day's price; the two maxima are the optimal substructure. Using the updated `cash` for `hold` on the same day is safe because sell-then-buy on one day is never better than not trading.",
+        time: "O(n)",
+        space: "O(1)",
+        pitfalls: [
+          "Charging the fee on both buy and sell double-counts it.",
+        ],
+      }),
       solutions: {
         python: `def maxProfit(prices, fee: int) -> int:\n    cash = 0\n    hold = -prices[0]\n    for price in prices[1:]:\n        cash = max(cash, hold + price - fee)\n        hold = max(hold, cash - price)\n    return cash`,
         javascript: `var maxProfit = function(prices, fee) {\n    let cash = 0, hold = -prices[0];\n    for (let i = 1; i < prices.length; i++) {\n        cash = Math.max(cash, hold + prices[i] - fee);\n        hold = Math.max(hold, cash - prices[i]);\n    }\n    return cash;\n};`,
@@ -234,6 +277,20 @@ export const DP2_PROBLEMS: CatalogProblem[] = [
         const prices = randArr(rng, ri(rng, 1, 40), 0, rng() < 0.6 ? 20 : 1000);
         return { input: fmtIntArr(prices), expectedOutput: String(ref(prices)) };
       },
+      editorial: explain({
+        idea: "Carry four running values — after first buy, first sell, second buy, second sell — and update them in that order each day so the second purchase is funded by the first sale.",
+        steps: [
+          "Initialise `buy1 = buy2 = -∞`, `sell1 = sell2 = 0`.",
+          "For each price: `buy1 = max(buy1, -price)`, `sell1 = max(sell1, buy1 + price)`, `buy2 = max(buy2, sell1 - price)`, `sell2 = max(sell2, buy2 + price)`.",
+          "Return `sell2`.",
+        ],
+        why: "The four values are the best profit reachable in each of the four transaction stages after processing the prefix. Updating in stage order within a day is safe: a same-day buy-and-sell nets zero and never beats the alternative.",
+        time: "O(n)",
+        space: "O(1)",
+        pitfalls: [
+          "The general `k`-transaction version repeats the pair of updates `k` times per day.",
+        ],
+      }),
       solutions: {
         python: `def maxProfit(prices) -> int:\n    buy1 = buy2 = float("-inf")\n    sell1 = sell2 = 0\n    for price in prices:\n        buy1 = max(buy1, -price)\n        sell1 = max(sell1, buy1 + price)\n        buy2 = max(buy2, sell1 - price)\n        sell2 = max(sell2, buy2 + price)\n    return sell2`,
         javascript: `var maxProfit = function(prices) {\n    let buy1 = -Infinity, sell1 = 0, buy2 = -Infinity, sell2 = 0;\n    for (let i = 0; i < prices.length; i++) {\n        buy1 = Math.max(buy1, -prices[i]);\n        sell1 = Math.max(sell1, buy1 + prices[i]);\n        buy2 = Math.max(buy2, sell1 - prices[i]);\n        sell2 = Math.max(sell2, buy2 + prices[i]);\n    }\n    return sell2;\n};`,
@@ -298,6 +355,21 @@ export const DP2_PROBLEMS: CatalogProblem[] = [
         const b = randArr(rng, ri(rng, 1, 30), 0, hi);
         return { input: `${fmtIntArr(a)}\n${fmtIntArr(b)}`, expectedOutput: String(ref(a, b)) };
       },
+      editorial: explain({
+        idea: "`dp[i][j]` is the length of the common run *ending* at `nums1[i-1]` and `nums2[j-1]`; equal elements extend the diagonal, unequal ones reset it, and the answer is the largest entry anywhere.",
+        steps: [
+          "Allocate `(m+1) × (n+1)` zeros.",
+          "If `nums1[i-1] == nums2[j-1]`, set `dp[i][j] = dp[i-1][j-1] + 1` and update the best.",
+          "Return the best.",
+        ],
+        why: "A common subarray must be contiguous in both arrays, so it lies on a diagonal of the table; the recurrence measures the diagonal run ending at each cell.",
+        time: "O(m · n)",
+        space: "O(m · n), reducible to one row",
+        pitfalls: [
+          "`dp[m][n]` is the common *suffix*, not the answer — take the maximum over the whole table.",
+          "The LCS recurrence (max of up/left) is a different problem.",
+        ],
+      }),
       solutions: {
         python: `def findLength(nums1, nums2) -> int:\n    m, n = len(nums1), len(nums2)\n    dp = [[0] * (n + 1) for _ in range(m + 1)]\n    best = 0\n    for i in range(1, m + 1):\n        for j in range(1, n + 1):\n            if nums1[i - 1] == nums2[j - 1]:\n                dp[i][j] = dp[i - 1][j - 1] + 1\n                best = max(best, dp[i][j])\n    return best`,
         javascript: `var findLength = function(nums1, nums2) {\n    const m = nums1.length, n = nums2.length;\n    const dp = [];\n    for (let i = 0; i <= m; i++) dp.push(new Array(n + 1).fill(0));\n    let best = 0;\n    for (let i = 1; i <= m; i++) {\n        for (let j = 1; j <= n; j++) {\n            if (nums1[i - 1] === nums2[j - 1]) {\n                dp[i][j] = dp[i - 1][j - 1] + 1;\n                if (dp[i][j] > best) best = dp[i][j];\n            }\n        }\n    }\n    return best;\n};`,
@@ -358,6 +430,20 @@ export const DP2_PROBLEMS: CatalogProblem[] = [
         const difference = ri(rng, -4, 4);
         return { input: `${fmtIntArr(arr)}\n${difference}`, expectedOutput: String(ref(arr, difference)) };
       },
+      editorial: explain({
+        idea: "A chain with fixed difference is determined by its last value, so keep a map from value to the longest chain ending there and extend from `x - difference`.",
+        steps: [
+          "For each `x`, set `best[x] = best.get(x - difference, 0) + 1`.",
+          "Track the maximum.",
+        ],
+        why: "The element before `x` in any valid chain must be exactly `x - difference`, so the longest chain ending at `x` is one more than the longest ending at that predecessor seen so far.",
+        time: "O(n)",
+        space: "O(n)",
+        pitfalls: [
+          "Later copies of `x` overwrite `best[x]` with a value at least as large, which is what you want.",
+          "A difference of 0 works unchanged — chains of equal values.",
+        ],
+      }),
       solutions: {
         python: `def longestSubsequence(arr, difference: int) -> int:\n    best = {}\n    answer = 0\n    for x in arr:\n        best[x] = best.get(x - difference, 0) + 1\n        answer = max(answer, best[x])\n    return answer`,
         javascript: `var longestSubsequence = function(arr, difference) {\n    const best = new Map();\n    let answer = 0;\n    for (let i = 0; i < arr.length; i++) {\n        const prev = best.get(arr[i] - difference) || 0;\n        const len = prev + 1;\n        best.set(arr[i], len);\n        if (len > answer) answer = len;\n    }\n    return answer;\n};`,
@@ -424,6 +510,19 @@ export const DP2_PROBLEMS: CatalogProblem[] = [
         const nums = randArr(rng, ri(rng, 1, 30), rng() < 0.6 ? -8 : -1000, rng() < 0.6 ? 8 : 1000);
         return { input: fmtIntArr(nums), expectedOutput: String(ref(nums)) };
       },
+      editorial: explain({
+        idea: "Run the O(n²) LIS with a second table counting how many longest chains end at each index; a strictly longer chain replaces the count, an equal one adds to it.",
+        steps: [
+          "For each `i` and each `j < i` with `nums[j] < nums[i]`: if `length[j] + 1 > length[i]`, set `length[i]` and `count[i] = count[j]`; if equal, `count[i] += count[j]`.",
+          "Sum `count[i]` over indices whose `length[i]` equals the global maximum.",
+        ],
+        why: "Every longest chain ending at `i` passes through some `j` with `length[j] = length[i] - 1`, and distinct `j` (or distinct chains through the same `j`) give distinct chains, so the counts add exactly.",
+        time: "O(n²)",
+        space: "O(n)",
+        pitfalls: [
+          "Use `count[i] = count[j]` on a strict improvement, not `+=`.",
+        ],
+      }),
       solutions: {
         python: `def findNumberOfLIS(nums) -> int:\n    n = len(nums)\n    length = [1] * n\n    count = [1] * n\n    best = 1\n    for i in range(n):\n        for j in range(i):\n            if nums[j] < nums[i]:\n                if length[j] + 1 > length[i]:\n                    length[i] = length[j] + 1\n                    count[i] = count[j]\n                elif length[j] + 1 == length[i]:\n                    count[i] += count[j]\n        best = max(best, length[i])\n    return sum(count[i] for i in range(n) if length[i] == best)`,
         javascript: `var findNumberOfLIS = function(nums) {\n    const n = nums.length;\n    const len = new Array(n).fill(1);\n    const count = new Array(n).fill(1);\n    let best = 1;\n    for (let i = 0; i < n; i++) {\n        for (let j = 0; j < i; j++) {\n            if (nums[j] < nums[i]) {\n                if (len[j] + 1 > len[i]) {\n                    len[i] = len[j] + 1;\n                    count[i] = count[j];\n                } else if (len[j] + 1 === len[i]) {\n                    count[i] += count[j];\n                }\n            }\n        }\n        if (len[i] > best) best = len[i];\n    }\n    let total = 0;\n    for (let i = 0; i < n; i++) {\n        if (len[i] === best) total += count[i];\n    }\n    return total;\n};`,
@@ -482,6 +581,20 @@ export const DP2_PROBLEMS: CatalogProblem[] = [
         const nums = randArr(rng, ri(rng, 1, 40), 0, rng() < 0.5 ? 6 : 1000);
         return { input: fmtIntArr(nums), expectedOutput: String(ref(nums)) };
       },
+      editorial: explain({
+        idea: "Track the longest wiggle ending with a rise (`up`) and with a fall (`down`); a rise sets `up = down + 1`, a fall sets `down = up + 1`, equal neighbours change nothing.",
+        steps: [
+          "Return the length for fewer than two elements.",
+          "For each adjacent pair, update `up` or `down` as above.",
+          "Return `max(up, down)`.",
+        ],
+        why: "Only the direction of the last step matters for extending a wiggle. Greedily counting every direction change is optimal because a subsequence can always skip the middle of a monotone run.",
+        time: "O(n)",
+        space: "O(1)",
+        pitfalls: [
+          "Do not increment on plateaus; equal values contribute no wiggle.",
+        ],
+      }),
       solutions: {
         python: `def wiggleMaxLength(nums) -> int:\n    if len(nums) < 2:\n        return len(nums)\n    up = down = 1\n    for i in range(1, len(nums)):\n        if nums[i] > nums[i - 1]:\n            up = down + 1\n        elif nums[i] < nums[i - 1]:\n            down = up + 1\n    return max(up, down)`,
         javascript: `var wiggleMaxLength = function(nums) {\n    if (nums.length < 2) return nums.length;\n    let up = 1, down = 1;\n    for (let i = 1; i < nums.length; i++) {\n        if (nums[i] > nums[i - 1]) up = down + 1;\n        else if (nums[i] < nums[i - 1]) down = up + 1;\n    }\n    return Math.max(up, down);\n};`,
@@ -547,6 +660,19 @@ export const DP2_PROBLEMS: CatalogProblem[] = [
         }
         return { input: fmtIntArr(nums), expectedOutput: String(ref(nums)) };
       },
+      editorial: explain({
+        idea: "Let `cur` be the number of arithmetic slices ending at the current index; it grows by one while the difference matches and resets otherwise. Sum `cur` over the array.",
+        steps: [
+          "For `i` from 2: if `nums[i] - nums[i-1] == nums[i-1] - nums[i-2]`, `cur += 1` and `total += cur`; else `cur = 0`.",
+          "Return `total`.",
+        ],
+        why: "If the arithmetic run ending at `i` has length `L ≥ 3`, exactly `L - 2` slices end at `i`, which is what `cur` counts after each extension.",
+        time: "O(n)",
+        space: "O(1)",
+        pitfalls: [
+          "Slices of length 2 do not count.",
+        ],
+      }),
       solutions: {
         python: `def numberOfArithmeticSlices(nums) -> int:\n    total = cur = 0\n    for i in range(2, len(nums)):\n        if nums[i] - nums[i - 1] == nums[i - 1] - nums[i - 2]:\n            cur += 1\n            total += cur\n        else:\n            cur = 0\n    return total`,
         javascript: `var numberOfArithmeticSlices = function(nums) {\n    let total = 0, cur = 0;\n    for (let i = 2; i < nums.length; i++) {\n        if (nums[i] - nums[i - 1] === nums[i - 1] - nums[i - 2]) {\n            cur++;\n            total += cur;\n        } else {\n            cur = 0;\n        }\n    }\n    return total;\n};`,
@@ -602,6 +728,20 @@ export const DP2_PROBLEMS: CatalogProblem[] = [
         const n = ri(rng, 1, 50);
         return { input: String(n), expectedOutput: String(ref(n)) };
       },
+      editorial: explain({
+        idea: "Let `dp[v]` be the number of sorted strings of the current length starting with vowel `v`; adding a position turns it into a suffix sum.",
+        steps: [
+          "Start `dp = [1, 1, 1, 1, 1]`.",
+          "Repeat `n - 1` times: for `i` from 3 down to 0, `dp[i] += dp[i+1]`.",
+          "Return the sum.",
+        ],
+        why: "A sorted string starting with vowel `v` continues with a sorted string starting with `v` or later, so each length step replaces `dp[v]` by `Σ dp[w]` for `w ≥ v`. Updating right to left keeps the previous length's values available.",
+        time: "O(n)",
+        space: "O(1)",
+        pitfalls: [
+          "The closed form is `C(n + 4, 4)` — stars and bars over five vowels.",
+        ],
+      }),
       solutions: {
         python: `def countVowelStrings(n: int) -> int:\n    dp = [1] * 5\n    for _ in range(n - 1):\n        for i in range(3, -1, -1):\n            dp[i] += dp[i + 1]\n    return sum(dp)`,
         javascript: `var countVowelStrings = function(n) {\n    const dp = [1, 1, 1, 1, 1];\n    for (let step = 1; step < n; step++) {\n        for (let i = 3; i >= 0; i--) dp[i] += dp[i + 1];\n    }\n    return dp[0] + dp[1] + dp[2] + dp[3] + dp[4];\n};`,
@@ -662,6 +802,19 @@ export const DP2_PROBLEMS: CatalogProblem[] = [
         const b = rng() < 0.3 ? shuffle(rng, a.split("")).join("") : randStr(rng, 1, 25, alphabet);
         return { input: `"${a}"\n"${b}"`, expectedOutput: String(ref(a, b)) };
       },
+      editorial: explain({
+        idea: "What survives the deletions is a common subsequence; keeping the longest one minimises deletions, so the answer is `m + n - 2·LCS`.",
+        steps: [
+          "Compute the LCS table: equal characters take the diagonal + 1, otherwise the max of up and left.",
+          "Return `m + n - 2 · dp[m][n]`.",
+        ],
+        why: "Every character not in the kept common subsequence must be deleted from its own string; the kept part is longest when it is the LCS.",
+        time: "O(m · n)",
+        space: "O(m · n), reducible to one row",
+        pitfalls: [
+          "This is edit distance with only deletions — do not add the substitution transition.",
+        ],
+      }),
       solutions: {
         python: `def minDistance(word1: str, word2: str) -> int:\n    m, n = len(word1), len(word2)\n    dp = [[0] * (n + 1) for _ in range(m + 1)]\n    for i in range(1, m + 1):\n        for j in range(1, n + 1):\n            if word1[i - 1] == word2[j - 1]:\n                dp[i][j] = dp[i - 1][j - 1] + 1\n            else:\n                dp[i][j] = max(dp[i - 1][j], dp[i][j - 1])\n    return m + n - 2 * dp[m][n]`,
         javascript: `var minDistance = function(word1, word2) {\n    const m = word1.length, n = word2.length;\n    const dp = [];\n    for (let i = 0; i <= m; i++) dp.push(new Array(n + 1).fill(0));\n    for (let i = 1; i <= m; i++) {\n        for (let j = 1; j <= n; j++) {\n            if (word1[i - 1] === word2[j - 1]) dp[i][j] = dp[i - 1][j - 1] + 1;\n            else dp[i][j] = Math.max(dp[i - 1][j], dp[i][j - 1]);\n        }\n    }\n    return m + n - 2 * dp[m][n];\n};`,
@@ -740,6 +893,20 @@ export const DP2_PROBLEMS: CatalogProblem[] = [
         }
         return { input: `"${s1}"\n"${s2}"\n"${s3}"`, expectedOutput: bool(ref(s1, s2, s3)) };
       },
+      editorial: explain({
+        idea: "`dp[i][j]` says whether the first `i` characters of `s1` and the first `j` of `s2` can interleave into the first `i + j` of `s3`; the next character of `s3` comes from one side or the other.",
+        steps: [
+          "Reject if `len(s1) + len(s2) != len(s3)`.",
+          "Set `dp[0][0] = true`; then `dp[i][j]` is true if `dp[i-1][j]` and `s1[i-1] == s3[i+j-1]`, or `dp[i][j-1]` and `s2[j-1] == s3[i+j-1]`.",
+          "Return `dp[m][n]`.",
+        ],
+        why: "The last character of any interleaving prefix must be the last used character of `s1` or of `s2`, so the two transitions cover every case and the table is exact.",
+        time: "O(m · n)",
+        space: "O(m · n), reducible to one row",
+        pitfalls: [
+          "The length check is what makes the indexing safe, and it also prunes most rejections instantly.",
+        ],
+      }),
       solutions: {
         python: `def isInterleave(s1: str, s2: str, s3: str) -> bool:\n    m, n = len(s1), len(s2)\n    if m + n != len(s3):\n        return False\n    dp = [[False] * (n + 1) for _ in range(m + 1)]\n    dp[0][0] = True\n    for i in range(m + 1):\n        for j in range(n + 1):\n            if i > 0 and dp[i - 1][j] and s1[i - 1] == s3[i + j - 1]:\n                dp[i][j] = True\n            if j > 0 and dp[i][j - 1] and s2[j - 1] == s3[i + j - 1]:\n                dp[i][j] = True\n    return dp[m][n]`,
         javascript: `var isInterleave = function(s1, s2, s3) {\n    const m = s1.length, n = s2.length;\n    if (m + n !== s3.length) return false;\n    const dp = [];\n    for (let i = 0; i <= m; i++) dp.push(new Array(n + 1).fill(false));\n    dp[0][0] = true;\n    for (let i = 0; i <= m; i++) {\n        for (let j = 0; j <= n; j++) {\n            if (i > 0 && dp[i - 1][j] && s1[i - 1] === s3[i + j - 1]) dp[i][j] = true;\n            if (j > 0 && dp[i][j - 1] && s2[j - 1] === s3[i + j - 1]) dp[i][j] = true;\n        }\n    }\n    return dp[m][n];\n};`,
@@ -806,6 +973,20 @@ export const DP2_PROBLEMS: CatalogProblem[] = [
         const matrix = Array.from({ length: n }, () => randArr(rng, n, -100, 100));
         return { input: fmtIntMat(matrix), expectedOutput: String(ref(matrix)) };
       },
+      editorial: explain({
+        idea: "Process rows top to bottom keeping the cheapest cost to reach each column; each cell takes the min of the three cells above it (up, up-left, up-right).",
+        steps: [
+          "Start `dp = matrix[0]`.",
+          "For each following row, `nxt[c] = matrix[r][c] + min(dp[c-1], dp[c], dp[c+1])` with bounds respected.",
+          "Return `min(dp)`.",
+        ],
+        why: "A falling path enters each cell from one of exactly three predecessors, so the best cost decomposes over that choice and only the previous row is needed.",
+        time: "O(n²)",
+        space: "O(n)",
+        pitfalls: [
+          "Take the minimum over the whole last row — the path may end anywhere.",
+        ],
+      }),
       solutions: {
         python: `def minFallingPathSum(matrix) -> int:\n    n = len(matrix)\n    dp = list(matrix[0])\n    for r in range(1, n):\n        nxt = []\n        for c in range(n):\n            best = dp[c]\n            if c > 0:\n                best = min(best, dp[c - 1])\n            if c + 1 < n:\n                best = min(best, dp[c + 1])\n            nxt.append(matrix[r][c] + best)\n        dp = nxt\n    return min(dp)`,
         javascript: `var minFallingPathSum = function(matrix) {\n    const n = matrix.length;\n    let dp = matrix[0].slice();\n    for (let r = 1; r < n; r++) {\n        const next = [];\n        for (let c = 0; c < n; c++) {\n            let best = dp[c];\n            if (c > 0 && dp[c - 1] < best) best = dp[c - 1];\n            if (c + 1 < n && dp[c + 1] < best) best = dp[c + 1];\n            next.push(matrix[r][c] + best);\n        }\n        dp = next;\n    }\n    let answer = dp[0];\n    for (let c = 1; c < n; c++) {\n        if (dp[c] < answer) answer = dp[c];\n    }\n    return answer;\n};`,
@@ -866,6 +1047,20 @@ export const DP2_PROBLEMS: CatalogProblem[] = [
         const triangle = Array.from({ length: n }, (_, i) => randArr(rng, i + 1, -100, 100));
         return { input: fmtIntMat(triangle), expectedOutput: String(ref(triangle)) };
       },
+      editorial: explain({
+        idea: "Fold bottom-up: start with the last row as the answer for its cells, and for each row above set `dp[c] = triangle[r][c] + min(dp[c], dp[c+1])`.",
+        steps: [
+          "Copy the last row into `dp`.",
+          "For `r` from the second-last row up to 0, update `dp[c]` for `c` in `0..r`.",
+          "Return `dp[0]`.",
+        ],
+        why: "From cell `(r, c)` the path continues to `(r+1, c)` or `(r+1, c+1)`, so the best cost from that cell downward is its value plus the better of the two below. Bottom-up leaves the answer at the apex with one array.",
+        time: "O(n²)",
+        space: "O(n)",
+        pitfalls: [
+          "Top-down needs care at the row edges; bottom-up has no edge cases.",
+        ],
+      }),
       solutions: {
         python: `def minimumTotal(triangle) -> int:\n    dp = list(triangle[-1])\n    for r in range(len(triangle) - 2, -1, -1):\n        for c in range(r + 1):\n            dp[c] = triangle[r][c] + min(dp[c], dp[c + 1])\n    return dp[0]`,
         javascript: `var minimumTotal = function(triangle) {\n    const n = triangle.length;\n    const dp = triangle[n - 1].slice();\n    for (let r = n - 2; r >= 0; r--) {\n        for (let c = 0; c <= r; c++) {\n            dp[c] = triangle[r][c] + Math.min(dp[c], dp[c + 1]);\n        }\n    }\n    return dp[0];\n};`,
@@ -924,6 +1119,20 @@ export const DP2_PROBLEMS: CatalogProblem[] = [
         const n = ri(rng, 1, 300);
         return { input: String(n), expectedOutput: String(ref(n)) };
       },
+      editorial: explain({
+        idea: "Unbounded coin change where the coins are the perfect squares: `dp[i] = 1 + min(dp[i - k²])` over every `k² ≤ i`.",
+        steps: [
+          "Set `dp[0] = 0` and everything else to a large value.",
+          "For each `i`, try every square `k² ≤ i` and take the minimum.",
+          "Return `dp[n]`.",
+        ],
+        why: "The last square in an optimal representation of `i` is some `k²`, leaving an optimal representation of `i - k²`; the recurrence tries every last square.",
+        time: "O(n · √n)",
+        space: "O(n)",
+        pitfalls: [
+          "Lagrange's theorem bounds the answer at 4; a number-theory shortcut exists but the DP is the expected approach.",
+        ],
+      }),
       solutions: {
         python: `def numSquares(n: int) -> int:\n    dp = [0] + [n + 1] * n\n    for i in range(1, n + 1):\n        k = 1\n        while k * k <= i:\n            dp[i] = min(dp[i], dp[i - k * k] + 1)\n            k += 1\n    return dp[n]`,
         javascript: `var numSquares = function(n) {\n    const dp = new Array(n + 1).fill(n + 1);\n    dp[0] = 0;\n    for (let i = 1; i <= n; i++) {\n        for (let k = 1; k * k <= i; k++) {\n            if (dp[i - k * k] + 1 < dp[i]) dp[i] = dp[i - k * k] + 1;\n        }\n    }\n    return dp[n];\n};`,
@@ -983,6 +1192,20 @@ export const DP2_PROBLEMS: CatalogProblem[] = [
         const n = ri(rng, 2, 40);
         return { input: String(n), expectedOutput: String(ref(n)) };
       },
+      editorial: explain({
+        idea: "For each first piece `k`, either stop (`k · (n-k)`) or keep breaking the remainder (`k · dp[n-k]`); take the best over all `k`.",
+        steps: [
+          "Set `dp[1] = 1`.",
+          "For `i` from 2 to `n` and `k` from 1 to `i-1`, `dp[i] = max(dp[i], k·(i-k), k·dp[i-k])`.",
+          "Return `dp[n]`.",
+        ],
+        why: "`dp[i]` is the best product of a break into at least two parts; allowing \"stop after one split\" separately is what handles the at-least-two rule at the top level while still letting sub-breaks use a single piece.",
+        time: "O(n²)",
+        space: "O(n)",
+        pitfalls: [
+          "The greedy answer uses as many 3s as possible (with a 4 or 2 at the end) — the DP reproduces it and is easier to justify.",
+        ],
+      }),
       solutions: {
         python: `def integerBreak(n: int) -> int:\n    dp = [0] * (n + 1)\n    dp[1] = 1\n    for i in range(2, n + 1):\n        for k in range(1, i):\n            dp[i] = max(dp[i], k * (i - k), k * dp[i - k])\n    return dp[n]`,
         javascript: `var integerBreak = function(n) {\n    const dp = new Array(n + 1).fill(0);\n    dp[1] = 1;\n    for (let i = 2; i <= n; i++) {\n        for (let k = 1; k < i; k++) {\n            const candidate = Math.max(k * (i - k), k * dp[i - k]);\n            if (candidate > dp[i]) dp[i] = candidate;\n        }\n    }\n    return dp[n];\n};`,
@@ -1044,6 +1267,20 @@ export const DP2_PROBLEMS: CatalogProblem[] = [
         const n = ri(rng, 1, 1000);
         return { input: String(n), expectedOutput: String(ref(n)) };
       },
+      editorial: explain({
+        idea: "Every ugly number after 1 is an earlier ugly number times 2, 3 or 5. Keep three pointers into the list built so far and always emit the smallest candidate.",
+        steps: [
+          "Start `ugly = [1]` and `i2 = i3 = i5 = 0`.",
+          "Repeat: `next = min(ugly[i2]·2, ugly[i3]·3, ugly[i5]·5)`; append it; advance every pointer whose candidate equals `next`.",
+          "Return the n-th entry.",
+        ],
+        why: "The three candidate streams are each increasing, and merging them by smallest-first produces the ugly numbers in order; advancing all matching pointers removes duplicates like `6 = 2·3 = 3·2`.",
+        time: "O(n)",
+        space: "O(n)",
+        pitfalls: [
+          "Advancing only the first matching pointer emits duplicates and shifts every later answer.",
+        ],
+      }),
       solutions: {
         python: `def nthUglyNumber(n: int) -> int:\n    ugly = [1] * n\n    i2 = i3 = i5 = 0\n    for i in range(1, n):\n        nxt = min(ugly[i2] * 2, ugly[i3] * 3, ugly[i5] * 5)\n        ugly[i] = nxt\n        if nxt == ugly[i2] * 2:\n            i2 += 1\n        if nxt == ugly[i3] * 3:\n            i3 += 1\n        if nxt == ugly[i5] * 5:\n            i5 += 1\n    return ugly[n - 1]`,
         javascript: `var nthUglyNumber = function(n) {\n    const ugly = new Array(n).fill(1);\n    let i2 = 0, i3 = 0, i5 = 0;\n    for (let i = 1; i < n; i++) {\n        const next = Math.min(ugly[i2] * 2, Math.min(ugly[i3] * 3, ugly[i5] * 5));\n        ugly[i] = next;\n        if (next === ugly[i2] * 2) i2++;\n        if (next === ugly[i3] * 3) i3++;\n        if (next === ugly[i5] * 5) i5++;\n    }\n    return ugly[n - 1];\n};`,
@@ -1101,6 +1338,20 @@ export const DP2_PROBLEMS: CatalogProblem[] = [
         const n = ri(rng, 0, 8);
         return { input: String(n), expectedOutput: String(ref(n)) };
       },
+      editorial: explain({
+        idea: "Count by digit length: a `d`-digit number with distinct digits has `9 · 9 · 8 · … · (11 - d)` choices; sum over `d` up to `min(n, 10)`, plus the ten one-digit numbers.",
+        steps: [
+          "Return 1 for `n = 0`.",
+          "Start `total = 10`, `current = 9`; for `d` from 2 to `min(n, 10)`, `current *= 11 - d` and add it.",
+          "Return `total`.",
+        ],
+        why: "The leading digit cannot be 0 (9 choices), then each subsequent position avoids all earlier digits. Beyond ten digits no number can have distinct digits.",
+        time: "O(min(n, 10))",
+        space: "O(1)",
+        pitfalls: [
+          "The one-digit count is 10 (including 0), not 9.",
+        ],
+      }),
       solutions: {
         python: `def countNumbersWithUniqueDigits(n: int) -> int:\n    if n == 0:\n        return 1\n    total, current = 10, 9\n    for digits in range(2, min(n, 10) + 1):\n        current *= 11 - digits\n        total += current\n    return total`,
         javascript: `var countNumbersWithUniqueDigits = function(n) {\n    if (n === 0) return 1;\n    let total = 10, current = 9;\n    for (let digits = 2; digits <= n && digits <= 10; digits++) {\n        current *= 11 - digits;\n        total += current;\n    }\n    return total;\n};`,
@@ -1166,6 +1417,20 @@ export const DP2_PROBLEMS: CatalogProblem[] = [
         if (total % 2 === 0) piles[0] += 1;
         return { input: fmtIntArr(piles), expectedOutput: bool(ref(piles)) };
       },
+      editorial: explain({
+        idea: "`dp[i][j]` is the best score *difference* the player to move can force on piles `i..j`; taking an end scores that pile minus whatever the opponent can then force.",
+        steps: [
+          "Set `dp[i][i] = piles[i]`.",
+          "For increasing lengths, `dp[i][j] = max(piles[i] - dp[i+1][j], piles[j] - dp[i][j-1])`.",
+          "Return `dp[0][n-1] > 0`.",
+        ],
+        why: "Minimax on a difference collapses two players into one recurrence: the mover maximises their gain minus the opponent's optimal gain on the remainder. Alice wins iff the difference from the full row is positive.",
+        time: "O(n²)",
+        space: "O(n²)",
+        pitfalls: [
+          "With an even count and odd total, the first player can always take all odd-indexed or all even-indexed piles and win — the DP proves it in general.",
+        ],
+      }),
       solutions: {
         python: `def stoneGame(piles) -> bool:\n    n = len(piles)\n    dp = [[0] * n for _ in range(n)]\n    for i in range(n):\n        dp[i][i] = piles[i]\n    for length in range(2, n + 1):\n        for i in range(n - length + 1):\n            j = i + length - 1\n            dp[i][j] = max(piles[i] - dp[i + 1][j], piles[j] - dp[i][j - 1])\n    return dp[0][n - 1] > 0`,
         javascript: `var stoneGame = function(piles) {\n    const n = piles.length;\n    const dp = [];\n    for (let i = 0; i < n; i++) dp.push(new Array(n).fill(0));\n    for (let i = 0; i < n; i++) dp[i][i] = piles[i];\n    for (let len = 2; len <= n; len++) {\n        for (let i = 0; i + len - 1 < n; i++) {\n            const j = i + len - 1;\n            dp[i][j] = Math.max(piles[i] - dp[i + 1][j], piles[j] - dp[i][j - 1]);\n        }\n    }\n    return dp[0][n - 1] > 0;\n};`,
@@ -1215,6 +1480,18 @@ export const DP2_PROBLEMS: CatalogProblem[] = [
         const n = ri(rng, 1, 1000);
         return { input: String(n), expectedOutput: bool(ref(n)) };
       },
+      editorial: explain({
+        idea: "From an even `n`, taking `x = 1` hands the opponent an odd number; every divisor of an odd number is odd, so they must hand back an even one. Even positions win, odd positions lose.",
+        steps: [
+          "Return `n % 2 == 0`.",
+        ],
+        why: "By induction: 1 is a loss (no move). Odd `n` has only odd proper divisors, so every move leads to an even number; even `n` can always subtract 1 to reach an odd number. So odd loses and even wins.",
+        time: "O(1)",
+        space: "O(1)",
+        pitfalls: [
+          "The `O(n²)` DP over positions reproduces the same parity pattern and is a fine way to discover it.",
+        ],
+      }),
       solutions: {
         python: `def divisorGame(n: int) -> bool:\n    return n % 2 == 0`,
         javascript: `var divisorGame = function(n) {\n    return n % 2 === 0;\n};`,
@@ -1275,6 +1552,20 @@ export const DP2_PROBLEMS: CatalogProblem[] = [
         const stones = randArr(rng, ri(rng, 1, 20), 1, 100);
         return { input: fmtIntArr(stones), expectedOutput: String(ref(stones)) };
       },
+      editorial: explain({
+        idea: "Each smash assigns the stones signs, so the final weight is `|S₁ - S₂|` for a partition of the stones. Find the largest reachable subset sum at most `total / 2` with a boolean knapsack.",
+        steps: [
+          "Set `half = total // 2` and `dp[0] = true`.",
+          "For each stone, for `w` from `half` down to `stone`, `dp[w] |= dp[w - stone]`.",
+          "Return `total - 2·w` for the largest reachable `w`.",
+        ],
+        why: "Any sequence of smashes yields a signed sum of the weights, and any signed sum with both signs present is achievable, so minimising the final stone is minimising `|total - 2·S|` over subset sums `S`.",
+        time: "O(n · total)",
+        space: "O(total)",
+        pitfalls: [
+          "Iterate the weight downward so each stone is used at most once.",
+        ],
+      }),
       solutions: {
         python: `def lastStoneWeightII(stones) -> int:\n    total = sum(stones)\n    half = total // 2\n    dp = [False] * (half + 1)\n    dp[0] = True\n    for stone in stones:\n        for w in range(half, stone - 1, -1):\n            if dp[w - stone]:\n                dp[w] = True\n    for w in range(half, -1, -1):\n        if dp[w]:\n            return total - 2 * w\n    return total`,
         javascript: `var lastStoneWeightII = function(stones) {\n    let total = 0;\n    for (let i = 0; i < stones.length; i++) total += stones[i];\n    const half = Math.floor(total / 2);\n    const dp = new Array(half + 1).fill(false);\n    dp[0] = true;\n    for (let i = 0; i < stones.length; i++) {\n        for (let w = half; w >= stones[i]; w--) {\n            if (dp[w - stones[i]]) dp[w] = true;\n        }\n    }\n    for (let w = half; w >= 0; w--) {\n        if (dp[w]) return total - 2 * w;\n    }\n    return total;\n};`,
@@ -1343,6 +1634,20 @@ export const DP2_PROBLEMS: CatalogProblem[] = [
         const n = ri(rng, 0, 20);
         return { input: `${fmtStrArr(strs)}\n${m}\n${n}`, expectedOutput: String(ref(strs, m, n)) };
       },
+      editorial: explain({
+        idea: "A 0/1 knapsack with two capacities: `dp[i][j]` is the largest subset using at most `i` zeros and `j` ones; iterate both capacities downward per string.",
+        steps: [
+          "For each string count its zeros and ones.",
+          "For `i` from `m` down to `zeros` and `j` from `n` down to `ones`, `dp[i][j] = max(dp[i][j], dp[i-zeros][j-ones] + 1)`.",
+          "Return `dp[m][n]`.",
+        ],
+        why: "Each string is either taken or not; the downward sweep guarantees the value read from `dp[i-zeros][j-ones]` predates the current string, so it is used at most once.",
+        time: "O(L · m · n) for `L` strings",
+        space: "O(m · n)",
+        pitfalls: [
+          "Iterating upward turns it into an unbounded knapsack and overcounts.",
+        ],
+      }),
       solutions: {
         python: `def findMaxForm(strs, m: int, n: int) -> int:\n    dp = [[0] * (n + 1) for _ in range(m + 1)]\n    for s in strs:\n        zeros = s.count("0")\n        ones = len(s) - zeros\n        for i in range(m, zeros - 1, -1):\n            for j in range(n, ones - 1, -1):\n                dp[i][j] = max(dp[i][j], dp[i - zeros][j - ones] + 1)\n    return dp[m][n]`,
         javascript: `var findMaxForm = function(strs, m, n) {\n    const dp = [];\n    for (let i = 0; i <= m; i++) dp.push(new Array(n + 1).fill(0));\n    for (let s = 0; s < strs.length; s++) {\n        let zeros = 0, ones = 0;\n        for (let k = 0; k < strs[s].length; k++) {\n            if (strs[s][k] === "0") zeros++;\n            else ones++;\n        }\n        for (let i = m; i >= zeros; i--) {\n            for (let j = n; j >= ones; j--) {\n                const candidate = dp[i - zeros][j - ones] + 1;\n                if (candidate > dp[i][j]) dp[i][j] = candidate;\n            }\n        }\n    }\n    return dp[m][n];\n};`,
@@ -1403,6 +1708,20 @@ export const DP2_PROBLEMS: CatalogProblem[] = [
         const target = ri(rng, 1, 30);
         return { input: `${fmtIntArr(nums)}\n${target}`, expectedOutput: String(ref(nums, target)) };
       },
+      editorial: explain({
+        idea: "Order matters, so loop the target outside and the numbers inside: `dp[t] = Σ dp[t - num]` counts sequences by their last element.",
+        steps: [
+          "Set `dp[0] = 1`.",
+          "For `t` from 1 to `target`, for each `num ≤ t`, `dp[t] += dp[t - num]`.",
+          "Return `dp[target]`.",
+        ],
+        why: "Every ordered sequence summing to `t` ends in some `num`, and the prefix is an ordered sequence summing to `t - num`; the sum over `num` counts each sequence exactly once.",
+        time: "O(target · n)",
+        space: "O(target)",
+        pitfalls: [
+          "Swapping the loops counts unordered combinations — the classic Coin Change 2 mistake in reverse.",
+        ],
+      }),
       solutions: {
         python: `def combinationSum4(nums, target: int) -> int:\n    dp = [0] * (target + 1)\n    dp[0] = 1\n    for t in range(1, target + 1):\n        for num in nums:\n            if num <= t:\n                dp[t] += dp[t - num]\n    return dp[target]`,
         javascript: `var combinationSum4 = function(nums, target) {\n    const dp = new Array(target + 1).fill(0);\n    dp[0] = 1;\n    for (let t = 1; t <= target; t++) {\n        for (let i = 0; i < nums.length; i++) {\n            if (nums[i] <= t) dp[t] += dp[t - nums[i]];\n        }\n    }\n    return dp[target];\n};`,
@@ -1485,6 +1804,20 @@ export const DP2_PROBLEMS: CatalogProblem[] = [
         }
         return { input: fmtStrArr(words), expectedOutput: String(ref(words)) };
       },
+      editorial: explain({
+        idea: "A predecessor is exactly one character shorter, so sort by length; `best[i]` is the longest chain ending at word `i`, extended from any shorter word that is a predecessor.",
+        steps: [
+          "Sort words by length.",
+          "For each `i`, for each earlier `j`, if `words[j]` is a predecessor of `words[i]`, `best[i] = max(best[i], best[j] + 1)`.",
+          "Return the maximum.",
+        ],
+        why: "Chains strictly increase in length, so after sorting every predecessor precedes its successor and the LIS-style recurrence sees all candidates. The predecessor test is a two-pointer walk allowing one skip in the longer word.",
+        time: "O(n² · L)",
+        space: "O(n)",
+        pitfalls: [
+          "A hash-map variant — delete each character of the word and look up the result — runs in `O(n · L²)` and scales better.",
+        ],
+      }),
       solutions: {
         python: `def longestStrChain(words) -> int:\n    def is_predecessor(a, b):\n        if len(b) != len(a) + 1:\n            return False\n        i = j = skips = 0\n        while i < len(a) and j < len(b):\n            if a[i] == b[j]:\n                i += 1\n                j += 1\n            else:\n                skips += 1\n                j += 1\n                if skips > 1:\n                    return False\n        return True\n\n    ordered = sorted(words, key=len)\n    best = [1] * len(ordered)\n    answer = 1\n    for i in range(len(ordered)):\n        for j in range(i):\n            if is_predecessor(ordered[j], ordered[i]):\n                best[i] = max(best[i], best[j] + 1)\n        answer = max(answer, best[i])\n    return answer`,
         javascript: `var longestStrChain = function(words) {\n    const isPredecessor = function(a, b) {\n        if (b.length !== a.length + 1) return false;\n        let i = 0, j = 0, skips = 0;\n        while (i < a.length && j < b.length) {\n            if (a[i] === b[j]) { i++; j++; }\n            else {\n                skips++;\n                j++;\n                if (skips > 1) return false;\n            }\n        }\n        return true;\n    };\n    const sorted = words.slice().sort(function(a, b) { return a.length - b.length; });\n    const best = new Array(sorted.length).fill(1);\n    let answer = 1;\n    for (let i = 0; i < sorted.length; i++) {\n        for (let j = 0; j < i; j++) {\n            if (isPredecessor(sorted[j], sorted[i]) && best[j] + 1 > best[i]) best[i] = best[j] + 1;\n        }\n        if (best[i] > answer) answer = best[i];\n    }\n    return answer;\n};`,
@@ -1552,6 +1885,20 @@ export const DP2_PROBLEMS: CatalogProblem[] = [
         const costs = [ri(rng, 1, 1000), ri(rng, 1, 1000), ri(rng, 1, 1000)];
         return { input: `${fmtIntArr(days)}\n${fmtIntArr(costs)}`, expectedOutput: String(ref(days, costs)) };
       },
+      editorial: explain({
+        idea: "Work day by day to the last travel day; a non-travel day costs nothing extra, a travel day takes the cheapest of a 1-, 7- or 30-day pass bought to cover it.",
+        steps: [
+          "Mark travel days in a boolean array up to `days[-1]`.",
+          "For each day `d`: if not a travel day, `dp[d] = dp[d-1]`; else `dp[d] = min(dp[d-1] + c1, dp[max(0,d-7)] + c7, dp[max(0,d-30)] + c30)`.",
+          "Return `dp[last]`.",
+        ],
+        why: "A pass covering day `d` can be assumed to end on `d` without loss, so the cost to cover through `d` is the cost to cover through the day before the pass started plus the pass price.",
+        time: "O(365)",
+        space: "O(365)",
+        pitfalls: [
+          "Clamp the index at 0 for passes that would start before day 1.",
+        ],
+      }),
       solutions: {
         python: `def mincostTickets(days, costs) -> int:\n    last = days[-1]\n    travel = [False] * (last + 1)\n    for d in days:\n        travel[d] = True\n    dp = [0] * (last + 1)\n    for d in range(1, last + 1):\n        if not travel[d]:\n            dp[d] = dp[d - 1]\n        else:\n            dp[d] = min(dp[d - 1] + costs[0],\n                        dp[max(0, d - 7)] + costs[1],\n                        dp[max(0, d - 30)] + costs[2])\n    return dp[last]`,
         javascript: `var mincostTickets = function(days, costs) {\n    const last = days[days.length - 1];\n    const travel = new Array(last + 1).fill(false);\n    for (let i = 0; i < days.length; i++) travel[days[i]] = true;\n    const dp = new Array(last + 1).fill(0);\n    for (let d = 1; d <= last; d++) {\n        if (!travel[d]) {\n            dp[d] = dp[d - 1];\n            continue;\n        }\n        const one = dp[d - 1] + costs[0];\n        const seven = dp[Math.max(0, d - 7)] + costs[1];\n        const thirty = dp[Math.max(0, d - 30)] + costs[2];\n        dp[d] = Math.min(one, Math.min(seven, thirty));\n    }\n    return dp[last];\n};`,
@@ -1614,6 +1961,20 @@ export const DP2_PROBLEMS: CatalogProblem[] = [
         const nums = randArr(rng, ri(rng, 1, 40), rng() < 0.25 ? -1000 : -20, rng() < 0.25 ? -1 : 1000);
         return { input: fmtIntArr(nums), expectedOutput: String(ref(nums)) };
       },
+      editorial: explain({
+        idea: "The best subarray either lies inside the array (ordinary Kadane) or wraps around, in which case it is the total minus the minimum inner subarray. Run Kadane for both max and min.",
+        steps: [
+          "In one pass compute `total`, the maximum subarray sum and the minimum subarray sum.",
+          "If the maximum is negative, return it (all elements negative).",
+          "Otherwise return `max(maxSum, total - minSum)`.",
+        ],
+        why: "A wrapping subarray is the complement of a contiguous inner subarray, so its sum is `total - inner`; minimising the inner sum maximises the wrap. The all-negative guard prevents choosing the empty complement.",
+        time: "O(n)",
+        space: "O(1)",
+        pitfalls: [
+          "Without the guard, `total - minSum` is 0 for an all-negative array, but the subarray must be non-empty.",
+        ],
+      }),
       solutions: {
         python: `def maxSubarraySumCircular(nums) -> int:\n    total = 0\n    max_sum = float("-inf")\n    cur_max = 0\n    min_sum = float("inf")\n    cur_min = 0\n    for x in nums:\n        total += x\n        cur_max = max(x, cur_max + x)\n        max_sum = max(max_sum, cur_max)\n        cur_min = min(x, cur_min + x)\n        min_sum = min(min_sum, cur_min)\n    if max_sum < 0:\n        return max_sum\n    return max(max_sum, total - min_sum)`,
         javascript: `var maxSubarraySumCircular = function(nums) {\n    let total = 0;\n    let maxSum = -Infinity, curMax = 0;\n    let minSum = Infinity, curMin = 0;\n    for (let i = 0; i < nums.length; i++) {\n        total += nums[i];\n        curMax = Math.max(nums[i], curMax + nums[i]);\n        if (curMax > maxSum) maxSum = curMax;\n        curMin = Math.min(nums[i], curMin + nums[i]);\n        if (curMin < minSum) minSum = curMin;\n    }\n    if (maxSum < 0) return maxSum;\n    return Math.max(maxSum, total - minSum);\n};`,
@@ -1671,6 +2032,20 @@ export const DP2_PROBLEMS: CatalogProblem[] = [
         const values = randArr(rng, ri(rng, 2, 40), 1, 1000);
         return { input: fmtIntArr(values), expectedOutput: String(ref(values)) };
       },
+      editorial: explain({
+        idea: "Split the score into `(values[i] + i)` and `(values[j] - j)`; sweep `j` keeping the best left part seen so far.",
+        steps: [
+          "Start `bestLeft = values[0] + 0`.",
+          "For each `j ≥ 1`, update the answer with `bestLeft + values[j] - j`, then `bestLeft = max(bestLeft, values[j] + j)`.",
+          "Return the answer.",
+        ],
+        why: "The two halves of the score depend on `i` and `j` independently, so for each `j` the optimal `i` is the one maximising `values[i] + i` among earlier indices.",
+        time: "O(n)",
+        space: "O(1)",
+        pitfalls: [
+          "Update `bestLeft` after using it, so `i < j` is preserved.",
+        ],
+      }),
       solutions: {
         python: `def maxScoreSightseeingPair(values) -> int:\n    best = float("-inf")\n    best_left = values[0]\n    for j in range(1, len(values)):\n        best = max(best, best_left + values[j] - j)\n        best_left = max(best_left, values[j] + j)\n    return best`,
         javascript: `var maxScoreSightseeingPair = function(values) {\n    let best = -Infinity, bestLeft = values[0];\n    for (let j = 1; j < values.length; j++) {\n        const candidate = bestLeft + values[j] - j;\n        if (candidate > best) best = candidate;\n        if (values[j] + j > bestLeft) bestLeft = values[j] + j;\n    }\n    return best;\n};`,
@@ -1736,6 +2111,21 @@ export const DP2_PROBLEMS: CatalogProblem[] = [
         const target = ri(rng, 1, 60);
         return { input: `${n}\n${k}\n${target}`, expectedOutput: String(ref(n, k, target)) };
       },
+      editorial: explain({
+        idea: "Add one die at a time: `dp[t]` after `d` dice is `Σ dp_prev[t - face]` over the faces `1..k`.",
+        steps: [
+          "Start `dp[0] = 1`.",
+          "Repeat `n` times: `nxt[t] = Σ dp[t - f]` for `f` in `1..min(k, t)`, modulo `10⁹+7`.",
+          "Return `dp[target]`.",
+        ],
+        why: "The last die shows some face `f`, and the remaining dice must sum to `t - f`; summing over faces counts every roll exactly once.",
+        time: "O(n · target · k)",
+        space: "O(target)",
+        pitfalls: [
+          "Reduce modulo as you go; the raw counts overflow quickly.",
+          "A prefix-sum over the previous row drops the inner factor of `k`.",
+        ],
+      }),
       solutions: {
         python: `def numRollsToTarget(n: int, k: int, target: int) -> int:\n    MOD = 1000000007\n    dp = [0] * (target + 1)\n    dp[0] = 1\n    for _ in range(n):\n        nxt = [0] * (target + 1)\n        for t in range(1, target + 1):\n            total = 0\n            for face in range(1, min(k, t) + 1):\n                total += dp[t - face]\n            nxt[t] = total % MOD\n        dp = nxt\n    return dp[target]`,
         javascript: `var numRollsToTarget = function(n, k, target) {\n    const MOD = 1000000007;\n    let dp = new Array(target + 1).fill(0);\n    dp[0] = 1;\n    for (let die = 1; die <= n; die++) {\n        const next = new Array(target + 1).fill(0);\n        for (let t = 1; t <= target; t++) {\n            let sum = 0;\n            for (let face = 1; face <= k && face <= t; face++) {\n                sum = (sum + dp[t - face]) % MOD;\n            }\n            next[t] = sum;\n        }\n        dp = next;\n    }\n    return dp[target];\n};`,
@@ -1795,6 +2185,20 @@ export const DP2_PROBLEMS: CatalogProblem[] = [
         const arr = randArr(rng, ri(rng, 1, 40), 0, rng() < 0.5 ? 5 : 1000);
         return { input: fmtIntArr(arr), expectedOutput: String(ref(arr)) };
       },
+      editorial: explain({
+        idea: "Track the longest turbulent run ending with a rise and with a fall; a rise sets `up = down + 1` and resets `down`, a fall does the mirror, equality resets both.",
+        steps: [
+          "Start `up = down = best = 1`.",
+          "For each adjacent pair: rise → `up = down + 1, down = 1`; fall → `down = up + 1, up = 1`; equal → both 1.",
+          "Track the maximum of `up` and `down`.",
+        ],
+        why: "A turbulent subarray must alternate, so the run ending in a rise can only extend one ending in a fall and vice versa; equal neighbours cannot belong to any turbulent subarray of length > 1.",
+        time: "O(n)",
+        space: "O(1)",
+        pitfalls: [
+          "Unlike Wiggle Subsequence this is a *subarray* — resets are mandatory, not optional.",
+        ],
+      }),
       solutions: {
         python: `def maxTurbulenceSize(arr) -> int:\n    best = up = down = 1\n    for i in range(1, len(arr)):\n        if arr[i] > arr[i - 1]:\n            up, down = down + 1, 1\n        elif arr[i] < arr[i - 1]:\n            down, up = up + 1, 1\n        else:\n            up = down = 1\n        best = max(best, up, down)\n    return best`,
         javascript: `var maxTurbulenceSize = function(arr) {\n    let best = 1, up = 1, down = 1;\n    for (let i = 1; i < arr.length; i++) {\n        if (arr[i] > arr[i - 1]) {\n            const prevDown = down;\n            up = prevDown + 1;\n            down = 1;\n        } else if (arr[i] < arr[i - 1]) {\n            const prevUp = up;\n            down = prevUp + 1;\n            up = 1;\n        } else {\n            up = 1;\n            down = 1;\n        }\n        const cur = Math.max(up, down);\n        if (cur > best) best = cur;\n    }\n    return best;\n};`,
@@ -1856,6 +2260,21 @@ export const DP2_PROBLEMS: CatalogProblem[] = [
         });
         return { input: fmtIntMat(pairs), expectedOutput: String(ref(pairs)) };
       },
+      editorial: explain({
+        idea: "Interval scheduling: sort by right endpoint and greedily take every pair whose left endpoint is strictly greater than the last chosen right endpoint.",
+        steps: [
+          "Sort pairs by their second element.",
+          "Walk them with `cur = -∞`; when `left > cur`, take the pair and set `cur = right`.",
+          "Return the count.",
+        ],
+        why: "Among all pairs that could go next, the one finishing earliest leaves the most room for the rest; an exchange argument shows greedy matches any optimal chain length.",
+        time: "O(n log n)",
+        space: "O(1) beyond the sort",
+        pitfalls: [
+          "The comparison is strict — `[1,2]` cannot be followed by `[2,3]`.",
+          "The `O(n²)` LIS-style DP also works but is unnecessary.",
+        ],
+      }),
       solutions: {
         python: `def findLongestChain(pairs) -> int:\n    ordered = sorted(pairs, key=lambda p: p[1])\n    count = 0\n    cur = float("-inf")\n    for left, right in ordered:\n        if left > cur:\n            count += 1\n            cur = right\n    return count`,
         javascript: `var findLongestChain = function(pairs) {\n    const sorted = pairs.slice().sort(function(a, b) { return a[1] - b[1]; });\n    let count = 0, cur = -Infinity;\n    for (let i = 0; i < sorted.length; i++) {\n        if (sorted[i][0] > cur) {\n            count++;\n            cur = sorted[i][1];\n        }\n    }\n    return count;\n};`,
@@ -1912,6 +2331,19 @@ export const DP2_PROBLEMS: CatalogProblem[] = [
         const n = ri(rng, 1, 1000);
         return { input: String(n), expectedOutput: String(ref(n)) };
       },
+      editorial: explain({
+        idea: "The notepad's length is only ever multiplied, so reaching `n` from a divisor `d` costs `n / d` operations (one copy plus `n/d - 1` pastes). The minimum is the sum of `n`'s prime factors.",
+        steps: [
+          "Trial-divide `n` by `2, 3, 4, …`; for each factor `f` that divides, add `f` and divide it out.",
+          "Add any prime remainder greater than 1.",
+        ],
+        why: "Multiplying by a composite `ab` costs `ab` operations while multiplying by `a` then `b` costs `a + b ≤ ab`, so splitting into primes is never worse. The `dp[n] = min over divisors d (dp[d] + n/d)` recurrence reaches the same sum.",
+        time: "O(√n)",
+        space: "O(1)",
+        pitfalls: [
+          "`n = 1` needs zero operations, which the loop handles because nothing divides.",
+        ],
+      }),
       solutions: {
         python: `def minSteps(n: int) -> int:\n    steps = 0\n    factor = 2\n    while factor * factor <= n:\n        while n % factor == 0:\n            steps += factor\n            n //= factor\n        factor += 1\n    if n > 1:\n        steps += n\n    return steps`,
         javascript: `var minSteps = function(n) {\n    let steps = 0;\n    for (let factor = 2; factor * factor <= n; factor++) {\n        while (n % factor === 0) {\n            steps += factor;\n            n /= factor;\n        }\n    }\n    if (n > 1) steps += n;\n    return steps;\n};`,
@@ -1987,6 +2419,20 @@ export const DP2_PROBLEMS: CatalogProblem[] = [
         const n = ri(rng, 1, 2000);
         return { input: String(n), expectedOutput: String(ref(n)) };
       },
+      editorial: explain({
+        idea: "Keep the count of valid strings ending in each vowel; extending by one character redistributes counts along the allowed transitions read backwards (what may precede each vowel).",
+        steps: [
+          "Start every vowel at 1 (length 1).",
+          "Repeat `n - 1` times: `a' = e + i + u`, `e' = a + i`, `i' = e + o`, `o' = i`, `u' = i + o`, all modulo `10⁹+7`.",
+          "Return the sum.",
+        ],
+        why: "The rules define a directed graph on the five vowels; the number of length-`n` walks ending at `v` is the sum over its in-neighbours of length-`n-1` walks, which is exactly the recurrence.",
+        time: "O(n)",
+        space: "O(1)",
+        pitfalls: [
+          "Derive the backward adjacency carefully: `a` can be preceded by `e`, `i`, `u` because those are the vowels allowed to be followed by `a`.",
+        ],
+      }),
       solutions: {
         python: `def countVowelPermutation(n: int) -> int:\n    MOD = 1000000007\n    a = e = i = o = u = 1\n    for _ in range(n - 1):\n        a, e, i, o, u = (e + i + u) % MOD, (a + i) % MOD, (e + o) % MOD, i % MOD, (i + o) % MOD\n    return (a + e + i + o + u) % MOD`,
         javascript: `var countVowelPermutation = function(n) {\n    const MOD = 1000000007;\n    let a = 1, e = 1, i = 1, o = 1, u = 1;\n    for (let step = 1; step < n; step++) {\n        const na = (e + i + u) % MOD;\n        const ne = (a + i) % MOD;\n        const ni = (e + o) % MOD;\n        const no = i % MOD;\n        const nu = (i + o) % MOD;\n        a = na;\n        e = ne;\n        i = ni;\n        o = no;\n        u = nu;\n    }\n    return (a + e + i + o + u) % MOD;\n};`,
@@ -2050,6 +2496,20 @@ export const DP2_PROBLEMS: CatalogProblem[] = [
         const n = ri(rng, 1, 500);
         return { input: String(n), expectedOutput: String(ref(n)) };
       },
+      editorial: explain({
+        idea: "List the knight moves from each key; `dp[d]` is the number of valid dials of the current length starting at `d`, and each extra digit sums the counts of the keys reachable from `d`.",
+        steps: [
+          "Start `dp = [1] * 10`.",
+          "Repeat `n - 1` times: `nxt[d] = Σ dp[to]` over `to` in `moves[d]`, modulo `10⁹+7`.",
+          "Return the sum of `dp`.",
+        ],
+        why: "A dial of length `L` starting at `d` is `d` followed by a dial of length `L-1` starting at a neighbour, so the counts compose along the move graph. The graph is symmetric, so counting by start or by end gives the same totals.",
+        time: "O(n)",
+        space: "O(1)",
+        pitfalls: [
+          "Key 5 has no moves — it contributes 1 for `n = 1` and 0 afterwards.",
+        ],
+      }),
       solutions: {
         python: `def knightDialer(n: int) -> int:\n    MOD = 1000000007\n    moves = [[4, 6], [6, 8], [7, 9], [4, 8], [3, 9, 0], [], [1, 7, 0], [2, 6], [1, 3], [2, 4]]\n    dp = [1] * 10\n    for _ in range(n - 1):\n        nxt = [0] * 10\n        for digit in range(10):\n            for to in moves[digit]:\n                nxt[digit] = (nxt[digit] + dp[to]) % MOD\n        dp = nxt\n    return sum(dp) % MOD`,
         javascript: `var knightDialer = function(n) {\n    const MOD = 1000000007;\n    const moves = [[4, 6], [6, 8], [7, 9], [4, 8], [3, 9, 0], [], [1, 7, 0], [2, 6], [1, 3], [2, 4]];\n    let dp = new Array(10).fill(1);\n    for (let step = 1; step < n; step++) {\n        const next = new Array(10).fill(0);\n        for (let digit = 0; digit < 10; digit++) {\n            for (let k = 0; k < moves[digit].length; k++) {\n                next[digit] = (next[digit] + dp[moves[digit][k]]) % MOD;\n            }\n        }\n        dp = next;\n    }\n    let total = 0;\n    for (let d = 0; d < 10; d++) total = (total + dp[d]) % MOD;\n    return total;\n};`,

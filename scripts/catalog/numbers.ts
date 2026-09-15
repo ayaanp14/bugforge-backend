@@ -6,7 +6,7 @@
  * JS solutions must be Node 12-safe: no ??, ?., replaceAll, .at() or .flat().
  */
 
-import { bool, describe, fmtIntArr, ri, type CatalogProblem, type Rng } from "./types.js";
+import { bool, describe, explain, fmtIntArr, ri, type CatalogProblem, type Rng } from "./types.js";
 
 export const NUMBER_PROBLEMS: CatalogProblem[] = [
 
@@ -47,6 +47,23 @@ export const NUMBER_PROBLEMS: CatalogProblem[] = [
         const x = rng() < 0.45 ? ri(rng, -2147483648, 2147483647) : ri(rng, -999999, 999999);
         return { input: String(x), expectedOutput: String(ref(x)) };
       },
+      editorial: explain({
+        idea: "Peel digits off the right of `|x|` and push them onto the left of a running result — `result = result * 10 + digit` — then restore the sign and reject anything outside the 32-bit range.",
+        steps: [
+          "Record the sign and work with the absolute value.",
+          "While digits remain, take `n % 10`, append it with `result = result * 10 + digit`, and drop it with `n //= 10`.",
+          "Reapply the sign.",
+          "Return `0` if the result lies outside `[-2^31, 2^31 - 1]`, otherwise the result.",
+        ],
+        why: "Multiplying by ten and adding the next low digit is exactly what reversing the decimal string does, one place value at a time. Handling the sign separately means the digit loop only ever sees a non-negative value, so `%` and `//` behave the same in every language.",
+        time: "O(log x)",
+        space: "O(1)",
+        pitfalls: [
+          "In a language with fixed-width ints, check `result > (INT_MAX - digit) / 10` *before* the multiply-add — a wrapped value that happens to land in range is still wrong.",
+          "The reversal of a number ending in zeros is shorter than the input — `120` becomes `21`, which the arithmetic handles naturally.",
+          "`-2147483648` reversed overflows even though its magnitude fits as input.",
+        ],
+      }),
       solutions: {
         python: `def reverse(x: int) -> int:\n    sign = -1 if x < 0 else 1\n    n = abs(x)\n    result = 0\n    while n > 0:\n        result = result * 10 + n % 10\n        n //= 10\n    result *= sign\n    if result < -2147483648 or result > 2147483647:\n        return 0\n    return result`,
         javascript: `var reverse = function(x) {\n    const sign = x < 0 ? -1 : 1;\n    let n = Math.abs(x);\n    let result = 0;\n    while (n > 0) {\n        result = result * 10 + (n % 10);\n        n = Math.floor(n / 10);\n    }\n    result *= sign;\n    if (result < -2147483648 || result > 2147483647) return 0;\n    return result;\n};`,
@@ -112,6 +129,21 @@ export const NUMBER_PROBLEMS: CatalogProblem[] = [
         }
         return { input: String(x), expectedOutput: bool(ref(x)) };
       },
+      editorial: explain({
+        idea: "Negatives are never palindromes; for everything else, reverse the number arithmetically and compare it with the original.",
+        steps: [
+          "Return `false` for `x < 0`.",
+          "Build `rev` by repeatedly taking the low digit of a copy of `x` and appending it: `rev = rev * 10 + n % 10`.",
+          "Return `rev == x`.",
+        ],
+        why: "A number reads the same backwards exactly when its digit sequence reversed produces the same value, and the multiply-add loop constructs that reversed value directly. Comparing integers avoids any string allocation.",
+        time: "O(log x)",
+        space: "O(1)",
+        pitfalls: [
+          "The fully reversed value of a 10-digit palindrome candidate can overflow a 32-bit int; reversing only the second half (stop when `rev >= n`) avoids that entirely.",
+          "Zero is a palindrome — the loop runs zero times and `0 == 0` holds.",
+        ],
+      }),
       solutions: {
         python: `def isPalindrome(x: int) -> bool:\n    if x < 0:\n        return False\n    n, rev = x, 0\n    while n > 0:\n        rev = rev * 10 + n % 10\n        n //= 10\n    return rev == x`,
         javascript: `var isPalindrome = function(x) {\n    if (x < 0) return false;\n    let n = x, rev = 0;\n    while (n > 0) {\n        rev = rev * 10 + (n % 10);\n        n = Math.floor(n / 10);\n    }\n    return rev === x;\n};`,
@@ -170,6 +202,22 @@ export const NUMBER_PROBLEMS: CatalogProblem[] = [
         const n = rng() < 0.2 ? ri(rng, 0, 12) : ri(rng, 0, 800);
         return { input: String(n), expectedOutput: String(ref(n)) };
       },
+      editorial: explain({
+        idea: "Instead of testing each candidate for primality, cross out every composite below `n` with the Sieve of Eratosthenes: each prime knocks out all of its multiples in one sweep.",
+        steps: [
+          "Return `0` when `n < 3` — there are no primes below 2.",
+          "Allocate a boolean array of size `n`, all `true`, and mark 0 and 1 as not prime.",
+          "For `i` from 2 while `i * i < n`: if `i` is still marked prime, mark `i·i, i·i + i, i·i + 2i, …` as composite.",
+          "Count the entries still marked `true`.",
+        ],
+        why: "When the loop reaches an unmarked `i`, no smaller number divides it, so it is prime. Every composite `c < n` has a prime factor `p ≤ √c`, and that prime's pass marks `c`. Starting at `i·i` is safe because any smaller multiple `k·i` with `k < i` was already crossed by one of `k`'s prime factors.",
+        time: "O(n log log n)",
+        space: "O(n)",
+        pitfalls: [
+          "The question asks for primes **strictly less than** `n` — size the sieve to `n`, not `n + 1`.",
+          "Trial-dividing each number up to `√n` is `O(n√n)` and times out for `n` near 5·10⁶.",
+        ],
+      }),
       solutions: {
         python: `def countPrimes(n: int) -> int:\n    if n < 3:\n        return 0\n    sieve = [True] * n\n    sieve[0] = sieve[1] = False\n    i = 2\n    while i * i < n:\n        if sieve[i]:\n            for j in range(i * i, n, i):\n                sieve[j] = False\n        i += 1\n    return sum(sieve)`,
         javascript: `var countPrimes = function(n) {\n    if (n < 3) return 0;\n    const sieve = new Uint8Array(n);\n    let count = 0;\n    for (let i = 2; i < n; i++) {\n        if (sieve[i] === 0) {\n            count++;\n            for (let j = i * i; j < n; j += i) sieve[j] = 1;\n        }\n    }\n    return count;\n};`,
@@ -229,6 +277,22 @@ export const NUMBER_PROBLEMS: CatalogProblem[] = [
         const n = rng() < 0.25 ? ri(rng, 1, 60) : ri(rng, 1, 200000);
         return { input: String(n), expectedOutput: bool(ref(n)) };
       },
+      editorial: explain({
+        idea: "The digit-square map sends every number to a small value quickly, so the process must either hit `1` or revisit a number and loop forever. Detect the loop with a set of visited values.",
+        steps: [
+          "Loop while `n != 1` and `n` has not been seen before.",
+          "Record `n` in the seen set.",
+          "Replace `n` with the sum of the squares of its digits.",
+          "Return `n == 1` when the loop exits.",
+        ],
+        why: "For any number the sum of squared digits is at most `81 × digits`, so a value with `d` digits maps to something far smaller until it falls below a few hundred, after which the sequence lives in a finite set and must repeat. Once a value repeats the process is periodic and can never reach `1`, so revisiting is proof of unhappiness.",
+        time: "O(log n) per step, a bounded number of steps",
+        space: "O(log n) for the seen set",
+        pitfalls: [
+          "Floyd's tortoise-and-hare works too (the map is a function, so the walk is a ρ-shaped sequence) and drops the set.",
+          "Check `n != 1` before inserting, otherwise `1` itself is recorded and the exit condition gets confusing.",
+        ],
+      }),
       solutions: {
         python: `def isHappy(n: int) -> bool:\n    seen = set()\n    while n != 1 and n not in seen:\n        seen.add(n)\n        total = 0\n        while n > 0:\n            d = n % 10\n            total += d * d\n            n //= 10\n        n = total\n    return n == 1`,
         javascript: `var isHappy = function(n) {\n    const seen = new Set();\n    while (n !== 1 && !seen.has(n)) {\n        seen.add(n);\n        let total = 0;\n        while (n > 0) {\n            const d = n % 10;\n            total += d * d;\n            n = Math.floor(n / 10);\n        }\n        n = total;\n    }\n    return n === 1;\n};`,
@@ -294,6 +358,21 @@ export const NUMBER_PROBLEMS: CatalogProblem[] = [
         }
         return { input: String(n), expectedOutput: bool(ref(n)) };
       },
+      editorial: explain({
+        idea: "Strip every factor of 2, 3 and 5 from `n`; what survives is `1` exactly when no other prime was involved.",
+        steps: [
+          "Return `false` for `n <= 0`.",
+          "For each `f` in `(2, 3, 5)`, divide `n` by `f` while it divides evenly.",
+          "Return `n == 1`.",
+        ],
+        why: "The prime factorisation is unique. Dividing out all the 2s, 3s and 5s leaves the product of every *other* prime factor with its multiplicity — an empty product (`1`) if and only if there were none.",
+        time: "O(log n)",
+        space: "O(1)",
+        pitfalls: [
+          "`0` is divisible by everything and would loop forever without the guard.",
+          "`1` is ugly by convention — it has no prime factors at all.",
+        ],
+      }),
       solutions: {
         python: `def isUgly(n: int) -> bool:\n    if n <= 0:\n        return False\n    for f in (2, 3, 5):\n        while n % f == 0:\n            n //= f\n    return n == 1`,
         javascript: `var isUgly = function(n) {\n    if (n <= 0) return false;\n    const factors = [2, 3, 5];\n    for (let i = 0; i < factors.length; i++) {\n        while (n % factors[i] === 0) n /= factors[i];\n    }\n    return n === 1;\n};`,
@@ -348,6 +427,20 @@ export const NUMBER_PROBLEMS: CatalogProblem[] = [
         const num = rng() < 0.2 ? ri(rng, 0, 20) : ri(rng, 0, 2147483647);
         return { input: String(num), expectedOutput: String(ref(num)) };
       },
+      editorial: explain({
+        idea: "Repeated digit summing computes the **digital root**, and a number and its digit sum are congruent modulo 9 because `10 ≡ 1 (mod 9)`. The answer is therefore `num mod 9`, with `9` in place of `0` for positive inputs.",
+        steps: [
+          "Return `0` for `num == 0`.",
+          "Otherwise return `1 + (num - 1) % 9`.",
+        ],
+        why: "Since `10^k ≡ 1 (mod 9)`, `Σ dᵢ·10^i ≡ Σ dᵢ (mod 9)` — digit summing preserves the residue mod 9. The process stops at a single digit, and among 1…9 only one digit has each residue, so the final digit is determined by `num mod 9`. The `1 + (num - 1) % 9` form maps residue `0` to `9` instead of `0`.",
+        time: "O(1)",
+        space: "O(1)",
+        pitfalls: [
+          "Writing `num % 9` returns `0` for multiples of nine; the digital root of `18` is `9`.",
+          "The loop-until-one-digit version is also correct and only slightly slower — the closed form is the interview flourish.",
+        ],
+      }),
       solutions: {
         python: `def addDigits(num: int) -> int:\n    if num == 0:\n        return 0\n    return 1 + (num - 1) % 9`,
         javascript: `var addDigits = function(num) {\n    if (num === 0) return 0;\n    return 1 + (num - 1) % 9;\n};`,
@@ -405,6 +498,21 @@ export const NUMBER_PROBLEMS: CatalogProblem[] = [
         const n = ri(rng, 1, 40);
         return { input: String(n), expectedOutput: JSON.stringify(ref(n)) };
       },
+      editorial: explain({
+        idea: "Walk `1…n` and classify each value, testing the combined case first so a multiple of 15 is not captured by the `Fizz` branch.",
+        steps: [
+          "For each `i` from 1 to `n`, check `i % 15 == 0` → `\"FizzBuzz\"`.",
+          "Else `i % 3 == 0` → `\"Fizz\"`, else `i % 5 == 0` → `\"Buzz\"`.",
+          "Otherwise append the decimal string of `i`.",
+        ],
+        why: "Divisibility by both 3 and 5 is equivalent to divisibility by 15 because they are coprime, and ordering the branches most-specific first guarantees each `i` lands in exactly one.",
+        time: "O(n)",
+        space: "O(n) for the output",
+        pitfalls: [
+          "Testing `% 3` before `% 15` silently turns every `FizzBuzz` into `Fizz`.",
+          "The array is 1-indexed in the statement; the loop must start at 1, not 0.",
+        ],
+      }),
       solutions: {
         python: `def fizzBuzz(n: int):\n    out = []\n    for i in range(1, n + 1):\n        if i % 15 == 0:\n            out.append("FizzBuzz")\n        elif i % 3 == 0:\n            out.append("Fizz")\n        elif i % 5 == 0:\n            out.append("Buzz")\n        else:\n            out.append(str(i))\n    return out`,
         javascript: `var fizzBuzz = function(n) {\n    const out = [];\n    for (let i = 1; i <= n; i++) {\n        if (i % 15 === 0) out.push("FizzBuzz");\n        else if (i % 3 === 0) out.push("Fizz");\n        else if (i % 5 === 0) out.push("Buzz");\n        else out.push(String(i));\n    }\n    return out;\n};`,
@@ -455,6 +563,20 @@ export const NUMBER_PROBLEMS: CatalogProblem[] = [
         const n = rng() < 0.4 ? Math.pow(2, ri(rng, 0, 30)) : ri(rng, -1000, 1000000);
         return { input: String(n), expectedOutput: bool(ref(n)) };
       },
+      editorial: explain({
+        idea: "A positive power of two has exactly one set bit, and `n & (n - 1)` clears the lowest set bit — so the result is zero only when there was nothing else.",
+        steps: [
+          "Return `false` for `n <= 0`.",
+          "Return `(n & (n - 1)) == 0`.",
+        ],
+        why: "Subtracting one flips the lowest set bit to zero and every bit below it to one, leaving higher bits untouched. ANDing with the original therefore erases exactly the lowest set bit. If `n` had a single bit the result is zero; with two or more bits, the higher ones survive.",
+        time: "O(1)",
+        space: "O(1)",
+        pitfalls: [
+          "`0 & -1 == 0`, so without the positivity check zero is misreported as a power of two.",
+          "Negative numbers fail the same guard; `-2^31` has a single bit in two's complement but is not `2^x` for any integer `x`.",
+        ],
+      }),
       solutions: {
         python: `def isPowerOfTwo(n: int) -> bool:\n    return n > 0 and (n & (n - 1)) == 0`,
         javascript: `var isPowerOfTwo = function(n) {\n    return n > 0 && (n & (n - 1)) === 0;\n};`,
@@ -505,6 +627,20 @@ export const NUMBER_PROBLEMS: CatalogProblem[] = [
         const n = rng() < 0.4 ? Math.pow(3, ri(rng, 0, 19)) : ri(rng, -100, 200000);
         return { input: String(n), expectedOutput: bool(ref(n)) };
       },
+      editorial: explain({
+        idea: "Three is prime, so every divisor of `3^19` — the largest power of three that fits in a 32-bit int — is itself a power of three. Test whether `1162261467 % n == 0`.",
+        steps: [
+          "Return `false` for `n <= 0`.",
+          "Return `1162261467 % n == 0`.",
+        ],
+        why: "By unique factorisation the divisors of `3^19` are exactly `3^0, 3^1, …, 3^19`. Every positive power of three within int range is in that list, and any number with another prime factor cannot divide `3^19`.",
+        time: "O(1)",
+        space: "O(1)",
+        pitfalls: [
+          "This trick works only because 3 is prime — `4^k` divides `4^15` but so does `2`.",
+          "Dividing by 3 in a loop while the remainder is zero and checking for `1` is the portable version if you cannot remember the constant.",
+        ],
+      }),
       solutions: {
         python: `def isPowerOfThree(n: int) -> bool:\n    return n > 0 and 1162261467 % n == 0`,
         javascript: `var isPowerOfThree = function(n) {\n    return n > 0 && 1162261467 % n === 0;\n};`,
@@ -559,6 +695,21 @@ export const NUMBER_PROBLEMS: CatalogProblem[] = [
         const n = rng() < 0.25 ? ri(rng, 0, 30) : ri(rng, 0, 100000);
         return { input: String(n), expectedOutput: String(ref(n)) };
       },
+      editorial: explain({
+        idea: "Each trailing zero is a factor of 10 = 2 × 5, and factors of 2 are far more plentiful than factors of 5 in `n!`, so the count of zeros equals the number of times 5 divides `n!`.",
+        steps: [
+          "Start `count = 0` and `power = 5`.",
+          "While `power <= n`, add `n // power` to `count` and multiply `power` by 5.",
+          "Return `count`.",
+        ],
+        why: "By Legendre's formula the exponent of a prime `p` in `n!` is `⌊n/p⌋ + ⌊n/p²⌋ + ⌊n/p³⌋ + …`: the first term counts every multiple of `p`, the second adds the extra factor each multiple of `p²` carries, and so on. Since the exponent of 2 always exceeds that of 5, the 5s are the bottleneck.",
+        time: "O(log₅ n)",
+        space: "O(1)",
+        pitfalls: [
+          "Counting only multiples of 5 undercounts — `25!` has six trailing zeros, not five.",
+          "Computing `n!` and stripping zeros overflows almost immediately.",
+        ],
+      }),
       solutions: {
         python: `def trailingZeroes(n: int) -> int:\n    count = 0\n    power = 5\n    while power <= n:\n        count += n // power\n        power *= 5\n    return count`,
         javascript: `var trailingZeroes = function(n) {\n    let count = 0;\n    for (let power = 5; power <= n; power *= 5) {\n        count += Math.floor(n / power);\n    }\n    return count;\n};`,
@@ -613,6 +764,21 @@ export const NUMBER_PROBLEMS: CatalogProblem[] = [
         for (let i = 0; i < len; i++) t += String.fromCharCode(65 + ri(rng, 0, 25));
         return { input: `"${t}"`, expectedOutput: String(ref(t)) };
       },
+      editorial: explain({
+        idea: "Column titles are base-26 numerals whose digits run 1…26 instead of 0…25. Fold left to right with `n = n * 26 + (ch - 'A' + 1)`.",
+        steps: [
+          "Start `n = 0`.",
+          "For each character, compute its value `ch - 'A' + 1` and set `n = n * 26 + value`.",
+          "Return `n`.",
+        ],
+        why: "Horner's rule evaluates a positional numeral: each new digit shifts what has been read so far by one place (multiply by 26) and adds its own weight. The `+ 1` shift is the only difference from standard base 26, and it applies identically to every position.",
+        time: "O(len)",
+        space: "O(1)",
+        pitfalls: [
+          "Using `ch - 'A'` without the `+ 1` makes `A` a zero digit, so `AA` would collapse to `0`.",
+          "The maximum title fits comfortably in a 32-bit int; there is no overflow concern within the constraints.",
+        ],
+      }),
       solutions: {
         python: `def titleToNumber(columnTitle: str) -> int:\n    n = 0\n    for ch in columnTitle:\n        n = n * 26 + (ord(ch) - ord('A') + 1)\n    return n`,
         javascript: `var titleToNumber = function(columnTitle) {\n    let n = 0;\n    for (let i = 0; i < columnTitle.length; i++) {\n        n = n * 26 + (columnTitle.charCodeAt(i) - 64);\n    }\n    return n;\n};`,
@@ -666,6 +832,20 @@ export const NUMBER_PROBLEMS: CatalogProblem[] = [
         const n = rng() < 0.3 ? ri(rng, 1, 60) : ri(rng, 1, 12000000);
         return { input: String(n), expectedOutput: ref(n) };
       },
+      editorial: explain({
+        idea: "Convert to bijective base 26. Decrementing by one before each digit extraction shifts the 1…26 digit range back to 0…25 so that ordinary `% 26` and `// 26` work.",
+        steps: [
+          "While the number is positive: subtract 1, append the letter `'A' + n % 26`, then divide by 26.",
+          "Reverse the collected letters and join.",
+        ],
+        why: "In a bijective numeration there is no zero digit, so the usual last step of `n % 26 == 0` cannot mean \"empty\". Subtracting one maps the digit `26` (`Z`) to remainder `25` and makes the quotient the correct prefix, turning the problem into a plain base conversion.",
+        time: "O(log₂₆ n)",
+        space: "O(log₂₆ n)",
+        pitfalls: [
+          "Forgetting the decrement turns `26` into `A0`-style garbage instead of `Z`, and `52` into `B0` instead of `AZ`.",
+          "Letters come out least significant first; build a list and reverse it rather than repeatedly prepending.",
+        ],
+      }),
       solutions: {
         python: `def convertToTitle(columnNumber: int) -> str:\n    out = []\n    while columnNumber > 0:\n        columnNumber -= 1\n        out.append(chr(ord('A') + columnNumber % 26))\n        columnNumber //= 26\n    return "".join(reversed(out))`,
         javascript: `var convertToTitle = function(columnNumber) {\n    let out = "";\n    while (columnNumber > 0) {\n        columnNumber--;\n        out = String.fromCharCode(65 + (columnNumber % 26)) + out;\n        columnNumber = Math.floor(columnNumber / 26);\n    }\n    return out;\n};`,
@@ -732,6 +912,21 @@ export const NUMBER_PROBLEMS: CatalogProblem[] = [
         const s = toRoman(n);
         return { input: `"${s}"`, expectedOutput: String(ref(s)) };
       },
+      editorial: explain({
+        idea: "Scan left to right and compare each symbol with the one after it: a value smaller than its successor is being subtracted, everything else is added. That one rule covers all six subtractive pairs.",
+        steps: [
+          "Map each symbol to its value.",
+          "For each index `i`, if `i + 1` exists and `val[s[i]] < val[s[i+1]]`, subtract `val[s[i]]`; otherwise add it.",
+          "Return the total.",
+        ],
+        why: "In a valid numeral the only place a smaller symbol precedes a larger one is inside a subtractive pair (`IV`, `IX`, `XL`, `XC`, `CD`, `CM`), and in each pair the pair's value is `larger - smaller`. Subtracting the first symbol and later adding the second yields exactly that.",
+        time: "O(len)",
+        space: "O(1)",
+        pitfalls: [
+          "Hard-coding the six pairs with a two-character lookahead also works but is easy to typo; the comparison rule is shorter and identical in effect.",
+          "The last symbol has no successor and is always added.",
+        ],
+      }),
       solutions: {
         python: `def romanToInt(s: str) -> int:\n    val = {"I": 1, "V": 5, "X": 10, "L": 50, "C": 100, "D": 500, "M": 1000}\n    total = 0\n    for i, ch in enumerate(s):\n        if i + 1 < len(s) and val[ch] < val[s[i + 1]]:\n            total -= val[ch]\n        else:\n            total += val[ch]\n    return total`,
         javascript: `var romanToInt = function(s) {\n    const val = { I: 1, V: 5, X: 10, L: 50, C: 100, D: 500, M: 1000 };\n    let total = 0;\n    for (let i = 0; i < s.length; i++) {\n        if (i + 1 < s.length && val[s[i]] < val[s[i + 1]]) total -= val[s[i]];\n        else total += val[s[i]];\n    }\n    return total;\n};`,
@@ -787,6 +982,21 @@ export const NUMBER_PROBLEMS: CatalogProblem[] = [
         const n = ri(rng, 1, 3999);
         return { input: String(n), expectedOutput: ref(n) };
       },
+      editorial: explain({
+        idea: "Treat the seven symbols plus the six subtractive pairs as thirteen denominations and pay out the number greedily from the largest denomination down.",
+        steps: [
+          "List values `[1000, 900, 500, 400, 100, 90, 50, 40, 10, 9, 5, 4, 1]` with their symbols.",
+          "For each value in order, while `num >= value`, append the symbol and subtract the value.",
+          "Join the pieces.",
+        ],
+        why: "Each denomination is at least twice the next smaller one except the subtractive pairs, which are unique ways to express their value; roman numerals are defined so that the canonical representation is the one greedy produces. Since a symbol never repeats beyond what greedy emits (at most three `X`s, one `V`, etc.), the result is the standard form.",
+        time: "O(1) — at most 15 symbols",
+        space: "O(1)",
+        pitfalls: [
+          "Leaving out the subtractive pairs makes greedy emit `VIIII` for 9.",
+          "The table must be in descending order for greedy to be correct.",
+        ],
+      }),
       solutions: {
         python: `def intToRoman(num: int) -> str:\n    vals = [1000, 900, 500, 400, 100, 90, 50, 40, 10, 9, 5, 4, 1]\n    syms = ["M", "CM", "D", "CD", "C", "XC", "L", "XL", "X", "IX", "V", "IV", "I"]\n    out = []\n    for v, sym in zip(vals, syms):\n        while num >= v:\n            out.append(sym)\n            num -= v\n    return "".join(out)`,
         javascript: `var intToRoman = function(num) {\n    const vals = [1000, 900, 500, 400, 100, 90, 50, 40, 10, 9, 5, 4, 1];\n    const syms = ["M", "CM", "D", "CD", "C", "XC", "L", "XL", "X", "IX", "V", "IV", "I"];\n    let out = "";\n    for (let i = 0; i < vals.length; i++) {\n        while (num >= vals[i]) {\n            out += syms[i];\n            num -= vals[i];\n        }\n    }\n    return out;\n};`,
@@ -851,6 +1061,21 @@ export const NUMBER_PROBLEMS: CatalogProblem[] = [
         const a = randBits(rng, 1, 24), b = randBits(rng, 1, 24);
         return { input: `"${a}"\n"${b}"`, expectedOutput: ref(a, b) };
       },
+      editorial: explain({
+        idea: "Add column by column from the right with a carry, exactly like pencil-and-paper addition, so the inputs can be arbitrarily long.",
+        steps: [
+          "Point `i` and `j` at the last characters of `a` and `b`; set `carry = 0`.",
+          "While either index is valid or `carry` is set: sum the carry and the available bits, append `sum % 2`, set `carry = sum // 2`.",
+          "Reverse the collected bits and join.",
+        ],
+        why: "Every column sum is 0–3; its low bit is the output digit and its high bit is the carry into the next column. Continuing while the carry is set handles a result one digit longer than either input.",
+        time: "O(max(len a, len b))",
+        space: "O(max(len a, len b))",
+        pitfalls: [
+          "Parsing to an integer overflows once the strings exceed 63 bits.",
+          "Stopping when both indices run out drops the final carry — `\"1\" + \"1\"` must give `\"10\"`.",
+        ],
+      }),
       solutions: {
         python: `def addBinary(a: str, b: str) -> str:\n    i, j, carry = len(a) - 1, len(b) - 1, 0\n    out = []\n    while i >= 0 or j >= 0 or carry:\n        total = carry\n        if i >= 0:\n            total += int(a[i])\n            i -= 1\n        if j >= 0:\n            total += int(b[j])\n            j -= 1\n        out.append(str(total % 2))\n        carry = total // 2\n    return "".join(reversed(out))`,
         javascript: `var addBinary = function(a, b) {\n    let i = a.length - 1, j = b.length - 1, carry = 0, out = "";\n    while (i >= 0 || j >= 0 || carry > 0) {\n        let total = carry;\n        if (i >= 0) { total += a.charCodeAt(i) - 48; i--; }\n        if (j >= 0) { total += b.charCodeAt(j) - 48; j--; }\n        out = String(total % 2) + out;\n        carry = total > 1 ? 1 : 0;\n    }\n    return out;\n};`,
@@ -911,6 +1136,22 @@ export const NUMBER_PROBLEMS: CatalogProblem[] = [
         if (d[0] === 0) d[0] = ri(rng, 1, 9);
         return { input: fmtIntArr(d), expectedOutput: fmtIntArr(ref(d)) };
       },
+      editorial: explain({
+        idea: "Walk from the least significant digit: the first digit below 9 absorbs the increment and the work stops there; every 9 before it rolls over to 0.",
+        steps: [
+          "Iterate `i` from the last index down to 0.",
+          "If `digits[i] < 9`, increment it and return the array immediately.",
+          "Otherwise set `digits[i] = 0` and continue.",
+          "If the loop finishes, every digit was 9: return `[1] + digits`.",
+        ],
+        why: "Adding one only carries while it hits 9s; the first non-9 digit stops the carry. If no digit stops it, the number was `99…9` and the answer is `100…0`, one digit longer.",
+        time: "O(n)",
+        space: "O(1) extra (O(n) only when a new leading digit is needed)",
+        pitfalls: [
+          "Converting to an integer fails for arrays longer than the integer width.",
+          "Forgetting the all-nines case returns `[0,0,…,0]`.",
+        ],
+      }),
       solutions: {
         python: `def plusOne(digits):\n    d = list(digits)\n    for i in range(len(d) - 1, -1, -1):\n        if d[i] < 9:\n            d[i] += 1\n            return d\n        d[i] = 0\n    return [1] + d`,
         javascript: `var plusOne = function(digits) {\n    const d = digits.slice();\n    for (let i = d.length - 1; i >= 0; i--) {\n        if (d[i] < 9) {\n            d[i]++;\n            return d;\n        }\n        d[i] = 0;\n    }\n    return [1].concat(d);\n};`,
@@ -976,6 +1217,21 @@ export const NUMBER_PROBLEMS: CatalogProblem[] = [
         const a = randNum(rng), b = randNum(rng);
         return { input: `"${a}"\n"${b}"`, expectedOutput: ref(a, b) };
       },
+      editorial: explain({
+        idea: "Schoolbook addition from the right with a carry, treating a missing digit in the shorter string as zero.",
+        steps: [
+          "Set `i`, `j` to the last indices of the two strings and `carry = 0`.",
+          "While `i >= 0` or `j >= 0` or `carry`: sum the carry and the available digits, append `sum % 10`, set `carry = sum // 10`.",
+          "Reverse the collected digits and join.",
+        ],
+        why: "Each column produces a digit in `0…9` and a carry of `0` or `1`. Processing columns right to left with the carry threaded through is the definition of decimal addition, and the loop condition ensures a leading carry is emitted.",
+        time: "O(max(len a, len b))",
+        space: "O(max(len a, len b))",
+        pitfalls: [
+          "Use `ord(ch) - 48` (or the language's equivalent) rather than parsing each character.",
+          "`\"9\" + \"1\"` is `\"10\"` — the result can be longer than both inputs.",
+        ],
+      }),
       solutions: {
         python: `def addStrings(num1: str, num2: str) -> str:\n    i, j, carry = len(num1) - 1, len(num2) - 1, 0\n    out = []\n    while i >= 0 or j >= 0 or carry:\n        total = carry\n        if i >= 0:\n            total += ord(num1[i]) - 48\n            i -= 1\n        if j >= 0:\n            total += ord(num2[j]) - 48\n            j -= 1\n        out.append(str(total % 10))\n        carry = total // 10\n    return "".join(reversed(out))`,
         javascript: `var addStrings = function(num1, num2) {\n    let i = num1.length - 1, j = num2.length - 1, carry = 0, out = "";\n    while (i >= 0 || j >= 0 || carry > 0) {\n        let total = carry;\n        if (i >= 0) { total += num1.charCodeAt(i) - 48; i--; }\n        if (j >= 0) { total += num2.charCodeAt(j) - 48; j--; }\n        out = String(total % 10) + out;\n        carry = total >= 10 ? 1 : 0;\n    }\n    return out;\n};`,
@@ -1030,6 +1286,21 @@ export const NUMBER_PROBLEMS: CatalogProblem[] = [
         const n = ri(rng, 0, 46);
         return { input: String(n), expectedOutput: String(ref(n)) };
       },
+      editorial: explain({
+        idea: "Only the last two Fibonacci values matter for the next, so keep them in two variables and slide the pair forward `n` times.",
+        steps: [
+          "Start `a = F(0) = 0`, `b = F(1) = 1`.",
+          "Repeat `n` times: `(a, b) = (b, a + b)`.",
+          "Return `a`.",
+        ],
+        why: "After `k` iterations the pair holds `(F(k), F(k+1))` — true at `k = 0`, and each step advances it by the recurrence. Naive recursion recomputes the same subproblems exponentially many times; the sliding pair is the bottom-up DP with its table compressed to two cells.",
+        time: "O(n)",
+        space: "O(1)",
+        pitfalls: [
+          "Returning `b` instead of `a` gives `F(n+1)`.",
+          "Memoised recursion is also linear but risks stack depth for large `n`.",
+        ],
+      }),
       solutions: {
         python: `def fib(n: int) -> int:\n    a, b = 0, 1\n    for _ in range(n):\n        a, b = b, a + b\n    return a`,
         javascript: `var fib = function(n) {\n    let a = 0, b = 1;\n    for (let i = 0; i < n; i++) {\n        const next = a + b;\n        a = b;\n        b = next;\n    }\n    return a;\n};`,
@@ -1085,6 +1356,22 @@ export const NUMBER_PROBLEMS: CatalogProblem[] = [
         const n = ri(rng, 0, 37);
         return { input: String(n), expectedOutput: String(ref(n)) };
       },
+      editorial: explain({
+        idea: "Same as Fibonacci with a three-wide window: keep `T(k), T(k+1), T(k+2)` and slide.",
+        steps: [
+          "Return `0` for `n == 0` and `1` for `n == 1` or `n == 2`.",
+          "Seed `a, b, c = 0, 1, 1`.",
+          "For each `k` from 3 to `n`, set `(a, b, c) = (b, c, a + b + c)`.",
+          "Return `c`.",
+        ],
+        why: "The recurrence `T(n+3) = T(n) + T(n+1) + T(n+2)` depends on exactly the three previous terms, so a three-value window carries all the state a bottom-up computation needs.",
+        time: "O(n)",
+        space: "O(1)",
+        pitfalls: [
+          "Guard `n < 3` before the loop, otherwise the seeds are read as if they were already advanced.",
+          "`T(37)` is the largest that fits in a 32-bit int.",
+        ],
+      }),
       solutions: {
         python: `def tribonacci(n: int) -> int:\n    if n == 0:\n        return 0\n    if n < 3:\n        return 1\n    a, b, c = 0, 1, 1\n    for _ in range(3, n + 1):\n        a, b, c = b, c, a + b + c\n    return c`,
         javascript: `var tribonacci = function(n) {\n    if (n === 0) return 0;\n    if (n < 3) return 1;\n    let a = 0, b = 1, c = 1;\n    for (let i = 3; i <= n; i++) {\n        const next = a + b + c;\n        a = b;\n        b = c;\n        c = next;\n    }\n    return c;\n};`,
@@ -1140,6 +1427,21 @@ export const NUMBER_PROBLEMS: CatalogProblem[] = [
         const n = rng() < 0.35 ? known[ri(rng, 0, known.length - 1)] : ri(rng, 1, 1000000);
         return { input: String(n), expectedOutput: bool(ref(n)) };
       },
+      editorial: explain({
+        idea: "Count the digits to fix the exponent, then compare the sum of each digit raised to that power with the number.",
+        steps: [
+          "Let `k` be the number of digits of `n`.",
+          "Sum `d^k` over every digit `d`.",
+          "Return whether the sum equals `n`.",
+        ],
+        why: "That is the definition; the only subtlety is that the exponent is the total digit count and must be computed before the summation begins.",
+        time: "O(k)",
+        space: "O(1)",
+        pitfalls: [
+          "Using a fixed exponent of 3 only tests the three-digit case — `9474 = 9⁴ + 4⁴ + 7⁴ + 4⁴` is Armstrong too.",
+          "Every single-digit number qualifies, since `d¹ = d`.",
+        ],
+      }),
       solutions: {
         python: `def isArmstrong(n: int) -> bool:\n    s = str(n)\n    k = len(s)\n    return sum(int(ch) ** k for ch in s) == n`,
         javascript: `var isArmstrong = function(n) {\n    const s = String(n);\n    const k = s.length;\n    let total = 0;\n    for (let i = 0; i < k; i++) {\n        total += Math.pow(s.charCodeAt(i) - 48, k);\n    }\n    return total === n;\n};`,
@@ -1195,6 +1497,21 @@ export const NUMBER_PROBLEMS: CatalogProblem[] = [
         const n = rng() < 0.25 ? known[ri(rng, 0, known.length - 1)] : ri(rng, 1, 100000);
         return { input: String(n), expectedOutput: bool(ref(n)) };
       },
+      editorial: explain({
+        idea: "Precompute `0!…9!` once, then sum the factorial of each digit and compare with the original number.",
+        steps: [
+          "Table `fact = [1, 1, 2, 6, 24, 120, 720, 5040, 40320, 362880]`.",
+          "Peel digits with `% 10` and `// 10`, adding `fact[digit]` to a total.",
+          "Return `total == n`.",
+        ],
+        why: "The definition is a direct sum over digits; a ten-entry table removes any repeated factorial computation and keeps the loop a single lookup per digit.",
+        time: "O(digits)",
+        space: "O(1)",
+        pitfalls: [
+          "`0! = 1`, not `0` — a computed table that starts at zero breaks numbers containing a zero digit.",
+          "There are only four strong numbers (1, 2, 145, 40585), so the answer is usually `false`.",
+        ],
+      }),
       solutions: {
         python: `def isStrongNumber(n: int) -> bool:\n    fact = [1, 1, 2, 6, 24, 120, 720, 5040, 40320, 362880]\n    total, x = 0, n\n    while x > 0:\n        total += fact[x % 10]\n        x //= 10\n    return total == n`,
         javascript: `var isStrongNumber = function(n) {\n    const fact = [1, 1, 2, 6, 24, 120, 720, 5040, 40320, 362880];\n    let total = 0, x = n;\n    while (x > 0) {\n        total += fact[x % 10];\n        x = Math.floor(x / 10);\n    }\n    return total === n;\n};`,
@@ -1248,6 +1565,20 @@ export const NUMBER_PROBLEMS: CatalogProblem[] = [
         const n = rng() < 0.3 ? known[ri(rng, 0, known.length - 1)] : ri(rng, 1, 100000);
         return { input: String(n), expectedOutput: bool(ref(n)) };
       },
+      editorial: explain({
+        idea: "`n²` ends with `n` exactly when `n² mod 10^d == n`, where `d` is the number of digits of `n`.",
+        steps: [
+          "Compute `power = 10^d` by counting digits of `n`.",
+          "Return `(n * n) % power == n`.",
+        ],
+        why: "Taking a number modulo `10^d` keeps its last `d` decimal digits and discards the rest, so the congruence is precisely the statement that the trailing `d` digits of the square spell out `n`.",
+        time: "O(d)",
+        space: "O(1)",
+        pitfalls: [
+          "`n * n` can overflow a 32-bit int for `n` above 46340 — use a wider type where the language has fixed widths.",
+          "Comparing string suffixes is equivalent but allocates.",
+        ],
+      }),
       solutions: {
         python: `def isAutomorphic(n: int) -> bool:\n    power = 1\n    x = n\n    while x > 0:\n        power *= 10\n        x //= 10\n    return (n * n) % power == n`,
         javascript: `var isAutomorphic = function(n) {\n    let power = 1, x = n;\n    while (x > 0) {\n        power *= 10;\n        x = Math.floor(x / 10);\n    }\n    return (n * n) % power === n;\n};`,
@@ -1301,6 +1632,21 @@ export const NUMBER_PROBLEMS: CatalogProblem[] = [
         const n = rng() < 0.3 ? ri(rng, 0, 12) : ri(rng, 0, 100000);
         return { input: String(n), expectedOutput: bool(ref(n)) };
       },
+      editorial: explain({
+        idea: "Square the number, sum the digits of the square, and compare with the original.",
+        steps: [
+          "Compute `sq = n * n`.",
+          "Peel the digits of `sq` and add them up.",
+          "Return `total == n`.",
+        ],
+        why: "The definition is literal. The digit sum of a `2k`-digit square is at most `18k`, which grows much slower than `n`, so only `0`, `1` and `9` ever satisfy it.",
+        time: "O(log n)",
+        space: "O(1)",
+        pitfalls: [
+          "`0` is neon (`0² = 0`), and the loop handles it because it runs zero times and the total is `0`.",
+          "Watch the square's width in fixed-width languages.",
+        ],
+      }),
       solutions: {
         python: `def isNeon(n: int) -> bool:\n    sq = n * n\n    total = 0\n    while sq > 0:\n        total += sq % 10\n        sq //= 10\n    return total == n`,
         javascript: `var isNeon = function(n) {\n    let sq = n * n, total = 0;\n    while (sq > 0) {\n        total += sq % 10;\n        sq = Math.floor(sq / 10);\n    }\n    return total === n;\n};`,
@@ -1356,6 +1702,21 @@ export const NUMBER_PROBLEMS: CatalogProblem[] = [
         const n = rng() < 0.3 ? known[ri(rng, 0, known.length - 1)] : ri(rng, 1, 1000000);
         return { input: String(n), expectedOutput: bool(ref(n)) };
       },
+      editorial: explain({
+        idea: "Positions count from the left starting at 1, so index `i` of the decimal string carries exponent `i + 1`. Sum `digit^(i+1)` and compare.",
+        steps: [
+          "Write `n` as a digit string.",
+          "For each index `i`, add `digit[i] ^ (i + 1)` to a total.",
+          "Return `total == n`.",
+        ],
+        why: "Unlike an Armstrong number, where every digit shares the same exponent, a disarium number weights each digit by its position; iterating the string left to right lines the exponent up with the position directly.",
+        time: "O(d)",
+        space: "O(d)",
+        pitfalls: [
+          "Peeling digits from the right gives positions in reverse; either count the digits first or work on the string.",
+          "`89 = 8¹ + 9²` and `175 = 1 + 49 + 125` are handy test values.",
+        ],
+      }),
       solutions: {
         python: `def isDisarium(n: int) -> bool:\n    s = str(n)\n    total = 0\n    for i, ch in enumerate(s):\n        total += int(ch) ** (i + 1)\n    return total == n`,
         javascript: `var isDisarium = function(n) {\n    const s = String(n);\n    let total = 0;\n    for (let i = 0; i < s.length; i++) {\n        total += Math.pow(s.charCodeAt(i) - 48, i + 1);\n    }\n    return total === n;\n};`,
@@ -1409,6 +1770,20 @@ export const NUMBER_PROBLEMS: CatalogProblem[] = [
         const n = rng() < 0.2 ? ri(rng, 1, 40) : ri(rng, 1, 1000000);
         return { input: String(n), expectedOutput: bool(ref(n)) };
       },
+      editorial: explain({
+        idea: "Sum the digits and test whether the number is divisible by that sum.",
+        steps: [
+          "Accumulate the digits of `n` with `% 10` / `// 10`.",
+          "Return `n % total == 0`.",
+        ],
+        why: "The definition is direct. Because `n >= 1`, at least one digit is non-zero and the divisor is never zero.",
+        time: "O(d)",
+        space: "O(1)",
+        pitfalls: [
+          "Every single-digit number is Harshad — `n % n == 0`.",
+          "If the constraints ever allowed `0`, the digit sum would be zero and a guard would be needed.",
+        ],
+      }),
       solutions: {
         python: `def isHarshad(n: int) -> bool:\n    total, x = 0, n\n    while x > 0:\n        total += x % 10\n        x //= 10\n    return n % total == 0`,
         javascript: `var isHarshad = function(n) {\n    let total = 0, x = n;\n    while (x > 0) {\n        total += x % 10;\n        x = Math.floor(x / 10);\n    }\n    return n % total === 0;\n};`,
@@ -1466,6 +1841,22 @@ export const NUMBER_PROBLEMS: CatalogProblem[] = [
         const n = rng() < 0.25 ? known[ri(rng, 0, known.length - 1)] : ri(rng, 1, 1000000);
         return { input: String(n), expectedOutput: bool(ref(n)) };
       },
+      editorial: explain({
+        idea: "Divisors come in pairs `(d, num / d)`, so testing `d` only up to `√num` finds them all. Seed the sum with 1 so `num` itself is excluded.",
+        steps: [
+          "Return `false` for `num <= 1`.",
+          "Start `total = 1` and `d = 2`.",
+          "While `d * d <= num`: if `d` divides `num`, add `d` and — when different — `num / d`.",
+          "Return `total == num`.",
+        ],
+        why: "If `d` divides `num` then so does `num / d`, and one of the two is at most `√num`; enumerating the small member of each pair therefore enumerates every proper divisor exactly once, with the square root handled by the `other != d` check.",
+        time: "O(√num)",
+        space: "O(1)",
+        pitfalls: [
+          "Starting the loop at 1 counts `num` itself as the partner of 1.",
+          "For a perfect square, `d` and `num / d` coincide and must be added once.",
+        ],
+      }),
       solutions: {
         python: `def checkPerfectNumber(num: int) -> bool:\n    if num <= 1:\n        return False\n    total = 1\n    d = 2\n    while d * d <= num:\n        if num % d == 0:\n            total += d\n            other = num // d\n            if other != d:\n                total += other\n        d += 1\n    return total == num`,
         javascript: `var checkPerfectNumber = function(num) {\n    if (num <= 1) return false;\n    let total = 1;\n    for (let d = 2; d * d <= num; d++) {\n        if (num % d === 0) {\n            total += d;\n            const other = num / d;\n            if (other !== d) total += other;\n        }\n    }\n    return total === num;\n};`,
@@ -1521,6 +1912,21 @@ export const NUMBER_PROBLEMS: CatalogProblem[] = [
         const n = rng() < 0.25 ? ri(rng, 2, 60) : ri(rng, 2, 1000000);
         return { input: String(n), expectedOutput: fmtIntArr(ref(n)) };
       },
+      editorial: explain({
+        idea: "Trial division: divide out each candidate `d` completely before moving on, so every `d` that divides is guaranteed prime, and stop at `√n` because at most one prime factor can be larger.",
+        steps: [
+          "Start `d = 2`.",
+          "While `d * d <= n`: while `d` divides `n`, append `d` and divide; then increment `d`.",
+          "If `n > 1` remains, append it.",
+        ],
+        why: "When the loop reaches `d`, all smaller primes have been divided out, so if `d` divides the remaining `n` it cannot have a smaller factor — it is prime. After the loop the leftover has no factor `≤ √(original)` other than those removed, so it is either `1` or a single prime.",
+        time: "O(√n)",
+        space: "O(log n) for the output",
+        pitfalls: [
+          "Forgetting the final `if n > 1` drops the largest prime — `14` would return `[2]`.",
+          "Incrementing `d` by one is fine at this scale; skipping evens after 2 is an optional constant-factor win.",
+        ],
+      }),
       solutions: {
         python: `def primeFactors(n: int):\n    out = []\n    d = 2\n    while d * d <= n:\n        while n % d == 0:\n            out.append(d)\n            n //= d\n        d += 1\n    if n > 1:\n        out.append(n)\n    return out`,
         javascript: `var primeFactors = function(n) {\n    const out = [];\n    for (let d = 2; d * d <= n; d++) {\n        while (n % d === 0) {\n            out.push(d);\n            n /= d;\n        }\n    }\n    if (n > 1) out.push(n);\n    return out;\n};`,
@@ -1577,6 +1983,21 @@ export const NUMBER_PROBLEMS: CatalogProblem[] = [
         for (let i = 0; i < n; i++) nums.push(ri(rng, 1, 1000));
         return { input: fmtIntArr(nums), expectedOutput: String(ref(nums)) };
       },
+      editorial: explain({
+        idea: "Find the minimum and maximum in one pass, then apply Euclid's algorithm to the pair.",
+        steps: [
+          "Compute `a = min(nums)`, `b = max(nums)`.",
+          "While `b != 0`, set `(a, b) = (b, a % b)`.",
+          "Return `a`.",
+        ],
+        why: "Any common divisor of `a` and `b` also divides `a mod b`, and vice versa, so the gcd is preserved by each step while the second argument strictly shrinks to zero. The last non-zero value is the gcd.",
+        time: "O(n + log(max))",
+        space: "O(1)",
+        pitfalls: [
+          "When every element is equal, min and max coincide and `gcd(x, x) = x`.",
+          "Only the extreme elements matter — the gcd of the whole array is a different question.",
+        ],
+      }),
       solutions: {
         python: `def findGCD(nums):\n    a, b = min(nums), max(nums)\n    while b:\n        a, b = b, a % b\n    return a`,
         javascript: `var findGCD = function(nums) {\n    let lo = nums[0], hi = nums[0];\n    for (let i = 1; i < nums.length; i++) {\n        if (nums[i] < lo) lo = nums[i];\n        if (nums[i] > hi) hi = nums[i];\n    }\n    while (lo !== 0) {\n        const t = hi % lo;\n        hi = lo;\n        lo = t;\n    }\n    return hi;\n};`,
@@ -1636,6 +2057,21 @@ export const NUMBER_PROBLEMS: CatalogProblem[] = [
         const right = left + ri(rng, 0, 120);
         return { input: `${left}\n${right}`, expectedOutput: fmtIntArr(ref(left, right)) };
       },
+      editorial: explain({
+        idea: "The range is small, so test each candidate independently: peel its digits and reject at the first zero or non-dividing digit.",
+        steps: [
+          "For each `n` in `[left, right]`, copy it to `x` and assume `ok = true`.",
+          "While `x > 0`: take `d = x % 10`; if `d == 0` or `n % d != 0`, mark not ok and stop; else drop the digit.",
+          "Collect every `n` that passed.",
+        ],
+        why: "Iterating the range in order produces a sorted result for free, and short-circuiting on the first failing digit keeps each test cheap.",
+        time: "O((right - left) · digits)",
+        space: "O(1) beyond the output",
+        pitfalls: [
+          "Test for the zero digit before dividing, or you divide by zero.",
+          "Divide the original `n`, not the shrinking `x`.",
+        ],
+      }),
       solutions: {
         python: `def selfDividingNumbers(left: int, right: int):\n    out = []\n    for n in range(left, right + 1):\n        x, ok = n, True\n        while x > 0:\n            d = x % 10\n            if d == 0 or n % d != 0:\n                ok = False\n                break\n            x //= 10\n        if ok:\n            out.append(n)\n    return out`,
         javascript: `var selfDividingNumbers = function(left, right) {\n    const out = [];\n    for (let n = left; n <= right; n++) {\n        let x = n, ok = true;\n        while (x > 0) {\n            const d = x % 10;\n            if (d === 0 || n % d !== 0) { ok = false; break; }\n            x = Math.floor(x / 10);\n        }\n        if (ok) out.push(n);\n    }\n    return out;\n};`,
@@ -1690,6 +2126,20 @@ export const NUMBER_PROBLEMS: CatalogProblem[] = [
         const num = rng() < 0.2 ? ri(rng, 0, 20) : ri(rng, 0, 1000000);
         return { input: String(num), expectedOutput: String(ref(num)) };
       },
+      editorial: explain({
+        idea: "Simulate the process: halve when even, decrement when odd, and count steps. Each halving removes a bit, so the loop runs `O(log num)` times.",
+        steps: [
+          "While `num > 0`: if even, `num //= 2`; else `num -= 1`; increment the count.",
+          "Return the count.",
+        ],
+        why: "In binary, subtracting one from an odd number clears the lowest bit and halving shifts right, so each set bit costs one decrement and each bit position (except the top) costs one shift. The simulation counts exactly those operations.",
+        time: "O(log num)",
+        space: "O(1)",
+        pitfalls: [
+          "The closed form is `(bit length - 1) + popcount` for `num > 0`; `0` needs zero steps.",
+          "Nothing here overflows — the value only ever decreases.",
+        ],
+      }),
       solutions: {
         python: `def numberOfSteps(num: int) -> int:\n    steps = 0\n    while num > 0:\n        num = num // 2 if num % 2 == 0 else num - 1\n        steps += 1\n    return steps`,
         javascript: `var numberOfSteps = function(num) {\n    let steps = 0;\n    while (num > 0) {\n        num = num % 2 === 0 ? num / 2 : num - 1;\n        steps++;\n    }\n    return steps;\n};`,
@@ -1743,6 +2193,21 @@ export const NUMBER_PROBLEMS: CatalogProblem[] = [
         const n = ri(rng, 1, 100000);
         return { input: String(n), expectedOutput: String(ref(n)) };
       },
+      editorial: explain({
+        idea: "One digit-peeling loop maintains both accumulators — the product seeded at 1 and the sum at 0 — then return their difference.",
+        steps: [
+          "Set `prod = 1`, `total = 0`.",
+          "While `n > 0`: `d = n % 10`; multiply `prod` by `d`, add `d` to `total`, `n //= 10`.",
+          "Return `prod - total`.",
+        ],
+        why: "Both quantities are simple folds over the digit sequence and can share the traversal.",
+        time: "O(digits)",
+        space: "O(1)",
+        pitfalls: [
+          "A zero digit legitimately zeroes the product; do not skip it.",
+          "Seeding the product at 0 makes every answer `-sum`.",
+        ],
+      }),
       solutions: {
         python: `def subtractProductAndSum(n: int) -> int:\n    prod, total = 1, 0\n    while n > 0:\n        d = n % 10\n        prod *= d\n        total += d\n        n //= 10\n    return prod - total`,
         javascript: `var subtractProductAndSum = function(n) {\n    let prod = 1, total = 0;\n    while (n > 0) {\n        const d = n % 10;\n        prod *= d;\n        total += d;\n        n = Math.floor(n / 10);\n    }\n    return prod - total;\n};`,
@@ -1797,6 +2262,21 @@ export const NUMBER_PROBLEMS: CatalogProblem[] = [
         for (let i = 0; i < n; i++) nums.push(ri(rng, 1, 100000));
         return { input: fmtIntArr(nums), expectedOutput: String(ref(nums)) };
       },
+      editorial: explain({
+        idea: "The digit count is the length of the decimal representation; count the elements whose length is even.",
+        steps: [
+          "For each number, take the length of its decimal string (or count divisions by 10).",
+          "Increment when that length is even.",
+          "Return the count.",
+        ],
+        why: "The problem is a straightforward filter; the only decision is how to count digits, and both the string length and the repeated-division loop give the same answer.",
+        time: "O(n · digits)",
+        space: "O(1)",
+        pitfalls: [
+          "Values are positive per the constraints, so no sign character sneaks into the length.",
+          "A range check (`10 <= x < 100 or 1000 <= x < 10000 …`) also works but is easy to get wrong at the boundaries.",
+        ],
+      }),
       solutions: {
         python: `def findNumbers(nums):\n    return sum(1 for x in nums if len(str(x)) % 2 == 0)`,
         javascript: `var findNumbers = function(nums) {\n    let count = 0;\n    for (let i = 0; i < nums.length; i++) {\n        if (String(nums[i]).length % 2 === 0) count++;\n    }\n    return count;\n};`,
@@ -1854,6 +2334,21 @@ export const NUMBER_PROBLEMS: CatalogProblem[] = [
         const num = parseInt(s, 10);
         return { input: String(num), expectedOutput: String(ref(num)) };
       },
+      editorial: explain({
+        idea: "Only a 6 → 9 change can increase the value, and the leftmost 6 sits in the highest place, so flip exactly that digit.",
+        steps: [
+          "Find the index of the first `6` in the decimal string.",
+          "If there is none, return `num` unchanged.",
+          "Replace that character with `9` and parse back.",
+        ],
+        why: "Changing a digit at position `p` alters the value by `±3·10^p`; the gain is largest at the most significant position, and only a 6 can gain at all. Any other single change is dominated.",
+        time: "O(digits)",
+        space: "O(digits)",
+        pitfalls: [
+          "Replacing every 6 uses more than one change.",
+          "An all-9 input has no 6 and must be returned as is.",
+        ],
+      }),
       solutions: {
         python: `def maximum69Number(num: int) -> int:\n    s = str(num)\n    i = s.find("6")\n    if i < 0:\n        return num\n    return int(s[:i] + "9" + s[i + 1:])`,
         javascript: `var maximum69Number = function(num) {\n    const s = String(num);\n    const i = s.indexOf("6");\n    if (i < 0) return num;\n    return parseInt(s.slice(0, i) + "9" + s.slice(i + 1), 10);\n};`,

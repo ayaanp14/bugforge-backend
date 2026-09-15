@@ -10,7 +10,7 @@
  * JS solutions must be Node 12-safe: no ??, ?., replaceAll, .at() or .flat().
  */
 
-import { bool, describe, fmtIntArr, fmtIntMat, fmtStrArr, ri, shuffle, type CatalogProblem, type Rng } from "./types.js";
+import { bool, describe, explain, fmtIntArr, fmtIntMat, fmtStrArr, ri, shuffle, type CatalogProblem, type Rng } from "./types.js";
 
 const randArr = (rng: Rng, n: number, lo: number, hi: number) =>
   Array.from({ length: n }, () => ri(rng, lo, hi));
@@ -95,6 +95,20 @@ export const GRAPHS2_PROBLEMS: CatalogProblem[] = [
         const edges = randEdges(rng, n, ri(rng, 0, Math.min(60, n * 2)));
         return { input: `${n}\n${fmtIntMat(edges)}`, expectedOutput: String(ref(n, edges)) };
       },
+      editorial: explain({
+        idea: "Start with `n` singleton components and union along every edge; each edge that joins two different roots merges two components.",
+        steps: [
+          "Initialise `parent[i] = i` and `components = n`.",
+          "For each edge, find both roots; if they differ, link them and decrement `components`.",
+          "Return `components`.",
+        ],
+        why: "Union-find maintains the partition of nodes into connected sets exactly; an edge inside an existing set changes nothing, an edge across sets merges them. Path compression keeps each `find` near-constant.",
+        time: "O((n + e) · α(n))",
+        space: "O(n)",
+        pitfalls: [
+          "A DFS/BFS counting how many times a fresh start is needed works equally well.",
+        ],
+      }),
       solutions: {
         python: `def countComponents(n: int, edges) -> int:\n    parent = list(range(n))\n\n    def find(x):\n        while parent[x] != x:\n            parent[x] = parent[parent[x]]\n            x = parent[x]\n        return x\n\n    components = n\n    for a, b in edges:\n        ra, rb = find(a), find(b)\n        if ra != rb:\n            parent[ra] = rb\n            components -= 1\n    return components`,
         javascript: `var countComponents = function(n, edges) {\n    const parent = [];\n    for (let i = 0; i < n; i++) parent.push(i);\n    const find = function(x) {\n        while (parent[x] !== x) {\n            parent[x] = parent[parent[x]];\n            x = parent[x];\n        }\n        return x;\n    };\n    let components = n;\n    for (let i = 0; i < edges.length; i++) {\n        const a = find(edges[i][0]);\n        const b = find(edges[i][1]);\n        if (a !== b) {\n            parent[a] = b;\n            components--;\n        }\n    }\n    return components;\n};`,
@@ -170,6 +184,20 @@ export const GRAPHS2_PROBLEMS: CatalogProblem[] = [
         }
         return { input: `${n}\n${fmtIntMat(edges)}`, expectedOutput: bool(ref(n, edges)) };
       },
+      editorial: explain({
+        idea: "A tree on `n` nodes has exactly `n - 1` edges; with that count, connected and acyclic coincide, so union the edges and fail on the first one whose endpoints already share a root.",
+        steps: [
+          "Return `false` unless `len(edges) == n - 1`.",
+          "Union-find over the edges; return `false` if an edge joins two nodes already connected.",
+          "Return `true`.",
+        ],
+        why: "`n - 1` edges with no cycle is a spanning forest with exactly one component — a tree. A cycle is detected precisely when an edge's endpoints are already in the same set.",
+        time: "O(n · α(n))",
+        space: "O(n)",
+        pitfalls: [
+          "Without the edge-count check you must additionally verify a single component at the end.",
+        ],
+      }),
       solutions: {
         python: `def validTree(n: int, edges) -> bool:\n    if len(edges) != n - 1:\n        return False\n    parent = list(range(n))\n\n    def find(x):\n        while parent[x] != x:\n            parent[x] = parent[parent[x]]\n            x = parent[x]\n        return x\n\n    for a, b in edges:\n        ra, rb = find(a), find(b)\n        if ra == rb:\n            return False\n        parent[ra] = rb\n    return True`,
         javascript: `var validTree = function(n, edges) {\n    if (edges.length !== n - 1) return false;\n    const parent = [];\n    for (let i = 0; i < n; i++) parent.push(i);\n    const find = function(x) {\n        while (parent[x] !== x) {\n            parent[x] = parent[parent[x]];\n            x = parent[x];\n        }\n        return x;\n    };\n    for (let i = 0; i < edges.length; i++) {\n        const a = find(edges[i][0]);\n        const b = find(edges[i][1]);\n        if (a === b) return false;\n        parent[a] = b;\n    }\n    return true;\n};`,
@@ -260,6 +288,20 @@ export const GRAPHS2_PROBLEMS: CatalogProblem[] = [
         }
         return { input: fmtIntMat(adjacency), expectedOutput: bool(ref(adjacency)) };
       },
+      editorial: explain({
+        idea: "Two-colour the graph by BFS: give each neighbour the opposite colour, and fail if a neighbour already has the same colour.",
+        steps: [
+          "For each uncoloured node, colour it 1 and BFS.",
+          "For each neighbour: colour it `-color[node]` if uncoloured; return `false` if it equals `color[node]`.",
+          "Return `true`.",
+        ],
+        why: "A graph is bipartite iff it has no odd cycle, and a proper 2-colouring exists exactly then; BFS colouring finds one or exposes a conflict.",
+        time: "O(V + E)",
+        space: "O(V)",
+        pitfalls: [
+          "Restart from every uncoloured node — the graph may be disconnected.",
+        ],
+      }),
       solutions: {
         python: `from collections import deque\n\ndef isBipartite(graph) -> bool:\n    n = len(graph)\n    color = [0] * n\n    for start in range(n):\n        if color[start] != 0:\n            continue\n        color[start] = 1\n        queue = deque([start])\n        while queue:\n            node = queue.popleft()\n            for nxt in graph[node]:\n                if color[nxt] == 0:\n                    color[nxt] = -color[node]\n                    queue.append(nxt)\n                elif color[nxt] == color[node]:\n                    return False\n    return True`,
         javascript: `var isBipartite = function(graph) {\n    const n = graph.length;\n    const color = [];\n    for (let i = 0; i < n; i++) color.push(0);\n    for (let start = 0; start < n; start++) {\n        if (color[start] !== 0) continue;\n        color[start] = 1;\n        const queue = [start];\n        let head = 0;\n        while (head < queue.length) {\n            const node = queue[head++];\n            for (let i = 0; i < graph[node].length; i++) {\n                const next = graph[node][i];\n                if (color[next] === 0) {\n                    color[next] = -color[node];\n                    queue.push(next);\n                } else if (color[next] === color[node]) {\n                    return false;\n                }\n            }\n        }\n    }\n    return true;\n};`,
@@ -340,6 +382,20 @@ export const GRAPHS2_PROBLEMS: CatalogProblem[] = [
         }
         return { input: fmtIntMat(rooms), expectedOutput: bool(ref(rooms)) };
       },
+      editorial: explain({
+        idea: "Reachability from node 0: DFS/BFS marking rooms as they are entered, then compare the count with `n`.",
+        steps: [
+          "Mark room 0 seen and push it.",
+          "Pop a room, push every unseen key it holds (marking it).",
+          "Return `visited == n`.",
+        ],
+        why: "The rooms and keys form a directed graph; the set of rooms you can enter is exactly the set reachable from 0.",
+        time: "O(rooms + keys)",
+        space: "O(rooms)",
+        pitfalls: [
+          "Mark a room when it is pushed, not when it is popped, to avoid duplicate pushes.",
+        ],
+      }),
       solutions: {
         python: `def canVisitAllRooms(rooms) -> bool:\n    seen = [False] * len(rooms)\n    seen[0] = True\n    stack = [0]\n    visited = 1\n    while stack:\n        room = stack.pop()\n        for key in rooms[room]:\n            if not seen[key]:\n                seen[key] = True\n                visited += 1\n                stack.append(key)\n    return visited == len(rooms)`,
         javascript: `var canVisitAllRooms = function(rooms) {\n    const n = rooms.length;\n    const seen = [];\n    for (let i = 0; i < n; i++) seen.push(false);\n    seen[0] = true;\n    const stack = [0];\n    let visited = 1;\n    while (stack.length > 0) {\n        const room = stack.pop();\n        for (let i = 0; i < rooms[room].length; i++) {\n            const key = rooms[room][i];\n            if (!seen[key]) {\n                seen[key] = true;\n                visited++;\n                stack.push(key);\n            }\n        }\n    }\n    return visited === n;\n};`,
@@ -412,6 +468,19 @@ export const GRAPHS2_PROBLEMS: CatalogProblem[] = [
         }
         return { input: fmtIntMat(graph), expectedOutput: fmtIntMat(ref(graph)) };
       },
+      editorial: explain({
+        idea: "DFS from node 0 carrying the current path; record a copy whenever the target is reached and pop on the way back.",
+        steps: [
+          "Start `path = [0]`.",
+          "At `node`, if it is the target, append `list(path)`; else for each successor push it, recurse, pop.",
+        ],
+        why: "The graph is acyclic, so every simple path is found without a visited set, and following adjacency lists in order yields the required output order.",
+        time: "O(2^n · n) in the worst case (number of paths)",
+        space: "O(n) recursion plus the output",
+        pitfalls: [
+          "Appending the live `path` list instead of a copy makes every recorded path alias the same object.",
+        ],
+      }),
       solutions: {
         python: `def allPathsSourceTarget(graph):\n    target = len(graph) - 1\n    out = []\n    path = [0]\n\n    def walk(node):\n        if node == target:\n            out.append(list(path))\n            return\n        for nxt in graph[node]:\n            path.append(nxt)\n            walk(nxt)\n            path.pop()\n\n    walk(0)\n    return out`,
         javascript: `var allPathsSourceTarget = function(graph) {\n    const target = graph.length - 1;\n    const out = [];\n    const path = [0];\n    const walk = function(node) {\n        if (node === target) {\n            out.push(path.slice());\n            return;\n        }\n        for (let i = 0; i < graph[node].length; i++) {\n            path.push(graph[node][i]);\n            walk(graph[node][i]);\n            path.pop();\n        }\n    };\n    walk(0);\n    return out;\n};`,
@@ -493,6 +562,20 @@ export const GRAPHS2_PROBLEMS: CatalogProblem[] = [
         }
         return { input: fmtIntMat(graph), expectedOutput: fmtIntArr(ref(graph)) };
       },
+      editorial: explain({
+        idea: "A node is unsafe iff it can reach a cycle. Run a three-colour DFS (unvisited / on-stack / finished) and cache each node's verdict.",
+        steps: [
+          "Mark `node` on-stack; recurse into each successor.",
+          "If any successor is unsafe (or on-stack), mark `node` unsafe and return `false`.",
+          "Otherwise mark `node` safe; collect nodes whose verdict is safe.",
+        ],
+        why: "Meeting an on-stack node means a back edge, hence a cycle, and any node that can reach a cycle inherits the unsafe verdict; memoising verdicts makes each node explored once.",
+        time: "O(V + E)",
+        space: "O(V)",
+        pitfalls: [
+          "Kahn's algorithm on the reversed graph (peeling terminal nodes) is the iterative alternative.",
+        ],
+      }),
       solutions: {
         python: `import sys\n\ndef eventualSafeNodes(graph):\n    sys.setrecursionlimit(10000)\n    n = len(graph)\n    state = [0] * n\n\n    def safe(node):\n        if state[node] == 2:\n            return True\n        if state[node] in (1, 3):\n            return False\n        state[node] = 1\n        for nxt in graph[node]:\n            if not safe(nxt):\n                state[node] = 3\n                return False\n        state[node] = 2\n        return True\n\n    return [i for i in range(n) if safe(i)]`,
         javascript: `var eventualSafeNodes = function(graph) {\n    const n = graph.length;\n    const state = [];\n    for (let i = 0; i < n; i++) state.push(0);\n    const safe = function(node) {\n        if (state[node] === 2) return true;\n        if (state[node] === 1 || state[node] === 3) return false;\n        state[node] = 1;\n        for (let i = 0; i < graph[node].length; i++) {\n            if (!safe(graph[node][i])) {\n                state[node] = 3;\n                return false;\n            }\n        }\n        state[node] = 2;\n        return true;\n    };\n    const out = [];\n    for (let i = 0; i < n; i++) {\n        if (safe(i)) out.push(i);\n    }\n    return out;\n};`,
@@ -565,6 +648,19 @@ export const GRAPHS2_PROBLEMS: CatalogProblem[] = [
         }
         return { input: `${n}\n${fmtIntMat(edges)}`, expectedOutput: fmtIntArr(ref(n, edges)) };
       },
+      editorial: explain({
+        idea: "In a DAG a node with an incoming edge is reachable from its predecessor, and a node with none can only be reached by starting there — so the answer is exactly the set of in-degree-zero nodes.",
+        steps: [
+          "Mark every edge target as having an incoming edge.",
+          "Return the nodes not marked, in ascending order.",
+        ],
+        why: "Every node is reachable from some source (follow predecessors backward; acyclicity guarantees the walk ends at an in-degree-zero node), and no source is reachable from any other node.",
+        time: "O(V + E)",
+        space: "O(V)",
+        pitfalls: [
+          "This relies on acyclicity; with cycles the minimum set is a harder problem.",
+        ],
+      }),
       solutions: {
         python: `def findSmallestSetOfVertices(n: int, edges):\n    has_incoming = [False] * n\n    for _, to in edges:\n        has_incoming[to] = True\n    return [i for i in range(n) if not has_incoming[i]]`,
         javascript: `var findSmallestSetOfVertices = function(n, edges) {\n    const hasIncoming = [];\n    for (let i = 0; i < n; i++) hasIncoming.push(false);\n    for (let i = 0; i < edges.length; i++) hasIncoming[edges[i][1]] = true;\n    const out = [];\n    for (let i = 0; i < n; i++) {\n        if (!hasIncoming[i]) out.push(i);\n    }\n    return out;\n};`,
@@ -651,6 +747,20 @@ export const GRAPHS2_PROBLEMS: CatalogProblem[] = [
         const grid = randGrid(rng, rows, cols, 0, 1);
         return { input: fmtIntMat(grid), expectedOutput: String(ref(grid)) };
       },
+      editorial: explain({
+        idea: "Flood-fill the land connected to the border; every land cell that stays unmarked cannot escape.",
+        steps: [
+          "Push every border land cell and mark it.",
+          "DFS/BFS through four-directional land neighbours.",
+          "Count land cells not marked.",
+        ],
+        why: "A cell can walk off the grid iff it is connected to a border land cell, which is exactly what the flood from the border computes.",
+        time: "O(m · n)",
+        space: "O(m · n)",
+        pitfalls: [
+          "Same inversion trick as Surrounded Regions — find the escapers, not the trapped.",
+        ],
+      }),
       solutions: {
         python: `def numEnclaves(grid) -> int:\n    rows, cols = len(grid), len(grid[0])\n    seen = [[False] * cols for _ in range(rows)]\n    stack = []\n    for r in range(rows):\n        for c in range(cols):\n            on_border = r == 0 or c == 0 or r == rows - 1 or c == cols - 1\n            if on_border and grid[r][c] == 1 and not seen[r][c]:\n                seen[r][c] = True\n                stack.append((r, c))\n    while stack:\n        r, c = stack.pop()\n        for nr, nc in ((r + 1, c), (r - 1, c), (r, c + 1), (r, c - 1)):\n            if 0 <= nr < rows and 0 <= nc < cols and grid[nr][nc] == 1 and not seen[nr][nc]:\n                seen[nr][nc] = True\n                stack.append((nr, nc))\n    return sum(1 for r in range(rows) for c in range(cols) if grid[r][c] == 1 and not seen[r][c])`,
         javascript: `var numEnclaves = function(grid) {\n    const rows = grid.length, cols = grid[0].length;\n    const seen = [];\n    for (let r = 0; r < rows; r++) {\n        const row = [];\n        for (let c = 0; c < cols; c++) row.push(false);\n        seen.push(row);\n    }\n    const stack = [];\n    for (let r = 0; r < rows; r++) {\n        for (let c = 0; c < cols; c++) {\n            const onBorder = r === 0 || c === 0 || r === rows - 1 || c === cols - 1;\n            if (onBorder && grid[r][c] === 1 && !seen[r][c]) {\n                seen[r][c] = true;\n                stack.push([r, c]);\n            }\n        }\n    }\n    const dr = [1, -1, 0, 0], dc = [0, 0, 1, -1];\n    while (stack.length > 0) {\n        const cell = stack.pop();\n        for (let d = 0; d < 4; d++) {\n            const nr = cell[0] + dr[d], nc = cell[1] + dc[d];\n            if (nr < 0 || nc < 0 || nr >= rows || nc >= cols) continue;\n            if (grid[nr][nc] === 1 && !seen[nr][nc]) {\n                seen[nr][nc] = true;\n                stack.push([nr, nc]);\n            }\n        }\n    }\n    let count = 0;\n    for (let r = 0; r < rows; r++) {\n        for (let c = 0; c < cols; c++) {\n            if (grid[r][c] === 1 && !seen[r][c]) count++;\n        }\n    }\n    return count;\n};`,
@@ -724,6 +834,20 @@ export const GRAPHS2_PROBLEMS: CatalogProblem[] = [
         const grid = Array.from({ length: n }, () => Array.from({ length: n }, () => (rng() < 0.35 ? 1 : 0)));
         return { input: fmtIntMat(grid), expectedOutput: String(ref(grid)) };
       },
+      editorial: explain({
+        idea: "Unweighted shortest path in eight directions: BFS from the top-left, counting cells visited.",
+        steps: [
+          "Return -1 if either corner is blocked.",
+          "BFS with `dist[0][0] = 1`, expanding to the eight neighbours that are 0 and unvisited.",
+          "Return `dist` at the bottom-right when dequeued, else -1.",
+        ],
+        why: "BFS visits cells in non-decreasing distance order, so the first time the destination is dequeued its distance is minimal.",
+        time: "O(n²)",
+        space: "O(n²)",
+        pitfalls: [
+          "Length counts cells, so a 1×1 clear grid answers 1.",
+        ],
+      }),
       solutions: {
         python: `from collections import deque\n\ndef shortestPathBinaryMatrix(grid) -> int:\n    n = len(grid)\n    if grid[0][0] == 1 or grid[n - 1][n - 1] == 1:\n        return -1\n    dist = [[-1] * n for _ in range(n)]\n    dist[0][0] = 1\n    queue = deque([(0, 0)])\n    while queue:\n        r, c = queue.popleft()\n        if r == n - 1 and c == n - 1:\n            return dist[r][c]\n        for dr in (-1, 0, 1):\n            for dc in (-1, 0, 1):\n                if dr == 0 and dc == 0:\n                    continue\n                nr, nc = r + dr, c + dc\n                if 0 <= nr < n and 0 <= nc < n and grid[nr][nc] == 0 and dist[nr][nc] == -1:\n                    dist[nr][nc] = dist[r][c] + 1\n                    queue.append((nr, nc))\n    return -1`,
         javascript: `var shortestPathBinaryMatrix = function(grid) {\n    const n = grid.length;\n    if (grid[0][0] === 1 || grid[n - 1][n - 1] === 1) return -1;\n    const dist = [];\n    for (let r = 0; r < n; r++) {\n        const row = [];\n        for (let c = 0; c < n; c++) row.push(-1);\n        dist.push(row);\n    }\n    dist[0][0] = 1;\n    const queue = [[0, 0]];\n    let head = 0;\n    while (head < queue.length) {\n        const cell = queue[head++];\n        if (cell[0] === n - 1 && cell[1] === n - 1) return dist[cell[0]][cell[1]];\n        for (let dr = -1; dr <= 1; dr++) {\n            for (let dc = -1; dc <= 1; dc++) {\n                if (dr === 0 && dc === 0) continue;\n                const nr = cell[0] + dr, nc = cell[1] + dc;\n                if (nr < 0 || nc < 0 || nr >= n || nc >= n) continue;\n                if (grid[nr][nc] === 1 || dist[nr][nc] !== -1) continue;\n                dist[nr][nc] = dist[cell[0]][cell[1]] + 1;\n                queue.push([nr, nc]);\n            }\n        }\n    }\n    return -1;\n};`,
@@ -804,6 +928,20 @@ export const GRAPHS2_PROBLEMS: CatalogProblem[] = [
         const grid = Array.from({ length: n }, () => Array.from({ length: n }, () => (rng() < 0.25 ? 1 : 0)));
         return { input: fmtIntMat(grid), expectedOutput: String(ref(grid)) };
       },
+      editorial: explain({
+        idea: "Multi-source BFS from every land cell at once; the last distance assigned is the maximum distance from any water cell to its nearest land.",
+        steps: [
+          "Seed the queue with all land cells at distance 0.",
+          "Return -1 if the grid is all land or all water.",
+          "BFS outward; track the largest distance assigned.",
+        ],
+        why: "Seeding every source simultaneously makes each cell's BFS distance equal its distance to the nearest source, so one pass computes all nearest-land distances.",
+        time: "O(n²)",
+        space: "O(n²)",
+        pitfalls: [
+          "One BFS per water cell is `O(n⁴)`.",
+        ],
+      }),
       solutions: {
         python: `from collections import deque\n\ndef maxDistance(grid) -> int:\n    n = len(grid)\n    dist = [[-1] * n for _ in range(n)]\n    queue = deque()\n    for r in range(n):\n        for c in range(n):\n            if grid[r][c] == 1:\n                dist[r][c] = 0\n                queue.append((r, c))\n    if not queue or len(queue) == n * n:\n        return -1\n    best = 0\n    while queue:\n        r, c = queue.popleft()\n        for nr, nc in ((r + 1, c), (r - 1, c), (r, c + 1), (r, c - 1)):\n            if 0 <= nr < n and 0 <= nc < n and dist[nr][nc] == -1:\n                dist[nr][nc] = dist[r][c] + 1\n                best = max(best, dist[nr][nc])\n                queue.append((nr, nc))\n    return best`,
         javascript: `var maxDistance = function(grid) {\n    const n = grid.length;\n    const dist = [];\n    for (let r = 0; r < n; r++) {\n        const row = [];\n        for (let c = 0; c < n; c++) row.push(-1);\n        dist.push(row);\n    }\n    const queue = [];\n    for (let r = 0; r < n; r++) {\n        for (let c = 0; c < n; c++) {\n            if (grid[r][c] === 1) {\n                dist[r][c] = 0;\n                queue.push([r, c]);\n            }\n        }\n    }\n    if (queue.length === 0 || queue.length === n * n) return -1;\n    const dr = [1, -1, 0, 0], dc = [0, 0, 1, -1];\n    let head = 0, best = 0;\n    while (head < queue.length) {\n        const cell = queue[head++];\n        for (let d = 0; d < 4; d++) {\n            const nr = cell[0] + dr[d], nc = cell[1] + dc[d];\n            if (nr < 0 || nc < 0 || nr >= n || nc >= n) continue;\n            if (dist[nr][nc] !== -1) continue;\n            dist[nr][nc] = dist[cell[0]][cell[1]] + 1;\n            if (dist[nr][nc] > best) best = dist[nr][nc];\n            queue.push([nr, nc]);\n        }\n    }\n    return best;\n};`,
@@ -885,6 +1023,20 @@ export const GRAPHS2_PROBLEMS: CatalogProblem[] = [
         const grid2 = randGrid(rng, rows, cols, 0, 1);
         return { input: `${fmtIntMat(grid1)}\n${fmtIntMat(grid2)}`, expectedOutput: String(ref(grid1, grid2)) };
       },
+      editorial: explain({
+        idea: "Traverse each island of `grid2`, checking every cell against `grid1` and remembering whether any failed; count islands where none did.",
+        steps: [
+          "For each unvisited land cell of `grid2`, DFS/BFS its island.",
+          "Set `contained = false` if a visited cell is water in `grid1`.",
+          "Count the island if `contained`.",
+        ],
+        why: "An island is a sub-island iff all its cells are land in `grid1`, and the traversal examines every cell of the island exactly once.",
+        time: "O(m · n)",
+        space: "O(m · n)",
+        pitfalls: [
+          "Do not stop the traversal on a failure — the rest of the island must still be marked visited.",
+        ],
+      }),
       solutions: {
         python: `def countSubIslands(grid1, grid2) -> int:\n    rows, cols = len(grid2), len(grid2[0])\n    seen = [[False] * cols for _ in range(rows)]\n    count = 0\n    for r in range(rows):\n        for c in range(cols):\n            if grid2[r][c] != 1 or seen[r][c]:\n                continue\n            seen[r][c] = True\n            stack = [(r, c)]\n            contained = True\n            while stack:\n                cr, cc = stack.pop()\n                if grid1[cr][cc] != 1:\n                    contained = False\n                for nr, nc in ((cr + 1, cc), (cr - 1, cc), (cr, cc + 1), (cr, cc - 1)):\n                    if 0 <= nr < rows and 0 <= nc < cols and grid2[nr][nc] == 1 and not seen[nr][nc]:\n                        seen[nr][nc] = True\n                        stack.append((nr, nc))\n            if contained:\n                count += 1\n    return count`,
         javascript: `var countSubIslands = function(grid1, grid2) {\n    const rows = grid2.length, cols = grid2[0].length;\n    const seen = [];\n    for (let r = 0; r < rows; r++) {\n        const row = [];\n        for (let c = 0; c < cols; c++) row.push(false);\n        seen.push(row);\n    }\n    const dr = [1, -1, 0, 0], dc = [0, 0, 1, -1];\n    let count = 0;\n    for (let r = 0; r < rows; r++) {\n        for (let c = 0; c < cols; c++) {\n            if (grid2[r][c] !== 1 || seen[r][c]) continue;\n            seen[r][c] = true;\n            const stack = [[r, c]];\n            let contained = true;\n            while (stack.length > 0) {\n                const cell = stack.pop();\n                if (grid1[cell[0]][cell[1]] !== 1) contained = false;\n                for (let d = 0; d < 4; d++) {\n                    const nr = cell[0] + dr[d], nc = cell[1] + dc[d];\n                    if (nr < 0 || nc < 0 || nr >= rows || nc >= cols) continue;\n                    if (grid2[nr][nc] !== 1 || seen[nr][nc]) continue;\n                    seen[nr][nc] = true;\n                    stack.push([nr, nc]);\n                }\n            }\n            if (contained) count++;\n        }\n    }\n    return count;\n};`,
@@ -954,6 +1106,20 @@ export const GRAPHS2_PROBLEMS: CatalogProblem[] = [
         const connections = randEdges(rng, n, ri(rng, 0, Math.min(60, n * 2)));
         return { input: `${n}\n${fmtIntMat(connections)}`, expectedOutput: String(ref(n, connections)) };
       },
+      editorial: explain({
+        idea: "With at least `n - 1` cables it is always possible, and each move can join two components, so the answer is `components - 1`.",
+        steps: [
+          "Return -1 if `len(connections) < n - 1`.",
+          "Union-find to count components.",
+          "Return `components - 1`.",
+        ],
+        why: "Joining `c` components requires `c - 1` new links; each redundant cable inside a component can be moved to provide one, and having ≥ `n - 1` cables guarantees enough redundancy.",
+        time: "O((n + e) · α(n))",
+        space: "O(n)",
+        pitfalls: [
+          "The cable-count check is what makes the component count sufficient.",
+        ],
+      }),
       solutions: {
         python: `def makeConnected(n: int, connections) -> int:\n    if len(connections) < n - 1:\n        return -1\n    parent = list(range(n))\n\n    def find(x):\n        while parent[x] != x:\n            parent[x] = parent[parent[x]]\n            x = parent[x]\n        return x\n\n    components = n\n    for a, b in connections:\n        ra, rb = find(a), find(b)\n        if ra != rb:\n            parent[ra] = rb\n            components -= 1\n    return components - 1`,
         javascript: `var makeConnected = function(n, connections) {\n    if (connections.length < n - 1) return -1;\n    const parent = [];\n    for (let i = 0; i < n; i++) parent.push(i);\n    const find = function(x) {\n        while (parent[x] !== x) {\n            parent[x] = parent[parent[x]];\n            x = parent[x];\n        }\n        return x;\n    };\n    let components = n;\n    for (let i = 0; i < connections.length; i++) {\n        const a = find(connections[i][0]);\n        const b = find(connections[i][1]);\n        if (a !== b) {\n            parent[a] = b;\n            components--;\n        }\n    }\n    return components - 1;\n};`,
@@ -1036,6 +1202,20 @@ export const GRAPHS2_PROBLEMS: CatalogProblem[] = [
         });
         return { input: `${fmtIntMat(logs)}\n${n}`, expectedOutput: String(ref(logs, n)) };
       },
+      editorial: explain({
+        idea: "Process friendships in time order with union-find; the timestamp that reduces the group count to 1 is the answer.",
+        steps: [
+          "Sort logs by timestamp.",
+          "For each log, union the pair; if it merges two groups and the count reaches 1, return the timestamp.",
+          "Return -1 if never.",
+        ],
+        why: "Acquaintance is transitive closure of friendship, which is exactly the component structure; processing chronologically finds the first moment a single component forms.",
+        time: "O(m log m + m · α(n))",
+        space: "O(n)",
+        pitfalls: [
+          "With `n = 1` everyone is already acquainted at time 0.",
+        ],
+      }),
       solutions: {
         python: `def earliestAcq(logs, n: int) -> int:\n    parent = list(range(n))\n\n    def find(x):\n        while parent[x] != x:\n            parent[x] = parent[parent[x]]\n            x = parent[x]\n        return x\n\n    groups = n\n    for timestamp, x, y in sorted(logs):\n        rx, ry = find(x), find(y)\n        if rx != ry:\n            parent[rx] = ry\n            groups -= 1\n            if groups == 1:\n                return timestamp\n    return 0 if groups == 1 else -1`,
         javascript: `var earliestAcq = function(logs, n) {\n    const sorted = logs.slice().sort(function(a, b) { return a[0] - b[0]; });\n    const parent = [];\n    for (let i = 0; i < n; i++) parent.push(i);\n    const find = function(x) {\n        while (parent[x] !== x) {\n            parent[x] = parent[parent[x]];\n            x = parent[x];\n        }\n        return x;\n    };\n    let groups = n;\n    for (let i = 0; i < sorted.length; i++) {\n        const a = find(sorted[i][1]);\n        const b = find(sorted[i][2]);\n        if (a !== b) {\n            parent[a] = b;\n            groups--;\n            if (groups === 1) return sorted[i][0];\n        }\n    }\n    return groups === 1 ? 0 : -1;\n};`,
@@ -1177,6 +1357,19 @@ export const GRAPHS2_PROBLEMS: CatalogProblem[] = [
         }
         return { input: fmtIntMat(grid), expectedOutput: String(ref(grid)) };
       },
+      editorial: explain({
+        idea: "Find one island with a DFS and mark its cells at distance 0, then multi-source BFS outward; the first expansion that touches the other island gives the answer.",
+        steps: [
+          "Locate any land cell and DFS to collect the first island into the BFS queue.",
+          "BFS through water; when a neighbour is land not yet visited, return the current distance.",
+        ],
+        why: "BFS from the whole first island computes the minimum number of water cells between it and any other cell, and the first land cell reached belongs to the second island.",
+        time: "O(n²)",
+        space: "O(n²)",
+        pitfalls: [
+          "Mark the first island fully before starting the BFS, or its own cells are mistaken for the target.",
+        ],
+      }),
       solutions: {
         python: `from collections import deque\n\ndef shortestBridge(grid) -> int:\n    n = len(grid)\n    dist = [[-1] * n for _ in range(n)]\n    queue = deque()\n    start = None\n    for r in range(n):\n        for c in range(n):\n            if grid[r][c] == 1:\n                start = (r, c)\n                break\n        if start:\n            break\n    stack = [start]\n    dist[start[0]][start[1]] = 0\n    queue.append(start)\n    while stack:\n        r, c = stack.pop()\n        for nr, nc in ((r + 1, c), (r - 1, c), (r, c + 1), (r, c - 1)):\n            if 0 <= nr < n and 0 <= nc < n and grid[nr][nc] == 1 and dist[nr][nc] == -1:\n                dist[nr][nc] = 0\n                stack.append((nr, nc))\n                queue.append((nr, nc))\n    while queue:\n        r, c = queue.popleft()\n        for nr, nc in ((r + 1, c), (r - 1, c), (r, c + 1), (r, c - 1)):\n            if 0 <= nr < n and 0 <= nc < n and dist[nr][nc] == -1:\n                if grid[nr][nc] == 1:\n                    return dist[r][c]\n                dist[nr][nc] = dist[r][c] + 1\n                queue.append((nr, nc))\n    return -1`,
         javascript: `var shortestBridge = function(grid) {\n    const n = grid.length;\n    const dr = [1, -1, 0, 0], dc = [0, 0, 1, -1];\n    const dist = [];\n    for (let r = 0; r < n; r++) {\n        const row = [];\n        for (let c = 0; c < n; c++) row.push(-1);\n        dist.push(row);\n    }\n    const queue = [];\n    let started = false;\n    for (let r = 0; r < n && !started; r++) {\n        for (let c = 0; c < n && !started; c++) {\n            if (grid[r][c] !== 1) continue;\n            started = true;\n            dist[r][c] = 0;\n            const stack = [[r, c]];\n            queue.push([r, c]);\n            while (stack.length > 0) {\n                const cell = stack.pop();\n                for (let d = 0; d < 4; d++) {\n                    const nr = cell[0] + dr[d], nc = cell[1] + dc[d];\n                    if (nr < 0 || nc < 0 || nr >= n || nc >= n) continue;\n                    if (grid[nr][nc] !== 1 || dist[nr][nc] !== -1) continue;\n                    dist[nr][nc] = 0;\n                    stack.push([nr, nc]);\n                    queue.push([nr, nc]);\n                }\n            }\n        }\n    }\n    let head = 0;\n    while (head < queue.length) {\n        const cell = queue[head++];\n        for (let d = 0; d < 4; d++) {\n            const nr = cell[0] + dr[d], nc = cell[1] + dc[d];\n            if (nr < 0 || nc < 0 || nr >= n || nc >= n) continue;\n            if (dist[nr][nc] !== -1) continue;\n            if (grid[nr][nc] === 1) return dist[cell[0]][cell[1]];\n            dist[nr][nc] = dist[cell[0]][cell[1]] + 1;\n            queue.push([nr, nc]);\n        }\n    }\n    return -1;\n};`,
@@ -1258,6 +1451,20 @@ export const GRAPHS2_PROBLEMS: CatalogProblem[] = [
         const grid = randGrid(rng, rows, cols, 0, 1);
         return { input: fmtIntMat(grid), expectedOutput: String(ref(grid)) };
       },
+      editorial: explain({
+        idea: "Record each island's cells relative to its entry cell, sort them into a canonical shape, and count distinct shapes with a set.",
+        steps: [
+          "For each unvisited land cell, traverse its island collecting `(r - r0, c - c0)`.",
+          "Add the sorted tuple of offsets to a set.",
+          "Return the set's size.",
+        ],
+        why: "Translation-equivalent islands have identical offset sets from their top-left-most cell, and sorting removes traversal-order differences.",
+        time: "O(m · n · log)",
+        space: "O(m · n)",
+        pitfalls: [
+          "Entering an island at its row-major first cell makes the offsets canonical; sorting is belt-and-braces.",
+        ],
+      }),
       solutions: {
         python: `def numDistinctIslands(grid) -> int:\n    rows, cols = len(grid), len(grid[0])\n    seen = [[False] * cols for _ in range(rows)]\n    shapes = set()\n    for r in range(rows):\n        for c in range(cols):\n            if grid[r][c] != 1 or seen[r][c]:\n                continue\n            seen[r][c] = True\n            stack = [(r, c)]\n            cells = []\n            while stack:\n                cr, cc = stack.pop()\n                cells.append((cr - r, cc - c))\n                for nr, nc in ((cr + 1, cc), (cr - 1, cc), (cr, cc + 1), (cr, cc - 1)):\n                    if 0 <= nr < rows and 0 <= nc < cols and grid[nr][nc] == 1 and not seen[nr][nc]:\n                        seen[nr][nc] = True\n                        stack.append((nr, nc))\n            shapes.add(tuple(sorted(cells)))\n    return len(shapes)`,
         javascript: `var numDistinctIslands = function(grid) {\n    const rows = grid.length, cols = grid[0].length;\n    const seen = [];\n    for (let r = 0; r < rows; r++) {\n        const row = [];\n        for (let c = 0; c < cols; c++) row.push(false);\n        seen.push(row);\n    }\n    const dr = [1, -1, 0, 0], dc = [0, 0, 1, -1];\n    const shapes = {};\n    let count = 0;\n    for (let r = 0; r < rows; r++) {\n        for (let c = 0; c < cols; c++) {\n            if (grid[r][c] !== 1 || seen[r][c]) continue;\n            seen[r][c] = true;\n            const stack = [[r, c]];\n            const cells = [];\n            while (stack.length > 0) {\n                const cell = stack.pop();\n                cells.push((cell[0] - r) + "," + (cell[1] - c));\n                for (let d = 0; d < 4; d++) {\n                    const nr = cell[0] + dr[d], nc = cell[1] + dc[d];\n                    if (nr < 0 || nc < 0 || nr >= rows || nc >= cols) continue;\n                    if (grid[nr][nc] !== 1 || seen[nr][nc]) continue;\n                    seen[nr][nc] = true;\n                    stack.push([nr, nc]);\n                }\n            }\n            cells.sort();\n            const key = cells.join("|");\n            if (shapes[key] !== true) {\n                shapes[key] = true;\n                count++;\n            }\n        }\n    }\n    return count;\n};`,
@@ -1347,6 +1554,20 @@ export const GRAPHS2_PROBLEMS: CatalogProblem[] = [
         );
         return { input: fmtStrArr(grid), expectedOutput: bool(ref(grid)) };
       },
+      editorial: explain({
+        idea: "DFS each same-letter region carrying the parent cell; reaching an already-visited cell that is not the parent means a cycle.",
+        steps: [
+          "For each unvisited cell, DFS with `(cell, parent)`.",
+          "For each same-letter neighbour other than the parent: return `true` if visited, else mark and push.",
+          "Return `false`.",
+        ],
+        why: "In an undirected graph a DFS back edge to a non-parent visited node closes a cycle, and every grid cycle has length ≥ 4 automatically since the grid is bipartite.",
+        time: "O(m · n)",
+        space: "O(m · n)",
+        pitfalls: [
+          "Skipping the parent is what prevents a single edge from being seen as a cycle.",
+        ],
+      }),
       solutions: {
         python: `def containsCycle(grid) -> bool:\n    rows, cols = len(grid), len(grid[0])\n    seen = [[False] * cols for _ in range(rows)]\n    for r in range(rows):\n        for c in range(cols):\n            if seen[r][c]:\n                continue\n            letter = grid[r][c]\n            stack = [(r, c, -1, -1)]\n            seen[r][c] = True\n            while stack:\n                cr, cc, pr, pc = stack.pop()\n                for nr, nc in ((cr + 1, cc), (cr - 1, cc), (cr, cc + 1), (cr, cc - 1)):\n                    if not (0 <= nr < rows and 0 <= nc < cols):\n                        continue\n                    if grid[nr][nc] != letter or (nr == pr and nc == pc):\n                        continue\n                    if seen[nr][nc]:\n                        return True\n                    seen[nr][nc] = True\n                    stack.append((nr, nc, cr, cc))\n    return False`,
         javascript: `var containsCycle = function(grid) {\n    const rows = grid.length, cols = grid[0].length;\n    const seen = [];\n    for (let r = 0; r < rows; r++) {\n        const row = [];\n        for (let c = 0; c < cols; c++) row.push(false);\n        seen.push(row);\n    }\n    const dr = [1, -1, 0, 0], dc = [0, 0, 1, -1];\n    for (let r = 0; r < rows; r++) {\n        for (let c = 0; c < cols; c++) {\n            if (seen[r][c]) continue;\n            const letter = grid[r].charAt(c);\n            const stack = [[r, c, -1, -1]];\n            seen[r][c] = true;\n            while (stack.length > 0) {\n                const cell = stack.pop();\n                for (let d = 0; d < 4; d++) {\n                    const nr = cell[0] + dr[d], nc = cell[1] + dc[d];\n                    if (nr < 0 || nc < 0 || nr >= rows || nc >= cols) continue;\n                    if (grid[nr].charAt(nc) !== letter) continue;\n                    if (nr === cell[2] && nc === cell[3]) continue;\n                    if (seen[nr][nc]) return true;\n                    seen[nr][nc] = true;\n                    stack.push([nr, nc, cell[0], cell[1]]);\n                }\n            }\n        }\n    }\n    return false;\n};`,
@@ -1430,6 +1651,21 @@ export const GRAPHS2_PROBLEMS: CatalogProblem[] = [
         const shuffled = shuffle(rng, edges.map((e) => (rng() < 0.5 ? [e[0], e[1]] : [e[1], e[0]])));
         return { input: `${n}\n${fmtIntMat(shuffled)}`, expectedOutput: fmtIntArr(ref(n, shuffled)) };
       },
+      editorial: explain({
+        idea: "Peel leaves layer by layer; the last one or two nodes standing are the centroids, which root the minimum-height trees.",
+        steps: [
+          "Return `[0]` for `n = 1`.",
+          "Compute degrees; start with all degree-1 nodes as leaves.",
+          "While more than 2 nodes remain, remove the leaves and collect neighbours whose degree drops to 1.",
+          "Return the remaining nodes.",
+        ],
+        why: "The minimum-height root lies at the middle of every longest path; stripping leaves from all ends simultaneously shortens every longest path equally, so the survivors are the middle one (odd length) or two (even length).",
+        time: "O(n)",
+        space: "O(n)",
+        pitfalls: [
+          "Rooting at each node and measuring is `O(n²)`.",
+        ],
+      }),
       solutions: {
         python: `def findMinHeightTrees(n: int, edges):\n    if n == 1:\n        return [0]\n    adjacency = [[] for _ in range(n)]\n    degree = [0] * n\n    for a, b in edges:\n        adjacency[a].append(b)\n        adjacency[b].append(a)\n        degree[a] += 1\n        degree[b] += 1\n    leaves = [i for i in range(n) if degree[i] == 1]\n    remaining = n\n    while remaining > 2:\n        remaining -= len(leaves)\n        nxt = []\n        for leaf in leaves:\n            for neighbour in adjacency[leaf]:\n                degree[neighbour] -= 1\n                if degree[neighbour] == 1:\n                    nxt.append(neighbour)\n        leaves = nxt\n    return sorted(leaves)`,
         javascript: `var findMinHeightTrees = function(n, edges) {\n    if (n === 1) return [0];\n    const adjacency = [];\n    const degree = [];\n    for (let i = 0; i < n; i++) {\n        adjacency.push([]);\n        degree.push(0);\n    }\n    for (let i = 0; i < edges.length; i++) {\n        adjacency[edges[i][0]].push(edges[i][1]);\n        adjacency[edges[i][1]].push(edges[i][0]);\n        degree[edges[i][0]]++;\n        degree[edges[i][1]]++;\n    }\n    let leaves = [];\n    for (let i = 0; i < n; i++) {\n        if (degree[i] === 1) leaves.push(i);\n    }\n    let remaining = n;\n    while (remaining > 2) {\n        remaining -= leaves.length;\n        const next = [];\n        for (let i = 0; i < leaves.length; i++) {\n            const leaf = leaves[i];\n            for (let j = 0; j < adjacency[leaf].length; j++) {\n                const neighbour = adjacency[leaf][j];\n                degree[neighbour]--;\n                if (degree[neighbour] === 1) next.push(neighbour);\n            }\n        }\n        leaves = next;\n    }\n    return leaves.slice().sort(function(a, b) { return a - b; });\n};`,
@@ -1523,6 +1759,19 @@ export const GRAPHS2_PROBLEMS: CatalogProblem[] = [
         }
         return { input: `${n}\n${fmtIntMat(dislikes)}`, expectedOutput: bool(ref(n, dislikes)) };
       },
+      editorial: explain({
+        idea: "Build the dislike graph and test whether it is bipartite by two-colouring with BFS.",
+        steps: [
+          "Adjacency list from `dislikes`.",
+          "For each uncoloured person, BFS assigning opposite colours; fail on a same-colour neighbour.",
+        ],
+        why: "The two groups are the two colour classes; a valid split exists iff the graph has no odd cycle.",
+        time: "O(n + d)",
+        space: "O(n + d)",
+        pitfalls: [
+          "People are 1-indexed; size the arrays `n + 1`.",
+        ],
+      }),
       solutions: {
         python: `from collections import deque\n\ndef possibleBipartition(n: int, dislikes) -> bool:\n    adjacency = [[] for _ in range(n + 1)]\n    for a, b in dislikes:\n        adjacency[a].append(b)\n        adjacency[b].append(a)\n    color = [0] * (n + 1)\n    for start in range(1, n + 1):\n        if color[start] != 0:\n            continue\n        color[start] = 1\n        queue = deque([start])\n        while queue:\n            node = queue.popleft()\n            for nxt in adjacency[node]:\n                if color[nxt] == 0:\n                    color[nxt] = -color[node]\n                    queue.append(nxt)\n                elif color[nxt] == color[node]:\n                    return False\n    return True`,
         javascript: `var possibleBipartition = function(n, dislikes) {\n    const adjacency = [];\n    for (let i = 0; i <= n; i++) adjacency.push([]);\n    for (let i = 0; i < dislikes.length; i++) {\n        adjacency[dislikes[i][0]].push(dislikes[i][1]);\n        adjacency[dislikes[i][1]].push(dislikes[i][0]);\n    }\n    const color = [];\n    for (let i = 0; i <= n; i++) color.push(0);\n    for (let start = 1; start <= n; start++) {\n        if (color[start] !== 0) continue;\n        color[start] = 1;\n        const queue = [start];\n        let head = 0;\n        while (head < queue.length) {\n            const node = queue[head++];\n            for (let i = 0; i < adjacency[node].length; i++) {\n                const next = adjacency[node][i];\n                if (color[next] === 0) {\n                    color[next] = -color[node];\n                    queue.push(next);\n                } else if (color[next] === color[node]) {\n                    return false;\n                }\n            }\n        }\n    }\n    return true;\n};`,
@@ -1601,6 +1850,19 @@ export const GRAPHS2_PROBLEMS: CatalogProblem[] = [
         const connections = shuffle(rng, edges);
         return { input: `${n}\n${fmtIntMat(connections)}`, expectedOutput: String(ref(n, connections)) };
       },
+      editorial: explain({
+        idea: "Traverse the tree from city 0 ignoring direction, storing each road both ways with a flag; every road walked in its original direction points away from 0 and must be flipped.",
+        steps: [
+          "Add `(b, 1)` to `adj[a]` and `(a, 0)` to `adj[b]` for each road `a → b`.",
+          "DFS from 0; add the flag of every edge used to reach an unvisited node.",
+        ],
+        why: "In a tree there is one path from each city to 0; an edge traversed outward from 0 in its original orientation is oriented away from 0 on that path and must be reversed.",
+        time: "O(n)",
+        space: "O(n)",
+        pitfalls: [
+          "The `seen` check is needed even though it is a tree, because edges are stored in both directions.",
+        ],
+      }),
       solutions: {
         python: `def minReorder(n: int, connections) -> int:\n    adjacency = [[] for _ in range(n)]\n    for a, b in connections:\n        adjacency[a].append((b, 1))\n        adjacency[b].append((a, 0))\n    seen = [False] * n\n    seen[0] = True\n    stack = [0]\n    changes = 0\n    while stack:\n        node = stack.pop()\n        for nxt, away in adjacency[node]:\n            if seen[nxt]:\n                continue\n            seen[nxt] = True\n            changes += away\n            stack.append(nxt)\n    return changes`,
         javascript: `var minReorder = function(n, connections) {\n    const adjacency = [];\n    for (let i = 0; i < n; i++) adjacency.push([]);\n    for (let i = 0; i < connections.length; i++) {\n        adjacency[connections[i][0]].push([connections[i][1], 1]);\n        adjacency[connections[i][1]].push([connections[i][0], 0]);\n    }\n    const seen = [];\n    for (let i = 0; i < n; i++) seen.push(false);\n    seen[0] = true;\n    const stack = [0];\n    let changes = 0;\n    while (stack.length > 0) {\n        const node = stack.pop();\n        for (let i = 0; i < adjacency[node].length; i++) {\n            const next = adjacency[node][i][0];\n            const away = adjacency[node][i][1];\n            if (seen[next]) continue;\n            seen[next] = true;\n            changes += away;\n            stack.push(next);\n        }\n    }\n    return changes;\n};`,
@@ -1686,6 +1948,20 @@ export const GRAPHS2_PROBLEMS: CatalogProblem[] = [
           expectedOutput: String(ref(n, headID, manager, informTime)),
         };
       },
+      editorial: explain({
+        idea: "Invert `manager` into a children list and DFS from the head accumulating time down each path; the answer is the deepest accumulated time.",
+        steps: [
+          "Build `children[m]` for each employee.",
+          "Stack `(node, elapsed)` from `(head, 0)`; push each child with `elapsed + informTime[node]`.",
+          "Track the maximum `elapsed`.",
+        ],
+        why: "Everyone at a level is informed in parallel, so the time to reach an employee is the sum of inform times along the management chain, and the last one informed determines the total.",
+        time: "O(n)",
+        space: "O(n)",
+        pitfalls: [
+          "Leaf employees have `informTime = 0`; the maximum is still taken at them.",
+        ],
+      }),
       solutions: {
         python: `def numOfMinutes(n: int, headID: int, manager, informTime) -> int:\n    children = [[] for _ in range(n)]\n    for i in range(n):\n        if manager[i] != -1:\n            children[manager[i]].append(i)\n    best = 0\n    stack = [(headID, 0)]\n    while stack:\n        node, elapsed = stack.pop()\n        best = max(best, elapsed)\n        for child in children[node]:\n            stack.append((child, elapsed + informTime[node]))\n    return best`,
         javascript: `var numOfMinutes = function(n, headID, manager, informTime) {\n    const children = [];\n    for (let i = 0; i < n; i++) children.push([]);\n    for (let i = 0; i < n; i++) {\n        if (manager[i] !== -1) children[manager[i]].push(i);\n    }\n    let best = 0;\n    const stack = [[headID, 0]];\n    while (stack.length > 0) {\n        const entry = stack.pop();\n        const node = entry[0], elapsed = entry[1];\n        if (elapsed > best) best = elapsed;\n        for (let i = 0; i < children[node].length; i++) {\n            stack.push([children[node][i], elapsed + informTime[node]]);\n        }\n    }\n    return best;\n};`,
@@ -1781,6 +2057,20 @@ export const GRAPHS2_PROBLEMS: CatalogProblem[] = [
         const heights = randGrid(rng, rows, cols, 1, hi);
         return { input: fmtIntMat(heights), expectedOutput: String(ref(heights)) };
       },
+      editorial: explain({
+        idea: "Binary search the effort limit: for a given limit, a flood fill using only steps with height difference ≤ limit tells whether the destination is reachable.",
+        steps: [
+          "`lo = 0`, `hi = max height`.",
+          "While `lo < hi`: test `mid` with a DFS; if reachable, `hi = mid`, else `lo = mid + 1`.",
+          "Return `lo`.",
+        ],
+        why: "Reachability is monotone in the limit (a larger limit permits every step a smaller one does), so the smallest feasible limit can be found by bisection.",
+        time: "O(m · n · log(maxHeight))",
+        space: "O(m · n)",
+        pitfalls: [
+          "Dijkstra with `cost = max(edge)` is the alternative; both are standard.",
+        ],
+      }),
       solutions: {
         python: `def minimumEffortPath(heights) -> int:\n    rows, cols = len(heights), len(heights[0])\n\n    def reachable(limit):\n        seen = [[False] * cols for _ in range(rows)]\n        seen[0][0] = True\n        stack = [(0, 0)]\n        while stack:\n            r, c = stack.pop()\n            if r == rows - 1 and c == cols - 1:\n                return True\n            for nr, nc in ((r + 1, c), (r - 1, c), (r, c + 1), (r, c - 1)):\n                if 0 <= nr < rows and 0 <= nc < cols and not seen[nr][nc]:\n                    if abs(heights[nr][nc] - heights[r][c]) <= limit:\n                        seen[nr][nc] = True\n                        stack.append((nr, nc))\n        return seen[rows - 1][cols - 1]\n\n    lo, hi = 0, max(max(row) for row in heights)\n    while lo < hi:\n        mid = (lo + hi) // 2\n        if reachable(mid):\n            hi = mid\n        else:\n            lo = mid + 1\n    return lo`,
         javascript: `var minimumEffortPath = function(heights) {\n    const rows = heights.length, cols = heights[0].length;\n    const dr = [1, -1, 0, 0], dc = [0, 0, 1, -1];\n    const reachable = function(limit) {\n        const seen = [];\n        for (let r = 0; r < rows; r++) {\n            const row = [];\n            for (let c = 0; c < cols; c++) row.push(false);\n            seen.push(row);\n        }\n        seen[0][0] = true;\n        const stack = [[0, 0]];\n        while (stack.length > 0) {\n            const cell = stack.pop();\n            if (cell[0] === rows - 1 && cell[1] === cols - 1) return true;\n            for (let d = 0; d < 4; d++) {\n                const nr = cell[0] + dr[d], nc = cell[1] + dc[d];\n                if (nr < 0 || nc < 0 || nr >= rows || nc >= cols || seen[nr][nc]) continue;\n                const diff = Math.abs(heights[nr][nc] - heights[cell[0]][cell[1]]);\n                if (diff > limit) continue;\n                seen[nr][nc] = true;\n                stack.push([nr, nc]);\n            }\n        }\n        return seen[rows - 1][cols - 1];\n    };\n    let lo = 0, hi = 0;\n    for (let r = 0; r < rows; r++) {\n        for (let c = 0; c < cols; c++) {\n            if (heights[r][c] > hi) hi = heights[r][c];\n        }\n    }\n    while (lo < hi) {\n        const mid = Math.floor((lo + hi) / 2);\n        if (reachable(mid)) hi = mid;\n        else lo = mid + 1;\n    }\n    return lo;\n};`,
@@ -1851,6 +2141,19 @@ export const GRAPHS2_PROBLEMS: CatalogProblem[] = [
         const roads = randEdges(rng, n, ri(rng, 0, Math.min(60, n * 2)));
         return { input: `${n}\n${fmtIntMat(roads)}`, expectedOutput: String(ref(n, roads)) };
       },
+      editorial: explain({
+        idea: "The rank of a pair is `deg[a] + deg[b]`, minus one if they are directly connected; compute degrees and a road set, then scan all pairs.",
+        steps: [
+          "Count degrees and store each road as an unordered pair in a set.",
+          "For every pair, compute the rank and track the maximum.",
+        ],
+        why: "Roads incident to either city are counted by the degree sum, with the shared road counted twice and corrected once.",
+        time: "O(n² + r)",
+        space: "O(r)",
+        pitfalls: [
+          "The quadratic pair scan is fine at `n ≤ 100`.",
+        ],
+      }),
       solutions: {
         python: `def maximalNetworkRank(n: int, roads) -> int:\n    degree = [0] * n\n    connected = set()\n    for a, b in roads:\n        degree[a] += 1\n        degree[b] += 1\n        connected.add((min(a, b), max(a, b)))\n    best = 0\n    for i in range(n):\n        for j in range(i + 1, n):\n            rank = degree[i] + degree[j]\n            if (i, j) in connected:\n                rank -= 1\n            best = max(best, rank)\n    return best`,
         javascript: `var maximalNetworkRank = function(n, roads) {\n    const degree = [];\n    for (let i = 0; i < n; i++) degree.push(0);\n    const connected = new Set();\n    for (let i = 0; i < roads.length; i++) {\n        const a = roads[i][0], b = roads[i][1];\n        degree[a]++;\n        degree[b]++;\n        connected.add(a < b ? a + "," + b : b + "," + a);\n    }\n    let best = 0;\n    for (let i = 0; i < n; i++) {\n        for (let j = i + 1; j < n; j++) {\n            let rank = degree[i] + degree[j];\n            if (connected.has(i + "," + j)) rank--;\n            if (rank > best) best = rank;\n        }\n    }\n    return best;\n};`,
@@ -1930,6 +2233,19 @@ export const GRAPHS2_PROBLEMS: CatalogProblem[] = [
         }
         return { input: fmtIntArr(edges), expectedOutput: String(ref(edges)) };
       },
+      editorial: explain({
+        idea: "Each node has one outgoing edge, so following arrows from any unvisited start eventually hits a visited node. Stamp nodes with a global clock; if the hit node was stamped during the current walk, the cycle length is `clock - stamp`.",
+        steps: [
+          "For each unstamped `i`, record `walkStart = clock` and walk, stamping each node with `clock++`.",
+          "When the walk reaches a stamped node with stamp ≥ `walkStart`, update `best = clock - stamp`.",
+        ],
+        why: "A functional graph's walk is a ρ shape; a node revisited within the same walk closes the cycle, and the stamps count exactly the nodes on it. Nodes stamped by earlier walks are already resolved.",
+        time: "O(n)",
+        space: "O(n)",
+        pitfalls: [
+          "Comparing against `walkStart` is what distinguishes a cycle from merging into an earlier walk's path.",
+        ],
+      }),
       solutions: {
         python: `def longestCycle(edges) -> int:\n    n = len(edges)\n    visited_at = [-1] * n\n    best = -1\n    clock = 0\n    for i in range(n):\n        if visited_at[i] != -1:\n            continue\n        walk_start = clock\n        node = i\n        while node != -1 and visited_at[node] == -1:\n            visited_at[node] = clock\n            clock += 1\n            node = edges[node]\n        if node != -1 and visited_at[node] >= walk_start:\n            best = max(best, clock - visited_at[node])\n    return best`,
         javascript: `var longestCycle = function(edges) {\n    const n = edges.length;\n    const visitedAt = [];\n    for (let i = 0; i < n; i++) visitedAt.push(-1);\n    let best = -1;\n    let clock = 0;\n    for (let i = 0; i < n; i++) {\n        if (visitedAt[i] !== -1) continue;\n        const walkStart = clock;\n        let node = i;\n        while (node !== -1 && visitedAt[node] === -1) {\n            visitedAt[node] = clock++;\n            node = edges[node];\n        }\n        if (node !== -1 && visitedAt[node] >= walkStart) {\n            const length = clock - visitedAt[node];\n            if (length > best) best = length;\n        }\n    }\n    return best;\n};`,
@@ -2025,6 +2341,19 @@ export const GRAPHS2_PROBLEMS: CatalogProblem[] = [
         const node2 = ri(rng, 0, n - 1);
         return { input: `${fmtIntArr(edges)}\n${node1}\n${node2}`, expectedOutput: String(ref(edges, node1, node2)) };
       },
+      editorial: explain({
+        idea: "Walk the single outgoing edge from each start recording distances, then pick the node reachable from both with the smallest `max(d1, d2)`, ties to the smaller index.",
+        steps: [
+          "`walk(start)` records `dist[node] = steps` until `-1` or a repeat.",
+          "Scan `i` in order; keep the first `i` minimising `max(d1[i], d2[i])`.",
+        ],
+        why: "With one outgoing edge per node the reachable set is a simple path plus a cycle, so each walk is linear and records every reachable node's distance exactly.",
+        time: "O(n)",
+        space: "O(n)",
+        pitfalls: [
+          "Scanning indices in ascending order with a strict `<` gives the smallest index on ties.",
+        ],
+      }),
       solutions: {
         python: `def closestMeetingNode(edges, node1: int, node2: int) -> int:\n    def walk(start):\n        dist = [-1] * len(edges)\n        node, steps = start, 0\n        while node != -1 and dist[node] == -1:\n            dist[node] = steps\n            steps += 1\n            node = edges[node]\n        return dist\n\n    d1, d2 = walk(node1), walk(node2)\n    best, best_distance = -1, -1\n    for i in range(len(edges)):\n        if d1[i] == -1 or d2[i] == -1:\n            continue\n        worst = max(d1[i], d2[i])\n        if best == -1 or worst < best_distance:\n            best, best_distance = i, worst\n    return best`,
         javascript: `var closestMeetingNode = function(edges, node1, node2) {\n    const walk = function(start) {\n        const dist = [];\n        for (let i = 0; i < edges.length; i++) dist.push(-1);\n        let node = start, steps = 0;\n        while (node !== -1 && dist[node] === -1) {\n            dist[node] = steps++;\n            node = edges[node];\n        }\n        return dist;\n    };\n    const d1 = walk(node1);\n    const d2 = walk(node2);\n    let best = -1, bestDistance = -1;\n    for (let i = 0; i < edges.length; i++) {\n        if (d1[i] === -1 || d2[i] === -1) continue;\n        const worst = d1[i] > d2[i] ? d1[i] : d2[i];\n        if (best === -1 || worst < bestDistance) {\n            best = i;\n            bestDistance = worst;\n        }\n    }\n    return best;\n};`,
@@ -2086,6 +2415,19 @@ export const GRAPHS2_PROBLEMS: CatalogProblem[] = [
         const roads = randEdges(rng, n, ri(rng, 0, Math.min(60, n * 2)));
         return { input: `${n}\n${fmtIntMat(roads)}`, expectedOutput: String(ref(n, roads)) };
       },
+      editorial: explain({
+        idea: "Rewrite the total as `Σ value[city] · degree[city]`; assign the largest values to the highest degrees by sorting degrees ascending and pairing with `1..n`.",
+        steps: [
+          "Compute degrees.",
+          "Sort ascending; sum `degree[i] · (i + 1)`.",
+        ],
+        why: "Each city's value is counted once per incident road, so the total is a dot product of values and degrees, maximised by the rearrangement inequality when both are sorted the same way.",
+        time: "O(n log n + r)",
+        space: "O(n)",
+        pitfalls: [
+          "Use 64-bit arithmetic for the sum.",
+        ],
+      }),
       solutions: {
         python: `def maximumImportance(n: int, roads) -> int:\n    degree = [0] * n\n    for a, b in roads:\n        degree[a] += 1\n        degree[b] += 1\n    degree.sort()\n    return sum(d * (i + 1) for i, d in enumerate(degree))`,
         javascript: `var maximumImportance = function(n, roads) {\n    const degree = [];\n    for (let i = 0; i < n; i++) degree.push(0);\n    for (let i = 0; i < roads.length; i++) {\n        degree[roads[i][0]]++;\n        degree[roads[i][1]]++;\n    }\n    degree.sort(function(a, b) { return a - b; });\n    let total = 0;\n    for (let i = 0; i < n; i++) total += degree[i] * (i + 1);\n    return total;\n};`,
@@ -2164,6 +2506,19 @@ export const GRAPHS2_PROBLEMS: CatalogProblem[] = [
         const edges = randEdges(rng, n, ri(rng, 0, Math.min(90, n * 2)));
         return { input: `${n}\n${fmtIntMat(edges)}`, expectedOutput: String(ref(n, edges)) };
       },
+      editorial: explain({
+        idea: "Nodes are mutually reachable iff they share a component, so find component sizes and count cross-component pairs.",
+        steps: [
+          "Union-find with sizes.",
+          "Sweep roots: add `size · seenSoFar` and then add `size` to `seenSoFar`.",
+        ],
+        why: "Every pair drawn from two different components is unreachable, and the running-sum sweep counts each such pair exactly once.",
+        time: "O((n + e) · α(n))",
+        space: "O(n)",
+        pitfalls: [
+          "The count can exceed 32 bits — use a wide integer.",
+        ],
+      }),
       solutions: {
         python: `def countPairs(n: int, edges) -> int:\n    parent = list(range(n))\n    size = [1] * n\n\n    def find(x):\n        while parent[x] != x:\n            parent[x] = parent[parent[x]]\n            x = parent[x]\n        return x\n\n    for a, b in edges:\n        ra, rb = find(a), find(b)\n        if ra != rb:\n            parent[ra] = rb\n            size[rb] += size[ra]\n    unreachable = 0\n    seen_so_far = 0\n    for i in range(n):\n        if find(i) != i:\n            continue\n        unreachable += size[i] * seen_so_far\n        seen_so_far += size[i]\n    return unreachable`,
         javascript: `var countPairs = function(n, edges) {\n    const parent = [], size = [];\n    for (let i = 0; i < n; i++) {\n        parent.push(i);\n        size.push(1);\n    }\n    const find = function(x) {\n        while (parent[x] !== x) {\n            parent[x] = parent[parent[x]];\n            x = parent[x];\n        }\n        return x;\n    };\n    for (let i = 0; i < edges.length; i++) {\n        const a = find(edges[i][0]);\n        const b = find(edges[i][1]);\n        if (a !== b) {\n            parent[a] = b;\n            size[b] += size[a];\n        }\n    }\n    let unreachable = 0, seenSoFar = 0;\n    for (let i = 0; i < n; i++) {\n        if (find(i) !== i) continue;\n        unreachable += size[i] * seenSoFar;\n        seenSoFar += size[i];\n    }\n    return unreachable;\n};`,
@@ -2236,6 +2591,20 @@ export const GRAPHS2_PROBLEMS: CatalogProblem[] = [
         const start = ri(rng, 0, n - 1);
         return { input: `${fmtIntArr(arr)}\n${start}`, expectedOutput: bool(ref(arr, start)) };
       },
+      editorial: explain({
+        idea: "Indices are nodes with two outgoing edges (`i ± arr[i]`); DFS/BFS from `start` with a visited set, returning `true` on any index holding 0.",
+        steps: [
+          "Push `start`, marking it.",
+          "Pop; if `arr[index] == 0` return `true`; push unseen in-range neighbours.",
+          "Return `false`.",
+        ],
+        why: "Reachability in the implicit graph is exactly the question, and the visited set prevents the bounce-back loop.",
+        time: "O(n)",
+        space: "O(n)",
+        pitfalls: [
+          "Without marking, `[1, 1]`-style inputs loop forever.",
+        ],
+      }),
       solutions: {
         python: `def canReach(arr, start: int) -> bool:\n    n = len(arr)\n    seen = [False] * n\n    seen[start] = True\n    stack = [start]\n    while stack:\n        index = stack.pop()\n        if arr[index] == 0:\n            return True\n        for nxt in (index + arr[index], index - arr[index]):\n            if 0 <= nxt < n and not seen[nxt]:\n                seen[nxt] = True\n                stack.append(nxt)\n    return False`,
         javascript: `var canReach = function(arr, start) {\n    const n = arr.length;\n    const seen = [];\n    for (let i = 0; i < n; i++) seen.push(false);\n    seen[start] = true;\n    const stack = [start];\n    while (stack.length > 0) {\n        const index = stack.pop();\n        if (arr[index] === 0) return true;\n        const forward = index + arr[index];\n        const backward = index - arr[index];\n        if (forward < n && !seen[forward]) {\n            seen[forward] = true;\n            stack.push(forward);\n        }\n        if (backward >= 0 && !seen[backward]) {\n            seen[backward] = true;\n            stack.push(backward);\n        }\n    }\n    return false;\n};`,
@@ -2340,6 +2709,20 @@ export const GRAPHS2_PROBLEMS: CatalogProblem[] = [
           expectedOutput: String(ref(startGene, endGene, shuffle(rng, bank.slice()))),
         };
       },
+      editorial: explain({
+        idea: "Genes are nodes and single-character changes are edges; BFS level by level from `startGene`, expanding only to unused bank genes exactly one character away.",
+        steps: [
+          "Frontier = `[startGene]`, `level = 0`.",
+          "For each gene, for each unused bank gene differing in exactly one position: return `level + 1` if it is the target, else mark used and add to the next frontier.",
+          "Return -1 when the frontier empties.",
+        ],
+        why: "All mutations cost one, so BFS finds the shortest path; marking on enqueue keeps each gene expanded once.",
+        time: "O(levels · |bank| · 8)",
+        space: "O(|bank|)",
+        pitfalls: [
+          "The target must itself be in the bank; scanning the bank enforces that.",
+        ],
+      }),
       solutions: {
         python: `def minMutation(startGene: str, endGene: str, bank) -> int:\n    used = [False] * len(bank)\n    frontier = [startGene]\n    level = 0\n    while frontier:\n        nxt = []\n        for gene in frontier:\n            for i, candidate in enumerate(bank):\n                if used[i]:\n                    continue\n                diff = sum(1 for a, b in zip(candidate, gene) if a != b)\n                if diff != 1:\n                    continue\n                if candidate == endGene:\n                    return level + 1\n                used[i] = True\n                nxt.append(candidate)\n        frontier = nxt\n        level += 1\n    return 0 if startGene == endGene else -1`,
         javascript: `var minMutation = function(startGene, endGene, bank) {\n    const used = bank.map(function() { return false; });\n    let frontier = [startGene];\n    let level = 0;\n    while (frontier.length > 0) {\n        const next = [];\n        for (let f = 0; f < frontier.length; f++) {\n            for (let i = 0; i < bank.length; i++) {\n                if (used[i]) continue;\n                let diff = 0;\n                for (let k = 0; k < bank[i].length; k++) {\n                    if (bank[i].charAt(k) !== frontier[f].charAt(k)) diff++;\n                }\n                if (diff !== 1) continue;\n                if (bank[i] === endGene) return level + 1;\n                used[i] = true;\n                next.push(bank[i]);\n            }\n        }\n        frontier = next;\n        level++;\n    }\n    return startGene === endGene ? 0 : -1;\n};`,
@@ -2446,6 +2829,20 @@ export const GRAPHS2_PROBLEMS: CatalogProblem[] = [
         }
         return { input: `"${beginWord}"\n"${endWord}"\n${fmtStrArr(finalList)}`, expectedOutput: String(ref(beginWord, endWord, finalList)) };
       },
+      editorial: explain({
+        idea: "BFS over words where an edge is a one-letter difference; the level count is the number of words in the chain.",
+        steps: [
+          "Frontier = `[beginWord]`, `level = 1`.",
+          "Expand each word to unused list entries with exactly one differing position; return `level + 1` on reaching `endWord`.",
+          "Return 0 if exhausted.",
+        ],
+        why: "Uniform edge cost makes BFS optimal, and counting levels from 1 yields the number of words rather than transformations.",
+        time: "O(levels · |list| · L)",
+        space: "O(|list|)",
+        pitfalls: [
+          "For large lists, generate the `26 · L` neighbours of each word and look them up in a set instead of scanning the list.",
+        ],
+      }),
       solutions: {
         python: `def ladderLength(beginWord: str, endWord: str, wordList) -> int:\n    used = [False] * len(wordList)\n    frontier = [beginWord]\n    level = 1\n    while frontier:\n        nxt = []\n        for word in frontier:\n            for i, candidate in enumerate(wordList):\n                if used[i]:\n                    continue\n                diff = sum(1 for a, b in zip(candidate, word) if a != b)\n                if diff != 1:\n                    continue\n                if candidate == endWord:\n                    return level + 1\n                used[i] = True\n                nxt.append(candidate)\n        frontier = nxt\n        level += 1\n    return 0`,
         javascript: `var ladderLength = function(beginWord, endWord, wordList) {\n    const used = wordList.map(function() { return false; });\n    let frontier = [beginWord];\n    let level = 1;\n    while (frontier.length > 0) {\n        const next = [];\n        for (let f = 0; f < frontier.length; f++) {\n            for (let i = 0; i < wordList.length; i++) {\n                if (used[i]) continue;\n                let diff = 0;\n                for (let k = 0; k < wordList[i].length; k++) {\n                    if (wordList[i].charAt(k) !== frontier[f].charAt(k)) diff++;\n                }\n                if (diff !== 1) continue;\n                if (wordList[i] === endWord) return level + 1;\n                used[i] = true;\n                next.push(wordList[i]);\n            }\n        }\n        frontier = next;\n        level++;\n    }\n    return 0;\n};`,
@@ -2536,6 +2933,20 @@ export const GRAPHS2_PROBLEMS: CatalogProblem[] = [
         clear(total);
         return { input: fmtIntMat(board), expectedOutput: String(ref(board)) };
       },
+      editorial: explain({
+        idea: "BFS over square numbers, with a helper mapping a square to its boustrophedon `(row, col)`; a snake or ladder redirects the landing once.",
+        steps: [
+          "`value_at(square)` computes `row = n - 1 - (square-1) // n` and flips the column on alternate rows.",
+          "BFS from square 1; for each die roll `1..6`, land, apply any redirect, enqueue if unseen.",
+          "Return the distance at `n²`, or -1.",
+        ],
+        why: "Every move costs one regardless of the roll, so BFS gives the minimum; redirects are applied exactly once per landing as the rules state.",
+        time: "O(n²)",
+        space: "O(n²)",
+        pitfalls: [
+          "Do not chain a ladder into another ladder — only the landing square's redirect applies.",
+        ],
+      }),
       solutions: {
         python: `from collections import deque\n\ndef snakesAndLadders(board) -> int:\n    n = len(board)\n    target = n * n\n\n    def value_at(square):\n        quotient, remainder = divmod(square - 1, n)\n        row = n - 1 - quotient\n        col = remainder if quotient % 2 == 0 else n - 1 - remainder\n        return board[row][col]\n\n    dist = [-1] * (target + 1)\n    dist[1] = 0\n    queue = deque([1])\n    while queue:\n        square = queue.popleft()\n        if square == target:\n            return dist[square]\n        for step in range(1, 7):\n            landing = square + step\n            if landing > target:\n                break\n            jump = value_at(landing)\n            destination = landing if jump == -1 else jump\n            if dist[destination] == -1:\n                dist[destination] = dist[square] + 1\n                queue.append(destination)\n    return -1`,
         javascript: `var snakesAndLadders = function(board) {\n    const n = board.length;\n    const target = n * n;\n    const valueAt = function(square) {\n        const quotient = Math.floor((square - 1) / n);\n        const remainder = (square - 1) % n;\n        const row = n - 1 - quotient;\n        const col = quotient % 2 === 0 ? remainder : n - 1 - remainder;\n        return board[row][col];\n    };\n    const dist = [];\n    for (let i = 0; i <= target; i++) dist.push(-1);\n    dist[1] = 0;\n    const queue = [1];\n    let head = 0;\n    while (head < queue.length) {\n        const square = queue[head++];\n        if (square === target) return dist[square];\n        for (let step = 1; step <= 6 && square + step <= target; step++) {\n            const landing = square + step;\n            const jump = valueAt(landing);\n            const destination = jump === -1 ? landing : jump;\n            if (dist[destination] === -1) {\n                dist[destination] = dist[square] + 1;\n                queue.push(destination);\n            }\n        }\n    }\n    return -1;\n};`,
@@ -2637,6 +3048,20 @@ export const GRAPHS2_PROBLEMS: CatalogProblem[] = [
         const heights = randGrid(rng, rows, cols, 0, hi);
         return { input: fmtIntMat(heights), expectedOutput: fmtIntMat(ref(heights)) };
       },
+      editorial: explain({
+        idea: "Search uphill from each ocean: flood from all Pacific-edge cells moving to neighbours of equal or greater height, repeat for the Atlantic, and intersect.",
+        steps: [
+          "`flow(starts)` DFS from the edge cells, stepping only to `heights[next] >= heights[cur]`.",
+          "Run it for the top/left edges and the bottom/right edges.",
+          "Emit cells marked by both, in row-major order.",
+        ],
+        why: "Water flows downhill from a cell to an ocean iff the reverse walk climbs from the ocean to the cell, so the two uphill floods compute exactly the cells that drain to each ocean.",
+        time: "O(m · n)",
+        space: "O(m · n)",
+        pitfalls: [
+          "Flooding downhill from every cell repeats work and is quadratic.",
+        ],
+      }),
       solutions: {
         python: `def pacificAtlantic(heights):\n    rows, cols = len(heights), len(heights[0])\n\n    def flow(starts):\n        seen = [[False] * cols for _ in range(rows)]\n        stack = []\n        for r, c in starts:\n            seen[r][c] = True\n            stack.append((r, c))\n        while stack:\n            r, c = stack.pop()\n            for nr, nc in ((r + 1, c), (r - 1, c), (r, c + 1), (r, c - 1)):\n                if 0 <= nr < rows and 0 <= nc < cols and not seen[nr][nc]:\n                    if heights[nr][nc] >= heights[r][c]:\n                        seen[nr][nc] = True\n                        stack.append((nr, nc))\n        return seen\n\n    pacific_starts = [(0, c) for c in range(cols)] + [(r, 0) for r in range(rows)]\n    atlantic_starts = [(rows - 1, c) for c in range(cols)] + [(r, cols - 1) for r in range(rows)]\n    pacific = flow(pacific_starts)\n    atlantic = flow(atlantic_starts)\n    return [[r, c] for r in range(rows) for c in range(cols) if pacific[r][c] and atlantic[r][c]]`,
         javascript: `var pacificAtlantic = function(heights) {\n    const rows = heights.length, cols = heights[0].length;\n    const dr = [1, -1, 0, 0], dc = [0, 0, 1, -1];\n    const flow = function(starts) {\n        const seen = [];\n        for (let r = 0; r < rows; r++) {\n            const row = [];\n            for (let c = 0; c < cols; c++) row.push(false);\n            seen.push(row);\n        }\n        const stack = [];\n        for (let i = 0; i < starts.length; i++) {\n            seen[starts[i][0]][starts[i][1]] = true;\n            stack.push(starts[i]);\n        }\n        while (stack.length > 0) {\n            const cell = stack.pop();\n            for (let d = 0; d < 4; d++) {\n                const nr = cell[0] + dr[d], nc = cell[1] + dc[d];\n                if (nr < 0 || nc < 0 || nr >= rows || nc >= cols || seen[nr][nc]) continue;\n                if (heights[nr][nc] < heights[cell[0]][cell[1]]) continue;\n                seen[nr][nc] = true;\n                stack.push([nr, nc]);\n            }\n        }\n        return seen;\n    };\n    const pacificStarts = [], atlanticStarts = [];\n    for (let c = 0; c < cols; c++) {\n        pacificStarts.push([0, c]);\n        atlanticStarts.push([rows - 1, c]);\n    }\n    for (let r = 0; r < rows; r++) {\n        pacificStarts.push([r, 0]);\n        atlanticStarts.push([r, cols - 1]);\n    }\n    const pacific = flow(pacificStarts);\n    const atlantic = flow(atlanticStarts);\n    const out = [];\n    for (let r = 0; r < rows; r++) {\n        for (let c = 0; c < cols; c++) {\n            if (pacific[r][c] && atlantic[r][c]) out.push([r, c]);\n        }\n    }\n    return out;\n};`,
@@ -2749,6 +3174,20 @@ export const GRAPHS2_PROBLEMS: CatalogProblem[] = [
         }
         return { input: `${fmtStrArr(board)}\n"${word}"`, expectedOutput: bool(ref(board, word)) };
       },
+      editorial: explain({
+        idea: "Backtracking: try every start cell, extend the match to an adjacent unused cell whose letter matches the next character, and unmark on return.",
+        steps: [
+          "`search(r, c, index)` returns `true` when `index == len(word)`.",
+          "Fail fast on out-of-bounds, used, or mismatched letter.",
+          "Mark used, recurse in four directions, unmark.",
+        ],
+        why: "The recursion explores every simple path spelling the word's prefix; the immediate letter check prunes almost all branches.",
+        time: "O(m · n · 3^L)",
+        space: "O(L) recursion",
+        pitfalls: [
+          "Forgetting to unmark a cell after the recursion returns blocks other paths.",
+        ],
+      }),
       solutions: {
         python: `def exist(board, word: str) -> bool:\n    rows, cols = len(board), len(board[0])\n    used = [[False] * cols for _ in range(rows)]\n\n    def search(r, c, index):\n        if index == len(word):\n            return True\n        if not (0 <= r < rows and 0 <= c < cols):\n            return False\n        if used[r][c] or board[r][c] != word[index]:\n            return False\n        used[r][c] = True\n        found = (search(r + 1, c, index + 1) or search(r - 1, c, index + 1)\n                 or search(r, c + 1, index + 1) or search(r, c - 1, index + 1))\n        used[r][c] = False\n        return found\n\n    return any(search(r, c, 0) for r in range(rows) for c in range(cols))`,
         javascript: `var exist = function(board, word) {\n    const rows = board.length, cols = board[0].length;\n    const used = [];\n    for (let r = 0; r < rows; r++) {\n        const row = [];\n        for (let c = 0; c < cols; c++) row.push(false);\n        used.push(row);\n    }\n    const search = function(r, c, index) {\n        if (index === word.length) return true;\n        if (r < 0 || c < 0 || r >= rows || c >= cols) return false;\n        if (used[r][c] || board[r].charAt(c) !== word.charAt(index)) return false;\n        used[r][c] = true;\n        const found = search(r + 1, c, index + 1) || search(r - 1, c, index + 1) ||\n            search(r, c + 1, index + 1) || search(r, c - 1, index + 1);\n        used[r][c] = false;\n        return found;\n    };\n    for (let r = 0; r < rows; r++) {\n        for (let c = 0; c < cols; c++) {\n            if (search(r, c, 0)) return true;\n        }\n    }\n    return false;\n};`,
@@ -2838,6 +3277,20 @@ export const GRAPHS2_PROBLEMS: CatalogProblem[] = [
         for (let r = 0; r < n; r++) grid.push(values.slice(r * n, r * n + n));
         return { input: fmtIntMat(grid), expectedOutput: String(ref(grid)) };
       },
+      editorial: explain({
+        idea: "Binary search the time: at time `t` the corner is reachable iff a flood fill through squares with elevation ≤ `t` reaches it.",
+        steps: [
+          "`lo = max(corner elevations)`, `hi = n² - 1`.",
+          "Bisect with a DFS reachability test.",
+          "Return `lo`.",
+        ],
+        why: "Reachability is monotone in `t`, and elevations are distinct values in `0..n²-1`, so bisection over that range finds the minimum feasible time in `O(log n²)` tests.",
+        time: "O(n² log n)",
+        space: "O(n²)",
+        pitfalls: [
+          "A Dijkstra/priority-queue walk minimising the path maximum is the alternative.",
+        ],
+      }),
       solutions: {
         python: `def swimInWater(grid) -> int:\n    n = len(grid)\n\n    def reachable(limit):\n        if grid[0][0] > limit:\n            return False\n        seen = [[False] * n for _ in range(n)]\n        seen[0][0] = True\n        stack = [(0, 0)]\n        while stack:\n            r, c = stack.pop()\n            if r == n - 1 and c == n - 1:\n                return True\n            for nr, nc in ((r + 1, c), (r - 1, c), (r, c + 1), (r, c - 1)):\n                if 0 <= nr < n and 0 <= nc < n and not seen[nr][nc] and grid[nr][nc] <= limit:\n                    seen[nr][nc] = True\n                    stack.append((nr, nc))\n        return seen[n - 1][n - 1]\n\n    lo = max(grid[0][0], grid[n - 1][n - 1])\n    hi = n * n - 1\n    while lo < hi:\n        mid = (lo + hi) // 2\n        if reachable(mid):\n            hi = mid\n        else:\n            lo = mid + 1\n    return lo`,
         javascript: `var swimInWater = function(grid) {\n    const n = grid.length;\n    const dr = [1, -1, 0, 0], dc = [0, 0, 1, -1];\n    const reachable = function(limit) {\n        if (grid[0][0] > limit) return false;\n        const seen = [];\n        for (let r = 0; r < n; r++) {\n            const row = [];\n            for (let c = 0; c < n; c++) row.push(false);\n            seen.push(row);\n        }\n        seen[0][0] = true;\n        const stack = [[0, 0]];\n        while (stack.length > 0) {\n            const cell = stack.pop();\n            if (cell[0] === n - 1 && cell[1] === n - 1) return true;\n            for (let d = 0; d < 4; d++) {\n                const nr = cell[0] + dr[d], nc = cell[1] + dc[d];\n                if (nr < 0 || nc < 0 || nr >= n || nc >= n || seen[nr][nc]) continue;\n                if (grid[nr][nc] > limit) continue;\n                seen[nr][nc] = true;\n                stack.push([nr, nc]);\n            }\n        }\n        return seen[n - 1][n - 1];\n    };\n    let lo = grid[0][0] > grid[n - 1][n - 1] ? grid[0][0] : grid[n - 1][n - 1];\n    let hi = n * n - 1;\n    while (lo < hi) {\n        const mid = Math.floor((lo + hi) / 2);\n        if (reachable(mid)) hi = mid;\n        else lo = mid + 1;\n    }\n    return lo;\n};`,
