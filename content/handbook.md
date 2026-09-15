@@ -86,6 +86,7 @@ CodeKairo is a competitive-coding and interview-preparation platform. Everything
 - **Common questions** — the FAQ at `/faq`; what CodeKairo is and who makes it is at `/about`.
 - **Feedback** — a short rating prompt appears from time to time to signed-in accounts, and after every mock-interview report; that is the way to tell the team what is wrong or missing.
 - **Billing** — a subscription's receipts come from Cashfree, the payment gateway; the plan and its renewal date are on `/pricing`.
+- **Privacy** — what the site collects, who processes it, what is public and how to get data corrected or deleted is at `/privacy`.
 
 ## If you cannot answer
 
