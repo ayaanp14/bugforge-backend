@@ -1,93 +1,300 @@
 # CodeKairo handbook
 
-CodeKairo is a competitive-coding and interview-preparation platform. Everything below is what the site does and how to use it. Pages are given as paths on the site (for example `/roadmap`); when you point someone somewhere, link the path.
+CodeKairo is a competitive-coding and interview-preparation platform built for Indian college students and early-career engineers: DSA problems judged by hidden tests, bug hunts on real code, a DSA roadmap, a daily contest, 1v1/2v2 duels, live pair rooms, AI mock interviews (written and spoken), an aptitude bank, full-length placement tests, and a community feed. Prices are in rupees; the product calendar is Indian time (IST). Everything below is what the site actually does, edge cases included. Pages are given as paths (for example `/roadmap`); when you point someone somewhere, link the path.
+
+## Site map
+
+Signed-in pages (the dashboard shell — top navigation, Ctrl+K search, the bell, the assistant):
+
+- `/` home dashboard · `/challenges` problem catalogue · `/problems/<slug>` workbench · `/roadmap` DSA roadmap · `/roadmap/certificate` · `/contests` daily contest · `/bug-hunts` and `/bug-hunts/<id>` · `/duels` and `/duels/<id>` · `/pair-mode` lobby and `/pair-room/<roomId>` · `/mock-interview` builder, `/mock-interview/session` (written room), `/mock-interview/voice` (voice room), `/mock-interview/history`, `/mock-interview/report/<sessionId>` · `/aptitude`, `/aptitude/<topic>`, `/aptitude/q/<slug>` · `/tests`, `/tests/<slug>`, `/tests/attempt/<attemptId>`, `/tests/result/<attemptId>` · `/community` and `/community/p/<postId>` · `/leaderboard` · `/profile` · `/pricing` · `/admin` (admins only).
+- The top navigation groups them as **Problems** (Challenges, DSA Roadmap, Daily Contest, Bug Hunts), **Interview** (Mock Interviews, Interview History, Placement Tests, Aptitude), **Compete** (Duels, Pair Rooms, Leaderboard) and **Community**.
+
+Public pages (no account needed): `/` landing page for visitors · `/login` · `/register` · `/about` · `/faq` · `/privacy` · `/rating` (how rating, XP and streaks work) · `/product/challenges`, `/product/bug-hunts`, `/product/pair-mode`, `/product/mock-interviews` (feature pages) · `/campus-ambassador` · `/pricing` (readable signed out; buying needs an account). There is no terms-of-service page (the sign-up form mentions terms but no page exists), no public profile page for other users, no support inbox, no contact address, and no app-store listing linked from the site.
+
+## Accounts and signing in
+
+- **Register** (`/register`): email + password, plus an optional username. Passwords are 8–128 characters, any characters — there is no "one digit, one symbol" rule. Usernames are 3–20 characters of lowercase letters, digits and underscores (whatever is typed is lower-cased); leave it blank and one is generated from the part of the email before the `@`. Emails are trimmed and lower-cased, so `Alex@Example.com` and `alex@example.com` are the same account.
+- **Email verification**: a password account cannot sign in until its address is confirmed. Registering emails a six-digit code; the code screen appears immediately, and entering the code both confirms the address and signs the person in. Codes live **5 minutes**, allow **5 wrong guesses**, and a fresh request retires the earlier code. At most **6 code requests per hour** are accepted from one network address (sign-up codes and reset codes together). Signing in with the right password on an unconfirmed account re-sends a code and shows the code screen. An account with the wrong password is never told whether the address exists. Accounts created with Google or GitHub are verified from the start; a password account that later signs in with Google/GitHub on the same email, or completes a password reset, is confirmed by that.
+- **Sign in** (`/login`): email *or* username, plus password. Three ways in: password, GitHub, Google. Sessions last **30 days** and survive closing the browser.
+- **Social sign-in**: Google and GitHub link to an existing account by email (the address must be verified with the provider). From `/register`, GitHub refuses an email that already has an account ("account exists — sign in instead"); from `/login`, GitHub refuses an email with no account ("not registered"). Google creates the account if it does not exist, whichever page it was started from. The provider's name and avatar are copied onto the profile on each social sign-in. Provider access tokens are not stored.
+- **A social account has no password.** Typing a password for it says so and names the provider. To add a password, use "Forgot password" on the sign-in page (it proves the inbox); the in-profile password change refuses accounts without one.
+- **Forgot password**: from `/login` → enter the email → six-digit code (same 5-minute/5-attempt rules) → choose a new password. A reset signs every device out, confirms the email if it was not, and a reset link can be used once.
+- **Change password**: `/profile` → Password. The current password is required, the new one must differ, every *other* device is signed out and the current one stays in.
+- **Sign out** ends only the device it was pressed on. Password change/reset ends all sessions.
+- **Sign-in limits**: 20 attempts per 15 minutes per network address and 10 per account; a correct sign-in does not count. Hitting the limit means waiting out the window — there is no 12-hour lock, whatever an old form message says.
+- **Username backfill**: accounts from before usernames existed get one generated from their name on the next load. Change it from `/profile` if the new one is free (a live availability check runs as you type).
+- **Deleting an account or getting a copy of data**: no self-serve button. `/privacy` says to ask through the in-app feedback prompt; identity is confirmed first.
+- **Admins**: `/admin` opens only for the site's admin accounts; anyone else is sent home. Users never need it.
+
+## Profile — `/profile`
+
+- Shows: avatar with roadmap frame, name, username, institute, rank title and a "Progress to next tier" bar, XP, rating, global rank, current and best streak, solved counts by difficulty against the catalogue totals, accuracy, followers/following/posts, the 365-day activity heatmap (active days, max streak), roadmap chest badges, and the submission history (problems and bug hunts merged, newest first; "View solution" opens the code that was sent).
+- **Accuracy** on the profile and **Accept rate** on the home page are per *problem*, not per submission: solved problems ÷ (solved + problems attempted but never solved).
+- **Edit profile** (dialog): name (≤80 chars), username, institute (≤120), gender (≤32), birthday, location (≤120), website / GitHub / LinkedIn / X links (each must be an `http(s)://` URL, ≤300 chars), bio (≤20,000). **Avatar**: pick one of the preset illustrated avatars, or keep the picture that came from GitHub/Google; there is no photo upload.
+- **Reminders** section: three switches — streak at risk, daily problem, weekly digest (see *Notifications and reminders*).
+- **Password** section: change it (see above).
+- The profile is private to its owner. Other people see a name, avatar, XP, chest count and rank only where the community feed and leaderboard show them; there is no `/u/<username>` page.
+
+## Home dashboard — `/`
+
+One request builds it; it refreshes itself after a submission, a chest, a follow or a profile edit (otherwise within about five minutes).
+
+- **Hero**: name, rank title and the progress bar to the next rank, XP (with this week's gain), followers/following/posts.
+- **Stat tiles**: Solved, Accept rate, Streak, Global rank (by combined XP; "—" until the account has XP), XP, Bugs fixed.
+- **Problem progress** ring by difficulty; **Skills**: topic tags with solved/total; **Next up / Suggested for you**: "Continue solving" (the newest non-empty draft on an unsolved problem) plus up to three recommendations — problems being attempted first, then untouched ones; **Random problem**, **Browse the challenges**, **Open a pair room**, **Start a mock interview** shortcuts.
+- **Activity heatmap** (365 days), **Recent submissions** (last five, open one to read its code), **Leaderboard preview** (top 10 by XP with your rank), **Arenas** card (daily contest, bug hunts, pair rooms, mock interviews at a glance — the contest band shows today's problem, whether it is entered/solved and the contest streak), recent pair rooms, saved interview templates count.
+- "Solved today" counts *first-time* solves in the last 24 hours; "XP this week" counts first-time solves in the last 7 days (rolling windows, not calendar days).
 
 ## Solving problems
 
-- **Catalogue** — `/challenges`. Around 600 DSA problems across easy, medium and hard, each solvable in 13 languages (including Python, JavaScript, TypeScript, Java, C++, C, C#, Go, Rust and Kotlin). Filter by difficulty, topic tag and status (solved / attempted / unsolved). A problem opens at `/problems/<slug>`.
-- **The workbench** — the problem page: the statement on the left, a code editor with a function stub in the chosen language on the right, and panels for test cases, output and hints. The panels can be dragged and rearranged.
-- **Run** executes your code against the sample tests (and any custom input you add) and shows the output — it is free and does not count as an attempt.
-- **Submit** judges your code against the full hidden test set. The verdict is Accepted, Wrong Answer, Time Limit Exceeded, Runtime Error or Compile Error, with the number of cases passed.
-- **XP and rating** — the *first* accepted submission on a problem pays XP: 10 for easy, 20 for medium, 30 for hard. The same amount is added to rating, which drives the rank ladder. Re-solving a problem pays nothing.
-- **Drafts** — code is saved automatically per problem and language, so leaving and coming back keeps your work.
-- **Editorials** — many problems carry an editorial: an explanation of the approach and reference solutions in several languages. Open the Editorial tab in the workbench.
-- **Hints** — problems can carry hints, revealed one at a time.
+### The catalogue — `/challenges`
 
-## Rank and XP
+- Around 600 published DSA problems: roughly 305 easy, 271 medium and 22 hard. Every problem is authored with test cases, a typed function signature and reference solutions, and most carry an editorial.
+- Masthead counts: total problems, how many you have solved, how many you have attempted (a submission but no accepted one yet).
+- Filters: search (matches title and description), difficulty (Easy/Medium/Hard), status (All / Solved / Unsolved), **Topics** chips (several can be selected — a problem must carry every selected topic), **Companies** chips (one at a time: Amazon, Google, Microsoft, Meta, Apple, Adobe, TCS, Infosys, Wipro, Capgemini, Cognizant, Accenture, Zoho, HCL, Tech Mahindra and more — companies are simply tags on the problem), time limit (< 1 s / < 2 s / < 5 s), and sort (**Shuffled** is the default and stays the same order for the whole visit; Newest; Oldest; A–Z). Lists load 100 at a time as you scroll.
+- Row markers: green tick = solved, amber = attempted, plain = untouched.
 
-- **XP** is the account's total score across everything: problems, bug hunts, duels and roadmap chests. The leaderboard (`/leaderboard`) ranks by XP, with separate boards for problems and bug hunts.
-- **Rating** is what the rank is read from. Ranks: **Novice** (0–99), **Apprentice** (100–399), **Adept** (400–899), **Expert** (900–1499), **Master** (1500+). The bar on the home page shows how far it is to the next rank.
-- **Streak** — a day counts when you make an accepted submission. Miss a day and the streak resets. The longest streak is kept on the profile. Streak-at-risk reminders can be turned on or off in profile settings.
+### The workbench — `/problems/<slug>`
+
+- **Panels** (drag any tab to rearrange; the arrangement is remembered in the browser across problems): Description, Editorial, Hints, Submissions on the reading side; Code; Testcase and Test Result. Settings → Dynamic Layout offers three presets — **Standard** (reading left, code and results right), **Mirrored**, **Three-column** — a horizontal/vertical orientation, Run/Submit buttons on the toolbar or inside the editor, and **Default layout** to undo dragging.
+- **Header**: problem list (or "Back to the DSA Roadmap" when opened from the road), previous/next problem (catalogue order, newest first — or the stage's problems when opened from the road), theme toggle, layout, settings, current streak, a Pair Mode shortcut, account menu.
+- **Editor**: Monaco. Language picker with all 13 languages; each language gets a starter stub generated from the problem's signature — the editor holds only the function, the site wraps it in the input/output driver at run time. Controls: reset code to the stub, fullscreen, timer, settings. Editor settings: font size, line spacing, font family, minimap, bracket-pair colours, line numbers, and five themes — CodeKairo (default), Visual Studio Dark, Monokai, GitHub Dark, One Dark Pro (the theme goes back to the default on every page load; the other settings persist).
+- **Shortcuts**: the Settings drawer's Shortcuts tab lists Run = Ctrl+', Submit = Ctrl+Enter, Close tab = Alt+W and Start Debugging = Ctrl+Alt+', with switches for the first two — but none of these keys are actually bound in the workbench yet; Run and Submit are the buttons. (Ctrl/⌘+Enter does submit an answer in a written mock interview, and Ctrl+K opens site search everywhere.)
+- **Timer**: three modes — stopwatch, countdown (default 30 minutes), pomodoro (default 25 work / 5 break). Start, pause, reset, end; show/hide. **Auto-pause** (on by default) pauses it when you switch tabs or go idle. Sound alerts (a chime on milestones and at the end) and colour-coded visual indicators can be toggled. The Advanced tab also shows **Auto Reset** and **Super Alarm** switches, but those two are not wired to anything yet — flipping them changes nothing. The timer's state is saved on the server per problem (elapsed time is capped at seven days), so a reload or another device picks it up. Solve timings show as First run / First submit / Personal best in the result panel.
+- **Drafts**: code is autosaved per problem *and* per language (up to 64 KB each). Switching language switches to that language's draft or stub.
+- **Testcase panel**: the visible sample cases, plus your own custom cases — up to 10 per run, each input up to 4,096 characters, one argument per line in the order the function takes them. Expected output is optional: leave it blank and the reference solution fills it in when you run. Inputs must not contain an `=` sign in a string value (the parser reads `name=` as a named argument).
+- **Run**: executes the samples and your custom cases only. Shows, per case, the input, expected and actual output, pass/fail, compile errors or stderr with line numbers mapped to your editor, average runtime and memory, and anything your code printed on its own (debug prints) in a separate stdout block. Free, unlimited within the rate limit, never recorded.
+- **Submit**: judges the whole hidden suite (hundreds to thousands of cases in one execution). Custom cases ride along for display but never affect the verdict. **Verdicts**: Accepted, Wrong Answer, Time Limit Exceeded, Runtime Error, Compilation Error (an output-size overflow is reported as a runtime error). The result shows cases passed / total, runtime, memory, the first failing case's compiler output or stderr, and the timing stats. Every submission is recorded with its code: the workbench's Submissions tab lists the last 50 for that problem (open one to read the code), and the profile lists everything.
+- **Limits**: code up to 64 KB; **30 runs+submits per minute per account**; code must not contain the string `__CODEXA_` (the judge's reserved marker); a problem with no test cases cannot be submitted. If the execution service itself is down the workbench says so ("this is not your code") and nothing can run until it recovers.
+- **Judging rules**: output is compared after trimming leading/trailing whitespace; every test case must pass for Accepted. Runtime versions: JavaScript = Node 12 (no `??`, `?.`, `.at()`, `replaceAll`, `flat` — modern syntax fails), TypeScript 3.7, Python 3.8, Java 13, C++ and C on GCC 9.2, Go 1.13, C# (Mono 6.6), Kotlin 1.3, Swift 5.2, Rust 1.40, PHP 7.4, Ruby 2.7.
+- **Editorial tab**: the approach write-up plus a **Reference solution** with a language picker (some problems have fewer than 13 languages, and the tab says "n of 13 available"); "Coming Soon" when a problem has none yet. **Hints tab**: every hint is listed, numbered, all at once (or "No hints").
+- **After an accepted submit**: an XP burst, a toast, an **Up next** card (an unsolved problem sharing a tag, or — from the road — the stage's next unsolved problem or the first of the stage that just opened), a **Share win** dialog for the community, and, if it is today's contest problem, the contest result (rank, time, wrong tries).
+- Opened from the roadmap (`?from=roadmap`) the header, prev/next and Up next all stay on the road.
+
+### XP, rating and what a solve pays
+
+- The **first** accepted submission on a problem pays XP by difficulty: **easy 10, medium 20, hard 30**. The same number is added to **rating** and to the "problems" XP bucket. Solving it again, in any language, pays nothing more. Two accepted submissions landing in the same instant still pay once.
+- A solve inside a pair room credits the **room's host**, not the person who pressed Submit (see *Pair rooms*).
+- Every solve counts on the roadmap, the daily contest (if it is today's problem and you had opened it), and any live duel on that problem, wherever it was made.
+
+## Rank, XP, rating, streaks, leaderboard
+
+- **XP** is the lifetime total and only goes up: problem solves (10/20/30), bug fixes (50), duel winnings and consolation, roadmap chests. Two buckets are kept beside it — problems XP and bugs XP — for the category leaderboards. Duel and chest XP go to the total only.
+- **Rating** drives the rank ladder. It starts at **0** (not 1,200). It rises by the same 10/20/30 on a first solve, **50** on a first bug fix, one third of the duel prize on a duel win, and the chest's XP when a roadmap chest opens. Nothing ever lowers it. Ranks: **Novice** 0–99, **Apprentice** 100–399, **Adept** 400–899, **Expert** 900–1,499, **Master** 1,500+. The home hero and the profile show the distance to the next rank.
+- **Streak**: counted in Indian time (a day rolls at midnight IST). An accepted *problem* submission makes the day active and extends the streak (yesterday active → +1; already active today → unchanged; a gap → back to 1). An accepted **bug fix** marks the day active so the streak is not lost, but it does not add a day. Runs and failed submissions do nothing. A lapsed streak shows as 0 the next time the profile or home loads. **Longest streak** is kept forever. Milestone notifications at 3, 7, 14 and 30 days.
+- **Heatmap**: 365 days ending today (IST), counting accepted problem submissions per day (bug fixes are not on it), with active-day and max-streak counts derived from the squares — those can differ slightly from the profile's streak counter, which bug fixes keep alive.
+- **Leaderboard** (`/leaderboard`): three boards — combined XP, problems (problems XP), bug hunts (bugs XP) — each showing the **top 10** only, ties broken by account age, plus your own rank on that board. A rank is shown only once you have XP on that board. There is no time-window filter and no institute board. The board refreshes about once a minute.
+- **Global rank** on the home page = position by combined XP among all accounts.
 
 ## DSA Roadmap — `/roadmap`
 
-- A curriculum drawn as a road: four **tiers**, nineteen **stages**, each stage a handful of catalogue problems. The exact tiers, stages, chest rewards and problem counts are listed later in this briefing under *The road as seeded*.
-- A stage is **cleared** when you have accepted submissions on its *required* number of problems (usually 6 of 8). The next stage **opens** only when the one before it is cleared. Locked stages do not show their problems on the road — but every problem is still reachable from the catalogue, and a solve made anywhere counts on the road.
-- Progress is derived from your submissions; nothing needs to be "marked done".
-- **Chests** — every tier ends in a chest. It opens when every stage of that tier is cleared, and it holds: XP (paid to both XP and rating), **bonus mock-interview sessions** (spent only after the plan's weekly allowance is used), and it lifts the fog one tier further down the road. The last chest also unlocks the **certificate**.
-- **Badges** — opened chests appear on the profile (`/profile`) as badges, as a frame round the avatar, and as a chest count beside the name on the community feed; walking the whole road earns the "Road walker" title.
-- **Certificate** — `/roadmap/certificate`, written when the last chest opens: a downloadable A4 PNG naming the account and the completion date.
-- **Sharing** — click an opened chest on the road to share the win to the community feed.
-- The stage panel on the right lists the open stage's problems with a link into each; "Continue" jumps to the front of the road.
+- A curriculum drawn as a winding road: **tiers**, each holding several **stages**, each stage a handful of catalogue problems, walked in order. The exact tiers, stage names, problem lists, `required` counts and chest contents are in *The road as seeded* later in this briefing — quote those, not memory.
+- **Clearing**: a stage is cleared when you have accepted submissions on at least its *required* number of its problems (usually 6 of 8). The next stage **opens** only when the one before it is cleared; the first stage is always open. Progress is derived from your submissions — nothing is "marked done", and a solve made from the catalogue, a duel, a contest or a pair room counts.
+- **Locked stages** do not show their problems on the road, but every problem is still reachable from `/challenges` and a solve there still counts toward the stage.
+- **The map**: the stage you are on is the front; stages in the front's tier and the next tier show their names; further ones are fogged "?" discs ("Locked — revealed as you get closer"). Every chest opened lifts the fog one tier further. The stage panel (right rail on wide screens, a bottom sheet on phones) lists the stage's problems with solved marks, "Progress to clearing this stage", and links that open each problem `?from=roadmap`. "Walk the road" / "Where you are" jumps to the front. A walker figure moves along the road as you solve.
+- **Chests**: every tier ends in one. It opens the moment every stage of the tier is cleared (after the clearing solve, or on the next visit to the road if that hook missed) and pays, once: the tier's XP to **both** XP and rating, and its **bonus mock-interview sessions**. A closed chest's tooltip says what it holds; an opened one is a button that opens the Share-win dialog. Opening a chest fires a notification; clearing a stage fires one naming the stage it unlocked.
+- **Bonus interviews** from chests are used only after the plan's weekly allowance is spent (see *Plans*); they never expire and are shown as "bonus interviews" on `/pricing` and in the account block.
+- **Badges and flair**: each opened chest is a badge on the profile (with its date), a frame around the avatar (in the nav, on the profile, on the community feed) and a chest count beside the name on posts; all four makes the "Road walker" title.
+- **Certificate** (`/roadmap/certificate`): available once the *last* chest is open ("Your certificate" button on the road). Drawn in the browser and exported as an A4-landscape PNG (3200 × 2262) naming the account, the completion date, each tier's chest date and a serial number. Not available before the road is complete.
+- **Sharing**: an opened chest can be shared to the community feed; the share is verified against the chest record.
+- **Stage cleared** and **chest opened** notifications link to `/roadmap`.
 
 ## Daily contest — `/contests`
 
-- One problem a day, the same for everyone, on a UTC day. Solving it counts toward a contest streak and pays points (harder problem, more points); a wrong submission adds a five-minute time penalty. The day's standings are on the contest page; the home page shows today's problem.
+- One problem per **UTC day** (the one place the site uses UTC rather than IST — the day changes at 05:30 IST). Difficulty follows the weekday: Sunday hard, Monday easy, Tuesday medium, Wednesday easy, Thursday medium, Friday medium, Saturday hard. The same problem for everyone; chosen when the day is first looked at; not reused for a year. Tomorrow's problem is unknown until the day starts (its difficulty is).
+- **Entering**: opening today's problem's workbench while signed in enters you (the page does it) and starts your clock. Solve it with an accepted submission **on that UTC day** to be ranked: time = seconds from entry to the accepted submit, plus **5 minutes per wrong submission** made before it (Wrong Answer, runtime error, time limit — a **compile error costs nothing**). The day's board orders solvers by that penalised time, then by who finished first. Later submissions after a solve change nothing.
+- **Points**: easy 3, medium 4, hard 5 — its own ladder; the contest pays no XP itself (the problem's normal first-solve XP still applies). **Standings**: this month and all time, by points, ties broken by lower total penalty. The page shows today's board (top 10 on the rail, 50 on the full board), the calendar, standings, and your line.
+- Having solved the problem on an earlier day does **not** count — the card says so ("solved before") and you must submit again today. A submission landing after midnight UTC belongs to no contest.
+- **Calendar**: each day is solved / attempted (entered, not solved) / missed (never entered) / open (today) / upcoming. Past days' boards can be viewed but not entered.
+- **Contest streak**: consecutive UTC days solved; alive if it reaches today or yesterday. Separate from the solving streak.
+- The morning "daily problem" reminder announces it (see *Notifications and reminders*).
 
 ## Bug hunts — `/bug-hunts`
 
-- Real multi-file projects (JavaScript, Python or Java) with a bug in them. Read the failing tests, find the fault, fix it, and run the project's tests until they pass. Around 160 hunts, grouped by category and difficulty.
-- The first accepted fix on a hunt pays bug-hunt XP. The free plan allows one distinct hunt per day; paid plans allow more (see *Plans*).
+- About 160 hunts: small real projects (a frontend feature, a backend service or a database layer) that are genuinely broken. Categories **frontend**, **backend**, **database**; languages **JavaScript**, **Python**, **Java**; difficulties easy/medium/hard; tags and an origin ("inspired by" a real incident or company). The index lists each category with "Load more" (10 at a time), filters for difficulty, language and tag, and a search over titles, origins and tags; the rail shows totals per language and difficulty, your debugging streak and recent activity.
+- **The workspace** (`/bug-hunts/<id>`, same drag-to-rearrange panels: Briefing, Results, History, Code): the briefing is the story, the red **bug report** (the ticket) and **captured logs**. Files marked 🔒 are locked context — read-only, and the bug is never in them; the file marked **EDITABLE** is where the fix goes. A guided tour runs on the first visit.
+- **Run tests**: runs the visible tests only, shows each test's failure detail. Free, unlimited within the rate limit, and it does **not** touch the daily allowance.
+- **Submit fix**: runs every test including hidden ones (hidden failures show only "Hidden test failed"). Verdict Accepted / Failed / Error with passed/total. The **first** accepted fix pays **50 XP** (to XP, the bugs bucket and rating), counts a bug fixed, and keeps the solving streak alive for the day (without adding to it). Repeats are practice — no more XP. History keeps your last 20 submissions on the hunt with verdict, tests passed and time taken.
+- **Daily allowance** (the plan's "bug hunts a day"): counted as **distinct hunts submitted per IST day**, not submissions. A hunt you have already submitted today is always allowed again, however many tries it takes; a new hunt is refused once the day's count is reached ("come back tomorrow" or upgrade). Elite has no limit.
+- Edited files are limited to 200 KB each and must not contain `__CODEXA_`. Runs and submits share the same 30-per-minute execution limit as problems.
+- **Debugging streak** on the index: consecutive days (UTC) with at least one accepted fix.
+- Previous/next hunt in the header follow newest-first order. An accepted fix offers **Share win**.
 
 ## Duels — `/duels`
 
-- Live 1v1 or 2v2 races on a random problem or bug hunt at your rating band. Join the queue (or make a private room with a code and share it); the first to an accepted solution wins. Winners are paid XP, losers a consolation. Your record and history are on the duels page.
+- Live races on a random **problem** or a random **bug hunt**, **1v1** or **2v2** (teams fill 1,1,2,2 in join order). First accepted submission wins for its side; there is no second place.
+- **Queue** ("Searching for an opponent…"): you are seated in the first waiting public duel of the same mode and kind within your rating band, else a new waiting duel is created for others to join. The band starts at ±200 rating and widens by 100 every 10 seconds of waiting. A public duel that nobody joins is dropped after **20 minutes**. You can leave the queue while waiting.
+- **Private room**: creates a six-character room code (letters and digits, no vowels) to share; friends join with the code. A private room starts only when it is full and **everyone has pressed Ready**; it expires after **2 hours** unused.
+- **The arena**: the problem/hunt is drawn when the fight starts and is never one a seated player has already solved (unless every arena has been). Both sides see the other's activity live — running, how many tests they passed, submitting. The duel is settled by the judge the instant an accepted submission is written, wherever it was made.
+- **Rules and anti-cheat**: the clipboard is locked (no copy, cut, paste or drag), switching tabs/apps hides the board, and Print Screen / snipping shortcuts are refused. Each attempt is a **strike**; being away for more than 3 seconds is a strike; the **third strike** disqualifies you (recorded as DISQUALIFIED, the other side wins). Strikes survive a refresh.
+- **XP**: the winning side gets a prize by the arena's difficulty — **easy 40, medium 60, hard 90** (50 if the difficulty is unknown) — to XP, plus one third of it to rating. The losing side gets a **consolation of 25%** of the prize (XP only, no rating). Walking away (**forfeit**) hands the other side **50%** of the prize (XP only); the quitter gets nothing.
+- **Timeout**: a fight with no decision after **45 minutes** is called on the scoreboard — the side with more hidden tests passed wins, a tie is a draw — and nobody's rating moves.
+- **After the bell**: participants can read the winning submission (the code, or the files the winner changed for a hunt). The duels page shows your live duel (if any), your last 10 duels, and a win/loss record counted over those.
+- Being in a waiting or active duel blocks queueing for another; opening the duels page tidies up a stale one.
 
 ## Pair rooms — `/pair-mode`
 
-- A shared live editor for up to five people: everyone sees the same code and cursors, there is chat, voice, and a shared Run. The host can remove a participant. Rooms are for a specific problem; the room's code is what others use to join.
+- A shared live workspace on one problem for **2 to 4 people** (the host picks the seat count when creating; some page copy still says "up to five" — four is the real cap). Two modes: **Open for everyone** (collaborative — listed in the lobby, anyone signed in can join until it is full) and **Invite only** (private — needs the passcode; also visible in the lobby but locked). The host chooses the problem at creation.
+- **Joining**: open the room link from the lobby or from the host; a private room asks for the invite code (shape `ABCD-EFGH`; the host sees it under **Invite Details**). A host may have at most **3 rooms waiting** for a partner at once; the lobby lists waiting rooms from the last 24 hours.
+- **Inside**: everyone sees the same code and each other's cursors; a late joiner receives the current buffer; chat; typing indicators; **audio call** (join/leave, microphone permission needed); anyone can Run or Submit and everybody sees the same results; the room's connection dot shows connected/reconnecting. Edits made while your connection is down are kept locally and reconciled when it returns (your unsynced edits win).
+- **Submissions credit the host**: a submission made from a room lands on the *host's* account — the host's history, XP, streak, roadmap, contest entry and any live duel — and is linked to the room. The person who pressed Submit gets nothing on their own account.
+- **Host powers**: kick a participant. A kicked person needs the room's **recovery code** (shown to the host under Recovery Details; a fresh one is generated on every kick) to get back in. The host can end the session (**Leave Session** as host closes the room for everyone), and can end one of their own rooms still waiting for a partner from the lobby list (**End Session**).
+- **Host succession**: if the host's connection is gone for 20 seconds, the longest-seated participant becomes host ("you are hosting this room now"); a returning ex-host is a guest.
+- **Closing**: a room closes when the host ends it, when it has been empty for **60 seconds** (a refresh or a short drop survives), or when nobody has been connected for an hour by the time someone looks at it. A closed room cannot be re-joined ("This room has ended").
+- **History** tab on the lobby: the rooms you took part in, with the last submission's verdict and its code.
 
 ## Mock interviews — `/mock-interview`
 
-- Build an interview from a **template**: the target role, the round (technical, behavioural, system design…), difficulty, experience band, interview style, and optional stack and focus areas. Templates are saved and reusable.
-- **Written round** — the interviewer asks one question at a time; you answer by typing (or writing code in the editor when the question asks for it). Each answer is scored 0–10 with feedback. Easy rounds are 5 questions, medium 7, hard 9.
-- **Voice round** — a live spoken conversation with the interviewer over your microphone, in English, Hindi or a mix; it asks follow-ups and you can interrupt it. Bounded by a clock: 10, 20 or 30 minutes (which lengths are available depends on the plan). The transcript is scored afterwards.
-- **Report** — every closed round has a report at `/mock-interview/report/<sessionId>`: an overall score, strengths, weaknesses, next steps, and a question-by-question breakdown (for voice rounds, the follow-ups asked on each question are listed too).
-- **History** — `/mock-interview/history`: every round with scores, plus analytics across rounds (trends, topics, recurring gaps).
-- **Allowance** — the plan sets how many interviews may be *sat* per week (Monday to Sunday). A round opened and abandoned before answering anything does not count. Bonus sessions from roadmap chests are used only once the weekly allowance is spent.
+### The builder
+
+- An interview is built from a **template**: target **role** (39 preset roles from Frontend Engineer, Backend, Full Stack, SDE 1/2, Data Analyst, DevOps, ML, Product Manager, through Android/iOS/Flutter, Java/.NET/Go/PHP, Embedded, Game, Blockchain, DBA, Solutions Architect, Engineering Manager, to Fresher / Campus Placement — or type your own), **round** (16: Technical, Coding, Debugging, System Design, Machine Coding, Frontend, Backend, Behavioral, HR, Resume Deep Dive, Low-Level Design, Managerial, Take-home Review, Core CS Fundamentals, Aptitude & Reasoning, Case Study — or your own), **depth** (Beginner / Intermediate / Advanced), **experience band** (0–2, 2–4, 4–7, 7+ years), **interview style** (Mixed, Technical Heavy, Debugging Heavy, Behavioral + Technical, Rapid Screening), optional **stack focus** (React + Next.js, MERN, Node + Express, Java + Spring Boot, Python + Django, SQL + Analytics, Testing, Cloud + DevOps, Mobile, ML + Data, Security, Angular, Vue, .NET, Go, PHP + Laravel, Flutter, Spark, GenAI + LLM apps, or your own) and optional **focus areas** (DSA, Debugging, System Design, Behavioral, Frontend, Backend, Database, Testing, API Design, Communication, OOP, LLD, OS & Networking, SQL, Cloud, Security, Aptitude, or your own).
+- Templates are saved (up to **30** per account) and reusable; "Run the session" saves an unsaved setup on the way. Editing a template is refused while a round on it is open; deleting one that has interviews behind it asks for confirmation and **deletes those interviews and reports too**.
+- The builder also shows recent sessions and links to the history page.
+
+### Allowance and what counts
+
+- The plan sets **mock interviews per week** — a week runs **Monday 00:00 to Sunday, IST**. Numbers per plan are in *Plans*.
+- A round **counts** once it was actually sat: a written round with at least one answer given, or one that was closed with a report, or a **voice round whose call connected** (connecting the microphone spends the slot even if you then leave). A written round opened and abandoned before any answer costs nothing.
+- Once the weekly allowance is used, a **bonus interview from a roadmap chest** admits the round instead; only when both are gone is a round refused ("upgrade, clear a roadmap tier, or come back on Monday"). Bonus rounds are not counted against the weekly allowance.
+- Voice round **lengths** are a plan gate on top of the count: a length the plan does not include is refused with an upgrade prompt.
+
+### Written round — `/mock-interview/session`
+
+- One question at a time. **Every written round is 7 questions**, at every depth (depth changes how hard the questions are and how strictly they are marked, not the count). The setup (role, round, depth, focus) is shown beside the question with "What this probes" and "How this round is marked" notes; scores stay **sealed** until the round closes.
+- Coding-style rounds (Coding, Machine Coding, Debugging, or a DSA/Debugging focus) may hand you a **starter stub** in the editor language of your first stack pick (JavaScript when none); the stub alone is not accepted as an answer. Other questions get a rich-text answer box (code can go in ``` fences). Answers up to 20,000 characters. Submit with the button or Ctrl/⌘+Enter.
+- **Dictation and read-aloud**: "Answer with voice" uses the browser's speech recognition (Chrome-family browsers; others are told to type), and "Hear the question read aloud" uses the browser's speech synthesis.
+- The next question is usually prepared while you answer, so submitting is instant; occasionally it is generated on the spot (a few seconds).
+- A round left open is resumed, not duplicated: reopening the same template, the history row, or the session URL lands in the same room at the pending question. Nothing said in it is lost.
+- **End session** early: the answers already given are marked and the report written; the question on screen is not counted. Ending with **no answers** closes the round as *abandoned* — no report, no slot spent, it stays in history marked abandoned. If the marking service is down at close, the round stays open and you are asked to try closing again in a moment (nothing is lost).
+
+### Voice round — `/mock-interview/voice`
+
+- A live spoken conversation with the interviewer over your microphone (browser permission required; the model speaks back in audio). Lengths **10, 20 or 30 minutes** by plan; the clock starts when the call connects and the interviewer wraps up as time runs out. The interviewer asks follow-ups and you may interrupt it; it follows your language — **English, Hindi, or Hinglish** — and never marks you down for grammar or accent.
+- Mute and **End interview** controls, a live transcript on screen. A dropped connection reconnects automatically and resumes the same conversation; the transcript is saved as it happens.
+- The number of questions is not fixed — it is however many fit; the report is derived from the transcript afterwards. A round with fewer than about a dozen words spoken by you is closed as abandoned (but it already counted as sat once the call connected). Reopening a closed voice round goes to its report.
+- A voice round left open is resumed from its history row ("in progress") or its own link — **not** by pressing "Start voice interview" again on the same template, which opens a second round (and, once connected, spends a second slot). Only written rounds are de-duplicated that way.
+
+### Report — `/mock-interview/report/<sessionId>`
+
+- Written when a round closes: **overall score** out of 10 (the average of per-question scores, one decimal), summary, strengths, weaknesses, next steps, per-topic averages, and analytics — answered count, best/worst, spread and a consistency label (steady / mixed / uneven), a **readiness band** (Interview ready ≥ 8.5, Nearly there ≥ 7, Developing ≥ 5, Early days below), a first-half vs second-half trend (only with 4+ answers), pace, a score trajectory, a verdict mix (strong / adequate / weak / no answer), breakdowns by topic, focus area and difficulty, recurring gaps, and every question with its follow-ups (voice), your answer, its score, verdict, feedback and what was missed.
+- Each question is scored **0–10** against a rubric that rewards substance over length; partial answers score what is there. Every report also asks for a one-to-five star rating of the interview (feedback).
+
+### History — `/mock-interview/history`
+
+- Every round: status (completed / abandoned / in progress — an in-progress row reopens its room), mode, role, round, depth, answered/total, score, duration, weakest topics, readiness. Filter by status and role; sort by recent, best or worst score; pages of 10.
+- **Career analytics** across all rounds (up to the last 200): totals (sessions, completed, abandoned, in progress, questions answered, time spent), average/best/worst, consistency, readiness, trend (needs 4+ scored rounds), best session, timeline, verdict mix, averages by topic, focus, difficulty, role and round, recurring gaps, and a 12-week activity calendar with an interview streak.
 
 ## Aptitude — `/aptitude`
 
-- A bank of about 1,200 aptitude questions in five categories (quantitative, logical, verbal, data interpretation and programming), organised by topic. Practise by topic; the answer and explanation are shown after you attempt a question. Progress per topic is tracked.
+- A bank of about 1,170 questions in five categories — **Quantitative Aptitude** (number system, percentages, profit & loss, ratio, averages, ages, time & work, time-speed-distance, interest, permutations & combinations, probability, mixtures, mensuration), **Logical Reasoning** (series, coding-decoding, blood relations, direction sense, syllogisms, seating & puzzles, analogies, mathematical reasoning), **Verbal Ability** (synonyms/antonyms, sentence correction, fill-ins & para jumbles, reading comprehension), **Data Interpretation** (tables & charts, caselets) and **Programming MCQs** (pseudocode, programming fundamentals, DSA MCQs, OS/DBMS/networks). Each question has a difficulty, tags, a time target, hints, a worked solution and an approach note.
+- The syllabus page shows counts and your solved/attempted per topic, plus totals: questions solved, attempted, accuracy (questions got right at least once ÷ questions touched) and total attempts. A topic page lists its questions 15 at a time with a difficulty filter and status marks (new / attempted / solved).
+- A question page (`/aptitude/q/<slug>`) shows the prompt, options, position in the topic, a ~time target, "Show a hint" / "Another hint" (each question has up to four), and **Check answer**. The answer, solution and approach are revealed only after an attempt — a correct one, a wrong one, or asking to see the solution (which is recorded as an incorrect attempt). Once revealed on a question, revisiting shows it again. Solved = answered correctly at least once; attempts are counted (a repeated identical answer within ten seconds is not double-counted). Previous/next walk the topic.
+- Aptitude practice pays no XP and does not touch the streak.
 
 ## Placement tests — `/tests`
 
-- Full-length timed mock placement tests modelled on real company patterns, with sections and a server-kept clock. The paper is drawn fresh for each sitting; answers are saved as you go (and re-sent if the connection drops). The result page shows the score by section with the answer key.
+- Full-length timed mocks modelled on real company patterns. A **pattern** is a blueprint (sections, timings, marks, what each section draws from); each sitting **draws a fresh paper** from the aptitude bank and the problem catalogue, so no two sittings are the same. Three families: **IT services** (TCS, Infosys, Wipro, Cognizant, Capgemini, Accenture, HCLTech, Tech Mahindra), **Product companies**, **General practice**.
+- **The 30 patterns** (duration · questions · negative marking · sectional timing):
+  - TCS NQT — Foundation: 75 min · 65 q · none · sectional (Numerical 20/25m, Verbal 25/25m, Reasoning 20/25m)
+  - TCS NQT — Foundation + Advanced: 100 min · 80 q · none · sectional (adds Advanced Quant 10/17m, Advanced Reasoning 5/8m)
+  - TCS NQT — Advanced Coding: 90 min · 2 coding problems · free timing
+  - Infosys SE / DSE — Aptitude: 100 min · 54 q · none · sectional (Mathematical 10/35m, Logical 15/25m, Verbal 20/20m, Pseudocode 5/10m, Puzzle 4/10m)
+  - Infosys SP / DSE — Coding: 180 min · 3 coding problems · free timing
+  - Wipro NLTH — Aptitude: 48 min · 52 q · none · sectional (Quant 16/16m, Logical 14/18m, English 22/14m)
+  - Wipro NLTH — Programming: 60 min · 2 coding problems · free timing
+  - Accenture — Cognitive & Technical: 78 min · 78 q · none · free timing (Verbal 17, Reasoning 18, Numerical 15, Pseudo Code 18, Networking/Security/Cloud 10)
+  - Cognizant GenC — Aptitude: 100 min · 80 q · none · sectional (Numerical 25/35m, Logical 35/45m, Verbal 20/20m)
+  - Capgemini — Technical & English: 75 min · 70 q · none · sectional (Technical MCQs & Pseudocode 40/45m, English 30/30m)
+  - HCLTech — Written Test: 60 min · 60 q · none · sectional (Quant, Logical, Verbal, Technical — 15 each, 15m each)
+  - Tech Mahindra — Aptitude & Technical: 75 min · 60 q · **−0.25 per wrong** · sectional (Logical, Quant, Verbal, Computer Programming, Computer Science — 12 each, 15m each)
+  - Amazon — SDE Online Assessment: 125 min · sectional (Code Debugging 7/20m, Coding 2 problems/70m, Logical Reasoning 24/35m)
+  - Google — Online Assessment: 90 min · 2 coding problems · free timing
+  - Microsoft — Online Assessment: 90 min · 2 coding problems · free timing
+  - Meta — Coding Screen: 70 min · 4 coding problems · free timing
+  - Apple — Coding Assessment: 90 min · 3 coding problems · free timing
+  - Flipkart — Online Coding: 90 min · 3 coding problems · free timing
+  - Salesforce — SWE Assessment: 75 min · 2 coding problems · free timing
+  - Goldman Sachs — Aptitude Test: 55 min · 42 q · **−0.4 per wrong** · free timing (Numerical Computation 8, Numerical Reasoning 12, Logical 12, Verbal 10)
+  - Deloitte — Online Assessment: 60 min · 65 q · none · sectional (Language 13/10m, General Aptitude 22/25m, Technical 30/25m)
+  - Adobe — Campus Aptitude: 60 min · 60 q · none · sectional (Quant, Logical, Verbal — 20 each, 20m each)
+  - ZS Associates — Aptitude: 75 min · 60 q · none · free timing (Quant 18, Logical 16, Verbal 14, DI 12)
+  - Morgan Stanley — Aptitude & Technical: 70 min · 53 q · none · sectional (Aptitude 16/20m, CS Fundamentals 30/30m, Pseudo Code 7/20m)
+  - Oracle — Aptitude & Verbal: 30 min · 20 q · none · free timing (Aptitude 10, Verbal 10)
+  - Zoho — Round 1: 125 min · 30 q · none · sectional (Aptitude 20/80m, Technical 10/45m)
+  - Big Tech Screen — Theory Drill (CodeKairo): 60 min · 50 q · sectional (DSA 20/25m, OS-DBMS-Networks 15/18m, Language Semantics 15/17m)
+  - Full-Length Aptitude Paper (CodeKairo): 120 min · 100 q · sectional (Quant 30/35m, Logical 25/30m, Verbal 25/25m, DI 12/20m, Technical 8/10m)
+  - Thirty-Minute Sprint (CodeKairo): 30 min · 30 mixed q · sectional, easy
+  - Every coding problem in a coding section is worth **10 marks** with **partial credit per test case passed**; every MCQ is 1 mark.
+- **Sitting one** (`/tests/<slug>` → "Start the test"): the paper is drawn and the server starts the clock. Only **one live sitting per test** at a time — pressing Start again resumes it, and the catalogue shows "In progress" with a resume link.
+- **Sectional timing** (most service-company patterns): sections are taken in order, each with its own clock; when a section's time ends the next starts immediately — even if the tab was closed, the next section's clock starts where the last ran out — and a finished section **cannot be reopened** ("Finish this section" is final). **Free timing**: roam between sections until the paper's clock ends.
+- **Answering**: pick an option, **Mark for review**, **Save & next**; answers are saved on the server as you go and survive a refresh; when offline they are held in the browser and re-sent when the connection returns (the runner says so). Coding sections have an editor with a language picker, **Run** (visible cases) and **Submit** (all cases — you are told how many passed, never which hidden case failed); your best run for a problem stands, so experimenting after solving cannot lose marks; the code autosaves to the sitting (never to your normal drafts).
+- **The server owns the clock**: reloading, closing the tab or editing the local clock buys no time; an expired paper is graded as "Time ran out". **Submit the test** grades it immediately and nothing can be changed after. The answer key is never sent while a sitting is running.
+- **Result** (`/tests/result/<attemptId>`, only for a closed sitting): score and maximum, percentage, correct/wrong/skipped, per-section scores, time and accuracy, weakest topics first, and the full review — every question with your pick, the answer, the worked solution and approach; for coding, your code, verdict, cases passed, marks, and a pointer to the problem's editorial. Negative marks apply only on the patterns that say so; a total below zero shows as 0.
+- The tests page shows, per pattern, your attempts, best score and percentage; `/tests/<slug>` lists your last 10 sittings; history keeps 40.
+- Placement tests pay no XP and do not touch the streak, the roadmap or the catalogue's solved marks (a problem solved inside a test is not "solved" in the catalogue).
 
 ## Community — `/community`
 
-- A feed of posts from other coders: status posts, shared wins (a solved problem, a fixed bug, a roadmap chest — shares are verified against the judge's records), questions pinned to a problem or bug, and polls. React with "Respect", comment (one level of replies), save posts, follow people, and use #tags. A post opens at `/community/p/<id>`.
+- **Feed scopes**: **For you** (ranked: recency with a 24-hour half-life, engagement, your interest in the post's tags, followed and mutual authors, and a boost for shared wins; never more than two consecutive posts by one author; older posts fill in chronologically), **Following** (chronological, people you follow plus yourself), **Saved** (your bookmarks). Filter by a #tag. Pages of 20, "Load more".
+- **Post types** (the composer): a **status** (optionally with a topic chip — Shipping, Debugging, Learning, Idea, Milestone), a **question** (optionally pinned to a problem or bug hunt; the asker can later **accept** one answer, which notifies its author), a **poll** (2–4 options, one vote per person, changeable), and **achievement shares** from success screens (a solved problem, a fixed bug, an opened chest) — shares are **verified** against the judge's records, so you can only share what you have actually done. Posts up to 2,000 characters; code in ``` fences renders as a block; `#tags` (up to 8) and `@mentions` (up to 5) work; auto-tags are added (challenge / bughunt / roadmap, difficulty, the problem's topics, "help" for questions, "poll").
+- **Visibility** per post: **Anyone on CodeKairo**, **Followers** only, or **Private** to you. A private or followers-only post is hidden from anyone else, including by direct link.
+- **Interactions**: **Respect** (the like), comments (one level of replies — a reply to a reply attaches to the parent), comment likes, save/unsave, copy link, report (one report per person per post; you cannot report your own), edit your own text (auto-tags are kept), delete your own post (its comments and likes go with it; no undo). Comments up to 1,000 characters; a thread shows up to 200.
+- **Follow** people from their posts or the "Who to follow" rail (suggested by mutual follows, same institute, activity). Following is what the Following scope and followers-only posts key on.
+- **Rails**: your social card (followers/following/posts), Who to follow, **Community pulse** (posts today, wins this week, active and total coders), **Trending tags** (last 7 days), and a **Bulletin** (the week's most-fixed hunts and most-solved problems, today's hunts, the top solver of the week, solves and posts this week, new coders).
+- **Write limit**: 40 posts+comments per 10 minutes per account.
+- A post's permalink is `/community/p/<id>` — where shared links and notifications land.
 
-## Profile and account — `/profile`
+## Notifications and reminders
 
-- The profile shows rank, XP, rating, streaks, solved counts by difficulty, the activity heatmap, roadmap badges and recent submissions. Edit the name, username, avatar, bio, location and social links from "Edit profile".
-- **Password** — change it from the profile; changing it signs out every other device. Reset a forgotten password from the sign-in page by email.
-- **Sign-in** — email and password (with a one-time code to verify the email on sign-up), or GitHub, or Google.
-- **Notifications** — the bell in the header: first solve, streak milestones, stage cleared, chest opened, comments and mentions, and reminders. Reminder emails (streak at risk, daily problem, weekly digest) can each be switched off in the profile.
-- **Theme** — light and dark, toggled from the header.
+- **The bell** (header): the latest 30 notifications, unread count on the icon, one click marks everything read. Types you can receive: welcome; first problem solved; streak milestones (3, 7, 14, 30 days); roadmap stage cleared (names what it unlocked); roadmap chest opened; "your post earned respect" (one rolling notice per post rather than one per like); new comment on your post; a reply to your comment; you were mentioned; your answer was accepted; new follower; campus-ambassador application received; and the three reminders below. Community notices link to the post; roadmap ones to `/roadmap`.
+- **Reminders** (each has its own switch on `/profile` → Reminders; all on by default):
+  - **Streak at risk** — between 18:00 and 20:00 IST, to anyone whose live streak has not been extended today. In-app **and email**.
+  - **Daily problem** — between 06:00 and 09:00 IST, today's contest problem, to anyone active in the last 14 days. In-app only.
+  - **Weekly digest** — Monday 08:00–11:00 IST: problems solved, bugs fixed, contest points, streak and XP for the week. In-app **and email**.
+  - Verification and password-reset emails cannot be switched off.
+- Each reminder is sent at most once per period, and only if the switch is on.
 
-## Plans and billing — `/pricing`
+## Plans, billing and allowances
 
-- Every plan's price, limits and inclusions are listed later in this briefing under *Plans*, generated from the live plan table — treat that as the only source for numbers. Payment is by card or UPI through Cashfree; a subscription is monthly or yearly (yearly is ten months for twelve). Problems and duels are unlimited on every plan, including free.
+Every price, limit and inclusion is in *Plans* later in this briefing — treat that as the only source for numbers. This section is the **rules**.
 
-## Help and contact
+- **Free forever**: problems, the roadmap, the daily contest, duels, pair rooms, aptitude, placement tests, the community, the leaderboard and this assistant are unlimited on every plan including Free. What a paid plan buys is **more mock interviews per week, longer voice rounds, and more bug hunts per day**.
+- **Buying** (`/pricing`): pick a plan and monthly or yearly (yearly is ten months for twelve), pay by card, UPI or net banking through **Cashfree** (card details never reach CodeKairo). The plan starts the moment the payment is confirmed and runs for the period bought. Confirmation normally lands on the return to `/pricing`; if it is slow, the plan applies automatically once the payment notification arrives. A checkout left unpaid expires; a failed payment can be retried on the same order.
+- **No auto-renewal**: a subscription is a one-off purchase for its period. When it ends the account drops to Free immediately — nothing is charged again unless you buy again. There is no cancel button because there is nothing recurring to cancel.
+- **Renewing early** (same plan) **adds** a period to the end of the current one — no time is lost. **Upgrading** (a higher plan while one is running) replaces the running plan **now**; the remaining time on the old plan is not refunded or carried over. **Downgrading** to a lower plan is refused while a higher plan is running; it can be bought once the current one ends. A **refund** processed by Cashfree ends the plan it paid for.
+- Receipts and payment records come from Cashfree; the site shows the plan name and "until <date>" on `/pricing`, plus interviews left this week and bug hunts left today.
+- **Allowance calendars**: "per day" means an IST day (midnight to midnight, Indian time); "per week" means Monday 00:00 to Sunday, IST. A bug-hunt allowance counts distinct hunts submitted; an interview allowance counts rounds actually sat (see *Mock interviews*); bonus interviews from roadmap chests are spent only after the weekly allowance is gone and never expire.
+- **Owner plan**: the site's own creator accounts are on an unlisted "Owner" plan with every limit lifted; it cannot be bought.
+- Prices in Indian rupees, INR only.
 
-- **How something works** — this assistant. For answers that need a person, the site does not yet have a support inbox or contact page.
-- **Common questions** — the FAQ at `/faq`; what CodeKairo is and who makes it is at `/about`.
-- **Feedback** — a short rating prompt appears from time to time to signed-in accounts, and after every mock-interview report; that is the way to tell the team what is wrong or missing.
-- **Billing** — a subscription's receipts come from Cashfree, the payment gateway; the plan and its renewal date are on `/pricing`.
-- **Privacy** — what the site collects, who processes it, what is public and how to get data corrected or deleted is at `/privacy`.
+## The assistant (this chat)
+
+- Available to signed-in users on every dashboard page and to visitors on the public pages, as the floating "Ask about CodeKairo" button. Answers questions about the product and, for a signed-in account, about that account's own standing (progress, plan, allowances, streak, roadmap).
+- Unlimited on every plan; the only brake is a burst guard of 30 messages a minute. Messages are limited to 2,000 characters; the assistant carries the last 20 messages of the conversation as context. A signed-in account's conversation is stored and can be picked up later; "Clear conversation" hides it. Visitors' conversations live only in that browser tab.
+- It does not write, debug or explain code or algorithms — hints and editorials are the place for that — and it does not cover anything outside CodeKairo.
+
+## Feedback, campus ambassadors, help
+
+- **Feedback**: a five-star "how is CodeKairo treating you?" prompt appears to signed-in accounts at least two days old, at most once every 30 days, only while active and never inside a problem, an interview or a room; it can be dismissed. Every interview report also asks for a rating of that interview (once per interview; re-rating updates it). Ratings and comments go to the team; there is no reply channel. For data requests (copy, correction, deletion) use this prompt — `/privacy` says so.
+- **Campus ambassador programme** (`/campus-ambassador`): a form (name, email, college required; phone, city, graduation year, LinkedIn, Instagram, reach and a plan for the first month optional) — one application per email address, reviewed weekly with a reply either way; a signed-in applicant also gets an in-app confirmation. The page advertises lifetime access to every paid feature, merch, a certificate and reference, and priority for hiring.
+- **Common questions**: `/faq`. **About / who builds it**: `/about` (a solo founder, looking for a co-founder; no contact link is published). **Privacy**: `/privacy` — what is collected, that written interviews, marking and this assistant run on NVIDIA-hosted models, voice interviews on Google Gemini (microphone audio streamed live; the transcript is kept, not the recording), payments on Cashfree, hosting on Vercel and Railway.
+- Some older copy on `/faq`, `/about`, `/rating` and the landing page predates the current product (for example "12 roles, 10 rounds", "everything is free", "up to five people", "rating starts at 1,200"). Where it disagrees with this briefing, this briefing is right.
+
+## Search, theme, devices, connectivity
+
+- **Ctrl+K / ⌘K** anywhere opens the command palette: jump to any page, search problems by title, switch theme, sign out.
+- **Theme**: light by default, a dark mode toggle in the header (and in the workbench header); the choice is remembered and applied before the page paints.
+- **Devices**: the site is a web app. Dashboards, lists, the roadmap, aptitude and the community work on a phone; the workbench, bug workspace, duels and pair rooms are built for a keyboard and a wide screen. The voice interview needs a microphone; dictation in the written round needs a browser with speech recognition (Chrome-family).
+- **Connectivity**: losing the connection shows a sticky "No connection" toast and "Back online" when it returns. Placement-test answers and coding drafts wait and re-send; a pair room reconnects on its own and reconciles edits; a voice round reconnects and resumes; a judge run that was cut simply has to be run again. The one thing that cannot pause is a placement-test clock — it is the server's.
+- **Limits you may hit**: 30 runs/submits a minute (judge), 40 community writes per 10 minutes, 30 assistant messages a minute, 6 verification/reset code requests an hour per address, sign-in attempt limits above, 300 requests a minute overall per session. Each answers with a "slow down" message and a retry window.
+
+## Calendars, at a glance
+
+- **IST (Indian time)**: the solving streak, the activity heatmap, "today" for bug-hunt allowances, "this week" (Mon–Sun) for interview allowances, and every reminder window.
+- **UTC**: the daily contest's day (changes at 05:30 IST), the contest streak, the debugging streak on the bug-hunts index.
+- **Rolling windows**: "solved today" (24 h) and "XP this week" (7 days) on the home page; the interview history's 12-week calendar counts rounds by the day they were started.
+- Sessions: 30 days. Codes: 5 minutes. Duel queue: 20 minutes; private duel room: 2 hours; duel timeout: 45 minutes. Pair room empty grace: 60 seconds; host hand-over: 20 seconds.
 
 ## If you cannot answer
 
-If a question is about something not covered here or in the account's own data — another site, a topic outside CodeKairo, a number that is not in this briefing — say so plainly rather than guessing, and point to the closest page that could help. Never invent prices, limits, dates or features.
+If a question is about something not covered here or in the account's own data — another site, a topic outside CodeKairo, a number that is not in this briefing — say so plainly rather than guessing, and point to the closest page that could help. Never invent prices, limits, dates or features. When the FAQ or a marketing page says something different from this briefing, this briefing wins.
