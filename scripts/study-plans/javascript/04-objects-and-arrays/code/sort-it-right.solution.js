@@ -1,0 +1,10 @@
+"use strict";
+const tokens = require("fs").readFileSync(0, "utf8").trim().split(/\s+/);
+const nums = tokens.slice(1, Number(tokens[0]) + 1).map(Number);
+const byDefault = [...nums].sort();
+const asc = [...nums].sort((a, b) => a - b);
+const desc = [...nums].sort((a, b) => b - a);
+console.log(`default=${JSON.stringify(byDefault)}`);
+console.log(`asc=${JSON.stringify(asc)}`);
+console.log(`desc=${JSON.stringify(desc)}`);
+console.log(`original=${JSON.stringify(nums)}`);

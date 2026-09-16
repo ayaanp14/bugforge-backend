@@ -1,0 +1,12 @@
+"use strict";
+const obj = JSON.parse(require("fs").readFileSync(0, "utf8"));
+obj.u = undefined;
+obj.f = () => 1;
+obj.d = new Date(0);
+obj.n = NaN;
+const text = JSON.stringify(obj);
+console.log(`json=${text}`);
+const back = JSON.parse(text);
+console.log(`before=${Object.keys(obj).join(",")}`);
+console.log(`after=${Object.keys(back).join(",")}`);
+console.log(`dateType=${typeof back.d} nanBecame=${back.n}`);

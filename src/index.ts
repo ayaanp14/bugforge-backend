@@ -25,8 +25,10 @@ import aptitudeRouter from "./routes/aptitude.js";
 import mockTestsRouter from "./routes/mock-tests.js";
 import contestsRouter from "./routes/contests.js";
 import roadmapRouter from "./routes/roadmap.js";
+import studyPlansRouter from "./routes/study-plans.js";
 import assistantRouter from "./routes/assistant.js";
 import { checkRoadmapSeeded } from "./services/roadmap.js";
+import { checkStudyPlansSeeded } from "./services/study-plans.js";
 import eventsRouter from "./routes/events.js";
 import adminRouter from "./routes/admin.js";
 import { todayContest } from "./services/daily-contest.js";
@@ -780,6 +782,7 @@ app.use("/api/aptitude", aptitudeRouter);
 app.use("/api/tests", mockTestsRouter);
 app.use("/api/contests", contestsRouter);
 app.use("/api/roadmap", roadmapRouter);
+app.use("/api/study-plans", studyPlansRouter);
 app.use("/api/assistant", assistantRouter);
 app.use("/api/events", eventsRouter);
 app.use("/api/admin", adminRouter);
@@ -901,6 +904,7 @@ httpServer.listen(PORT, () => {
   // A road with no stages is a missing seed (scripts/seed-roadmap.ts) —
   // said once here, at boot, rather than as an empty page later.
   void checkRoadmapSeeded().catch((err) => console.error("roadmap check:", err));
+  void checkStudyPlansSeeded().catch((err) => console.error("study plans check:", err));
   // The reminder jobs (streak at risk, today's problem, the weekly digest).
   registerReminderJobs();
   registerJob(revokedSessionsSweep);

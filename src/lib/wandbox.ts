@@ -146,7 +146,7 @@ async function executeWandbox(submission: Judge0Submission, rawLanguage: string)
   const compiler = WANDBOX_COMPILERS[rawLanguage];
   if (!compiler) throw new Error(`Wandbox: unsupported language "${rawLanguage}"`);
 
-  let wrappedCode = wrapCode(submission.source_code, rawLanguage);
+  let wrappedCode = submission.raw ? submission.source_code : wrapCode(submission.source_code, rawLanguage);
 
   // Wandbox stores the source as prog.java, so a public Main class won't
   // compile ("should be declared in a file named Main.java"). A non-public

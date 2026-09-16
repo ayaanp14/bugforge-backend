@@ -175,7 +175,7 @@ export async function submitToPaiza(submission: Judge0Submission, rawLanguage: s
   const language = PAIZA_LANGUAGES[rawLanguage];
   if (!language) throw new Error(`Paiza: unsupported language "${rawLanguage}"`);
 
-  const source = wrapCode(submission.source_code, rawLanguage);
+  const source = submission.raw ? submission.source_code : wrapCode(submission.source_code, rawLanguage);
 
   if (PAIZA_DEBUG_LOGS) {
     console.log(`[Paiza] Creating ${language} runner (${source.length} bytes)`);

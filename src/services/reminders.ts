@@ -16,6 +16,10 @@
  *                      only — a daily email is how a product gets marked spam.
  *  - weekly_digest   — Monday morning, IST: the week's numbers and one nudge.
  *                      In-app and email.
+ *  - study_plan_due  — morning, IST, in the daily-kata window: an account on a
+ *                      study plan that is behind its pace and has not opened a
+ *                      lesson today is told what is next. In-app only, under
+ *                      the same opt-out as the kata (Profile → Reminders).
  *
  * Every user-facing string is built by a pure function here so the tests can
  * pin the copy and the windows without a database.
@@ -26,6 +30,7 @@ import { sendEmail } from "../lib/email.js";
 import { registerJob, type Job } from "../lib/scheduler.js";
 import { createNotificationsOnce } from "./notifications.js";
 import { dayOf, ensureContest } from "./daily-contest.js";
+import { pace, trackDefinition } from "./study-plans.js";
 
 const FRONTEND_URL = (process.env["FRONTEND_URL"] ?? "http://localhost:3000").replace(/\/+$/, "");
 const DAY_MS = 86_400_000;
@@ -345,9 +350,89 @@ const weeklyDigest: Job = {
   },
 };
 
-export const REMINDER_JOBS: Job[] = [streakAtRisk, dailyKata, weeklyDigest];
+export function studyPlanDueContent(input: { track: string; behind: number; next: { title: string; slug: string; module: string } | null; trackKey: string }): ReminderContent {
+  const title = input.behind === 1 ? `One lesson behind on your ${input.track} plan` : `${input.behind} lessons behind on your ${input.track} plan`;
+  const body = input.next
+    ? `Next up: "${input.next.title}" in ${input.next.module}. Fifteen minutes today puts you back on pace.`
+    : `Open the plan to pick up where you left off.`;
+  const href = input.next ? `/study-plans/${input.trackKey}/${input.next.slug}` : `/study-plans/${input.trackKey}`;
+  return { title, body, href, subject: title, text: `${title}. ${body}` };
+}
 
-/** Register the three with the scheduler. Called once at boot. */
+/**
+ * The study plans' nudge. Standing is arithmetic over the enrolment and the
+ * count of completed lessons (services/study-plans.ts `pace`), so a batch
+ * costs two grouped queries, not one composed read per account. Anyone who
+ * touched a lesson today is left alone whatever the pace says.
+ */
+const studyPlanDue: Job = {
+  name: "study_plan_due",
+  description: "Morning (IST) nudge to accounts behind the pace of a study plan who have not opened a lesson today. In-app only.",
+  periodOf: dailyKataPeriod,
+  async run(now) {
+    const today = dayStart(now);
+    let notified = 0;
+    let considered = 0;
+    let cursor: string | undefined;
+    const tracks = new Map<string, Awaited<ReturnType<typeof trackDefinition>>>();
+    for (;;) {
+      const rows = await prisma.studyEnrollment.findMany({
+        where: { completedAt: null, user: { remindDailyKata: true } },
+        select: { id: true, userId: true, trackKey: true, startedAt: true, paceDays: true, completedAt: true },
+        orderBy: { id: "asc" },
+        take: BATCH,
+        ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
+      });
+      if (rows.length === 0) break;
+      considered += rows.length;
+      const userIds = rows.map((r) => r.userId);
+      const [progress, touchedToday] = await Promise.all([
+        prisma.studyLessonProgress.findMany({
+          where: { userId: { in: userIds }, completedAt: { not: null } },
+          select: { userId: true, lessonKey: true },
+        }),
+        prisma.studyLessonProgress.findMany({
+          where: { userId: { in: userIds }, updatedAt: { gte: today } },
+          select: { userId: true },
+          distinct: ["userId"],
+        }),
+      ]);
+      const active = new Set(touchedToday.map((t) => t.userId));
+      const doneKeys = new Map<string, Set<string>>();
+      for (const p of progress) {
+        if (!doneKeys.has(p.userId)) doneKeys.set(p.userId, new Set());
+        doneKeys.get(p.userId)!.add(p.lessonKey);
+      }
+      const batch: Array<Recipient & { content: ReminderContent }> = [];
+      for (const row of rows) {
+        if (active.has(row.userId)) continue;
+        if (!tracks.has(row.trackKey)) tracks.set(row.trackKey, await trackDefinition(row.trackKey));
+        const track = tracks.get(row.trackKey);
+        if (!track) continue;
+        const lessons = track.modules.flatMap((m) => m.lessons.map((l) => ({ key: l.key, slug: l.slug, title: l.title, module: m.title })));
+        const done = doneKeys.get(row.userId) ?? new Set<string>();
+        const standing = pace(row, lessons.length, lessons.filter((l) => done.has(l.key)).length, now);
+        if (standing.behind < 1) continue;
+        const next = lessons.find((l) => !done.has(l.key)) ?? null;
+        batch.push({
+          userId: row.userId,
+          email: null,
+          name: null,
+          content: studyPlanDueContent({ track: track.title, trackKey: track.key, behind: standing.behind, next }),
+        });
+      }
+      const outcome = await deliver(`study_plan_due_${dayKey(now)}`, batch, false);
+      notified += outcome.notified;
+      if (rows.length < BATCH) break;
+      cursor = rows[rows.length - 1].id;
+    }
+    return { notified, considered };
+  },
+};
+
+export const REMINDER_JOBS: Job[] = [streakAtRisk, dailyKata, weeklyDigest, studyPlanDue];
+
+/** Register the four with the scheduler. Called once at boot. */
 export function registerReminderJobs(): void {
   for (const job of REMINDER_JOBS) registerJob(job);
 }

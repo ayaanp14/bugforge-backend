@@ -94,6 +94,9 @@ model User {
   paymentOrders      PaymentOrder[]
   notifications      Notification[]
   roadmapRewards     RoadmapReward[]
+  studyEnrollments   StudyEnrollment[]
+  studyLessons       StudyLessonProgress[]
+  studyExercises     StudyExerciseSubmission[]
   assistantMessages  AssistantMessage[]
   posts              Post[]
   postComments       PostComment[]
@@ -1299,4 +1302,128 @@ model RoadmapStageProblem {
 
   @@unique([stageId, problemId])
   @@index([stageId, position])
+}
+
+/// A study plan: one language's syllabus, seeded from scripts/study-plans
+/// (the roadmap pattern — authored in TypeScript and Markdown, reviewed
+/// there, served from these tables). `language` is the judge language its
+/// exercises run as; `runtime` names the toolchain the content targets
+/// ("OpenJDK 18 on Paiza"), because which features compile is content too.
+model StudyTrack {
+  id          String        @id @default(cuid())
+  key         String        @unique @db.VarChar(40)
+  title       String
+  blurb       String        @db.Text
+  language    String        @db.VarChar(20)
+  runtime     String        @db.VarChar(80)
+  position    Int
+  isPublished Boolean       @default(true)
+  modules     StudyModule[]
+
+  @@index([isPublished, position])
+}
+
+/// A chapter of a track. `key` is global ("java:jvm") and stable — progress
+/// rows and notification types use it; `slug` is the URL segment, unique
+/// within the track. The overview is the module's own page and the PDF's
+/// cover.
+model StudyModule {
+  id       String        @id @default(cuid())
+  key      String        @unique @db.VarChar(80)
+  slug     String        @db.VarChar(60)
+  trackId  String
+  track    StudyTrack    @relation(fields: [trackId], references: [id], onDelete: Cascade)
+  title    String
+  blurb    String        @db.Text
+  icon     String        @db.VarChar(40)
+  overview String        @db.Text
+  position Int
+  lessons  StudyLesson[]
+
+  @@unique([trackId, slug])
+  @@index([trackId, position])
+}
+
+/// One lesson: the whole text as Markdown, its exercises and its quiz. A
+/// `kind` of "test" is the module's checkpoint — a bigger quiz and two
+/// exercises, cleared at `passMark` percent. Exercise reference solutions
+/// and quiz answers live here and are never sent to the client: the
+/// service grades (services/study-plans.ts).
+model StudyLesson {
+  id        String      @id @default(cuid())
+  key       String      @unique @db.VarChar(120)
+  slug      String      @db.VarChar(80)
+  moduleId  String
+  module    StudyModule @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  title     String
+  /// "lesson" | "test"
+  kind      String      @db.VarChar(12)
+  position  Int
+  minutes   Int
+  body      String      @db.MediumText
+  /// [{ title, prompt, starter, solution, hints[], cases[{stdin, expected, hidden?}] }]
+  exercises Json        @default("[]")
+  /// [{ prompt, options[], answer, explanation }]
+  quiz      Json        @default("[]")
+  /// Percent of the quiz needed to clear a test; null for a lesson.
+  passMark  Int?
+  xp        Int         @default(10)
+
+  @@index([moduleId, position])
+}
+
+/// An account's plan on a track: when it started and the pace chosen. The
+/// schedule is arithmetic over these two and the lesson count — "today's
+/// lesson" and "two behind" are computed, never stored. `completedAt` is
+/// the one-shot for the track's finishing XP.
+model StudyEnrollment {
+  id          String    @id @default(cuid())
+  userId      String
+  trackKey    String    @db.VarChar(40)
+  startedAt   DateTime  @default(now())
+  paceDays    Int
+  completedAt DateTime?
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, trackKey])
+}
+
+/// What an account has done on one lesson. Unlike the roadmap, none of this
+/// can be derived — reading has no judge — so it is written, one row per
+/// (user, lesson), keyed by the lesson's stable key so a re-seed keeps it.
+/// `completedAt` is set once, when every part is done, and pays the XP.
+model StudyLessonProgress {
+  id               String    @id @default(cuid())
+  userId           String
+  lessonKey        String    @db.VarChar(120)
+  readAt           DateTime?
+  /// Best quiz so far: correct answers and the quiz's size when it was taken.
+  quizCorrect      Int?
+  quizTotal        Int?
+  quizAt           DateTime?
+  /// Exercises passed, by index into the lesson's list.
+  exercisesPassed  Json      @default("[]")
+  completedAt      DateTime?
+  updatedAt        DateTime  @updatedAt
+  user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, lessonKey])
+  @@index([userId, updatedAt])
+}
+
+/// Every judged exercise submission, kept the way Submission rows are.
+model StudyExerciseSubmission {
+  id          String   @id @default(cuid())
+  userId      String
+  lessonKey   String   @db.VarChar(120)
+  exercise    Int
+  code        String   @db.MediumText
+  language    String   @db.VarChar(20)
+  verdict     String   @db.VarChar(30)
+  passed      Int
+  total       Int
+  submittedAt DateTime @default(now())
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, lessonKey, submittedAt])
 }

@@ -40,6 +40,15 @@ export interface Judge0Submission {
   expected_output?: string;
   cpu_time_limit?: number; // in seconds
   memory_limit?: number; // in KB
+  /**
+   * The source is a complete program (a class Main, a script with its own
+   * stdin handling) and must run exactly as written. Without this the
+   * JavaScript and Python paths go through wrapCode, which recognises a
+   * top-level function and bolts the sentinel driver onto it — the study
+   * plans' program judge (lib/program-judge.ts) found its output ending in
+   * __CODEXA_BEGIN__ that way.
+   */
+  raw?: boolean;
 }
 
 export interface Judge0Result {
@@ -515,7 +524,7 @@ else:
 }
 
 export async function submitToJudge0(submission: Judge0Submission, rawLanguage: string): Promise<string> {
-  const wrappedCode = wrapCode(submission.source_code, rawLanguage);
+  const wrappedCode = submission.raw ? submission.source_code : wrapCode(submission.source_code, rawLanguage);
 
   const payload: Record<string, unknown> = {
     source_code: wrappedCode,
@@ -591,7 +600,7 @@ export async function submitBatchToJudge0(
 ): Promise<string[]> {
   const payload = {
     submissions: submissions.map((submission) => {
-      const wrappedCode = wrapCode(submission.source_code, rawLanguage);
+      const wrappedCode = submission.raw ? submission.source_code : wrapCode(submission.source_code, rawLanguage);
       const item: Record<string, unknown> = {
         source_code: wrappedCode,
         language_id: submission.language_id,

@@ -8,6 +8,7 @@ import { getDashboardUser, invalidateMe } from "./me.js";
 import { contestSnapshot } from "./daily-contest.js";
 // The same shape of cycle: roadmap imports invalidateDashboard from here.
 import { roadmapBadgesFor } from "./roadmap.js";
+import { studyBandFor } from "./study-plans.js";
 
 /**
  * Query functions shared by the per-widget /api/me routes and the aggregated
@@ -543,6 +544,7 @@ async function buildDashboard(userId: string) {
     bugInsights,
     dailyContest,
     roadmap,
+    study,
   ] = await Promise.all([
     getDashboardUser(userId),
     queryUserCounters(userId),
@@ -557,11 +559,13 @@ async function buildDashboard(userId: string) {
     contestSnapshot(userId),
     // The profile's badge row: the road's chests, opened or not.
     roadmapBadgesFor(userId),
+    // The "continue learning" band: the study plan most recently walked, or null.
+    studyBandFor(userId),
   ]);
 
   const difficultyStats = computeDifficultyStats(problemState);
   const problemInsights = computeProblemInsights(problemState);
   const { social, savedInterviews } = counters;
 
-  return { me, social, difficultyStats, submissions, heatmap, rank, leaderboard, pairing, continueSolving, problemInsights, bugInsights, savedInterviews, dailyContest, roadmap };
+  return { me, social, difficultyStats, submissions, heatmap, rank, leaderboard, pairing, continueSolving, problemInsights, bugInsights, savedInterviews, dailyContest, roadmap, study };
 }

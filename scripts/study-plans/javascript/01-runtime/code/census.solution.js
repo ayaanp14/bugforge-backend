@@ -1,0 +1,10 @@
+"use strict";
+const input = require("fs").readFileSync(0, "utf8");
+const lines = input.split("\n").filter((l) => l.trim() !== "");
+const tokens = input.trim() === "" ? [] : input.trim().split(/\s+/);
+const numeric = tokens.filter((t) => t !== "" && Number.isFinite(Number(t)));
+const sum = numeric.reduce((acc, t) => acc + Number(t), 0);
+console.log(`lines=${lines.length}`);
+console.log(`tokens=${tokens.length}`);
+console.log(`numbers=${numeric.length}`);
+console.log(`sum=${Number.isInteger(sum) ? sum : Number(sum.toFixed(2))}`);

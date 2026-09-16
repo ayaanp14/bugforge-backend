@@ -1,0 +1,12 @@
+"use strict";
+const tokens = require("fs").readFileSync(0, "utf8").trim().split(/\s+/);
+const arr = tokens.slice(1, Number(tokens[0]) + 1).map(Number);
+let [first = 0, second = 0, ...rest] = arr;
+console.log(`first=${first} second=${second} rest=${JSON.stringify(rest)}`);
+[first, second] = [second, first];
+console.log(`swapped: first=${first} second=${second}`);
+const { length } = arr;
+const [min, max] = length ? [Math.min(...arr), Math.max(...arr)] : [0, 0];
+console.log(`length=${length} min=${min} max=${max}`);
+const [, , third = "none"] = arr;
+console.log(`third=${third}`);

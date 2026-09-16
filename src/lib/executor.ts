@@ -98,13 +98,25 @@ export const EXECUTOR_CHAIN = [...CHAIN];
 // engine that just failed is skipped for a cooldown and then tried again.
 const failedUntil = new Map<string, number>();
 
-const healthyFirst = (): string[] => {
+const healthyFirst = (chain: readonly string[] = CHAIN): string[] => {
   const now = Date.now();
-  const healthy = CHAIN.filter((name) => (failedUntil.get(name) ?? 0) <= now);
+  const healthy = chain.filter((name) => (failedUntil.get(name) ?? 0) <= now);
   // Everything is cooling down: try them all anyway rather than refuse outright,
   // since a cooldown is a guess and the engine may well be back.
-  return healthy.length > 0 ? healthy : [...CHAIN];
+  return healthy.length > 0 ? healthy : [...chain];
 };
+
+/**
+ * A caller's own engine order, when it has one. The study plans' program
+ * judge (lib/program-judge.ts) runs Java on Paiza's OpenJDK 18 and never on
+ * the local Judge0's JDK 13: a record or a text block failing to compile
+ * there is a "real result" the failover would hand the learner as their
+ * mistake. Unknown names are dropped; an empty list means the global chain.
+ */
+export function resolveChain(preferred?: readonly string[]): string[] {
+  const chain = (preferred ?? []).map((name) => name.toLowerCase().trim()).filter((name) => ENGINES[name]);
+  return chain.length > 0 ? chain : [...CHAIN];
+}
 
 function markDown(name: string, err: unknown): void {
   failedUntil.set(name, Date.now() + COOLDOWN_MS);
@@ -131,6 +143,8 @@ interface Inflight {
   rawLanguage: string;
   tried: Set<string>;
   at: number;
+  /** The engines this submission may run on, in order (see resolveChain). */
+  chain: string[];
 }
 const inflight = new Map<string, Inflight>();
 
@@ -146,8 +160,9 @@ function pruneInflight(): void {
 export { LANGUAGE_MAP };
 export type { Judge0Result, Judge0Submission };
 
-export const submitCode = async (submission: Judge0Submission, rawLanguage: string): Promise<string> => {
-  const order = healthyFirst();
+export const submitCode = async (submission: Judge0Submission, rawLanguage: string, preferred?: readonly string[]): Promise<string> => {
+  const chain = resolveChain(preferred);
+  const order = healthyFirst(chain);
   const tried = new Set<string>();
   let last: unknown = new ExecutionEngineError(order[0] ?? "none", "no engine available");
 
@@ -159,7 +174,7 @@ export const submitCode = async (submission: Judge0Submission, rawLanguage: stri
       failedUntil.delete(name);
       tried.add(name);
       pruneInflight();
-      inflight.set(tagged, { submission, rawLanguage, tried, at: Date.now() });
+      inflight.set(tagged, { submission, rawLanguage, tried, at: Date.now(), chain });
       return tagged;
     } catch (err) {
       // Only an engine outage is worth another engine's time; a compile error
@@ -178,8 +193,10 @@ export const submitCode = async (submission: Judge0Submission, rawLanguage: stri
 export const submitCodeBatch = async (
   submissions: Judge0Submission[],
   rawLanguage: string,
+  preferred?: readonly string[],
 ): Promise<string[]> => {
-  const order = healthyFirst();
+  const chain = resolveChain(preferred);
+  const order = healthyFirst(chain);
   let last: unknown = new ExecutionEngineError(order[0] ?? "none", "no engine available");
 
   for (const name of order) {
@@ -192,7 +209,7 @@ export const submitCodeBatch = async (
       tokens.forEach((tagged, i) => {
         const submission = submissions[i];
         if (submission) {
-          inflight.set(tagged, { submission, rawLanguage, tried: new Set([name]), at: Date.now() });
+          inflight.set(tagged, { submission, rawLanguage, tried: new Set([name]), at: Date.now(), chain });
         }
       });
       return tokens;
@@ -242,7 +259,7 @@ export const pollResult = async (tagged: string, maxAttempts?: number): Promise<
       markDown(name, err);
       info.tried.add(name);
 
-      const next = healthyFirst().find((candidate) => !info.tried.has(candidate));
+      const next = healthyFirst(info.chain).find((candidate) => !info.tried.has(candidate));
       if (!next) {
         inflight.delete(tagged);
         throw err;

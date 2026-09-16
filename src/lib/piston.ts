@@ -181,7 +181,7 @@ async function executePiston(submission: Judge0Submission, rawLanguage: string):
   const cfg = PISTON_LANGUAGES[rawLanguage];
   if (!cfg) throw new Error(`Piston: unsupported language "${rawLanguage}"`);
 
-  const wrappedCode = wrapCode(submission.source_code, rawLanguage);
+  const wrappedCode = submission.raw ? submission.source_code : wrapCode(submission.source_code, rawLanguage);
   const version = await resolveVersion(cfg.language);
 
   const body = {
