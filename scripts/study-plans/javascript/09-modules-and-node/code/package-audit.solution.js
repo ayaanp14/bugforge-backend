@@ -1,0 +1,18 @@
+"use strict";
+const input = require("fs").readFileSync(0, "utf8");
+const pkg = JSON.parse(input);
+const semver = /^\d+\.\d+\.\d+(-[0-9A-Za-z.-]+)?$/;
+console.log(`name=${pkg.name ?? "(missing)"} version=${semver.test(pkg.version ?? "") ? pkg.version : "invalid"}`);
+console.log(`type=${pkg.type ?? "commonjs (default)"} entry=${pkg.exports ? "exports" : pkg.main ? `main ${pkg.main}` : "index.js (implicit)"}`);
+console.log(`scripts=${Object.keys(pkg.scripts ?? {}).sort().join(",") || "none"}`);
+const deps = pkg.dependencies ?? {}, dev = pkg.devDependencies ?? {}, peer = pkg.peerDependencies ?? {};
+console.log(`deps=${Object.keys(deps).length} devDeps=${Object.keys(dev).length} peerDeps=${Object.keys(peer).length}`);
+const unpinned = Object.entries({ ...deps, ...dev }).filter(([, r]) => r === "*" || r === "latest" || r === "x").map(([n]) => n).sort();
+console.log(`unpinned: ${unpinned.join(",") || "none"}`);
+const warnings = [];
+if (!pkg.engines?.node) warnings.push("no engines.node");
+if (pkg.scripts?.postinstall) warnings.push("postinstall script runs on every install");
+if (!pkg.private && !pkg.files) warnings.push("publishable without a files allow-list");
+const both = Object.keys(deps).filter((d) => d in dev).sort();
+if (both.length) warnings.push(`listed in both dependencies and devDependencies: ${both.join(",")}`);
+console.log(`warnings: ${warnings.join("; ") || "none"}`);

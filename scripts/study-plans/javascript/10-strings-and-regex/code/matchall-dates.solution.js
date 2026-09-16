@@ -1,0 +1,11 @@
+"use strict";
+const input = require("fs").readFileSync(0, "utf8");
+const text = input.trim();
+const DATE = /(?<y>\d{4})-(?<m>\d{2})-(?<d>\d{2})/g;
+const found = [...text.matchAll(DATE)];
+console.log(`dates=${found.length}: ${found.map((m) => `${m[0]}@${m.index}`).join(" ")}`);
+console.log(`british=${text.replace(DATE, "$<d>/$<m>/$<y>")}`);
+console.log(`years=${found.map((m) => m.groups.y).join(",")} latest=${found.map((m) => m[0]).sort().at(-1) ?? "none"}`);
+console.log(`numbers=${JSON.stringify((text.match(/\d+/g) ?? []).map(Number))}`);
+console.log(`parts=${JSON.stringify(text.split(/\s*[,;]\s*/))}`);
+console.log(`matchWithG=${JSON.stringify(text.match(DATE))} firstExec=${JSON.stringify(new RegExp(DATE.source).exec(text)?.groups ?? null)}`);

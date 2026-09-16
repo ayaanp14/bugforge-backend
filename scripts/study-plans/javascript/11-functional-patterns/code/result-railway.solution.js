@@ -1,0 +1,16 @@
+"use strict";
+const lines = require("fs").readFileSync(0, "utf8").split("\n").filter((l) => l.trim() !== "");
+const Ok = (value) => ({ ok: true, value, map: (f) => Ok(f(value)), mapErr: () => Ok(value), flatMap: (f) => f(value), getOrElse: () => value, match: ({ ok }) => ok(value) });
+const Err = (error) => ({ ok: false, error, map: () => Err(error), mapErr: (f) => Err(f(error)), flatMap: () => Err(error), getOrElse: (fb) => fb, match: ({ err }) => err(error) });
+const attempt = (fn) => { try { return Ok(fn()); } catch (e) { return Err(e); } };
+const parseJson = (text) => attempt(() => JSON.parse(text)).mapErr(() => "not valid JSON");
+const requireObject = (v) => (v !== null && typeof v === "object" && !Array.isArray(v) ? Ok(v) : Err("expected an object"));
+const requireAge = (u) => (Number.isInteger(u.age) && u.age >= 0 && u.age <= 150 ? Ok(u) : Err(`age must be an integer 0-150, got ${JSON.stringify(u.age)}`));
+const requireName = (u) => (typeof u.name === "string" && u.name.trim() ? Ok(u) : Err("name is required"));
+const normalise = (u) => ({ name: u.name.trim().toLowerCase(), age: u.age, adult: u.age >= 18 });
+const loadUser = (text) => parseJson(text).flatMap(requireObject).flatMap(requireName).flatMap(requireAge).map(normalise);
+const results = lines.map(loadUser);
+results.forEach((r, i) => console.log(r.match({ ok: (u) => `${i}: ok ${JSON.stringify(u)}`, err: (e) => `${i}: err ${e}` })));
+const sequence = (rs) => { const errors = rs.filter((r) => !r.ok).map((r) => r.error); return errors.length ? Err(errors) : Ok(rs.map((r) => r.value)); };
+console.log(sequence(results).match({ ok: (all) => `all ok: ${all.length} users`, err: (errs) => `${errs.length} failed: ${errs.join(" | ")}` }));
+console.log(`recovered=${results[0].map((u) => u.name).getOrElse("anonymous")} mapErrDemo=${Err("x").mapErr((e) => e.toUpperCase()).error}`);

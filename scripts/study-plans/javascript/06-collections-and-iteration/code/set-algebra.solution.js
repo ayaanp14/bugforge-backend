@@ -1,0 +1,16 @@
+"use strict";
+const lines = require("fs").readFileSync(0, "utf8").split("\n").filter((l) => l.trim() !== "");
+const a = new Set(lines[0].trim().split(/\s+/).map(Number));
+const b = new Set(lines[1].trim().split(/\s+/).map(Number));
+const show = (s) => JSON.stringify([...s].sort((x, y) => Number.isNaN(x) - Number.isNaN(y) || x - y).map((x) => (Number.isNaN(x) ? "NaN" : x)));
+const union = new Set([...a, ...b]);
+const intersection = new Set([...a].filter((x) => b.has(x)));
+const difference = new Set([...a].filter((x) => !b.has(x)));
+const symmetric = new Set([...[...a].filter((x) => !b.has(x)), ...[...b].filter((x) => !a.has(x))]);
+const subset = [...a].every((x) => b.has(x));
+console.log(`a=${show(a)} b=${show(b)}`);
+console.log(`union=${show(union)}`);
+console.log(`intersection=${show(intersection)}`);
+console.log(`difference=${show(difference)}`);
+console.log(`symmetric=${show(symmetric)}`);
+console.log(`subset=${subset} sizes=${a.size},${b.size}`);

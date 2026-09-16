@@ -1,0 +1,15 @@
+"use strict";
+const input = require("fs").readFileSync(0, "utf8");
+const segmenter = new Intl.Segmenter("en", { granularity: "word" });
+const graphemes = (s) => [...new Intl.Segmenter("en", { granularity: "grapheme" }).segment(s)].length;
+const words = [...segmenter.segment(input)].filter((s) => s.isWordLike).map((s) => s.segment.normalize("NFC").toLowerCase());
+const freq = new Map();
+for (const w of words) freq.set(w, (freq.get(w) ?? 0) + 1);
+const top = [...freq].sort(([a, x], [b, y]) => y - x || a.localeCompare(b)).slice(0, 3);
+console.log(`words=${words.length} unique=${freq.size}`);
+console.log(`top=${top.map(([w, n]) => `${w}=${n}`).join(" ")}`);
+const longest = [...freq.keys()].sort((a, b) => graphemes(b) - graphemes(a) || a.localeCompare(b))[0] ?? "-";
+console.log(`longest=${longest} graphemes=${longest === "-" ? 0 : graphemes(longest)} codeUnits=${longest === "-" ? 0 : longest.length}`);
+console.log(`letters=${(input.match(/\p{L}/gu) ?? []).length} digits=${(input.match(/\p{Nd}/gu) ?? []).length} emoji=${(input.match(/\p{Extended_Pictographic}/gu) ?? []).length}`);
+const collator = new Intl.Collator("en");
+console.log(`sorted=${[...freq.keys()].sort(collator.compare).join(" ")}`);

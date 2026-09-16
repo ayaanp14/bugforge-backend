@@ -1,0 +1,13 @@
+"use strict";
+const lines = require("fs").readFileSync(0, "utf8").split("\n").filter((l) => l.trim() !== "");
+const hex = (s) => [...s].map((c) => c.codePointAt(0).toString(16)).join(" ");
+const s = String.fromCodePoint(...lines[0].trim().split(/\s+/).map((h) => parseInt(h, 16)));
+const graphemes = [...new Intl.Segmenter("en", { granularity: "grapheme" }).segment(s)].length;
+console.log(`length=${s.length} codePoints=${[...s].length} graphemes=${graphemes}`);
+console.log(`units=${Array.from({ length: s.length }, (_, i) => s.charCodeAt(i).toString(16)).join(" ")}`);
+console.log(`codePoint0=${s.codePointAt(0).toString(16)} charCode0=${s.charCodeAt(0).toString(16)} isPair=${s.codePointAt(0) > 0xffff}`);
+const naive = s.split("").reverse().join("");
+const byCodePoint = [...s].reverse().join("");
+console.log(`reverseNaive=${hex(naive)}`);
+console.log(`reverseByCodePoint=${hex(byCodePoint)}`);
+console.log(`sliceHalf=${hex(s.slice(0, 1))} at(-1)=${hex(s.at(-1))} last=${hex([...s].at(-1))}`);
