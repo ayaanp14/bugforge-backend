@@ -23,16 +23,13 @@
     "@types/express": "^5.0.3",
     "@types/jsonwebtoken": "^9.0.9",
     "@types/node": "^25.5.2",
-    "@types/pg": "^8.20.0",
     "husky": "^9.1.7",
     "prisma": "^7.7.0",
-    "ts-node": "^10.9.2",
     "tsx": "^4.19.4",
     "typescript": "^6.0.2"
   },
   "dependencies": {
     "@prisma/adapter-mariadb": "^7.10.0",
-    "@prisma/adapter-pg": "^7.7.0",
     "@prisma/client": "^7.7.0",
     "@prisma/config": "^7.7.0",
     "axios": "^1.14.0",
@@ -42,10 +39,8 @@
     "cors": "^2.8.5",
     "dotenv": "^17.4.1",
     "express": "^5.1.0",
-    "googleapis": "^146.0.0",
     "ioredis": "^6.0.0",
     "jsonwebtoken": "^9.0.2",
-    "pg": "^8.20.0",
     "slugify": "^1.6.9",
     "socket.io": "^4.8.3",
     "zod": "^4.5.4"

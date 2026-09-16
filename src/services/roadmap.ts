@@ -229,15 +229,25 @@ export function clearedTiers(road: RoadDefinition, stages: RoadmapStage[]): stri
  * the other's P2002 is the signal to pay nothing. Returns what was opened
  * this call, so a caller can say so.
  */
-export async function claimTierRewards(userId: string, road: RoadDefinition, stages: RoadmapStage[]) {
+export async function claimTierRewards(
+  userId: string,
+  road: RoadDefinition,
+  stages: RoadmapStage[],
+  /** Tier keys already paid, when the caller has just read them — saves the lookup. */
+  paidKeys?: readonly string[],
+) {
   const earned = clearedTiers(road, stages);
   if (earned.length === 0) return [];
 
-  const paid = await prisma.roadmapReward.findMany({
-    where: { userId, tierKey: { in: earned } },
-    select: { tierKey: true },
-  });
-  const owed = earned.filter((key) => !paid.some((p) => p.tierKey === key));
+  const paid =
+    paidKeys ??
+    (
+      await prisma.roadmapReward.findMany({
+        where: { userId, tierKey: { in: earned } },
+        select: { tierKey: true },
+      })
+    ).map((p) => p.tierKey);
+  const owed = earned.filter((key) => !paid.includes(key));
   if (owed.length === 0) return [];
 
   const opened: Array<{ tier: string; title: string; xp: number; interviewCredits: number }> = [];
@@ -287,17 +297,28 @@ export async function claimTierRewards(userId: string, road: RoadDefinition, sta
   return opened;
 }
 
+/** The chests this account has opened: what the badges, the claim and the standing all read. */
+function rewardRows(userId: string) {
+  return prisma.roadmapReward.findMany({ where: { userId }, select: { tierKey: true, earnedAt: true } });
+}
+
 export async function roadmapFor(userId: string): Promise<RoadmapPayload> {
   const road = await roadDefinition();
-  const solved = await solvedIds(userId, road.stages.flatMap((s) => s.problems.map((p) => p.id)));
+  // The solves and the chests already opened are independent reads, so they
+  // go out together; the claim below reuses the second rather than asking
+  // again, and only a chest opened on this very read costs a re-read.
+  const [solved, before] = await Promise.all([
+    solvedIds(userId, road.stages.flatMap((s) => s.problems.map((p) => p.id))),
+    rewardRows(userId),
+  ]);
   const stages = walk(road, solved);
   const cleared = stages.filter((s) => s.status === "cleared").length;
 
   // A read that pays: a chest earned before chests existed, or whose
   // post-solve hook failed, opens on the next look at the road. Idempotent
-  // and normally a no-op — one indexed read when any tier is cleared.
-  await claimTierRewards(userId, road, stages);
-  const rewards = await prisma.roadmapReward.findMany({ where: { userId }, select: { tierKey: true, earnedAt: true } });
+  // and normally a no-op.
+  const opened = await claimTierRewards(userId, road, stages, before.map((r) => r.tierKey));
+  const rewards = opened.length > 0 ? await rewardRows(userId) : before;
 
   return {
     tiers: road.tiers.map((tier) => ({ ...tier, earnedAt: rewards.find((r) => r.tierKey === tier.id)?.earnedAt ?? null })),
@@ -318,10 +339,7 @@ export async function roadmapFor(userId: string): Promise<RoadmapPayload> {
  * rather than a call of its own.
  */
 export async function roadmapBadgesFor(userId: string): Promise<RoadmapBadge[]> {
-  const [road, rewards] = await Promise.all([
-    roadDefinition(),
-    prisma.roadmapReward.findMany({ where: { userId }, select: { tierKey: true, earnedAt: true } }),
-  ]);
+  const [road, rewards] = await Promise.all([roadDefinition(), rewardRows(userId)]);
   return road.tiers.map((tier) => ({
     tier: tier.id,
     title: tier.title,
@@ -346,22 +364,24 @@ export async function announceStageIfCleared(userId: string, problemId: string):
   const index = road.stages.findIndex((s) => s.problems.some((p) => p.id === problemId));
   if (index === -1) return;
   const stage = road.stages[index];
-  const solved = await solvedIds(userId, stage.problems.map((p) => p.id));
-  if (solved.size < Math.min(stage.required, stage.problems.length)) return;
+
+  // One query over the whole road: the stage's count is a subset of it, and
+  // the chest check below needs all of it anyway. This used to be two.
+  const all = await solvedIds(userId, road.stages.flatMap((s) => s.problems.map((p) => p.id)));
+  const solvedInStage = stage.problems.filter((p) => all.has(p.id)).length;
+  if (solvedInStage < Math.min(stage.required, stage.problems.length)) return;
 
   const next = road.stages[index + 1] ?? null;
   await createNotificationOnce(userId, {
     type: `roadmap_stage_cleared:${stage.key}`,
     title: `Stage cleared: ${stage.title} ✅`,
     body: next
-      ? `${solved.size} of ${stage.problems.length} solved — that clears it. ${next.title} is unlocked on your roadmap.`
-      : `${solved.size} of ${stage.problems.length} solved. That was the last stage — the whole DSA roadmap is yours. 🏆`,
+      ? `${solvedInStage} of ${stage.problems.length} solved — that clears it. ${next.title} is unlocked on your roadmap.`
+      : `${solvedInStage} of ${stage.problems.length} solved. That was the last stage — the whole DSA roadmap is yours. 🏆`,
     href: "/roadmap",
   });
 
   // A cleared stage may have been its tier's last: the chest opens now, not
-  // on the next visit to the road. Needs the whole road's standing, which
-  // is one more query over the road's problems.
-  const all = await solvedIds(userId, road.stages.flatMap((s) => s.problems.map((p) => p.id)));
+  // on the next visit to the road.
   await claimTierRewards(userId, road, walk(road, all));
 }

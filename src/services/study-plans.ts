@@ -645,14 +645,33 @@ export async function enroll(userId: string, trackKey: string, paceDays: number)
   return pace(row, lessons.length, done);
 }
 
+/**
+ * (user, track) pairs this process has seen an enrolment row for, and when.
+ *
+ * Every lesson write — a read, a quiz, an exercise — began with the upsert
+ * below, a round trip to a database ~500 ms away that in every case but the
+ * very first confirmed a row that was already there. The app never deletes
+ * an enrolment (only an account's cascade does), so once seen it is safe to
+ * remember for a while. Bounded the cheap way: a full clear at the cap.
+ */
+const enrolledSeen = new Map<string, number>();
+const ENROLLED_MEMO_MS = 10 * 60_000;
+const ENROLLED_MEMO_MAX = 20_000;
+
 /** A write without an enrolment enrols at the default pace: a lesson opened from a link still counts. */
 async function ensureEnrolled(userId: string, trackKey: string): Promise<void> {
+  const key = `${userId}:${trackKey}`;
+  const seenAt = enrolledSeen.get(key);
+  const now = Date.now();
+  if (seenAt !== undefined && now - seenAt < ENROLLED_MEMO_MS) return;
   await prisma.studyEnrollment.upsert({
     where: { userId_trackKey: { userId, trackKey } },
     create: { userId, trackKey, paceDays: DEFAULT_PACE },
     update: {},
     select: { id: true },
   });
+  if (enrolledSeen.size >= ENROLLED_MEMO_MAX) enrolledSeen.clear();
+  enrolledSeen.set(key, now);
 }
 
 /**

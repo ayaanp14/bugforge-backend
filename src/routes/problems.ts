@@ -4,7 +4,7 @@ import { prisma } from "../lib/prisma.js";
 import { requireAuth, optionalAuth, adminOnly } from "../middleware/auth.js";
 import { cachedShared, invalidate } from "../lib/cache.js";
 import { browserCache } from "../lib/http-cache.js";
-import { getCatalogue, listProblemsWithStatus, loadProblemState, type ProblemState } from "../services/dashboard.js";
+import { getCatalogue, listProblemsWithStatus, loadProblemState, problemIdBySlug, type ProblemState } from "../services/dashboard.js";
 import { isCompanyTag } from "../lib/companies.js";
 import { LANGUAGE_MAP } from "../lib/judge0.js";
 
@@ -499,8 +499,10 @@ router.get("/:slug/draft", requireAuth, async (req, res) => {
       return;
     }
 
-    const problem = await prisma.problem.findUnique({ where: { slug: String(slug) }, select: { id: true } });
-    if (!problem) {
+    // The slug resolves from the in-memory catalogue (services/dashboard.ts),
+    // so the only round trip here is the draft itself.
+    const problemId = await problemIdBySlug(String(slug));
+    if (!problemId) {
       res.status(404).json({ error: "Problem not found" });
       return;
     }
@@ -509,7 +511,7 @@ router.get("/:slug/draft", requireAuth, async (req, res) => {
       where: {
         userId_problemId_language: {
           userId,
-          problemId: problem.id,
+          problemId,
           language: language,
         },
       },
@@ -545,6 +547,10 @@ router.post("/:problemId/draft", requireAuth, async (req, res) => {
       return;
     }
 
+    // The autosave fires every few seconds while someone types, and the row
+    // used to come back whole — the 64 KB of code the client had just sent,
+    // echoed on every save. Neither client reads anything off this answer
+    // but success, so it carries the row's identity and nothing more.
     const draft = await prisma.codeDraft.upsert({
       where: {
         userId_problemId_language: {
@@ -563,6 +569,7 @@ router.post("/:problemId/draft", requireAuth, async (req, res) => {
         language,
         code,
       },
+      select: { id: true, updatedAt: true },
     });
 
     res.json(draft);
@@ -578,8 +585,8 @@ router.get("/:slug/timer", requireAuth, async (req, res) => {
     const { slug } = req.params;
     const userId = req.user!.userId;
 
-    const problem = await prisma.problem.findUnique({ where: { slug: String(slug) }, select: { id: true } });
-    if (!problem) {
+    const problemId = await problemIdBySlug(String(slug));
+    if (!problemId) {
       res.status(404).json({ error: "Problem not found" });
       return;
     }
@@ -588,7 +595,7 @@ router.get("/:slug/timer", requireAuth, async (req, res) => {
       where: {
         userId_problemId: {
           userId,
-          problemId: problem.id,
+          problemId,
         },
       },
     });
@@ -625,8 +632,8 @@ router.post("/:slug/timer", requireAuth, async (req, res) => {
     const raw = Number(req.body?.elapsedSeconds);
     const elapsedSeconds = Number.isFinite(raw) ? Math.min(7 * 24 * 3600, Math.max(0, Math.round(raw))) : 0;
 
-    const problem = await prisma.problem.findUnique({ where: { slug: String(slug) }, select: { id: true } });
-    if (!problem) {
+    const problemId = await problemIdBySlug(String(slug));
+    if (!problemId) {
       res.status(404).json({ error: "Problem not found" });
       return;
     }
@@ -658,13 +665,13 @@ router.post("/:slug/timer", requireAuth, async (req, res) => {
       where: {
         userId_problemId: {
           userId,
-          problemId: problem.id,
+          problemId,
         },
       },
       update: updateData,
       create: {
         userId,
-        problemId: problem.id,
+        problemId,
         ...updateData,
       },
     });
@@ -685,8 +692,8 @@ router.get("/:slug/submissions", requireAuth, async (req, res) => {
     const { slug } = req.params;
     const userId = req.user!.userId;
 
-    const problem = await prisma.problem.findUnique({ where: { slug: String(slug) }, select: { id: true } });
-    if (!problem) {
+    const problemId = await problemIdBySlug(String(slug));
+    if (!problemId) {
       res.status(404).json({ error: "Problem not found" });
       return;
     }
@@ -697,7 +704,7 @@ router.get("/:slug/submissions", requireAuth, async (req, res) => {
     const submissions = await prisma.submission.findMany({
       where: {
         userId,
-        problemId: problem.id,
+        problemId,
       },
       orderBy: { submittedAt: "desc" },
       take: SUBMISSION_HISTORY_TAKE,

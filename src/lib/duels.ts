@@ -107,6 +107,20 @@ const NOT_IN_DUEL_TTL_MS = 30_000;
 const activeDuelUsers = new Map<string, number>();
 const notInDuel = new Map<string, Map<string, number>>();
 
+// Entries expire lazily, on the next question about the same user and
+// target — which for most (user, problem) pairs never comes, since a person
+// runs a problem a few times and moves on. Every Run by every user added an
+// entry the process never let go of; a timer reclaims the expired ones.
+// unref() so a script that imports this module still exits.
+setInterval(() => {
+  const now = Date.now();
+  for (const [userId, until] of activeDuelUsers) if (until <= now) activeDuelUsers.delete(userId);
+  for (const [userId, misses] of notInDuel) {
+    for (const [key, until] of misses) if (until <= now) misses.delete(key);
+    if (misses.size === 0) notInDuel.delete(userId);
+  }
+}, 60_000).unref();
+
 const targetKey = (target: DuelTarget): string | null =>
   target.challengeId ? `challenge:${target.challengeId}` : target.problemId ? `problem:${target.problemId}` : null;
 

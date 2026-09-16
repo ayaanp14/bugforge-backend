@@ -225,20 +225,26 @@ function scheduleHostReassign(roomId: string, hostId: string) {
 }
 
 async function softDeleteRoom(roomId: string, slug: string) {
+  // The in-memory state goes first, whatever the database says. A room whose
+  // row was already deleted (DELETE /api/pair-rooms/:id) made the update
+  // throw, and its code buffer — up to 200 KB — stayed in the map for the
+  // life of the process; the audio roster and the handover timer with it.
+  roomLatestCode.delete(roomId);
+  roomAudioParticipants.delete(roomId);
+  const handover = hostReassignTimers.get(roomId);
+  if (handover) {
+    clearTimeout(handover);
+    hostReassignTimers.delete(roomId);
+  }
   try {
-    console.log(`🧹 Soft-deleting room ${roomId} (status -> closed)`);
-    await prisma.pairRoom.update({
-      where: { id: roomId },
-      data: { status: "closed", endedAt: new Date() }
+    socketDebug(`🧹 Soft-deleting room ${roomId} (status -> closed)`);
+    // updateMany: a row that is gone, or already closed, is a no-op rather
+    // than an error, and a closed room keeps its original endedAt.
+    await prisma.pairRoom.updateMany({
+      where: { id: roomId, status: { not: "closed" } },
+      data: { status: "closed", endedAt: new Date() },
     });
     io.to(roomId).emit("room-ended", { slug });
-    roomLatestCode.delete(roomId);
-    roomAudioParticipants.delete(roomId);
-    const handover = hostReassignTimers.get(roomId);
-    if (handover) {
-      clearTimeout(handover);
-      hostReassignTimers.delete(roomId);
-    }
   } catch (err) {
     console.error("Soft delete room error:", err);
   }

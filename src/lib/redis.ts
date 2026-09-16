@@ -1,6 +1,7 @@
 // ioredis v6 exposes the client as a named export; the default export is the
 // module namespace and is not constructable under this tsconfig.
 import { Redis } from "ioredis";
+import { createHash } from "node:crypto";
 
 /**
  * Shared Redis connection.
@@ -19,6 +20,33 @@ import { Redis } from "ioredis";
  */
 
 const OP_TIMEOUT_MS = 600;
+
+/**
+ * Every key and the pub/sub channel are prefixed with a hash of the database
+ * this process is pointed at (host + database name from DATABASE_URL).
+ *
+ * The hosted Redis is shared: a local server with `.env` pointing at the
+ * hosted cache and a local MySQL once fed production its cached dashboards,
+ * full of cuids that did not exist there, and its invalidation broadcasts
+ * dropped production's warm entries. Keying the namespace off the database
+ * means two processes only share cache entries when they share the data
+ * those entries were built from. The hash is short because it is a prefix
+ * on every key, not a secret.
+ */
+function namespaceOf(databaseUrl: string | undefined): string {
+  if (!databaseUrl) return "nodb";
+  try {
+    const url = new URL(databaseUrl);
+    const material = `${url.hostname}:${url.port}${url.pathname}`;
+    return createHash("sha1").update(material).digest("hex").slice(0, 8);
+  } catch {
+    return createHash("sha1").update(databaseUrl).digest("hex").slice(0, 8);
+  }
+}
+
+/** Logged on connect, so a "row not found on a cached id" symptom can be traced to the process that wrote it. */
+export const NAMESPACE = namespaceOf(process.env["DATABASE_URL"]);
+const prefixed = (key: string) => `${NAMESPACE}:${key}`;
 
 let client: Redis | null = null;
 let unavailable = false;
@@ -58,7 +86,7 @@ function connect(): Redis | null {
   });
   client.on("ready", () => {
     loggedError = false;
-    console.log("[redis] connected");
+    console.log(`[redis] connected (namespace ${NAMESPACE})`);
   });
 
   return client;
@@ -76,7 +104,7 @@ function guard<T>(op: Promise<T>): Promise<T | null> {
 export async function redisGetJSON<T>(key: string): Promise<T | null> {
   const r = connect();
   if (!r) return null;
-  const raw = await guard(r.get(key));
+  const raw = await guard(r.get(prefixed(key)));
   if (!raw) return null;
   try {
     return JSON.parse(raw) as T;
@@ -94,16 +122,18 @@ export async function redisSetJSON(key: string, value: unknown, ttlSeconds: numb
   } catch {
     return; // not serialisable — silently skip rather than throw on a cache write
   }
-  await guard(r.set(key, payload, "EX", ttlSeconds));
+  await guard(r.set(prefixed(key), payload, "EX", ttlSeconds));
 }
 
 export async function redisDel(...keys: string[]): Promise<void> {
   const r = connect();
   if (!r || keys.length === 0) return;
-  await guard(r.del(...keys));
+  await guard(r.del(...keys.map(prefixed)));
 }
 
-const INVALIDATION_CHANNEL = "cache:invalidate";
+// Namespaced like the keys: an invalidation from a process on another
+// database must not reach this one's L1.
+const INVALIDATION_CHANNEL = prefixed("cache:invalidate");
 let subscriber: Redis | null = null;
 
 /**

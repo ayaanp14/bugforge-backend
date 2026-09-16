@@ -330,7 +330,13 @@ router.post("/start", requireAuth, async (req: any, res) => {
   }
 
   try {
-    const template = await prisma.savedInterview.findUnique({ where: { id: savedInterviewId } });
+    // The template and the quota are independent reads against a database
+    // ~500 ms away, so they go out together; a refused template simply
+    // wastes the quota's reads, which is cheaper than serialising every start.
+    const [template, quota] = await Promise.all([
+      prisma.savedInterview.findUnique({ where: { id: savedInterviewId } }),
+      checkInterviewQuota(req.user.userId, req.user.email),
+    ]);
 
     if (!template) {
       return res.status(404).json({ error: "Saved interview configuration not found" });
@@ -341,7 +347,6 @@ router.post("/start", requireAuth, async (req: any, res) => {
 
     // Metered before anything is created, so a refusal leaves no orphan row and
     // costs no model call.
-    const quota = await checkInterviewQuota(req.user.userId);
     if (quota.denial) return res.status(402).json(quota.denial);
     // Past the plan's weekly allowance on a roadmap credit: the row is
     // stamped so the credit, not the allowance, is what this round spends.
@@ -360,7 +365,7 @@ router.post("/start", requireAuth, async (req: any, res) => {
 
       // Longer rounds are a paid feature, so the length is checked as well as
       // the count — otherwise free could ask for thirty minutes twice a week.
-      const lengthGate = await checkVoiceDuration(req.user.userId, durationMin);
+      const lengthGate = await checkVoiceDuration(req.user.userId, durationMin, req.user.email);
       if (lengthGate) return res.status(402).json(lengthGate);
 
       // No opening question is written here. In a spoken round the interviewer

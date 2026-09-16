@@ -302,13 +302,15 @@ router.get("/users/:id", async (req, res) => {
     res.status(404).json({ error: "No such user" });
     return;
   }
-  const plan = await activePlan(user.id, user.email);
-  const recentErrors = await prisma.errorReport.findMany({
-    where: { userId: id },
-    orderBy: { createdAt: "desc" },
-    take: 5,
-    select: { id: true, source: true, kind: true, message: true, path: true, createdAt: true, fingerprint: true },
-  });
+  const [plan, recentErrors] = await Promise.all([
+    activePlan(user.id, user.email),
+    prisma.errorReport.findMany({
+      where: { userId: id },
+      orderBy: { createdAt: "desc" },
+      take: 5,
+      select: { id: true, source: true, kind: true, message: true, path: true, createdAt: true, fingerprint: true },
+    }),
+  ]);
   res.json({ user, plan: { id: plan.plan.id, name: plan.plan.name, currentPeriodEnd: plan.currentPeriodEnd }, recentErrors });
 });
 

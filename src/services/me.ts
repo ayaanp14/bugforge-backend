@@ -224,13 +224,3 @@ export async function getDashboardUser(userId: string) {
     trends,
   };
 }
-
-/** Followers / following / posts — for the dashboard hero. */
-export async function getSocialCounts(userId: string) {
-  const [followers, following, posts] = await Promise.all([
-    prisma.follow.count({ where: { followingId: userId } }),
-    prisma.follow.count({ where: { followerId: userId } }),
-    prisma.post.count({ where: { userId } }),
-  ]);
-  return { followers, following, posts };
-}

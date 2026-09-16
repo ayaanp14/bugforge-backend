@@ -89,8 +89,6 @@ console.log(
 
 /** The engine tried first — what the batch sizer reasons about. */
 export const EXECUTOR_ENGINE = CHAIN[0] as string;
-/** True when every engine in the chain is the local Judge0. */
-export const EXECUTOR_CHAIN = [...CHAIN];
 
 // ── Circuit breaker ────────────────────────────────────────────────
 // A dead engine costs three retries with backoff (~9s) before it gives up.

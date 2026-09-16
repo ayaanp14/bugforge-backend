@@ -22,15 +22,16 @@ export async function requireAuth(
 ): Promise<void> {
   const token = tokenOf(req);
 
+  // Neither refusal is logged: a signed-out visitor probing a protected
+  // route and a token past its thirty days are ordinary traffic, and at one
+  // line per request they drowned the log. The 401 itself is the record.
   if (!token) {
-    console.warn("Auth check failed: No token in Authorization header or __session cookie.");
     res.status(401).json({ error: "Unauthorized — no session" });
     return;
   }
 
   const claims = readSessionToken(token);
   if (!claims) {
-    console.error("Auth check failed: JWT verification error");
     res.status(401).json({ error: "Invalid or expired session" });
     return;
   }

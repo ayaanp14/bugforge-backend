@@ -241,17 +241,20 @@ router.post("/session/:sessionId/voice/session", requireAuth, async (req: any, r
     // interviewer's own lines: what the candidate said is context the model
     // rebuilds from its resumption handle, and repeating it here would be the
     // "send the whole transcript every time" cost PHASE 17 rules out.
-    const asked = await prisma.interviewEvent.findMany({
-      where: { sessionId: session.id, type: "question_started" },
-      orderBy: { sequence: "asc" },
-      select: { text: true },
-      take: 20,
-    });
-
-    const user = await prisma.user.findUnique({
-      where: { id: req.user.userId },
-      select: { name: true },
-    });
+    // Independent reads, one round trip: this runs on every connect and
+    // every reconnect, when the candidate is waiting to hear a voice.
+    const [asked, user] = await Promise.all([
+      prisma.interviewEvent.findMany({
+        where: { sessionId: session.id, type: "question_started" },
+        orderBy: { sequence: "asc" },
+        select: { text: true },
+        take: 20,
+      }),
+      prisma.user.findUnique({
+        where: { id: req.user.userId },
+        select: { name: true },
+      }),
+    ]);
 
     const credential = await provider.createCredential(
       buildContext({

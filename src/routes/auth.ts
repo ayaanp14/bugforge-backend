@@ -101,20 +101,19 @@ router.post("/register", async (req, res) => {
   const username = handle;
 
   try {
-    // Check if user already exists
-    const existingUser = await prisma.user.findUnique({ where: { email }, select: { id: true } });
+    // Both uniqueness checks are indexed point reads that do not depend on
+    // each other, so they share one round trip instead of queueing.
+    const [existingUser, existingUsername] = await Promise.all([
+      prisma.user.findUnique({ where: { email }, select: { id: true } }),
+      username ? prisma.user.findUnique({ where: { username }, select: { id: true } }) : Promise.resolve(null),
+    ]);
     if (existingUser) {
       res.status(400).json({ error: "Email already registered." });
       return;
     }
-
-    // Check if username already exists
-    if (username) {
-      const existingUsername = await prisma.user.findUnique({ where: { username }, select: { id: true } });
-      if (existingUsername) {
-        res.status(400).json({ error: "Username already taken." });
-        return;
-      }
+    if (existingUsername) {
+      res.status(400).json({ error: "Username already taken." });
+      return;
     }
 
     const finalUsername = username || await generateUsername(email.split("@")[0]);

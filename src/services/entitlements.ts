@@ -162,9 +162,14 @@ export async function assistantMessagesToday(userId: string): Promise<number> {
   return prisma.assistantMessage.count({ where: { userId, role: "user", createdAt: { gte: dayStart() } } });
 }
 
-export async function entitlementFor(userId: string): Promise<Entitlement> {
+/**
+ * `email`, on every check below, is the token's: a route that has `req.user`
+ * passes it so the owner test is a set lookup rather than a round trip for
+ * the row's email (see isOwnerAccount). Omit it and the row is read.
+ */
+export async function entitlementFor(userId: string, email?: string | null): Promise<Entitlement> {
   const [{ plan, currentPeriodEnd }, interviews, bugs, credits, assistant] = await Promise.all([
-    activePlan(userId),
+    activePlan(userId, email),
     interviewsThisWeek(userId),
     bugsToday(userId),
     interviewCredits(userId),
@@ -199,8 +204,8 @@ const atLimit = (used: number, limit: number | null) => limit !== null && used >
  * so the credit is spent by that row and not by the plan's count. Only then
  * is the candidate refused.
  */
-export async function checkInterviewQuota(userId: string): Promise<{ denial: QuotaDenial | null; onCredit: boolean }> {
-  const [{ plan }, used] = await Promise.all([activePlan(userId), interviewsThisWeek(userId)]);
+export async function checkInterviewQuota(userId: string, email?: string | null): Promise<{ denial: QuotaDenial | null; onCredit: boolean }> {
+  const [{ plan }, used] = await Promise.all([activePlan(userId, email), interviewsThisWeek(userId)]);
   const limit = plan.entitlements.interviewsPerWeek;
   if (!atLimit(used, limit)) return { denial: null, onCredit: false };
 
@@ -225,8 +230,8 @@ export async function checkInterviewQuota(userId: string): Promise<{ denial: Quo
  * The assistant's daily allowance. Checked before the model is called, so a
  * refusal costs no tokens off the shared free tier.
  */
-export async function checkAssistantQuota(userId: string): Promise<{ denial: QuotaDenial | null; used: number; limit: number | null }> {
-  const [{ plan }, used] = await Promise.all([activePlan(userId), assistantMessagesToday(userId)]);
+export async function checkAssistantQuota(userId: string, email?: string | null): Promise<{ denial: QuotaDenial | null; used: number; limit: number | null }> {
+  const [{ plan }, used] = await Promise.all([activePlan(userId, email), assistantMessagesToday(userId)]);
   const limit = plan.entitlements.assistantMessagesPerDay;
   if (!atLimit(used, limit)) return { denial: null, used, limit };
   return {
@@ -247,8 +252,9 @@ export async function checkAssistantQuota(userId: string): Promise<{ denial: Quo
 export async function checkVoiceDuration(
   userId: string,
   minutes: number,
+  email?: string | null,
 ): Promise<QuotaDenial | null> {
-  const { plan } = await activePlan(userId);
+  const { plan } = await activePlan(userId, email);
   if (plan.entitlements.voiceDurationsMin.includes(minutes)) return null;
 
   const longest = Math.max(...plan.entitlements.voiceDurationsMin);

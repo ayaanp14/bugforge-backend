@@ -66,7 +66,7 @@ router.get("/plans", browserCache(300, { shared: true }), (_req, res) => {
  */
 router.get("/me", requireAuth, async (req: any, res) => {
   try {
-    const entitlement = await entitlementFor(req.user.userId);
+    const entitlement = await entitlementFor(req.user.userId, req.user.email);
     res.json({
       planId: entitlement.plan.id,
       planName: entitlement.plan.name,

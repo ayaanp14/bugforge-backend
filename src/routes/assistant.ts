@@ -37,7 +37,7 @@ const burstLimiter = rateLimit({
  * @access  Private
  */
 router.get("/", requireAuth, async (req: any, res) => {
-  const [messages, quota] = await Promise.all([history(req.user.userId), checkAssistantQuota(req.user.userId)]);
+  const [messages, quota] = await Promise.all([history(req.user.userId), checkAssistantQuota(req.user.userId, req.user.email)]);
   res.json({ messages, quota: { used: quota.used, limit: quota.limit } });
 });
 
@@ -66,9 +66,10 @@ router.post("/chat", optionalAuth, burstLimiter, async (req: any, res) => {
   const message = typeof req.body?.message === "string" ? req.body.message : "";
   if (!message.trim()) return res.status(400).json({ error: "Write a question first." });
   const userId: string | null = req.user?.userId ?? null;
+  const email: string | null = req.user?.email ?? null;
   const carried: AssistantTurn[] = userId ? [] : Array.isArray(req.body?.history) ? req.body.history.slice(-20) : [];
 
-  const quota = userId ? await checkAssistantQuota(userId) : { denial: null, used: null, limit: null };
+  const quota = userId ? await checkAssistantQuota(userId, email) : { denial: null, used: null, limit: null };
   if (quota.denial) return res.status(402).json(quota.denial);
 
   res.status(200);
@@ -82,7 +83,7 @@ router.post("/chat", optionalAuth, burstLimiter, async (req: any, res) => {
   };
 
   try {
-    const { messageId } = await reply(userId, message, (t) => send("token", { t }), carried);
+    const { messageId } = await reply(userId, message, (t) => send("token", { t }), carried, email);
     send("done", { messageId, used: quota.used === null ? null : quota.used + 1, limit: quota.limit });
   } catch (err) {
     const status = err instanceof AssistantError ? err.status : 500;

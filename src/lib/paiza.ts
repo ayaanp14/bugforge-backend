@@ -222,36 +222,41 @@ function pollDelay(attempt: number): number {
 export async function pollPaiza(token: string, maxAttempts = 120): Promise<Judge0Result> {
   const submission = pendingSubmissions.get(token) ?? ({ source_code: "", language_id: 0 } as Judge0Submission);
 
-  for (let attempt = 0; attempt < maxAttempts; attempt++) {
-    const status = await requestWithRetry(async () => {
-      const response = await axios.get<{ status?: string; error?: string }>(
-        `${PAIZA_BASE_URL}/runners/get_status`,
-        { params: { id: token, api_key: PAIZA_API_KEY }, timeout: PAIZA_REQUEST_TIMEOUT_MS, proxy: false },
-      );
-      return response.data;
-    });
-
-    if (status?.status === "completed") {
-      const details = await requestWithRetry(async () => {
-        const response = await axios.get<PaizaDetails>(`${PAIZA_BASE_URL}/runners/get_details`, {
-          params: { id: token, api_key: PAIZA_API_KEY },
-          timeout: PAIZA_REQUEST_TIMEOUT_MS,
-          proxy: false,
-        });
+  // The entry holds the whole source and stdin (up to ~1 MB for a gzipped
+  // suite), so it is released however the poll ends — a status call that
+  // exhausts its retries mid-outage used to leave it behind for good.
+  try {
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+      const status = await requestWithRetry(async () => {
+        const response = await axios.get<{ status?: string; error?: string }>(
+          `${PAIZA_BASE_URL}/runners/get_status`,
+          { params: { id: token, api_key: PAIZA_API_KEY }, timeout: PAIZA_REQUEST_TIMEOUT_MS, proxy: false },
+        );
         return response.data;
       });
-      pendingSubmissions.delete(token);
 
-      if (PAIZA_DEBUG_LOGS) {
-        console.log(`[Paiza] Result: result=${details.result} build=${details.build_result} exit=${details.exit_code}`);
+      if (status?.status === "completed") {
+        const details = await requestWithRetry(async () => {
+          const response = await axios.get<PaizaDetails>(`${PAIZA_BASE_URL}/runners/get_details`, {
+            params: { id: token, api_key: PAIZA_API_KEY },
+            timeout: PAIZA_REQUEST_TIMEOUT_MS,
+            proxy: false,
+          });
+          return response.data;
+        });
+
+        if (PAIZA_DEBUG_LOGS) {
+          console.log(`[Paiza] Result: result=${details.result} build=${details.build_result} exit=${details.exit_code}`);
+        }
+        return toJudge0Result(details, submission);
       }
-      return toJudge0Result(details, submission);
-    }
 
-    await new Promise((resolve) => setTimeout(resolve, pollDelay(attempt)));
+      await new Promise((resolve) => setTimeout(resolve, pollDelay(attempt)));
+    }
+  } finally {
+    pendingSubmissions.delete(token);
   }
 
-  pendingSubmissions.delete(token);
   throw new ExecutionEngineError("paiza", `runner ${token} never completed`);
 }
 

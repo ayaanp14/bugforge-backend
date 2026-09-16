@@ -6,7 +6,7 @@
  *         throws prints ERROR_MARKER + message as its output instead.
  *
  * The sentinel/marker strings must never occur in problem inputs or outputs.
- * Kept in sync with the generated drivers (scripts/problem-codegen.ts) and
+ * Kept in sync with the generated drivers (src/lib/driver-codegen.ts) and
  * the wrapCode harnesses (src/lib/judge0.ts).
  */
 

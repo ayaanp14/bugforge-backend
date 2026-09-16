@@ -97,8 +97,8 @@ async function systemPrefix(): Promise<string> {
  * fields a question could turn on are sent — a whole leaderboard or a year
  * of heatmap would be tokens spent on nothing.
  */
-async function accountBlock(userId: string): Promise<string> {
-  const [dash, ent, road] = await Promise.all([getDashboard(userId), entitlementFor(userId), roadmapFor(userId)]);
+async function accountBlock(userId: string, email: string | null): Promise<string> {
+  const [dash, ent, road] = await Promise.all([getDashboard(userId), entitlementFor(userId, email), roadmapFor(userId)]);
   const me = dash.me;
   const current = road.stages.find((s) => s.id === road.summary.currentId) ?? null;
   const nextLocked = current ? road.stages.find((s) => s.number === current.number + 1) : null;
@@ -274,6 +274,8 @@ export async function reply(
   onToken: (text: string) => void,
   /** A visitor's own recent turns, carried by the client since nothing is stored for them. */
   carried: AssistantTurn[] = [],
+  /** The token's email, when signed in: spares the entitlement its owner lookup. */
+  email: string | null = null,
 ): Promise<{ answer: string; messageId: string | null }> {
   const text = message.trim().slice(0, MAX_MESSAGE_CHARS);
   if (!text) throw new AssistantError("Write a question first.", 400);
@@ -282,7 +284,7 @@ export async function reply(
   // visitor block and whatever turns the client sent — bounded, and only the
   // shape the model needs, since a client can send anything.
   const [prefix, account, past] = userId
-    ? await Promise.all([systemPrefix(), accountBlock(userId), history(userId)])
+    ? await Promise.all([systemPrefix(), accountBlock(userId, email), history(userId)])
     : [
         await systemPrefix(),
         VISITOR_BLOCK,

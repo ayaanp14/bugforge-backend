@@ -74,19 +74,6 @@ function getHeaders() {
   };
 }
 
-export async function isJudge0Available(): Promise<boolean> {
-  try {
-    await axios.get(`${JUDGE0_BASE_URL}/languages`, {
-      headers: getHeaders(),
-      timeout: Math.min(2000, JUDGE0_REQUEST_TIMEOUT_MS),
-      proxy: false,
-    });
-    return true;
-  } catch {
-    return false;
-  }
-}
-
 function stripAssignedInput(rawInput: string): string {
   if (rawInput.includes("=")) {
     const parts = rawInput.split("=");

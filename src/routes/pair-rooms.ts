@@ -121,14 +121,16 @@ router.post("/", requireAuth, async (req, res) => {
   const seats = Number.isInteger(maxParticipants) ? Math.min(4, Math.max(2, maxParticipants as number)) : 2;
 
   try {
-    const problem = await prisma.problem.findFirst({ where: { id: problemId, isPublished: true }, select: { id: true } });
-    if (!problem) return res.status(404).json({ error: "Problem not found" });
-
     // A person opens a room and waits in it; they do not need five. Nothing
-    // capped it, and every unopened one sat in the lobby for a day.
-    const waiting = await prisma.pairRoom.count({
-      where: { createdBy: userId, status: "waiting", startedAt: { gte: new Date(Date.now() - LOBBY_WINDOW_MS) } },
-    });
+    // capped it, and every unopened one sat in the lobby for a day. The
+    // problem check and the count are independent, so they travel together.
+    const [problem, waiting] = await Promise.all([
+      prisma.problem.findFirst({ where: { id: problemId, isPublished: true }, select: { id: true } }),
+      prisma.pairRoom.count({
+        where: { createdBy: userId, status: "waiting", startedAt: { gte: new Date(Date.now() - LOBBY_WINDOW_MS) } },
+      }),
+    ]);
+    if (!problem) return res.status(404).json({ error: "Problem not found" });
     if (waiting >= MAX_WAITING_ROOMS_PER_USER) {
       return res.status(409).json({
         error: `You already have ${waiting} rooms waiting for a partner. Join one of those, or close them, before opening another.`,

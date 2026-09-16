@@ -453,6 +453,8 @@ router.post("/:id/ready", requireAuth, async (req, res) => {
  */
 const RECONCILE_EVERY_MS = 5_000;
 const lastReconcile = new Map<string, number>();
+/** A duel that finished and was never read again would keep its stamp; past this many, the stale ones go. */
+const RECONCILE_MAP_CAP = 2_000;
 
 router.get("/:id", requireAuth, async (req, res) => {
   try {
@@ -465,6 +467,9 @@ router.get("/:id", requireAuth, async (req, res) => {
     if (duel.status === "active") {
       const now = Date.now();
       if (now - (lastReconcile.get(id) ?? 0) >= RECONCILE_EVERY_MS) {
+        if (lastReconcile.size >= RECONCILE_MAP_CAP) {
+          for (const [key, at] of lastReconcile) if (now - at > 60_000) lastReconcile.delete(key);
+        }
         lastReconcile.set(id, now);
         duel = await reconcileDuel(duel);
         // A fight past its time is called here, where both rooms are polling,

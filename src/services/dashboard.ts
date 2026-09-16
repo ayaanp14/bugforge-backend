@@ -52,11 +52,49 @@ export function getCatalogue(): Promise<CatalogueRow[]> {
 }
 
 /**
+ * The id behind a slug, from the catalogue already in memory.
+ *
+ * The draft, timer and per-problem submission routes each opened with a
+ * slug→id lookup — one round trip to a database ~500 ms away before the read
+ * they were actually for. Every published slug is in the cached catalogue,
+ * so the answer is a map lookup; anything not there (an unpublished problem
+ * an admin is still working on) is asked for the way it always was, so the
+ * result is the same as the query it replaces.
+ */
+const slugIndexOf = new WeakMap<CatalogueRow[], Map<string, string>>();
+
+export async function problemIdBySlug(slug: string): Promise<string | null> {
+  const catalogue = await getCatalogue();
+  let index = slugIndexOf.get(catalogue);
+  if (!index) {
+    index = new Map(catalogue.map((p) => [p.slug, p.id]));
+    slugIndexOf.set(catalogue, index);
+  }
+  const hit = index.get(slug);
+  if (hit) return hit;
+  const row = await prisma.problem.findUnique({ where: { slug }, select: { id: true } });
+  return row?.id ?? null;
+}
+
+/**
  * Solve status as two GROUP BYs returning one row per problem, rather than
  * pulling every submission row the user has ever made and reducing in JS. Both
  * hit the (userId, verdict, submittedAt) index.
+ *
+ * Held in memory for a short window: the catalogue page asks for it twice
+ * per load (the list and its masthead summary), the dashboard build once
+ * more, and the answer only changes on a submission — which every judge
+ * follows with invalidateDashboard(), so the window is a ceiling on
+ * staleness for a write that went around it, not the mechanism.
  */
-export async function loadProblemState(userId: string): Promise<ProblemState> {
+const problemStateKey = (userId: string) => `problem-state:v1:${userId}`;
+const PROBLEM_STATE_TTL_MS = 30_000;
+
+export function loadProblemState(userId: string): Promise<ProblemState> {
+  return cached(problemStateKey(userId), PROBLEM_STATE_TTL_MS, () => queryProblemState(userId));
+}
+
+async function queryProblemState(userId: string): Promise<ProblemState> {
   const [catalogue, solvedRows, touchedRows] = await Promise.all([
     getCatalogue(),
     prisma.submission.groupBy({ by: ["problemId"], where: { userId, verdict: "ACCEPTED" } }),
@@ -397,10 +435,6 @@ async function queryBugInsights() {
   return { total, byLevel, categories: cats.map((c) => c.category).filter(Boolean) };
 }
 
-export function countSavedInterviews(userId: string) {
-  return prisma.savedInterview.count({ where: { userId } });
-}
-
 // ── Per-user counters, one statement ────────────────────────────
 /**
  * Followers, following, posts and saved interviews are four COUNTs over four
@@ -488,10 +522,6 @@ export function computeProblemInsights(state: ProblemState) {
   return { skills, recommended, solvedTags: [...solvedTagSet].slice(0, 30), unsolvedCount };
 }
 
-export async function getProblemInsights(userId: string) {
-  return computeProblemInsights(await loadProblemState(userId));
-}
-
 // ── The aggregate the dashboard loads in one request ────────────
 
 const dashboardKey = (userId: string) => `dash:v1:${userId}`;
@@ -508,6 +538,7 @@ const dashboardKey = (userId: string) => `dash:v1:${userId}`;
  */
 export function invalidateDashboard(userId: string): void {
   invalidate(dashboardKey(userId));
+  invalidate(problemStateKey(userId));
   invalidateMe(userId);
 }
 

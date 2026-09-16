@@ -21,59 +21,6 @@ function pageArgs(query: Record<string, unknown>, defaultLimit: number): { page:
   return { page, limit };
 }
 
-// GET /api/me/activity — stats for bar graph (DEPRECATED, using heatmap instead)
-router.get("/activity", requireAuth, async (req, res) => {
-  try {
-    const today = new Date();
-    today.setHours(23, 59, 59, 999);
-    const tenDaysAgo = new Date();
-    tenDaysAgo.setDate(today.getDate() - 9);
-    tenDaysAgo.setHours(0, 0, 0, 0);
-
-    const submissions = await prisma.submission.findMany({
-      where: {
-        userId: req.user!.userId,
-        verdict: "ACCEPTED",
-        submittedAt: {
-          gte: tenDaysAgo,
-          lte: today,
-        },
-      },
-      select: {
-        submittedAt: true,
-      },
-    });
-
-    const counts: Record<string, number> = {};
-    const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-    
-    for (let i = 0; i < 10; i++) {
-        const d = new Date(tenDaysAgo);
-        d.setDate(tenDaysAgo.getDate() + i);
-        const label = `${days[d.getDay()]} ${d.getDate()}/${d.getUTCMonth() + 1}`;
-        counts[label] = 0;
-    }
-
-    submissions.forEach((s) => {
-      const d = new Date(s.submittedAt);
-      const label = `${days[d.getDay()]} ${d.getDate()}/${d.getUTCMonth() + 1}`;
-      if (counts[label] !== undefined) {
-        counts[label]++;
-      }
-    });
-
-    const result = Object.entries(counts).map(([day, count]) => ({
-      day,
-      solved: count,
-    }));
-
-    res.json(result);
-  } catch (err) {
-    console.error("GET /api/me/activity error:", err);
-    res.status(500).json({ error: "Internal server error" });
-  }
-});
-
 // GET /api/me/heatmap — Contribution data for the last 365 days
 router.get("/heatmap", requireAuth, async (req, res) => {
   try {
@@ -84,47 +31,8 @@ router.get("/heatmap", requireAuth, async (req, res) => {
   }
 });
 
-// GET /api/me/username-check — verify availability
-router.get("/username-check", requireAuth, async (req, res) => {
-  const { username } = req.query;
-
-  if (!username || typeof username !== "string") {
-    res.status(400).json({ error: "Username is required." });
-    return;
-  }
-
-  // 1. Format Validation
-  const usernameRegex = /^[a-zA-Z0-9_]+$/;
-  if (!usernameRegex.test(username)) {
-    res.json({ available: false, error: "Invalid format" });
-    return;
-  }
-
-  if (username.length < 3) {
-    res.json({ available: false, error: "Too short" });
-    return;
-  }
-
-  try {
-    // 2. Uniqueness Check (Excluding self)
-    const existingUser = await prisma.user.findFirst({
-      where: {
-        username: { equals: username },
-        id: { not: req.user!.userId }
-      },
-      select: { id: true },
-    });
-
-    if (existingUser) {
-      res.json({ available: false, error: "Taken" });
-    } else {
-      res.json({ available: true });
-    }
-  } catch (err) {
-    console.error("GET /api/me/username-check error:", err);
-    res.status(500).json({ error: "Internal server error" });
-  }
-});
+// Username availability is GET /api/username-check (index.ts), which both
+// clients call; the copy that used to live here under /me was never called.
 
 // GET /api/me — returns current authenticated user
 router.get("/", requireAuth, async (req, res) => {
