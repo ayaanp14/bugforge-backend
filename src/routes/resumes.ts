@@ -53,7 +53,7 @@ import {
  *   DELETE /:id/versions/:versionId
  *   POST   /:id/versions/:versionId/restore
  *   POST   /:id/improve-bullet {path?, text, mode, context?} → the rewrite and its pending suggestion
- *   POST   /:id/optimize                       → pending suggestions for the whole resume
+ *   POST   /:id/optimize                       → pending suggestions for the whole resume ({section} confines it to one, aimed at the report's note)
  *   GET    /:id/suggestions?status=
  *   POST   /:id/suggestions/:suggestionId {status: accepted|rejected}
  *   GET    /:id/export?format=pdf|docx[&version=]   the document
@@ -292,7 +292,8 @@ router.post(
   "/:id/optimize",
   resumeAiLimiter,
   wrap(async (req, res) => {
-    res.json({ suggestions: await optimizeFor(req.user.userId, String(req.params["id"])) });
+    const body = (req.body ?? {}) as Record<string, unknown>;
+    res.json({ suggestions: await optimizeFor(req.user.userId, String(req.params["id"]), str(body["section"]) ?? null) });
   }),
 );
 

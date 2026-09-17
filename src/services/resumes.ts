@@ -6,7 +6,7 @@ import { extractResume, type LayoutSignals } from "../lib/resume-extract.js";
 import { ResumeContentSchema, normalizeContent, parseResumeText, readPath, type ResumeContent } from "../lib/resume-parse.js";
 import { MAX_JD_CHARS, requirementsFor } from "../lib/resume-requirements.js";
 import { compareAnalyses, scoreResume, type AnalysisResult } from "../lib/resume-scoring.js";
-import { IMPROVE_MODES, ResumeAiError, aiAvailable, improveBullet, judgeResume, optimizeResume, resumeModel, structureResume, type ImproveMode, type ImproveOutput } from "../lib/resume-ai.js";
+import { FIXABLE_SECTIONS, IMPROVE_MODES, ResumeAiError, aiAvailable, improveBullet, judgeResume, optimizeResume, resumeModel, structureResume, type FixableSection, type ImproveMode, type ImproveOutput } from "../lib/resume-ai.js";
 
 /**
  * Resumes: the rows, the analysis job, versions and suggestions.
@@ -687,21 +687,38 @@ export async function improveBulletFor(userId: string, resumeId: string, req: Im
   return { ...out, suggestion: toSuggestion(suggestion) };
 }
 
-/** The whole-resume proposal: pending suggestions the editor offers one by one. */
-export async function optimizeFor(userId: string, resumeId: string): Promise<SuggestionRow[]> {
+/**
+ * The whole-resume proposal: pending suggestions the editor offers one by
+ * one. With a `section`, "fix this section": the same proposal confined to
+ * it and aimed at what the latest report said about it — the note is read
+ * from our own analysis row, never taken from the request, so the client
+ * cannot hand the model an instruction dressed as a review.
+ */
+export async function optimizeFor(userId: string, resumeId: string, section?: string | null): Promise<SuggestionRow[]> {
   const resume = await prisma.resume.findFirst({ where: { id: resumeId, userId }, select: { content: true, targetRole: true, company: true, jobDescription: true, latestAnalysisId: true } });
   if (!resume) throw new ResumeError(404, "No such resume");
   if (!resume.targetRole && !resume.jobDescription) throw new ResumeError(400, "Set the target job first — optimisation is for a specific job.");
+  if (section && !(FIXABLE_SECTIONS as readonly string[]).includes(section)) throw new ResumeError(400, `Only ${FIXABLE_SECTIONS.join(", ")} can be fixed with AI; the rest are facts to edit by hand.`);
   const content = contentOf(resume.content);
   const requirements = requirementsFor(resume.targetRole, resume.company, resume.jobDescription);
-  const proposals = await optimizeResume(content, requirements, resume.jobDescription).catch(rethrowAi);
+  const focus = section ? { section: section as FixableSection, note: await sectionNoteFor(userId, resume.latestAnalysisId, section) } : undefined;
+  const proposals = await optimizeResume(content, requirements, resume.jobDescription, focus).catch(rethrowAi);
   // Earlier pending proposals for the same paths are superseded.
   await prisma.resumeSuggestion.updateMany({ where: { resumeId, userId, kind: "optimize", status: "pending" }, data: { status: "rejected", decidedAt: new Date() } });
   await prisma.resumeSuggestion.createMany({
-    data: proposals.map((p) => ({ resumeId, userId, analysisId: resume.latestAnalysisId, kind: "optimize", mode: "tailor", path: p.path, original: p.original, suggested: p.suggested, rationale: p.rationale, status: "pending" })),
+    data: proposals.map((p) => ({ resumeId, userId, analysisId: resume.latestAnalysisId, kind: "optimize", mode: section ? `fix:${section}` : "tailor", path: p.path, original: p.original, suggested: p.suggested, rationale: p.rationale, status: "pending" })),
   });
-  trackServerEvent("resume_optimize_used", { resumeId, proposals: proposals.length }, userId);
+  trackServerEvent("resume_optimize_used", { resumeId, proposals: proposals.length, section: section ?? null }, userId);
   return listSuggestions(userId, resumeId, "pending");
+}
+
+/** What the latest finished report said about a section, or null when there is no report or nothing was said. */
+async function sectionNoteFor(userId: string, analysisId: string | null, section: string): Promise<string | null> {
+  if (!analysisId) return null;
+  const row = await prisma.resumeAnalysis.findFirst({ where: { id: analysisId, userId, status: "done" }, select: { result: true } });
+  const verdicts = (row?.result as { sectionAnalysis?: Record<string, { status?: unknown; note?: unknown }> } | null)?.sectionAnalysis;
+  const note = verdicts?.[section]?.note;
+  return typeof note === "string" && note.trim() ? note.trim().slice(0, 600) : null;
 }
 
 function rethrowAi(err: unknown): never {

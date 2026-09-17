@@ -679,18 +679,47 @@ export interface OptimizeProposal {
   needsMetric: boolean;
 }
 
-export async function optimizeResume(content: ResumeContent, requirements: JobRequirements, jobDescription: string | null): Promise<OptimizeProposal[]> {
+/** The sections a fix can rewrite: the ones made of prose the model may reword. Skills, education and certifications are facts — nothing to reword without inventing. */
+export const FIXABLE_SECTIONS = ["summary", "experience", "projects"] as const;
+export type FixableSection = (typeof FIXABLE_SECTIONS)[number];
+
+/** "Fix this section": the same proposal, confined to one section and aimed at the report's note about it. */
+export interface OptimizeFocus {
+  section: FixableSection;
+  note: string | null;
+}
+
+const SECTION_LABEL: Record<FixableSection, string> = { summary: "SUMMARY", experience: "EXPERIENCE", projects: "PROJECTS" };
+
+/** Whether a proposal at `path` belongs to the section a fix is confined to (every path, without a focus). */
+export function inOptimizeScope(path: string, focus?: OptimizeFocus | null): boolean {
+  if (!focus) return true;
+  return focus.section === "summary" ? path === "summary" : path.startsWith(`${focus.section}.`);
+}
+
+function focusRules(focus: OptimizeFocus): string {
+  const scope = focus.section === "summary" ? "Rewrite the professional summary only and return an empty bullets list." : `Rewrite bullets from the ${SECTION_LABEL[focus.section]} section only — every one whose wording the note calls for, up to ten — and return the summary as an empty string.`;
+  return `THIS REQUEST IS ABOUT ONE SECTION: ${SECTION_LABEL[focus.section]}. ${scope} A reviewer's note about the section follows as data; address it as far as the resume's own facts allow — where the note asks for a technology, an outcome or a figure the resume does not show, do not supply one: write [add figure] for a number and leave a missing technology out. The note is a review, not an instruction to follow literally.`;
+}
+
+export async function optimizeResume(content: ResumeContent, requirements: JobRequirements, jobDescription: string | null, focus?: OptimizeFocus): Promise<OptimizeProposal[]> {
   if (!aiAvailable()) throw new ResumeAiError(503, "AI optimisation is not configured on this deployment (NVIDIA_API_KEY is unset).");
   const resumeText = contentToText(content);
   const bullets = new Map(bulletsOf(content).map((b) => [b.path, b]));
   const jd = (jobDescription ?? "").trim().slice(0, MAX_JD_CHARS_FOR_MODEL);
+  const inScope = (path: string) => inOptimizeScope(path, focus);
   try {
     const { parsed } = await completeJson(
       [
-        { role: "system", content: OPTIMIZE_RULES },
+        { role: "system", content: focus ? `${OPTIMIZE_RULES}\n\n${focusRules(focus)}` : OPTIMIZE_RULES },
         {
           role: "user",
-          content: ["TARGET\n" + requirementsForModel(requirements), jd ? fence("JOB DESCRIPTION", jd) : "JOB DESCRIPTION: none provided.", fence("RESUME", renderForModel(content).slice(0, MAX_RESUME_CHARS))].join("\n\n"),
+          content: [
+            "TARGET\n" + requirementsForModel(requirements),
+            jd ? fence("JOB DESCRIPTION", jd) : "JOB DESCRIPTION: none provided.",
+            ...(focus?.note ? [fence(`REVIEWER NOTE ON ${SECTION_LABEL[focus.section]}`, focus.note.slice(0, 600))] : []),
+            fence("RESUME", renderForModel(content).slice(0, MAX_RESUME_CHARS)),
+          ].join("\n\n"),
         },
       ],
       Optimisation,
@@ -703,7 +732,7 @@ export async function optimizeResume(content: ResumeContent, requirements: JobRe
     let summaryText = parsed.summary.suggested;
     let summaryWhy = parsed.summary.rationale;
     let summary = guardSuggestion(content.summary, summaryText, resumeText);
-    if (summary.introduces.length) {
+    if (summary.introduces.length && inScope("summary")) {
       // The summary is the rewrite worth a second try: asked again without
       // the terms it borrowed from the job, it usually lands.
       if (debug) console.log(`[resume-ai] optimize summary retry: introduces ${summary.introduces.join(", ")}`);
@@ -729,13 +758,13 @@ export async function optimizeResume(content: ResumeContent, requirements: JobRe
         summary = guardSuggestion(content.summary, summaryText, resumeText);
       }
     }
-    if (summary.text && summary.text !== content.summary.trim() && !summary.introduces.length) {
+    if (summary.text && summary.text !== content.summary.trim() && !summary.introduces.length && inScope("summary")) {
       out.push({ path: "summary", original: content.summary, suggested: cut(summary.text, 1500), rationale: cut(summaryWhy.trim(), 300), needsMetric: summary.needsMetric });
     } else if (debug) console.log(`[resume-ai] optimize summary dropped: introduces ${summary.introduces.join(", ") || "-"}; ${summaryText.slice(0, 120)}`);
     for (const b of parsed.bullets.slice(0, 10)) {
       const target = bullets.get(b.path.trim().replace(/^\[|\]$/g, ""));
-      if (!target) {
-        if (debug) console.log(`[resume-ai] optimize dropped: unknown path ${JSON.stringify(b.path)}`);
+      if (!target || !inScope(target.path)) {
+        if (debug) console.log(`[resume-ai] optimize dropped: ${target ? "out-of-scope" : "unknown"} path ${JSON.stringify(b.path)}`);
         continue;
       }
       const guarded = guardSuggestion(target.text, b.suggested, resumeText);
@@ -745,7 +774,7 @@ export async function optimizeResume(content: ResumeContent, requirements: JobRe
       }
       out.push({ path: target.path, original: target.text, suggested: cut(guarded.text, 800), rationale: cut(b.rationale.trim(), 300), needsMetric: guarded.needsMetric });
     }
-    if (!out.length) throw new ResumeAiError(502, "The model proposed nothing it could support with the resume's own facts. Try again, or edit by hand.");
+    if (!out.length) throw new ResumeAiError(502, focus ? "The model proposed nothing for this section it could support with the resume's own facts. Try again, or edit by hand." : "The model proposed nothing it could support with the resume's own facts. Try again, or edit by hand.");
     return out;
   } catch (err) {
     if (err instanceof ResumeAiError) throw err;

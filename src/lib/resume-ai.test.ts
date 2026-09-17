@@ -5,7 +5,7 @@ delete process.env["NVIDIA_API_KEY"];
 
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { aiAvailable, coerceToShape, fence, guardSuggestion, improveBullet, structureResume, structureSupported } from "./resume-ai.js";
+import { aiAvailable, coerceToShape, fence, guardSuggestion, improveBullet, inOptimizeScope, structureResume, structureSupported } from "./resume-ai.js";
 import { contentToText, parseResumeText } from "./resume-parse.js";
 import { SAMPLE } from "./resume-parse.test.js";
 
@@ -82,6 +82,24 @@ describe("structureSupported", () => {
     const verdict = structureSupported(thin, SAMPLE);
     assert.equal(verdict.ok, false);
     assert.match(verdict.reason, /retained|too little/);
+  });
+});
+
+describe("inOptimizeScope", () => {
+  it("admits everything without a focus", () => {
+    assert.equal(inOptimizeScope("summary"), true);
+    assert.equal(inOptimizeScope("projects.2.bullets.0", null), true);
+  });
+  it("confines a section fix to that section, and a summary fix to the summary alone", () => {
+    const experience = { section: "experience" as const, note: null };
+    assert.equal(inOptimizeScope("experience.0.bullets.1", experience), true);
+    assert.equal(inOptimizeScope("projects.0.bullets.1", experience), false);
+    assert.equal(inOptimizeScope("summary", experience), false);
+    const summary = { section: "summary" as const, note: "Name the role." };
+    assert.equal(inOptimizeScope("summary", summary), true);
+    assert.equal(inOptimizeScope("experience.0.bullets.0", summary), false);
+    // A prefix must be a whole segment: "experience" never matches "experiences.0".
+    assert.equal(inOptimizeScope("experiences.0.bullets.0", experience), false);
   });
 });
 
