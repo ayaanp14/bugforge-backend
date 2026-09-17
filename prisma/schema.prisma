@@ -114,6 +114,7 @@ model User {
   mockAttempts       MockAttempt[]
   dailyContests      DailyContestEntry[]
   revokedSessions    RevokedSession[]
+  resumes            Resume[]
 
   // Rank is a COUNT of users above you and the leaderboard is an ORDER BY on the
   // same columns; without these both are full table scans on every dashboard load.
@@ -1426,4 +1427,120 @@ model StudyExerciseSubmission {
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, lessonKey, submittedAt])
+}
+
+/// An uploaded resume and its working copy.
+///
+/// The file itself is not kept: the platform has no object store and the API
+/// host's disk is ephemeral, so the extracted text (`rawText`) and the
+/// structured, editable `content` are the artifacts — the export routes
+/// regenerate a document from `content`. `storageKey` stays for a deployment
+/// that adds a store (lib/resume-files.ts `ResumeFileStore`). `layout` holds
+/// what the extractor learned about the original file (pages, columns,
+/// tables, images, header contact) that the ATS check reads and an edited
+/// copy can no longer reveal.
+model Resume {
+  id               String    @id @default(cuid())
+  userId           String
+  title            String    @db.VarChar(120)
+  originalFilename String    @db.VarChar(255)
+  mimeType         String    @db.VarChar(100)
+  fileSize         Int
+  fileSha256       String    @db.VarChar(64)
+  storageKey       String?   @db.VarChar(255)
+  rawText          String    @db.MediumText
+  layout           Json
+  content          Json
+  /// "heuristic" | "ai" | "edited" — who last shaped `content`. An AI
+  /// restructure only ever replaces a heuristic parse, never an edit.
+  contentSource    String    @db.VarChar(12)
+  targetRole       String?   @db.VarChar(120)
+  company          String?   @db.VarChar(120)
+  jobDescription   String?   @db.Text
+  latestAnalysisId String?
+  latestScore      Int?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  versions         ResumeVersion[]
+  analyses         ResumeAnalysis[]
+  suggestions      ResumeSuggestion[]
+
+  @@index([userId, updatedAt])
+}
+
+/// A named snapshot: the exact editable state, the target it was aimed at
+/// and the analysis it had at the time, so a version can be restored or
+/// compared to the current copy.
+model ResumeVersion {
+  id             String   @id @default(cuid())
+  resumeId       String
+  userId         String
+  name           String   @db.VarChar(120)
+  content        Json
+  targetRole     String?  @db.VarChar(120)
+  company        String?  @db.VarChar(120)
+  jobDescription String?  @db.Text
+  analysis       Json?
+  score          Int?
+  createdAt      DateTime @default(now())
+  resume         Resume   @relation(fields: [resumeId], references: [id], onDelete: Cascade)
+
+  @@index([resumeId, createdAt])
+  @@index([userId, createdAt])
+}
+
+/// One run of the analysis pipeline. The row is the job: `status` moves
+/// queued → running → done|failed and `stage` names the step under way, so
+/// the client polls real progress. `contentSnapshot` is what was scored —
+/// the working copy keeps changing — and `result` is the full structured
+/// report (lib/resume-scoring.ts AnalysisResult).
+model ResumeAnalysis {
+  id              String    @id @default(cuid())
+  resumeId        String
+  userId          String
+  status          String    @db.VarChar(12)
+  stage           String    @db.VarChar(24)
+  error           String?   @db.Text
+  targetRole      String?   @db.VarChar(120)
+  company         String?   @db.VarChar(120)
+  jobDescription  String?   @db.Text
+  contentSnapshot Json
+  result          Json?
+  score           Int?
+  /// "ok" | "unavailable" | null while running — whether the model's part of
+  /// the report landed or the deterministic fallback stood in.
+  aiStatus        String?   @db.VarChar(12)
+  startedAt       DateTime?
+  finishedAt      DateTime?
+  createdAt       DateTime  @default(now())
+  resume          Resume    @relation(fields: [resumeId], references: [id], onDelete: Cascade)
+
+  @@index([resumeId, createdAt])
+  @@index([userId, createdAt])
+  @@index([status, createdAt])
+}
+
+/// Every change the model proposed, and what the person did with it.
+/// `path` addresses the field in `content` (e.g. "experience.0.bullets.2",
+/// "summary"); nothing is applied until the person accepts it.
+model ResumeSuggestion {
+  id         String    @id @default(cuid())
+  resumeId   String
+  userId     String
+  analysisId String?
+  /// "bullet" | "summary" | "optimize"
+  kind       String    @db.VarChar(16)
+  mode       String?   @db.VarChar(24)
+  path       String    @db.VarChar(80)
+  original   String    @db.Text
+  suggested  String    @db.Text
+  rationale  String    @db.Text
+  /// "pending" | "accepted" | "rejected"
+  status     String    @db.VarChar(10)
+  createdAt  DateTime  @default(now())
+  decidedAt  DateTime?
+  resume     Resume    @relation(fields: [resumeId], references: [id], onDelete: Cascade)
+
+  @@index([resumeId, createdAt])
 }

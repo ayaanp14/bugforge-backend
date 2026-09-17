@@ -27,6 +27,8 @@ import contestsRouter from "./routes/contests.js";
 import roadmapRouter from "./routes/roadmap.js";
 import studyPlansRouter from "./routes/study-plans.js";
 import assistantRouter from "./routes/assistant.js";
+import resumesRouter from "./routes/resumes.js";
+import { recoverAnalyses } from "./services/resumes.js";
 import { checkRoadmapSeeded } from "./services/roadmap.js";
 import { checkStudyPlansSeeded } from "./services/study-plans.js";
 import eventsRouter from "./routes/events.js";
@@ -790,6 +792,8 @@ app.use("/api/contests", contestsRouter);
 app.use("/api/roadmap", roadmapRouter);
 app.use("/api/study-plans", studyPlansRouter);
 app.use("/api/assistant", assistantRouter);
+// The upload route reads a raw file body with its own parser (see routes/resumes.ts).
+app.use("/api/resumes", resumesRouter);
 app.use("/api/events", eventsRouter);
 app.use("/api/admin", adminRouter);
 app.use("/api", executionRouter); 
@@ -915,6 +919,9 @@ httpServer.listen(PORT, () => {
   registerReminderJobs();
   registerJob(revokedSessionsSweep);
   startScheduler();
+  // Resume analyses run in-process; a restart mid-run leaves rows queued or
+  // running with nobody working them. Re-queue the young, fail the stale.
+  void recoverAnalyses();
   console.log(`🚀 Backend & WebSocket running on port: ${PORT}`);
   console.log(`   Auth:   POST /api/auth/login`);
   console.log(`   Me:     GET /api/me`);

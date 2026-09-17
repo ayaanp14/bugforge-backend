@@ -725,8 +725,34 @@ async function ask<S extends z.ZodType>(
   maxTokens = MAX_OUTPUT_TOKENS,
   /** Which model answers. Questions use the fast one; everything else the main. */
   model: string = MODEL,
+  /**
+   * Whether to race a second attempt against a slow one (see `hedged`). On
+   * for every interview call; off for a call whose reply is long enough
+   * that every honest attempt outlives the hedge window — the resume
+   * analysis writes thousands of tokens, and three copies of it in flight
+   * bought nothing but rate-limit refusals.
+   */
+  hedge = true,
+  /**
+   * Whether to ask the gateway to enforce the schema (`response_format`).
+   * Undefined keeps the per-model default. The resume calls pass false:
+   * measured on the structuring schema (a dozen nested arrays of strings),
+   * strict decoding ran to the 7,000-token ceiling emitting whitespace after
+   * the first long string, every time, while the same request with the
+   * schema stated in the prompt finished in ten seconds and validated.
+   */
+  structuredOverride?: boolean,
+  /**
+   * Applied to the parsed JSON before validation. Without gateway-enforced
+   * structure a model sometimes nests a list one level too deep or writes a
+   * number as a string; a caller that can repair those cheaply passes a
+   * coercer rather than losing the call to a type mismatch.
+   */
+  coerce?: (raw: unknown) => unknown,
+  /** Sampling temperature; undefined leaves the provider's default (the interview calls). */
+  temperature?: number,
 ): Promise<{ parsed: z.infer<S>; usage: Usage }> {
-  const structured = model === MODEL ? STRUCTURED_OUTPUTS : structuredOutputsFor(model);
+  const structured = structuredOverride ?? (model === MODEL ? STRUCTURED_OUTPUTS : structuredOutputsFor(model));
   const outgoing: InputItem[] = structured
     ? messages
     : [
@@ -743,15 +769,16 @@ async function ask<S extends z.ZodType>(
     model,
     messages: outgoing,
     max_completion_tokens: maxTokens,
+    ...(temperature === undefined ? {} : { temperature }),
     ...(REASONING_EFFORT === "default" ? {} : { reasoning_effort: REASONING_EFFORT }),
     ...(structured ? { response_format: responseFormat(schema, name) } : {}),
   };
 
   const startedAt = Date.now();
   // Retry handles the instant refusals; hedging handles the slow successes.
-  const response = await hedged(name, (controller) =>
-    withRetry(name, () => postCompletion(request, controller)),
-  );
+  const response = hedge
+    ? await hedged(name, (controller) => withRetry(name, () => postCompletion(request, controller)))
+    : await withRetry(name, () => postCompletion(request));
 
   // Turn latency here is decode-bound and the provider's rate swings by an
   // order of magnitude with load, so "the interview felt slow" is unanswerable
@@ -787,11 +814,26 @@ async function ask<S extends z.ZodType>(
     throw new Error(`Interview model returned unparsable JSON for ${name}: ${text.slice(0, 160)}`);
   }
 
-  const result = schema.safeParse(candidate);
+  const result = schema.safeParse(coerce ? coerce(candidate) : candidate);
   if (!result.success) {
     throw new Error(`Interview model returned a ${name} that failed validation: ${result.error.message.slice(0, 200)}`);
   }
   return { parsed: result.data as z.infer<S>, usage: readUsage(response.usage) };
+}
+
+/**
+ * A structured completion for another feature (lib/resume-ai.ts): the same
+ * provider, retry policy and Zod enforcement as the interview calls, with
+ * the model and the output ceiling chosen by the caller. The messages are
+ * the caller's whole prompt — nothing of the interview rubric is prepended.
+ */
+export async function completeJson<S extends z.ZodType>(
+  messages: Array<{ role: "system" | "user" | "assistant"; content: string }>,
+  schema: S,
+  name: string,
+  options: { maxTokens?: number; model?: string; hedge?: boolean; structured?: boolean; coerce?: (raw: unknown) => unknown; temperature?: number } = {},
+): Promise<{ parsed: z.infer<S>; usage: Usage }> {
+  return ask(messages, schema, name, options.maxTokens ?? MAX_OUTPUT_TOKENS, options.model ?? MODEL, options.hedge ?? true, options.structured, options.coerce, options.temperature);
 }
 
 /** Opens the interview. No transcript yet, so the prefix is just rubric + config. */

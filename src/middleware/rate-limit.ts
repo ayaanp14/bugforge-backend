@@ -217,3 +217,28 @@ export const publicFormLimiter = rateLimit({
   max: 5,
   message: "Too many submissions from this address. Try again later.",
 });
+
+/**
+ * Resume uploads. Each one parses a document and writes several rows, and
+ * nobody uploads more than a few versions of their own resume in an hour.
+ * Mounted after `requireAuth`, so keyed by account.
+ */
+export const resumeUploadLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 20,
+  message: "You have uploaded a lot of resumes in the last hour. Give it a little while.",
+  keyOf: (req) => (req as Request & { user?: { userId: string } }).user?.userId ?? addressOf(req),
+});
+
+/**
+ * Resume model calls — an analysis, a bullet rewrite, a whole-resume
+ * optimisation. Each is a round trip to the shared free-tier model; a
+ * person clicks these a few dozen times in a session, a script would not
+ * stop. Keyed by account.
+ */
+export const resumeAiLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 60,
+  message: "That is a lot of AI requests in one hour. Give it a little while before the next one.",
+  keyOf: (req) => (req as Request & { user?: { userId: string } }).user?.userId ?? addressOf(req),
+});
