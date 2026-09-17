@@ -1,8 +1,8 @@
 /**
  * Seeds the study plans.
  *
- *   npx tsx scripts/seed-study-plans.ts --validate [--only jvm,types] [--run]
- *   npx tsx scripts/seed-study-plans.ts --seed [--only jvm] [--prune]
+ *   npx tsx scripts/seed-study-plans.ts --validate [--track cpp] [--only jvm,types] [--run]
+ *   npx tsx scripts/seed-study-plans.ts --seed [--track cpp] [--only jvm] [--prune]
  *   node scripts/run-prod.mjs scripts/seed-study-plans.ts --seed   # against production
  *
  * --validate checks every track on its own terms (scripts/study-plans/dsl.ts:
@@ -12,7 +12,9 @@
  * default) and requires ACCEPTED on every case: the one proof that the
  * content compiles on the runtime a learner gets and that the expected
  * outputs are right. Slow (a free engine, ~1 s a case) — run it on the
- * modules you touched with --only.
+ * modules you touched with --only, and on one track with --track: three
+ * tracks share module slugs (every track ends in interview-idioms), and a
+ * --run over all of them is several hundred programs.
  *
  * --seed upserts tracks, modules and lessons by key and renumbers positions
  * from the file order. Progress rows are keyed by lesson key and never
@@ -25,10 +27,24 @@ import { judgeProgram } from "../src/lib/program-judge.js";
 import { validateTrack, summarize, type TrackSeed } from "./study-plans/dsl.js";
 import { javaTrack } from "./study-plans/java/track.js";
 import { javascriptTrack } from "./study-plans/javascript/track.js";
+import { cppTrack } from "./study-plans/cpp/track.js";
 
-const TRACKS: TrackSeed[] = [javaTrack, javascriptTrack];
+const ALL_TRACKS: TrackSeed[] = [javaTrack, javascriptTrack, cppTrack];
 
 const args = process.argv.slice(2);
+const trackArg = args[args.indexOf("--track") + 1];
+const trackKeys = args.includes("--track") && trackArg ? new Set(trackArg.split(",").map((s) => s.trim())) : null;
+if (trackKeys) {
+  for (const key of trackKeys) {
+    if (!ALL_TRACKS.some((t) => t.key === key)) {
+      console.error(`unknown track "${key}" — known: ${ALL_TRACKS.map((t) => t.key).join(", ")}`);
+      process.exit(2);
+    }
+  }
+}
+// A track's position in the list page is its index in ALL_TRACKS, so a
+// --track run seeds the same position the full run would.
+const TRACKS: Array<{ track: TrackSeed; position: number }> = ALL_TRACKS.map((track, position) => ({ track, position })).filter(({ track }) => !trackKeys || trackKeys.has(track.key));
 const mode = args.includes("--seed") ? "seed" : "validate";
 const run = args.includes("--run");
 const prune = args.includes("--prune");
@@ -135,7 +151,7 @@ async function seedTrack(track: TrackSeed, position: number): Promise<void> {
 
 async function main() {
   let bad = 0;
-  for (const track of TRACKS) {
+  for (const { track } of TRACKS) {
     console.log(summarize(track));
     const problems = validateTrack(track);
     for (const p of problems) console.error(`  ✗ ${p}`);
@@ -150,7 +166,7 @@ async function main() {
 
   if (run) {
     let failures = 0;
-    for (const track of TRACKS) {
+    for (const { track } of TRACKS) {
       console.log(`\nRunning reference solutions for ${track.key} on the study judge…`);
       failures += await runSolutions(track);
     }
@@ -163,7 +179,7 @@ async function main() {
   }
 
   if (mode !== "seed") return;
-  for (const [position, track] of TRACKS.entries()) {
+  for (const { track, position } of TRACKS) {
     console.log(`\nSeeding ${track.key}…`);
     await seedTrack(track, position);
   }

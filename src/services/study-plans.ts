@@ -591,7 +591,8 @@ export async function modulePrintFor(trackKey: string, moduleSlug: string) {
   const module = track?.modules.find((m) => m.slug === moduleSlug);
   if (!track || !module) return null;
   return {
-    track: { key: track.key, title: track.title, runtime: track.runtime },
+    // `language` picks the grammar the reference solutions are fenced with.
+    track: { key: track.key, title: track.title, language: track.language, runtime: track.runtime },
     module: { slug: module.slug, title: module.title, blurb: module.blurb, overview: module.overview, number: track.modules.indexOf(module) + 1, of: track.modules.length },
     lessons: module.lessons.map((l, i) => ({
       number: i + 1,
@@ -824,7 +825,7 @@ export async function submitExercise(userId: string, trackKey: string, lessonSlu
   if (!exercise) throw new StudyError(404, "No such exercise");
 
   const result = await judgeProgram(code, track.language, exercise.cases);
-  if (result.verdict === "ENGINE_ERROR") throw new StudyError(503, "The Java runner is not answering right now. Give it a moment and submit again.");
+  if (result.verdict === "ENGINE_ERROR") throw new StudyError(503, `The ${track.title} runner is not answering right now. Give it a moment and submit again.`);
 
   await ensureEnrolled(userId, trackKey);
   await prisma.studyExerciseSubmission.create({
