@@ -215,8 +215,10 @@ function isNearEdge(y: number, pageHeight: number): boolean {
 
 export async function extractPdf(bytes: Uint8Array): Promise<ExtractedResume> {
   const pdfjs = await loadPdfJs();
-  // pdf.js insists on a plain Uint8Array; a Node Buffer (a subclass) is refused by name.
-  const data = bytes.constructor === Uint8Array ? bytes : new Uint8Array(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  // pdf.js insists on a plain Uint8Array (a Node Buffer is refused by name)
+  // and then *transfers* the buffer to its worker, which detaches it: the
+  // caller's array reads as empty afterwards. It gets a copy of its own.
+  const data = new Uint8Array(bytes);
   const task = pdfjs.getDocument({
     data,
     standardFontDataUrl: STANDARD_FONTS,

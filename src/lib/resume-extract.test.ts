@@ -163,6 +163,13 @@ describe("DOCX", () => {
 });
 
 describe("extractResume", () => {
+  it("leaves the caller's bytes intact — pdf.js would otherwise detach them", async () => {
+    const pdf = new Uint8Array(await renderPdf(content));
+    const before = pdf.length;
+    await extractResume(pdf, "pdf");
+    assert.equal(pdf.length, before);
+    assert.equal(pdf[0], 0x25);
+  });
   it("dispatches on the sniffed format", async () => {
     const pdf = await renderPdf(content);
     assert.equal((await extractResume(pdf, "pdf")).layout.format, "pdf");

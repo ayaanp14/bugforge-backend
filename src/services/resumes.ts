@@ -179,9 +179,12 @@ export async function listResumes(userId: string, page?: number, limit?: number)
 export async function createResumeFromUpload(userId: string, bytes: Uint8Array, declaredType: string | null, filename: string | null): Promise<ResumeDetail> {
   const startedAt = Date.now();
   const format = validateResumeUpload(bytes, declaredType);
+  // Size and hash first: extraction hands the bytes to a parser that may
+  // detach them (pdf.js transfers the buffer to its worker).
+  const size = bytes.length;
+  const sha = sha256Hex(bytes);
   const extracted = await extractResume(bytes, format);
   const parsed = parseResumeText(extracted.text, extracted.layout.headingHints);
-  const sha = sha256Hex(bytes);
   const name = safeFilename(filename, format);
   const storageKey = await resumeFileStore.put(storageKeyFor(userId, sha, format), bytes, RESUME_MIME[format]);
   const layout = { ...extracted.layout, headingHints: [], unmappedHeadings: parsed.unmappedHeadings, sectionsFound: parsed.sectionsFound };
@@ -193,7 +196,7 @@ export async function createResumeFromUpload(userId: string, bytes: Uint8Array, 
       title,
       originalFilename: name,
       mimeType: RESUME_MIME[format],
-      fileSize: bytes.length,
+      fileSize: size,
       fileSha256: sha,
       storageKey,
       rawText: extracted.text,
