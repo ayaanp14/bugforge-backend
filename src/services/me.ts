@@ -1,6 +1,7 @@
 import { prisma } from "../lib/prisma.js";
 import { cachedShared, invalidate } from "../lib/cache.js";
 import { daysBetween } from "../lib/clock.js";
+import { countSolved, getRank, loadProblemState, type ProblemState } from "./dashboard.js";
 
 // Zero-based rank ladder: rating ≡ lifetime XP, so the bar moves from solve #1
 export function getTierTitle(rating: number) {
@@ -131,15 +132,42 @@ export async function getMePayload(userId: string) {
   return cachedShared(meKey(userId), 300, () => buildMePayload(userId));
 }
 
+/**
+ * The solved count and the rank an account is shown under, everywhere.
+ *
+ * Solved is derived (dashboard.ts countSolved); `UserStats.problemsSolved`
+ * is a counter kept beside it for the leaderboard, and a counter drifts — a
+ * catalogue reseed cascades old submissions away and the count stays, so one
+ * profile read "6 solved" above a panel that said "1 of 598" (QA-048). The
+ * counter is reconciled to the derived number whenever they disagree.
+ *
+ * The rank is the same statement the dashboard's rank tile runs (getRank);
+ * the SPA's `globalRank` field had no source at all and the identity card
+ * read "Unranked" beside a dashboard saying "#6".
+ */
+async function standingOf(
+  userId: string,
+  loads?: { problemState?: Promise<ProblemState>; rank?: Promise<{ rank: number | null }> },
+): Promise<{ solved: number; globalRank: number | null }> {
+  const [state, rank] = await Promise.all([loads?.problemState ?? loadProblemState(userId), loads?.rank ?? getRank(userId, "combined")]);
+  return { solved: countSolved(state), globalRank: rank.rank };
+}
+
 async function buildMePayload(userId: string) {
   // The JWT already carries the id, so trends need not wait for the user row.
-  const [fetched, trends] = await Promise.all([
+  const [fetched, trends, standing] = await Promise.all([
     prisma.user.findUnique({ where: { id: userId }, select: ME_SELECT }),
     getUserTrends(userId),
+    standingOf(userId),
   ]);
   if (!fetched) return null;
 
   let user = fetched;
+
+  if (user.stats && user.stats.problemsSolved !== standing.solved) {
+    await prisma.userStats.update({ where: { userId: user.id }, data: { problemsSolved: standing.solved } });
+    user.stats.problemsSolved = standing.solved;
+  }
 
   // A streak that has lapsed is both displayed as zero and persisted. Running
   // this only on a cache miss is fine: the write is idempotent and the cached
@@ -171,7 +199,7 @@ async function buildMePayload(userId: string) {
     });
   }
 
-  return { ...user, tierTitle: getTierTitle(user.rating), trends };
+  return { ...user, tierTitle: getTierTitle(user.rating), trends, globalRank: standing.globalRank };
 }
 
 /**
@@ -179,9 +207,12 @@ async function buildMePayload(userId: string) {
  * GET /api/me/dashboard so the page renders from ONE request. Mirrors the
  * trend logic of GET /api/me (display-only: no streak writes here).
  */
-export async function getDashboardUser(userId: string) {
+export async function getDashboardUser(
+  userId: string,
+  loads?: { problemState?: Promise<ProblemState>; rank?: Promise<{ rank: number | null }> },
+) {
   // The trends are independent of the user row, so they overlap rather than queue.
-  const [user, trends] = await Promise.all([
+  const [user, trends, standing] = await Promise.all([
     prisma.user.findUnique({
       where: { id: userId },
       select: {
@@ -207,6 +238,7 @@ export async function getDashboardUser(userId: string) {
       },
     }),
     getUserTrends(userId),
+    standingOf(userId, loads),
   ]);
   if (!user) return null;
 
@@ -216,11 +248,14 @@ export async function getDashboardUser(userId: string) {
     if (diffDays > 1 && user.stats.currentStreak > 0) {
       user.stats.currentStreak = 0;
     }
+    // Likewise the solved counter: shown as derived, persisted by /api/me.
+    user.stats.problemsSolved = standing.solved;
   }
 
   return {
     ...user,
     tierTitle: getTierTitle(user.rating),
     trends,
+    globalRank: standing.globalRank,
   };
 }

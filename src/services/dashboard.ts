@@ -107,6 +107,18 @@ async function queryProblemState(userId: string): Promise<ProblemState> {
 }
 
 // ── Difficulty stats ────────────────────────────────────────────
+/**
+ * "Solved", the one definition: the published problems this account has an
+ * accepted submission for. The identity card, the difficulty panel, the
+ * dashboard hero and the catalogue summary all read it from this state;
+ * `UserStats.problemsSolved` is a counter reconciled to it (services/me.ts).
+ */
+export function countSolved(state: ProblemState): number {
+  let n = 0;
+  for (const p of state.catalogue) if (state.solved.has(p.id)) n++;
+  return n;
+}
+
 /** Pure computation over an already-loaded ProblemState — issues no queries. */
 export function computeDifficultyStats(state: ProblemState) {
   const totalMap: Record<string, number> = { easy: 0, medium: 0, hard: 0 };
@@ -562,6 +574,11 @@ async function buildDashboard(userId: string) {
   // published problems this user has solved — so the state behind them is loaded
   // once here and reduced twice, instead of each running its own pair of queries.
   // The four per-user counters (social + saved interviews) are one statement.
+  // The user slice's solved count and rank come from the same two loads the
+  // payload carries as difficultyStats and rank, so those are started once
+  // and handed in, not queried twice.
+  const problemStatePromise = loadProblemState(userId);
+  const rankPromise = getRank(userId, "combined");
   const [
     me,
     counters,
@@ -577,12 +594,12 @@ async function buildDashboard(userId: string) {
     roadmap,
     study,
   ] = await Promise.all([
-    getDashboardUser(userId),
+    getDashboardUser(userId, { problemState: problemStatePromise, rank: rankPromise }),
     queryUserCounters(userId),
-    loadProblemState(userId),
+    problemStatePromise,
     getSubmissionHistory(userId, 1, 5),
     getHeatmap(userId),
-    getRank(userId, "combined"),
+    rankPromise,
     getLeaderboard("combined"),
     getPairingHistory(userId, 1, 3, false),
     getContinueSolving(userId),

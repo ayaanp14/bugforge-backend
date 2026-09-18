@@ -13,7 +13,11 @@ const router = Router();
 // The chests an author has opened ride on every author: the feed wears
 // them as a frame round the avatar and a count beside the rank. Keys only
 // — a handful of short rows per author, joined by the same query.
-const AUTHOR_SELECT = { id: true, name: true, username: true, avatar_url: true, xp: true, roadmapRewards: { select: { tierKey: true } } } as const;
+// `rating` is what the rank word beside a name is read from — the same
+// number the profile and the dashboard rank by (services/me.ts getTierTitle).
+// The feed used to apply the ladder to `xp`, so one account was "Novice" on
+// its profile and "Apprentice" on its posts (QA-010). XP stays for the count.
+const AUTHOR_SELECT = { id: true, name: true, username: true, avatar_url: true, xp: true, rating: true, roadmapRewards: { select: { tierKey: true } } } as const;
 
 /** Feed page size cap. */
 const MAX_TAKE = 30;
@@ -1397,48 +1401,47 @@ function getBulletin() {
     const startOfToday = new Date();
     startOfToday.setHours(0, 0, 0, 0);
 
-    // Prisma's groupBy signature widens badly across a seven-way Promise.all;
-    // the shapes are simple enough to state once here.
-    type ChallengeCount = { challengeId: string; _count: { _all: number } };
-    type ProblemCount = { problemId: string; _count: { _all: number } };
-    type UserCount = { userId: string; _count: { _all: number } };
+    // A "solve" is a problem (or hunt) someone accepted for the FIRST time —
+    // the same definition as "solved" on the profile and the trends
+    // (services/me.ts getUserTrends). Counting accepted submissions instead
+    // made "Coder of the week" a matter of re-submitting one solved problem
+    // fifteen times (QA-050). One grouped statement per arena carries each
+    // (user, target) pair with its earliest accept; the week's and today's
+    // tallies are reduced from that in memory.
+    type FirstProblemSolve = { userId: string; problemId: string; _min: { submittedAt: Date | null } };
+    type FirstBugSolve = { userId: string; challengeId: string; _min: { submittedAt: Date | null } };
 
-    const [bugGroups, problemGroups, bugWarriors, problemWarriors, todayBugs, postsThisWeek, newWarriors] =
-      (await Promise.all([
-        prisma.bugSubmission.groupBy({
-          by: ["challengeId"],
-          where: { verdict: "ACCEPTED", submittedAt: { gte: weekAgo } },
-          _count: { _all: true },
-          orderBy: { _count: { challengeId: "desc" } },
-          take: 3,
-        }),
-        prisma.submission.groupBy({
-          by: ["problemId"],
-          where: { verdict: "ACCEPTED", submittedAt: { gte: weekAgo } },
-          _count: { _all: true },
-          orderBy: { _count: { problemId: "desc" } },
-          take: 3,
-        }),
-        prisma.bugSubmission.groupBy({
-          by: ["userId"],
-          where: { verdict: "ACCEPTED", submittedAt: { gte: weekAgo } },
-          _count: { _all: true },
-        }),
-        prisma.submission.groupBy({
-          by: ["userId"],
-          where: { verdict: "ACCEPTED", submittedAt: { gte: weekAgo } },
-          _count: { _all: true },
-        }),
-        prisma.bugSubmission.groupBy({
-          by: ["challengeId"],
-          where: { verdict: "ACCEPTED", submittedAt: { gte: startOfToday } },
-          _count: { _all: true },
-          orderBy: { _count: { challengeId: "desc" } },
-          take: 3,
-        }),
-        prisma.post.count({ where: { createdAt: { gte: weekAgo } } }),
-        prisma.user.count({ where: { createdAt: { gte: weekAgo } } }),
-      ])) as [ChallengeCount[], ProblemCount[], UserCount[], UserCount[], ChallengeCount[], number, number];
+    const [firstBugSolves, firstProblemSolves, postsThisWeek, newWarriors] = (await Promise.all([
+      prisma.bugSubmission.groupBy({
+        by: ["userId", "challengeId"],
+        where: { verdict: "ACCEPTED" },
+        _min: { submittedAt: true },
+        having: { submittedAt: { _min: { gte: weekAgo } } },
+      }),
+      prisma.submission.groupBy({
+        by: ["userId", "problemId"],
+        where: { verdict: "ACCEPTED" },
+        _min: { submittedAt: true },
+        having: { submittedAt: { _min: { gte: weekAgo } } },
+      }),
+      prisma.post.count({ where: { createdAt: { gte: weekAgo } } }),
+      prisma.user.count({ where: { createdAt: { gte: weekAgo } } }),
+    ])) as [FirstBugSolve[], FirstProblemSolve[], number, number];
+
+    const tally = (rows: Array<{ key: string }>): Map<string, number> => {
+      const counts = new Map<string, number>();
+      for (const r of rows) counts.set(r.key, (counts.get(r.key) ?? 0) + 1);
+      return counts;
+    };
+    const top3 = (counts: Map<string, number>) => [...counts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 3);
+
+    const bugGroups = top3(tally(firstBugSolves.map((r) => ({ key: r.challengeId })))).map(([challengeId, n]) => ({ challengeId, _count: { _all: n } }));
+    const problemGroups = top3(tally(firstProblemSolves.map((r) => ({ key: r.problemId })))).map(([problemId, n]) => ({ problemId, _count: { _all: n } }));
+    const bugWarriors = [...tally(firstBugSolves.map((r) => ({ key: r.userId }))).entries()].map(([userId, n]) => ({ userId, _count: { _all: n } }));
+    const problemWarriors = [...tally(firstProblemSolves.map((r) => ({ key: r.userId }))).entries()].map(([userId, n]) => ({ userId, _count: { _all: n } }));
+    const todayBugs = top3(
+      tally(firstBugSolves.filter((r) => r._min.submittedAt !== null && r._min.submittedAt >= startOfToday).map((r) => ({ key: r.challengeId }))),
+    ).map(([challengeId, n]) => ({ challengeId, _count: { _all: n } }));
 
     // Titles for everything referenced above, in two lookups.
     const challengeIds = [...new Set([...bugGroups, ...todayBugs].map((g) => g.challengeId))];

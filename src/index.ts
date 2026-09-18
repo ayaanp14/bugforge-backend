@@ -36,6 +36,7 @@ import adminRouter from "./routes/admin.js";
 import { todayContest } from "./services/daily-contest.js";
 import { optionalAuth } from "./middleware/auth.js";
 import { platformGuard } from "./middleware/platformGuard.js";
+import { displayNameOf } from "./lib/display-name.js";
 import { securityHeaders } from "./middleware/security-headers.js";
 import { authLimiter, generalLimiter, loginAccountLimiter, otpRequestLimiter } from "./middleware/rate-limit.js";
 import { prisma } from "./lib/prisma.js";
@@ -191,7 +192,7 @@ function scheduleHostReassign(roomId: string, hostId: string) {
         if (seatsOf(roomId, hostId) > 0) return;
         const room = await prisma.pairRoom.findUnique({
           where: { id: roomId },
-          include: { participants: { include: { user: { select: { name: true, avatar_url: true } } }, orderBy: { joinedAt: "asc" } } },
+          include: { participants: { include: { user: { select: { name: true, username: true, avatar_url: true } } }, orderBy: { joinedAt: "asc" } } },
         });
         if (!room || room.status === "closed") return;
         if (room.participants.find((p) => p.role === "host")?.userId !== hostId) return;
@@ -213,12 +214,12 @@ function scheduleHostReassign(roomId: string, hostId: string) {
           "participant-update",
           room.participants.map((p) => ({
             userId: p.userId,
-            name: p.user.name,
+            name: displayNameOf(p.user),
             avatar_url: p.user.avatar_url,
             role: p.userId === heir.userId ? "host" : "guest",
           })),
         );
-        io.to(roomId).emit("host-changed", { userId: heir.userId, name: heir.user.name });
+        io.to(roomId).emit("host-changed", { userId: heir.userId, name: displayNameOf(heir.user) });
       } catch (err) {
         console.error("host reassignment error:", err);
       }
@@ -376,7 +377,7 @@ io.on("connection", (socket) => {
         include: {
           problem: { select: { slug: true } },
           participants: {
-            include: { user: { select: { id: true, name: true, avatar_url: true } } }
+            include: { user: { select: { id: true, name: true, username: true, avatar_url: true } } }
           }
         }
       });
@@ -425,7 +426,7 @@ io.on("connection", (socket) => {
 
       const participants = room.participants.map((p: any) => ({
         userId: p.userId,
-        name: p.user.name,
+        name: displayNameOf(p.user),
         avatar_url: p.user.avatar_url,
         role: p.role
       }));
@@ -576,7 +577,7 @@ io.on("connection", (socket) => {
         where: { id: roomId },
         include: {
           participants: {
-            include: { user: { select: { name: true, avatar_url: true } } }
+            include: { user: { select: { name: true, username: true, avatar_url: true } } }
           }
         }
       });
@@ -584,7 +585,7 @@ io.on("connection", (socket) => {
       if (room) {
         const participants = room.participants.map((p: any) => ({
           userId: p.userId,
-          name: p.user.name,
+          name: displayNameOf(p.user),
           avatar_url: p.user.avatar_url,
           role: p.role
         }));
