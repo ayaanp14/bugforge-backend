@@ -14,8 +14,10 @@ export function platformGuard(req: Request, res: Response, next: NextFunction) {
   // HMAC. It authenticates itself instead with its own signature header, which
   // the route verifies before touching anything — see routes/billing.ts.
   // robots.txt is fetched by crawlers, which cannot sign either; it only
-  // ever says "nothing here is for you" (see index.ts).
-  if (req.path === "/health" || req.path === "/robots.txt" || req.path.startsWith("/api/auth") || req.path === "/api/billing/webhook") {
+  // ever says "nothing here is for you" (see index.ts). /api/seo is what
+  // the site's edge Worker asks for a public page's head and the content
+  // sitemaps: it holds no key, and the routes only read published content.
+  if (req.path === "/health" || req.path === "/robots.txt" || req.path.startsWith("/api/auth") || req.path.startsWith("/api/seo/") || req.path === "/api/billing/webhook") {
     return next();
   }
 
