@@ -846,6 +846,14 @@ app.get("/health", (_req, res) => {
   res.json({ status: "ok", timestamp: new Date().toISOString() });
 });
 
+// The API is not a website. A crawler that reaches this host (it is linked
+// from the SPA's CSP, and an OAuth redirect or a shared link can land it
+// here) is told to leave; every response also carries X-Robots-Tag: noindex
+// (middleware/security-headers) for anything fetched regardless.
+app.get("/robots.txt", (_req, res) => {
+  res.type("text/plain").send(["User-agent: *", "Disallow: /", ""].join("\n"));
+});
+
 /**
  * The last word on any error no route handled.
  *

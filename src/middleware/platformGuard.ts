@@ -13,7 +13,9 @@ export function platformGuard(req: Request, res: Response, next: NextFunction) {
   // The payment webhook is called by Cashfree, which cannot sign our platform
   // HMAC. It authenticates itself instead with its own signature header, which
   // the route verifies before touching anything — see routes/billing.ts.
-  if (req.path === "/health" || req.path.startsWith("/api/auth") || req.path === "/api/billing/webhook") {
+  // robots.txt is fetched by crawlers, which cannot sign either; it only
+  // ever says "nothing here is for you" (see index.ts).
+  if (req.path === "/health" || req.path === "/robots.txt" || req.path.startsWith("/api/auth") || req.path === "/api/billing/webhook") {
     return next();
   }
 

@@ -46,6 +46,12 @@ export function securityHeaders(_req: Request, res: Response, next: NextFunction
   // Stop the browser resolving hostnames found in responses.
   res.setHeader("X-DNS-Prefetch-Control", "off");
 
+  // Nothing this host answers is a page: keep every response — JSON, the
+  // health check, an OAuth redirect — out of search indexes, whatever a
+  // crawler finds linked. The site itself (codekairo.com) sets its own
+  // robots rules per page.
+  res.setHeader("X-Robots-Tag", "noindex, nofollow");
+
   // X-Powered-By is switched off once for the whole app in index.ts
   // (`app.disable("x-powered-by")`) rather than stripped here per response.
 
