@@ -6,7 +6,7 @@ import { cachedShared, invalidate } from "../lib/cache.js";
 import { browserCache } from "../lib/http-cache.js";
 import { getCatalogue, listProblemsWithStatus, loadProblemState, problemIdBySlug, type ProblemState } from "../services/dashboard.js";
 import { isCompanyTag } from "../lib/companies.js";
-import { LANGUAGE_MAP } from "../lib/judge0.js";
+import { isJudgeLanguage } from "../lib/judge0.js";
 
 const router = Router();
 
@@ -83,10 +83,35 @@ const PROBLEM_DETAIL_SELECT = {
 const statusOf = (state: ProblemState | null, id: string) =>
   state === null ? "UNSOLVED" : state.solved.has(id) ? "SOLVED" : state.attempted.has(id) ? "ATTEMPTING" : "UNSOLVED";
 
+/** The first string a query parameter carries, or nothing: `?a=1&a=2` and `?a[]=1` are arrays, `?a[b]=1` an object. */
+const first = (value: unknown): string | undefined => {
+  const v = Array.isArray(value) ? value[0] : value;
+  return typeof v === "string" && v ? v : undefined;
+};
+
+/** Every string a repeatable parameter carries. */
+const all = (value: unknown): string[] =>
+  (Array.isArray(value) ? value : [value]).filter((v): v is string => typeof v === "string" && v.length > 0);
+
 // 1. GET /api/problems — List all published problems with pagination and filtering
 router.get("/", optionalAuth, browserCache(60), async (req, res) => {
   try {
-    const { difficulty, tag, company, search, status, skip, take, sortBy, maxTime } = req.query;
+    // Query values are strings, arrays (`?a=1&a=2`, `?a[]=1`) or nested
+    // objects depending on how the caller spelt them. Every scalar filter
+    // takes the first string given and ignores the rest: an array reached
+    // Prisma as `{ equals: [..] }` and `{ contains: [..] }` and 500ed
+    // (QA-005). `tag` is the one filter that legitimately repeats.
+    const tags = all(req.query["tag"]);
+    const difficulty = first(req.query["difficulty"]);
+    const company = first(req.query["company"]);
+    const search = first(req.query["search"]);
+    const status = first(req.query["status"]);
+    const sortBy = first(req.query["sortBy"]);
+    const skip = first(req.query["skip"]);
+    const take = first(req.query["take"]);
+    // "abc" parsed to NaN and Prisma refused `lte: NaN`; a non-number is no filter.
+    const maxTimeNum = Number(first(req.query["maxTime"]));
+    const maxTime = Number.isFinite(maxTimeNum) && maxTimeNum > 0 ? Math.floor(maxTimeNum) : null;
     const skipNum = Math.max(0, parseInt(String(skip ?? "0")) || 0);
     // Clamped: without a ceiling one request could ask for the whole catalogue.
     const takeNum = Math.min(MAX_TAKE, Math.max(1, parseInt(String(take ?? "")) || MAX_TAKE));
@@ -102,7 +127,7 @@ router.get("/", optionalAuth, browserCache(60), async (req, res) => {
     // GROUP BYs) for a signed-in reader, no round trip at all for a visitor.
     const isDefaultSort = !sortBy || sortBy === "newest";
     const isPlainFirstPage =
-      isDefaultSort && skipNum === 0 && !difficulty && !tag && !company && !search && !maxTime && !statusFilter;
+      isDefaultSort && skipNum === 0 && !difficulty && tags.length === 0 && !company && !search && !maxTime && !statusFilter;
     if (isPlainFirstPage) {
       const result = userId
         ? await listProblemsWithStatus(userId, takeNum)
@@ -115,26 +140,25 @@ router.get("/", optionalAuth, browserCache(60), async (req, res) => {
       isPublished: true,
     };
 
-    if (difficulty) where.difficulty = { equals: difficulty as string }; // MySQL CI collation handles case
-    if (tag) {
-      const tags = Array.isArray(tag) ? (tag as string[]) : [tag as string];
+    if (difficulty) where.difficulty = { equals: difficulty }; // MySQL CI collation handles case
+    if (tags.length > 0) {
       // tags is a Json array on MySQL — require every selected tag
       // (replaces the Postgres-only scalar-list hasEvery filter).
       where.AND = [
         ...(where.AND ?? []),
-        ...tags.map((t: string) => ({ tags: { array_contains: [t] } })),
+        ...tags.map((t) => ({ tags: { array_contains: [t] } })),
       ];
     }
     // A company is just another entry in the same tags array; it gets its own
     // parameter so the catalogue page's company chips read as what they are.
-    if (typeof company === "string" && company) {
+    if (company) {
       where.AND = [...(where.AND ?? []), { tags: { array_contains: [company] } }];
     }
-    if (maxTime) where.timeLimitMs = { lte: parseInt(maxTime as string) };
+    if (maxTime) where.timeLimitMs = { lte: maxTime };
     if (search) {
       where.OR = [
-        { title: { contains: search as string } },
-        { description: { contains: search as string } },
+        { title: { contains: search } },
+        { description: { contains: search } },
       ];
     }
 
@@ -494,7 +518,7 @@ router.get("/:slug/draft", requireAuth, async (req, res) => {
     const language = req.query.language;
     const userId = req.user!.userId;
     // A missing language reached the compound unique as `undefined` and 500ed.
-    if (typeof language !== "string" || !LANGUAGE_MAP[language]) {
+    if (!isJudgeLanguage(language)) {
       res.status(400).json({ error: "Unsupported language" });
       return;
     }
@@ -537,7 +561,7 @@ router.post("/:problemId/draft", requireAuth, async (req, res) => {
       res.status(400).json({ error: "Draft code must be a string of at most 64 KB" });
       return;
     }
-    if (typeof language !== "string" || !LANGUAGE_MAP[language]) {
+    if (!isJudgeLanguage(language)) {
       res.status(400).json({ error: "Unsupported language" });
       return;
     }

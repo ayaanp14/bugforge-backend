@@ -3,7 +3,7 @@ import { prisma } from "../lib/prisma.js";
 import { optionalAuth, requireAuth } from "../middleware/auth.js";
 import { aptitudeTopic, aptitudeCategory } from "../lib/aptitude-topics.js";
 import { attemptClock, codingMarks, drawPaper, markFor, type DrawRule, type PaperSection, type SectionPlan } from "../lib/mock-tests.js";
-import { LANGUAGE_MAP } from "../lib/judge0.js";
+import { isJudgeLanguage } from "../lib/judge0.js";
 import { runBatch } from "../lib/batch-judge.js";
 import { buildDriver, remapDiagnostics, type Language as DriverLanguage, type Signature } from "../lib/driver-codegen.js";
 import { ENGINE_DOWN_MESSAGE, isEngineDown } from "../lib/engine-error.js";
@@ -742,7 +742,7 @@ router.put("/attempts/:id/code", requireAuth, async (req: any, res) => {
     if (!context.ok) return res.status(context.status).json({ error: context.message });
 
     const language = String(body["language"] ?? "python");
-    if (!LANGUAGE_MAP[language]) return res.status(400).json({ error: "Unsupported language" });
+    if (!isJudgeLanguage(language)) return res.status(400).json({ error: "Unsupported language" });
     const code = typeof body["code"] === "string" ? (body["code"] as string).slice(0, 200_000) : "";
     const timeSecRaw = Number(body["timeSec"]);
     const timeSec = Number.isInteger(timeSecRaw) && timeSecRaw >= 0 ? Math.min(timeSecRaw, 14400) : undefined;
@@ -773,7 +773,7 @@ router.post("/attempts/:id/run", requireAuth, async (req: any, res) => {
     if (!arena) return res.status(404).json({ error: "Problem not found" });
 
     const language = String(body["language"] ?? "python");
-    if (!LANGUAGE_MAP[language]) return res.status(400).json({ error: "Unsupported language" });
+    if (!isJudgeLanguage(language)) return res.status(400).json({ error: "Unsupported language" });
     const code = String(body["code"] ?? "");
     const visible = arena.cases.filter((c) => !c.isHidden);
     if (!visible.length) return res.json({ results: [], verdict: "ACCEPTED", passed: 0, total: 0 });
@@ -815,7 +815,7 @@ router.post("/attempts/:id/submit-code", requireAuth, async (req: any, res) => {
     if (!arena) return res.status(404).json({ error: "Problem not found" });
 
     const language = String(body["language"] ?? "python");
-    if (!LANGUAGE_MAP[language]) return res.status(400).json({ error: "Unsupported language" });
+    if (!isJudgeLanguage(language)) return res.status(400).json({ error: "Unsupported language" });
     const code = String(body["code"] ?? "");
     const cases = arena.cases;
     if (!cases.length) return res.status(503).json({ error: "This problem has no test cases" });

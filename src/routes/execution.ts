@@ -2,7 +2,7 @@ import { Router } from "express";
 import { prisma } from "../lib/prisma.js";
 import { requireAuth } from "../middleware/auth.js";
 import { executionLimiter } from "../middleware/rate-limit.js";
-import { LANGUAGE_MAP } from "../lib/judge0.js";
+import { LANGUAGE_MAP, isJudgeLanguage } from "../lib/judge0.js";
 // All test cases run in ONE engine execution (1 compile + 1 run) and are
 // judged server-side — see src/lib/batch-judge.ts.
 import { runBatch } from "../lib/batch-judge.js";
@@ -95,8 +95,7 @@ router.post("/run", requireAuth, executionLimiter, async (req, res) => {
     const { code, language } = req.body;
     const problemId = typeof req.body.problemId === "string" ? req.body.problemId : "";
 
-    const languageId = LANGUAGE_MAP[language as string];
-    if (!languageId) {
+    if (!isJudgeLanguage(language)) {
       res.status(400).json({ error: "Unsupported language" });
       return;
     }
@@ -239,8 +238,7 @@ router.post("/submit", requireAuth, executionLimiter, async (req, res) => {
     const problemId = typeof req.body.problemId === "string" ? req.body.problemId : "";
     let userId = req.user!.userId;
 
-    const languageId = LANGUAGE_MAP[language as string];
-    if (!languageId) {
+    if (!isJudgeLanguage(language)) {
       res.status(400).json({ error: "Unsupported language" });
       return;
     }

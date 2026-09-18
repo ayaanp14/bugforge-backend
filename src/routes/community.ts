@@ -510,10 +510,12 @@ router.post("/posts", requireAuth, communityWriteLimiter, async (req, res) => {
   try {
     const userId = req.user!.userId;
     const { content, meta, visibility, type: rawType } = req.body as {
-      content?: string; meta?: Record<string, unknown>; visibility?: string; type?: string;
+      content?: unknown; meta?: Record<string, unknown>; visibility?: string; type?: string;
     };
     const vis = visibility && ["public", "followers", "private"].includes(visibility) ? visibility : "public";
-    const text = (content ?? "").trim();
+    // A number or an array as `content` used to reach `.trim()` and 500; it
+    // is not a post, so it falls into "write something first" like an empty one.
+    const text = typeof content === "string" ? content.trim() : "";
     const hasAchievement = meta && typeof meta === "object" && typeof meta.title === "string";
 
     // Poll options travel in meta.poll.options; a poll with fewer than two

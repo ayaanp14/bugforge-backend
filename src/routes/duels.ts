@@ -334,7 +334,27 @@ router.post("/rooms", requireAuth, async (req, res) => {
     const mode = (req.body as { mode?: string }).mode === "2v2" ? "2v2" : "1v1";
     const kind = (req.body as { kind?: string }).kind === "bug" ? "bug" : "problem";
 
-    const me = await prisma.user.findUnique({ where: { id: userId }, select: { rating: true } });
+    // The same double-booking guard the queue has. Without it a player who
+    // clicked twice held two waiting rooms, /me/state could only name one,
+    // and whoever joined the other waited on somebody who was elsewhere
+    // (QA-007). A 409 rather than the queue's hand-back: opening a room is an
+    // explicit act, so the caller is told, and given the duel to go to.
+    const [existing, me] = await Promise.all([
+      prisma.duel.findFirst({
+        where: { status: { in: ["waiting", "active"] }, participants: { some: { userId } } },
+        include: DUEL_INCLUDE,
+      }),
+      prisma.user.findUnique({ where: { id: userId }, select: { rating: true } }),
+    ]);
+    if (existing) {
+      const settled = await expireIfStale(await reconcileDuel(existing));
+      if (settled && settled.status !== "finished") {
+        markUserInDuel(userId);
+        res.status(409).json({ error: "You are already in a duel. Finish or leave it before opening another room.", duel: settled });
+        return;
+      }
+    }
+
     // Six characters, no vowels: short to type, and it cannot spell anything.
     const roomCode = Array.from(crypto.randomBytes(6))
       .map((b) => "BCDFGHJKLMNPQRSTVWXZ23456789"[b % 28])

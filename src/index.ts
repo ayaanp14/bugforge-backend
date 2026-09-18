@@ -732,6 +732,19 @@ app.use(platformGuard);
 // with the victim's `__session` cookie attached. Without the parser its body
 // is nothing.
 app.use(express.json({ limit: "512kb" }));
+
+/**
+ * Express 5 leaves `req.body` undefined when nothing was parsed (no body, no
+ * content type, a non-JSON type). A dozen routes destructure it directly —
+ * `const { code, language } = req.body` — and each answered 500 with a
+ * TypeError, plus an ErrorReport row, to a request that was merely empty
+ * (QA-002). One default here means every route reads `{}` and falls into
+ * its own "… is required" validation. The webhook keeps its raw Buffer.
+ */
+app.use((req, _res, next) => {
+  if (req.body === undefined) req.body = {};
+  next();
+});
 app.use(cookieParser());
 
 /**

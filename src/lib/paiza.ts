@@ -225,6 +225,8 @@ export async function pollPaiza(token: string, maxAttempts = 120): Promise<Judge
   // The entry holds the whole source and stdin (up to ~1 MB for a gzipped
   // suite), so it is released however the poll ends — a status call that
   // exhausts its retries mid-outage used to leave it behind for good.
+  let lastStatus: string | undefined;
+  const startedAt = Date.now();
   try {
     for (let attempt = 0; attempt < maxAttempts; attempt++) {
       const status = await requestWithRetry(async () => {
@@ -234,6 +236,7 @@ export async function pollPaiza(token: string, maxAttempts = 120): Promise<Judge
         );
         return response.data;
       });
+      lastStatus = status?.status;
 
       if (status?.status === "completed") {
         const details = await requestWithRetry(async () => {
@@ -257,6 +260,20 @@ export async function pollPaiza(token: string, maxAttempts = 120): Promise<Judge
     pendingSubmissions.delete(token);
   }
 
+  // The runner answered every poll and was still "running" at the deadline:
+  // the code overran its limit, which is its verdict, not an outage — the
+  // same rule as lib/judge0.ts (QA-053). Anything else never started.
+  if (lastStatus === "running") {
+    return {
+      stdout: null,
+      stderr: null,
+      compile_output: null,
+      message: "Time limit exceeded",
+      status: { id: 5, description: "Time Limit Exceeded" },
+      time: ((Date.now() - startedAt) / 1000).toFixed(3),
+      memory: 0,
+    };
+  }
   throw new ExecutionEngineError("paiza", `runner ${token} never completed`);
 }
 

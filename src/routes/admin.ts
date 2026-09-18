@@ -356,13 +356,15 @@ router.patch("/problems/:slug", async (req, res) => {
     res.status(400).json({ error: "isPublished must be true or false" });
     return;
   }
-  const problem = await prisma.problem.update({
-    where: { slug },
-    data: { isPublished },
-    select: { slug: true, isPublished: true },
-  });
+  // `update` on a slug that is not there throws P2025 and the handler
+  // answered 500 (QA-006); `updateMany` reports the count instead.
+  const { count } = await prisma.problem.updateMany({ where: { slug }, data: { isPublished } });
+  if (count === 0) {
+    res.status(404).json({ error: "Problem not found" });
+    return;
+  }
   invalidateProblem(slug);
-  res.json(problem);
+  res.json({ slug, isPublished });
 });
 
 /* ── billing ───────────────────────────────────────────────────────── */
