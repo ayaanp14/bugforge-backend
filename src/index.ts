@@ -37,6 +37,7 @@ import { todayContest } from "./services/daily-contest.js";
 import { optionalAuth } from "./middleware/auth.js";
 import { platformGuard } from "./middleware/platformGuard.js";
 import { displayNameOf } from "./lib/display-name.js";
+import { readUsername } from "./lib/identity.js";
 import { securityHeaders } from "./middleware/security-headers.js";
 import { authLimiter, generalLimiter, loginAccountLimiter, otpRequestLimiter } from "./middleware/rate-limit.js";
 import { prisma } from "./lib/prisma.js";
@@ -812,27 +813,26 @@ app.use("/api/events", eventsRouter);
 app.use("/api/admin", adminRouter);
 app.use("/api", executionRouter); 
 
-// GET /api/username-check (Public, non-NextAuth)
+// GET /api/username-check — the register form's live availability check.
+// Reads the same rule registration applies (lib/identity.ts): the check used
+// to allow any length and a mixed case the register route lower-cases, so
+// the form lit up for a handle the server then refused (QA-026).
 app.get("/api/username-check", optionalAuth, async (req: any, res) => {
-  const { username } = req.query;
- 
-  if (!username || typeof username !== "string") {
+  const raw = req.query.username;
+
+  if (!raw || typeof raw !== "string") {
     res.status(400).json({ error: "Username is required." });
     return;
   }
- 
+
   // 1. Format Validation
-  const usernameRegex = /^[a-zA-Z0-9_]+$/;
-  if (!usernameRegex.test(username)) {
-    res.json({ available: false, error: "Invalid format" });
+  const handle = readUsername(raw);
+  if (!handle || typeof handle === "object") {
+    res.json({ available: false, error: handle && typeof handle === "object" ? handle.error : "Invalid format" });
     return;
   }
- 
-  if (username.length < 3) {
-    res.json({ available: false, error: "Too short" });
-    return;
-  }
- 
+  const username = handle;
+
   try {
     // 2. Uniqueness Check (Excluding self if logged in)
     const existingUser = await prisma.user.findFirst({
@@ -858,6 +858,13 @@ app.get("/api/username-check", optionalAuth, async (req: any, res) => {
 // Health check
 app.get("/health", (_req, res) => {
   res.json({ status: "ok", timestamp: new Date().toISOString() });
+});
+
+// Anything under /api that no router claimed. Without this Express's own
+// finalhandler answered with an HTML "Cannot GET" page — and its own
+// Content-Security-Policy — to clients that only ever read JSON (QA-028).
+app.use("/api", (_req, res) => {
+  res.status(404).json({ error: "Not found" });
 });
 
 // The API is not a website. A crawler that reaches this host (it is linked

@@ -75,23 +75,23 @@ export async function optionalAuth(
 }
 
 /**
- * Addresses that are always admins; ADMIN_EMAIL adds more, comma-separated.
+ * Who may open the admin panel: ADMIN_EMAIL, comma-separated, plus the owner
+ * accounts (below). Admin is a narrower grant than owner — it opens the
+ * panel and nothing else, and does not touch billing or quotas.
  *
- * In code rather than only in the environment for the same reason the owner
- * list is (lib/plans.ts): an admin who exists only on Railway is one nobody
- * can test against locally. Admin is a narrower grant than owner — it opens
- * the panel and nothing else, and does not touch billing or quotas.
- *
- * Lower-case entries only: the env additions are lower-cased, these are not.
+ * There used to be a built-in address here as well, so that an admin who
+ * existed only on Railway could be tested against locally. The repository
+ * is public, and a hard-coded address is an admin on every deployment
+ * whatever the environment says (QA-039) — so the grant now comes from the
+ * environment alone. Locally, put the address in ADMIN_EMAIL in .env.
  */
-const DEFAULT_ADMIN_EMAILS = ["tabassump8319@gmail.com"];
-
 export function adminEmails(env: NodeJS.ProcessEnv = process.env): Set<string> {
-  const extra = (env["ADMIN_EMAIL"] ?? "")
-    .split(",")
-    .map((item) => item.trim().toLowerCase())
-    .filter(Boolean);
-  return new Set([...DEFAULT_ADMIN_EMAILS, ...extra]);
+  return new Set(
+    (env["ADMIN_EMAIL"] ?? "")
+      .split(",")
+      .map((item) => item.trim().toLowerCase())
+      .filter(Boolean),
+  );
 }
 
 /**

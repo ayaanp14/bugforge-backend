@@ -654,6 +654,7 @@ router.post("/posts", requireAuth, communityWriteLimiter, async (req, res) => {
     notifyMentions(userId, text, postHref(post.id), "a post");
     // The dashboard hero counts posts.
     invalidateDashboard(userId);
+    forgetPostCounters();
 
     res.json({
       id: post.id,
@@ -696,6 +697,7 @@ router.delete("/posts/:id", requireAuth, async (req, res) => {
     }
     await prisma.post.delete({ where: { id } });
     invalidateDashboard(userId);
+    forgetPostCounters();
     res.json({ success: true });
   } catch (err) {
     console.error("DELETE /api/community/posts/:id error:", err);
@@ -1080,10 +1082,15 @@ router.post("/posts/:id/comments", requireAuth, communityWriteLimiter, async (re
         where: { id: String(rawParent) },
         select: { id: true, postId: true, parentId: true, userId: true },
       });
-      if (parent && parent.postId === postId) {
-        parentId = parent.parentId ?? parent.id;
-        parentAuthorId = parent.userId;
+      // A parent that is gone (deleted while the reply was typed) or on
+      // another post is refused rather than silently filed as a top-level
+      // comment on this one — the writer meant a reply (QA-029).
+      if (!parent || parent.postId !== postId) {
+        res.status(404).json({ error: "That comment is no longer here." });
+        return;
       }
+      parentId = parent.parentId ?? parent.id;
+      parentAuthorId = parent.userId;
     }
 
     const comment = await prisma.postComment.create({
@@ -1272,6 +1279,16 @@ router.post("/follow/:userId", requireAuth, async (req, res) => {
 
 /** My social card: followers/following/posts counts — one statement, three sub-selects. */
 const socialCardFor = (userId: string) => querySocialCounts(userId);
+
+/**
+ * The rails that count posts. Their caches are shared and expire on their
+ * own, but a person who has just posted sees "0 posts today" beside their
+ * new post until they do (QA-031); the two writes drop them.
+ */
+function forgetPostCounters(): void {
+  invalidate("community:pulse");
+  invalidate("community:bulletin");
+}
 
 /** Lightweight activity stats for the sidebar. */
 function getPulse() {

@@ -53,6 +53,14 @@ const DUEL_CACHE_TTL_MS = 2_000;
 type LoadedDuel = Awaited<ReturnType<typeof loadDuelFresh>>;
 const duelCache = new Map<string, { value: LoadedDuel; expiresAt: number }>();
 const duelInFlight = new Map<string, Promise<LoadedDuel>>();
+/**
+ * How many times each duel has been forgotten. A read that started before a
+ * write and landed after `forgetDuel` used to put the pre-write row back in
+ * the cache, so a GET right after a forfeit answered "active" for up to two
+ * seconds (QA-022). A load stores its answer only if nothing was forgotten
+ * while it was in flight.
+ */
+const duelGeneration = new Map<string, number>();
 
 function loadDuelFresh(id: string) {
   return prisma.duel.findUnique({ where: { id }, include: DUEL_INCLUDE });
@@ -65,12 +73,17 @@ export async function loadDuel(id: string, fresh = false): Promise<LoadedDuel> {
     const pending = duelInFlight.get(id);
     if (pending) return pending;
   }
+  const generation = duelGeneration.get(id) ?? 0;
   const promise = loadDuelFresh(id)
     .then((duel) => {
-      duelCache.set(id, { value: duel, expiresAt: Date.now() + DUEL_CACHE_TTL_MS });
+      if ((duelGeneration.get(id) ?? 0) === generation) {
+        duelCache.set(id, { value: duel, expiresAt: Date.now() + DUEL_CACHE_TTL_MS });
+      }
       return duel;
     })
-    .finally(() => duelInFlight.delete(id));
+    .finally(() => {
+      if (duelInFlight.get(id) === promise) duelInFlight.delete(id);
+    });
   duelInFlight.set(id, promise);
   return promise;
 }
@@ -79,6 +92,10 @@ export async function loadDuel(id: string, fresh = false): Promise<LoadedDuel> {
 export function forgetDuel(id: string): void {
   duelCache.delete(id);
   duelInFlight.delete(id);
+  // One integer per duel ever written here; a reset only makes an in-flight
+  // read skip the cache, so the map is simply emptied when it grows large.
+  if (duelGeneration.size > 10_000) duelGeneration.clear();
+  duelGeneration.set(id, (duelGeneration.get(id) ?? 0) + 1);
 }
 
 /* ── who might be mid-duel ────────────────────────────────────────── */
