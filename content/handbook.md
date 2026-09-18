@@ -28,12 +28,12 @@ Public pages (no account needed): `/` landing page for visitors · `/login` · `
 
 ## Profile — `/profile`
 
-- Shows: avatar with roadmap frame, name, username, institute, rank title and a "Progress to next tier" bar, XP, rating, global rank, current and best streak, solved counts by difficulty against the catalogue totals, accuracy, followers/following/posts, the 365-day activity heatmap (active days, max streak), roadmap chest badges, and the submission history (problems and bug hunts merged, newest first; "View solution" opens the code that was sent).
+- Shows: avatar with roadmap frame, name, username, institute, rank title and a "Progress to next tier" bar, XP, rating, global rank (the same position as the home page's Global rank tile; "Unranked" until the account has XP), current and best streak, solved counts by difficulty against the catalogue totals ("Solved" everywhere is the number of distinct problems with an accepted submission), accuracy, followers/following/posts, the 365-day activity heatmap (active days, max streak), roadmap chest badges, and the submission history (problems and bug hunts merged, newest first; "View solution" opens the code that was sent).
 - **Accuracy** on the profile and **Accept rate** on the home page are per *problem*, not per submission: solved problems ÷ (solved + problems attempted but never solved).
 - **Edit profile** (dialog): name (≤80 chars), username, institute (≤120), gender (≤32), birthday, location (≤120), website / GitHub / LinkedIn / X links (each must be an `http(s)://` URL, ≤300 chars), bio (≤20,000). **Avatar**: pick one of the preset illustrated avatars, or keep the picture that came from GitHub/Google; there is no photo upload.
 - **Reminders** section: three switches — streak at risk, daily problem, weekly digest (see *Notifications and reminders*).
 - **Password** section: change it (see above).
-- The profile is private to its owner. Other people see a name, avatar, XP, chest count and rank only where the community feed and leaderboard show them; there is no `/u/<username>` page.
+- The profile is private to its owner. Other people see a name, avatar, XP, chest count and rank only where the community feed and leaderboard show them; there is no `/u/<username>` page. The rank word beside a name in the community is read from rating, like everywhere else.
 
 ## Home dashboard — `/`
 
@@ -267,7 +267,7 @@ One request builds it; it refreshes itself after a submission, a chest, a follow
 - **Visibility** per post: **Anyone on CodeKairo**, **Followers** only, or **Private** to you. A private or followers-only post is hidden from anyone else, including by direct link.
 - **Interactions**: **Respect** (the like), comments (one level of replies — a reply to a reply attaches to the parent), comment likes, save/unsave, copy link, report (one report per person per post; you cannot report your own), edit your own text (auto-tags are kept), delete your own post (its comments and likes go with it; no undo). Comments up to 1,000 characters; a thread shows up to 200.
 - **Follow** people from their posts or the "Who to follow" rail (suggested by mutual follows, same institute, activity). Following is what the Following scope and followers-only posts key on.
-- **Rails**: your social card (followers/following/posts), Who to follow, **Community pulse** (posts today, wins this week, active and total coders), **Trending tags** (last 7 days), and a **Bulletin** (the week's most-fixed hunts and most-solved problems, today's hunts, the top solver of the week, solves and posts this week, new coders).
+- **Rails**: your social card (followers/following/posts), Who to follow, **Community pulse** (posts today, wins this week, active and total coders), **Trending tags** (last 7 days), and a **Bulletin** (the week's most-fixed hunts and most-solved problems, today's hunts, the top solver of the week, solves and posts this week, new coders). A "solve" there is a problem or hunt someone accepted for the **first time** — re-submitting a solved problem does not count, the same rule as "solved" on the profile.
 - **Write limit**: 40 posts+comments per 10 minutes per account.
 - A post's permalink is `/community/p/<id>` — where shared links and notifications land.
 
