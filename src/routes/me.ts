@@ -7,6 +7,7 @@ import { ME_SELECT, getMePayload, invalidateMe } from "../services/me.js";
 import { hashPassword, passwordProblem, verifyPassword } from "../lib/passwords.js";
 import { forgetSessions } from "../lib/session-revocation.js";
 import { establishSession } from "../lib/auth-session.js";
+import { USERNAME_RULE, readUsername } from "../lib/identity.js";
 
 const router = Router();
 
@@ -135,20 +136,26 @@ router.patch("/", requireAuth, async (req, res) => {
     }
   }
   const clean = fields as Record<keyof typeof fields, string | null>;
-  // Only an http(s) URL or a bundled avatar path may be an avatar.
-  if (clean.avatar_url && !/^(https?:\/\/[^\s]+|\/[^\s]*)$/i.test(clean.avatar_url)) {
+  // Only an http(s) URL or a bundled avatar path may be an avatar. The path
+  // branch must not start with "//": a protocol-relative URL is a foreign
+  // host, and every viewer of the profile fetched from it (QA-024).
+  if (clean.avatar_url && !/^(https?:\/\/[^\s]+|\/(?!\/)[^\s]*)$/i.test(clean.avatar_url)) {
     res.status(400).json({ error: "Avatar must be a link." });
     return;
   }
 
-  // 1. Strict Username Validation (No spaces, no special characters)
+  // 1. Strict Username Validation — the registration rule (lib/identity.ts).
   if (clean.username !== null) {
-    const usernameRegex = /^[a-z0-9_]{3,20}$/;
-    clean.username = clean.username.toLowerCase();
-    if (!usernameRegex.test(clean.username)) {
-      res.status(400).json({ error: "Usernames are 3–20 characters: letters, numbers and underscores." });
+    const handle = readUsername(clean.username);
+    if (handle && typeof handle === "object") {
+      res.status(400).json({ error: handle.error });
       return;
     }
+    if (!handle) {
+      res.status(400).json({ error: USERNAME_RULE });
+      return;
+    }
+    clean.username = handle;
 
     // 2. Explicit Uniqueness Check
     const existingUser = await prisma.user.findFirst({
@@ -166,6 +173,26 @@ router.patch("/", requireAuth, async (req, res) => {
 
   try {
     const or = (value: string | null) => (value === null ? undefined : value);
+
+    // A birthday is a date that has happened, and not too long ago: the
+    // column took any parseable date, so the year 2999 and the year 0001
+    // were both stored (QA-025). Unparseable text still clears the field —
+    // that is how the form removes one.
+    let birthdayValue: Date | null | undefined = undefined;
+    if (birthday !== undefined) {
+      const parsed = typeof birthday === "string" && birthday ? new Date(birthday) : null;
+      if (parsed && !isNaN(parsed.getTime())) {
+        const now = new Date();
+        const oldest = new Date(now.getFullYear() - 120, now.getMonth(), now.getDate());
+        if (parsed > now || parsed < oldest) {
+          res.status(400).json({ error: "Birthday must be a date in the past (within the last 120 years)." });
+          return;
+        }
+        birthdayValue = parsed;
+      } else {
+        birthdayValue = null;
+      }
+    }
     const updatedUser = await prisma.user.update({
       where: { id: req.user!.userId },
       data: {
@@ -175,7 +202,7 @@ router.patch("/", requireAuth, async (req, res) => {
         name: or(clean.name),
         gender: or(clean.gender),
         location: or(clean.location),
-        birthday: birthday !== undefined ? (birthday && !isNaN(Date.parse(birthday)) ? new Date(birthday) : null) : undefined,
+        birthday: birthdayValue,
         website: or(clean.website),
         github: or(clean.github),
         linkedin: or(clean.linkedin),

@@ -36,6 +36,8 @@ import adminRouter from "./routes/admin.js";
 import { todayContest } from "./services/daily-contest.js";
 import { optionalAuth } from "./middleware/auth.js";
 import { platformGuard } from "./middleware/platformGuard.js";
+import { displayNameOf } from "./lib/display-name.js";
+import { readUsername } from "./lib/identity.js";
 import { securityHeaders } from "./middleware/security-headers.js";
 import { authLimiter, generalLimiter, loginAccountLimiter, otpRequestLimiter } from "./middleware/rate-limit.js";
 import { prisma } from "./lib/prisma.js";
@@ -191,7 +193,7 @@ function scheduleHostReassign(roomId: string, hostId: string) {
         if (seatsOf(roomId, hostId) > 0) return;
         const room = await prisma.pairRoom.findUnique({
           where: { id: roomId },
-          include: { participants: { include: { user: { select: { name: true, avatar_url: true } } }, orderBy: { joinedAt: "asc" } } },
+          include: { participants: { include: { user: { select: { name: true, username: true, avatar_url: true } } }, orderBy: { joinedAt: "asc" } } },
         });
         if (!room || room.status === "closed") return;
         if (room.participants.find((p) => p.role === "host")?.userId !== hostId) return;
@@ -213,12 +215,12 @@ function scheduleHostReassign(roomId: string, hostId: string) {
           "participant-update",
           room.participants.map((p) => ({
             userId: p.userId,
-            name: p.user.name,
+            name: displayNameOf(p.user),
             avatar_url: p.user.avatar_url,
             role: p.userId === heir.userId ? "host" : "guest",
           })),
         );
-        io.to(roomId).emit("host-changed", { userId: heir.userId, name: heir.user.name });
+        io.to(roomId).emit("host-changed", { userId: heir.userId, name: displayNameOf(heir.user) });
       } catch (err) {
         console.error("host reassignment error:", err);
       }
@@ -376,7 +378,7 @@ io.on("connection", (socket) => {
         include: {
           problem: { select: { slug: true } },
           participants: {
-            include: { user: { select: { id: true, name: true, avatar_url: true } } }
+            include: { user: { select: { id: true, name: true, username: true, avatar_url: true } } }
           }
         }
       });
@@ -425,7 +427,7 @@ io.on("connection", (socket) => {
 
       const participants = room.participants.map((p: any) => ({
         userId: p.userId,
-        name: p.user.name,
+        name: displayNameOf(p.user),
         avatar_url: p.user.avatar_url,
         role: p.role
       }));
@@ -576,7 +578,7 @@ io.on("connection", (socket) => {
         where: { id: roomId },
         include: {
           participants: {
-            include: { user: { select: { name: true, avatar_url: true } } }
+            include: { user: { select: { name: true, username: true, avatar_url: true } } }
           }
         }
       });
@@ -584,7 +586,7 @@ io.on("connection", (socket) => {
       if (room) {
         const participants = room.participants.map((p: any) => ({
           userId: p.userId,
-          name: p.user.name,
+          name: displayNameOf(p.user),
           avatar_url: p.user.avatar_url,
           role: p.role
         }));
@@ -732,6 +734,19 @@ app.use(platformGuard);
 // with the victim's `__session` cookie attached. Without the parser its body
 // is nothing.
 app.use(express.json({ limit: "512kb" }));
+
+/**
+ * Express 5 leaves `req.body` undefined when nothing was parsed (no body, no
+ * content type, a non-JSON type). A dozen routes destructure it directly —
+ * `const { code, language } = req.body` — and each answered 500 with a
+ * TypeError, plus an ErrorReport row, to a request that was merely empty
+ * (QA-002). One default here means every route reads `{}` and falls into
+ * its own "… is required" validation. The webhook keeps its raw Buffer.
+ */
+app.use((req, _res, next) => {
+  if (req.body === undefined) req.body = {};
+  next();
+});
 app.use(cookieParser());
 
 /**
@@ -798,27 +813,26 @@ app.use("/api/events", eventsRouter);
 app.use("/api/admin", adminRouter);
 app.use("/api", executionRouter); 
 
-// GET /api/username-check (Public, non-NextAuth)
+// GET /api/username-check — the register form's live availability check.
+// Reads the same rule registration applies (lib/identity.ts): the check used
+// to allow any length and a mixed case the register route lower-cases, so
+// the form lit up for a handle the server then refused (QA-026).
 app.get("/api/username-check", optionalAuth, async (req: any, res) => {
-  const { username } = req.query;
- 
-  if (!username || typeof username !== "string") {
+  const raw = req.query.username;
+
+  if (!raw || typeof raw !== "string") {
     res.status(400).json({ error: "Username is required." });
     return;
   }
- 
+
   // 1. Format Validation
-  const usernameRegex = /^[a-zA-Z0-9_]+$/;
-  if (!usernameRegex.test(username)) {
-    res.json({ available: false, error: "Invalid format" });
+  const handle = readUsername(raw);
+  if (!handle || typeof handle === "object") {
+    res.json({ available: false, error: handle && typeof handle === "object" ? handle.error : "Invalid format" });
     return;
   }
- 
-  if (username.length < 3) {
-    res.json({ available: false, error: "Too short" });
-    return;
-  }
- 
+  const username = handle;
+
   try {
     // 2. Uniqueness Check (Excluding self if logged in)
     const existingUser = await prisma.user.findFirst({
@@ -844,6 +858,13 @@ app.get("/api/username-check", optionalAuth, async (req: any, res) => {
 // Health check
 app.get("/health", (_req, res) => {
   res.json({ status: "ok", timestamp: new Date().toISOString() });
+});
+
+// Anything under /api that no router claimed. Without this Express's own
+// finalhandler answered with an HTML "Cannot GET" page — and its own
+// Content-Security-Policy — to clients that only ever read JSON (QA-028).
+app.use("/api", (_req, res) => {
+  res.status(404).json({ error: "Not found" });
 });
 
 // The API is not a website. A crawler that reaches this host (it is linked

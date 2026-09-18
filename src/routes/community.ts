@@ -13,7 +13,11 @@ const router = Router();
 // The chests an author has opened ride on every author: the feed wears
 // them as a frame round the avatar and a count beside the rank. Keys only
 // — a handful of short rows per author, joined by the same query.
-const AUTHOR_SELECT = { id: true, name: true, username: true, avatar_url: true, xp: true, roadmapRewards: { select: { tierKey: true } } } as const;
+// `rating` is what the rank word beside a name is read from — the same
+// number the profile and the dashboard rank by (services/me.ts getTierTitle).
+// The feed used to apply the ladder to `xp`, so one account was "Novice" on
+// its profile and "Apprentice" on its posts (QA-010). XP stays for the count.
+const AUTHOR_SELECT = { id: true, name: true, username: true, avatar_url: true, xp: true, rating: true, roadmapRewards: { select: { tierKey: true } } } as const;
 
 /** Feed page size cap. */
 const MAX_TAKE = 30;
@@ -510,10 +514,12 @@ router.post("/posts", requireAuth, communityWriteLimiter, async (req, res) => {
   try {
     const userId = req.user!.userId;
     const { content, meta, visibility, type: rawType } = req.body as {
-      content?: string; meta?: Record<string, unknown>; visibility?: string; type?: string;
+      content?: unknown; meta?: Record<string, unknown>; visibility?: string; type?: string;
     };
     const vis = visibility && ["public", "followers", "private"].includes(visibility) ? visibility : "public";
-    const text = (content ?? "").trim();
+    // A number or an array as `content` used to reach `.trim()` and 500; it
+    // is not a post, so it falls into "write something first" like an empty one.
+    const text = typeof content === "string" ? content.trim() : "";
     const hasAchievement = meta && typeof meta === "object" && typeof meta.title === "string";
 
     // Poll options travel in meta.poll.options; a poll with fewer than two
@@ -648,6 +654,7 @@ router.post("/posts", requireAuth, communityWriteLimiter, async (req, res) => {
     notifyMentions(userId, text, postHref(post.id), "a post");
     // The dashboard hero counts posts.
     invalidateDashboard(userId);
+    forgetPostCounters();
 
     res.json({
       id: post.id,
@@ -690,6 +697,7 @@ router.delete("/posts/:id", requireAuth, async (req, res) => {
     }
     await prisma.post.delete({ where: { id } });
     invalidateDashboard(userId);
+    forgetPostCounters();
     res.json({ success: true });
   } catch (err) {
     console.error("DELETE /api/community/posts/:id error:", err);
@@ -1074,10 +1082,15 @@ router.post("/posts/:id/comments", requireAuth, communityWriteLimiter, async (re
         where: { id: String(rawParent) },
         select: { id: true, postId: true, parentId: true, userId: true },
       });
-      if (parent && parent.postId === postId) {
-        parentId = parent.parentId ?? parent.id;
-        parentAuthorId = parent.userId;
+      // A parent that is gone (deleted while the reply was typed) or on
+      // another post is refused rather than silently filed as a top-level
+      // comment on this one — the writer meant a reply (QA-029).
+      if (!parent || parent.postId !== postId) {
+        res.status(404).json({ error: "That comment is no longer here." });
+        return;
       }
+      parentId = parent.parentId ?? parent.id;
+      parentAuthorId = parent.userId;
     }
 
     const comment = await prisma.postComment.create({
@@ -1267,6 +1280,16 @@ router.post("/follow/:userId", requireAuth, async (req, res) => {
 /** My social card: followers/following/posts counts — one statement, three sub-selects. */
 const socialCardFor = (userId: string) => querySocialCounts(userId);
 
+/**
+ * The rails that count posts. Their caches are shared and expire on their
+ * own, but a person who has just posted sees "0 posts today" beside their
+ * new post until they do (QA-031); the two writes drop them.
+ */
+function forgetPostCounters(): void {
+  invalidate("community:pulse");
+  invalidate("community:bulletin");
+}
+
 /** Lightweight activity stats for the sidebar. */
 function getPulse() {
   // Global counters, identical for every viewer — four queries that were
@@ -1395,48 +1418,47 @@ function getBulletin() {
     const startOfToday = new Date();
     startOfToday.setHours(0, 0, 0, 0);
 
-    // Prisma's groupBy signature widens badly across a seven-way Promise.all;
-    // the shapes are simple enough to state once here.
-    type ChallengeCount = { challengeId: string; _count: { _all: number } };
-    type ProblemCount = { problemId: string; _count: { _all: number } };
-    type UserCount = { userId: string; _count: { _all: number } };
+    // A "solve" is a problem (or hunt) someone accepted for the FIRST time —
+    // the same definition as "solved" on the profile and the trends
+    // (services/me.ts getUserTrends). Counting accepted submissions instead
+    // made "Coder of the week" a matter of re-submitting one solved problem
+    // fifteen times (QA-050). One grouped statement per arena carries each
+    // (user, target) pair with its earliest accept; the week's and today's
+    // tallies are reduced from that in memory.
+    type FirstProblemSolve = { userId: string; problemId: string; _min: { submittedAt: Date | null } };
+    type FirstBugSolve = { userId: string; challengeId: string; _min: { submittedAt: Date | null } };
 
-    const [bugGroups, problemGroups, bugWarriors, problemWarriors, todayBugs, postsThisWeek, newWarriors] =
-      (await Promise.all([
-        prisma.bugSubmission.groupBy({
-          by: ["challengeId"],
-          where: { verdict: "ACCEPTED", submittedAt: { gte: weekAgo } },
-          _count: { _all: true },
-          orderBy: { _count: { challengeId: "desc" } },
-          take: 3,
-        }),
-        prisma.submission.groupBy({
-          by: ["problemId"],
-          where: { verdict: "ACCEPTED", submittedAt: { gte: weekAgo } },
-          _count: { _all: true },
-          orderBy: { _count: { problemId: "desc" } },
-          take: 3,
-        }),
-        prisma.bugSubmission.groupBy({
-          by: ["userId"],
-          where: { verdict: "ACCEPTED", submittedAt: { gte: weekAgo } },
-          _count: { _all: true },
-        }),
-        prisma.submission.groupBy({
-          by: ["userId"],
-          where: { verdict: "ACCEPTED", submittedAt: { gte: weekAgo } },
-          _count: { _all: true },
-        }),
-        prisma.bugSubmission.groupBy({
-          by: ["challengeId"],
-          where: { verdict: "ACCEPTED", submittedAt: { gte: startOfToday } },
-          _count: { _all: true },
-          orderBy: { _count: { challengeId: "desc" } },
-          take: 3,
-        }),
-        prisma.post.count({ where: { createdAt: { gte: weekAgo } } }),
-        prisma.user.count({ where: { createdAt: { gte: weekAgo } } }),
-      ])) as [ChallengeCount[], ProblemCount[], UserCount[], UserCount[], ChallengeCount[], number, number];
+    const [firstBugSolves, firstProblemSolves, postsThisWeek, newWarriors] = (await Promise.all([
+      prisma.bugSubmission.groupBy({
+        by: ["userId", "challengeId"],
+        where: { verdict: "ACCEPTED" },
+        _min: { submittedAt: true },
+        having: { submittedAt: { _min: { gte: weekAgo } } },
+      }),
+      prisma.submission.groupBy({
+        by: ["userId", "problemId"],
+        where: { verdict: "ACCEPTED" },
+        _min: { submittedAt: true },
+        having: { submittedAt: { _min: { gte: weekAgo } } },
+      }),
+      prisma.post.count({ where: { createdAt: { gte: weekAgo } } }),
+      prisma.user.count({ where: { createdAt: { gte: weekAgo } } }),
+    ])) as [FirstBugSolve[], FirstProblemSolve[], number, number];
+
+    const tally = (rows: Array<{ key: string }>): Map<string, number> => {
+      const counts = new Map<string, number>();
+      for (const r of rows) counts.set(r.key, (counts.get(r.key) ?? 0) + 1);
+      return counts;
+    };
+    const top3 = (counts: Map<string, number>) => [...counts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 3);
+
+    const bugGroups = top3(tally(firstBugSolves.map((r) => ({ key: r.challengeId })))).map(([challengeId, n]) => ({ challengeId, _count: { _all: n } }));
+    const problemGroups = top3(tally(firstProblemSolves.map((r) => ({ key: r.problemId })))).map(([problemId, n]) => ({ problemId, _count: { _all: n } }));
+    const bugWarriors = [...tally(firstBugSolves.map((r) => ({ key: r.userId }))).entries()].map(([userId, n]) => ({ userId, _count: { _all: n } }));
+    const problemWarriors = [...tally(firstProblemSolves.map((r) => ({ key: r.userId }))).entries()].map(([userId, n]) => ({ userId, _count: { _all: n } }));
+    const todayBugs = top3(
+      tally(firstBugSolves.filter((r) => r._min.submittedAt !== null && r._min.submittedAt >= startOfToday).map((r) => ({ key: r.challengeId }))),
+    ).map(([challengeId, n]) => ({ challengeId, _count: { _all: n } }));
 
     // Titles for everything referenced above, in two lookups.
     const challengeIds = [...new Set([...bugGroups, ...todayBugs].map((g) => g.challengeId))];

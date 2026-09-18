@@ -10,13 +10,15 @@ describe("isAdminEmail", () => {
     assert.equal(isAdminEmail("someone@example.com", env), false);
   });
 
-  it("accepts a comma-separated ADMIN_EMAIL list and the built-in admins", () => {
+  it("accepts a comma-separated ADMIN_EMAIL list and has no built-in admin", () => {
     const env = { ADMIN_EMAIL: "a@x.com, B@Y.com ,," } as NodeJS.ProcessEnv;
     assert.equal(isAdminEmail("a@x.com", env), true);
     assert.equal(isAdminEmail("b@y.com", env), true);
     assert.equal(isAdminEmail("c@z.com", env), false);
-    assert.equal(isAdminEmail("tabassump8319@gmail.com", {} as NodeJS.ProcessEnv), true);
-    assert.equal(isAdminEmail("  Tabassump8319@Gmail.com ", {} as NodeJS.ProcessEnv), true);
+    // The address that used to ship in source is an admin only when the
+    // environment names it (QA-039).
+    assert.equal(isAdminEmail("tabassump8319@gmail.com", {} as NodeJS.ProcessEnv), false);
+    assert.equal(isAdminEmail("  Tabassump8319@Gmail.com ", { ADMIN_EMAIL: "tabassump8319@gmail.com" } as NodeJS.ProcessEnv), true);
   });
 
   it("treats the owner accounts as admins", () => {

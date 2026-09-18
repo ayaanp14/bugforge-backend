@@ -122,6 +122,9 @@ async function runSingleBatch(
   // One budget for the whole run: generous enough for N quick cases, capped
   // at the engines' ceiling (Judge0 MAX_CPU_TIME / Wandbox run_timeout: 15s).
   const cpuSeconds = Math.min(15, Math.max(limits.timeLimitMs / 1000, Math.ceil(n * 0.1) + 2));
+  // The wall clock must not be the tighter of the two: Judge0 defaults it to
+  // 10 s, under a 15 s CPU budget. Its ceiling is 20.
+  const wallSeconds = Math.min(20, cpuSeconds + 5);
 
   const token = await submitCode(
     {
@@ -130,6 +133,7 @@ async function runSingleBatch(
       stdin: encodeBatchStdin(buildBatchStdin(cases.map((c) => c.input)), language),
       // No expected_output: judging happens here, per case.
       cpu_time_limit: cpuSeconds,
+      wall_time_limit: wallSeconds,
       memory_limit: limits.memoryLimitMb * 1024,
     },
     language

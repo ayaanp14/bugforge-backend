@@ -10,6 +10,7 @@ import { forgetSessions, revokeSession } from "../lib/session-revocation.js";
 import { burnCompare, hashPassword, needsRehash, passwordProblem, verifyPassword } from "../lib/passwords.js";
 import { emailVerificationRequired, sendAuthCode } from "../lib/auth-mail.js";
 import { redeemHandoff } from "../lib/handoff-store.js";
+import { readEmail, readUsername } from "../lib/identity.js";
 
 const router = Router();
 
@@ -22,25 +23,8 @@ const router = Router();
 // sign-in. The reset screen promised an eight-character password the server
 // never asked for.
 
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const USERNAME_RE = /^[a-z0-9_]{3,20}$/;
-
-/** A trimmed, lower-cased address, or null when it is not one. */
-function readEmail(raw: unknown): string | null {
-  if (typeof raw !== "string") return null;
-  const email = raw.trim().toLowerCase();
-  return email.length <= 254 && EMAIL_RE.test(email) ? email : null;
-}
-
-
-/** A normalised handle, `null` for "none given", or an error string. */
-function readUsername(raw: unknown): string | null | { error: string } {
-  if (raw == null || raw === "") return null;
-  if (typeof raw !== "string") return { error: "Username must be text." };
-  const username = raw.trim().toLowerCase();
-  if (!USERNAME_RE.test(username)) return { error: "Usernames are 3–20 characters: letters, numbers and underscores." };
-  return username;
-}
+// The address and handle rules live in lib/identity.ts, shared with the
+// profile edit and the live username check so all three agree.
 
 /** Express 5 leaves `req.body` undefined when nothing was parsed. */
 const bodyOf = (req: { body?: unknown }): Record<string, unknown> =>

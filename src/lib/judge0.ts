@@ -17,21 +17,36 @@ const JUDGE0_POLL_INTERVAL_MS = Math.max(
 const JUDGE0_DEBUG_LOGS = process.env["JUDGE0_DEBUG_LOGS"] === "true";
 console.log(`[Judge0] Debug logs enabled: ${JUDGE0_DEBUG_LOGS}`);
 
-export const LANGUAGE_MAP: Record<string, number> = {
-  javascript: 63, // Node.js 12.14.0
-  typescript: 74, // TypeScript 3.7.4
-  python: 71,     // Python 3.8.1
-  java: 62,       // Java (OpenJDK 13.0.1)
-  cpp: 54,        // C++ (GCC 9.2.0)
-  c: 50,          // C (GCC 9.2.0)
-  go: 60,         // Go 1.13.5
-  csharp: 51,     // C# (Mono 6.6.0.161)
-  kotlin: 78,     // Kotlin (1.3.70)
-  swift: 83,      // Swift (5.2.3)
-  rust: 73,       // Rust (1.40.0)
-  php: 68,        // PHP (7.4.1)
-  ruby: 72,       // Ruby (2.7.0)
-};
+/**
+ * Every route validates a language with `LANGUAGE_MAP[language]`, so the map
+ * must answer undefined for anything that is not one of the thirteen. A plain
+ * object literal did not: `LANGUAGE_MAP["constructor"]` is `Object`, truthy,
+ * and the request went on to the driver, which crashed on a language it had
+ * never heard of (QA-003). Built without a prototype so inherited names are
+ * not keys, and frozen so nothing adds one later. `isJudgeLanguage` is the
+ * gate to use on untrusted input; it also settles the type.
+ */
+export const LANGUAGE_MAP: Readonly<Record<string, number>> = Object.freeze(
+  Object.assign(Object.create(null) as Record<string, number>, {
+    javascript: 63, // Node.js 12.14.0
+    typescript: 74, // TypeScript 3.7.4
+    python: 71,     // Python 3.8.1
+    java: 62,       // Java (OpenJDK 13.0.1)
+    cpp: 54,        // C++ (GCC 9.2.0)
+    c: 50,          // C (GCC 9.2.0)
+    go: 60,         // Go 1.13.5
+    csharp: 51,     // C# (Mono 6.6.0.161)
+    kotlin: 78,     // Kotlin (1.3.70)
+    swift: 83,      // Swift (5.2.3)
+    rust: 73,       // Rust (1.40.0)
+    php: 68,        // PHP (7.4.1)
+    ruby: 72,       // Ruby (2.7.0)
+  }),
+);
+
+export function isJudgeLanguage(value: unknown): value is string {
+  return typeof value === "string" && Object.hasOwn(LANGUAGE_MAP, value);
+}
 
 export interface Judge0Submission {
   source_code: string;
@@ -39,6 +54,13 @@ export interface Judge0Submission {
   stdin?: string;
   expected_output?: string;
   cpu_time_limit?: number; // in seconds
+  /**
+   * Judge0's wall clock ceiling for the run, in seconds. Its default is 10 s
+   * while cpu_time_limit may be set as high as 15, so a batch that legitimately
+   * used 12 s of CPU was killed by the wall clock first. Set alongside the CPU
+   * budget (lib/batch-judge.ts); capped at Judge0's max_wall_time_limit (20).
+   */
+  wall_time_limit?: number;
   memory_limit?: number; // in KB
   /**
    * The source is a complete program (a class Main, a script with its own
@@ -517,6 +539,7 @@ export async function submitToJudge0(submission: Judge0Submission, rawLanguage: 
     source_code: wrappedCode,
     language_id: submission.language_id,
     cpu_time_limit: submission.cpu_time_limit,
+    wall_time_limit: submission.wall_time_limit,
     memory_limit: submission.memory_limit,
   };
 
@@ -592,6 +615,7 @@ export async function submitBatchToJudge0(
         source_code: wrappedCode,
         language_id: submission.language_id,
         cpu_time_limit: submission.cpu_time_limit,
+        wall_time_limit: submission.wall_time_limit,
         memory_limit: submission.memory_limit,
       };
 
@@ -687,12 +711,50 @@ export async function getBatchJudge0Results(tokens: string[]): Promise<Array<Jud
  */
 const JUDGE0_POLL_FAILURE_LIMIT = 5;
 
+/**
+ * However few attempts a caller asks for, a run is polled at least this long
+ * before it is judged still-running: Judge0's wall ceiling (20 s) plus its
+ * extra time and a margin, so a slow-but-legal batch is never cut off by the
+ * poll while the engine itself would still have finished it.
+ */
+const JUDGE0_MIN_POLL_MS = 25_000;
+
+/** Judge0's status ids: 1 In Queue, 2 Processing, 3 Accepted, 5 Time Limit Exceeded, 6 Compilation Error. */
+const STATUS_PROCESSING = 2;
+const STATUS_TLE = 5;
+
+/**
+ * What a run that was still executing when the poll budget ran out becomes.
+ *
+ * The engine answered every poll — it is up — and the code it was running
+ * had not finished long after its CPU and wall limits: that is the code's
+ * time limit, not an outage. It used to be raised as ExecutionEngineError,
+ * so a `while (true) {}` answered 503 "no engine reachable", tripped the
+ * breaker and took the only engine offline for a minute (QA-053). A run
+ * that never left the queue is different — no worker ever took it — and
+ * stays the engine's failure.
+ */
+function timedOutResult(elapsedMs: number): Judge0Result {
+  return {
+    stdout: null,
+    stderr: null,
+    compile_output: null,
+    message: "Time limit exceeded",
+    status: { id: STATUS_TLE, description: "Time Limit Exceeded" },
+    time: (elapsedMs / 1000).toFixed(3),
+    memory: 0,
+  };
+}
+
 export async function pollJudge0(token: string, maxAttempts = 30): Promise<Judge0Result> {
   let consecutiveFailures = 0;
-  for (let i = 0; i < maxAttempts; i++) {
+  let lastStatus = 0;
+  const startedAt = Date.now();
+  for (let i = 0; i < maxAttempts || Date.now() - startedAt < JUDGE0_MIN_POLL_MS; i++) {
     try {
       const result = await getJudge0Result(token);
       consecutiveFailures = 0;
+      lastStatus = result.status.id;
       if (result.status.id > 2) {
         if (JUDGE0_DEBUG_LOGS) {
           console.log(`Judge0 Execution Result (Token: ${token}, Status: ${result.status.description}):`);
@@ -718,14 +780,18 @@ export async function pollJudge0(token: string, maxAttempts = 30): Promise<Judge
     }
     await new Promise((resolve) => setTimeout(resolve, JUDGE0_POLL_INTERVAL_MS));
   }
-  // The engine answered every poll but never finished the run: a stuck
-  // worker. Still the engine's failure, so still the 503 path.
+  // Still running at the deadline: the code's time limit (see timedOutResult).
+  // Never picked up: a stuck or absent worker, the engine's failure and the 503 path.
+  if (lastStatus === STATUS_PROCESSING) return timedOutResult(Date.now() - startedAt);
   throw new ExecutionEngineError("judge0", "execution never completed while polling");
 }
 
 export async function pollBatchJudge0(tokens: string[], maxAttempts = 30): Promise<Array<Judge0Result & { token: string }>> {
-  for (let i = 0; i < maxAttempts; i++) {
+  const startedAt = Date.now();
+  let last: Array<Judge0Result & { token: string }> = [];
+  for (let i = 0; i < maxAttempts || Date.now() - startedAt < JUDGE0_MIN_POLL_MS; i++) {
     const results = await getBatchJudge0Results(tokens);
+    last = results;
     if (results.every((result) => result.status.id > 2)) {
       if (JUDGE0_DEBUG_LOGS) {
         console.log(`Judge0 Batch Results Summary (${results.length} submissions):`);
@@ -741,5 +807,11 @@ export async function pollBatchJudge0(tokens: string[], maxAttempts = 30): Promi
     await new Promise((resolve) => setTimeout(resolve, JUDGE0_POLL_INTERVAL_MS));
   }
 
+  // Same rule as the single poll, per token: a submission still processing
+  // is its own time limit; one still queued means the engine never ran it.
+  if (last.length > 0 && last.every((result) => result.status.id > 2 || result.status.id === STATUS_PROCESSING)) {
+    const elapsed = Date.now() - startedAt;
+    return last.map((result) => (result.status.id === STATUS_PROCESSING ? { ...timedOutResult(elapsed), token: result.token } : result));
+  }
   throw new ExecutionEngineError("judge0", "batch execution never completed while polling");
 }

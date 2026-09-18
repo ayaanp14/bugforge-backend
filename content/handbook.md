@@ -28,12 +28,12 @@ Public pages (no account needed): `/` landing page for visitors · `/login` · `
 
 ## Profile — `/profile`
 
-- Shows: avatar with roadmap frame, name, username, institute, rank title and a "Progress to next tier" bar, XP, rating, global rank, current and best streak, solved counts by difficulty against the catalogue totals, accuracy, followers/following/posts, the 365-day activity heatmap (active days, max streak), roadmap chest badges, and the submission history (problems and bug hunts merged, newest first; "View solution" opens the code that was sent).
+- Shows: avatar with roadmap frame, name, username, institute, rank title and a "Progress to next tier" bar, XP, rating, global rank (the same position as the home page's Global rank tile; "Unranked" until the account has XP), current and best streak, solved counts by difficulty against the catalogue totals ("Solved" everywhere is the number of distinct problems with an accepted submission), accuracy, followers/following/posts, the 365-day activity heatmap (active days, max streak), roadmap chest badges, and the submission history (problems and bug hunts merged, newest first; "View solution" opens the code that was sent).
 - **Accuracy** on the profile and **Accept rate** on the home page are per *problem*, not per submission: solved problems ÷ (solved + problems attempted but never solved).
 - **Edit profile** (dialog): name (≤80 chars), username, institute (≤120), gender (≤32), birthday, location (≤120), website / GitHub / LinkedIn / X links (each must be an `http(s)://` URL, ≤300 chars), bio (≤20,000). **Avatar**: pick one of the preset illustrated avatars, or keep the picture that came from GitHub/Google; there is no photo upload.
 - **Reminders** section: three switches — streak at risk, daily problem, weekly digest (see *Notifications and reminders*).
 - **Password** section: change it (see above).
-- The profile is private to its owner. Other people see a name, avatar, XP, chest count and rank only where the community feed and leaderboard show them; there is no `/u/<username>` page.
+- The profile is private to its owner. Other people see a name, avatar, XP, chest count and rank only where the community feed and leaderboard show them; there is no `/u/<username>` page. The rank word beside a name in the community is read from rating, like everywhere else.
 
 ## Home dashboard — `/`
 
@@ -148,7 +148,7 @@ One request builds it; it refreshes itself after a submission, a chest, a follow
 
 ## Pair rooms — `/pair-mode`
 
-- A shared live workspace on one problem for **2 to 4 people** (the host picks the seat count when creating; some page copy still says "up to five" — four is the real cap). Two modes: **Open for everyone** (collaborative — listed in the lobby, anyone signed in can join until it is full) and **Invite only** (private — needs the passcode; also visible in the lobby but locked). The host chooses the problem at creation.
+- A shared live workspace on one problem for **2 to 4 people** (the host picks the seat count when creating). Two modes: **Open for everyone** (collaborative — listed in the lobby, anyone signed in can join until it is full) and **Invite only** (private — needs the passcode; also visible in the lobby but locked). The host chooses the problem at creation.
 - **Joining**: open the room link from the lobby or from the host; a private room asks for the invite code (shape `ABCD-EFGH`; the host sees it under **Invite Details**). A host may have at most **3 rooms waiting** for a partner at once; the lobby lists waiting rooms from the last 24 hours.
 - **Inside**: everyone sees the same code and each other's cursors; a late joiner receives the current buffer; chat; typing indicators; **audio call** (join/leave, microphone permission needed); anyone can Run or Submit and everybody sees the same results; the room's connection dot shows connected/reconnecting. Edits made while your connection is down are kept locally and reconciled when it returns (your unsynced edits win).
 - **Submissions credit the host**: a submission made from a room lands on the *host's* account — the host's history, XP, streak, roadmap, contest entry and any live duel — and is linked to the room. The person who pressed Submit gets nothing on their own account.
@@ -267,7 +267,7 @@ One request builds it; it refreshes itself after a submission, a chest, a follow
 - **Visibility** per post: **Anyone on CodeKairo**, **Followers** only, or **Private** to you. A private or followers-only post is hidden from anyone else, including by direct link.
 - **Interactions**: **Respect** (the like), comments (one level of replies — a reply to a reply attaches to the parent), comment likes, save/unsave, copy link, report (one report per person per post; you cannot report your own), edit your own text (auto-tags are kept), delete your own post (its comments and likes go with it; no undo). Comments up to 1,000 characters; a thread shows up to 200.
 - **Follow** people from their posts or the "Who to follow" rail (suggested by mutual follows, same institute, activity). Following is what the Following scope and followers-only posts key on.
-- **Rails**: your social card (followers/following/posts), Who to follow, **Community pulse** (posts today, wins this week, active and total coders), **Trending tags** (last 7 days), and a **Bulletin** (the week's most-fixed hunts and most-solved problems, today's hunts, the top solver of the week, solves and posts this week, new coders).
+- **Rails**: your social card (followers/following/posts), Who to follow, **Community pulse** (posts today, wins this week, active and total coders), **Trending tags** (last 7 days), and a **Bulletin** (the week's most-fixed hunts and most-solved problems, today's hunts, the top solver of the week, solves and posts this week, new coders). A "solve" there is a problem or hunt someone accepted for the **first time** — re-submitting a solved problem does not count, the same rule as "solved" on the profile.
 - **Write limit**: 40 posts+comments per 10 minutes per account.
 - A post's permalink is `/community/p/<id>` — where shared links and notifications land.
 
@@ -305,7 +305,7 @@ Every price, limit and inclusion is in *Plans* later in this briefing — treat 
 - **Feedback**: a five-star "how is CodeKairo treating you?" prompt appears to signed-in accounts at least two days old, at most once every 30 days, only while active and never inside a problem, an interview or a room; it can be dismissed. Every interview report also asks for a rating of that interview (once per interview; re-rating updates it). Ratings and comments go to the team; there is no reply channel. For data requests (copy, correction, deletion) use this prompt — `/privacy` says so.
 - **Campus ambassador programme** (`/campus-ambassador`): a form (name, email, college required; phone, city, graduation year, LinkedIn, Instagram, reach and a plan for the first month optional) — one application per email address, reviewed weekly with a reply either way; a signed-in applicant also gets an in-app confirmation. The page advertises lifetime access to every paid feature, merch, a certificate and reference, and priority for hiring.
 - **Common questions**: `/faq`. **About / who builds it**: `/about` (a solo founder, looking for a co-founder; no contact link is published). **Privacy**: `/privacy` — what is collected, that written interviews, marking and this assistant run on NVIDIA-hosted models, voice interviews on Google Gemini (microphone audio streamed live; the transcript is kept, not the recording), payments on Cashfree, hosting on Vercel and Railway.
-- Some older copy on `/faq`, `/about`, `/rating` and the landing page predates the current product (for example "12 roles, 10 rounds", "everything is free", "up to five people", "rating starts at 1,200"). Where it disagrees with this briefing, this briefing is right.
+- Some older copy on `/faq`, `/about`, `/rating` and the landing page predates the current product (for example "12 roles, 10 rounds", "everything is free", "rating starts at 1,200"). Where it disagrees with this briefing, this briefing is right.
 
 ## Search, theme, devices, connectivity
 
