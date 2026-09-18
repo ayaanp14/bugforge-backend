@@ -302,6 +302,28 @@ function rewardRows(userId: string) {
   return prisma.roadmapReward.findMany({ where: { userId }, select: { tierKey: true, earnedAt: true } });
 }
 
+/**
+ * The road as a visitor sees it: the fixed stages with nothing solved and
+ * no chest opened, so the first stage is open and the rest are locked. The
+ * page is public (the SPA's lib/seo/routes) so a search engine can read
+ * what the road holds; a solve needs an account, and so does progress.
+ */
+export async function roadmapForVisitor(): Promise<RoadmapPayload> {
+  const road = await roadDefinition();
+  const stages = walk(road, new Set());
+  return {
+    tiers: road.tiers.map((tier) => ({ ...tier, earnedAt: null })),
+    stages,
+    summary: {
+      stages: stages.length,
+      cleared: 0,
+      problems: stages.reduce((n, s) => n + s.total, 0),
+      solved: 0,
+      currentId: stages.find((s) => s.status === "open")?.id ?? null,
+    },
+  };
+}
+
 export async function roadmapFor(userId: string): Promise<RoadmapPayload> {
   const road = await roadDefinition();
   // The solves and the chests already opened are independent reads, so they

@@ -1,6 +1,6 @@
 import { Router } from "express";
-import { requireAuth } from "../middleware/auth.js";
-import { roadmapFor } from "../services/roadmap.js";
+import { optionalAuth } from "../middleware/auth.js";
+import { roadmapFor, roadmapForVisitor } from "../services/roadmap.js";
 
 /**
  * The DSA roadmap. One read: the fixed stages with the reader's standing on
@@ -10,8 +10,10 @@ import { roadmapFor } from "../services/roadmap.js";
  */
 const router = Router();
 
-router.get("/", requireAuth, async (req: any, res) => {
-  res.json(await roadmapFor(req.user.userId));
+// Readable without an account: a visitor gets the road with nothing solved
+// (the SPA opens /roadmap to search engines); a member gets their standing.
+router.get("/", optionalAuth, async (req: any, res) => {
+  res.json(req.user ? await roadmapFor(req.user.userId) : await roadmapForVisitor());
 });
 
 export default router;

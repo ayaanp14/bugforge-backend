@@ -25,6 +25,7 @@ import aptitudeRouter from "./routes/aptitude.js";
 import mockTestsRouter from "./routes/mock-tests.js";
 import contestsRouter from "./routes/contests.js";
 import roadmapRouter from "./routes/roadmap.js";
+import seoRouter from "./routes/seo.js";
 import studyPlansRouter from "./routes/study-plans.js";
 import assistantRouter from "./routes/assistant.js";
 import resumesRouter from "./routes/resumes.js";
@@ -712,6 +713,14 @@ app.use(
 );
 
 /** A ceiling for every caller, under which the per-route limits are stricter. */
+// Ahead of the limiter: the edge Worker asks here for a public page's head
+// and for the content sitemaps on a crawler's behalf (routes/seo.ts), and a
+// crawl of thousands of URLs arrives from a handful of Cloudflare addresses
+// — the per-address budget below would 429 it. The routes are unsigned,
+// read-only, cached at the edge for an hour and here in-process; nothing
+// they answer is more than the SPA shows a visitor.
+app.use("/api/seo", seoRouter);
+
 app.use(generalLimiter);
 
 /**
