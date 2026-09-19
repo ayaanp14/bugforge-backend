@@ -2,7 +2,7 @@ import { Router, type Response } from "express";
 import { randomUUID } from "node:crypto";
 import { Prisma } from "@prisma/client";
 import { prisma } from "../lib/prisma.js";
-import { requireAuth } from "../middleware/auth.js";
+import { optionalAuth, requireAuth } from "../middleware/auth.js";
 import { communityWriteLimiter } from "../middleware/rate-limit.js";
 import { cached, cachedShared, invalidate } from "../lib/cache.js";
 import { invalidateUnread } from "../services/notifications.js";
@@ -279,8 +279,13 @@ const POST_INCLUDE = {
   tags: { select: { tag: true } },
 } as const;
 
-/** A post is visible if it's public, mine, or followers-only from someone I follow. */
-function visibleTo(userId: string, followingIds: string[]) {
+/**
+ * A post is visible if it's public, mine, or followers-only from someone I
+ * follow. A visitor (no session — the feed, a post and its thread are
+ * readable without one) sees public posts only.
+ */
+function visibleTo(userId: string | null, followingIds: string[]) {
+  if (userId === null) return { visibility: "public" };
   return {
     OR: [
       { visibility: "public" },
@@ -352,19 +357,20 @@ function pollOptions(meta: unknown): string[] {
 
 /**
  * Turn a page of posts into the feed payload: one batched query per viewer-
- * specific fact (likes, saves, poll votes) rather than per post.
+ * specific fact (likes, saves, poll votes) rather than per post. A visitor
+ * (userId null) has none of those facts, so only the poll tallies are read.
  */
-async function decoratePosts(userId: string, page: Candidate[], followingIds: Set<string>) {
+async function decoratePosts(userId: string | null, page: Candidate[], followingIds: Set<string>) {
   const ids = page.map((p) => p.id);
   const pollIds = page.filter((p) => pollOptions(p.meta).length > 0).map((p) => p.id);
 
   const [myLikes, mySaves, voteGroups, myVotes] = await Promise.all([
-    ids.length ? prisma.postLike.findMany({ where: { userId, postId: { in: ids } }, select: { postId: true } }) : [],
-    ids.length ? prisma.savedPost.findMany({ where: { userId, postId: { in: ids } }, select: { postId: true } }) : [],
+    ids.length && userId ? prisma.postLike.findMany({ where: { userId, postId: { in: ids } }, select: { postId: true } }) : [],
+    ids.length && userId ? prisma.savedPost.findMany({ where: { userId, postId: { in: ids } }, select: { postId: true } }) : [],
     pollIds.length
       ? prisma.pollVote.groupBy({ by: ["postId", "option"], where: { postId: { in: pollIds } }, _count: { _all: true } })
       : [],
-    pollIds.length
+    pollIds.length && userId
       ? prisma.pollVote.findMany({ where: { userId, postId: { in: pollIds } }, select: { postId: true, option: true } })
       : [],
   ]);
@@ -407,25 +413,34 @@ async function decoratePosts(userId: string, page: Candidate[], followingIds: Se
       savedByMe: saved.has(p.id),
       poll,
       followingAuthor: followingIds.has(p.userId),
-      mine: p.userId === userId,
+      mine: userId !== null && p.userId === userId,
     };
   });
 }
 
 // GET /api/community/feed?scope=all|following&tag=react&skip=0&take=20
-router.get("/feed", requireAuth, async (req, res) => {
+//
+// Readable without a session (the community page is public — see the
+// frontend's lib/seo/routes): a visitor gets "For you" over the public
+// window with none of the viewer signals, and the scopes that are about
+// them — Following, Saved — ask for an account.
+router.get("/feed", optionalAuth, async (req, res) => {
   try {
-    const userId = req.user!.userId;
+    const userId = req.user?.userId ?? null;
     const rawScope = String(req.query.scope ?? "all");
     const scope = rawScope === "following" || rawScope === "saved" ? rawScope : "all";
+    if (scope !== "all" && !userId) {
+      res.status(401).json({ error: "Sign in to see this feed." });
+      return;
+    }
     const tagFilter = typeof req.query.tag === "string" && req.query.tag.trim() ? req.query.tag.trim().toLowerCase() : null;
     const skip = Math.max(0, parseInt(String(req.query.skip ?? "0"), 10) || 0);
     const take = Math.min(MAX_TAKE, Math.max(1, parseInt(String(req.query.take ?? "20"), 10) || 20));
 
     const baseAndFor = (followingIds: string[]) => {
       const baseAnd: object[] = [visibleTo(userId, followingIds)];
-      if (scope === "following") baseAnd.push({ userId: { in: [...followingIds, userId] } });
-      if (scope === "saved") baseAnd.push({ saves: { some: { userId } } });
+      if (scope === "following") baseAnd.push({ userId: { in: [...followingIds, userId as string] } });
+      if (scope === "saved") baseAnd.push({ saves: { some: { userId: userId as string } } });
       if (tagFilter) baseAnd.push({ tags: { some: { tag: tagFilter } } });
       return baseAnd;
     };
@@ -433,9 +448,33 @@ router.get("/feed", requireAuth, async (req, res) => {
     let page: Candidate[];
     let followingIds: string[];
 
-    if (scope === "following" || scope === "saved") {
+    if (userId === null) {
+      // A visitor: the shared public window, ranked on the post alone —
+      // recency, engagement, the win boost — and backfilled the same way.
+      followingIds = [];
+      const candidates = (await publicCandidates(tagFilter)).slice(0, RANK.candidateCap);
+      const viewer = { affinity: new Map<string, number>(), following: new Set<string>(), mutuals: new Set<string>(), followerCounts: new Map<string, number>() };
+      const ranked = diversify(
+        candidates
+          .map((p) => ({ p, s: scorePost(p, viewer) }))
+          .sort((a, b) => b.s - a.s)
+          .map((x) => x.p)
+      );
+      page = ranked.slice(skip, skip + take);
+      if (page.length < take) {
+        const since = new Date(Date.now() - RANK.candidateDays * 86400000);
+        const older = (await prisma.post.findMany({
+          where: { AND: [...baseAndFor(followingIds), { createdAt: { lt: since } }] },
+          orderBy: { createdAt: "desc" },
+          skip: Math.max(0, skip - ranked.length),
+          take: take - page.length,
+          include: POST_INCLUDE,
+        })) as unknown as Candidate[];
+        page = [...page, ...older];
+      }
+    } else if (scope === "following" || scope === "saved") {
       // Following and saved stay strictly chronological — people expect it.
-      followingIds = await followingIdsOf(userId);
+      followingIds = await followingIdsOf(userId as string);
       page = (await prisma.post.findMany({
         where: { AND: baseAndFor(followingIds) },
         orderBy: { createdAt: "desc" },
@@ -449,10 +488,10 @@ router.get("/feed", requireAuth, async (req, res) => {
       // themselves — who I follow, the shared window, my private slice of it,
       // my tag affinities — is one tier, where it used to be three.
       const [follows, shared, mine, affRows] = await Promise.all([
-        followingIdsOf(userId),
+        followingIdsOf(userId as string),
         publicCandidates(tagFilter),
-        privateCandidates(userId, tagFilter),
-        prisma.tagAffinity.findMany({ where: { userId } }),
+        privateCandidates(userId as string, tagFilter),
+        prisma.tagAffinity.findMany({ where: { userId: userId as string } }),
       ]);
       followingIds = follows;
 
@@ -465,7 +504,7 @@ router.get("/feed", requireAuth, async (req, res) => {
       const authorIds = [...new Set(candidates.map((p) => p.userId))];
       const [mutualRows, followerGroups] = await Promise.all([
         authorIds.length
-          ? prisma.follow.findMany({ where: { followerId: { in: authorIds }, followingId: userId }, select: { followerId: true } })
+          ? prisma.follow.findMany({ where: { followerId: { in: authorIds }, followingId: userId as string }, select: { followerId: true } })
           : Promise.resolve([] as { followerId: string }[]),
         authorIds.length
           ? prisma.follow.groupBy({ by: ["followingId"], where: { followingId: { in: authorIds } }, _count: { _all: true } })
@@ -755,10 +794,12 @@ router.patch("/posts/:id", requireAuth, async (req, res) => {
   }
 });
 
-// GET /api/community/posts/:id — one post, for its permalink page
-router.get("/posts/:id", requireAuth, async (req, res) => {
+// GET /api/community/posts/:id — one post, for its permalink page. Readable
+// without a session when the post is public, so a shared link lands on the
+// post; anything else is refused the same way it is in the feed.
+router.get("/posts/:id", optionalAuth, async (req, res) => {
   try {
-    const userId = req.user!.userId;
+    const userId = req.user?.userId ?? null;
     const id = String(req.params.id);
     const post = (await prisma.post.findUnique({ where: { id }, include: POST_INCLUDE })) as unknown as Candidate | null;
     if (!post) {
@@ -767,10 +808,12 @@ router.get("/posts/:id", requireAuth, async (req, res) => {
     }
     // One lookup serves both the visibility gate and the card's follow state;
     // it used to be asked twice in a row.
-    const following = await prisma.follow.findUnique({
-      where: { followerId_followingId: { followerId: userId, followingId: post.userId } },
-      select: { id: true },
-    });
+    const following = userId
+      ? await prisma.follow.findUnique({
+          where: { followerId_followingId: { followerId: userId, followingId: post.userId } },
+          select: { id: true },
+        })
+      : null;
     // Same visibility rules the feed applies, enforced for the direct link too.
     if (post.visibility !== "public" && post.userId !== userId && !(post.visibility === "followers" && following)) {
       res.status(403).json({ error: "This post isn't shared with you" });
@@ -792,11 +835,11 @@ router.get("/posts/:id", requireAuth, async (req, res) => {
  * like on a just-deleted post is a 404 rather than the foreign-key 500 it
  * used to be.
  */
-async function canSeePost(postId: string, userId: string): Promise<boolean | null> {
+async function canSeePost(postId: string, userId: string | null): Promise<boolean | null> {
   const post = await prisma.post.findUnique({ where: { id: postId }, select: { userId: true, visibility: true } });
   if (!post) return null;
   if (post.visibility === "public" || post.userId === userId) return true;
-  if (post.visibility !== "followers") return false;
+  if (post.visibility !== "followers" || userId === null) return false;
   const following = await prisma.follow.findUnique({
     where: { followerId_followingId: { followerId: userId, followingId: post.userId } },
     select: { id: true },
@@ -805,7 +848,7 @@ async function canSeePost(postId: string, userId: string): Promise<boolean | nul
 }
 
 /** The two refusals every interaction route shares. Returns false after answering. */
-async function gatePost(res: Response, postId: string, userId: string): Promise<boolean> {
+async function gatePost(res: Response, postId: string, userId: string | null): Promise<boolean> {
   const allowed = await canSeePost(postId, userId);
   if (allowed === null) {
     res.status(404).json({ error: "Post not found" });
@@ -1013,9 +1056,9 @@ router.post("/posts/:id/like", requireAuth, async (req, res) => {
 });
 
 // GET /api/community/posts/:id/comments
-router.get("/posts/:id/comments", requireAuth, async (req, res) => {
+router.get("/posts/:id/comments", optionalAuth, async (req, res) => {
   try {
-    const userId = req.user!.userId;
+    const userId = req.user?.userId ?? null;
     const postId = String(req.params.id);
     if (!(await gatePost(res, postId, userId))) return;
     const [comments, post] = await Promise.all([
@@ -1028,7 +1071,7 @@ router.get("/posts/:id/comments", requireAuth, async (req, res) => {
       prisma.post.findUnique({ where: { id: postId }, select: { resolvedCommentId: true } }),
     ]);
     const ids = comments.map((c) => c.id);
-    const myLikes = ids.length
+    const myLikes = ids.length && userId
       ? await prisma.postCommentLike.findMany({ where: { userId, commentId: { in: ids } }, select: { commentId: true } })
       : [];
     const liked = new Set(myLikes.map((l) => l.commentId));
@@ -1042,7 +1085,7 @@ router.get("/posts/:id/comments", requireAuth, async (req, res) => {
         likeCount: c._count.likes,
         likedByMe: liked.has(c.id),
         accepted: post?.resolvedCommentId === c.id,
-        mine: c.userId === userId,
+        mine: userId !== null && c.userId === userId,
       }))
     );
   } catch (err) {
@@ -1527,7 +1570,7 @@ router.get("/me", requireAuth, async (req, res) => {
 });
 
 // GET /api/community/pulse — lightweight activity stats for the sidebar
-router.get("/pulse", requireAuth, async (_req, res) => {
+router.get("/pulse", optionalAuth, async (_req, res) => {
   try {
     res.json(await getPulse());
   } catch (err) {
@@ -1537,7 +1580,7 @@ router.get("/pulse", requireAuth, async (_req, res) => {
 });
 
 // GET /api/community/tags/trending — top tags of the last 7 days
-router.get("/tags/trending", requireAuth, async (_req, res) => {
+router.get("/tags/trending", optionalAuth, async (_req, res) => {
   try {
     res.json(await getTrending());
   } catch (err) {
@@ -1557,7 +1600,7 @@ router.get("/suggestions", requireAuth, async (req, res) => {
 });
 
 // GET /api/community/bulletin — the platform's week in one card, plus today's hunts
-router.get("/bulletin", requireAuth, async (_req, res) => {
+router.get("/bulletin", optionalAuth, async (_req, res) => {
   try {
     res.json(await getBulletin());
   } catch (err) {
@@ -1566,10 +1609,17 @@ router.get("/bulletin", requireAuth, async (_req, res) => {
   }
 });
 
-// GET /api/community/rails — every sidebar rail in one round trip
-router.get("/rails", requireAuth, async (req, res) => {
+// GET /api/community/rails — every sidebar rail in one round trip. A
+// visitor gets the shared three (pulse, trending, bulletin) and nothing
+// personal — no social card, nobody to suggest.
+router.get("/rails", optionalAuth, async (req, res) => {
   try {
-    const userId = req.user!.userId;
+    const userId = req.user?.userId;
+    if (!userId) {
+      const [pulse, trending, bulletin] = await Promise.all([getPulse(), getTrending(), getBulletin()]);
+      res.json({ me: null, suggestions: [], pulse, trending, bulletin });
+      return;
+    }
     // Each value is exactly what its own endpoint returns for this caller; the
     // page used to make five requests for them and now makes one. Three of the
     // five are shared-cache hits in the usual case, so the wall clock is the
