@@ -1,0 +1,46 @@
+# Claude Code in the repository: mention @claude in an issue, a PR comment
+# or a review and it works on a branch and answers with a PR or a comment
+# (anthropics/claude-code-action). Needs the Claude GitHub App installed on
+# the repo (`/install-github-app` from Claude Code, or github.com/apps/claude)
+# and a CLAUDE_CODE_OAUTH_TOKEN repository secret from `claude setup-token`
+# (a Pro/Max subscription; no API key); the App is what lets it push
+# branches and open PRs, which is why the workflow's own token stays read-only.
+# Everything it opens still goes through CI (ci.yml) and branch protection
+# like any other pull request — it proposes, the checks decide.
+name: Claude Code
+
+on:
+  issue_comment:
+    types: [created]
+  pull_request_review_comment:
+    types: [created]
+  issues:
+    types: [opened, assigned]
+  pull_request_review:
+    types: [submitted]
+
+jobs:
+  claude:
+    if: |
+      (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@claude')) ||
+      (github.event_name == 'pull_request_review_comment' && contains(github.event.comment.body, '@claude')) ||
+      (github.event_name == 'pull_request_review' && contains(github.event.review.body, '@claude')) ||
+      (github.event_name == 'issues' && (contains(github.event.issue.body, '@claude') || contains(github.event.issue.title, '@claude')))
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      pull-requests: read
+      issues: read
+      id-token: write
+      # Lets it read CI results on the PR it is working on.
+      actions: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+      - uses: anthropics/claude-code-action@v1
+        with:
+          # A Claude subscription token (`claude setup-token`, Pro/Max), not an
+          # API key: runs count against the plan, nothing is billed per token.
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}

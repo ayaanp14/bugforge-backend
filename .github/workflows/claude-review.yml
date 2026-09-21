@@ -1,0 +1,52 @@
+# A review from Claude on every pull request when it is opened or leaves
+# draft — not on every push, which would bill a review per commit. It reads
+# the diff with the repository's CLAUDE.md as its brief and leaves one
+# comment; it never approves, requests changes or merges. Same App and
+# secret as claude.yml. Delete this file to keep Claude on-demand only
+# (@claude mentions in claude.yml).
+name: Claude Code Review
+
+on:
+  pull_request:
+    types: [opened, ready_for_review]
+
+jobs:
+  review:
+    # Draft PRs wait until they are ready.
+    if: github.event.pull_request.draft == false
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      pull-requests: read
+      issues: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+      - uses: anthropics/claude-code-action@v1
+        with:
+          # A Claude subscription token (`claude setup-token`, Pro/Max), not an
+          # API key: runs count against the plan, nothing is billed per token.
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          prompt: |
+            REPO: ${{ github.repository }}
+            PR NUMBER: ${{ github.event.pull_request.number }}
+
+            Review this pull request as a senior engineer on this codebase.
+            Read the repository's CLAUDE.md first: it records the decisions
+            and constraints a change here must respect (the judge's Node 12,
+            the platform-guard header lists, the CSP, the identifiers that
+            must keep their old names, the caching rules).
+
+            Look for correctness bugs, regressions against those constraints,
+            missing tests where the repository has a test file beside the
+            code, and anything that would only break in production. Do not
+            comment on style the linter already enforces.
+
+            Post one review comment on the PR with `gh pr comment`: the
+            findings ranked by severity with file and line, each with the
+            concrete failure it causes; say plainly when there is nothing
+            worth blocking on. Do not approve, request changes or merge.
+          claude_args: '--allowed-tools "Bash(gh pr comment:*),Bash(gh pr diff:*),Bash(gh pr view:*),Bash(git diff:*),Bash(git log:*)"'

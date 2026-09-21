@@ -1,0 +1,40 @@
+# The gate a pull request has to pass before it can merge to main — and
+# main is what Railway deploys, so this is the only check between a merge
+# and production. Typecheck and the node:test suite, nothing that needs a
+# service: the tests run against fakes (billing.test.ts's in-memory
+# BillingDb, the pure rules in roadmap/study-plans/seo), and DATABASE_URL
+# below only satisfies `prisma generate`, which `npm ci` runs on postinstall
+# and which never opens a connection. Judge0, MySQL and Redis stay out of CI.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Typecheck & test
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      DATABASE_URL: mysql://ci:ci@127.0.0.1:3306/ci
+      JWT_SECRET: ci-only-secret-never-used-for-a-real-token
+      # Telemetry writes and the scheduler would each try the (absent) database.
+      TELEMETRY_DISABLED: "true"
+      JOBS_DISABLED: "true"
+      # No git hooks on a CI checkout.
+      HUSKY: "0"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx tsc --noEmit
+      - run: npm test
