@@ -110,7 +110,7 @@ export const BANK_PERCENTAGES: AptitudeSeed[] = [
   {
     slug: "pc2-successive-increase-decrease",
     topic: "percentages",
-    title: "Up 20%, then down 20%",
+    title: "A salary up 20%, then down 20%",
     prompt: "A salary is **increased by 20%** and the new figure is then **decreased by 20%**. What is the net change?",
     options: ["4% decrease", "No change", "2% increase", "4% increase"],
     answer: 0,

@@ -75,3 +75,24 @@ const CATEGORY_BY_ID = new Map(APTITUDE_CATEGORIES.map((category) => [category.i
 export const aptitudeTopic = (id: string) => TOPIC_BY_ID.get(id);
 export const aptitudeCategory = (id: string) => CATEGORY_BY_ID.get(id as AptitudeCategoryId);
 export const APTITUDE_DIFFICULTIES: AptitudeDifficulty[] = ["easy", "medium", "hard"];
+
+/**
+ * Second-wave questions that restate an earlier one with the same numbers
+ * and the same answer — the same question, twice, at two addresses. Both
+ * rows stay (attempts point at them and either is fine to practise), but
+ * a search engine is told which address is the one: the later question's
+ * page carries the earlier one as its canonical, and only the earlier one
+ * is in the sitemap. Found by scripts/seo-audit.mjs's duplicate-title
+ * check and confirmed by reading the two prompts; a variant with different
+ * numbers is a different question and gets a title of its own instead.
+ */
+export const APTITUDE_CANONICAL: Readonly<Record<string, string>> = {
+  "ag2-mother-daughter-sum-fifty": "ag-mother-daughter-sum",
+  "ag2-product-48-difference-2": "ag-product-and-difference",
+  "av2-misread-entry": "av-misread-entry",
+  "av2-teacher-included": "av-teacher-joins",
+  "rp2-combine-ab-bc": "rp-combine-two-ratios",
+};
+
+/** The slug a question's page should name as canonical — its own unless it is a restatement. */
+export const aptitudeCanonicalSlug = (slug: string): string => APTITUDE_CANONICAL[slug] ?? slug;

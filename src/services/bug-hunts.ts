@@ -1,6 +1,7 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "../lib/prisma.js";
 import { cached, cachedShared } from "../lib/cache.js";
+import { BUG_HUBS, bugHub, type BugHub } from "../lib/bug-hubs.js";
 
 /**
  * Query layer for the bug-hunts index.
@@ -33,6 +34,7 @@ export type BugHuntFilters = {
 
 const SUMMARY_SELECT = {
   id: true,
+  slug: true,
   title: true,
   difficulty: true,
   category: true,
@@ -53,7 +55,7 @@ type Row = Prisma.BugChallengeGetPayload<{ select: typeof SUMMARY_SELECT }>;
  * is revived so the shape a caller sees never depends on which tier answered.
  */
 async function publishedRows(): Promise<Row[]> {
-  const rows = await cachedShared("bug:rows:v1", CATALOGUE_TTL_SECONDS, () =>
+  const rows = await cachedShared("bug:rows:v2", CATALOGUE_TTL_SECONDS, () =>
     prisma.bugChallenge.findMany({
       where: { isPublished: true },
       select: SUMMARY_SELECT,
@@ -227,22 +229,92 @@ function catalogueSummary(rows: Row[], solved: Set<string>) {
  * more than the query it replaces. The order changes only when a hunt is
  * published, which happens through the seed scripts rather than the API.
  */
-function orderedIds(): Promise<{ id: string }[]> {
-  return cached("bug:id-order", 300_000, () =>
+function orderedIds(): Promise<{ id: string; slug: string | null }[]> {
+  return cached("bug:id-order:v2", 300_000, () =>
     prisma.bugChallenge.findMany({
       where: { isPublished: true },
-      select: { id: true },
+      select: { id: true, slug: true },
       orderBy: { createdAt: "desc" },
     }),
   );
 }
 
-/** Previous/next hunt in the default catalogue order, for workspace nav. */
-export async function getNeighbours(id: string) {
+/**
+ * The id behind a public address — a slug, or the id itself for a link
+ * minted before slugs existed — from the cached order, so a hunt's route
+ * never spends a round trip resolving its own parameter. Null for a hunt
+ * that is not published (or not there).
+ */
+export async function bugIdFor(idOrSlug: string): Promise<string | null> {
+  const rows = await orderedIds();
+  const hit = rows.find((r) => r.slug === idOrSlug) ?? rows.find((r) => r.id === idOrSlug);
+  return hit?.id ?? null;
+}
+
+/** The public address of a hunt: its slug, or its id until one is backfilled. */
+export const bugPath = (row: { id: string; slug: string | null }) => `/bug-hunts/${row.slug ?? row.id}`;
+
+/**
+ * Previous/next hunt in the default catalogue order, for workspace nav.
+ * Each neighbour is given by id and by slug so the client links the slug.
+ */
+export async function getNeighbours(idOrSlug: string) {
   const ids = await orderedIds();
-  const i = ids.findIndex((r) => r.id === id);
+  const i = ids.findIndex((r) => r.id === idOrSlug || r.slug === idOrSlug);
+  const prev = i > 0 ? ids[i - 1]! : null;
+  const next = i !== -1 && i < ids.length - 1 ? ids[i + 1]! : null;
   return {
-    prevId: i > 0 ? ids[i - 1]!.id : null,
-    nextId: i !== -1 && i < ids.length - 1 ? ids[i + 1]!.id : null,
+    prevId: prev?.id ?? null,
+    nextId: next?.id ?? null,
+    prevSlug: prev ? prev.slug ?? prev.id : null,
+    nextSlug: next ? next.slug ?? next.id : null,
+  };
+}
+
+/* ── Hub pages ────────────────────────────────────────────────── */
+
+export interface BugHubSummary {
+  id: string;
+  kind: BugHub["kind"];
+  label: string;
+  noun: string;
+  count: number;
+  byDifficulty: Record<string, number>;
+}
+
+export interface BugHubPage extends BugHubSummary {
+  blurb: string;
+  hunts: Array<{ id: string; slug: string | null; title: string; difficulty: string; category: string; language: string; tags: string[]; origin: string | null }>;
+  /** The other hubs, for the "browse by" strip. */
+  related: BugHubSummary[];
+}
+
+const hubRows = (rows: Row[], hub: BugHub) => rows.filter((r) => same(hub.kind === "language" ? r.language : r.category, hub.value));
+
+function hubSummary(hub: BugHub, rows: Row[]): BugHubSummary {
+  const byDifficulty: Record<string, number> = {};
+  for (const r of rows) byDifficulty[r.difficulty] = (byDifficulty[r.difficulty] ?? 0) + 1;
+  return { id: hub.id, kind: hub.kind, label: hub.label, noun: hub.noun, count: rows.length, byDifficulty };
+}
+
+/** Every hub with its counts, from the cached catalogue. */
+export async function bugHubIndex(): Promise<{ languages: BugHubSummary[]; categories: BugHubSummary[] }> {
+  const rows = await publishedRows();
+  const all = BUG_HUBS.map((hub) => hubSummary(hub, hubRows(rows, hub)));
+  return { languages: all.filter((h) => h.kind === "language"), categories: all.filter((h) => h.kind === "category") };
+}
+
+/** One hub's page — its hunts in display order — or null for an unknown id. */
+export async function bugHubPage(id: string): Promise<BugHubPage | null> {
+  const hub = bugHub(id);
+  if (!hub) return null;
+  const rows = await publishedRows();
+  const mine = hubRows(rows, hub);
+  const related = BUG_HUBS.filter((h) => h.id !== id).map((h) => hubSummary(h, hubRows(rows, h)));
+  return {
+    ...hubSummary(hub, mine),
+    blurb: hub.blurb,
+    hunts: mine.map((r) => ({ id: r.id, slug: r.slug, title: r.title, difficulty: r.difficulty, category: r.category, language: r.language, tags: tagsOf(r), origin: r.origin })),
+    related,
   };
 }

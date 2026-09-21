@@ -426,7 +426,7 @@ export const BANK_AVERAGES: AptitudeSeed[] = [
   {
     slug: "av2-five-consecutive-even",
     topic: "averages",
-    title: "Five consecutive even numbers",
+    title: "Five consecutive even numbers, the smallest",
     prompt: "The average of **five consecutive even numbers is 24**. What is the **smallest** of them?",
     options: ["18", "20", "22", "26"],
     answer: 1,

@@ -25,10 +25,15 @@ export function questionIndex(): Promise<DrawableQuestion[]> {
   );
 }
 
-/** The slugs of one topic in order — what "previous" and "next" are read from. */
-export function topicOrder(topic: string): Promise<Array<{ slug: string }>> {
-  return cachedShared(`aptitude:order:v1:${topic}`, 900, () =>
-    prisma.aptitudeQuestion.findMany({ where: { topic }, orderBy: { orderIndex: "asc" }, select: { slug: true } }),
+/**
+ * One topic's questions in order — what "previous" and "next" are read
+ * from, and the "more in this topic" list a question page and its
+ * prerendered HTML both draw. Titles and difficulty ride along (a few
+ * hundred short strings) so neither needs a second read.
+ */
+export function topicOrder(topic: string): Promise<Array<{ slug: string; title: string; difficulty: string }>> {
+  return cachedShared(`aptitude:order:v2:${topic}`, 900, () =>
+    prisma.aptitudeQuestion.findMany({ where: { topic }, orderBy: { orderIndex: "asc" }, select: { slug: true, title: true, difficulty: true } }),
   );
 }
 

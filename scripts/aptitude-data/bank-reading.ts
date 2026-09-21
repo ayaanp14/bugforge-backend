@@ -60,7 +60,7 @@ export const BANK_READING: AptitudeSeed[] = [
   {
     slug: "rc2-monsoon-inference",
     topic: "reading-comprehension",
-    title: "What the passage implies",
+    title: "What the monsoon passage implies",
     prompt: `${PASSAGE_MONSOON}\n\nWhich statement can be **inferred** from the passage?`,
     options: [
       "A season with normal total rainfall can still damage crops.",
@@ -396,7 +396,7 @@ export const BANK_READING: AptitudeSeed[] = [
   {
     slug: "rc2-monsoon-vocabulary",
     topic: "reading-comprehension",
-    title: "A word in context",
+    title: "A word in context: the monsoon passage",
     prompt: `${PASSAGE_MONSOON}\n\nAs used in the passage, **'distribution'** most nearly means:`,
     options: [
       "How the rainfall is spread over time and place",

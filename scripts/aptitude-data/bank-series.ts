@@ -667,7 +667,7 @@ export const BANK_SERIES: AptitudeSeed[] = [
   {
     slug: "ls2-odd-one-out-cubes",
     topic: "number-series",
-    title: "The number that does not belong",
+    title: "The number that is not a square",
     prompt: "Which number does **not** belong?\n\n**4, 9, 16, 24, 36, 49**",
     options: ["9", "16", "24", "36"],
     answer: 2,

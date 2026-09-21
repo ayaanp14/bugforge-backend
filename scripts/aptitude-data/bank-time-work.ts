@@ -225,7 +225,7 @@ export const BANK_TIME_WORK: AptitudeSeed[] = [
   {
     slug: "tw2-alternate-days-20-30",
     topic: "time-and-work",
-    title: "Working on alternate days",
+    title: "Alternate days: 20 and 30 days",
     prompt:
       "**A** can complete a work in **20 days** and **B** in **30 days**. They work on **alternate days**, with A starting. In how many days is the work finished?",
     options: ["22 days", "24 days", "25 days", "26 days"],

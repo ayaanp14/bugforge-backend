@@ -111,7 +111,7 @@ export const BANK_INTEREST: AptitudeSeed[] = [
   {
     slug: "in2-ci-two-years",
     topic: "interest",
-    title: "Compound interest for two years",
+    title: "Compound interest on ₹20,000 for two years",
     prompt:
       "What is the **compound interest** on **₹20,000** at **10% per annum** for **2 years**, compounded annually?",
     options: ["₹4,000", "₹4,200", "₹4,400", "₹4,800"],
@@ -175,7 +175,7 @@ export const BANK_INTEREST: AptitudeSeed[] = [
   {
     slug: "in2-ci-half-yearly",
     topic: "interest",
-    title: "Compounded half-yearly",
+    title: "₹8,000 compounded half-yearly",
     prompt:
       "What is the **compound interest** on **₹8,000** at **20% per annum** for **1 year**, compounded **half-yearly**?",
     options: ["₹1,600", "₹1,680", "₹1,720", "₹1,800"],
@@ -208,7 +208,7 @@ export const BANK_INTEREST: AptitudeSeed[] = [
   {
     slug: "in2-ci-principal-from-amount",
     topic: "interest",
-    title: "Working back to the principal",
+    title: "Principal from ₹9,261 in three years",
     prompt:
       "A sum amounts to **₹9,261** in **3 years** at **5% per annum compound interest**. What was the **principal**?",
     options: ["₹7,500", "₹8,000", "₹8,400", "₹8,500"],

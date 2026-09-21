@@ -7,6 +7,7 @@ import { browserCache } from "../lib/http-cache.js";
 import { getCatalogue, listProblemsWithStatus, loadProblemState, problemIdBySlug, type ProblemState } from "../services/dashboard.js";
 import { isCompanyTag } from "../lib/companies.js";
 import { isJudgeLanguage } from "../lib/judge0.js";
+import { hubIndex, hubPage, hubsForTags, relatedProblems } from "../services/problem-hubs.js";
 
 const router = Router();
 
@@ -17,7 +18,7 @@ const router = Router();
  * round trip instead of three (the problem with its visible cases, then the
  * neighbour on either side).
  */
-const problemKey = (slug: string) => `problem:v1:${slug}`;
+const problemKey = (slug: string) => `problem:v2:${slug}`;
 
 /**
  * The editorial and its per-language solutions live under their own key. They
@@ -323,6 +324,44 @@ router.get("/companies", browserCache(300, { shared: true }), async (_req, res) 
   }
 });
 
+/**
+ * The catalogue's hub pages (services/problem-hubs): every topic and company
+ * with its counts, and one hub with its whole problem list. Both are walks
+ * over the in-memory catalogue, shared-cached at the edge like the strips
+ * above. Declared before /:slug so "hubs" is never read as a problem.
+ *
+ *   GET /api/problems/hubs                 → { topics, companies, uncovered }
+ *   GET /api/problems/hubs/topic/arrays    → the hub page, or 404
+ *   GET /api/problems/hubs/company/amazon
+ */
+router.get("/hubs", browserCache(300, { shared: true }), async (_req, res) => {
+  try {
+    res.json(await hubIndex());
+  } catch (err) {
+    console.error("GET /api/problems/hubs error:", err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.get("/hubs/:kind/:slug", browserCache(300, { shared: true }), async (req, res) => {
+  try {
+    const kind = req.params["kind"];
+    if (kind !== "topic" && kind !== "company") {
+      res.status(404).json({ error: "No such hub" });
+      return;
+    }
+    const page = await hubPage(kind, String(req.params["slug"]).toLowerCase());
+    if (!page) {
+      res.status(404).json({ error: "No such hub" });
+      return;
+    }
+    res.json(page);
+  } catch (err) {
+    console.error("GET /api/problems/hubs/:kind/:slug error:", err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 // 2. GET /api/problems/[slug] — Problem detail
 router.get("/:slug", optionalAuth, browserCache(120, { shared: true }), async (req, res) => {
   try {
@@ -352,10 +391,22 @@ router.get("/:slug", optionalAuth, browserCache(120, { shared: true }), async (r
         }),
       ]);
 
+      // Where the reader goes next, and where this problem sits: the hubs
+      // its tags link to and six problems of the same topic (in-memory,
+      // services/problem-hubs). Cached with the statement, so a visit costs
+      // the same one round trip it did.
+      const tags = Array.isArray(problem.tags) ? (problem.tags as string[]) : [];
+      const [related, hubs] = await Promise.all([relatedProblems(problem.slug, tags, problem.difficulty), hubsForTags(tags)]);
+
       return {
         ...problem,
         prevSlug: prevProblem?.slug || null,
         nextSlug: nextProblem?.slug || null,
+        // The topic tags alone: what the page's structured data lists as
+        // what the problem teaches (a company is not a topic).
+        topics: tags.filter((t) => !isCompanyTag(t)),
+        related,
+        hubs,
       };
     });
 

@@ -10,7 +10,8 @@ import { headFor, sitemapXml } from "../services/seo.js";
  * shows to visitors anyway, and they answer with cache headers the edge
  * honours, so the API sees one request per URL per hour, not one per crawl.
  *
- *   GET /api/seo/head?path=/problems/two-sum   → { path, title, description }
+ *   GET /api/seo/head?path=/problems/two-sum   → { path, title, description, content, facts }
+ *                                                 { redirect } when the address has moved
  *                                                 or 404 when nothing is there
  *   GET /api/seo/sitemaps/problems.xml         → a sitemap of that content
  */
@@ -24,6 +25,8 @@ router.get("/head", async (req, res) => {
     return;
   }
   const head = await headFor(path);
+  // An hour for a page or a redirect, five minutes for a miss: content
+  // appears by seeding, and a 404 must not outlive the seed by much.
   res.setHeader("Cache-Control", head ? "public, max-age=3600, stale-while-revalidate=86400" : "public, max-age=300");
   if (!head) {
     res.status(404).json({ error: "No public page at that path" });

@@ -201,7 +201,7 @@ export const BANK_ANALOGIES: AptitudeSeed[] = [
   {
     slug: "an2-square-of-nine",
     topic: "analogies-classification",
-    title: "A numerical analogy",
+    title: "Square analogy: 7 : 49 :: 11 : ?",
     prompt: "**7 : 49 :: 11 : ?**",
     options: ["77", "111", "121", "132"],
     answer: 2,

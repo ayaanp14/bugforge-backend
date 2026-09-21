@@ -246,7 +246,7 @@ export const BANK_REASONING_TOPUP: AptitudeSeed[] = [
   {
     slug: "sa3-ordering-middle",
     topic: "seating-arrangement",
-    title: "Who is in the middle",
+    title: "Who is in the middle by height",
     prompt:
       "**P is taller than Q**, **R is shorter than Q**, **S is taller than P**, and **T is shorter than R**. Who is **third tallest**?",
     options: ["P", "Q", "R", "S"],

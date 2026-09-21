@@ -328,7 +328,7 @@ export const BANK_CODING: AptitudeSeed[] = [
   {
     slug: "cd2-substitution-language-play",
     topic: "coding-decoding",
-    title: "A substitution language",
+    title: "A substitution language: good boys play",
     prompt:
       "In a certain language:\n\n- **'nik ka pa'** means **'you are good'**\n- **'ka la ma'** means **'good boys play'**\n- **'pa ni ma'** means **'you play cricket'**\n\nWhich word means **'play'**?",
     options: ["ka", "la", "ma", "pa"],

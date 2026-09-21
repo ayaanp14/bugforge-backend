@@ -12,6 +12,8 @@
 import "dotenv/config";
 import { prisma } from "../src/lib/prisma.js";
 import { judgeBugProject } from "../src/lib/bug-judge.js";
+import { uniqueSlug } from "../src/lib/slug.js";
+import { BUG_HUB_IDS } from "../src/lib/bug-hubs.js";
 import { type BugSpec } from "./bugs-data.js";
 import { ALL_BUGS } from "./bugs-catalog.js";
 import { ORIGINS } from "./bugs-origins.js";
@@ -38,8 +40,20 @@ async function seed() {
   const list = specs();
   console.log(`Seeding ${list.length} bug challenges…`);
   for (const spec of list) {
-    const existing = await prisma.bugChallenge.findFirst({ where: { title: spec.title }, select: { id: true } });
+    const existing = await prisma.bugChallenge.findFirst({ where: { title: spec.title }, select: { id: true, slug: true } });
+    // The public address, from the title (lib/slug): kept once set, so a
+    // retitled hunt does not move — its URL may already be indexed. Never a
+    // hub id (/bug-hunts/javascript is a page of its own) and never another
+    // hunt's.
+    const slug =
+      existing?.slug ??
+      (await uniqueSlug(
+        spec.title,
+        async (candidate) => (await prisma.bugChallenge.count({ where: { slug: candidate } })) > 0,
+        BUG_HUB_IDS,
+      ));
     const data = {
+      slug,
       title: spec.title,
       difficulty: spec.difficulty,
       category: spec.category,

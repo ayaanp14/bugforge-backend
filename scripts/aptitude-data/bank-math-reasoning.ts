@@ -228,7 +228,7 @@ export const BANK_MATH_REASONING: AptitudeSeed[] = [
   {
     slug: "mr2-statement-assumption-advert",
     topic: "mathematical-reasoning",
-    title: "Statement and assumption",
+    title: "Statement and assumption: the institute's advertisement",
     prompt:
       "**Statement:** *'Enrol in our institute and secure a government job.'*\n\n**Assumptions:**\nI. People are interested in government jobs.\nII. No one can get a government job without this institute.\n\nWhich assumption is implicit?",
     options: ["Only I", "Only II", "Both", "Neither"],

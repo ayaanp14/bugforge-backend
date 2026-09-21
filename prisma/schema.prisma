@@ -231,6 +231,13 @@ model Submission {
 
 model BugChallenge {
   id          String          @id @default(cuid())
+  /// The public address (/bug-hunts/<slug>), derived from the title by
+  /// lib/slug.ts and written by seed-bugs.ts. Optional only so a database that
+  /// predates the column keeps serving until scripts/backfill-bug-slugs.ts has
+  /// run; a row without one stays reachable by id, and an id address 301s to
+  /// the slug once it exists. The cuid sat in every public URL for a year — a
+  /// crawler's address for a page should be its title, not a database key.
+  slug        String?         @unique
   title       String
   difficulty  String
   category    String

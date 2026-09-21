@@ -91,7 +91,7 @@ export const BANK_MIXTURES_MENSURATION: AptitudeSeed[] = [
   {
     slug: "ma2-alloy-copper-tin",
     topic: "mixtures-alligation",
-    title: "Blending two alloys",
+    title: "Blending a 60% and a 20% copper alloy",
     prompt:
       "Alloy A contains **60% copper** and alloy B contains **20% copper**. In what **ratio** must they be mixed to obtain an alloy with **45% copper**?",
     options: ["3 : 5", "5 : 3", "4 : 3", "3 : 4"],

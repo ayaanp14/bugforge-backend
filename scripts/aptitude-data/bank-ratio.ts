@@ -398,7 +398,7 @@ export const BANK_RATIO: AptitudeSeed[] = [
   {
     slug: "rp2-men-days-inverse",
     topic: "ratio-and-proportion",
-    title: "More men, fewer days",
+    title: "Fewer days, more men",
     prompt: "**15 men** can complete a piece of work in **20 days**. How many **men** are needed to finish it in **12 days**?",
     options: ["18", "20", "25", "30"],
     answer: 2,

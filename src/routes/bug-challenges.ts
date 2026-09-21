@@ -10,6 +10,9 @@ import { ENGINE_DOWN_MESSAGE, isEngineDown } from "../lib/engine-error.js";
 import { checkBugQuota } from "../services/entitlements.js";
 import {
   DEFAULT_PAGE_SIZE,
+  bugHubIndex,
+  bugHubPage,
+  bugIdFor,
   getBugHuntIndex,
   getBugHuntPage,
   getNeighbours,
@@ -64,6 +67,38 @@ router.get("/", optionalAuth, async (req, res) => {
     );
   } catch (err) {
     console.error("GET /api/bug-challenges error:", err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+/**
+ * The hub pages (lib/bug-hubs): one per language and one per category,
+ * each the whole slice of the catalogue in display order. Read from the
+ * cached rows, so neither costs a query. Declared before /:id so "hubs" is
+ * never taken for a hunt.
+ *
+ *   GET /api/bug-challenges/hubs             → { languages, categories }
+ *   GET /api/bug-challenges/hubs/javascript  → the hub page, or 404
+ */
+router.get("/hubs", async (_req, res) => {
+  try {
+    res.json(await bugHubIndex());
+  } catch (err) {
+    console.error("GET /api/bug-challenges/hubs error:", err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.get("/hubs/:id", async (req, res) => {
+  try {
+    const page = await bugHubPage(String(req.params.id).toLowerCase());
+    if (!page) {
+      res.status(404).json({ error: "No such hub" });
+      return;
+    }
+    res.json(page);
+  } catch (err) {
+    console.error("GET /api/bug-challenges/hubs/:id error:", err);
     res.status(500).json({ error: "Internal server error" });
   }
 });
@@ -164,7 +199,14 @@ router.get("/stats/me", requireAuth, async (req, res) => {
 // caller's own, and a stale copy of any of them is worse than the round trip.
 router.get("/:id", optionalAuth, async (req, res) => {
   try {
-    const challengeId = String(req.params.id);
+    // The address is the slug (/bug-hunts/the-checkout-meltdown) or, on a
+    // link minted before slugs existed, the id; the cached order resolves
+    // either without a round trip. Unknown or unpublished is a 404 either way.
+    const challengeId = await bugIdFor(String(req.params.id));
+    if (!challengeId) {
+      res.status(404).json({ error: "Challenge not found" });
+      return;
+    }
 
     // One parallel batch instead of four sequential round-trips
     const [challenge, hiddenCount, submissions, liveDuel] = await Promise.all([
@@ -208,6 +250,7 @@ router.get("/:id", optionalAuth, async (req, res) => {
       // hunt, or null (also null when signed out).
       activeDuelId: liveDuel?.id ?? null,
       id: challenge.id,
+      slug: challenge.slug,
       title: challenge.title,
       difficulty: challenge.difficulty,
       category: challenge.category,
@@ -275,8 +318,14 @@ router.post("/:id/run", requireAuth, executionLimiter, async (req, res) => {
     }
     const editedFiles = edited.files;
 
+    // By id from the workspace, by slug from anywhere else — both resolve.
+    const runId = await bugIdFor(String(req.params.id));
+    if (!runId) {
+      res.status(404).json({ error: "Challenge not found" });
+      return;
+    }
     const challenge = await prisma.bugChallenge.findUnique({
-      where: { id: String(req.params.id) },
+      where: { id: runId },
       select: {
         ...JUDGE_CHALLENGE_SELECT,
         tests: { where: { isHidden: false }, select: { name: true, runCommand: true } },
@@ -336,7 +385,11 @@ router.post("/:id/submit", requireAuth, executionLimiter, async (req, res) => {
     }
     const editedFiles = edited.files;
     const userId = req.user!.userId;
-    const challengeId = String(req.params.id);
+    const challengeId = await bugIdFor(String(req.params.id));
+    if (!challengeId) {
+      res.status(404).json({ error: "Challenge not found" });
+      return;
+    }
 
     // A bug already worked today is always allowed through, so the daily
     // allowance buys distinct challenges rather than attempts — the first

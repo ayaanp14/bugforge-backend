@@ -4,15 +4,20 @@ import { optionalAuth, requireAuth } from "../middleware/auth.js";
 import { questionBySlug, questionIndex, topicOrder } from "../services/aptitude-bank.js";
 import { cachedShared } from "../lib/cache.js";
 import { browserCache } from "../lib/http-cache.js";
-import { APTITUDE_CATEGORIES, APTITUDE_DIFFICULTIES, APTITUDE_TOPICS, aptitudeTopic, type AptitudeDifficulty } from "../lib/aptitude-topics.js";
+import { APTITUDE_CATEGORIES, APTITUDE_DIFFICULTIES, APTITUDE_TOPICS, aptitudeCanonicalSlug, aptitudeCategory, aptitudeTopic, type AptitudeDifficulty } from "../lib/aptitude-topics.js";
 
 /**
  * Aptitude preparation.
  *
  * The bank is read-only content (see scripts/seed-aptitude.ts); what a
- * candidate does with it is an AptitudeAttempt row per answer. Answers and
- * solutions leave the server only after an attempt — or on a question the
- * candidate has already attempted, so a revisit shows what they learned.
+ * candidate does with it is an AptitudeAttempt row per answer. For a
+ * signed-in candidate the answer and solution leave the server only after
+ * an attempt — or on a question already attempted, so a revisit shows what
+ * they learned. A visitor (no account, so no attempt to record and no
+ * stats to keep honest) gets the worked solution with the question, behind
+ * a disclosure on the page: the question pages are public and indexed, and
+ * a question without its answer is a page nobody would search for. The
+ * practice rule holds where it matters — on an account.
  */
 const router = Router();
 
@@ -210,14 +215,23 @@ router.get("/questions/:slug", optionalAuth, browserCache(120), async (req: any,
     ]);
     const index = siblings.findIndex((s) => s.slug === question.slug);
     const solved = attempts.some((a) => a.correct);
-    const revealed = attempts.length > 0;
+    // A member has earned the reveal by attempting; a visitor is shown it.
+    const revealed = userId ? attempts.length > 0 : true;
+    // Six neighbours in topic order — the three before and the three
+    // after, padded from either side at the ends — for "more in this topic".
+    const start = Math.max(0, Math.min(index - 3, siblings.length - 7));
+    const related = siblings.filter((s, i) => i >= start && i < start + 7 && s.slug !== question.slug).slice(0, 6);
 
     res.json({
       question: {
         slug: question.slug,
+        // The address the page names as canonical: its own, or the original
+        // it restates (lib/aptitude-topics APTITUDE_CANONICAL).
+        canonicalSlug: aptitudeCanonicalSlug(question.slug),
         topic: question.topic,
         topicLabel: topic?.label ?? question.topic,
         category: question.category,
+        categoryLabel: aptitudeCategory(question.category)?.label ?? question.category,
         title: question.title,
         prompt: question.prompt,
         options: question.options,
@@ -228,9 +242,11 @@ router.get("/questions/:slug", optionalAuth, browserCache(120), async (req: any,
       },
       position: { index: index + 1, total: siblings.length },
       neighbours: { prev: siblings[index - 1]?.slug ?? null, next: siblings[index + 1]?.slug ?? null },
-      status: solved ? "solved" : revealed ? "attempted" : "new",
+      status: solved ? "solved" : attempts.length > 0 ? "attempted" : "new",
       attempts,
-      // What the candidate already earned the right to see.
+      related,
+      // What the candidate already earned the right to see — or, for a
+      // visitor, what the page offers behind "Show the answer".
       reveal: revealed ? { answer: question.answer, solution: question.solution, approach: question.approach } : null,
     });
   } catch (error: any) {

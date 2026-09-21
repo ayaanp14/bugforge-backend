@@ -25,6 +25,10 @@ export function browserCache(
     const signedIn =
       Boolean(req.headers.authorization) || /(?:^|;\s*)__session=/.test(req.headers.cookie ?? "");
     if (shared || !signedIn) res.setHeader("Cache-Control", value);
+    // The anonymous copy must not answer the same tab once it has signed
+    // in: a visitor's aptitude question carries the worked solution, a
+    // member's does not until an attempt. Keyed on the header that changes.
+    if (!shared) res.vary("Authorization");
     next();
   };
 }

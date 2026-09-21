@@ -15,7 +15,7 @@ import { studyBandFor } from "./study-plans.js";
  * GET /api/me/dashboard endpoint. Each returns exactly the JSON its route used to.
  */
 
-type CatalogueRow = {
+export type CatalogueRow = {
   id: string;
   title: string;
   slug: string;

@@ -414,7 +414,7 @@ export const BANK_FINAL: AptitudeSeed[] = [
   {
     slug: "rc3-rail-inference",
     topic: "reading-comprehension",
-    title: "What the passage implies",
+    title: "What the railway passage implies",
     prompt: `${PASSAGE_RAIL}\n\nWhich statement can be **inferred** from the passage?`,
     options: [
       "Technical requirements can change social conventions without public debate.",
@@ -455,7 +455,7 @@ export const BANK_FINAL: AptitudeSeed[] = [
   {
     slug: "rc3-rail-vocabulary",
     topic: "reading-comprehension",
-    title: "A word in context",
+    title: "A word in context: the railway passage",
     prompt: `${PASSAGE_RAIL}\n\nAs used in the passage, **'intolerable'** most nearly means:`,
     options: ["Unbearable in practice", "Physically painful", "Illegal", "Expensive"],
     answer: 0,
