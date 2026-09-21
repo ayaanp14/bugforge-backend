@@ -252,6 +252,7 @@ export async function recordContestSubmission(
   invalidate(boardKey(contest.id));
   invalidate(standingsKey("month", contest.date.slice(0, 7)));
   invalidate(standingsKey("all"));
+  invalidate(calendarKey(contest.date.slice(0, 7), todayUtc()));
   return {
     date: contest.date,
     solved: true,
@@ -421,11 +422,14 @@ export interface CalendarDay {
  * visited) are created here so the record has no holes; a future day shows
  * only its weekday difficulty.
  */
-export async function calendarMonth(month: string, userId: string | null, today = todayUtc()) {
-  const start = `${month}-01`;
-  const daysInMonth = new Date(Date.UTC(Number(month.slice(0, 4)), Number(month.slice(5, 7)), 0)).getUTCDate();
-  const end = `${month}-${String(daysInMonth).padStart(2, "0")}`;
+const calendarKey = (month: string, today: string) => `contest:calendar:${month}:${today}`;
 
+/**
+ * The month's contests with their solver counts, every day between the
+ * first contest ever held and today materialised — the part of the
+ * calendar that is the same for every reader.
+ */
+async function monthContests(start: string, end: string, today: string) {
   const [contests, first] = await Promise.all([
     prisma.dailyContest.findMany({
       where: { date: { gte: start, lte: end } },
@@ -443,10 +447,26 @@ export async function calendarMonth(month: string, userId: string | null, today 
     const made = await ensureContest(d);
     if (made) byDate.set(d, { id: made.id, date: made.date, difficulty: made.difficulty, problem: { slug: made.problem.slug, title: made.problem.title }, _count: { entries: 0 } });
   }
+  return [...byDate.values()];
+}
 
-  const mine = userId
-    ? await prisma.dailyContestEntry.findMany({ where: { userId, date: { gte: start, lte: end } }, select: { date: true, solvedAt: true } })
-    : [];
+export async function calendarMonth(month: string, userId: string | null, today = todayUtc()) {
+  const start = `${month}-01`;
+  const daysInMonth = new Date(Date.UTC(Number(month.slice(0, 4)), Number(month.slice(5, 7)), 0)).getUTCDate();
+  const end = `${month}-${String(daysInMonth).padStart(2, "0")}`;
+
+  // The shared part is two round trips to the database (~1 s from Railway
+  // to the cPanel host) for an answer every reader gets alike, and the
+  // calendar was the request the catalogue page's critical path ended on
+  // (2026-09-22): held for 30 s like the standings, keyed on today so the
+  // new day's row is there at midnight, dropped when a solve lands so the
+  // counts stay exact. A reader's own marks are one query, always live,
+  // and leave with it rather than after it.
+  const [contests, mine] = await Promise.all([
+    cached(calendarKey(month, today), 30_000, () => monthContests(start, end, today)),
+    userId ? prisma.dailyContestEntry.findMany({ where: { userId, date: { gte: start, lte: end } }, select: { date: true, solvedAt: true } }) : [],
+  ]);
+  const byDate = new Map(contests.map((c) => [c.date, c]));
   const mineByDate = new Map(mine.map((e) => [e.date, e]));
 
   const days: CalendarDay[] = [];
