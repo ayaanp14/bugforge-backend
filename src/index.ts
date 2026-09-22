@@ -42,6 +42,7 @@ import { readUsername } from "./lib/identity.js";
 import { securityHeaders } from "./middleware/security-headers.js";
 import { authLimiter, generalLimiter, loginAccountLimiter, otpRequestLimiter } from "./middleware/rate-limit.js";
 import { prisma } from "./lib/prisma.js";
+import { ROBOTS_TXT } from "./lib/robots.js";
 import { setIo, duelRoom } from "./lib/realtime.js";
 import { warmRedis, closeRedis } from "./lib/redis.js";
 import { startCacheInvalidationListener } from "./lib/cache.js";
@@ -876,12 +877,38 @@ app.use("/api", (_req, res) => {
   res.status(404).json({ error: "Not found" });
 });
 
-// The API is not a website. A crawler that reaches this host (it is linked
+// The API is not a website: a crawler that reaches this host (it is linked
 // from the SPA's CSP, and an OAuth redirect or a shared link can land it
-// here) is told to leave; every response also carries X-Robots-Tag: noindex
-// (middleware/security-headers) for anything fetched regardless.
+// here) has nothing to index, and every response says so with
+// X-Robots-Tag: noindex, nofollow (middleware/security-headers).
+//
+// But /api/ must stay *crawlable*, which is not the same thing. This host
+// was `Disallow: /` outright until 2026-09-22, and that is what a rendering
+// crawler obeys when the SPA fetches its content: "Google Search won't
+// render JavaScript from blocked files or on blocked pages" — Googlebot
+// skips the request entirely rather than making it and discarding the
+// answer. So every page whose words come from this API rendered its
+// empty state for Google and was filed as a **soft 404**: a study lesson
+// came out as "That lesson does not exist.", a problem as "Problem not
+// found", a topic hub and an aptitude section likewise — and the article
+// the Worker writes into the HTML could not save them, because the boot
+// script hides it the moment the app takes over (lib/seo/prerender,
+// `data-app`). Roughly 2,400 indexable URLs, every one of them content
+// pages.
+//
+// Disallow and noindex answer different questions and do not substitute
+// for each other: the disallow is what kept Google from ever reading the
+// noindex. Allowing /api/ costs nothing — these reads are public
+// (optionalAuth) and reachable with or without a robots rule, which is
+// advisory — and the noindex header keeps the JSON itself out of the
+// index, now that a crawler is allowed to fetch it and see it. The
+// disallow stays for everything else on the host.
+//
+// Allow before Disallow for readability only; a crawler picks the most
+// specific match, not the first. The rules live in lib/robots.ts so
+// robots.test.ts can assert them — importing this file starts a server.
 app.get("/robots.txt", (_req, res) => {
-  res.type("text/plain").send(["User-agent: *", "Disallow: /", ""].join("\n"));
+  res.type("text/plain").send(ROBOTS_TXT);
 });
 
 /**
