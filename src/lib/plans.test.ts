@@ -162,8 +162,8 @@ describe("quota windows", () => {
 
 describe("owner accounts", () => {
   it("always includes the built-in owners, case-insensitively", () => {
-    assert.equal(isOwnerEmail("ayaanpathan14@gmail.com", {}), true);
-    assert.equal(isOwnerEmail("  AyaanPathan14@Gmail.com ", {}), true);
+    assert.equal(isOwnerEmail("tabassump8319@gmail.com", {}), true);
+    assert.equal(isOwnerEmail("  TabassumP8319@Gmail.com ", {}), true);
     assert.equal(isOwnerEmail("kingsenterprises1414@gmail.com", {}), true);
     assert.equal(isOwnerEmail(" KingsEnterprises1414@Gmail.com ", {}), true);
     assert.equal(isOwnerEmail("someone@example.com", {}), false);
@@ -175,7 +175,7 @@ describe("owner accounts", () => {
     const env = { OWNER_EMAILS: "a@x.com, B@Y.com ,," };
     assert.equal(isOwnerEmail("a@x.com", env), true);
     assert.equal(isOwnerEmail("b@y.com", env), true);
-    assert.equal(isOwnerEmail("ayaanpathan14@gmail.com", env), true);
+    assert.equal(isOwnerEmail("tabassump8319@gmail.com", env), true);
     assert.equal(isOwnerEmail("c@z.com", env), false);
   });
 

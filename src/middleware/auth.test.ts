@@ -15,14 +15,16 @@ describe("isAdminEmail", () => {
     assert.equal(isAdminEmail("a@x.com", env), true);
     assert.equal(isAdminEmail("b@y.com", env), true);
     assert.equal(isAdminEmail("c@z.com", env), false);
-    // The address that used to ship in source is an admin only when the
-    // environment names it (QA-039).
-    assert.equal(isAdminEmail("tabassump8319@gmail.com", {} as NodeJS.ProcessEnv), false);
-    assert.equal(isAdminEmail("  Tabassump8319@Gmail.com ", { ADMIN_EMAIL: "tabassump8319@gmail.com" } as NodeJS.ProcessEnv), true);
+    // There is no built-in admin: an address is an admin only when the
+    // environment names it, or when it is a built-in owner (QA-039). This uses
+    // a neutral address to keep those two rules apart — the owner list moved to
+    // tabassump8319@gmail.com, which now passes by the owner rule instead.
+    assert.equal(isAdminEmail("nobody@example.com", {} as NodeJS.ProcessEnv), false);
+    assert.equal(isAdminEmail("  Nobody@Example.com ", { ADMIN_EMAIL: "nobody@example.com" } as NodeJS.ProcessEnv), true);
   });
 
   it("treats the owner accounts as admins", () => {
-    assert.equal(isAdminEmail("ayaanpathan14@gmail.com", {} as NodeJS.ProcessEnv), true);
+    assert.equal(isAdminEmail("tabassump8319@gmail.com", {} as NodeJS.ProcessEnv), true);
     assert.equal(isAdminEmail("x@y.com", { OWNER_EMAILS: "x@y.com" } as NodeJS.ProcessEnv), true);
   });
 
