@@ -1,17 +1,20 @@
 /**
- * Outbound mail.
+ * Outbound mail — the reminders (streak at risk, daily kata, weekly digest).
  *
- * The API has no mail provider of its own: the OTP and the registration
- * welcome both go out by posting a JSON body to a hosted flow (see
- * routes/auth.ts), which renders and sends the message. Reminders use the
- * same shape through one more flow URL, so adding a mail costs a template on
- * that side and a call here — and no SMTP credentials in this process.
+ * Brevo first (`BREVO_API_KEY`, lib/brevo), the hosted flow second
+ * (`EMAIL_WEBHOOK_URL`), the same order the one-time codes use in
+ * auth-mail.ts, so one provider serves both and neither depends on which
+ * deployment has been wired.
  *
- * Unset EMAIL_WEBHOOK_URL is a deliberate state, not a failure: local
- * development and any deployment that has not wired the flow yet simply skip
- * the send. In-app notifications are written regardless, so the reminder
- * still exists; it just does not leave the product.
+ * Having neither is a deliberate state, not a failure: local development and
+ * any deployment without credentials simply skip the send. In-app
+ * notifications are written regardless, so the reminder still exists; it just
+ * does not leave the product. That is also why nothing here throws — a
+ * reminder that could not be mailed is not worth failing a scheduled job
+ * over, and the caller counts the outcome instead.
  */
+
+import { brevoConfigured, sendTransactional } from "./brevo.js";
 
 export interface OutboundEmail {
   to: string;
@@ -28,8 +31,14 @@ const SEND_TIMEOUT_MS = 10_000;
 
 let announcedDisabled = false;
 
+/** Reminder copy is ours, not a user's, but it names problems and usernames
+ *  — so it is escaped before it is dropped into the HTML alternative. */
+function escapeHtml(s: string): string {
+  return s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c] as string);
+}
+
 export function emailEnabled(env: NodeJS.ProcessEnv = process.env): boolean {
-  return Boolean(env["EMAIL_WEBHOOK_URL"]);
+  return brevoConfigured(env) || Boolean(env["EMAIL_WEBHOOK_URL"]);
 }
 
 /**
@@ -38,11 +47,29 @@ export function emailEnabled(env: NodeJS.ProcessEnv = process.env): boolean {
  * the caller counts the outcome instead.
  */
 export async function sendEmail(mail: OutboundEmail, env: NodeJS.ProcessEnv = process.env): Promise<boolean> {
+  if (brevoConfigured(env)) {
+    const sent = await sendTransactional(
+      {
+        to: mail.to,
+        subject: mail.subject,
+        // A reminder that gave the flow only text relied on it to wrap the
+        // HTML. Nothing wraps it now, so a plain <pre> keeps the line breaks
+        // the copy was written with rather than collapsing them.
+        html: mail.html ?? `<pre style="font:15px/1.6 -apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;white-space:pre-wrap">${escapeHtml(mail.text)}</pre>`,
+        text: mail.text,
+        tags: ["reminder", mail.kind],
+      },
+      env,
+    );
+    if (sent) return true;
+    // Fall through to the flow if one is configured; the reason is logged.
+  }
+
   const url = env["EMAIL_WEBHOOK_URL"];
   if (!url) {
     if (!announcedDisabled) {
       announcedDisabled = true;
-      console.log("[email] EMAIL_WEBHOOK_URL not set — reminder mail is skipped (in-app notifications still go out)");
+      console.log("[email] no BREVO_API_KEY and no EMAIL_WEBHOOK_URL — reminder mail is skipped (in-app notifications still go out)");
     }
     return false;
   }

@@ -1,21 +1,29 @@
 import type { ChallengePurpose } from "./otp-store.js";
+import { brevoConfigured, sendTransactional } from "./brevo.js";
+import { codeHtml, codeSubject, codeText } from "./auth-mail-copy.js";
 
 /**
  * Delivering one-time codes, and whether an address has to be verified.
  *
- * The reset code used to be posted to a hosted-flow URL written into the
- * route. That URL now comes from `OTP_FLOW_URL`. In production the published
- * value is still the fallback so a deployment that has not set the variable
- * keeps sending — it has sat in this repository's history for months, so the
- * fallback adds no exposure, but the operator should move the flow and set
- * the variable. Verification codes take the same road, with a `purpose`
- * field the flow can branch on.
+ * Three roads, tried in order, because the deployments are at different
+ * stages and a sign-up must not depend on which:
  *
- * A development process with no flow configured prints the code to its own
- * console: that is how a local sign-up or reset is completed, and it means a
- * developer's machine never mails real addresses by accident. Never in
- * production — a log line is not a private channel — where a missing flow is
- * reported as the failure it is.
+ *  1. **Brevo** (`BREVO_API_KEY`), which is how codes actually go out. The
+ *     message is composed here — subject, HTML and text in auth-mail-copy —
+ *     so the wording lives in this repository rather than in a form on
+ *     someone's dashboard, and changes with a commit.
+ *  2. **The hosted flow** (`OTP_FLOW_URL`), the previous arrangement, kept
+ *     as the fallback: a deployment that has not been given a key keeps
+ *     sending rather than locking every new account out. In production the
+ *     URL published in this repository's history is the last resort.
+ *  3. **The console**, in development only. That is how a local sign-up or
+ *     reset is completed, and it means a developer's machine never mails a
+ *     real address by accident. Never in production — a log line is not a
+ *     private channel — where having no road at all is the failure it is.
+ *
+ * Whichever road is taken, the caller is told only whether something
+ * accepted the message, never why not: the client's answer is identical
+ * either way, so an address cannot be tested through a delivery failure.
  */
 
 const IS_PROD = process.env["NODE_ENV"] === "production";
@@ -32,6 +40,25 @@ const SEND_TIMEOUT_MS = 10_000;
  */
 export async function sendAuthCode(email: string, otp: string, purpose: ChallengePurpose, env: NodeJS.ProcessEnv = process.env): Promise<boolean> {
   const isProd = env["NODE_ENV"] === "production";
+
+  if (brevoConfigured(env)) {
+    const sent = await sendTransactional(
+      {
+        to: email,
+        subject: codeSubject(purpose),
+        html: codeHtml(otp, purpose),
+        text: codeText(otp, purpose),
+        tags: ["otp", purpose],
+      },
+      env,
+    );
+    if (sent) return true;
+    // Fall through rather than fail: a key that has hit its daily cap or a
+    // provider having a bad minute should not lock out a sign-up when the
+    // flow is still configured. The reason is already in the log.
+    console.error(`[auth] Brevo did not accept the ${purpose} code; trying the flow`);
+  }
+
   const flowUrl = env["OTP_FLOW_URL"] || (isProd ? LEGACY_OTP_FLOW_URL : "");
 
   if (!flowUrl) {
@@ -72,6 +99,27 @@ export function emailVerificationRequired(env: NodeJS.ProcessEnv = process.env):
   return env["EMAIL_VERIFICATION"] !== "off";
 }
 
-if (IS_PROD && !process.env["OTP_FLOW_URL"]) {
-  console.warn("[auth] OTP_FLOW_URL is not set; one-time codes go to the flow URL published in this repository. Set your own.");
+/**
+ * One line at boot naming the road codes will take.
+ *
+ * The failure it prevents is a silent one: with no provider configured a
+ * development process prints codes to its own console and `sendAuthCode`
+ * still resolves true, so the API answers "we sent you a code" and nothing is
+ * mailed. That is deliberate — a developer's machine must not mail real
+ * addresses — but from the outside it is indistinguishable from a working
+ * send. `dotenv` reads `.env` once at startup, so a server that was already
+ * running when a key was added to it keeps taking the old road until it is
+ * restarted, and spends the session pretending to send.
+ */
+function announceCodeRoad(env: NodeJS.ProcessEnv = process.env): void {
+  if (brevoConfigured(env)) {
+    console.log(`[auth] one-time codes → Brevo, from ${env["MAIL_FROM_EMAIL"] || "no-reply@codekairo.com"}`);
+  } else if (env["OTP_FLOW_URL"]) {
+    console.log("[auth] one-time codes → OTP_FLOW_URL (set BREVO_API_KEY to send them directly)");
+  } else if (IS_PROD) {
+    console.warn("[auth] one-time codes → the flow URL published in this repository. Set BREVO_API_KEY.");
+  } else {
+    console.warn("[auth] one-time codes → this console. NOTHING IS MAILED. Set BREVO_API_KEY in .env and restart to send for real.");
+  }
 }
+announceCodeRoad();
