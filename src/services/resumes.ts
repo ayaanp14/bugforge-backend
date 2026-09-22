@@ -152,8 +152,16 @@ function contentOf(value: unknown): ResumeContent {
 
 const PAGE_LIMIT = 50;
 
+/**
+ * Deepest page any resume list will serve. `limit` was bounded but `page`
+ * was not, so `?page=999999999` reached MySQL as a skip of twenty billion,
+ * which it resolves by walking every preceding row. Nobody has a thousand
+ * pages of resumes, versions or analyses.
+ */
+const MAX_PAGE = 1_000;
+
 function paging(page?: number, limit?: number) {
-  const p = Math.max(1, Math.floor(page ?? 1));
+  const p = Math.min(MAX_PAGE, Math.max(1, Math.floor(page ?? 1)));
   const l = Math.min(PAGE_LIMIT, Math.max(1, Math.floor(limit ?? 20)));
   return { skip: (p - 1) * l, take: l, page: p, limit: l };
 }
@@ -544,10 +552,32 @@ async function setStage(id: string, stage: AnalysisStage): Promise<void> {
   await prisma.resumeAnalysis.updateMany({ where: { id, status: "running" }, data: { stage } });
 }
 
+/**
+ * The stage label, written without making the pipeline wait for it.
+ *
+ * `stage` exists so the polling client can name what is happening; nothing
+ * in this pipeline ever reads it back. Awaiting each one put five round trips
+ * on the critical path of every analysis — about a second and a half — one of
+ * them for "checking", which the comment at its call site admits does no work
+ * at all.
+ *
+ * The writes still land in order: each is chained onto the last rather than
+ * fired loose, so two of them can never race and leave the row showing an
+ * earlier stage than the one before. A label that fails to write is swallowed
+ * — it must never fail the analysis behind it.
+ */
+function stageMarker(id: string): (stage: AnalysisStage) => void {
+  let chain: Promise<unknown> = Promise.resolve();
+  return (stage) => {
+    chain = chain.then(() => setStage(id, stage)).catch(() => undefined);
+  };
+}
+
 /** The pipeline. Runs outside any request; failures land on the row. */
 async function runAnalysis(id: string): Promise<void> {
   const claimed = await prisma.resumeAnalysis.updateMany({ where: { id, status: "queued" }, data: { status: "running", stage: "reading", startedAt: new Date() } });
   if (claimed.count === 0) return;
+  const markStage = stageMarker(id);
   const startedAt = Date.now();
   const row = await prisma.resumeAnalysis.findUnique({ where: { id }, include: { resume: { select: { id: true, userId: true, rawText: true, layout: true, contentSource: true, content: true } } } });
   if (!row) return;
@@ -572,21 +602,21 @@ async function runAnalysis(id: string): Promise<void> {
       }
     }
 
-    await setStage(id, "requirements");
+    markStage("requirements");
     const requirements = requirementsFor(row.targetRole, row.company, row.jobDescription);
     const layout = (resume.layout as unknown as (LayoutSignals & { unmappedHeadings?: string[] }) | null) ?? null;
     const unmapped = layout?.unmappedHeadings ?? [];
 
-    await setStage(id, "matching");
+    markStage("matching");
     const deterministic = scoreResume({ content, requirements, layout, unmappedHeadings: unmapped, ai: null });
 
-    await setStage(id, "checking");
+    markStage("checking");
     // (ATS checks are part of scoreResume; the stage exists so the client can name it.)
 
-    await setStage(id, "reviewing");
+    markStage("reviewing");
     const review = await judgeResume({ content, requirements, jobDescription: row.jobDescription, deterministic });
 
-    await setStage(id, "scoring");
+    markStage("scoring");
     const result = review.judgement
       ? scoreResume({ content, requirements, layout, unmappedHeadings: unmapped, ai: review.judgement, model: resumeModel() })
       : scoreResume({ content, requirements, layout, unmappedHeadings: unmapped, ai: null, aiFailure: review.error, model: resumeModel() });

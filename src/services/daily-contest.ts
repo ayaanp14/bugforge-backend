@@ -441,12 +441,65 @@ async function monthContests(start: string, end: string, today: string) {
 
   // Fill any gap between the first contest ever held and today, in order, so
   // the "not reused for a year" rule sees the days before it.
+  //
+  // This was `await ensureContest(d)` inside the loop, and every day that
+  // reaches this line is by construction a cache-and-database miss — so each
+  // iteration was a full materialisation: a read, a catalogue+history pair, a
+  // create and a re-read. A month that had never been opened cost up to
+  // thirty-one of those in series, which against a ~270ms database is most of
+  // a minute inside a request the calendar waits on.
+  //
+  // The rule is what forces the ordering, not the database: each day must see
+  // the days before it. So the history is read once, the picking happens in
+  // memory with each choice folded into what the next day considers used, and
+  // the whole gap is written in one statement. Three round trips instead of
+  // 4×N, and every day picks exactly what it would have picked alone — the
+  // per-day reuse window is still evaluated per day, not widened to the batch.
   const launch = first?.date ?? today;
+  const gaps: string[] = [];
   for (let d = start; d <= end && d <= today; d = addDays(d, 1)) {
     if (d < launch || byDate.has(d)) continue;
-    const made = await ensureContest(d);
-    if (made) byDate.set(d, { id: made.id, date: made.date, difficulty: made.difficulty, problem: { slug: made.problem.slug, title: made.problem.title }, _count: { entries: 0 } });
+    gaps.push(d);
   }
+
+  if (gaps.length > 0) {
+    const [catalogue, history] = await Promise.all([
+      getCatalogue(),
+      prisma.dailyContest.findMany({
+        where: { date: { gte: addDays(gaps[0]!, -REUSE_AFTER_DAYS) } },
+        select: { date: true, problemId: true },
+      }),
+    ]);
+
+    const picked: Array<{ date: string; problemId: string; difficulty: string }> = [];
+    for (const d of gaps) {
+      const since = addDays(d, -REUSE_AFTER_DAYS);
+      const used = new Set<string>();
+      for (const row of history) if (row.date >= since) used.add(row.problemId);
+      for (const row of picked) if (row.date >= since) used.add(row.problemId);
+
+      const wanted = weekdayDifficulty(d);
+      let pool = catalogue.filter((c) => c.difficulty.toLowerCase() === wanted && !used.has(c.id));
+      if (pool.length === 0) pool = catalogue.filter((c) => !used.has(c.id));
+      if (pool.length === 0) pool = [...catalogue];
+      if (pool.length === 0) continue;
+      pool.sort((x, y) => (x.id < y.id ? -1 : 1));
+      const pick = pool[hashDay(d) % pool.length]!;
+      picked.push({ date: d, problemId: pick.id, difficulty: pick.difficulty.toLowerCase() });
+    }
+
+    if (picked.length > 0) {
+      // skipDuplicates: another instance may have materialised the same day a
+      // moment ago, exactly as the single-day path tolerates.
+      await prisma.dailyContest.createMany({ data: picked, skipDuplicates: true });
+      const made = await prisma.dailyContest.findMany({
+        where: { date: { in: picked.map((r) => r.date) } },
+        select: { id: true, date: true, difficulty: true, problem: { select: { slug: true, title: true } }, _count: { select: { entries: { where: { solvedAt: { not: null } } } } } },
+      });
+      for (const row of made) byDate.set(row.date, row);
+    }
+  }
+
   return [...byDate.values()];
 }
 

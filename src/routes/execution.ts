@@ -21,7 +21,7 @@ import { ENGINE_DOWN_MESSAGE, isEngineDown } from "../lib/engine-error.js";
 // The judge's slice of a problem — limits, signature, reference solution — and
 // its test suite, both held in memory rather than pulled (~1 MB of hidden
 // cases) out of the database on every Run and Submit.
-import { getJudgeProblem, getJudgeSuite, type JudgeProblem } from "../lib/test-suite-cache.js";
+import { getJudgeProblem, getJudgeSuite, getJudgeVisibleCases, type JudgeProblem } from "../lib/test-suite-cache.js";
 import { daysBetween } from "../lib/clock.js";
 
 const router = Router();
@@ -117,7 +117,9 @@ router.post("/run", requireAuth, executionLimiter, async (req, res) => {
       res.status(404).json({ error: "Problem not found" });
       return;
     }
-    const [problem, suite] = await Promise.all([getJudgeProblem(problemId), getJudgeSuite(problemId)]);
+    // A Run needs the visible cases only — see getJudgeVisibleCases for why
+    // reading the whole suite here was the most expensive read in the app.
+    const [problem, visibleCases] = await Promise.all([getJudgeProblem(problemId), getJudgeVisibleCases(problemId)]);
     if (!problem) {
       res.status(404).json({ error: "Problem not found" });
       return;
@@ -131,7 +133,6 @@ router.post("/run", requireAuth, executionLimiter, async (req, res) => {
     await fillExpectedOutputs(problem, finalCustomCases);
 
     // Run is the visible cases only; the hidden ones are the grade.
-    const visibleCases = suite.filter((c) => !c.isHidden);
     const allTestCases = [
       ...visibleCases,
       ...finalCustomCases.map((tc: CustomTestCase, idx: number) => ({

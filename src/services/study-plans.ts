@@ -499,19 +499,56 @@ export async function trackFor(trackKey: string, userId: string | null): Promise
   };
 }
 
-/** The list page: every track with, when signed in, how far along the reader is. */
+/**
+ * The list page: every track with, when signed in, how far along the reader is.
+ *
+ * This wants two integers per enrolled track, and it used to get them by
+ * building the entire track payload for each one — `trackFor` per track, three
+ * queries apiece, in a second tier. Worse, one of those three (the activity
+ * window behind the streak) is not scoped to a track at all, so the identical
+ * 400-row query ran once per enrolment and every copy but the first was thrown
+ * away.
+ *
+ * The definitions are already in memory (trackDefinition is cached), and
+ * "done" is a pure rule over a lesson and its progress row, so one progress
+ * read across every enrolled track answers all of them: two queries in total,
+ * whatever the reader is enrolled in. The counts come out of the same
+ * `lessonStatus` used to build the real payload, so they agree with the track
+ * page by construction.
+ */
 export async function tracksFor(userId: string | null) {
   const list = await trackList();
   if (!userId || list.length === 0) return list.map((t) => ({ ...t, enrolled: false, percent: 0, done: 0 }));
+
   const enrollments = await prisma.studyEnrollment.findMany({ where: { userId }, select: { trackKey: true } });
   const enrolled = new Set(enrollments.map((e) => e.trackKey));
-  return Promise.all(
-    list.map(async (t) => {
-      if (!enrolled.has(t.key)) return { ...t, enrolled: false, percent: 0, done: 0 };
-      const payload = await trackFor(t.key, userId);
-      return { ...t, enrolled: true, percent: payload?.summary.percent ?? 0, done: payload?.summary.done ?? 0 };
-    }),
-  );
+  if (enrolled.size === 0) return list.map((t) => ({ ...t, enrolled: false, percent: 0, done: 0 }));
+
+  // Usually every one of these is already in memory; on a cold cache they are
+  // still one wave rather than one round trip per enrolment.
+  const keys = list.map((t) => t.key).filter((key) => enrolled.has(key));
+  const loaded = await Promise.all(keys.map((key) => trackDefinition(key)));
+  const definitions = new Map<string, TrackDefinition>();
+  keys.forEach((key, i) => {
+    const def = loaded[i];
+    if (def) definitions.set(key, def);
+  });
+
+  const everyLessonKey = [...definitions.values()].flatMap((d) => d.modules.flatMap((m) => m.lessons.map((l) => l.key)));
+  const progress = await progressMap(userId, everyLessonKey);
+
+  return list.map((t) => {
+    const def = definitions.get(t.key);
+    if (!def) return { ...t, enrolled: enrolled.has(t.key), percent: 0, done: 0 };
+    const lessons = def.modules.flatMap((m) => m.lessons);
+    const done = lessons.filter((l) => lessonStatus(l, progress.get(l.key) ?? EMPTY_PROGRESS) === "done").length;
+    return {
+      ...t,
+      enrolled: true,
+      percent: lessons.length ? Math.round((100 * done) / lessons.length) : 0,
+      done,
+    };
+  });
 }
 
 function locate(track: TrackDefinition, lessonSlug: string) {

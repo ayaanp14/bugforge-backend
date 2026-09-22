@@ -61,6 +61,28 @@ type Guarded = {
   };
 };
 
+const GUARD_SELECT = {
+  id: true,
+  userId: true,
+  status: true,
+  mode: true,
+  questionBudget: true,
+  startedAt: true,
+  durationLimitSec: true,
+  voiceState: true,
+  savedInterview: {
+    select: {
+      roleId: true,
+      roundId: true,
+      difficulty: true,
+      experienceBand: true,
+      interviewStyle: true,
+      stackFocusIds: true,
+      focusAreaIds: true,
+    },
+  },
+} as const;
+
 /**
  * Every voice endpoint answers the same three questions before doing anything:
  * does the session exist, does it belong to the caller, and is it actually a
@@ -74,7 +96,12 @@ async function guard(
 ): Promise<{ ok: true; data: Guarded["session"] } | { ok: false; status: number; error: string }> {
   const session = await prisma.mockInterviewSession.findUnique({
     where: { id: sessionId },
-    include: { savedInterview: true },
+    // Exactly the columns `Guarded` names, no more. This runs in front of
+    // every voice endpoint — including /events, which the browser posts on a
+    // timer for the whole round — and an `include` pulled the session's
+    // summary (Text), its five report Json columns and the whole template on
+    // each one, to read a handful of scalars.
+    select: GUARD_SELECT,
   });
 
   if (!session) return { ok: false, status: 404, error: "Session not found" };
@@ -328,16 +355,23 @@ router.post("/session/:sessionId/voice/events", requireAuth, async (req: any, re
     // skipDuplicates makes a resent batch a no-op. Without it a flaky network
     // turns one retry into a doubled turn in the transcript, which then scores
     // as if the candidate said everything twice.
-    const written = await prisma.interviewEvent.createMany({ data: rows, skipDuplicates: true });
+    // The state rides along on the same request rather than costing another
+    // — and in the same wave as the events, not after them. They are different
+    // tables and neither reads the other, so awaiting them in turn spent a
+    // round trip for nothing on an endpoint the browser posts on a timer for
+    // the whole round.
+    const stateWrite =
+      req.body?.state && typeof req.body.state === "object"
+        ? prisma.mockInterviewSession.update({
+            where: { id: session.id },
+            data: { voiceState: { ...stateOf(session.voiceState), ...req.body.state } as object },
+          })
+        : null;
 
-    // The state rides along on the same request rather than costing another.
-    if (req.body?.state && typeof req.body.state === "object") {
-      const merged = { ...stateOf(session.voiceState), ...req.body.state };
-      await prisma.mockInterviewSession.update({
-        where: { id: session.id },
-        data: { voiceState: merged as object },
-      });
-    }
+    const [written] = await Promise.all([
+      prisma.interviewEvent.createMany({ data: rows, skipDuplicates: true }),
+      stateWrite,
+    ]);
 
     res.json({ success: true, written: written.count });
   } catch (error: any) {

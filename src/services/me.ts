@@ -35,6 +35,16 @@ export async function getUserTrends(userId: string): Promise<UserTrends> {
   const last7Days = new Date(now - 7 * 24 * 3600 * 1000);
   const last24Hours = new Date(now - 24 * 3600 * 1000);
 
+  // The bug count shares no data with the solve history, so it goes out now
+  // rather than in the wave below — it was costing a full round trip to wait
+  // for a result it never reads. The catch marks the promise handled so that
+  // if the groupBy below throws first, this one does not surface as an
+  // unhandled rejection; awaiting it later still propagates the error.
+  const bugsFixedPromise = prisma.bugSubmission.count({
+    where: { userId, verdict: "ACCEPTED", submittedAt: { gte: last7Days } },
+  });
+  bugsFixedPromise.catch(() => undefined);
+
   // One row per problem ever solved, carrying its earliest accepted submission.
   // Uses the (userId, verdict, submittedAt) index.
   const firstSolves = await prisma.submission.groupBy({
@@ -48,7 +58,8 @@ export async function getUserTrends(userId: string): Promise<UserTrends> {
     return first !== null && first >= last7Days;
   });
 
-  // Difficulties for just those few problems, alongside the bug count.
+  // Difficulties for just those few problems, alongside the bug count that
+  // has been in flight since before the groupBy above.
   const [problems, bugsFixedThisWeek] = await Promise.all([
     newThisWeek.length > 0
       ? prisma.problem.findMany({
@@ -56,9 +67,7 @@ export async function getUserTrends(userId: string): Promise<UserTrends> {
           select: { id: true, difficulty: true },
         })
       : Promise.resolve([] as Array<{ id: string; difficulty: string }>),
-    prisma.bugSubmission.count({
-      where: { userId, verdict: "ACCEPTED", submittedAt: { gte: last7Days } },
-    }),
+    bugsFixedPromise,
   ]);
 
   const difficultyOf = new Map(problems.map((p) => [p.id, p.difficulty.toLowerCase()]));
@@ -164,22 +173,30 @@ async function buildMePayload(userId: string) {
 
   let user = fetched;
 
-  if (user.stats && user.stats.problemsSolved !== standing.solved) {
-    await prisma.userStats.update({ where: { userId: user.id }, data: { problemsSolved: standing.solved } });
-    user.stats.problemsSolved = standing.solved;
-  }
-
-  // A streak that has lapsed is both displayed as zero and persisted. Running
-  // this only on a cache miss is fine: the write is idempotent and the cached
-  // copy already carries the corrected value.
+  // Counter drift and a lapsed streak are two corrections to the same row.
+  // They used to be two awaited updates, which on an account needing both
+  // cost two sequential round trips to write a handful of bytes; collected
+  // here they are one. A streak that has lapsed is both displayed as zero and
+  // persisted — running that only on a cache miss is fine, because the write
+  // is idempotent and the cached copy already carries the corrected value.
   if (user.stats) {
+    const fixes: { problemsSolved?: number; currentStreak?: number } = {};
+
+    if (user.stats.problemsSolved !== standing.solved) {
+      fixes.problemsSolved = standing.solved;
+    }
+
     // Same calendar the judge extends the streak on (lib/clock.ts), or the
     // two would disagree around midnight.
     const diffDays = daysBetween(new Date(user.stats.lastActive), new Date());
-
     if (diffDays > 1 && user.stats.currentStreak > 0) {
-      await prisma.userStats.update({ where: { userId: user.id }, data: { currentStreak: 0 } });
-      user.stats.currentStreak = 0;
+      fixes.currentStreak = 0;
+    }
+
+    if (Object.keys(fixes).length > 0) {
+      await prisma.userStats.update({ where: { userId: user.id }, data: fixes });
+      if (fixes.problemsSolved !== undefined) user.stats.problemsSolved = fixes.problemsSolved;
+      if (fixes.currentStreak !== undefined) user.stats.currentStreak = fixes.currentStreak;
     }
   }
 

@@ -205,14 +205,89 @@ export async function markAllRead(userId: string) {
   return result;
 }
 
-/** Backfill for accounts that predate the notification system. */
+/**
+ * Accounts already carrying both baseline notifications.
+ *
+ * Once a user holds "welcome" and "first_solve" there is nothing left for
+ * this backfill to do, ever — the pair only grows. Remembering that is what
+ * takes the common case to zero queries; without it every bell open re-asked
+ * the database a question it had answered the same way for months.
+ */
+const baselined = new Set<string>();
+
+/** Keeps the set from growing without bound on a long-running process. */
+const MAX_BASELINED = 50_000;
+
+/**
+ * Backfill for accounts that predate the notification system.
+ *
+ * This sits in front of `GET /api/me/notifications`, so its cost is paid
+ * every time the bell is opened. It used to be up to five strictly
+ * sequential round trips — createNotificationOnce (read, then write), the
+ * stats read, then createNotificationOnce again — which against a ~300ms
+ * database meant well over a second of latency before the route had started
+ * its own work, forever, for accounts that were backfilled long ago.
+ *
+ * Now: one wave that asks which baseline rows exist and reads the stats at
+ * the same time, then at most one write. Settled accounts return without
+ * touching the database at all.
+ */
 export async function ensureBaseline(userId: string) {
-  await createNotificationOnce(userId, WELCOME);
-  const stats = await prisma.userStats.findUnique({
-    where: { userId },
-    select: { problemsSolved: true },
-  });
-  if (stats && stats.problemsSolved > 0) {
-    await createNotificationOnce(userId, FIRST_SOLVE);
+  if (baselined.has(userId)) return;
+  try {
+    const [existing, stats] = await Promise.all([
+      prisma.notification.findMany({
+        where: { userId, type: { in: [WELCOME.type, FIRST_SOLVE.type] } },
+        select: { type: true },
+      }),
+      prisma.userStats.findUnique({ where: { userId }, select: { problemsSolved: true } }),
+    ]);
+
+    const has = new Set(existing.map((n) => n.type));
+    const missing: NotificationInput[] = [];
+    if (!has.has(WELCOME.type)) missing.push(WELCOME);
+    if (!has.has(FIRST_SOLVE.type) && stats && stats.problemsSolved > 0) missing.push(FIRST_SOLVE);
+
+    if (missing.length > 0) {
+      // createMany keeps this one round trip whether one row is missing or
+      // both. The (userId, type) pair has no unique index behind it, so the
+      // in-flight guard below is what stops two concurrent bell opens from
+      // both inserting; a second instance is a duplicate at worst, which is
+      // the same exposure createNotificationOnce always had.
+      const key = `baseline:${userId}`;
+      const pending = oneShotInFlight.get(key);
+      if (pending) {
+        await pending.catch(() => undefined);
+        return;
+      }
+      const job = (async () => {
+        try {
+          await prisma.notification.createMany({
+            data: missing.map((m) => ({
+              userId,
+              type: m.type,
+              title: m.title,
+              body: m.body,
+              href: m.href ?? null,
+            })),
+          });
+          invalidateUnread(userId);
+        } finally {
+          oneShotInFlight.delete(key);
+        }
+      })();
+      oneShotInFlight.set(key, job);
+      await job;
+      for (const m of missing) has.add(m.type);
+    }
+
+    // Only remember the account when both rows are genuinely present; a user
+    // with no solves yet still needs the first_solve row once they solve.
+    if (has.has(WELCOME.type) && has.has(FIRST_SOLVE.type)) {
+      if (baselined.size >= MAX_BASELINED) baselined.clear();
+      baselined.add(userId);
+    }
+  } catch (err) {
+    console.error("ensureBaseline error:", err);
   }
 }

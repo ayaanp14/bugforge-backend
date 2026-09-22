@@ -4,7 +4,7 @@ import { prisma } from "../lib/prisma.js";
 import { requireAuth, optionalAuth, adminOnly } from "../middleware/auth.js";
 import { cachedShared, invalidate } from "../lib/cache.js";
 import { browserCache } from "../lib/http-cache.js";
-import { getCatalogue, listProblemsWithStatus, loadProblemState, problemIdBySlug, type ProblemState } from "../services/dashboard.js";
+import { catalogueNeighbours, getCatalogue, listProblemsWithStatus, loadProblemState, problemIdBySlug, publishedProblemExists, type ProblemState } from "../services/dashboard.js";
 import { isCompanyTag } from "../lib/companies.js";
 import { isJudgeLanguage } from "../lib/judge0.js";
 import { hubIndex, hubPage, hubsForTags, relatedProblems } from "../services/problem-hubs.js";
@@ -377,31 +377,28 @@ router.get("/:slug", optionalAuth, browserCache(120, { shared: true }), async (r
 
       if (!problem || !problem.isPublished) return null;
 
-      // Previous (newer) and next (older) in the catalogue.
-      const [prevProblem, nextProblem] = await Promise.all([
-        prisma.problem.findFirst({
-          where: { isPublished: true, createdAt: { gt: problem.createdAt } },
-          orderBy: { createdAt: "asc" },
-          select: { slug: true },
-        }),
-        prisma.problem.findFirst({
-          where: { isPublished: true, createdAt: { lt: problem.createdAt } },
-          orderBy: { createdAt: "desc" },
-          select: { slug: true },
-        }),
-      ]);
-
       // Where the reader goes next, and where this problem sits: the hubs
       // its tags link to and six problems of the same topic (in-memory,
       // services/problem-hubs). Cached with the statement, so a visit costs
       // the same one round trip it did.
       const tags = Array.isArray(problem.tags) ? (problem.tags as string[]) : [];
-      const [related, hubs] = await Promise.all([relatedProblems(problem.slug, tags, problem.difficulty), hubsForTags(tags)]);
+      const [related, hubs, neighbours] = await Promise.all([
+        relatedProblems(problem.slug, tags, problem.difficulty),
+        hubsForTags(tags),
+        // Previous (newer) and next (older) in the catalogue. This was two
+        // findFirst round trips in a wave of their own, for an answer the
+        // process already holds: the cached catalogue is exactly the
+        // published problems in createdAt-desc order, so the neighbours are
+        // the entries either side of this one. A slug the catalogue has not
+        // picked up yet (it refreshes every 120s, so a just-published
+        // problem) still asks the database, the way it always did.
+        catalogueNeighbours(problem.slug),
+      ]);
 
       return {
         ...problem,
-        prevSlug: prevProblem?.slug || null,
-        nextSlug: nextProblem?.slug || null,
+        prevSlug: neighbours.prevSlug,
+        nextSlug: neighbours.nextSlug,
         // The topic tags alone: what the page's structured data lists as
         // what the problem teaches (a company is not a topic).
         topics: tags.filter((t) => !isCompanyTag(t)),
@@ -616,8 +613,7 @@ router.post("/:problemId/draft", requireAuth, async (req, res) => {
       res.status(400).json({ error: "Unsupported language" });
       return;
     }
-    const exists = await prisma.problem.findUnique({ where: { id: problemId }, select: { id: true } });
-    if (!exists) {
+    if (!(await publishedProblemExists(problemId))) {
       res.status(404).json({ error: "Problem not found" });
       return;
     }

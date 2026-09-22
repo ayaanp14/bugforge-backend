@@ -25,6 +25,9 @@ type Status = "new" | "attempted" | "solved";
 
 /** A topic list arrives one page at a time; the client asks for the next by offset. */
 const PAGE_SIZE = 15;
+/** Deepest page the question bank can be asked for; see the note at its use. */
+const MAX_OFFSET = 5_000;
+
 const MAX_PAGE_SIZE = 50;
 
 /**
@@ -126,8 +129,14 @@ router.get("/questions", optionalAuth, browserCache(120), async (req: any, res) 
 
     const limitRaw = Number(req.query.limit);
     const limit = Number.isInteger(limitRaw) && limitRaw > 0 ? Math.min(limitRaw, MAX_PAGE_SIZE) : PAGE_SIZE;
+    // The offset is part of the cache key below, so an unbounded one is not
+    // just a deep scan — every distinct value mints an L1 entry and a Redis
+    // key, and lib/cache.ts caps L1 at 2,000 entries with insertion-order
+    // eviction, so a couple of thousand crafted requests would flush every hot
+    // entry in the process. The whole bank is ~1,200 questions, so this
+    // ceiling is far above anything a reader can page to.
     const offsetRaw = Number(req.query.offset);
-    const offset = Number.isInteger(offsetRaw) && offsetRaw > 0 ? offsetRaw : 0;
+    const offset = Number.isInteger(offsetRaw) && offsetRaw > 0 ? Math.min(offsetRaw, MAX_OFFSET) : 0;
 
     const where = { topic: topic.id, ...(difficulty ? { difficulty } : {}) };
     const userId: string | null = req.user?.userId ?? null;

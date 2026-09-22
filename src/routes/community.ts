@@ -331,7 +331,24 @@ async function publicCandidates(tag: string | null): Promise<Candidate[]> {
  * followers-only posts by people they follow. Expressed through the relation
  * so it needs nothing loaded first and can share a tier with everything else.
  */
+const privateCandidatesKey = (userId: string, tag: string | null) =>
+  `feed:private:v1:${userId}:${tag ?? "all"}`;
+
+/**
+ * The viewer's own posts and the followers-only ones they may see.
+ *
+ * `publicCandidates` next door is cached for 30s; this half was not, so every
+ * "For you" load ran a `take: 200` with the full post include — author row,
+ * reward rows, tag rows — for what is, for almost every account, a handful of
+ * posts. Same window as the public half so the two sides of the feed are
+ * never mixed across a boundary, and L1 rather than Redis because a per-user
+ * key is not worth a ~300ms round trip to fetch.
+ */
 function privateCandidates(userId: string, tag: string | null): Promise<Candidate[]> {
+  return cached(privateCandidatesKey(userId, tag), 30_000, () => queryPrivateCandidates(userId, tag));
+}
+
+function queryPrivateCandidates(userId: string, tag: string | null): Promise<Candidate[]> {
   const since = new Date(Date.now() - RANK.candidateDays * 86400000);
   return prisma.post.findMany({
     where: {
@@ -693,7 +710,7 @@ router.post("/posts", requireAuth, communityWriteLimiter, async (req, res) => {
     notifyMentions(userId, text, postHref(post.id), "a post");
     // The dashboard hero counts posts.
     invalidateDashboard(userId);
-    forgetPostCounters();
+    forgetPostCounters(userId);
 
     res.json({
       id: post.id,
@@ -736,7 +753,7 @@ router.delete("/posts/:id", requireAuth, async (req, res) => {
     }
     await prisma.post.delete({ where: { id } });
     invalidateDashboard(userId);
-    forgetPostCounters();
+    forgetPostCounters(userId);
     res.json({ success: true });
   } catch (err) {
     console.error("DELETE /api/community/posts/:id error:", err);
@@ -1303,6 +1320,9 @@ router.post("/follow/:userId", requireAuth, async (req, res) => {
     // A follow moves both users' hero counts, and this viewer's cached
     // following list — which the feed and the suggestions rail read.
     invalidate(followsKey(followerId));
+    invalidate(suggestionsKey(followerId));
+    invalidate(socialKey(followerId));
+    invalidate(socialKey(followingId));
     invalidateDashboard(followerId);
     invalidateDashboard(followingId);
 
@@ -1321,14 +1341,32 @@ router.post("/follow/:userId", requireAuth, async (req, res) => {
 // return value, whichever route served it.
 
 /** My social card: followers/following/posts counts — one statement, three sub-selects. */
-const socialCardFor = (userId: string) => querySocialCounts(userId);
+const socialKey = (userId: string) => `social:v1:${userId}`;
+
+/**
+ * Followers, following and post count for the sidebar card.
+ *
+ * One raw statement with three subqueries, but it ran on every `/me` and
+ * every `/rails` — and `/rails` is the sidebar of every community page. The
+ * numbers move only when this viewer posts, or when somebody follows them,
+ * and both of those already drop keys here. L1 rather than Redis on purpose:
+ * this Redis is ~300ms away, which is what the query itself costs.
+ */
+const socialCardFor = (userId: string) => cached(socialKey(userId), 60_000, () => querySocialCounts(userId));
 
 /**
  * The rails that count posts. Their caches are shared and expire on their
  * own, but a person who has just posted sees "0 posts today" beside their
  * new post until they do (QA-031); the two writes drop them.
  */
-function forgetPostCounters(): void {
+function forgetPostCounters(authorId?: string): void {
+  // The author's own two per-viewer caches move with their post count: the
+  // sidebar card, and the private half of their feed (a post they just wrote
+  // is a candidate in it).
+  if (authorId) {
+    invalidate(socialKey(authorId));
+    invalidate(privateCandidatesKey(authorId, null));
+  }
   invalidate("community:pulse");
   invalidate("community:bulletin");
 }
@@ -1386,7 +1424,27 @@ function getTrending() {
 }
 
 /** Most active users I don't follow yet, ranked by why they're worth following. */
-async function suggestionsFor(userId: string) {
+const suggestionsKey = (userId: string) => `suggestions:v1:${userId}`;
+
+/**
+ * Who to follow, for one viewer.
+ *
+ * This is two tiers of queries — a 40-row pool ranked by mutuals, institute
+ * and post count — and it ran in full on every `GET /suggestions` *and*
+ * every `GET /rails`, which is the sidebar on every community page. The
+ * route's own note conceded it was the wall clock of the rails.
+ *
+ * Nothing it reads moves quickly: the pool is the top of the XP table minus
+ * people already followed, and a suggestion that is a minute stale is still
+ * a good suggestion. Following someone is the one action that should change
+ * the list at once, and that already drops this key alongside the cached
+ * following list.
+ */
+function suggestionsFor(userId: string) {
+  return cached(suggestionsKey(userId), 60_000, () => querySuggestions(userId));
+}
+
+async function querySuggestions(userId: string) {
   // The pool leaves out people already followed through the relation itself,
   // so it does not have to wait for the following list to be loaded first —
   // the three reads here are one tier, where they used to be three.

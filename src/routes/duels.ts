@@ -476,6 +476,25 @@ const lastReconcile = new Map<string, number>();
 /** A duel that finished and was never read again would keep its stamp; past this many, the stale ones go. */
 const RECONCILE_MAP_CAP = 2_000;
 
+/**
+ * Whether this duel is due a reconcile.
+ *
+ * Reconciling reads the judge's row to see whether a fight was decided
+ * without anybody reporting it, which is a round trip. `GET /:id` has always
+ * rationed that to once every five seconds; `/me/state` did not, and it is
+ * polled by the lobby, so a signed-in reader sitting on the page paid the
+ * extra read on every tick. Same rule, one place.
+ */
+function reconcileDue(id: string): boolean {
+  const now = Date.now();
+  if (now - (lastReconcile.get(id) ?? 0) < RECONCILE_EVERY_MS) return false;
+  if (lastReconcile.size >= RECONCILE_MAP_CAP) {
+    for (const [key, at] of lastReconcile) if (now - at > 60_000) lastReconcile.delete(key);
+  }
+  lastReconcile.set(id, now);
+  return true;
+}
+
 router.get("/:id", requireAuth, async (req, res) => {
   try {
     const id = String(req.params.id);
@@ -485,12 +504,7 @@ router.get("/:id", requireAuth, async (req, res) => {
       return;
     }
     if (duel.status === "active") {
-      const now = Date.now();
-      if (now - (lastReconcile.get(id) ?? 0) >= RECONCILE_EVERY_MS) {
-        if (lastReconcile.size >= RECONCILE_MAP_CAP) {
-          for (const [key, at] of lastReconcile) if (now - at > 60_000) lastReconcile.delete(key);
-        }
-        lastReconcile.set(id, now);
+      if (reconcileDue(id)) {
         duel = await reconcileDuel(duel);
         // A fight past its time is called here, where both rooms are polling,
         // rather than only when one of them next opens the lobby.
@@ -781,7 +795,14 @@ router.get("/me/state", requireAuth, async (req, res) => {
     // Reconcile a fight that was already decided, then close one nobody came
     // back to — so simply opening the page clears a room that would otherwise
     // block every future match.
-    const settled = await expireIfStale(await reconcileDuel(liveRaw));
+    // Same rationing as GET /:id: an active duel is only re-read from the
+    // judge every few seconds, not on every poll of this endpoint. A duel that
+    // is not active reconciles as before — that path is where a finished fight
+    // gets moved into the record.
+    const settled =
+      liveRaw && liveRaw.status === "active" && !reconcileDue(liveRaw.id)
+        ? await expireIfStale(liveRaw)
+        : await expireIfStale(await reconcileDuel(liveRaw));
     const justFinished = settled && settled.status === "finished" ? settled : null;
     const live = justFinished ? null : settled;
     if (justFinished && !history.some((d) => d.id === justFinished.id)) history.unshift(justFinished);

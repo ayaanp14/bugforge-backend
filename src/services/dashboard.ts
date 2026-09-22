@@ -77,6 +77,77 @@ export async function problemIdBySlug(slug: string): Promise<string | null> {
 }
 
 /**
+ * The published problems either side of a slug, from the catalogue in memory.
+ *
+ * The catalogue is `isPublished: true` ordered by createdAt descending —
+ * the same order the two findFirst queries this replaces were walking — so
+ * "previous" (newer) is the entry before it and "next" (older) the entry
+ * after. A slug the cached copy has not picked up yet falls back to the
+ * queries, so a problem published in the last TTL window still answers.
+ */
+const positionIndexOf = new WeakMap<CatalogueRow[], Map<string, number>>();
+
+export async function catalogueNeighbours(
+  slug: string,
+): Promise<{ prevSlug: string | null; nextSlug: string | null }> {
+  const catalogue = await getCatalogue();
+  let index = positionIndexOf.get(catalogue);
+  if (!index) {
+    index = new Map(catalogue.map((p, i) => [p.slug, i]));
+    positionIndexOf.set(catalogue, index);
+  }
+
+  const at = index.get(slug);
+  if (at !== undefined) {
+    return {
+      prevSlug: catalogue[at - 1]?.slug ?? null,
+      nextSlug: catalogue[at + 1]?.slug ?? null,
+    };
+  }
+
+  const row = await prisma.problem.findUnique({ where: { slug }, select: { createdAt: true } });
+  if (!row) return { prevSlug: null, nextSlug: null };
+  const [prev, next] = await Promise.all([
+    prisma.problem.findFirst({
+      where: { isPublished: true, createdAt: { gt: row.createdAt } },
+      orderBy: { createdAt: "asc" },
+      select: { slug: true },
+    }),
+    prisma.problem.findFirst({
+      where: { isPublished: true, createdAt: { lt: row.createdAt } },
+      orderBy: { createdAt: "desc" },
+      select: { slug: true },
+    }),
+  ]);
+  return { prevSlug: prev?.slug ?? null, nextSlug: next?.slug ?? null };
+}
+
+/**
+ * Whether a problem id exists, from the catalogue already in memory.
+ *
+ * The draft autosave fires every few seconds while someone types, and it
+ * opened with this existence check — a round trip whose only job is to keep
+ * an unknown id off the foreign key, ahead of the upsert that is the actual
+ * write. Published ids are in the cached catalogue, so the common answer
+ * costs nothing; anything not there (an unpublished problem an admin is
+ * still working on) is asked for the way it always was, so the result is the
+ * same as the query it replaces.
+ */
+const idIndexOf = new WeakMap<CatalogueRow[], Set<string>>();
+
+export async function publishedProblemExists(problemId: string): Promise<boolean> {
+  const catalogue = await getCatalogue();
+  let index = idIndexOf.get(catalogue);
+  if (!index) {
+    index = new Set(catalogue.map((p) => p.id));
+    idIndexOf.set(catalogue, index);
+  }
+  if (index.has(problemId)) return true;
+  const row = await prisma.problem.findUnique({ where: { id: problemId }, select: { id: true } });
+  return row !== null;
+}
+
+/**
  * Solve status as two GROUP BYs returning one row per problem, rather than
  * pulling every submission row the user has ever made and reducing in JS. Both
  * hit the (userId, verdict, submittedAt) index.
@@ -145,9 +216,22 @@ export async function getDifficultyStats(userId: string) {
 }
 
 // ── Submission history (problems + bug hunts, newest first) ─────
+/**
+ * How deep offset paging over the merged history may reach.
+ *
+ * This endpoint merges two tables that are each sorted independently, so
+ * serving items [skip, skip+limit) needs skip+limit rows from both — the
+ * window grows with the page number. `limit` was bounded but `page` was
+ * not, so `?page=5000&limit=100` asked each table for 500,000 rows. Five
+ * thousand combined items is fifty pages at the maximum page size and five
+ * hundred at the default, well past anything a reader scrolls to, and it
+ * keeps the worst case a bounded read instead of the whole table.
+ */
+const MAX_HISTORY_WINDOW = 5000;
+
 export async function getSubmissionHistory(userId: string, page = 1, limit = 10) {
   const skip = (page - 1) * limit;
-  const window = skip + limit;
+  const window = Math.min(skip + limit, MAX_HISTORY_WINDOW);
 
   // Slim rows only — no code/editedFiles (fetched on demand via
   // GET /api/me/submissions/:id) and only the page's window from each table.

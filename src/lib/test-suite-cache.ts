@@ -88,6 +88,12 @@ class BoundedLru<V> {
     return promise;
   }
 
+  /** What is already cached for this key, or undefined. Never loads. */
+  peek(key: string): V | undefined {
+    const hit = this.entries.get(key);
+    return hit && hit.expiresAt > Date.now() ? hit.value : undefined;
+  }
+
   forget(key: string): void {
     this.entries.delete(key);
     this.inFlight.delete(key);
@@ -95,6 +101,7 @@ class BoundedLru<V> {
 }
 
 const suites = new BoundedLru<JudgeCase[]>(MAX_PROBLEMS, TTL_MS);
+const visibleSuites = new BoundedLru<JudgeCase[]>(MAX_PROBLEMS, TTL_MS);
 const problems = new BoundedLru<JudgeProblem | null>(MAX_PROBLEMS, TTL_MS);
 
 /** Every test case of a problem, visible ones first by orderIndex. Filter `isHidden` for a Run. */
@@ -102,6 +109,36 @@ export function getJudgeSuite(problemId: string): Promise<JudgeCase[]> {
   return suites.get(problemId, () =>
     prisma.testCase.findMany({
       where: { problemId },
+      orderBy: { orderIndex: "asc" },
+      select: { input: true, expectedOutput: true, isHidden: true, orderIndex: true },
+    }),
+  );
+}
+
+/**
+ * Only the cases a Run shows — the visible ones.
+ *
+ * A Run grades against the three sample cases; the ~5,000 hidden ones are
+ * what a Submit is marked on. It used to read the whole suite and filter in
+ * memory, which meant every cold Run pulled 0.38 MB and 5,003 rows across the
+ * wire to use three of them. Measured against production (two-sum, 5,003
+ * cases): 2,275 ms for the full suite against 583 ms for the visible three.
+ *
+ * TestCase is ~3M rows and 425 MB, so it is the one table in this schema
+ * where what you select genuinely matters. No new index is needed: the
+ * existing (problemId, orderIndex) index still answers this as a ref lookup
+ * and the isHidden test is a filter over one problem's entries — the saving
+ * is the rows that are never fetched, not the scan.
+ *
+ * When a Submit has already warmed the full suite, that copy answers instead
+ * of a second query.
+ */
+export function getJudgeVisibleCases(problemId: string): Promise<JudgeCase[]> {
+  const full = suites.peek(problemId);
+  if (full) return Promise.resolve(full.filter((c) => !c.isHidden));
+  return visibleSuites.get(problemId, () =>
+    prisma.testCase.findMany({
+      where: { problemId, isHidden: false },
       orderBy: { orderIndex: "asc" },
       select: { input: true, expectedOutput: true, isHidden: true, orderIndex: true },
     }),
@@ -123,5 +160,6 @@ export function getJudgeProblem(problemId: string): Promise<JudgeProblem | null>
 /** Drop a problem's cached suite and row — for a reseed that cannot wait out the TTL. */
 export function forgetJudgeSuite(problemId: string): void {
   suites.forget(problemId);
+  visibleSuites.forget(problemId);
   problems.forget(problemId);
 }
