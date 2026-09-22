@@ -52,11 +52,23 @@ interface VerificationChallenge {
   otpToken: string;
 }
 
-/** Mint a verification code for an address and send it. */
+/**
+ * Mint a verification code for an address and send it.
+ *
+ * The send is not awaited. `otpToken` comes from `issueChallenge`, which is
+ * local (memory plus a fire-and-forget Redis write), so nothing in the answer
+ * depends on the provider having accepted the mail — and `sendAuthCode`
+ * returns a boolean that every caller here already ignores, falling back
+ * through its own alternatives and logging on the way. Awaiting it only ever
+ * meant every registration and every unverified sign-in sat on an outbound
+ * HTTPS call to Brevo before the user heard anything back.
+ */
 async function beginVerification(email: string): Promise<VerificationChallenge> {
   const otp = generateOtp();
   const otpToken = await issueChallenge("verify_email", email, otp);
-  await sendAuthCode(email, otp, "verify_email");
+  void sendAuthCode(email, otp, "verify_email").catch((err) => {
+    console.error("[auth] verification mail failed:", (err as Error).message);
+  });
   return { required: true, email, otpToken };
 }
 
@@ -311,7 +323,13 @@ router.post("/resend-verification", async (req, res) => {
     const pending = Boolean(user && !user.emailVerified && user.password_hash);
     const otp = generateOtp();
     const otpToken = await issueChallenge("verify_email", pending ? email : null, otp);
-    if (pending) await sendAuthCode(email, otp, "verify_email");
+    // Not awaited: the answer below is deliberately the same whether or not
+    // an account was waiting, so it cannot depend on the send either.
+    if (pending) {
+      void sendAuthCode(email, otp, "verify_email").catch((err) => {
+        console.error("[auth] resend mail failed:", (err as Error).message);
+      });
+    }
     res.json({ message: "If that address is waiting to be confirmed, a new code is on its way.", otpToken });
   } catch (err) {
     console.error("Resend verification error:", err);
@@ -392,7 +410,14 @@ router.post("/forgot-password", async (req, res) => {
     const otpToken = await issueChallenge("password_reset", user ? email : null, otp);
 
     // Only a real account is ever sent a code.
-    if (user) await sendAuthCode(email, otp, "password_reset");
+    // Same reasoning as the resend above: the response must look identical
+    // for an address that exists and one that does not, so it cannot wait on
+    // the provider.
+    if (user) {
+      void sendAuthCode(email, otp, "password_reset").catch((err) => {
+        console.error("[auth] reset mail failed:", (err as Error).message);
+      });
+    }
 
     res.json({
       message: "If an account with that email exists, an OTP has been sent.",

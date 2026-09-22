@@ -389,15 +389,18 @@ router.post("/rooms/join", requireAuth, async (req, res) => {
       res.status(400).json({ error: "Enter a room code" });
       return;
     }
-    const duel = await prisma.duel.findUnique({
-      where: { roomCode: code },
-      select: { id: true },
-    });
+    // The rating depends on the caller alone, not on the room, so it rides
+    // with the room lookup rather than queueing behind it. A bad code wastes
+    // one parallel read — the same trade /queue already makes.
+    const [duel, me] = await Promise.all([
+      prisma.duel.findUnique({ where: { roomCode: code }, select: { id: true } }),
+      prisma.user.findUnique({ where: { id: userId }, select: { rating: true } }),
+    ]);
     if (!duel) {
       res.status(404).json({ error: "No room with that code" });
       return;
     }
-    const me = await prisma.user.findUnique({ where: { id: userId }, select: { rating: true } });
+
     const outcome = await takeSeat(duel.id, userId, me?.rating ?? 1200);
     if (!outcome.ok) {
       if (outcome.reason === "started") {

@@ -388,14 +388,19 @@ export async function expireIfStale<T extends LoadedDuel>(duel: T): Promise<T | 
     try {
       // Guarded like the settle path: a submission landing at the same moment
       // keeps its verdict.
-      await prisma.duel.updateMany({
-        where: { id: duel!.id, status: "active", winnerTeam: null },
-        data: { status: "finished", endedAt: new Date(), winnerTeam },
-      });
-      await prisma.duelParticipant.updateMany({
-        where: { duelId: duel!.id, verdict: null },
-        data: { verdict: "TIMED_OUT" },
-      });
+      // Different tables, and neither reads the other's result — each carries
+      // its own guard in its WHERE — so they travel together instead of one
+      // waiting out the other's round trip.
+      await Promise.all([
+        prisma.duel.updateMany({
+          where: { id: duel!.id, status: "active", winnerTeam: null },
+          data: { status: "finished", endedAt: new Date(), winnerTeam },
+        }),
+        prisma.duelParticipant.updateMany({
+          where: { duelId: duel!.id, verdict: null },
+          data: { verdict: "TIMED_OUT" },
+        }),
+      ]);
     } catch (err) {
       console.error("expireIfStale (active) error:", (err as Error).message);
     }
@@ -461,11 +466,16 @@ export async function reconcileDuel<T extends LoadedDuel>(duel: T): Promise<T> {
 
   if (!winner) return duel;
 
-  const settled = await applyDuelResult(duel.id, winner.userId, {
-    verdict: "ACCEPTED",
-    passed: winner.passed,
-    total: winner.total,
-  });
+  // The duel in hand is freshly loaded, so hand it to the settlement rather
+  // than letting it load the same row again — DUEL_INCLUDE is four relation
+  // queries on top of the row itself, and POST /:id/report already passes it
+  // through this way.
+  const settled = await applyDuelResult(
+    duel.id,
+    winner.userId,
+    { verdict: "ACCEPTED", passed: winner.passed, total: winner.total },
+    duel,
+  );
   return (settled as T) ?? duel;
 }
 

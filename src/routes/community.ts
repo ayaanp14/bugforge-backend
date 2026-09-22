@@ -795,13 +795,19 @@ router.patch("/posts/:id", requireAuth, async (req, res) => {
     if (post.type === "poll") keep.push("poll");
     const tags = extractTags(text, keep);
 
-    const updated = await prisma.post.update({
-      where: { id },
-      data: { content: text, editedAt: new Date() },
-      select: { content: true, editedAt: true },
-    });
-    await prisma.postTag.deleteMany({ where: { postId: id } });
-    if (tags.length) await prisma.postTag.createMany({ data: tags.map((tag) => ({ postId: id, tag })) });
+    // One logical edit, so one batched request rather than three serial ones.
+    // It is also the correctness fix: between the delete and the create the
+    // post briefly had no tags at all, and a feed read landing in that window
+    // saw it untagged.
+    const editedAt = new Date();
+    await prisma.$transaction([
+      prisma.post.update({ where: { id }, data: { content: text, editedAt }, select: { id: true } }),
+      prisma.postTag.deleteMany({ where: { postId: id } }),
+      ...(tags.length ? [prisma.postTag.createMany({ data: tags.map((tag) => ({ postId: id, tag })) })] : []),
+    ]);
+    // Both values are the ones just written; re-reading the Text column to
+    // learn what we sent is a round trip for nothing.
+    const updated = { content: text, editedAt };
     notifyMentions(userId, text, postHref(id), "a post");
 
     res.json({ content: updated.content, editedAt: updated.editedAt, tags });
@@ -1292,9 +1298,14 @@ router.delete("/comments/:id", requireAuth, async (req, res) => {
       res.status(403).json({ error: "You can only delete your own comments" });
       return;
     }
-    // Replies would otherwise hang off a parent that no longer exists.
-    await prisma.postComment.deleteMany({ where: { OR: [{ id }, { parentId: id }] } });
-    await prisma.post.updateMany({ where: { id: comment.postId, resolvedCommentId: id }, data: { resolvedCommentId: null } });
+    // Replies would otherwise hang off a parent that no longer exists. The
+    // two writes touch different tables and neither reads the other, so they
+    // go in one batched request instead of two serial ones — and the thread
+    // can no longer be left pointing at an accepted answer that is gone.
+    await prisma.$transaction([
+      prisma.postComment.deleteMany({ where: { OR: [{ id }, { parentId: id }] } }),
+      prisma.post.updateMany({ where: { id: comment.postId, resolvedCommentId: id }, data: { resolvedCommentId: null } }),
+    ]);
     res.json({ success: true });
   } catch (err) {
     console.error("DELETE /api/community/comments/:id error:", err);

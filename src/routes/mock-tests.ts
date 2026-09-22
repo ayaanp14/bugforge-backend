@@ -826,44 +826,57 @@ router.post("/attempts/:id/submit-code", requireAuth, async (req: any, res) => {
     if (!cases.length) return res.status(503).json({ error: "This problem has no test cases" });
 
     const result = await judge(arena.problem, code, language, cases);
-    const existing = await prisma.mockCodeAnswer.findUnique({
-      where: { attemptId_problemId: { attemptId: context.attempt.id, problemId } },
-    });
 
     // The best run stands, so a candidate who experiments after solving it
     // cannot lose marks they have already earned.
-    const better = !existing || result.passed >= existing.passedCases;
-    await prisma.mockCodeAnswer.upsert({
-      select: { id: true },
-      where: { attemptId_problemId: { attemptId: context.attempt.id, problemId } },
-      create: {
-        attemptId: context.attempt.id,
-        problemId,
-        sectionIndex: context.sectionIndex,
-        language,
-        code,
-        verdict: result.verdict,
-        passedCases: result.passed,
-        totalCases: cases.length,
-        runtimeMs: result.batch.runtimeMs,
-        memoryKb: result.batch.memoryKb,
-        submissions: 1,
-      },
-      update: {
-        language,
-        code,
-        submissions: { increment: 1 },
-        ...(better
-          ? {
-              verdict: result.verdict,
-              passedCases: result.passed,
-              totalCases: cases.length,
-              runtimeMs: result.batch.runtimeMs,
-              memoryKb: result.batch.memoryKb,
-            }
-          : {}),
-      },
-    });
+    //
+    // That comparison used to be made in JavaScript against a row read a
+    // round trip earlier, which is both an extra read and a lost update: two
+    // submissions in flight (a double-clicked Submit, two tabs) both saw the
+    // old score, both concluded they were better, and whichever landed second
+    // overwrote the better one — precisely the guarantee above. It is now a
+    // predicate in the WHERE, so the database evaluates it against the
+    // committed row under its own lock, and the read is gone.
+    //
+    // Both statements go in one batched request: the upsert always records
+    // the attempt, then the guarded update promotes the score only if this
+    // run is at least as good. On a first submission the create already
+    // carries the score, so the guard matches its own values and is a no-op.
+    const key = { attemptId_problemId: { attemptId: context.attempt.id, problemId } };
+    await prisma.$transaction([
+      prisma.mockCodeAnswer.upsert({
+        select: { id: true },
+        where: key,
+        create: {
+          attemptId: context.attempt.id,
+          problemId,
+          sectionIndex: context.sectionIndex,
+          language,
+          code,
+          verdict: result.verdict,
+          passedCases: result.passed,
+          totalCases: cases.length,
+          runtimeMs: result.batch.runtimeMs,
+          memoryKb: result.batch.memoryKb,
+          submissions: 1,
+        },
+        update: {
+          language,
+          code,
+          submissions: { increment: 1 },
+        },
+      }),
+      prisma.mockCodeAnswer.updateMany({
+        where: { attemptId: context.attempt.id, problemId, passedCases: { lte: result.passed } },
+        data: {
+          verdict: result.verdict,
+          passedCases: result.passed,
+          totalCases: cases.length,
+          runtimeMs: result.batch.runtimeMs,
+          memoryKb: result.batch.memoryKb,
+        },
+      }),
+    ]);
 
     res.json({
       verdict: result.verdict,

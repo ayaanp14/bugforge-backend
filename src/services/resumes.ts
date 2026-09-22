@@ -276,11 +276,17 @@ export async function updateResume(userId: string, id: string, patch: ResumePatc
     data.content = content as unknown as Prisma.InputJsonValue;
     data.contentSource = "edited";
   }
+  // MySQL cannot RETURNING, so reading `updatedAt` back cost a second round
+  // trip on the editor's autosave — the hottest write in the resume product.
+  // Stamping it here instead means the value is already known: @updatedAt only
+  // fills in when the field is absent, so an explicit one wins and the row and
+  // the response cannot disagree.
+  const updatedAt = new Date();
+  data.updatedAt = updatedAt;
   const result = await prisma.resume.updateMany({ where: { id, userId }, data });
   if (result.count === 0) throw new ResumeError(404, "No such resume");
   if (content) trackServerEvent("resume_edited", { resumeId: id }, userId);
-  const row = await prisma.resume.findFirst({ where: { id, userId }, select: { updatedAt: true } });
-  return { updatedAt: row?.updatedAt ?? new Date(), content };
+  return { updatedAt, content };
 }
 
 export async function deleteResume(userId: string, id: string): Promise<void> {
@@ -764,18 +770,34 @@ function rethrowAi(err: unknown): never {
  * caller told, so a stale suggestion cannot overwrite a newer edit.
  */
 export async function decideSuggestion(userId: string, resumeId: string, suggestionId: string, status: "accepted" | "rejected"): Promise<{ suggestion: SuggestionRow; applied: boolean; content: ResumeContent | null }> {
-  const row = await prisma.resumeSuggestion.findFirst({ where: { id: suggestionId, resumeId, userId }, select: SUGGESTION_SELECT });
+  // The suggestion and the working copy are both addressed by the arguments,
+  // so they are read together. Accepting is the only branch that needs the
+  // document, and rejecting must not pay for it, so it is only asked for then.
+  const wantsContent = status === "accepted";
+  const [row, resumeMaybe] = await Promise.all([
+    prisma.resumeSuggestion.findFirst({ where: { id: suggestionId, resumeId, userId }, select: SUGGESTION_SELECT }),
+    wantsContent
+      ? prisma.resume.findFirst({ where: { id: resumeId, userId }, select: { content: true } })
+      : Promise.resolve(null),
+  ]);
   if (!row) throw new ResumeError(404, "No such suggestion");
   let applied = false;
   let content: ResumeContent | null = null;
+  let contentWrite: Prisma.PrismaPromise<unknown> | null = null;
   if (status === "accepted" && row.path !== "unplaced") {
-    const resume = await prisma.resume.findFirst({ where: { id: resumeId, userId }, select: { content: true } });
+    const resume = resumeMaybe;
     if (resume) {
       const current = contentOf(resume.content);
       const now = readPath(current, row.path);
       if (now !== null && now.trim() === row.original.trim()) {
         content = writePath(current, row.path, row.suggested);
-        await prisma.resume.updateMany({ where: { id: resumeId, userId }, data: { content: content as unknown as Prisma.InputJsonValue, contentSource: "edited" } });
+        // Queued rather than awaited: it goes in one batched request with the
+        // decision below, which also stops a crash between the two leaving a
+        // suggestion applied but still pending.
+        contentWrite = prisma.resume.updateMany({
+          where: { id: resumeId, userId },
+          data: { content: content as unknown as Prisma.InputJsonValue, contentSource: "edited" },
+        });
         applied = true;
       } else if (now !== null && now.trim() === row.suggested.trim()) {
         applied = true;
@@ -783,7 +805,10 @@ export async function decideSuggestion(userId: string, resumeId: string, suggest
       }
     }
   }
-  const updated = await prisma.resumeSuggestion.update({ where: { id: suggestionId }, data: { status, decidedAt: new Date() }, select: SUGGESTION_SELECT });
+  const decision = prisma.resumeSuggestion.update({ where: { id: suggestionId }, data: { status, decidedAt: new Date() }, select: SUGGESTION_SELECT });
+  const updated = contentWrite
+    ? ((await prisma.$transaction([contentWrite, decision]))[1] as Awaited<typeof decision>)
+    : await decision;
   trackServerEvent("resume_suggestion_decided", { resumeId, kind: row.kind, status, applied }, userId);
   return { suggestion: toSuggestion(updated), applied, content };
 }

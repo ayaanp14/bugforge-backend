@@ -332,21 +332,21 @@ router.delete("/:id", requireAuth, async (req, res) => {
   const userId = (req as any).user.userId;
 
   try {
-    const room = await prisma.pairRoom.findUnique({
-      where: { id }
-    });
+    // Delete first, with the ownership in the WHERE, and only ask why when
+    // nothing was deleted. The host's own delete — every successful one — is
+    // then a single round trip instead of a read and a write, while a refusal
+    // still costs exactly what it did and still tells 404 and 403 apart. It
+    // also closes the gap between the check and the delete: ownership is now
+    // decided by the same statement that acts on it.
+    const { count } = await prisma.pairRoom.deleteMany({ where: { id, createdBy: userId } });
 
-    if (!room) {
-      return res.status(404).json({ error: "Room not found" });
-    }
-
-    if (room.createdBy !== userId) {
+    if (count === 0) {
+      const room = await prisma.pairRoom.findUnique({ where: { id }, select: { createdBy: true } });
+      if (!room) {
+        return res.status(404).json({ error: "Room not found" });
+      }
       return res.status(403).json({ error: "Unauthorized to delete this room" });
     }
-
-    await prisma.pairRoom.delete({
-      where: { id }
-    });
     // Anyone still sitting in it is told, the same way a soft close tells
     // them; the row is gone, so their next request would only 404.
     emitToRoom(id, "room-ended", { slug: null });
