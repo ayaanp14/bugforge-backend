@@ -10,7 +10,7 @@ import { judgeProgram, runProgram, type ProgramCase, type ProgramJudgeResult, ty
  * Two sources, like the roadmap. The track as seeded (StudyTrack /
  * StudyModule / StudyLesson — authored under scripts/study-plans, written by
  * scripts/seed-study-plans.ts) is read once and cached: it changes on a
- * seed, not between requests. The account's part is StudyEnrollment (when
+ * seed, not between requests . The account's part is StudyEnrollment (when
  * it started and at what pace) and one StudyLessonProgress row per lesson
  * touched. Unlike the roadmap, progress here has to be *written* — reading
  * a lesson has no judge to derive it from — so the rows are the truth and
