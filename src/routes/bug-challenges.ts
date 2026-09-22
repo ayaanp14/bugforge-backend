@@ -438,7 +438,11 @@ router.post("/:id/submit", requireAuth, executionLimiter, async (req, res) => {
     const awardedXp = firstSolve ? BUG_XP : 0;
 
     // The submission row, the XP and the stats land together or not at all.
+    // Neither branch below reads the row back, and `editedFiles` is the
+    // whole edited project — echoing it to the server and straight back again
+    // was the largest thing on a hunt submit.
     const submissionCreate = prisma.bugSubmission.create({
+      select: { id: true },
       data: {
         userId,
         challengeId: challenge.id,

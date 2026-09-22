@@ -852,30 +852,52 @@ router.get("/posts/:id", optionalAuth, async (req, res) => {
  * like on a just-deleted post is a 404 rather than the foreign-key 500 it
  * used to be.
  */
-async function canSeePost(postId: string, userId: string | null): Promise<boolean | null> {
-  const post = await prisma.post.findUnique({ where: { id: postId }, select: { userId: true, visibility: true } });
-  if (!post) return null;
-  if (post.visibility === "public" || post.userId === userId) return true;
-  if (post.visibility !== "followers" || userId === null) return false;
-  const following = await prisma.follow.findUnique({
-    where: { followerId_followingId: { followerId: userId, followingId: post.userId } },
-    select: { id: true },
-  });
-  return Boolean(following);
-}
+/**
+ * What the gate reads, which is also everything its callers went on to ask
+ * for afterwards. The gate used to answer a bare yes/no and throw the row
+ * away, so /report, /vote and both comment routes each re-read the very row
+ * it had just fetched — a whole round trip apiece to learn a column the gate
+ * had already had in its hand.
+ */
+const GATE_SELECT = {
+  id: true,
+  userId: true,
+  visibility: true,
+  meta: true,
+  type: true,
+  resolvedCommentId: true,
+} as const;
 
-/** The two refusals every interaction route shares. Returns false after answering. */
-async function gatePost(res: Response, postId: string, userId: string | null): Promise<boolean> {
-  const allowed = await canSeePost(postId, userId);
-  if (allowed === null) {
+type GatedPost = {
+  id: string;
+  userId: string;
+  visibility: string;
+  meta: unknown;
+  type: string;
+  resolvedCommentId: string | null;
+};
+
+/**
+ * The two refusals every interaction route shares, and the post itself.
+ *
+ * Returns null once it has answered, so callers stay `if (!post) return;`.
+ */
+async function gatePost(res: Response, postId: string, userId: string | null): Promise<GatedPost | null> {
+  const post = (await prisma.post.findUnique({ where: { id: postId }, select: GATE_SELECT })) as GatedPost | null;
+  if (!post) {
     res.status(404).json({ error: "Post not found" });
-    return false;
+    return null;
   }
-  if (!allowed) {
-    res.status(403).json({ error: "This post isn't shared with you" });
-    return false;
+  if (post.visibility === "public" || post.userId === userId) return post;
+  if (post.visibility === "followers" && userId !== null) {
+    const following = await prisma.follow.findUnique({
+      where: { followerId_followingId: { followerId: userId, followingId: post.userId } },
+      select: { id: true },
+    });
+    if (following) return post;
   }
-  return true;
+  res.status(403).json({ error: "This post isn't shared with you" });
+  return null;
 }
 
 // POST /api/community/posts/:id/save — toggle bookmark (private to the saver)
@@ -883,7 +905,8 @@ router.post("/posts/:id/save", requireAuth, async (req, res) => {
   try {
     const userId = req.user!.userId;
     const postId = String(req.params.id);
-    if (!(await gatePost(res, postId, userId))) return;
+    const gated = await gatePost(res, postId, userId);
+    if (!gated) return;
     // Delete first: an unsave is then one statement, and a save is the insert
     // that follows when nothing was there to delete.
     const removed = await prisma.savedPost.deleteMany({ where: { postId, userId } });
@@ -906,13 +929,16 @@ router.post("/posts/:id/vote", requireAuth, async (req, res) => {
   try {
     const userId = req.user!.userId;
     const postId = String(req.params.id);
-    if (!(await gatePost(res, postId, userId))) return;
+    const gated = await gatePost(res, postId, userId);
+    if (!gated) return;
     const option = Number((req.body as { option?: unknown }).option);
     // The poll, the viewer's existing vote and the current tallies are
     // independent reads, so they share a tier; the tallies after the vote are
     // then arithmetic on what was just read rather than a third round trip.
-    const [post, mine, groups] = await Promise.all([
-      prisma.post.findUnique({ where: { id: postId }, select: { meta: true } }),
+    // `post` came back from the gate; only the viewer's vote and the tally
+    // still need asking for.
+    const post = gated;
+    const [mine, groups] = await Promise.all([
       prisma.pollVote.findUnique({ where: { postId_userId: { postId, userId } }, select: { option: true } }),
       prisma.pollVote.groupBy({ by: ["option"], where: { postId }, _count: { _all: true } }),
     ]);
@@ -954,9 +980,10 @@ router.post("/posts/:id/report", requireAuth, async (req, res) => {
   try {
     const userId = req.user!.userId;
     const postId = String(req.params.id);
-    if (!(await gatePost(res, postId, userId))) return;
+    const gated = await gatePost(res, postId, userId);
+    if (!gated) return;
     const reason = String((req.body as { reason?: string }).reason ?? "other").slice(0, 60);
-    const post = await prisma.post.findUnique({ where: { id: postId }, select: { userId: true } });
+    const post = gated;
     if (!post) {
       res.status(404).json({ error: "Post not found" });
       return;
@@ -983,7 +1010,15 @@ router.post("/posts/:id/resolve", requireAuth, async (req, res) => {
     const userId = req.user!.userId;
     const postId = String(req.params.id);
     const { commentId } = req.body as { commentId?: string | null };
-    const post = await prisma.post.findUnique({ where: { id: postId }, select: { userId: true, type: true } });
+    // The post and the comment are both addressed by the request alone, so
+    // they are one wave rather than two — the comment read used to queue
+    // behind an ownership check it does not depend on.
+    const [post, comment] = await Promise.all([
+      prisma.post.findUnique({ where: { id: postId }, select: { userId: true } }),
+      commentId
+        ? prisma.postComment.findUnique({ where: { id: String(commentId) }, select: { postId: true, userId: true } })
+        : Promise.resolve(null),
+    ]);
     if (!post) {
       res.status(404).json({ error: "Post not found" });
       return;
@@ -993,20 +1028,25 @@ router.post("/posts/:id/resolve", requireAuth, async (req, res) => {
       return;
     }
     if (commentId) {
-      const comment = await prisma.postComment.findUnique({ where: { id: String(commentId) }, select: { postId: true, userId: true } });
       if (!comment || comment.postId !== postId) {
         res.status(400).json({ error: "That answer isn't on this question" });
         return;
       }
       if (comment.userId !== userId) {
-        const me = await prisma.user.findUnique({ where: { id: userId }, select: { username: true, name: true } });
-        void notifyOnce({
-          userId: comment.userId,
-          type: "answer_accepted",
-          title: "Your answer was accepted",
-          body: `${me?.username || me?.name || "Someone"} marked your answer as the one that helped.`,
-          href: postHref(postId),
-        }).catch(() => {});
+        // The name lookup exists only to word a notification nobody waits
+        // for, so it belongs inside the fire-and-forget rather than in front
+        // of the write that answers the request.
+        const answerer = comment.userId;
+        void (async () => {
+          const me = await prisma.user.findUnique({ where: { id: userId }, select: { username: true, name: true } });
+          await notifyOnce({
+            userId: answerer,
+            type: "answer_accepted",
+            title: "Your answer was accepted",
+            body: `${me?.username || me?.name || "Someone"} marked your answer as the one that helped.`,
+            href: postHref(postId),
+          });
+        })().catch(() => {});
       }
     }
     await prisma.post.update({ where: { id: postId }, data: { resolvedCommentId: commentId ? String(commentId) : null } });
@@ -1022,7 +1062,8 @@ router.post("/posts/:id/like", requireAuth, async (req, res) => {
   try {
     const userId = req.user!.userId;
     const postId = String(req.params.id);
-    if (!(await gatePost(res, postId, userId))) return;
+    const gated = await gatePost(res, postId, userId);
+    if (!gated) return;
     // The pre-read and the current count are independent, so they travel
     // together; the count after the toggle is then arithmetic rather than a
     // third round trip.
@@ -1077,16 +1118,17 @@ router.get("/posts/:id/comments", optionalAuth, async (req, res) => {
   try {
     const userId = req.user?.userId ?? null;
     const postId = String(req.params.id);
-    if (!(await gatePost(res, postId, userId))) return;
-    const [comments, post] = await Promise.all([
-      prisma.postComment.findMany({
-        where: { postId },
-        orderBy: { createdAt: "asc" },
-        take: 200,
-        include: { user: { select: AUTHOR_SELECT }, _count: { select: { likes: true } } },
-      }),
-      prisma.post.findUnique({ where: { id: postId }, select: { resolvedCommentId: true } }),
-    ]);
+    const gated = await gatePost(res, postId, userId);
+    if (!gated) return;
+    // The accepted-answer id rode along with the gate, so the thread is the
+    // only thing still to fetch.
+    const post = gated;
+    const comments = await prisma.postComment.findMany({
+      where: { postId },
+      orderBy: { createdAt: "asc" },
+      take: 200,
+      include: { user: { select: AUTHOR_SELECT }, _count: { select: { likes: true } } },
+    });
     const ids = comments.map((c) => c.id);
     const myLikes = ids.length && userId
       ? await prisma.postCommentLike.findMany({ where: { userId, commentId: { in: ids } }, select: { commentId: true } })
@@ -1116,7 +1158,8 @@ router.post("/posts/:id/comments", requireAuth, communityWriteLimiter, async (re
   try {
     const userId = req.user!.userId;
     const postId = String(req.params.id);
-    if (!(await gatePost(res, postId, userId))) return;
+    const gated = await gatePost(res, postId, userId);
+    if (!gated) return;
     const text = String((req.body as { content?: string }).content ?? "").trim();
     if (!text) {
       res.status(400).json({ error: "Write a comment first" });
@@ -1126,7 +1169,7 @@ router.post("/posts/:id/comments", requireAuth, communityWriteLimiter, async (re
       res.status(400).json({ error: "Comments are limited to 1000 characters" });
       return;
     }
-    const post = await prisma.post.findUnique({ where: { id: postId }, select: { id: true, userId: true } });
+    const post = gated;
     if (!post) {
       res.status(404).json({ error: "Post not found" });
       return;

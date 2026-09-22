@@ -365,6 +365,10 @@ router.post("/session/:sessionId/voice/events", requireAuth, async (req: any, re
         ? prisma.mockInterviewSession.update({
             where: { id: session.id },
             data: { voiceState: { ...stateOf(session.voiceState), ...req.body.state } as object },
+            // Nothing reads this back, and without a select the update returns
+            // the whole session — voiceState, summary, every report column —
+            // on an endpoint posted on a timer for the length of the round.
+            select: { id: true },
           })
         : null;
 

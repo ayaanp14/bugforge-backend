@@ -369,6 +369,9 @@ router.post("/submit", requireAuth, executionLimiter, async (req, res) => {
     const prize = xpMap[problem.difficulty.toLowerCase()] ?? 10;
     const streak = nextStreak(stats);
 
+    // What a submit hands back to this handler: it uses only these two.
+    const SUBMISSION_RETURN = { id: true, submittedAt: true } as const;
+
     const submissionData = {
       userId,
       problemId,
@@ -399,7 +402,10 @@ router.post("/submit", requireAuth, executionLimiter, async (req, res) => {
           where: { userId, problemId, verdict: "ACCEPTED" },
           select: { id: true },
         });
-        const row = await tx.submission.create({ data: submissionData });
+        // Only the two fields the rest of this handler reads. Without a
+        // select the insert echoes the whole row back — including `code`,
+        // the MediumText the client just uploaded — on every submit.
+        const row = await tx.submission.create({ data: submissionData, select: SUBMISSION_RETURN });
         if (already) return { row, paid: false };
         await tx.user.update({
           where: { id: userId },
@@ -431,7 +437,7 @@ router.post("/submit", requireAuth, executionLimiter, async (req, res) => {
       submission = outcome.row;
       firstSolve = outcome.paid;
     } else {
-      submission = await prisma.submission.create({ data: submissionData });
+      submission = await prisma.submission.create({ data: submissionData, select: SUBMISSION_RETURN });
     }
     const awardedXp = firstSolve ? prize : 0;
 

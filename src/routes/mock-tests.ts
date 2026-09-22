@@ -652,7 +652,9 @@ router.put("/attempts/:id/answer", requireAuth, async (req: any, res) => {
     const timeSec = Number.isInteger(timeSecRaw) && timeSecRaw >= 0 ? Math.min(timeSecRaw, 7200) : undefined;
 
     const correct = selected !== null && selected === question.answer;
+    // The response is { saved: true }; the row itself is never read.
     await prisma.mockAnswer.upsert({
+      select: { id: true },
       where: { attemptId_questionId: { attemptId: attempt.id, questionId } },
       create: { attemptId: attempt.id, questionId, sectionIndex, selected, correct, marked: marked ?? false, timeSec: timeSec ?? 0 },
       update: { selected, correct, ...(marked === undefined ? {} : { marked }), ...(timeSec === undefined ? {} : { timeSec }) },
@@ -747,7 +749,10 @@ router.put("/attempts/:id/code", requireAuth, async (req: any, res) => {
     const timeSecRaw = Number(body["timeSec"]);
     const timeSec = Number.isInteger(timeSecRaw) && timeSecRaw >= 0 ? Math.min(timeSecRaw, 14400) : undefined;
 
+    // Autosave during a sitting: up to 200 KB of code goes up, and without a
+    // select the same 200 KB comes straight back for a { saved: true }.
     await prisma.mockCodeAnswer.upsert({
+      select: { id: true },
       where: { attemptId_problemId: { attemptId: context.attempt.id, problemId } },
       create: { attemptId: context.attempt.id, problemId, sectionIndex: context.sectionIndex, language, code, timeSec: timeSec ?? 0 },
       update: { language, code, ...(timeSec === undefined ? {} : { timeSec }) },
@@ -829,6 +834,7 @@ router.post("/attempts/:id/submit-code", requireAuth, async (req: any, res) => {
     // cannot lose marks they have already earned.
     const better = !existing || result.passed >= existing.passedCases;
     await prisma.mockCodeAnswer.upsert({
+      select: { id: true },
       where: { attemptId_problemId: { attemptId: context.attempt.id, problemId } },
       create: {
         attemptId: context.attempt.id,

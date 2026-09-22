@@ -349,7 +349,8 @@ export async function reply(
   // client carries the thread for the length of the tab.
   if (!userId) return { answer: trimmed, messageId: null };
   const [, row] = await prisma.$transaction([
-    prisma.assistantMessage.create({ data: { userId, role: "user", content: text } }),
+    // Destructured away below; only the assistant row's id is read.
+    prisma.assistantMessage.create({ data: { userId, role: "user", content: text }, select: { id: true } }),
     prisma.assistantMessage.create({ data: { userId, role: "assistant", content: trimmed }, select: { id: true } }),
   ]);
   return { answer: trimmed, messageId: row.id };

@@ -760,6 +760,9 @@ router.post("/session/:sessionId/answer", requireAuth, async (req: any, res) => 
       await prisma.mockInterviewQuestion.update({
         where: { id: current.id },
         data: { userAnswer: answer, status: "answered" },
+        // The answer is already in hand; without this the write echoes it back
+        // along with the question text and feedback, on every turn.
+        select: { id: true },
       });
     }
     const recorded = alreadyAnswered ? (current.userAnswer ?? answer) : answer;

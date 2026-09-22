@@ -597,6 +597,22 @@ router.get("/:slug/draft", requireAuth, async (req, res) => {
 });
 
 // 10. POST /api/problems/:problemId/draft — Save/Auto-save code draft
+/**
+ * Draft rows this process has already written, by (user, problem, language).
+ *
+ * Only ever an optimisation: a hit lets the autosave be a plain update
+ * instead of an upsert, and a miss or a stale entry falls back to the upsert
+ * that was always there. Bounded so a long-running process cannot grow one
+ * entry per editor anyone has ever opened.
+ */
+const draftIds = new Map<string, string>();
+const MAX_DRAFT_IDS = 20_000;
+
+function rememberDraft(key: string, id: string): void {
+  if (draftIds.size >= MAX_DRAFT_IDS) draftIds.clear();
+  draftIds.set(key, id);
+}
+
 router.post("/:problemId/draft", requireAuth, async (req, res) => {
   try {
     const problemId = req.params.problemId as string;
@@ -622,6 +638,30 @@ router.post("/:problemId/draft", requireAuth, async (req, res) => {
     // used to come back whole — the 64 KB of code the client had just sent,
     // echoed on every save. Neither client reads anything off this answer
     // but success, so it carries the row's identity and nothing more.
+    //
+    // Prisma's upsert is four statements on MySQL (measured: a transaction
+    // around a select and a write), where a plain update is two. Every save
+    // after the first is an update — the row is created once and written to
+    // for the rest of the session — so the id of a row we have already
+    // written is remembered and the common case takes the cheap path. A miss,
+    // or a row deleted underneath us, falls back to the upsert, so the answer
+    // is the same either way.
+    const draftKey = `${userId}:${problemId}:${language}`;
+    const knownId = draftIds.get(draftKey);
+    const updatedAt = new Date();
+
+    if (knownId) {
+      const { count } = await prisma.codeDraft.updateMany({
+        where: { userId, problemId, language },
+        data: { code, updatedAt },
+      });
+      if (count > 0) {
+        res.json({ id: knownId, updatedAt });
+        return;
+      }
+      draftIds.delete(draftKey);
+    }
+
     const draft = await prisma.codeDraft.upsert({
       where: {
         userId_problemId_language: {
@@ -632,7 +672,7 @@ router.post("/:problemId/draft", requireAuth, async (req, res) => {
       },
       update: {
         code,
-        updatedAt: new Date(),
+        updatedAt,
       },
       create: {
         userId,
@@ -642,6 +682,7 @@ router.post("/:problemId/draft", requireAuth, async (req, res) => {
       },
       select: { id: true, updatedAt: true },
     });
+    rememberDraft(draftKey, draft.id);
 
     res.json(draft);
   } catch (err) {
