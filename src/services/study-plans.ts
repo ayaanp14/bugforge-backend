@@ -147,6 +147,22 @@ export async function trackList(): Promise<Array<Omit<TrackDefinition, "modules"
 export async function trackDefinition(key: string): Promise<TrackDefinition | null> {
   const track = await cached(trackKeyOf(key), 5 * 60 * 1000, async () => {
     const row = await prisma.studyTrack.findFirst({
+      // The one read in this codebase that must not be a JOIN.
+      //
+      // `relationJoins` is on globally and is worth 3-6x on relation-heavy
+      // reads, but a joined read makes MySQL materialise and sort the joined
+      // rows — and these rows carry every lesson's `body` (MediumText) plus
+      // its `exercises` and `quiz` (Json), one to three megabytes a track.
+      // The production host runs `sort_buffer_size` at 0.25 MB, so the sort
+      // overflows and the query dies with "Out of sort memory". Measured
+      // against production: the javascript and cpp tracks failed, java and
+      // python scraped through — all four are marginal, and they only grow.
+      //
+      // Loading the relations as separate queries keeps each row set small
+      // enough to sort, which is how this ran before and is why nothing else
+      // needs the override (scratch/scan-join-risk.mts checks the rest).
+      // It took the dashboard down with it, through studyBandFor.
+      relationLoadStrategy: "query",
       where: { key, isPublished: true },
       select: {
         key: true,
