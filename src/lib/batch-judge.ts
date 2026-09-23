@@ -59,7 +59,12 @@ const CHUNK_MAX_INPUT_BYTES = 200_000;
 // can far exceed the plain-body limit. Probed: Wandbox accepts 800KB request
 // bodies (413 above ~1MB); 900KB raw ≈ 350-450KB compressed body.
 const CHUNK_MAX_INPUT_BYTES_GZIP = 900_000;
-const CHUNK_MAX_CASES = 5000;
+// Above the largest suite on purpose: suites are 5,000 hidden + the visible
+// cases (5,003–5,004), and a cap of exactly 5,000 made 886 of 1,098 problems
+// pay a second compile+run for their last 3–4 cases. The byte caps above are
+// what protect the engines; this is only a backstop. Measured on Paiza, one
+// run instead of two: two-sum Java 2.5 → 2.1 s, Python 1.9 → 1.3 s (2026-09-24).
+const CHUNK_MAX_CASES = 10_000;
 
 function chunkCases(cases: BatchCase[], language: string): BatchCase[][] {
   // Gzipping languages compress their output below any engine cap, so only
