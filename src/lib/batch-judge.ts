@@ -34,17 +34,26 @@ export interface BatchRunResult {
 
 const normalize = (v: string | null | undefined) => (v ?? "").trim();
 
-// ── Auto-chunking (Wandbox/Piston only) ────────────────────────────
-// The public engines cap how much stdout they return (Wandbox truncates
-// ~145KB), so a huge suite is split into a few runs sized to stay safely
-// under the caps. Judge0 is exempt: its ~4MB output ceiling handles even
-// 100k-case suites in a single run, and chunking would only add compiles.
-// Expected outputs are the size proxy; if a wrong solution still overflows a
-// chunk, the Output Limit detection below reports it honestly.
-const CHUNK_MAX_OUTPUT_BYTES = 130_000; // observed Wandbox stdout cap ≈ 145KB
-// Gzip languages emit compressed output, but poorly-compressing content
-// (~3:1) can still overflow the stdout cap — budget ~300KB raw per chunk.
-const CHUNK_MAX_OUTPUT_BYTES_GZIP = 300_000;
+// ── Auto-chunking (every engine but Judge0) ─────────────────────────
+// The public engines cap how much stdout they return, so a huge suite is split
+// into a few runs sized to stay safely under the caps. Judge0 is exempt: its
+// ~4MB output ceiling handles even 100k-case suites in a single run, and
+// chunking would only add compiles. Expected outputs are the size proxy; if a
+// wrong solution still overflows a chunk, the Output Limit detection below
+// reports it honestly.
+//
+// Sized for the STRICTEST engine, not the one first in EXECUTOR: a submission
+// can fail over, and a cap that fits only the primary truncates on the
+// fallback. Measured caps: Paiza cuts stdout at exactly 100,000 chars, Wandbox
+// at ~145KB. These were once 130KB / 300KB (Wandbox-sized) and a correct Java
+// running-sum-of-1d-array (5,003 cases of int[] output) came back 60/5003 on
+// both engines — the gzipped block truncated, so 4,941 cases were lost
+// (2026-09-24).
+const CHUNK_MAX_OUTPUT_BYTES = 85_000;
+// Gzip languages emit compressed base64 output. Random-integer arrays compress
+// poorly: measured 185,924 raw bytes → 94,400 base64 chars (~0.51), so 150KB
+// raw lands near 77K — under Paiza's 100K with room for worse content.
+const CHUNK_MAX_OUTPUT_BYTES_GZIP = 150_000;
 const CHUNK_MAX_INPUT_BYTES = 200_000;
 // Gzip languages upload compressed (~2.5-4x smaller + base64), so the raw cap
 // can far exceed the plain-body limit. Probed: Wandbox accepts 800KB request
