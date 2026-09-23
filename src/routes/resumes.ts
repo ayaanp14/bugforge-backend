@@ -1,5 +1,6 @@
 import express, { Router, type NextFunction, type Request, type Response } from "express";
 import { requireAuth } from "../middleware/auth.js";
+import { browserCache } from "../lib/http-cache.js";
 import { resumeAiLimiter, resumeUploadLimiter } from "../middleware/rate-limit.js";
 import { MAX_RESUME_BYTES, ResumeFileError } from "../lib/resume-files.js";
 import { exportFilename, renderDocx, renderPdf } from "../lib/resume-export.js";
@@ -104,7 +105,10 @@ router.get(
   }),
 );
 
-router.get("/meta", (_req, res) => {
+// Four constants compiled into the build — the scoring weights, their labels,
+// the rewrite modes and the upload ceiling. The same bytes for every caller
+// and they change only with a deploy.
+router.get("/meta", browserCache(3600, { shared: true }), (_req, res) => {
   res.json({ weights: ATS_SCORING_WEIGHTS, labels: CATEGORY_LABELS, improveModes: IMPROVE_MODES, maxBytes: MAX_RESUME_BYTES });
 });
 

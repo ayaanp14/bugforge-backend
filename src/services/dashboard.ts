@@ -504,10 +504,23 @@ export async function getContinueSolving(userId: string) {
 }
 
 // ── Catalogue with the user's per-problem status ────────────────
+/**
+ * The catalogue's head as GET /api/problems answers it.
+ *
+ * Projected rather than spread: the cached catalogue carries `createdAt` and
+ * `timeLimitMs` because ordering and the maxTime filter are expressed in terms
+ * of them, but no client reads either, and the DB path's LIST_SELECT does not
+ * send them. Both paths must answer with the same shape, so the projection is
+ * the shape — see LIST_SELECT in routes/problems.ts.
+ */
 export async function listProblemsWithStatus(userId: string, take = 100) {
   const state = await loadProblemState(userId);
   return state.catalogue.slice(0, take).map((p) => ({
-    ...p,
+    id: p.id,
+    title: p.title,
+    slug: p.slug,
+    difficulty: p.difficulty,
+    tags: p.tags,
     status: state.solved.has(p.id) ? "SOLVED" : state.attempted.has(p.id) ? "ATTEMPTING" : "UNSOLVED",
   }));
 }

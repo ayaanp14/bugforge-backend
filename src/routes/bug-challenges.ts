@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { prisma } from "../lib/prisma.js";
 import { optionalAuth, requireAuth } from "../middleware/auth.js";
+import { browserCache } from "../lib/http-cache.js";
 import { executionLimiter } from "../middleware/rate-limit.js";
 import { judgeBugProject, type BugFile, type BugLanguage } from "../lib/bug-judge.js";
 import { containsReservedMarker } from "../lib/batch.js";
@@ -43,7 +44,7 @@ const JUDGE_CHALLENGE_SELECT = {
  * Filters (search, difficulty, language, tag) apply in SQL in both modes, so
  * they search the whole catalogue rather than only the rows already loaded.
  */
-router.get("/", optionalAuth, async (req, res) => {
+router.get("/", optionalAuth, browserCache(60), async (req, res) => {
   try {
     const str = (v: unknown) => (typeof v === "string" && v.trim() ? v.trim() : undefined);
 
@@ -80,7 +81,9 @@ router.get("/", optionalAuth, async (req, res) => {
  *   GET /api/bug-challenges/hubs             → { languages, categories }
  *   GET /api/bug-challenges/hubs/javascript  → the hub page, or 404
  */
-router.get("/hubs", async (_req, res) => {
+// Seeded content with no reader in it — `bugHubIndex` takes no user — so one
+// copy is every caller's, the way the problem hubs are cached.
+router.get("/hubs", browserCache(300, { shared: true }), async (_req, res) => {
   try {
     res.json(await bugHubIndex());
   } catch (err) {
@@ -89,7 +92,7 @@ router.get("/hubs", async (_req, res) => {
   }
 });
 
-router.get("/hubs/:id", async (req, res) => {
+router.get("/hubs/:id", browserCache(300, { shared: true }), async (req, res) => {
   try {
     const page = await bugHubPage(String(req.params.id).toLowerCase());
     if (!page) {
@@ -105,7 +108,8 @@ router.get("/hubs/:id", async (req, res) => {
 
 // GET /api/bug-challenges/:id/neighbours — prev/next for the workspace nav.
 // Declared before /:id so the extra segment isn't swallowed by it.
-router.get("/:id/neighbours", optionalAuth, async (req, res) => {
+// Position in the catalogue: the same two ids for everyone who asks.
+router.get("/:id/neighbours", optionalAuth, browserCache(300, { shared: true }), async (req, res) => {
   try {
     res.json(await getNeighbours(String(req.params.id)));
   } catch (err) {

@@ -41,15 +41,24 @@ export function invalidateProblem(slug: string): void {
 /** Rows per list page, and the most a caller may ask for at once. */
 const MAX_TAKE = 100;
 
-/** The columns a list row carries — the same slice the cached catalogue holds. */
+/**
+ * The columns a list row carries — the same slice `listProblemsWithStatus`
+ * projects the cached catalogue down to, so both paths below answer with one
+ * shape.
+ *
+ * Deliberately absent: `createdAt` and `timeLimitMs`. Both rode on every row
+ * of every list page and no consumer has ever read them — not the catalogue
+ * table, not the pickers, not the mobile list (which renders id, slug, title,
+ * difficulty, tags and status). `maxTime` filters on timeLimitMs in SQL and
+ * `sortBy` orders on createdAt in SQL; neither needs the column on the wire.
+ * At the 100-row cap that was ~5.6 KB of a 26 KB answer.
+ */
 const LIST_SELECT = {
   id: true,
   title: true,
   slug: true,
   difficulty: true,
   tags: true,
-  createdAt: true,
-  timeLimitMs: true,
 } as const;
 
 /**
@@ -132,7 +141,11 @@ router.get("/", optionalAuth, browserCache(60), async (req, res) => {
     if (isPlainFirstPage) {
       const result = userId
         ? await listProblemsWithStatus(userId, takeNum)
-        : (await getCatalogue()).slice(0, takeNum).map((p) => ({ ...p, status: "UNSOLVED" }));
+        : (await getCatalogue())
+            .slice(0, takeNum)
+            // Same projection as listProblemsWithStatus: the visitor's copy of
+            // the head must be the same shape as a member's.
+            .map((p) => ({ id: p.id, title: p.title, slug: p.slug, difficulty: p.difficulty, tags: p.tags, status: "UNSOLVED" }));
       res.json(result);
       return;
     }
@@ -810,13 +823,32 @@ router.get("/:slug/submissions", requireAuth, async (req, res) => {
       return;
     }
 
-    // `code` stays: the Submissions tab opens a selected attempt in a read-only
-    // editor. What is bounded is the count — without a ceiling a determined
-    // solver's every attempt, each a MediumText, came back on every tab open.
+    // Rows, not sources. The Submissions tab is a table of verdicts, and the
+    // read-only editor opens one attempt at a time — which GET
+    // /api/me/submissions/:id serves, the way the dashboard's history rows
+    // have always fetched theirs. `code` is a MediumText, so shipping it on
+    // every row meant the whole tab cost every attempt ever made on the
+    // problem: measured locally at 20,085 B for 45 rows of short test
+    // solutions against 8,606 B for the same rows without it (-57%), and a
+    // real solution is several times the size of those.
+    //
+    // The slice is the union of what the two clients read: the web table
+    // (verdict, language, runtimeMs, memoryKb, submittedAt) and the mobile
+    // list (verdict, passedCases, totalCases, submittedAt).
     const submissions = await prisma.submission.findMany({
       where: {
         userId,
         problemId,
+      },
+      select: {
+        id: true,
+        verdict: true,
+        language: true,
+        runtimeMs: true,
+        memoryKb: true,
+        passedCases: true,
+        totalCases: true,
+        submittedAt: true,
       },
       orderBy: { submittedAt: "desc" },
       take: SUBMISSION_HISTORY_TAKE,
