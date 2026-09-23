@@ -1,0 +1,54 @@
+# TLS termination and the reverse proxy in front of the API.
+#
+# Cloudflare is in front of this (proxied DNS), so the public certificate is
+# Cloudflare's. This certificate secures Cloudflare -> origin, which is what
+# "Full (strict)" in the Cloudflare dashboard requires. It is a Cloudflare
+# Origin Certificate: free, valid for years, and trusted by Cloudflare only —
+# which is correct, because nothing else should be reaching this port.
+
+{
+	# Nothing here needs an ACME account: the certificate is supplied.
+	admin off
+	# Caddy would otherwise try to reach Let's Encrypt for a cert it has.
+	auto_https disable_redirects
+}
+
+api.codekairo.com {
+	tls /etc/caddy/certs/origin.pem /etc/caddy/certs/origin.key
+
+	# Express runs with `trust proxy = 1` and keys its rate limiters on
+	# req.ip, so the client address has to survive the hop. Cloudflare puts
+	# the real client in CF-Connecting-IP; Caddy would otherwise forward the
+	# Cloudflare edge address and every visitor would share one rate-limit
+	# bucket.
+	@cf header CF-Connecting-IP *
+	handle @cf {
+		reverse_proxy api:3001 {
+			header_up X-Forwarded-For {http.request.header.CF-Connecting-IP}
+			header_up X-Real-IP {http.request.header.CF-Connecting-IP}
+		}
+	}
+
+	# Anything arriving without that header did not come through Cloudflare.
+	# The firewall should already have dropped it; this is the second lock.
+	handle {
+		respond "Direct access is not allowed" 403
+	}
+
+	encode zstd gzip
+
+	log {
+		output file /data/access.log {
+			roll_size 10MiB
+			roll_keep 5
+		}
+		format json
+		# The bodies carry submitted code, resumes and session tokens; only
+		# the request line is worth keeping.
+		level INFO
+	}
+}
+
+# Socket.IO needs no special casing here: Caddy v2 proxies the Upgrade
+# handshake through reverse_proxy on its own, so wss://api.codekairo.com
+# works over the same route as the REST calls.

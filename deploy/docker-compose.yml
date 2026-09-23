@@ -1,0 +1,97 @@
+# The whole production stack on one Lightsail instance.
+#
+# Everything the API talks to now lives on the same box. That is the point of
+# the move: the API used to sit in Singapore with MySQL on a shared host in
+# the US (~500 ms a round trip) and Redis in us-east-1 (~300 ms). Both are now
+# a loopback hop away, which is worth more than any query tuning in this repo.
+#
+# Only Caddy is published. MySQL and Redis have no host port at all — they are
+# reachable on the compose network and nowhere else, so the instance firewall
+# is not the only thing standing between them and the internet.
+
+name: codekairo
+
+services:
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      # The Cloudflare Origin Certificate (see deploy/README.md). Cloudflare
+      # terminates TLS for the public; this pair secures the last hop.
+      - ./certs:/etc/caddy/certs:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      api:
+        condition: service_healthy
+
+  api:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    # Real environment lives in deploy/.env.production on the instance and is
+    # never committed. See .env.example for every variable.
+    env_file:
+      - .env.production
+    environment:
+      NODE_ENV: production
+      PORT: "3001"
+      # Service names on the compose network, not localhost.
+      REDIS_URL: redis://redis:6379
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    healthcheck:
+      # Node 22 has fetch built in, so this needs no curl in the image.
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3001/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
+
+  mysql:
+    image: mysql:8.4
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: codexa
+      MYSQL_USER: codekairo
+      # Both read from deploy/.env.production.
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:?set MYSQL_PASSWORD in deploy/.env.production}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?set MYSQL_ROOT_PASSWORD in deploy/.env.production}
+    volumes:
+      - mysql-data:/var/lib/mysql
+      - ./mysql.cnf:/etc/mysql/conf.d/codekairo.cnf:ro
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-p${MYSQL_ROOT_PASSWORD}"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 60s
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    # Capped hard: this box has 2 GB and MySQL wants most of it. The cache
+    # degrades to a miss on eviction (lib/cache.ts), so a ceiling costs
+    # correctness nothing.
+    command: >
+      redis-server
+      --maxmemory 128mb
+      --maxmemory-policy allkeys-lru
+      --appendonly no
+      --save ""
+    volumes:
+      - redis-data:/data
+
+volumes:
+  mysql-data:
+  caddy-data:
+  caddy-config:
+  redis-data:

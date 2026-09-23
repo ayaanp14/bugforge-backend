@@ -1,0 +1,52 @@
+# MySQL 8.4 tuned for a 2 GB box shared with Node, Redis and Caddy.
+#
+# The database is ~640 MB, but ~604 MB of that is the TestCase table, which
+# only the judge reads and only through the 64-problem LRU in
+# lib/test-suite-cache.ts. The genuinely hot working set — problems, users,
+# submissions, the study and aptitude content — is well under 200 MB, so a
+# 768 MB buffer pool holds it with room spare while leaving the API its share.
+
+[mysqld]
+
+# The single most important setting here. Too large and the OOM killer takes
+# either MySQL or Node; too small and the hot tables page off disk.
+innodb_buffer_pool_size = 768M
+innodb_buffer_pool_instances = 1
+
+# Redo log. The default flushes constantly under a seed run
+# (scripts/seed-catalog.ts writes ~3M TestCase rows); 256 MB rides it out.
+innodb_redo_log_capacity = 256M
+
+# The app reaches MySQL over the compose network, never a socket, and one API
+# instance opens `connection_limit` from DATABASE_URL (10). The rest of the
+# headroom is for the content scripts run from a workstation.
+max_connections = 60
+
+# Must match the source server (Percona 8.0.46 reports 0) and can never be
+# changed after the data directory is initialised. The schema is CamelCase —
+# `User`, `Submission`, `TestCase` — so a server that folded names to
+# lowercase would break every Prisma query on this database.
+lower_case_table_names = 0
+
+# Matched to the source exactly rather than to a personal preference. The
+# catalogue filters rely on case-insensitive comparison
+# (`where.difficulty = { equals: difficulty }` in routes/problems.ts relies on
+# the CI collation), and 0900_ai_ci is what those rows were written under.
+character-set-server = utf8mb4
+collation-server = utf8mb4_0900_ai_ci
+
+# NOTE: no default_authentication_plugin here. It was removed in MySQL 8.4 and
+# naming it stops the server booting at all. caching_sha2_password is the
+# default anyway, and lib/prisma.ts already sets allowPublicKeyRetrieval so
+# the MariaDB connector can complete that handshake without TLS.
+
+# Slow-query visibility without the overhead of the general log. 500 ms is
+# well above anything this schema should take now that the DB is local — on
+# the old shared host a bare `SELECT 1` cost 269 ms of wire time.
+slow_query_log = 1
+slow_query_log_file = /var/lib/mysql/slow.log
+long_query_time = 0.5
+
+# A local disk on a small instance is not a RAID array; 1 is the safe default
+# and the write volume here does not justify relaxing it.
+innodb_flush_log_at_trx_commit = 1

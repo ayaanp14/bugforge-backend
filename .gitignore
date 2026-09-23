@@ -39,3 +39,12 @@ scratch/
 *.env
 *.env.bak
 !.env.example
+
+# Deployment secrets that live only on the instance (see deploy/README.md).
+# origin.key is a private key; .env.production holds JWT_SECRET, the Cashfree
+# keys and the database password.
+deploy/certs/
+deploy/.env.production
+# ...but the deploy template is documentation, not a secret: it carries only
+# variable names and comments, and deploy/README.md tells you to copy it.
+!deploy/.env.production.example

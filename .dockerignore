@@ -1,0 +1,29 @@
+# Keep the build context small and keep secrets out of the image.
+# .env in particular: the compose file supplies the real environment at run
+# time, and a copy baked into a layer would outlive any rotation.
+
+node_modules
+dist
+.git
+.github
+.husky
+
+.env
+.env.*
+!.env.example
+
+# Local-only tooling: benchmark probes, one-off migrations, the QA harness.
+scratch
+prisma/migrations
+prisma/*.bak.prisma
+
+# Content pipelines are run from a workstation against the database, never
+# from inside the API image.
+scripts
+
+# Colocated tests are not part of the runtime.
+src/**/*.test.ts
+
+*.log
+*.md
+!content/*.md
