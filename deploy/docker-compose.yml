@@ -30,6 +30,24 @@ services:
         condition: service_healthy
 
   api:
+    # Built by .github/workflows/build-image.yml on every push to main and
+    # pulled from here, so this box never compiles anything. Building in place
+    # used to spike memory high enough to push InnoDB's buffer pool into swap
+    # (measured: mysqld at 826 MB swapped, a COUNT at p95 69 ms).
+    #
+    # deploy/.env pins API_IMAGE to a `sha-<commit>` tag, so a reboot or a
+    # watchdog restart brings back exactly the image that was verified, not
+    # whatever CI has pushed since. The :latest default is only for a box that
+    # has never been deployed to.
+    #
+    # No pull_policy: the tag is immutable and deploy.sh pulls it explicitly.
+    # `always` would make every `docker compose up -d` -- including the one at
+    # boot -- depend on the registry being reachable and authenticated.
+    #
+    # `build` stays as a fallback: `docker compose build api` still works if
+    # the registry is unreachable or you need an image from uncommitted code.
+    # Watch memory if you use it (see deploy.sh's header).
+    image: ${API_IMAGE:-ghcr.io/ayaanp14/bugforge-backend:latest}
     build:
       context: ..
       dockerfile: Dockerfile

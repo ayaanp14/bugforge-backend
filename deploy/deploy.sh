@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# One-command deploy: pull, rebuild, restart, verify -- and roll back on its
-# own if the new build does not come up healthy.
+# One-command deploy: fetch, pull the image CI already built, restart, verify --
+# and roll back on its own if the new image does not come up healthy.
 #
 #   ~/codekairo-backend/deploy/deploy.sh
 #
@@ -8,16 +8,36 @@
 # deploy is a decision someone makes, so a bad merge cannot take the site down
 # on its own.
 #
-# The rollback matters because this builds on the machine that is serving
-# traffic. If the image is broken, or the build gets OOM-killed on a 2 GB box,
-# the previous image is retagged and restarted rather than leaving the site
-# down while someone reads a stack trace.
+# Nothing is compiled here any more. The image is built by
+# .github/workflows/build-image.yml, because `docker compose build` on this box
+# peaked high enough to push InnoDB's buffer pool into swap -- measured
+# 2026-09-23, mysqld sat at 826 MB swapped and a COUNT went from p50 1.92 ms to
+# p95 69.35 ms while a build ran. The long comment in deploy/mysql.cnf has the
+# rest of that story.
+#
+# The image is pinned by commit sha in deploy/.env (API_IMAGE), not floated on
+# :latest. That matters more than it looks: a reboot, a watchdog restart and a
+# bare `docker compose up -d` then all bring back exactly what was deployed and
+# verified, instead of silently picking up whatever CI pushed since. It also
+# makes a rollback one line of that file rather than an image-retagging dance.
 
 set -uo pipefail
 
 cd "$(dirname "$0")/.."
 REPO_DIR="$(pwd)"
 cd deploy
+DEPLOY_DIR="$(pwd)"
+ENV_FILE="$DEPLOY_DIR/.env"
+
+# Derived from the git remote rather than written out, so this cannot drift
+# from the workflow's ${{ github.repository }}. GHCR paths must be lowercase.
+ORIGIN="$(git -C "$REPO_DIR" remote get-url origin 2>/dev/null)"
+SLUG="$(printf '%s' "$ORIGIN" | sed -E 's#^git@github\.com:##; s#^https?://github\.com/##; s#\.git$##' | tr '[:upper:]' '[:lower:]')"
+if [ -z "$SLUG" ]; then
+  echo "could not work out the GitHub repo from '$ORIGIN'; set REGISTRY_IMAGE by hand." >&2
+  exit 1
+fi
+REGISTRY_IMAGE="${REGISTRY_IMAGE:-ghcr.io/$SLUG}"
 
 say() { printf '\n\033[1m%s\033[0m\n' "$*"; }
 health() {
@@ -26,8 +46,31 @@ health() {
     https://api.codekairo.com/health 2>/dev/null || echo 000
 }
 
+current_image() {
+  if [ -f "$ENV_FILE" ] && grep -q '^API_IMAGE=' "$ENV_FILE"; then
+    grep '^API_IMAGE=' "$ENV_FILE" | head -1 | cut -d= -f2-
+    return
+  fi
+  # Nothing pinned yet (first deploy after the CI switch): fall back to whatever
+  # the running container was started from.
+  local cid
+  cid="$(docker compose ps -q api 2>/dev/null | head -1)"
+  [ -n "$cid" ] && docker inspect --format '{{.Config.Image}}' "$cid" 2>/dev/null
+}
+
+pin_image() {
+  touch "$ENV_FILE"
+  if grep -q '^API_IMAGE=' "$ENV_FILE"; then
+    sed -i "s|^API_IMAGE=.*|API_IMAGE=$1|" "$ENV_FILE"
+  else
+    printf 'API_IMAGE=%s\n' "$1" >> "$ENV_FILE"
+  fi
+}
+
 say "1/6  current state"
-echo "  running commit : $(cd "$REPO_DIR" && git log --oneline -1)"
+echo "  running commit : $(git -C "$REPO_DIR" log --oneline -1)"
+OLD_IMAGE="$(current_image)"
+echo "  running image  : ${OLD_IMAGE:-<none pinned>}"
 echo "  health now     : HTTP $(health)"
 
 say "2/6  fetching"
@@ -40,7 +83,7 @@ fi
 AFTER="$(git rev-parse HEAD)"
 
 if [ "$BEFORE" = "$AFTER" ]; then
-  echo "  already up to date -- rebuilding anyway in case the image is behind the code"
+  echo "  already up to date -- redeploying anyway in case the running image is behind the code"
 else
   echo
   echo "  changes coming in:"
@@ -58,24 +101,71 @@ if ! git diff --quiet "$BEFORE..$AFTER" -- prisma/schema.prisma 2>/dev/null; the
   echo "  (deploy/README.md) before or after, whichever the change needs."
 fi
 
-cd deploy
+cd "$DEPLOY_DIR"
 
-say "3/6  remembering the current image, so a failure can be undone"
-OLD_IMAGE="$(docker compose images -q api 2>/dev/null | head -1)"
-if [ -n "$OLD_IMAGE" ]; then
-  docker tag "$OLD_IMAGE" codekairo-api:rollback
-  echo "  tagged codekairo-api:rollback -> ${OLD_IMAGE:0:12}"
-else
-  echo "  no current image found; rollback will not be available"
+say "3/6  finding the image CI built for $(git -C "$REPO_DIR" rev-parse --short HEAD)"
+TARGET="$REGISTRY_IMAGE:sha-$AFTER"
+echo "  want: $TARGET"
+
+# Does this commit even produce a new image? The workflow is path-filtered, so a
+# commit that only touches deploy/ or a README never gets a tag and waiting for
+# one would hang for the full timeout.
+# Keep this list in step with `paths:` in .github/workflows/build-image.yml.
+IMAGE_PATHS=(src prisma content package.json package-lock.json tsconfig.json Dockerfile .dockerignore .github/workflows/build-image.yml)
+EXPECT_BUILD=yes
+if [ "$BEFORE" != "$AFTER" ] && git -C "$REPO_DIR" diff --quiet "$BEFORE..$AFTER" -- "${IMAGE_PATHS[@]}" 2>/dev/null; then
+  EXPECT_BUILD=""
+  echo "  (nothing in the image changed in these commits)"
 fi
 
-say "4/6  building"
-if ! docker compose build api; then
-  echo
-  echo "  BUILD FAILED. Nothing was restarted; the old container is still serving."
-  echo "  health: HTTP $(health)"
-  exit 1
+# CI takes a few minutes on the arm64 runner. Wait for it only when a build is
+# actually coming; give up quickly otherwise.
+DEADLINE=$(( $(date +%s) + 600 ))
+PULLED=""
+while :; do
+  if OUT="$(docker pull "$TARGET" 2>&1)"; then
+    PULLED=yes
+    echo "  pulled $TARGET"
+    break
+  fi
+
+  case "$OUT" in
+    *denied*|*unauthorized*|*authentication*)
+      echo
+      echo "  The registry refused this box."
+      echo "  Either make the package public (GitHub > the repo > Packages >"
+      echo "  bugforge-backend > Package settings > Change visibility), or log in:"
+      echo "    echo <a PAT with read:packages> | docker login ghcr.io -u <you> --password-stdin"
+      echo "  Nothing was restarted; the old container is still serving."
+      exit 1
+      ;;
+  esac
+
+  if [ -z "$EXPECT_BUILD" ] || [ "$(date +%s)" -ge "$DEADLINE" ]; then
+    break
+  fi
+  echo "  not published yet -- waiting for the build ($(( (DEADLINE - $(date +%s)) / 60 )) min left)"
+  sleep 20
+done
+
+if [ -z "$PULLED" ]; then
+  if [ -n "$EXPECT_BUILD" ]; then
+    echo
+    echo "  Gave up waiting for $TARGET."
+    echo "  Check the run: https://github.com/$SLUG/actions/workflows/build-image.yml"
+    echo "  Nothing was restarted; the old container is still serving."
+    exit 1
+  fi
+  # No image for this commit and none expected. Still worth restarting, since
+  # compose files, .env or mysql.cnf may have changed -- but on the same image.
+  TARGET="${OLD_IMAGE:-$REGISTRY_IMAGE:latest}"
+  echo "  keeping the running image: $TARGET"
 fi
+
+say "4/6  pinning it"
+pin_image "$TARGET"
+echo "  deploy/.env now says API_IMAGE=$TARGET"
+[ -n "$OLD_IMAGE" ] && echo "  (rolls back to ${OLD_IMAGE})"
 
 say "5/6  restarting"
 docker compose up -d api
@@ -91,24 +181,26 @@ done
 
 if [ -n "$ok" ]; then
   echo
-  echo "  DEPLOYED: $(cd "$REPO_DIR" && git log --oneline -1)"
+  echo "  DEPLOYED: $(git -C "$REPO_DIR" log --oneline -1)"
+  echo "  image:    $TARGET"
   docker compose ps --format 'table {{.Service}}\t{{.Status}}'
-  # Only drop the rollback tag once the new build has proved itself.
-  docker rmi codekairo-api:rollback >/dev/null 2>&1
+  # Keep the last few images for a rollback that does not need the network;
+  # drop the rest so /var/lib/docker does not grow on a 20 GB disk.
+  docker image prune -f --filter 'until=168h' >/dev/null 2>&1
   exit 0
 fi
 
 say "FAILED to come up healthy -- rolling back"
-if docker image inspect codekairo-api:rollback >/dev/null 2>&1; then
-  # Point the compose service at the previous image and restart it.
-  docker tag codekairo-api:rollback "$(docker compose images -q api | head -1)" 2>/dev/null
-  docker compose up -d --no-build api
+if [ -n "$OLD_IMAGE" ] && docker image inspect "$OLD_IMAGE" >/dev/null 2>&1; then
+  pin_image "$OLD_IMAGE"
+  docker compose up -d api
   sleep 15
   echo "  health after rollback: HTTP $(health)"
+  echo "  running image: $OLD_IMAGE"
   echo "  the code in $REPO_DIR is still the NEW commit; the running image is the old one."
   echo "  fix forward, then run this script again."
 else
-  echo "  no rollback image available. Recent logs:"
+  echo "  no previous image available locally. Recent logs:"
   docker compose logs --tail 40 api
 fi
 exit 1

@@ -134,10 +134,16 @@ account at 25 connections; this MySQL is ours and allows 60.
 
 ```bash
 cd ~/codekairo-backend/deploy
-docker compose up -d --build
+docker compose up -d
 docker compose ps
 docker compose logs -f api
 ```
+
+The API image is built by `.github/workflows/build-image.yml` and pulled from
+`ghcr.io`, so nothing compiles here. If that workflow has never run — a brand
+new repo, or the registry is unreachable — `docker compose up -d --build api`
+still works; it is only unsafe once MySQL is live on the same box (see
+`deploy.sh`'s header).
 
 Then create the schema:
 
@@ -221,12 +227,17 @@ record back; TTL is the only delay.
 **Redeploy after a push**
 
 ```bash
-cd ~/codekairo-backend && git pull
-cd deploy && docker compose up -d --build api
+~/codekairo-backend/deploy/deploy.sh
 ```
 
-Caddy holds connections while `api` restarts, so the outage is the container's
-boot time.
+It fetches, waits for the image CI built for that exact commit, pins it in
+`deploy/.env` as `API_IMAGE`, restarts and checks `/health` — and puts the
+previous image back by itself if the new one does not answer 200. Caddy holds
+connections while `api` restarts, so the outage is the container's boot time.
+
+Rolling back later is one line: set `API_IMAGE` in `deploy/.env` to an older
+`sha-…` tag and `docker compose up -d api`. Every deployed image is kept
+locally for a week.
 
 **Logs**
 
@@ -278,5 +289,6 @@ the bill to $24/month and would outrun the credits.
   counters to Redis is the prerequisite, and Redis is now local, so it is a
   much smaller job than it was.
 - **No managed failover.** One box. If it dies, you restore a snapshot.
-- **No CI deploy.** `git pull && docker compose up -d --build` by hand. Worth
-  automating once the shape has settled, not before.
+- **No CI deploy.** CI builds the image; putting it on the box is still a
+  human running `deploy/deploy.sh`. That split is deliberate — a bad merge
+  should not be able to take the site down on its own.

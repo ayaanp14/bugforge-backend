@@ -1,0 +1,99 @@
+# Build the production image in CI, so the box that serves traffic never has
+# to compile anything.
+#
+# The deploy used to run `docker compose build` on the instance itself. That
+# box has 2 GB of RAM shared with MySQL, and `npm ci` plus tsc peaks high
+# enough that the kernel evicts InnoDB's buffer pool to make room -- measured
+# on 2026-09-23, mysqld reached 826 MB of swap, and the API's tail latency went
+# with it (a COUNT at p50 1.92 ms but p95 69.35 ms). Building here and pulling
+# a finished image there removes that spike entirely.
+#
+# arm64 only: the instance is Graviton (t4g.small). Building just the one
+# architecture keeps this to a few minutes on a native runner rather than
+# twenty under QEMU emulation.
+
+name: Build image
+
+on:
+  push:
+    branches: [main]
+    # Nothing that cannot change the image. A README or a compose tweak should
+    # not cost a build.
+    paths:
+      - "src/**"
+      - "prisma/**"
+      - "content/**"
+      - "package.json"
+      - "package-lock.json"
+      - "tsconfig.json"
+      - "Dockerfile"
+      - ".dockerignore"
+      - ".github/workflows/build-image.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: build-image-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE: ${{ github.repository }}
+
+jobs:
+  build:
+    name: Build and push arm64 image
+    # Native arm64 runner. The x86 runners would need QEMU, which turns a
+    # three-minute build into a twenty-minute one for the same output.
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Sign in to the registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          # Scoped to this repository and expires with the job; no secret to
+          # rotate and nothing to leak.
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Work out the tags
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE }}
+          tags: |
+            type=raw,value=latest
+            type=sha,format=long
+        # `latest` is what the instance pulls; the sha tag is what you roll
+        # back to, since `latest` has already moved by then.
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          # Cache in the registry: a source-only change then reuses the npm ci
+          # layer, which is most of the build.
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          build-args: |
+            BUILDKIT_INLINE_CACHE=1
+
+      - name: Say what to run
+        run: |
+          echo "Pushed ${{ env.REGISTRY }}/${{ env.IMAGE }}:latest"
+          echo ""
+          echo "Deploy it with:"
+          echo "  ssh ubuntu@13.201.108.73"
+          echo "  ~/codekairo-backend/deploy/deploy.sh"
