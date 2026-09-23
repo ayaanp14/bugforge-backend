@@ -63,11 +63,23 @@ echo "================================================================"
 # The old value was the literal placeholder committed to the repo. 64
 # alphanumeric characters; every existing session is invalidated once when
 # this changes, which at today's account count is cheap.
-JWT_NEW="$(openssl rand -base64 64 | tr -dc 'A-Za-z0-9' | head -c 64)"
-put JWT_SECRET "$JWT_NEW"
-echo
-echo "  JWT_SECRET ......... generated on this machine (64 chars)"
-echo "                       every account is signed out once on first boot"
+# Opt-in, because this script is meant to be re-runnable. Rotating
+# JWT_SECRET invalidates every session on the platform, so a later pass that
+# only fixes one API key must not sign the whole userbase out as a side effect.
+printf "
+  Regenerate JWT_SECRET? Every signed-in account is logged out once.
+  [y/N]: "
+read -r jwt_answer
+case "${jwt_answer:-n}" in
+  [Yy]*)
+    JWT_NEW="$(openssl rand -base64 64 | tr -dc 'A-Za-z0-9' | head -c 64)"
+    put JWT_SECRET "$JWT_NEW"
+    echo "    regenerated on this machine (64 chars)"
+    ;;
+  *)
+    echo "    kept the current JWT_SECRET"
+    ;;
+esac
 
 # ── rotated third-party keys ────────────────────────────────────────────
 ask NVIDIA_API_KEY        "written interviews + the site assistant (billable)"
