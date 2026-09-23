@@ -35,28 +35,24 @@ import { HASHING3_PROBLEMS } from "./hashing3.js";
 
 // ── Wave 4 — LeetCode / GFG classics, CodeKairo-flavoured examples ──
 import { ARRAY4_PROBLEMS } from "./arrays4.js";
-
 import { STRING4_PROBLEMS } from "./strings4.js";
-
 import { HASHING4_PROBLEMS } from "./hashing4.js";
-
 import { MATH4_PROBLEMS } from "./math4.js";
-
 import { BITS4_PROBLEMS } from "./bits4.js";
-
 import { TWOPOINTERS4_PROBLEMS } from "./twopointers4.js";
-
 import { SLIDING4_PROBLEMS } from "./sliding4.js";
-
 import { BINARYSEARCH4_PROBLEMS } from "./binarysearch4.js";
-
 import { GREEDY4_PROBLEMS } from "./greedy4.js";
-
 import { DP4_PROBLEMS } from "./dp4.js";
-
 import { MATRICES4_PROBLEMS } from "./matrices4.js";
-
 import { GRAPHS4_PROBLEMS } from "./graphs4.js";
+import { HEAPS4_PROBLEMS } from "./heaps4.js";
+
+// ── Wave 5 — the same batch, continued into the LC 2000+ range ──
+import { ARRAYS5_PROBLEMS } from "./arrays5.js";
+import { STRINGS5_PROBLEMS } from "./strings5.js";
+import { DP5_PROBLEMS } from "./dp5.js";
+import { MISC4_PROBLEMS } from "./misc4.js";
 
 export const CATALOG: CatalogProblem[] = [
   ...ARRAY_PROBLEMS,
@@ -98,4 +94,9 @@ export const CATALOG: CatalogProblem[] = [
   ...DP4_PROBLEMS,
   ...MATRICES4_PROBLEMS,
   ...GRAPHS4_PROBLEMS,
+  ...HEAPS4_PROBLEMS,
+  ...ARRAYS5_PROBLEMS,
+  ...STRINGS5_PROBLEMS,
+  ...DP5_PROBLEMS,
+  ...MISC4_PROBLEMS,
 ];

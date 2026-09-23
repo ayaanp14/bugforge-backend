@@ -48,11 +48,15 @@ function handleStudyError(err: unknown, res: Response, next: NextFunction) {
   next(err);
 }
 
-router.get("/", optionalAuth, async (req: Authed, res) => {
+// All three reads are seeded course content with the reader's progress laid
+// over it, and all three open to a visitor (lib/seo/routes). browserCache
+// sends the header to anonymous callers only and Varies on Authorization, so
+// a member's progress is never what a later request gets back.
+router.get("/", optionalAuth, browserCache(120), async (req: Authed, res) => {
   res.json({ tracks: await tracksFor(req.user?.userId ?? null) });
 });
 
-router.get("/:track", optionalAuth, async (req: Authed, res) => {
+router.get("/:track", optionalAuth, browserCache(120), async (req: Authed, res) => {
   const payload = await trackFor(String(req.params["track"]), req.user?.userId ?? null);
   if (!payload) {
     res.status(404).json({ error: "No such study plan" });
@@ -61,7 +65,7 @@ router.get("/:track", optionalAuth, async (req: Authed, res) => {
   res.json(payload);
 });
 
-router.get("/:track/lessons/:lesson", optionalAuth, async (req: Authed, res) => {
+router.get("/:track/lessons/:lesson", optionalAuth, browserCache(120), async (req: Authed, res) => {
   const payload = await lessonFor(String(req.params["track"]), String(req.params["lesson"]), req.user?.userId ?? null);
   if (!payload) {
     res.status(404).json({ error: "No such lesson" });

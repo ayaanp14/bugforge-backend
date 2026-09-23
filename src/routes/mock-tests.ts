@@ -70,7 +70,15 @@ const sectionPlans = (sections: Array<{ key: string; name: string; orderIndex: n
     blueprint: (section.blueprint ?? []) as unknown as DrawRule[],
   }));
 
-/** The public shape of a pattern, without the blueprints that fill it. */
+/**
+ * The public shape of a pattern, without the blueprints that fill it.
+ *
+ * No `sections` here. The catalogue reads `sectionCount` and nothing else off
+ * them ("3 sections" on the card), while the detail route below builds its own
+ * richer section list — instructions and the topic mix included — and so
+ * overwrote this one anyway. Shipping them from the catalogue cost 9.4 KB of
+ * a 23.2 KB answer for a number.
+ */
 const testSummary = (test: any) => ({
   slug: test.slug,
   company: test.company,
@@ -84,14 +92,7 @@ const testSummary = (test: any) => ({
   isAdaptive: test.isAdaptive,
   highlights: test.highlights,
   difficulty: test.difficulty,
-  sections: (test.sections ?? []).map((section: any) => ({
-    key: section.key,
-    name: section.name,
-    kind: section.kind ?? "mcq",
-    marksPerQuestion: section.marksPerQuestion ?? 1,
-    durationSec: section.durationSec,
-    questionCount: section.questionCount,
-  })),
+  sectionCount: (test.sections ?? []).length,
 });
 
 /**
