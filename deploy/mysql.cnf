@@ -1,38 +1,32 @@
 # MySQL 8.4 tuned for a 2 GB box shared with Node, Redis and Caddy.
-#
-# The database is ~640 MB, but ~604 MB of that is the TestCase table, which
-# only the judge reads and only through the 64-problem LRU in
-# lib/test-suite-cache.ts. The genuinely hot working set — problems, users,
-# submissions, the study and aptitude content — is well under 200 MB, so a
-# 768 MB buffer pool holds it with room spare while leaving the API its share.
 
 [mysqld]
 
-# The single most important setting here. Too large and the OOM killer takes
-# either MySQL or Node; too small and the hot tables page off disk.
+# The single most important setting here, and the one this box was wrong about
+# twice.
 #
-# Tried 512M on 2026-09-23 and put it back the same day. The reasoning for
-# shrinking looked sound -- of the ~640 MB database, 604 MB is TestCase, which
-# only the judge reads and only through the 64-problem LRU in
-# lib/test-suite-cache.ts -- and a 240 s sample after the change showed 1,817
-# read requests and 0 disk reads, a 100.000% hit rate.
+# 768M does not fit. Measured on 2026-09-23 with the API, Redis and Caddy
+# alongside it on 1,835 MB: mysqld ended up with 257-826 MB in swap, and a
+# swapped buffer-pool page is a disk read wearing a cache hit as a disguise. It
+# showed as tail latency rather than average -- SELECT 1 at p50 2.96 ms but p95
+# 9.09 ms, a COUNT at p50 1.92 ms but p95 69.35 ms.
 #
-# That sample was wrong, or rather too narrow. It covered a quiet window of
-# browsing traffic. Cumulative Innodb_buffer_pool_reads went 1,059 -> 1,988
-# across the period the pool was at 512M: 929 disk reads the sample never saw,
-# and the API was noticeably slower in use. A single judge run pulls a
-# problem's ~5,000 test cases in one go, which is exactly the large read that
-# evicts a tight pool and never appears in a four-minute average.
+# 512M does fit, and holds everything that matters. Of the ~1.2 GB database,
+# every table except TestCase totals 46 MB. TestCase is read only by the judge,
+# one problem at a time (~5,000 cases, ~1.1 MB), through the 64-problem LRU in
+# lib/test-suite-cache.ts. With 768M configured, InnoDB was holding just 381 MB
+# of data and leaving 24,761 pages free -- it never wanted the rest.
 #
-# The lesson worth keeping: a hit rate measured over minutes of light traffic
-# does not describe a workload whose expensive reads are bursty. Do not shrink
-# this again on that evidence alone -- watch cumulative disk reads across a
-# full day, including judge activity.
-innodb_buffer_pool_size = 768M
+# An earlier attempt at 512M was reverted as a regression. That was a
+# misreading: mysqld was 826 MB into swap at the time, and the pool size was
+# not what was slow. Tell those two apart before changing this again -- read
+# mysqld_swap_mb from deploy/track-resources.sh first, and only then the hit
+# rate. A hit rate cannot see whether the page it hit was in RAM or in swap.
+innodb_buffer_pool_size = 512M
 innodb_buffer_pool_instances = 1
 
 # Redo log. The default flushes constantly under a seed run
-# (scripts/seed-catalog.ts writes ~3M TestCase rows); 256 MB rides it out.
+# (scripts/seed-catalog.ts writes millions of TestCase rows); 256 MB rides it out.
 innodb_redo_log_capacity = 256M
 
 # The app reaches MySQL over the compose network, never a socket, and one API
@@ -41,8 +35,8 @@ innodb_redo_log_capacity = 256M
 max_connections = 60
 
 # Must match the source server (Percona 8.0.46 reports 0) and can never be
-# changed after the data directory is initialised. The schema is CamelCase —
-# `User`, `Submission`, `TestCase` — so a server that folded names to
+# changed after the data directory is initialised. The schema is CamelCase --
+# `User`, `Submission`, `TestCase` -- so a server that folded names to
 # lowercase would break every Prisma query on this database.
 lower_case_table_names = 0
 
@@ -59,12 +53,13 @@ collation-server = utf8mb4_0900_ai_ci
 # the MariaDB connector can complete that handshake without TLS.
 
 # Slow-query visibility without the overhead of the general log. 500 ms is
-# well above anything this schema should take now that the DB is local — on
+# well above anything this schema should take now that the DB is local -- on
 # the old shared host a bare `SELECT 1` cost 269 ms of wire time.
 slow_query_log = 1
 slow_query_log_file = /var/lib/mysql/slow.log
 long_query_time = 0.5
 
 # A local disk on a small instance is not a RAID array; 1 is the safe default
-# and the write volume here does not justify relaxing it.
+# and the write volume here does not justify relaxing it. The bulk restore in
+# deploy/README.md relaxes it to 2 for the duration and puts it back.
 innodb_flush_log_at_trx_commit = 1
