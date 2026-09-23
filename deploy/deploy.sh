@@ -103,19 +103,37 @@ fi
 
 cd "$DEPLOY_DIR"
 
-say "3/6  finding the image CI built for $(git -C "$REPO_DIR" rev-parse --short HEAD)"
-TARGET="$REGISTRY_IMAGE:sha-$AFTER"
-echo "  want: $TARGET"
-
-# Does this commit even produce a new image? The workflow is path-filtered, so a
-# commit that only touches deploy/ or a README never gets a tag and waiting for
-# one would hang for the full timeout.
+say "3/6  resolving the image for $(git -C "$REPO_DIR" rev-parse --short HEAD)"
+# The workflow is path-filtered, so most commits never get a tag of their own:
+# a deploy/ tweak, a README, a compose change. The image to run is therefore
+# not "HEAD's image" -- it is the image of the newest commit that touched
+# something which actually goes *into* the image. Usually that is HEAD; when it
+# is not, HEAD's tag will never exist and waiting for it burns the full timeout
+# for nothing (28e7264, 2026-09-23: a deploy/-only commit, with the correct
+# image already running the whole time).
+#
 # Keep this list in step with `paths:` in .github/workflows/build-image.yml.
 IMAGE_PATHS=(src prisma content package.json package-lock.json tsconfig.json Dockerfile .dockerignore .github/workflows/build-image.yml)
-EXPECT_BUILD=yes
-if [ "$BEFORE" != "$AFTER" ] && git -C "$REPO_DIR" diff --quiet "$BEFORE..$AFTER" -- "${IMAGE_PATHS[@]}" 2>/dev/null; then
-  EXPECT_BUILD=""
-  echo "  (nothing in the image changed in these commits)"
+# --first-parent because that is the history CI's filter sees: a push event
+# compares the branch against its previous tip, so a merge's tag belongs to the
+# merge commit on main, not to the commit inside the branch that made the change.
+IMAGE_COMMIT="$(git -C "$REPO_DIR" log -1 --first-parent --format=%H -- "${IMAGE_PATHS[@]}" 2>/dev/null)"
+[ -n "$IMAGE_COMMIT" ] || IMAGE_COMMIT="$AFTER"
+
+TARGET="$REGISTRY_IMAGE:sha-$IMAGE_COMMIT"
+echo "  want: $TARGET"
+if [ "$IMAGE_COMMIT" != "$AFTER" ]; then
+  echo "  HEAD changed nothing in the image; newest one that did:"
+  echo "    $(git -C "$REPO_DIR" log --oneline -1 "$IMAGE_COMMIT")"
+fi
+
+# Wait for CI only when the build could still be running -- that is, when the
+# commit behind this image arrived in the pull we just did. An image for a
+# commit the box already had should be in the registry now; if it is not,
+# something is wrong and ten minutes of polling will not fix it.
+EXPECT_BUILD=""
+if ! git -C "$REPO_DIR" merge-base --is-ancestor "$IMAGE_COMMIT" "$BEFORE" 2>/dev/null; then
+  EXPECT_BUILD=yes
 fi
 
 # CI takes a few minutes on the arm64 runner. Wait for it only when a build is
@@ -156,10 +174,17 @@ if [ -z "$PULLED" ]; then
     echo "  Nothing was restarted; the old container is still serving."
     exit 1
   fi
-  # No image for this commit and none expected. Still worth restarting, since
-  # compose files, .env or mysql.cnf may have changed -- but on the same image.
-  TARGET="${OLD_IMAGE:-$REGISTRY_IMAGE:latest}"
-  echo "  keeping the running image: $TARGET"
+  # The registry could not hand it over, and no build was pending. If the box
+  # already has that image -- the usual case, since it is generally the one
+  # running -- use it: a GHCR blip is no reason to drop back a version.
+  if docker image inspect "$TARGET" >/dev/null 2>&1; then
+    echo "  registry would not serve it, but $TARGET is already on this box"
+  else
+    # Still worth restarting, since compose files, .env or mysql.cnf may have
+    # changed -- but on the same image.
+    TARGET="${OLD_IMAGE:-$REGISTRY_IMAGE:latest}"
+    echo "  keeping the running image: $TARGET"
+  fi
 fi
 
 say "4/6  pinning it"
