@@ -104,37 +104,27 @@ fi
 cd "$DEPLOY_DIR"
 
 say "3/6  resolving the image for $(git -C "$REPO_DIR" rev-parse --short HEAD)"
-# The workflow is path-filtered, so most commits never get a tag of their own:
-# a deploy/ tweak, a README, a compose change. The image to run is therefore
-# not "HEAD's image" -- it is the image of the newest commit that touched
-# something which actually goes *into* the image. Usually that is HEAD; when it
-# is not, HEAD's tag will never exist and waiting for it burns the full timeout
-# for nothing (28e7264, 2026-09-23: a deploy/-only commit, with the correct
-# image already running the whole time).
+# The workflow tags with `type=sha,format=long`, i.e. github.sha -- the TIP of
+# the push that triggered it, not whichever commit inside that push touched
+# src/. So the tag to want is always HEAD's; the only question is whether a
+# build is coming for it.
+#
+# And it often is not: the workflow is path-filtered, so a push carrying only
+# deploy/, README or compose changes publishes nothing at all, and HEAD's tag
+# will never exist. Waiting for it burns the full timeout for nothing --
+# 28e7264, 2026-09-23: a deploy/-only commit, with the correct image already
+# running the whole time.
 #
 # Keep this list in step with `paths:` in .github/workflows/build-image.yml.
 IMAGE_PATHS=(src prisma content package.json package-lock.json tsconfig.json Dockerfile .dockerignore .github/workflows/build-image.yml)
-# --first-parent because that is the history CI's filter sees: a push event
-# compares the branch against its previous tip, so a merge's tag belongs to the
-# merge commit on main, not to the commit inside the branch that made the change.
-IMAGE_COMMIT="$(git -C "$REPO_DIR" log -1 --first-parent --format=%H -- "${IMAGE_PATHS[@]}" 2>/dev/null)"
-[ -n "$IMAGE_COMMIT" ] || IMAGE_COMMIT="$AFTER"
-
-TARGET="$REGISTRY_IMAGE:sha-$IMAGE_COMMIT"
-echo "  want: $TARGET"
-if [ "$IMAGE_COMMIT" != "$AFTER" ]; then
-  echo "  HEAD changed nothing in the image; newest one that did:"
-  echo "    $(git -C "$REPO_DIR" log --oneline -1 "$IMAGE_COMMIT")"
-fi
-
-# Wait for CI only when the build could still be running -- that is, when the
-# commit behind this image arrived in the pull we just did. An image for a
-# commit the box already had should be in the registry now; if it is not,
-# something is wrong and ten minutes of polling will not fix it.
 EXPECT_BUILD=""
-if ! git -C "$REPO_DIR" merge-base --is-ancestor "$IMAGE_COMMIT" "$BEFORE" 2>/dev/null; then
+if [ "$BEFORE" != "$AFTER" ] && ! git -C "$REPO_DIR" diff --quiet "$BEFORE..$AFTER" -- "${IMAGE_PATHS[@]}" 2>/dev/null; then
   EXPECT_BUILD=yes
 fi
+
+TARGET="$REGISTRY_IMAGE:sha-$AFTER"
+echo "  want: $TARGET"
+[ -n "$EXPECT_BUILD" ] || echo "  (nothing in this pull changes the image, so no build is coming)"
 
 # CI takes a few minutes on the arm64 runner. Wait for it only when a build is
 # actually coming; give up quickly otherwise.
@@ -174,16 +164,33 @@ if [ -z "$PULLED" ]; then
     echo "  Nothing was restarted; the old container is still serving."
     exit 1
   fi
-  # The registry could not hand it over, and no build was pending. If the box
-  # already has that image -- the usual case, since it is generally the one
-  # running -- use it: a GHCR blip is no reason to drop back a version.
+  # A GHCR blip is no reason to drop back a version when the box already holds
+  # exactly the image it asked for.
   if docker image inspect "$TARGET" >/dev/null 2>&1; then
     echo "  registry would not serve it, but $TARGET is already on this box"
   else
-    # Still worth restarting, since compose files, .env or mysql.cnf may have
-    # changed -- but on the same image.
+    # HEAD has no tag of its own, so walk back for the newest ancestor that
+    # does. The registry is the only authority on which pushes actually built
+    # -- re-deriving the path filter here would only be a second copy of it to
+    # keep in step -- so ask it, newest first, and stop at the first hit.
+    echo "  no image for HEAD; looking back for the newest one that was built"
+    for sha in $(git -C "$REPO_DIR" rev-list --first-parent -n 40 HEAD); do
+      [ "$sha" = "$AFTER" ] && continue
+      if docker pull "$REGISTRY_IMAGE:sha-$sha" >/dev/null 2>&1; then
+        TARGET="$REGISTRY_IMAGE:sha-$sha"
+        PULLED=yes
+        echo "  built at: $(git -C "$REPO_DIR" log --oneline -1 "$sha")"
+        echo "  pulled $TARGET"
+        break
+      fi
+    done
+  fi
+
+  if [ -z "$PULLED" ] && ! docker image inspect "$TARGET" >/dev/null 2>&1; then
+    # Nothing published within reach. Still worth restarting, since compose
+    # files, .env or mysql.cnf may have changed -- but on the same image.
     TARGET="${OLD_IMAGE:-$REGISTRY_IMAGE:latest}"
-    echo "  keeping the running image: $TARGET"
+    echo "  nothing published in the last 40 commits; keeping $TARGET"
   fi
 fi
 
