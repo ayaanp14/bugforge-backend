@@ -22,6 +22,7 @@ import { ENGINE_DOWN_MESSAGE, isEngineDown } from "../lib/engine-error.js";
 // its test suite, both held in memory rather than pulled (~1 MB of hidden
 // cases) out of the database on every Run and Submit.
 import { getJudgeProblem, getJudgeSuite, getJudgeVisibleCases, type JudgeProblem } from "../lib/test-suite-cache.js";
+import { claimFirstSolve } from "../lib/solve-payout.js";
 import { daysBetween } from "../lib/clock.js";
 
 const router = Router();
@@ -297,14 +298,20 @@ router.post("/submit", requireAuth, executionLimiter, async (req, res) => {
     // The tensest moment in a duel: the other side is submitting.
     void emitDuelActivity(userId, { problemId }, { type: "submitting" });
 
-    // Whether this would be a first solve, and the streak row it would move,
-    // are only needed once there is a verdict — so they overlap the engine
-    // run instead of queueing behind it. (A user who lands two accepted
-    // submissions in the same second could see both counted as the first;
-    // the rate limiter makes that a curiosity rather than a loophole.)
+    // Both are only needed once there is a verdict, so they overlap the
+    // engine run instead of queueing behind it.
+    //
+    // The claim read is an optimisation and nothing more. A problem already
+    // claimed cannot become unclaimed, so "claimed" is a safe reason to skip
+    // the payout entirely — that is what keeps a practice re-submit as cheap
+    // as it was before. "Not claimed" is *not* trusted the other way: the
+    // insert still runs and the unique index still decides, so two accepted
+    // submissions racing each other cannot both read "no claim" and both be
+    // paid. The authority is the constraint; this read only ever removes
+    // work it would have been safe to do.
     const history = Promise.all([
-      prisma.submission.findFirst({
-        where: { userId, problemId, verdict: "ACCEPTED" },
+      prisma.problemSolve.findUnique({
+        where: { userId_problemId: { userId, problemId } },
         select: { id: true },
       }),
       prisma.userStats.findUnique({ where: { userId } }),
@@ -362,7 +369,7 @@ router.post("/submit", requireAuth, executionLimiter, async (req, res) => {
       ? remapDiagnostics((firstFailure.compile_output || firstFailure.stderr || "").trim() || null, driver ? driver.toEditorLine : null)
       : null;
 
-    const [prevSolved, stats] = await history;
+    const [alreadyClaimed, stats] = await history;
 
     // Award XP and update stats if first ACCEPTED solve
     const xpMap: Record<string, number> = { easy: 10, medium: 20, hard: 30 };
@@ -385,60 +392,17 @@ router.post("/submit", requireAuth, executionLimiter, async (req, res) => {
       totalCases,
     };
 
-    // The submission row, the XP and the streak land together or not at all.
-    //
-    // The "was this the first solve" read above overlapped the engine run,
-    // which is fine for every submission but the one racing another accepted
-    // submission from the same account (two tabs, a double-click that beat
-    // the button). Both used to be paid. When a payout is on the table the
-    // user's row is locked and the question asked once more under the lock,
-    // so exactly one of them pays.
-    let firstSolve = false;
-    let submission: { id: string; submittedAt: Date };
-    if (verdict === "ACCEPTED" && !prevSolved) {
-      const outcome = await prisma.$transaction(async (tx) => {
-        await tx.$queryRaw`SELECT id FROM \`User\` WHERE id = ${userId} FOR UPDATE`;
-        const already = await tx.submission.findFirst({
-          where: { userId, problemId, verdict: "ACCEPTED" },
-          select: { id: true },
-        });
-        // Only the two fields the rest of this handler reads. Without a
-        // select the insert echoes the whole row back — including `code`,
-        // the MediumText the client just uploaded — on every submit.
-        const row = await tx.submission.create({ data: submissionData, select: SUBMISSION_RETURN });
-        if (already) return { row, paid: false };
-        await tx.user.update({
-          where: { id: userId },
-          data: {
-            xp: { increment: prize },
-            questionsXp: { increment: prize },
-            // Rating climbs with every first solve — powers the tier bar
-            rating: { increment: prize },
-          },
-        });
-        await tx.userStats.upsert({
-          where: { userId },
-          update: {
-            problemsSolved: { increment: 1 },
-            currentStreak: streak.currentStreak,
-            longestStreak: streak.longestStreak,
-            lastActive: new Date(),
-          },
-          create: {
-            userId,
-            problemsSolved: 1,
-            currentStreak: 1,
-            longestStreak: 1,
-            lastActive: new Date(),
-          },
-        });
-        return { row, paid: true };
-      });
-      submission = outcome.row;
-      firstSolve = outcome.paid;
-    } else {
-      submission = await prisma.submission.create({ data: submissionData, select: SUBMISSION_RETURN });
-    }
+    // The attempt is recorded whatever the verdict. Only the two fields the
+    // rest of this handler reads come back: without a select the insert
+    // echoes the whole row, including the `code` the client just uploaded.
+    const submission = await prisma.submission.create({ data: submissionData, select: SUBMISSION_RETURN });
+
+    // XP for a problem is paid once, and `ProblemSolve` is the record of it;
+    // the rule and the reasoning live in lib/solve-payout.ts.
+    const firstSolve =
+      verdict === "ACCEPTED" && !alreadyClaimed
+        ? await claimFirstSolve(userId, problemId, submission.submittedAt, prize, streak)
+        : false;
     const awardedXp = firstSolve ? prize : 0;
 
     // The daily contest hears about the verdict before the response, not

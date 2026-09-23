@@ -1,5 +1,6 @@
 import { Router, type RequestHandler } from "express";
 import { prisma } from "../lib/prisma.js";
+import { isDuplicateKey } from "../lib/seat-claim.js";
 import { optionalAuth, requireAuth } from "../middleware/auth.js";
 import { aptitudeTopic, aptitudeCategory } from "../lib/aptitude-topics.js";
 import { attemptClock, codingMarks, drawPaper, markFor, type DrawRule, type PaperSection, type SectionPlan } from "../lib/mock-tests.js";
@@ -22,6 +23,9 @@ import { codingPool, questionIndex } from "../services/aptitude-bank.js";
  * finished section alive.
  */
 const router = Router();
+
+/** The value that marks a sitting live; see MockAttempt.activeKey. */
+const activeAttemptKey = (userId: string, testId: string) => `${userId}:${testId}`;
 
 type AttemptRow = Awaited<ReturnType<typeof prisma.mockAttempt.findFirst>>;
 
@@ -208,6 +212,10 @@ async function finishAttempt(attemptId: string, reason: "submitted" | "expired")
     where: { id: attemptId, status: "in-progress" },
     data: {
       status: reason,
+      // Frees the unique key so the candidate can sit this test again. It is
+      // cleared here, in the one statement that closes an attempt, so the
+      // column can never disagree with the status.
+      activeKey: null,
       submittedAt: new Date(),
       score: finalScore,
       maxScore: Math.round(maxScore * 100) / 100,
@@ -391,8 +399,12 @@ router.post("/:slug/start", requireAuth, async (req: any, res) => {
     const test = await testPattern(req.params.slug);
     if (!test) return res.status(404).json({ error: "Test not found" });
 
+    // Only the id is read, and the row carries the whole drawn paper as
+    // JSON — the fast path for a resume was pulling all of it to answer with
+    // one string. The authoritative check still happens under the lock below.
     const live = await prisma.mockAttempt.findFirst({
       where: { userId: req.user.userId, testId: test.id, status: "in-progress" },
+      select: { id: true },
     });
     if (live) return res.json({ attemptId: live.id, resumed: true });
 
@@ -424,27 +436,43 @@ router.post("/:slug/start", requireAuth, async (req: any, res) => {
     // repeated under it. Two attempts used to be created, each with its own
     // paper and clock, and the runner showed whichever URL was opened last.
     const userId: string = req.user.userId;
-    const outcome = await prisma.$transaction(async (tx) => {
-      await tx.$queryRaw`SELECT id FROM \`User\` WHERE id = ${userId} FOR UPDATE`;
-      const running = await tx.mockAttempt.findFirst({
-        where: { userId, testId: test.id, status: "in-progress" },
-        select: { id: true },
-      });
-      if (running) return { attemptId: running.id, resumed: true };
-      const attempt = await tx.mockAttempt.create({
-        data: {
-          userId,
-          testId: test.id,
-          startedAt: now,
-          expiresAt,
-          sectionEndsAt,
-          currentSection: 0,
-          paper: paper as any,
-        },
-        select: { id: true },
-      });
-      return { attemptId: attempt.id, resumed: false };
-    });
+    // One sitting per person per test is a unique index on `activeKey`
+    // (see the schema), so the insert is the check: if a live attempt already
+    // exists the key collides and the existing one is handed back. That
+    // replaces a transaction which locked the candidate's User row across a
+    // read and a write — a mutex every other write to that user waited on.
+    const outcome = await (async () => {
+      try {
+        const attempt = await prisma.mockAttempt.create({
+          data: {
+            userId,
+            testId: test.id,
+            activeKey: activeAttemptKey(userId, test.id),
+            startedAt: now,
+            expiresAt,
+            sectionEndsAt,
+            currentSection: 0,
+            paper: paper as any,
+          },
+          select: { id: true },
+        });
+        return { attemptId: attempt.id, resumed: false };
+      } catch (err) {
+        if (!isDuplicateKey(err)) throw err;
+        const running = await prisma.mockAttempt.findFirst({
+          where: { userId, testId: test.id, status: "in-progress" },
+          select: { id: true },
+        });
+        // The row must be there — the key that collided is its own — but if a
+        // close landed in the very same moment, say so rather than inventing
+        // an attempt id.
+        if (!running) return null;
+        return { attemptId: running.id, resumed: true };
+      }
+    })();
+    if (!outcome) {
+      return res.status(409).json({ error: "That sitting just ended. Start it again." });
+    }
     res.status(outcome.resumed ? 200 : 201).json(outcome);
   } catch (error: any) {
     console.error("Mock test start error:", error?.message);

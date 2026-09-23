@@ -1,5 +1,7 @@
 import { Router } from "express";
 import { prisma } from "../lib/prisma.js";
+import { kickedUserIdsOf, removeKickedUser } from "../lib/room-kicks.js";
+import { claimRoomSeat } from "../lib/seat-claim.js";
 import { encodeCode, decodeCode } from "../lib/obfuscation.js";
 import { generateInviteCode } from "../lib/room-codes.js";
 import { requireAuth } from "../middleware/auth.js";
@@ -242,9 +244,10 @@ router.post("/:id/join", requireAuth, async (req, res) => {
       return res.status(410).json({ error: "This room has ended" });
     }
 
-    // Check if user was kicked (kickedUserIds is a Json array on MySQL)
-    const kickedIds = (room.kickedUserIds as string[] | null) ?? [];
-    const isKicked = kickedIds.includes(userId);
+    // Check if user was kicked (kickedUserIds is a Json array on MySQL).
+    // Read through the helper: a row written by the old push path holds an
+    // object, and treating that as an array threw on every join.
+    const isKicked = kickedUserIdsOf(room.kickedUserIds).includes(userId);
 
     // If kicked, they MUST provide the recoveryCode correctly
     if (isKicked) {
@@ -256,13 +259,11 @@ router.post("/:id/join", requireAuth, async (req, res) => {
         });
       }
 
-      // If recovery code is correct, remove from kicked list
-      await prisma.pairRoom.update({
-        where: { id },
-        data: {
-          kickedUserIds: kickedIds.filter((uid) => uid !== userId)
-        }
-      });
+      // If recovery code is correct, remove from kicked list. One atomic
+      // statement rather than writing back a filtered copy of a snapshot —
+      // that copy was taken several round trips earlier, so a kick landing in
+      // the meantime was silently undone.
+      await removeKickedUser(id, userId);
     }
 
     // Skip passcode check for collaborative rooms
@@ -281,42 +282,30 @@ router.post("/:id/join", requireAuth, async (req, res) => {
     // Check if user is already a participant
     const existing = room.participants.find(p => p.userId === userId);
     if (!existing) {
-       // Check if room is full
-       if (room.participants.length >= room.maxParticipants) {
+       // The snapshot above is only a courtesy: it can be stale by the time
+       // the seat is taken, so the capacity rule is enforced by the database
+       // in the same statement that inserts the row (lib/seat-claim.ts).
+       //
+       // This used to be a Serializable interactive transaction — BEGIN, a
+       // count, an insert, COMMIT — which held locks across four round trips
+       // and, being Serializable, could deadlock into a 500 that the catch
+       // below did not recognise. One conditional INSERT enforces exactly the
+       // same invariant, holds nothing between statements, and reports "full"
+       // as a value rather than a thrown error. A re-join is a duplicate on
+       // the existing unique and stays an idempotent success.
+       const claim = await claimRoomSeat(id, userId, room.maxParticipants);
+       if (claim === "full") {
          return res.status(403).json({ error: "Room is full" });
        }
 
-       // The seat is taken inside a transaction that re-counts: two joins
-       // racing for the last seat both passed the check above and both sat
-       // down. Serializable so the two counts cannot interleave.
-       try {
-         await prisma.$transaction(async (tx) => {
-           const seated = await tx.roomParticipant.count({ where: { roomId: id } });
-           if (seated >= room.maxParticipants) throw new Error("ROOM_FULL");
-           await tx.roomParticipant.create({
-             data: {
-               roomId: id,
-               userId,
-               role: "guest"
-             }
-           });
-         }, { isolationLevel: "Serializable" });
-       } catch (e) {
-         if ((e as Error).message === "ROOM_FULL") {
-           return res.status(403).json({ error: "Room is full" });
-         }
-         // Unique (roomId, userId) violation — a concurrent join request
-         // already added this user; treat as an idempotent success.
-         if ((e as { code?: string }).code !== "P2002") throw e;
-       }
-
-       // Update status if needed
-       if (room.participants.length === 1) {
-          await prisma.pairRoom.update({
-            where: { id },
-            data: { status: "active", startedAt: new Date() }
-          });
-       }
+       // A room becomes active when somebody joins the host. Guarded on the
+       // status rather than on the participant count we read earlier: two
+       // joiners arriving together both saw "one participant" and both wrote,
+       // which restamped startedAt and moved the abandonment clock backwards.
+       await prisma.pairRoom.updateMany({
+         where: { id, status: "waiting" },
+         data: { status: "active", startedAt: new Date() }
+       });
     }
 
     res.json({ message: "Joined successfully" });

@@ -10,6 +10,7 @@ import { Router } from "express";
 import crypto from "crypto";
 
 import { prisma } from "../lib/prisma.js";
+import { claimDuelSeat } from "../lib/seat-claim.js";
 import { requireAuth } from "../middleware/auth.js";
 import { duelRoom, emitToRoom } from "../lib/realtime.js";
 import { cached } from "../lib/cache.js";
@@ -143,59 +144,78 @@ async function startIfFull(duel: DuelWithParticipants) {
 /**
  * Takes a seat in a waiting duel, or reports why not.
  *
- * The duel row is locked for the duration so two arrivals for the last seat
- * are seated one after the other: the second re-reads a full duel and is
- * turned away. Without the lock both passed the capacity check on their own
- * stale copy and a 1v1 ended up with three players, both late ones on team
- * two.
+ * This used to be an interactive transaction that locked the duel row with
+ * `SELECT ... FOR UPDATE`, re-read the duel and its participants under the
+ * lock, ran `pickTarget` — an unbounded query over everybody's accepted
+ * submissions — still under the lock, and only then inserted. Six round trips
+ * with the row held across all of them, which on this database is more than a
+ * second and a half of other arrivals waiting their turn.
+ *
+ * The lock was doing three jobs, and each is now expressed as a rule the
+ * database enforces in the statement that writes:
+ *
+ *  - *capacity and "still waiting"* are the `WHERE` of a conditional INSERT
+ *    (lib/seat-claim.ts), so two arrivals for the last seat cannot both take
+ *    it — the second inserts nothing and is told the duel is full.
+ *  - *which team* is a CASE over the live counts in that same INSERT, so a
+ *    2v2 cannot put two simultaneous joiners on the same side.
+ *  - *starting the fight* is a guarded `updateMany` on `status: "waiting"`,
+ *    so only one of two arrivals that fill the duel together draws the
+ *    problem and starts it.
+ *
+ * `pickTarget` now runs outside any lock. It chooses a problem none of the
+ * players has solved; a joiner landing between the read and the start can
+ * only make that list slightly stale, which costs a marginally worse choice
+ * of problem and never a broken duel.
+ *
+ * scratch/stress-seats.mts drives this against a real database at 2, 5, 10,
+ * 25 and 50 concurrent arrivals and checks that the seats, the teams and the
+ * idempotent re-join all come out right.
  */
 type SeatOutcome =
   | { ok: true; started: boolean }
   | { ok: false; reason: "gone" | "started" | "full" | "seated" };
 
 async function takeSeat(duelId: string, userId: string, rating: number): Promise<SeatOutcome> {
-  const seat = async (): Promise<SeatOutcome> =>
-    prisma.$transaction(async (tx): Promise<SeatOutcome> => {
-      await tx.$queryRaw`SELECT id FROM \`Duel\` WHERE id = ${duelId} FOR UPDATE`;
-      const duel = await tx.duel.findUnique({
-        where: { id: duelId },
-        include: { participants: { select: { userId: true, team: true, user: { select: { rating: true } } } } },
-      });
-      if (!duel) return { ok: false, reason: "gone" };
-      if (duel.status !== "waiting") return { ok: false, reason: "started" };
-      if (duel.participants.some((p) => p.userId === userId)) return { ok: false, reason: "seated" };
-      const capacity = capacityOf(duel.mode);
-      if (duel.participants.length >= capacity) return { ok: false, reason: "full" };
+  const duel = await prisma.duel.findUnique({
+    where: { id: duelId },
+    select: { id: true, mode: true, kind: true, visibility: true, status: true },
+  });
+  if (!duel) return { ok: false, reason: "gone" };
 
-      const team = nextTeam(duel.participants, duel.mode);
-      // Keep the band honest as the seats fill.
-      const ratings = [...duel.participants.map((p) => p.user.rating ?? 1200), rating];
-      const band = Math.round(ratings.reduce((n, r) => n + r, 0) / ratings.length);
-      // Taking the last seat of a public duel starts the fight in the same
-      // write as the band; a private room waits for everyone to press Ready.
-      const full = ratings.length >= capacity;
-      const target =
-        full && duel.visibility === "public"
-          ? await pickTarget(duel.kind, [...duel.participants.map((p) => p.userId), userId])
-          : null;
+  const capacity = capacityOf(duel.mode);
+  const claim = await claimDuelSeat(duelId, userId, duel.mode, capacity);
+  if (claim === "already") return { ok: false, reason: "seated" };
+  if (claim === "gone") return { ok: false, reason: "started" };
+  if (claim === "full") return { ok: false, reason: "full" };
 
-      await tx.duelParticipant.create({ data: { duelId, userId, team } });
-      await tx.duel.update({
-        where: { id: duelId },
-        data: { ratingBand: band, ...(target ? { ...target, status: "active", startedAt: new Date() } : {}) },
-      });
-      return { ok: true, started: Boolean(target) };
+  // Seated. Everything below is bookkeeping on top of a seat that is already
+  // safely taken, so none of it needs a lock: the band is matchmaking colour,
+  // and the start is claimed with a guard of its own.
+  const seated = await prisma.duelParticipant.findMany({
+    where: { duelId },
+    select: { userId: true, user: { select: { rating: true } } },
+  });
+  const ratings = seated.map((p) => p.user.rating ?? 1200);
+  const band = ratings.length ? Math.round(ratings.reduce((n, r) => n + r, 0) / ratings.length) : rating;
+
+  // Taking the last seat of a public duel starts the fight; a private room
+  // waits for everyone to press Ready.
+  const full = seated.length >= capacity;
+  const target = full && duel.visibility === "public" ? await pickTarget(duel.kind, seated.map((p) => p.userId)) : null;
+
+  if (target) {
+    const started = await prisma.duel.updateMany({
+      where: { id: duelId, status: "waiting" },
+      data: { ratingBand: band, ...target, status: "active", startedAt: new Date() },
     });
-
-  try {
-    return await seat();
-  } catch (err) {
-    // A deadlock or a write conflict under the lock: one more try sees the
-    // other arrival's seat and decides cleanly.
-    const code = (err as { code?: string }).code;
-    if (code === "P2034" || code === "P2002") return seat();
-    throw err;
+    // count 0 means somebody else's arrival started it first; we are seated
+    // either way, and they emitted the start.
+    return { ok: true, started: started.count > 0 };
   }
+
+  await prisma.duel.updateMany({ where: { id: duelId, status: "waiting" }, data: { ratingBand: band } });
+  return { ok: true, started: false };
 }
 
 // POST /api/duels/queue — find a fair opponent, or wait as one
@@ -253,8 +273,21 @@ router.post("/queue", requireAuth, async (req, res) => {
     // The first open duel in band that still has the seat when the lock is
     // taken. One that filled between the list and the seat is skipped, not
     // over-filled.
+    //
+    // The skip tests above are free — they read the list already in memory —
+    // but every `takeSeat` is a locking transaction worth several round
+    // trips, and under contention each one can lose its seat and send us to
+    // the next candidate. Unbounded, twenty-five of those in series is about a
+    // minute of one request holding locks the whole way down. Losing three in
+    // a row means the queue is genuinely busy, and the right answer then is
+    // the one below: post a duel of our own and let somebody join it. So the
+    // number of *transactions* is capped even though the candidate list is
+    // not.
+    let attempts = 0;
     for (const candidate of open) {
       if (candidate.participants.length >= capacityOf(candidate.mode) || !withinBand(candidate, rating)) continue;
+      if (attempts >= MAX_SEAT_ATTEMPTS) break;
+      attempts += 1;
       const outcome = await takeSeat(candidate.id, userId, rating);
       if (!outcome.ok) continue;
 
@@ -474,6 +507,16 @@ router.post("/:id/ready", requireAuth, async (req, res) => {
  * fight is live, and even then not on every tick from every seat: once per
  * duel every few seconds is as fast as anybody could notice.
  */
+/**
+ * How many seats one /queue request may try to take before giving up and
+ * creating its own duel.
+ *
+ * The candidate list is capped at 25 by its own `take`, but the expensive
+ * part is the locking transaction per attempt, so that is what is bounded:
+ * at most MAX_SEAT_ATTEMPTS transactions, whatever the database contains.
+ */
+const MAX_SEAT_ATTEMPTS = 3;
+
 const RECONCILE_EVERY_MS = 5_000;
 const lastReconcile = new Map<string, number>();
 /** A duel that finished and was never read again would keep its stamp; past this many, the stale ones go. */

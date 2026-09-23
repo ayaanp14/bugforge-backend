@@ -1,5 +1,6 @@
 generator client {
-  provider = "prisma-client-js"
+  provider        = "prisma-client-js"
+  previewFeatures = ["relationJoins"]
 }
 
 datasource db {
@@ -86,6 +87,7 @@ model User {
   roomParticipations RoomParticipant[]
   sessions           Session[]
   submissions        Submission[]
+  problemSolves      ProblemSolve[]
   stats              UserStats?
   problemTimers      ProblemTimer[]
   savedInterviews    SavedInterview[]
@@ -147,6 +149,7 @@ model Problem {
   codeDrafts        CodeDraft[]
   pairRooms         PairRoom[]
   submissions       Submission[]
+  problemSolves     ProblemSolve[]
   testCases         TestCase[]
   problemTimers     ProblemTimer[]
   dailyContests     DailyContest[]
@@ -197,6 +200,39 @@ model TestCase {
   problem        Problem @relation(fields: [problemId], references: [id], onDelete: Cascade)
 
   @@index([problemId, orderIndex])
+}
+
+/// One row the first time an account has a problem accepted — the record that
+/// its XP has been paid.
+///
+/// The payout used to be guarded by locking the solver's `User` row and asking
+/// `Submission` again under the lock, because "has this been solved before" is
+/// not something `Submission` can answer atomically: it holds every attempt, so
+/// two accepted submissions arriving together both saw no prior accept. The
+/// lock made that safe at the cost of a per-user mutex held across the network,
+/// which every other write to that account queued behind.
+///
+/// Here the claim *is* the invariant: the unique pair means the first insert
+/// wins and every later one is a duplicate-key error, so the database decides
+/// who pays and nothing has to be locked. Same shape as RoadmapReward, which
+/// settles the identical question for a roadmap chest.
+///
+/// It records the payout, not the solve: solved-status and counts are still
+/// derived from `Submission` everywhere they were before, so this table adds a
+/// fact rather than moving one.
+model ProblemSolve {
+  id          String   @id @default(cuid())
+  userId      String
+  problemId   String
+  /// When the winning submission landed — for a backfilled row, the earliest accept.
+  submittedAt DateTime @default(now())
+  problem     Problem  @relation(fields: [problemId], references: [id], onDelete: Cascade)
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  /// The constraint the payout relies on. It also indexes (userId) and
+  /// (userId, problemId); MySQL indexes the problemId foreign key on its own,
+  /// so nothing else is needed here.
+  @@unique([userId, problemId])
 }
 
 model Submission {
@@ -980,6 +1016,21 @@ model MockAttempt {
   testId         String
   /// "in-progress" | "submitted" | "expired"
   status         String           @default("in-progress")
+  /// "<userId>:<testId>" while the sitting is live, null once it is closed.
+  ///
+  /// The rule this enforces is "one attempt in progress per person per test".
+  /// It used to be enforced by locking the candidate's User row and re-reading
+  /// inside a transaction — a per-user mutex held across three round trips,
+  /// which anything else touching that user (a duel payout, XP from a solve)
+  /// had to queue behind. MySQL has no partial indexes, so the condition is
+  /// carried in the value instead: a live sitting writes the pair, a closed
+  /// one writes null, and nulls do not collide in a unique index. Starting a
+  /// test is then a plain insert whose duplicate-key error *is* the answer.
+  ///
+  /// Written in exactly two places — the insert in POST /:slug/start and the
+  /// guarded close in finishAttempt. Anything else that ends a sitting must
+  /// clear it too, or that test can never be started again.
+  activeKey      String?          @unique @db.VarChar(80)
   startedAt      DateTime         @default(now())
   /// Hard stop for the whole paper.
   expiresAt      DateTime

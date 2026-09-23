@@ -36,6 +36,7 @@ import eventsRouter from "./routes/events.js";
 import adminRouter from "./routes/admin.js";
 import { todayContest } from "./services/daily-contest.js";
 import { optionalAuth } from "./middleware/auth.js";
+import { addKickedUser, kickedUserIdsOf } from "./lib/room-kicks.js";
 import { platformGuard } from "./middleware/platformGuard.js";
 import { displayNameOf } from "./lib/display-name.js";
 import { readUsername } from "./lib/identity.js";
@@ -551,15 +552,19 @@ io.on("connection", (socket) => {
       // host was reading out a base64 blob that could never match, and the
       // code never actually changed.
       const recoveryCode = generateRecoveryCode();
-      await prisma.pairRoom.update({
-        where: { id: roomId },
-        data: {
-          kickedUserIds: {
-            push: targetUserId
-          },
-          recoveryCode: encodeCode(recoveryCode)
-        }
-      });
+      // `kickedUserIds` is a Json column, not a scalar list, and Prisma's
+      // `{ push }` is only an append on the latter — here it stored the
+      // object itself and destroyed the array (see lib/room-kicks.ts). The
+      // append is now one atomic statement; the new recovery code is an
+      // ordinary column and rides along beside it.
+      await Promise.all([
+        addKickedUser(roomId, targetUserId),
+        prisma.pairRoom.update({
+          where: { id: roomId },
+          data: { recoveryCode: encodeCode(recoveryCode) },
+          select: { id: true },
+        }),
+      ]);
 
       // 3. Notify the target user specifically
       io.to(`user_${targetUserId}`).emit("kicked-from-room");
@@ -596,9 +601,10 @@ io.on("connection", (socket) => {
         // The kicked list is everyone's business; the recovery code is the
         // host's alone (the REST read hides it from guests for the same
         // reason), so it goes to the host's account room, not the room.
-        io.to(roomId).emit("kicked-update", { kickedUserIds: room.kickedUserIds, recoveryCode: null });
+        const kicked = kickedUserIdsOf(room.kickedUserIds);
+        io.to(roomId).emit("kicked-update", { kickedUserIds: kicked, recoveryCode: null });
         io.to(`user_${requesterId}`).emit("kicked-update", {
-          kickedUserIds: room.kickedUserIds,
+          kickedUserIds: kicked,
           recoveryCode: room.recoveryCode
         });
       }
