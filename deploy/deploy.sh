@@ -103,94 +103,115 @@ fi
 
 cd "$DEPLOY_DIR"
 
-say "3/6  resolving the image for $(git -C "$REPO_DIR" rev-parse --short HEAD)"
-# The workflow tags with `type=sha,format=long`, i.e. github.sha -- the TIP of
-# the push that triggered it, not whichever commit inside that push touched
-# src/. So the tag to want is always HEAD's; the only question is whether a
-# build is coming for it.
+say "3/6  resolving the image"
+
+# Do not try to predict the tag. Two facts make that unreliable:
 #
-# And it often is not: the workflow is path-filtered, so a push carrying only
-# deploy/, README or compose changes publishes nothing at all, and HEAD's tag
-# will never exist. Waiting for it burns the full timeout for nothing --
-# 28e7264, 2026-09-23: a deploy/-only commit, with the correct image already
-# running the whole time.
+#   - CI tags with `type=sha,format=long`, i.e. github.sha -- the TIP of the
+#     push that triggered the build, not whichever commit inside it touched
+#     src/. A push carrying a src/ commit and a deploy/ commit publishes one
+#     image, named after the deploy/ commit.
+#   - the workflow is path-filtered, so a push of only deploy/, README or
+#     compose changes publishes nothing at all.
+#
+# And a box that is several pushes behind sees one range spanning all of them,
+# with no way to tell where one push ended and the next began. Every rule of
+# the form "the tag will be X" gets this wrong somewhere, and being wrong costs
+# ten minutes of polling for a tag that was never coming (28e7264 and d9ef186,
+# 2026-09-23, both with the correct image already on the box).
+#
+# So ask the registry which ancestor it actually has, then ask git the only
+# question that matters: has anything that goes *into* the image changed since
+# that commit? If not, that image is this code, whatever it happens to be
+# named, and there is nothing to wait for.
 #
 # Keep this list in step with `paths:` in .github/workflows/build-image.yml.
 IMAGE_PATHS=(src prisma content package.json package-lock.json tsconfig.json Dockerfile .dockerignore .github/workflows/build-image.yml)
-EXPECT_BUILD=""
-if [ "$BEFORE" != "$AFTER" ] && ! git -C "$REPO_DIR" diff --quiet "$BEFORE..$AFTER" -- "${IMAGE_PATHS[@]}" 2>/dev/null; then
-  EXPECT_BUILD=yes
-fi
 
-TARGET="$REGISTRY_IMAGE:sha-$AFTER"
-echo "  want: $TARGET"
-[ -n "$EXPECT_BUILD" ] || echo "  (nothing in this pull changes the image, so no build is coming)"
+# Pull attempted once, output kept so the caller can tell "no such tag" from
+# "the registry will not talk to this box".
+PULL_OUT=""
+try_pull() {
+  PULL_OUT="$(docker pull "$1" 2>&1)"
+}
 
-# CI takes a few minutes on the arm64 runner. Wait for it only when a build is
-# actually coming; give up quickly otherwise.
-DEADLINE=$(( $(date +%s) + 600 ))
-PULLED=""
-while :; do
-  if OUT="$(docker pull "$TARGET" 2>&1)"; then
-    PULLED=yes
-    echo "  pulled $TARGET"
-    break
+# Newest ancestor of HEAD the registry has an image for, left in BASE. Usually
+# HEAD itself, in which case this is a single call.
+#
+# It reports through a global rather than stdout so that the caller does not
+# have to run it in `$(...)`: inside a command substitution the refusal notice
+# below would be captured instead of printed, and its `exit 1` would end only
+# the subshell, leaving the script to carry on with the error text as BASE.
+BASE=""
+find_newest_published() {
+  local sha
+  for sha in $(git -C "$REPO_DIR" rev-list --first-parent -n 40 HEAD); do
+    if try_pull "$REGISTRY_IMAGE:sha-$sha"; then
+      BASE="$sha"
+      return 0
+    fi
+    case "$PULL_OUT" in
+      *denied*|*unauthorized*|*authentication*)
+        echo
+        echo "  The registry refused this box."
+        echo "  Either make the package public (GitHub > the repo > Packages >"
+        echo "  bugforge-backend > Package settings > Change visibility), or log in:"
+        echo "    echo <a PAT with read:packages> | docker login ghcr.io -u <you> --password-stdin"
+        echo "  Nothing was restarted; the old container is still serving."
+        exit 1
+        ;;
+    esac
+  done
+  return 1
+}
+
+# Is that image current for this checkout?
+image_is_current() {
+  git -C "$REPO_DIR" diff --quiet "$1..$AFTER" -- "${IMAGE_PATHS[@]}" 2>/dev/null
+}
+
+TARGET=""
+find_newest_published || BASE=""
+
+if [ -n "$BASE" ] && image_is_current "$BASE"; then
+  TARGET="$REGISTRY_IMAGE:sha-$BASE"
+  if [ "$BASE" = "$AFTER" ]; then
+    echo "  $TARGET"
+  else
+    echo "  HEAD has no image of its own -- nothing in it changes the image."
+    echo "  current image is the one built at $(git -C "$REPO_DIR" log --oneline -1 "$BASE")"
+    echo "  $TARGET"
   fi
-
-  case "$OUT" in
-    *denied*|*unauthorized*|*authentication*)
-      echo
-      echo "  The registry refused this box."
-      echo "  Either make the package public (GitHub > the repo > Packages >"
-      echo "  bugforge-backend > Package settings > Change visibility), or log in:"
-      echo "    echo <a PAT with read:packages> | docker login ghcr.io -u <you> --password-stdin"
-      echo "  Nothing was restarted; the old container is still serving."
-      exit 1
-      ;;
-  esac
-
-  if [ -z "$EXPECT_BUILD" ] || [ "$(date +%s)" -ge "$DEADLINE" ]; then
-    break
+else
+  # The image lags the code, so a build is on its way (or has failed). That
+  # build will be tagged with HEAD, because HEAD is the tip of the push that
+  # started it. CI takes a few minutes on the arm64 runner.
+  if [ -n "$BASE" ]; then
+    echo "  newest published image is from $(git -C "$REPO_DIR" log --oneline -1 "$BASE"),"
+    echo "  and the image has changed since -- waiting for CI to publish HEAD's"
+  else
+    echo "  nothing published within the last 40 commits -- waiting for CI"
   fi
-  echo "  not published yet -- waiting for the build ($(( (DEADLINE - $(date +%s)) / 60 )) min left)"
-  sleep 20
-done
+  WANT="$REGISTRY_IMAGE:sha-$AFTER"
+  echo "  want: $WANT"
+  DEADLINE=$(( $(date +%s) + 600 ))
+  while :; do
+    if try_pull "$WANT"; then
+      TARGET="$WANT"
+      echo "  pulled $TARGET"
+      break
+    fi
+    if [ "$(date +%s)" -ge "$DEADLINE" ]; then break; fi
+    echo "  not published yet -- waiting for the build ($(( (DEADLINE - $(date +%s)) / 60 )) min left)"
+    sleep 20
+  done
 
-if [ -z "$PULLED" ]; then
-  if [ -n "$EXPECT_BUILD" ]; then
+  if [ -z "$TARGET" ]; then
     echo
-    echo "  Gave up waiting for $TARGET."
+    echo "  Gave up waiting for $WANT."
     echo "  Check the run: https://github.com/$SLUG/actions/workflows/build-image.yml"
     echo "  Nothing was restarted; the old container is still serving."
     exit 1
-  fi
-  # A GHCR blip is no reason to drop back a version when the box already holds
-  # exactly the image it asked for.
-  if docker image inspect "$TARGET" >/dev/null 2>&1; then
-    echo "  registry would not serve it, but $TARGET is already on this box"
-  else
-    # HEAD has no tag of its own, so walk back for the newest ancestor that
-    # does. The registry is the only authority on which pushes actually built
-    # -- re-deriving the path filter here would only be a second copy of it to
-    # keep in step -- so ask it, newest first, and stop at the first hit.
-    echo "  no image for HEAD; looking back for the newest one that was built"
-    for sha in $(git -C "$REPO_DIR" rev-list --first-parent -n 40 HEAD); do
-      [ "$sha" = "$AFTER" ] && continue
-      if docker pull "$REGISTRY_IMAGE:sha-$sha" >/dev/null 2>&1; then
-        TARGET="$REGISTRY_IMAGE:sha-$sha"
-        PULLED=yes
-        echo "  built at: $(git -C "$REPO_DIR" log --oneline -1 "$sha")"
-        echo "  pulled $TARGET"
-        break
-      fi
-    done
-  fi
-
-  if [ -z "$PULLED" ] && ! docker image inspect "$TARGET" >/dev/null 2>&1; then
-    # Nothing published within reach. Still worth restarting, since compose
-    # files, .env or mysql.cnf may have changed -- but on the same image.
-    TARGET="${OLD_IMAGE:-$REGISTRY_IMAGE:latest}"
-    echo "  nothing published in the last 40 commits; keeping $TARGET"
   fi
 fi
 
