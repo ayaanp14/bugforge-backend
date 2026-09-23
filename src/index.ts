@@ -44,7 +44,7 @@ import { securityHeaders } from "./middleware/security-headers.js";
 import { authLimiter, generalLimiter, loginAccountLimiter, otpRequestLimiter } from "./middleware/rate-limit.js";
 import { prisma } from "./lib/prisma.js";
 import { ROBOTS_TXT } from "./lib/robots.js";
-import { setIo, duelRoom } from "./lib/realtime.js";
+import { setIo, duelRoom, USER_NAMESPACE, userRoom } from "./lib/realtime.js";
 import { warmRedis, closeRedis } from "./lib/redis.js";
 import { startCacheInvalidationListener } from "./lib/cache.js";
 import { encodeCode } from "./lib/obfuscation.js";
@@ -54,6 +54,7 @@ import { isSessionRevoked, revokedSessionsSweep } from "./lib/session-revocation
 import { describeError, errorTelemetry, noteRequestError, reportError } from "./lib/telemetry.js";
 import { registerJob, startScheduler } from "./lib/scheduler.js";
 import { registerReminderJobs } from "./services/reminders.js";
+import { pushUnreadCount } from "./services/notifications.js";
 
 const app = express();
 const httpServer = createServer(app);
@@ -136,7 +137,10 @@ setIo(io);
  * client later claims about itself, and the one privileged action (kicking)
  * requires it.
  */
-io.use(async (socket, next) => {
+async function identifySocket(socket: {
+  handshake: { auth?: Record<string, unknown> | undefined; headers: { cookie?: string | undefined } };
+  data: SocketData;
+}): Promise<void> {
   try {
     const fromAuth: unknown = socket.handshake.auth?.["token"];
     const token =
@@ -149,7 +153,45 @@ io.use(async (socket, next) => {
   } catch (err) {
     console.error("Socket handshake auth error:", err);
   }
+}
+
+io.use(async (socket, next) => {
+  await identifySocket(socket);
   next();
+});
+
+/**
+ * The account channel: what the server pushes to a person rather than to a
+ * room they joined. Today that is the notifications bell, which used to learn
+ * about a new row only when the tab was focused and re-asked /api/me.
+ *
+ * Anonymous is refused here, unlike on `/`. A middleware error leaves
+ * `socket.active` false on the client, so a visitor's socket fails once and
+ * stops instead of retrying forever behind a backoff.
+ */
+const userNs = io.of(USER_NAMESPACE);
+
+userNs.use(async (socket, next) => {
+  await identifySocket(socket);
+  if (!socket.data.userId) {
+    next(new Error("unauthorized"));
+    return;
+  }
+  next();
+});
+
+userNs.on("connection", (socket) => {
+  const userId = socket.data.userId;
+  if (!userId) {
+    socket.disconnect(true);
+    return;
+  }
+  socket.join(userRoom(userId));
+  // The snapshot the page load used to get from /api/me, and the catch-up
+  // after every reconnect: the badge is correct the moment the channel opens,
+  // so nothing on the client has to ask over HTTP for what it missed.
+  void pushUnreadCount(userId);
+  socketDebug(`🔔 Account channel open: ${socket.id} (user ${userId})`);
 });
 
 // Tracks socket.id -> { roomId, userId, isHost, slug } for room dissolution

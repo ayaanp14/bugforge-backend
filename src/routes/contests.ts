@@ -30,9 +30,21 @@ router.get("/daily", optionalAuth, browserCache(30), async (req, res) => {
   try {
     const today = todayUtc();
     const userId = req.user?.userId ?? null;
-    const contest = await ensureContest(today);
+    // The catalogue page's rail draws today's kata and the month grid one above
+    // the other and used to ask for them as two requests. `?calendar=1` folds
+    // the month in — the server's own UTC month, never one named from this
+    // answer's date, which would make the calendar the second hop of a chain
+    // (that is the trace ending on it at 2.7 s, 2026-09-22). Asked for beside
+    // the contest lookup rather than after it: neither needs the other.
+    const wantsCalendar = req.query["calendar"] === "1";
+    const [contest, calendar] = await Promise.all([
+      ensureContest(today),
+      wantsCalendar ? calendarMonth(today.slice(0, 7), userId) : Promise.resolve(undefined),
+    ]);
+    // Undefined unless it was asked for, and JSON drops the key — so every
+    // other caller of this route sees the answer it has always seen.
     if (!contest) {
-      res.json({ date: today, endsAt: endOfDay(today), contest: null, me: null, streak: null, board: { board: [], participants: 0, solvers: 0 } });
+      res.json({ date: today, endsAt: endOfDay(today), contest: null, me: null, streak: null, board: { board: [], participants: 0, solvers: 0 }, calendar });
       return;
     }
     const [board, me, streak, solvedBefore] = await Promise.all([
@@ -50,6 +62,7 @@ router.get("/daily", optionalAuth, browserCache(30), async (req, res) => {
       board,
       // An earlier solve of this problem, which the contest does not count.
       solvedBefore,
+      calendar,
     });
   } catch (err) {
     console.error("GET /api/contests/daily error:", err);

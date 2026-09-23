@@ -17,7 +17,12 @@ export function platformGuard(req: Request, res: Response, next: NextFunction) {
   // ever says "nothing here is for you" (see index.ts). /api/seo is what
   // the site's edge Worker asks for a public page's head and the content
   // sitemaps: it holds no key, and the routes only read published content.
-  if (req.path === "/health" || req.path === "/robots.txt" || req.path.startsWith("/api/auth") || req.path.startsWith("/api/seo/") || req.path === "/api/billing/webhook") {
+  // /api/problems/facets is the catalogue page's chip strips and hub index —
+  // published content too, and the one route we let Cloudflare cache
+  // (browserCache's `cdn` option). An answer served from the edge never
+  // reaches this guard, so a signature it could not check must not be the
+  // difference between a hit and a 403.
+  if (req.path === "/health" || req.path === "/robots.txt" || req.path.startsWith("/api/auth") || req.path.startsWith("/api/seo/") || req.path === "/api/problems/facets" || req.path === "/api/billing/webhook") {
     return next();
   }
 

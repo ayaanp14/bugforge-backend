@@ -127,6 +127,22 @@ router.get("/", optionalAuth, browserCache(60), async (req, res) => {
     const takeNum = Math.min(MAX_TAKE, Math.max(1, parseInt(String(take ?? "")) || MAX_TAKE));
     const userId = req.user?.userId ?? null;
 
+    // The masthead's three counts, folded into this answer when the caller asks
+    // for them. The catalogue page used to fetch them as a second request
+    // (GET /summary) fired beside this one, and both tiers read the same 30 s
+    // `loadProblemState` memo — so the second request bought a round trip and
+    // nothing else. Opt-in, because every other caller (the mobile list, the
+    // pickers, the dashboard) expects the bare array this route has always
+    // answered with.
+    const wantsSummary = first(req.query["summary"]) === "1";
+    const send = async (rows: unknown[]) => {
+      if (!wantsSummary) {
+        res.json(rows);
+        return;
+      }
+      res.json({ problems: rows, summary: await catalogueSummary(userId) });
+    };
+
     // The status filter only means something for a signed-in reader; anyone
     // else gets the unfiltered list, which is what they always got.
     const statusFilter = userId && (status === "solved" || status === "unsolved") ? status : null;
@@ -146,7 +162,7 @@ router.get("/", optionalAuth, browserCache(60), async (req, res) => {
             // Same projection as listProblemsWithStatus: the visitor's copy of
             // the head must be the same shape as a member's.
             .map((p) => ({ id: p.id, title: p.title, slug: p.slug, difficulty: p.difficulty, tags: p.tags, status: "UNSOLVED" }));
-      res.json(result);
+      await send(result);
       return;
     }
 
@@ -264,7 +280,7 @@ router.get("/", optionalAuth, browserCache(60), async (req, res) => {
       status: statusOf(state, p.id),
     }));
 
-    res.json(result);
+    await send(result);
   } catch (err) {
     console.error("GET /api/problems error:", err);
     res.status(500).json({ error: "Internal server error" });
@@ -288,28 +304,35 @@ async function countTags(keep: (tag: string) => boolean): Promise<Array<{ name: 
     .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
 }
 
-// The catalogue page's masthead: how big the catalogue is and how far the
-// reader has got. The list above returns at most MAX_TAKE rows, so a hero that
-// counted the page it was given said "100 problems" over a 598-problem catalogue.
-// Both numbers are already in memory or index-only (see loadProblemState).
+/**
+ * The catalogue page's masthead: how big the catalogue is and how far the
+ * reader has got. The list route returns at most MAX_TAKE rows, so a hero that
+ * counted the page it was given said "100 problems" over a 598-problem
+ * catalogue. Both numbers are already in memory or index-only (see
+ * loadProblemState) — which is what lets GET / fold them into its own answer
+ * for nothing (`?summary=1`).
+ *
+ * Counted over the catalogue, not the raw submission sets: an accepted
+ * submission on a problem since unpublished should not make the reader's tally
+ * exceed what is on the page.
+ */
+async function catalogueSummary(userId: string | null): Promise<{ total: number; solved: number; attempted: number }> {
+  if (!userId) return { total: (await getCatalogue()).length, solved: 0, attempted: 0 };
+  const state = await loadProblemState(userId);
+  let solved = 0;
+  let attempted = 0;
+  for (const p of state.catalogue) {
+    if (state.solved.has(p.id)) solved += 1;
+    else if (state.attempted.has(p.id)) attempted += 1;
+  }
+  return { total: state.catalogue.length, solved, attempted };
+}
+
+// The counts on their own, for a caller that wants nothing else. The SPA reads
+// them off the list answer instead.
 router.get("/summary", optionalAuth, browserCache(60), async (req, res) => {
   try {
-    const userId = req.user?.userId ?? null;
-    if (!userId) {
-      res.json({ total: (await getCatalogue()).length, solved: 0, attempted: 0 });
-      return;
-    }
-    const state = await loadProblemState(userId);
-    // Counted over the catalogue, not the raw sets: an accepted submission on
-    // a problem since unpublished should not make the reader's tally exceed
-    // what is on the page.
-    let solved = 0;
-    let attempted = 0;
-    for (const p of state.catalogue) {
-      if (state.solved.has(p.id)) solved += 1;
-      else if (state.attempted.has(p.id)) attempted += 1;
-    }
-    res.json({ total: state.catalogue.length, solved, attempted });
+    res.json(await catalogueSummary(req.user?.userId ?? null));
   } catch (err) {
     console.error("GET /api/problems/summary error:", err);
     res.status(500).json({ error: "Internal server error" });
@@ -333,6 +356,34 @@ router.get("/companies", browserCache(300, { shared: true }), async (_req, res) 
     res.json(await countTags(isCompanyTag));
   } catch (err) {
     console.error("GET /api/problems/companies error:", err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+/**
+ * The catalogue page's whole static shape in one answer: both chip strips and
+ * the hub index that gives their chips their links. The page fired those as
+ * three requests (/topics, /companies, /hubs) on every load and then joined
+ * them straight back together to build the hrefs — one payload split three
+ * ways. The three routes above and below stay: the hub pages and the mobile
+ * app read them one at a time.
+ *
+ * Nothing here reads the caller, so this is the one problems route a shared
+ * cache may store. `cdn: true` (with the platform-guard exemption in
+ * middleware/platformGuard.ts, since an edge hit never reaches the guard) is
+ * what lets Cloudflare answer it from the reader's own PoP instead of routing
+ * every copy to Mumbai — which on the free plan is a trip through Europe.
+ */
+router.get("/facets", browserCache(300, { cdn: true }), async (_req, res) => {
+  try {
+    const [topics, companies, hubs] = await Promise.all([
+      countTags((t) => !isCompanyTag(t)),
+      countTags(isCompanyTag),
+      hubIndex(),
+    ]);
+    res.json({ topics, companies, hubs });
+  } catch (err) {
+    console.error("GET /api/problems/facets error:", err);
     res.status(500).json({ error: "Internal server error" });
   }
 });

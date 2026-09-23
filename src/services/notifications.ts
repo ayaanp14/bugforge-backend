@@ -1,5 +1,6 @@
 import { prisma } from "../lib/prisma.js";
 import { broadcastSignal, onSignal } from "../lib/cache.js";
+import { emitToUser, userIsConnected } from "../lib/realtime.js";
 
 /**
  * In-app notifications (the bell in the top nav).
@@ -33,8 +34,45 @@ function dropUnread(userId: string): void {
   unread.delete(userId);
 }
 
-// Another instance wrote a notification for this user: forget our count.
-onSignal(UNREAD_SIGNAL, dropUnread);
+// Another instance wrote a notification for this user: forget our count, and
+// tell whichever of that user's tabs are connected *here*. Each instance
+// answers for its own sockets, so the push reaches every tab exactly once
+// however many instances are running.
+onSignal(UNREAD_SIGNAL, (userId) => {
+  dropUnread(userId);
+  void pushUnreadCount(userId);
+});
+
+/** The socket.io event the bell listens on. */
+export const UNREAD_EVENT = "notifications:unread";
+
+/**
+ * Push the live badge count down the account's socket channel.
+ *
+ * This is what replaced polling: the badge used to be a snapshot taken by the
+ * page load's /api/me, refreshed by re-asking /api/me every time the tab was
+ * focused. The count is a number the server already knows the moment it
+ * changes, so it is sent rather than asked for.
+ *
+ * Only the count goes over the wire. The rows themselves stay behind
+ * GET /api/me/notifications, which the bell already fetches lazily on open —
+ * pushing them would mean serialising a list into every tab of every account
+ * that will never open the dropdown.
+ *
+ * Nothing here may throw or block a write: a notification that was stored is
+ * a success even if nobody could be told about it live.
+ */
+export async function pushUnreadCount(userId: string): Promise<void> {
+  try {
+    // No socket here, no COUNT here. The reminder jobs call invalidateUnread
+    // for every account they touch, and at 06:00 IST almost none of them are
+    // looking at a tab.
+    if (!userIsConnected(userId)) return;
+    emitToUser(userId, UNREAD_EVENT, { unreadCount: await getUnreadCount(userId) });
+  } catch (err) {
+    console.error("pushUnread failed:", (err as Error).message);
+  }
+}
 
 /**
  * Drop the cached badge count after any notification write. Exported so a
@@ -43,6 +81,12 @@ onSignal(UNREAD_SIGNAL, dropUnread);
  */
 export function invalidateUnread(userId: string): void {
   dropUnread(userId);
+  // The local push is not the signal handler's job to cover: broadcastSignal
+  // is a no-op without REDIS_URL (development, and any single-instance
+  // deployment), so the instance that did the write pushes for itself. With
+  // Redis it also receives its own broadcast and pushes twice — harmless,
+  // because the payload is an absolute count, not a delta.
+  void pushUnreadCount(userId);
   broadcastSignal(UNREAD_SIGNAL, userId);
 }
 
