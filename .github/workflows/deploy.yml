@@ -1,0 +1,99 @@
+# Deploys main to the EC2 box once CI has passed on it -- no polling, no
+# inbound port, no stored credential.
+#
+#   push to main -> CI ("Typecheck & test") -> this workflow -> AWS SSM Run
+#   Command on the instance -> deploy/ci-deploy.sh -> deploy/deploy.sh
+#
+# deploy.sh waits for the image build-image.yml publishes (up to ten minutes),
+# restarts the API, checks /health and rolls back on its own, so a red run
+# here means production is still serving the previous image. A push that
+# changes prisma/schema.prisma is refused on purpose (ci-deploy.sh says why).
+#
+# AWS side, set up once (deploy/README.md, "Deploy on push"): an IAM OIDC
+# provider for token.actions.githubusercontent.com, the role below trusted only
+# for this repo's main branch and allowed only SendCommand on this instance,
+# and an instance profile carrying AmazonSSMManagedInstanceCore so the SSM
+# agent on the box can take the command.
+
+name: Deploy
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+  # Redeploy by hand from the Actions tab.
+  workflow_dispatch:
+
+# One deploy at a time; a second push queues behind the first rather than
+# restarting the API underneath it.
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+permissions:
+  id-token: write   # the OIDC token AWS trades for the role
+  contents: read
+
+env:
+  AWS_REGION: ap-south-1
+  INSTANCE_ID: i-06cfd453071f5b301
+  ROLE_ARN: arn:aws:iam::133644693890:role/codekairo-github-deploy
+
+jobs:
+  deploy:
+    name: Deploy to EC2
+    # workflow_run fires for failed CI runs too, and for pull requests' runs
+    # against main's workflow file -- only a green run of a push deploys.
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.event == 'push')
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Sign in to AWS
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ env.ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Run the deploy on the instance
+        env:
+          SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
+        run: |
+          # Fetch main on the box and run the ci-deploy.sh *from* main, so the
+          # script that runs is the one being deployed (the checkout may not
+          # have it yet).
+          CMD='sudo -u ubuntu -H bash -c '"'"'cd ~/codekairo-backend && git fetch -q origin main && git show origin/main:deploy/ci-deploy.sh > /tmp/ci-deploy.sh && bash /tmp/ci-deploy.sh'"'"''
+          PARAMS="$(jq -n --arg c "$CMD" '{commands: [$c], executionTimeout: ["900"]}')"
+
+          CMD_ID="$(aws ssm send-command \
+            --instance-ids "$INSTANCE_ID" \
+            --document-name AWS-RunShellScript \
+            --comment "deploy ${SHA:0:7}" \
+            --timeout-seconds 60 \
+            --parameters "$PARAMS" \
+            --query Command.CommandId --output text)"
+          echo "SSM command $CMD_ID"
+
+          # `aws ssm wait command-executed` gives up after ~100 s; a deploy
+          # that waits for the image build can take ten minutes.
+          STATUS=Pending
+          for i in $(seq 1 110); do
+            sleep 10
+            STATUS="$(aws ssm get-command-invocation --command-id "$CMD_ID" \
+              --instance-id "$INSTANCE_ID" --query Status --output text 2>/dev/null || echo Pending)"
+            case "$STATUS" in Pending|InProgress|Delayed) continue ;; esac
+            break
+          done
+
+          echo "---- output from the instance ----"
+          aws ssm get-command-invocation --command-id "$CMD_ID" --instance-id "$INSTANCE_ID" \
+            --query StandardOutputContent --output text || true
+          ERR="$(aws ssm get-command-invocation --command-id "$CMD_ID" --instance-id "$INSTANCE_ID" \
+            --query StandardErrorContent --output text 2>/dev/null || true)"
+          [ -n "$ERR" ] && [ "$ERR" != "None" ] && { echo "---- stderr ----"; echo "$ERR"; }
+
+          echo "status: $STATUS"
+          [ "$STATUS" = "Success" ]

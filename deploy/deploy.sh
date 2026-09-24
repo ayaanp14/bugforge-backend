@@ -4,10 +4,11 @@
 #
 #   ~/codekairo-backend/deploy/deploy.sh
 #
-# Run by hand, or by auto-deploy.sh from cron once CI's tests have passed on
-# the new commit (it skips a failed CI run and any schema change, which stay a
-# decision someone makes). Either way a bad image cannot take the site down on
-# its own: step 6 below rolls back when /health does not come up.
+# Run by hand, or by .github/workflows/deploy.yml (through SSM and
+# ci-deploy.sh) once CI has passed on a push to main -- that path refuses a
+# schema change, which stays a decision someone makes. Either way a bad image
+# cannot take the site down on its own: step 6 below rolls back when /health
+# does not come up.
 #
 # Nothing is compiled here any more. The image is built by
 # .github/workflows/build-image.yml, because `docker compose build` on this box

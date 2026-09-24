@@ -235,22 +235,33 @@ It fetches, waits for the image CI built for that exact commit, pins it in
 previous image back by itself if the new one does not answer 200. Caddy holds
 connections while `api` restarts, so the outage is the container's boot time.
 
-**Deploy on push (auto-deploy.sh)**
+**Deploy on push (.github/workflows/deploy.yml)**
 
-Installed once, from a shell on the box:
+A push to `main` whose CI passes deploys itself: the Deploy workflow signs in
+to AWS with GitHub's OIDC token, sends `deploy/ci-deploy.sh` to the instance
+through SSM Run Command, and that runs `deploy.sh` — which waits for the
+image, checks `/health` and rolls back on its own. No polling, no inbound
+port, no stored credential. The run's log in the Actions tab carries the
+instance's output. A push that changes `prisma/schema.prisma` is refused
+(the run goes red): apply the schema, then run `deploy.sh` by hand. The
+Actions tab's "Run workflow" button on Deploy redeploys `main` on demand.
 
-```bash
-(crontab -l 2>/dev/null | grep -v auto-deploy.sh; echo "*/2 * * * * \$HOME/codekairo-backend/deploy/auto-deploy.sh") | crontab -
-```
+Set up once, in the AWS console (ap-south-1):
 
-Every two minutes it asks GitHub whether `main` has moved. When it has, it waits
-for CI's "Typecheck & test" to pass on that commit, then runs `deploy.sh` (which
-waits for the image, checks `/health` and rolls back on its own). It will not
-deploy a commit whose tests failed or a push that changes
-`prisma/schema.prisma` — those are logged and left for `deploy.sh` by hand.
-Watch it with `tail -f ~/backups/autodeploy.log`; turn it off with
-`crontab -l | grep -v auto-deploy.sh | crontab -`. It is pull-based on purpose:
-no inbound port for GitHub and no credential on either side.
+1. **Instance role** — IAM → Roles → Create role → AWS service, EC2 → attach
+   `AmazonSSMManagedInstanceCore` → name it `codekairo-ec2-ssm`. Then EC2 →
+   the instance → Actions → Security → Modify IAM role → pick it. The SSM
+   agent that ships in Canonical's Ubuntu AMI registers within a few minutes
+   (`sudo snap restart amazon-ssm-agent` if it does not).
+2. **GitHub as an identity provider** — IAM → Identity providers → Add →
+   OpenID Connect, URL `https://token.actions.githubusercontent.com`,
+   audience `sts.amazonaws.com`.
+3. **The deploy role** — IAM → Roles → Create role → Custom trust policy →
+   paste `deploy/aws/github-deploy-trust.json` → no managed policies → name
+   it `codekairo-github-deploy`. Then on the role, Add permissions → Create
+   inline policy → JSON → paste `deploy/aws/github-deploy-policy.json`.
+   The trust admits only this repo's `main`; the policy allows SendCommand
+   on this one instance and nothing else.
 
 Rolling back later is one line: set `API_IMAGE` in `deploy/.env` to an older
 `sha-…` tag and `docker compose up -d api`. Every deployed image is kept
@@ -306,7 +317,7 @@ the bill to $24/month and would outrun the credits.
   counters to Redis is the prerequisite, and Redis is now local, so it is a
   much smaller job than it was.
 - **No managed failover.** One box. If it dies, you restore a snapshot.
-- **No push from CI.** CI builds the image; the box pulls it. Either a human
-  runs `deploy/deploy.sh` or `auto-deploy.sh` does from cron after the tests
-  pass — and a bad image still cannot take the site down on its own, because
-  `deploy.sh` rolls back when `/health` fails.
+- **No blind deploys.** CI builds the image; the box pulls it, either when a
+  human runs `deploy/deploy.sh` or when the Deploy workflow does after CI
+  passes — and a bad image still cannot take the site down on its own,
+  because `deploy.sh` rolls back when `/health` fails.
