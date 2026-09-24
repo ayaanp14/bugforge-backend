@@ -2,7 +2,7 @@
  * Seeds + validates the hand-authored bug-hunt challenges (scripts/bugs-data.ts).
  *
  *   npx tsx scripts/seed-bugs.ts --seed [--only "<title>"]
- *   npx tsx scripts/seed-bugs.ts --validate [--only "<title>"]
+ *   npx tsx scripts/seed-bugs.ts --validate [--only "<title>"] [--wave N]
  *
  * --validate proves each challenge end-to-end through the real engine
  * (judge0 local / wandbox prod): the shipped BUGGY files must fail at least
@@ -15,7 +15,7 @@ import { judgeBugProject } from "../src/lib/bug-judge.js";
 import { uniqueSlug } from "../src/lib/slug.js";
 import { BUG_HUB_IDS } from "../src/lib/bug-hubs.js";
 import { type BugSpec } from "./bugs-data.js";
-import { ALL_BUGS } from "./bugs-catalog.js";
+import { ALL_BUGS, WAVES } from "./bugs-catalog.js";
 import { ORIGINS } from "./bugs-origins.js";
 
 const args = process.argv.slice(2);
@@ -26,9 +26,14 @@ const opt = (n: string) => {
 };
 const ONLY = opt("only");
 const RANGE = opt("range"); // e.g. --range 9-20 (inclusive indexes into the catalog)
+const WAVE = opt("wave"); // e.g. --wave 14 (one wave file)
 
 const specs = () => {
   let list = ALL_BUGS;
+  if (WAVE) {
+    if (!WAVES[WAVE]) throw new Error(`unknown wave: ${WAVE}`);
+    list = WAVES[WAVE];
+  }
   if (RANGE) {
     const [a, b] = RANGE.split("-").map((n) => parseInt(n, 10));
     list = list.slice(a, (isNaN(b) ? a : b) + 1);
@@ -140,7 +145,7 @@ async function validate() {
   if (flag("seed")) await seed();
   if (flag("validate")) await validate();
   if (!flag("seed") && !flag("validate")) {
-    console.log('usage: tsx scripts/seed-bugs.ts --seed | --validate [--only "<title>"]');
+    console.log('usage: tsx scripts/seed-bugs.ts --seed | --validate [--only "<title>"] [--wave N]');
   }
   await prisma.$disconnect();
 })();

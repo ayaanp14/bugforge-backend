@@ -3,7 +3,7 @@
  * at /bug-hunts/<id>. Each is a list of every published hunt in that slice
  * with an introduction — the page a search for "javascript debugging
  * exercises" or "sql bug practice" should land on, and the crawl path from
- * the index to the 160 hunts. The ids are reserved: a hunt's slug can never
+ * the index to the 310 hunts. The ids are reserved: a hunt's slug can never
  * be one of them (lib/slug.ts `uniqueSlug` is told so by the seeder).
  *
  * The copy names hunts that exist in the catalogue (scripts/bugs-*.ts) and

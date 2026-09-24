@@ -1,5 +1,16 @@
 /** Origin attribution per challenge title — the company/incident that inspired it. */
 
+import { WAVE14_ORIGINS } from "./bugs-wave14.js";
+import { WAVE15_ORIGINS } from "./bugs-wave15.js";
+import { WAVE16_ORIGINS } from "./bugs-wave16.js";
+import { WAVE17_ORIGINS } from "./bugs-wave17.js";
+import { WAVE18_ORIGINS } from "./bugs-wave18.js";
+import { WAVE19_ORIGINS } from "./bugs-wave19.js";
+import { WAVE20_ORIGINS } from "./bugs-wave20.js";
+import { WAVE21_ORIGINS } from "./bugs-wave21.js";
+import { WAVE22_ORIGINS } from "./bugs-wave22.js";
+import { WAVE23_ORIGINS } from "./bugs-wave23.js";
+
 export const ORIGINS: Record<string, string> = {
   // ── Originals ──
   "The Checkout Meltdown": "Classic e-commerce",
@@ -175,4 +186,15 @@ export const ORIGINS: Record<string, string> = {
   "Version 2.3.10 Is Not Older Than 2.3.9": "Equifax · 2017",
   "Every Post, One Id at a Time": "Parler · 2021",
   "The Unauthenticated Customer Lookup": "Panera Bread · 2018",
+  // ── Waves 14–23: each wave file carries its own map ──
+  ...WAVE14_ORIGINS,
+  ...WAVE15_ORIGINS,
+  ...WAVE16_ORIGINS,
+  ...WAVE17_ORIGINS,
+  ...WAVE18_ORIGINS,
+  ...WAVE19_ORIGINS,
+  ...WAVE20_ORIGINS,
+  ...WAVE21_ORIGINS,
+  ...WAVE22_ORIGINS,
+  ...WAVE23_ORIGINS,
 };
