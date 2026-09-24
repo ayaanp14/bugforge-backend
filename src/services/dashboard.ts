@@ -6,6 +6,7 @@ import { getDashboardUser, invalidateMe } from "./me.js";
 // daily-contest imports getCatalogue from here; both sides only call the other
 // at request time (function declarations, live bindings), so the cycle is inert.
 import { contestSnapshot } from "./daily-contest.js";
+import { isCompanyTag } from "../lib/companies.js";
 // The same shape of cycle: roadmap imports invalidateDashboard from here.
 import { roadmapBadgesFor } from "./roadmap.js";
 import { studyBandFor } from "./study-plans.js";
@@ -299,7 +300,17 @@ export async function getSubmissionHistory(userId: string, page = 1, limit = 10)
 }
 
 // ── 365-day accepted-solution heatmap ───────────────────────────
-export async function getHeatmap(userId: string) {
+/**
+ * `compact` is the dashboard's encoding: the first day and one count per
+ * day, instead of 365 `{date, count}` objects. The dates are consecutive by
+ * construction, so every `"date":"2025-09-26"` was 26 bytes the client could
+ * rebuild from the start — 11.8 KB of a 22.8 KB payload (2026-09-25), cached
+ * whole in Redis and parsed on every dashboard and profile load. The client
+ * expands it with `heatmapDays()` (frontend components/dashboard/home/
+ * insights.ts), which also reads the old shape. GET /api/me/heatmap keeps the
+ * expanded form.
+ */
+export async function getHeatmap(userId: string, opts: { compact?: boolean } = {}) {
   // The 365 days end today in the product calendar (lib/clock.ts, IST), and
   // every submission is bucketed into that same calendar in SQL. Days used to
   // be UTC on both sides — Prisma stores UTC and DATE_FORMAT read it as such
@@ -348,13 +359,9 @@ export async function getHeatmap(userId: string) {
     }
   });
 
-  return {
-    totalSubmissions,
-    activeDays,
-    maxStreak,
-    currentStreak,
-    heatmapData: dates.map((date) => ({ date, count: dailyCounts[date] || 0 })),
-  };
+  const totals = { totalSubmissions, activeDays, maxStreak, currentStreak };
+  if (opts.compact) return { ...totals, start: dates[0]!, counts: dates.map((date) => dailyCounts[date] || 0) };
+  return { ...totals, heatmapData: dates.map((date) => ({ date, count: dailyCounts[date] || 0 })) };
 }
 
 // ── Rank ────────────────────────────────────────────────────────
@@ -591,12 +598,24 @@ export async function querySocialCounts(userId: string) {
 }
 
 // ── Tiny problem insights for the dashboard (instead of shipping the list) ──
-/** Pure computation over an already-loaded ProblemState — issues no queries. */
+/**
+ * How many topics the skills panel draws; the rest travel as two counts.
+ * The whole list (121 tags, 5.7 KB) used to ship for a panel that shows six.
+ */
+const SKILLS_SHOWN = 6;
+
+/**
+ * Pure computation over an already-loaded ProblemState — issues no queries.
+ *
+ * Skills are topic tags only. Company tags ("Amazon", "Google") share the
+ * `tags` column, and with ~900 problems each they topped the panel as the
+ * reader's biggest "skill". `isCompanyTag` is the same split the catalogue's
+ * hub pages make (services/problem-hubs.ts).
+ */
 export function computeProblemInsights(state: ProblemState) {
   const { catalogue, solved, attempted } = state;
 
   const topicMap = new Map<string, { tag: string; total: number; solved: number }>();
-  const solvedTagSet = new Set<string>();
   const attempting: CatalogueRow[] = [];
   const untouched: CatalogueRow[] = [];
   let unsolvedCount = 0;
@@ -608,32 +627,39 @@ export function computeProblemInsights(state: ProblemState) {
     const tags = tagsOf(p);
 
     for (const tag of tags) {
+      if (isCompanyTag(tag)) continue;
       const t = topicMap.get(tag) ?? { tag, total: 0, solved: 0 };
       t.total++;
       if (isSolved) t.solved++;
       topicMap.set(tag, t);
     }
 
-    if (isSolved) {
-      for (const tag of tags) solvedTagSet.add(tag);
-    } else {
+    if (!isSolved) {
       unsolvedCount++;
       if (isAttempting) attempting.push(p);
       else if (untouched.length < 3) untouched.push(p);
     }
   }
 
-  const skills = [...topicMap.values()].sort((a, b) => b.total - a.total);
+  const topics = [...topicMap.values()].sort((a, b) => b.total - a.total);
   const recommended = [...attempting, ...untouched]
     .slice(0, 3)
     .map((p) => ({ id: p.id, slug: p.slug, title: p.title, difficulty: p.difficulty, tags: tagsOf(p).slice(0, 2) }));
 
-  return { skills, recommended, solvedTags: [...solvedTagSet].slice(0, 30), unsolvedCount };
+  return {
+    skills: topics.slice(0, SKILLS_SHOWN),
+    topicCount: topics.length,
+    topicsTouched: topics.filter((t) => t.solved > 0).length,
+    recommended,
+    unsolvedCount,
+  };
 }
 
 // ── The aggregate the dashboard loads in one request ────────────
 
-const dashboardKey = (userId: string) => `dash:v1:${userId}`;
+// v2: compact heatmap and a trimmed skills list (2026-09-25) — a v1 payload
+// left in Redis must not be served in the new shape's place.
+const dashboardKey = (userId: string) => `dash:v2:${userId}`;
 
 /**
  * Drop everything cached about a user — the dashboard aggregate and /api/me.
@@ -695,7 +721,7 @@ async function buildDashboard(userId: string) {
     queryUserCounters(userId),
     problemStatePromise,
     getSubmissionHistory(userId, 1, 5),
-    getHeatmap(userId),
+    getHeatmap(userId, { compact: true }),
     rankPromise,
     getLeaderboard("combined"),
     getPairingHistory(userId, 1, 3, false),
