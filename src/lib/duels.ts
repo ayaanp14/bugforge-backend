@@ -24,6 +24,7 @@ export const DUEL_PARTICIPANT_SELECT = {
   finishedAt: true,
   xpAwarded: true,
   joinedAt: true,
+  disconnectedAt: true,
   user: { select: { id: true, name: true, username: true, avatar_url: true, xp: true, rating: true } },
 } as const;
 
@@ -353,20 +354,70 @@ function isStaleWaiting(duel: { status: string; visibility: string; createdAt: D
 }
 
 /**
- * How long a fight may run without a decision.
+ * A duel has no clock (2026-09-24): a problem may take hours, and the fight
+ * ends on a solve, a forfeit, or a claim against an opponent who left. It
+ * used to be called after 45 minutes, which the rooms enforced by polling —
+ * nothing else read the duel — so a 20-second poll ran for the whole fight.
  *
- * An active duel had no expiry either. When the other side closed the tab,
- * the player who stayed was stuck: /queue and /me/state kept handing the
- * live duel back, and the only way out was to forfeit — a loss on the record
- * for being the one who did not leave. After this long the fight is called
- * on the scoreboard instead: more hidden tests passed wins, a tie is a draw,
- * and nobody's rating moves.
+ * Presence decides the rest. `disconnectedAt` is stamped when a player's
+ * last socket leaves the duel room and cleared when one joins (index.ts
+ * join-duel / disconnect, via `setDuelPresence`):
+ *
+ * - CLAIM_GRACE_MS: how long an opponent must have been gone before the side
+ *   that stayed may take the duel (POST /api/duels/:id/claim). Long enough
+ *   for a refresh or a network blip to come back; checked when the claim is
+ *   made, so no timer runs.
+ * - ABANDONED_TTL_MS: a duel *everyone* has been gone from this long is
+ *   called on the next read, as the 45-minute rule did: more hidden tests
+ *   passed wins, a tie is a draw. Without it a fight both sides walked away
+ *   from would be handed back to them from the lobby forever.
  */
-const ACTIVE_TTL_MS = Number(process.env.DUEL_ACTIVE_TTL_MS ?? 45 * 60_000);
+export const CLAIM_GRACE_MS = Number(process.env.DUEL_CLAIM_GRACE_MS ?? 2 * 60_000);
+const ABANDONED_TTL_MS = Number(process.env.DUEL_ABANDONED_TTL_MS ?? 24 * 60 * 60_000);
 
-function isStaleActive(duel: { status: string; startedAt: Date | null } | null) {
-  if (!duel || duel.status !== "active" || !duel.startedAt) return false;
-  return Date.now() - new Date(duel.startedAt).getTime() > ACTIVE_TTL_MS;
+function isStaleActive(duel: { status: string; startedAt: Date | null; participants: { disconnectedAt: Date | null }[] } | null) {
+  if (!duel || duel.status !== "active" || !duel.startedAt || duel.participants.length === 0) return false;
+  const now = Date.now();
+  return duel.participants.every((p) => p.disconnectedAt && now - new Date(p.disconnectedAt).getTime() > ABANDONED_TTL_MS);
+}
+
+/** Whether every player on the other side(s) of `team` has been gone past the claim grace. */
+export function opponentsAbandoned(duel: { participants: { team: number; disconnectedAt: Date | null }[] }, team: number): boolean {
+  const others = duel.participants.filter((p) => p.team !== team);
+  const now = Date.now();
+  return others.length > 0 && others.every((p) => p.disconnectedAt && now - new Date(p.disconnectedAt).getTime() >= CLAIM_GRACE_MS);
+}
+
+/**
+ * Record whether a player is in the duel room, and tell the room. A no-op
+ * when nothing changes (a second tab joining, a socket leaving a finished
+ * duel), so it can be called on every join and leave.
+ */
+export async function setDuelPresence(duelId: string, userId: string, present: boolean): Promise<void> {
+  const at = present ? null : new Date();
+  const res = await prisma.duelParticipant.updateMany({
+    where: { duelId, userId, disconnectedAt: present ? { not: null } : null, duel: { status: "active" } },
+    data: { disconnectedAt: at },
+  });
+  if (res.count === 0) return;
+  forgetDuel(duelId);
+  emitToRoom(duelRoom(duelId), "duel-presence", { duelId, userId, disconnectedAt: at ? at.toISOString() : null });
+}
+
+/**
+ * At boot every socket is gone, and none of them ran its disconnect handler,
+ * so an active duel still says both players are present. Stamp everyone as
+ * gone now; whoever is really there reconnects within seconds and clears it.
+ */
+export async function markActiveDuelsAbsent(): Promise<void> {
+  try {
+    await prisma.duelParticipant.updateMany({
+      where: { disconnectedAt: null, duel: { status: "active" } },
+      data: { disconnectedAt: new Date() },
+    });
+  } catch (err) {
+    console.error("markActiveDuelsAbsent error:", (err as Error).message);
+  }
 }
 
 /**
@@ -398,7 +449,7 @@ export async function expireIfStale<T extends LoadedDuel>(duel: T): Promise<T | 
         }),
         prisma.duelParticipant.updateMany({
           where: { duelId: duel!.id, verdict: null },
-          data: { verdict: "TIMED_OUT" },
+          data: { verdict: "ABANDONED" },
         }),
       ]);
     } catch (err) {
