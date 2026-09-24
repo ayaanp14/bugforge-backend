@@ -144,7 +144,8 @@ One request builds it; it refreshes itself after a submission, a chest, a follow
 - **The arena**: the problem/hunt is drawn when the fight starts and is never one a seated player has already solved (unless every arena has been). Both sides see the other's activity live — running, how many tests they passed, submitting. The duel is settled by the judge the instant an accepted submission is written, wherever it was made.
 - **Rules and anti-cheat**: the clipboard is locked (no copy, cut, paste or drag), switching tabs/apps hides the board, and Print Screen / snipping shortcuts are refused. Each attempt is a **strike**; being away for more than 3 seconds is a strike; the **third strike** disqualifies you (recorded as DISQUALIFIED, the other side wins). Strikes survive a refresh.
 - **XP**: the winning side gets a prize by the arena's difficulty — **easy 40, medium 60, hard 90** (50 if the difficulty is unknown) — to XP, plus one third of it to rating. The losing side gets a **consolation of 25%** of the prize (XP only, no rating). Walking away (**forfeit**) hands the other side **50%** of the prize (XP only); the quitter gets nothing.
-- **Timeout**: a fight with no decision after **45 minutes** is called on the scoreboard — the side with more hidden tests passed wins, a tie is a draw — and nobody's rating moves.
+- **No time limit**: a duel runs until someone solves it or forfeits — a hard problem can take hours, and a refresh or a dropped connection costs nothing.
+- **Opponent left**: if every player on the other side has been out of the duel for **2 minutes**, the side that stayed sees a **Claim the win** button; claiming ends the duel in their favour (the same XP as a forfeit). A duel that *everyone* has left for a day is called on the scoreboard — more hidden tests passed wins, a tie is a draw.
 - **After the bell**: participants can read the winning submission (the code, or the files the winner changed for a hunt). The duels page shows your live duel (if any), your last 10 duels, and a win/loss record counted over those.
 - Being in a waiting or active duel blocks queueing for another; opening the duels page tidies up a stale one.
 
@@ -322,7 +323,7 @@ Every price, limit and inclusion is in *Plans* later in this briefing — treat 
 - **IST (Indian time)**: the solving streak, the activity heatmap, "today" for bug-hunt allowances, "this week" (Mon–Sun) for interview allowances, and every reminder window.
 - **UTC**: the daily contest's day (changes at 05:30 IST), the contest streak, the debugging streak on the bug-hunts index.
 - **Rolling windows**: "solved today" (24 h) and "XP this week" (7 days) on the home page; the interview history's 12-week calendar counts rounds by the day they were started.
-- Sessions: 30 days. Codes: 5 minutes. Duel queue: 20 minutes; private duel room: 2 hours; duel timeout: 45 minutes. Pair room empty grace: 60 seconds; host hand-over: 20 seconds.
+- Sessions: 30 days. Codes: 5 minutes. Duel queue: 20 minutes; private duel room: 2 hours; duels have no time limit (claim after an opponent has been gone 2 minutes). Pair room empty grace: 60 seconds; host hand-over: 20 seconds.
 
 ## If you cannot answer
 

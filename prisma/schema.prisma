@@ -707,6 +707,13 @@ model DuelParticipant {
   finishedAt DateTime?
   xpAwarded  Int       @default(0)
   joinedAt   DateTime  @default(now())
+  /**
+   * When this player's last socket left the duel room; null while they are
+   * in it. A duel has no clock: an opponent gone past the grace period can be
+   * claimed (POST /api/duels/:id/claim), and a duel everyone left a day ago
+   * is called on the next read (lib/duels expireIfStale).
+   */
+  disconnectedAt DateTime?
 
   duel Duel @relation(fields: [duelId], references: [id], onDelete: Cascade)
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)

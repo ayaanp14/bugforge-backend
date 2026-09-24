@@ -20,6 +20,7 @@ import {
   applyDuelResult,
   clearUserInDuel,
   expireIfStale,
+  opponentsAbandoned,
   forgetDuel,
   freshPublicSince,
   loadDuel,
@@ -817,6 +818,90 @@ router.post("/:id/report", requireAuth, async (req, res) => {
 });
 
 /**
+ * End an active duel without a solve: `losers` (participant ids) take
+ * `verdict`, `winnerTeam` takes the duel. Shared by a forfeit and a claim
+ * against an opponent who left.
+ */
+async function closeByWalkover(
+  duel: NonNullable<Awaited<ReturnType<typeof loadDuel>>>,
+  losers: string[],
+  verdict: "FORFEIT" | "DISQUALIFIED" | "ABANDONED",
+  winnerTeam: number | null,
+) {
+  const id = duel.id;
+  // The close is guarded the way the settle path is: a walkover that lands
+  // as the other side's accepted submission is being paid out must not
+  // rewrite the winner after the fact.
+  const [, claim] = await Promise.all([
+    prisma.duelParticipant.updateMany({
+      where: { id: { in: losers } },
+      data: { verdict, finishedAt: new Date() },
+    }),
+    prisma.duel.updateMany({
+      where: { id, status: "active", winnerTeam: null },
+      data: { status: "finished", endedAt: new Date(), winnerTeam },
+    }),
+  ]);
+  forgetDuel(id);
+  // A walkover still pays the side that stayed — the consolation rate,
+  // not a full prize, since no problem was solved. It used to pay nothing at
+  // all, so being forfeited against was worth less than losing.
+  if (claim.count > 0 && winnerTeam !== null) {
+    const winners = duel.participants.filter((p) => p.team === winnerTeam).map((p) => p.userId);
+    const prize = Math.round(winXp(duel.problem?.difficulty ?? duel.challenge?.difficulty) * 0.5);
+    await Promise.all([
+      prisma.duelParticipant.updateMany({ where: { duelId: id, team: winnerTeam }, data: { xpAwarded: prize } }),
+      prisma.user.updateMany({ where: { id: { in: winners } }, data: { xp: { increment: prize } } }),
+    ]);
+    for (const userId of winners) invalidateDashboard(userId);
+  }
+  for (const p of duel.participants) clearUserInDuel(p.userId);
+  const finished = await loadDuel(id, true);
+  emitToRoom(duelRoom(id), "duel-finished", finished);
+  return finished;
+}
+
+/**
+ * POST /api/duels/:id/claim — take a duel the other side walked away from.
+ *
+ * A duel has no clock, so an opponent who closed the tab would otherwise
+ * leave the one who stayed with a fight nobody can finish. Once every player
+ * on the other side has been out of the room for CLAIM_GRACE_MS (their
+ * `disconnectedAt`, stamped by the socket layer), the side that stayed may
+ * end it: the leavers are marked ABANDONED and the stayers take the
+ * forfeit's prize. Decided here, when the claim is made — no timer runs.
+ */
+router.post("/:id/claim", requireAuth, async (req, res) => {
+  try {
+    const userId = req.user!.userId;
+    const id = String(req.params.id);
+    const duel = await loadDuel(id, true);
+    if (!duel) {
+      res.status(404).json({ error: "Duel not found" });
+      return;
+    }
+    const me = duel.participants.find((p) => p.userId === userId);
+    if (!me) {
+      res.status(403).json({ error: "You're not in that duel" });
+      return;
+    }
+    if (duel.status !== "active") {
+      res.status(409).json({ error: "That duel is not running" });
+      return;
+    }
+    if (!opponentsAbandoned(duel, me.team)) {
+      res.status(409).json({ error: "Your opponent is still in the duel" });
+      return;
+    }
+    const leavers = duel.participants.filter((p) => p.team !== me.team).map((p) => p.id);
+    res.json(await closeByWalkover(duel, leavers, "ABANDONED", me.team));
+  } catch (err) {
+    console.error("POST /api/duels/:id/claim error:", err);
+    res.status(500).json({ error: "Could not claim the duel" });
+  }
+});
+
+/**
  * POST /api/duels/:id/forfeit — walk away; the other side takes it.
  *
  * `reason: "cheat"` is the room reporting its own player out after three
@@ -850,36 +935,7 @@ router.post("/:id/forfeit", requireAuth, async (req, res) => {
 
     if (duel.status === "active") {
       const opponentTeam = duel.participants.find((p) => p.team !== me.team)?.team ?? null;
-      // The close is guarded the way the settle path is: a forfeit that lands
-      // as the other side's accepted submission is being paid out must not
-      // rewrite the winner after the fact.
-      const [, claim] = await Promise.all([
-        prisma.duelParticipant.update({
-          where: { id: me.id },
-          data: { verdict: disqualified ? "DISQUALIFIED" : "FORFEIT", finishedAt: new Date() },
-        }),
-        prisma.duel.updateMany({
-          where: { id, status: "active", winnerTeam: null },
-          data: { status: "finished", endedAt: new Date(), winnerTeam: opponentTeam },
-        }),
-      ]);
-      forgetDuel(id);
-      // A walkover still pays the side that stayed — the consolation rate,
-      // not a full prize, since no problem was solved. It used to pay nothing at
-      // all, so being forfeited against was worth less than losing.
-      if (claim.count > 0 && opponentTeam !== null) {
-        const winners = duel.participants.filter((p) => p.team === opponentTeam).map((p) => p.userId);
-        const prize = Math.round(winXp(duel.problem?.difficulty ?? duel.challenge?.difficulty) * 0.5);
-        await Promise.all([
-          prisma.duelParticipant.updateMany({ where: { duelId: id, team: opponentTeam }, data: { xpAwarded: prize } }),
-          prisma.user.updateMany({ where: { id: { in: winners } }, data: { xp: { increment: prize } } }),
-        ]);
-        for (const userId of winners) invalidateDashboard(userId);
-      }
-      for (const p of duel.participants) clearUserInDuel(p.userId);
-      const finished = await loadDuel(id, true);
-      emitToRoom(duelRoom(id), "duel-finished", finished);
-      res.json(finished);
+      res.json(await closeByWalkover(duel, [me.id], disqualified ? "DISQUALIFIED" : "FORFEIT", opponentTeam));
       return;
     }
 

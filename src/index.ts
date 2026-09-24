@@ -45,6 +45,7 @@ import { authLimiter, generalLimiter, loginAccountLimiter, otpRequestLimiter } f
 import { prisma } from "./lib/prisma.js";
 import { ROBOTS_TXT } from "./lib/robots.js";
 import { setIo, duelRoom, USER_NAMESPACE, userRoom } from "./lib/realtime.js";
+import { markActiveDuelsAbsent, setDuelPresence } from "./lib/duels.js";
 import { warmRedis, closeRedis } from "./lib/redis.js";
 import { startCacheInvalidationListener } from "./lib/cache.js";
 import { encodeCode } from "./lib/obfuscation.js";
@@ -366,19 +367,50 @@ io.on("connection", (socket) => {
   // Seated players only. The room carries the live scoreboard and the
   // "opponent is submitting" nudges; any socket used to be able to subscribe
   // to any duel by id and watch a stranger's fight tick by.
-  socket.on("join-duel", async (duelId: string) => {
-    if (typeof duelId !== "string" || !duelId) return;
+  //
+  // Being in the room is also the player's presence: a duel has no clock, so
+  // an opponent who is gone is what lets the side that stayed claim it
+  // (lib/duels setDuelPresence, POST /api/duels/:id/claim). A player is gone
+  // when their *last* socket leaves — a second tab closing is not leaving.
+  const duelsJoined = new Set<string>();
+  const stillHere = (duelId: string, userId: string) => {
+    const room = io.sockets.adapter.rooms.get(duelRoom(duelId));
+    if (!room) return false;
+    for (const sid of room) if (sid !== socket.id && io.sockets.sockets.get(sid)?.data.userId === userId) return true;
+    return false;
+  };
+  const leftDuel = (duelId: string) => {
     const userId = socket.data.userId;
-    if (!userId) return;
+    duelsJoined.delete(duelId);
+    if (!userId || stillHere(duelId, userId)) return;
+    setDuelPresence(duelId, userId, false).catch((err) => console.error("duel presence error:", err));
+  };
+  // `ack`, when passed, answers once the socket is in the room: the client
+  // fetches its catch-up copy of the duel then, so nothing pushed between
+  // that read and the join can fall in the gap (hooks/useDuelSocket).
+  socket.on("join-duel", async (duelId: string, ack?: (res: { ok: boolean }) => void) => {
+    const reply = (ok: boolean) => {
+      if (typeof ack === "function") ack({ ok });
+    };
+    if (typeof duelId !== "string" || !duelId) return reply(false);
+    const userId = socket.data.userId;
+    if (!userId) return reply(false);
     try {
       const seat = await prisma.duelParticipant.findFirst({ where: { duelId, userId }, select: { id: true } });
-      if (seat) socket.join(duelRoom(duelId));
+      if (!seat) return reply(false);
+      socket.join(duelRoom(duelId));
+      duelsJoined.add(duelId);
+      reply(true);
+      await setDuelPresence(duelId, userId, true);
     } catch (err) {
       console.error("join-duel error:", err);
+      reply(false);
     }
   });
   socket.on("leave-duel", (duelId: string) => {
-    if (typeof duelId === "string" && duelId) socket.leave(duelRoom(duelId));
+    if (typeof duelId !== "string" || !duelId) return;
+    socket.leave(duelRoom(duelId));
+    if (duelsJoined.has(duelId)) leftDuel(duelId);
   });
 
   /**
@@ -719,6 +751,7 @@ io.on("connection", (socket) => {
 
   socket.on("disconnect", async () => {
     socketDebug(`🔌 Client disconnected: ${socket.id}`);
+    for (const duelId of [...duelsJoined]) leftDuel(duelId);
     const meta = socketMetadata.get(socket.id);
     if (meta) {
       socketMetadata.delete(socket.id);
@@ -1032,6 +1065,8 @@ httpServer.listen(PORT, () => {
   registerReminderJobs();
   registerJob(revokedSessionsSweep);
   startScheduler();
+  // No socket survived the restart, and none said goodbye (lib/duels).
+  void markActiveDuelsAbsent();
   // Resume analyses run in-process; a restart mid-run leaves rows queued or
   // running with nobody working them. Re-queue the young, fail the stale.
   void recoverAnalyses();
