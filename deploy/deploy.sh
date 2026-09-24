@@ -95,12 +95,19 @@ else
   git diff --stat "$BEFORE..$AFTER" | tail -15 | sed 's/^/    /'
 fi
 
-# A schema change needs `prisma db push` and this script will not do that for
-# you -- it is not something to run unattended against production data.
+# A schema change is applied in step 3b (after the image is in hand, before the
+# restart) when APPLY_SCHEMA=1 -- which the Deploy workflow sets through
+# ci-deploy.sh. Run by hand without it, this only warns, as it always did.
+SCHEMA_CHANGED=""
 if ! git diff --quiet "$BEFORE..$AFTER" -- prisma/schema.prisma 2>/dev/null; then
+  SCHEMA_CHANGED=yes
   say "!!  prisma/schema.prisma changed"
-  echo "  This deploy does NOT apply schema changes. Run the db push yourself"
-  echo "  (deploy/README.md) before or after, whichever the change needs."
+  if [ "${APPLY_SCHEMA:-0}" = "1" ]; then
+    echo "  It will be applied before the restart (step 3b)."
+  else
+    echo "  This deploy does NOT apply schema changes. Run the db push yourself"
+    echo "  (deploy/README.md), or rerun as APPLY_SCHEMA=1 deploy/deploy.sh."
+  fi
 fi
 
 cd "$DEPLOY_DIR"
@@ -215,6 +222,52 @@ else
     echo "  Nothing was restarted; the old container is still serving."
     exit 1
   fi
+fi
+
+if [ -n "$SCHEMA_CHANGED" ] && [ "${APPLY_SCHEMA:-0}" = "1" ]; then
+  say "3b/6 applying the schema change"
+  # Before the restart, so the new code never meets the old schema; the old
+  # code keeps serving meanwhile, which an additive change does not disturb.
+  #
+  # `db push` WITHOUT --accept-data-loss: Prisma refuses, non-interactively
+  # and with a non-zero exit, any change that would destroy data (dropping a
+  # column or table that holds rows, narrowing a type, a unique over
+  # duplicates) -- verified 2026-09-25 against a scratch database. Those stay
+  # a human's call; everything additive goes through unattended.
+  #
+  # The runtime image has no Prisma CLI, so this is a one-off container of it
+  # with the checkout's schema and config mounted and the CLI fetched at the
+  # lockfile's exact version (@prisma/config and dotenv, which the config
+  # needs, are runtime dependencies and already in the image). Not `npm i` in
+  # the project -- that reconciles every devDependency on a 2 GB box.
+  PRISMA_VERSION="$(grep -A2 '"node_modules/prisma": {' "$REPO_DIR/package-lock.json" | sed -n 's/.*"version": "\(.*\)".*/\1/p')"
+  schema_fail() {
+    echo
+    echo "  $1"
+    echo "  Nothing was restarted; the previous image is still serving on the old schema."
+    # Put the checkout back, so the next deploy sees this schema change again
+    # instead of treating it as already handled.
+    git -C "$REPO_DIR" reset -q --hard "$BEFORE"
+    echo "  checkout reset to $(git -C "$REPO_DIR" log --oneline -1)"
+    exit 1
+  }
+  [ -n "$PRISMA_VERSION" ] || schema_fail "could not read the prisma version from package-lock.json"
+
+  echo "  backing up first"
+  "$DEPLOY_DIR/backup.sh" || schema_fail "backup failed -- not touching the schema without one"
+
+  prisma_run() {
+    docker compose run --rm --no-deps -T --user root --entrypoint sh \
+      -v "$REPO_DIR/prisma:/app/prisma:ro" \
+      -v "$REPO_DIR/prisma.config.ts:/app/prisma.config.ts:ro" \
+      api -c "npx --yes prisma@$PRISMA_VERSION $1" </dev/null
+  }
+  echo "  the change, as SQL (prisma $PRISMA_VERSION):"
+  prisma_run "migrate diff --from-config-datasource --to-schema prisma/schema.prisma --script" 2>&1 | sed 's/^/    /'
+  if ! prisma_run "db push" 2>&1 | sed 's/^/    /'; then
+    schema_fail "db push refused or failed (see above). If it is data loss you intend, back up and run it by hand with --accept-data-loss."
+  fi
+  echo "  schema applied"
 fi
 
 say "4/6  pinning it"

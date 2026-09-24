@@ -15,10 +15,10 @@
 # GitHub signs in to AWS with a short-lived OIDC token scoped to this repo's
 # main branch and to SendCommand on this one instance.
 #
-# What it refuses to do unattended: a push that changes prisma/schema.prisma.
-# `db push` against production data is a decision (deploy.sh only warns about
-# it). The workflow then fails red so the change is not silently skipped; run
-# the db push and then deploy/deploy.sh by hand.
+# Schema changes are applied too (APPLY_SCHEMA=1 below; deploy.sh step 3b):
+# backup first, then `prisma db push` WITHOUT --accept-data-loss, so an
+# additive change goes through and one that would destroy data is refused --
+# the workflow goes red and the old image keeps serving on the old schema.
 
 set -uo pipefail
 
@@ -38,14 +38,10 @@ if [ "$HEAD_SHA" = "$NEW_SHA" ]; then
   exit 0
 fi
 
-if ! git -C "$REPO_DIR" diff --quiet "$HEAD_SHA" "$NEW_SHA" -- prisma/schema.prisma; then
-  echo "NOT DEPLOYED: prisma/schema.prisma changed between"
-  echo "  $(git -C "$REPO_DIR" log --oneline -1 "$HEAD_SHA")"
-  echo "  $(git -C "$REPO_DIR" log --oneline -1 "$NEW_SHA")"
-  echo "Apply the schema (deploy/README.md, 'Schema changes'), then run deploy/deploy.sh by hand."
-  exit 2
-fi
-
-# deploy.sh pulls, waits for CI's image, restarts, verifies /health and rolls
-# back on its own; its exit code is the verdict the workflow reports.
+# deploy.sh pulls, waits for CI's image, applies a schema change (APPLY_SCHEMA:
+# backup, then `prisma db push` without --accept-data-loss, so anything that
+# would destroy data is refused and nothing restarts), restarts, verifies
+# /health and rolls back on its own; its exit code is the verdict the
+# workflow reports.
+export APPLY_SCHEMA=1
 exec "$REPO_DIR/deploy/deploy.sh"

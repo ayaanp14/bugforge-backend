@@ -242,8 +242,12 @@ to AWS with GitHub's OIDC token, sends `deploy/ci-deploy.sh` to the instance
 through SSM Run Command, and that runs `deploy.sh` — which waits for the
 image, checks `/health` and rolls back on its own. No polling, no inbound
 port, no stored credential. The run's log in the Actions tab carries the
-instance's output. A push that changes `prisma/schema.prisma` is refused
-(the run goes red): apply the schema, then run `deploy.sh` by hand. The
+instance's output. A push that changes `prisma/schema.prisma` is applied
+too, before the restart: a backup (`backup.sh`), then `prisma db push` without
+`--accept-data-loss`, so an additive change goes through and one that would
+destroy data is refused — the run goes red, nothing restarts, and the checkout
+is reset so the next deploy tries again. A destructive change you do intend:
+back up, run the push by hand with the flag, then Run workflow. The
 Actions tab's "Run workflow" button on Deploy redeploys `main` on demand.
 
 Set up once, in the AWS console (ap-south-1):

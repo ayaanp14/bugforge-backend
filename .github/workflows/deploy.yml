@@ -5,9 +5,10 @@
 #   Command on the instance -> deploy/ci-deploy.sh -> deploy/deploy.sh
 #
 # deploy.sh waits for the image build-image.yml publishes (up to ten minutes),
-# restarts the API, checks /health and rolls back on its own, so a red run
-# here means production is still serving the previous image. A push that
-# changes prisma/schema.prisma is refused on purpose (ci-deploy.sh says why).
+# applies a schema change (backup, then `prisma db push` without
+# --accept-data-loss, so data-destroying changes are refused), restarts the
+# API, checks /health and rolls back on its own. A red run here means
+# production is still serving the previous image.
 #
 # AWS side, set up once (deploy/README.md, "Deploy on push"): an IAM OIDC
 # provider for token.actions.githubusercontent.com, the role below trusted only
@@ -50,7 +51,7 @@ jobs:
       (github.event.workflow_run.conclusion == 'success' &&
        github.event.workflow_run.event == 'push')
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 45
     steps:
       - name: Sign in to AWS
         uses: aws-actions/configure-aws-credentials@v4
@@ -66,7 +67,7 @@ jobs:
           # script that runs is the one being deployed (the checkout may not
           # have it yet).
           CMD='sudo -u ubuntu -H bash -c '"'"'cd ~/codekairo-backend && git fetch -q origin main && git show origin/main:deploy/ci-deploy.sh > /tmp/ci-deploy.sh && bash /tmp/ci-deploy.sh'"'"''
-          PARAMS="$(jq -n --arg c "$CMD" '{commands: [$c], executionTimeout: ["900"]}')"
+          PARAMS="$(jq -n --arg c "$CMD" '{commands: [$c], executionTimeout: ["2400"]}')"
 
           CMD_ID="$(aws ssm send-command \
             --instance-ids "$INSTANCE_ID" \
@@ -77,10 +78,11 @@ jobs:
             --query Command.CommandId --output text)"
           echo "SSM command $CMD_ID"
 
-          # `aws ssm wait command-executed` gives up after ~100 s; a deploy
-          # that waits for the image build can take ten minutes.
+          # `aws ssm wait command-executed` gives up after ~100 s; a deploy can
+          # wait ten minutes for the image and then back up the database
+          # before a schema change, so allow up to 40.
           STATUS=Pending
-          for i in $(seq 1 110); do
+          for i in $(seq 1 250); do
             sleep 10
             STATUS="$(aws ssm get-command-invocation --command-id "$CMD_ID" \
               --instance-id "$INSTANCE_ID" --query Status --output text 2>/dev/null || echo Pending)"
