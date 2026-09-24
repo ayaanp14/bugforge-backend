@@ -4,9 +4,10 @@
 #
 #   ~/codekairo-backend/deploy/deploy.sh
 #
-# Deliberately not triggered by a push. Pushing runs CI and stops there; a
-# deploy is a decision someone makes, so a bad merge cannot take the site down
-# on its own.
+# Run by hand, or by auto-deploy.sh from cron once CI's tests have passed on
+# the new commit (it skips a failed CI run and any schema change, which stay a
+# decision someone makes). Either way a bad image cannot take the site down on
+# its own: step 6 below rolls back when /health does not come up.
 #
 # Nothing is compiled here any more. The image is built by
 # .github/workflows/build-image.yml, because `docker compose build` on this box

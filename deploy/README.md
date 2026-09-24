@@ -235,6 +235,23 @@ It fetches, waits for the image CI built for that exact commit, pins it in
 previous image back by itself if the new one does not answer 200. Caddy holds
 connections while `api` restarts, so the outage is the container's boot time.
 
+**Deploy on push (auto-deploy.sh)**
+
+Installed once, from a shell on the box:
+
+```bash
+(crontab -l 2>/dev/null | grep -v auto-deploy.sh; echo "*/2 * * * * \$HOME/codekairo-backend/deploy/auto-deploy.sh") | crontab -
+```
+
+Every two minutes it asks GitHub whether `main` has moved. When it has, it waits
+for CI's "Typecheck & test" to pass on that commit, then runs `deploy.sh` (which
+waits for the image, checks `/health` and rolls back on its own). It will not
+deploy a commit whose tests failed or a push that changes
+`prisma/schema.prisma` — those are logged and left for `deploy.sh` by hand.
+Watch it with `tail -f ~/backups/autodeploy.log`; turn it off with
+`crontab -l | grep -v auto-deploy.sh | crontab -`. It is pull-based on purpose:
+no inbound port for GitHub and no credential on either side.
+
 Rolling back later is one line: set `API_IMAGE` in `deploy/.env` to an older
 `sha-…` tag and `docker compose up -d api`. Every deployed image is kept
 locally for a week.
@@ -289,6 +306,7 @@ the bill to $24/month and would outrun the credits.
   counters to Redis is the prerequisite, and Redis is now local, so it is a
   much smaller job than it was.
 - **No managed failover.** One box. If it dies, you restore a snapshot.
-- **No CI deploy.** CI builds the image; putting it on the box is still a
-  human running `deploy/deploy.sh`. That split is deliberate — a bad merge
-  should not be able to take the site down on its own.
+- **No push from CI.** CI builds the image; the box pulls it. Either a human
+  runs `deploy/deploy.sh` or `auto-deploy.sh` does from cron after the tests
+  pass — and a bad image still cannot take the site down on its own, because
+  `deploy.sh` rolls back when `/health` fails.
