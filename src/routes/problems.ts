@@ -29,10 +29,19 @@ const problemKey = (slug: string) => `problem:v2:${slug}`;
  */
 const editorialKey = (slug: string) => `problem:editorial:v1:${slug}`;
 
+/** The starter stubs and the hints, which the lean payload leaves out (/:slug/starter/:lang, /:slug/hints). */
+const starterKey = (slug: string) => `problem:starter:v1:${slug}`;
+const hintsKey = (slug: string) => `problem:hints:v1:${slug}`;
+/** The duel room's slice of a problem (routes/duels GET /:id/problem). */
+export const duelProblemKey = (slug: string) => `duel-problem:v1:${slug}`;
+
 /** After any admin write, so the next reader sees the edit rather than the TTL. */
 export function invalidateProblem(slug: string): void {
   invalidate(problemKey(slug));
   invalidate(editorialKey(slug));
+  invalidate(starterKey(slug));
+  invalidate(hintsKey(slug));
+  invalidate(duelProblemKey(slug));
   // The catalogue carries titles, tags and difficulty, all of which an edit can
   // move, and publishing or retiring a problem changes its membership outright.
   invalidate("catalogue:published");
@@ -476,9 +485,73 @@ router.get("/:slug", optionalAuth, browserCache(120, { shared: true }), async (r
       return;
     }
 
+    // ?lean=1 (the web workbench and the duel room): the statement without
+    // what the page may never show. The hints come from /:slug/hints when
+    // their tab opens, and of the thirteen starter stubs only JavaScript's —
+    // the editor's first language — ships; another language's arrives from
+    // /:slug/starter/:lang when it is picked. Both were a large share of
+    // every problem's payload, and in a duel the hints were in the network
+    // panel of a room that hides them. Without the flag the answer is
+    // unchanged: the Android app reads the full payload.
+    if (first(req.query["lean"]) === "1") {
+      const { hints: _hints, starterCode, ...rest } = payload;
+      const stubs = (starterCode ?? {}) as Record<string, unknown>;
+      res.json({
+        ...rest,
+        starterCode: typeof stubs["javascript"] === "string" ? { javascript: stubs["javascript"] } : {},
+        starterLanguages: Object.keys(stubs).filter((k) => typeof stubs[k] === "string"),
+      });
+      return;
+    }
+
     res.json(payload);
   } catch (err) {
     console.error("GET /api/problems/:slug error:", err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// 2a. GET /api/problems/[slug]/starter/[lang] — One language's starter stub
+//     The lean payload carries JavaScript's alone; the editor asks for the
+//     rest when a language is picked. All thirteen are cached as one entry
+//     (a few KB); each language is its own browser-cacheable URL.
+router.get("/:slug/starter/:lang", browserCache(300, { shared: true }), async (req, res) => {
+  try {
+    const slug = String(req.params.slug);
+    const lang = String(req.params.lang);
+    const stubs = await cachedShared(starterKey(slug), 600, async () => {
+      const row = await prisma.problem.findUnique({ where: { slug }, select: { isPublished: true, starterCode: true } });
+      return row && row.isPublished ? (row.starterCode ?? {}) : null;
+    });
+    if (stubs == null) {
+      res.status(404).json({ error: "Problem not found" });
+      return;
+    }
+    const code = (stubs as Record<string, unknown>)[lang];
+    // A language without a stub is an empty buffer, not an error: the
+    // picker lists every language and the editor shows what there is.
+    res.json({ language: lang, code: typeof code === "string" ? code : "" });
+  } catch (err) {
+    console.error("GET /api/problems/:slug/starter/:lang error:", err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// 2a. GET /api/problems/[slug]/hints — The hints, when their tab opens
+router.get("/:slug/hints", optionalAuth, browserCache(300, { shared: true }), async (req, res) => {
+  try {
+    const slug = String(req.params.slug);
+    const hints = await cachedShared(hintsKey(slug), 600, async () => {
+      const row = await prisma.problem.findUnique({ where: { slug }, select: { isPublished: true, hints: true } });
+      return row && row.isPublished ? (Array.isArray(row.hints) ? row.hints : []) : null;
+    });
+    if (hints == null) {
+      res.status(404).json({ error: "Problem not found" });
+      return;
+    }
+    res.json({ hints });
+  } catch (err) {
+    console.error("GET /api/problems/:slug/hints error:", err);
     res.status(500).json({ error: "Internal server error" });
   }
 });

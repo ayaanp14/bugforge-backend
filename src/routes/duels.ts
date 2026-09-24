@@ -12,6 +12,7 @@ import crypto from "crypto";
 import { prisma } from "../lib/prisma.js";
 import { claimDuelSeat } from "../lib/seat-claim.js";
 import { requireAuth } from "../middleware/auth.js";
+import { duelProblemKey } from "./problems.js";
 import { duelRoom, emitToRoom } from "../lib/realtime.js";
 import { cached } from "../lib/cache.js";
 import {
@@ -562,6 +563,77 @@ router.get("/:id", requireAuth, async (req, res) => {
     res.json(duel);
   } catch (err) {
     console.error("GET /api/duels/:id error:", err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+/**
+ * GET /api/duels/:id/problem — the statement a duel is fought over, and
+ * nothing else.
+ *
+ * The room used to read /api/problems/:slug, the workbench's payload: the
+ * catalogue hubs (with every hub's per-difficulty counts), six related
+ * problems, the neighbours, topics, timestamps — all of it for navigation
+ * and structured data the room never draws, and, before the lean flag, the
+ * hints, in the network panel of a room that hides them (2026-09-24). This
+ * is what the room renders: the statement and its tags, the visible cases,
+ * JavaScript's stub (another language's comes from
+ * /api/problems/:slug/starter/:lang when picked) and which languages have
+ * one. Participants only, as the duel itself is.
+ */
+router.get("/:id/problem", requireAuth, async (req, res) => {
+  try {
+    const userId = req.user!.userId;
+    const duel = await loadDuel(String(req.params.id));
+    if (!duel) {
+      res.status(404).json({ error: "Duel not found" });
+      return;
+    }
+    if (!duel.participants.some((p) => p.userId === userId)) {
+      res.status(403).json({ error: "You're not in that duel" });
+      return;
+    }
+    if (!duel.problem) {
+      res.status(404).json({ error: "This duel has no problem" });
+      return;
+    }
+    const problemId = duel.problem.id;
+    // A statement is the same bytes for both sides and for every duel on it;
+    // keyed by slug so an admin edit clears it (routes/problems invalidateProblem).
+    const payload = await cached(duelProblemKey(duel.problem.slug), 10 * 60_000, async () => {
+      const row = await prisma.problem.findUnique({
+        where: { id: problemId },
+        select: {
+          id: true,
+          slug: true,
+          title: true,
+          description: true,
+          difficulty: true,
+          tags: true,
+          starterCode: true,
+          testCases: {
+            where: { isHidden: false },
+            select: { id: true, input: true, expectedOutput: true, orderIndex: true },
+            orderBy: { orderIndex: "asc" },
+          },
+        },
+      });
+      if (!row) return null;
+      const { starterCode, ...rest } = row;
+      const stubs = (starterCode ?? {}) as Record<string, unknown>;
+      return {
+        ...rest,
+        starterCode: typeof stubs["javascript"] === "string" ? { javascript: stubs["javascript"] } : {},
+        starterLanguages: Object.keys(stubs).filter((k) => typeof stubs[k] === "string"),
+      };
+    });
+    if (!payload) {
+      res.status(404).json({ error: "Problem not found" });
+      return;
+    }
+    res.json(payload);
+  } catch (err) {
+    console.error("GET /api/duels/:id/problem error:", err);
     res.status(500).json({ error: "Internal server error" });
   }
 });
