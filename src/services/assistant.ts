@@ -6,38 +6,48 @@ import { getDashboard } from "./dashboard.js";
 import { entitlementFor } from "./entitlements.js";
 import { providerConfig } from "./interview-ai.js";
 import { roadDefinition, roadmapFor } from "./roadmap.js";
+import { buildIndex, chunkBriefing, renderChunks, type BriefingIndex } from "../lib/assistant-index.js";
 
 /**
  * The site assistant: a chat that knows the product and the account asking.
  *
- * Two kinds of knowledge, neither retrieved. The product fits in a prompt —
- * a handbook (content/handbook.md) plus two sections generated from the code
- * that owns the facts, the plan table and the seeded road, so the assistant
- * cannot quote a price or a stage the site no longer has. And the account's
- * own standing is the same composed payloads the dashboard already builds:
- * appended per message as a compact block, so "what should I solve next" is
+ * Two kinds of knowledge. The product: a handbook (content/handbook.md) plus
+ * two sections generated from the code that owns the facts, the plan table
+ * and the seeded road, so the assistant cannot quote a price or a stage the
+ * site no longer has. All of it used to go into every message — ~81 KB,
+ * ~21k tokens — and the model answered worse for it; now it is indexed
+ * (lib/assistant-index) and a message carries a fixed core (the rules, the
+ * overview, a map of every section) plus the ~9 KB that score best against
+ * the question (2026-09-24). And the account's own standing is the same
+ * composed payloads the dashboard already builds, appended per message as a
+ * compact block (cached for half a minute), so "what should I solve next" is
  * answered from the road and "how many interviews do I have left" from the
  * entitlement, with no tool calls and no second round trip to the model.
  *
  * The model is the interviews' — NVIDIA's hosted Nemotron on the free tier
- * — over plain fetch, streamed. The prefix (rules, handbook, plans, road) is
- * byte-identical between messages so the provider's prefix cache absorbs
- * it; only the account block and the conversation vary. There is no
+ * — over plain fetch, streamed. The core is the first message and
+ * byte-identical between requests, so the provider's prefix cache still
+ * absorbs it; the picked briefing, the account block and the conversation
+ * follow it. There is no
  * hedging here: a stream cannot be raced, so a request that fails before
  * its first token is retried and one that fails mid-stream is reported.
  */
 
 const MAX_OUTPUT_TOKENS = Number(process.env.ASSISTANT_MAX_OUTPUT_TOKENS ?? 700);
 const REQUEST_TIMEOUT_MS = Number(process.env.ASSISTANT_TIMEOUT_MS ?? 60_000);
-/** Turns of history sent with each message: enough to follow a thread, small enough to stay cheap. */
-const HISTORY_TURNS = 20;
+/** Messages of history sent with each message: enough to follow a thread, small enough to stay cheap. */
+const HISTORY_TURNS = 10;
+/** An earlier answer is context, not reference: its opening is what a follow-up leans on. */
+const HISTORY_ANSWER_CHARS = 700;
+/** How much of the indexed briefing a message may carry. */
+const BRIEFING_CHARS = 9000;
 const MAX_MESSAGE_CHARS = 2000;
 
 const RULES = `You are the CodeKairo assistant, built into the site to help people use it.
 
 How to answer:
 - Be direct and short. One to four sentences for most questions; a short list when there are steps. Plain language, no preamble, no sign-off.
-- Ground everything in the briefing below and in the account block. If the answer is not there, say you do not know that, and point to the nearest page that would help.
+- Ground everything in the briefing and in the account block. The briefing you are given is the part of the handbook relevant to this question, not all of it; if the answer is not there, say you do not know that, and point to the nearest page from the section list that would help.
 - Never invent prices, limits, counts, dates or features. Every number comes from the briefing — prices and plan limits only from the "Plans" section, the road's stages and chests only from "The road as seeded", everything else (XP values, allowances, timings, sizes) from the handbook — or from the account block. If the briefing has no number for it, say so.
 - When you point somewhere on the site, use a markdown link to the path, e.g. [the roadmap](/roadmap). Paths only — never full URLs, never links off the site.
 - Use the account block to personalise: name the person's current stage, streak, plan and allowances when relevant. Do not read it back wholesale.
@@ -67,29 +77,71 @@ function plansSection(): string {
 /** The road as seeded: tiers, chests and every stage. Generated from the same tables the roadmap page reads. */
 async function roadSection(): Promise<string> {
   const road = await roadDefinition();
+  // One heading per tier, so the index can hand a question one tier rather
+  // than all nineteen stages; the summary carries the totals and the chests.
+  const chest = (t: { rewardXp: number; interviewCredits: number }) =>
+    `+${t.rewardXp} XP and ${t.interviewCredits} bonus mock interview${t.interviewCredits === 1 ? "" : "s"}`;
+  const chests = road.tiers
+    .map((t, i) => `- Tier ${i + 1} **${t.title}**: ${road.stages.filter((s) => s.tier === t.id).length} stages; chest: ${chest(t)}.`)
+    .join("\n");
+  const problems = road.stages.reduce((n, s) => n + s.problems.length, 0);
+  const summary = `## DSA roadmap as seeded — overview\n\n${road.stages.length} stages, ${problems} problems, ${road.tiers.length} tiers, walked in order; each tier ends in a chest.\n\n${chests}`;
   const tiers = road.tiers.map((t, i) => {
-    const stages = road.stages.filter((s) => s.tier === t.id);
-    const list = stages
+    const list = road.stages
+      .filter((s) => s.tier === t.id)
       .map((s) => {
         const number = road.stages.indexOf(s) + 1;
-        return `  - Stage ${number}: **${s.title}** — ${s.blurb} Clear ${Math.min(s.required, s.problems.length)} of ${s.problems.length}: ${s.problems.map((p) => p.title).join(", ")}.`;
+        return `- Stage ${number}: **${s.title}** — ${s.blurb} Clear ${Math.min(s.required, s.problems.length)} of ${s.problems.length}: ${s.problems.map((p) => p.title).join(", ")}.`;
       })
       .join("\n");
-    return `- **Tier ${i + 1}: ${t.title}** — ${t.blurb} Chest: +${t.rewardXp} XP and ${t.interviewCredits} bonus mock interview${t.interviewCredits === 1 ? "" : "s"}.\n${list}`;
+    return `## DSA roadmap as seeded — tier ${i + 1}: ${t.title}\n\n${t.blurb} Chest: ${chest(t)}.\n\n${list}`;
   });
-  return `## The road as seeded\n\n${road.stages.length} stages, ${road.stages.reduce((n, s) => n + s.problems.length, 0)} problems, ${road.tiers.length} tiers, walked in order.\n\n${tiers.join("\n")}`;
+  return [summary, ...tiers].join("\n\n");
 }
 
 /**
- * The prompt's fixed head. Cached: the handbook is a file, the plans are
- * code and the road changes on a seed, so there is nothing per-request in
- * it — and keeping it byte-identical is what lets the provider cache it.
+ * The briefing, indexed, and the core every message carries: the rules, the
+ * handbook's opening overview, and the list of its sections with their pages
+ * — so the assistant can always name and link the right page even when the
+ * question picked nothing. Cached: the handbook is a file, the plans are code
+ * and the road changes on a seed; the core is byte-identical between
+ * requests, which is what lets the provider cache it.
  */
-async function systemPrefix(): Promise<string> {
-  return cached("assistant:prefix:v1", 5 * 60 * 1000, async () => {
+interface Briefing {
+  core: string;
+  index: BriefingIndex;
+}
+
+async function briefing(): Promise<Briefing> {
+  return cached("assistant:briefing:v2", 5 * 60 * 1000, async () => {
     const road = await roadSection();
-    return `${RULES}\n\n---\n\n# Briefing\n\n${HANDBOOK}\n\n${plansSection()}\n\n${road}`;
+    const handbook = chunkBriefing(HANDBOOK);
+    const extra = chunkBriefing(`${plansSection()}\n\n${road}`, handbook.length);
+    const index = buildIndex([...handbook, ...extra]);
+    const overview = HANDBOOK.slice(HANDBOOK.indexOf("\n") + 1, HANDBOOK.indexOf("\n## ")).trim();
+    const sections = [...new Set(index.chunks.map((c) => c.section))].filter((t) => !t.startsWith("DSA roadmap as seeded — tier"));
+    const list = sections.map((t) => `- ${t}`).join("\n");
+    const core = `${RULES}\n\n---\n\n# CodeKairo\n\n${overview}\n\nThe handbook's sections (a section's page is the path in its title):\n${list}`;
+    return { core, index };
   });
+}
+
+/**
+ * The briefing a message carries: the chunks that score best against the
+ * question — and against the previous question, so "and how long does it
+ * last?" still finds the section the thread is about.
+ */
+function pickBriefing(index: BriefingIndex, question: string, previous: string | null): string {
+  let picked = index.search(question, { maxChars: BRIEFING_CHARS });
+  if (previous) {
+    const have = new Set(picked.map((c) => c.id));
+    const used = picked.reduce((n, c) => n + c.text.length, 0);
+    const more = index.search(previous, { maxChars: Math.max(0, BRIEFING_CHARS - used), max: 4 }).filter((c) => !have.has(c.id));
+    picked = [...picked, ...more].sort((a, b) => a.order - b.order);
+  }
+  return picked.length
+    ? `# Briefing (the parts of the handbook relevant to this question)\n\n${renderChunks(picked)}`
+    : "# Briefing\n\nNothing in the handbook matched this question closely. Answer from the overview and the section list if you can; otherwise say you do not know and point to the nearest page.";
 }
 
 /**
@@ -98,6 +150,11 @@ async function systemPrefix(): Promise<string> {
  * of heatmap would be tokens spent on nothing.
  */
 async function accountBlock(userId: string, email: string | null): Promise<string> {
+  // Three composed payloads per message: a burst of questions shares one read.
+  return cached(`assistant:account:${userId}`, 30_000, () => buildAccountBlock(userId, email));
+}
+
+async function buildAccountBlock(userId: string, email: string | null): Promise<string> {
   const [dash, ent, road] = await Promise.all([getDashboard(userId), entitlementFor(userId, email), roadmapFor(userId)]);
   const me = dash.me;
   const current = road.stages.find((s) => s.id === road.summary.currentId) ?? null;
@@ -283,24 +340,30 @@ export async function reply(
   // Signed in: the account block and the stored conversation. A visitor: the
   // visitor block and whatever turns the client sent — bounded, and only the
   // shape the model needs, since a client can send anything.
-  const [prefix, account, past] = userId
-    ? await Promise.all([systemPrefix(), accountBlock(userId, email), history(userId)])
+  const [brief, account, past] = userId
+    ? await Promise.all([briefing(), accountBlock(userId, email), history(userId)])
     : [
-        await systemPrefix(),
+        await briefing(),
         VISITOR_BLOCK,
         carried
           .filter((t) => (t.role === "user" || t.role === "assistant") && typeof t.content === "string")
           .slice(-HISTORY_TURNS)
           .map((t) => ({ role: t.role, content: t.content.slice(0, MAX_MESSAGE_CHARS) })),
       ];
+  const previousQuestion = [...past].reverse().find((t) => t.role === "user")?.content ?? null;
+  const picked = pickBriefing(brief.index, text, previousQuestion);
   const { model } = providerConfig();
   const body = {
     // The interviews' model unless a deployment points the assistant elsewhere.
     model: process.env.ASSISTANT_MODEL || model,
     messages: [
-      { role: "system", content: prefix },
+      { role: "system", content: brief.core },
+      { role: "system", content: picked },
       { role: "system", content: account },
-      ...past.map((t) => ({ role: t.role, content: t.content })),
+      ...past.map((t) => ({
+        role: t.role,
+        content: t.role === "assistant" && t.content.length > HISTORY_ANSWER_CHARS ? `${t.content.slice(0, HISTORY_ANSWER_CHARS)} …` : t.content,
+      })),
       { role: "system", content: SCOPE_REMINDER },
       { role: "user", content: text },
     ],

@@ -224,37 +224,44 @@ One request builds it; it refreshes itself after a submission, a chest, a follow
 ## Placement tests — `/tests`
 
 - Full-length timed mocks modelled on real company patterns. A **pattern** is a blueprint (sections, timings, marks, what each section draws from); each sitting **draws a fresh paper** from the aptitude bank and the problem catalogue, so no two sittings are the same. Three families: **IT services** (TCS, Infosys, Wipro, Cognizant, Capgemini, Accenture, HCLTech, Tech Mahindra), **Product companies**, **General practice**.
-- **The 30 patterns** (duration · questions · negative marking · sectional timing):
-  - TCS NQT — Foundation: 75 min · 65 q · none · sectional (Numerical 20/25m, Verbal 25/25m, Reasoning 20/25m)
-  - TCS NQT — Foundation + Advanced: 100 min · 80 q · none · sectional (adds Advanced Quant 10/17m, Advanced Reasoning 5/8m)
-  - TCS NQT — Advanced Coding: 90 min · 2 coding problems · free timing
-  - Infosys SE / DSE — Aptitude: 100 min · 54 q · none · sectional (Mathematical 10/35m, Logical 15/25m, Verbal 20/20m, Pseudocode 5/10m, Puzzle 4/10m)
-  - Infosys SP / DSE — Coding: 180 min · 3 coding problems · free timing
-  - Wipro NLTH — Aptitude: 48 min · 52 q · none · sectional (Quant 16/16m, Logical 14/18m, English 22/14m)
-  - Wipro NLTH — Programming: 60 min · 2 coding problems · free timing
-  - Accenture — Cognitive & Technical: 78 min · 78 q · none · free timing (Verbal 17, Reasoning 18, Numerical 15, Pseudo Code 18, Networking/Security/Cloud 10)
-  - Cognizant GenC — Aptitude: 100 min · 80 q · none · sectional (Numerical 25/35m, Logical 35/45m, Verbal 20/20m)
-  - Capgemini — Technical & English: 75 min · 70 q · none · sectional (Technical MCQs & Pseudocode 40/45m, English 30/30m)
-  - HCLTech — Written Test: 60 min · 60 q · none · sectional (Quant, Logical, Verbal, Technical — 15 each, 15m each)
-  - Tech Mahindra — Aptitude & Technical: 75 min · 60 q · **−0.25 per wrong** · sectional (Logical, Quant, Verbal, Computer Programming, Computer Science — 12 each, 15m each)
-  - Amazon — SDE Online Assessment: 125 min · sectional (Code Debugging 7/20m, Coding 2 problems/70m, Logical Reasoning 24/35m)
-  - Google — Online Assessment: 90 min · 2 coding problems · free timing
-  - Microsoft — Online Assessment: 90 min · 2 coding problems · free timing
-  - Meta — Coding Screen: 70 min · 4 coding problems · free timing
-  - Apple — Coding Assessment: 90 min · 3 coding problems · free timing
-  - Flipkart — Online Coding: 90 min · 3 coding problems · free timing
-  - Salesforce — SWE Assessment: 75 min · 2 coding problems · free timing
-  - Goldman Sachs — Aptitude Test: 55 min · 42 q · **−0.4 per wrong** · free timing (Numerical Computation 8, Numerical Reasoning 12, Logical 12, Verbal 10)
-  - Deloitte — Online Assessment: 60 min · 65 q · none · sectional (Language 13/10m, General Aptitude 22/25m, Technical 30/25m)
-  - Adobe — Campus Aptitude: 60 min · 60 q · none · sectional (Quant, Logical, Verbal — 20 each, 20m each)
-  - ZS Associates — Aptitude: 75 min · 60 q · none · free timing (Quant 18, Logical 16, Verbal 14, DI 12)
-  - Morgan Stanley — Aptitude & Technical: 70 min · 53 q · none · sectional (Aptitude 16/20m, CS Fundamentals 30/30m, Pseudo Code 7/20m)
-  - Oracle — Aptitude & Verbal: 30 min · 20 q · none · free timing (Aptitude 10, Verbal 10)
-  - Zoho — Round 1: 125 min · 30 q · none · sectional (Aptitude 20/80m, Technical 10/45m)
-  - Big Tech Screen — Theory Drill (CodeKairo): 60 min · 50 q · sectional (DSA 20/25m, OS-DBMS-Networks 15/18m, Language Semantics 15/17m)
-  - Full-Length Aptitude Paper (CodeKairo): 120 min · 100 q · sectional (Quant 30/35m, Logical 25/30m, Verbal 25/25m, DI 12/20m, Technical 8/10m)
-  - Thirty-Minute Sprint (CodeKairo): 30 min · 30 mixed q · sectional, easy
-  - Every coding problem in a coding section is worth **10 marks** with **partial credit per test case passed**; every MCQ is 1 mark.
+
+### The 30 patterns
+
+Each line: duration · questions · negative marking · sectional or free timing.
+
+- TCS NQT — Foundation: 75 min · 65 q · none · sectional (Numerical 20/25m, Verbal 25/25m, Reasoning 20/25m)
+- TCS NQT — Foundation + Advanced: 100 min · 80 q · none · sectional (adds Advanced Quant 10/17m, Advanced Reasoning 5/8m)
+- TCS NQT — Advanced Coding: 90 min · 2 coding problems · free timing
+- Infosys SE / DSE — Aptitude: 100 min · 54 q · none · sectional (Mathematical 10/35m, Logical 15/25m, Verbal 20/20m, Pseudocode 5/10m, Puzzle 4/10m)
+- Infosys SP / DSE — Coding: 180 min · 3 coding problems · free timing
+- Wipro NLTH — Aptitude: 48 min · 52 q · none · sectional (Quant 16/16m, Logical 14/18m, English 22/14m)
+- Wipro NLTH — Programming: 60 min · 2 coding problems · free timing
+- Accenture — Cognitive & Technical: 78 min · 78 q · none · free timing (Verbal 17, Reasoning 18, Numerical 15, Pseudo Code 18, Networking/Security/Cloud 10)
+- Cognizant GenC — Aptitude: 100 min · 80 q · none · sectional (Numerical 25/35m, Logical 35/45m, Verbal 20/20m)
+- Capgemini — Technical & English: 75 min · 70 q · none · sectional (Technical MCQs & Pseudocode 40/45m, English 30/30m)
+- HCLTech — Written Test: 60 min · 60 q · none · sectional (Quant, Logical, Verbal, Technical — 15 each, 15m each)
+- Tech Mahindra — Aptitude & Technical: 75 min · 60 q · **−0.25 per wrong** · sectional (Logical, Quant, Verbal, Computer Programming, Computer Science — 12 each, 15m each)
+- Amazon — SDE Online Assessment: 125 min · sectional (Code Debugging 7/20m, Coding 2 problems/70m, Logical Reasoning 24/35m)
+- Google — Online Assessment: 90 min · 2 coding problems · free timing
+- Microsoft — Online Assessment: 90 min · 2 coding problems · free timing
+- Meta — Coding Screen: 70 min · 4 coding problems · free timing
+- Apple — Coding Assessment: 90 min · 3 coding problems · free timing
+- Flipkart — Online Coding: 90 min · 3 coding problems · free timing
+- Salesforce — SWE Assessment: 75 min · 2 coding problems · free timing
+- Goldman Sachs — Aptitude Test: 55 min · 42 q · **−0.4 per wrong** · free timing (Numerical Computation 8, Numerical Reasoning 12, Logical 12, Verbal 10)
+- Deloitte — Online Assessment: 60 min · 65 q · none · sectional (Language 13/10m, General Aptitude 22/25m, Technical 30/25m)
+- Adobe — Campus Aptitude: 60 min · 60 q · none · sectional (Quant, Logical, Verbal — 20 each, 20m each)
+- ZS Associates — Aptitude: 75 min · 60 q · none · free timing (Quant 18, Logical 16, Verbal 14, DI 12)
+- Morgan Stanley — Aptitude & Technical: 70 min · 53 q · none · sectional (Aptitude 16/20m, CS Fundamentals 30/30m, Pseudo Code 7/20m)
+- Oracle — Aptitude & Verbal: 30 min · 20 q · none · free timing (Aptitude 10, Verbal 10)
+- Zoho — Round 1: 125 min · 30 q · none · sectional (Aptitude 20/80m, Technical 10/45m)
+- Big Tech Screen — Theory Drill (CodeKairo): 60 min · 50 q · sectional (DSA 20/25m, OS-DBMS-Networks 15/18m, Language Semantics 15/17m)
+- Full-Length Aptitude Paper (CodeKairo): 120 min · 100 q · sectional (Quant 30/35m, Logical 25/30m, Verbal 25/25m, DI 12/20m, Technical 8/10m)
+- Thirty-Minute Sprint (CodeKairo): 30 min · 30 mixed q · sectional, easy
+- Every coding problem in a coding section is worth **10 marks** with **partial credit per test case passed**; every MCQ is 1 mark.
+
+### Sitting a test
+
 - **Sitting one** (`/tests/<slug>` → "Start the test"): the paper is drawn and the server starts the clock. Only **one live sitting per test** at a time — pressing Start again resumes it, and the catalogue shows "In progress" with a resume link.
 - **Sectional timing** (most service-company patterns): sections are taken in order, each with its own clock; when a section's time ends the next starts immediately — even if the tab was closed, the next section's clock starts where the last ran out — and a finished section **cannot be reopened** ("Finish this section" is final). **Free timing**: roam between sections until the paper's clock ends.
 - **Answering**: pick an option, **Mark for review**, **Save & next**; answers are saved on the server as you go and survive a refresh; when offline they are held in the browser and re-sent when the connection returns (the runner says so). Coding sections have an editor with a language picker, **Run** (visible cases) and **Submit** (all cases — you are told how many passed, never which hidden case failed); your best run for a problem stands, so experimenting after solving cannot lose marks; the code autosaves to the sitting (never to your normal drafts).
@@ -300,7 +307,7 @@ Every price, limit and inclusion is in *Plans* later in this briefing — treat 
 ## The assistant (this chat)
 
 - Available to signed-in users on every dashboard page and to visitors on the public pages, as the floating "Ask about CodeKairo" button. Answers questions about the product and, for a signed-in account, about that account's own standing (progress, plan, allowances, streak, roadmap).
-- Unlimited on every plan; the only brake is a burst guard of 30 messages a minute. Messages are limited to 2,000 characters; the assistant carries the last 20 messages of the conversation as context. A signed-in account's conversation is stored and can be picked up later; "Clear conversation" hides it. Visitors' conversations live only in that browser tab.
+- Unlimited on every plan; the only brake is a burst guard of 30 messages a minute. Messages are limited to 2,000 characters; the assistant carries the last 10 messages of the conversation as context, and answers from the parts of this handbook that match the question. A signed-in account's conversation is stored and can be picked up later; "Clear conversation" hides it. Visitors' conversations live only in that browser tab.
 - It does not write, debug or explain code or algorithms — hints and editorials are the place for that — and it does not cover anything outside CodeKairo.
 
 ## Feedback, campus ambassadors, help
