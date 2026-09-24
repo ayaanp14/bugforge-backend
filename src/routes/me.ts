@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { isAdminEmail, requireAuth } from "../middleware/auth.js";
 import { prisma } from "../lib/prisma.js";
+import { isOwnerEmail } from "../lib/plans.js";
 import { getHeatmap, getSubmissionHistory, getPairingHistory, getDifficultyStats, getRank, getDashboard, invalidateDashboard } from "../services/dashboard.js";
 import { ensureBaseline, listNotifications, getUnreadCount, markAllRead } from "../services/notifications.js";
 import { ME_SELECT, getMePayload, invalidateMe } from "../services/me.js";
@@ -61,7 +62,10 @@ router.get("/", requireAuth, async (req, res) => {
 
     // Derived from the token's email, not cached with the payload: whether the
     // account menu shows "Admin" must not lag a change to ADMIN_EMAIL.
-    res.json({ ...payload, unreadNotifications, isAdmin: isAdminEmail(req.user!.email) });
+    // isOwner: the owner accounts (lib/plans.ts) — they bypass every quota
+    // here, and the client lets them out of the duel room's anti-cheat
+    // strikes (they test the arena with screenshots and copy/paste).
+    res.json({ ...payload, unreadNotifications, isAdmin: isAdminEmail(req.user!.email), isOwner: isOwnerEmail(req.user!.email) });
   } catch (err) {
     console.error("GET /api/me error:", err);
     res.status(500).json({ error: "Internal server error" });
