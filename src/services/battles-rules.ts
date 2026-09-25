@@ -68,13 +68,15 @@ interface PhaseInput {
   registrationClosesAt: Date;
   startsAt: Date;
   durationMinutes: number;
+  /** Knockout: set when the final was decided. */
+  finishedAt?: Date | null;
 }
 
 /**
  * Where a tournament stands at `now`. Derived, never stored, so it cannot
  * drift from the clock. An ICPC contest ends at start + duration; a
- * knockout's length depends on its bracket, so it stays live until the
- * match rounds (step 3) record a result.
+ * knockout's length depends on its bracket, so it stays live until its
+ * final is decided (`finishedAt`, services/knockout.ts).
  */
 export function tournamentPhase(t: PhaseInput, now: Date): TournamentPhase {
   if (t.status === "draft") return "draft";
@@ -82,6 +84,7 @@ export function tournamentPhase(t: PhaseInput, now: Date): TournamentPhase {
   if (now < t.registrationClosesAt) return "registration";
   if (now < t.startsAt) return "registration_closed";
   if (t.format === "icpc" && now.getTime() >= t.startsAt.getTime() + t.durationMinutes * 60_000) return "finished";
+  if (t.format === "knockout" && t.finishedAt) return "finished";
   return "live";
 }
 

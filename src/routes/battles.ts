@@ -24,6 +24,7 @@ import {
   withdraw,
 } from "../services/battles.js";
 import { contestRoom, contestStandings, revealResults } from "../services/contest.js";
+import { bracketView, checkIn, matchRoom } from "../services/knockout.js";
 
 /**
  * CodeKairo Battles — the API behind battles.codekairo.com (services/battles.ts).
@@ -33,12 +34,15 @@ import { contestRoom, contestStandings, revealResults } from "../services/contes
  *   GET    /api/battles/tournaments/:slug           one tournament's page
  *   GET    /api/battles/orgs/:slug                  an org's page
  *   GET    /api/battles/contest/:id/standings       ICPC scoreboard, from the start
+ *   GET    /api/battles/bracket/:id                 knockout bracket (draws it / settles timeouts)
  *
  * Players (requireAuth):
  *   GET    /api/battles/me/entries                  tournaments I am in
  *   POST   /api/battles/tournaments/:id/register    { inviteCode? }
  *   DELETE /api/battles/tournaments/:id/register
  *   GET    /api/battles/contest/:id                 the contest room (entered teams)
+ *   POST   /api/battles/tournaments/:id/check-in    knockout, in the hour before the start
+ *   GET    /api/battles/match/:id                   a knockout match room (its two players)
  *
  * Organizers (requireAuth; owner/admin of the org, else 404):
  *   GET    /api/battles/host                        my orgs + their tournaments
@@ -86,6 +90,7 @@ const router = Router();
 router.get("/tournaments", wrap(async (_req, res) => { res.json(await listTournaments()); }));
 router.get("/tournaments/:slug", optionalAuth, wrap(async (req, res) => { res.json(await tournamentPage(param(req, "slug"), viewerOf(req))); }));
 router.get("/contest/:id/standings", optionalAuth, wrap(async (req, res) => { res.json(await contestStandings(param(req, "id"), viewerOf(req)?.userId ?? null)); }));
+router.get("/bracket/:id", optionalAuth, wrap(async (req, res) => { res.json(await bracketView(param(req, "id"), viewerOf(req)?.userId ?? null)); }));
 router.get("/orgs/:slug", optionalAuth, wrap(async (req, res) => { res.json(await orgPage(param(req, "slug"), viewerOf(req)?.userId ?? null)); }));
 
 // ── Site admin ────────────────────────────────────────────────────────
@@ -99,6 +104,8 @@ router.get("/me/entries", wrap(async (req, res) => { res.json(await myEntries(re
 router.post("/tournaments/:id/register", wrap(async (req, res) => {
   res.status(201).json(await register({ userId: req.user.userId, email: req.user.email }, param(req, "id"), body(req)["inviteCode"]));
 }));
+router.post("/tournaments/:id/check-in", wrap(async (req, res) => { res.json(await checkIn(req.user.userId, param(req, "id"))); }));
+router.get("/match/:id", wrap(async (req, res) => { res.json(await matchRoom(req.user.userId, param(req, "id"))); }));
 router.get("/contest/:id", wrap(async (req, res) => { res.json(await contestRoom(req.user.userId, param(req, "id"))); }));
 router.delete("/tournaments/:id/register", wrap(async (req, res) => { res.json(await withdraw(req.user.userId, param(req, "id"))); }));
 

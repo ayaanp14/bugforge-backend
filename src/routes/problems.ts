@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { tournamentSolveFor } from "../services/tournament-record.js";
 import slugify from "slugify";
 import { prisma } from "../lib/prisma.js";
 import { requireAuth, optionalAuth, adminOnly } from "../middleware/auth.js";
@@ -170,7 +171,7 @@ router.get("/", optionalAuth, browserCache(60), async (req, res) => {
             .slice(0, takeNum)
             // Same projection as listProblemsWithStatus: the visitor's copy of
             // the head must be the same shape as a member's.
-            .map((p) => ({ id: p.id, title: p.title, slug: p.slug, difficulty: p.difficulty, tags: p.tags, status: "UNSOLVED" }));
+            .map((p) => ({ id: p.id, title: p.title, slug: p.slug, difficulty: p.difficulty, tags: p.tags, status: "UNSOLVED", tournament: false }));
       await send(result);
       return;
     }
@@ -287,6 +288,8 @@ router.get("/", optionalAuth, browserCache(60), async (req, res) => {
     const result = problems.map((p) => ({
       ...p,
       status: statusOf(state, p.id),
+      // Solved in a Battles tournament: the row's trophy mark.
+      tournament: state?.tournamentSolved.has(p.id) ?? false,
     }));
 
     await send(result);
@@ -840,17 +843,23 @@ router.get("/:slug/timer", requireAuth, async (req, res) => {
       return;
     }
 
-    const timer = await prisma.problemTimer.findUnique({
-      where: {
-        userId_problemId: {
-          userId,
-          problemId,
+    // The timer is the one per-user read the workspace makes for every
+    // problem on load, so the header's "solved in a tournament" chip rides on
+    // it instead of costing a request of its own.
+    const [timer, tournamentSolve] = await Promise.all([
+      prisma.problemTimer.findUnique({
+        where: {
+          userId_problemId: {
+            userId,
+            problemId,
+          },
         },
-      },
-    });
+      }),
+      tournamentSolveFor(userId, problemId),
+    ]);
 
     if (!timer) {
-      res.json({ elapsedSeconds: 0, isRunning: false });
+      res.json({ elapsedSeconds: 0, isRunning: false, tournamentSolve });
       return;
     }
 
@@ -858,6 +867,7 @@ router.get("/:slug/timer", requireAuth, async (req, res) => {
       elapsedSeconds: timer.elapsedSeconds,
       isRunning: timer.isRunning,
       lastStartedAt: timer.lastStartedAt,
+      tournamentSolve,
     });
   } catch (err) {
     console.error("GET timer error:", err);

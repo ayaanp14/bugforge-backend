@@ -121,6 +121,8 @@ model User {
   battleOrgs            BattleOrgMember[]
   tournamentEntries     TournamentEntry[]
   tournamentSubmissions TournamentSubmission[]
+  knockoutMatchesA      TournamentMatch[]         @relation("matchPlayerA")
+  knockoutMatchesB      TournamentMatch[]         @relation("matchPlayerB")
 
   // Rank is a COUNT of users above you and the leaderboard is an ORDER BY on the
   // same columns; without these both are full table scans on every dashboard load.
@@ -1716,6 +1718,11 @@ model Tournament {
   freezeMinutes        Int       @default(0)
   /// ICPC: when the organizer lifted the freeze and published final standings.
   resultsRevealedAt    DateTime?
+  /// Knockout: when the bracket was drawn from the checked-in players (once, at the start).
+  bracketAt            DateTime?
+  /// Knockout: when the final was decided, and who won it.
+  finishedAt           DateTime?
+  championId           String?
   createdById          String
   publishedAt          DateTime?
   createdAt            DateTime  @default(now())
@@ -1726,6 +1733,7 @@ model Tournament {
   teams       TournamentTeam[]
   entries     TournamentEntry[]
   submissions TournamentSubmission[]
+  matches     TournamentMatch[]
 
   // The public list: published, by start time.
   @@index([status, startsAt])
@@ -1769,6 +1777,10 @@ model TournamentEntry {
   status       String    @default("pending") @db.VarChar(12) // pending | approved | rejected
   createdAt    DateTime  @default(now())
   decidedAt    DateTime?
+  /// Knockout: confirmed present in the hour before the start; only these are seeded.
+  checkedInAt  DateTime?
+  /// Knockout: 1 = best, by rating when the bracket was drawn.
+  seed         Int?
 
   tournament Tournament      @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
   user       User            @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -1789,7 +1801,8 @@ model TournamentEntry {
 model TournamentSubmission {
   id           String   @id @default(cuid())
   tournamentId String
-  teamId       String
+  /// The ICPC team it scores for; null for a knockout attempt (a player, no team).
+  teamId       String?
   userId       String
   problemId    String
   submissionId String   @unique
@@ -1797,11 +1810,11 @@ model TournamentSubmission {
   verdict      String   @db.VarChar(16)
   submittedAt  DateTime
 
-  tournament Tournament     @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
-  team       TournamentTeam @relation(fields: [teamId], references: [id], onDelete: Cascade)
-  user       User           @relation(fields: [userId], references: [id], onDelete: Cascade)
-  problem    Problem        @relation(fields: [problemId], references: [id], onDelete: Cascade)
-  submission Submission     @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+  tournament Tournament      @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  team       TournamentTeam? @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  user       User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  problem    Problem         @relation(fields: [problemId], references: [id], onDelete: Cascade)
+  submission Submission      @relation(fields: [submissionId], references: [id], onDelete: Cascade)
 
   // The standings read a contest's whole history in time order.
   @@index([tournamentId, submittedAt])
@@ -1810,4 +1823,45 @@ model TournamentSubmission {
   // "Solved in a tournament" on the main site: this user, this problem.
   @@index([userId, problemId])
   @@index([problemId])
+}
+
+/// One knockout match: two players (or one and a bye), one problem, a clock.
+/// Decided by the first accepted solution (the judge, services/knockout.ts),
+/// or when time runs out by knockout-rules `timeoutWinner` over each side's
+/// best result. The winner is written into the next round's match.
+model TournamentMatch {
+  id           String    @id @default(cuid())
+  tournamentId String
+  round        Int
+  position     Int
+  playerAId    String?
+  playerBId    String?
+  seedA        Int?
+  seedB        Int?
+  problemId    String?
+  /// waiting (a player to come) | live | done
+  status       String    @default("waiting") @db.VarChar(10)
+  startedAt    DateTime?
+  endsAt       DateTime?
+  winnerId     String?
+  /// solve | timeout | bye
+  decidedBy    String?   @db.VarChar(10)
+  decidedAt    DateTime?
+  /// Each side's best test cases passed, out of how many, and when first reached.
+  aPassed      Int       @default(0)
+  bPassed      Int       @default(0)
+  total        Int       @default(0)
+  aBestAt      DateTime?
+  bBestAt      DateTime?
+
+  tournament Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  playerA    User?      @relation("matchPlayerA", fields: [playerAId], references: [id], onDelete: SetNull)
+  playerB    User?      @relation("matchPlayerB", fields: [playerBId], references: [id], onDelete: SetNull)
+
+  @@unique([tournamentId, round, position])
+  // The judge's lookup: this player's live match.
+  @@index([playerAId, status])
+  @@index([playerBId, status])
+  // Settling the matches whose time ran out.
+  @@index([tournamentId, status, endsAt])
 }

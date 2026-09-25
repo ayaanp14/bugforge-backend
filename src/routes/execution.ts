@@ -18,6 +18,7 @@ import { invalidateDashboard } from "../services/dashboard.js";
 import { emitDuelActivity, settleDuelForSubmission } from "../lib/duels.js";
 import { recordContestSubmission } from "../services/daily-contest.js";
 import { recordTournamentSubmission } from "../services/contest.js";
+import { recordKnockoutSubmission } from "../services/knockout.js";
 import { ENGINE_DOWN_MESSAGE, isEngineDown } from "../lib/engine-error.js";
 // The judge's slice of a problem — limits, signature, reference solution — and
 // its test suite, both held in memory rather than pulled (~1 MB of hidden
@@ -416,7 +417,7 @@ router.post("/submit", requireAuth, executionLimiter, async (req, res) => {
     // same reason: the contest room reads the team's attempts right after
     // this answers. Not for a pairing submit — the credit went to the room's
     // host, who is not the one sitting the contest.
-    const [dailyContest, battles] = await Promise.all([
+    const [dailyContest, battles, knockout] = await Promise.all([
       recordContestSubmission(userId, problemId, verdict, submission.submittedAt).catch((err) => {
         console.error("POST /api/submit — daily contest failed:", err);
         return null;
@@ -425,6 +426,14 @@ router.post("/submit", requireAuth, executionLimiter, async (req, res) => {
         ? Promise.resolve(null)
         : recordTournamentSubmission(userId, problemId, submission.id, verdict, submission.submittedAt).catch((err) => {
             console.error("POST /api/submit — tournament contest failed:", err);
+            return null;
+          }),
+      // A Battles knockout match: the best result so far, and the win on an
+      // accepted solution (services/knockout.ts). The match room reads it next.
+      pairRoomId
+        ? Promise.resolve(null)
+        : recordKnockoutSubmission(userId, problemId, submission.id, verdict, passedCases, totalCases, submission.submittedAt).catch((err) => {
+            console.error("POST /api/submit — knockout match failed:", err);
             return null;
           }),
     ]);
@@ -442,6 +451,7 @@ router.post("/submit", requireAuth, executionLimiter, async (req, res) => {
       submissionId: submission.id,
       dailyContest,
       battles,
+      knockout,
     });
 
     // ── After the response ──────────────────────────────────────────

@@ -26,14 +26,11 @@ import {
   type TournamentFields,
 } from "./battles-rules.js";
 
-export class BattlesError extends Error {
-  constructor(
-    public status: number,
-    message: string,
-  ) {
-    super(message);
-  }
-}
+import { BattlesError } from "./battles-error.js";
+import { knockoutViewer } from "./knockout.js";
+import { CHECK_IN_MINUTES } from "./knockout-rules.js";
+
+export { BattlesError };
 
 /** Unverified orgs one account may hold at once — a brake on throwaway orgs. */
 const UNVERIFIED_ORGS_PER_USER = 3;
@@ -149,6 +146,7 @@ const TOURNAMENT_CARD = {
   registrationClosesAt: true,
   startsAt: true,
   durationMinutes: true,
+  finishedAt: true,
   org: { select: { slug: true, name: true, verifiedAt: true } },
   _count: { select: { entries: { where: { status: { in: ["pending", "approved"] } } } } },
 } satisfies Prisma.TournamentSelect;
@@ -164,6 +162,7 @@ type CardRow = {
   registrationClosesAt: Date;
   startsAt: Date;
   durationMinutes: number;
+  finishedAt: Date | null;
   org: { slug: string; name: string; verifiedAt: Date | null };
   _count: { entries: number };
 };
@@ -270,7 +269,7 @@ export async function manageView(userId: string, tournamentId: string) {
       where: { tournamentId: t.id },
       orderBy: { createdAt: "asc" },
       take: 5000,
-      select: { id: true, status: true, teamId: true, createdAt: true, user: { select: { username: true, name: true, email: true, avatar_url: true } } },
+      select: { id: true, status: true, teamId: true, createdAt: true, checkedInAt: true, seed: true, user: { select: { username: true, name: true, email: true, avatar_url: true } } },
     }),
     prisma.tournamentTeam.findMany({ where: { tournamentId: t.id }, orderBy: { createdAt: "asc" }, select: { id: true, name: true } }),
   ]);
@@ -347,8 +346,15 @@ export async function tournamentPage(slug: string, viewer: { userId: string } | 
       allowedDomains: Array.isArray(allowedDomains) ? (allowedDomains as string[]) : [],
       needsInviteCode: inviteCode !== null,
       problemCount: _count.problems,
+      checkInOpensAt: t.format === "knockout" ? new Date(t.startsAt.getTime() - CHECK_IN_MINUTES * 60_000) : null,
     },
-    viewer: viewer ? { canManage, entry: entry ? { status: entry.status, team: entry.team?.name ?? null } : null } : null,
+    viewer: viewer
+      ? {
+          canManage,
+          entry: entry ? { status: entry.status, team: entry.team?.name ?? null } : null,
+          knockout: t.format === "knockout" && entry ? await knockoutViewer(t.id, viewer.userId) : null,
+        }
+      : null,
   };
 }
 

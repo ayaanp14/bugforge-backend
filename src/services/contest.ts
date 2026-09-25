@@ -12,11 +12,11 @@
  */
 import { prisma } from "../lib/prisma.js";
 import { cached, invalidate } from "../lib/cache.js";
-import { BattlesError } from "./battles.js";
+import { BattlesError } from "./battles-error.js";
 import { computeStandings, contestState, endsAt, freezeAt, problemLetter, type ContestVerdict, type ContestWindow } from "./contest-rules.js";
 
 /** The judge's verdicts in contest terms. Anything unlisted (an engine failure never gets this far) is not recorded. */
-const VERDICTS: Record<string, ContestVerdict> = {
+export const VERDICTS: Record<string, ContestVerdict> = {
   ACCEPTED: "accepted",
   WRONG_ANSWER: "wrong_answer",
   TIME_LIMIT_EXCEEDED: "time_limit",
@@ -193,7 +193,7 @@ export async function contestStandings(tournamentId: string, viewerId: string | 
         select: { position: true, problem: { select: { id: true, title: true } } },
       }),
       prisma.tournamentSubmission.findMany({
-        where: { tournamentId: t.id },
+        where: { tournamentId: t.id, teamId: { not: null } },
         select: { teamId: true, problemId: true, verdict: true, submittedAt: true },
       }),
     ]);
@@ -201,7 +201,7 @@ export async function contestStandings(tournamentId: string, viewerId: string | 
       window: windowOf(t),
       teams,
       problemIds: problems.map((p) => p.problem.id),
-      submissions: submissions.map((s) => ({ teamId: s.teamId, problemId: s.problemId, verdict: s.verdict as ContestVerdict, at: s.submittedAt })),
+      submissions: submissions.map((s) => ({ teamId: s.teamId!, problemId: s.problemId, verdict: s.verdict as ContestVerdict, at: s.submittedAt })),
       revealed: t.resultsRevealedAt !== null,
     });
     return { problems: problems.map((p) => ({ id: p.problem.id, letter: problemLetter(p.position), title: p.problem.title })), rows, computedAt: new Date() };

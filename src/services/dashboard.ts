@@ -1,4 +1,5 @@
 import { Prisma } from "@prisma/client";
+import { tournamentsFor } from "./tournament-record.js";
 import { prisma } from "../lib/prisma.js";
 import { cached, cachedShared, invalidate } from "../lib/cache.js";
 import { CALENDAR_UTC_OFFSET_MINUTES, dayKey, dayStart } from "../lib/clock.js";
@@ -31,6 +32,8 @@ export type ProblemState = {
   catalogue: CatalogueRow[];
   solved: Set<string>;
   attempted: Set<string>;
+  /** Solved in a Battles tournament (services/tournament-record.ts): the catalogue's trophy mark. */
+  tournamentSolved: Set<string>;
 };
 
 const tagsOf = (row: { tags: unknown }): string[] => (Array.isArray(row.tags) ? (row.tags as string[]) : []);
@@ -167,15 +170,18 @@ export function loadProblemState(userId: string): Promise<ProblemState> {
 }
 
 async function queryProblemState(userId: string): Promise<ProblemState> {
-  const [catalogue, solvedRows, touchedRows] = await Promise.all([
+  const [catalogue, solvedRows, touchedRows, tournamentRows] = await Promise.all([
     getCatalogue(),
     prisma.submission.groupBy({ by: ["problemId"], where: { userId, verdict: "ACCEPTED" } }),
     prisma.submission.groupBy({ by: ["problemId"], where: { userId } }),
+    // One more grouped read, on the (userId, problemId) index; empty for
+    // anyone who has never played on Battles.
+    prisma.tournamentSubmission.groupBy({ by: ["problemId"], where: { userId, verdict: "accepted" } }),
   ]);
 
   const solved = new Set(solvedRows.map((r) => r.problemId));
   const attempted = new Set(touchedRows.map((r) => r.problemId).filter((id) => !solved.has(id)));
-  return { catalogue, solved, attempted };
+  return { catalogue, solved, attempted, tournamentSolved: new Set(tournamentRows.map((r) => r.problemId)) };
 }
 
 // ── Difficulty stats ────────────────────────────────────────────
@@ -529,6 +535,7 @@ export async function listProblemsWithStatus(userId: string, take = 100) {
     difficulty: p.difficulty,
     tags: p.tags,
     status: state.solved.has(p.id) ? "SOLVED" : state.attempted.has(p.id) ? "ATTEMPTING" : "UNSOLVED",
+    tournament: state.tournamentSolved.has(p.id),
   }));
 }
 
@@ -658,8 +665,9 @@ export function computeProblemInsights(state: ProblemState) {
 // ── The aggregate the dashboard loads in one request ────────────
 
 // v2: compact heatmap and a trimmed skills list (2026-09-25) — a v1 payload
-// left in Redis must not be served in the new shape's place.
-const dashboardKey = (userId: string) => `dash:v2:${userId}`;
+// left in Redis must not be served in the new shape's place. v3: the
+// profile's Battles tournaments (2026-09-25).
+const dashboardKey = (userId: string) => `dash:v3:${userId}`;
 
 /**
  * Drop everything cached about a user — the dashboard aggregate and /api/me.
@@ -716,6 +724,7 @@ async function buildDashboard(userId: string) {
     dailyContest,
     roadmap,
     study,
+    tournaments,
   ] = await Promise.all([
     getDashboardUser(userId, { problemState: problemStatePromise, rank: rankPromise }),
     queryUserCounters(userId),
@@ -732,11 +741,13 @@ async function buildDashboard(userId: string) {
     roadmapBadgesFor(userId),
     // The "continue learning" band: the study plan most recently walked, or null.
     studyBandFor(userId),
+    // The profile's Tournaments section: Battles events played and placings.
+    tournamentsFor(userId),
   ]);
 
   const difficultyStats = computeDifficultyStats(problemState);
   const problemInsights = computeProblemInsights(problemState);
   const { social, savedInterviews } = counters;
 
-  return { me, social, difficultyStats, submissions, heatmap, rank, leaderboard, pairing, continueSolving, problemInsights, bugInsights, savedInterviews, dailyContest, roadmap, study };
+  return { me, social, difficultyStats, submissions, heatmap, rank, leaderboard, pairing, continueSolving, problemInsights, bugInsights, savedInterviews, dailyContest, roadmap, study, tournaments };
 }
