@@ -10,6 +10,7 @@ import {
   readSessionToken,
   SESSION_COOKIE,
 } from "../lib/auth-session.js";
+import { asSite, siteUrl, type Site } from "../lib/sites.js";
 import { issueHandoff } from "../lib/handoff-store.js";
 
 /**
@@ -28,7 +29,6 @@ import { issueHandoff } from "../lib/handoff-store.js";
 
 const router = Router();
 
-const FRONTEND_URL = (process.env["FRONTEND_URL"] ?? "http://localhost:3000").replace(/\/+$/, "");
 const GITHUB_ID = process.env["GITHUB_ID"];
 const GITHUB_SECRET = process.env["GITHUB_SECRET"];
 const GOOGLE_CLIENT_ID = process.env["GOOGLE_CLIENT_ID"];
@@ -39,6 +39,8 @@ type Provider = "github" | "google";
 
 const STATE_COOKIE = "oauth_state";
 const INTENT_COOKIE = "auth_intent";
+/** Which site started the sign-in (lib/sites `Site`), so it is the one the browser returns to. */
+const SITE_COOKIE = "auth_site";
 
 /**
  * State and intent only need to survive the round-trip to the provider.
@@ -56,9 +58,9 @@ const HANDOFF_COOKIE = {
 
 const asIntent = (value: unknown): Intent => (value === "register" ? "register" : "login");
 
-/** Where the user lands after a failed social sign-in. */
-const failureUrl = (intent: Intent, error: string) =>
-  `${FRONTEND_URL}/${intent === "register" ? "register" : "login"}?error=${error}`;
+/** Where the user lands after a failed social sign-in — on the site that started it. */
+const failureUrl = (site: Site, intent: Intent, error: string) =>
+  `${siteUrl(site)}/${intent === "register" ? "register" : "login"}?error=${error}`;
 
 /**
  * Where the browser lands after a successful one.
@@ -69,11 +71,11 @@ const failureUrl = (intent: Intent, error: string) =>
  * code and exchanges it at POST /api/auth/handoff (lib/handoff-store.ts), so
  * the credential never sits in history or a request log.
  */
-function handoffUrl(token: string): string {
+function handoffUrl(site: Site, token: string): string {
   const claims = readSessionToken(token);
   if (!claims) throw new Error("freshly minted session token did not verify");
   const code = issueHandoff({ id: claims.userId, email: claims.email || null }, claims);
-  return `${FRONTEND_URL}/auth/callback?code=${encodeURIComponent(code)}`;
+  return `${siteUrl(site)}/auth/callback?code=${encodeURIComponent(code)}`;
 }
 
 /** Callback URL registered with the provider's OAuth app. */
@@ -86,26 +88,28 @@ function callbackUri(
   return `${base.replace(/\/+$/, "")}/api/auth/${provider}/callback`;
 }
 
-/** Issue the CSRF state and remember the intent for the callback leg. */
+/** Issue the CSRF state and remember the intent and the starting site for the callback leg. */
 function beginHandoff(
   res: { cookie: (name: string, value: string, options: object) => unknown },
   intent: Intent,
+  site: Site,
 ): string {
   const state = crypto.randomBytes(16).toString("hex");
   res.cookie(STATE_COOKIE, state, HANDOFF_COOKIE);
   res.cookie(INTENT_COOKIE, intent, HANDOFF_COOKIE);
+  res.cookie(SITE_COOKIE, site, HANDOFF_COOKIE);
   return state;
 }
 
 // GET /api/auth/github - start the OAuth dance
 router.get("/github", (req, res) => {
   if (!GITHUB_ID || !GITHUB_SECRET) {
-    res.redirect(failureUrl("login", "oauth_failed"));
+    res.redirect(failureUrl(asSite(req.query["return"]), "login", "oauth_failed"));
     return;
   }
 
   const intent = asIntent(req.query["intent"]);
-  const state = beginHandoff(res, intent);
+  const state = beginHandoff(res, intent, asSite(req.query["return"]));
 
   const authorize = new URL("https://github.com/login/oauth/authorize");
   authorize.searchParams.set("client_id", GITHUB_ID);
@@ -119,17 +123,19 @@ router.get("/github", (req, res) => {
 // GET /api/auth/github/callback - exchange the code and sign the user in
 router.get("/github/callback", async (req, res) => {
   const intent = asIntent(req.cookies?.[INTENT_COOKIE]);
+  const site = asSite(req.cookies?.[SITE_COOKIE]);
   const expectedState = req.cookies?.[STATE_COOKIE];
 
   res.clearCookie(STATE_COOKIE, { path: "/" });
   res.clearCookie(INTENT_COOKIE, { path: "/" });
+  res.clearCookie(SITE_COOKIE, { path: "/" });
 
   const code = typeof req.query["code"] === "string" ? req.query["code"] : null;
   const state = typeof req.query["state"] === "string" ? req.query["state"] : null;
 
   // CSRF: the state we issued must come back untouched.
   if (!code || !state || !expectedState || state !== expectedState) {
-    res.redirect(failureUrl(intent, "oauth_failed"));
+    res.redirect(failureUrl(site, intent, "oauth_failed"));
     return;
   }
 
@@ -154,7 +160,7 @@ router.get("/github/callback", async (req, res) => {
     const accessToken = tokenData.access_token;
     if (!accessToken) {
       console.error("[auth] GitHub token exchange failed:", tokenData.error);
-      res.redirect(failureUrl(intent, "oauth_failed"));
+      res.redirect(failureUrl(site, intent, "oauth_failed"));
       return;
     }
 
@@ -166,7 +172,7 @@ router.get("/github/callback", async (req, res) => {
 
     const profileRes = await fetch("https://api.github.com/user", { headers: ghHeaders });
     if (!profileRes.ok) {
-      res.redirect(failureUrl(intent, "oauth_failed"));
+      res.redirect(failureUrl(site, intent, "oauth_failed"));
       return;
     }
     const profile = (await profileRes.json()) as {
@@ -200,7 +206,7 @@ router.get("/github/callback", async (req, res) => {
 
     if (!email) {
       console.warn("[auth] GitHub identity with no verified email refused");
-      res.redirect(failureUrl(intent, "oauth_failed"));
+      res.redirect(failureUrl(site, intent, "oauth_failed"));
       return;
     }
 
@@ -215,14 +221,14 @@ router.get("/github/callback", async (req, res) => {
     });
 
     if ("error" in result) {
-      res.redirect(failureUrl(intent, result.error));
+      res.redirect(failureUrl(site, intent, result.error));
       return;
     }
 
-    res.redirect(handoffUrl(establishSession(res, result.record)));
+    res.redirect(handoffUrl(site, establishSession(res, result.record)));
   } catch (err) {
     console.error("[auth] GitHub callback error:", err);
-    res.redirect(failureUrl(intent, "oauth_failed"));
+    res.redirect(failureUrl(site, intent, "oauth_failed"));
   }
 });
 
@@ -230,12 +236,12 @@ router.get("/github/callback", async (req, res) => {
 router.get("/google", (req, res) => {
   if (!GOOGLE_CLIENT_ID || !GOOGLE_CLIENT_SECRET) {
     console.error("[auth] GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET are not configured");
-    res.redirect(failureUrl("login", "oauth_failed"));
+    res.redirect(failureUrl(asSite(req.query["return"]), "login", "oauth_failed"));
     return;
   }
 
   const intent = asIntent(req.query["intent"]);
-  const state = beginHandoff(res, intent);
+  const state = beginHandoff(res, intent, asSite(req.query["return"]));
 
   const authorize = new URL("https://accounts.google.com/o/oauth2/v2/auth");
   authorize.searchParams.set("client_id", GOOGLE_CLIENT_ID);
@@ -253,14 +259,16 @@ router.get("/google", (req, res) => {
 // GET /api/auth/google/callback - exchange the code and sign the user in
 router.get("/google/callback", async (req, res) => {
   const intent = asIntent(req.cookies?.[INTENT_COOKIE]);
+  const site = asSite(req.cookies?.[SITE_COOKIE]);
   const expectedState = req.cookies?.[STATE_COOKIE];
 
   res.clearCookie(STATE_COOKIE, { path: "/" });
   res.clearCookie(INTENT_COOKIE, { path: "/" });
+  res.clearCookie(SITE_COOKIE, { path: "/" });
 
   // The user pressed "Cancel" on Google's consent screen.
   if (typeof req.query["error"] === "string") {
-    res.redirect(failureUrl(intent, "oauth_failed"));
+    res.redirect(failureUrl(site, intent, "oauth_failed"));
     return;
   }
 
@@ -269,12 +277,12 @@ router.get("/google/callback", async (req, res) => {
 
   // CSRF: the state we issued must come back untouched.
   if (!code || !state || !expectedState || state !== expectedState) {
-    res.redirect(failureUrl(intent, "oauth_failed"));
+    res.redirect(failureUrl(site, intent, "oauth_failed"));
     return;
   }
 
   if (!GOOGLE_CLIENT_ID || !GOOGLE_CLIENT_SECRET) {
-    res.redirect(failureUrl(intent, "oauth_failed"));
+    res.redirect(failureUrl(site, intent, "oauth_failed"));
     return;
   }
 
@@ -308,7 +316,7 @@ router.get("/google/callback", async (req, res) => {
         "[auth] Google token exchange failed:",
         tokenData.error_description ?? tokenData.error,
       );
-      res.redirect(failureUrl(intent, "oauth_failed"));
+      res.redirect(failureUrl(site, intent, "oauth_failed"));
       return;
     }
 
@@ -319,7 +327,7 @@ router.get("/google/callback", async (req, res) => {
     });
     if (!profileRes.ok) {
       console.error("[auth] Google userinfo failed:", profileRes.status);
-      res.redirect(failureUrl(intent, "oauth_failed"));
+      res.redirect(failureUrl(site, intent, "oauth_failed"));
       return;
     }
     const profile = (await profileRes.json()) as {
@@ -331,7 +339,7 @@ router.get("/google/callback", async (req, res) => {
     };
 
     if (!profile.email) {
-      res.redirect(failureUrl(intent, "oauth_failed"));
+      res.redirect(failureUrl(site, intent, "oauth_failed"));
       return;
     }
     // A Google identity is only trusted for an address Google has verified.
@@ -340,7 +348,7 @@ router.get("/google/callback", async (req, res) => {
     // could otherwise claim a password account it does not own.
     if (profile.email_verified === false) {
       console.warn("[auth] Google identity with unverified email refused");
-      res.redirect(failureUrl(intent, "oauth_failed"));
+      res.redirect(failureUrl(site, intent, "oauth_failed"));
       return;
     }
 
@@ -357,14 +365,14 @@ router.get("/google/callback", async (req, res) => {
     });
 
     if ("error" in result) {
-      res.redirect(failureUrl(intent, result.error));
+      res.redirect(failureUrl(site, intent, result.error));
       return;
     }
 
-    res.redirect(handoffUrl(establishSession(res, result.record)));
+    res.redirect(handoffUrl(site, establishSession(res, result.record)));
   } catch (err) {
     console.error("[auth] Google callback error:", err);
-    res.redirect(failureUrl(intent, "oauth_failed"));
+    res.redirect(failureUrl(site, intent, "oauth_failed"));
   }
 });
 

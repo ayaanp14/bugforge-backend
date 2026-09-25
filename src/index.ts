@@ -29,6 +29,8 @@ import seoRouter from "./routes/seo.js";
 import studyPlansRouter from "./routes/study-plans.js";
 import assistantRouter from "./routes/assistant.js";
 import resumesRouter from "./routes/resumes.js";
+import battlesRouter from "./routes/battles.js";
+import { ALLOWED_ORIGINS } from "./lib/sites.js";
 import shareCardsRouter, { shareImage } from "./routes/share-cards.js";
 import { recoverAnalyses } from "./services/resumes.js";
 import { checkRoadmapSeeded } from "./services/roadmap.js";
@@ -94,22 +96,6 @@ const socketDebug = (...args: unknown[]): void => {
  * limited as, which defeats the limiting entirely.
  */
 app.set("trust proxy", 1);
-// Trailing slash stripped: browser Origin headers never include one, and
-// CORS origin matching is an exact string comparison
-const FRONTEND_URL = (process.env["FRONTEND_URL"] ?? "http://localhost:3000").replace(/\/+$/, "");
-
-/**
- * The tournament site (battles.codekairo.com) is a second SPA on its own
- * origin, signed in with the same account: it sends the same Bearer token
- * and the same `__session` cookie, so it needs the same CORS answer as the
- * main site. No development default in production — an unset variable must
- * mean "no second origin", not a localhost origin allowed credentials.
- */
-const BATTLES_URL = (process.env["BATTLES_URL"] ?? (process.env["NODE_ENV"] === "production" ? "" : "http://localhost:3002")).replace(/\/+$/, "");
-
-/** Every browser origin the API answers with credentials. */
-const ALLOWED_ORIGINS = [FRONTEND_URL, BATTLES_URL].filter(Boolean);
-
 /**
  * Every header the SPA (and the mobile app) puts on a request. Anything not
  * listed is refused at preflight, so keep this in step with
@@ -917,6 +903,8 @@ app.use("/api/study-plans", studyPlansRouter);
 app.use("/api/assistant", assistantRouter);
 // The upload route reads a raw file body with its own parser (see routes/resumes.ts).
 app.use("/api/resumes", resumesRouter);
+// The tournament site, battles.codekairo.com (routes/battles.ts).
+app.use("/api/battles", battlesRouter);
 app.use("/api/share-cards", shareCardsRouter);
 app.use("/api/events", eventsRouter);
 app.use("/api/admin", adminRouter);

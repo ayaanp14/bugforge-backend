@@ -118,6 +118,8 @@ model User {
   revokedSessions    RevokedSession[]
   resumes            Resume[]
   shareCards         ShareCard[]
+  battleOrgs         BattleOrgMember[]
+  tournamentEntries  TournamentEntry[]
 
   // Rank is a COUNT of users above you and the leaderboard is an ORDER BY on the
   // same columns; without these both are full table scans on every dashboard load.
@@ -127,35 +129,36 @@ model User {
 }
 
 model Problem {
-  id                String                @id @default(cuid())
-  title             String
-  slug              String                @unique
-  description       String                @db.MediumText
-  difficulty        String
-  tags              Json                  @default("[]")
-  timeLimitMs       Int                   @default(2000)
-  memoryLimitMb     Int                   @default(256)
-  editorial         String?               @db.MediumText
-  isPublished       Boolean               @default(false)
-  createdAt         DateTime              @default(now())
-  starterCode       Json?
-  signature         Json?
-  referenceSolution String?               @db.MediumText
-  referenceLanguage String?
+  id                 String                @id @default(cuid())
+  title              String
+  slug               String                @unique
+  description        String                @db.MediumText
+  difficulty         String
+  tags               Json                  @default("[]")
+  timeLimitMs        Int                   @default(2000)
+  memoryLimitMb      Int                   @default(256)
+  editorial          String?               @db.MediumText
+  isPublished        Boolean               @default(false)
+  createdAt          DateTime              @default(now())
+  starterCode        Json?
+  signature          Json?
+  referenceSolution  String?               @db.MediumText
+  referenceLanguage  String?
   /// Editorial reference solutions keyed by language ("python", "cpp", …).
   /// Drives the Editorial tab's language picker; only validated languages are
   /// written here, so a missing key means "not authored yet", not "broken".
-  solutions         Json?
-  hints             Json                  @default("[]")
-  codeDrafts        CodeDraft[]
-  pairRooms         PairRoom[]
-  submissions       Submission[]
-  problemSolves     ProblemSolve[]
-  testCases         TestCase[]
-  problemTimers     ProblemTimer[]
-  dailyContests     DailyContest[]
-  mockCodeAnswers   MockCodeAnswer[]
-  roadmapStages     RoadmapStageProblem[]
+  solutions          Json?
+  hints              Json                  @default("[]")
+  codeDrafts         CodeDraft[]
+  pairRooms          PairRoom[]
+  submissions        Submission[]
+  problemSolves      ProblemSolve[]
+  testCases          TestCase[]
+  problemTimers      ProblemTimer[]
+  dailyContests      DailyContest[]
+  mockCodeAnswers    MockCodeAnswer[]
+  tournamentProblems TournamentProblem[]
+  roadmapStages      RoadmapStageProblem[]
 
   duels Duel[]
 
@@ -1637,4 +1640,133 @@ model ShareCard {
   createdAt   DateTime @default(now())
 
   @@index([userId, createdAt])
+}
+
+// ── CodeKairo Battles (battles.codekairo.com) ──────────────────────────
+// Organizations host tournaments; players are ordinary CodeKairo accounts.
+// services/battles.ts owns every rule; battles-rules.ts holds the pure ones.
+
+/// A college, club, company or community that hosts tournaments.
+model BattleOrg {
+  id          String    @id @default(cuid())
+  slug        String    @unique @db.VarChar(80)
+  name        String    @db.VarChar(120)
+  kind        String    @db.VarChar(16) // college | club | company | community
+  website     String?   @db.VarChar(300)
+  city        String?   @db.VarChar(80)
+  about       String?   @db.Text
+  /// Set once by the site admin. Until then the org's tournaments cannot be
+  /// published — anyone may create an org, so "IIT Bombay" must be checked
+  /// by a person before students see it.
+  verifiedAt  DateTime?
+  createdById String
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  members     BattleOrgMember[]
+  tournaments Tournament[]
+
+  // The admin's verification queue reads unverified orgs, oldest first.
+  @@index([verifiedAt, createdAt])
+  @@index([createdById])
+}
+
+model BattleOrgMember {
+  id        String   @id @default(cuid())
+  orgId     String
+  userId    String
+  role      String   @db.VarChar(12) // owner | admin
+  createdAt DateTime @default(now())
+
+  org  BattleOrg @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  user User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([orgId, userId])
+  // "My organizations" on the host dashboard.
+  @@index([userId])
+}
+
+model Tournament {
+  id                   String    @id @default(cuid())
+  orgId                String
+  slug                 String    @unique @db.VarChar(100)
+  title                String    @db.VarChar(140)
+  description          String?   @db.Text
+  format               String    @db.VarChar(12) // knockout | icpc
+  status               String    @default("draft") @db.VarChar(12) // draft | published | cancelled
+  /// 1 for a knockout; 1–3 for an ICPC-style contest.
+  teamSize             Int       @default(1)
+  /// Most entries accepted (pending + approved); null = no limit.
+  capacity             Int?
+  registrationClosesAt DateTime
+  startsAt             DateTime
+  /// The contest's length (ICPC) or each match's (knockout).
+  durationMinutes      Int
+  /// Lower-cased email domains an entrant's address must end in; [] = any.
+  allowedDomains       Json      @default("[]")
+  /// Needed to register when set; shared by the organizer.
+  inviteCode           String?   @db.VarChar(24)
+  requiresApproval     Boolean   @default(false)
+  createdById          String
+  publishedAt          DateTime?
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+
+  org      BattleOrg           @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  problems TournamentProblem[]
+  teams    TournamentTeam[]
+  entries  TournamentEntry[]
+
+  // The public list: published, by start time.
+  @@index([status, startsAt])
+  @@index([orgId, createdAt])
+}
+
+/// A tournament's problem set, in order. Hidden from players until it starts.
+model TournamentProblem {
+  tournamentId String
+  problemId    String
+  position     Int
+
+  tournament Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  problem    Problem    @relation(fields: [problemId], references: [id], onDelete: Cascade)
+
+  @@id([tournamentId, problemId])
+  @@index([problemId])
+}
+
+/// An ICPC-style team, entered by the organizer (uploaded, not self-formed).
+model TournamentTeam {
+  id           String   @id @default(cuid())
+  tournamentId String
+  name         String   @db.VarChar(80)
+  createdAt    DateTime @default(now())
+
+  tournament Tournament        @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  entries    TournamentEntry[]
+
+  @@unique([tournamentId, name])
+}
+
+/// One account's place in a tournament — a knockout player, or a member of
+/// an uploaded ICPC team.
+model TournamentEntry {
+  id           String    @id @default(cuid())
+  tournamentId String
+  userId       String
+  teamId       String?
+  status       String    @default("pending") @db.VarChar(12) // pending | approved | rejected
+  createdAt    DateTime  @default(now())
+  decidedAt    DateTime?
+
+  tournament Tournament      @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  user       User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  team       TournamentTeam? @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  @@unique([tournamentId, userId])
+  // The organizer's registration list, filtered by status.
+  @@index([tournamentId, status])
+  // "My tournaments".
+  @@index([userId])
+  @@index([teamId])
 }
