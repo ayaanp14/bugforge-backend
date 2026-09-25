@@ -99,6 +99,18 @@ app.set("trust proxy", 1);
 const FRONTEND_URL = (process.env["FRONTEND_URL"] ?? "http://localhost:3000").replace(/\/+$/, "");
 
 /**
+ * The tournament site (battles.codekairo.com) is a second SPA on its own
+ * origin, signed in with the same account: it sends the same Bearer token
+ * and the same `__session` cookie, so it needs the same CORS answer as the
+ * main site. No development default in production — an unset variable must
+ * mean "no second origin", not a localhost origin allowed credentials.
+ */
+const BATTLES_URL = (process.env["BATTLES_URL"] ?? (process.env["NODE_ENV"] === "production" ? "" : "http://localhost:3002")).replace(/\/+$/, "");
+
+/** Every browser origin the API answers with credentials. */
+const ALLOWED_ORIGINS = [FRONTEND_URL, BATTLES_URL].filter(Boolean);
+
+/**
  * Every header the SPA (and the mobile app) puts on a request. Anything not
  * listed is refused at preflight, so keep this in step with
  * frontend/src/lib/client-api.ts and store/api/apiSlice.ts.
@@ -115,7 +127,7 @@ interface SocketData {
 
 const io = new Server<DefaultEventsMap, DefaultEventsMap, DefaultEventsMap, SocketData>(httpServer, {
   cors: {
-    origin: FRONTEND_URL,
+    origin: ALLOWED_ORIGINS,
     methods: ["GET", "POST"],
     allowedHeaders: ALLOWED_HEADERS,
     credentials: true
@@ -787,7 +799,7 @@ app.use(compression({ threshold: 1024 }));
  */
 app.use(
   cors({
-    origin: FRONTEND_URL,
+    origin: ALLOWED_ORIGINS,
     credentials: true,
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allowedHeaders: ALLOWED_HEADERS,
