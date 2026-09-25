@@ -10,6 +10,7 @@ import { hubIndex, hubPage, hubsForTags, relatedProblems, type HubSummary } from
 import { getCatalogue } from "./dashboard.js";
 import { bugHubIndex, bugHubPage, bugPath } from "./bug-hunts.js";
 import { topicOrder } from "./aptitude-bank.js";
+import { CARD_HEIGHT, CARD_WIDTH, getShareCard } from "./share-cards.js";
 
 /**
  * What a search engine is told about the app's public content.
@@ -81,6 +82,11 @@ export interface PageHead {
   path: string;
   title: string;
   description: string;
+  /**
+   * The page's own preview picture (og:image / twitter:image), when it has
+   * one — a shared win's card. Every other page uses the site's default.
+   */
+  image?: { url: string; width: number; height: number; alt: string };
   /** What the page's structured data names about it. */
   facts?: PageFacts;
   /** The page's text as safe HTML, for the prerendered body. */
@@ -240,7 +246,53 @@ export async function headFor(path: string): Promise<PageHead | PageRedirect | n
     return testHead(m[1]);
   }
   if (path === "/roadmap") return roadmapIndex();
+  if ((m = /^\/share\/([a-z0-9]{10,40})$/.exec(path))) return shareHead(m[1]);
   return null;
+}
+
+/* ── A shared win ─────────────────────────────────────────────────── */
+
+/** Where the API answers from the outside: the preview image's absolute address. */
+const API_ORIGIN = (process.env["BACKEND_PUBLIC_URL"] ?? "https://api.codekairo.com").replace(/\/+$/, "");
+
+/**
+ * /share/<id> — one person's win, as the page a LinkedIn, WhatsApp or X post
+ * links to. What matters here is the preview: its image is the card the
+ * author made (services/share-cards.ts), so the platforms draw the picture
+ * themselves when the link is posted — none of them accept a file through a
+ * share link. The page is noindex (the route table says so): it exists to be
+ * shared, not searched.
+ */
+async function shareHead(id: string): Promise<PageHead | null> {
+  const card = await getShareCard(id);
+  if (!card) return null;
+  const who = card.user.name || card.user.username || "A CodeKairo coder";
+  const level = card.difficulty ? `${card.difficulty.charAt(0).toUpperCase()}${card.difficulty.slice(1)} ` : "";
+  const what =
+    card.kind === "roadmap"
+      ? `cleared the ${card.title} tier of the DSA roadmap`
+      : card.kind === "bug"
+        ? `fixed the ${level.toLowerCase()}bug hunt "${card.title}"`
+        : `solved ${card.title}`;
+  const title = `${who} ${what} on ${BRAND}`;
+  const target =
+    card.kind === "problem" && card.slug
+      ? { href: `/problems/${card.slug}`, label: `Solve ${card.title}` }
+      : card.kind === "bug" && card.challengeId
+        ? { href: bugPath({ id: card.challengeId, slug: null }), label: `Fix ${card.title}` }
+        : { href: "/roadmap", label: "Walk the DSA roadmap" };
+  const description =
+    card.kind === "roadmap"
+      ? `${who} opened a chest on CodeKairo's DSA roadmap. Practise problems in 13 languages, clear the road, and share your own wins.`
+      : `${who} ${card.kind === "bug" ? "fixed" : "solved"} ${card.title}${level ? ` (${level.trim()})` : ""}${card.xp ? ` for +${card.xp} XP` : ""}. Try it yourself on CodeKairo — free coding practice in 13 languages.`;
+  return {
+    path: `/share/${id}`,
+    title,
+    description,
+    crumb: "Shared win",
+    image: { url: `${API_ORIGIN}/api/share-cards/${id}/image.jpg`, width: CARD_WIDTH, height: CARD_HEIGHT, alt: title },
+    content: `<p>${h(description)}</p><p><a href="${h(target.href)}">${h(target.label)}</a> · <a href="/register">Join CodeKairo</a></p>`,
+  };
 }
 
 /* ── Coding problems ─────────────────────────────────────────────── */

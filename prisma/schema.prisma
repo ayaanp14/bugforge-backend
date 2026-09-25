@@ -42,9 +42,9 @@ model VerificationToken {
 }
 
 model User {
-  id                 String                 @id @default(cuid())
+  id                 String                    @id @default(cuid())
   name               String?
-  email              String?                @unique
+  email              String?                   @unique
   emailVerified      DateTime?
   password_hash      String?
   /// Sessions issued before this instant are refused.
@@ -55,31 +55,31 @@ model User {
   /// against each token's issue time gives that back, without keeping a record
   /// of every session. Null means nothing has been revoked.
   sessionsValidFrom  DateTime?
-  provider           String                 @default("email")
-  xp                 Int                    @default(0)
-  questionsXp        Int                    @default(0)
-  bugsXp             Int                    @default(0)
-  rating             Int                    @default(0)
-  createdAt          DateTime               @default(now())
-  updatedAt          DateTime               @updatedAt
-  avatar_url         String?                @db.Text
+  provider           String                    @default("email")
+  xp                 Int                       @default(0)
+  questionsXp        Int                       @default(0)
+  bugsXp             Int                       @default(0)
+  rating             Int                       @default(0)
+  createdAt          DateTime                  @default(now())
+  updatedAt          DateTime                  @updatedAt
+  avatar_url         String?                   @db.Text
   instituteName      String?
-  username           String?                @unique
+  username           String?                   @unique
   gender             String?
   location           String?
   birthday           DateTime?
-  website            String?                @db.Text
-  github             String?                @db.Text
-  linkedin           String?                @db.Text
-  twitter            String?                @db.Text
-  readme             String?                @db.Text
+  website            String?                   @db.Text
+  github             String?                   @db.Text
+  linkedin           String?                   @db.Text
+  twitter            String?                   @db.Text
+  readme             String?                   @db.Text
   /// Reminder channels the account has left on. Booleans rather than a Json
   /// blob because the reminder jobs filter on them in SQL: "everyone with a
   /// live streak who has not opted out" must be one indexed query, not a scan
   /// that parses every row's preferences.
-  remindStreak       Boolean                @default(true)
-  remindDailyKata    Boolean                @default(true)
-  weeklyDigest       Boolean                @default(true)
+  remindStreak       Boolean                   @default(true)
+  remindDailyKata    Boolean                   @default(true)
+  weeklyDigest       Boolean                   @default(true)
   accounts           Account[]
   bugSubmissions     BugSubmission[]
   codeDrafts         CodeDraft[]
@@ -108,8 +108,8 @@ model User {
   pollVotes          PollVote[]
   postReports        PostReport[]
   duels              DuelParticipant[]
-  following          Follow[]               @relation("following")
-  followers          Follow[]               @relation("followers")
+  following          Follow[]                  @relation("following")
+  followers          Follow[]                  @relation("followers")
   tagAffinities      TagAffinity[]
   feedback           Feedback[]
   aptitudeAttempts   AptitudeAttempt[]
@@ -117,6 +117,7 @@ model User {
   dailyContests      DailyContestEntry[]
   revokedSessions    RevokedSession[]
   resumes            Resume[]
+  shareCards         ShareCard[]
 
   // Rank is a COUNT of users above you and the leaderboard is an ORDER BY on the
   // same columns; without these both are full table scans on every dashboard load.
@@ -693,20 +694,20 @@ model Duel {
 }
 
 model DuelParticipant {
-  id         String    @id @default(cuid())
-  duelId     String
-  userId     String
-  team       Int       @default(1)
-  ready      Boolean   @default(false)
+  id             String    @id @default(cuid())
+  duelId         String
+  userId         String
+  team           Int       @default(1)
+  ready          Boolean   @default(false)
   /**
    * Live scoreboard: tests passed on this warrior's latest submission.
    */
-  passed     Int       @default(0)
-  total      Int       @default(0)
-  verdict    String?
-  finishedAt DateTime?
-  xpAwarded  Int       @default(0)
-  joinedAt   DateTime  @default(now())
+  passed         Int       @default(0)
+  total          Int       @default(0)
+  verdict        String?
+  finishedAt     DateTime?
+  xpAwarded      Int       @default(0)
+  joinedAt       DateTime  @default(now())
   /**
    * When this player's last socket left the duel room; null while they are
    * in it. A duel has no clock: an opponent gone past the grace period can be
@@ -1292,11 +1293,11 @@ model AssistantMessage {
 /// scripts/roadmap-data.ts (the same pattern as the catalogue and the bug
 /// hunts); `key` is the stable handle the seed upserts by.
 model RoadmapTier {
-  id       String         @id @default(cuid())
-  key      String         @unique @db.VarChar(40)
-  title    String
-  blurb    String         @db.Text
-  position Int
+  id               String         @id @default(cuid())
+  key              String         @unique @db.VarChar(40)
+  title            String
+  blurb            String         @db.Text
+  position         Int
   /// What the chest at the tier's end holds when every stage in it is
   /// cleared: XP (paid to `xp` and `rating` alike) and bonus mock-interview
   /// sessions, spent only once the plan's weekly allowance is used up.
@@ -1459,19 +1460,19 @@ model StudyEnrollment {
 /// (user, lesson), keyed by the lesson's stable key so a re-seed keeps it.
 /// `completedAt` is set once, when every part is done, and pays the XP.
 model StudyLessonProgress {
-  id               String    @id @default(cuid())
-  userId           String
-  lessonKey        String    @db.VarChar(120)
-  readAt           DateTime?
+  id              String    @id @default(cuid())
+  userId          String
+  lessonKey       String    @db.VarChar(120)
+  readAt          DateTime?
   /// Best quiz so far: correct answers and the quiz's size when it was taken.
-  quizCorrect      Int?
-  quizTotal        Int?
-  quizAt           DateTime?
+  quizCorrect     Int?
+  quizTotal       Int?
+  quizAt          DateTime?
   /// Exercises passed, by index into the lesson's list.
-  exercisesPassed  Json      @default("[]")
-  completedAt      DateTime?
-  updatedAt        DateTime  @updatedAt
-  user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  exercisesPassed Json      @default("[]")
+  completedAt     DateTime?
+  updatedAt       DateTime  @updatedAt
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, lessonKey])
   @@index([userId, updatedAt])
@@ -1505,28 +1506,28 @@ model StudyExerciseSubmission {
 /// tables, images, header contact) that the ATS check reads and an edited
 /// copy can no longer reveal.
 model Resume {
-  id               String    @id @default(cuid())
+  id               String             @id @default(cuid())
   userId           String
-  title            String    @db.VarChar(120)
-  originalFilename String    @db.VarChar(255)
-  mimeType         String    @db.VarChar(100)
+  title            String             @db.VarChar(120)
+  originalFilename String             @db.VarChar(255)
+  mimeType         String             @db.VarChar(100)
   fileSize         Int
-  fileSha256       String    @db.VarChar(64)
-  storageKey       String?   @db.VarChar(255)
-  rawText          String    @db.MediumText
+  fileSha256       String             @db.VarChar(64)
+  storageKey       String?            @db.VarChar(255)
+  rawText          String             @db.MediumText
   layout           Json
   content          Json
   /// "heuristic" | "ai" | "edited" — who last shaped `content`. An AI
   /// restructure only ever replaces a heuristic parse, never an edit.
-  contentSource    String    @db.VarChar(12)
-  targetRole       String?   @db.VarChar(120)
-  company          String?   @db.VarChar(120)
-  jobDescription   String?   @db.Text
+  contentSource    String             @db.VarChar(12)
+  targetRole       String?            @db.VarChar(120)
+  company          String?            @db.VarChar(120)
+  jobDescription   String?            @db.Text
   latestAnalysisId String?
   latestScore      Int?
-  createdAt        DateTime  @default(now())
-  updatedAt        DateTime  @updatedAt
-  user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+  user             User               @relation(fields: [userId], references: [id], onDelete: Cascade)
   versions         ResumeVersion[]
   analyses         ResumeAnalysis[]
   suggestions      ResumeSuggestion[]
@@ -1608,4 +1609,32 @@ model ResumeSuggestion {
   resume     Resume    @relation(fields: [resumeId], references: [id], onDelete: Cascade)
 
   @@index([resumeId, createdAt])
+}
+
+/// A win's shareable picture (2026-09-25). LinkedIn, WhatsApp and X take
+/// text through their share links but never a file, so the picture reaches
+/// them the one way they all read: as the link preview (Open Graph image) of
+/// the page the post links to, /share/<id> on the site. The PNG is drawn in
+/// the browser (frontend components/community/share-image.ts), uploaded once
+/// when the share dialog opens, and served back unsigned for the crawlers at
+/// /api/share-cards/<id>/image.jpg (JPEG: a tenth of the PNG). The bytes live here rather than on disk:
+/// the API's disk is ephemeral, there is no object store, and a card is
+/// ~100 KB; an account keeps its newest few (services/share-cards.ts).
+model ShareCard {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// "problem" | "bug" | "roadmap"
+  kind        String   @db.VarChar(16)
+  title       String   @db.VarChar(200)
+  difficulty  String?  @db.VarChar(20)
+  /// Where "Solve it too" goes: a problem's slug, or nothing for a chest.
+  slug        String?  @db.VarChar(200)
+  /// A bug hunt's id, for the hunt's own page.
+  challengeId String?  @db.VarChar(40)
+  xp          Int?
+  image       Bytes    @db.MediumBlob
+  createdAt   DateTime @default(now())
+
+  @@index([userId, createdAt])
 }

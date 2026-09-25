@@ -4,6 +4,13 @@ import { isTimestampFresh, verifySignature } from "../lib/crypto.js";
 /**
  * Middleware to block any requests not originating from the platform
  */
+/**
+ * A win's shareable picture (routes/share-cards.ts). LinkedIn, WhatsApp, X
+ * and Slack fetch it to draw a link preview and cannot sign; it holds only a
+ * picture its author chose to make public.
+ */
+const SHARE_IMAGE = /^\/api\/share-cards\/[a-z0-9]+\/image\.jpg$/;
+
 export function platformGuard(req: Request, res: Response, next: NextFunction) {
   // 1. Skip checks for health or public diagnostic routes
   // /api/auth is exempt too: sign-in, sign-up and the OAuth callbacks are the
@@ -22,7 +29,7 @@ export function platformGuard(req: Request, res: Response, next: NextFunction) {
   // (browserCache's `cdn` option). An answer served from the edge never
   // reaches this guard, so a signature it could not check must not be the
   // difference between a hit and a 403.
-  if (req.path === "/health" || req.path === "/robots.txt" || req.path.startsWith("/api/auth") || req.path.startsWith("/api/seo/") || req.path === "/api/problems/facets" || req.path === "/api/billing/webhook") {
+  if (req.path === "/health" || req.path === "/robots.txt" || req.path.startsWith("/api/auth") || req.path.startsWith("/api/seo/") || req.path === "/api/problems/facets" || req.path === "/api/billing/webhook" || SHARE_IMAGE.test(req.path)) {
     return next();
   }
 

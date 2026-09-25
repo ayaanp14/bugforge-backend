@@ -35,6 +35,22 @@ Public pages (no account needed): `/` landing page for visitors · `/login` · `
 - **Password** section: change it (see above).
 - The profile is private to its owner. Other people see a name, avatar, XP, chest count and rank only where the community feed and leaderboard show them; there is no `/u/<username>` page. The rank word beside a name in the community is read from rating, like everywhere else.
 
+### Badges
+
+- **19 achievement badges** on four tracks, shown on the profile ("N of 19 badges earned"), earned in colour and locked in grey with the rule on hover and "N more to <next badge>" per track. Nothing to claim: a badge appears as soon as its number is reached.
+- **Solver** (problems solved): First Solve 1, Warmed Up 10, Problem Solver 25, Algorithm Adept 50, Centurion 100, Code Machine 250, Legend 500.
+- **Bug hunter** (bugs fixed): Bug Spotter 1, Exterminator 10, Debugger 25, Bug Slayer 50.
+- **Streak** (best streak in days): On a Roll 3, Week Warrior 7, Monthly Grind 30, Unstoppable 100.
+- **Roadmap** (chests opened): Road Opener 1, Core Climber 2, Advanced Ascent 3, Road Walker 4.
+- Badges pay no XP; they are milestones. Each has a level 1–4 that sets its colour.
+
+### Sharing a win outside CodeKairo
+
+- The **Share win** dialog (after an accepted problem, a fixed bug hunt or an opened chest) can post to the community feed and also **share anywhere**: **LinkedIn**, **WhatsApp**, **X**, **Copy** the text, or **More** (the device's own share sheet, on phones). The text names the win, the XP, how many problems solved so far, and links to the problem.
+- **The picture comes with the link, automatically.** Opening the dialog makes a 1200×627 picture of the win — your stats (problems solved, XP, best streak) and your badge — and saves it at its own page, `codekairo.com/share/<id>`. The shared text links to that page, and LinkedIn, WhatsApp, X, Telegram, Slack and Discord all show the picture as the link's preview under your post; there is nothing to download or attach. (The preview appears once the platform has fetched the link — in LinkedIn's composer after a second or two.) Anyone who clicks lands on the share page, with "Solve it too" and "Join CodeKairo".
+- The picture is only made for a win you actually have — the solve, fixed hunt or opened chest is checked, the same rule as the community feed. Share pages are kept for your 30 most recent shares and are not in search results.
+- **Download image** still saves the picture as a file, and on a phone **More** sends the picture with the text straight to the app you pick.
+
 ## Home dashboard — `/`
 
 One request builds it; it refreshes itself after a submission, a chest, a follow or a profile edit (otherwise within about five minutes).
@@ -278,7 +294,7 @@ Each line: duration · questions · negative marking · sectional or free timing
 - **Visibility** per post: **Anyone on CodeKairo**, **Followers** only, or **Private** to you. A private or followers-only post is hidden from anyone else, including by direct link.
 - **Interactions**: **Respect** (the like), comments (one level of replies — a reply to a reply attaches to the parent), comment likes, save/unsave, copy link, report (one report per person per post; you cannot report your own), edit your own text (auto-tags are kept), delete your own post (its comments and likes go with it; no undo). Comments up to 1,000 characters; a thread shows up to 200.
 - **Follow** people from their posts or the "Who to follow" rail (suggested by mutual follows, same institute, activity). Following is what the Following scope and followers-only posts key on.
-- **Rails**: your social card (followers/following/posts), Who to follow, **Community pulse** (posts today, wins this week, active and total coders), **Trending tags** (last 7 days), and a **Bulletin** (the week's most-fixed hunts and most-solved problems, today's hunts, the top solver of the week, solves and posts this week, new coders). A "solve" there is a problem or hunt someone accepted for the **first time** — re-submitting a solved problem does not count, the same rule as "solved" on the profile.
+- **Layout**: the feed is in the middle, under a one-line title and the composer. The **left column** (wide screens) holds your card (followers/following/posts, progress to the next rank, and a **Write a post** button) and the feed switcher — For you, Following, Saved. On smaller screens the switcher is tabs above the feed, and a floating write button appears once you scroll. The **right column** has **This week** (solves, posts and new coders this week, the week's most-solved problem and most-hunted bug hunt, and the coder of the week), **Trending tags** (last 7 days; click one to filter the feed) and **Who to follow**. Both side columns stay pinned while the feed scrolls. A "solve" there is a problem or hunt someone accepted for the **first time** — re-submitting a solved problem does not count, the same rule as "solved" on the profile.
 - **Write limit**: 40 posts+comments per 10 minutes per account.
 - A post's permalink is `/community/p/<id>` — where shared links and notifications land.
 

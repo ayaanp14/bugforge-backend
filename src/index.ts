@@ -29,6 +29,7 @@ import seoRouter from "./routes/seo.js";
 import studyPlansRouter from "./routes/study-plans.js";
 import assistantRouter from "./routes/assistant.js";
 import resumesRouter from "./routes/resumes.js";
+import shareCardsRouter, { shareImage } from "./routes/share-cards.js";
 import { recoverAnalyses } from "./services/resumes.js";
 import { checkRoadmapSeeded } from "./services/roadmap.js";
 import { checkStudyPlansSeeded } from "./services/study-plans.js";
@@ -802,6 +803,10 @@ app.use(
 // read-only, cached at the edge for an hour and here in-process; nothing
 // they answer is more than the SPA shows a visitor.
 app.use("/api/seo", seoRouter);
+// A win picture, for the link-preview crawlers (routes/share-cards.ts):
+// unsigned like the heads above, and ahead of the limiter for the same
+// reason — LinkedIn, WhatsApp and X fetch from a few addresses each.
+app.get("/api/share-cards/:id/image.jpg", shareImage);
 
 app.use(generalLimiter);
 
@@ -900,6 +905,7 @@ app.use("/api/study-plans", studyPlansRouter);
 app.use("/api/assistant", assistantRouter);
 // The upload route reads a raw file body with its own parser (see routes/resumes.ts).
 app.use("/api/resumes", resumesRouter);
+app.use("/api/share-cards", shareCardsRouter);
 app.use("/api/events", eventsRouter);
 app.use("/api/admin", adminRouter);
 app.use("/api", executionRouter); 

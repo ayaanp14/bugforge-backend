@@ -242,3 +242,15 @@ export const resumeAiLimiter = rateLimit({
   message: "That is a lot of AI requests in one hour. Give it a little while before the next one.",
   keyOf: (req) => (req as Request & { user?: { userId: string } }).user?.userId ?? addressOf(req),
 });
+
+/**
+ * Shareable win pictures. The share dialog uploads one when it opens; a
+ * person shares a handful of wins in an hour. Each is a ~100 KB row, so the
+ * ceiling is what keeps a script from filling the table. Keyed by account.
+ */
+export const shareCardLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 30,
+  message: "You have made a lot of share cards in the last hour. Give it a little while.",
+  keyOf: (req) => (req as Request & { user?: { userId: string } }).user?.userId ?? addressOf(req),
+});

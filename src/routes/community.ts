@@ -2,6 +2,7 @@ import { Router, type Response } from "express";
 import { randomUUID } from "node:crypto";
 import { Prisma } from "@prisma/client";
 import { prisma } from "../lib/prisma.js";
+import { verifyAchievement } from "../services/achievements.js";
 import { optionalAuth, requireAuth } from "../middleware/auth.js";
 import { communityWriteLimiter } from "../middleware/rate-limit.js";
 import { cached, cachedShared, invalidate } from "../lib/cache.js";
@@ -596,65 +597,17 @@ router.post("/posts", requireAuth, communityWriteLimiter, async (req, res) => {
       return;
     }
 
-    // An achievement is a claim about the judge's records, and the card the
-    // feed draws — title, difficulty, XP — is built from what the client sent.
-    // It used to be stored as given: anyone could post "Solved <hard problem>
-    // +30 XP" with no submission behind it. Now the solve is looked up and
-    // the card's facts are taken from the row, not the request.
+    // An achievement is a claim about the judge's records; the solve (hunt,
+    // chest) is looked up and the card's facts come from the row, not the
+    // request (services/achievements.ts, shared with the share pictures).
     let verifiedAchievement: Record<string, unknown> | null = null;
     if (hasAchievement) {
-      const kind = meta!.kind === "bug" ? "bug" : meta!.kind === "roadmap" ? "roadmap" : "problem";
-      if (kind === "roadmap") {
-        // A tier's chest: the claim is the RoadmapReward row the road wrote
-        // when the tier was cleared, and the card's facts — the tier's name,
-        // what the chest paid — come from it and the seeded tier, not the
-        // request. Nothing to link the card to but the road itself.
-        const tierKey = typeof meta!.tier === "string" ? meta!.tier : "";
-        const [reward, tier] = tierKey
-          ? await Promise.all([
-              prisma.roadmapReward.findUnique({ where: { userId_tierKey: { userId, tierKey } }, select: { xp: true } }),
-              prisma.roadmapTier.findUnique({ where: { key: tierKey }, select: { title: true } }),
-            ])
-          : [null, null];
-        if (!reward || !tier) {
-          res.status(400).json({ error: "You can only share a chest you have opened" });
-          return;
-        }
-        verifiedAchievement = { kind, tier: tierKey, title: tier.title, xp: reward.xp };
-      } else if (kind === "bug") {
-        const challengeId = typeof meta!.challengeId === "string" ? meta!.challengeId : "";
-        const solved = challengeId
-          ? await prisma.bugSubmission.findFirst({
-              where: { userId, challengeId, verdict: "ACCEPTED" },
-              select: { challenge: { select: { title: true, difficulty: true } } },
-            })
-          : null;
-        if (!solved) {
-          res.status(400).json({ error: "You can only share a hunt you have fixed" });
-          return;
-        }
-        verifiedAchievement = { kind, challengeId, title: solved.challenge.title, difficulty: solved.challenge.difficulty };
-      } else {
-        const slug = typeof meta!.slug === "string" ? meta!.slug : "";
-        const solved = slug
-          ? await prisma.submission.findFirst({
-              where: { userId, verdict: "ACCEPTED", problem: { slug } },
-              select: { problem: { select: { title: true, difficulty: true } } },
-            })
-          : null;
-        if (!solved) {
-          res.status(400).json({ error: "You can only share a problem you have solved" });
-          return;
-        }
-        verifiedAchievement = { kind, slug, title: solved.problem.title, difficulty: solved.problem.difficulty };
+      const check = await verifyAchievement(userId, meta as Record<string, unknown>);
+      if (!check.ok) {
+        res.status(400).json({ error: check.error });
+        return;
       }
-      // XP is display only, and bounded so the card cannot boast a number the
-      // catalogue never pays. A chest's XP is already the row's, not the
-      // request's.
-      if (kind !== "roadmap") {
-        const xp = Number(meta!.xp);
-        if (Number.isFinite(xp) && xp > 0 && xp <= 100) verifiedAchievement.xp = Math.round(xp);
-      }
+      verifiedAchievement = { ...check.achievement };
     }
     if (wantsPoll && pollChoices.length < 2) {
       res.status(400).json({ error: "A poll needs at least two options" });
