@@ -112,6 +112,7 @@ put EXECUTOR paiza
 put STUDY_EXECUTOR paiza
 put EMAIL_VERIFICATION on
 put FRONTEND_URL https://codekairo.com
+put BATTLES_URL https://battles.codekairo.com
 put BACKEND_PUBLIC_URL https://api.codekairo.com
 # Both now live in this compose project, not us-east-1 and not a shared host.
 put REDIS_URL redis://redis:6379
