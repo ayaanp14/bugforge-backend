@@ -46,6 +46,8 @@ for (const [question, section] of [
   ["is there a dark mode", "Search, theme, devices, connectivity"],
   ["how long is the TCS NQT placement test", "Placement tests"],
   ["how do I contact support about a refund", "Feedback, campus ambassadors, help"],
+  ["how can I host a coding contest for my college", "Tournaments"],
+  ["how is penalty time counted in an ICPC style contest", "Tournaments"],
 ] as const) {
   test(`"${question}" finds ${section}`, () => {
     assert.ok(sectionsFor(question).includes(section), `got: ${sectionsFor(question).join(" · ")}`);
