@@ -29,6 +29,7 @@ import {
 import { BattlesError } from "./battles-error.js";
 import { knockoutViewer } from "./knockout.js";
 import { CHECK_IN_MINUTES } from "./knockout-rules.js";
+import { orgSeo, seoOf, tournamentSeo } from "./battles-seo.js";
 
 export { BattlesError };
 
@@ -114,7 +115,9 @@ export async function orgPage(slug: string, viewerId: string | null) {
     select: TOURNAMENT_CARD,
   });
   const now = new Date();
-  return { org, role, tournaments: tournaments.map((t) => cardOf(t, now)) };
+  // The page's head, from the published tournaments only (a manager also
+  // sees drafts here, which are nobody else's business). services/battles-seo.
+  return { org, role, tournaments: tournaments.map((t) => cardOf(t, now)), seo: seoOf(orgSeo(org, tournaments, now)) };
 }
 
 /** The host dashboard: every org the caller manages, with its tournaments. */
@@ -348,6 +351,11 @@ export async function tournamentPage(slug: string, viewer: { userId: string } | 
       problemCount: _count.problems,
       checkInOpensAt: t.format === "knockout" ? new Date(t.startsAt.getTime() - CHECK_IN_MINUTES * 60_000) : null,
     },
+    // The page's head — title, description, whether it is indexed, the
+    // facts its Event node is built from — the same answer the Worker
+    // writes into the HTML (services/battles-seo). Null for a draft or an
+    // unverified organizer's tournament, which only its organizers see.
+    seo: seoOf(tournamentSeo({ ...t, entries: _count.entries, problems: _count.problems })),
     viewer: viewer
       ? {
           canManage,
