@@ -17,6 +17,7 @@ import { announceStageIfCleared } from "../services/roadmap.js";
 import { invalidateDashboard } from "../services/dashboard.js";
 import { emitDuelActivity, settleDuelForSubmission } from "../lib/duels.js";
 import { recordContestSubmission } from "../services/daily-contest.js";
+import { recordTournamentSubmission } from "../services/contest.js";
 import { ENGINE_DOWN_MESSAGE, isEngineDown } from "../lib/engine-error.js";
 // The judge's slice of a problem — limits, signature, reference solution — and
 // its test suite, both held in memory rather than pulled (~1 MB of hidden
@@ -410,10 +411,23 @@ router.post("/submit", requireAuth, executionLimiter, async (req, res) => {
     // the same breath as the verdict. One cached comparison for every other
     // problem; a row update only when this is today's problem and the user
     // has entered.
-    const dailyContest = await recordContestSubmission(userId, problemId, verdict, submission.submittedAt).catch((err) => {
-      console.error("POST /api/submit — daily contest failed:", err);
-      return null;
-    });
+    //
+    // A Battles contest (services/contest.ts) hears the same way and for the
+    // same reason: the contest room reads the team's attempts right after
+    // this answers. Not for a pairing submit — the credit went to the room's
+    // host, who is not the one sitting the contest.
+    const [dailyContest, battles] = await Promise.all([
+      recordContestSubmission(userId, problemId, verdict, submission.submittedAt).catch((err) => {
+        console.error("POST /api/submit — daily contest failed:", err);
+        return null;
+      }),
+      pairRoomId
+        ? Promise.resolve(null)
+        : recordTournamentSubmission(userId, problemId, submission.id, verdict, submission.submittedAt).catch((err) => {
+            console.error("POST /api/submit — tournament contest failed:", err);
+            return null;
+          }),
+    ]);
 
     res.json({
       verdict,
@@ -427,6 +441,7 @@ router.post("/submit", requireAuth, executionLimiter, async (req, res) => {
       memoryKb: maxMemory,
       submissionId: submission.id,
       dailyContest,
+      battles,
     });
 
     // ── After the response ──────────────────────────────────────────

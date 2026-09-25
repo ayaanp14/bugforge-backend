@@ -131,6 +131,8 @@ export interface TournamentFields {
   allowedDomains: string[];
   inviteCode: string | null;
   requiresApproval: boolean;
+  /** ICPC: minutes before the end when the public board freezes; 0 = never. Always 0 for a knockout. */
+  freezeMinutes: number;
 }
 
 const isInt = (v: unknown): v is number => typeof v === "number" && Number.isInteger(v);
@@ -201,6 +203,12 @@ export function readTournamentFields(
     return { error: `An invite code is ${LIMITS.inviteCodeMin}–${LIMITS.inviteCodeMax} letters, digits or hyphens.` };
   }
 
+  const rawFreeze = pick("freezeMinutes") ?? 0;
+  const freezeMinutes = format === "icpc" ? rawFreeze : 0;
+  if (!isInt(freezeMinutes) || freezeMinutes < 0 || freezeMinutes >= durationMinutes) {
+    return { error: "The scoreboard freeze must be shorter than the contest (0 for no freeze)." };
+  }
+
   return {
     fields: {
       title,
@@ -214,6 +222,7 @@ export function readTournamentFields(
       allowedDomains: domains.domains,
       inviteCode,
       requiresApproval: pick("requiresApproval") === true,
+      freezeMinutes,
     },
   };
 }

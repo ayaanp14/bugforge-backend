@@ -194,6 +194,7 @@ const fieldsOf = (t: TournamentFields & { allowedDomains: unknown }): Tournament
   allowedDomains: Array.isArray(t.allowedDomains) ? (t.allowedDomains as string[]) : [],
   inviteCode: t.inviteCode,
   requiresApproval: t.requiresApproval,
+  freezeMinutes: t.freezeMinutes,
 });
 
 export async function createTournament(userId: string, orgId: string, body: Body) {
@@ -274,7 +275,16 @@ export async function manageView(userId: string, tournamentId: string) {
     prisma.tournamentTeam.findMany({ where: { tournamentId: t.id }, orderBy: { createdAt: "asc" }, select: { id: true, name: true } }),
   ]);
   return {
-    tournament: { ...fieldsOf(t as TournamentFields & { allowedDomains: unknown }), id: t.id, slug: t.slug, status: t.status, orgId: t.orgId, publishedAt: t.publishedAt, phase: tournamentPhase(t, new Date()) },
+    tournament: {
+      ...fieldsOf(t as TournamentFields & { allowedDomains: unknown }),
+      id: t.id,
+      slug: t.slug,
+      status: t.status,
+      orgId: t.orgId,
+      publishedAt: t.publishedAt,
+      resultsRevealedAt: t.resultsRevealedAt,
+      phase: tournamentPhase(t, new Date()),
+    },
     org: { slug: org.slug, name: org.name, verified: org.verifiedAt !== null },
     problems: problems.map((p) => p.problem),
     // An organizer sees each entrant's email *domain*, which is what an

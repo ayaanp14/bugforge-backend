@@ -42,11 +42,11 @@ model VerificationToken {
 }
 
 model User {
-  id                 String                    @id @default(cuid())
-  name               String?
-  email              String?                   @unique
-  emailVerified      DateTime?
-  password_hash      String?
+  id                    String                    @id @default(cuid())
+  name                  String?
+  email                 String?                   @unique
+  emailVerified         DateTime?
+  password_hash         String?
   /// Sessions issued before this instant are refused.
   ///
   /// A JWT cannot be taken back once handed out, so resetting a password could
@@ -54,72 +54,73 @@ model User {
   /// reset is usually meant to remove. Stamping the account here and comparing
   /// against each token's issue time gives that back, without keeping a record
   /// of every session. Null means nothing has been revoked.
-  sessionsValidFrom  DateTime?
-  provider           String                    @default("email")
-  xp                 Int                       @default(0)
-  questionsXp        Int                       @default(0)
-  bugsXp             Int                       @default(0)
-  rating             Int                       @default(0)
-  createdAt          DateTime                  @default(now())
-  updatedAt          DateTime                  @updatedAt
-  avatar_url         String?                   @db.Text
-  instituteName      String?
-  username           String?                   @unique
-  gender             String?
-  location           String?
-  birthday           DateTime?
-  website            String?                   @db.Text
-  github             String?                   @db.Text
-  linkedin           String?                   @db.Text
-  twitter            String?                   @db.Text
-  readme             String?                   @db.Text
+  sessionsValidFrom     DateTime?
+  provider              String                    @default("email")
+  xp                    Int                       @default(0)
+  questionsXp           Int                       @default(0)
+  bugsXp                Int                       @default(0)
+  rating                Int                       @default(0)
+  createdAt             DateTime                  @default(now())
+  updatedAt             DateTime                  @updatedAt
+  avatar_url            String?                   @db.Text
+  instituteName         String?
+  username              String?                   @unique
+  gender                String?
+  location              String?
+  birthday              DateTime?
+  website               String?                   @db.Text
+  github                String?                   @db.Text
+  linkedin              String?                   @db.Text
+  twitter               String?                   @db.Text
+  readme                String?                   @db.Text
   /// Reminder channels the account has left on. Booleans rather than a Json
   /// blob because the reminder jobs filter on them in SQL: "everyone with a
   /// live streak who has not opted out" must be one indexed query, not a scan
   /// that parses every row's preferences.
-  remindStreak       Boolean                   @default(true)
-  remindDailyKata    Boolean                   @default(true)
-  weeklyDigest       Boolean                   @default(true)
-  accounts           Account[]
-  bugSubmissions     BugSubmission[]
-  codeDrafts         CodeDraft[]
-  roomsCreated       PairRoom[]
-  roomParticipations RoomParticipant[]
-  sessions           Session[]
-  submissions        Submission[]
-  problemSolves      ProblemSolve[]
-  stats              UserStats?
-  problemTimers      ProblemTimer[]
-  savedInterviews    SavedInterview[]
-  mockSessions       MockInterviewSession[]
-  subscriptions      Subscription[]
-  paymentOrders      PaymentOrder[]
-  notifications      Notification[]
-  roadmapRewards     RoadmapReward[]
-  studyEnrollments   StudyEnrollment[]
-  studyLessons       StudyLessonProgress[]
-  studyExercises     StudyExerciseSubmission[]
-  assistantMessages  AssistantMessage[]
-  posts              Post[]
-  postComments       PostComment[]
-  postLikes          PostLike[]
-  postCommentLikes   PostCommentLike[]
-  savedPosts         SavedPost[]
-  pollVotes          PollVote[]
-  postReports        PostReport[]
-  duels              DuelParticipant[]
-  following          Follow[]                  @relation("following")
-  followers          Follow[]                  @relation("followers")
-  tagAffinities      TagAffinity[]
-  feedback           Feedback[]
-  aptitudeAttempts   AptitudeAttempt[]
-  mockAttempts       MockAttempt[]
-  dailyContests      DailyContestEntry[]
-  revokedSessions    RevokedSession[]
-  resumes            Resume[]
-  shareCards         ShareCard[]
-  battleOrgs         BattleOrgMember[]
-  tournamentEntries  TournamentEntry[]
+  remindStreak          Boolean                   @default(true)
+  remindDailyKata       Boolean                   @default(true)
+  weeklyDigest          Boolean                   @default(true)
+  accounts              Account[]
+  bugSubmissions        BugSubmission[]
+  codeDrafts            CodeDraft[]
+  roomsCreated          PairRoom[]
+  roomParticipations    RoomParticipant[]
+  sessions              Session[]
+  submissions           Submission[]
+  problemSolves         ProblemSolve[]
+  stats                 UserStats?
+  problemTimers         ProblemTimer[]
+  savedInterviews       SavedInterview[]
+  mockSessions          MockInterviewSession[]
+  subscriptions         Subscription[]
+  paymentOrders         PaymentOrder[]
+  notifications         Notification[]
+  roadmapRewards        RoadmapReward[]
+  studyEnrollments      StudyEnrollment[]
+  studyLessons          StudyLessonProgress[]
+  studyExercises        StudyExerciseSubmission[]
+  assistantMessages     AssistantMessage[]
+  posts                 Post[]
+  postComments          PostComment[]
+  postLikes             PostLike[]
+  postCommentLikes      PostCommentLike[]
+  savedPosts            SavedPost[]
+  pollVotes             PollVote[]
+  postReports           PostReport[]
+  duels                 DuelParticipant[]
+  following             Follow[]                  @relation("following")
+  followers             Follow[]                  @relation("followers")
+  tagAffinities         TagAffinity[]
+  feedback              Feedback[]
+  aptitudeAttempts      AptitudeAttempt[]
+  mockAttempts          MockAttempt[]
+  dailyContests         DailyContestEntry[]
+  revokedSessions       RevokedSession[]
+  resumes               Resume[]
+  shareCards            ShareCard[]
+  battleOrgs            BattleOrgMember[]
+  tournamentEntries     TournamentEntry[]
+  tournamentSubmissions TournamentSubmission[]
 
   // Rank is a COUNT of users above you and the leaderboard is an ORDER BY on the
   // same columns; without these both are full table scans on every dashboard load.
@@ -129,36 +130,37 @@ model User {
 }
 
 model Problem {
-  id                 String                @id @default(cuid())
-  title              String
-  slug               String                @unique
-  description        String                @db.MediumText
-  difficulty         String
-  tags               Json                  @default("[]")
-  timeLimitMs        Int                   @default(2000)
-  memoryLimitMb      Int                   @default(256)
-  editorial          String?               @db.MediumText
-  isPublished        Boolean               @default(false)
-  createdAt          DateTime              @default(now())
-  starterCode        Json?
-  signature          Json?
-  referenceSolution  String?               @db.MediumText
-  referenceLanguage  String?
+  id                    String                 @id @default(cuid())
+  title                 String
+  slug                  String                 @unique
+  description           String                 @db.MediumText
+  difficulty            String
+  tags                  Json                   @default("[]")
+  timeLimitMs           Int                    @default(2000)
+  memoryLimitMb         Int                    @default(256)
+  editorial             String?                @db.MediumText
+  isPublished           Boolean                @default(false)
+  createdAt             DateTime               @default(now())
+  starterCode           Json?
+  signature             Json?
+  referenceSolution     String?                @db.MediumText
+  referenceLanguage     String?
   /// Editorial reference solutions keyed by language ("python", "cpp", …).
   /// Drives the Editorial tab's language picker; only validated languages are
   /// written here, so a missing key means "not authored yet", not "broken".
-  solutions          Json?
-  hints              Json                  @default("[]")
-  codeDrafts         CodeDraft[]
-  pairRooms          PairRoom[]
-  submissions        Submission[]
-  problemSolves      ProblemSolve[]
-  testCases          TestCase[]
-  problemTimers      ProblemTimer[]
-  dailyContests      DailyContest[]
-  mockCodeAnswers    MockCodeAnswer[]
-  tournamentProblems TournamentProblem[]
-  roadmapStages      RoadmapStageProblem[]
+  solutions             Json?
+  hints                 Json                   @default("[]")
+  codeDrafts            CodeDraft[]
+  pairRooms             PairRoom[]
+  submissions           Submission[]
+  problemSolves         ProblemSolve[]
+  testCases             TestCase[]
+  problemTimers         ProblemTimer[]
+  dailyContests         DailyContest[]
+  mockCodeAnswers       MockCodeAnswer[]
+  tournamentProblems    TournamentProblem[]
+  tournamentSubmissions TournamentSubmission[]
+  roadmapStages         RoadmapStageProblem[]
 
   duels Duel[]
 
@@ -240,21 +242,23 @@ model ProblemSolve {
 }
 
 model Submission {
-  id          String    @id @default(cuid())
-  userId      String
-  problemId   String
-  roomId      String?
-  code        String    @db.MediumText
-  language    String
-  verdict     String
-  runtimeMs   Int?
-  memoryKb    Int?
-  passedCases Int       @default(0)
-  totalCases  Int       @default(0)
-  submittedAt DateTime  @default(now())
-  problem     Problem   @relation(fields: [problemId], references: [id], onDelete: Cascade)
-  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  room        PairRoom? @relation(fields: [roomId], references: [id], onDelete: SetNull)
+  id                   String                @id @default(cuid())
+  userId               String
+  problemId            String
+  roomId               String?
+  code                 String                @db.MediumText
+  language             String
+  verdict              String
+  runtimeMs            Int?
+  memoryKb             Int?
+  passedCases          Int                   @default(0)
+  totalCases           Int                   @default(0)
+  submittedAt          DateTime              @default(now())
+  problem              Problem               @relation(fields: [problemId], references: [id], onDelete: Cascade)
+  user                 User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  room                 PairRoom?             @relation(fields: [roomId], references: [id], onDelete: SetNull)
+  /// Set when this attempt was made in a Battles contest (services/contest.ts).
+  tournamentSubmission TournamentSubmission?
 
   // The FK on userId alone leaves every "newest first" read to filesort the user's
   // whole history, and every verdict filter to scan it. These two cover the
@@ -1707,15 +1711,21 @@ model Tournament {
   /// Needed to register when set; shared by the organizer.
   inviteCode           String?   @db.VarChar(24)
   requiresApproval     Boolean   @default(false)
+  /// ICPC: the public scoreboard stops updating this many minutes before the
+  /// end (0 = never), until the organizer reveals the results.
+  freezeMinutes        Int       @default(0)
+  /// ICPC: when the organizer lifted the freeze and published final standings.
+  resultsRevealedAt    DateTime?
   createdById          String
   publishedAt          DateTime?
   createdAt            DateTime  @default(now())
   updatedAt            DateTime  @updatedAt
 
-  org      BattleOrg           @relation(fields: [orgId], references: [id], onDelete: Cascade)
-  problems TournamentProblem[]
-  teams    TournamentTeam[]
-  entries  TournamentEntry[]
+  org         BattleOrg              @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  problems    TournamentProblem[]
+  teams       TournamentTeam[]
+  entries     TournamentEntry[]
+  submissions TournamentSubmission[]
 
   // The public list: published, by start time.
   @@index([status, startsAt])
@@ -1742,8 +1752,9 @@ model TournamentTeam {
   name         String   @db.VarChar(80)
   createdAt    DateTime @default(now())
 
-  tournament Tournament        @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
-  entries    TournamentEntry[]
+  tournament  Tournament             @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  entries     TournamentEntry[]
+  submissions TournamentSubmission[]
 
   @@unique([tournamentId, name])
 }
@@ -1769,4 +1780,34 @@ model TournamentEntry {
   // "My tournaments".
   @@index([userId])
   @@index([teamId])
+}
+
+/// One attempt in an ICPC contest: the team it scores for, and the ordinary
+/// Submission it was (which is what credits the solver's main profile).
+/// Recorded by the judge (services/contest.ts recordTournamentSubmission);
+/// the standings are computed from these rows, never stored.
+model TournamentSubmission {
+  id           String   @id @default(cuid())
+  tournamentId String
+  teamId       String
+  userId       String
+  problemId    String
+  submissionId String   @unique
+  /// contest-rules ContestVerdict: accepted | wrong_answer | time_limit | runtime_error | compile_error
+  verdict      String   @db.VarChar(16)
+  submittedAt  DateTime
+
+  tournament Tournament     @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  team       TournamentTeam @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  user       User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  problem    Problem        @relation(fields: [problemId], references: [id], onDelete: Cascade)
+  submission Submission     @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+
+  // The standings read a contest's whole history in time order.
+  @@index([tournamentId, submittedAt])
+  // A team's own submission list in the contest room.
+  @@index([teamId, submittedAt])
+  // "Solved in a tournament" on the main site: this user, this problem.
+  @@index([userId, problemId])
+  @@index([problemId])
 }
