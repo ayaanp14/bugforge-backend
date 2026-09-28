@@ -6,6 +6,7 @@ import { CALENDAR_UTC_OFFSET_MINUTES } from "../lib/clock.js";
 import { listJobs, recentRuns, runJobNow } from "../lib/scheduler.js";
 import { activePlan } from "../services/entitlements.js";
 import { solvedBy } from "../services/admin-solved.js";
+import { bugSubmissionDetail, problemSubmissionDetail } from "../services/admin-submissions.js";
 import { invalidateProblem } from "./problems.js";
 import { emailEnabled } from "../lib/email.js";
 
@@ -295,6 +296,11 @@ router.get("/users/:id", async (req, res) => {
         take: 10,
         select: { id: true, verdict: true, language: true, submittedAt: true, problem: { select: { slug: true, title: true } } },
       },
+      bugSubmissions: {
+        orderBy: { submittedAt: "desc" },
+        take: 10,
+        select: { id: true, verdict: true, passedTests: true, totalTests: true, submittedAt: true, challenge: { select: { slug: true, title: true } } },
+      },
       feedback: { orderBy: { createdAt: "desc" }, take: 10, select: { id: true, kind: true, rating: true, comment: true, createdAt: true } },
       _count: { select: { submissions: true, bugSubmissions: true, mockSessions: true, notifications: true, posts: true } },
     },
@@ -314,6 +320,26 @@ router.get("/users/:id", async (req, res) => {
     solvedBy(user.id),
   ]);
   res.json({ user, plan: { id: plan.plan.id, name: plan.plan.name, currentPeriodEnd: plan.currentPeriodEnd }, recentErrors, solved });
+});
+
+// GET /api/admin/submissions/:id — one problem submission with its code
+router.get("/submissions/:id", async (req, res) => {
+  const submission = await problemSubmissionDetail(String(req.params["id"]));
+  if (!submission) {
+    res.status(404).json({ error: "No such submission" });
+    return;
+  }
+  res.json(submission);
+});
+
+// GET /api/admin/bug-submissions/:id — one bug hunt submission, each file beside the original
+router.get("/bug-submissions/:id", async (req, res) => {
+  const submission = await bugSubmissionDetail(String(req.params["id"]));
+  if (!submission) {
+    res.status(404).json({ error: "No such submission" });
+    return;
+  }
+  res.json(submission);
 });
 
 /* ── problems ──────────────────────────────────────────────────────── */

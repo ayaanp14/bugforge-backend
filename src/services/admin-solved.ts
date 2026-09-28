@@ -20,7 +20,8 @@ export interface SolvedProblem {
   title: string;
   difficulty: string;
   published: boolean;
-  /** The first accepted submission. */
+  /** The first accepted submission: its id opens the code (GET /api/admin/submissions/:id). */
+  submissionId: string;
   solvedAt: Date;
   /** Every language it was accepted in, in the order they were first used. */
   languages: string[];
@@ -36,7 +37,8 @@ export interface FixedBug {
   difficulty: string;
   language: string;
   category: string;
-  /** The first accepted fix. */
+  /** The first accepted fix: its id opens the files (GET /api/admin/bug-submissions/:id). */
+  submissionId: string;
   fixedAt: Date;
   /** How long that first fix took, as the workspace timed it. */
   timeTakenSecs: number | null;
@@ -91,6 +93,7 @@ export async function solvedBy(userId: string): Promise<{ problems: SolvedProble
       orderBy: { submittedAt: "asc" },
       take: ACCEPTED_ROW_CAP,
       select: {
+        id: true,
         problemId: true,
         language: true,
         submittedAt: true,
@@ -103,6 +106,7 @@ export async function solvedBy(userId: string): Promise<{ problems: SolvedProble
       orderBy: { submittedAt: "asc" },
       take: ACCEPTED_ROW_CAP,
       select: {
+        id: true,
         challengeId: true,
         submittedAt: true,
         timeTakenSecs: true,
@@ -122,6 +126,7 @@ export async function solvedBy(userId: string): Promise<{ problems: SolvedProble
     title: first.problem.title,
     difficulty: first.problem.difficulty,
     published: first.problem.isPublished,
+    submissionId: first.id,
     solvedAt: first.submittedAt,
     languages,
     submissions,
@@ -139,6 +144,7 @@ export async function solvedBy(userId: string): Promise<{ problems: SolvedProble
     difficulty: first.challenge.difficulty,
     language: first.challenge.language,
     category: first.challenge.category,
+    submissionId: first.id,
     fixedAt: first.submittedAt,
     timeTakenSecs: first.timeTakenSecs,
     submissions,
