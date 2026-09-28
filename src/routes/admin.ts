@@ -5,6 +5,7 @@ import { adminOnly, requireAuth } from "../middleware/auth.js";
 import { CALENDAR_UTC_OFFSET_MINUTES } from "../lib/clock.js";
 import { listJobs, recentRuns, runJobNow } from "../lib/scheduler.js";
 import { activePlan } from "../services/entitlements.js";
+import { solvedBy } from "../services/admin-solved.js";
 import { invalidateProblem } from "./problems.js";
 import { emailEnabled } from "../lib/email.js";
 
@@ -302,7 +303,7 @@ router.get("/users/:id", async (req, res) => {
     res.status(404).json({ error: "No such user" });
     return;
   }
-  const [plan, recentErrors] = await Promise.all([
+  const [plan, recentErrors, solved] = await Promise.all([
     activePlan(user.id, user.email),
     prisma.errorReport.findMany({
       where: { userId: id },
@@ -310,8 +311,9 @@ router.get("/users/:id", async (req, res) => {
       take: 5,
       select: { id: true, source: true, kind: true, message: true, path: true, createdAt: true, fingerprint: true },
     }),
+    solvedBy(user.id),
   ]);
-  res.json({ user, plan: { id: plan.plan.id, name: plan.plan.name, currentPeriodEnd: plan.currentPeriodEnd }, recentErrors });
+  res.json({ user, plan: { id: plan.plan.id, name: plan.plan.name, currentPeriodEnd: plan.currentPeriodEnd }, recentErrors, solved });
 });
 
 /* ── problems ──────────────────────────────────────────────────────── */
