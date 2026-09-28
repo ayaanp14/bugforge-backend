@@ -44,7 +44,7 @@ REGISTRY_IMAGE="${REGISTRY_IMAGE:-ghcr.io/$SLUG}"
 say() { printf '\n\033[1m%s\033[0m\n' "$*"; }
 health() {
   curl -sk --max-time 10 --resolve api.codekairo.com:443:127.0.0.1 \
-    -H 'CF-Connecting-IP: 127.0.0.1' -o /dev/null -w '%{http_code}' \
+    -o /dev/null -w '%{http_code}' \
     https://api.codekairo.com/health 2>/dev/null || echo 000
 }
 

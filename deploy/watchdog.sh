@@ -25,8 +25,9 @@ MEM_WARN_MB=120
 say() { printf '%s %s\n' "$(date -Is)" "$*" >> "$LOG"; }
 
 # ── is the API actually answering, not merely listening? ────────────────
+# -k on purpose: a certificate problem is not something restarting the API
+# would fix, so it must not count as a failed check here.
 code="$(curl -sk --max-time 10 --resolve api.codekairo.com:443:127.0.0.1 \
-         -H 'CF-Connecting-IP: 127.0.0.1' \
          -o /dev/null -w '%{http_code}' \
          https://api.codekairo.com/health 2>/dev/null || echo 000)"
 
@@ -48,7 +49,7 @@ else
     echo 0 > "$STATE"
     sleep 20
     after="$(curl -sk --max-time 10 --resolve api.codekairo.com:443:127.0.0.1 \
-             -H 'CF-Connecting-IP: 127.0.0.1' -o /dev/null -w '%{http_code}' \
+             -o /dev/null -w '%{http_code}' \
              https://api.codekairo.com/health 2>/dev/null || echo 000)"
     say "post-restart health: HTTP $after"
   fi

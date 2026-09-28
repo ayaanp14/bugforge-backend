@@ -213,7 +213,7 @@ Check before and after:
 ```bash
 curl -s https://api.codekairo.com/health
 curl -si https://api.codekairo.com/api/seo/head?path=/problems/two-sum | head -5
-curl -s https://api.codekairo.com/cdn-cgi/trace   # the API's 404 = direct; a colo= line = still proxied
+curl -s https://api.codekairo.com/cdn-cgi/trace   # the API's 403 (platform guard) = direct; a colo= line = still proxied
 ```
 
 WebSockets need no special handling — Caddy proxies the Upgrade handshake.
