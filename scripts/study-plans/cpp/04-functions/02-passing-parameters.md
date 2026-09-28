@@ -1,6 +1,20 @@
 ---
 title: Passing parameters — by value, by reference, by const reference
 minutes: 14
+seo-title: C++ Pass by Value vs Pass by Reference and Const Reference
+description: Pass by value copies the argument, by reference aliases it, by const reference reads it without a copy. When to use each in C++, and returning several values.
+question: What is the difference between pass by value and pass by reference in C++?
+answer: In C++, pass by value gives the function its own copy of the argument, so changes stay inside the function; pass by reference (`T&`) makes the parameter another name for the caller's object, so writes go straight through and nothing is copied. A `const T&` parameter also avoids the copy but may only read, and it binds to temporaries and literals too.
+q: When should you pass by const reference in C++?
+a: Pass by `const T&` whenever you only read a parameter bigger than a couple of pointers — `std::string`, `std::vector`, structs, class objects — because it avoids the copy and its allocation. Small types such as `int`, `double`, `char`, pointers and `std::string_view` go by value.
+q: Why can't a non-const reference bind to a temporary?
+a: A `T&` parameter announces that the function will modify what it is given, and a literal or temporary has no variable for it to alias, so `void f(int& x); f(5);` does not compile. Take `const int&`, or `int` by value, if the function only reads.
+q: How do you return multiple values from a function in C++?
+a: Return a `std::pair` or a small `struct`, and unpack it with C++17 structured bindings: `auto [lo, hi] = minMax(values);`. A `std::pair` suits two anonymous halves of equal standing; a named struct is clearer as soon as a reader would have to guess which member is which.
+q: Is returning a vector by value expensive in C++?
+a: No. Since C++17 a returned temporary is built directly in the caller's variable (guaranteed copy elision), and a returned local is at worst moved — its buffer handed over, not copied. Returning by value is the right default, even for containers and strings.
+q: When is an output parameter still the right choice?
+a: In three cases: a success flag plus a value, as in `bool tryParse(const std::string& text, int& out)`; reusing a caller's buffer, as `std::getline` does; and genuine in-out updates such as `void normalise(std::vector<double>& v)`. Otherwise, return the value.
 ---
 How an argument reaches a parameter decides two things: whether the function can change the caller's object, and how much the call costs. C++ gives you the choice explicitly, and the wrong default is the most common performance mistake in beginner code — a `std::vector` of a million elements copied on every call because the parameter said `std::vector<int>` instead of `const std::vector<int>&`. This lesson settles the three ways to pass, the cost model behind the choice, why returning a value beats filling an output parameter, and how to return several things at once.
 

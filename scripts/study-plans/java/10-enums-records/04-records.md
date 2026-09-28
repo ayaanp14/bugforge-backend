@@ -1,6 +1,20 @@
 ---
 title: Records — transparent immutable data
 minutes: 14
+seo-title: Java Records Explained: Compact Constructors and Immutability
+description: A Java record is a one-line immutable data class that generates its constructor, accessors, equals, hashCode and toString. Compact constructors and the rules.
+question: What is a record in Java?
+answer: A record in Java, standard since Java 16, is a class declared as a transparent, immutable carrier of data: `record Point(int x, int y) {}`. From that header the compiler generates a `private final` field per component, a canonical constructor, accessors named `x()` and `y()`, and `equals`, `hashCode` and `toString` over all components. Records are final and cannot extend another class.
+q: What is a compact constructor in a Java record?
+a: A compact constructor is the record's canonical constructor written without a parameter list, as in `public Range { … }`. It runs before the fields are assigned, so it can validate the parameters, throw on bad input or reassign them to normalise values; the fields are then set automatically from the parameters.
+q: Are Java records immutable?
+a: Shallowly. A record's fields are `final` and it has no setters, but a component that refers to a mutable object, such as a `List`, can still be changed by whoever holds that object. Copy such components in the compact constructor with `List.copyOf` for real immutability.
+q: Can a record extend a class in Java?
+a: No. Every record implicitly extends `java.lang.Record` and is `final`, so it can neither extend another class nor be extended. A record can implement any number of interfaces, which is how it joins a sealed hierarchy or becomes `Comparable`.
+q: What is the difference between a record and a class in Java?
+a: A record declares that a type is nothing but its components: immutable, compared by value, with everything generated. Use a class when the type has identity, mutable state, hidden fields such as a cache, a superclass, or a framework that needs a no-argument constructor and setters.
+q: Can a record have instance fields in Java?
+a: No — only the fields generated from its components. Declaring another instance field is a compile error, though static fields, static methods, instance methods and extra constructors that delegate to the canonical one are all allowed.
 ---
 Most classes that hold data — a point, a pair, a DTO, a parse result — need the same forty lines: private final fields, a constructor, accessors, `equals`, `hashCode`, `toString`. Java 16's **records** generate all of it from one line, and in doing so make a promise the compiler enforces: a record is a *transparent, immutable carrier of its components*. This lesson covers what a record generates, what you can customise, and the rules that keep the promise.
 

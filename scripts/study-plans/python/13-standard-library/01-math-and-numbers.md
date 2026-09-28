@@ -1,6 +1,18 @@
 ---
 title: math, statistics, fractions, decimal and random
 minutes: 14
+seo-title: Python Numbers: math, statistics, Decimal, Fraction, random
+description: Python's math, statistics, Decimal, Fraction and random modules: exact integer roots, sample vs population stdev, money rounding and seeded randomness.
+question: When should you use Decimal instead of float in Python?
+answer: Use `decimal.Decimal` for money, invoices and anywhere a decimal rounding rule is required. A float stores binary fractions, so `0.1 + 0.2` is not exactly `0.3`, while `Decimal("0.1") + Decimal("0.2")` is exactly `Decimal("0.3")`. Build a Decimal from a string, never a float, and round with `quantize` and a stated rounding mode such as `ROUND_HALF_UP`.
+q: What is the difference between stdev and pstdev in Python?
+a: `statistics.stdev` is the sample standard deviation, whose variance divides by n − 1; `statistics.pstdev` is the population standard deviation, whose variance divides by n. Use `stdev` when the data is a sample of a larger population and `pstdev` when it is the whole population. Both raise `StatisticsError` on empty input.
+q: Why does round(2.675, 2) give 2.67 in Python?
+a: The float literal 2.675 is stored as a binary value slightly below 2.675, so rounding to two places gives 2.67. For decimal rounding, use `Decimal("2.675").quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)`, which gives `Decimal("2.68")`; the default banker's rounding also gives 2.68 here, because 8 is even.
+q: How do I make random numbers reproducible in Python?
+a: Seed a private generator: `rng = random.Random(42)` produces the same sequence on every run for a given algorithm version, which tests and judged programs need. Prefer the instance to `random.seed`, because the module-level functions share one global generator that any other code can disturb.
+q: What is the difference between random and secrets in Python?
+a: `random` is a Mersenne Twister: statistically fine for simulations and games but predictable, so useless for security. `secrets` uses a cryptographically strong source and is the module for tokens, passwords and anything an attacker might guess, with `secrets.token_hex(16)`, `secrets.choice` and `secrets.randbelow`.
 ---
 The numeric modules divide the work cleanly: `math` for functions on ints and floats, `statistics` for descriptive statistics done correctly, `fractions` and `decimal` for the two kinds of exact arithmetic, `random` for reproducible pseudo-randomness and `secrets` for the unpredictable kind. This lesson goes through each with the functions that matter, the precision rules that decide which to use, and the two facts about `random` that judged and tested programs depend on: seeding makes it deterministic, and the module-level functions share one global generator.
 

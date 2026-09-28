@@ -1,6 +1,20 @@
 ---
 title: Console input and output
 minutes: 16
+seo-title: C++ cin, getline and cout: Console Input and Output
+description: How cin reads tokens, getline reads lines, and why getline after cin returns an empty string. Reading until end of input, endl vs newline, and fast C++ I/O.
+question: How do you read input in C++?
+answer: In C++ you read standard input with `std::cin` from `<iostream>`. `std::cin >> x` skips whitespace and reads one token of `x`'s type, ignoring line boundaries; `std::getline(std::cin, line)` reads a whole line, spaces included, and discards the newline. `while (std::cin >> x)` reads until the input ends, because the stream converts to false once a read fails.
+q: Why does `getline` skip input after `cin >>`?
+a: `std::cin >> n` stops at the newline after the number and leaves it in the buffer, so the next `std::getline` reads that empty remainder and returns an empty string. Call `std::cin.ignore()` before the first `getline`, or, if the line may carry trailing spaces, `ignore` with a count of `std::numeric_limits<std::streamsize>::max()` and the newline as its delimiter.
+q: What is the difference between `std::endl` and a newline character in C++?
+a: Both end the line, but `std::endl` also flushes the stream, forcing the buffered text out with a system call. In a loop printing many lines those flushes can turn a fast program into a timeout, so write the newline character instead; the stream still flushes when its buffer fills and when the program ends.
+q: What does `ios::sync_with_stdio(false)` do?
+a: It switches off the synchronisation between the C++ streams and C's `stdio`, which makes `cin` and `cout` several times faster on large inputs; after it, do not mix `scanf` or `printf` with the streams. It is paired with `std::cin.tie(nullptr)`, which stops `cin` flushing `cout` before every read.
+q: Why is `while (!cin.eof())` wrong?
+a: `eof()` becomes true only after a read has already hit the end of the input, so the loop runs once more after the last value, its read fails, and the last value is processed twice. Test the read itself instead: `while (std::cin >> x)` or `while (std::getline(std::cin, line))`.
+q: How do you print a double with 2 decimal places in C++?
+a: Include `<iomanip>` and write `std::cout << std::fixed << std::setprecision(2) << value;`. Both manipulators are sticky, so they apply to every later floating-point value until changed; without them the default format prints six significant digits and may switch to scientific notation.
 ---
 Every exercise in this track — and every coding-round harness, contest judge and command-line tool — is a program that reads standard input and writes standard output. The C++ streams do this well once you know three facts: `>>` reads whitespace-separated tokens and skips the whitespace around them; `std::getline` reads a whole line, spaces included, and consumes the newline; and switching from the first to the second leaves a newline behind that you must throw away. This lesson fixes those facts, the read-until-the-input-ends loops, and the output habits that keep a judged program fast and its output exact.
 

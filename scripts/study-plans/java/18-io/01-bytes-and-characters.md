@@ -1,6 +1,20 @@
 ---
 title: Bytes and characters — streams, readers and encodings
 minutes: 14
+seo-title: Java InputStream vs Reader: Byte and Character Streams
+description: Java byte streams move raw bytes; Reader and Writer move text through a charset such as UTF-8. The two hierarchies, the decorator pattern, try-with-resources.
+question: What is the difference between byte streams and character streams in Java?
+answer: Byte streams in Java — `InputStream` and `OutputStream` — read and write raw bytes, while character streams — `Reader` and `Writer` — read and write text. A charset such as UTF-8 maps between the two, and `InputStreamReader` and `OutputStreamWriter` are the bridges. Files, sockets and `System.in` are byte streams; a `Reader` is a text view over one.
+q: Why does InputStream read() return an int in Java?
+a: So it can return -1 at the end of the stream without clashing with a real byte: bytes come back as 0 to 255 inside an `int`, which leaves -1 free as the end marker. `Reader.read()` does the same for characters.
+q: Why should I always specify a charset in Java?
+a: Before Java 18, `getBytes()`, `new String(bytes)`, `FileReader` and `FileWriter` used the platform default — UTF-8 on Linux, often Windows-1252 on Windows — so one program wrote different bytes on different machines. Java 18 made UTF-8 the default; passing `StandardCharsets.UTF_8` still keeps code correct on older JDKs.
+q: What is the decorator pattern in java.io?
+a: Streams wrap other streams that share their interface, each layer adding one feature. A `BufferedReader` over an `InputStreamReader` over a `FileInputStream` reads bytes from a file, decodes them to characters and buffers them with `readLine()`; closing the outermost layer closes the whole chain.
+q: What is the difference between String length() and getBytes().length?
+a: `length()` counts UTF-16 code units, `getBytes(StandardCharsets.UTF_8).length` counts encoded bytes, and `codePointCount` counts characters as a person would. The three agree for ASCII text and differ for accented letters, CJK and emoji.
+q: Why does é show up as Ã© in Java?
+a: The UTF-8 bytes of `é` (`c3 a9`) were decoded as ISO-8859-1 or another single-byte charset, which turns each byte into a character of its own. This garbling is called mojibake; decode text with the same charset that encoded it.
 ---
 Java's I/O library looks enormous — sixty-odd classes in `java.io` alone — and is built from three ideas. **Byte streams** (`InputStream`/`OutputStream`) move raw bytes. **Character streams** (`Reader`/`Writer`) move text, and the bridge between the two is a **charset**, the rule for turning characters into bytes. And every stream class is a **decorator**: you wrap a raw source in layers that add buffering, encoding, or typed reads. Once those three ideas are in place the sixty classes are four small families, and the encoding bugs that fill Stack Overflow — mojibake, "unmappable character", wrong byte counts — become predictable.
 

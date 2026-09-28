@@ -1,6 +1,18 @@
 ---
 title: Const correctness — reading declarations right to left
 minutes: 13
+seo-title: C++ Const Correctness: Pointer to Const vs Const Pointer
+description: Read C++ declarations right to left: const before the asterisk protects the pointee, after it the pointer. Const parameters and const member functions.
+question: What is the difference between `const int*` and `int* const`?
+answer: `const int* p` is a pointer to a const int: you cannot change the value through `p`, but `p` can point elsewhere. `int* const p` is a const pointer to an int: the value can change, but `p` cannot be reseated. Read C++ declarations right to left — `const` left of the `*` applies to the pointee, right of it to the pointer; `const int* const` locks both.
+q: What does const correctness mean in C++?
+a: Const correctness means marking everything that does not modify an object as `const` — read-only parameters as `const T&`, non-mutating member functions as `const`, read-only pointers as `const T*` — so the compiler proves which code can change what. It spreads through a codebase, which is why it is a day-one habit rather than a cleanup.
+q: Is `const int*` the same as `int const*`?
+a: Yes. Both declare a pointer to a const int; they differ only in style. What matters is which side of the `*` the `const` sits on, and `const T*` is the more common spelling.
+q: Does a pointer to const make the object constant?
+a: No. `const int* p` only forbids writing through `p`. The object itself may still be modified through its own name or another non-const pointer, and `p` will see the new value. `const` on a pointer or reference describes your view, not the thing.
+q: When is `const_cast` safe to use?
+a: Writing through the result of `const_cast` is defined only when the original object was not declared `const`; casting the `const` off a truly const object and writing is undefined behaviour. The legitimate use is calling a legacy API that is not const-correct but does not write. In your own code, a `const_cast` means a signature is wrong.
 ---
 `const` is the promise "this code does not modify that object", and the compiler enforces it. Placed on a parameter it tells the caller their object is safe; placed on a member function it tells a `const` object which operations are allowed; placed on a pointer it says whether you may change the pointee, the pointer, or neither. This lesson settles the three pointer placements and the right-to-left reading rule, the conversions `const` allows and forbids, why the property spreads through a codebase, and why `const_cast` is a warning sign rather than a tool.
 

@@ -1,6 +1,20 @@
 ---
 title: Stream operators — printing and reading your own types
 minutes: 14
+seo-title: C++ Stream Operator Overloading: ostream and istream
+description: Overload the stream insertion and extraction operators in C++ so cout, files and string streams can print and read your class, and why they are free functions.
+question: How do you overload the << operator in C++?
+answer: Write a free function `std::ostream& operator<<(std::ostream& os, const T& value)` that inserts the value's parts into `os` and returns `os`. It must be a non-member because the left operand is the stream, a class you cannot add members to; declare it a `friend` only if it needs private data. Returning the stream is what lets `std::cout << a << b` chain.
+q: Why is operator<< a friend function and not a member?
+a: A member operator always takes its own class as the left operand, so a member `operator<<` would have to be called as `m << std::cout`. The stream is on the left, so the operator is a free function; it is made a `friend` only so it can read private members, and needs no friendship when public accessors exist.
+q: How do you overload the >> operator for input in C++?
+a: Write `std::istream& operator>>(std::istream& is, T& value)`. Read into local variables, check every piece, assign to `value` only when the whole thing parsed, and call `is.setstate(std::ios::failbit)` on malformed input. Returning `is` keeps `if (std::cin >> value)` and `while (std::cin >> value)` working exactly as they do for `int`.
+q: Why does std::setw not pad my custom type?
+a: `std::setw` applies to the next single insertion only and then resets to zero. If your `operator<<` inserts several pieces, only the first is padded. Build the whole text in a `std::ostringstream` and insert it into the stream once, so the caller's width, alignment and fill apply to all of it.
+q: Should an overloaded operator<< print a newline?
+a: No. Leave the line ending to the caller, who may want the value in the middle of a line, and insert into the stream you were given rather than `std::cout`. Also restore any sticky state you change, such as `std::setfill` or the precision, or every number the caller prints afterwards is affected.
+q: How do I make my own class work with std::format?
+a: Specialise `std::formatter` for it. The shortest correct version inherits `std::formatter<std::string>`, builds the text and hands it to the base class's `format`, which already understands width, alignment and fill. `std::format` has no input counterpart, so a type that must be read back still needs `operator>>`.
 ---
 `std::cout << total` works for `int` and `std::string` because the library wrote an `operator<<` for each; it works for your `Money` the moment you write one too, and then every stream — `std::cout`, a file, an `std::ostringstream` — can print it. The reverse, `std::cin >> m`, is the same idea with a harder contract, because input can be malformed and the stream has a state the reader is expected to check. This lesson settles the two signatures, why they are free functions, what "return the stream" and "respect the stream's state" mean in practice, how to read a structured value back safely, and where `std::format` fits.
 

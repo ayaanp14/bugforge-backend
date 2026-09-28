@@ -1,6 +1,18 @@
 ---
 title: Parsing text by hand — tokenizers, recursive descent, CSV and error positions
 minutes: 14
+seo-title: Recursive Descent Parser in JavaScript: Tokenizer and CSV
+description: Write a parser in JavaScript: a sticky-regex tokenizer, a recursive-descent parser that evaluates arithmetic with precedence, CSV quoting and positioned errors.
+question: What is a recursive descent parser?
+answer: A recursive descent parser is a hand-written parser with one function per grammar rule, where each function consumes the tokens of its rule and calls the functions of the rules inside it. Operator precedence falls out of the nesting: `expr` calls `term` for its operands, so `*` binds tighter than `+`, and a `while` loop gives left-associativity. It reads tokens produced by a separate tokenizer.
+q: How do you evaluate a math expression string in JavaScript without eval?
+a: Tokenize the string with a sticky regex into numbers, operators and parentheses, then parse it by recursive descent with three rules, `expr` for `+` and `-`, `term` for `*` and `/`, and `factor` for numbers, unary minus and bracketed sub-expressions, computing each value as the rules return. `2 + 3 * (4 - 1)` then evaluates to 11 with the right precedence.
+q: What does the sticky y flag do in a JavaScript regex?
+a: The `y` flag makes `exec` match only at exactly `lastIndex` and advance `lastIndex` past the match, instead of searching ahead. That turns one regex, an alternation of every token type with named groups, into a tokenizer: each call reads the next token, and a failed match pinpoints the position of an illegal character.
+q: Why can't you parse CSV with split(",")?
+a: Because a CSV field may be quoted, and inside quotes commas and line breaks are literal and a double quote is written as two. `split(",")` cuts quoted fields apart. A character-by-character state machine that tracks whether it is inside quotes handles all the rules; real projects use a library such as `csv-parse` or `papaparse`.
+q: How do you write good parse error messages?
+a: Carry a position on every token and every error, report the unexpected token and what was expected, and convert the offset to a line and column for multi-line input, printing the line with a caret under the problem. Stop at the first error in a language; collect errors per record in a data file.
 ---
 Regexes stop where structure starts: nesting, quoting rules, grammars. For those you write a **parser**, and the good news is that the two techniques covering almost every case fit in a page each. A **tokenizer** turns characters into a list of typed tokens using one sticky regex; a **recursive-descent parser** turns tokens into a tree (or a value) with one function per grammar rule. Add position tracking and you get error messages that point at the problem. This lesson builds both for arithmetic expressions, walks through the quoting rules of CSV — the format everyone thinks is trivial and nobody parses right the first time — and ends with a small key/value grammar and the design habits that make hand-written parsers maintainable.
 

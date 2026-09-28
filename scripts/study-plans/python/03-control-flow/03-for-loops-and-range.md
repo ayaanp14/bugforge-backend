@@ -1,6 +1,20 @@
 ---
 title: For loops, range, enumerate and zip
 minutes: 14
+seo-title: Python For Loops: range(), enumerate() and zip() Explained
+description: A Python for loop visits each item of an iterable. How range() counts, when to use enumerate and zip, looping over a dict and why not to edit a list mid-loop.
+question: How does a for loop work in Python?
+answer: A Python `for` loop is a for-each: it takes any iterable — a list, string, range, dictionary, file or generator — and binds the loop variable to each element in turn. There is no index unless you ask for one with `enumerate`; `range` supplies counting and `zip` walks two sequences together. `break`, `continue` and `else` work as they do in a `while` loop.
+q: How does range() work in Python?
+a: `range(start, stop, step)` produces integers from `start` up to but not including `stop`: `range(5)` gives 0 to 4 and `range(0, 10, 3)` gives 0, 3, 6, 9. It is lazy, computing values on demand, so `range(10 ** 9)` costs nothing until iterated. Count down with `range(n - 1, -1, -1)` or `reversed(range(n))`.
+q: How do I get the index in a Python for loop?
+a: Use `enumerate`: `for i, name in enumerate(names):` yields each index with its element, and `enumerate(names, start=1)` counts from 1 for display. `for i in range(len(xs))` is right only when the body needs the index and not the element, or assigns to `xs[i]`.
+q: What does zip do in Python?
+a: `zip` walks several iterables in parallel, yielding tuples of corresponding elements, as in `for name, score in zip(names, scores):`. It stops silently at the shortest input; since Python 3.10, `zip(a, b, strict=True)` raises `ValueError` on a length mismatch. `dict(zip(keys, values))` builds a mapping from two lists.
+q: How do I loop over a dictionary in Python?
+a: `for k in d` iterates the keys, `for v in d.values()` the values, and `for k, v in d.items()` both at once. Dictionaries keep insertion order since Python 3.7, so they iterate in the order their keys were added; `for k in sorted(d)` visits the keys in sorted order.
+q: How do I remove items from a list while iterating over it in Python?
+a: Do not remove them inside a loop over that same list: the elements shift and the loop skips one. Build a new list instead, such as `kept = [x for x in xs if keep(x)]`, or iterate over a copy with `for x in list(xs):`. Changing a dictionary's size during iteration raises `RuntimeError`.
 ---
 Python's `for` is a *for-each*: it takes an iterable — a list, a string, a range, a dictionary, a file, a generator — and binds the loop variable to each element in turn. There is no index unless you ask for one, and asking is done with `enumerate`; walking two sequences together is `zip`; counting is `range`. Learners from C write `for i in range(len(xs)): x = xs[i]`, which works and marks them as learners. This lesson fixes the idioms, explains `range` precisely, and states the one rule about modifying a collection while iterating over it.
 

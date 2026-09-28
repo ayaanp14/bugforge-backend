@@ -1,6 +1,20 @@
 ---
 title: java.time — dates, times, zones and durations
 minutes: 15
+seo-title: Java Date and Time API: LocalDate, Instant and ZonedDateTime
+description: The java.time API gives Java immutable date and time types: Instant, LocalDate, LocalDateTime and ZonedDateTime. Period vs Duration, zones, DateTimeFormatter.
+question: What is the difference between LocalDateTime, ZonedDateTime and Instant?
+answer: In Java's `java.time`, `Instant` is a point on the UTC timeline, used for timestamps and logs. `LocalDateTime` is a date and wall-clock time with no zone, so on its own it cannot name a moment. `ZonedDateTime` adds a region's zone rules, such as `Asia/Kolkata`, including daylight saving time. Use the narrowest type that fits: a birthday is a `LocalDate`.
+q: What is the difference between Period and Duration in Java?
+a: `Period` is an amount of calendar time in years, months and days; `Duration` is an exact number of seconds and nanoseconds. They differ across a daylight-saving change: adding a one-day `Period` keeps the wall-clock time, while adding a 24-hour `Duration` moves exactly 24 hours.
+q: What does plusMonths(1) return for January 31 in Java?
+a: February 29 in a leap year and February 28 otherwise: month arithmetic clamps to the last valid day of the month instead of overflowing. For the same reason `plusMonths(1).plusMonths(1)` can differ from `plusMonths(2)`.
+q: How do you convert a time between time zones in Java?
+a: Call `withZoneSameInstant(ZoneId.of("America/New_York"))` on a `ZonedDateTime`: it keeps the same moment and changes the wall-clock time. `withZoneSameLocal` keeps the wall-clock time instead, which is a different moment. Use region ids, not abbreviations such as IST.
+q: Why replace SimpleDateFormat with DateTimeFormatter?
+a: `SimpleDateFormat` is mutable and not thread-safe, so one shared as a static field corrupts results under concurrent use. `DateTimeFormatter` is immutable and thread-safe; build it once with `ofPattern` and an explicit `Locale`.
+q: How do you count the days between two dates in Java?
+a: `ChronoUnit.DAYS.between(d1, d2)` returns the signed number of days from `d1` to `d2`. `Period.between(d1, d2)` gives years, months and days instead, and `Duration.between` measures the time between two times or instants.
 ---
 Dates are where careful programmers become humble. Months are zero-based in the old API, a day is not always 24 hours, "next month" from January 31 has no obvious answer, and the same instant is Tuesday in Tokyo and Monday in Toronto. `java.time` (Java 8, from Joda-Time's author) gets this right by refusing to blur the distinctions: an **instant** on the timeline, a **local** date or time with no zone, a **zoned** date-time, and two kinds of amount — **`Duration`** (seconds) and **`Period`** (years/months/days). Every type is immutable and thread-safe. This lesson is the map of those types, the arithmetic and formatting you do daily, and the legacy classes you must recognise and avoid.
 

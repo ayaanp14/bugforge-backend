@@ -1,6 +1,20 @@
 ---
 title: JSON in depth — custom encoders, decoders, dataclasses and config files
 minutes: 13
+seo-title: Python JSON: Custom Encoders, Dataclasses and Dates
+description: Make Python's json serialise dates, Decimal, sets and dataclasses with default= and asdict, decode into your own types, and read TOML config with tomllib.
+question: How do you fix the "not JSON serializable" error in Python?
+answer: `json.dumps` raises `TypeError: Object of type ... is not JSON serializable` for values JSON has no type for, such as dates, `Decimal`, sets and dataclasses. Pass a `default=` function that converts them, returning `o.isoformat()` for a date or datetime, `str(o)` for a `Decimal` and `sorted(o)` for a set, and raising `TypeError` for anything else; convert dataclasses with `dataclasses.asdict` first.
+q: How do I convert a dataclass to JSON in Python?
+a: Call `dataclasses.asdict(obj)`, which returns a plain dict recursively, and pass that to `json.dumps`. To rebuild a flat dataclass, unpack the parsed dict into the constructor: `Item(**json.loads(text))`. Nested dataclasses need rebuilding from the inside out, or a `from_dict` class method that knows the shape.
+q: How do I read decimal numbers from JSON without float errors?
+a: Pass `parse_float=Decimal` to `json.loads` or `json.load`, so every JSON number that is not an integer is read as an exact `Decimal` instead of a float. When writing, convert `Decimal` values to strings in a `default=` function to keep their exactness.
+q: What does object_hook do in json.loads?
+a: `object_hook` is a function that `json.loads` calls on every decoded JSON object, innermost first, and whose return value replaces that dict. Use it to turn objects of a known shape into your own class, returning the dict unchanged when the shape is not recognised.
+q: What is JSON Lines?
+a: JSON Lines is a format with one JSON value per line. It suits logs and streams because a file can be appended to and processed one record at a time, with `json.loads(line)` for each line, whereas a single large JSON array must be read entirely before any of it can be used.
+q: How do I read a TOML file in Python?
+a: Use the standard-library `tomllib` module, added in Python 3.11: open the file in binary mode and call `tomllib.load(f)`, which returns a dict of typed values. `tomllib` only reads TOML; writing it needs a third-party package. INI files are read with `configparser`, whose values are all strings.
 ---
 Module 7 covered `json.loads`/`dumps` and the mapping between JSON and Python values. This lesson is about the edges: the objects JSON cannot serialise and the `default=` hook and `JSONEncoder` subclass that teach it to; `object_hook` and `object_pairs_hook` for turning parsed dicts back into your types; dataclasses in and out via `asdict`; dates as ISO strings; `JSONDecodeError` and validation; JSON Lines for streams; and the two other configuration formats in the standard library, TOML via `tomllib` and INI via `configparser`, with the rule for choosing among them.
 

@@ -1,6 +1,22 @@
 ---
 title: Theory drill — the questions, the two-sentence answers, and where each one goes deeper
 minutes: 14
+seo-title: JavaScript Interview Questions and Answers: Theory Round
+description: JavaScript interview questions with two-sentence answers: scope and hoisting, closures, this, prototypes, the event loop, promises, CORS and memory leaks.
+question: What are the most common JavaScript interview questions?
+answer: The most common JavaScript interview questions cover `var` versus `let` and `const`, hoisting and the temporal dead zone, `==` versus `===`, closures, `this`, prototypes, shallow versus deep copies, the event loop with microtasks and macrotasks, promises and `async`/`await`, event delegation, CORS and memory leaks. Answer each in two precise sentences, then stop and let the interviewer ask the follow-up.
+q: What is the difference between `var`, `let` and `const`?
+a: `var` is function-scoped and hoisted as `undefined`; `let` and `const` are block-scoped and sit in a temporal dead zone until their declaration runs, so earlier access throws a `ReferenceError`. `const` fixes the binding, not the value — a `const` object can still be mutated.
+q: What is a closure in JavaScript?
+a: A closure is a function that keeps access to the variables of the scope where it was created, even after that scope has returned. Closures implement private state, memoisation, `once` and the module pattern, and they can leak memory when they capture large scopes.
+q: How does the JavaScript event loop work?
+a: One thread runs the current script, then drains every microtask — promise reactions and `queueMicrotask` callbacks — then takes one macrotask such as a timer or I/O callback, and repeats. Node adds `process.nextTick`, which runs before promise microtasks, and phases for timers, I/O and `setImmediate`.
+q: How is `this` determined in JavaScript?
+a: By how the function is called: with `new`, `this` is the new instance; with `call`, `apply` or `bind`, it is the value passed; as `obj.method()`, it is `obj`; as a plain call, it is `undefined` in strict mode. Arrow functions have no `this` of their own and use the enclosing one.
+q: What is the difference between `==` and `===` in JavaScript?
+a: `===` compares type and value with no conversion; `==` first coerces its operands by a fixed algorithm — `null` and `undefined` equal only each other, strings are converted to numbers, objects to primitives. Use `===`, and `Object.is` when `NaN` or the sign of zero matters.
+q: What is the difference between microtasks and macrotasks?
+a: Microtasks — promise callbacks and `queueMicrotask` — all run before the event loop moves on, so an endless chain of them starves rendering and I/O. Macrotasks — timers, I/O callbacks, events — run one per turn of the loop, which is why a resolved promise's `then` runs before a `setTimeout(fn, 0)`.
 ---
 The theory part of a JavaScript interview is a fixed repertoire: perhaps forty questions, asked in slightly different words, for which the interviewer wants a crisp answer and then one level of depth. The failure mode is not ignorance — you have covered every one of these in the previous fifteen modules — but a rambling answer that never lands, or a crisp answer that cannot go one level further. This lesson is the repertoire as flashcards: the question, the answer in two sentences, the follow-up the interviewer is likely to add, and the module that holds the depth. Drill it aloud; the exercises give you a spaced-repetition scheduler and an answer grader to practise with.
 

@@ -1,6 +1,20 @@
 ---
 title: WeakMap, WeakSet and WeakRef — data that does not keep objects alive
 minutes: 11
+seo-title: JavaScript WeakMap vs Map: WeakSet and WeakRef Explained
+description: A WeakMap holds object keys weakly, so an entry vanishes when its key is garbage collected. Why it has no size or iteration, its three uses, and WeakRef.
+question: What is a WeakMap in JavaScript?
+answer: A `WeakMap` is a JavaScript map whose keys must be objects and are held weakly: once nothing else refers to a key object, it can be garbage collected and its entry disappears with it. It offers only `get`, `set`, `has` and `delete` — no iteration, no `size` — and is used for per-object metadata, private data and memoisation without memory leaks.
+q: What is the difference between WeakMap and Map?
+a: A `Map` holds its keys strongly, so every key object stays in memory for as long as the map exists; a `WeakMap` lets a key be collected once nothing else refers to it. In exchange a WeakMap accepts only object keys and cannot be iterated, sized or cleared.
+q: Why can't you iterate a WeakMap?
+a: Listing the keys would let a program observe garbage collection, and the design forbids that. If the entries could be enumerated, the collector could never remove one unnoticed, so a WeakMap offers only `get`, `set`, `has` and `delete` — no `keys()`, no `size`, no `clear`.
+q: Can a WeakMap key be a string?
+a: No. `weakMap.set("str", 1)` throws `TypeError: Invalid value used as weak map key`, because a primitive can never become unreachable, so holding it weakly means nothing. Since 2023 non-registered symbols are allowed too; on Node 16 keys must be objects.
+q: What is a WeakSet used for?
+a: A `WeakSet` records whether an object has been seen without keeping it alive: marking visited nodes in a traversal, tracking instances that passed a brand check, or preventing double initialisation. It supports only `add`, `has` and `delete`; to list the members you need a `Set`.
+q: When should you use WeakRef in JavaScript?
+a: Rarely. A `WeakRef` holds an object without keeping it alive, and `deref()` returns `undefined` once it has been collected, at a time the engine chooses. Its legitimate uses are droppable caches of large recomputable values and backstop cleanup of external resources — never logic that must run.
 ---
 A `Map` holds its keys strongly: as long as the map exists, every key object stays in memory even if nothing else refers to it. That is what you want for a cache keyed by ids and exactly what you do not want for "extra data about *this* object" — a DOM node's handlers, a parsed result for a request object, a per-instance secret. `WeakMap` and `WeakSet` hold keys **weakly**: when the key object becomes unreachable elsewhere, the entry disappears with it, and no leak accumulates. `WeakRef` and `FinalizationRegistry` (2021) expose the same idea for single references. This lesson covers what the weak collections can and cannot do, the three patterns they exist for, and why you will rarely reach for `WeakRef`.
 

@@ -1,6 +1,20 @@
 ---
 title: The eight primitive types
 minutes: 14
+seo-title: Java Primitive Data Types: Sizes, Ranges and Defaults
+description: Java has eight primitive types: byte, short, int, long, float, double, char and boolean. Their sizes, ranges, default values and literals, and when to use each.
+question: What are the primitive data types in Java?
+answer: Java has eight primitive data types: `byte`, `short`, `int` and `long` for whole numbers of 8, 16, 32 and 64 bits, `float` and `double` for floating-point numbers, `char` for a 16-bit UTF-16 code unit, and `boolean` for `true` or `false`. Their sizes are the same on every JVM, and every other type in Java is a reference type.
+q: What is the maximum value of int in Java?
+a: `Integer.MAX_VALUE` is 2,147,483,647, about 2.1 billion, because `int` is a 32-bit signed two's complement number. Values that can go beyond it, such as timestamps in milliseconds or file sizes in bytes, need a `long`, whose maximum is 9,223,372,036,854,775,807.
+q: What is the size of boolean in Java?
+a: The Java language does not specify it: a `boolean` holds one bit of information, `true` or `false`. HotSpot, the common JVM, uses one byte for a `boolean` field or array element. Unlike in C, a `boolean` never converts to or from a number.
+q: What are the default values of primitive types in Java?
+a: Fields and array elements default to `0` for the integral types, `0.0` for `float` and `double`, the character with code 0 for `char`, and `false` for `boolean`. Local variables have no default: reading one before it is assigned is a compile error.
+q: Why does Java have primitive types if everything is an object?
+a: For speed. An `int` is one machine word that adds in a single instruction, while an `Integer` is a heap object with a header, a pointer to follow and garbage-collector work. Wrapper classes and autoboxing cover the places an object is required, such as `List<Integer>`.
+q: Is char signed or unsigned in Java?
+a: `char` is the only unsigned primitive: a 16-bit value from 0 to 65,535 holding one UTF-16 code unit. Arithmetic on a `char` yields an `int`, so `'a' + 1` is `98`, and `ch - '0'` turns a digit character into its value.
 ---
 Java has exactly eight primitive types, and there will never be a ninth. Everything else — every class, array, enum, record, interface — is a reference type. Knowing the eight cold, including their sizes, ranges and literal syntax, is the foundation of every numeric bug you will ever debug.
 

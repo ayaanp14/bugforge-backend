@@ -1,6 +1,20 @@
 ---
 title: Writing fast JavaScript — the habits that survive measurement
 minutes: 13
+seo-title: How to Make JavaScript Faster: Performance Tips That Work
+description: Faster JavaScript starts with Big-O: Sets and Maps for lookups, fewer allocations, stable shapes, batching, workers and streams, and the folklore to ignore.
+question: How do you make JavaScript code faster?
+answer: Profile first, then fix the algorithm: replace nested scans with a `Set` or `Map`, avoid `shift()` queues and spreading accumulators in `reduce`, and remove N+1 queries. Next, allocate less and keep object shapes and types stable in the measured hot path, batch DOM writes and network requests, stream large data, and move CPU-heavy work to a worker. Measure before and after every change.
+q: Is a `for` loop faster than `forEach` or `map`?
+a: Not in a way that usually matters: V8 inlines small callbacks, so `arr.map(f)` with a tiny `f` compiles to a loop. Choose whichever reads better, and switch only when a profiler names that loop as a hot spot.
+q: Why is `shift()` slow for a queue in JavaScript?
+a: `shift()` removes the first element and moves every remaining one down, so each dequeue is O(n) and a queue processed that way becomes O(n²). Use an index pointer that walks the array instead, or a linked deque.
+q: Why is spreading the accumulator in `reduce` slow?
+a: `[...acc, x]` or `{ ...acc }` inside `reduce` copies the whole accumulator on every step, so building n items costs O(n²) time and leaves n throwaway copies for the garbage collector. Push into a local array or assign into one object instead.
+q: How do you keep the UI responsive during heavy computation?
+a: Split long work into chunks across tasks or frames so input and rendering can interleave, or move it to a Web Worker and transfer `ArrayBuffer`s to it without copying. Batch DOM writes as well, so the browser lays out once per frame.
+q: When are typed arrays worth using?
+a: For large numeric data — physics, charts, image data, signal processing. A `Float64Array` or `Int32Array` has a fixed element type, so there is no boxing or hole checking, memory is compact and predictable, and the underlying buffer can be transferred to a worker without copying.
 ---
 After profiling has pointed at a hot spot, what do you actually change? The techniques that reliably help are few and mostly boring: fix the algorithm, use the right data structure, avoid allocating in the loop, keep shapes and types uniform, batch work that crosses a boundary, and move CPU-heavy work off the main thread. The techniques that do not help — or hurt — are the folklore: `for` versus `forEach`, string concatenation tricks, object pools, avoiding closures. This lesson is the first list with reasons, the second list with why it is obsolete, and the meta-rule: every item here is a *response to a measurement*, never a default style.
 

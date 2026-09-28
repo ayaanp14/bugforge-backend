@@ -1,6 +1,20 @@
 ---
 title: The GIL and the three models — threads, processes, asyncio
 minutes: 14
+seo-title: What Is the GIL? Python Threads vs Processes vs asyncio
+description: The GIL lets one thread run Python bytecode at a time. Why threads help I/O-bound but not CPU-bound code, and when to use threads, processes or asyncio.
+question: What is the GIL in Python?
+answer: The global interpreter lock (GIL) is the mutex in CPython that lets only one thread execute Python bytecode at a time, protecting the reference counts that manage memory. A thread releases it while blocked on I/O, and some C extensions such as NumPy release it during heavy loops. Threads therefore speed up code that waits, but not CPU-bound pure-Python code.
+q: Why don't Python threads speed up CPU-bound code?
+a: Only the thread holding the GIL runs bytecode, so two threads doing pure-Python arithmetic take as long as one thread doing both, sometimes longer from contention. CPU-bound work needs processes, through `multiprocessing` or `ProcessPoolExecutor`, or a C extension that releases the GIL.
+q: When should I use threads, processes or asyncio in Python?
+a: Use processes for CPU-bound work, threads for I/O-bound work with a handful of tasks and blocking libraries, and asyncio for many concurrent waits such as thousands of connections. The test: if the I/O were instantly fast and the program were still slow, it is CPU-bound.
+q: Is `x += 1` atomic in Python?
+a: No. It reads the value, adds one and writes it back as separate bytecode steps, and a thread switch can happen between them, so two threads can read the same value and one increment is lost. Protect the compound operation with a `Lock`.
+q: Is Python getting rid of the GIL?
+a: Python 3.12 gave each sub-interpreter its own GIL, and Python 3.13 added an experimental free-threaded build that runs without it. The default CPython build still has the GIL, and on Python 3.11 and earlier there is no way to turn it off.
+q: How do you make concurrent Python output deterministic?
+a: Give each worker its own result slot, join every thread or gather every task before reading, then print the ordered results from the main thread. `executor.map` and `asyncio.gather` return results in submission order; `as_completed` does not, so sort what it yields.
 ---
 Python has three ways to do more than one thing at a time, and choosing among them starts from one fact about CPython: the *global interpreter lock* allows only one thread to execute Python bytecode at any moment. Threads therefore do not speed up CPU-bound Python code, but they do speed up code that *waits* — on the network, the disk, a subprocess — because a waiting thread releases the lock. Processes sidestep the lock with separate interpreters; asyncio gives waiting a single-threaded, explicit form. This lesson explains the GIL and its consequences, classifies work as CPU-bound or I/O-bound, gives the decision table for the three models, and states the rule that keeps concurrent programs testable and judgeable: collect results in a defined order, then print.
 

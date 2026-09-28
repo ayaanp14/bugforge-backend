@@ -1,6 +1,20 @@
 ---
 title: Compiler optimisation — what -O2 does for you and what it cannot
 minutes: 14
+seo-title: C++ Compiler Optimization: -O2 vs -O3 and the As-If Rule
+description: What GCC and Clang do at -O2: inlining, constant folding, dead-code elimination and vectorisation under the as-if rule, and which C++ micro-tricks are wasted.
+question: What does -O2 do in GCC and Clang?
+answer: `-O2` is the production optimisation level of GCC and Clang: it inlines small functions, folds constant expressions, eliminates dead code and dead stores, unrolls and vectorises simple loops, and turns some branches into conditional moves. Every transformation is permitted by the as-if rule, which requires only that the program's observable behaviour stays the same. The default, `-O0`, optimises nothing.
+q: What is the as-if rule in C++?
+a: The as-if rule lets the compiler transform a program in any way that leaves its observable behaviour unchanged — `volatile` accesses, data written to files and streams, and interaction with the environment. Everything else, such as which locals exist or how often an expression is evaluated, is the compiler's to rearrange, so a computation whose result is never output may be deleted outright.
+q: What is the difference between -O2 and -O3?
+a: `-O3` is `-O2` plus more aggressive inlining, loop unrolling and vectorisation. It produces larger code that is sometimes faster and sometimes not, so measure before choosing it. `-Ofast` goes further with `-ffast-math`, which reorders floating-point operations and ignores NaN.
+q: Does the inline keyword make functions faster?
+a: No. `inline` tells the linker a definition may appear in several translation units; the optimiser decides whether to inline a call by its own heuristics — body size, call count, whether the definition is visible. Inlining matters because the arguments become known values, which lets constants propagate through the body.
+q: Is `x << 1` faster than `x * 2`?
+a: No: at `-O2` the compiler emits the shift itself for a multiplication by a power of two, and for signed division it emits the correct sequence, which a bare right shift is not for negative numbers. Tricks like this, `++i` versus `i++` on an `int`, or caching `v.size()` in a local, are wasted effort.
+q: What does volatile do in C++?
+a: `volatile` makes every read and write of an object observable, so the compiler must perform each one, in order, and may not keep the value in a register. It exists for memory-mapped hardware and signal handlers and serves as a benchmark sink; it is not a synchronisation tool, and a shared `volatile int` is still a data race.
 ---
 The code the processor runs is not the code you wrote. At `-O2` the compiler inlines your small functions, folds every expression it can evaluate at compile time, deletes computations whose results are never used, replaces loops with closed forms and turns some branches into conditional moves — all under one licence, the **as-if rule**: any transformation is allowed as long as the program's observable behaviour is unchanged. Knowing what the optimiser does tells you which hand-optimisations are wasted, which measurements are lies, and why `constexpr` is a guarantee where a plain constant is a hope. The exercises simulate two things — a constant folder with dead-store elimination, and the branch predictor whose misses the optimiser cannot always remove.
 

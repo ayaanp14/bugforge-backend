@@ -1,6 +1,18 @@
 ---
 title: std::shared_ptr and std::weak_ptr — counted ownership and its cycles
 minutes: 15
+seo-title: C++ Shared and Weak Pointers: Reference Counting and Cycles
+description: A C++ shared pointer counts its owners and deletes the object when the last one goes; a weak pointer observes without owning and breaks reference cycles.
+question: How does `shared_ptr` work in C++?
+answer: `std::shared_ptr<T>` shares ownership of a heap object through a reference count kept in a control block. Each copy is one more owner and increments the count; each destroyed copy decrements it; when the count reaches zero the object is deleted at once. `std::make_shared` allocates the object and the control block together, and `use_count()` reports the current number of owners.
+q: What is the difference between `shared_ptr` and `weak_ptr`?
+a: A `shared_ptr` owns the object and keeps it alive; a `weak_ptr` only observes an object owned by `shared_ptr`s and does not count as an owner. To use the object, call `lock()` on the `weak_ptr`, which returns a `shared_ptr` that is empty if the object has already been destroyed.
+q: How do `shared_ptr` cycles cause memory leaks?
+a: If two objects hold `shared_ptr`s to each other, each keeps the other's count at one or more, so neither count ever reaches zero and neither object is deleted, even after every outside pointer is gone. Reference counting cannot collect cycles; make the back-pointer a `weak_ptr` to break it.
+q: Why use `make_shared` instead of `shared_ptr(new T)`?
+a: `std::make_shared<T>(args)` allocates the object and its control block in a single allocation, which is faster and keeps them adjacent; `std::shared_ptr<T>(new T)` makes two. It also never exposes a raw pointer that could accidentally be handed to a second control block.
+q: Is `shared_ptr` thread-safe?
+a: Only its reference count: the increments and decrements are atomic. The object it points to is not protected and needs its own lock. The atomic updates also make each copy of a `shared_ptr` cost many times an ordinary increment, so pass `const T&` to code that merely uses the object.
 ---
 Sometimes an object has no single owner: a cache entry used by several requests, a node in a graph reached from two parents, a callback that must outlive the code that registered it. `std::shared_ptr<T>` handles that with a **reference count**: every copy of the pointer is one owner, the count rises and falls as copies are made and destroyed, and the object is deleted when the last owner goes. It is the smart pointer beginners reach for first and experts reach for last, because counting has a cost, back-pointers need an escape from the count, and most objects that seem shared turn out to have an owner after all. This lesson covers the machinery, the cycle that leaks, `std::weak_ptr`, and when shared ownership is actually the right answer.
 

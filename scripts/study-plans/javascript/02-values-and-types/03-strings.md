@@ -1,6 +1,20 @@
 ---
 title: Strings — immutable text, template literals and the method toolkit
 minutes: 14
+seo-title: JavaScript Strings: Template Literals, slice vs substring
+description: JavaScript strings are immutable UTF-16 sequences. Template literals, slice vs substring vs substr, replace vs replaceAll, and why an emoji has length 2.
+question: Are strings immutable in JavaScript?
+answer: Yes. A JavaScript string is an immutable sequence of UTF-16 code units: every method that seems to change one, such as `toUpperCase`, `replace` or `trim`, returns a new string and leaves the original as it was, so you must assign the result — `s = s.toUpperCase()`. Immutability is also why strings compare by value with `===` and are safe to share and to use as object keys.
+q: What is the difference between slice and substring in JavaScript?
+a: Both return part of a string from a start index up to an exclusive end. `slice` accepts negative indexes that count from the end, so `s.slice(-3)` is the last three units, while `substring` turns negatives into 0 and swaps its arguments when start is greater than end. Prefer `slice`; `substr` is deprecated.
+q: How do you replace all occurrences of a string in JavaScript?
+a: Use `s.replaceAll("a", "b")` (ES2021) or `replace` with a regular expression that has the `g` flag. Plain `replace` with a string pattern replaces only the first occurrence, which is the trap people hit most often.
+q: Why is the length of an emoji 2 in JavaScript?
+a: `length` counts UTF-16 code units, not characters, and characters outside the Basic Multilingual Plane, such as most emoji, are stored as a surrogate pair of two units. Iterate with `for…of` or spread `[...s]` to work by code point; `split("")` breaks emoji apart.
+q: How do you sort strings alphabetically in JavaScript?
+a: Use `arr.sort((x, y) => x.localeCompare(y))`. The default sort and the `<` operator compare UTF-16 code units, so upper case sorts before lower case and `"10"` comes before `"9"`; `localeCompare` with `{ numeric: true }` also puts `"file10"` after `"file9"`.
+q: What are template literals in JavaScript?
+a: Template literals are strings written in backticks that interpolate any expression with `${…}` and may span several lines, keeping the newlines as written. A tag function placed before one makes a tagged template, which libraries use for SQL, GraphQL and styled components.
 ---
 Strings are the most-used values in most programs, and JavaScript's are simple in shape — immutable sequences of UTF-16 code units — with a rich, mostly consistent method set. The things that go wrong are predictable: forgetting immutability (`s.toUpperCase()` with no assignment), confusing `slice` and `substring` and `substr`, treating `length` as a character count when emoji are present, and reaching for the wrong search method. This lesson is the toolkit, organised by what you want to do, with the traps marked.
 
@@ -24,7 +38,7 @@ Every "modifying" method returns a new string; the original never changes.
 let s = "hello";
 s.toUpperCase();            // returns "HELLO", s is still "hello"
 s = s.toUpperCase();        // now s is "HELLO"
-s[0] = "j";                 // silently ignored (throws in strict mode? no — a no-op, even strict, for strings)
+s[0] = "j";                 // ignored in sloppy mode; a TypeError in strict mode, modules and classes
 ```
 
 Because they are immutable, strings are safe to share, compare by value with `===`, and use as object keys; and building a long string in a loop with `+=` is fine in modern engines (they use ropes internally), unlike Java — `array.join` is still clearer for many pieces.

@@ -1,6 +1,20 @@
 ---
 title: Wrapper classes and autoboxing
 minutes: 15
+seo-title: Java Wrapper Classes and Autoboxing: Integer Cache Explained
+description: Java wrapper classes such as Integer box primitives for collections and generics. How autoboxing works, why == fails above 127, and why unboxing null throws.
+question: What is autoboxing in Java?
+answer: Autoboxing in Java is the compiler's automatic conversion of a primitive into its wrapper object, such as `int` into `Integer`, by inserting a call like `Integer.valueOf`; unboxing is the reverse, through calls such as `intValue()`. It happens in assignments, method arguments, arithmetic and collections, so `list.add(7)` works on a `List<Integer>`, but each boxing may allocate an object.
+q: Why is `Integer == Integer` false for 128 but true for 127?
+a: `==` on objects compares identity, and `Integer.valueOf` caches the values -128 to 127, returning the same object for them. Outside that range each boxing creates a new object, so two equal values are different objects. Compare wrappers with `equals`, or unbox them first.
+q: Why does unboxing null throw NullPointerException?
+a: Unboxing calls a method such as `intValue()` on the wrapper, and a `null` reference has no object to call it on. The classic case is `int n = map.get(key);` for a missing key; use `map.getOrDefault(key, 0)` instead.
+q: What is the difference between int and Integer in Java?
+a: `int` is a primitive that holds a 32-bit value directly and cannot be `null`. `Integer` is an immutable wrapper object on the heap that can be `null` and can go where only objects are allowed, such as a `List<Integer>` or any other generic type.
+q: Why is `Integer.compare(a, b)` better than `a - b` in a comparator?
+a: The subtraction can overflow when the values are large and of opposite sign, wrapping to a result with the wrong sign and breaking the sort order. `Integer.compare` returns -1, 0 or 1 by comparing the values, so it never overflows.
+q: Why does `map.get(1)` return null on a `Map<Long, String>`?
+a: The literal `1` boxes to an `Integer`, and `Integer.equals` is false for any `Long`, even `1L`, because `equals` on wrappers requires the same class. Match the key type and call `map.get(1L)`.
 ---
 Every primitive has an object twin — `Integer` for `int`, `Double` for `double`, `Character` for `char`, `Boolean` for `boolean`, and `Byte`, `Short`, `Long`, `Float`. They exist so that primitives can go where only objects are allowed: collections, generics, reflection, `Object` parameters. Since Java 5 the compiler converts between the two automatically (**autoboxing** and **unboxing**), which is convenient and the source of three notorious bugs. This lesson is about using wrappers deliberately.
 

@@ -1,6 +1,20 @@
 ---
 title: Events — propagation, delegation and the event object
 minutes: 13
+seo-title: JavaScript Event Bubbling, Capturing and Event Delegation
+description: DOM events travel down in the capture phase and back up in the bubble phase. Event delegation, target vs currentTarget, preventDefault and custom events.
+question: What is event bubbling in JavaScript?
+answer: Event bubbling is the phase in which a DOM event, after reaching the element it happened on, travels back up through each ancestor to `document` and `window`, firing ordinary listeners innermost first. It follows the capture phase, which travels down from `window` to the target. Most events bubble; `focus`, `blur`, `mouseenter` and `mouseleave` do not.
+q: What is event delegation in JavaScript?
+a: Event delegation is handling events for many children with one listener on a common ancestor. Because events bubble, a click on any item reaches the container, where `e.target.closest("[data-id]")` finds the item that was clicked. It needs no per-item wiring, works for items added later, and leaves nothing to clean up when items are removed.
+q: What is the difference between target and currentTarget?
+a: `e.target` is the element the event happened on, the deepest one, perhaps an icon inside a button. `e.currentTarget` is the element whose listener is running, which is usually what a handler wants. The two differ whenever the event bubbled up from a descendant.
+q: What is the difference between preventDefault and stopPropagation?
+a: `preventDefault` cancels the browser's default action, such as following a link, submitting a form or toggling a checkbox. `stopPropagation` stops the event travelling to further elements in its path. They are independent: cancelling a form's submit does not stop the event bubbling, and stopping the bubble does not cancel the submit.
+q: Why does removeEventListener not work?
+a: Usually because it was given a different function from the one `addEventListener` received: an inline arrow creates a new function each time, so nothing matches and nothing is removed. Keep a reference to the handler, or register listeners with an `AbortController`'s `signal` and call `abort()` to remove them all at once.
+q: What does passive: true do on an event listener?
+a: It promises the browser that the listener will never call `preventDefault`, so the browser can scroll immediately instead of waiting for the handler to finish. A `preventDefault` call inside a passive listener is ignored with a console warning. Use it on scroll, wheel and touch listeners that only observe.
 ---
 Everything a user does reaches your code as an **event** dispatched on a DOM node and travelling through the tree — down from the document to the target (**capture**), then back up (**bubble**). Understanding that path explains delegation (one listener on a parent handling thousands of children), why `stopPropagation` is usually the wrong fix, what `target` and `currentTarget` mean, and how a framework's synthetic event system works. This lesson covers the listener API, the three phases, the event object and its defaults, delegation, custom events, and the listener-lifecycle mistakes that leak memory.
 

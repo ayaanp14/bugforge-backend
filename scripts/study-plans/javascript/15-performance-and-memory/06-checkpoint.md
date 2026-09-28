@@ -1,6 +1,14 @@
 ---
 title: Checkpoint — Performance and memory
 minutes: 24
+seo-title: JavaScript Performance Quiz: V8, Memory and Latency Test
+description: Test JavaScript performance with 12 questions and three programs on V8 hidden classes, benchmarking, garbage collection, memory leaks and p99 latency.
+q: What breaks hidden class sharing in V8?
+a: Adding properties in a different order, adding them conditionally or after construction, and `delete` — each gives objects different shapes or drops them into dictionary mode. Initialise every property in the constructor or literal, in the same order, every time.
+q: What keeps an object alive in JavaScript?
+a: Any path of references from a root — the global object, the current call stack or an engine reference — through properties, closure scopes, array elements, Map and Set entries or prototype links. An object with no such path is garbage and will be collected eventually.
+q: What does the width of a bar in a flame chart mean?
+a: Width is time: a wide bar is a function, together with everything it called, that ran for a long share of the recording, so the widest bars are the hot spots. Depth shows call nesting, not cost.
 ---
 This checkpoint covers V8's pipeline (interpreter, feedback, optimising compiler, deoptimisation), hidden classes and inline caches, elements kinds; benchmarking pitfalls and statistics, profiling and flame charts, complexity before constants; reachability, the generational collector, the leak catalogue and heap-snapshot diagnosis; the habits that survive measurement; and server-side latency — percentiles, round trips, caching layers, pools, event-loop lag, load testing.
 

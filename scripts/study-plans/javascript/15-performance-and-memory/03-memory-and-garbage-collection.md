@@ -1,6 +1,20 @@
 ---
 title: Memory and garbage collection — generations, reachability, and the leaks that survive it
 minutes: 13
+seo-title: JavaScript Garbage Collection and Memory Leaks Explained
+description: JavaScript frees only unreachable objects. How V8's young and old generations work, the common memory leaks, and finding them with heap snapshots.
+question: How does garbage collection work in JavaScript?
+answer: JavaScript garbage collection frees objects that can no longer be reached from a root — the global object, the active call stack and engine references. V8 splits the heap by age: new objects are allocated in a small young generation cleaned by fast scavenges, and survivors are promoted to the old generation, which is collected by incremental, concurrent mark-sweep-compact. Anything still referenced stays alive.
+q: What causes memory leaks in JavaScript?
+a: References kept without meaning to: unbounded caches, event listeners and timers that are never removed, closures that capture large scopes, detached DOM nodes still held in arrays or Maps, ever-growing global arrays and promises that never settle. The collector cannot free anything that is still reachable.
+q: How do you find a memory leak in Node.js?
+a: Watch `heapUsed` from `process.memoryUsage()` climb across garbage collections, then take two heap snapshots around the suspected activity and compare them. Objects whose count grew are the leak; the Retainers panel shows the path from a root that holds them. Sort by retained size, not shallow size.
+q: What does "JavaScript heap out of memory" mean?
+a: Node's old generation has reached its size limit — usually because of a leak, or because a whole file or result set was loaded into memory instead of streamed. `--max-old-space-size=4096` raises the limit, but that only buys time; it does not fix a leak.
+q: Is object pooling worth it in JavaScript?
+a: Rarely. V8 allocates short-lived objects with a pointer bump in the young generation, which is faster than checking objects in and out of a pool, and pools tend to leak. Reduce allocations in measured hot loops instead, with local accumulators or reused buffers.
+q: When should you use a `WeakMap` to avoid a leak?
+a: When you attach data to objects you do not own — DOM nodes, request objects, library instances — and the data should disappear with them. A `WeakMap` does not keep its keys alive, so once nothing else references a key, its entry can be collected with it.
 ---
 JavaScript frees memory for you, which is why memory problems in JavaScript are not "forgot to free" but "kept a reference": the collector reclaims only what is **unreachable**, and one surviving reference — a listener, a cache entry, a closure, a timer — keeps an entire object graph alive. Understanding how V8's collector works (a young generation for short-lived objects, an old generation for survivors), what reachability means precisely, and the handful of patterns that leak in practice turns "the process grows until it dies" from a mystery into a checklist. This lesson covers the heap and its generations, allocation cost, the leak catalogue, the diagnostic tools (heap snapshots, `process.memoryUsage`, comparisons), and the limits you should know.
 

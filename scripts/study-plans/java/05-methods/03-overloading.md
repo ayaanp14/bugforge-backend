@@ -1,6 +1,20 @@
 ---
 title: Overloading and how the compiler picks
 minutes: 14
+seo-title: Method Overloading in Java: Widening, Boxing and Varargs
+description: Method overloading in Java: methods share a name but differ in parameters. The compiler picks one at compile time, widening before boxing before varargs.
+question: What is method overloading in Java?
+answer: Method overloading in Java means declaring several methods with the same name but different parameter lists, such as `max(int, int)` and `max(double, double)`. The compiler picks one at compile time from the declared types of the arguments, preferring widening over boxing and boxing over varargs. Overloads cannot differ only in their return type.
+q: Can we overload a method by changing only the return type in Java?
+a: No. Overloads must differ in the number or types of their parameters; `int f()` and `long f()` in one class is a compile error, because a call `f()` gives the compiler no way to choose. Overloads may still have different return types when their parameter lists differ.
+q: What is the difference between overloading and overriding in Java?
+a: Overloading is several methods with the same name and different parameters, chosen at compile time from the arguments' declared types. Overriding is a subclass redefining an inherited method with the same signature, chosen at run time from the object's actual class.
+q: Which overload does `f(5)` call when `f(long)` and `f(Integer)` both exist?
+a: `f(long)`. Overload resolution runs in three phases, first without boxing, then with boxing, then with varargs, and stops at the first phase that finds a match; widening `int` to `long` is allowed in phase one, while boxing to `Integer` needs phase two.
+q: Why does `list.remove(1)` remove the element at index 1?
+a: On a `List<Integer>`, `remove(1)` matches `remove(int index)` exactly, which beats `remove(Object o)` because that would need boxing. To remove the value 1 instead, call `list.remove(Integer.valueOf(1))`.
+q: Does Java have default parameter values?
+a: No. Java offers defaults through overloads that fill in the missing values and call the full version: `connect(host)` calls `connect(host, 80, 30_000)`. Beyond three or four parameters, a builder usually reads better.
 ---
 Two methods with the same name and different parameter lists are **overloads**. `System.out.println` has ten of them; `Math.max` has four; you will write your own to offer convenient variants of one operation. The compiler chooses among them at **compile time** by a three-phase rule that is precise, occasionally surprising, and a favourite interview topic.
 

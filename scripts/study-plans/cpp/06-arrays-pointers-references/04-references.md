@@ -1,6 +1,20 @@
 ---
 title: References — an alias with a rulebook
 minutes: 14
+seo-title: What Is a Reference in C++? Reference vs Pointer Explained
+description: A C++ reference is an alias for an existing object, bound once and never null. How it differs from a pointer, const references, and dangling references.
+question: What is a reference in C++?
+answer: A reference in C++ is an alias: another name for an existing object. After `int& r = x;`, reading or assigning `r` reads or assigns `x`, and `&r == &x`. A reference must be initialised when declared, cannot be reseated to refer to a different object, and cannot be null. `const T&` parameters pass large objects without copying them.
+q: What is the difference between a reference and a pointer in C++?
+a: A reference is an alias that must be initialised, cannot be null and cannot be reseated, and it is used as if it were the object. A pointer holds an address, can be `nullptr`, can be reassigned, needs `*` or `->` to reach the object and supports arithmetic. Default to references; use pointers for optional objects, cursors, arrays and dynamic memory.
+q: Can a reference be reassigned in C++?
+a: No. Once bound, a reference names the same object for its whole life. `r = y;` does not rebind `r` to `y`; it copies `y`'s value into the object `r` already refers to. There is no syntax that reseats a reference.
+q: Why can a const reference bind to a temporary?
+a: A `const T&` may bind to a temporary because it promises not to modify it, and when the reference is a local the temporary's lifetime is extended to match. That lets `greet(const std::string& name)` be called as `greet("Ada")`. A non-const `T&` binds only to lvalues, so `f(5)` fails for `void f(int&)`.
+q: What is a dangling reference in C++?
+a: A reference to an object that no longer exists. The classic cases are returning a reference to a local variable, which is destroyed when the function returns, and holding a reference into a `std::vector` across `push_back`, which may move the elements. Reading through it is undefined behaviour.
+q: Does auto make a copy or a reference in C++?
+a: `auto` deduces a value type, so `auto x = v[0];` makes a copy and changes to `x` do not reach `v`. Write `auto& x = v[0];` to alias the element, or `const auto&` to read without copying — the same rule as `for (auto& x : v)` in a range-for loop.
 ---
 A reference is another name for an existing object. Write `int& r = x;` and from then on `r` *is* `x`: reading `r` reads `x`, assigning to `r` assigns to `x`, and `&r == &x`. The rest of the lesson is the rulebook that follows — must be initialised, cannot be reseated, cannot be null — the two places references matter most, parameters and return values, the failure mode every C++ programmer meets, the dangling reference, and the table that decides between a reference and a pointer.
 

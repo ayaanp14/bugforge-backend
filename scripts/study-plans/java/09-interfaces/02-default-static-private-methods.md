@@ -1,6 +1,20 @@
 ---
 title: Default, static and private interface methods
 minutes: 13
+seo-title: Default Methods in Java Interfaces: Static and Private Methods
+description: Java 8 default methods give interfaces inherited bodies. How clashing defaults are resolved with X.super.m(), plus static and Java 9 private interface methods.
+question: What is a default method in Java?
+answer: A default method in Java is an interface method with a body, marked `default`, that every implementing class inherits unless it overrides it. Java 8 added them so published interfaces could grow — `Collection.stream()`, `Iterable.forEach` and `List.sort` arrived without breaking existing classes. A default can call the interface's abstract methods but cannot use instance fields, since interfaces have none.
+q: What happens when a class implements two interfaces with the same default method?
+a: It fails to compile unless the class overrides the method and chooses, for example by calling `Swimmer.super.move()`. Before that rule applies, a method defined in the class or a superclass always wins, and a more specific interface wins over the one it extends.
+q: Why were default methods added to Java?
+a: To evolve interfaces without breaking their implementations. Adding an abstract method to a published interface breaks every implementing class, so Java 8 added `stream()`, `forEach`, `sort` and similar methods to the collection interfaces as defaults that existing classes inherit unchanged.
+q: Are static interface methods inherited in Java?
+a: No. A static interface method is called on the interface name, as in `Comparator.comparing` or `List.of`, and implementing classes do not inherit it — `Bot.notNull()` does not compile even when `Bot` implements the interface that declares `notNull()`.
+q: What are private methods in interfaces for?
+a: Since Java 9, `private` and `private static` interface methods let several default methods share helper code without making that helper part of the interface's public API. They must have a body and cannot be called from outside the interface.
+q: Can an interface provide a default toString or equals in Java?
+a: No — a `default` method that overrides a public `Object` method is a compile error, because a method inherited from a class always wins over an interface default. An interface may still declare `equals` abstractly to document its contract, as `List` and `Set` do.
 ---
 Until Java 8 an interface was pure signatures. Then `default` methods gave interfaces bodies, static methods gave them utilities, and Java 9 added private helpers. The change was made so the collections could gain `stream()`, `forEach` and `sort` without breaking existing implementations — and it changed how interfaces are designed. This lesson covers the three kinds of concrete interface method and the one genuinely tricky rule: what happens when two defaults collide.
 

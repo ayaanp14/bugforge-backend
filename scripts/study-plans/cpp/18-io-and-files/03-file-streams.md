@@ -1,6 +1,20 @@
 ---
 title: File streams — open modes, RAII and reading back
 minutes: 14
+seo-title: C++ File Handling: ifstream, ofstream and Open Modes
+description: How to read and write files in C++ with ifstream, ofstream and fstream: checking the open, truncate vs append modes, RAII closing, and reading a whole file.
+question: How do you read and write a file in C++?
+answer: In C++ you write a file with `std::ofstream` and read one with `std::ifstream`, both from `<fstream>`. Construct the stream with a path to open it, check it with `if (!stream)`, then use `<<`, `>>` and `std::getline` exactly as with `std::cout` and `std::cin`. The stream closes the file in its destructor, and a missing input file sets `failbit` rather than throwing.
+q: How do I append to a file in C++?
+a: Open it in append mode: `std::ofstream out("log.txt", std::ios::app);` and every write goes to the end of the file. The default mode of `std::ofstream` is `out`, which truncates the file to empty each time it is opened.
+q: How do I check if a file opened successfully in C++?
+a: Test the stream: `if (!in)` right after construction, or `in.is_open()`. An `ifstream` for a missing file does not throw; it sets `failbit` and every read then fails silently, so an unchecked open usually shows up as a program that reports zero lines.
+q: Do I need to close a file in C++?
+a: Usually not: a file stream flushes and closes itself in its destructor, so giving it its own scope is the idiom, and an early return or exception still closes it. Call `close()` explicitly to reuse the object, to finish a file before another stream reads it in the same scope, or to check that the final flush succeeded.
+q: How do I read a whole file into a string in C++?
+a: Construct a string from stream-buffer iterators: `std::string all((std::istreambuf_iterator<char>(in)), std::istreambuf_iterator<char>());`. The extra parentheses around the first argument avoid the most vexing parse. For a file too large to hold in memory, read it line by line instead.
+q: Why is my file empty when I read it right after writing?
+a: The writer's data is still in its buffer. Nothing is on disk until the stream flushes, so a second stream opened on the file while the first is still alive can see a short or empty file. Let the writer go out of scope, or call `close()` or `flush()`, before opening the reader.
 ---
 A file stream is `std::cin` or `std::cout` with a file behind the buffer. Everything from lessons 1 and 2 — `>>`, `getline`, the state bits, the recovery loop — works unchanged; what is new is opening, the modes that decide whether a file is truncated or appended to, the fact that a stream object *is* the open handle (so its destructor closes the file), and a handful of failure modes that a console program never meets: the file is missing, the directory does not exist, the data was written but never flushed before another stream tried to read it. The study judge lets a program create, write and read files in its working directory, so this lesson's programs write a file and read it straight back.
 

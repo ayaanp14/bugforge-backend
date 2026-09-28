@@ -1,6 +1,20 @@
 ---
 title: Booleans, truthiness, None, and is versus ==
 minutes: 13
+seo-title: Python Truthy and Falsy Values, is vs == and None Explained
+description: Empty and zero values are falsy in Python, everything else truthy. What and/or return, why x is None beats == None, is versus == and chained comparisons.
+question: What are truthy and falsy values in Python?
+answer: In Python, every object is truthy or falsy when tested by `if`, `while`, `and`, `or` and `not`. The falsy values are `False`, `None`, numeric zero (`0`, `0.0`, `0j`), the empty string and empty containers such as `[]`, `()`, `{}`, `set()` and `range(0)`; everything else is truthy, including `"False"`, `"0"`, `[0]` and `-1`.
+q: What is the difference between is and == in Python?
+a: `==` compares values, as each class defines through `__eq__`; `is` checks whether two names refer to the very same object. Two equal lists are `==` but not `is`. Use `is` only for singletons such as `None`, `True`, `False` and your own sentinels — never for numbers or strings.
+q: Why use `is None` instead of `== None` in Python?
+a: `None` is a single object, so `x is None` asks exactly the question you mean: is this the None object? `x == None` calls the class's `__eq__`, which could be defined to claim equality with `None`. Write `is None` and `is not None`.
+q: What do `and` and `or` return in Python?
+a: They return one of their operands, not necessarily a `bool`, and they short-circuit. `x or y` returns `x` if it is truthy, otherwise `y`, so `0 or "default"` is `"default"`; `x and y` returns `x` if it is falsy, otherwise `y`, so `3 and 0` is `0`. Only `not` always returns a `bool`.
+q: Does Python have a ternary operator?
+a: Yes, the conditional expression `value_if_true if condition else value_if_false`, for example `label = "even" if n % 2 == 0 else "odd"`. It is an expression, so it works inside f-strings and function arguments; nesting it more than one level deep is legal but hard to read.
+q: How do chained comparisons work in Python?
+a: `a < b < c` means `a < b and b < c`, with `b` evaluated only once. Any comparison operators chain, so `0 <= i < len(xs)` is the idiomatic bounds check and `a == b == c` tests three-way equality — unlike C, where `a < b < c` compares a boolean with `c`.
 ---
 Every Python object is either *truthy* or *falsy*, and the language's conditionals, `and`, `or`, `not`, `any` and `all` are defined over that property rather than over `bool` alone. That one rule makes `if xs:` the idiom for "if the list is non-empty" and `x or default` the idiom for a fallback — and makes `if count:` a bug when zero is a legitimate count. This lesson fixes the truthiness table, explains what `and` and `or` actually return, settles `None` and the difference between identity (`is`) and equality (`==`), and shows how comparison chaining reads.
 

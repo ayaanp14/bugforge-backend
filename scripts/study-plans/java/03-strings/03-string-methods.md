@@ -1,6 +1,20 @@
 ---
 title: The String API you will actually use
 minutes: 16
+seo-title: Java String Methods: substring, split, replace and indexOf
+description: The Java String methods that matter and their traps: substring's exclusive end, split dropping trailing empty strings, and replace versus regex replaceAll.
+question: How does substring work in Java?
+answer: `substring(begin, end)` in Java returns a new string from index `begin` up to but not including index `end`, so its length is `end - begin`: `"Hello, World".substring(0, 5)` is `"Hello"`. With one argument it runs to the end of the string. A negative index, `begin` greater than `end`, or `end` past the length throws `StringIndexOutOfBoundsException`.
+q: What is the difference between replace and replaceAll in Java?
+a: Both replace every occurrence. `replace` treats its arguments as literal text, while `replaceAll` treats the first as a regular expression, so `"a.b.c".replaceAll(".", "-")` gives `-----` because `.` matches any character. Use `replace` unless you need a pattern.
+q: Why does split drop empty strings at the end in Java?
+a: `String.split` removes trailing empty strings by default, so `"a,b,,".split(",")` has length 2. Pass a negative limit, `split(",", -1)`, to keep them; leading empty strings are always kept.
+q: Why does `"a.b".split(".")` return an empty array?
+a: `split` takes a regular expression, and `.` matches every character, so every piece between the matches is empty and trailing empty strings are dropped. Escape the dot with a backslash in the regex, or pass `Pattern.quote(".")`, to split on a literal dot.
+q: What is the difference between trim and strip in Java?
+a: `trim()` removes characters with codes up to U+0020, which covers ASCII spaces and control characters, from both ends. `strip()`, added in Java 11, is Unicode-aware and also removes other whitespace; `stripLeading` and `stripTrailing` work on one end only.
+q: Is substring O(1) in Java?
+a: No. Since Java 7 update 6, `substring` copies the characters into a new string, so it takes time proportional to the length of the result, and calling `s.substring(i)` in a loop over `i` is quadratic. Earlier versions shared the original's backing array.
 ---
 `String` has around seventy methods. Perhaps twenty carry ninety percent of real code, and each has a detail — an exclusive end index, a regex where you expected a literal, a trailing-empty-string rule — that separates "I know the method" from "I know what it does". This lesson is those twenty, with the details.
 

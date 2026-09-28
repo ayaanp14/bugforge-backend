@@ -1,6 +1,20 @@
 ---
 title: Writing clean solutions — structure, names, edges first and the code you can read aloud
 minutes: 13
+seo-title: How to Write Clean Python Code in Coding Interviews
+description: Clean Python interview solutions: main reads and prints, a pure solve function holds the idea, names say what they hold and edge cases come first.
+question: How do you write clean code in a Python coding interview?
+answer: Clean code in a Python coding interview separates the parts: `main` reads the input and prints, a `parse` step turns text into typed values, and a `solve` function named for the idea does the work with no I/O and no globals. Names say what they hold, edge cases are handled first with early returns or raises, and a few asserts behind a test flag show that you test unprompted.
+q: How should I name variables in Python?
+a: For what they hold: `players`, not `data`; `count_by_word`, not `d`; `start` and `end`, not `i` and `j` outside the tightest loops. Functions are verbs or questions such as `parse` and `is_balanced`, booleans read as conditions, constants are upper case, and a name that needs a comment is the wrong name.
+q: Should I use type hints in a coding interview?
+a: On the public functions, yes: `def rank(players: list[Player]) -> list[tuple[int, Player]]` states the shapes without a comment. Hints are not checked at run time but are read at review time, and a frozen dataclass names a record's fields and says it is a value.
+q: Are one-line list comprehensions good style?
+a: Only while they read on the first pass. A nested comprehension with a conditional expression inside it is shorter than a loop but slower to understand, and a loop that names the intermediate value is better. The interviewer reads your code as a colleague would.
+q: Why handle edge cases first in a solution?
+a: An early return or raise for empty, single-element or invalid input at the top lets the main body run without guards, and it records the decision you made, such as 'empty is balanced' or 'the median of nothing raises', which is the question you should have asked at the start.
+q: How do you test code during a Python interview?
+a: Write a small `_test()` function with three or four `assert` lines covering the edge cases, and run it when the script receives a `--test` argument, calling `main()` otherwise. It shows you test without being asked and stays dormant in a judged submission.
 ---
 Two solutions to the same problem can both pass and score very differently, because the interviewer is reading the code as a sample of how you write for colleagues. Clean does not mean long: it means a `main` that reads and prints, a solve function whose name is the idea, helpers that are pure and small, names that say what they hold, edge cases handled first, and nothing clever that needs a comment to decode. This lesson gives the structure, the naming rules, the edge-first habit, how type hints and dataclasses serve as documentation, how to test inside the file, and a before-and-after that shows the difference.
 

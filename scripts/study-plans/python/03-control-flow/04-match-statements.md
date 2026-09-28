@@ -1,6 +1,18 @@
 ---
 title: Match statements — structural pattern matching
 minutes: 14
+seo-title: Python Match Case Explained: Structural Pattern Matching
+description: Python match case, added in 3.10, compares a value against patterns and binds their parts. Sequence, mapping and class patterns, guards and the capture trap.
+question: How does match case work in Python?
+answer: Python's `match` statement, added in 3.10, compares a subject value against `case` patterns from top to bottom and runs the first one that matches. Patterns describe shape — literals, sequences such as `["go", direction]`, mappings, class instances — and bind the parts they name. There is no fall-through and no `break`, and `case _:` is the wildcard that matches anything.
+q: Is match case the same as a switch statement?
+a: No. A `switch` compares one value against constants, while `match` compares a value against patterns that describe its structure and binds the parts they name. A plain value-to-value `match` works, but a dictionary is often shorter; `match` shines on nested lists and dicts, parsed commands and message types.
+q: What is the default case in a Python match statement?
+a: `case _:`, the wildcard pattern, which matches anything and binds nothing. It must be the last case, or Python raises `SyntaxError`. Without a wildcard, a subject that matches no case simply does nothing; no error is raised.
+q: Why does `case RED:` match everything in Python?
+a: A bare name in a pattern is a capture pattern: it matches any value and binds it to that name instead of comparing. To compare against a constant, use a dotted name such as `case Colour.RED:` or a literal. When a capture makes later cases unreachable, Python raises `SyntaxError`.
+q: How do I match several values in one case in Python?
+a: Join the alternatives with `|`: `case "quit" | "exit":` matches either string. Alternatives that capture must bind the same names, as in `case (x, 0) | (0, x):`, so the body can use them. A guard such as `case [x, y] if x == y:` adds a condition a pattern cannot express.
 ---
 `match` arrived in Python 3.10 and is not a `switch`. A `switch` compares one value against constants; `match` compares a value against *patterns* that describe its shape — a list of three elements whose first is `"move"`, a dictionary with a `"type"` key, an instance of `Point` whose `x` is zero — and binds the parts it names. It replaces the `if isinstance(...) and len(...) == 3 and cmd[0] == ...` staircases that parse commands, walk JSON-like data and dispatch on message types. This lesson gives the pattern kinds, the guard, the capture-versus-value rule that catches everyone once, and where `match` is and is not the right tool.
 

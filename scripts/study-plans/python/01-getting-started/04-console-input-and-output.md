@@ -1,6 +1,20 @@
 ---
 title: Console input and output — the patterns every exercise uses
 minutes: 14
+seo-title: Python input() and print() Explained: Reading from Stdin
+description: Python input() returns one line as a string; sys.stdin reads the rest. How to read several numbers on a line, print a list without brackets and format floats.
+question: How do you take input in Python?
+answer: In Python, `input()` reads one line from standard input, strips the trailing newline and returns it as a string, so numbers must be converted: `int(input())` for one number, `list(map(int, input().split()))` for several on a line. At the end of input `input()` raises `EOFError`; for bulk input, `sys.stdin.read().split()` reads every token at once.
+q: How do I take multiple inputs on one line in Python?
+a: Split the line and convert each token: `a, b = map(int, input().split())` for exactly two numbers, or `nums = list(map(int, input().split()))` for any count. `split()` with no argument splits on any run of whitespace and ignores leading and trailing spaces.
+q: How do I print a list without brackets in Python?
+a: Unpack it into `print`: `print(*nums)` prints the elements separated by spaces, and `print(*nums, sep=", ")` separates them with commas. `" ".join(map(str, nums))` builds the same line as a string. `print(nums)` prints the list's `repr`, brackets and commas included.
+q: How do I print without a newline in Python?
+a: Pass `end`: `print("x", end="")` prints without the trailing newline, because `print` appends `end`, which defaults to a newline. `sep` controls what goes between several objects, so `print("a", "b", sep="")` prints `ab`.
+q: How do I read input until EOF in Python?
+a: Iterate over `sys.stdin`: `for line in sys.stdin:` yields each line, newline included, until the input ends. `sys.stdin.read()` returns everything at once, and a loop that calls `input()` can stop by catching the `EOFError` it raises when the stream is exhausted.
+q: How do I print a float with two decimal places in Python?
+a: Use a format spec in an f-string: `f"{x:.2f}"` rounds to two decimals, so `f"{2 / 3:.2f}"` is `0.67`. A raw float prints its shortest exact form — `print(0.1 + 0.2)` shows `0.30000000000000004` — which rarely matches an expected output.
 ---
 Every program in this track reads standard input and writes standard output, so the reading and printing idioms are worth fixing once, precisely. `input()` gives you one line as a string; `sys.stdin` gives you the whole stream; `print` writes objects separated by spaces with a newline at the end, and both of those defaults can be changed. The lesson ends with the five reading patterns that cover every input format the exercises use — copy them, and the I/O in an exercise stops being where the time goes.
 

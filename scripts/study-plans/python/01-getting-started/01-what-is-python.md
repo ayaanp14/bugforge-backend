@@ -1,6 +1,22 @@
 ---
 title: What Python is, and why it looks the way it does
 minutes: 12
+seo-title: What Is Python? Compiled or Interpreted, CPython and Versions
+description: Python is a dynamically and strongly typed language that CPython compiles to bytecode and interprets. Why indentation is syntax, the GIL and key versions.
+question: What is Python?
+answer: Python is a high-level, dynamically and strongly typed programming language designed to be read easily. CPython, the reference implementation written in C, compiles each source file to bytecode and then interprets that bytecode, so a syntax error anywhere stops the file before it runs. Every value is an object, names are labels bound to objects, and indentation marks the block structure.
+q: Is Python compiled or interpreted?
+a: Both. CPython first compiles the whole source file to bytecode, a compact instruction set for a stack machine, then interprets that bytecode in a loop. The compile step is why a syntax error on any line stops the program before line 1 runs, and why imported modules leave cached `.pyc` files in `__pycache__`.
+q: Is Python dynamically typed or strongly typed?
+a: Both, because the two words answer different questions. Dynamic typing means types belong to objects, not to names, so `x = 5` followed by `x = "five"` is legal. Strong typing means values are not silently coerced: `"1" + 1` raises `TypeError`. Only numbers convert among themselves.
+q: What is CPython?
+a: CPython is the reference implementation of Python, written in C, and the one people mean when they say "Python". Other implementations serve particular needs: PyPy is a just-in-time compiler that runs pure-Python loops several times faster, and MicroPython runs on microcontrollers.
+q: What is the GIL in Python?
+a: The global interpreter lock (GIL) is a lock in CPython that lets only one thread execute Python bytecode at a time. CPU-bound work is therefore spread over processes, while threads suit waiting on I/O. Python 3.13 added an experimental free-threaded build without the GIL.
+q: Why is indentation important in Python?
+a: Indentation is Python's block syntax, not a style choice: a block is the set of lines indented under a line that ends in a colon. Four spaces per level is the PEP 8 convention, tabs and spaces cannot be mixed in one block, and an `IndentationError` stops the file before it runs.
+q: What is the difference between Python 2 and Python 3?
+a: Python 3 is the only supported line; Python 2 ended in 2020, and the two are incompatible. Python 2 code is easy to spot: `print "x"` without parentheses, `xrange`, `raw_input`, and `/` performing integer division on two integers. Answers written for Python 2 no longer run.
 ---
 Python is the language you can read before you can write, and that is not an accident of taste but the design goal it was built around. Guido van Rossum started it in 1989 as a scripting language for a distributed operating system, released it in 1991, and kept one principle above all others: code is read far more often than it is written, so the language should make the common case obvious. Thirty-five years later Python runs data pipelines, web backends, machine-learning research, build systems and a large share of every technical interview. This lesson settles what Python actually is — an interpreter, an object model and a set of conventions — so that everything later in the track has somewhere to hang.
 

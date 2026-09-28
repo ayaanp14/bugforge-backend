@@ -1,6 +1,20 @@
 ---
 title: Diagnosing memory problems — leaks, dumps and bounded caches
 minutes: 14
+seo-title: How to Find a Memory Leak in Java: Heap Dumps and LRU Caches
+description: Find a Java memory leak with jstat, a heap dump and Eclipse MAT, read each OutOfMemoryError message, and keep caches bounded with an LRU LinkedHashMap.
+question: How do you find a memory leak in Java?
+answer: To find a memory leak in Java, watch old-generation occupancy with `jstat -gcutil`: with a leak it climbs after every full GC and never drops. Take a heap dump with `-XX:+HeapDumpOnOutOfMemoryError` or `jcmd`, open it in Eclipse MAT or VisualVM, and let the dominator tree name the object retaining the most memory; its path to GC roots shows why it is still reachable.
+q: How do you implement an LRU cache in Java?
+a: Extend `LinkedHashMap` with access order switched on (`super(16, 0.75f, true)`), so `get` and `put` move an entry to the most-recent end, and override `removeEldestEntry` to return `size() > capacity`. Every operation is O(1); the hand-built alternative is a `HashMap` plus a doubly linked list.
+q: How do you take a heap dump in Java?
+a: Run `jcmd` with `GC.heap_dump` and a file path against a live process, or start the JVM with `-XX:+HeapDumpOnOutOfMemoryError` so a dump is written at the moment of failure. `jmap -dump:live` is the older spelling, and `live` forces a GC first so only reachable objects are recorded.
+q: What does OutOfMemoryError Metaspace mean?
+a: Class metadata has run out because classes are loaded and never unloaded. It is usually a class-loader leak from redeploys, dynamic proxies or generated classes, and raising `-Xmx` does not help, because Metaspace is not part of the heap.
+q: What does OutOfMemoryError unable to create native thread mean?
+a: The operating system's thread limit, or the memory for per-thread stacks, is exhausted. It usually means a thread leak — threads created without bound, or executors that are never shut down — and has nothing to do with the heap size.
+q: Does increasing -Xmx fix an OutOfMemoryError?
+a: Only when the working set genuinely needs more memory. For a leak it merely postpones the crash, and it does nothing for Metaspace, thread or direct-buffer exhaustion, which the heap size does not govern.
 ---
 Everything so far has been the model. This lesson is what you do at two in the morning when the service falls over with `OutOfMemoryError`, and, more usefully, what you build in advance so it does not. The skills: reading the different OOM messages, taking and reading a heap dump, spotting the six leak shapes in code review, and writing the bounded structures — an LRU cache above all — that keep memory finite by construction.
 

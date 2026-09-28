@@ -1,6 +1,20 @@
 ---
 title: Context managers — with, __enter__/__exit__ and contextlib
 minutes: 14
+seo-title: Python Context Managers: The with Statement and contextlib
+description: The with statement guarantees cleanup through the context manager protocol. Writing one as a class or with the contextmanager decorator, plus ExitStack.
+question: What is a context manager in Python?
+answer: A context manager is an object that sets something up before a `with` block and tears it down afterwards, however the block ends — normally, by `return` or by an exception. It implements `__enter__`, whose return value `as` binds, and `__exit__`, which runs on the way out. `with open(path) as f:` uses one to guarantee that the file is closed.
+q: How do I write a context manager in Python?
+a: Either write a class with `__enter__` and `__exit__`, or decorate a generator with `contextlib.contextmanager`: code before `yield` is the setup, the yielded value is what `as` binds, and code after it is the teardown. Wrap the `yield` in `try`/`finally` so the teardown runs when the block raises.
+q: What does `__exit__` return in a context manager?
+a: `__exit__(exc_type, exc, tb)` receives the exception's type, instance and traceback, or three `None`s if the block finished normally. Returning a truthy value suppresses the exception; returning `False` or `None` lets it propagate after the cleanup, which is what almost every manager should do.
+q: What is the difference between with and try finally in Python?
+a: In behaviour, none: `with` is a `try`/`finally` written once, in the manager's type, instead of at every call site. The manager's `__exit__` runs where the `finally` would, so each use is one line and cannot forget the cleanup.
+q: How do I open multiple files in one with statement?
+a: Separate them with commas — `with open("a.txt") as src, open("b.txt", "w") as dst:` — and they are entered left to right and exited right to left. For a number of files known only at run time, use `contextlib.ExitStack` with `stack.enter_context(open(p))`.
+q: Why does my @contextmanager not clean up after an exception?
+a: An exception from the `with` block is re-raised at the `yield` inside the generator, so teardown written after the `yield` is skipped. Put the `yield` inside a `try` and the teardown in its `finally`.
 ---
 `with open(path) as f:` closes the file when the block ends — on success, on `return`, on an exception — and that guarantee is the *context manager protocol*: an object with `__enter__` and `__exit__`. Files, locks, database transactions, temporary directories, timers, redirected output and "restore this setting afterwards" are all the same shape: set something up, run a block, tear it down no matter how the block ends. This lesson covers the statement, the two methods and what `__exit__` receives, writing a manager as a class and as a generator with `@contextmanager`, the helpers in `contextlib`, and the relationship to `try`/`finally`.
 

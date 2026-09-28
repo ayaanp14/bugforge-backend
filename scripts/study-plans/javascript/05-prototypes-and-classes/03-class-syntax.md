@@ -1,6 +1,20 @@
 ---
 title: Class syntax — fields, methods, statics, private and accessors
 minutes: 14
+seo-title: JavaScript Classes: Private Fields, Static Methods, Getters
+description: JavaScript classes are prototypes with better syntax and real additions: private fields, field initialisers, statics and accessors. Why methods lose this.
+question: What is a class in JavaScript?
+answer: A class in JavaScript is syntax for a constructor function and its prototype: `typeof` a class is `"function"` and its methods live on `Class.prototype`. It adds what the old syntax lacked — `#private` members, field initialisers, static blocks — and changes a few rules: class bodies are strict, classes are not hoisted, they must be called with `new`, and their methods are non-enumerable.
+q: Are JavaScript classes just syntactic sugar?
+a: Mostly — a class still creates a constructor function with methods on its prototype. But it adds features the old syntax could not express: language-enforced `#private` members, field initialisers, static blocks, always-strict bodies, no hoisting, a required `new` and non-enumerable methods.
+q: What is the difference between `#private` and `_private` in JavaScript?
+a: `#private` is enforced by the language: `obj.#x` outside the class body is a `SyntaxError`, and `Object.keys`, `JSON.stringify`, `Reflect.ownKeys` and Proxies cannot see it. `_private` is only a naming convention — the property is public and visible to everything.
+q: Where do class fields, methods and static members live?
+a: Fields live on each instance, assigned before a base class's constructor body runs, with a fresh value per instance. Methods and accessors live once on the class's prototype. Static members live on the class object itself, so `Account.count` and `Account.open()` are read from the class.
+q: Why does a class method lose `this` when passed as a callback?
+a: Passing `obj.method` detaches the function from its object, so inside it `this` is `undefined`, because class bodies are strict. Fix it with an arrow at the call site, `obj.method.bind(obj)`, or an arrow-function field that captures `this` per instance.
+q: What does `static` mean in a JavaScript class?
+a: A `static` member belongs to the class, not to its instances: `Account.count`, `Account.open("x")`. Inside a static method `this` is the class it was called on, so `new this()` builds a subclass when called as `SavingsAccount.create()`. A `static { … }` block runs once when the class is evaluated.
 ---
 `class` gives the constructor-and-prototype machinery a shape that reads like every other language, plus things the old syntax could not express: real private members, class fields with initialisers, static blocks. It is still prototypes underneath — `typeof Point` is `"function"`, methods land on `Point.prototype` — but the syntax also changes a few semantics (strict mode, no hoisting, throw without `new`). This lesson covers the complete surface as it runs on Node 16, with the corners that trip people: field initialisation order, `this` in methods passed as callbacks, and what `#private` actually guarantees.
 

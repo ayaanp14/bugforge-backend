@@ -1,6 +1,20 @@
 ---
 title: Custom exceptions and exception chaining
 minutes: 12
+seo-title: How to Create a Custom Exception in Java: Exception Chaining
+description: Create a custom exception in Java by extending RuntimeException or Exception, with fields for its data. Chaining the cause, and when one is warranted.
+question: How do you create a custom exception in Java?
+answer: To create a custom exception in Java, extend `RuntimeException` for an unchecked exception or `Exception` for a checked one, and pass a message — plus the cause, when wrapping — to the superclass constructor. Name it after the condition, such as `InsufficientFundsException`, build the message from the facts, and keep data a handler needs in final fields with accessors.
+q: What is exception chaining in Java?
+a: Exception chaining wraps a caught exception as the cause of a new one: `throw new OrderLoadException("could not load order " + id, e)`. The new type fits the current layer, `getCause()` keeps the original, and the stack trace prints it under `Caused by:`.
+q: Should a custom exception extend Exception or RuntimeException?
+a: Extend `RuntimeException` for most application exceptions, so callers are not forced to catch or declare them; extend `Exception` only for a checked, recoverable condition at an API boundary. Never extend `Throwable` or `Error`.
+q: When should you create a custom exception instead of using a built-in one?
+a: When callers will catch it specifically, when it carries structured data a handler needs, when it hides a lower layer's exceptions at a boundary, or when it names a domain condition such as insufficient funds. Otherwise use `IllegalArgumentException`, `IllegalStateException` or another JDK exception.
+q: Why should you always pass the cause when wrapping an exception?
+a: Without the cause, the original exception and its stack trace vanish from the logs — "connection reset" becomes an unexplained "load failed". Pass it to the constructor, `new X(message, e)`, or call `initCause(e)` when the constructor has no cause parameter.
+q: What constructors should a custom exception have?
+a: A general-purpose exception should offer `(String message)` and `(String message, Throwable cause)`, and `(Throwable cause)` if useful. A domain exception with specific fields, such as requested and available amounts, often needs only its own constructor that builds the message from them.
 ---
 The JDK's exceptions describe *mechanical* failures — a null, an index, a missing file. Your program has *domain* failures: an insufficient balance, an unknown customer, an order that cannot be cancelled after shipping. Custom exception classes let callers catch those by name, carry the data needed to handle or report them, and hide the mechanical causes underneath. This lesson is how to design them, how to chain causes, and how to decide when one is warranted.
 

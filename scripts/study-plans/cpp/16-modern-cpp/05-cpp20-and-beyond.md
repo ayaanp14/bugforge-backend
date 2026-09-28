@@ -1,6 +1,20 @@
 ---
 title: C++20 and beyond — concepts, ranges, format and what is coming
 minutes: 16
+seo-title: C++20 Features: Concepts, Ranges, std::format and C++23
+description: C++20 brought concepts, ranges and views, the spaceship operator, std::format, jthread and designated initialisers, plus modules, coroutines and C++23.
+question: What are the main features of C++20?
+answer: C++20's main features are concepts, which constrain templates so a bad call fails in one line at the call site; ranges, which let algorithms take whole containers and compose lazy views with `|`; modules; and coroutines. Everyday code also gained the three-way comparison `<=>`, `std::format`, `std::span`, `std::jthread`, designated initialisers, `consteval` and a `constexpr` `std::vector`.
+q: What are concepts in C++20?
+a: A concept is a named compile-time requirement on a template parameter, such as `std::integral` or a custom `requires` expression checking that `t.area()` exists. A call with a type that does not satisfy it fails at the call site with a short error instead of deep inside the template body. `template <C T>`, a trailing `requires C<T>` and `C auto` are equivalent spellings.
+q: What is the spaceship operator in C++?
+a: The three-way comparison operator `<=>` (C++20) tells whether one value is less than, equal to or greater than another. Declaring `auto operator<=>(const T&) const = default;` compares members in declaration order and gives a type all six comparisons; the return type — `strong_ordering`, `weak_ordering` or `partial_ordering` — says what equality means.
+q: How does std::format work in C++20?
+a: `std::format` builds a `std::string` from a format string whose `{index:spec}` fields set fill, alignment, sign, width, precision and type: `std::format("{:.2f}", 3.14159)` gives `3.14`. It is type-safe and locale-independent, a literal format string is checked at compile time, and C++23's `std::print` is built on it.
+q: What is new in C++23?
+a: C++23 added `std::print` and `std::println`, `std::expected` for a value or an error without exceptions, `std::mdspan`, deducing `this`, `std::ranges::to`, `views::zip` and `views::enumerate`, `std::flat_map`, `std::generator` and `import std;`. C++26, still in progress, is headed by static reflection, contracts and `std::execution`.
+q: What are C++20 modules?
+a: A module replaces a header: one file declares `export module geometry;` and another writes `import geometry;`, so macros do not leak across the boundary and the same text is not re-parsed in every translation unit. Compilers support modules, but build systems are still catching up, so most code still uses `#include`.
 ---
 C++20 is the standard this track compiles against, and it is the largest since C++11. Some of its features have already had a lesson of their own — concepts in Module 12, ranges in Module 14, `<=>` in Module 11 — so this lesson does not re-teach them; it puts them side by side as the *shape* of C++20 code, adds the smaller pieces that make daily programs shorter (`std::format`, designated initialisers, `std::jthread`, `[[likely]]`), sketches modules and coroutines in outline, and then looks past the fence at C++23, which does not compile here but which you will meet in code and in interviews. It closes with how to keep up without reading the standard.
 

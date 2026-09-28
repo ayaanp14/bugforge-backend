@@ -1,6 +1,20 @@
 ---
 title: Bundlers, transpilers and the build — what happens to your code before it runs
 minutes: 13
+seo-title: JavaScript Bundlers Explained: Tree Shaking, Vite and webpack
+description: A JavaScript bundler resolves imports, transpiles, tree-shakes, splits and minifies code. How esbuild, Rollup, Vite and webpack differ, plus source maps.
+question: What does a JavaScript bundler do?
+answer: A JavaScript bundler turns a project's modules into files a browser or runtime can load efficiently. It resolves every import into a module graph, transforms TypeScript, JSX and CSS, transpiles newer syntax for the target, tree-shakes unused exports, splits the result into chunks at dynamic `import()` boundaries, minifies it, and emits content-hashed files with source maps.
+q: What is tree shaking in JavaScript?
+a: Tree shaking removes exports that nothing imports from the final bundle. It relies on the static `import` and `export` of ES modules, so CommonJS `require` largely defeats it, as do modules with side effects at import time and one big `export default` object; `"sideEffects": false` in package.json tells bundlers a package is safe to prune.
+q: What is the difference between Vite, webpack, Rollup and esbuild?
+a: esbuild is an extremely fast transpiler and bundler written in Go; Rollup is the ESM-native bundler with the best tree shaking, the classic choice for libraries; Vite is an application dev server and build that serves native ESM in development and bundles with Rollup or Rolldown for production; webpack is the configurable incumbent with the largest ecosystem.
+q: What are source maps for?
+a: A source map links every position in the minified output back to the original file, line, column and name, so browsers, Node's `--enable-source-maps` and error trackers such as Sentry show readable stack traces and breakpoints. Emit them for every production build; many teams upload them to the tracker instead of serving them publicly.
+q: How do you reduce JavaScript bundle size?
+a: Import named exports from ESM packages, split routes with dynamic `import()`, keep vendor code in its own cached chunk, target the oldest runtime you actually support rather than ES5, load polyfills only by usage, and check a bundle analyser to see exactly what shipped and why.
+q: Are Vite environment variables secret?
+a: No. Vite inlines `import.meta.env.VITE_*` values into the bundle at build time, so anyone can read them in the shipped JavaScript. The same holds for every front-end build variable — secrets never belong in one.
 ---
 Almost no front-end JavaScript runs as written: a **build** parses every module, resolves imports, rewrites new syntax for older targets, removes code nothing uses, splits the result into chunks, minifies it, and emits source maps so errors still point at your lines. Servers increasingly go through the same pipeline (TypeScript, path aliases, bundling for cold-start speed). Understanding the pipeline is what lets you debug "works locally, breaks in production", keep bundles small, and configure a tool instead of copying a config from a blog post. This lesson covers the stages, the major tools and where each fits, tree-shaking and side effects, code splitting, targets and polyfills, source maps, and the package fields that make a library bundle well.
 

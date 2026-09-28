@@ -1,6 +1,20 @@
 ---
 title: Nested data and JSON
 minutes: 14
+seo-title: Python JSON: loads vs load, dumps Options and Nested Data
+description: Python's json module maps JSON onto dicts, lists, strings, numbers, booleans and None. loads vs load, pretty printing with sorted keys, and walking nested data.
+question: How do I parse JSON in Python?
+answer: Parse JSON in Python with the standard `json` module: `json.loads(text)` turns a JSON string into Python objects and `json.load(f)` reads from a file object. Objects become dicts with string keys, arrays become lists, `true` and `false` become `True` and `False`, and `null` becomes `None`. `json.dumps` and `json.dump` go the other way.
+q: What is the difference between json.load and json.loads?
+a: `json.loads` parses a string — the s stands for string — while `json.load` reads from a file object such as an open file or `sys.stdin`. Likewise, `json.dumps` returns a string and `json.dump` writes to a file.
+q: How do I pretty-print JSON in Python?
+a: Pass `indent=2` to `json.dumps` for output nested by two spaces, and add `sort_keys=True` so that equal dicts built in different orders print identically. For any Python object, `pprint.pprint` does the same job without JSON's restrictions.
+q: How do I safely access a nested dictionary key in Python?
+a: Chain `get` calls with an empty default of the right type: `doc.get("address", {}).get("city")` returns `None` instead of raising `KeyError` at either level. When a missing field would be a bug, index directly and let the `KeyError` report it.
+q: Why does json.dumps turn tuples into lists and int keys into strings?
+a: JSON has only arrays and objects with string keys, so a tuple is written as an array and read back as a list, and `{1: "a"}` comes back as `{"1": "a"}`. Convert on the way back, for example with `{int(k): v for k, v in loaded.items()}`.
+q: What does TypeError: Object of type set is not JSON serializable mean?
+a: Sets, dates, `Decimal` values and class instances have no JSON form, so `json.dumps` raises `TypeError` for them. Convert the value first, such as `sorted(s)` for a set, or pass a `default=` function that turns unknown objects into something JSON can hold.
 ---
 Real data is nested: a list of records, each a dict, some values themselves lists of dicts. JSON is the text form of exactly that shape — objects, arrays, strings, numbers, booleans and null — and Python's `json` module maps it onto dicts, lists, `str`, `int`/`float`, `bool` and `None` with no loss. This lesson covers walking nested structures safely, `json.loads`/`dumps` and their options, the round trip and what it does not preserve, deterministic output with `sort_keys`, `pprint`, and the recursive walk that handles a document of unknown depth.
 

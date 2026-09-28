@@ -1,6 +1,20 @@
 ---
 title: Choosing a collection — the complexity table and heapq
 minutes: 13
+seo-title: Python Data Structure Time Complexity and heapq Explained
+description: Which Python collection to use: the Big-O of list, tuple, dict, set, deque, heap and bisect side by side, the decision rules, and heapq for priority queues.
+question: When should I use a list, tuple, set or dict in Python?
+answer: Choose by the operations the problem needs. Use a dict or set to look things up by key or test membership often, both O(1) on average. Use a list for ordered data accessed by position and a tuple when it never changes; a `deque` for a queue, a heap from `heapq` for a repeated minimum, and a sorted list with `bisect` for binary search.
+q: How do I use heapq in Python?
+a: `heapq` keeps a plain list as a binary min-heap: `heappush(h, x)` and `heappop(h)` run in O(log n), `h[0]` peeks at the smallest element, and `heapify(xs)` converts an existing list in O(n). `nsmallest` and `nlargest` return the top k items.
+q: How do I make a max-heap in Python?
+a: `heapq` provides only a min-heap, so push negated values, `-x`, and negate again when you pop, or push tuples such as `(-priority, item)`. The smallest negated value is the largest original one.
+q: How do I build a priority queue in Python?
+a: Push `(priority, item)` tuples onto a list with `heapq.heappush` and take the lowest priority with `heappop`. When priorities tie the items are compared next, so add a counter as a tie-breaker, `(priority, count, item)`, if the items are not comparable.
+q: What is the time complexity of Python list, dict and set operations?
+a: Indexing and appending to a list are O(1), but `x in list`, `insert` and `pop(0)` are O(n). Dict lookup, insertion and deletion, and set membership and insertion, are O(1) on average. A `deque` is O(1) at both ends, and a heap push or pop is O(log n).
+q: Why is a heap not in sorted order when I iterate it?
+a: A heap guarantees only that `h[0]` is the smallest element; the rest of the list is only partially ordered. To get sorted output, pop repeatedly with `heappop`, or sort the list.
 ---
 Every collection question in an interview comes down to a table: which operations does the problem need, and which structure does each of them in constant, logarithmic or linear time. Python ships six structures that cover almost everything — `list`, `tuple`, `dict`, `set`, `deque`, and the heap functions in `heapq` — plus `bisect` over a sorted list. This lesson gives the table, the decision rules that follow from it, the `heapq` API that has not appeared yet, and the memory picture that decides between a list of tuples and a dict of lists when both would work.
 

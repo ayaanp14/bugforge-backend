@@ -1,6 +1,20 @@
 ---
 title: Primitive streams — IntStream, LongStream, DoubleStream
 minutes: 12
+seo-title: Java IntStream, LongStream and DoubleStream Explained
+description: IntStream, LongStream and DoubleStream carry Java primitives without boxing and add sum, average and summaryStatistics. Ranges, chars, conversions, overflow.
+question: What is IntStream in Java?
+answer: `IntStream` is the Java stream specialised for `int` values: it carries primitives directly instead of boxing each one into an `Integer`, and adds numeric terminals such as `sum`, `average`, `max` and `summaryStatistics`. `IntStream.range(0, n)` replaces an index loop, `mapToInt` turns an object stream into one, and `boxed()` turns it back. `LongStream` and `DoubleStream` do the same for `long` and `double`.
+q: What is the difference between IntStream.range and rangeClosed?
+a: `IntStream.range(0, 5)` excludes its end and yields 0 to 4, like a `for (int i = 0; i < 5; i++)` loop. `IntStream.rangeClosed(1, 5)` includes it and yields 1 to 5. `DoubleStream` has no range method.
+q: How do you convert an IntStream to a List in Java?
+a: Box the values first, because collections hold objects: `intStream.boxed().toList()`, or `boxed().collect(Collectors.toList())`. For an array instead, `intStream.toArray()` returns an `int[]` directly.
+q: What does `String.chars()` return in Java?
+a: An `IntStream` of the string's UTF-16 code units, so each element is an `int` you must cast to `char`; `mapToObj(c -> (char) c)` gives a `Stream<Character>` for collectors. For text with emoji or other supplementary characters, use `codePoints()` instead.
+q: Why is IntStream faster than `Stream<Integer>`?
+a: `Stream<Integer>` boxes every element into an `Integer` object and unboxes it for each arithmetic step, while `IntStream` works on `int` values directly. Over a million numbers the boxed version runs several times slower, so switch with `mapToInt` as soon as a pipeline turns numeric.
+q: What does `average()` return on an empty IntStream?
+a: An empty `OptionalDouble`, because the average of nothing is undefined. `sum()` of an empty stream returns 0, and `max()` and `min()` return an empty `OptionalInt`.
 ---
 A `Stream<Integer>` boxes every element: each `int` becomes an object on the heap, every arithmetic step unboxes and re-boxes, and `sum()` does not even exist on it. The three primitive specialisations — `IntStream`, `LongStream`, `DoubleStream` — fix that. They carry `int`s, `long`s and `double`s directly, add the numeric terminals (`sum`, `average`, `summaryStatistics`), and make the range loop `for (int i = 0; i < n; i++)` expressible as a pipeline. This lesson covers them, the conversions between the worlds, and the two places (`chars()` and `range`) where they show up whether you asked or not.
 

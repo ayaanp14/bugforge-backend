@@ -1,6 +1,20 @@
 ---
 title: Branching — if, else and the conditional operator
 minutes: 13
+seo-title: C++ If Else, Ternary Operator and Short-Circuit Evaluation
+description: A C++ if converts its condition to bool, so chained comparisons lie. Else-if chains, if with an initialiser, the ternary operator and short-circuit guards.
+question: How does an if statement work in C++?
+answer: An `if` statement in C++ evaluates its condition, converts the result to `bool` and runs its branch when it is true, otherwise the `else` branch if there is one. Zero and `nullptr` convert to false and everything else to true, which is why `if (n = 5)` compiles and always runs. In an `else if` chain the first true branch runs and the rest are skipped.
+q: What is the ternary operator in C++?
+a: The conditional operator `cond ? a : b` is an expression that yields `a` when `cond` is true and `b` otherwise, so it can initialise a `const` variable: `const int larger = a > b ? a : b;`. Both arms convert to one common type, and inside `<<` it needs parentheses because it binds so loosely.
+q: What is short-circuit evaluation in C++?
+a: `&&` stops as soon as its left operand is false and `||` stops as soon as its left operand is true, so the right operand is never evaluated. That makes the left side a guard: `i < v.size() && v[i] == target` never reads out of range. The bitwise `&` and `|` always evaluate both sides.
+q: Why is `if (0 < x < 10)` always true in C++?
+a: C++ has no chained comparisons: `0 < x < 10` parses as `(0 < x) < 10`, the inner comparison yields a `bool`, and that promotes to 0 or 1 — both less than 10. Write `0 < x && x < 10`. For a similar reason `x == 1 || 2` is always true, because `2` converts to true on its own.
+q: What is `if` with an initialiser in C++17?
+a: `if (init; condition)` declares a variable scoped to the `if` and its `else` branches and nowhere after them, as in `if (auto it = m.find(k); it != m.end())`. It keeps lookup variables out of the enclosing scope and avoids searching a map twice. `switch` accepts the same form.
+q: What is the dangling else problem in C++?
+a: In nested `if` statements without braces, an `else` binds to the nearest `if` that does not yet have one, whatever the indentation suggests, so it can attach to the inner `if` when you meant the outer. Always brace the branches so the compiler's reading matches your intent.
 ---
 Every program that does more than evaluate one formula has to decide, and in C++ deciding means `if`. The statement looks exactly like C's and Java's, which is the problem: the condition is *converted* to `bool` rather than required to be one, a chain such as `a < b < c` compiles and means something else, `if` can carry its own initialiser since C++17, and the conditional operator has type rules of its own. This lesson settles how a condition is evaluated, how branches nest, and how `&&` and `||` make an expression safe to evaluate at all.
 

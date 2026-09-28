@@ -1,6 +1,20 @@
 ---
 title: Buffering and fast I/O — the template that passes time limits
 minutes: 13
+seo-title: Fast I/O in Java: BufferedReader vs Scanner and PrintWriter
+description: Scanner is slow on big inputs; BufferedReader with StringTokenizer is about ten times faster. The Java fast I/O template for competitive coding, and flush().
+question: What is the fastest way to read input in Java?
+answer: The fastest common way to read input in Java is a `BufferedReader` over `System.in` with a `StringTokenizer`, parsing each token with `Integer.parseInt` — about ten times faster than `Scanner`, which tokenises with regular expressions. Pair it with a buffered `PrintWriter` for output and call `flush()` at the end. For ten million numbers, a hand-written byte reader is faster still.
+q: Why is Scanner slow in Java?
+a: `Scanner` tokenises its input with regular expressions and parses each token through a `String`, which costs several hundred nanoseconds per token. That is fine for a hundred numbers and far too slow for a million; `BufferedReader` plus `StringTokenizer` is about ten times faster.
+q: Why does my Java program print nothing with PrintWriter?
+a: A `PrintWriter` wrapped around `System.out` buffers its output and does not flush on `println`, so everything stays in memory unless you call `flush()` or `close()` before the program ends. A judge showing no output for a correct program is almost always a missing flush.
+q: How do you read input until EOF in Java?
+a: With a `BufferedReader`, loop on `while ((line = in.readLine()) != null)`, because `readLine()` returns `null` at the end of input. With a `Scanner`, loop while `hasNext()` is true; a raw `read()` returns -1 at the end.
+q: What does buffering save in Java I/O?
+a: System calls. Every `read()` on an unbuffered stream can be a trip into the kernel costing about a microsecond; a `BufferedReader` or `BufferedInputStream` fetches 8 KB at once and serves the next thousands of reads from memory.
+q: Why pass a Locale when formatting decimals in Java?
+a: `printf` and `String.format` use the default locale, so a machine set to German prints 3.14 as `3,14`. Pass `Locale.ROOT` or `Locale.US` so decimal output is identical wherever the program runs.
 ---
 A `Scanner` reading a million integers takes several seconds; a `BufferedReader` with a `StringTokenizer` does it in a fraction of one; a hand-rolled byte reader is faster still. `System.out.println` in a loop of a million lines is equally slow. None of this matters for a five-line program and all of it decides whether a correct solution passes a judge's time limit. This lesson explains *why* buffering matters, gives the standard fast-I/O template every competitive Java programmer carries, and covers `PrintWriter`, `printf` and the flush rules that catch people out.
 

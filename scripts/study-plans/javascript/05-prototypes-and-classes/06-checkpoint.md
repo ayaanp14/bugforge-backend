@@ -1,6 +1,14 @@
 ---
 title: Checkpoint — Prototypes and classes
 minutes: 24
+seo-title: JavaScript Classes Quiz: Prototypes, new and super Practice
+description: Test JavaScript prototypes and classes with 12 questions and three programs: the prototype chain, new, private fields, extends, super and descriptors.
+q: What happens when you assign to an inherited property in JavaScript?
+a: The write creates or updates an own property on the object and never changes the prototype, so the new value shadows the inherited one; deleting the own property makes the inherited value visible again. The exception is a setter on the prototype, which runs instead.
+q: What happens when a JavaScript constructor returns an object?
+a: That object becomes the result of `new`, and the freshly created instance is discarded. A returned primitive is ignored, and `new` returns the new instance as usual.
+q: Which method runs for `${x}` and which for `x + 1`?
+a: If `Symbol.toPrimitive` is defined it runs for both, with the hint `"string"` for the template literal and `"default"` for `+`. Without it, `${x}` calls `toString` first and `x + 1` calls `valueOf` first.
 ---
 This checkpoint covers the prototype chain and lookup, `Object.create`, shadowing, `instanceof`; constructor functions and the four steps of `new`; class syntax with fields, private members, accessors and statics; `extends`, `super`, construction order and extending built-ins; property descriptors and the conversion protocols.
 

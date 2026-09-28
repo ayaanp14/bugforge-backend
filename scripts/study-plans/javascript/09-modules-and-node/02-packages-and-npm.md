@@ -1,6 +1,20 @@
 ---
 title: Packages, package.json, npm and semver
 minutes: 12
+seo-title: npm and package.json Explained: Semver, Lockfiles and npm ci
+description: package.json declares a package's entry points, scripts and dependencies; npm installs them by semver range. Caret vs tilde, lockfiles, npm ci and resolution.
+question: What is package.json in Node.js?
+answer: `package.json` is the manifest file that makes a directory an npm package. It gives the package's name and semver version, its entry points (`main`, `exports`, `bin`), whether `.js` files are ES modules (`type`), the `scripts` that `npm run` executes, and three kinds of dependencies that npm installs into `node_modules`. A committed lockfile then pins the exact versions installed.
+q: What is the difference between dependencies, devDependencies and peerDependencies?
+a: `dependencies` are needed at run time by whoever installs the package; `devDependencies` are needed only to develop it, such as a compiler or linter, and are not installed for consumers; `peerDependencies` must be provided by the host project, the way a React component library expects the app's own React.
+q: What is the difference between caret and tilde in package.json?
+a: A caret range `^1.2.3` accepts any version with the same major number, so minor and patch releases may rise, up to but not including `2.0.0`. A tilde range `~1.2.3` accepts only patch releases within `1.2`. For `0.x` versions the caret behaves like the tilde, because zero-major versions promise no compatibility.
+q: What is the difference between npm install and npm ci?
+a: `npm install` respects the lockfile where it can but updates it when `package.json` has changed. `npm ci` installs exactly what `package-lock.json` records or fails, deleting `node_modules` first, which makes it the right command for CI and deployments. Commit the lockfile so every install produces the same program.
+q: How does require find a package in node_modules?
+a: A bare name such as `require("lodash")` is looked up in `./node_modules`, then `../node_modules`, and so on up to the filesystem root. Inside the package directory Node honours the `exports` field if present, otherwise `main`, otherwise `index.js`. Core modules like `fs` are checked first, and relative paths skip the walk entirely.
+q: What is the exports field in package.json?
+a: The `exports` field defines a package's public entry points and blocks imports of any other file inside it. It also supports conditions such as `import`, `require`, `node`, `types` and `default`, so one package can offer an ES module build to `import` and a CommonJS build to `require`.
 ---
 A **package** is a directory with a `package.json`; npm is the registry and the tool that installs packages into `node_modules`, and `require`/`import` of a bare name is the resolution algorithm that finds them there. Almost every JavaScript project is a package, depends on dozens more, and is shaped by a handful of `package.json` fields and one versioning convention — semver — that decides what `npm install` gives you today versus six months from now. This lesson covers the fields that matter, the resolution algorithm precisely enough to debug it, semver ranges and lockfiles, scripts, and the security realities of installing other people's code.
 

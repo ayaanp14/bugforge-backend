@@ -1,6 +1,20 @@
 ---
 title: Object types, interfaces, structural typing and discriminated unions
 minutes: 13
+seo-title: TypeScript Interface vs Type, Structural Typing and Unions
+description: TypeScript interface vs type, structural typing and excess-property checks, intersections, discriminated unions, enums versus literal unions, and satisfies.
+question: What is the difference between interface and type in TypeScript?
+answer: In TypeScript, an `interface` names an object shape that can be extended with `extends` and merged across declarations, which is how libraries augment globals. A `type` alias can name anything — unions, tuples, primitives, function types, mapped and conditional types — and combines shapes with `&`. A common convention is `interface` for object shapes that may be extended and `type` for unions and computed types.
+q: Is TypeScript structurally or nominally typed?
+a: Structurally. A value is assignable to a type if it has the required properties, whatever it was declared as, so two interfaces with identical members are interchangeable. The exceptions are excess-property checks on fresh object literals and classes with private members, which are compared by declaration.
+q: What is a discriminated union in TypeScript?
+a: A union of object types that share a literal-typed tag such as `kind` or `status`. A `switch` or `if` on the tag narrows the value to one member, so that member's own properties become available. It is the idiomatic replacement for class hierarchies and bags of optional fields.
+q: What does "Object literal may only specify known properties" mean?
+a: It is TypeScript's excess-property check: an object literal written directly where a type is expected may not carry properties the type does not declare — usually a typo. The same object assigned to a variable first is accepted, because structural typing allows extra properties.
+q: Should I use an enum or a union of string literals in TypeScript?
+a: Most style guides prefer string-literal unions such as `"low" | "high"`: they are erased at build, structural, need no import and autocomplete just as well. Enums generate a runtime object and are nominal, and numeric enums let plain numbers through; keep enums for interop with existing enum-shaped data.
+q: What does the `satisfies` operator do in TypeScript?
+a: `satisfies`, added in TypeScript 4.9, checks a value against a type without widening the value to that type. `const palette = { primary: "#2563EB" } satisfies Record<string, string>` is validated, yet the compiler still knows its exact keys — an annotation would have widened it to `Record<string, string>`.
 ---
 Most of a TypeScript program's types describe **objects**: what properties they have, which are optional or read-only, what shape each is. Two features decide how those types behave and both surprise newcomers from Java or C#: types are **structural** (a value matches a type if it has the right shape, whatever it was declared as), and the natural way to model "one of several kinds of thing" is not a class hierarchy but a **discriminated union** — a `kind` field the compiler can switch on. This lesson covers object types and interfaces, optional/readonly/index signatures, `type` versus `interface`, structural assignability and excess-property checks, intersections, discriminated unions, `enum` versus literal unions, and `satisfies`.
 
@@ -73,7 +87,7 @@ Each member carries a literal `kind` (or `type`, `status`, `tag`); a `switch`/`i
 ## `enum` — and why unions usually win
 
 ```ts
-enum Color { Red, Green }           // numeric: Color.Red === 0, and any number is assignable — weak
+enum Color { Red, Green }           // numeric: Color.Red === 0, and any `number` value is assignable — weak
 enum Level { Low = "low", High = "high" }   // string enum: a real runtime object, nominal
 ```
 

@@ -1,6 +1,20 @@
 ---
 title: The pitfalls that fail interviews
 minutes: 14
+seo-title: Common C++ Interview Mistakes: Overflow, Modulo, size()
+description: The C++ bugs that fail correct algorithms: int overflow, negative modulo, unsigned size() wrap-around, map lookups that insert and erasing while iterating.
+question: What are the most common C++ mistakes in coding interviews?
+answer: The most common C++ interview mistakes are correct algorithms broken by details: `int` overflow in a product or sum (use `long long` and write `1LL * a * b`), `%` returning a negative remainder, `v.size() - 1` wrapping on an empty vector because `size()` is unsigned, `map[key]` inserting during a lookup, erasing while iterating, and references held across a `push_back`. Most are undefined behaviour, so they may appear to work locally.
+q: Why does -7 % 3 give -1 in C++?
+a: In C++ integer division truncates toward zero and the remainder takes the sign of the dividend, so `-7 / 3` is `-2` and `-7 % 3` is `-1`. For an index or a modular answer that must lie in `[0, m)`, normalise with `((a % m) + m) % m`, which gives 2 here.
+q: What is the difference between `1LL * a * b` and `(long long)(a * b)`?
+a: `1LL * a * b` converts to `long long` before multiplying, so the product is computed in 64 bits. `(long long)(a * b)` multiplies in `int` first — which may already have overflowed, undefined behaviour — and only then widens the result. Widen before the operation, not after.
+q: Why does my loop crash on an empty vector?
+a: `v.size()` returns `size_t`, which is unsigned, so on an empty vector `v.size() - 1` wraps to the largest `size_t` value and `for (int i = 0; i < v.size() - 1; ++i)` runs off the end. Write `i + 1 < v.size()`, or return early when the vector is empty.
+q: How do you erase elements from a vector while iterating?
+a: Assign the iterator that `erase` returns and advance only when nothing was erased: `if (pred(*it)) it = v.erase(it); else ++it;`. Incrementing an erased iterator is undefined behaviour. In C++20, `std::erase_if(v, pred)` does it in one call, and the erase–remove idiom does the same in older code.
+q: Why does map operator[] insert a key?
+a: `m[key]` returns a reference to the value, so when the key is absent it must first insert one, value-initialised — `0` for an `int`. A test like `if (m[key] > 0)` therefore grows the map. Use `find`, `count` or C++20's `contains` for lookups; a `const` map has no `operator[]` for this reason.
 ---
 Most rejected C++ solutions are not wrong algorithms. They are right algorithms with an `int` that overflowed, a `size_t` that wrapped, a `%` that went negative, a `map[]` that inserted, or an iterator that was used after the container moved. Interviewers know the list; this lesson is that list, each item with the one-line fix, organised so you can run it as a review pass over your own code before you say "done". Nothing here is new — every item was taught earlier in the track, and most of them are undefined behaviour, which in C++ means the program may do anything, including appear to work on your machine — but seeing them together is what turns knowledge into a reflex.
 

@@ -1,6 +1,20 @@
 ---
 title: Packages — directories, __init__.py, relative imports and project layout
 minutes: 14
+seo-title: Python Packages Explained: Relative Imports and python -m
+description: A Python package is a directory of modules with an init file. Relative imports, why python -m fixes their ImportError, and the src project layout.
+question: What is a package in Python?
+answer: A Python package is a directory of modules containing an `__init__.py` file, imported by its directory name with dots for each level, as in `import shop.models`. Importing a submodule first runs the package's `__init__.py`. Packages let a project grow past one file without name collisions, and `__init__.py` can re-export the package's public names.
+q: What is `__init__.py` used for?
+a: `__init__.py` marks a directory as a regular package and runs when the package is first imported. It is usually empty, or it re-exports names from submodules and sets `__all__` and `__version__`, so callers can write `from shop import Product`. Keep logic out of it, since it runs on every import of any submodule.
+q: How do I fix "attempted relative import with no known parent package"?
+a: The error appears when a module inside a package is run by path, as in `python shop/cli.py`, so Python does not know its package. Run it by import name from the project root instead, `python -m shop.cli`, which sets the package so that relative and absolute imports both work.
+q: What is the difference between relative and absolute imports in Python?
+a: An absolute import names the full path from the top-level package, `from shop.models import Product`; a relative import uses leading dots from the current module's package, `from .models import Product`. Both are correct; relative imports cannot go above the top-level package and do not work in a file run as a script by path.
+q: Is `__init__.py` required in Python 3?
+a: Not strictly: since Python 3.3 a directory without `__init__.py` is importable as a namespace package, and same-named directories on the path merge into one. For your own code always add `__init__.py`, so the package is deliberate, found by more tools, and never merged with a stray directory.
+q: What is the src layout in a Python project?
+a: The src layout puts the importable package under a `src/` directory, with `tests/` and `pyproject.toml` beside it at the root. After `pip install -e .`, tests import the installed package rather than whatever sits in the working directory, which removes a class of works-on-my-machine bugs.
 ---
 A package is a directory of modules with an `__init__.py`, importable by its directory name with dots for the levels: `import app.models.user`. Packages are how a project grows past one file without the names colliding, and their rules are few: what `__init__.py` does, how `from . import x` resolves, why `python -m` matters for scripts inside a package, and how to lay a project out so that tests, entry points and the importable code all find each other. This lesson covers those rules, `__all__`, `__main__.py`, namespace packages, and the standard `src/` layout.
 

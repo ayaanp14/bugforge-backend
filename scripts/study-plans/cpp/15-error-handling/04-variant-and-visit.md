@@ -1,6 +1,20 @@
 ---
 title: std::variant and std::visit — a type-safe union
 minutes: 14
+seo-title: C++ std::variant and std::visit: A Type-Safe Union
+description: std::variant holds one of several types and checks every access; std::visit proves every case is handled. The overloaded lambda idiom, monostate and std::any.
+question: What is std::variant in C++?
+answer: `std::variant`, in `<variant>` since C++17, is a type-safe union: a `std::variant<int, double, std::string>` holds exactly one of those types at a time and records which with `index()`. `std::get<T>` throws `std::bad_variant_access` on a mismatch, `std::get_if<T>` returns `nullptr` instead, and `std::visit` calls a visitor with the held value, refusing to compile unless every alternative is handled.
+q: How does std::visit work?
+a: `std::visit(visitor, v)` calls the visitor with the value the variant currently holds, at its real type, and does not compile unless the visitor accepts every alternative. A generic lambda, `[](const auto& x) { … }`, handles all types alike; for per-type code, build one overload set from several lambdas with the `overloaded` helper. Every overload must return the same type.
+q: What is the overloaded pattern for std::visit?
+a: `template <typename... Ts> struct overloaded : Ts... { using Ts::operator()...; };` is a struct that inherits from every lambda you pass it and pulls all their call operators into one overload set. `std::visit(overloaded{ [](int i) { … }, [](const std::string& s) { … } }, v)` then calls the lambda that matches the held type, as ordinary overload resolution would.
+q: What is the difference between std::variant and a union?
+a: A C `union` overlaps its members' storage but does not record which member is live, so reading the wrong one is undefined behaviour. `std::variant` also shares storage but tracks the active alternative, checks every access, destroys and constructs alternatives correctly on assignment, and works with `std::visit`.
+q: What is std::monostate used for?
+a: `std::monostate` is an empty type placed as a variant's first alternative. A variant default-constructs its first alternative, so when none of the real alternatives is default-constructible, putting `std::monostate` first makes the variant default-constructible and gives it an explicit nothing-yet state.
+q: When should I use std::any instead of std::variant?
+a: Rarely. `std::any` holds any copyable type, so it suits a set of types that is genuinely open at compile time, such as a plugin's opaque data. It has no `visit`, may allocate on the heap and needs an `any_cast` for every read. When the set of types is known, `std::variant` is checked by the compiler and faster.
 ---
 A value that is *one of several types* — a token that is a number or a word, a command that is a push or a pop, a result that is a value or an error — is a sum type, and C's tool for it was the `union`: overlapping storage with no record of which member is live, so reading the wrong one is undefined behaviour. `std::variant`, in `<variant>` since C++17, is a union that remembers. It stores exactly one of its alternatives at a time, tracks which by index, checks every access, and — through `std::visit` — makes the compiler prove that your code handles every alternative. This lesson settles construction and access, the visitor patterns, `std::monostate`, modelling a small command language, and why `std::any` is almost never the tool.
 

@@ -1,6 +1,20 @@
 ---
 title: Combinators, concurrency limits, timeouts and cancellation
 minutes: 14
+seo-title: Promise.all vs allSettled vs race vs any in JavaScript
+description: Promise.all fails fast, allSettled reports every outcome, race takes the first to settle and any the first to fulfil. Plus concurrency limits and cancelling.
+question: What is the difference between Promise.all, allSettled, race and any?
+answer: `Promise.all` fulfils with every value in input order and rejects on the first rejection. `Promise.allSettled` always fulfils, once everything settles, with a `{ status, value }` or `{ status, reason }` object for each input. `Promise.race` settles like the first input to settle, fulfilled or rejected. `Promise.any` fulfils with the first fulfilment and rejects with an `AggregateError` only if every input rejects.
+q: Does `Promise.all` cancel the other promises when one rejects?
+a: No. `Promise.all` rejects as soon as one input rejects, but the other operations keep running to completion and their results are dropped. Promises cannot be cancelled; stopping the work needs an `AbortSignal` that the operations honour.
+q: How do you limit concurrency with promises in JavaScript?
+a: Run a pool: start `limit` async runners that each claim the next index from a shared counter, await the worker for that item and store the result at that index, then `await Promise.all` over the runners. At most `limit` tasks run at once and results keep their order — what `p-limit` and `p-map` do.
+q: How do you add a timeout to a promise?
+a: Race it against a timer that rejects — `Promise.race([promise, timeout])` — and clear the timer in `finally` so a fast result does not leave it pending. The race only stops the waiting; pass an `AbortSignal` as well if the operation itself should stop.
+q: How do you cancel a promise in JavaScript?
+a: You cannot cancel the promise itself. Pass an `AbortController`'s `signal` into the operation — `fetch`, `timers/promises`, `fs.promises.readFile` and streams accept one — and call `controller.abort()`; the operation rejects with an error named `AbortError`, which means stop, not failure.
+q: What does `for await…of` do in JavaScript?
+a: `for await (const x of source)` loops over an async iterable, awaiting each `next()`, so items are processed one at a time and in order. It suits paginated APIs, streams and line-by-line file reading, usually fed by an async generator, and it also accepts a sync iterable of promises.
 ---
 Once every asynchronous operation is a promise, coordinating many of them becomes algebra: wait for **all**, wait for **any**, wait for the **first**, wait for all **regardless** of outcome. The four `Promise` combinators cover the common shapes; three patterns you write yourself cover the rest — a **concurrency limit** so a thousand requests do not all start at once, a **timeout** so nothing waits forever, and **cancellation** through `AbortController` so abandoned work stops. This lesson covers each, plus async iteration (`for await`) for sequences that arrive over time.
 

@@ -1,6 +1,20 @@
 ---
 title: The memory model — where objects live and when they die
 minutes: 14
+seo-title: Stack vs Heap in C++: Storage Duration and Object Lifetime
+description: C++ objects live on the stack, on the heap or in static storage, and each dies at a defined point. Storage durations, stack frames and destructor order.
+question: What is the difference between stack and heap memory in C++?
+answer: In C++, the stack holds automatic objects (locals and parameters) in a frame pushed on each call and popped on return: allocation is nearly free, and each object dies at the end of its block. The heap holds objects created with `new`, which live until `delete` is called; allocation costs more, and a forgotten `delete` is a leak. A `std::vector` keeps its handle on the stack and its elements on the heap.
+q: What are the four storage durations in C++?
+a: Automatic (locals and parameters, destroyed at the end of their block), static (globals, namespace-scope variables and function-local `static`s, destroyed after `main` returns), thread (`thread_local`, destroyed when the thread ends) and dynamic (created with `new`, destroyed only by `delete`).
+q: In what order are local objects destroyed in C++?
+a: In reverse order of declaration: the last object constructed in a block is the first destroyed, at the block's closing brace. This happens on every exit path — falling off the end, `return`, `break` or an exception propagating through — which is what RAII relies on.
+q: Why is returning the address of a local variable wrong?
+a: The local lives in the function's stack frame, which is popped when the function returns and reused by the next call. The returned pointer then dangles, and reading through it is undefined behaviour. Compilers warn about `return &local;`; return the value instead.
+q: What causes a stack overflow in C++?
+a: Each function call pushes a frame onto the thread's stack, which has a fixed size — 8 MB for the main thread on Linux. Deep or unbounded recursion exhausts it, and the process dies with a segmentation fault rather than a catchable exception.
+q: When is a function-local static variable destroyed?
+a: A function-local `static` is constructed the first time control passes its declaration and destroyed after `main` returns, in reverse order relative to other statics. If control never reaches the declaration, it is never constructed and never destroyed.
 ---
 Every object in a C++ program lives somewhere for a definite span of time, and the language tells you exactly where and exactly how long: there is no garbage collector deciding later. Module 4 lesson 6 named the four storage durations; this lesson draws the machine underneath them — the stack of frames that automatic objects live in, the heap that `new` carves blocks from, the split between a container's *handle* and its *elements* — and fixes the one rule everything else in this module rests on: an object's destructor runs at a moment you can point to in the source.
 

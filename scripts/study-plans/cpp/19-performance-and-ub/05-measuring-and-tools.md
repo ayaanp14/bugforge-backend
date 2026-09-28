@@ -1,6 +1,20 @@
 ---
 title: Measuring — clocks, benchmarks that lie and the tools that tell the truth
 minutes: 14
+seo-title: How to Measure Execution Time in C++: Benchmarks and perf
+description: Time C++ code with the std::chrono steady clock, avoid the ways a microbenchmark lies, report the minimum or median, and find hot spots with perf and Valgrind.
+question: How do you measure execution time in C++?
+answer: Take `std::chrono::steady_clock::now()` before and after the code, subtract the two time points, and convert the result with `std::chrono::duration_cast<std::chrono::microseconds>(end - start).count()`. Use `steady_clock` because it is monotonic and never jumps when the system time changes. Make the timed work's result observable, repeat the run several times, and report the minimum or the median.
+q: Why does my C++ benchmark report almost zero time?
+a: The optimiser probably deleted the work: if the loop's result is never printed or otherwise used, dead-code elimination removes the loop and you time two clock reads. A literal input can also be computed at compile time. Print the result or write it to a `volatile` sink, and read the input at run time.
+q: Should I use high_resolution_clock for timing?
+a: No — use `std::chrono::steady_clock`. In the major standard libraries `high_resolution_clock` is only an alias for `steady_clock` or `system_clock`, and which one differs between them, so it is best avoided by name, and `system_clock` is wall-clock time that can jump when the system time is adjusted.
+q: Should I report the mean or the median of benchmark runs?
+a: Report the minimum or the median. Benchmark times have a floor set by the code and a long tail of interruptions above it, so the mean is dragged upward by every interruption. Give the number of samples and the spread too, so a reader can judge whether the measurement is stable.
+q: Is binary search always faster than linear search?
+a: No — at small sizes constant factors win. A linear scan over eight sorted elements touches one cache line with a well-predicted branch, while binary search's probes each mispredict about half the time. For the same reason libstdc++'s `std::sort` switches to insertion sort below sixteen elements.
+q: How do I profile a C++ program?
+a: Start with `time` for the whole run, then `perf stat` for hardware counters and `perf record` followed by `perf report` to see which functions take the time. Valgrind's callgrind counts instructions per function and cachegrind simulates cache misses; the sanitizers then confirm the faster version is still correct.
 ---
 Everything in this module so far has been a model: count the copies, count the lines, count the branch misses. Models rank alternatives; only a measurement says how much time an alternative costs, and measurements of small pieces of code are wrong more often than right — the optimiser deleted the work, the input was a compile-time constant, the first run paid for page faults the others did not, the laptop changed clock speed halfway through. This lesson settles how to take a time that means something with `std::chrono::steady_clock`, why the judge never asserts on one, the pitfalls that make a microbenchmark lie, which statistic to report, and the tools that find where the time goes: `perf`, Valgrind, the sanitizers and `-fanalyzer`.
 

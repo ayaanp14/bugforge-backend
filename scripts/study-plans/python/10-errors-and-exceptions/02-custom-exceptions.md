@@ -1,6 +1,20 @@
 ---
 title: Custom exceptions — a hierarchy for your own errors
 minutes: 13
+seo-title: Python Custom Exceptions: Classes, Data and Hierarchies
+description: Define your own Python exception by subclassing Exception. Storing data as attributes, one base class per package, message style, and when a built-in is better.
+question: How do I create a custom exception in Python?
+answer: Create a custom exception in Python by subclassing `Exception`: `class InsufficientFunds(Exception): pass` is complete, and `raise InsufficientFunds("balance 10, requested 50")` stores the message in `e.args` and shows it through `str(e)`. When handlers need details, define `__init__`, call `super().__init__(message)` and store the details as attributes. Never subclass `BaseException`.
+q: Should a custom exception inherit from Exception or BaseException?
+a: From `Exception`. `BaseException` is the root that `KeyboardInterrupt` and `SystemExit` sit under, so a custom exception derived from it escapes `except Exception` handlers and behaves like a request to stop the program.
+q: How do I add attributes to a custom exception in Python?
+a: Define `__init__`, call `super().__init__(message)` first so that `str(e)`, `e.args` and the traceback show the message, then set your own attributes, such as `self.field = field`. Handlers can then act on `e.field` instead of parsing the message text.
+q: Why create a base exception class for a package?
+a: One base, such as `AppError`, lets a boundary catch every error the package raises on purpose with `except AppError`, separately from bugs such as a `TypeError`. Add a subclass only when some caller will handle that failure differently from its siblings.
+q: When should I use a built-in exception instead of a custom one?
+a: When a built-in already means the failure: a bad argument is `ValueError` or `TypeError`, a missing key `KeyError`, a missing file `FileNotFoundError`. Define your own only when callers outside your module must tell your failure apart or need structured data from it.
+q: How do I wrap another library's exception in my own?
+a: Catch it at the edge of your module and raise your exception from it, as in `raise ConfigError(...) from e` inside `except json.JSONDecodeError as e`. The cause stays visible in the traceback, while callers catch one stable type however the implementation changes.
 ---
 The built-in exceptions describe *what kind* of thing went wrong — a bad value, a missing key — but not *whose* code it went wrong in. A library or application that raises `ValueError` for everything leaves its callers unable to tell a malformed input from a failed business rule from a bug. Custom exception classes solve that: a base class for the package, subclasses for the distinct failures, fields that carry what the handler needs, and a message that reads well. This lesson covers defining them, adding data, building a small hierarchy, writing messages, and the rules for when a custom exception earns its place versus when a built-in is the honest choice.
 
@@ -102,7 +116,7 @@ else:
 ## Pitfalls
 
 - Subclassing `BaseException` — it escapes `except Exception` and behaves like `KeyboardInterrupt`.
-- A custom `__init__` that forgets `super().__init__(message)`, leaving `str(e)` empty.
+- A custom `__init__` that forgets `super().__init__(message)`, so `str(e)` shows the raw constructor arguments — `(10, 50)` — instead of the message you built.
 - A class per message rather than per handling.
 - Callers parsing `str(e)` because the data was not stored as attributes.
 - Wrapping a built-in in a custom exception without `from e`, losing the cause.

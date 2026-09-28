@@ -1,6 +1,20 @@
 ---
 title: Collectors — toMap, joining, groupingBy, partitioningBy
 minutes: 16
+seo-title: Java Stream Collectors: GroupingBy, ToMap and Joining
+description: Java Collectors build results from streams: toMap with a merge function for duplicate keys, joining, groupingBy with downstreams, partitioningBy and teeing.
+question: How does groupingBy work in Java streams?
+answer: `Collectors.groupingBy` in Java streams puts elements into a map keyed by what a classifier function returns: `groupingBy(String::length)` gives a `Map<Integer, List<String>>`. A second argument, a downstream collector such as `counting()` or `mapping(...)`, replaces each list with a count, sum or other summary, and a three-argument form names the map type, such as `TreeMap::new`.
+q: How do you handle duplicate keys in `Collectors.toMap`?
+a: Pass a merge function as the third argument. Without one, `toMap` throws `IllegalStateException: Duplicate key`; with `toMap(w -> w, w -> 1, Integer::sum)` duplicates are combined, and `(a, b) -> a` keeps the first. A fourth argument, such as `LinkedHashMap::new`, chooses the map type.
+q: What is the difference between partitioningBy and groupingBy?
+a: `partitioningBy` splits elements by a predicate into exactly two groups, and its map always has both keys, `true` and `false`, even when one side is empty. `groupingBy` makes one group per classifier value, and a value with no elements simply has no key.
+q: How do you count occurrences of each word with Java streams?
+a: Group by the word itself and count: `words.stream().collect(groupingBy(Function.identity(), counting()))` returns a `Map<String, Long>`. `toMap(w -> w, w -> 1, Integer::sum)` does the same with `Integer` counts.
+q: How do you join strings with a separator in a Java stream?
+a: Use `Collectors.joining`: `names.stream().collect(joining(", "))` gives "ann, bob, cy", and `joining(", ", "[", "]")` adds a prefix and suffix. Elements must be `CharSequence`s, so map others with `String::valueOf` first. Without a pipeline, `String.join(", ", list)` is simpler.
+q: What is the difference between collect and reduce in Java streams?
+a: `reduce` folds immutable values — each step returns a new value. `collect` fills a mutable container, such as a list or map, and its collector has a combiner that merges the containers built by parallel chunks. If the accumulator mutates its first argument, you need `collect`.
 ---
 `collect` is the terminal that builds something: a list, a set, a map, a string, a summary. Its argument is a `Collector` — a recipe with a supplier (make the container), an accumulator (add one element), a combiner (merge two containers, for parallel) and a finisher (convert at the end). You will write your own perhaps once a year; you will use the ones in `java.util.stream.Collectors` every day, and `groupingBy` with a downstream collector is the single most useful line in the whole streams API. This lesson is that toolbox.
 

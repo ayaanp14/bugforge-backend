@@ -1,6 +1,18 @@
 ---
 title: collections in depth — deque, Counter, OrderedDict, ChainMap and the User classes
 minutes: 13
+seo-title: Python collections: deque, Counter, OrderedDict, ChainMap
+description: Python's collections module: deque with maxlen and rotate, Counter arithmetic, OrderedDict for an LRU cache, ChainMap layers and namedtuple helpers.
+question: What is the collections module in Python?
+answer: `collections` is the standard-library module of specialised containers beyond `list`, `dict` and `tuple`. `deque` is a double-ended queue with O(1) appends and pops at both ends; `Counter` counts items and supports multiset arithmetic; `defaultdict` fills in missing keys; `OrderedDict` can reorder keys; `ChainMap` layers several dicts; `namedtuple` builds tuples with named fields.
+q: What is the difference between a deque and a list in Python?
+a: A `deque` appends and pops at both ends in O(1), while a list is O(n) at the front because every element shifts. A deque also takes `maxlen` to discard from the far end and `rotate` for circular shifts, but indexing its middle is O(n) and it cannot be sliced.
+q: How do you implement an LRU cache in Python?
+a: Keep entries in an `OrderedDict`: on every `get` or `put`, call `move_to_end(key)` to mark the key most recently used, and when the size exceeds the capacity, `popitem(last=False)` evicts the least recently used from the front. Both are O(1). For caching a function's results, `functools.lru_cache` does the same job.
+q: Can you subtract two Counters in Python?
+a: Yes. `Counter(a) - Counter(b)` subtracts counts key by key and drops any result that is zero or negative, while `&` keeps the minimum count per key and `|` the maximum. That makes multiset checks one line: a word can be built from some tiles when `not (Counter(word) - Counter(tiles))`.
+q: What is ChainMap used for in Python?
+a: `collections.ChainMap` searches several dicts in order as one mapping without copying them, so layered configuration, such as command line over config file over defaults, takes one line. Lookups return the first mapping's value, writes go to the first mapping only, and changes to an underlying dict show through at once.
 ---
 `collections` has appeared in five modules already: `Counter` and `defaultdict` for counting and grouping, `deque` for queues and windows, `namedtuple` for records, `UserDict` for subclassing a mapping. This lesson gathers the rest of what each can do — `deque.rotate` and `maxlen`, `Counter` arithmetic and `most_common` semantics, `OrderedDict.move_to_end` as the basis of an LRU cache, `ChainMap` for layered configuration, `namedtuple`'s `_replace`/`_asdict`/`_make` and the `User*` classes — so that when a problem is "a bounded history", "a cache with eviction" or "settings with defaults and overrides", the answer is one class rather than a hand-written structure.
 

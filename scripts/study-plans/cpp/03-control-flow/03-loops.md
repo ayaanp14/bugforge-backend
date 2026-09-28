@@ -1,6 +1,20 @@
 ---
 title: Loops — for, while, do…while and the traps between them
 minutes: 14
+seo-title: C++ For, While and Do-While Loops Explained
+description: C++ has three loops: for counts, while tests first, do-while runs at least once. Half-open ranges, unsigned countdowns, break, continue and nested loops.
+question: What is the difference between for, while and do-while loops in C++?
+answer: C++ has three loops. A `for` loop suits a known number of steps or an index, with its init, condition and step on one line; a `while` loop tests its condition first and may run zero times; a `do … while` loop runs its body first and tests afterwards, so it always runs at least once — the shape of "ask, then check, repeat while wrong".
+q: Why does a reverse loop with `size_t` never end?
+a: `std::size_t` is unsigned, so `i >= 0` is always true, and `--i` at 0 wraps to 18446744073709551615 and reads far out of range. Count down with `for (std::size_t i = v.size(); i-- > 0;)`, or loop while `i > 0` and use `v[i - 1]`; both handle an empty vector.
+q: What is the difference between break and continue in C++?
+a: `break` leaves the innermost enclosing loop or `switch`; `continue` skips the rest of the body and starts the next iteration. In a `for` loop the step still runs after `continue`, but in a `while` loop a `continue` placed before the increment skips it and loops forever.
+q: How do you break out of nested loops in C++?
+a: `break` leaves only the innermost loop, so set a flag the outer loop tests — `for (int i = 0; i < n && !found; ++i)` — and `break` from the inner loop when you set it. When the search is a function of its own, `return` from the inner loop is cleaner; modern code avoids `goto`.
+q: What is a half-open range in C++?
+a: A half-open range `[begin, end)` includes `begin` and excludes `end`, as in `for (int i = 0; i < n; ++i)`. It has `end - begin` elements with no `+ 1`, is empty when `begin == end`, and adjacent ranges share a boundary without overlapping. Every standard algorithm takes its ranges this way.
+q: Should I use `++i` or `i++` in a for loop?
+a: For an `int` they do the same thing. `++i` is the habit worth forming, because for an iterator `i++` has to produce a copy of the old value that nobody uses.
 ---
 A loop is the one place where a program's correctness depends on a boundary: one iteration too many reads past the end of an array, one too few drops the last element, and a condition that never turns false runs until the judge kills the process. C++ has the three loops C had — `for`, `while`, `do … while` — and one trap Java programmers do not carry: unsigned arithmetic wraps, so a countdown on `std::size_t` never reaches `-1`. This lesson fixes the shape of each loop, the half-open convention that makes off-by-one errors rare, `break` and `continue`, and how to leave two nested loops at once.
 

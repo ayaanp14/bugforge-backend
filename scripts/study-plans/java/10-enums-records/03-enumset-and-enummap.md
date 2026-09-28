@@ -1,6 +1,18 @@
 ---
 title: EnumSet and EnumMap
 minutes: 10
+seo-title: EnumSet and EnumMap in Java: Fast Collections for Enums
+description: EnumSet stores enum constants as bits and EnumMap keeps values in an array by ordinal. Why both beat HashSet and HashMap for enums in Java, and the traps.
+question: What are EnumSet and EnumMap in Java?
+answer: EnumSet and EnumMap are Java collections built for enum types. An `EnumSet` stores membership as bits — one `long` for up to 64 constants — so `contains`, `add` and `remove` are bit operations; an `EnumMap` stores values in an array indexed by `ordinal()`. Both are faster and smaller than `HashSet` and `HashMap`, iterate in declaration order and reject null keys.
+q: How do you create an EnumSet in Java?
+a: Through static factories, never `new`: `EnumSet.of(Day.SATURDAY, Day.SUNDAY)`, `EnumSet.allOf(Day.class)`, `EnumSet.noneOf(Day.class)` for an empty set, `EnumSet.range(from, to)`, `EnumSet.complementOf(set)` and `EnumSet.copyOf(collection)`. The result is an ordinary mutable `Set`.
+q: Why use EnumMap instead of HashMap in Java?
+a: With enum keys an `EnumMap` is an array read at the key's ordinal — no hashing — so it is faster and smaller, iterates keys in declaration order, and says in its type that the key set is closed. Create it with the class token: `new EnumMap<>(Status.class)`.
+q: Why does EnumSet.copyOf throw on an empty list?
+a: `EnumSet.copyOf(collection)` needs at least one element to learn the enum type unless the argument is itself an `EnumSet`, so an empty plain collection throws `IllegalArgumentException`. Check for empty and use `EnumSet.noneOf(Type.class)` in that case.
+q: How do you represent a set of flags in Java?
+a: Use an `EnumSet` of an enum such as `Permission`. It is a bit vector underneath, like an integer bitmask, but type-safe and readable, with the full `Set` API — `contains`, `addAll` for union and `retainAll` for intersection. Effective Java recommends it over `int` flags.
 ---
 A set of days, a map from status to count, a bitmask of permissions — collections keyed by enum constants are everywhere, and Java has two classes built for exactly that shape. `EnumSet` stores membership as bits; `EnumMap` stores values in an array indexed by ordinal. Both are faster and smaller than their hash-based cousins, iterate in declaration order, and are what a reviewer expects to see wherever the element or key type is an enum.
 

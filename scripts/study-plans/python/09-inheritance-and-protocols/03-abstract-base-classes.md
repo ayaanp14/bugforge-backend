@@ -1,6 +1,20 @@
 ---
 title: Abstract base classes — abc and collections.abc
 minutes: 14
+seo-title: Python Abstract Classes: ABC, abstractmethod, collections.abc
+description: An abstract base class cannot be instantiated until a subclass defines every abstract method. abc.ABC, abstract properties, collections.abc mixins and register.
+question: What is an abstract class in Python?
+answer: An abstract class in Python is a class that inherits from `abc.ABC` and marks methods with `@abstractmethod`. It cannot be instantiated, and neither can any subclass that leaves an abstract method undefined — the `TypeError` names the missing methods at construction. Concrete methods on the abstract class can call the abstract ones, so shared behaviour is written once.
+q: How do I fix TypeError: Can't instantiate abstract class?
+a: The class, or a base it inherits from, still has an `@abstractmethod` with no implementation, and the error lists which ones. Define every listed method in the subclass you are instantiating; a subclass that leaves one out is itself abstract.
+q: What is collections.abc used for?
+a: `collections.abc` holds abstract base classes for the built-in protocols — `Iterable`, `Sequence`, `Mapping`, `Set` and more. Subclass one and implement its core methods, and it supplies the rest: a `Sequence` needs only `__getitem__` and `__len__` to gain `__contains__`, `__iter__`, `__reversed__`, `index` and `count`.
+q: How do I make an abstract property in Python?
+a: Stack the decorators with `@abstractmethod` innermost: `@property` on top, then `@abstractmethod`, then the `def`. A subclass satisfies it with a property or simply with a class attribute of the same name, such as `name = "csv"`.
+q: Why does `isinstance(x, Iterable)` work without inheriting from Iterable?
+a: The `collections.abc` classes define `__subclasshook__`, which recognises any class with the right methods, so anything with `__iter__` counts as `Iterable`. Your own ABCs do not do this automatically: a class must inherit from them or be registered.
+q: When should I use an abstract base class instead of duck typing?
+a: Use an ABC when subclasses share real implementation, such as template methods or `collections.abc` mixins, or when an incomplete class must fail at construction, as in a plugin system. When code just calls methods and any provider will do, duck typing or a `Protocol` is enough.
 ---
 Duck typing answers "can this object do X?" at the moment X is attempted. An abstract base class answers it earlier: a class that declares `@abstractmethod`s cannot be instantiated until a subclass fills them in, so a missing method fails at construction rather than deep inside a call. The standard library's `collections.abc` goes further — implement the two or three core methods of `Sequence` or `Mapping` and the ABC supplies the rest. This lesson covers `abc.ABC` and `@abstractmethod`, abstract properties and class methods, `collections.abc` with its mixin methods, `register` for virtual subclasses, and `isinstance` against an ABC as the type check that respects duck typing.
 

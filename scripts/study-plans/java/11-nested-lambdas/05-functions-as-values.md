@@ -1,6 +1,20 @@
 ---
 title: Functions as values — composition, factories and strategies
 minutes: 13
+seo-title: Higher-Order Functions in Java: Closures and Composition
+description: Java methods can take and return functions: higher-order methods, closure factories, composition with andThen, lambda strategies and lazy Suppliers.
+question: What is a higher-order function in Java?
+answer: A higher-order function in Java is a method that takes a function as a parameter or returns one, typed with a functional interface such as `Predicate`, `Function` or `Supplier`. `filter(list, predicate)` and `Comparator.comparing(Person::age)` take functions; `adder(10)`, which returns `x -> x + 10`, returns one — a closure that remembers its argument.
+q: What is a closure in Java?
+a: A closure is a lambda that captures variables from its enclosing scope. A method such as `adder(int n)` that returns `x -> x + n` hands back a closure: each call produces a function that remembers its own `n`. Captured locals must be effectively final.
+q: How do you pass a function as a parameter in Java?
+a: Declare the parameter with a functional interface type — `Predicate<T>`, `Function<T, R>`, `Supplier<T>` — and pass a lambda or method reference, as in `filter(names, n -> n.length() > 5)`. Inside the method, call the interface's method: `keep.test(x)` or `f.apply(x)`.
+q: How do you compose functions in Java?
+a: With the default methods on the functional interfaces: `andThen` and `compose` chain `Function`s, `and`, `or` and `negate` combine `Predicate`s, and `thenComparing` and `reversed` build `Comparator`s. `trim.andThen(lower)` trims first, then lowercases.
+q: How do you implement the strategy pattern with lambdas?
+a: Use a functional interface as the strategy type and lambdas as the strategies — often in a map, such as a `Map<String, BinaryOperator<Long>>` from an operator symbol to `Long::sum` or `(a, b) -> a - b`. Keep named classes for strategies that carry state or configuration of their own.
+q: What is currying in Java?
+a: Currying turns a function of several arguments into a chain of one-argument functions: `x -> y -> x + y`, typed `Function<Integer, Function<Integer, Integer>>`. Fixing some arguments early, as `adder(10)` does, is partial application. Both work in Java but are rare.
 ---
 Once behaviour can be stored in a variable, passed to a method and returned from one, a set of techniques opens up that have no equivalent in purely object-oriented code: functions that build functions, pipelines assembled from small pieces, strategies chosen at run time from a map, and callbacks. This lesson is a tour of those techniques as they appear in everyday Java — nothing academic, all of it in real codebases.
 

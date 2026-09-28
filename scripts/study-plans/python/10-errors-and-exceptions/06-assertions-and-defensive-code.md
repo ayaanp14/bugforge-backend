@@ -1,6 +1,20 @@
 ---
 title: Assertions and defensive code — validate at the boundary, assert the invariant
 minutes: 13
+seo-title: Python Assert vs Raise: Assertions and Input Validation
+description: A Python assert states an invariant and vanishes under python -O, so it must never check input. Validate at the boundary with TypeError or ValueError instead.
+question: When should I use assert in Python?
+answer: Use `assert` to state something that can only be false if the program itself has a bug: an invariant, a postcondition, an unreachable branch. `assert cond, "message"` raises `AssertionError` when the condition is false, but running Python with `-O` removes every assert, so never use one to validate user input or give it a side effect.
+q: What is the difference between assert and raise in Python?
+a: `raise` always runs and is for failures that are possible in correct code, such as bad input, which should raise `ValueError` or `TypeError` with a clear message. `assert` is a debugging check that `python -O` strips out, suitable only for conditions whose failure means a bug.
+q: Why does my assert with parentheses never fail?
+a: `assert (cond, "message")` asserts a two-element tuple, and a non-empty tuple is always true, so the check never fires. Drop the parentheses: `assert cond, "message"`. Recent Python versions warn about this mistake.
+q: Does python -O remove assert statements?
+a: Yes. Running with `-O` sets `__debug__` to `False` and strips every `assert` from the bytecode, along with code under `if __debug__:`. That is why an assertion must never be the only guard on input, or perform a side effect such as `assert xs.pop()`.
+q: Where should input validation happen in Python?
+a: Once, at the boundary where input enters — `main`, a request handler or a library's public function — raising `TypeError` for the wrong kind of value and `ValueError` for a bad value, with a message naming the expected and the actual. Interior code can then assert what the boundary established.
+q: What does fail fast mean in programming?
+a: Fail fast means surfacing an error as close to its cause as possible: reject a bad configuration at start-up, a malformed record when it is parsed, an invalid value in the constructor. A loud failure costs a traceback; a quiet default costs a wrong answer nobody notices.
 ---
 There are two kinds of "this should not happen": input from outside the program that turns out to be wrong, and a state inside the program that the code's own logic should have made impossible. They need different tools. Bad input is *expected* and is handled by validation that raises a clear exception; an impossible state is a *bug* and is caught by an `assert` that documents the assumption and fails loudly in development. This lesson separates the two, explains what `assert` is and is not (it can be switched off), gives the validation rules for a boundary, and closes with fail-fast design and the `__debug__` flag.
 

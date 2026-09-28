@@ -1,6 +1,20 @@
 ---
 title: Executors, thread pools and Futures
 minutes: 14
+seo-title: Java ExecutorService and Thread Pools: Future and Shutdown
+description: An ExecutorService runs tasks on a pool of reusable Java threads and returns a Future for each. Fixed vs cached pools, Future.get() and a clean shutdown.
+question: What is ExecutorService in Java?
+answer: `ExecutorService` in Java is a pool of reusable threads that runs the `Runnable` and `Callable` tasks you submit, so you manage tasks rather than threads. `submit` returns a `Future` whose `get()` gives the result or rethrows the task's failure wrapped in `ExecutionException`. Call `shutdown()` and `awaitTermination()` when finished, or the pool's threads keep the JVM alive.
+q: What is the difference between newFixedThreadPool and newCachedThreadPool?
+a: A fixed pool has exactly n threads and an unbounded queue, which suits CPU-bound work sized to the core count. A cached pool creates as many threads as needed and reuses idle ones for 60 seconds, which suits short bursty I/O tasks, but its unbounded thread count can exhaust native threads.
+q: What is the difference between shutdown and shutdownNow?
+a: `shutdown()` stops accepting new tasks and lets queued ones finish; `shutdownNow()` interrupts running tasks and returns those that never started. The usual sequence is `shutdown()`, then `awaitTermination` with a timeout, then `shutdownNow()` if the timeout expires.
+q: What exceptions does Future.get() throw?
+a: `ExecutionException` wrapping the task's own exception (call `getCause()` for the real one), `InterruptedException` if the waiting thread is interrupted, `CancellationException` if the task was cancelled, and `TimeoutException` from `get(timeout, unit)` when the deadline passes.
+q: What is the difference between execute and submit in ExecutorService?
+a: `execute(Runnable)` fires and forgets: an exception kills the worker thread and reaches the uncaught-exception handler. `submit` returns a `Future` and captures any exception inside it, so nothing is printed until someone calls `get()`.
+q: How many threads should a Java thread pool have?
+a: For CPU-bound work, about the number of cores, from `Runtime.getRuntime().availableProcessors()`. For I/O-bound work, more — roughly cores × (1 + wait time / compute time) — or virtual threads. In production, bound both the queue and the thread count with a `ThreadPoolExecutor`.
 ---
 Creating a thread per task does not scale, and juggling `Thread` objects by hand — start, join, collect results, handle the one that threw — is repetitive and easy to get wrong. `java.util.concurrent` separates the *task* from the *thread that runs it*: you submit `Runnable`s and `Callable`s to an **`ExecutorService`**, a pool of reusable threads runs them, and each submission hands back a **`Future`** through which you collect the result or the exception. This lesson covers the pools, the two submission styles, the shutdown protocol everybody forgets, and what a `Future` actually promises.
 

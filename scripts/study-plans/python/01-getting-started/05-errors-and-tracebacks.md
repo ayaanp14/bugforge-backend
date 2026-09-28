@@ -1,6 +1,20 @@
 ---
 title: Errors and tracebacks — reading what the interpreter tells you
 minutes: 13
+seo-title: How to Read a Python Traceback: Common Errors Explained
+description: Read a Python traceback bottom up: the exception, the line that raised it, then its callers. The common errors, what causes each and how to debug with print.
+question: How do you read a Python traceback?
+answer: Read a Python traceback from the bottom up. The last line names the exception type and message — what went wrong. The frame just above it gives the file, line and function where it was raised, and the frames above that are the call chain that led there, most recent call last. The bug is often in a caller that passed a bad value, not on the line that raised.
+q: What is the difference between TypeError and ValueError in Python?
+a: A `TypeError` means an operation received the wrong type of object: `"a" + 1`, `len(5)`, calling something that is not a function. A `ValueError` means the type was right but the value was not: `int("abc")`, or unpacking the wrong number of items.
+q: What does 'NoneType' object has no attribute mean?
+a: A method was called on `None` instead of the object you expected. The cause is usually one step back: `xs = xs.sort()` (`sort` sorts in place and returns `None`), a function that never reaches a `return`, or `re.match` finding nothing. Print the value's `repr` before the failing line to confirm.
+q: Why does Python report a SyntaxError on the wrong line?
+a: The parser reports where it gave up, not where the mistake began. An unclosed `(` or `[` on one line is often reported on the next, so when the flagged line looks correct, check the line above it. Since Python 3.10 the message often names the unclosed bracket and the line it was opened on.
+q: What is the difference between a syntax error and an exception in Python?
+a: A syntax error is found by the compiler before any code runs and names the line and column. An exception is raised while the program runs; unless something catches it, execution stops, a traceback is printed to standard error and the process exits with status 1.
+q: How do I debug Python code without a debugger?
+a: Print the values you are unsure of with `repr`, which reveals a trailing newline or a number that is really a string: `print(repr(line))`. Since Python 3.8, `print(f"{n=}")` prints a name and its value together. When printing is not enough, `breakpoint()` opens the `pdb` debugger.
 ---
 A Python error message is the most useful text the interpreter ever prints, and most beginners read only its last word. A traceback tells you *what* went wrong, *where*, and *how the program got there*; a syntax error tells you the line and the column. This lesson teaches how to read both from the bottom up, catalogues the eight exceptions you will meet in the first month, distinguishes them from the verdicts the judge gives, and sets out the two-line debugging habit — `print(repr(x))` and `f"{x=}"` — that solves most bugs before a debugger is needed.
 

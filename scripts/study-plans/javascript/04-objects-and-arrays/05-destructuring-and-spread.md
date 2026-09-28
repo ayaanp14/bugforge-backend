@@ -1,6 +1,20 @@
 ---
 title: Destructuring and spread — taking things apart and putting them together
 minutes: 13
+seo-title: JavaScript Destructuring and Spread Operator Explained
+description: Destructuring binds variables from objects and arrays by shape, with defaults, renaming and rest; spread expands them. Swaps, named parameters and merges.
+question: What is destructuring in JavaScript?
+answer: Destructuring is JavaScript syntax that unpacks values from objects and arrays into variables by shape. Object patterns match by property name — `const { name, role = "guest" } = user` — with renaming, defaults and a `...rest`; array patterns match by position on any iterable — `const [head, ...tail] = list`. Defaults apply only when the value is `undefined`, and destructuring `null` or `undefined` throws.
+q: What is the spread operator in JavaScript?
+a: The spread operator `...` expands an iterable into separate values in a call or array literal — `Math.max(...nums)`, `[...a, ...b]` — and copies an object's own enumerable properties into an object literal, as in `{ ...defaults, ...options }`. Every copy it makes is shallow.
+q: How do you swap two variables in JavaScript?
+a: Use array destructuring: `[a, b] = [b, a]`. The right side builds a temporary array of the current values and the pattern assigns them back in the opposite order, with no temporary variable to declare.
+q: How do you make named parameters in JavaScript?
+a: Take one options object and destructure it in the signature with defaults: `function createUser({ name, role = "member" } = {})`. Callers name what they pass and omit the rest, and the `= {}` default lets the function be called with no argument at all.
+q: Which value wins when spreading objects with duplicate keys?
+a: The later one. In `{ ...a, ...b }` a key present in both takes its value from `b`, because properties are copied left to right, which is why `{ ...defaults, ...overrides }` is the config-merge idiom.
+q: Why do I get "Cannot destructure property of undefined"?
+a: Destructuring `null` or `undefined` throws a `TypeError`, for example when a function is called without the object it destructures. Default the container: `const { name } = user ?? {}`, or give a destructured parameter an `= {}` default.
 ---
 Destructuring pulls values out of objects and arrays into variables by shape; spread does the reverse, pouring an iterable or an object's properties into a literal or a call. Together they replaced a huge amount of `const x = obj.x` and `Array.prototype.slice.call` boilerplate, and they are the syntax behind "named parameters", swapping variables, immutable updates, and half of every React component. This lesson covers both in full: defaults, renaming, nesting, rest, the parameter-list forms, and the places where the syntax has sharp edges.
 

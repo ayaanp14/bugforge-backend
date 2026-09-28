@@ -1,6 +1,20 @@
 ---
 title: break, continue, labels and return
 minutes: 11
+seo-title: Java Break vs Continue: Labelled Break for Nested Loops
+description: In Java, break leaves the innermost loop or switch and continue skips to the next iteration. How labels exit nested loops, and when return is cleaner.
+question: What is the difference between break and continue in Java?
+answer: In Java, `break` exits the innermost enclosing loop or `switch` immediately, while `continue` abandons only the current iteration and moves on to the next one; in a `for` loop, the update step runs first. Both affect only the innermost loop unless given a label, as in `break outer;`, which leaves the labelled outer loop as well.
+q: How do I break out of nested loops in Java?
+a: Label the outer loop, as in `outer: for (…)`, and write `break outer;` inside the inner loop; it leaves both loops at once. Often cleaner still is moving the loops into their own method and using `return` as soon as the result is found.
+q: Does break inside a switch exit the loop in Java?
+a: No. A `break` inside a `switch` that sits inside a loop leaves only the `switch`, and the loop carries on. To leave the loop from there, use a labelled `break`, set a flag the loop condition checks, or `return` from the method.
+q: Does Java have goto?
+a: No. `goto` is a reserved word in Java but is not implemented, so it cannot be used. Labelled `break` and `continue` are the structured alternative: they can leave an enclosing labelled statement but never jump into one.
+q: Why does continue cause an infinite loop in a while loop?
+a: If the increment sits at the bottom of the `while` body, a `continue` above it jumps straight back to the condition without incrementing, so the same value is tested forever. A `for` loop avoids this, because `continue` still runs its update step.
+q: What does "unreachable statement" mean in Java?
+a: The compiler has proved that a statement can never run, such as code directly after `break`, `continue`, `return` or `throw` in the same block, or inside `while (false)`, and it refuses to compile it. `if (false)` is exempt, so it can still be used for conditional compilation.
 ---
 A loop's condition says when to stop *between* iterations. Real loops often need to stop or skip *in the middle* — a match found, a bad record to ignore, an inner loop that should end the outer one too. Java gives four tools: `break`, `continue`, labelled versions of both, and `return`. Each has a precise meaning, and using the wrong one is a common source of subtle bugs.
 

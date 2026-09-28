@@ -1,6 +1,20 @@
 ---
 title: functools and operator — the function toolkit
 minutes: 13
+seo-title: Python functools: LRU Cache, partial, reduce and operator
+description: Python's functools memoises functions with an LRU cache, fixes arguments with partial and folds with reduce; operator supplies itemgetter and attrgetter.
+question: What does functools.lru_cache do in Python?
+answer: `functools.lru_cache` is a decorator that memoises a function: it stores the result for each set of arguments and returns the stored result when the same arguments come again. `@lru_cache(maxsize=256)` bounds the cache by evicting the least recently used entries, and `@cache` is the unbounded form. The function must be pure, its arguments hashable, and `cache_info()` reports hits and misses.
+q: What is the difference between cache and lru_cache in Python?
+a: `@functools.cache`, added in Python 3.9, is an unbounded memo that keeps every result, suited to recursion and a fixed set of inputs. `@lru_cache(maxsize=n)` keeps at most n results and evicts the least recently used, so memory stays bounded when the set of arguments is open-ended.
+q: What does functools.partial do?
+a: `partial(f, *args, **kwargs)` returns a new callable with some of `f`'s arguments fixed, such as `partial(int, base=16)` for parsing hex strings. Unlike a lambda that only fixes arguments, it is introspectable through `.func` and `.keywords`, picklable, and binds its arguments at creation, which avoids late-binding bugs in loops.
+q: How does reduce work in Python?
+a: `functools.reduce(f, iterable, initial)` folds a sequence from the left, computing `f(f(f(initial, x0), x1), x2)`, so `reduce(operator.mul, [1, 2, 3, 4], 1)` is 24. Always pass `initial`, since an empty iterable without it raises `TypeError`, and prefer `sum`, `math.prod`, `max` or `join` when a built-in fold exists.
+q: Why use functools.wraps in a decorator?
+a: `@wraps(fn)` on the wrapper copies the wrapped function's `__name__`, `__doc__`, `__module__` and `__qualname__` and sets `__wrapped__`. Without it, every decorated function reports its name as `wrapper` in tracebacks, `help()` and test output.
+q: What is operator.itemgetter used for?
+a: `operator.itemgetter(1)` builds a function that returns item 1 of its argument, the usual key for `sorted` and `max` in place of `lambda r: r[1]`, and it is faster. `itemgetter(1, 0)` returns a tuple for a two-level sort; `attrgetter` and `methodcaller` do the same for attributes and method calls.
 ---
 `functools` collects the tools for working *with* functions: caching results, fixing arguments, folding sequences, preserving metadata through wrappers, dispatching on a type, and deriving comparison methods. `operator` supplies every operator as a named function so that `map`, `sorted`, `reduce` and the itertools can be handed `add` or `itemgetter(1)` instead of a lambda. This lesson covers `cache` and `lru_cache`, `partial` and `partialmethod`, `reduce`, `wraps`, `cached_property`, `singledispatch`, `total_ordering`, and the `operator` functions and factories, with the rules for when each beats the plain alternative.
 

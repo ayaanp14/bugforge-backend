@@ -1,6 +1,20 @@
 ---
 title: Truthiness, coercion and the two equalities
 minutes: 14
+seo-title: JavaScript == vs ===: Truthy, Falsy and Type Coercion
+description: JavaScript has eight falsy values, and == converts types by fixed rules while === never does. How coercion works, why 1 + "2" is "12", and || vs ??.
+question: What is the difference between == and === in JavaScript?
+answer: `===` (strict equality) compares type and value with no conversion, while `==` (loose equality) first converts the operands by fixed rules: `null` and `undefined` equal each other and nothing else, a string compared with a number becomes a number, a boolean becomes a number, and an object becomes a primitive. So `1 == "1"` is `true` but `1 === "1"` is `false`. Use `===`; `x == null` is the one idiomatic `==`.
+q: What are the falsy values in JavaScript?
+a: Exactly eight values are falsy: `false`, `0`, `-0`, `0n`, `""`, `null`, `undefined` and `NaN`. Everything else is truthy, including `"0"`, `"false"`, an empty array `[]` and an empty object `{}`.
+q: What is the difference between || and ?? in JavaScript?
+a: `a || b` returns `b` whenever `a` is falsy, so it also replaces `0`, `""` and `false`. `a ?? b`, nullish coalescing, returns `b` only when `a` is `null` or `undefined`, which makes it the right choice for defaults where zero or an empty string is a valid value.
+q: Why is 1 + "2" equal to "12" in JavaScript?
+a: If either operand of `+` is a string, `+` concatenates, so `1 + "2"` is `"12"`. Every other arithmetic operator converts its operands to numbers, which is why `"3" - 1` is `2` and `"3" * "4"` is `12`.
+q: Why is [] == ![] true in JavaScript?
+a: `![]` is `false`, because an empty array is truthy. `==` then converts `false` to `0` and the array to the primitive `""`, which also becomes `0`, so both sides are `0`. The practical lesson is to use `===` and never write it.
+q: What does optional chaining do in JavaScript?
+a: `a?.b` gives `undefined` instead of throwing when `a` is `null` or `undefined`, and short-circuits the rest of the chain, so `a?.b.c` never evaluates `.c`. It also works for computed access (`a?.[k]`) and calls (`f?.()`).
 ---
 JavaScript will happily compare a string to a number, add a number to a string, and treat an empty array as true and an empty string as false. The rules behind those conversions are precise, small in number, and mostly ignored — which is why `==` has a reputation and `"1" + 1` is a meme. This lesson states the rules: what is falsy, how `==` decides, what `+` does, what the comparison operators do to mixed types, and the modern operators (`??`, `?.`, `||=`) that let you write the common cases without thinking about any of it.
 

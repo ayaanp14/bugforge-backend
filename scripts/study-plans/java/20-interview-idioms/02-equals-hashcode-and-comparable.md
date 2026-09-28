@@ -1,6 +1,20 @@
 ---
 title: equals, hashCode and Comparable — the contracts that make collections work
 minutes: 14
+seo-title: Java equals and hashCode Contract, Comparable vs Comparator
+description: Why equal Java objects must have equal hash codes, how to override equals and hashCode correctly, why keys must be immutable, and Comparable vs Comparator.
+question: What is the equals and hashCode contract in Java?
+answer: The `equals` and `hashCode` contract in Java says that objects that are equal must return the same hash code, while unequal objects may share one. `equals` must be reflexive, symmetric, transitive, consistent and false for `null`. Override both together: `HashMap` and `HashSet` find the bucket by `hashCode` first and only then call `equals`, so breaking the contract makes lookups fail.
+q: What happens if you override equals but not hashCode?
+a: Equal objects keep their default identity hash codes, so a `HashMap` or `HashSet` puts them in different buckets: `get` and `contains` fail for a key equal to one already stored, and a set can end up holding two equal objects.
+q: What is the difference between Comparable and Comparator in Java?
+a: `Comparable` is a type's single natural order, implemented as `compareTo` inside the class. A `Comparator` is an external order for one use, such as a sort or a `PriorityQueue`, built with `Comparator.comparing(...).thenComparing(...)`. Sorts and tree collections accept either.
+q: Why should compareTo not return a - b?
+a: The subtraction overflows when the values have opposite signs — `Integer.MIN_VALUE - 1` is positive — which breaks antisymmetry and can make a sort throw "Comparison method violates its general contract". Use `Integer.compare(a, b)`, and `Double.compare` for doubles.
+q: Why is a mutable object a bad HashMap key?
+a: If a field used by `hashCode` changes after insertion, the entry sits in the wrong bucket: `get` and `contains` no longer find it and `remove` cannot remove it, so it is a bug and a leak. Make key classes immutable — records are the easiest way.
+q: Should equals use getClass() or instanceof?
+a: `getClass() != o.getClass()` means a subclass instance never equals a base instance, which keeps symmetry simple; `instanceof` allows cross-class equality but makes symmetry your job. Prefer `getClass()` unless you have a reason, and always take an `Object` parameter with `@Override`.
 ---
 Half of the collections framework — `HashMap`, `HashSet`, `contains`, `remove(Object)`, `indexOf`, `distinct()` — depends on `equals` and `hashCode` agreeing; the other half — `TreeMap`, `sort`, `PriorityQueue`, `max` — depends on a consistent ordering. Get the contracts wrong and the symptoms are maddening: a key you just inserted "is not in the map", a set holds two equal objects, a sort throws `IllegalArgumentException: Comparison method violates its general contract`. Interviewers ask about these contracts because every Java developer has been bitten by them. This lesson states them exactly, shows the implementations that satisfy them, and lists the mistakes.
 

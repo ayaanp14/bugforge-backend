@@ -1,6 +1,20 @@
 ---
 title: From source to executable
 minutes: 14
+seo-title: C++ Compilation Process: Preprocessor, Compiler and Linker
+description: A C++ build has four stages: preprocess, compile, assemble and link. What a translation unit is, declaration vs definition, and what causes undefined reference.
+question: How is a C++ program compiled?
+answer: A C++ program is built in four stages. The preprocessor pastes in `#include` files and expands macros; the compiler turns each resulting translation unit into assembly; the assembler packages that as an object file; and the linker matches every symbol an object file needs to its one definition, producing the executable. `g++ main.cpp -o app` runs all four in one command.
+q: What causes "undefined reference" in C++?
+a: `undefined reference` is a linker error: a function or variable was declared and used, but no object file defines it. Common causes are a `.cpp` file left off the command line, a library not linked, a function never written, or a definition whose signature differs from the declaration.
+q: What is a translation unit in C++?
+a: A translation unit is one `.cpp` file after preprocessing, with the full text of every header it includes pasted in. The compiler compiles one translation unit at a time and sees nothing of the others, which is why headers are included rather than compiled on their own.
+q: What is the difference between a declaration and a definition in C++?
+a: A declaration introduces a name and its type, such as `int square(int x);`. A definition also provides the thing itself: the function body, the variable's storage or the class's members. A name may be declared many times, but a non-inline function or variable is defined only once.
+q: What is the one-definition rule in C++?
+a: The one-definition rule (ODR) says every non-inline function and variable must be defined exactly once in the whole program. Classes, templates and `inline` functions may be defined in several translation units, provided every definition is token-for-token identical — which is what lets them live in headers.
+q: What causes a "multiple definition" linker error?
+a: Two object files define the same non-inline function or variable, and the linker refuses to choose. The usual cause is a function defined in a header that two `.cpp` files include; declare it in the header and define it in one `.cpp`, or mark it `inline`.
 ---
 `g++ hello.cpp -o hello` looks like one step. It is four programs run in sequence — the preprocessor, the compiler proper, the assembler and the linker — and every C++ error message you will ever read comes from exactly one of them. Knowing which stage produced a message tells you where to look: a compiler error means a file does not make sense on its own; a linker error means the files made sense individually but do not fit together. This lesson walks a two-file program through the pipeline and settles the vocabulary the rest of the track uses: translation unit, declaration, definition, object file, symbol, the one-definition rule.
 

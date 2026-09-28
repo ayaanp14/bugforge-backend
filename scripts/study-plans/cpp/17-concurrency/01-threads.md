@@ -1,6 +1,20 @@
 ---
 title: Threads — std::thread, std::jthread and the join rule
 minutes: 14
+seo-title: C++ std::thread and std::jthread: Join vs Detach Explained
+description: A C++ std::thread starts on construction and must be joined or detached before it is destroyed, or std::terminate runs. Passing arguments, std::ref and jthread.
+question: How do you create a thread in C++?
+answer: Since C++11 you create a thread by constructing a `std::thread` from `<thread>` with a callable and its arguments: `std::thread t(work, 7, std::ref(result));` starts running at once. Call `t.join()` to wait for it to finish. A `std::thread` destroyed while still joinable calls `std::terminate`, so every thread must be joined or detached; C++20's `std::jthread` joins automatically in its destructor.
+q: What is the difference between join and detach in C++?
+a: `join()` blocks until the thread finishes; `detach()` disowns it, leaving it running with nothing waiting for it. A detached thread is killed wherever it is when `main` returns, and any reference it holds to a local of the scope that started it dangles once that scope exits. Both leave the `std::thread` object non-joinable.
+q: Why does my C++ program call std::terminate when a thread ends?
+a: Destroying a `std::thread` that is still joinable — neither joined nor detached — calls `std::terminate`, because the library refuses to guess whether you meant to wait for the thread or abandon it. Join every thread on every path out of its scope, including the exception path, or use `std::jthread`.
+q: How do I pass a reference to a std::thread?
+a: Wrap it in `std::ref(x)`, or `std::cref(x)` for a const reference. The `std::thread` constructor copies every argument and passes the copies as rvalues, so a `T&` parameter will not compile with a plain variable, and a `const T&` parameter binds to the thread's private copy. The referenced object must outlive the thread.
+q: What is std::jthread in C++20?
+a: `std::jthread` is a `std::thread` whose destructor calls `request_stop()` and then joins, so an early return or an exception can no longer terminate the program. If its callable takes a `std::stop_token` first, the thread can poll `stop_requested()` to end cooperatively; nothing is interrupted by force.
+q: How many threads should I create in C++?
+a: For CPU-bound work, about one per hardware thread: `std::thread::hardware_concurrency()` returns how many the hardware can run at once, or 0 when unknown. Starting a thread costs tens of microseconds plus a stack, so split the work into one chunk per thread, never one thread per element.
 ---
 A thread is a second flow of control inside the same process: it has its own stack and its own position in the code, and it shares everything else — the heap, globals, static locals, open files — with every other thread. Since C++11 threads are part of the standard library (`<thread>`), portable across operating systems. This lesson covers how a thread starts, how arguments travel into it, `join` versus `detach`, the C++20 `std::jthread` that joins itself, how to split a vector across threads without a lock, and the rule every judged program in this module obeys: threads compute, the main thread joins them all, and only then does anything get printed.
 

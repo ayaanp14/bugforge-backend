@@ -1,6 +1,18 @@
 ---
 title: The interview template — input, output, limits
 minutes: 12
+seo-title: Java Coding Interview Template: Fast Input and Time Complexity
+description: A Java template for coding interviews and online judges: buffered input, PrintWriter output, the time complexity each n allows, memory limits and edge cases.
+question: How do you choose the time complexity from the constraints?
+answer: Choose the time complexity from the largest input size in the constraints, assuming Java does about 10⁸ simple operations per second after warm-up. With a 1–2 second limit, n up to 10⁶ needs O(n log n), n up to 5 000 allows O(n²), n up to 500 allows O(n³) and n up to 25 allows O(2ⁿ). So n ≤ 10⁵ rules out O(n²): think sorting, hashing or heaps.
+q: How many operations per second can Java do?
+a: About 10⁸ simple operations per second after warm-up, somewhat fewer with heavy object allocation. Multiply out your algorithm's operation count at the maximum input size and compare it with that figure to see whether it fits a 1–2 second limit.
+q: When should I use long instead of int in Java?
+a: Whenever a sum or product can pass about 2.1 billion, the limit of `int`: a product of two values up to 10⁵, a sum of many large values, or a product before reducing modulo 10⁹ + 7. A `long` holds up to about 9.2 × 10¹⁸; beyond that, use `BigInteger`.
+q: What edge cases should I check in a coding interview?
+a: Empty input and a single element; all-equal, already sorted and reverse-sorted input; negatives and zero; maximum sizes and `int` overflow; duplicates; off-by-one boundaries; empty and one-character strings; and, for graphs, disconnected parts, self-loops and cycles.
+q: How much data fits in a 256 MB memory limit in Java?
+a: About 60 million `int`s or 30 million `long`s, but only a few million small objects. A `List<Integer>` of ten million elements takes around 200 MB, so use primitive arrays, `BitSet` and `int[][]` for large data instead of boxed collections.
 ---
 Every coding round starts the same way: a problem statement, an input format, a time limit, and forty minutes. The people who do well have stopped thinking about the mechanics — how to read the input, how to print, what `n ≤ 10⁵` means for the algorithm — because they carry a template and a complexity budget in their heads. This lesson gives you both, plus the edge-case checklist to run before you say "done".
 

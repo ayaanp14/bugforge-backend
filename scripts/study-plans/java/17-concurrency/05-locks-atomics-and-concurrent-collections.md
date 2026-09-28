@@ -1,6 +1,20 @@
 ---
 title: Locks, atomics and the concurrent collections
 minutes: 15
+seo-title: Java ReentrantLock, Atomics and ConcurrentHashMap Explained
+description: Java's ReentrantLock adds tryLock, timeouts and fairness to synchronized, and AtomicInteger uses compare-and-swap. How ConcurrentHashMap works.
+question: What is the difference between ReentrantLock and synchronized?
+answer: `ReentrantLock` and `synchronized` give the same mutual exclusion and visibility in Java, and both are reentrant. `ReentrantLock` adds `tryLock()` and timed waits for backing out of deadlock, interruptible waiting, an optional fair ordering and several `Condition` queues per lock. The cost is manual release: `unlock()` must go in a `finally` block. Without those extras, `synchronized` is shorter.
+q: How does AtomicInteger work in Java?
+a: Through a compare-and-swap loop instead of a lock: read the value, compute the new one, write it only if nothing changed in between, and retry otherwise. There is no blocking and no deadlock; for a heavily contended counter that is read rarely, `LongAdder` scales better.
+q: How is ConcurrentHashMap different from Hashtable and synchronizedMap?
+a: `Hashtable` and `Collections.synchronizedMap` put one lock around every call. `ConcurrentHashMap` locks per bin, so updates to different buckets do not block each other; reads never lock, iteration never throws `ConcurrentModificationException`, and `merge`, `compute` and `putIfAbsent` are atomic per key.
+q: Does ConcurrentHashMap allow null keys or values?
+a: No: `ConcurrentHashMap` rejects `null` keys and `null` values with a `NullPointerException`. Its `size()` is also only an estimate while other threads are updating the map.
+q: When should I use CopyOnWriteArrayList?
+a: When reads vastly outnumber writes, as with a list of listeners. Every write copies the whole backing array, and every iteration walks a snapshot that never throws `ConcurrentModificationException`.
+q: When should I use a ReadWriteLock in Java?
+a: A `ReadWriteLock` lets any number of readers hold the read lock together while a writer holds the write lock alone. It pays when reads greatly outnumber writes and the guarded operation is not trivial; for a simple map, `ConcurrentHashMap` beats it.
 ---
 `synchronized` is a blunt instrument: one lock, no timeout, no fairness, no way to try and back off. `java.util.concurrent` provides sharper ones. **`ReentrantLock`** is `synchronized` with options; **`ReadWriteLock`** lets many readers share; the **atomic** classes update a single variable without any lock at all, using the CPU's compare-and-swap; and the **concurrent collections** — `ConcurrentHashMap` above all — bake thread-safety into the data structure so most code never needs an explicit lock. This lesson is the toolbox, and the rule for reaching into it: the highest-level thing that fits.
 

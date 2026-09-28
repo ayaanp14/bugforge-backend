@@ -1,6 +1,20 @@
 ---
 title: The template — running a JavaScript coding round from your side of the table
 minutes: 12
+seo-title: How to Approach a JavaScript Coding Interview, Step by Step
+description: A six-step method for JavaScript coding interviews: restate, probe edge cases, plan from brute force, code aloud, trace and analyse, plus five templates.
+question: How should you approach a coding interview problem?
+answer: Follow six steps: restate the problem in your own words, including the return type; probe the edge cases and input sizes; state the brute force and its complexity before improving it; write the code while narrating your intent; trace an example through it line by line; and finish with the time and space complexity. A working brute force beats a broken optimum.
+q: What should I ask the interviewer before coding?
+a: The questions that change the solution: input size, value ranges, negatives, duplicates and overflow past 2⁵³, empty and single-element inputs, whether the input may be mutated, whether output order matters, and what to return when there is no answer. Write the answers down as examples.
+q: Should I use a `Map` or an object in a JavaScript interview?
+a: Use a `Map` for counting or lookups keyed by data: keys keep their type, so `1` and `"1"` differ, there is no prototype to collide with, `size` is free and insertion order is preserved. Use a `Set` for membership and plain objects for fixed-shape records.
+q: Why does `[10, 9, 1].sort()` return `[1, 10, 9]`?
+a: Without a comparator, `sort()` converts the elements to strings and compares them in UTF-16 order, so "10" sorts before "9". Pass `(a, b) => a - b` for ascending numbers, and remember that `sort` mutates the array — copy it first if the input must stay intact.
+q: What should I do when I get stuck in a coding interview?
+a: Say so, and say what you know: "I can do this in O(n²); I suspect a hash map removes the inner loop." Then try the standard moves — sort the input, walk a small example by hand, think in reverse, solve n = 1 and grow it. Interviewers can only hint to candidates who expose their reasoning.
+q: Why not use `Array(rows).fill([])` for a grid?
+a: `fill` puts the same array object in every slot, so writing to one row changes them all. Build independent rows with `Array.from({ length: rows }, () => Array(cols).fill(0))`, which calls the factory once per row.
 ---
 A coding interview is a forty-five-minute conversation with a program in the middle, and most of it is lost before the first line of code: on a problem misread, an edge case never asked about, a brute force never stated, or a solution typed in silence. This lesson is the template that senior candidates follow without thinking — restate, probe, plan, code aloud, trace, analyse — and the JavaScript-specific decisions you should make before the interviewer has to ask. Nothing here is a trick; it is the order of operations that makes the rest of this module usable under pressure.
 

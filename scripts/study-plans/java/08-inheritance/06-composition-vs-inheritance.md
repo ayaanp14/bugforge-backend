@@ -1,6 +1,20 @@
 ---
 title: When not to inherit — composition, Liskov and final
 minutes: 13
+seo-title: Composition vs Inheritance in Java: Liskov, Final and Sealed
+description: Prefer composition to inheritance in Java unless a subclass is truly substitutable. The Liskov principle, fragile base classes, and final and sealed classes.
+question: Why should you prefer composition over inheritance in Java?
+answer: Composition over inheritance means holding an object and forwarding calls to it instead of extending its class. In Java a subclass depends on its parent's implementation, not just its API, so a change inside the parent can break it — the fragile base class problem. A wrapper depends only on the public contract, can wrap any implementation, and cannot be reached by the parent's internal self-calls.
+q: What is the Liskov substitution principle?
+a: The Liskov substitution principle says code that is correct for a parent type must stay correct when handed any subtype. It is about behaviour, not signatures: a `Square` that extends `Rectangle` and sets both sides in `setWidth` keeps the methods but breaks callers that assume width and height are independent.
+q: What is the fragile base class problem?
+a: A subclass breaking because of an internal detail of its parent. Extending `HashSet` to count additions by overriding both `add` and `addAll` double-counts, because `HashSet.addAll` calls `add` for each element — something the parent never promised and could change.
+q: What are sealed classes in Java?
+a: A sealed class, added in Java 17, names the only classes allowed to extend it with `permits`, and each of those must be `final`, `sealed` or `non-sealed`. The compiler then knows every subtype, so a pattern-matching `switch` over the hierarchy can be exhaustive without a `default`.
+q: When should a class be final in Java?
+a: When it was not designed for extension, which is the safe default for most classes. Value classes need `final` to stay immutable, and utility and security-sensitive classes to stay fixed; `String`, `Integer`, `LocalDate` and every record are final.
+q: When is inheritance the right choice in Java?
+a: When there is a genuine is-a relationship that holds everywhere the parent is used, and the parent was designed for extension with documented hooks — `Shape` and `Circle`, `AbstractList` and `ArrayList`, or an exception hierarchy. Otherwise, compose.
 ---
 Inheritance is the most overused feature in object-oriented languages. It is easy to reach for because it saves typing, and it creates the tightest coupling Java offers: a subclass depends on the parent's *implementation*, not just its API, and every change to the parent risks breaking it. This lesson gives you the tests for when inheritance is right, the pattern to use when it is not, and the tools — `final` and `sealed` — for controlling who may extend what.
 

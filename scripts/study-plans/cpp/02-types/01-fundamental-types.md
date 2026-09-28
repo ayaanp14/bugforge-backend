@@ -1,6 +1,20 @@
 ---
 title: The fundamental types — bool, char, integers and floating point
 minutes: 14
+seo-title: C++ Data Types: int, char, bool, double and Their Sizes
+description: The C++ fundamental types are bool, char, the integers and floating point. Their sizes on x86-64, fixed-width integers, numeric limits and brace initialisation.
+question: What are the fundamental data types in C++?
+answer: The fundamental data types in C++ are `bool`, the character types such as `char`, the integers `short`, `int`, `long` and `long long` in signed and unsigned forms, and the floating-point types `float`, `double` and `long double`. The standard fixes only minimum sizes; on x86-64 Linux `char` is 1 byte, `int` is 4, and `long long` and `double` are 8.
+q: How many bytes is an int in C++?
+a: The standard guarantees only that `int` has at least 16 bits, but on mainstream 64-bit platforms it is 4 bytes, holding -2147483648 to 2147483647. Ask rather than assume, with `sizeof(int)` and `std::numeric_limits<int>::max()`; when the width is part of the meaning, use `std::int32_t` from `<cstdint>`.
+q: What is the difference between `long` and `long long` in C++?
+a: `long long` is at least 64 bits everywhere, while `long` is only guaranteed 32: it is 8 bytes on 64-bit Linux but 4 bytes on 64-bit Windows. Portable code writes `long long` or `std::int64_t` when it needs 64 bits and keeps `long` for APIs that demand it.
+q: Is `char` signed or unsigned in C++?
+a: That is left to the platform: on x86-64 Linux `char` is signed and holds -128 to 127, so storing the byte value 200 in it gives -56. When you mean a byte rather than a character, write `unsigned char` or `std::uint8_t` — and cast it to `int` to print it as a number.
+q: What happens if you read an uninitialised variable in C++?
+a: Reading a local of a fundamental type that was never initialised is undefined behaviour: it holds whatever the memory held before, and the optimiser may assume the read never happens. Globals and `static` locals are zeroed before `main` runs; automatic locals are not, so write `int x{};` for a definite zero.
+q: Why use brace initialisation in C++?
+a: `int x{5}` refuses narrowing conversions — `int x{3.7}` is a compile error where `int x = 3.7` silently stores 3 — and `T x{}` gives a definite zero for any type. The one caution is containers: `std::vector<int> v{10}` holds a single element, 10, so sizes still go in parentheses.
 ---
 Every C++ variable has a type fixed at compile time, and the type decides three things: how many bytes the object occupies, which values those bytes can mean, and which machine operations the compiler emits for it. Java pins all of this in its specification; C++ leaves the sizes to the platform, which is why "how big is an `int`?" has the honest answer "it depends" and the practical answer "4 bytes everywhere this track runs". This lesson lays out the built-in types, their exact sizes on the x86-64 runtime the exercises use, where the limits live, and the initialisation form that keeps the compiler on your side.
 

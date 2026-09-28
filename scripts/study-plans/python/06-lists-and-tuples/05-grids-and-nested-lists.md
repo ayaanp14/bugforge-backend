@@ -1,6 +1,20 @@
 ---
 title: Grids and nested lists
 minutes: 14
+seo-title: Python 2D Lists: Create, Traverse and Transpose a Grid
+description: A Python grid is a list of row lists, indexed by row then column. Build a 2D list correctly, visit neighbours with a bounds check, and transpose with zip.
+question: How do I create a 2D list in Python?
+answer: Create a 2D list in Python with a comprehension that builds a fresh row each time: `grid = [[0] * C for _ in range(R)]` makes R rows of C zeros, indexed `grid[r][c]` with the row first. Never write `[[0] * C] * R` — it repeats one row object R times, so setting `grid[0][0]` changes column 0 of every row.
+q: How do I transpose a matrix in Python?
+a: Use `zip(*grid)`: the star passes each row as a separate argument, and `zip` groups their first elements, then their second, and so on. `[list(col) for col in zip(*grid)]` returns the columns as lists; for a ragged grid, `zip` truncates to the shortest row.
+q: How do I rotate a matrix 90 degrees in Python?
+a: Reverse the rows, then transpose: `[list(col) for col in zip(*grid[::-1])]` rotates clockwise. Transposing first and reversing the result, `[list(col) for col in zip(*grid)][::-1]`, rotates anticlockwise, and `[row[::-1] for row in grid]` mirrors left to right.
+q: How do I get the neighbours of a cell in a grid in Python?
+a: Loop over a list of direction offsets such as `[(-1, 0), (1, 0), (0, -1), (0, 1)]` and keep a neighbour only when `0 <= nr < R and 0 <= nc < C`. The bounds check prevents `IndexError` and stops a negative index silently wrapping round to the last row.
+q: How do I copy a 2D list in Python?
+a: `[row[:] for row in grid]` copies every row, which is a full copy for a grid of numbers or strings. `grid.copy()` copies only the outer list, so the rows are still shared; use `copy.deepcopy(grid)` when the structure is nested more deeply.
+q: How do I print a 2D list without brackets?
+a: Join each row: `print(" ".join(map(str, row)))` prints numbers separated by spaces, and `"".join(row)` prints a row of characters with no separator. `print(row)` shows the list's `repr`, brackets and quotes included, which is rarely the expected output.
 ---
 A two-dimensional grid — a game board, a matrix, a maze, a spreadsheet — is a list of rows, each row a list of cells, indexed `grid[r][c]` with the row first. Almost every interview problem over grids uses the same six operations: read it from input, build an empty one of a given size, walk every cell, visit a cell's neighbours without falling off the edge, transpose or rotate it, and print it back. This lesson gives each as a template, states the row-major convention and the `[[0] * C] * R` trap once more where it does the damage, and shows the flattening trick for problems that are one-dimensional in disguise.
 

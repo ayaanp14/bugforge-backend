@@ -1,6 +1,20 @@
 ---
 title: Streams in depth — state, recovery and the character API
 minutes: 15
+seo-title: C++ Stream State: cin.fail(), clear() and ignore()
+description: When cin meets bad input it sets failbit, consumes nothing and skips every later read. How C++ stream state works, how to recover, and peek, get and ignore.
+question: How do you clear a failed cin in C++?
+answer: Call `std::cin.clear()` to reset the stream's state to `goodbit`, then discard the bad characters — with `std::cin.ignore` up to the end of the line, or by reading the bad token into a string. Both steps are needed: a failed `>>` sets `failbit` and leaves the offending characters unread, so `clear()` alone makes the same token fail again, and without `clear()` every later read silently does nothing.
+q: Why is `while (!cin.eof())` wrong?
+a: `eof()` becomes true only after a read bumps into the end of the input, not when the last item has been consumed, so the loop body runs once more with a failed read. Test the read itself: `while (std::cin >> x)` stops exactly when a read fails.
+q: What is the difference between eof, fail and bad in C++ streams?
+a: `eofbit` means a read tried to go past the end of the input; `failbit` means a read or write could not do what was asked, such as a letter where a number was expected; `badbit` means the underlying buffer broke, as on a disk error. `if (stream)` tests `!fail()`, which is false when either `failbit` or `badbit` is set.
+q: What value does a variable get when cin fails?
+a: Since C++11, a failed numeric read that examined characters stores `0`; an out-of-range number stores the largest or smallest representable value; and a read attempted at the end of input leaves the variable unchanged. None of those values means anything, so test the stream before using the variable.
+q: What is the difference between peek and get in C++?
+a: `peek()` returns the next character without consuming it; `get()` consumes and returns it. Both return an `int` so that `EOF` can be told apart from every real character, and neither skips whitespace, which makes them the building blocks of a hand-written tokeniser.
+q: Why does cout output appear late?
+a: `std::cout` writes into a buffer, and the bytes leave when it fills, on a flush such as `std::flush` or `std::endl`, when the tied `std::cin` reads, or at normal exit. `std::cerr` flushes after every write, so a diagnostic there appears at once while `cout` text is still waiting.
 ---
 Module 1 taught the two reading habits — `>>` for tokens, `std::getline` for lines — and promised that every input in this track is well-formed. Real input is not. A stream that meets `abc` where it expected a number does not throw and does not skip: it sets a flag, leaves the characters where they were, and silently refuses every later read until you reset it. Programs that "stop reading half way for no reason" are almost always this. This lesson opens the stream up: the buffer, the state bits, exactly what a failed `>>` leaves behind, how to recover, and the character-level calls — `peek`, `get`, `ignore` — that let you write a tokeniser instead of hoping `>>` splits the input the way you need.
 

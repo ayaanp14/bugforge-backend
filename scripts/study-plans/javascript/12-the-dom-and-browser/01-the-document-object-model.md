@@ -1,6 +1,18 @@
 ---
 title: The DOM — the tree behind the page, and how to change it safely
 minutes: 13
+seo-title: What Is the DOM? JavaScript DOM Manipulation Explained
+description: The DOM is the browser's tree of objects built from HTML. Select, create and change elements; textContent vs innerHTML, attributes vs properties, and reflow.
+question: What is the DOM in JavaScript?
+answer: The Document Object Model (DOM) is the tree of objects a browser builds by parsing a page's HTML, and JavaScript reaches it through `document`. Every element, piece of text and comment is a node; code selects nodes with `querySelector`, reads and changes their content, attributes and styles, creates and removes them, and the browser re-renders the page to match.
+q: What is the difference between textContent, innerHTML and innerText?
+a: `textContent` reads or sets the plain text of a subtree, and setting it is safe for untrusted data. `innerHTML` parses its string as HTML, so user data in it is an XSS vulnerability. `innerText` returns only rendered text, respecting CSS, and is slower because reading it forces layout.
+q: What is the difference between an attribute and a property in the DOM?
+a: An attribute is the string written in the HTML markup; a property is the current state of the live element object. Most reflect each other, but `value` and `checked` split after user input: `getAttribute("value")` still returns the original markup while `input.value` returns what the user typed. Use properties in code.
+q: What is the difference between querySelectorAll and getElementsByClassName?
+a: `querySelectorAll` accepts any CSS selector and returns a static `NodeList`, a snapshot that never changes. `getElementsByClassName` and the other `getElementsBy` methods return a live `HTMLCollection` that updates as the DOM changes, so removing elements while looping over one skips every other element.
+q: What is reflow and how do you avoid layout thrashing?
+a: Reflow is the browser recomputing layout after a change to geometry: size, position, fonts or added elements. Reading a layout property such as `offsetHeight` after a write forces an immediate reflow, so a loop that writes then reads per item reflows every time. Read everything first, then write, and build in a fragment and insert once.
 ---
 The browser parses HTML into a tree of objects — the **Document Object Model** — and hands JavaScript a live handle to it: `document`. Everything a page does after it loads is a DOM operation: find a node, read or change it, create or remove one, and let the browser repaint. The API is large but shaped by a few ideas — nodes versus elements, attributes versus properties, live versus static collections, and the one method (`innerHTML`) that is both the most convenient and the most dangerous. This lesson covers the tree, selection, reading and writing, creation and removal, the reflow cost model, and the escaping rule that keeps user data from becoming code.
 

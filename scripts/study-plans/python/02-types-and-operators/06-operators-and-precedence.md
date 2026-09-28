@@ -1,6 +1,20 @@
 ---
 title: Operators and precedence
 minutes: 13
+seo-title: Python Operator Precedence and Bitwise Operators Explained
+description: The Python operator precedence table from highest to lowest, and why minus two squared is -4. Bitwise tricks on unbounded ints, no ++, and the operator module.
+question: What is the operator precedence in Python?
+answer: Python's operator precedence, from highest to lowest: brackets, then subscripts, calls and attributes, then `**`, unary `+ - ~`, `* / // % @`, binary `+ -`, shifts, `&`, `^`, `|`, then every comparison including `in` and `is` at one level, then `not`, `and`, `or`, the conditional expression, `lambda` and `:=`. Operators associate left to right except `**`, which associates right to left.
+q: Why is `-2 ** 2` equal to -4 in Python?
+a: Because `**` binds tighter than a unary minus on its left, so `-2 ** 2` parses as `-(2 ** 2)`. Write `(-2) ** 2` to get 4. `**` is also right-associative: `2 ** 3 ** 2` is `2 ** 9`, which is 512, not 64.
+q: Does Python have ++ and -- operators?
+a: No. Write `i += 1` and `i -= 1`. `++i` is not an error but parses as `+(+i)`, two unary pluses that leave the value unchanged, so it silently does nothing, while `i++` is a syntax error.
+q: How do bitwise operators work on negative numbers in Python?
+a: Python treats an `int` as two's complement with infinitely many bits, so a negative number has an endless run of leading ones. `~x` equals `-x - 1` (`~5` is `-6`), and a mask selects the low bits as expected: `-1 & 0xFF` is `255`. Shifts never overflow: `1 << 40` is exact.
+q: How do I check if a number is a power of two in Python?
+a: For `x > 0`, test `(x & (x - 1)) == 0`. Subtracting 1 flips the lowest set bit and every bit below it, so the AND clears that bit, and only a power of two has no other bit set. `x.bit_count() == 1`, from Python 3.10, says the same.
+q: Is eval safe to use in Python?
+a: Not on input you did not write: `eval` runs any Python expression, so untrusted text can execute arbitrary code, such as a call that deletes files. To turn text like `"[1, 2, 3]"` back into a value, use `ast.literal_eval`, which parses literals only — numbers, strings, tuples, lists, dicts — and evaluates no code.
 ---
 Python's operators are the usual set plus a few of its own — `//`, `**`, `in`, `is`, `@`, the walrus — and the precedence table is short enough to learn. What is worth learning precisely is the handful of places where the table produces something a reader does not expect: `-2 ** 2`, `not a == b`, `a & b == c`, and the bitwise operators applied to arbitrary-precision integers. This lesson gives the table, the semantics of the bitwise operators on unbounded ints, and the operator module that lets you pass an operator as a function.
 
@@ -27,7 +41,7 @@ Python's operators are the usual set plus a few of its own — `//`, `**`, `in`,
 | 17 | `lambda` | |
 | 18 | `:=` | walrus |
 
-Three consequences are worth memorising. `**` is right-associative: `2 ** 3 ** 2` is `2 ** 9 = 512`, not `64`. `-2 ** 2` is `-(2 ** 2) = -4`, because the unary minus is *lower* than `**`; but `2 ** -1` is `0.5`, because the exponent position takes a unary expression. And the bitwise operators sit *above* comparisons, so `a & b == c` parses as `a & (b == c)` — parenthesise every bitwise sub-expression inside a comparison. Comparisons sit above `not`, so `not a == b` is `not (a == b)`, which is what you meant; `not a in xs` works the same way but `a not in xs` is the readable spelling.
+Three consequences are worth memorising. `**` is right-associative: `2 ** 3 ** 2` is `2 ** 9 = 512`, not `64`. `-2 ** 2` is `-(2 ** 2) = -4`, because the unary minus is *lower* than `**`; but `2 ** -1` is `0.5`, because the exponent position takes a unary expression. And the bitwise operators sit *above* comparisons, so `a & b == c` parses as `(a & b) == c` — the reverse of C, Java and JavaScript, where `a & b == c` is `a & (b == c)`; parenthesise anyway, for the reader who knows those languages. Comparisons sit above `not`, so `not a == b` is `not (a == b)`, which is what you meant; `not a in xs` works the same way but `a not in xs` is the readable spelling.
 
 Everything else associates left to right: `10 - 4 - 3` is `3`, `100 / 10 / 2` is `5.0`, `a % b % c` is `(a % b) % c`.
 
@@ -70,7 +84,7 @@ An expression written as a string can be evaluated with `eval`, and a program th
 ## Pitfalls
 
 - `-2 ** 2` is −4; `2 ** 3 ** 2` is 512.
-- `a & mask == 0` compares first; write `(a & mask) == 0`.
+- Reading `a & mask == 0` with C's rules: in Python it is already `(a & mask) == 0`, but write the brackets — code is read by people who know C.
 - `++i` does nothing; `i += 1`.
 - `3 < "3"` is a `TypeError`; parse first.
 - `x is not None and x > 0` needs no parentheses, but `not x in xs` should be `x not in xs`.

@@ -1,6 +1,20 @@
 ---
 title: Streams — pipelines over data
 minutes: 13
+seo-title: Java Streams Explained: Intermediate vs Terminal Operations
+description: A Java stream is a lazy pipeline: a source, intermediate operations and one terminal operation that runs it. Laziness, single use and the rules for lambdas.
+question: What is a stream in Java?
+answer: A stream in Java is a lazy pipeline over a source of elements, such as a collection or an array, introduced in Java 8. Intermediate operations like `filter` and `map` only describe the computation; one terminal operation, such as `toList` or `count`, runs it and consumes the stream. A stream stores no elements of its own and cannot be reused.
+q: What is the difference between intermediate and terminal operations in Java streams?
+a: Intermediate operations — `filter`, `map`, `sorted`, `limit` — return a new stream and do nothing until a terminal operation runs. Terminal operations — `toList`, `collect`, `count`, `forEach`, `findFirst` — pull elements through the pipeline, produce a result and consume the stream.
+q: Can a Java stream be reused?
+a: No. A stream allows one terminal operation; a second throws `IllegalStateException: stream has already been operated upon or closed`. Create a fresh stream from the source for each use.
+q: Why are Java streams lazy?
+a: Elements flow through the pipeline one at a time, and nothing runs until a terminal operation asks for them, so short-circuiting operations such as `findFirst`, `anyMatch` and `limit` can stop early. That is what makes an infinite source like `Stream.iterate(1, x -> x * 2).limit(10)` usable.
+q: Why does my Java stream pipeline not run?
+a: It probably has no terminal operation. Intermediate operations are only recorded, so `list.stream().map(this::save);` saves nothing. End the pipeline with a terminal such as `forEach`, `toList` or `count` to make it execute.
+q: Are Java streams faster than for loops?
+a: Not for small data: the pipeline objects and lambdas cost more than a plain loop. Streams are chosen for clarity and composition — a filter, map and reduce that reads as a sentence. Prefer a loop for complex control flow, several mutable variables or checked exceptions.
 ---
 A stream is a pipeline: a **source** of elements, zero or more **intermediate** operations that transform or filter them lazily, and one **terminal** operation that produces a result. `names.stream().filter(n -> n.startsWith("A")).map(String::toUpperCase).toList()` says *what* to compute — no index, no accumulator, no loop body — and that declarative shape is why streams took over Java collection code after Java 8. This lesson is the model: what a stream is and is not, the three kinds of operation, laziness, and the rules (single use, no side effects) that keep pipelines correct.
 

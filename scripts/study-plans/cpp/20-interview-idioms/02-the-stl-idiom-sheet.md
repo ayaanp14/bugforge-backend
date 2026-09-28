@@ -1,6 +1,20 @@
 ---
 title: The STL idiom sheet — the two-line answers to the common shapes
 minutes: 14
+seo-title: C++ STL Cheat Sheet for Coding Interviews
+description: The two-line STL answers to common interview shapes: sort-unique-erase, lower bound, map counting, a k-smallest heap, accumulate with 0LL and tie for sorting.
+question: How do you remove duplicates from a vector in C++?
+answer: Sort the vector, then erase the tail that `std::unique` leaves: `std::sort(v.begin(), v.end()); v.erase(std::unique(v.begin(), v.end()), v.end());`. `std::unique` removes only adjacent duplicates and cannot change the container's size — it moves the survivors forward and returns the new logical end — so the `erase` is the step that shrinks the vector. The whole idiom is O(n log n).
+q: What is the difference between lower_bound and upper_bound?
+a: On a sorted range, `std::lower_bound` returns the first element not less than `x` and `std::upper_bound` the first element greater than `x`; both are O(log n) and return `end()` when nothing qualifies. The distance between them counts the occurrences of `x`. On a `std::set` or `std::map`, call the member `lower_bound`.
+q: How do you make a min-heap in C++?
+a: Declare `std::priority_queue<int, std::vector<int>, std::greater<>>`; the default `std::priority_queue` is a max-heap with the largest element on top. Only `top()` is ordered — a heap does not iterate in sorted order — so pop the elements, or copy and sort them, to print them in order.
+q: How do I find the k smallest elements in C++?
+a: Push every element into a max-heap and pop the top whenever its size exceeds `k`: the largest are evicted and the k smallest remain, in O(n log k). Use a min-heap the same way for the k largest, and sort the survivors if they must be printed in order.
+q: Why does std::accumulate overflow?
+a: The accumulator takes the type of the initial value, not of the elements: `std::accumulate(v.begin(), v.end(), 0)` sums into an `int` even when `v` holds `long long`, and overflows past about 2.1 × 10⁹. Pass `0LL` to sum in 64 bits.
+q: How do you sort by multiple keys in C++?
+a: Compare `std::tie` tuples in the comparator: `return std::tie(a.score, a.name) < std::tie(b.score, b.name);`. Tuples compare lexicographically, so it is correct by construction; swap `a` and `b` in one slot to make that key descending. A comparator that is not a strict weak ordering makes `std::sort` undefined behaviour.
 ---
 Interview problems take a small number of shapes — deduplicate, find the first element not below a threshold, count things, keep the k best, sort by several keys — and for each shape the STL has a two-to-six-line answer that an experienced C++ programmer types without thinking. Knowing them is worth more than any single algorithm, because they are the vocabulary the algorithm is written in. This lesson is the sheet: each idiom, the line, the cost, and the trap beside it. Everything here was taught in Modules 13 and 14; what is new is seeing the shapes together and the names to say out loud.
 

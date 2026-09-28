@@ -1,6 +1,18 @@
 ---
 title: Type hints and docstrings — the contract a function publishes
 minutes: 12
+seo-title: Python Type Hints Explained: Annotations and Docstrings
+description: Python type hints record what a function takes and returns, yet nothing checks them at run time. Generic and optional hints, Callable and PEP 257 docstrings.
+question: What are type hints in Python?
+answer: Type hints are annotations that record what kinds of values a Python function takes and returns, as in `def area(width: float, height: float) -> float:`. The interpreter stores them in `__annotations__` and does not check them at run time; static checkers such as `mypy` and `pyright`, editors, and libraries such as dataclasses and pydantic are what read them.
+q: Does Python enforce type hints at run time?
+a: No. The interpreter stores annotations and otherwise ignores them: no conversion, no check, no error, so `area("3", 4)` fails inside the multiplication rather than at the hint. A static checker such as `mypy` or `pyright` reports the mistake before the program runs.
+q: How do I type hint an optional value in Python?
+a: Write `int | None` (Python 3.10 and later), or `Optional[int]` from `typing` in older code. It means the value may be `None`, not that the parameter may be left out — an optional parameter is one with a default. A checker then insists the caller tests for `None` before using the result.
+q: How do I type hint a list or dict in Python?
+a: Since Python 3.9 the built-in collections are generic: `list[int]`, `dict[str, int]`, `tuple[int, str]` for exactly two items and `tuple[int, ...]` for any length. For parameters, prefer the wider abstract types from `collections.abc`, such as `Iterable[int]` or `Mapping[str, int]`, which accept more than one concrete type.
+q: How do you write a good docstring in Python?
+a: Follow PEP 257: a one-line summary in the imperative mood, such as "Return the averages of…", ending in a full stop; then a blank line and the details a caller needs — unclear parameters, the result, the exceptions raised, any side effects. Use triple double quotes and never restate the signature.
 ---
 A function's signature says what it takes; its docstring says what it does; its type hints say what kinds of values go in and come out. None of the three is enforced by the interpreter — Python will happily call `area("3", 4)` and fail inside — but together they are the contract that editors complete against, that `mypy` checks, that `help()` displays, and that the next reader relies on. This lesson introduces annotations and the built-in generic syntax, states what hints do and do not do at run time, and fixes the docstring conventions; Module 15 goes deep on the type system.
 

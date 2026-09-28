@@ -1,6 +1,20 @@
 ---
 title: Packages, imports and the class library
 minutes: 13
+seo-title: Java Packages and Imports: Wildcards and Static Imports
+description: A Java package is a namespace mapped to a directory, and import is a compile-time alias that costs nothing at run time. Wildcards, static imports and java.lang.
+question: What is a package in Java?
+answer: A package in Java is a namespace that groups related classes and keeps their names from colliding: `java.util.List` and `java.awt.List` are different classes. It is declared on a file's first line, maps to a directory path such as `com/example/billing`, and is also an access boundary, since package-private members are visible only inside it.
+q: Does `import java.util.*` slow down a Java program?
+a: No. An import is a compile-time instruction telling the compiler which fully qualified name a simple name means; nothing is loaded or copied, and the bytecode always holds full names. A wildcard's only costs are readability and the risk of an ambiguous name.
+q: Which package is imported by default in Java?
+a: `java.lang` is imported implicitly, so `String`, `Object`, `Math`, `System`, `Integer`, `Thread` and `Exception` need no import. Classes in the same package as the current file need no import either.
+q: Does a wildcard import include sub-packages?
+a: No. `import java.util.*;` covers the classes of `java.util` only, not its sub-packages, so `java.util.concurrent.ConcurrentHashMap` still needs its own import, either single-type or `java.util.concurrent.*`.
+q: What is a static import in Java?
+a: A static import brings a class's static members into scope so they can be used without the class name: after `import static java.lang.Math.max;`, `Math.max(a, b)` can be written `max(a, b)`. Use it sparingly, for names read as vocabulary such as `assertEquals` in tests.
+q: How do I fix "reference to List is ambiguous" in Java?
+a: Two wildcard imports, such as `java.util.*` and `java.awt.*`, both provide a class named `List`. Add a single-type import such as `import java.util.List;`, which wins over any wildcard, or write the fully qualified name where you use it.
 ---
 A Java program of any size is hundreds of classes, and the standard library alone has thousands. Packages are how those names are kept from colliding, how code is organised on disk, and — through the `import` statement — how you reach them without typing their full names every time.
 

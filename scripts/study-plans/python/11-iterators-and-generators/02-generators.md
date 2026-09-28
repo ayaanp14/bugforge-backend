@@ -1,6 +1,20 @@
 ---
 title: Generators — functions that yield
 minutes: 14
+seo-title: Python Generators Explained: yield, yield from and Laziness
+description: A Python generator is a function with yield that returns a lazy iterator, keeping its local state between next() calls. Infinite generators and yield from.
+question: What is a generator in Python?
+answer: A generator in Python is an iterator written as a function that contains `yield`. Calling the function runs none of its body; it returns a generator object. Each `next()` runs the body to the next `yield`, hands out that value and suspends with every local variable intact. Values are produced lazily, so a generator over a million items holds only one at a time.
+q: What is the difference between yield and return in Python?
+a: `return` ends a function and hands back one value. `yield` hands back a value and suspends the function, which resumes after that line on the next `next()` call. Inside a generator, `return` ends the iteration, and any value it gives is attached to the `StopIteration` exception.
+q: What does yield from do in Python?
+a: `yield from iterable` yields every value of a sub-iterable in turn; with a sub-generator it also forwards `send` and `throw` and evaluates to the sub-generator's return value. It makes recursive traversals a few lines long, such as walking a tree or flattening nested lists.
+q: How do you take values from an infinite generator?
+a: Bound it at the consumer: `itertools.islice(gen, n)` takes the first n values, `itertools.takewhile` takes values while a condition holds, and `next()` over a generator expression takes the first match. Never call `list()`, `sum()` or `sorted()` on an infinite generator without such a bound.
+q: Can you iterate over a generator twice?
+a: No. A generator object is one-shot: once exhausted, iterating it again yields nothing, so a second `sum(g)` returns 0. Call the generator function again to get a fresh generator, or materialise the values with `list(...)` when two passes are needed.
+q: Why is raising StopIteration inside a generator an error?
+a: Since Python 3.7 a `StopIteration` raised inside a generator's body is turned into a `RuntimeError`, so it cannot silently end some outer loop. End a generator with `return` instead; from the outside, `next(g, default)` handles exhaustion without a `try`.
 ---
 A generator is an iterator written as a function: instead of a class with state in attributes and a `__next__` that reads it, you write a function with `yield`, and Python keeps the state — every local variable and the position in the code — between calls. The previous lesson's `Countdown` becomes three lines. Generators are how most iterators in Python are written, how large or infinite sequences are produced without memory, and how pipelines of transformations are composed. This lesson covers the mechanics of `yield`, laziness and suspension, infinite generators with `islice`, `yield from`, `return` in a generator, and the `send`/`close` protocol in outline.
 

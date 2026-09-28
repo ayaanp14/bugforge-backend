@@ -1,6 +1,20 @@
 ---
 title: Structs and classes — a type of your own
 minutes: 13
+seo-title: Struct vs Class in C++: Differences, Members and Aggregates
+description: Struct and class in C++ differ only in default access and default inheritance. Member functions, aggregates and C++20 designated initialisers.
+question: What is the difference between a struct and a class in C++?
+answer: In C++, a `struct` and a `class` define the same kind of type and differ in only two ways: members of a `struct` are public by default and members of a `class` are private, and a `struct` inherits publicly by default while a `class` inherits privately. By convention, `struct` is used for plain bundles of data and `class` for types with an invariant to protect behind private members.
+q: Can a struct have member functions in C++?
+a: Yes. A C++ `struct` can have member functions, constructors, private members and base classes — everything a `class` can; only the default access differs. Adding functions that compute from public fields, such as `area()`, still leaves a plain data struct.
+q: What are designated initialisers in C++20?
+a: Designated initialisers name the members being set in an aggregate's brace list, as in `Config c{.port = 9000, .verbose = true};`. Members not named keep their default member initialisers. The designators must follow the members' declaration order, and designated and positional values cannot be mixed in one list.
+q: Why does `Point p();` not create an object?
+a: It declares a function named `p` that takes no arguments and returns a `Point` — the vexing parse. Write `Point p;` or `Point p{};` instead; the braces also zero any member that has no default member initialiser.
+q: Why do I need a semicolon after a class definition in C++?
+a: Because a class definition may be followed by variable declarations, as in `struct Point { int x, y; } origin;`, the compiler needs the semicolon to know the declaration has ended. Leave it out and the error is reported on the next declaration in the file, which makes it confusing.
+q: Are struct members initialised by default in C++?
+a: Not members of fundamental type: with no default member initialiser, `Point p;` leaves an `int` member indeterminate, and reading it is undefined behaviour. Give every such member an initialiser such as `int x = 0;`, or create the object with `Point p{};`, which zeroes them.
 ---
 Everything so far has used types the language or the standard library defined. A `struct` or `class` is a type *you* define: a bundle of named members, the functions that operate on them, and — the part that separates C++ from Java — value semantics: a `Point` is a value like an `int`, held in the variable itself, copied on assignment, destroyed with its scope. This lesson settles the difference between `struct` and `class`, how member functions are declared and defined, what an aggregate is and how C++20's designated initialisers fill one in, and when a plain struct is the right design.
 

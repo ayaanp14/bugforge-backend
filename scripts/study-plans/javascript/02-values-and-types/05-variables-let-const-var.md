@@ -1,6 +1,20 @@
 ---
 title: let, const and var — scope, hoisting and the temporal dead zone
 minutes: 13
+seo-title: var vs let vs const in JavaScript: Hoisting and the TDZ
+description: let and const are block-scoped with a temporal dead zone, var is function-scoped and hoisted as undefined, and const blocks reassignment, not mutation.
+question: What is the difference between var, let and const in JavaScript?
+answer: `var` is function-scoped, hoisted with the value `undefined` and may be redeclared; `let` and `const` are block-scoped, hoisted but uninitialised until their line runs — the temporal dead zone — and cannot be redeclared in the same scope. `const` also forbids reassignment, though an object it holds can still change. Use `const` by default, `let` when the binding changes, and `var` never.
+q: What is the temporal dead zone in JavaScript?
+a: The temporal dead zone (TDZ) is the stretch between entering a scope and executing a `let` or `const` declaration. The binding already exists, but any read or write throws `ReferenceError: Cannot access 'x' before initialization`, and even `typeof x` throws there.
+q: Why does a var loop with setTimeout print the same number?
+a: With `var`, every callback shares the one loop variable, which already holds its final value, such as `3`, when the timers fire. Declare the counter with `let` instead: each iteration then gets a fresh binding, so the callbacks print `0 1 2`.
+q: Does const make an object immutable in JavaScript?
+a: No. `const` only stops the variable from being reassigned; the object it points to can still change, so `o.x = 2` and `arr.push(1)` both work on a `const`. For shallow immutability of the contents, use `Object.freeze`.
+q: Why should you not use var in JavaScript?
+a: `var` ignores block scope, so a `var` in a loop or `if` leaks into the whole function; it can be redeclared silently; it reads as `undefined` before its line instead of throwing; and at the top level of a script it becomes a property of the global object. `let` and `const` fix all four.
+q: What is variable shadowing in JavaScript?
+a: Shadowing is declaring a name in an inner block that already exists in an outer scope; inside the block the inner binding wins. It is legal but often confusing, and ESLint's `no-shadow` rule flags it. Redeclaring with `let` or `const` in the same scope is a `SyntaxError`.
 ---
 Three keywords declare variables, and the oldest one, `var`, is the reason the other two exist. `var` is function-scoped and hoisted with a value of `undefined`, which produced a generation of bugs (the loop-closure classic, accidental globals, variables used before their line); `let` and `const` (2015) are block-scoped, hoisted but *uninitialised*, and `const` cannot be reassigned. This lesson explains scope and hoisting precisely, the **temporal dead zone**, what `const` does and does not freeze, and the conventions modern code follows.
 

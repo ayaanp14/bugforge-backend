@@ -1,6 +1,20 @@
 ---
 title: Varargs — methods that take any number of arguments
 minutes: 10
+seo-title: Java Varargs Explained: Variable Arguments and Pitfalls
+description: A Java varargs parameter, written with three dots, takes zero or more arguments as an array. Its rules, overloading, null pitfalls and @SafeVarargs.
+question: What is varargs in Java?
+answer: Varargs in Java is a parameter declared with three dots, such as `int... numbers`, that accepts zero or more arguments of that type. Inside the method it is an ordinary array, which the compiler builds at each call site, so `sum(1, 2, 3)` becomes `sum(new int[] {1, 2, 3})`. It must be the last parameter, and a method may have only one.
+q: What happens if you pass null to a varargs method in Java?
+a: A bare `null` matches the array type itself, so the parameter is `null` and reading `items.length` throws `NullPointerException`. Cast it, as in `print((String) null)`, to pass an array holding one `null` element instead.
+q: Which is chosen, a fixed-arity overload or varargs?
+a: The fixed-arity overload. Varargs is the third and last phase of overload resolution, so `f(1, 2)` calls `f(int a, int b)` when it exists, and only calls such as `f(1, 2, 3)` or `f()` fall through to `f(int... a)`.
+q: What is @SafeVarargs in Java?
+a: `@SafeVarargs` is an annotation promising that a generic varargs method only reads its array and never stores or exposes it, which silences the possible heap pollution warning. It is allowed on `static`, `final` and `private` methods and on constructors; `Arrays.asList` and `List.of` carry it.
+q: Why does an `Object...` method see an array argument as several elements?
+a: An array whose type matches the varargs type, such as a `String[]` passed to `Object...`, is passed as the array itself rather than wrapped, so the method sees its elements. Cast it to `Object` to pass it as one element; an `int[]` is not an `Object[]`, so it is always wrapped.
+q: Is `int...` the same as `int[]` in a Java method signature?
+a: Yes. `sum(int...)` and `sum(int[])` have the same signature, so a class cannot declare both, and a varargs method also accepts an explicit array. The difference is only at the call site, where varargs lets the caller list the values directly.
 ---
 `String.format("%d %s", 3, "x")` takes two extra arguments; `Arrays.asList(1, 2, 3)` takes three; `Math.max` takes exactly two. The first two use **varargs** — a parameter declared with `...` that accepts zero or more values and arrives as an array. This lesson covers the syntax, the rules, the interaction with overloading, and the two pitfalls (`null` and generics) that produce warnings and bugs.
 

@@ -1,6 +1,20 @@
 ---
 title: Encapsulation and friends — the interface a class publishes
 minutes: 14
+seo-title: Friend Functions in C++: Encapsulation and Class Invariants
+description: A C++ friend function is a non-member granted access to private members. How encapsulation protects a class invariant, and when a friend is justified.
+question: What is a friend function in C++?
+answer: A friend function in C++ is a non-member function that a class grants access to its private and protected members by declaring it with `friend` inside the class body. It is not a member: it has no `this` and is called like any free function. Friendship is granted by the class, not transitive and not inherited; `operator<<` for printing is the most common friend.
+q: What is encapsulation in C++?
+a: Encapsulation is keeping a class's data private so that every change goes through member functions the class controls. That lets the class maintain an invariant, such as a denominator that is never zero — established by the constructor, preserved by every mutator, assumed by every reader — and lets the representation change without touching callers.
+q: Should every private member have a getter and setter?
+a: No. A setter for every member lets callers put the object in any state, so the invariant cannot be enforced — a struct with extra steps. Accessors earn their place by validating (`withdraw`), deriving a value (`dayOfYear`) or reading a large member by `const T&`. Never return a non-const reference to private state.
+q: Why must `operator<<` be a free function rather than a member?
+a: The left operand of `<<` is the stream, and a member operator always takes its own class as the left operand, so `Money::operator<<` would put the `Money` on the left. It is written as a free function, declared `friend` when it needs the private members.
+q: Is friendship inherited or transitive in C++?
+a: Neither. A class names its friends, and a function cannot declare itself one. Friendship is not transitive — a friend's own friends get nothing — not inherited, and not mutual: `Auditor` being a friend of `Account` gives `Account` no access to `Auditor`.
+q: What is a friend class in C++?
+a: A class declared with `friend class Auditor;` inside another class, which gives every member function of `Auditor` access to that class's private members. It suits pairs designed together, such as a container and its iterator or a builder and its product; otherwise it is a shortcut around a missing interface.
 ---
 A class earns its `private` section by having something to protect. That something is an **invariant**: a statement about the members that is true of every object between operations — the denominator is never zero, the size never exceeds the capacity, the vector is sorted. Public data cannot keep such a promise, because any line of the program can break it. This lesson makes the case for private data precisely, sorts the accessors that earn their place from the ones that merely re-publish the members, introduces `friend` for the few operations that genuinely need private access from outside, previews `operator<<` as the commonest friend, and ends with the question every class should answer: what interface does it publish?
 

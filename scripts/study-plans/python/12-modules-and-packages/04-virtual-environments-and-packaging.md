@@ -1,6 +1,20 @@
 ---
 title: Virtual environments and packaging — venv, pip and pyproject.toml
 minutes: 13
+seo-title: Python Virtual Environments: venv, pip and pyproject.toml
+description: A Python virtual environment gives each project its own python, pip and packages. Creating one, pinning with pip freeze, and pyproject.toml.
+question: What is a virtual environment in Python?
+answer: A Python virtual environment is a private directory, created with `python -m venv .venv`, that holds its own `python`, its own `pip` and its own installed packages. It lets two projects on one machine use different versions of the same library. Activating it puts the venv's `python` and `pip` first on `PATH`; running `.venv/bin/python` directly has the same effect.
+q: How do I create and activate a venv in Python?
+a: Run `python -m venv .venv` in the project directory, then `source .venv/bin/activate` on Linux or macOS, or the `activate` script in the venv's `Scripts` folder on Windows; `deactivate` leaves it. Never commit `.venv`: delete and recreate it from the requirements instead of moving it.
+q: What does pip freeze do?
+a: `pip freeze` prints every installed package with an exact `==` version, and `pip freeze > requirements.txt` saves that as a lock, so `pip install -r requirements.txt` reproduces identical versions elsewhere. Keep the direct dependencies you chose, with loose ranges, separate from this frozen full set.
+q: What is pyproject.toml?
+a: `pyproject.toml` is the one file that declares a Python project's metadata, dependencies, optional dependency groups, command-line scripts, build system and tool settings. It replaces `setup.py`, `setup.cfg`, `requirements-dev.txt` and per-tool files such as `.flake8`, and `pip install .` builds and installs the project from it.
+q: What does `pip install -e .` do?
+a: It installs the current project in editable mode: instead of copying the package into `site-packages`, pip links to the source directory, so edits take effect without reinstalling. It is how a project's own package becomes importable during development, and why the `src/` layout works.
+q: What does `~=` mean in a Python version specifier?
+a: `~=` is the compatible-release operator: `~=1.4` means `>=1.4` and `==1.*`, so any 1.x from 1.4 upward. `>=1.4,<2` says the same explicitly and is the usual form for a library dependency, while exact `==` pins belong in a lock file for deployment.
 ---
 Two projects on one machine need two different versions of the same library, and the interpreter's global `site-packages` can hold only one. The virtual environment solves that: a private directory with its own `python`, its own `pip` and its own packages, activated per project. Around it sits the packaging toolchain — `pip` to install, `requirements.txt` or `pyproject.toml` to declare what to install, and the build system that turns your package into something `pip` can install. This lesson covers creating and using a venv, `pip`'s commands and pinning, `pyproject.toml` as the one project file, editable installs, version specifiers, and the tools that automate it.
 

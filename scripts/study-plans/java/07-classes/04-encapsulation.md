@@ -1,6 +1,20 @@
 ---
 title: Encapsulation, access modifiers and immutability
 minutes: 15
+seo-title: Encapsulation in Java: Access Modifiers and Immutable Classes
+description: Encapsulation in Java keeps fields private and changes them only through methods that keep them valid. Access modifiers, getters and setters, and immutability.
+question: What is encapsulation in Java?
+answer: Encapsulation in Java means keeping an object's fields `private` and letting its state change only through methods that keep it valid. The class, not its callers, then owns its invariants: a validating constructor establishes them and every method preserves them. A getter and setter for every field is not encapsulation; `final` fields and behavioural methods such as `withdraw` are.
+q: What are the access modifiers in Java?
+a: Java has four access levels: `private` (the same class only), package-private with no keyword (the same package), `protected` (the package plus subclasses in other packages) and `public` (everyone). Fields should be `private`, and methods and classes as narrow as works.
+q: What is the difference between protected and default access in Java?
+a: Default, or package-private, access allows only classes in the same package. `protected` allows the same package too and adds subclasses in other packages, so it is more open than it sounds — it does not mean subclasses only.
+q: How do you make a class immutable in Java?
+a: Provide no setters or other mutators, make every field `private final`, make the class `final` (or its constructors private), take defensive copies of mutable inputs and outputs, and have modifying operations return a new instance, as `String` and `LocalDate` do.
+q: Why are immutable objects thread-safe in Java?
+a: Their state never changes after construction, so there is nothing for threads to race on and nothing to synchronise. One immutable instance can be shared, cached and used as a map key freely.
+q: Is a class with getters and setters for every field encapsulated?
+a: Not meaningfully — a setter for every field is a public field with extra steps. Real encapsulation asks which fields should change at all, who may change them and under which checks, and usually answers with `final` fields and behavioural methods such as `deposit` or `markPaid`.
 ---
 Encapsulation is the practice of keeping an object's state private and letting it change only through methods that keep it valid. It is what makes a class more than a struct: the class, not its callers, is responsible for its invariants. This lesson covers the four access levels, the getter/setter convention and its limits, and the strongest form of encapsulation — immutability — which Java rewards with thread safety and simplicity.
 

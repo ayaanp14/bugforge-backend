@@ -1,6 +1,20 @@
 ---
 title: Sets — HashSet, LinkedHashSet and TreeSet
 minutes: 12
+seo-title: HashSet vs TreeSet vs LinkedHashSet in Java: Sets Explained
+description: HashSet is fast and unordered, LinkedHashSet keeps insertion order, TreeSet stays sorted with floor and ceiling. How Java sets find duplicates, and set algebra.
+question: What is the difference between HashSet and TreeSet in Java?
+answer: HashSet and TreeSet differ in order, speed and how they detect duplicates. `HashSet` is a hash table: add, remove and contains are O(1) on average, iteration order is unspecified, and membership is decided by `hashCode` and `equals`. `TreeSet` is a sorted red-black tree: O(log n) operations, membership by `compareTo`, no nulls, and navigation such as `floor` and `ceiling`.
+q: How does HashSet check for duplicates?
+a: `hashCode` picks the bucket and `equals` confirms a match, since a `HashSet` is a `HashMap` with dummy values. Both must be overridden consistently on the element class; without a proper `hashCode`, equal objects land in different buckets and the set fills with duplicates.
+q: How do you remove duplicates from a list while keeping order in Java?
+a: Pass the list through a `LinkedHashSet`, which keeps the first occurrence of each element in insertion order: `new ArrayList<>(new LinkedHashSet<>(list))`. A `HashSet` would also remove the duplicates but lose the order.
+q: What does `Set.add` return in Java?
+a: A `boolean`: `true` if the element was absent and has been added, `false` if the set already held an equal element. That makes `if (!seen.add(x))` the idiom for detecting a duplicate in one step.
+q: How do you find the union and intersection of two sets in Java?
+a: Copy one set and use the bulk operations: `addAll` gives the union, `retainAll` the intersection and `removeAll` the difference. They modify the set they are called on, so copy first — `new HashSet<>(a)` — when the original must survive.
+q: Why is the iteration order of `Set.of` unpredictable?
+a: It is deliberately randomised per JVM run so that no code can come to depend on it. Sets from `Set.of` are also immutable, reject nulls, and throw `IllegalArgumentException` when given a duplicate element.
 ---
 A `Set` holds each element at most once, where "once" is decided by `equals` (and `hashCode`, or `compareTo` for tree sets). Three implementations cover almost every need: `HashSet` for speed, `LinkedHashSet` when order of insertion matters, `TreeSet` when elements must be sorted or you need "the smallest element ≥ x". This lesson covers how each decides membership, the set-algebra operations, and the navigation API that makes `TreeSet` worth its logarithm.
 

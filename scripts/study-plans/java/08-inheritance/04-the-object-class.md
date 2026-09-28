@@ -1,6 +1,20 @@
 ---
 title: The Object class — equals, hashCode and toString
 minutes: 16
+seo-title: Java equals and hashCode Contract and Object Class Methods
+description: Override equals and hashCode together in Java: equal objects need equal hash codes. The equals contract, a correct implementation, HashMap, toString and clone.
+question: What is the equals and hashCode contract in Java?
+answer: The equals and hashCode contract in Java says that objects equal by `equals` must return the same `hashCode`; unequal objects may share one. `equals` itself must be reflexive, symmetric, transitive, consistent, and return false for `null`. `HashMap` and `HashSet` find entries by hash code first and `equals` second, so breaking the contract makes objects vanish from them.
+q: What happens if you override equals but not hashCode in Java?
+a: Hash-based collections stop finding your objects. Two equal objects then usually have different identity-based hash codes, so `HashMap.get` or `HashSet.contains` searches the wrong bucket and finds nothing — even for a key you have just added.
+q: How do you write an equals method in Java?
+a: Take an `Object` parameter; return true if `this == o`; return false if `o` is null or `getClass() != o.getClass()`; then cast and compare the fields — primitives with `==`, doubles with `Double.compare`, references with `Objects.equals`. Build `hashCode` from the same fields, for example with `Objects.hash`.
+q: Should equals use getClass or instanceof in Java?
+a: `getClass()` makes objects of different classes unequal, which keeps `equals` symmetric when a subclass adds fields. `instanceof` lets a subclass equal its parent and is safe only when the class is `final` or its subclasses add no state.
+q: Can two unequal objects have the same hashCode in Java?
+a: Yes — that is a collision, and the contract allows it. Only the reverse is forbidden: equal objects must have equal hash codes. Collisions slow hash tables down, and a constant `hashCode`, though legal, puts every entry in the same bucket.
+q: What methods does the Object class have in Java?
+a: `equals`, `hashCode`, `toString`, `getClass`, `clone`, `finalize`, and the thread methods `wait`, `notify` and `notifyAll`. By default `equals` compares identity and `toString` prints the class name and hash; `getClass` and the thread methods are final, and `finalize` is deprecated for removal.
 ---
 Every class inherits eleven methods from `java.lang.Object`. Three of them — `equals`, `hashCode` and `toString` — define how your objects compare, hash and print, and every collection, every map and every log line depends on them. Their default implementations are identity-based; the moment a class is a *value*, you override them together, according to a contract the whole library assumes. This lesson is that contract and the correct way to meet it.
 

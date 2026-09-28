@@ -1,6 +1,20 @@
 ---
 title: Built-in arrays and std::array
 minutes: 14
+seo-title: C++ Arrays vs std::array: Decay, Size and Bounds Checking
+description: C++ built-in arrays have a fixed size, no bounds check and decay to a pointer when passed. How std::array adds size(), at(), copying and == comparison.
+question: What is the difference between a C array and std::array in C++?
+answer: A C-style array (`int a[5]`) is a fixed-size block of elements with no bounds checking that decays to a pointer to its first element when passed to a function, losing its size. `std::array<int, 5>` wraps the same block with no overhead but adds value semantics: it can be copied, assigned, compared with `==` and returned by value, it knows its `.size()`, and its `.at()` is bounds-checked.
+q: What is array decay in C++?
+a: Array decay is the implicit conversion of an array's name to a pointer to its first element, which happens in almost every expression, including passing it to a function. The size is lost: a parameter written `int values[]` is really `int*`, so `sizeof` gives the pointer's size and the length must be passed separately.
+q: What happens if you access an array out of bounds in C++?
+a: It is undefined behaviour, not an exception. `a[4]` on a four-element array reads or writes whatever memory lies past the end, and the optimiser may assume it never happens. Only `.at()` on `std::array` or `std::vector` checks the index, throwing `std::out_of_range`.
+q: How do I get the length of an array in C++?
+a: Use `std::size(a)` from `<iterator>` (C++17) while the name still denotes an array, or `.size()` on a `std::array`. Inside a function that received the array as a parameter it has already decayed to a pointer, so `std::size` fails to compile and `sizeof a / sizeof a[0]` silently gives the wrong answer.
+q: Are C++ arrays initialised to zero?
+a: Not a local array without an initialiser: `int a[5];` holds indeterminate values, and reading them is undefined behaviour. Write `int a[5] = {};` to zero every element; `int a[5] = {1, 2};` sets the first two and zeroes the rest. `std::array<int, 5> a{};` zeroes too.
+q: When should I use std::array instead of std::vector?
+a: Use `std::array` when the element count is fixed at compile time: it stores its elements inline, on the stack for a local, with no heap allocation. Use `std::vector` when the size is only known at run time or must grow.
 ---
 An array is a fixed number of elements of one type stored one after another in memory. C++ inherited the built-in array from C, and with it three properties that shape the whole language: the size is fixed at compile time, nothing checks that an index is in range, and the array's name quietly turns into a pointer the moment you pass it around. This lesson settles what a built-in array really is, where it bites, and why `std::array<T, N>` — the same contiguous block with value semantics and a `.size()` — is what modern code writes instead.
 

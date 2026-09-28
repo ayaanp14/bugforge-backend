@@ -1,6 +1,20 @@
 ---
 title: Method references — the four kinds
 minutes: 11
+seo-title: Java Method References: Double Colon Operator, Four Kinds
+description: A Java method reference uses the double colon to name an existing method instead of a lambda. Static, bound, unbound and constructor references explained.
+question: What is a method reference in Java?
+answer: A method reference in Java is shorthand for a lambda that only calls one existing method, written with the double colon: `String::length` means `s -> s.length()`. There are four kinds — static (`Integer::parseInt`), bound (`System.out::println`), unbound (`String::compareTo`) and constructor (`ArrayList::new`) — and the target functional interface decides which kind and which overload is meant.
+q: What are the four types of method references in Java?
+a: Static, `Class::staticMethod`; bound instance, `object::method`, whose receiver is captured when the reference is created; unbound instance, `Class::instanceMethod`, whose first argument becomes the receiver; and constructor, `Class::new` or `Type[]::new`.
+q: What is the difference between a bound and an unbound method reference?
+a: A bound reference, `prefix::startsWith`, fixes its receiver object when it is created: `s -> prefix.startsWith(s)`. An unbound reference, `String::startsWith`, takes the receiver as its first argument at call time: `(a, b) -> a.startsWith(b)`.
+q: What does `System.out::println` mean in Java?
+a: It is a bound method reference equivalent to `x -> System.out.println(x)`. The `PrintStream` held by `System.out` is captured when the reference is created, and the target type, such as `Consumer<String>`, picks which `println` overload is called.
+q: When should I use a method reference instead of a lambda?
+a: When the lambda is exactly one call with its parameters passed through in order — `x -> foo(x)` becomes `this::foo`. Keep the lambda when arguments are rearranged, transformed or partly fixed, when there is more than one call, or when a reference would hide the intent.
+q: When is a method reference ambiguous in Java?
+a: When two overloads of the named method fit the target interface's parameter types equally well, the compiler cannot choose and reports the reference as ambiguous. Replace it with a lambda that declares explicit parameter types.
 ---
 When a lambda does nothing but call one existing method — `s -> s.length()`, `x -> Integer.parseInt(x)`, `() -> new ArrayList<>()` — Java lets you name the method instead with `::`. A **method reference** is exactly as expressive as the lambda it replaces, slightly shorter, and often clearer because the reader sees a name rather than a pipeline of parameters. There are four kinds, and knowing which one you are looking at is what makes `String::compareToIgnoreCase` and `this::process` readable.
 

@@ -1,6 +1,20 @@
 ---
 title: Closures — functions that remember
 minutes: 14
+seo-title: JavaScript Closures Explained: Examples, Uses and Pitfalls
+description: A closure is a function plus the variables in scope where it was defined. Closures for private state, partial application and memoisation, and two pitfalls.
+question: What is a closure in JavaScript?
+answer: A closure is a function together with the variables it can see from the scope where it was defined. When an inner function outlives its outer function — returned, stored or passed as a callback — it keeps that scope alive and can still read and update its variables. Closures capture live variables, not copies, and they give JavaScript private state, memoisation and every asynchronous callback.
+q: What are closures used for in JavaScript?
+a: Private state, such as a counter or account factory whose variables nothing outside can reach; configured functions like `multiplier(2)`; partial application and currying; memoisation caches; and every asynchronous callback, which still sees the scope it was written in when it runs later.
+q: Do JavaScript closures capture values or variables?
+a: Variables. A closure holds a reference to the live binding in its outer scope, so a change made there later is visible inside the closure, and two closures created in the same call share the same variable.
+q: Why does a closure in a for loop with var return the last value?
+a: A `var` loop has one binding for the whole function, so every closure created in the loop captures the same `i`, which holds its final value when they run. Declare the loop variable with `let`, which gives each iteration its own binding.
+q: Can closures cause memory leaks in JavaScript?
+a: Yes. A closure keeps its captured scope alive, so a small callback held by something long-lived — an event emitter, a timer, a cache — can keep a large array in memory. Avoid capturing what you do not need, clear references and remove listeners when done.
+q: What is the module pattern in JavaScript?
+a: The module pattern is a factory function that keeps variables in its local scope and returns an object of methods that close over them. Code outside can reach that state only through the methods, which gave JavaScript private data long before `#private` fields.
 ---
 A closure is a function together with the variables it can see from where it was defined. Every JavaScript function is one; the word matters when the function *outlives* the scope it was born in and keeps that scope alive — a counter that remembers its count, an event handler that remembers which button it belongs to, a memoised function that remembers past results. Closures are how JavaScript does private state, configuration, callbacks and modules, and they are the single most-asked concept in JavaScript interviews. This lesson builds them from the scope chain and covers the patterns and the two classic pitfalls.
 

@@ -1,6 +1,20 @@
 ---
 title: String basics — an immutable sequence of characters
 minutes: 12
+seo-title: Python Strings Explained: Immutability, Escapes, str vs repr
+description: A Python str is an immutable sequence of Unicode code points. Literals, escapes and raw strings, indexing, comparison, str versus repr, and why += is slow.
+question: Are Python strings immutable?
+answer: Yes. A Python `str` is an immutable sequence of Unicode code points: once created it never changes, so `s[0] = "b"` raises `TypeError: 'str' object does not support item assignment`. Methods such as `upper`, `replace` and `strip` return a new string and leave the original alone. Immutability is what lets strings serve as dictionary keys and set members.
+q: How do I change a character in a Python string?
+a: Build a new string, since a string cannot be changed in place: `s = "b" + s[1:]` turns `"cat"` into `"bat"`, and `s.replace(old, new)` returns a copy with the substitution made. Calling a method without keeping its result, like `s.upper()` on its own line, changes nothing.
+q: What is the difference between str and repr in Python?
+a: `str(x)` is the readable form that `print` shows; `repr(x)` is the unambiguous form the REPL shows. For a string, `repr` adds quotes and writes tabs and newlines as escapes, so whitespace you cannot see becomes visible. In an f-string, `!r` applies it: `f"{s!r}"`.
+q: What is a raw string in Python?
+a: A raw string, written with an `r` prefix, treats backslashes as ordinary characters instead of starting escapes such as newline or tab. It is the usual form for regular expressions and Windows paths. One limit remains: a raw string cannot end in an odd number of backslashes.
+q: How are strings compared in Python?
+a: Character by character by Unicode code point, and the first difference decides; a prefix sorts before the longer string. Uppercase letters come before lowercase, so `"Zebra" < "apple"` is `True`, and digits compare as text, so `"10" < "9"` is `True`. Use `casefold()` on both sides to ignore case.
+q: How do I write a multi-line string in Python?
+a: Use triple quotes, `"""` or `'''`, which keep the newlines typed between them; they are also the docstring syntax. To split one long line of text across several source lines instead, put adjacent string literals inside parentheses, and the compiler joins them into one string.
 ---
 A Python `str` is an immutable sequence of Unicode characters. Each of those four words matters: *immutable* means every "change" makes a new string; *sequence* means indexing, slicing, `len`, `in` and iteration all work as they do on a list; *Unicode* means a character is a code point, not a byte, and `"é"` has length 1; and *string* means the type comes with the richest method set in the language. This lesson covers literals and escapes, the sequence operations, comparison, `str` versus `repr`, and the concatenation cost that decides how output should be built.
 

@@ -1,6 +1,20 @@
 ---
 title: Inheritance — extends, super, overriding and extending built-ins
 minutes: 13
+seo-title: JavaScript Class Inheritance: extends, super and Overriding
+description: JavaScript extends links two prototype chains, for instances and for statics. Why super() must come first, how overriding dispatches, and custom errors.
+question: How do `extends` and `super` work in JavaScript?
+answer: In JavaScript, `class Sub extends Base` sets up two prototype links: `Sub.prototype` inherits from `Base.prototype`, so instances find parent methods, and `Sub` inherits from `Base`, so static members are found too. `super()` calls the parent constructor, which creates `this`, so it must run before `this` is used; `super.method()` calls the parent's version of a method.
+q: Why must `super()` be called before `this` in a derived class?
+a: In a derived class the base constructor creates the `this` object, and `super()` is the call that runs it. Before `super()` returns there is no object, so touching `this` throws `ReferenceError: Must call super constructor in derived class before accessing 'this'`.
+q: When are subclass fields initialised in JavaScript?
+a: Right after `super()` returns, before the rest of the derived constructor body. So if a base constructor calls a method the subclass overrides, that method runs before the subclass's fields exist and reads `undefined` — base constructors should not call overridable methods.
+q: How do you create a custom error class in JavaScript?
+a: Write `class HttpError extends Error`, call `super(message)` to set the message and capture the stack, set `this.name = "HttpError"` so logs name it correctly, and add fields such as `status`. Instances then pass both `instanceof HttpError` and `instanceof Error`.
+q: Does JavaScript support multiple inheritance?
+a: No, a class has exactly one parent. Mixins give a similar effect: a mixin is a function that takes a class and returns `class extends Base { … }`, and each application inserts one more prototype into the chain. Use them sparingly, because deep stacks hide where a method comes from.
+q: Should I use inheritance or composition in JavaScript?
+a: Inherit only for genuine is-a relationships that share most behaviour and stay shallow, one or two levels. To share a utility or model a loose relationship, compose instead: hold an instance of the other object and delegate to it, or pass behaviour in as functions.
 ---
 `extends` links two prototype chains: the subclass's prototype inherits from the parent's prototype (so instances find parent methods), and the subclass constructor inherits from the parent constructor (so statics are found too). `super` is the keyword for reaching the parent from either place. The rules are few but strict — call `super()` before touching `this`, fields initialise after it, `super.method()` uses the *home object* not the receiver — and the lesson closes with the two things people actually do with inheritance in JavaScript: extend `Error`, `Map` and `Array`, and prefer composition for everything else.
 

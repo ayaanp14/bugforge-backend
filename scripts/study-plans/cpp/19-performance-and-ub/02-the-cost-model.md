@@ -1,6 +1,20 @@
 ---
 title: The cost model — counting copies, allocations and calls
 minutes: 14
+seo-title: C++ Performance Cost Model: Copies, Allocations and reserve
+description: What a copy, an allocation and a call cost in C++: pass by value vs const reference, vector reserve and growth, quadratic string building, return by value.
+question: What does copying a std::vector cost in C++?
+answer: Copying a `std::vector` in C++ costs one heap allocation plus a copy of every element — for a million `int`s, four megabytes — and each element that owns memory, such as a long `std::string`, adds its own allocation. Copying the three-pointer handle is cheap; copying the elements is the cost. Pass by `const&` to read, move when handing over ownership, and return by value.
+q: When should I pass by value in C++?
+a: Pass small trivially copyable types such as `int`, `double`, `std::string_view` and `std::span` by value, because the copy is a register move. Pass a sink parameter — one the function will store — by value too, so a caller can `std::move` into it. Pass anything else you only read by `const&`.
+q: Why is `return std::move(local);` bad?
+a: It disables named return value optimisation and forces a move where the compiler would otherwise have constructed the result directly in the caller. Plain `return result;` is elided by every compiler, and moved automatically when elision is impossible.
+q: What does vector reserve do in C++?
+a: `reserve(n)` allocates capacity for `n` elements up front, so the following `push_back` calls neither reallocate nor move elements. Without it, a doubling vector filled with 1,000 elements makes 11 allocations and moves 1,023 elements along the way. Reserve whenever the final size is known or bounded.
+q: Why is string concatenation in a loop slow in C++?
+a: `out = out + piece` builds a new temporary holding everything so far on every iteration, so the total copying grows quadratically. `out += piece` appends into spare capacity and is amortised linear — for a thousand ten-character pieces, about ten kilobytes copied instead of five megabytes.
+q: Is copying a std::string expensive?
+a: It depends on the length. libstdc++ keeps strings of up to 15 characters inside the object itself (libc++ up to 22), so copying one needs no allocation. A longer string costs an allocation plus a copy of its characters, which is why slicing with `std::string_view` beats `substr` in a hot loop.
 ---
 Performance reasoning in C++ starts long before a stopwatch: it starts by naming the operations a line of code performs and counting them. A `std::vector<int>` passed by value is an allocation plus a copy of every element; a `std::string` longer than fifteen characters is an allocation; `s = s + piece` in a loop copies the whole prefix every time. None of those costs is visible in the source, and all of them are predictable from the value semantics the earlier modules taught. This lesson builds the model — what a copy, an allocation and a call cost relative to each other — and applies it to the decisions that recur in every program: how to pass, how to return, when to `reserve`, how to build a string, and when a view beats a copy.
 

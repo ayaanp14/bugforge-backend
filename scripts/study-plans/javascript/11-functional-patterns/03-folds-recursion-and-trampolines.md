@@ -1,6 +1,18 @@
 ---
 title: Folds, recursion and trampolines — reduce as the universal loop
 minutes: 12
+seo-title: JavaScript Reduce Explained: Folds, Recursion and Trampolines
+description: Every list operation is a fold: map, filter and groupBy written with reduce, the O(n²) accumulator-spread trap, JavaScript's missing tail calls and trampolines.
+question: How does reduce work in JavaScript?
+answer: `reduce` walks an array from left to right, passing an accumulator and each element to a callback whose return value becomes the next accumulator, and returns the final accumulator. That makes it a fold, the general loop behind `map`, `filter`, `groupBy`, `sum` and `pipe`. Always pass a seed as the second argument: without one `reduce` starts from the first element and throws on an empty array.
+q: How do you implement map with reduce in JavaScript?
+a: Start from an empty array and push each transformed element: `xs.reduce((acc, x) => (acc.push(f(x)), acc), [])`. Mutating the accumulator is safe because this `reduce` created it and nothing else sees it until it is returned, so the function as a whole stays pure. `filter` is the same shape with a condition around the push.
+q: Why is spreading the accumulator in reduce slow?
+a: `xs.reduce((acc, x) => [...acc, x], [])` copies the whole accumulator on every step, so the work grows as O(n²): 10 000 items mean about 50 million element copies. Object spread in the accumulator has the same problem. Push into the local accumulator, or build with `Object.fromEntries` or `new Map` instead.
+q: Does JavaScript have tail call optimization?
+a: Not in practice. ES2015 specified proper tail calls, but V8, and so Chrome and Node.js, never implemented them; among the major engines only Safari's did. A tail-recursive function therefore still overflows a default stack of roughly ten thousand frames with `RangeError: Maximum call stack size exceeded`. Rewrite it as a loop or use a trampoline.
+q: What is a trampoline in JavaScript?
+a: A trampoline turns tail recursion into a loop. The recursive function returns a thunk, a zero-argument function describing the next call, instead of making the call, and a driver keeps calling the returned functions until a non-function value comes back. The stack stays shallow, so summing to a million recursively no longer overflows.
 ---
 Every list operation is a **fold**: walk the elements, carry an accumulator, produce a result. `reduce` is the fold; `map`, `filter`, `flatMap`, `groupBy`, `partition`, `zip`, `unique` and `sum` are all `reduce` with a particular accumulator, and being able to write each of them in one line is the difference between using the array methods and understanding them. Recursion is the other universal loop, and JavaScript has one hard limit on it — no tail-call elimination in V8 — which this lesson addresses with the two standard escapes: rewrite as a loop, or trampoline. It closes with the honest comparison: when a fold clarifies, when a loop is simply better, and how to avoid the O(n²) trap that lurks in "elegant" immutable reduces.
 

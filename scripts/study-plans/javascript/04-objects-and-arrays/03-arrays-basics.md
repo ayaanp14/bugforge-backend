@@ -1,6 +1,20 @@
 ---
 title: Arrays — dynamic, sparse, and sorted lexically by default
 minutes: 13
+seo-title: JavaScript Arrays: Sorting Numbers and slice vs splice
+description: JavaScript arrays sort elements as strings unless given a comparator. Creating arrays, length, push vs shift cost, slice vs splice, and 2D grids.
+question: Why does JavaScript sort numbers incorrectly?
+answer: JavaScript's default array `sort` converts elements to strings and compares them lexically unless you pass a comparator, so `[10, 9, 1, 100].sort()` returns `[1, 10, 100, 9]`. Sort numbers in ascending order with `arr.sort((x, y) => x - y)`. `sort` has been stable since ES2019 and works in place, so copy first with `[...arr].sort(cmp)` when the original must survive.
+q: What is the difference between slice and splice in JavaScript?
+a: `slice(start, end)` returns a copy of a range, end exclusive, and leaves the array unchanged. `splice(start, count, ...items)` edits the array in place — removing, inserting or replacing elements — and returns the removed elements.
+q: How do you create an array of n zeros in JavaScript?
+a: Write `Array(n).fill(0)` or `Array.from({ length: n }, () => 0)`. `new Array(n)` on its own creates n holes rather than elements, and `map` skips holes, so it cannot be filled by mapping.
+q: How do you create a 2D array in JavaScript?
+a: Use `Array.from({ length: rows }, () => Array(cols).fill(0))`, which builds an independent array for every row. `Array(rows).fill(Array(cols).fill(0))` puts the same inner array in every slot, so writing to one row changes them all.
+q: Why is shift slower than pop in JavaScript?
+a: `push` and `pop` work at the end of the array in O(1), while `shift` and `unshift` work at the front and must move every other element, which is O(n). For a large queue, keep a head index or use a deque instead of `shift`.
+q: How do you remove duplicates from an array in JavaScript?
+a: For primitives, `[...new Set(arr)]` keeps the first occurrence of each value, in order. To dedupe objects by a key, filter them against a `Set` of ids already seen, because a `Set` compares objects by identity.
 ---
 A JavaScript array is an object with integer-like keys, a `length` that follows the largest index, and a prototype full of methods. It grows on demand, may have holes, holds anything, and sorts its elements as **strings** unless told otherwise — the last fact alone has produced a million wrong leaderboards. This lesson covers construction, indexing, `length`, the mutating core (`push`/`pop`/`shift`/`unshift`/`splice`), slicing and searching, `sort` with a comparator, and the conversions from and to other shapes.
 

@@ -1,6 +1,20 @@
 ---
 title: auto, decltype and structured bindings
 minutes: 15
+seo-title: C++ auto, decltype and Structured Bindings Explained
+description: In C++, auto drops references and top-level const, decltype keeps them, and structured bindings unpack pairs, tuples and structs. Plus brace-init traps.
+question: How does auto type deduction work in C++?
+answer: C++ `auto` deduces a variable's type from its initialiser using the template-argument rules, which drop references and top-level `const`. So `auto a = name;` makes a non-const copy even when `name` is a `const std::string`, while `auto&` and `const auto&` keep the reference and its constness. Use `const auto&` to read, `auto&` to modify in place, and plain `auto` for your own copy.
+q: What is the difference between auto and decltype in C++?
+a: `auto` deduces from an initialiser and strips references and top-level `const`; `decltype(expr)` yields the declared type of an expression exactly, without evaluating it. `decltype(auto)` combines them: it deduces from the initialiser but keeps references, which is how a function returns exactly what an inner call returns.
+q: Why does `decltype((x))` give a reference?
+a: `decltype(x)` on a plain name is the type the name was declared with. Wrapping the name in parentheses makes it an expression, and for an lvalue expression `decltype` yields `T&`. So with `int i`, `decltype(i)` is `int` but `decltype((i))` is `int&`.
+q: What are structured bindings in C++17?
+a: Structured bindings declare several names from one object: `auto [name, age] = p;` unpacks a pair, tuple, array or struct whose data members are all public. Plain `auto` binds a hidden copy, `auto&` binds the original so writes go through, and `const auto& [k, v]` is the right form for iterating a `std::map`. The number of names must match the members exactly.
+q: Why does `std::vector<int> v{10}` create only one element?
+a: Braces prefer a `std::initializer_list` constructor whenever a class has one, so `std::vector<int> v{10}` is one element with the value 10 and `v{3, 5}` is two elements. Parentheses call the other constructors: `std::vector<int> v(10)` is ten zeros and `v(3, 5)` is three fives.
+q: What is the most vexing parse in C++?
+a: `Widget w();` declares a function named `w` that returns a `Widget`, not a default-constructed object, because C++ reads anything that can be a declaration as one. Write `Widget w{};` or `Widget w;` instead.
 ---
 Type deduction is where modern C++ stops making you repeat yourself. `auto` lets the compiler write the type it already knows, `decltype` names the type of an expression you cannot spell, and structured bindings take a pair, a tuple, a struct or a map entry apart into named parts in one line. Each has rules that are simple to state and easy to get wrong: `auto` drops references and top-level `const`, `decltype` cares whether you wrote parentheses, and a binding is a copy unless you ask for a reference. This lesson settles those rules, then covers the C++17 `if`/`switch` initialiser, `using` aliases, `nullptr` and the brace-initialisation quirks.
 

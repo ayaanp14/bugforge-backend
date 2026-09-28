@@ -1,6 +1,20 @@
 ---
 title: Characters, code points, bytes and Unicode
 minutes: 13
+seo-title: Python Unicode Explained: str vs bytes, ord, chr and UTF-8
+description: A Python str holds Unicode code points, bytes holds bytes, and encode and decode convert. Plus ord and chr, isdigit vs isdecimal, casefold and normalisation.
+question: What is the difference between str and bytes in Python?
+answer: In Python 3, a `str` holds Unicode code points and a `bytes` object holds raw bytes, and the two never mix: `"a" + b"b"` raises `TypeError`. Encoding turns text into bytes, `s.encode("utf-8")`, and decoding turns bytes back into text, `b.decode("utf-8")`, which is why `len("é")` is 1 while its UTF-8 encoding is 2 bytes. Decode at the boundary, work in `str`, encode at the boundary.
+q: What do ord and chr do in Python?
+a: `ord(c)` returns the Unicode code point of a one-character string and `chr(n)` returns the character for a code point: `ord("A")` is `65`, `chr(65)` is `"A"` and `ord("€")` is `8364`. Arithmetic on code points shifts letters, so `chr(ord("a") + 3)` is `"d"`, the basis of a Caesar cipher.
+q: What is the difference between isdigit, isdecimal and isnumeric in Python?
+a: `isdecimal` accepts only characters `int()` treats as digits, including digits from other scripts; `isdigit` also accepts superscripts such as `"²"`; `isnumeric` also accepts fractions such as `"½"` and CJK numerals. None accepts a sign or a decimal point, so `"-1".isdigit()` is `False` and none tests whether text is a number.
+q: What is the difference between lower and casefold in Python?
+a: `lower()` is for display; `casefold()` is a more aggressive lowercase meant for case-insensitive comparison. `"Maße".lower() == "masse"` is `False`, but `"Maße".casefold() == "masse"` is `True`, because casefolding turns `ß` into `ss`.
+q: How do I fix UnicodeDecodeError in Python?
+a: Decode with the encoding the bytes were actually written in, almost always UTF-8: `b.decode("utf-8")`, or `open(path, encoding="utf-8")` for a file. The error appears when bytes are decoded with the wrong codec, such as UTF-8 text decoded as ASCII. Always pass `encoding=` to `open`, since the platform default may differ.
+q: Why do two identical-looking strings compare unequal in Python?
+a: The same visible character can be one code point, such as `é` (U+00E9), or two, `e` followed by a combining acute accent. They print identically but compare unequal. Normalise both with `unicodedata.normalize("NFC", s)` before comparing, deduplicating or hashing text from users or files.
 ---
 A Python string holds *code points* — abstract Unicode characters numbered from 0 to 1 114 111 — and a `bytes` object holds bytes. The two are different types, converted by *encoding* (str → bytes) and *decoding* (bytes → str) with a named encoding, almost always UTF-8. Keeping the distinction straight is the whole of Unicode handling in Python 3, and it dissolves the classic questions: why `len("é")` is 1 but the file is two bytes longer, why `"ß".upper()` is `"SS"`, why `"²".isdigit()` is true. This lesson covers `ord`/`chr`, the text/bytes boundary, the three digit tests, case and normalisation, and the `string` module constants.
 

@@ -1,6 +1,20 @@
 ---
 title: CompletableFuture and the coordination tools
 minutes: 15
+seo-title: Java CompletableFuture Explained: thenApply vs thenCompose
+description: CompletableFuture chains, combines and recovers async Java tasks: thenApply vs thenCompose, exceptionally and allOf, plus CountDownLatch and CyclicBarrier.
+question: What is CompletableFuture in Java?
+answer: `CompletableFuture` in Java is a `Future` you can chain, combine and complete by hand. `supplyAsync` starts work on a pool, `thenApply` transforms the result, `thenCompose` chains a stage that returns another future, `thenCombine` joins two futures, and `exceptionally` or `handle` recover from failure. Unlike a plain `Future`, it pushes each result onward instead of making you block on `get()`.
+q: What is the difference between thenApply and thenCompose?
+a: `thenApply` is `map`: its function returns a plain value. `thenCompose` is `flatMap`: its function returns another `CompletableFuture`, and using it avoids a nested `CompletableFuture<CompletableFuture<T>>`.
+q: What is the difference between CountDownLatch and CyclicBarrier?
+a: A `CountDownLatch` is one-shot: other threads wait until its count reaches zero, and it never resets. A `CyclicBarrier` is a reusable meeting point: k parties each call `await()`, the last to arrive runs the optional barrier action, and it resets for the next round.
+q: Which thread runs a CompletableFuture thenApply stage?
+a: The thread that completed the previous stage, or the calling thread if that stage was already complete. The `thenApplyAsync` variants dispatch the work to a pool instead, which matters when the previous stage ran on a UI or event-loop thread.
+q: What is a Semaphore used for in Java?
+a: A `Semaphore` limits how many threads use a resource at once: `acquire()` takes one of n permits, blocking if none is left, and `release()` returns one. It is a counter, not a lock — `release()` does not check that the caller ever acquired a permit.
+q: How do you stop a consumer thread in a producer-consumer queue?
+a: Put a poison pill — a sentinel value the consumer recognises — on the `BlockingQueue` after the last item, one per consumer; each consumer ends its `take()` loop when it receives one. Interrupting the consumer is the alternative.
 ---
 A `Future` lets you wait; it does not let you say *what happens next*. `CompletableFuture` does: it is a future you can complete by hand, chain transformations onto, combine with other futures, and recover when it fails — asynchronous code that reads like a stream pipeline. Around it sit the **synchronisers** that coordinate threads without a lock on shared data: `CountDownLatch` (wait until *n* things have happened), `CyclicBarrier` (everyone waits for everyone, repeatedly), `Semaphore` (at most *n* at once), and the `BlockingQueue` that makes producer–consumer a one-liner. This lesson covers all of them with the one question that matters for each: *what thread does the work?*
 

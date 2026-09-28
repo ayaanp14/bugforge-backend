@@ -1,6 +1,20 @@
 ---
 title: Specialisation — when one type needs its own version
 minutes: 13
+seo-title: C++ Template Specialization: Full vs Partial Explained
+description: Full specialisation gives one type its own C++ class template; partial specialisation matches a pattern like all pointers. Traits, and why functions overload.
+question: What is template specialisation in C++?
+answer: Template specialisation is a separate definition of a template for particular arguments. A full specialisation, `template <> struct Describe<bool>`, replaces the primary template for exactly one type; a partial specialisation, `template <typename T> struct Describe<T*>`, matches a pattern and stays a template. A specialisation inherits none of the primary's members. `std::vector<bool>` is the standard library's best-known full specialisation.
+q: What is the difference between full and partial template specialisation?
+a: A full, or explicit, specialisation fixes every template argument — `template <>` followed by `X<int>` — and describes one exact type. A partial specialisation fixes only a pattern, such as `X<T*>` for all pointers or `X<std::pair<T, T>>` for pairs of one type, and still has template parameters. When several partial specialisations match, the most specialised one wins.
+q: Can a function template be partially specialised?
+a: No. Partial specialisation applies to class templates, not function templates: `template <typename T> void f<T*>(T*)` is a compile error. Write a second overload instead. A function template can be fully specialised, but a full specialisation does not take part in overload resolution, so an ordinary overload is the better tool.
+q: Why should you overload a function template instead of specialising it?
+a: A full specialisation is not an overload candidate. The compiler first chooses the best primary template or non-template function and only then looks at that primary's specialisations, so a better-matching second template can hide your specialisation entirely. A plain non-template overload such as `void show(const char*)` takes part in overload resolution and wins exact-match ties.
+q: What is a type trait in C++?
+a: A type trait is a class template whose members record a compile-time fact about a type, filled in by specialisation: the primary template gives the default and specialisations give the exceptions. `<type_traits>` is built this way — `std::is_integral<T>` is `false` by default and `true` for `int`, `char`, `bool` and the other integer types.
+q: Why does typeid(T).name() print strange names?
+a: `typeid(T).name()` returns an implementation-defined, usually mangled name: GCC and Clang print `i` for `int` and `PKc` for `const char*`, and MSVC prints something else again. For readable output, define a trait such as `TypeName<T>` whose specialisations hold the words you choose.
 ---
 A template is a rule that applies to every type; a specialisation is the exception written next to it. `std::vector<bool>` packs bits where every other `std::vector<T>` stores elements, `std::hash<std::string>` hashes characters where the primary template has no body at all, and every `std::is_integral<T>` is a specialisation that says `true` for a handful of types. This lesson covers full specialisation (one exact type, such as `const char*` or `bool`), partial specialisation (a pattern, such as every pointer or every `std::pair<T, T>`), the traits style that the next lessons build on, and the reason a function template is overloaded rather than specialised.
 

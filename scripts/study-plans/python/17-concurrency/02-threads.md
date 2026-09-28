@@ -1,6 +1,20 @@
 ---
 title: Threads — Thread, Lock, Event, Queue and the race you must see once
 minutes: 15
+seo-title: Python Threading Explained: Lock, Queue and Race Conditions
+description: How Python threading works: start and join threads, why counter += 1 loses updates, fixing races with Lock, and passing work with queue.Queue and Event.
+question: What is a race condition in Python threading?
+answer: A race condition in Python threading is two threads doing a read-modify-write on shared state with a thread switch in between, so one update is lost. `counter += 1` loads, adds and stores as separate bytecode steps: thread A and thread B can both load 41 and both store 42. Wrapping the compound operation in `with lock:` makes it atomic with respect to other holders of that lock.
+q: How do you start and wait for a thread in Python?
+a: Create `threading.Thread(target=fn, args=(...))`, call `start()` to run `fn` in the new thread, and `join()` to block until it finishes. Join every thread before reading its results; a daemon thread is killed when the main thread exits, so never let one write files.
+q: How do you avoid deadlock with Python locks?
+a: Acquire locks in the same order in every thread: two locks taken in opposite orders by two threads is the classic deadlock. Hold each lock briefly and never during I/O, use `acquire(timeout=...)` when waiting forever is unacceptable, and use an `RLock` when one thread must re-acquire a lock it holds.
+q: Is `queue.Queue` thread-safe?
+a: Yes. `put` and `get` lock internally, `get` blocks until an item arrives, `maxsize` makes `put` block when the queue is full, and `join()` waits until every item is marked `task_done()`. Passing messages through a queue avoids sharing mutable state between threads.
+q: What is `threading.Event` used for?
+a: It is a one-bit flag that threads can wait on: `set()` raises it, `is_set()` reads it, and `wait(timeout)` sleeps but wakes early when it is set. It is the usual graceful-shutdown signal for polling threads.
+q: Why is `time.sleep` not a way to synchronise threads?
+a: Sleeping so that another thread can finish is still a race; it only makes the bad interleaving less likely. `join`, `Event` and `Queue.join` wait for the actual condition, whatever the scheduler does.
 ---
 A thread is a second flow of control inside the same process, sharing every object with the first. `threading.Thread` starts one; `join` waits for it; a `Lock` serialises access to shared state; a `queue.Queue` moves work between threads safely; an `Event` signals. The lesson's centrepiece is the race condition: two threads incrementing one counter and losing updates — shown, explained at the bytecode level, and fixed — because until you have seen it you will not believe a one-line `+=` can be wrong. It ends with the recipes that keep threaded programs deterministic: per-thread result slots, one lock per shared structure, join before reading.
 

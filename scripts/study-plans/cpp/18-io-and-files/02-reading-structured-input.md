@@ -1,6 +1,20 @@
 ---
 title: Reading structured input — the pattern catalogue
 minutes: 15
+seo-title: C++ Input Parsing: getline After cin and Reading Until EOF
+description: Why getline returns an empty line after cin, how to read until end of input, parse lines with a stringstream, read a matrix and report bad lines in C++.
+question: Why does getline skip input after cin in C++?
+answer: `std::getline` seems to skip a line after `std::cin >> n` because `>>` stops at the newline that ends the number and leaves it in the buffer; the next `getline` reads up to that newline and returns an empty string. Discard the rest of the count's line with `std::cin.ignore`, using the maximum count and the newline as delimiter, or read the line with `std::getline(std::cin >> std::ws, line)`.
+q: How do I read input until EOF in C++?
+a: Loop on the read itself: `while (std::cin >> x)` for whitespace-separated tokens or `while (std::getline(std::cin, line))` for lines. Each loop stops at the first failed read — the end of the input, or a token that is not the expected type.
+q: When should I use getline instead of cin >>?
+a: Use `>>` when whitespace is only a separator and the line layout does not matter. Use `std::getline` when spaces are part of the data, such as a full name, or when which line a value is on matters. When a line has internal structure, `getline` it and parse the copy with a `std::istringstream`.
+q: How do I split a line into fields in C++?
+a: Read the line with `std::getline`, wrap it in a `std::istringstream`, and extract the fields with `>>`; `if (!(fields >> name >> qty >> price))` reports a malformed line. A fresh stream per line keeps a bad field from putting `std::cin` into a failed state and losing every later record.
+q: How do I read a matrix from input in C++?
+a: Read the row and column counts, then either read `rows * cols` tokens with `>>` when the shape is guaranteed, or read each row with `getline` and parse it with an `istringstream` when the program must check it. Only the line-wise version can detect a short or long row and report its row number.
+q: Why does the last field of each line fail to match?
+a: The input was probably saved with Windows line endings, so every line read by `getline` ends in a stray carriage-return character that makes its last field compare unequal. Check whether `line.back()` is a carriage return and `pop_back()` it before parsing.
 ---
 Every judged program, log parser and configuration reader starts with the same question: what shape is the input, and which read matches that shape? Most wrong answers on this platform are reading bugs, not logic bugs — a count read with `>>` followed by a `getline` that returns an empty line, a matrix read token by token that never notices a short row, a loop on `eof()` that runs once too often. This lesson is a catalogue. For each shape there is a template you can paste, the state check that makes it robust, and the validation that turns "it crashed somewhere" into "line 7: expected 3 values, got 2".
 

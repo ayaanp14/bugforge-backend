@@ -1,6 +1,20 @@
 ---
 title: Literals and enumerations
 minutes: 14
+seo-title: C++ Enum vs Enum Class: Scoped Enums and Literals
+description: A C++ enum class scopes its names and blocks implicit int conversions; a plain enum does neither. Plus literal suffixes, octal, raw strings and enum flags.
+question: What is the difference between enum and enum class in C++?
+answer: A C++ `enum class` (a scoped enumeration) qualifies every name, so you write `Level::Mid`, and converts neither to nor from `int` implicitly. A plain `enum` spills its names into the enclosing scope and converts to `int` at the slightest excuse, so values of unrelated enums compare without complaint. `enum class` is the modern default, converted on purpose with `static_cast`.
+q: How do you convert an enum class to int in C++?
+a: Use `static_cast<int>(value)`, or `static_cast<std::underlying_type_t<Level>>(value)` to get its exact underlying type; C++23 adds `std::to_underlying(value)`. Converting back, `static_cast<Level>(n)` is not checked, so validate the integer before the cast.
+q: What is a raw string literal in C++?
+a: A raw string literal, written `R"(...)"`, keeps backslashes, quotes and newlines exactly as typed, with no escape sequences processed. It suits regular expressions, Windows paths, JSON and SQL; when the text itself contains `)"`, a custom delimiter such as `R"delim(...)delim"` ends it.
+q: Why is 017 equal to 15 in C++?
+a: A leading zero makes an integer literal octal, so `017` is 1 × 8 + 7 = 15, and `08` does not compile because 8 is not an octal digit. Use `0x` for hexadecimal, `0b` for binary, and an apostrophe as a digit separator: `1'000'000`.
+q: What type is an integer literal in C++?
+a: An unsuffixed decimal literal takes the first of `int`, `long` and `long long` that can hold it, so on x86-64 Linux `2147483647` is an `int` and `2147483648` a `long`. Suffixes fix the type — `u` unsigned, `L` long, `LL` long long — as in `1LL << 40`.
+q: How do you use an enum as bit flags in C++?
+a: Give each enumerator its own power of two, such as `Read = 1u << 2`, combine them with `|` and test them with `&`: `(mode & Write) != 0`. An unscoped enum with a fixed underlying type makes the operators work directly; with `enum class` you overload `operator|` and `operator&` or cast at every use.
 ---
 A literal is a value spelled straight into the source, and each spelling has a type that the compiler settles before your variable gets a say — which is why `auto big = 3000000000;` is a `long`, why `1 << 40` is undefined but `1LL << 40` is fine, and why `"text"` is not a `std::string`. Enumerations give names to a set of integer constants, and the C++11 scoped form fixes the two problems the C form always had. This lesson is the reference for both.
 

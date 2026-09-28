@@ -1,6 +1,20 @@
 ---
 title: Symbols — unique keys and the language's extension points
 minutes: 11
+seo-title: What Is a Symbol in JavaScript? Well-Known Symbols
+description: A JavaScript symbol is a unique primitive used as a collision-free property key. Symbol vs Symbol.for, what skips symbol keys, and the well-known symbols.
+question: What is a Symbol in JavaScript?
+answer: A symbol is a JavaScript primitive whose only job is to be unique — `Symbol("id") === Symbol("id")` is `false`. Used as a property key it cannot collide with any other key, and it is skipped by `Object.keys`, `for…in` and `JSON.stringify`. The language also uses well-known symbols such as `Symbol.iterator` as hooks that your objects can implement.
+q: What is the difference between `Symbol()` and `Symbol.for()`?
+a: `Symbol()` creates a new, unique symbol on every call. `Symbol.for(key)` looks the key up in a global registry and returns the same symbol for the same string everywhere in the realm, across modules and bundles; `Symbol.keyFor` reads the key back from a registered symbol.
+q: Are symbol properties private in JavaScript?
+a: No. Symbol-keyed properties are skipped by `Object.keys`, `for…in` and `JSON.stringify`, but `Object.getOwnPropertySymbols` and `Reflect.ownKeys` list them, and spread copies them. They are collision-free, not private; use `#private` fields or a WeakMap for real privacy.
+q: What are well-known symbols in JavaScript?
+a: Well-known symbols are built-in symbols stored on `Symbol` that the language looks up on your objects at set moments: `Symbol.iterator` for `for…of` and spread, `Symbol.asyncIterator` for `for await`, `Symbol.toPrimitive` for conversion, `Symbol.hasInstance` for `instanceof`, plus `Symbol.toStringTag`, `Symbol.species` and others.
+q: Why does converting a symbol to a string throw?
+a: Symbols are never converted to strings implicitly, so a template literal like `${sym}` or `sym + ""` throws a `TypeError`. That guards against a key silently turning into the text `"Symbol(x)"`. Convert explicitly with `String(sym)`, `sym.toString()` or `sym.description`.
+q: Why use a symbol as a sentinel value?
+a: A sentinel such as `const MISSING = Symbol("missing")` can never be confused with real data the way `null` or `-1` can, and enum members made of symbols cannot be forged from strings. The cost is that symbols do not survive `JSON.stringify`, so anything crossing JSON needs a string mapping.
 ---
 A symbol is a primitive whose only job is to be **unique**: `Symbol("id") !== Symbol("id")`. Used as a property key it cannot collide with any string key or any other symbol, it is skipped by `Object.keys`, `for…in` and `JSON.stringify`, and it lets two pieces of code attach data to the same object without knowing about each other. The language itself uses a fixed set of **well-known symbols** as hook names — `Symbol.iterator` is the one you have been using all module — so that your objects can plug into `for…of`, `instanceof`, string conversion and more without the language reserving any string names. This lesson covers the primitive, the global registry, symbols as keys, and the well-known symbols worth knowing by name.
 

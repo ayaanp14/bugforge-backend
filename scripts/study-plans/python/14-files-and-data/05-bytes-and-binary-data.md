@@ -1,6 +1,20 @@
 ---
 title: Bytes and binary data — struct, int.to_bytes, base64 and hashlib
 minutes: 13
+seo-title: Python Bytes and Binary Data: struct, base64 and hashlib
+description: Python bytes and bytearray, struct records with an explicit byte order, big-endian versus little-endian, base64 for text channels and SHA-256 with hashlib.
+question: What is the difference between bytes and str in Python?
+answer: A `str` is a sequence of Unicode characters; `bytes` is an immutable sequence of raw values from 0 to 255. Text becomes bytes with `"héllo".encode("utf-8")`, and bytes become text with `.decode("utf-8")`. Indexing bytes gives an int and slicing gives bytes, and `bytearray` is the mutable version used to assemble messages.
+q: What is the difference between big-endian and little-endian?
+a: They are the two byte orders for storing a multi-byte number. Big-endian, the network order, puts the most significant byte first, so 1 in four bytes is 00 00 00 01; little-endian, used by x86 and ARM, puts the least significant byte first, 01 00 00 00. Reading with the wrong order turns 1 into 16 777 216.
+q: How do I convert an int to bytes in Python?
+a: Call `n.to_bytes(length, byteorder)`; `(1).to_bytes(4, "big")` gives four bytes ending in 1, and `int.from_bytes(data, "big")` converts back. Pass `signed=True` for negative numbers in two's complement; `to_bytes` raises `OverflowError` if the value does not fit in the given length.
+q: What does struct.pack do in Python?
+a: `struct.pack(format, v1, v2, ...)` packs values into bytes in a fixed binary layout, and `struct.unpack` reads them back as a tuple. The format string gives the byte order and each field's type: `"<I4sH"` is little-endian, a 4-byte unsigned int, 4 raw bytes and a 2-byte unsigned int. Always give an explicit `<`, `>` or `!` prefix.
+q: Is base64 encryption?
+a: No. Base64 is an encoding that turns arbitrary bytes into ASCII text so they survive text-only channels such as JSON, email and URLs, at about a 33 % size cost. Anyone can decode it with `base64.b64decode`, so it provides no secrecy and no compression.
+q: How do I get the SHA-256 hash of a file in Python?
+a: Create `h = hashlib.sha256()`, open the file in binary mode, feed it in chunks with `h.update(chunk)`, for example over `iter(lambda: f.read(65536), b"")`, then call `h.hexdigest()`. Chunking hashes large files without loading them into memory. Never hash passwords with plain SHA-256; use `hashlib.scrypt`, `pbkdf2_hmac` or a dedicated library.
 ---
 Text is bytes plus an encoding; everything else a program reads from a socket, a device or a binary file is bytes plus a *layout*. Python's `bytes` and `bytearray` hold the raw data, `struct` packs and unpacks fixed layouts, `int.to_bytes`/`from_bytes` convert integers with an explicit byte order, `base64` turns bytes into text that survives a text channel, and `hashlib` produces the digests that identify and verify data. This lesson covers each, the byte-order question that decides whether a number reads as 1 or 16 777 216, and the binary-file idioms.
 

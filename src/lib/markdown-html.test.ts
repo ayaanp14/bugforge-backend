@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { markdownToHtml } from "./markdown-html.js";
+import { headingAnchor, markdownOutline, markdownToHtml } from "./markdown-html.js";
 
 test("paragraphs, headings shifted down, inline code and emphasis", () => {
   const html = markdownToHtml("# Two Sum\n\nGiven an array `nums`, return **indices**.\n\nSecond *paragraph*.");
@@ -30,6 +30,34 @@ test("GFM tables and blockquotes", () => {
 test("links only to the site or https; images become their alt text", () => {
   const html = markdownToHtml("[in](/challenges) [out](https://example.com) [no](javascript:alert(1)) ![alt](/x.png)");
   assert.equal(html, '<p><a href="/challenges">in</a> <a href="https://example.com">out</a> [no](javascript:alert(1)) alt</p>');
+});
+
+/*
+ * Heading anchors. The SPA's components/study/lesson-anchors.ts computes
+ * the same ids for the running page, so a "#section" link lands in the
+ * same place with or without JavaScript — a change here is a change there.
+ */
+test("a heading's anchor is its words, lower-cased and hyphenated", () => {
+  assert.equal(headingAnchor("The JVM: an abstract machine made real"), "the-jvm-an-abstract-machine-made-real");
+  assert.equal(headingAnchor("Compiled *and* interpreted"), "compiled-and-interpreted");
+  assert.equal(headingAnchor("`public static void main(String[] args)`"), "public-static-void-main-string-args");
+  assert.equal(headingAnchor("C++ and [the STL](/x)"), "c-and-the-stl");
+  assert.equal(headingAnchor("—"), "section");
+});
+
+test("anchors are written only when asked, numbered on repeats, and skip fenced code", () => {
+  const src = "## Operators\n\n```cpp\n## not a heading\n```\n\n### `operator<<`\n\ntext\n\n### `operator>>`\n\n## Key takeaways";
+  assert.ok(!markdownToHtml(src).includes(" id="));
+  const html = markdownToHtml(src, 24_000, { anchors: true });
+  assert.ok(html.includes('<h3 id="operators">Operators</h3>'), html);
+  assert.ok(html.includes('<h4 id="operator">'), html);
+  assert.ok(html.includes('<h4 id="operator-2">'), html);
+  assert.ok(html.includes('<h3 id="key-takeaways">Key takeaways</h3>'), html);
+  // The outline is the ## sections alone, with the same ids.
+  assert.deepEqual(markdownOutline(src), [
+    { id: "operators", text: "Operators" },
+    { id: "key-takeaways", text: "Key takeaways" },
+  ]);
 });
 
 test("a long source is cut on a paragraph boundary", () => {

@@ -1,6 +1,20 @@
 ---
 title: Modules and imports — files, namespaces and sys.modules
 minutes: 14
+seo-title: How Python Imports Work: sys.modules and Circular Imports
+description: A Python module is a file run once on first import and cached in sys.modules. What from-import copies, the main guard and how to fix circular imports.
+question: What happens when you import a module in Python?
+answer: Python first looks the module up in `sys.modules`; if it is cached, `import` simply binds the name. Otherwise it finds the file on the import path, `sys.path`, which starts with the script's own directory, creates a module object, caches it, runs the file top to bottom in that module's namespace and binds the name. Top-level code therefore runs once per process.
+q: What is the difference between `import module` and `from module import name`?
+a: `import math` binds one name to the module, and you write `math.sqrt`, which keeps the origin visible and cannot collide. `from math import sqrt` binds the function itself. It copies the binding at import time, so a later rebinding of the module's variable is not seen through the imported name.
+q: How do I fix "ImportError: cannot import name" caused by a circular import?
+a: The error means two modules import each other and one does a top-level `from` import of a name the other has not defined yet. Move the shared code into a third module both import, import inside the function that needs it, or use `import a` and read `a.name` later.
+q: What does `if __name__ == "__main__"` mean in Python?
+a: Every module has `__name__`: its import name, or `"__main__"` for the script being run. The `if __name__ == "__main__":` guard runs code only when the file is executed directly, so the same file can be imported for its functions without triggering its script behaviour.
+q: Why does a file named random.py break import random?
+a: The script's own directory comes first on the import path, so `import random` finds your `random.py` instead of the standard-library module, and the functions you expected are missing. Rename the file, and never name one after a standard module such as `json.py` or `test.py`.
+q: Should Python imports go at the top of the file?
+a: Yes. PEP 8 puts imports at the top, one per line, in three groups separated by blank lines (standard library, third-party, then your own), each alphabetical. Import inside a function only to break a cycle or defer an expensive optional dependency, and avoid `import *` in modules.
 ---
 A module is a file; importing it runs the file once and gives you an object whose attributes are the file's top-level names. That sentence covers most of what people find mysterious about imports — why a module's top-level code runs on first import and never again, why two `import`s of the same module give the same object, why `from x import y` copies a *binding* rather than linking to a variable, and why circular imports fail the way they do. This lesson covers the import forms, what `import` does step by step, the module cache, `__name__`, the import path, and the conventions for ordering and style.
 

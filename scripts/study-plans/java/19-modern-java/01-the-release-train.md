@@ -1,6 +1,20 @@
 ---
 title: The release train — what changed from Java 9 to 21
 minutes: 13
+seo-title: Java Versions Explained: What's New in Java 11, 17 and 21
+description: Java ships a feature release every six months and an LTS every two years: 8, 11, 17, 21, 25. What is new in Java 11, 17 and 21, and what preview features are.
+question: What's new in Java 17?
+answer: Java 17, the long-term-support release of 2021, made sealed classes final and is the first LTS to include everything added since Java 11: records, text blocks, switch expressions, pattern matching for `instanceof` and helpful `NullPointerException` messages. Pattern matching for `switch` was still a preview in 17. With 11 and 21, it is one of the LTS versions production systems run.
+q: What's new in Java 21?
+a: Java 21, the LTS release of 2023, made pattern matching for `switch` and record patterns final, and added virtual threads, sequenced collections with `getFirst`, `getLast` and `reversed`, and generational ZGC.
+q: What's new in Java 11?
+a: Java 11, the LTS release of 2018, added the standard `HttpClient`, string methods such as `isBlank`, `strip`, `lines` and `repeat`, `Files.readString` and `writeString`, `var` in lambda parameters and single-file launch with `java Hello.java`. JavaFX and JAXB were removed from the JDK.
+q: How often is a new Java version released?
+a: A feature release ships every March and September and is supported only until the next one. A long-term-support release comes every two years — 8, 11, 17, 21 and 25 — and vendors ship security updates for LTS versions for years, which is why production runs LTS.
+q: What is a preview feature in Java?
+a: A preview feature is complete but may still change or be withdrawn before it becomes final. It must be switched on with `--enable-preview` for both `javac` and `java`, and it belongs in experiments and learning, never in production code.
+q: Which Java version added var?
+a: Java 10 added `var` for local variables with an initialiser, and Java 11 allowed it in lambda parameters. It is still not allowed for fields, method parameters or return types.
 ---
 For twenty years Java shipped a major version every three to five years, each one enormous. Since 2017 it ships **every six months**, each release small, with a **long-term-support** version every two years. Most of the language you have learned in this track — `var`, records, sealed types, text blocks, switch expressions, pattern matching — arrived on that train, and interviewers now ask "what's new in Java 17?" as routinely as they ask about `HashMap`. This lesson is the timetable: how the cadence works, what *preview* means, which versions matter, and a one-screen cheat-sheet of what landed when.
 

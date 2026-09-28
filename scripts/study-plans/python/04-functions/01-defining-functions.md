@@ -1,6 +1,18 @@
 ---
 title: Defining functions — def, return and functions as values
 minutes: 12
+seo-title: Python Functions: def, return and Returning Multiple Values
+description: A Python def creates a function object and return hands back a value, or None. Returning several values as a tuple, the None trap and functions as values.
+question: How do you define a function in Python?
+answer: Define a Python function with `def`, a name, parameters in parentheses and an indented body, as in `def area(width, height): return width * height`. The `def` statement creates a function object and binds the name when it runs; the body runs only when the function is called. `return` hands a value back, and a function without one returns `None`.
+q: How do I return multiple values from a Python function?
+a: Return them separated by commas, which builds one tuple: `return min(xs), max(xs)`. The caller unpacks it into several names, as in `lo, hi = min_max(scores)`. The function still returns a single object; the tuple is what carries the values together.
+q: Why does my Python function return None?
+a: A function that ends without a `return` statement, or with a bare `return`, returns `None`. The usual cause is computing a value and never returning it, or a path — the loop found nothing, the `else` was not written — that falls off the end. In-place methods such as `xs.sort()` and `xs.append(x)` also return `None` by design.
+q: What is the difference between return and print in Python?
+a: `return` hands a value back to the caller, which can store it, test it or pass it on; `print` writes text to standard output, and the function still returns `None`. A helper that prints its result instead of returning it cannot be reused or tested, so compute in functions that return and print in `main`.
+q: Are functions objects in Python?
+a: Yes. A Python function is a first-class object: it can be bound to another name, stored in a list or dict, passed as an argument, as in `sorted(words, key=len)`, and returned from another function. Parentheses are what call it — `double` is the function, `double(3)` is a call.
 ---
 A function in Python is an object created by a `def` statement, bound to a name like any other value, and called with parentheses. That one sentence explains most of what surprises people later: a function can be passed to another function, stored in a list, returned from a call, given attributes, and redefined. This lesson covers the statement, what `return` does and does not do, the `None` that every function returns when it says nothing, docstrings, and the discipline — one job, no hidden state, inputs in and a result out — that makes a function worth writing.
 

@@ -1,6 +1,20 @@
 ---
 title: Error codes, assertions and an error-handling strategy
 minutes: 14
+seo-title: C++ Error Handling Best Practices: Codes, Asserts, Exceptions
+description: When C++ code should throw, return an error code or assert. Errno and enum class codes, std::expected in C++23, and an error-handling strategy per layer.
+question: How should you handle errors in C++?
+answer: Handle errors in C++ by choosing a mechanism per layer. Return values — `std::optional`, an `enum class` code, or a `std::variant` of value and error — suit failures the caller expects and can act on; exceptions suit rare failures several calls below anyone who can fix them; `assert` is only for bugs, never input. Catch only where you can act, translate at module boundaries, and never swallow an error silently.
+q: When should you use assert in C++?
+a: Use `assert` for bugs — invariants and preconditions inside code you control — never to validate input. `assert(expr)` aborts with the file and line when `expr` is false, but it is compiled out entirely when `NDEBUG` is defined, as it usually is in release builds, so the check vanishes and an assertion must never have side effects.
+q: What is std::error_code in C++?
+a: `std::error_code`, in `<system_error>`, is an integer error value plus a pointer to a category that knows what the integer means, so codes from the operating system, the C library and your own subsystem travel through one type without colliding. `std::errc` enumerates portable conditions, and `std::filesystem` offers `std::error_code&` overloads of its throwing functions.
+q: What is std::expected in C++23?
+a: `std::expected<T, E>` holds either a value of type `T` or an error of type `E`, never both: test it like an optional, read the value with `*r` and the error with `r.error()`, and fail with `return std::unexpected(err);`. It needs C++23; in C++20 use `std::variant<T, E>` or an optional beside an error code.
+q: What is errno and how do you use it correctly?
+a: `errno` is a thread-local integer that C library functions set on failure and never clear. Set `errno = 0` before the call, check the return value, and read `errno` immediately afterwards — `ERANGE` after `std::strtol`, for example, means the value did not fit. It carries no context, so wrap it in something better at your API boundary.
+q: Should I use exceptions or error codes in C++?
+a: Both, at different layers. Use return values — `std::optional`, error codes, `std::variant` — where failure is ordinary and the immediate caller handles it, such as parsing input. Use exceptions for rare failures the immediate caller cannot fix, for constructors and through deep call chains. A hot loop or a build with exceptions disabled needs return values.
 ---
 Exceptions are one channel for failure, and the previous lessons gave you two more — `std::optional` for "no value" and `std::variant` for "a value or a reason". This lesson settles the rest of the toolbox and when to use which: the return-code tradition C left behind and its modern form in `std::error_code`, the C++23 `std::expected` that unifies value and error, assertions for bugs as opposed to failures, and a strategy that assigns each layer of a program the mechanism that fits it. The strategy is what interviewers are asking about when they say "how do you handle errors in C++?"
 

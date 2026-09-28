@@ -1,6 +1,20 @@
 ---
 title: Immutable collections and the utility toolkit
 minutes: 12
+seo-title: Immutable Collections in Java: List.of vs unmodifiableList
+description: List.of and copyOf build immutable Java collections, Collections.unmodifiableList wraps a live one, and Arrays.asList is fixed-size. Plus the utility toolkit.
+question: How do you create an immutable list in Java?
+answer: Create an immutable list in Java with `List.of(...)`, added in Java 9, or copy an existing collection with `List.copyOf(source)` from Java 10. Both reject nulls and throw `UnsupportedOperationException` from every mutator. `Collections.unmodifiableList(list)` is different: a read-only view that still shows later changes to the underlying list. Immutability is shallow — the elements themselves may be mutable.
+q: What is the difference between `List.of`, `Arrays.asList` and `Collections.unmodifiableList`?
+a: `List.of` creates a new immutable list that rejects nulls. `Arrays.asList` is a fixed-size view over an array — `set` writes through, `add` and `remove` throw. `Collections.unmodifiableList` is a read-only view of a live list, so changes to the original show through it.
+q: Is an immutable list in Java deeply immutable?
+a: No. An immutable collection holds references, so the elements are as mutable as they were: `List.of(new StringBuilder())` is an immutable list of one mutable builder. Use immutable elements — strings, numbers, records — to make the whole structure immutable in practice.
+q: How do you return a collection field safely from a Java class?
+a: Return a copy or a read-only view so callers cannot change your internal state: `List.copyOf(items)` gives an immutable snapshot, and `Collections.unmodifiableList(items)` a view without copying. Copy incoming collections in constructors and setters too.
+q: What does `Collections.emptyList()` return?
+a: One shared, immutable, typed empty list, reused on every call. It was the idiomatic way to return "nothing" before Java 9's `List.of()`, its modern equivalent; either is fine, and both beat returning `null`.
+q: Can two different collection classes be equal in Java?
+a: Yes. Collection equality is by contents: a `List` equals any list with the same elements in the same order, a `Set` any set with the same elements, and a `Map` any map with the same entries. `List.of(1, 2).equals(Arrays.asList(1, 2))` is `true`.
 ---
 Most collections a program creates are never modified after being built — a set of allowed values, a map of configuration, the result of a query. Making them **immutable** turns that intention into a guarantee: no accidental `add`, safe sharing across threads, safe use as keys, and a clear API contract ("this list will not change under you"). Java offers three mechanisms with different semantics, plus a toolkit of utility methods in `Collections` and `Arrays` that this lesson gathers in one place.
 

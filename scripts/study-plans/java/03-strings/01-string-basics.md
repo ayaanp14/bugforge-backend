@@ -1,6 +1,20 @@
 ---
 title: Strings are immutable objects
 minutes: 13
+seo-title: Why Are Strings Immutable in Java? The String Pool Explained
+description: A Java String can never change: every method returns a new string. Why strings are immutable, how the string pool works, and null versus empty strings.
+question: Why are strings immutable in Java?
+answer: Strings are immutable in Java so they can be shared and trusted: a `String` used as a `HashMap` key or a file name cannot change under you, identical literals can share one object in the string pool, threads can share strings without locks, and the hash code can be computed once and cached. Methods such as `toUpperCase` therefore return a new string.
+q: What is the string pool in Java?
+a: The string pool is a table inside the JVM holding one shared `String` object per distinct literal, which is why two identical literals are `==`. Strings built at run time, read from input or made with `new String`, are not pooled unless you call `intern()`, which returns the pooled copy.
+q: How many objects does `new String("hi")` create?
+a: Up to two: the literal `"hi"` in the string pool, if it is not already there, and the new `String` object on the heap that the constructor always creates. That is why `new String(...)` with a literal is almost never what you want.
+q: Why does `s.toUpperCase()` not change the string?
+a: Strings are immutable, so `toUpperCase`, `replace`, `trim` and every other `String` method return a new string and leave the original untouched. Calling one without using its result does nothing; write `s = s.toUpperCase();` to keep it.
+q: What is the difference between a null string and an empty string in Java?
+a: An empty string `""` is a real `String` object of length 0, while `null` means the variable refers to no object at all. `"".length()` returns 0, but calling `length()` on `null` throws `NullPointerException`; `"x".equals(s)` is a null-safe comparison.
+q: Is String thread-safe in Java?
+a: Yes. A `String` never changes after it is created, so any number of threads can read and share the same one without locks. `StringBuilder`, the mutable alternative, has no locks and must not be shared between threads while it is being modified.
 ---
 `String` is the most used class in Java and the one with the most surprising design: a string, once created, **cannot change**. Every method that seems to modify one — `toUpperCase`, `replace`, `trim`, `+` — returns a new string and leaves the original untouched. Understanding immutability, and the *string pool* that it makes possible, is the key to everything else in this module.
 

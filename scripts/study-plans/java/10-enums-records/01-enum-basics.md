@@ -1,6 +1,20 @@
 ---
 title: Enums — a fixed set of named instances
 minutes: 13
+seo-title: What Is an Enum in Java? Enum Methods, Switch and Singletons
+description: A Java enum is a class with a fixed set of named instances. Its values, valueOf, name and ordinal methods, comparing with ==, exhaustive switch and singletons.
+question: What is an enum in Java?
+answer: An enum in Java is a special class with a fixed set of named instances, declared as `enum Day { MONDAY, TUESDAY, … }`. Each constant is a single object created by the JVM, so enums are type-safe — a method taking a `Day` cannot be passed `7` — and are compared with `==`. Every enum gets `values()`, `valueOf`, `name()` and `ordinal()`, and works in `switch`.
+q: Should you use == or equals to compare enums in Java?
+a: Use `==`. Each enum constant is a single instance, so `==` is correct, never throws `NullPointerException` when the left side is null, and is a compile error when the two sides are different enum types. `equals` gives the same answer without those checks.
+q: What does valueOf do in a Java enum?
+a: `Day.valueOf("FRIDAY")` returns the constant with exactly that name. It is case-sensitive and throws `IllegalArgumentException` for anything else, including "friday" or "Fri", so normalise user input first, for example with `toUpperCase(Locale.ROOT)`, and catch the exception.
+q: What is ordinal() in a Java enum, and should you store it?
+a: `ordinal()` returns a constant's zero-based position in declaration order. Do not persist it: reordering or inserting constants silently changes every stored number. Store `name()` instead, and treat renaming a constant as a deliberate migration.
+q: Does a switch on an enum need a default case in Java?
+a: A switch expression that covers every constant needs no `default`, and adding a constant then breaks compilation at every such switch until it is handled. A switch statement is not checked for exhaustiveness, and a `null` selector throws `NullPointerException` in both.
+q: Why is an enum the best way to create a singleton in Java?
+a: A one-constant enum such as `enum Registry { INSTANCE; }` is guaranteed a single instance by the JVM: serialization cannot create a second copy and reflection refuses to instantiate enums. Effective Java recommends it as the most robust singleton.
 ---
 Before enums, a "day of the week" was `int DAY_MONDAY = 1` and nothing stopped you passing `7` or `42`. A Java `enum` is a class with a **fixed set of instances** created by the JVM, each a named constant, type-safe and comparable. Every enum you write is a full class — the next lesson adds fields and methods — but even the plain form solves most "a value from a known set" problems. This lesson is the plain form and the machinery every enum gets for free.
 

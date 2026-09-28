@@ -1,6 +1,20 @@
 ---
 title: Exception groups, notes and the traceback module
 minutes: 13
+seo-title: Python Exception Groups, Notes and the traceback Module
+description: Python 3.11 exception groups raise several exceptions at once, handled by type with except star. Adding notes, formatting tracebacks as text, and warnings.
+question: What is an ExceptionGroup in Python?
+answer: An `ExceptionGroup`, added in Python 3.11, is an exception that carries several exceptions at once in its `.exceptions` tuple — every failed validation in a batch, or the failures of several concurrent tasks. `raise ExceptionGroup("validation failed", errors)` prints a tree traceback showing every member, and `except*` handles the members by type without losing the rest.
+q: How does `except*` work in Python?
+a: `except* ValueError as g` matches the members of an exception group by type and binds `g` to a new group holding only the matching members. Unlike `except`, every clause that matches something runs, and members no clause matches are re-raised as a smaller group. `except` and `except*` cannot be mixed in one `try`.
+q: What does `add_note()` do in Python?
+a: `e.add_note(text)`, new in Python 3.11, attaches a line of context that prints under the exception in its traceback, such as which row or file was being processed. Unlike wrapping the exception in a new type, it leaves the type unchanged, so callers still catch the original class.
+q: How do I get a traceback as a string in Python?
+a: Call `traceback.format_exc()` inside the `except` block: it returns the full traceback as text, ready to log. `traceback.print_exc()` prints it to stderr, and `logging.exception("message")` logs at ERROR level with the traceback appended.
+q: How do I raise a deprecation warning in Python?
+a: Call `warnings.warn("old_api is deprecated; use new_api", DeprecationWarning, stacklevel=2)`; `stacklevel=2` points the warning at the caller rather than at your `warn` line. Running `python -W error` turns warnings into exceptions, which is how a test suite fails on deprecated calls.
+q: What is the difference between `__cause__` and `__context__`?
+a: `__cause__` is set by `raise X from e` and marks `e` as the direct cause; `__context__` is set automatically when an exception is raised while another is being handled. `raise X from None` sets `__suppress_context__`, so the traceback hides the context.
 ---
 Python 3.11 added two things to exceptions. `ExceptionGroup` carries *several* exceptions at once — the failures of several concurrent tasks, or every validation error in a form — and `except*` handles them by type without losing the rest. `add_note()` attaches context to an exception as it travels up the stack, so the traceback says *which* record was being processed when the `ValueError` happened. This lesson covers both, then the `traceback` module for capturing and formatting exceptions as text, `sys.exc_info`, and the `warnings` module for the failures that are not errors yet.
 

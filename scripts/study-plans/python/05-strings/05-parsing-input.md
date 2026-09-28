@@ -1,6 +1,20 @@
 ---
 title: Parsing input — from lines and tokens to values
 minutes: 14
+seo-title: How to Parse Input in Python: Split, Partition and Validate
+description: Parse Python input with split, strip and partition, then convert with int or float. Templates for tokens, fields, key=value pairs, records and bulk reads.
+question: How do you parse input in Python?
+answer: Parse Python input by splitting the text into pieces and converting each one strictly: `split()` for whitespace-separated tokens, `split(",")` plus `strip()` for delimited fields, `partition("=")` for `key=value` pairs, then `int()` or `float()` with `ValueError` caught for bad values. For large inputs, `sys.stdin.read().split()` reads every token in one call.
+q: How do I split a key=value string in Python?
+a: Use `partition`: `key, sep, value = tok.partition("=")` splits at the first `=` and always returns three parts, so a value containing `=` survives and a missing separator shows up as an empty `sep`. `split("=", 1)` also works, but unpacking its result fails when the `=` is absent.
+q: What does ValueError: not enough values to unpack mean?
+a: The names on the left of an unpacking assignment outnumbered the items on the right; with input, the line had fewer tokens than expected, as in `a, b = input().split()` on a one-word line. `too many values to unpack` is the opposite case. Both are the right failure for malformed input.
+q: How do I read input fast in Python?
+a: Read everything at once with `sys.stdin.read().split()` and walk the tokens with an iterator: `it = iter(data)`, then `int(next(it))` for each value. For tens of thousands of numbers this is several times faster than calling `input()` per line, and it does not care how the values are wrapped across lines.
+q: Should I check isdigit() before calling int() in Python?
+a: No. `isdigit()` rejects valid integers such as `"-5"` and accepts characters that `int()` refuses, such as `"²"`. `int()` itself defines what parses as an integer, so call it inside `try` and turn the `ValueError` into a clear message.
+q: How do I parse a comma-separated line in Python?
+a: `[f.strip() for f in line.split(",")]` splits at each comma, keeps empty fields, and strips the spaces that often follow a comma. When fields can contain the delimiter inside quotes, use the `csv` module rather than splitting by hand.
 ---
 Input arrives as text and the program needs values, and everything between is parsing. Most of it is three methods — `split`, `strip`, `partition` — plus `int` and `float` with `ValueError` caught, arranged into a handful of shapes: tokens on a line, delimited fields, `key=value` pairs, a count followed by records, blocks separated by blank lines, and the occasional format that needs a small hand-written scanner. This lesson gives each shape a template, states the validation rule (convert strictly, reject clearly), and shows where the bulk-read idiom `sys.stdin.read().split()` beats reading line by line.
 

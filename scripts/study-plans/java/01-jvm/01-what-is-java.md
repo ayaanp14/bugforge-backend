@@ -1,6 +1,20 @@
 ---
 title: What Java is, and why it looks the way it does
 minutes: 12
+seo-title: What Is Java? How Java Works, Bytecode and LTS Versions
+description: Java is a statically typed language compiled to bytecode and run by the JVM. How Java works, why it is portable, and which LTS versions matter today.
+question: What is Java?
+answer: Java is a statically typed, class-based programming language. `javac` compiles Java source into bytecode, and the Java Virtual Machine (JVM) interprets that bytecode and JIT-compiles the busy parts to native code as the program runs. One compiled program therefore runs on any operating system with a JVM, and a garbage collector manages memory instead of the programmer.
+q: Is Java compiled or interpreted?
+a: Both, in two stages. `javac` compiles source code to bytecode ahead of time; the JVM then interprets that bytecode, and its JIT compiler turns frequently run methods into optimised native machine code while the program runs.
+q: Which Java versions are LTS?
+a: A new Java version ships every six months and a Long-Term Support release every two years. The LTS releases companies run in production are Java 8, 11, 17 and 21.
+q: What is the difference between Java and JavaScript?
+a: Apart from C-style syntax, almost nothing — the similar name was a 1995 marketing decision. Java is statically typed, class-based and runs on the JVM; JavaScript is dynamically typed and runs in browsers and Node.js.
+q: What is Java SE?
+a: Java SE (Standard Edition) is the language plus its core class library, which is what most developers mean by "Java". Jakarta EE, formerly Java EE, adds enterprise APIs such as servlets and persistence on top of it.
+q: Is OpenJDK the same as Oracle JDK?
+a: Both are built from the OpenJDK source and pass the same compatibility tests, so programs behave the same on either. Oracle, Amazon Corretto, Eclipse Temurin and other builds differ in support contracts and update cadence, not in the language.
 ---
 Java is a **statically typed, class-based, compiled-then-interpreted** language that runs on a virtual machine. Every one of those words is a design decision, and understanding the decisions is what separates someone who *uses* Java from someone who *understands* it. This lesson is the map; the rest of the track fills in the territory.
 

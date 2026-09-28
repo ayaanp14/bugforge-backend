@@ -1,6 +1,20 @@
 ---
 title: The idiom sheet — the shapes interview problems take and the Python for each
 minutes: 16
+seo-title: Python Coding Interview Cheat Sheet: Patterns and Idioms
+description: The Python idiom for each coding interview pattern: Counter, sorting by key, sliding window, prefix sums, stacks, heapq, BFS with a deque and bisect.
+question: What are the common coding interview patterns in Python?
+answer: The common coding interview patterns are counting and grouping with `Counter` or `defaultdict`, sorting by a tuple key, two pointers and sliding windows, prefix sums, stacks, heaps with `heapq` for top-k, BFS with a `deque`, binary search with `bisect`, and set arithmetic. Recognising the shape in the problem's wording, such as 'top k', 'longest subarray with' or 'shortest path', tells you which idiom to write.
+q: How do you solve a sliding window problem in Python?
+a: Keep a start index that only moves forward and a state, such as a count, a set, a dict or a sum, updated as elements enter and leave. For the longest substring without repeats, store each character's last index and move `start` past a repeat; the whole scan is O(n).
+q: How do you get the top k elements in Python?
+a: Use `heapq.nlargest(k, xs)` or `heapq.nsmallest(k, xs, key=...)`, which run in O(n log k), cheaper than sorting everything when k is small. For a running top k, keep a heap with `heappush` and `heappop`, negating values for a max-heap.
+q: How do you sort by multiple keys in Python?
+a: Use a tuple key, negating numbers for descending order: `sorted(items, key=lambda p: (-p.score, p.name))` sorts by score descending, then by name ascending. Python's sort is stable, so sorting by the secondary key first and then by the primary key also works.
+q: How do you do BFS in Python?
+a: Use `collections.deque` as the queue and a dict or set of visited nodes: `popleft` a node, and for each unvisited neighbour record its distance and append it. BFS finds shortest paths in unweighted graphs and grids; `popleft` is O(1) where `list.pop(0)` is O(n).
+q: What does `bisect_left` return in Python?
+a: The first index at which `x` could be inserted to keep the list sorted, which is the index of the first element not less than `x` and also the count of elements less than `x`. `bisect_right` gives the count of elements less than or equal to `x`.
 ---
 Most interview problems are one of about twenty shapes wearing a story, and each shape has a two-to-six-line Python idiom that a fluent candidate types without thinking. Recognising the shape is the skill; the idiom is the reward. This lesson is the sheet: counting and grouping, sorting by key, two pointers and sliding windows, prefix sums, stacks, heaps, BFS with a deque, binary search with `bisect`, set arithmetic, string building, and the `itertools` and `math` helpers — each named, each with its idiom and its complexity, so that in the round you say "this is a frequency count, then a heap" and write it.
 

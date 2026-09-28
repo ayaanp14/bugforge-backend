@@ -1,6 +1,20 @@
 ---
 title: Floating point — why 0.1 + 0.2 is not 0.3, and what to do about it
 minutes: 14
+seo-title: Why Is 0.1 + 0.2 Not 0.3 in Python? Floating Point Explained
+description: A Python float is a 64-bit IEEE 754 double, so most decimal fractions are approximations. How to compare floats, print fixed decimals and use Decimal for money.
+question: Why is 0.1 + 0.2 not equal to 0.3 in Python?
+answer: Because a Python `float` is a 64-bit IEEE 754 binary double, and 0.1, 0.2 and 0.3 have no exact binary representation. Each is stored as the nearest double, and the sum of the rounded 0.1 and 0.2 is a different double from the rounded 0.3, printed as `0.30000000000000004`. Compare with `math.isclose` and format output with `:.2f`.
+q: How do I compare floats in Python?
+a: Use `math.isclose(a, b)`, not `==`. It applies a relative tolerance of 1e-9 by default; near zero, pass an absolute one as well, as in `math.isclose(x, 0.0, abs_tol=1e-9)`, because a relative tolerance alone fails there. Where the quantities are really integers, compare integers instead.
+q: How do I round a float to 2 decimal places in Python?
+a: For display, format it: `f"{x:.2f}"` gives the correctly rounded two-decimal text. `round(x, 2)` returns a float that is again only nearly that value, so keep it for arithmetic. Both round the binary value, which is why `round(2.675, 2)` is `2.67`: 2.675 is stored as 2.67499999…
+q: Should I use float or Decimal for money in Python?
+a: Not float. Use `decimal.Decimal` built from strings — `Decimal("0.10")` is exact, while `Decimal(0.1)` copies the float's error — and round with `quantize` and an explicit mode such as `ROUND_HALF_UP`. Holding amounts as integer cents and converting only for display works too.
+q: How do I sum floats accurately in Python?
+a: Use `math.fsum`, which tracks the bits lost in each addition and returns the correctly rounded sum: `math.fsum([0.1] * 10)` is `1.0`, where `sum` gives `0.9999999999999999`. For amounts that are really decimal, such as prices, integer cents or `Decimal` avoid the error entirely.
+q: Why is nan not equal to nan in Python?
+a: IEEE 754 defines NaN as unequal to every value, itself included, so `float("nan") == float("nan")` is `False`. That makes `x != x` the classic NaN test, and `math.isnan(x)` the readable one.
 ---
 A Python `float` is an IEEE 754 double: 64 bits, of which 53 are the significand, giving about 15–17 significant decimal digits. Every language with doubles has the same behaviour, but Python makes it more visible than most because `print` shows the *shortest decimal that round-trips to the same double* rather than rounding to six places the way C's `printf("%f")` does. `0.1 + 0.2` therefore prints `0.30000000000000004` and a beginner concludes Python cannot add. This lesson explains the representation once, gives the three rules for comparing and printing floats, and names the two exact alternatives for the cases — money, mostly — where approximation is not acceptable.
 

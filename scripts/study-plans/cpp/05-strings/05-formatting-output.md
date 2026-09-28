@@ -1,6 +1,20 @@
 ---
 title: Formatting output
 minutes: 14
+seo-title: C++ Output Formatting: setw, setprecision and std::format
+description: Format C++ output with iomanip manipulators or C++20 std::format: width, alignment, fill, fixed decimals and hex. Which settings stick, and aligning a table.
+question: How do you format output in C++?
+answer: C++ formats output in two ways. The `<iomanip>` stream manipulators — `std::setw`, `std::left`, `std::setfill`, `std::fixed`, `std::setprecision` — change how the following values print, and all but `setw` stay in force until changed. C++20's `std::format("{:>8.2f}", x)` puts width, alignment and precision in one placeholder, returns a `std::string`, and leaves nothing sticky.
+q: What does setw do in C++?
+a: `std::setw(n)`, from `<iomanip>`, sets the minimum width of the next value inserted into a stream, padding it with the fill character; the value after it is back to width 0. A value wider than the field is never truncated. Alignment comes from `std::left` or `std::right`, which stay in force.
+q: What is the difference between setprecision with and without fixed?
+a: Without `std::fixed`, `std::setprecision(n)` counts significant digits and may switch to scientific notation, so `1234.5` at precision 2 prints `1.2e+03`. With `std::fixed` it counts digits after the decimal point, so `std::fixed << std::setprecision(2)` prints exactly two decimals. Both settings are sticky.
+q: How does std::format work in C++?
+a: `std::format` (C++20, `<format>`) replaces each `{}` in a compile-time format string with the next argument and returns a `std::string`. After a colon a placeholder can set fill and alignment, sign, width, precision and type: `{:>8.2f}` is right-aligned, width 8, two decimals. Nothing is sticky, and mismatched types are compile errors.
+q: Which iomanip manipulators are sticky?
+a: Only `std::setw` is one-shot, applying to the next insertion alone. `std::left`, `std::right`, `std::setfill`, `std::fixed`, `std::scientific`, `std::setprecision`, `std::hex`, `std::dec` and `std::boolalpha` stay in force until changed — so a forgotten `std::hex` prints every later integer in hexadecimal.
+q: How do you print an aligned table in C++?
+a: Give each column a fixed width that fits its widest value, left-align text and right-align numbers so decimal points line up — for example `std::format("{:<10}{:>5}{:>10.2f}", name, qty, price)`. Put text columns first and end each row with a right-aligned column, so no line ends in padding.
 ---
 Output that must match a judge or line up in a report is a formatting problem before anything else: how wide is the column, which side is padded, how many decimals, zero-filled or hex. C++ has two toolkits. The stream manipulators in `<iomanip>` have been there from the start and are what most existing code uses; C++20's `std::format` says the same things in one compact specification and is the one for new code. This lesson settles both — including which stream settings are sticky and which apply once, the mistake that bites everyone — and shows how to build a table, and a string, before printing anything.
 

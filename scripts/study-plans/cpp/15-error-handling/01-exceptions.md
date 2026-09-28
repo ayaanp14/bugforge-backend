@@ -1,6 +1,20 @@
 ---
 title: Exceptions — throw, try, catch and the standard hierarchy
 minutes: 14
+seo-title: C++ Exception Handling: Try, Catch and the Standard Hierarchy
+description: C++ exception handling with throw, try and catch: how a handler is chosen, catching by const reference, the standard exception hierarchy and stack unwinding.
+question: How does exception handling work in C++?
+answer: In C++, `throw` creates an exception object and abandons the current function; the runtime unwinds the call stack, destroying every local object on the way, until it reaches a `try` block with a `catch` handler that matches the object's type. The handler runs and execution continues after the whole `try`/`catch`, never at the throw. An exception nobody catches calls `std::terminate`, which ends the program.
+q: Why should you catch exceptions by const reference?
+a: Catching by value copies the exception and slices it: a `std::out_of_range` caught as `std::exception` by value loses its dynamic type and derived members, and `throw e;` from there throws the slice. `catch (const std::exception& e)` binds to the real object, keeps its type and costs nothing.
+q: What is the difference between logic_error and runtime_error?
+a: Both derive from `std::exception`. `std::logic_error` means the program is wrong — a precondition the caller could have checked, as with its subclasses `std::invalid_argument` and `std::out_of_range`. `std::runtime_error` means the world is wrong — a failure only detectable while running, such as a missing file. Derive your own exceptions from `std::runtime_error` unless they signal a bug.
+q: What is the difference between throw and throw e in C++?
+a: `throw;` with no operand rethrows the exception currently being handled — the original object, dynamic type intact. `throw e;` throws a new copy of `e`, and if `e` was caught as a base-class reference, that copy is sliced to the base. Use `throw;` to rethrow; throw a different type only to translate the error at a boundary.
+q: What is stack unwinding in C++?
+a: Stack unwinding is the destruction of every automatic object in each abandoned stack frame, in reverse order of construction, between a `throw` and the handler that catches it. It is why destructors, through RAII, are how C++ cleans up — there is no `finally`. If no handler exists, `std::terminate` is called, and whether unwinding happens first is implementation-defined.
+q: Does vector operator[] throw an exception?
+a: No. `v[i]` never checks its index, so an index out of range is undefined behaviour. `v.at(i)` checks and throws `std::out_of_range`, as does `at()` on strings and maps. `std::stoi` throws `std::invalid_argument` or `std::out_of_range`, while `std::cin >> n` sets the fail bit instead of throwing.
 ---
 A function that cannot do what it was asked can return a special value, set a flag, or throw. The first two leave every caller to check, and a caller that forgets carries on with garbage. An exception cannot be ignored: `throw` abandons the current function, destroys everything on the way out and lands in the nearest handler that can deal with the failure — or, if there is none, ends the program. This lesson settles what a `throw` does, how a handler is chosen, what the standard library throws, what `what()` promises, and what stack unwinding runs.
 

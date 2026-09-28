@@ -1,6 +1,20 @@
 ---
 title: Debugging — reading tracebacks, logging, pdb and the method
 minutes: 15
+seo-title: How to Debug Python Code: Tracebacks, Logging and pdb
+description: Read a Python traceback from the bottom up, follow chained exceptions, log with levels, step through code with breakpoint and pdb, and bisect to the cause.
+question: How do you read a Python traceback?
+answer: Read a Python traceback from the bottom up. The last line gives the exception type and message, which is what went wrong. The frame just above it shows where it was raised, with file, line number, function and source line, and the frames above that show the chain of calls that led there, outermost first. Your own code's frame nearest the bottom is usually the suspect.
+q: What does "During handling of the above exception, another exception occurred" mean?
+a: The second exception was raised inside an `except` block that was handling the first. Both tracebacks matter: the first explains why the handler ran, the second why it failed. For `raise X from e` Python says the first was the direct cause instead, and `from None` hides the chain.
+q: How do you use pdb in Python?
+a: Put `breakpoint()` on a line to stop there in `pdb`, or run `python -m pdb app.py`. Then `n` steps to the next line, `s` steps into a call, `c` continues, `p expr` prints, `w` shows the stack and `u` and `d` move between frames. `pdb.pm()` inspects the frames of the last crash.
+q: Should I use print or logging for debugging in Python?
+a: `print` is for the program's output; `logging` is its diary. Log messages have levels, so debug detail can stay in the code and be switched on with `basicConfig(level=logging.DEBUG)`, and `log.exception` records a message with the full traceback.
+q: Why not use assert to validate input in Python?
+a: Running Python with `-O` removes every `assert` statement, so validation written with `assert` silently disappears. Use `assert` only to check your own invariants, and raise a proper exception such as `ValueError` for bad input.
+q: What is a good method for finding a bug?
+a: Reproduce it with a command or test that fails every time, minimise the input and code, form one specific hypothesis and check it by printing a `repr` or setting a breakpoint, bisect history with `git bisect` if the bug is new, then fix it and keep the reproduction as a regression test.
 ---
 Debugging is finding out why the program did something other than what you believed it would, and most of the skill is in reading what Python already tells you: a traceback names the exact line and the chain of calls that reached it, an exception chain records what was being handled when the second error occurred, and a logger records the path the program took without stopping it. When that is not enough, `pdb` stops the program at a line and lets you inspect it. This lesson covers reading a traceback bottom-up, chained exceptions, `traceback` and `logging` as diagnostic tools, `breakpoint()` and the debugger commands, `assert` and the `-X dev` and `-W error` switches, and the method — reproduce, minimise, hypothesise, bisect — that turns a mystery into a fix.
 

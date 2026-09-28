@@ -1,6 +1,20 @@
 ---
 title: Implement the built-in — a vector, a unique_ptr, a hash map and a string by hand
 minutes: 15
+seo-title: How to Implement std::vector in C++: Rule of Five, Growth
+description: Build a vector, a unique pointer, a chaining hash map and an SSO string by hand in C++: the rule of five, doubling growth and what interviewers listen for.
+question: How do you implement std::vector in C++?
+answer: A minimal `std::vector` is a class owning three members: a pointer to a heap buffer, a size and a capacity. `push_back` doubles the capacity when the buffer is full, moving the elements into the new one, which makes it amortised O(1). The class then needs the rule of five: a destructor that frees the buffer, a copy that allocates, and a `noexcept` move that steals the pointer and empties the source.
+q: Why is vector push_back amortised O(1)?
+a: When the buffer is full the vector allocates one about twice as large and moves the elements across. Over n pushes the moves total 1 + 2 + 4 + … < 2n, a constant per push on average; growing by a fixed amount instead would total O(n²). Each reallocation invalidates every reference into the old buffer.
+q: How do you implement unique_ptr in C++?
+a: Wrap a raw `T*`: the destructor calls `delete`, the copy constructor and copy assignment are `= delete` so two owners cannot free the pointer twice, and the move operations transfer it through `release()` and `reset()`, which also makes self-move-assignment safe. Add `operator*`, `operator->` and an `explicit operator bool`; the result is one pointer wide.
+q: Why should a move constructor be noexcept?
+a: `std::vector` moves its elements during reallocation only if their move constructor is `noexcept`; otherwise it copies them, because a move that threw half-way through would leave both buffers partly moved. A move constructor without `noexcept` turns every reallocation into a full copy.
+q: How does a hash map work internally?
+a: A hash map is an array of buckets plus a hash function that maps each key to a bucket index. With separate chaining each bucket holds a small list of key–value pairs, and a collision appends to it. Operations cost O(1 + n/B) on average for n keys in B buckets, so the table rehashes into more buckets as the load factor grows; `std::unordered_map` does so past 1.0 by default.
+q: What is the small string optimisation in C++?
+a: The small string optimisation (SSO) stores a short string's characters inside the `std::string` object instead of on the heap. In libstdc++ a string of up to 15 characters needs no allocation, which is why `sizeof(std::string)` is 32 there; moving such a string copies its bytes rather than stealing a pointer.
 ---
 "Implement `std::vector`" is the question every senior C++ interview asks in some form, because forty lines show whether you understand ownership, can write the rule of five from memory and know why growth doubles. The interviewer is listening for four sentences — *it owns a heap buffer and frees it in the destructor*; *a copy allocates, a move steals the pointer and empties the source*; *a full push doubles, so `push_back` is amortised O(1)*; *reallocation invalidates every reference into the old buffer*. This lesson builds the four types they ask for: a `Vec<T>`, a `UniquePtr<T>`, a chaining hash map and, in outline, a `String` with the small-string optimisation. Module 9, Copies, moves and the rule of five, wrote the owning buffer; the new skill is producing it under a clock, narrating.
 

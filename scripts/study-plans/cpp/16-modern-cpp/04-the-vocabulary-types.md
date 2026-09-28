@@ -1,6 +1,20 @@
 ---
 title: The vocabulary types — pair, tuple, span, chrono and friends
 minutes: 15
+seo-title: C++ std::span, std::tuple and std::chrono Explained
+description: std::span views any contiguous sequence, std::tie groups references and chrono durations carry their unit: the C++ vocabulary types and when to use each.
+question: What is std::span in C++?
+answer: `std::span<T>` is a C++20 non-owning view over a contiguous sequence — a pointer and a length. A `std::span<const int>` parameter accepts a `std::vector<int>`, a `std::array`, a built-in array or a pointer plus size, replacing the pointer-and-count parameter pair. It is cheap to copy, so pass it by value; it never owns the elements and never bounds-checks, so it dangles if the container reallocates.
+q: What is the difference between std::pair and std::tuple?
+a: `std::pair<A, B>` holds exactly two members named `first` and `second`; `std::tuple` holds any number, accessed with `std::get` or structured bindings. Both compare lexicographically. Use a pair for a natural two-ness such as `insert`'s iterator-and-bool, and a struct rather than a tuple when three named results have meaning.
+q: What does std::tie do in C++?
+a: `std::tie(a, b, c)` builds a tuple of references to existing variables. It serves as an assignment target — `std::tie(lo, hi) = std::minmax(x, y);` — and as a lexicographic comparison key: `return std::tie(a.major, a.minor) < std::tie(b.major, b.minor);` compares by several fields in one line.
+q: What does std::chrono::duration_cast do?
+a: It converts a duration to another unit explicitly, truncating toward zero: `duration_cast<minutes>(7590s)` is 126 minutes. Widening conversions such as seconds to milliseconds happen implicitly, but a lossy one like `std::chrono::seconds s = 1500ms;` fails to compile, so a unit can never be lost silently.
+q: What is the difference between steady_clock and system_clock?
+a: `std::chrono::steady_clock` is monotonic — it never jumps backward — so it is the clock for measuring elapsed time. `std::chrono::system_clock` is wall-clock time, convertible to a calendar date. Subtracting two time points from the same clock gives a duration.
+q: What is std::byte used for?
+a: `std::byte` (C++17) is a byte that is not a number: an `enum class` over `unsigned char` with only the bitwise operators. It is meant for raw memory such as file contents, network packets and serialisation; `std::to_integer<int>(b)` converts it out explicitly.
 ---
 A vocabulary type is one that appears in function signatures across a whole codebase because everyone agrees what it means: "two things" is a `std::pair`, "maybe a value" is a `std::optional`, "read-only text" is a `std::string_view`, "a length of time" is a `std::chrono::duration`. Using them instead of home-grown equivalents means two libraries can hand values to each other without conversion, and a reader knows the semantics before reading the body. This lesson covers the ones that have not had a module of their own — `std::pair` and `std::tuple` with `std::tie` and `std::apply`, `std::span`, `<chrono>` and `std::byte` — and places `std::optional`, `std::variant` and `std::string_view` beside them by use, so the whole set reads as one toolkit.
 

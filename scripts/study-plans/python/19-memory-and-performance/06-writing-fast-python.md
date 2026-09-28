@@ -1,6 +1,20 @@
 ---
 title: Writing fast Python — the checklist, from algorithm to micro-optimisation
 minutes: 14
+seo-title: How to Make Python Code Faster: A Performance Checklist
+description: Speed up Python in order: fix the algorithm, pick the right data structure, push loops into C built-ins, batch I/O, then tune the profiled hot loop.
+question: How do you make Python code run faster?
+answer: To make Python code run faster, work down a fixed order: fix the algorithm first, then choose the right data structure, then move loops into C-level built-ins and comprehensions, then batch input and output, and only then tune the profiled hot loop by hoisting lookups and avoiding allocations. Each level dwarfs the next, so profile before each step and stop once the target is met.
+q: Why is `input()` slow for large inputs in Python?
+a: Each `input()` call reads and decodes one line, and for a hundred thousand lines those calls can take most of the run time. Read everything once with `sys.stdin.buffer.read().split()`, convert the tokens with `map(int, ...)`, and collect output lines in a list to write in one call.
+q: What is memoisation in Python?
+a: Caching a function's results by its arguments so a repeated call returns at once. `@functools.cache` on a recursive function with overlapping subproblems turns exponential time into polynomial; deep inputs may also need `sys.setrecursionlimit` raised.
+q: Are list comprehensions faster than for loops in Python?
+a: Usually, yes. A comprehension compiles to its own tight loop with no `append` method lookup per iteration, and a generator expression inside `sum` avoids building a list at all. The gain is modest, so a readable loop still beats an unreadable comprehension.
+q: What are prefix sums used for?
+a: Answering range-sum queries in O(1) each after one O(n) pass: with `prefix = [0, *itertools.accumulate(xs)]`, the sum of `xs[i:j]` is `prefix[j] - prefix[i]`. They replace a loop per query with one subtraction.
+q: When should you stop optimising Python code?
+a: When the target, such as a time limit, a memory limit or a throughput figure, is met, or when the remaining hot spot is essential work. Every optimisation costs readability, so profile, apply the highest-level fix, measure, and leave the rest alone.
 ---
 Making Python fast is a sequence of questions asked in a fixed order, because each level dwarfs the next: is the algorithm right, is the data structure right, is the work happening in C, is the hot loop lean, and only then the micro-optimisations that shave constants. A change at the first level turns hours into seconds; a change at the last turns a second into 0.8 of one. This lesson is the checklist, with the idioms at each level — precomputation and memoisation, the right container, built-ins and comprehensions, fast I/O, local binding, `__slots__`, early exit — and the judgement about when to stop.
 

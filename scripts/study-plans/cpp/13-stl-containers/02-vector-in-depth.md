@@ -1,6 +1,20 @@
 ---
 title: std::vector in depth — size, capacity and the erase–remove idiom
 minutes: 14
+seo-title: C++ Vector Size vs Capacity, Reserve and Erase-Remove Idiom
+description: A std::vector stores elements in one contiguous block that is replaced as it grows. Size vs capacity, reserve vs resize and the erase-remove idiom.
+question: What is the difference between size and capacity in std::vector?
+answer: In `std::vector`, `size()` is the number of elements that exist and `capacity()` is how many fit in the allocated block before it must be replaced. `resize(n)` changes the size, creating or destroying elements; `reserve(n)` changes only the capacity. When `push_back` finds the size equal to the capacity, the vector allocates a bigger block, moves every element across and invalidates all references into it.
+q: What is the erase-remove idiom in C++?
+a: `v.erase(std::remove_if(v.begin(), v.end(), pred), v.end());` removes every element matching `pred` in one O(n) pass. `remove_if` shifts the elements to keep towards the front and returns the new logical end; `erase` then cuts off the leftover tail. Since C++20, `std::erase_if(v, pred)` does both and returns the number removed.
+q: What is the difference between push_back and emplace_back?
+a: `push_back(x)` copies or moves an existing object into the vector, while `emplace_back(args...)` constructs the element in place from constructor arguments, so `words.emplace_back(3, 'x')` builds the string directly in the vector without a temporary. Both are amortised O(1), and since C++17 `emplace_back` returns a reference to the new element.
+q: Why is vector push_back amortised O(1)?
+a: Because the capacity grows geometrically — libstdc++ doubles it, MSVC multiplies it by 1.5 — so a sequence of n pushes moves elements only O(n) times in total. Most calls just construct at the end; an occasional call reallocates and moves everything. `reserve(n)` before a loop of known length removes those reallocations.
+q: Does push_back invalidate iterators and references?
+a: Only when it reallocates, but then it invalidates every pointer, reference and iterator into the vector, because every element moves to a new block. Without a reallocation, only `end()` is invalidated. Hold an index instead of a reference across `push_back`, or `reserve` enough capacity first.
+q: Why is `std::vector<bool>` different from other vectors?
+a: `std::vector<bool>` is a specialisation that packs eight elements per byte. `v[i]` returns a proxy object instead of a `bool&`, so `bool& r = v[0];` does not compile, there is no `data()`, and threads writing neighbouring elements race. Use `std::vector<char>` for ordinary flags or `std::bitset<N>` for packed bits of a fixed size.
 ---
 `std::vector` is the container you will use in nine programs out of ten, and almost everything that goes wrong with it comes from one fact: its elements live in a single contiguous block that is occasionally thrown away and replaced by a bigger one. That fact explains why `push_back` is fast on average but not always, why a reference into a vector can silently die, why `reserve` exists, and why the idiomatic way to delete several elements is an algorithm rather than a loop. This lesson covers the size–capacity model, the growth rule, `emplace_back`, `insert`/`erase`, the erase–remove idiom and its C++20 replacement `std::erase_if`, the odd `std::vector<bool>`, `data()` and two-dimensional vectors.
 

@@ -1,6 +1,20 @@
 ---
 title: Writing clean solutions under time pressure
 minutes: 12
+seo-title: How to Write Clean Java Solutions in a Coding Interview
+description: Clean Java interview solutions: keep parsing apart from a pure solve method, name variables by invariant, guard edge cases, state complexity, trace the example.
+question: How do you approach a coding interview problem?
+answer: Approach a coding interview problem in order: clarify the constraints, state a brute force and its complexity, recognise the problem's shape, then write parse, solve and print with small helpers. Trace the example and the smallest inputs aloud, and finish by stating the final time and space complexity. Code whose correctness the interviewer can see counts as much as code that works.
+q: Why separate input parsing from the solution logic?
+a: A pure `solve` method — input in, answer out, no I/O and no globals — can be checked against a literal array, lets the interviewer read the algorithm without the parsing, and means only `main` changes when the input source does.
+q: Should I write comments in a coding interview?
+a: Yes, but to say why rather than what: explain a non-obvious decision, an invariant or the reason for a special case, such as why a sorted array lets the loop stop early. Delete debugging prints before you say you are done.
+q: What should I do when I am stuck in a coding interview?
+a: Say so, and say what you know, such as "I need something sub-quadratic". Then simplify — solve small n, the sorted case or one query — and write a clean brute force labelled as the baseline, which earns partial credit and often reveals the optimisation.
+q: How should I test my solution in a coding interview?
+a: Trace the example from the statement, then the smallest inputs (empty, one element), then a case at a loop boundary, then an adversarial case such as all-equal or descending input. Tracing a four-element array aloud finds most off-by-one errors in under a minute.
+q: What makes code readable in a coding interview?
+a: Conventional names such as `lo`, `hi` and `seen`, other names that state what is true, small helpers with one job each, guard clauses for edge cases at the top, and comments that explain why rather than what.
 ---
 Two candidates solve the same problem correctly in the same time. One is hired. The difference is almost always what the interviewer could *see*: a solution structured so its correctness was obvious, names that said what things were, edge cases handled visibly, and a complexity stated without prompting. Clean code in an interview is not about style points — it is how you make forty minutes of thinking legible to someone who has to decide whether they trust you with a codebase. This lesson is the small set of habits that produce that legibility without slowing you down.
 

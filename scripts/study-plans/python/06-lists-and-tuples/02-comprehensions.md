@@ -1,6 +1,20 @@
 ---
 title: Comprehensions — building collections from expressions
 minutes: 13
+seo-title: Python List Comprehensions: If Else, Nested and Dict Forms
+description: A list comprehension builds a list from a loop, a filter and an expression in one line. Filters vs if-else, nested loops, and the set, dict and generator forms.
+question: What is a list comprehension in Python?
+answer: A list comprehension is an expression that builds a new list from an iterable in one line: `[f(x) for x in xs if p(x)]`. The expression comes first, the `for` clause supplies the elements and the optional `if` filters them. It replaces the create, loop, test and append pattern, has its own scope so the loop variable does not leak, and has set, dict and generator forms.
+q: How do I use if else in a list comprehension?
+a: Put a conditional expression before the `for`: `["even" if x % 2 == 0 else "odd" for x in xs]` produces one value per element. An `if` after the `for` is a filter that drops elements, and it cannot take an `else`.
+q: How do nested list comprehensions work?
+a: Several `for` clauses nest left to right, the first being the outer loop, so `[x for row in grid for x in row]` flattens a grid. A comprehension inside another, such as `[[0] * cols for _ in range(rows)]`, builds nested lists. Past two levels, a plain loop reads better.
+q: What is the difference between a list comprehension and a generator expression?
+a: A list comprehension in square brackets builds the whole list in memory; a generator expression in parentheses produces values lazily, one at a time, in constant memory. Pass a generator to a consumer that reads each value once, as in `sum(x * x for x in xs)`, `max` or `any`.
+q: Is a list comprehension faster than a for loop in Python?
+a: Somewhat. The interpreter uses a specialised instruction for the append and can allocate the list once, so a comprehension beats the equivalent `append` loop by a constant factor. The algorithm does not change: a comprehension that tests `x in other_list` is still quadratic.
+q: How do I write a dictionary comprehension in Python?
+a: Use braces with a `key: value` expression: `{w: i for i, w in enumerate(words)}` maps each word to its position, and `{v: k for k, v in d.items()}` inverts a mapping. Braces around a single expression, `{len(w) for w in words}`, build a set instead.
 ---
 A list comprehension is a loop, a filter and a transform folded into one expression that *builds a list*: `[f(x) for x in xs if p(x)]`. It replaces the four-line pattern of creating an empty list, looping, testing and appending, and it says what the result *is* rather than how it is assembled. Python has the same shape for sets and dictionaries and a lazy version for generators. This lesson teaches the syntax, the nested forms, the readability limit past which a loop is better, the scoping rule, and where a comprehension is the wrong tool — when the loop body has side effects, or when the result is thrown away.
 

@@ -1,6 +1,20 @@
 ---
 title: Lambdas — a first look
 minutes: 14
+seo-title: C++ Lambda Expressions: Syntax, Captures and Mutable
+description: A C++ lambda is an unnamed function written where it is used. The capture list, by-value vs by-reference capture, mutable, generic lambdas and sort comparators.
+question: What is a lambda expression in C++?
+answer: A lambda expression in C++ is an unnamed function written in place, such as `[](int x) { return x * x; }`. The square brackets list its captures — local variables it copies or refers to — followed by the parameters and the body; the return type is usually deduced. Each lambda creates a closure object of a unique, unnamed type, so it is stored in `auto` or passed straight to an algorithm like `std::sort`.
+q: What is the difference between capture by value and by reference in a lambda?
+a: `[x]` copies `x` into the closure when the lambda is created, so later changes to `x` are not seen; `[&x]` stores a reference, so the lambda reads and writes the caller's variable. A reference capture must not outlive the variable it names, or it dangles.
+q: What does `mutable` do in a C++ lambda?
+a: By default a lambda's by-value captures are `const` inside its body, because its `operator()` is a `const` member function. `mutable` lifts that, so the lambda can change its own copies and the changes persist between calls: `[count = 0]() mutable { return ++count; }` returns 1, then 2, then 3.
+q: How do you sort with a lambda in C++?
+a: Pass the lambda as the third argument to `std::sort`: `std::sort(v.begin(), v.end(), [](const std::string& a, const std::string& b) { return a.size() < b.size(); });`. The comparator must be a strict weak ordering — `<`-like, never `<=`-like — or the sort has undefined behaviour.
+q: What is a generic lambda in C++?
+a: A generic lambda, available since C++14, has `auto` parameters and works for any type its body supports: `[](auto a, auto b) { return a + b; }` adds ints, doubles or strings. The closure's `operator()` is a template, instantiated for each combination of argument types.
+q: When should I use a lambda instead of a function?
+a: Use a lambda when the behaviour is used once, belongs beside the code that uses it, or needs local state from the enclosing scope. Use a named function when it is reused, long enough to deserve its own tests, or something a reader would search for by name; a lambda past about ten lines is a function waiting to be extracted.
 ---
 Some functions are too small and too local to deserve a name at the top of the file: the comparison that sorts these words by length, the test that counts the values above this threshold. A **lambda expression** writes such a function in place, right where it is used, and can carry values from the surrounding scope into its body. This lesson settles the syntax, what a lambda actually is, capturing by value and by reference, `mutable`, return-type deduction, generic lambdas with `auto` parameters, and how a lambda travels into `std::sort` and `std::count_if`. Module 14, lesson 4 goes deeper — capture defaults, `std::function`, recursive lambdas — once the algorithm library is in play.
 

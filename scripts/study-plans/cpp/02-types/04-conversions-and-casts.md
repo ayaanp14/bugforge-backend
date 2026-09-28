@@ -1,6 +1,20 @@
 ---
 title: Conversions and casts
 minutes: 14
+seo-title: C++ Type Casting: Implicit Conversions and the Four Casts
+description: C++ converts types implicitly at every assignment, operand and argument. Narrowing, signed vs unsigned traps, and when to use each of the four named casts.
+question: What are the four casts in C++?
+answer: C++ has four named casts. `static_cast` performs ordinary value conversions, such as `int` to `double` or an integer to an enum; `reinterpret_cast` reinterprets a pointer's bits as another pointer type; `const_cast` adds or removes `const`; and `dynamic_cast` is a run-time-checked cast down a polymorphic class hierarchy. Each does one job and is easy to search for, unlike a C-style `(int)x`.
+q: Why should you avoid C-style casts in C++?
+a: A C-style cast `(T)x` tries `const_cast`, then `static_cast`, then `reinterpret_cast`, and silently uses the first that compiles, so `(int)somePointer` or `(char*)someConstString` compile and mean something surprising. It cannot be searched for, and it keeps compiling when the surrounding types change into something a named cast would refuse.
+q: What is a narrowing conversion in C++?
+a: A narrowing conversion is one that can lose information: a floating value to an integer, a wider integer to a narrower one, a signed value to unsigned, or an integer to a floating type that cannot hold it exactly. `int i = 3.99;` stores 3 without complaint, but brace initialisation, `int i{3.99};`, makes it a compile error.
+q: Why is `-1 < 1u` false in C++?
+a: When a signed and an unsigned operand of the same width meet, the usual arithmetic conversions turn the signed one into unsigned, so -1 becomes 4294967295, which is greater than 1. `-Wall` warns with `-Wsign-compare`; C++20's `std::cmp_less(-1, 1u)` compares the mathematical values and returns true.
+q: What happens when you cast a double to an int in C++?
+a: The value is truncated toward zero, so `static_cast<int>(2.9)` is 2 and `static_cast<int>(-2.9)` is -2. If the truncated value does not fit in an `int`, the behaviour is undefined — not saturated — so range-check first, and use `std::llround` when you want rounding instead.
+q: Why does `double avg = sum / n;` give a whole number?
+a: When `sum` and `n` are integers, the division happens in integer arithmetic first and only the truncated result is converted to `double`. Cast one operand before dividing: `static_cast<double>(sum) / n`. The same trap makes `long long area = width * height;` overflow in `int` before the widening.
 ---
 C++ converts between types constantly and silently. Every mixed-type expression, every argument passed to a differently typed parameter, every `if` on a number is a conversion. Most are harmless promotions; a handful lose information, and two of those — narrowing a floating value to an integer, and mixing signed with unsigned — are behind a large share of real bugs. This lesson lists the implicit conversions and what each does to a value, shows how brace-initialisation refuses the lossy ones, and explains the four named casts and why the C-style cast has no place in new code.
 
@@ -70,7 +84,7 @@ std::cout << count + delta << '\n';   // 4294967294 — delta became unsigned
 std::cout << (delta < count) << '\n'; // 0 — "-5 < 3" is false, because -5 became 4294967291
 ```
 
-The usual arithmetic conversions (lesson 2) convert the signed operand, and `-Wall` warns with `-Wsign-compare`. The classic sighting is `for (int i = 0; i < v.size(); ++i)`. Fixes, in order of preference:
+The usual arithmetic conversions (lesson 2) convert the signed operand, and GCC's `-Wall` warns with `-Wsign-compare` (Clang, the judge's compiler, puts it under `-Wextra`). The classic sighting is `for (int i = 0; i < v.size(); ++i)`. Fixes, in order of preference:
 
 ```cpp
 for (std::size_t i = 0; i < v.size(); ++i)   // match the type

@@ -1,6 +1,20 @@
 ---
 title: Why generics exist
 minutes: 12
+seo-title: What Are Generics in Java? Type Safety and Raw Types
+description: Java generics let the compiler check what a collection holds, so wrong types fail at compile time with no casts. Vocabulary, the diamond, raw types, erasure.
+question: What are generics in Java?
+answer: Generics in Java let a class, interface or method take type parameters, so `List<String>` is a list the compiler knows holds only strings. Adding the wrong type becomes a compile error on the line that is wrong, reading needs no cast, and one implementation serves every element type. Added in Java 5, generics are checked at compile time and erased at run time.
+q: What is a raw type in Java?
+a: A raw type is a generic type used without type arguments, such as `List` instead of `List<String>`. It compiles only for compatibility with pre-generics code, gives "unchecked" warnings and switches off type checking, so a wrong element can pollute a typed list. Never write one in new code.
+q: Can you have a `List<int>` in Java?
+a: No. Type arguments must be reference types, so `List<int>` is a compile error; use `List<Integer>` and let autoboxing convert, or an `int[]`. That boxing cost is why `IntStream` and the primitive-specialised functional interfaces exist.
+q: What is the diamond operator in Java?
+a: The diamond, `<>`, tells the compiler to infer a constructor's type arguments from the target type: `Map<String, List<Integer>> index = new HashMap<>();` compiles since Java 7. With `var`, put the arguments on the right instead, because `var x = new HashMap<>()` infers `HashMap<Object, Object>`.
+q: What is the difference between a type parameter and a type argument?
+a: A type parameter is the placeholder in a generic declaration, such as `E` in `List<E>`. A type argument is the actual type supplied when the generic type is used, such as `String` in `List<String>`, which makes it a parameterised type.
+q: Why does Java use type erasure for generics?
+a: For backward compatibility. Generics arrived in a language with ten years of compiled libraries and a JVM that knew nothing about them, so type arguments are checked by the compiler and then erased: at run time `List<String>` and `List<Integer>` are the same `List` class.
 ---
 Before Java 5, a `List` held `Object`s: you put a `String` in and got an `Object` out, cast it back, and found out at run time if you were wrong. Generics let you say `List<String>` — a list *of strings* — so the compiler checks what goes in and knows what comes out. This lesson is the problem generics solve, the vocabulary (type parameter, type argument, parameterised type, raw type), and the first look at the design decision — erasure — that explains every limitation you will meet later in the module.
 

@@ -1,6 +1,20 @@
 ---
 title: Sorting — sort, sorted, keys, stability and bisect
 minutes: 13
+seo-title: Python sort() vs sorted(): Key Functions, Stability and bisect
+description: sorted() returns a new list and list.sort() sorts in place; both take key and reverse. Sorting by several keys, why Timsort is stable, and the bisect module.
+question: What is the difference between sort() and sorted() in Python?
+answer: `list.sort()` sorts a list in place and returns `None`; `sorted()` accepts any iterable and returns a new sorted list, leaving the original unchanged. Both take a `key` function, called once per element to produce the value that is compared, and `reverse=True`. Both use Timsort, which is stable: elements with equal keys keep their original order.
+q: How do I sort by multiple keys in Python?
+a: Return a tuple from the key: `sorted(words, key=lambda w: (len(w), w))` orders by length, then alphabetically, because tuples compare element by element. Negate a numeric component to reverse it, as in `(-p.age, p.name)`. When a string must go the other way, sort twice — secondary key first, primary key last.
+q: Is Python's sort stable?
+a: Yes. Timsort, behind both `sorted` and `list.sort`, is stable: items with equal keys keep their input order, even with `reverse=True`. That lets successive sorts compose — sort by the secondary key, then by the primary key, and ties keep the secondary order.
+q: How do I sort a list of tuples by the second element?
+a: Pass a key that picks that element: `sorted(pairs, key=lambda p: p[1])`, or `key=itemgetter(1)` with `itemgetter` from the `operator` module. `itemgetter(2, 0)` sorts by column 2 and then column 0, and `attrgetter("price")` sorts objects by an attribute.
+q: What does bisect do in Python?
+a: The `bisect` module finds where a value belongs in a sorted list by binary search, in O(log n). `bisect_left(xs, x)` returns the number of elements less than `x`, `bisect_right` the position after any equal elements, and `insort` inserts while keeping the list sorted — the insert itself is O(n), because elements shift.
+q: How do I sort with a comparison function in Python 3?
+a: Wrap it with `functools.cmp_to_key(compare)` and pass the result as `key`. Python 3 dropped the `cmp=` argument because a key is called once per element rather than once per comparison. A tuple key usually expresses the order anyway, so the wrapper is rarely needed.
 ---
 Python sorts with one algorithm — Timsort, a stable merge sort tuned for runs that already exist in the data — behind two calls: `list.sort()` in place and `sorted()` returning a new list. Every ordering question reduces to choosing a *key function*, which is why the previous module's key idiom matters here, and stability is what makes multi-pass and multi-key sorting predictable. This lesson gives the two calls, the key recipes (tuples, negation, case-insensitivity, `itemgetter`), the stability guarantee and what it buys, `bisect` for keeping a sorted list sorted, and the reasons `cmp_to_key` is rarely needed.
 

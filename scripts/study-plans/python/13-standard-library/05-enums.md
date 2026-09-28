@@ -1,6 +1,18 @@
 ---
 title: Enums — Enum, IntEnum, StrEnum, Flag and auto
 minutes: 13
+seo-title: Python Enum Explained: auto, IntEnum, StrEnum and Flag
+description: A Python Enum is a class of named singleton constants with a name, a value, lookup and iteration. IntEnum and StrEnum, Flag bit sets, auto and unique.
+question: What is an Enum in Python?
+answer: An Enum in Python is a class, defined by subclassing `enum.Enum`, whose members are a fixed set of named constants. Each member is a singleton with `.name` and `.value`, compared by identity, looked up with `Status("active")` or `Status["ACTIVE"]`, and iterated in definition order. An unknown value raises `ValueError`, so a misspelled status cannot survive.
+q: Why is an Enum member not equal to its value?
+a: A plain `Enum` member is not its value, so `Status.ACTIVE == "active"` is `False`; that strictness stops a raw string being mistaken for a status. Compare members with `is`, read `.value` when the raw value is needed, or use `StrEnum` or `IntEnum`, whose members are also strings or ints and compare equal to them.
+q: What is the difference between Enum and IntEnum?
+a: `IntEnum` members are also ints, so they compare with numbers, sort, and work wherever an int is expected: `Priority.HIGH > Priority.LOW` and `Priority.HIGH + 1` both work. A plain `Enum` member supports none of that. Choose `IntEnum` for values that cross a boundary or must be ordered, and a plain `Enum` for identity-only constants.
+q: What is StrEnum in Python?
+a: `enum.StrEnum`, added in Python 3.11, is an enum whose members are also strings: `Colour.RED == "red"` is `True`, f-strings print the value, and `json.dumps` writes it directly. With `auto()`, each member's value is its name in lower case. It suits values stored in databases, JSON fields and URLs.
+q: How do you combine enum flags in Python?
+a: Subclass `enum.Flag` and give members `auto()` values, which become powers of two; combine them with `|`, intersect with `&` and test membership with `in`, so `Perm.WRITE in (Perm.READ | Perm.EXEC)` is `False`. `IntFlag` works the same way and also behaves as an int.
 ---
 A status that is one of `pending`, `active`, `closed`; a colour; a permission set; a day of the week. Written as strings or small integers, such values can be misspelled, compared with the wrong constant, or given a value that means nothing — and nothing catches it. An `Enum` is a class whose instances are a fixed set of named constants: they are singletons, they compare by identity, they iterate in definition order, they look themselves up by name or value, and they print as `Status.ACTIVE`. This lesson covers `Enum`, `auto`, lookup and iteration, `IntEnum` and `StrEnum` for values that must also be ints or strings, `Flag` for combinable bits, `unique`, methods on enums, and enums in `match`.
 

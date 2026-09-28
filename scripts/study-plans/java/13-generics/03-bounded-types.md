@@ -1,6 +1,20 @@
 ---
 title: Bounded type parameters
 minutes: 12
+seo-title: Bounded Type Parameters in Java: Extends and Comparable
+description: A bounded type parameter like T extends Number limits a Java generic to subtypes and unlocks their methods. The recursive Comparable bound and multiple bounds.
+question: What is a bounded type parameter in Java?
+answer: A bounded type parameter restricts a Java generic to a type and its subtypes: `<T extends Number>` accepts `Integer` or `Double` but not `String`. In exchange the body may call the bound's methods, such as `doubleValue()`. `extends` is used for classes and interfaces alike, several bounds join with `&`, and under erasure `T` becomes its first bound.
+q: What does `<T extends Comparable<T>>` mean in Java?
+a: It means `T` must be a type that can be compared with other values of type `T`, so the method body may call `compareTo`. `String`, `Integer` and any class implementing `Comparable` of itself qualify. Because the bound mentions `T` itself, it is called a recursive bound.
+q: Why does the JDK use `Comparable<? super T>` instead of `Comparable<T>`?
+a: To accept classes that inherit their comparability from a parent. If `Employee implements Comparable<Employee>` and `Manager extends Employee`, `Manager` is not `Comparable<Manager>`, but it is comparable through a supertype, so `max` over a list of managers still compiles.
+q: Can a type parameter have a lower bound in Java?
+a: No. `<T super Integer>` does not exist; lower bounds are available only on wildcards, as in `List<? super Integer>`. Type parameters take upper bounds only, written with `extends`.
+q: How do you declare multiple bounds on a generic type?
+a: Join them with `&`: `<T extends Number & Comparable<T>>`. `T` must satisfy every bound; at most one bound may be a class, and it must come first, followed by any interfaces. Erasure replaces `T` with the first bound.
+q: What does "inference variable T has incompatible bounds" mean?
+a: Usually that the argument types do not satisfy the type parameter's bound — not that inference is broken. Calling a `<T extends Comparable<T>>` method with a list of objects that are not `Comparable` fails this way; check the argument types first.
 ---
 An unbounded `T` is any reference type, which means inside the method you can do nothing with it except store and return it — no `compareTo`, no `doubleValue`, no `close`. A **bound** restricts `T` to subtypes of a given type and, in exchange, lets you call that type's methods. Bounds are what make a generic `max`, a generic `sum` and a generic `sort` possible, and the recursive form `<T extends Comparable<T>>` is the one everyone stumbles over the first time.
 

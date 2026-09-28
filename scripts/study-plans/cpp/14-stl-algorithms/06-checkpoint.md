@@ -1,6 +1,14 @@
 ---
 title: Checkpoint — Algorithms and lambdas
 minutes: 25
+seo-title: C++ STL Algorithms and Lambdas Quiz: Sort, Accumulate, Ranges
+description: Practise C++ STL algorithms and lambdas with 14 questions and three programs: stable sorting, nth element medians and a recursive lambda over nested lists.
+q: What does `std::accumulate(v.begin(), v.end(), 0)` compute over a `std::vector<long long>`?
+a: It sums in `int`, because the accumulator takes the type of the initial value `0`, not of the elements. Large values overflow, which is undefined behaviour. Pass `0LL` so the sum is a `long long`.
+q: When must you use `std::stable_sort` instead of `std::sort`?
+a: When elements with equal keys can occur and their input order matters — for example, sorting tasks by priority while keeping arrival order within a priority. `std::sort` leaves equal elements in an unspecified order; the alternative is a tie-break key that makes the order total.
+q: What does copying a `mutable` lambda copy?
+a: The whole closure object, including the current values of its by-value captures. The copy then changes independently, so a `mutable` counter passed by value to an algorithm advances only the algorithm's copy, never the caller's.
 ---
 This checkpoint covers the whole module: the half-open range and predicate interface of `<algorithm>` and `<numeric>`, sorting with comparators and stability plus binary search on sorted ranges, `transform`, `accumulate`, `remove_if` and `partition`, lambdas as closure objects with captures, `mutable` and `std::function`, and C++20 ranges with projections and lazy views.
 

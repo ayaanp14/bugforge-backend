@@ -1,6 +1,20 @@
 ---
 title: Object lifecycle, reachability and reference types
 minutes: 14
+seo-title: Memory Leaks in Java: Weak, Soft and Phantom References
+description: Java collects every object unreachable from GC roots, so cycles never leak. What a Java memory leak really is, and strong, soft, weak and phantom references.
+question: What is a memory leak in Java?
+answer: A memory leak in Java is an object that is still reachable from a GC root but will never be used again, so the garbage collector must keep it. The usual causes are static collections that only grow, listeners never removed, `ThreadLocal` values in thread pools and unclosed resources. The fix is to remove the reference when done, or hold it through a reference type the collector may clear.
+q: Can circular references cause a memory leak in Java?
+a: No. The garbage collector traces reachability from GC roots — stack locals, static fields, JNI handles — instead of counting references, so a cycle of objects that no root can reach is garbage and is collected like any other.
+q: What is the difference between weak and soft references in Java?
+a: A `WeakReference` is cleared at the next garbage collection once no strong reference to its object remains. A `SoftReference` is kept until memory runs short and is cleared before an `OutOfMemoryError`. With both, `get()` returns `null` once the reference has been cleared.
+q: What are GC roots in Java?
+a: GC roots are where the collector's trace starts: the local variables and operands on every thread's stack, the static fields of loaded classes, JNI handles and a few runtime internals. Anything reachable from a root is live; everything else is garbage.
+q: When should I use WeakHashMap?
+a: Use `WeakHashMap` for metadata attached to objects you do not own: it holds its keys weakly, so an entry disappears once its key is no longer strongly referenced elsewhere. It never shrinks with `String` literal or small `Integer` keys, because those are pooled or cached and stay reachable.
+q: Why is finalize() deprecated in Java?
+a: `finalize()` ran at an unpredictable time on an unspecified thread, could resurrect objects, slowed collection and silently swallowed exceptions. It was deprecated in Java 9 and marked for removal in Java 18; clean up with `AutoCloseable` and try-with-resources, and use `Cleaner` only as a safety net.
 ---
 An object is born at `new`, lives while something can reach it, and is reclaimed some time after nothing can. Java has no `delete`; you cannot free an object, you can only stop referring to it. That single rule — **reachability, not reference counting** — decides what a "memory leak" means in Java, why cycles are harmless, and why `WeakHashMap` and `SoftReference` exist. This lesson follows an object from allocation to collection and introduces the four strengths of reference.
 

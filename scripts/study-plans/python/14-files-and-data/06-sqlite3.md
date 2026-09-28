@@ -1,6 +1,20 @@
 ---
 title: sqlite3 — a SQL database in the standard library
 minutes: 14
+seo-title: How to Use SQLite in Python: sqlite3 Queries and Transactions
+description: Python's built-in sqlite3 is a SQL database in one file: parameterised queries against SQL injection, transactions, dict-like rows and GROUP BY joins.
+question: How do you use SQLite in Python?
+answer: Import the standard-library `sqlite3` module and call `sqlite3.connect("app.db")`, or pass `":memory:"` for a throwaway database. Run statements with `con.execute(sql, params)` using `?` placeholders for values, iterate the returned cursor or call `fetchone` or `fetchall` for results, and wrap changes in `with con:` so they commit together or roll back. Nothing needs installing.
+q: How do I prevent SQL injection in Python sqlite3?
+a: Pass values as parameters and never format them into the SQL: `con.execute("SELECT * FROM items WHERE name = ?", (name,))`. The driver quotes and escapes each value, so a name containing a quote or SQL code is treated as data. An f-string such as `f"... WHERE name = '{name}'"` is the injection bug.
+q: What does `with con:` do in sqlite3?
+a: Using the connection as a context manager wraps the block in a transaction: it commits if the block succeeds and rolls back if it raises. It does not close the connection, so call `con.close()` or use `contextlib.closing`. A rollback undoes everything since the last commit, including uncommitted statements run before the block.
+q: Why are my sqlite3 changes not saved?
+a: The changes were never committed. `sqlite3` opens a transaction implicitly on the first modifying statement, and changes to a file database are lost when the connection closes without `con.commit()` or a `with con:` block that ends successfully. Commit after writing, then close.
+q: How do I get sqlite3 rows as dictionaries?
+a: Set `con.row_factory = sqlite3.Row` once on the connection. Each row can then be read by column name, as in `row["price_cents"]`, as well as by index; `row.keys()` lists the columns and `dict(row)` converts it to a plain dict.
+q: Does SQLite enforce column types?
+a: No. SQLite's column types are advisory and it stores whatever value it is given, unless the table is declared `STRICT`. Convert explicitly at the boundary: keep money as integer cents, dates as ISO strings with `date.isoformat()` and `date.fromisoformat()`, and booleans as 0 or 1.
 ---
 Every Python installation ships a complete relational database: `sqlite3` wraps SQLite, a single-file (or in-memory) SQL engine used by browsers, phones and most desktop applications. It is the right tool when data has relationships, needs querying by several criteria, must survive a process, or is too big for memory — and it is the fastest way to learn SQL, because there is nothing to install. This lesson covers connecting, creating tables, inserting with parameters (never string formatting), querying with `fetchone`/`fetchall`/iteration, transactions and `with`, `row_factory` for dict-like rows, aggregation with `GROUP BY` and a join, and the mapping between Python and SQL types.
 

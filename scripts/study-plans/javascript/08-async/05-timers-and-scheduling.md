@@ -1,6 +1,20 @@
 ---
 title: Timers and scheduling — setTimeout, setInterval, nextTick, and debounce/throttle
 minutes: 12
+seo-title: JavaScript setTimeout, setInterval and Debounce vs Throttle
+description: JavaScript timer delays are minimums, not exact times. setInterval versus recursive setTimeout, nextTick versus setImmediate, and debounce versus throttle.
+question: What is the difference between debounce and throttle in JavaScript?
+answer: Debounce and throttle both limit how often a frequently fired function runs in JavaScript. A debounced function runs once, `wait` milliseconds after the last call — right for search-as-you-type, resize and autosave. A throttled function runs at most once per `wait` milliseconds, immediately on the first call, so it keeps making progress during a burst — right for scroll handlers and progress updates.
+q: Does `setTimeout(fn, 0)` run immediately?
+a: No. The delay is a minimum: `fn` runs no sooner than the next timers phase, after the current synchronous code and every pending microtask. Under load it runs later still, and browsers clamp nested timeouts to at least 4 ms.
+q: Should I use `setInterval` or a recursive `setTimeout`?
+a: `setInterval` fires every `n` ms regardless of how long the work took, so slow or async callbacks drift and can overlap. A recursive `setTimeout`, or an `await sleep()` loop, schedules the next run only after the work finishes. Use `setInterval` for cheap fixed-cadence work and the recursive form for anything doing I/O.
+q: What is the difference between `process.nextTick` and `setImmediate`?
+a: `process.nextTick` runs its callback before any other queued microtask, right after the current operation and before any I/O or timers. `setImmediate` runs in the check phase, after the current iteration's I/O callbacks. Only `setImmediate` genuinely yields to the event loop; recursive `nextTick` calls starve it.
+q: Why does my Node.js script not exit?
+a: A common cause is an active timer: a pending `setTimeout` or an uncleared `setInterval` keeps Node's event loop running. Clear it with `clearTimeout` or `clearInterval` when the work is done, or call `timer.unref()` on a background timer that should not keep the process alive.
+q: How do you measure elapsed time in JavaScript?
+a: Use `performance.now()`, a monotonic high-resolution timer available globally in browsers and in Node 16+, and subtract a start reading from an end reading. `Date.now()` is wall-clock time and can jump when the system clock is adjusted, so it suits timestamps, not durations.
 ---
 Timers are the simplest asynchronous API and the most misunderstood: `setTimeout(fn, 100)` promises "not before 100 ms", not "at 100 ms"; `setInterval` drifts and overlaps; a forgotten timer keeps a Node process alive; and the three "run this soon" calls — `process.nextTick`, `queueMicrotask`, `setImmediate` — mean three different things. This lesson covers each primitive precisely, the promise-based timers in `timers/promises`, the two rate-control patterns every UI and every API client needs (debounce, throttle), and measuring time correctly.
 

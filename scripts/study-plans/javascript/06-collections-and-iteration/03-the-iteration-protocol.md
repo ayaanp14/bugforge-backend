@@ -1,6 +1,20 @@
 ---
 title: The iteration protocol — what for…of, spread and destructuring actually call
 minutes: 13
+seo-title: JavaScript Iterators Explained: Iterable vs Iterator
+description: A JavaScript object is iterable when Symbol.iterator returns an iterator with next(). What for…of, spread and destructuring call, and what break does.
+question: What is an iterator in JavaScript?
+answer: An iterator in JavaScript is an object with a `next()` method that returns `{ value, done }`, one result per call, until `done` is `true`. An object is iterable when its `[Symbol.iterator]()` method returns such an iterator. That one contract is what `for…of`, spread, destructuring, `Array.from`, `new Map()` and `Promise.all` call, so any class that implements it works with all of them.
+q: What is the difference between an iterable and an iterator?
+a: An iterable produces iterators: its `[Symbol.iterator]()` returns a fresh one on each call, so it can be looped over again and again. An iterator is the cursor itself, with `next()`, and is single-use. Built-in iterators such as `map.keys()` are also iterable by returning themselves.
+q: Why can't you use `for…of` on a plain object?
+a: A plain object has no `Symbol.iterator` method, so `for…of` throws a `TypeError` saying it is not iterable. Loop over `Object.entries(obj)`, `Object.keys(obj)` or `Object.values(obj)` instead — each returns an array, which is iterable.
+q: What happens when you `break` out of a `for…of` loop?
+a: The loop stops pulling values and calls the iterator's optional `return()` method, so it can release resources such as a file handle or a timer. In a generator this runs its `finally` blocks. Destructuring only a prefix of an iterable calls `return()` too.
+q: How do you make a class iterable in JavaScript?
+a: Give it a `[Symbol.iterator]()` method that returns an iterator. When the class keeps its items in an array, delegate: `return this.#items[Symbol.iterator]()`. When the sequence is computed, such as a tree walk or a range, write the method as a generator, `*[Symbol.iterator]() { … }`.
+q: What is the difference between `Array.from` and spread?
+a: Spread (`[...x]`) accepts only iterables. `Array.from(x)` accepts iterables and array-likes — objects with a `length` and numeric indices — so `Array.from({ length: 3 })` works where spreading the same object throws. It also takes a mapping function as its second argument.
 ---
 `for…of`, `[...x]`, `const [a, b] = x`, `Array.from(x)`, `new Map(x)`, `Promise.all(x)`, `yield*` — every one of these works on *any* object that follows one small contract, the **iteration protocol**. Arrays, strings, Maps, Sets, `arguments`, typed arrays, DOM lists and generator objects follow it; plain objects do not, which is why `for (const x of {a: 1})` throws. Implement the contract on your own class and all of that syntax works on it for free. This lesson states the protocol precisely, shows a hand-written iterator, and covers the details that matter in practice: laziness, early exit, and what is and is not iterable.
 

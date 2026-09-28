@@ -1,6 +1,18 @@
 ---
 title: Memory errors and the tools that find them
 minutes: 15
+seo-title: C++ Memory Errors and Leaks: AddressSanitizer and Valgrind
+description: Use after free, double free, buffer overflow, dangling pointers and leaks in C++, and how AddressSanitizer, UBSan and Valgrind report each one.
+question: How do you find memory errors in C++?
+answer: Compile with AddressSanitizer (`-fsanitize=address -g`) and run the program: it stops at the first use-after-free, buffer overflow or double free and prints where the bad access happened, where the memory was freed and where it was allocated; on Linux it also reports leaks at exit. Add UBSan (`-fsanitize=undefined`) for signed overflow and null dereferences, or run Valgrind's memcheck on the unmodified binary to find uninitialised reads.
+q: What is a use-after-free error?
+a: Use after free is reading or writing an object through a pointer or reference after its storage has been freed — `delete p; *p = 2;`, or a reference into a `std::vector` after `push_back` reallocated it. It is undefined behaviour: the storage may already belong to another object, so it shows as wrong values now and corruption later.
+q: What is the difference between AddressSanitizer and Valgrind?
+a: AddressSanitizer is compiled into the program, costs around 2× run time, and catches use-after-free, overflows, double frees and leaks. Valgrind's memcheck runs the unmodified binary on a synthetic CPU, needs no recompilation and catches uninitialised reads that ASan does not, but slows the program 20–50×.
+q: What does "definitely lost" mean in Valgrind?
+a: "Definitely lost" is a leaked block that nothing points at any more. "Indirectly lost" is a block reachable only from a lost block, such as the children of a leaked tree, and "still reachable" is memory a global still points at when the program exits, which is usually not a bug.
+q: Why does a program with undefined behaviour sometimes work?
+a: Undefined behaviour places no requirement on what happens, so the result depends on the compiler, the optimisation level and the memory layout. A dangling read may print a plausible value on one build and a neighbouring variable on another; a passing run proves nothing, which is why you test with sanitizers.
 ---
 Every memory error in C++ is the same event in different clothing: the program reads or writes storage it does not own at that moment. The compiler cannot see it, the language calls it undefined behaviour, and the optimiser assumes it never happens, so the symptom — a crash, a wrong number, a test that passes on one machine — appears somewhere far from the cause. This lesson catalogues the seven errors, shows what each looks like in source and in the report of the tool that catches it, and closes with the ownership rules from this module that make each one impossible to write.
 

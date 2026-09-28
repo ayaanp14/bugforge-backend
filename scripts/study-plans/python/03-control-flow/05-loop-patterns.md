@@ -1,6 +1,20 @@
 ---
 title: The loop patterns
 minutes: 14
+seo-title: Python Loop Patterns: Search, Two Pointers and Prefix Sums
+description: Most Python loops are one of eight patterns: accumulate, count, extreme, search, running state, two pointers, prefix sums and output. Built-ins replace several.
+question: What are the common loop patterns in Python?
+answer: Most Python loops follow one of eight patterns: accumulate, count, extreme, search, running state, two pointers, prefix sums and building output. The simple ones already exist as built-ins — `sum`, `min` and `max` with `key`, `any`, `all`, `next` — so write the loop by hand only when the update depends on earlier elements or tracks more than one thing at once.
+q: What is the two pointer technique in Python?
+a: Two indices move through a sorted sequence, and each step advances one of them by a rule. To find a pair summing to a target, start at both ends: if the sum is too small move the left index right, if too large move the right index left. It is a `while` loop, because which pointer moves depends on the data.
+q: What is a prefix sum in Python?
+a: A prefix sum list holds running totals with a leading zero, so `prefix[i]` is the sum of the first `i` elements and `sum(xs[a:b])` equals `prefix[b] - prefix[a]`. Building it costs O(n), and each range-sum query then costs O(1). `itertools.accumulate(xs, initial=0)` builds the same list.
+q: How do I count items that match a condition in Python?
+a: Sum a generator: `sum(1 for x in xs if x % 2 == 0)`, or `sum(x % 2 == 0 for x in xs)`, which works because `True` counts as 1. An explicit loop with a counter is only worth writing when the test needs state from earlier elements.
+q: How do I find the maximum by a key in Python?
+a: Pass a key function: `max(words, key=len)` returns the longest word, and `min` takes a `key` the same way. Both raise `ValueError` on an empty input. When no sensible start exists for a hand-written loop, begin with `None`, or `float("-inf")` for a numeric maximum.
+q: Why use join instead of += to build a string in a Python loop?
+a: `s += piece` copies the growing string each time, while `"".join(pieces)` builds the result in one allocation. Collect the pieces or output lines in a list and join them once; printing a joined block is also faster than thousands of separate `print` calls.
 ---
 Most loops are one of about eight patterns, and once you can name the pattern you can write the loop without thinking about it — and, more importantly, recognise when Python has already written it for you as a built-in. This lesson catalogues them: accumulate, count, extreme, search, running state, two pointers, prefix sums, and building output. Each comes with the built-in that replaces it when the body is simple, and the hand-written form for when it is not.
 

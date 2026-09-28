@@ -1,6 +1,14 @@
 ---
 title: Checkpoint — Interview idioms
 minutes: 26
+seo-title: JavaScript Interview Practice Test: Coding and Theory Quiz
+description: A JavaScript interview practice test: 12 questions on patterns, idioms and theory, plus a Promise class, JSON.stringify and deep equality to implement.
+q: What are the six steps for solving a coding interview problem?
+a: Restate the problem, probe the edge cases and constraints, plan starting from the brute force and its complexity, code while explaining your intent, trace an example through the code, and analyse the time and space complexity.
+q: Why does `Array(3).map(fn)` return empty slots?
+a: `Array(3)` creates an array of three holes, and `map` skips holes, so the callback never runs and the result is still three empty slots. `Array.from({ length: 3 }, (_, i) => i)` creates and fills the array in one step.
+q: Why do `then` callbacks always run asynchronously?
+a: Promise handlers run as microtasks even when the promise has already settled, so the code after the `then` call always runs first and the order never depends on timing. A hand-written Promise that calls its handlers synchronously gets this wrong.
 ---
 This checkpoint closes the track. It covers the interview template and its JavaScript-specific decisions; the twelve algorithm patterns and their complexities; the idiom sheet and the trap behind each idiom; the reimplementation questions and the spec details they hinge on; and the theory repertoire in its two-sentence form.
 

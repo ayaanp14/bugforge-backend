@@ -1,6 +1,20 @@
 ---
 title: The seven primitives, objects and typeof
 minutes: 12
+seo-title: JavaScript Data Types: Primitives, Objects and typeof
+description: JavaScript has seven primitive types plus object. Why typeof null is object, how to test for an array, and the difference between undefined and null.
+question: What are the data types in JavaScript?
+answer: JavaScript has eight data types: seven primitives — `undefined`, `null`, `boolean`, `number`, `bigint`, `string` and `symbol` — and `object`, which covers plain objects, arrays, functions, dates, maps and everything else. Variables have no type; values do. Primitives are immutable and copied by value, while objects are mutable and shared by reference, so `{} === {}` is `false`.
+q: Why is typeof null "object" in JavaScript?
+a: `typeof null` returning `"object"` is a bug from 1995, kept for compatibility because fixing it would break existing code. Test for null with `x === null`, or for null-or-undefined with `x == null`.
+q: What is the difference between null and undefined in JavaScript?
+a: `undefined` is the absence the engine produces — an uninitialised variable, a missing property or argument, a function with no `return`. `null` is what you write to mean deliberately empty. `undefined == null` is `true` but `undefined === null` is `false`, and `??` and `?.` treat both alike.
+q: How do you check if a value is an array in JavaScript?
+a: Use `Array.isArray(x)`. `typeof` reports `"object"` for arrays and plain objects alike, so it cannot tell them apart; a plain-object check is `typeof x === "object" && x !== null && !Array.isArray(x)`.
+q: What is the difference between primitive and reference types in JavaScript?
+a: Primitives are immutable and are compared and copied by value, so assigning a string to another variable copies it. Objects are mutable and have an identity: assigning one shares the same object, and two object variables are `===` only if they point at the same object.
+q: Should you use new String or new Number in JavaScript?
+a: No. `new String("x")` and `new Number(1)` create wrapper objects, so `typeof new String("x")` is `"object"` and `new Number(1) === 1` is `false`. Call `String(x)`, `Number(x)` and `Boolean(x)` without `new` as conversion functions.
 ---
 JavaScript has exactly eight kinds of value: seven **primitives** — `undefined`, `null`, `boolean`, `number`, `bigint`, `string`, `symbol` — and **object**, which covers everything else: plain objects, arrays, functions, dates, regexes, maps. Every surprise about "types" in this language comes from three facts: variables have no type (only values do), primitives are copied by value while objects are shared by reference, and the `typeof` operator has two historical quirks. This lesson lays the type system out plainly so the coercion rules in the following lessons have something to stand on.
 

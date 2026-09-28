@@ -1,6 +1,20 @@
 ---
 title: Compilers, warnings and reading error messages
 minutes: 14
+seo-title: How to Read C++ Compiler Errors: Warnings and Sanitizers
+description: A C++ diagnostic gives file, line, column, severity and message. Which warning flags to enable, how to read template and linker errors, plus ASan and UBSan.
+question: How do you read a C++ compiler error?
+answer: A C++ compiler error has the form `file:line:col: error: message`, followed by the source line, a caret under the offending token and any `note:` lines that give context. Fix the first error first, because the errors after it are often its consequences, and read the notes. For a template error, the first line says what failed and the `required from here` line names your code.
+q: What do `-Wall` and `-Wextra` do?
+a: They are GCC and Clang flags that enable warnings: `-Wall` turns on the ones almost always worth fixing, such as unused variables, missing returns and signed/unsigned comparisons, and `-Wextra` adds a second tier. Despite its name, `-Wall` is not everything — `-Wshadow` and `-Wconversion` must be asked for separately.
+q: What is the difference between GCC and Clang?
+a: Both are C++ compilers that accept the same flags and print diagnostics in the same `file:line:col` shape. GCC (`g++`) is the Linux default and ships libstdc++; Clang (`clang++`) is LLVM-based, the macOS default, known for readable messages, and uses either libstdc++ or its own libc++.
+q: What are AddressSanitizer and UndefinedBehaviorSanitizer?
+a: They are run-time checkers enabled with `-fsanitize=address,undefined`. AddressSanitizer reports out-of-bounds access, use-after-free, double free and leaks; UndefinedBehaviorSanitizer reports signed overflow, bad shifts, null dereferences and misaligned access. Add `-g` for line numbers; programs run two to three times slower, so they are development flags, not release ones.
+q: What does "comparison of integers of different signs" mean?
+a: It is the `-Wsign-compare` warning, typically for `i < v.size()` with `int i`. The `int` is converted to the unsigned type that `size()` returns, so a negative value becomes huge and `-1 < v.size()` is false. Use a `std::size_t` index, or convert the size deliberately.
+q: How do you debug a C++ program with gdb?
+a: Build with `-g -O0` so variables and lines match the source, then run `gdb ./main`. Set a breakpoint with `break main.cpp:9`, start with `run < input.txt`, step with `next` or `step`, inspect with `print total`, and after a crash type `backtrace` to see the failing line and the calls that led to it.
 ---
 A C++ compiler is the most thorough reviewer your code will ever have, and it works for free — if you read what it says. This lesson teaches the shape of a diagnostic so that you can read it like a stack trace: which file, which line and column, what kind of message, and what the notes underneath are pointing at. It also covers the warning flags worth turning on, what a template error and a linker error look like, and the two run-time tools — sanitizers and a debugger — that catch what the compiler cannot.
 

@@ -1,6 +1,18 @@
 ---
 title: Storage, cookies, history and the browser APIs worth knowing by name
 minutes: 12
+seo-title: localStorage vs Cookies vs IndexedDB and the History API
+description: localStorage is a small synchronous string store, cookies travel with every request and IndexedDB is a real database. Cookie flags, pushState and observer APIs.
+question: What is the difference between localStorage and cookies?
+answer: `localStorage` is a per-origin, synchronous store of strings, about 5 MB, that stays in the browser and is readable by any script on the page. Cookies are small, about 4 KB each, and are sent to the server automatically with every matching request, which makes them the session mechanism; attributes such as `HttpOnly`, `Secure` and `SameSite` control who can read and send them.
+q: What is the difference between localStorage and sessionStorage?
+a: Both are per-origin string stores with the same API. `localStorage` survives reloads and browser restarts, while `sessionStorage` lives for a single tab. Neither is sent to the server, both are readable by any script on the origin, and `setItem` can throw `QuotaExceededError`, so wrap writes in `try`.
+q: What do HttpOnly, Secure and SameSite do on a cookie?
+a: `HttpOnly` hides the cookie from `document.cookie`, so injected scripts cannot read a session id. `Secure` sends it only over HTTPS. `SameSite` limits cross-site sending: `Strict` never, `Lax` only on top-level navigations with safe methods, the default in modern browsers, and `None` everywhere, which requires `Secure`.
+q: How does a single-page app change the URL without reloading?
+a: With `history.pushState(state, "", url)`, which adds a history entry and changes the address bar without a page load; the router then renders the new route. Back and forward fire `popstate`, which `pushState` itself never does. The server must serve the app shell for every route, or a refreshed deep link returns 404.
+q: When should you use IndexedDB instead of localStorage?
+a: For structured or large data such as offline records, big caches and files. IndexedDB is an asynchronous, transactional database per origin with indexes and hundreds of megabytes of room, while `localStorage` is a synchronous string store of about 5 MB suited to preferences, drafts and the theme. Use a wrapper such as `idb` over IndexedDB's verbose API.
 ---
 A page has several places to keep state between reloads and several ways to observe the world around it, and each has a shape that decides what it is good for: `localStorage` is a small synchronous string dictionary; cookies travel to the server with every request and carry security attributes; IndexedDB is a real asynchronous database; the History API lets a single-page app own the URL. Around them sit the observer APIs that replaced polling and scroll handlers, and workers that give the page real threads. This lesson is a working map — what each API is, its one rule, and which task it fits — with the security flags that matter on cookies.
 

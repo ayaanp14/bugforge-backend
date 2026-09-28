@@ -1,6 +1,20 @@
 ---
 title: Anatomy of a C++ program
 minutes: 13
+seo-title: Structure of a C++ Program: main, Headers and Namespaces
+description: A C++ program is includes, functions and int main. What main returns, what std means, why using namespace std is risky, and how blocks create scope.
+question: What is the basic structure of a C++ program?
+answer: A C++ program is a set of `#include` lines for the headers it uses, any helper functions it needs, and `int main()`, the function the operating system calls to start it. Statements inside `main` run in order, and the `int` it returns is the exit code, where 0 means success. Standard library names such as `std::cout` live in the `std` namespace.
+q: Why is `using namespace std` considered bad practice?
+a: It makes every name in `std` visible, and `std` contains common words such as `count`, `size`, `max`, `min` and `swap`. A name of your own can then hide the library's or become ambiguous — a compile error that appears only when a new include brings the clash in. In a header it forces itself on every file that includes it.
+q: What does `return 0` mean in `main`?
+a: `return 0;` ends the program with exit code 0, which shells, build tools and judges read as success; any non-zero value means failure. `main` is the one function that may omit its `return`: falling off its closing brace returns 0.
+q: Is `void main()` valid in C++?
+a: No. The standard requires `main` to return `int`, and its two legal signatures are `int main()` and `int main(int argc, char* argv[])`. `void main()` is a compiler extension that standard C++ rejects.
+q: What does `std::` mean in C++?
+a: `std` is the namespace that holds every name in the standard library, and `::` is the scope-resolution operator, so `std::cout` reads as "the `cout` inside `std`". Namespaces keep names apart, which lets your own `max` coexist with `std::max`.
+q: What is variable shadowing in C++?
+a: Shadowing is declaring a name in an inner block when the same name is already declared in an outer one; the inner name hides the outer until its block closes. It compiles without complaint, and `-Wshadow`, which is not part of `-Wall`, reports it.
 ---
 Every C++ program you will write in this track has the same skeleton: some `#include` lines, perhaps a few functions, and `int main()`, inside which statements run from the first brace to the last. This lesson takes that skeleton apart — what an include is, what `main` must look like, why `std::` is everywhere and when `using` is acceptable, what counts as a statement, how blocks make scopes, and what the number `main` returns means to the world outside the program.
 

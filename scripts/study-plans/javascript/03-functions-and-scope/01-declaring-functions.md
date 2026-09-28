@@ -1,6 +1,20 @@
 ---
 title: Declaring functions — declarations, expressions, arrows and parameters
 minutes: 13
+seo-title: JavaScript Functions: Declaration vs Expression vs Arrow
+description: JavaScript functions come as declarations, expressions and arrows, which differ in hoisting and this. Default parameters, rest vs spread, return and IIFEs.
+question: What is the difference between a function declaration and a function expression in JavaScript?
+answer: A function declaration, such as `function add(a, b) {}`, is hoisted with its body, so it can be called above the line that defines it. A function expression or arrow function is a value assigned at run time — `const sub = function () {}` or `const mul = (a, b) => a * b` — so it can be called only after that line, because the `const` is in the temporal dead zone until then.
+q: What is the difference between arrow functions and regular functions in JavaScript?
+a: Arrow functions have no `this` of their own, no `arguments` object and no prototype, and cannot be called with `new`. They borrow `this` from the enclosing scope, which suits callbacks and short helpers; regular functions and method shorthand suit methods and constructors.
+q: When does a default parameter apply in JavaScript?
+a: A default applies only when the argument is `undefined` — missing, or passed explicitly as `undefined`. Passing `null`, `0` or `""` does not trigger it. A default may refer to earlier parameters, as in `(a, b = a * 2)`.
+q: What is the difference between rest and spread in JavaScript?
+a: Both are written `...`. Rest, in a function signature, gathers the remaining arguments into a real array, as in `function sum(...nums)`. Spread, at a call site or in a literal, expands an array or other iterable into separate values, as in `Math.max(...arr)`.
+q: What is an IIFE in JavaScript?
+a: An immediately invoked function expression, such as `(function () { … })()`, creates a scope and runs once. It was the pre-2015 way to keep variables private in a script; block scope and modules made it mostly unnecessary, though it still serves as an async wrapper.
+q: What does "Maximum call stack size exceeded" mean?
+a: It is the `RangeError` thrown when recursion goes deeper than the call stack allows, often because a base case is missing. Node does not do tail-call optimisation, so a legitimately deep recursion must be rewritten as a loop or with an explicit stack.
 ---
 Functions are the unit of everything in JavaScript: the module, the class method, the callback, the component. The language gives you three ways to write one — a declaration, an expression, an arrow — and they differ in hoisting, in `this` (next lessons) and in how they read. Parameters have their own conveniences: defaults, rest, spread at the call site, destructuring. This lesson is the syntax and semantics of defining and calling functions, with the first-class nature of functions — values you can pass and return — as the thread running through it.
 

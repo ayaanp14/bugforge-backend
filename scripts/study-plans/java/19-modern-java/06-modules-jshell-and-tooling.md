@@ -1,6 +1,20 @@
 ---
 title: Modules, jshell and the modern toolchain
 minutes: 13
+seo-title: Java Module System Explained: module-info, jlink and jshell
+description: The Java module system declares requires and exports in module-info.java and strongly encapsulates the rest. The unnamed module, --add-opens, jlink and jshell.
+question: What is the Java module system?
+answer: The Java Platform Module System (JPMS), added in Java 9, groups packages into named modules declared in `module-info.java`. A module states which modules it `requires` and which packages it `exports`; packages it does not export are strongly encapsulated, even from reflection unless opened. It split the JDK into about 70 modules and lets `jlink` build a runtime holding only the modules an application needs.
+q: What is the difference between requires and requires transitive?
+a: `requires` lets a module read another module's exported packages. `requires transitive` also passes that dependency on: any module that requires yours can read it too, without declaring it itself.
+q: What is the unnamed module in Java?
+a: The unnamed module is the classpath. Code on it reads every module and exports all of its packages, which is how legacy, non-modular applications keep running unchanged on Java 9 and later.
+q: Why do frameworks need --add-opens in Java?
+a: Frameworks reflect into packages, and strong encapsulation — fully enforced since Java 16 — blocks reflection into any package a module does not open. `--add-opens java.base/java.lang=ALL-UNNAMED` is the command-line escape hatch, and `jdeps --jdk-internals` finds the code that needs it.
+q: What is jshell used for?
+a: `jshell`, added in Java 9, is a REPL: you type Java expressions and statements and see results immediately, with no class or `main` method. It is the quickest way to check an API's behaviour before relying on it.
+q: How do you run a Java file without compiling it first?
+a: Since Java 11, `java Hello.java` compiles a single source file in memory and runs it, and Java 22 extends source launch to programs of several files. A shebang line turns such a file into an executable script.
 ---
 Java 9's biggest change was not a language feature but the **module system** (JPMS), which split the JDK itself into ~70 modules and lets applications declare what they export and require. Most application code still runs on the classpath and never writes a `module-info.java`, yet the module system shapes everything around it: which JDK internals you may touch, why `--add-opens` flags appear in build files, and how `jlink` produces a 40 MB runtime instead of a 300 MB one. Alongside it came a modern toolchain — `jshell` for trying things, single-file execution, `jpackage` for installers, JFR for production profiling. This lesson is the map of that tooling, and the module rules you need to explain in an interview.
 

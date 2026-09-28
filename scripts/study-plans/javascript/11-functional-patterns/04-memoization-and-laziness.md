@@ -1,6 +1,18 @@
 ---
 title: Memoization and laziness — computing once, and only when asked
 minutes: 12
+seo-title: Memoization in JavaScript: Memoize, Once and Lazy Evaluation
+description: Memoization caches a pure function's results by argument. Build memoize with a Map, pick keys and bound the cache; memoized recursion as DP, once and thunks.
+question: What is memoization in JavaScript?
+answer: Memoization is caching a function's result for a given set of arguments, so the next call with the same arguments returns the stored value instead of recomputing it. In JavaScript a `memoize` wrapper holds a `Map` from a key built from the arguments to the result. It is safe only for pure functions, and in a long-running process the cache needs a bound, such as an LRU.
+q: How do you implement memoize in JavaScript?
+a: Wrap the function in a closure that owns a `Map`: build a key from the arguments, return `cache.get(key)` on a hit, otherwise call the function, store the result and return it. Key primitives by value, several plain arguments with `JSON.stringify`, and objects by identity in a `WeakMap` so the cache does not keep them alive.
+q: What is the difference between memoization and dynamic programming?
+a: Memoized recursion is top-down dynamic programming: it fills the table of subproblem results on demand, the first time each argument is reached, while a classic DP solution fills an explicit array bottom-up. The complexity is the same. A memoized `fib(50)` makes 99 calls instead of about 40 billion, provided the recursive calls go through the memoized name.
+q: When should you not use memoization?
+a: When the function is already cheap, when arguments rarely repeat, such as unique ids or timestamps, when results are large and inputs many so memory balloons, or when the function is impure and the cache would serve stale data, as memoizing `getUser(id)` does while users change. Measure hit rate and time saved against memory held.
+q: What is a thunk in JavaScript?
+a: A thunk is a zero-argument function that stands for a computation not yet performed, such as `() => expensive()`. Passing a thunk instead of a value defers the work until something calls it, and possibly skips it altogether. Combined with `once`, a thunk becomes a lazy value: computed on first use and cached afterwards.
 ---
 Purity makes two optimisations legal that impure code cannot have: **memoization** — remember a function's result for given arguments and return it next time — and **laziness** — do not compute a value until something needs it, then perhaps never. Both are old ideas; JavaScript makes them small: a `Map` and a wrapper function, a thunk or a generator. Both also have failure modes that look like success (a cache that grows forever, a key function that collides, a "lazy" pipeline that is forced immediately). This lesson covers the generic `memoize` and its knobs, memoized recursion as dynamic programming, `once`, lazy values and sequences, and the rules for when caching costs more than it saves.
 

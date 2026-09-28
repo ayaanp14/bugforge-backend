@@ -1,6 +1,20 @@
 ---
 title: Conversions — between text, numbers and containers
 minutes: 12
+seo-title: Python Type Conversion: String to Int, Float and Back
+description: Python converts types only when you call the target type: int(), float(), str(), list(). Why int('3.0') raises ValueError, reading other bases, and ord and chr.
+question: How do you convert a string to an int in Python?
+answer: Call `int()` on the string: `int("42")` returns `42`, ignoring surrounding whitespace and accepting a sign and underscores. Any other text raises `ValueError`, including a decimal such as `"3.0"` — parse that with `float` first and truncate with `int(float(s))`. `int(s, 16)` and `int(s, 2)` parse other bases, and `int(s, 0)` reads the base from the prefix.
+q: What does invalid literal for int() with base 10 mean?
+a: It is the `ValueError` raised when `int()` receives text that is not a whole decimal number — `"3.0"`, `"abc"`, an empty string, or digits with a space inside. The message quotes the offending text. Split or strip the input correctly, or use `float()` for decimals.
+q: How do I convert a number to a string in Python?
+a: Call `str(n)` or use an f-string: `str(42)` is `"42"`, and `f"{x:.2f}"` formats with fixed decimals. Python never converts between numbers and strings implicitly, so `"total: " + n` raises `TypeError`, and `"1" * 3` is `"111"` — repetition, not multiplication.
+q: Does int() round or truncate a float in Python?
+a: It truncates toward zero: `int(3.9)` is `3` and `int(-3.9)` is `-3`. For the nearest integer use `round(x)`, which rounds half to even; for the floor or ceiling use `math.floor` or `math.ceil`. `int` raises `ValueError` on NaN and `OverflowError` on infinity.
+q: How do I check if a string is a number in Python?
+a: Try the conversion and catch the error: call `int(tok)` inside `try`, fall back to `float(tok)` on `ValueError`, and treat a second `ValueError` as text. `str.isdigit()` is not a substitute — it is false for `"-7"` and true for `"²"`.
+q: How do I convert a list to a string in Python?
+a: Join its elements: `" ".join(map(str, xs))` turns `[1, 2, 3]` into `"1 2 3"`, and `"".join(chars)` glues a list of strings together. `str(xs)` returns the list's `repr`, `"[1, 2, 3]"`, brackets and commas included.
 ---
 Python converts between types only when asked, and the asking is done by calling the target type: `int("42")`, `str(3.5)`, `list("abc")`, `float(7)`. Each conversion has precise rules about what it accepts and what it raises, and half the `ValueError`s in a beginner's program come from one of them being fed something it does not take. This lesson lists the conversions that matter, the failures each produces, the two implicit conversions that *do* exist (numeric widening and truth testing), and the cases — `"1" + 1`, `int("3.0")`, `float` to `int` — where the interpreter will not guess.
 

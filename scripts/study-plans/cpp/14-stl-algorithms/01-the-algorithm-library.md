@@ -1,6 +1,20 @@
 ---
 title: The algorithm library — ranges, predicates and the first dozen calls
 minutes: 14
+seo-title: C++ STL Algorithms Guide: Find, Count, Min and Max
+description: C++ STL algorithms take a half-open iterator range and often a predicate. Find and count, min and max element ties, and fill, iota, generate and copy.
+question: What does std::find return if the value is not found?
+answer: `std::find(first, last, value)` returns an iterator to the first element equal to `value`, or `last` — usually `v.end()` — when there is none; it never returns `-1` and never throws. Test `it != v.end()` before dereferencing, and compute the index as `it - v.begin()`. Like every STL algorithm, it works on a half-open range `[first, last)` of iterators rather than on a container.
+q: What is a half-open range in the C++ STL?
+a: Every algorithm takes `[first, last)`: an iterator to the first element and one past the last. `last` is a fence that is never dereferenced, so `v.end()` is a valid `last`, an empty range is `first == last`, and a sub-range is written with iterator arithmetic such as `v.begin() + 1`.
+q: What is the difference between std::find and std::find_if?
+a: `std::find` compares each element with a value using `==`; `std::find_if` calls a unary predicate and returns the first element for which it is true, which is what you need for records: `std::find_if(v.begin(), v.end(), [](const Account& a) { return a.balance < 0; })`. `std::find_if_not` returns the first element for which the predicate is false.
+q: Which element does max_element return when there are ties?
+a: `std::max_element` and `std::min_element` return the first of several equal extremes. `std::minmax_element` is the exception: it returns the first minimum but the last maximum. On an empty range all three return `last`, so test the result before dereferencing it.
+q: Why does `std::max(3, 4.5)` not compile?
+a: `std::max(a, b)` is a template whose two parameters share one type `T`, and deduction gets `int` from `3` and `double` from `4.5` — a conflict. Write `std::max<double>(3, 4.5)` or `std::max(3.0, 4.5)`. Take the result by value: `std::max` returns a reference, which dangles when a temporary wins.
+q: Why use STL algorithms instead of raw loops?
+a: They name the intent — `std::count_if` says what the loop is for — they already handle empty ranges, ties and boundaries correctly, and the library optimises them, for example turning `std::copy` of trivially copyable elements into `memmove`. A loop that an algorithm could replace should have a reason to exist.
 ---
 Every loop in Module 3's pattern catalogue — the search, the count, the minimum and maximum, the reversal — already exists in `<algorithm>` and `<numeric>` as a named function that takes a pair of iterators and, often, a callable. This lesson settles the interface those functions share — the half-open range, the predicate, the iterator that comes back — and works through the first dozen you will reach for daily: `find`, `find_if`, `count`, `count_if`, `min`/`max` and their `_element` cousins, `fill`, `iota`, `generate`, `reverse` and `copy`. The rest of the module builds on exactly this shape, and the last lesson shows how C++20 ranges shorten it.
 

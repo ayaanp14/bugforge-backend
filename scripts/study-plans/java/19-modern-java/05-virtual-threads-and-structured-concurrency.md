@@ -1,6 +1,20 @@
 ---
 title: Virtual threads and structured concurrency
 minutes: 13
+seo-title: Java Virtual Threads Explained: Project Loom and Java 21
+description: Java 21 virtual threads are cheap JVM-scheduled threads that unmount when they block, so millions can wait on I/O. Pinning, ScopedValue, structured concurrency.
+question: What are virtual threads in Java?
+answer: Virtual threads, final in Java 21 through Project Loom (JEP 444), are `java.lang.Thread`s scheduled by the JVM rather than the operating system. Their stacks live on the heap and they run on a small pool of carrier threads; when a virtual thread blocks on I/O, a lock or `sleep`, the JVM unmounts it and runs another. Millions can block cheaply, but CPU-bound work gets no faster.
+q: What is the difference between virtual threads and platform threads?
+a: A platform thread is an operating-system thread with about a megabyte of native stack, so a server can afford a few thousand. A virtual thread keeps a small, growable stack on the heap and unmounts from its carrier when it blocks, so millions of blocked virtual threads are affordable. Both use the same `Thread` API.
+q: Should virtual threads be pooled?
+a: No. Create one virtual thread per task — `Executors.newVirtualThreadPerTaskExecutor()` does exactly that — and let the JVM schedule them. When a downstream resource such as a database is the limit, bound access to it with a `Semaphore` rather than a pool.
+q: What is pinning in Java virtual threads?
+a: A pinned virtual thread cannot unmount while it is blocked, so it holds on to its carrier thread. In Java 21 that happens inside a `synchronized` block or native code, which is why `ReentrantLock` is preferred around blocking calls; Java 24 (JEP 491) removed the `synchronized` pinning.
+q: What is structured concurrency in Java?
+a: Structured concurrency scopes subtasks to a block of code: tasks forked in a `StructuredTaskScope` must finish or be cancelled before the block exits, and one failure can cancel the rest. It is still a preview API, reshaped in Java 25, so learn the idea rather than the method names.
+q: What replaces ThreadLocal with virtual threads?
+a: `ScopedValue`: an immutable value bound for a call tree, inherited by child threads and cheap even across millions of threads, where a `ThreadLocal` cache per thread would multiply memory. It was a preview in Java 21 and is final in Java 25.
 ---
 Java 21's headline feature answers a problem the concurrency module left open: a platform thread is an operating-system thread, costs about a megabyte and a system call, and a server that blocks one per request tops out at a few thousand concurrent requests. The industry's answer was reactive programming — callbacks and `CompletableFuture` chains that never block — at the cost of code nobody could read. **Virtual threads** (Project Loom, JEP 444) keep the blocking style and make threads cheap: millions of them, scheduled by the JVM onto a small pool of carrier threads. **Structured concurrency** (still in preview) then gives concurrent code the shape of a block: subtasks that start together, finish together and fail together. This lesson is conceptual — the exercises run on a Java 18 runtime, where none of this compiles — and it is what "what's new in Java 21?" is really asking about.
 

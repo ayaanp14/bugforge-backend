@@ -1,6 +1,20 @@
 ---
 title: Implement the built-in — a hash map, a dynamic array, an LRU cache and a heap by hand
 minutes: 16
+seo-title: How to Implement an LRU Cache and Hash Map in Python
+description: Build a hash map with chaining, a dynamic array, an LRU cache and a binary heap in Python, with the invariant and amortised complexity interviewers ask for.
+question: How do you implement an LRU cache in Python?
+answer: An LRU cache in Python is a dictionary plus a doubly linked list ordered by use, which makes `get`, `put` and eviction all O(1). `collections.OrderedDict` provides both: `move_to_end(key)` marks a key as most recently used, and `popitem(last=False)` evicts the least recently used entry once the size exceeds the capacity. `functools.lru_cache` is the ready-made decorator form.
+q: How does a hash map work?
+a: `hash(key) % capacity` selects a bucket, and each bucket holds the key-value pairs that land there. While the load factor, entries per bucket, stays bounded by resizing, buckets stay short and `get`, `put` and `delete` are O(1) on average; a hash that sends every key to one bucket degrades them to O(n).
+q: Why does a hash map resize at a load factor?
+a: As entries accumulate, buckets lengthen and lookups slow down, so the table doubles its capacity and rehashes every key when the load factor passes a threshold such as 0.75. Each resize is O(n), but doubling makes resizes rare enough that `put` stays amortised O(1).
+q: Why is list append amortised O(1)?
+a: When a dynamic array is full it allocates a larger block and copies the elements across. Doubling the capacity means n appends copy fewer than 2n elements in total, so each append costs O(1) on average, whereas growing by a fixed amount would make n appends cost O(n²). CPython's list over-allocates by about 12.5 percent.
+q: How do you implement a min-heap in Python?
+a: Store it in a list where the children of index i sit at 2i + 1 and 2i + 2 and every parent is at most its children. Push appends and sifts up; pop moves the last element to the root and sifts down; both are O(log n), and building a heap from a list with heapify is O(n).
+q: How is CPython's dict different from a chained hash map?
+a: It uses open addressing, where a collision probes other slots in the same table rather than growing a chain, with a separate compact array of entries that preserves insertion order, and it resizes at two-thirds full. Keys must be hashable, and equal keys must hash equal.
 ---
 "Implement a hash map" is the interview question that checks whether you know what `dict` costs and why; "implement an LRU cache" checks whether you can combine two structures to get O(1) for everything; "implement a heap" checks whether you understand the invariant behind `heapq`. None of these is used in production Python — the built-ins are faster and correct — but each is a compact demonstration of the ideas the earlier modules taught, and each has a standard shape an interviewer expects to see: the invariant stated, the operations written against it, the amortised analysis given. This lesson builds the four with those shapes.
 

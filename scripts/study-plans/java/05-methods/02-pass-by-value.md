@@ -1,6 +1,20 @@
 ---
 title: Java is pass-by-value — always
 minutes: 14
+seo-title: Is Java Pass-by-Value or Pass-by-Reference? Objects and Swap
+description: Java is always pass-by-value; for objects, the reference is copied. Why a method can change an object but not the caller's variable, and why swap fails.
+question: Is Java pass-by-value or pass-by-reference?
+answer: Java is always pass-by-value. Every argument is copied into the method's parameter, and for an object the value copied is the reference, not the object. The method therefore shares the object and can change its contents, but reassigning the parameter never changes which object the caller's variable points to. That is why a `swap(a, b)` method cannot work in Java.
+q: Can a Java method change the object passed to it?
+a: Yes, its contents: the parameter holds a copy of the same reference, so `arr[0] = 99` or `sb.append("x")` inside the method is visible to the caller. Reassigning the parameter, as in `arr = new int[3]`, only points the local copy at a new object.
+q: Why can't I write a swap method in Java?
+a: A method receives copies of its arguments, so swapping two parameters swaps only the method's local variables and the caller sees nothing; with `Integer` arguments the copies are references to immutable objects. You can swap two elements of an array, `swap(arr, i, j)`, or two fields of an object.
+q: Why does changing a String parameter not affect the caller in Java?
+a: Strings are immutable, so a method cannot change the `String` object itself; `s = s.toUpperCase()` creates a new string and rebinds only the local parameter. The mechanism is the same as for arrays; `String` simply has no methods that modify it.
+q: Are objects passed by reference in Java?
+a: No. An object is never passed at all: what is passed is a reference to it, and that reference is copied, which is pass-by-value. The difference shows when a method reassigns its parameter, since the caller's variable still points at the original object.
+q: How do I change a caller's variable from a Java method?
+a: You cannot rebind it from inside the method. Return the new value and assign it, as in `n = incremented(n);`, return a small object or record when there are several results, or keep the value in a field of an object the method can mutate.
 ---
 "Is Java pass-by-value or pass-by-reference?" is asked in almost every Java interview, and the confident wrong answer — "primitives by value, objects by reference" — is what separates candidates who have memorised from those who understand. Java is **strictly pass-by-value**. What is passed for an object is the value of the *reference*. This lesson makes that precise and shows the three situations where it matters.
 

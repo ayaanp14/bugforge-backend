@@ -1,6 +1,20 @@
 ---
 title: Defining and calling methods
 minutes: 13
+seo-title: Java Methods Explained: Static vs Instance and Signatures
+description: A Java method is a named block with typed parameters and a return type. Method signatures, static versus instance methods and the static context error.
+question: What is a method in Java?
+answer: A method in Java is a named block of code inside a class that takes typed parameters and can return one value. Its declaration gives the modifiers, a return type or `void`, a name and a parameter list, as in `public static long factorial(int n)`. A `static` method belongs to the class; an instance method runs on an object and can use `this`.
+q: What is a method signature in Java?
+a: A method signature is the method's name plus its parameter types, such as `factorial(int)`. The return type, the parameter names and the modifiers are not part of it, and two methods in the same class cannot share a signature, which is what governs overloading.
+q: What is the difference between static and instance methods in Java?
+a: A `static` method belongs to the class and has no `this`, so it cannot use instance fields without an object; call it as `ClassName.method()`. An instance method runs on a particular object, reads its fields through `this`, and is called as `object.method()`.
+q: How do I fix "non-static method cannot be referenced from a static context"?
+a: The error means a static method, usually `main`, called an instance method without an object. Create an object and call the method on it, as in `new Counter().increment()`, or make the method `static` if it uses no instance state.
+q: Can a Java method return multiple values?
+a: Not directly: a method returns exactly one value. To hand back several, return an object that holds them, such as a record or a small class, or an array, or split the work into two methods.
+q: What does "missing return statement" mean in Java?
+a: A method with a non-`void` return type has a path that reaches the end of its body without a `return`. The compiler checks every path, so add a final `return` after the last `if`, or an `else` branch that returns.
 ---
 A method is a named block of code with inputs and, optionally, an output. Every line of Java you run lives in one. This lesson covers the anatomy of a method declaration, the difference between `static` and instance methods (the single most common compile error for beginners), how calls work, and the conventions that make a method good rather than merely legal.
 

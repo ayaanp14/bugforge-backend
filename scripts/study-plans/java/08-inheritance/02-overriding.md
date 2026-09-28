@@ -1,6 +1,20 @@
 ---
 title: Overriding — the rules and the traps
 minutes: 14
+seo-title: Method Overriding in Java: Rules, Overloading and Hiding
+description: Method overriding in Java replaces an inherited method in a subclass. The override rules, @Override, covariant returns, and how overloading and hiding differ.
+question: What is method overriding in Java?
+answer: Method overriding in Java is a subclass declaring an instance method with the same name and parameter types as one it inherits, so calls on its objects run the subclass version whatever the reference's declared type. A valid override keeps or widens access, may return a subtype, throws no new or broader checked exceptions, and cannot replace a `static`, `private` or `final` method.
+q: What is the difference between overloading and overriding in Java?
+a: Overloading declares methods with the same name but different parameter types, and the compiler picks one from the arguments' static types. Overriding redeclares an inherited method with the same signature, and the JVM picks the version from the object's runtime class. Overloading is compile-time polymorphism; overriding is run-time.
+q: Can you override a private or final method in Java?
+a: No. A `final` method cannot be overridden at all; a `private` method is invisible to subclasses, so a same-named method there is unrelated; and a `static` method with the same signature hides the parent's instead of overriding it, resolved by the reference's declared type.
+q: What does @Override do in Java?
+a: It asks the compiler to check that the method really overrides a supertype method, so a typo in the name, a wrong parameter type such as `equals(Point p)`, or a `final` parent method becomes a compile error. It does nothing at run time.
+q: What is a covariant return type in Java?
+a: An overriding method may return a subtype of the parent method's reference return type: if `Base.copy()` returns `Base`, `Sub.copy()` may return `Sub`. Callers holding the subclass keep the precise type, which fluent builders rely on. Primitive return types must match exactly.
+q: Why should you not call overridable methods from a constructor?
+a: The parent constructor runs before the subclass's field initialisers, so an override called from it sees the subclass's fields at their defaults — a list field is still `null` and the call throws. Constructors should call only `private`, `static` or `final` methods.
 ---
 A subclass **overrides** a parent method by declaring one with the same signature; calls on the object then run the subclass version, whatever the reference's declared type. The rules for a valid override are exact — the compiler enforces some and warns about none of the rest — and the difference between overriding and *hiding* is a reliable interview question. This lesson is the checklist.
 

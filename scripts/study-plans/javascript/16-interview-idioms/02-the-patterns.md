@@ -1,6 +1,20 @@
 ---
 title: The patterns — the dozen algorithm shapes behind most JavaScript rounds
 minutes: 14
+seo-title: 12 Coding Interview Patterns in JavaScript, With Templates
+description: Twelve patterns behind most coding interviews, from sliding window and two pointers to BFS, binary search and DP, with signs, JavaScript templates and traps.
+question: What are the most common coding interview patterns?
+answer: Most coding interview problems use one of about twelve patterns: hash-map counting, two pointers, sliding window, stack, queue with breadth-first search, depth-first search and backtracking, binary search, prefix sums, sorting with a greedy pass, heaps for top-k, dynamic programming, and linked lists, trees and graphs as node objects. Recognising the pattern from the problem's wording is most of the solution.
+q: How do you recognise a sliding window problem?
+a: The question asks for the longest or shortest substring or subarray with some property, at most k distinct elements, or the maximum sum of a window of size k. The right edge expands every step and a `while` loop moves the left edge until the window is valid again, giving O(n).
+q: When should you use BFS instead of DFS?
+a: Use breadth-first search for the shortest path in an unweighted graph or grid, the minimum number of steps, or level-order traversal: the first time BFS reaches the target is the shortest route. Use depth-first search to enumerate combinations, permutations and paths, or for connectivity such as counting islands.
+q: Does JavaScript have a built-in heap or priority queue?
+a: No. For top-k and merge-k problems, write a small binary heap — push appends and sifts up, pop swaps the root with the last element and sifts down — or, for a one-shot top-k on small input, sort and slice while noting the O(n log n) cost.
+q: What is the time complexity of JavaScript array methods?
+a: Indexing, `push` and `pop` are O(1); `shift`, `unshift`, `splice`, `includes` and `indexOf` are O(n); `sort` is O(n log n). `Map` and `Set` get, set, has and delete are O(1) on average, which is why they replace nested scans.
+q: How do you write binary search in JavaScript without off-by-one errors?
+a: Pick one boundary convention and keep it: with a half-open range `[lo, hi)`, loop while `lo < hi`, compute `mid = lo + ((hi - lo) >> 1)`, set `lo = mid + 1` or `hi = mid` depending on the predicate, and return `lo`. Trace it on a two-element array before declaring it done.
 ---
 Coding questions are not infinite. Behind the thousands of published problems sit a dozen patterns, and recognising which one a problem belongs to is most of solving it. This lesson names the patterns, gives the tell-tale signs that identify each, the JavaScript shape of its solution, and the mistakes specific to writing it in this language. Depth on any one of them is a data-structures course; the goal here is the recognition step — "this is a sliding window" — that turns a blank page into a template to fill.
 

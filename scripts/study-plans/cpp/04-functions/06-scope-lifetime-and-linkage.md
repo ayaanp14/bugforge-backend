@@ -1,6 +1,20 @@
 ---
 title: Scope, lifetime and linkage
 minutes: 14
+seo-title: C++ Scope, Lifetime and Linkage: Static, Extern and Inline
+description: Scope is where a C++ name is visible, lifetime when its object exists, linkage whether files share it. Static locals, extern, inline and dangling references.
+question: What is the difference between scope, lifetime and linkage in C++?
+answer: In C++, scope is the region of source where a name is visible, lifetime is the span during which the object exists, and linkage is whether the same name in two translation units means one entity or two. They are independent: a function-local `static` has function scope but lives until the program exits, and a helper in an anonymous namespace has internal linkage.
+q: What does `static` mean in C++?
+a: It depends on where it appears. Inside a function it gives a variable static storage duration — one instance, initialised once, alive until exit. At namespace scope it gives internal linkage, private to the translation unit. Inside a class it makes a member shared by every object of that class.
+q: What is a static local variable in C++?
+a: A function-local `static` is initialised once, the first time control reaches it, and keeps its value between calls until the program exits, while staying invisible outside the function. C++11 makes that first initialisation thread-safe. It suits counters and lazily built tables, at the cost of hidden state.
+q: What is the difference between internal and external linkage in C++?
+a: A name with external linkage refers to the same entity in every translation unit, so two files that each define `int helper()` collide at link time. A name with internal linkage, given by an anonymous namespace or `static`, is private to its file. `const` and `constexpr` variables at namespace scope are internal by default.
+q: Why is returning a reference to a local variable wrong?
+a: The local is destroyed when the function returns, so the caller receives a reference to an object that no longer exists — a dangling reference, and using it is undefined behaviour. `-Wall` warns "reference to local variable 's' returned"; return by value instead, which copy elision and moves make cheap.
+q: What does `extern` do in C++?
+a: `extern int g_requests;` declares a global that is defined in another file without creating it, so exactly one translation unit holds the definition and the others refer to it. Without `extern` the line would be a second definition, and the program would fail to link.
 ---
 Three different questions hide behind "where can I use this variable?": **scope** — in which region of the source the name is visible; **lifetime** — between which two moments the object exists; and **linkage** — whether the same name in two translation units refers to one entity or two. Beginners meet them tangled: a `static` local that remembers its value, a global that two files fight over, a function that returns a reference to something already gone. This lesson pulls the three apart, because each has its own rules and its own bugs.
 

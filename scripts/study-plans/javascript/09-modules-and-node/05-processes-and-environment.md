@@ -1,6 +1,20 @@
 ---
 title: The process — arguments, environment, exit codes, signals, child processes and workers
 minutes: 13
+seo-title: Node.js Process: argv, Environment Variables and Exit Codes
+description: How a Node.js program reads process.argv and environment variables, sets exit codes, shuts down on SIGTERM, runs child processes safely and uses worker threads.
+question: How do you read command-line arguments in Node.js?
+answer: Command-line arguments are in `process.argv`, an array whose first two entries are the path to `node` and the path to the script, so the user's arguments are `process.argv.slice(2)`. Parse them into `--flag`, `--key=value`, short `-x` flags and positionals, treating `--` as the end of options. Recent Node versions include `util.parseArgs`, and `commander` or `yargs` add help text and validation.
+q: What is the difference between exec, execFile and spawn in Node.js?
+a: `exec` runs a command string through a shell and buffers the output, so interpolating user input into it allows command injection. `execFile` and `spawn` start a program directly with an argument array, so there is no shell, no injection and no quoting problem, and `spawn` streams its output, which suits long-running processes or large output.
+q: What is the difference between process.exit and process.exitCode?
+a: `process.exit(1)` terminates immediately, so pending writes to stdout can be lost and in-flight `finally` blocks never run. Setting `process.exitCode = 1` and returning normally lets the event loop drain and the output flush before Node exits with that code. Exit code 0 means success; anything else is failure.
+q: How do you shut down a Node.js server gracefully?
+a: Listen for `SIGTERM` and `SIGINT`, which Docker, Kubernetes and Ctrl-C send, then stop accepting new work with `server.close()`, let in-flight requests finish, close database connections, flush logs and exit within the grace period. Installing a handler replaces Node's default exit, so you must exit yourself, and `SIGKILL` cannot be caught at all.
+q: How should a Node.js app read environment variables?
+a: Read `process.env` once at startup into a validated config object with defaults and required checks, so a missing `DATABASE_URL` fails at boot with a clear message. Every value is a string or `undefined`, so parse numbers and booleans explicitly. A `.env` file is for local development; production injects real environment variables.
+q: When should you use worker_threads in Node.js?
+a: Use `worker_threads` for CPU-bound work, such as image processing, large JSON or heavy computation, that would otherwise block the single event-loop thread and stall every request. Workers have separate event loops and heaps and communicate by message passing. I/O is already non-blocking and gains nothing; `cluster` runs whole processes for multi-core serving.
 ---
 A Node program is an operating-system process: it is started with arguments and an environment, it reads stdin and writes stdout/stderr, it ends with an exit code, it receives signals, and it can start other processes or threads. Command-line tools and servers live or die on getting these right — a CLI that exits 0 on failure breaks every script that calls it; a server that ignores `SIGTERM` loses in-flight requests on every deploy. This lesson covers each surface, the hand-rolled argument parser you can write in twenty lines (Node 16 has no `util.parseArgs`), configuration through environment variables, graceful shutdown, `child_process` and its injection hazard, and when `worker_threads` are the right tool.
 

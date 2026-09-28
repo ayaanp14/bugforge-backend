@@ -1,6 +1,20 @@
 ---
 title: How V8 runs your code — parsing, tiers, hidden classes and inline caches
 minutes: 13
+seo-title: How V8 Works: Hidden Classes, Inline Caches and the JIT
+description: V8 interprets JavaScript, then optimises hot code on type feedback. Hidden classes, inline caches, elements kinds and deoptimisation, and what makes code fast.
+question: How does the V8 engine run JavaScript?
+answer: V8 parses JavaScript into an abstract syntax tree, compiles it to bytecode for its Ignition interpreter, and records feedback about the object shapes and types each operation sees. Hot functions are then compiled by TurboFan, its optimising compiler, into specialised machine code built on that feedback. When an assumption fails — a new object shape, a string where numbers were expected — V8 deoptimises back to the interpreter.
+q: What is a hidden class in V8?
+a: A hidden class, also called a map or shape, describes an object's property names and where each value sits in memory. Objects given the same properties in the same order share one, which lets V8 read properties at fixed offsets; adding properties later, in a different order, or deleting them creates new shapes.
+q: What is the difference between monomorphic and megamorphic?
+a: It describes how many object shapes one property-access site has seen. Monomorphic — one shape — compiles to a shape check and a fixed-offset read, the fastest case; polymorphic covers two to four shapes; megamorphic, more than four, falls back to a slow generic lookup.
+q: Why is `delete` slow in JavaScript?
+a: In V8, `delete obj.x` usually drops the object into dictionary mode, where properties live in a hash table and fast fixed-offset access is lost. Set the property to `undefined` or `null` instead, or use a `Map` when keys genuinely come and go.
+q: What are elements kinds in V8?
+a: V8 tracks what each array holds — small integers only (SMI), any numbers (DOUBLE) or anything (ELEMENTS) — and whether it has holes. Transitions only go one way, SMI to DOUBLE to ELEMENTS and PACKED to HOLEY, so keep arrays homogeneous and gap-free, or use typed arrays for numeric data.
+q: What is deoptimisation in V8?
+a: Deoptimisation is V8 abandoning optimised machine code when an assumption it was compiled under fails at run time, such as a new object shape or an unexpected type. Execution returns to the interpreter with fresh feedback; a function that deoptimises repeatedly may stop being optimised at all.
 ---
 JavaScript is fast because the engine bets on your code being *predictable* — that a property access at a given line will see objects of the same shape every time, that a function will be called with the same argument types, that an array holds only small integers — and compiles specialised machine code for those bets. When the bets hold, JavaScript runs within a small factor of C; when they break, the engine throws the specialised code away and falls back to slow paths. Understanding the model — parse, interpret, profile, optimise, deoptimise — and the two ideas underneath it, **hidden classes** and **inline caches**, is what turns "JavaScript performance" from folklore into a handful of habits. This lesson explains the pipeline as V8 (Chrome, Node, Deno, Edge) implements it; other engines differ in names, not in principles.
 

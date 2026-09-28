@@ -1,6 +1,20 @@
 ---
 title: Reading input and writing output in Node
 minutes: 13
+seo-title: How to Read Input in Node.js: stdin, readline and Output
+description: Read all of stdin in Node.js with fs.readFileSync(0, "utf8") or line by line with readline, then print exact output fast by joining lines into one console.log.
+question: How do you read input from stdin in Node.js?
+answer: In Node.js, `require("fs").readFileSync(0, "utf8")` reads all of standard input as one string, because file descriptor 0 is stdin. Trim it, split it on whitespace into tokens and convert each with `Number`. For input that arrives over time, the `readline` module's `line` and `close` events, or the `process.stdin` stream, deliver it in callbacks instead.
+q: How do I read input line by line in Node.js?
+a: Create an interface with `require("readline").createInterface({ input: process.stdin })`, collect each line in its `line` handler, and solve inside the `close` handler, which fires at end of input. Code outside the handlers runs before any line has arrived.
+q: Why is console.log slow in a loop?
+a: Each `console.log` call is a synchronous write, so printing a hundred thousand lines one call at a time can exceed a judge's time limit. Collect the lines in an array, join them with newlines and print the result in a single `console.log`.
+q: What is the difference between Number and parseInt in JavaScript?
+a: `Number` needs the whole string to be numeric, so `Number("12px")` is `NaN`, while `parseInt("12px", 10)` reads the leading digits and returns `12`. That prefix reading also makes `parseInt("1e3")` return `1` where `Number` gives `1000`.
+q: How do I print an array without brackets in JavaScript?
+a: Join it into a string first: `console.log(arr.join(" "))` prints `1 2 3`, whereas `console.log([1, 2, 3])` prints the human-readable `[ 1, 2, 3 ]`, which a judge comparing exact text rejects.
+q: How do I get command-line arguments in Node.js?
+a: `process.argv` holds the Node binary's path, the script's path and then the user's arguments, so `process.argv.slice(2)` is what was typed after the script name. Environment variables are in `process.env`, as strings or `undefined`.
 ---
 Every exercise in this plan is a program that reads standard input and prints to standard output — the same contract as any coding judge. Node has three ways to read stdin, two ways to write stdout, and a handful of formatting habits that keep the output exactly right. This lesson gives you the template you will use ninety times and explains the alternatives so you recognise them in other people's code.
 

@@ -1,6 +1,22 @@
 ---
 title: The Java theory drill — thirty questions, thirty answers
 minutes: 16
+seo-title: Java Interview Questions and Answers: 30 Core Theory Questions
+description: Thirty core Java interview questions with short answers: JVM, pass-by-value, String immutability, equals and hashCode, HashMap, generics, GC and concurrency.
+question: What are the most common Java interview questions?
+answer: The most common Java interview questions cover JDK vs JRE vs JVM, whether Java is pass-by-value, why strings are immutable, `==` vs `equals`, checked vs unchecked exceptions, overloading vs overriding, abstract classes vs interfaces, how `HashMap` works, type erasure, `ArrayList` vs `LinkedList`, garbage collection, `start` vs `run`, `synchronized` vs `volatile`, and deadlock. Answer each with a one-sentence definition and one consequence.
+q: Why are strings immutable in Java?
+a: Because strings are used everywhere — class names, map keys, security checks — immutability makes them safe to share: the string pool can give one object to every user of a literal, the hash code can be cached, and strings pass between threads without synchronisation.
+q: What is the difference between final, finally and finalize in Java?
+a: `final` makes a variable constant, a method non-overridable or a class non-extensible; `finally` is the block after `try` that always runs; `finalize` is the deprecated garbage-collection hook that should never be used.
+q: How does HashMap work internally in Java?
+a: The key's `hashCode` is spread and mapped to a bucket; colliding entries share the bucket as a chain, which becomes a tree once it grows long (Java 8+). The table resizes past a 0.75 load factor, and lookups are O(1) on average when `equals` and `hashCode` are consistent.
+q: What is the difference between overloading and overriding in Java?
+a: Overloading is one method name with different parameters, chosen at compile time from the arguments' static types. Overriding is a subclass redefining a method with the same signature, chosen at run time from the object's actual class. Fields are never polymorphic.
+q: What is type erasure in Java?
+a: Generic type arguments exist only at compile time: at run time a `List<String>` is a plain `List`, so you cannot write `new T[]` or test `instanceof List<String>`. The compiler inserts the casts that make `get` return a `String`.
+q: What is the difference between String, StringBuilder and StringBuffer?
+a: `String` is immutable; `StringBuilder` is mutable and fast; `StringBuffer` is mutable and synchronised, a legacy class. Use `StringBuilder` when building a string in a loop, since `+=` copies the whole string each time.
 ---
 Every Java interview has a theory section, and the questions have not changed in a decade. This lesson is the drill: the thirty questions you will be asked, each with the two-sentence answer an interviewer wants to hear and a pointer to the module that explains it in depth. Read it twice a week before interviews. The answers are deliberately compact — the skill being tested is saying the essential thing first, then stopping so the interviewer can ask the follow-up.
 

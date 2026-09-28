@@ -1,6 +1,20 @@
 ---
 title: Descriptors — how properties, methods and validated attributes work
 minutes: 14
+seo-title: Python Descriptors Explained: How Property and Methods Work
+description: A Python descriptor is a class attribute with get and set hooks run on access. How property and bound methods work, and data vs non-data descriptors.
+question: What is a descriptor in Python?
+answer: A descriptor in Python is an object that defines `__get__`, and optionally `__set__` or `__delete__`, and is stored as a class attribute. When an instance or the class looks that attribute up, Python calls those methods instead of returning the object itself. `property`, `classmethod`, `staticmethod`, `functools.cached_property`, plain functions becoming bound methods and ORM columns are all descriptors.
+q: What is the difference between a data and a non-data descriptor?
+a: A data descriptor defines `__set__` or `__delete__` and wins over the instance `__dict__`; a non-data descriptor defines only `__get__` and loses to it. That is why an instance attribute cannot shadow a `property` but can shadow a method.
+q: How does `@property` work in Python?
+a: `property` is a data descriptor that stores a getter, a setter and a deleter. Its `__get__` calls the getter with the instance, and its `__set__` calls the setter or raises `AttributeError` when there is none, which is why a read-only property refuses assignment. `@x.setter` returns a new property with the setter added.
+q: What is `__set_name__` for?
+a: Python calls `__set_name__(owner, name)` on each descriptor when the class is created, telling it which attribute name it was assigned to. One validating descriptor class can then guard several attributes and store each value on the instance under a private name such as `_price`.
+q: How do methods become bound methods in Python?
+a: Functions are non-data descriptors. Looking a function up through an instance calls `function.__get__(obj, cls)`, which returns a bound method with the instance fixed as the first argument; `classmethod` binds the class instead, and `staticmethod` returns the plain function.
+q: How does `functools.cached_property` work?
+a: It is a non-data descriptor that computes the value on first access and writes it into the instance `__dict__` under the same name. Later lookups find the instance attribute first, so the function never runs again; deleting the attribute clears the cache.
 ---
 `@property` is not magic, and neither is the way `obj.method` becomes a bound method. Both are *descriptors*: objects with `__get__` (and optionally `__set__`/`__delete__`) that the attribute machinery consults when they are found on a class. Understanding the protocol explains `property`, `classmethod`, `staticmethod`, `functools.cached_property`, dataclass fields, ORM columns and every "attribute that computes or validates" you will meet. This lesson states the protocol, walks through the lookup order it plugs into, builds a validated-attribute descriptor with `__set_name__`, re-derives `property` from it, and explains data versus non-data descriptors — the distinction that decides who wins between the instance dict and the class.
 

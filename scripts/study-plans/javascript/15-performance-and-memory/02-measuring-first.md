@@ -1,6 +1,20 @@
 ---
 title: Measure first — benchmarks that lie, profiles that do not, and reading the numbers
 minutes: 13
+seo-title: How to Benchmark and Profile JavaScript and Node.js Code
+description: Benchmarks lie through JIT warm-up, dead-code elimination and GC noise. How to time with performance.now, profile Node and browsers, and read medians and p99.
+question: How do you benchmark JavaScript code correctly?
+answer: Time with `performance.now()`, never `Date.now()`, and warm the code up first so the JIT has optimised it before you measure. Feed inputs built at run time, consume every result so the optimiser cannot delete the work, repeat many times, interleave the alternatives, and compare medians and p95 values rather than single runs or means. Libraries such as tinybench and mitata automate this.
+q: Why do JavaScript micro-benchmarks lie?
+a: Because of JIT warm-up, which mixes interpreted and optimised runs; dead-code elimination, which removes work whose result is unused; constant folding of literal inputs; garbage-collection pauses at unpredictable moments; machine noise; and measuring effects too small to matter next to real I/O.
+q: Should I use `performance.now()` or `Date.now()` to measure time?
+a: `performance.now()`: it is monotonic and sub-millisecond, and it is global in browsers and Node 16 and later. `Date.now()` is coarse wall-clock time, wrong for durations; for very short spans in Node, `process.hrtime.bigint()` gives nanoseconds.
+q: How do you read a flame chart?
+a: Time runs along the x-axis and call depth along the y-axis, so a wide bar is a function where much time goes and a tall, narrow stack is deep recursion. Read it top-down for structure, then use the bottom-up table sorted by self time to find the real hot spot.
+q: How do you profile a Node.js application?
+a: Run `node --cpu-prof app.js` to write a `.cpuprofile` and open it in Chrome DevTools or speedscope, attach DevTools live with `--inspect`, or use `--prof` with `--prof-process` for a text summary. These sampling profilers run the program at full speed and record the stack about every millisecond.
+q: Why report the median instead of the mean?
+a: A few slow runs caused by garbage collection or page faults drag the mean upwards and hide the typical case, while a few fast runs hide the tail that users notice. Report the median (p50) with a high percentile such as p95 or p99, and the spread.
 ---
 Almost every performance change made without measuring makes the code worse in some way — less readable, more fragile, or actually slower — because intuition about JIT-compiled code is unreliable and the bottleneck is rarely where it feels. The discipline is simple to state: **profile to find the hot spot, benchmark to compare alternatives, measure in production to confirm**. Each step has traps: benchmarks that time the wrong thing (JIT warm-up, dead-code elimination, GC pauses), profiles read at the wrong level, and summary numbers (averages) that hide the users who suffer. This lesson covers the tools — `performance.now`, `console.time`, `--cpu-prof`, DevTools, flame charts — and the statistics you need to trust a result: warm-up, repetitions, medians and percentiles, variance, and what "significant" means.
 

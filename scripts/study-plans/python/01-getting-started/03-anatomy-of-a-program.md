@@ -1,6 +1,20 @@
 ---
 title: Anatomy of a Python program
 minutes: 13
+seo-title: Python Syntax Basics: Statements vs Expressions and Blocks
+description: An expression produces a value; a statement does something. How Python blocks, pass, comments, docstrings, keywords and naming conventions work.
+question: What is the difference between a statement and an expression in Python?
+answer: In Python, an expression is anything that produces a value — a literal, `2 + 3`, a function call, `x if x > 0 else -x` — while a statement is an instruction such as an assignment, `if`, `for`, `def` or `import`. Any expression can stand alone as a statement, its value discarded, but a statement cannot appear where a value is expected; the walrus operator `:=` is the assignment that is an expression.
+q: What does `pass` do in Python?
+a: `pass` is a statement that does nothing. A block cannot be empty, so `pass` fills one that is intentionally blank, such as a placeholder function or a class with no members yet. A docstring or `...` (the `Ellipsis` literal) also works as a stub body.
+q: What is the difference between a comment and a docstring in Python?
+a: A `#` comment is ignored by the interpreter and should explain why the code is written as it is. A docstring is a string literal placed as the first statement of a module, function or class; it is kept in `__doc__`, shown by `help()`, and tells a caller what the code does.
+q: How many keywords are there in Python?
+a: Python 3.11 has 35 keywords, among them `if`, `for`, `def`, `class`, `return`, `None`, `True`, `False`, `lambda`, `async` and `await`, and none can be used as a name. `match` and `case` are soft keywords: they act as keywords only at the start of a match statement.
+q: What are the naming conventions in Python?
+a: PEP 8 uses `snake_case` for variables and functions, `PascalCase` for classes and `UPPER_CASE` for constants, which are ordinary names Python does not protect. A leading underscore marks a name as internal, and a trailing one, as in `class_`, avoids a clash with a keyword.
+q: Why do I get TypeError: 'int' object is not callable?
+a: A built-in function's name was rebound earlier in the scope, typically `sum = 0` followed by `sum(xs)`. Built-ins such as `sum`, `list`, `str`, `id` and `input` are ordinary names, not keywords, so assigning to one shadows the function until the scope ends. Rename the variable.
 ---
 A Python file is a sequence of statements, some of which introduce indented blocks, some of which are expressions with a value, and a few of which — `import`, `def`, `class` — bind names that the rest of the file uses. This lesson names the parts so that the vocabulary is fixed before the track uses it: statement and expression, block and suite, comment and docstring, name and keyword, and the shape a well-formed program has from its first import to its last line.
 

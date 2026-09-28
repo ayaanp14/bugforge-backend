@@ -1,6 +1,20 @@
 ---
 title: Narrowing, type guards, assertions — making the compiler trust a value
 minutes: 12
+seo-title: TypeScript Narrowing and Type Guards: is, asserts and as
+description: TypeScript narrows unions with typeof, instanceof, in and discriminant checks. Type guards, assertion functions, exhaustive switches and when as or ! is safe.
+question: What is a type guard in TypeScript?
+answer: A type guard is a function whose return type is a type predicate such as `x is User`: where it returns `true`, TypeScript narrows `x` to `User`. Its body is ordinary JavaScript, so the programmer must check every field the type promises. The built-in checks — `typeof`, `instanceof`, `in`, `Array.isArray` and equality — narrow unions the same way without a helper.
+q: What is narrowing in TypeScript?
+a: Narrowing is control-flow analysis that shrinks a union type inside a branch. After `if (typeof x === "string")` the compiler treats `x` as a string there and as the remaining members in the `else`; `instanceof`, `in`, equality, truthiness and a `switch` on a discriminant narrow the same way.
+q: Why does `typeof x === "object"` not remove `null`?
+a: Because `typeof null` is `"object"` in JavaScript, so `null` survives the check and TypeScript keeps it in the narrowed type. Test `x !== null` as well, together with the `typeof` check or before it, before reading properties.
+q: What does `asserts x is T` do in TypeScript?
+a: It declares an assertion function: when the function returns normally, `x` is narrowed to `T` for the rest of the scope, and when the check fails the function throws. `asserts cond` narrows on any boolean expression, so `assert(user)` removes `undefined` from `user`.
+q: When is it safe to use `as` in TypeScript?
+a: When you hold local knowledge the compiler cannot, such as the element type behind `document.getElementById` in your own markup, or a value you have just validated. `as` performs no runtime check, so never use it on JSON or other I/O data, and never write `as any`.
+q: What does the `!` non-null assertion do in TypeScript?
+a: The postfix `!` tells TypeScript that a value is not `null` or `undefined`, removing both from its type. It compiles to nothing and checks nothing at run time, so prefer an `if` check or `?.` and keep `!` for cases you can prove.
 ---
 A union type says "one of these"; before you can use the value as one particular member you must **narrow** it, and TypeScript understands the same checks you would write in plain JavaScript — `typeof`, `instanceof`, `in`, equality, truthiness, a `switch` on a discriminant. Narrowing is control-flow analysis: inside the `if`, the variable has a smaller type; in the `else`, the complement. When the built-in checks cannot express what you know, you write a **type guard** (`x is User`) or an **assertion function**, and when you know better than the compiler you use `as` — carefully, because `as` is a promise the compiler will not verify. This lesson covers every narrowing form, exhaustiveness, guards and assertions, the two escape hatches and their rules, and how runtime validation at the boundary connects to all of it.
 

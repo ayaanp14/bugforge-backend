@@ -1,6 +1,20 @@
 ---
 title: The container zoo — choosing a container
 minutes: 12
+seo-title: C++ STL Containers: Which to Use and Their Complexity
+description: The C++ STL containers fall into four families: sequence, associative, unordered and adaptors. Their time complexity, shared interface and when to use each.
+question: What are the containers in the C++ STL?
+answer: The C++ Standard Template Library (STL) containers fall into four families. Sequence containers — `std::vector`, `std::deque`, `std::list`, `std::array` — keep insertion order; associative containers — `std::set`, `std::map` — keep keys sorted in a balanced tree; unordered containers — `std::unordered_set`, `std::unordered_map` — use a hash table; and adaptors — `std::stack`, `std::queue`, `std::priority_queue` — expose a single discipline.
+q: Which STL container should I use by default?
+a: `std::vector`. Its elements sit in one contiguous block, so iteration is the fastest of any container, indexing is O(1) and `push_back` is amortised O(1). Reach for another container only with a reason you can say in a sentence: pushes at the front (`std::deque`), sorted keys or ranges (`std::map`), fastest lookup by key (`std::unordered_map`).
+q: What is the time complexity of STL container operations?
+a: `std::vector` and `std::deque` index in O(1); a vector pushes at the back in amortised O(1) but inserts in the middle in O(n); `std::list` inserts or erases in O(1) given an iterator; `std::set` and `std::map` find, insert and erase in O(log n); the unordered containers do it in average O(1), worst case O(n).
+q: Is std::list faster than std::vector for inserting in the middle?
+a: Usually not. The list's O(1) insertion needs an iterator to the position, and finding that position is an O(n) walk through scattered heap nodes. A vector's search and shift run over contiguous memory the cache handles well, so for small and medium collections the vector is typically faster, and always smaller.
+q: What are container adaptors in C++?
+a: `std::stack`, `std::queue` and `std::priority_queue` wrap a sequence container and expose only one discipline: last in first out, first in first out, or largest first. `stack` and `queue` use a `std::deque` underneath by default and `priority_queue` a `std::vector`. They have no iterators, and popping an empty adaptor is undefined behaviour.
+q: Do STL containers store copies of their elements?
+a: Yes. Containers own their elements by value: `push_back(s)` copies `s`, `push_back(std::move(s))` moves it, and destroying the container destroys the elements. Copying a container copies every element, while moving one takes over its buffer in O(1). For a polymorphic collection, store `std::unique_ptr<Base>` to avoid slicing.
 ---
 The STL ships about a dozen containers and most programs use two of them, `std::vector` and a map. The rest earn their place in specific situations, and the skill this lesson settles is naming those situations: which family a container belongs to, what its operations cost, which member functions every container shares, and the one-sentence reason for reaching past `std::vector`. Every container is a class template (Module 12) that owns its elements by value, so the choice is about where the elements sit in memory and what that layout makes cheap.
 

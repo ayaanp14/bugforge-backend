@@ -1,6 +1,20 @@
 ---
 title: Inheritance basics — subclasses, super() and attribute lookup
 minutes: 14
+seo-title: Python Inheritance and super(): Overriding and isinstance
+description: A Python subclass inherits its base's methods and overrides or extends them. Why a subclass initialiser calls super, how lookup works, and isinstance vs type.
+question: How does inheritance work in Python?
+answer: In Python, `class Dog(Animal)` makes `Dog` a subclass that inherits every method and class attribute of `Animal`; it overrides a method by redefining it and extends one by calling `super()`. Attribute lookup searches the instance, then the class, then its bases up to `object`, and the first match wins. Every method is virtual, so base-class code that calls `self.speak()` runs the override.
+q: What does `super().__init__()` do in Python?
+a: It calls the base class's initialiser with `self` bound automatically, so the attributes the base sets actually exist. A subclass that defines its own `__init__` replaces the base's, so it must call `super().__init__(...)`, usually first, passing the arguments the base expects.
+q: What happens if a subclass does not call `super().__init__()`?
+a: The base class's `__init__` never runs, so the attributes it would have set are missing, and the first method that uses one fails with `AttributeError`. Inheritance shares methods, not instance attributes — those exist only once an initialiser assigns them.
+q: What is the difference between isinstance and type in Python?
+a: `isinstance(x, C)` is true for instances of `C` and of any subclass, while `type(x) is C` matches the exact class only. Use `isinstance` when subclasses should count, which is almost always; `isinstance(True, int)` is `True` because `bool` subclasses `int`.
+q: Do all Python classes inherit from object?
+a: Yes. In Python 3, `class A:` and `class A(object):` are the same, and `object` supplies the default `__init__`, `__repr__`, identity-based `__eq__`, `__hash__` and `__str__`. That is why a class with no methods can still be created, printed and compared.
+q: How do I override a method in Python?
+a: Define a method with the same name in the subclass. Without a `super()` call it replaces the base version; calling `super().method()` inside it extends the base behaviour instead. Keep the same signature, or code written for the base class breaks on the subclass.
 ---
 Inheritance lets a class start from another: `class Dog(Animal)` gives `Dog` every attribute and method of `Animal` and lets it add or replace what differs. Python's version is simple in mechanism — attribute lookup walks from the instance to its class to the base classes — and the only real subtlety is initialisation: a subclass's `__init__` replaces the base's, so it must call `super().__init__()` explicitly or the base's attributes never exist. This lesson covers the syntax, what is inherited, overriding and extending, `super()`, `isinstance`/`issubclass`, the lookup order, and the `object` root that everything descends from.
 

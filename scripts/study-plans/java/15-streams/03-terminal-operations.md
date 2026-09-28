@@ -1,6 +1,20 @@
 ---
 title: Terminal operations — reduce, match, find, count
 minutes: 14
+seo-title: Java Stream Reduce and Terminal Operations Explained
+description: Java stream terminal operations: the three forms of reduce and why the identity matters, min and max, findFirst versus findAny, anyMatch and allMatch, toList.
+question: How does reduce work in Java streams?
+answer: The Java stream `reduce` operation folds all elements into one value by repeatedly applying an accumulator. With one argument, `reduce((a, b) -> a + b)` returns an `Optional`, since the stream may be empty. With an identity, `reduce(0, Integer::sum)` returns a plain value. A three-argument form adds a combiner so the result type can differ. The identity must satisfy `identity op x == x`.
+q: What is the difference between findFirst and findAny?
+a: Sequentially they behave the same, returning an `Optional` holding the first element that survives the pipeline. In a parallel stream `findFirst` must respect encounter order, so it waits to be sure nothing earlier qualifies, while `findAny` takes whatever finishes first and is faster.
+q: What does allMatch return on an empty stream?
+a: `true` — vacuous truth, as in mathematics: no element fails the predicate. On an empty stream `anyMatch` returns `false` and `noneMatch` returns `true`. All three short-circuit, and each beats `filter(...).count() > 0`, which scans everything.
+q: Why does my parallel reduce give a different answer?
+a: Usually because the identity is not a true identity. Each parallel chunk starts from the identity, so `reduce(1, Integer::sum)` adds an extra 1 for every chunk. Use `0` for addition, `1` for multiplication and `""` for concatenation, and make the operation associative.
+q: What is the difference between `Stream.toList()` and `Collectors.toList()`?
+a: `Stream.toList()`, added in Java 16, returns an unmodifiable list that allows nulls. `collect(Collectors.toList())` returns an `ArrayList` in practice, though that is not guaranteed. When the result must be mutable, use `collect(Collectors.toCollection(ArrayList::new))`.
+q: How do you sum a `Stream<Integer>` in Java?
+a: Convert it to a primitive stream and call `sum()`: `stream.mapToInt(Integer::intValue).sum()`. `sum` exists only on `IntStream`, `LongStream` and `DoubleStream`; `reduce(0, Integer::sum)` also works on the object stream.
 ---
 A terminal operation is where the pipeline finally *does* something: it pulls elements through every lazy stage and produces a value, an `Optional`, a collection or a side effect. Choosing the right terminal is most of the skill — `reduce` when you fold to one value, `anyMatch` when a boolean is enough, `findFirst` when you want the first survivor and nothing more. This lesson covers every terminal except the collectors (next lesson), with the three forms of `reduce` explained properly, because `reduce` is where most stream code goes wrong.
 

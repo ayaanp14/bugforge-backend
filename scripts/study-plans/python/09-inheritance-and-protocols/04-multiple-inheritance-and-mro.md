@@ -1,6 +1,20 @@
 ---
 title: Multiple inheritance and the MRO — mixins and cooperative super()
 minutes: 14
+seo-title: Python MRO and Multiple Inheritance: Mixins and super()
+description: Python orders multiple base classes with the C3 method resolution order. The diamond problem, why super calls the next class rather than the parent, and mixins.
+question: What is the MRO in Python?
+answer: The method resolution order (MRO) is the single linear order in which Python searches a class and its bases for an attribute. Python builds it by C3 linearisation: the class first, its bases left to right, a shared base only after every class that inherits from it, and `object` last. `Class.__mro__` shows it, and `super()` follows it.
+q: How does Python solve the diamond problem?
+a: For `class D(B, C)` where `B` and `C` both inherit from `A`, the MRO is `D, B, C, A, object`: every class appears once and `A` comes after both of its subclasses. So on a `D` instance, `super()` inside `B` calls `C`, not `A`, and a cooperative chain runs `A`'s method only once.
+q: What does super() call in multiple inheritance?
+a: `super()` calls the next class in the MRO of the instance's type, not necessarily the parent of the class where it is written. In a diamond that next class can be a sibling, which is what lets every class in the hierarchy run exactly once.
+q: What is a mixin in Python?
+a: A mixin is a small class that adds one capability, such as a `to_json` method or a generic `__repr__`, holds little or no state, and is meant to be combined with a real base class. It goes before the base in the bases list so its methods take precedence, and is named `…Mixin` by convention.
+q: How do I write `__init__` for multiple inheritance in Python?
+a: Make it cooperative: every class takes its own arguments as keyword-only parameters, calls `super().__init__(**kwargs)` with the rest, then sets its own attributes. The chain then passes through every class once and ends at `object.__init__`, whatever order the bases are combined in.
+q: What causes TypeError: Cannot create a consistent method resolution order?
+a: Listing bases in an order C3 cannot satisfy, typically a base before its own subclass, as in `class X(A, B)` where `B` inherits from `A`. `A` would have to come both before and after `B`; list the subclass first.
 ---
 A class may list several bases: `class Report(JsonMixin, CsvMixin, Base)`. Python resolves which method wins with the C3 *method resolution order*, a single linear order over all the bases that respects each class's own base order and puts subclasses before their parents. `super()` follows that order rather than "the parent", which is what makes cooperative initialisation across several bases possible — and what makes `super().__init__(**kwargs)` the correct spelling in a mixin. This lesson shows the MRO, the diamond, cooperative `super()`, the mixin pattern that is the one everyday use of multiple inheritance, and the cases to avoid.
 

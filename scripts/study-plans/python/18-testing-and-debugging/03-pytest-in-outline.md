@@ -1,6 +1,20 @@
 ---
 title: pytest in outline — plain asserts, fixtures, parametrize and the command line
 minutes: 13
+seo-title: pytest Explained: Fixtures, Parametrize and Plain Asserts
+description: pytest runs plain test functions and shows the values in a failed assert. Fixtures injected by name, yield teardown, parametrize, raises, approx and flags.
+question: What is pytest in Python?
+answer: pytest is the third-party test runner most Python projects use. Tests are plain functions named `test_*` that use the ordinary `assert` statement, which pytest rewrites to show every sub-expression's value on failure. Fixtures are functions injected into tests by parameter name, `@pytest.mark.parametrize` turns one test into a table of cases, and pytest also runs existing `unittest` suites unchanged.
+q: What is a pytest fixture?
+a: A function decorated with `@pytest.fixture` whose value is passed to any test that names it as a parameter. A fixture that `yield`s runs the code after the `yield` as teardown, even when the test fails; `scope='module'` or `'session'` shares one instance across tests, and fixtures in `conftest.py` are shared across a directory.
+q: How does `pytest.mark.parametrize` work?
+a: It attaches a list of argument tuples to a test, and pytest runs the function once per tuple, reporting each case separately, as in `test_parse_duration[1h-3600]`, so one failing case does not hide the others. `pytest.param(..., id='empty')` gives a case a readable name.
+q: What is the difference between pytest and unittest?
+a: `unittest` is in the standard library: tests are methods on a `TestCase` class with assertion methods and `setUp`. pytest is a third-party package with plain functions, bare `assert` and fixtures injected by name, and it runs `unittest` tests too, so a project can migrate one file at a time.
+q: How do you test for an exception in pytest?
+a: Put the call inside `with pytest.raises(ValueError, match='name'):`, where `match` is a regular expression checked against the message. For floats, compare with `pytest.approx` rather than `==`.
+q: Why can't I see print output in pytest?
+a: pytest captures stdout and stderr by default and shows them only for failing tests. Run `pytest -s` to turn capture off, or use the `capsys` fixture and `capsys.readouterr()` to check the output inside a test.
 ---
 pytest is the test runner most Python projects use: tests are plain functions named `test_*`, assertions are the `assert` statement with the failing expression's values shown on failure, fixtures are functions whose return value is injected by parameter name, and `@pytest.mark.parametrize` turns one test into a table. It is a third-party package (`pip install pytest`) and the judge does not have it, so this lesson is reading and the exercises rebuild its two central mechanisms — parametrisation and fixtures with teardown — in plain Python, which is the best way to understand what pytest does for you. It covers the assert rewriting, fixtures and their scopes, `parametrize`, `raises`, markers and the command-line flags you use daily, and how pytest runs `unittest` suites unchanged.
 

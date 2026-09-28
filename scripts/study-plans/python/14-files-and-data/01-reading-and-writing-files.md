@@ -1,6 +1,18 @@
 ---
 title: Reading and writing files — open, modes, encoding and with
 minutes: 13
+seo-title: How to Read and Write Files in Python: open, Modes, with
+description: Python's open takes a mode and an encoding: r reads, w truncates, a appends, b is binary. Reading line by line, writing, and why with matters.
+question: How do you read a file line by line in Python?
+answer: Open the file with `with open(path, encoding="utf-8") as f:` and loop `for line in f:`. Iterating the file object reads one line at a time, so even a multi-gigabyte log costs only the memory of its longest line. Each line keeps its newline character; `f.read()` suits small files read whole, and `with` closes the file on every exit.
+q: What is the difference between r, w and a modes in Python?
+a: `"r"` reads text and is the default, raising `FileNotFoundError` if the file is absent. `"w"` writes, truncating an existing file to empty first or creating it. `"a"` appends to the end, creating the file if needed. `"x"` creates only and fails if the file exists, and adding `b` makes any mode binary.
+q: Why use with open in Python?
+a: `with` guarantees the file is closed on every exit, including an exception, and closing flushes buffered writes to disk and releases the operating system's file descriptor. Without it, writes can sit in the buffer and a loop that opens files can run out of descriptors.
+q: Why should I specify the encoding when opening a file in Python?
+a: Without `encoding=`, text mode uses the platform's preferred encoding, which is not UTF-8 on every Windows machine, so a file written on one system can be unreadable on another. Pass `encoding="utf-8"` on every text open; a `UnicodeDecodeError` usually means the encoding was wrong.
+q: How do I safely overwrite a file in Python?
+a: Write the new content to a temporary file in the same directory, close it, then call `os.replace(tmp, path)` to swap it over the original. If the program crashes mid-write the original is intact, whereas opening the target with `"w"` truncates it first and loses the data if the write fails.
 ---
 `open` returns a file object, and everything about files in Python follows from three choices made in that call: the *mode* (read, write, append; text or binary), the *encoding* (which should always be stated for text), and whether the object is used inside a `with` block (it should be). This lesson covers those choices, the read and write methods and when each is right, line iteration and the newline rules, `print(file=)`, in-memory files with `io.StringIO`, and the facts that matter for the judge — a program may create and read files in its working directory — and for real systems, where a file that is not closed is a resource leak and a partly written file is data loss.
 

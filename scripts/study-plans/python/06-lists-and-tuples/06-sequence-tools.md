@@ -1,6 +1,20 @@
 ---
 title: The sequence tools — enumerate, zip, reversed, any, all, deque and the protocol
 minutes: 13
+seo-title: Python deque, enumerate, zip, any and all Explained
+description: The built-ins that work on every Python sequence: enumerate, zip, reversed, any and all. Plus range as a sequence, deque for queues and the sequence protocol.
+question: What is a deque in Python?
+answer: A deque, `collections.deque`, is a double-ended queue: it appends and pops in O(1) at both ends, where a list's `insert(0, x)` and `pop(0)` shift every element. Use it as the queue in a breadth-first search, with `append` and `popleft`, or with `maxlen` as a sliding window that drops the oldest item. It cannot be sliced, and indexing the middle is O(n).
+q: What do any() and all() do in Python?
+a: `any(s)` returns `True` if at least one element is truthy and `all(s)` if every element is; both stop at the first element that decides the answer. With a generator they read naturally — `any(x < 0 for x in xs)` — and `all([])` is `True`.
+q: How do enumerate and zip work in Python?
+a: `enumerate(s, start=0)` yields `(index, element)` pairs and `zip(a, b)` yields tuples of parallel elements; both are lazy. `zip` stops at the shortest input, so pass `strict=True` to raise an error when the lengths are supposed to match.
+q: Why does reversed() only work once?
+a: `reversed(xs)` returns an iterator, not a list, and an iterator is exhausted after one pass — a second loop over it sees nothing. Use `xs[::-1]` when you need a reversed list you can walk more than once.
+q: How do I make a custom class behave like a sequence in Python?
+a: Implement `__len__` and `__getitem__`, raising `IndexError` past the end. With those two, `len`, indexing, `for` loops, `in`, `reversed`, `enumerate`, `zip` and `sorted` all work on the class, and `collections.abc.Sequence` fills in `index` and `count` from them.
+q: Is range a list in Python 3?
+a: No. `range` is a lazy, immutable sequence that stores only its start, stop and step. It supports `len`, indexing, slicing and a membership test answered arithmetically, so `range(10 ** 12)` costs nothing until iterated; `list(range(5))` materialises it.
 ---
 The built-ins that work on *every* sequence are a small set worth knowing cold: `enumerate`, `zip`, `reversed`, `sorted`, `min`/`max`/`sum`, `any`/`all`, `len`, `in`, slicing. Most have appeared already; this lesson collects them, adds `range` as a first-class sequence, introduces `collections.deque` for the two-ended operations a list does badly, mentions `array` for compact numeric storage, and closes with the *sequence protocol* — the two methods a class implements to be treated as a sequence by all of the above.
 

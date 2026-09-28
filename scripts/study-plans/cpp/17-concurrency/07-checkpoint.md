@@ -1,6 +1,14 @@
 ---
 title: Checkpoint — Concurrency
 minutes: 25
+seo-title: C++ Concurrency Quiz: Threads, Mutexes and Atomics Practice
+description: Test your C++ concurrency with 14 questions and three programs on threads, data races, mutexes, atomics, condition variables, futures and std::async.
+q: Why is `++counter` from two threads undefined behaviour?
+a: `++counter` is a load, an add and a store, and two threads doing it without synchronisation is a data race: one location, at least one write, nothing ordering the accesses. The standard makes that undefined behaviour, so the compiler may assume it never happens — lost increments are only the visible symptom.
+q: What does `std::future::get()` do with an exception thrown in the task?
+a: It rethrows it. The library catches the exception in the task, stores it in the future's shared state, and `get()` throws it on the calling thread with its dynamic type intact, so an ordinary `try`/`catch` around `get()` handles errors from another thread.
+q: Why print only after every thread has been joined?
+a: Output written from worker threads interleaves in an order the scheduler decides, so it differs from run to run. Joining every thread first also guarantees the main thread sees everything the workers wrote; it can then print aggregates in a fixed index order that is identical on every run.
 ---
 This checkpoint covers the whole module: starting and joining threads, data races and the RAII locks, atomics and compare-exchange, condition variables and the bounded queue, futures, promises and `std::async`, and the patterns — a thread pool, split-and-reduce, message passing — that keep concurrent programs correct and their output deterministic.
 

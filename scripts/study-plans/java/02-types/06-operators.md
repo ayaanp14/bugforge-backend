@@ -1,6 +1,20 @@
 ---
 title: Operators and precedence
 minutes: 14
+seo-title: Java Operators and Precedence: Bitwise, Shift and Ternary
+description: Java operators explained: why && and || short-circuit, how the three shift operators differ, ternary traps and the precedence rules that cause bugs.
+question: What is operator precedence in Java?
+answer: Operator precedence in Java decides how an expression without parentheses is grouped: postfix and unary operators bind tightest, then `* / %`, then `+ -`, shifts, comparisons, equality, the bitwise operators, `&&`, `||`, the ternary and finally assignment. Operands are always evaluated left to right. Bitwise operators bind looser than comparisons, so write `(x & 1) == 1`.
+q: What is the difference between & and && in Java?
+a: `&&` short-circuits: it skips the right operand when the left is `false`, which makes `obj != null && obj.isReady()` safe. `&` on booleans always evaluates both sides, and on integers it is bitwise AND. `||` and `|` differ in the same way.
+q: What is the difference between >> and >>> in Java?
+a: `>>` is the arithmetic right shift: it fills with the sign bit, so negative numbers stay negative and `-16 >> 2` is -4. `>>>` is the logical right shift: it fills with zeros, treating the bits as unsigned, which is why `(low + high) >>> 1` is an overflow-safe midpoint.
+q: Why is `1 << 32` equal to 1 for an int in Java?
+a: The shift distance is taken modulo the type's width: only the low 5 bits count for an `int`, and 32 masked to 5 bits is 0, so `1 << 32` shifts by nothing. For a `long` the distance is taken modulo 64.
+q: Why does a ternary operator throw NullPointerException in Java?
+a: When one branch is a wrapper such as `Integer` and the other a primitive, the result is unboxed, so `int y = flag ? x : 0;` throws when `x` is `null`. Both branches are also promoted to a common type, which is why `true ? 1 : 2.0` is `1.0`.
+q: Does Java have an exponent operator?
+a: No. Java has no `**` or other power operator; use `Math.pow(base, exponent)`, which returns a `double`, a loop for integer powers, or `1 << n` for powers of two. Java has no operator overloading either, which is why `BigInteger` arithmetic is method calls.
 ---
 Java's operators are C's, with the sharp edges filed off: no pointer arithmetic, no comma operator, no implicit truthiness, and a specified evaluation order. This lesson covers each family with the details interviewers probe — short-circuiting, bitwise versus logical, the three shifts, and the precedence table you should know rather than guess.
 

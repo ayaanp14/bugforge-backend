@@ -1,6 +1,20 @@
 ---
 title: Intermediate operations — map, filter, flatMap and friends
 minutes: 14
+seo-title: Map vs FlatMap in Java Streams: Filter, Sorted, Distinct
+description: Stream intermediate operations in Java: filter keeps, map transforms one to one, flatMap flattens one to many, sorted and distinct buffer, and limit truncates.
+question: What is the difference between map and flatMap in Java streams?
+answer: In Java streams, `map` transforms each element into exactly one new element, so a stream of n elements stays n long. `flatMap` transforms each element into a stream of zero or more elements and concatenates those streams into one. Use `flatMap` whenever `map` would give you a `Stream<List<X>>` or `Stream<Stream<X>>` and you wanted a `Stream<X>`.
+q: Which stream operations are stateful in Java?
+a: `sorted` and `distinct` are stateful: they must buffer elements — `sorted` all of them — before emitting results, so `sorted()` on an infinite stream never returns. `limit` and `skip` also track a count. `filter`, `map` and `flatMap` are stateless.
+q: Why can't I call `sum()` after `map` on a Java stream?
+a: `map(String::length)` produces a `Stream<Integer>`, and object streams have no `sum()`. Use `mapToInt(String::length)` instead, which gives an `IntStream` with `sum`, `average`, `min` and `max` and avoids boxing.
+q: What does `peek` do in a Java stream?
+a: `peek` runs an action on each element as it passes, without changing it, and is meant for debugging. It is lazy like every intermediate operation: nothing happens without a terminal, and a short-circuiting terminal sees only some elements. Do not use it for real side effects.
+q: What is the difference between `limit` and `takeWhile`?
+a: `limit(n)` keeps at most the first n elements. `takeWhile(predicate)`, added in Java 9, keeps elements while the condition holds and stops at the first that fails, so the data decides where the stream ends rather than a count. Both make infinite streams finite.
+q: How does `distinct` decide duplicates in a stream?
+a: With `equals` and `hashCode`, keeping the first occurrence in encounter order: `Stream.of(3, 1, 3, 2).distinct()` gives 3, 1, 2. Elements without proper `equals` and `hashCode` are never treated as duplicates, so fix the class or use a record.
 ---
 Intermediate operations are the verbs of a pipeline: keep, transform, flatten, order, deduplicate, truncate. Each returns a new stream and runs lazily. Most are one-to-one and stateless; a few (`sorted`, `distinct`) must buffer; `flatMap` is the one people take longest to internalise. This lesson covers each operation with its signature, its typical use, and the mistake it invites.
 

@@ -1,6 +1,20 @@
 ---
 title: async/await — promises with the syntax of ordinary code
 minutes: 14
+seo-title: JavaScript Async/Await Explained: Sequential vs Concurrent
+description: An async function returns a promise, and await pauses it until a promise settles. Running awaits concurrently, try and catch, return await, floating promises.
+question: How does async/await work in JavaScript?
+answer: In JavaScript, an `async` function always returns a promise: `return` fulfils it and `throw` rejects it. Inside, `await` pauses the function until a promise settles, lets the event loop run other work, then resumes with the fulfilled value — or throws the rejection at that line. Asynchronous code therefore reads top to bottom, with ordinary `try`/`catch`, loops and early returns.
+q: How do you run async functions concurrently with `await`?
+a: Start them before awaiting: `await Promise.all([fetchA(), fetchB()])`, or call each function, keep the promises and await them afterwards. Awaiting independent calls one after another runs them one after another — the most common performance bug in async code.
+q: Why doesn't `forEach` work with async/await?
+a: `forEach` ignores the promises its callback returns, so an `async` callback is never awaited: the loop finishes at once and any rejections are lost. Use `for…of` with `await` to go one at a time, or `map` to promises and `await Promise.all(…)` to run them concurrently.
+q: What is the difference between `return promise` and `return await promise`?
+a: Inside a `try` block only `return await` lets the `catch` or `finally` see a rejection; a bare `return promise` leaves the `try` before the promise rejects, so the caller receives the rejection instead. Outside `try` both behave the same, and the bare `return` saves a microtask.
+q: What happens if you forget `await` in JavaScript?
+a: You get the promise instead of its value, so reading `data.items` gives `undefined`. A call made as a bare statement with no `await` and no `catch` becomes a floating promise: its result is dropped and a rejection goes unhandled, which crashes Node. Every promise should be awaited, returned or explicitly handled.
+q: Can you use `await` at the top level in JavaScript?
+a: Yes, in ES modules: top-level `await` works since Node 14.8, and importers wait for the module to finish evaluating. In CommonJS it is a syntax error, so wrap startup in `async function main()` and call `main().catch((err) => { console.error(err); process.exit(1); })`.
 ---
 `async`/`await` (2017) did not add a capability; it added **readability**. An `async` function returns a promise; `await` pauses the function until a promise settles and gives you its value — or throws its rejection — so asynchronous steps read top to bottom with `try`/`catch`, loops and early returns like any synchronous code. The cost of that readability is a handful of rules people learn by getting them wrong: `await` in a loop is sequential, a missing `await` is a silent bug, `return promise` inside `try` does not get caught, and every `await` yields to the event loop even when the value is already there. This lesson covers the semantics precisely, the sequential-versus-concurrent decision, error handling, and the patterns that make async code correct as well as readable.
 

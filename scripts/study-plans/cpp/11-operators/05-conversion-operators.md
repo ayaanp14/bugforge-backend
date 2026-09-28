@@ -1,6 +1,20 @@
 ---
 title: Conversion operators and explicit
 minutes: 14
+seo-title: C++ Explicit Keyword and Conversion Operators Explained
+description: The explicit keyword stops a C++ constructor or conversion operator converting silently. Why explicit operator bool is the idiom, and user-defined literals.
+question: What does the explicit keyword do in C++?
+answer: The `explicit` keyword stops a constructor or conversion operator from being used for implicit conversions. A constructor callable with one argument is otherwise a converting constructor, so `void run(Metres); run(5.0);` would compile. With `explicit Metres(double)`, only direct initialisation such as `Metres m(5.0)` or `static_cast<Metres>(5.0)` works, and `Metres m = 5.0;` is an error.
+q: What is a conversion operator in C++?
+a: A conversion operator is a member function named after a target type, such as `operator double() const`, with no parameters and no written return type; it converts your object to that type. Make it `explicit`: an implicit one turns a missing `operator+` or `operator<<` into silent arithmetic on the converted value instead of a compile error.
+q: Why use explicit operator bool?
+a: A plain `operator bool()` also converts on to `int`, so `r + 1` and `int n = r;` compile and mean nothing. `explicit operator bool` is still applied in conditions — `if`, `while`, `for`, `?:` and the operands of `!`, `&&` and `||` — and nowhere else. `std::cin`, `std::unique_ptr` and `std::optional` all use it.
+q: When should a constructor be explicit?
+a: Whenever it can be called with a single argument, unless the conversion is lossless, obvious and intended. `std::string` converts from a string literal implicitly because a literal is text; `std::vector<int>(5)` is `explicit` because `std::vector<int> v = 5;` would read as a vector containing 5. Never mark copy or move constructors `explicit`.
+q: How many user-defined conversions can C++ apply implicitly?
+a: One per implicit conversion. With `Fraction(long long)` and `Money(Fraction)`, `Money m = 3;` fails because it would need two user-defined conversions. When two conversions are equally good, such as constructors from `int` and from `double` called with a `long`, the call is ambiguous and does not compile.
+q: What is a user-defined literal in C++?
+a: A user-defined literal is a function such as `operator""_km` that turns a suffixed literal like `2.5_km` into a value. User suffixes must start with an underscore; suffixes without one, such as `s`, `sv` and `ms`, are reserved for the standard library. The parameter is `unsigned long long`, `long double` or `const char*` with a length, and the function is usually `constexpr`.
 ---
 C++ converts between types on its own more often than most languages: `int` to `double`, `const char*` to `std::string`, `3` to `Fraction` if `Fraction` has a constructor that takes one integer. Every one of those is a *user-defined* or built-in implicit conversion, and each is a decision someone made — sometimes without noticing. This lesson settles the two mechanisms a class controls, the converting constructor and the conversion operator, what `explicit` switches off, why `explicit operator bool` is the form every modern type uses, which surprising conversions the standard library itself contains, and how user-defined literals let a value be spelt as `2.5_km`.
 

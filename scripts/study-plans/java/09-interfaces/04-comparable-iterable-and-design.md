@@ -1,6 +1,20 @@
 ---
 title: Comparable, Iterable and designing with interfaces
 minutes: 14
+seo-title: How to Implement Comparable and Iterable in Java
+description: Comparable gives a Java class a natural order; Iterable lets for-each loop over it. The compareTo contract, Comparator, iterators and interface design.
+question: How do you implement Comparable in Java?
+answer: To implement Comparable in Java, declare `implements Comparable<T>` and write `compareTo(T o)` to return a negative number, zero or a positive number for less than, equal or greater than. Compare the most significant field first with `Integer.compare` or `Double.compare`, never subtraction, and keep it consistent with `equals`. `Collections.sort`, `TreeMap` and `PriorityQueue` then use that natural order.
+q: What is the difference between Comparable and Comparator in Java?
+a: `Comparable` gives a class its one natural order through `compareTo`, written inside the class. A `Comparator` is an external ordering passed to a sort or a sorted collection, so a type can have many — built with `Comparator.comparing`, `thenComparing` and `reversed`.
+q: Why should compareTo be consistent with equals?
+a: `TreeSet` and `TreeMap` use `compareTo` instead of `equals` to decide which elements are duplicates. If the two disagree, a `TreeSet` and a `HashSet` given the same elements keep different ones; `BigDecimal`, where `2.0` and `2.00` compare as equal but are not `equals`, is the classic example.
+q: How do you make a class work with a for-each loop in Java?
+a: Implement `Iterable<T>` by returning a fresh `Iterator<T>` from `iterator()`. The for-each loop calls `iterator()` once, then `hasNext()` and `next()` until the elements run out; `next()` past the end must throw `NoSuchElementException`.
+q: Why should you not use subtraction in compareTo?
+a: `a - b` overflows when the values are far apart — a large positive minus a large negative wraps round to a negative number — and the order silently breaks. `Integer.compare(a, b)` and `Long.compare` always give the correct sign, and `Double.compare` also handles NaN and negative zero.
+q: What is the interface segregation principle?
+a: Interfaces should be small and role-specific, so implementors depend only on the methods they use: `Readable` and `Writable` rather than one `ReadWritable`. `Comparable` and `Iterable` each have a single abstract method, which is why so many classes implement them.
 ---
 Two interfaces from the JDK teach more about interface design than any abstract discussion: `Comparable`, which gives a type a natural order, and `Iterable`, which lets it be looped over with for-each. Implementing both correctly is expected of any value type you write, and both illustrate how a small contract unlocks a large amount of library behaviour. The second half of the lesson turns those lessons into guidelines for interfaces of your own.
 

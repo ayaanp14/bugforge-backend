@@ -1,6 +1,20 @@
 ---
 title: Polymorphism, casting and instanceof
 minutes: 14
+seo-title: Polymorphism in Java: Dynamic Dispatch, Casting and instanceof
+description: Polymorphism in Java lets a supertype reference run each object's own override at run time. Dynamic dispatch, upcasting, downcasting and instanceof patterns.
+question: What is polymorphism in Java?
+answer: Polymorphism in Java is the ability of one reference type to stand for objects of many classes, each responding in its own way. An `Account` variable can hold any subclass instance, and calling an overridden method runs the version in the object's actual class, chosen at run time by dynamic dispatch. New subclasses therefore plug into existing code without changing it.
+q: What is the difference between compile-time and run-time polymorphism in Java?
+a: Compile-time (static) polymorphism is method overloading: the compiler chooses among same-named methods by the arguments' declared types. Run-time (dynamic) polymorphism is method overriding: the JVM chooses the implementation from the object's actual class on every call.
+q: What is the difference between upcasting and downcasting in Java?
+a: Upcasting widens a reference to a supertype, as in `Account a = savings;` — it is implicit and can never fail. Downcasting narrows it back, as in `(SavingsAccount) a` — it must be written explicitly and is checked at run time, throwing `ClassCastException` if the object is not that type.
+q: What causes ClassCastException in Java?
+a: A downcast to a class the object does not belong to, such as casting an `Account` that holds a `CheckingAccount` to `SavingsAccount`. The compiler allows the cast because it might succeed; the JVM checks the object's class at run time and throws if it does not.
+q: What is pattern matching for instanceof in Java?
+a: Since Java 16, `if (a instanceof SavingsAccount s)` tests the type and, when the test passes, binds the cast value to `s` in one step, replacing the check-then-cast idiom. `s` can be used after `&&` in the same condition, but not after `||`.
+q: What does instanceof return for null in Java?
+a: `false`. `x instanceof T` is true only for a non-null object of type `T` or one of its subclasses, so an `instanceof` check never throws `NullPointerException` and doubles as a null check.
 ---
 Polymorphism — "many forms" — is the ability to treat a `SavingsAccount`, a `CheckingAccount` and a `BusinessAccount` all as `Account` and have each respond in its own way. It is the feature that makes object-oriented code extensible without modification: new subclasses plug into old code. This lesson covers how it works at run time (dynamic dispatch), how references move between types (up- and down-casting), and the modern `instanceof` pattern that replaced the cast-after-check idiom.
 

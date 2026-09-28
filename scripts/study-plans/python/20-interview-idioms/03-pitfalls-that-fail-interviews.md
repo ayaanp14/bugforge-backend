@@ -1,6 +1,22 @@
 ---
 title: Pitfalls that fail interviews — the twelve Python mistakes interviewers watch for
 minutes: 15
+seo-title: Common Python Mistakes: 12 Pitfalls Interviewers Watch For
+description: The Python mistakes that fail interviews: mutable default arguments, shared-row grids, late-binding closures, is vs ==, mutating while iterating and more.
+question: Why is a mutable default argument a bug in Python?
+answer: A mutable default argument is a bug in Python because default values are evaluated once, when the `def` runs, and stored on the function. Every call that omits the argument shares that same list or dict, so `add_item(1)` then `add_item(2)` returns `[1, 2]`. Default to `None` instead and create the list inside the function: `items = [] if items is None else items`.
+q: Why does `[[0] * n] * m` create a broken grid?
+a: The outer `*` repeats a reference to one row, so all m rows are the same list and setting `grid[0][0]` changes every row. Build the rows with a comprehension instead: `[[0] * n for _ in range(m)]`.
+q: Why does removing items from a list while iterating skip elements?
+a: Each removal shifts the later elements left under the iterator's index, so the element after a removed one is never visited. Build a new list with a comprehension or iterate over a copy; a dict changed during iteration raises `RuntimeError` instead.
+q: Why does `list.sort()` return None?
+a: `sort` works in place, and Python's in-place methods return `None` by convention, so `xs = xs.sort()` sets `xs` to `None`. Call `xs.sort()` on its own, or use `sorted(xs)` for a new list; `append`, `reverse` and `dict.update` behave the same way.
+q: Why is -7 // 2 equal to -4 in Python?
+a: Python's `//` floors towards negative infinity, and `%` gives a result with the divisor's sign, so `-7 // 2 == -4` and `-7 % 2 == 1`. C and Java truncate towards zero instead; use `int(-7 / 2)` when truncation is what you mean.
+q: Why is a bare except bad in Python?
+a: A bare `except:` catches everything, including `KeyboardInterrupt`, `SystemExit` and the typo in the `try` block that would have explained the failure. Catch the specific exception, such as `ValueError`, around the specific statement.
+q: Why is `x == 1 or 2` always true?
+a: It parses as `(x == 1) or 2`, and `or` returns its first truthy operand, so when `x` is not 1 the result is `2`, which is truthy. Write `x in (1, 2)` to compare against several values.
 ---
 Interviewers keep a short list of Python mistakes, because the same twelve appear in most rounds and each one says something about how well the candidate knows the language. None is exotic; all are one line. This lesson names them, shows each as it appears in practice, explains the mechanism (which is what the follow-up question will ask), and gives the fix. Read it as a checklist to run over your own code before you say "done": mutable defaults, the shared-row grid, late-binding closures, `is` for values, modifying a list while iterating, `.sort()` returning `None`, integer division and modulo with negatives, float equality, the O(n²) string, the recursion limit, `and`/`or` returning operands, and the broad `except`.
 

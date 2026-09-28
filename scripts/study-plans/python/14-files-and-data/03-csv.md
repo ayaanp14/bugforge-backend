@@ -1,6 +1,20 @@
 ---
 title: CSV — reader, writer, DictReader and the quoting rules
 minutes: 13
+seo-title: How to Read and Write CSV Files in Python: DictReader
+description: Python's csv module reads rows as lists or header-keyed dicts and writes them with correct quoting. The newline rule, delimiters and converting fields.
+question: How do you read a CSV file in Python?
+answer: Open the file with `newline=""` and an encoding, then pass it to `csv.reader`, which yields each row as a list of strings, or `csv.DictReader`, which yields each row as a dict keyed by the header row. The module handles quoted fields that contain commas, quotes and newlines. Every field is a string, so convert numbers with `int` or `float`.
+q: Why does the csv module need `newline=""`?
+a: `newline=""` turns off text mode's line-ending translation and leaves line endings to `csv`, which knows that a quoted field may contain a newline. Without it, quoted newlines can be misread, and when writing on Windows a blank line appears between rows.
+q: What is the difference between csv.reader and csv.DictReader?
+a: `csv.reader` yields each row as a list, so fields are read by position; `csv.DictReader` takes the first row as field names and yields each row as a dict, so fields are read by name, as in `row["qty"]`. Code using `DictReader` survives the columns being reordered.
+q: How do I write a CSV file in Python?
+a: Open the file with `"w"`, `newline=""` and an encoding, then use `csv.writer(f).writerow(row)` for lists, or `csv.DictWriter(f, fieldnames=...)` with `writeheader()` and `writerows(rows)` for dicts. The writer quotes and escapes any field containing a comma, a quote or a newline automatically.
+q: How do I read a semicolon or tab-separated file with Python's csv?
+a: Pass the delimiter to the reader, `csv.reader(f, delimiter=";")` for European Excel exports, or use `dialect="excel-tab"` for tab-separated files. `csv.Sniffer().sniff(sample).delimiter` can guess from a sample, but when you know the format, stating the delimiter is more reliable.
+q: Why does the first CSV header have strange characters in front?
+a: The file was saved as UTF-8 with a byte-order mark, as Excel often does, and reading it as `utf-8` leaves the mark attached to the first header. Open it with `encoding="utf-8-sig"`, which strips the mark, so the first column name matches.
 ---
 Comma-separated values look simple enough to split by hand, and every hand-written CSV parser breaks on the first field that contains a comma, a quote or a newline. The `csv` module handles the quoting rules, the dialects (tab-separated, semicolons, Excel's conventions) and the line-ending trap, and its `DictReader`/`DictWriter` map rows to dictionaries keyed by the header. This lesson covers reading rows as lists and as dicts, writing with the correct `newline=""`, delimiters and quoting, computing over columns with the right conversions, reading from stdin and strings, and the cases CSV cannot represent.
 

@@ -45,6 +45,20 @@ export interface QuizQuestion {
   explanation: string;
 }
 
+/**
+ * What a search engine is told about a lesson, and the questions the page
+ * answers in so many words (authored in the lesson's frontmatter —
+ * scripts/study-plans/dsl.ts LessonSeo, SEARCH-FIELDS.md). Public: the
+ * page prints the answer and the questions, and the head carries the rest.
+ */
+export interface LessonSeo {
+  title: string;
+  description: string;
+  question: string | null;
+  answer: string | null;
+  faq: Array<{ q: string; a: string }>;
+}
+
 /** A lesson as seeded — everything, including what is never sent. */
 export interface LessonDefinition {
   key: string;
@@ -57,6 +71,29 @@ export interface LessonDefinition {
   body: string;
   exercises: ExerciseDefinition[];
   quiz: QuizQuestion[];
+  seo: LessonSeo | null;
+}
+
+/**
+ * The column as a LessonSeo, or null for a row seeded before the column
+ * existed (or by hand) — the pages then fall back to the lesson's title
+ * and opening, as they did before.
+ */
+function readLessonSeo(value: unknown): LessonSeo | null {
+  if (!value || typeof value !== "object") return null;
+  const v = value as Record<string, unknown>;
+  if (typeof v["title"] !== "string" || typeof v["description"] !== "string" || !v["title"] || !v["description"]) return null;
+  const text = (x: unknown) => (typeof x === "string" && x ? x : null);
+  const faq = Array.isArray(v["faq"])
+    ? v["faq"].flatMap((f) => {
+        const q = text((f as Record<string, unknown> | null)?.["q"]);
+        const a = text((f as Record<string, unknown> | null)?.["a"]);
+        return q && a ? [{ q, a }] : [];
+      })
+    : [];
+  const question = text(v["question"]);
+  const answer = text(v["answer"]);
+  return { title: v["title"], description: v["description"], question: question && answer ? question : null, answer: question && answer ? answer : null, faq };
 }
 
 export interface ModuleDefinition {
@@ -181,7 +218,7 @@ export async function trackDefinition(key: string): Promise<TrackDefinition | nu
             overview: true,
             lessons: {
               orderBy: { position: "asc" },
-              select: { key: true, slug: true, title: true, kind: true, minutes: true, xp: true, passMark: true, body: true, exercises: true, quiz: true },
+              select: { key: true, slug: true, title: true, kind: true, minutes: true, xp: true, passMark: true, body: true, exercises: true, quiz: true, seo: true },
             },
           },
         },
@@ -212,6 +249,7 @@ export async function trackDefinition(key: string): Promise<TrackDefinition | nu
           body: l.body,
           exercises: (Array.isArray(l.exercises) ? l.exercises : []) as unknown as ExerciseDefinition[],
           quiz: (Array.isArray(l.quiz) ? l.quiz : []) as unknown as QuizQuestion[],
+          seo: readLessonSeo(l.seo),
         })),
       })),
     };
@@ -589,6 +627,8 @@ export interface LessonPayload {
     body: string;
     exercises: Array<{ title: string; prompt: string; starter: string; hints: string[]; cases: Array<{ stdin: string; expected: string }>; hiddenCases: number }>;
     quiz: Array<{ prompt: string; options: string[] }>;
+    /** The head the page sets and the answer and questions it prints — the same the API gives the edge (services/seo.ts). */
+    seo: LessonSeo | null;
   };
   progress: (LessonProgress & { status: LessonStatus; mastery: number }) | null;
   prev: { slug: string; title: string } | null;
@@ -631,6 +671,7 @@ export async function lessonFor(trackKey: string, lessonSlug: string, userId: st
         hiddenCases: e.cases.filter((c) => c.hidden).length,
       })),
       quiz: lesson.quiz.map((q) => ({ prompt: q.prompt, options: q.options })),
+      seo: lesson.seo,
     },
     progress: p ? { ...p, status: lessonStatus(lesson, p), mastery: mastery(lesson, p) } : null,
     prev: prev ? { slug: prev.slug, title: prev.title } : null,

@@ -1,6 +1,20 @@
 ---
 title: Pure functions and immutability — why, and how far to take it
 minutes: 12
+seo-title: Pure Functions and Immutability in JavaScript Explained
+description: A pure function returns the same output for the same input and has no side effects. Immutable updates with spread, structural sharing and Object.freeze.
+question: What is a pure function in JavaScript?
+answer: A pure function always returns the same result for the same arguments and has no observable effect besides returning: it mutates no arguments or outer state, performs no I/O, and reads nothing that can change, such as the clock, `Math.random` or a global. `(a, b) => a + b` is pure; `Date.now()`, `console.log` and `arr.push(x)` are not. Pure functions can be tested as tables and cached freely.
+q: What is immutability in JavaScript?
+a: Immutable data is never changed after it is created; an update produces a new value that shares every part that did not change. JavaScript's primitives are already immutable, but objects and arrays are not, so immutability is a discipline enforced by convention, by `Object.freeze` in development or by TypeScript's `readonly`.
+q: How do you update nested state immutably in JavaScript?
+a: Spread-copy each level on the path you change and leave everything else shared: `{ ...user, address: { ...user.address, city: "Paris" } }` creates a new user and a new address but keeps the same `tags` array. This structural sharing costs O(depth), not O(size), and lets `prev.address === next.address` detect changes.
+q: Does const make an object immutable in JavaScript?
+a: No. `const` only stops the variable being reassigned; the object it refers to can still be mutated. `Object.freeze` prevents changes to an object's own properties, but it is shallow, so nested objects stay mutable unless you freeze them recursively, and in strict mode a write to a frozen property throws.
+q: Which JavaScript array methods mutate the array?
+a: `push`, `pop`, `shift`, `unshift`, `splice`, `sort`, `reverse`, `fill` and `copyWithin` change the array in place, while `map`, `filter`, `reduce`, `slice`, `concat`, `flat` and `flatMap` return new values. On Node 16 copy before sorting with `[...a].sort()`; Node 20 added `toSorted`, `toReversed`, `toSpliced` and `with`.
+q: What is the pure core, impure shell design?
+a: It keeps effects at the edges, and is also called functional core, imperative shell: gather inputs such as the request and database rows, compute with pure functions, then apply outputs by writing and responding. A function that needs the time takes `now` as a parameter, and one that would log returns what to log, so the core is testable without mocks.
 ---
 Functional programming in JavaScript is not about avoiding classes or writing everything as arrows; it is two disciplines that make code easier to reason about: functions that **only** compute their result from their inputs (**pure**), and data that is **not modified** after creation (**immutable**). Together they give you code you can test with a table of inputs and outputs, cache freely, run in any order, and debug by looking at values instead of histories. This lesson defines both precisely, shows what they buy, gives the update idioms and their costs, and — importantly — says where the boundary is: programs must have effects, and the skill is keeping them at the edges.
 

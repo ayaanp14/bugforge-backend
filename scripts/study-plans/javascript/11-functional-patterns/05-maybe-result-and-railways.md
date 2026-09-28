@@ -1,6 +1,20 @@
 ---
 title: Maybe, Result and railway-oriented code — making absence and failure values
 minutes: 13
+seo-title: Maybe and Result in JavaScript: Railway-Oriented Programming
+description: Maybe and Result make absence and failure explicit values. Build both in JavaScript, chain fallible steps with flatMap, and see when optional chaining wins.
+question: What are Maybe and Result types?
+answer: `Maybe` and `Result` are small wrapper types that make absence and failure explicit values instead of `undefined` or a thrown exception. A `Maybe` is `Some(value)` or `None`; a `Result` is `Ok(value)` or `Err(error)`, and it records why a step failed. Both offer `map` and `flatMap`, so a chain of steps that may each fail reads as a straight line.
+q: What is railway-oriented programming?
+a: Railway-oriented programming chains steps that return a `Result` with `flatMap`, so success rides one track and the first `Err` switches to the other and skips every remaining step untouched. No step needs an `if (!ok) return`, the error arrives at the end as a value, and one `match` there handles both outcomes.
+q: What is the difference between map and flatMap on Maybe or Result?
+a: `map` applies a plain function to the wrapped value and wraps the result again. `flatMap` applies a function that itself returns a `Maybe` or `Result` and does not wrap it a second time. Using `map` with a fallible step produces `Some(Some(x))` or `Ok(Ok(x))`, the sign that `flatMap` was needed.
+q: When is optional chaining better than a Maybe type?
+a: For a chain of property accesses: `user?.address?.city ?? "unknown"` is shorter, standard and allocates nothing. A `Maybe` earns its place when the steps are functions that may return nothing, such as lookups, parses and `find` calls, when you want to `filter` midway, or when the possibly absent value is passed around before a decision.
+q: How are promises related to the Result type?
+a: A promise is a `Result` spread over time. `then` works like `map` and `flatMap`, since a returned promise is flattened, `catch` acts as `mapErr` plus recovery, and a rejection rides the failure track past every `then` until something catches it.
+q: How do you collect all validation errors instead of stopping at the first?
+a: Run every check to get a list of results, then fold them: gather the errors from every failed result, and if there are none, return `Ok` with all the values. Functional libraries call this `sequence` or `traverse`; `Promise.allSettled` is the asynchronous version of the same idea.
 ---
 `undefined` and exceptions are JavaScript's answers to "there is no value" and "this failed", and both are invisible in a function's signature: nothing tells the caller that `findUser` may return `undefined` or that `parseConfig` may throw. Two small wrapper types make those outcomes explicit **values**: `Maybe` (a value that may be absent) and `Result` (a success or a typed failure). With `map` and `flatMap` on them, a chain of steps that might each fail becomes a straight line — the "railway": success rides one track, the first failure switches to the other and skips the rest. This lesson builds both types in a few dozen lines, shows the railway, relates them to things you already use (`?.`, `??`, arrays, promises), and is frank about when plain JavaScript idioms are the better choice.
 

@@ -1,6 +1,20 @@
 ---
 title: deque, list and the adaptors — stack, queue and priority_queue
 minutes: 14
+seo-title: C++ Deque, List, Stack, Queue and Priority Queue Explained
+description: When std::deque and std::list beat a vector, and how the stack, queue and priority queue adaptors work: min-heaps, comparators and a pop that returns void.
+question: How do you make a min-heap with std::priority_queue?
+answer: Pass `std::greater` as the comparator: `std::priority_queue<int, std::vector<int>, std::greater<int>>` keeps the smallest element on `top()`, while the default `std::priority_queue<int>` is a max-heap. A custom comparator returns `true` when its first argument has lower priority — should come out after the second — so `a.priority < b.priority` puts the highest priority first. Push and pop are O(log n).
+q: What is the difference between std::deque and std::vector?
+a: A `std::deque` stores elements in fixed-size blocks, so it pushes and pops at both ends in O(1) and still indexes in O(1), while a vector is one contiguous block that grows only at the back. A deque is not contiguous — no `data()`, slightly slower iteration — and a push at either end invalidates its iterators but not its references.
+q: When should you use std::list in C++?
+a: When you need its guarantees: iterators and references that stay valid until their own element is erased, O(1) insert and erase at a position you already hold, and O(1) `splice` between lists. It has no indexing and its nodes are cache-unfriendly, so a vector is usually faster otherwise. An LRU cache — a list plus a hash map of iterators — is the classic use.
+q: Why does std::stack pop() return void?
+a: For exception safety. If `pop()` removed the element and returned it by value and that copy threw, the element would already be gone and lost. Separating `top()` from `pop()` keeps the strong guarantee, so the idiom is two steps: read `top()` or `front()`, then call `pop()`. Check `empty()` first; popping an empty adaptor is undefined behaviour.
+q: How is breadth-first search written with std::queue?
+a: Push the start, then repeatedly read `front()`, `pop()` it and push each unvisited neighbour, marking a cell visited when it is pushed rather than when it is popped. Cells come off the queue in order of distance, so the first time the goal is popped its distance is the shortest path. A stack in place of the queue gives depth-first search.
+q: Can you sort a std::list with std::sort?
+a: No — `std::sort` needs random-access iterators and a list's are only bidirectional, so the call does not compile. Use the member function `l.sort()`, which sorts by relinking the nodes instead of moving the values.
 ---
 Two sequence containers and three adaptors cover the situations a vector does not. `std::deque` is for when both ends move; `std::list` is for when elements must stay put while the collection changes around them; and `std::stack`, `std::queue` and `std::priority_queue` are for when a discipline — last in first out, first in first out, largest first — is the whole point and a wider interface would only invite mistakes. This lesson covers the layout and cost of each, the `pop()` that returns nothing and why, the comparator convention of `std::priority_queue` that everyone gets backwards once, and the breadth-first search a queue was made for.
 

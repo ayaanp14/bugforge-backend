@@ -1,6 +1,20 @@
 ---
 title: Anatomy of a Java program
 minutes: 15
+seo-title: Java Program Structure: main Method, Syntax and Conventions
+description: A Java program is classes of fields, methods and constructors that hold statements. Why main is public static void, plus identifiers, literals and conventions.
+question: What is the structure of a Java program?
+answer: A Java program is made of classes. Each class has members — fields for state, methods for behaviour and constructors for initialisation — and methods contain statements, which contain expressions. Execution starts at `public static void main(String[] args)` in the class you launch. Every value is either one of the eight primitives, held directly, or a reference to an object.
+q: Why is the main method public static void in Java?
+a: `public` lets the launcher call it from outside the class, `static` lets it run before any object exists, and `void` means it returns nothing. The launcher checks every word, the name `main` and the single `String[]` parameter; `String... args` is also accepted.
+q: What is the difference between an expression and a statement in Java?
+a: An expression produces a value, such as `a + b` or `account.balance()`; a statement does something, such as a declaration, an assignment or an `if`. Only assignments, increments, method calls and object creation may stand alone as statements, so `x + 1;` is a compile error.
+q: What are the naming conventions in Java?
+a: Classes, interfaces, enums and records use UpperCamelCase nouns; methods use lowerCamelCase verbs; variables, fields and parameters use lowerCamelCase; `static final` constants use UPPER_SNAKE_CASE; packages are lowercase reversed domains such as `com.example.billing`; type parameters are single capitals such as `T`.
+q: What are the rules for identifiers in Java?
+a: An identifier starts with a letter, `_` or `$` and continues with letters, digits, `_` or `$`. Identifiers are case-sensitive and cannot be a keyword or the literals `true`, `false` and `null`; since Java 10, `var` is a reserved type name rather than a keyword.
+q: What does "cannot find symbol" mean in Java?
+a: The compiler met a name it cannot resolve: a misspelling, the wrong case, a missing import, or a variable declared in a scope that is not visible at that point. Check the exact spelling at the line the error points to first.
 ---
 Before writing anything substantial you need the vocabulary the rest of the track uses: what a class, a member, a statement and an expression are, how comments and identifiers work, and the conventions every Java codebase follows. None of it is hard; all of it is assumed from here on.
 

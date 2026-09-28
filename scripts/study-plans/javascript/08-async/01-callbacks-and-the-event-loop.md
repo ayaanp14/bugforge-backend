@@ -1,6 +1,20 @@
 ---
 title: Callbacks and the event loop — one thread, two queues
 minutes: 14
+seo-title: JavaScript Event Loop Explained: Microtasks vs Macrotasks
+description: The JavaScript event loop runs one task, then all pending microtasks, then the next task. Why setTimeout 0 runs after Promise.then, and error-first callbacks.
+question: How does the JavaScript event loop work?
+answer: The JavaScript event loop runs code on one thread: it takes a task — an expired timer, a finished I/O operation, an event — runs its callback to completion, then drains every pending microtask, such as promise reactions and `queueMicrotask` callbacks, before taking the next task. Nothing interrupts running code, so a long synchronous loop holds up timers, I/O and rendering alike.
+q: What is the difference between microtasks and macrotasks?
+a: Macrotasks, or tasks — timers, I/O callbacks, `setImmediate` — run one per loop iteration, so other work can interleave. Microtasks — promise reactions, `await` continuations, `queueMicrotask` and, in Node, `process.nextTick` — all run right after the current task and before the next one, including microtasks they queue themselves.
+q: Why does `setTimeout(fn, 0)` run after `Promise.then`?
+a: A `setTimeout` callback is a task, while a `.then` callback is a microtask, and every pending microtask runs before the loop takes its next task. So the order is synchronous code, then `process.nextTick` in Node, then promise reactions, then the timeout — whatever its delay.
+q: What is an error-first callback in Node.js?
+a: It is Node's callback convention: the callback receives `(err, result)`, with `err` set to `null` on success. Check `err` first and return after handling it, call the callback exactly once and always asynchronously, and pass errors to it rather than throwing, because the caller's `try` is no longer on the stack.
+q: Is JavaScript single-threaded?
+a: Your JavaScript runs on one thread, so only one piece of it runs at a time and there are no data races. Waiting work such as timers, file reads and network requests is handed to the system, and CPU-heavy work can move to `worker_threads` or Web Workers. Asynchronous means not blocking while waiting — not parallel.
+q: What is callback hell?
+a: Callback hell is the deep nesting that appears when each sequential asynchronous step goes inside the previous step's callback, with error handling repeated at every level. Promises fix the composition and `async`/`await` the syntax; `util.promisify` turns an error-first callback function into one that returns a promise.
 ---
 JavaScript runs your code on **one thread**. It never waits: when something takes time — a timer, a file read, a network request — the runtime hands the work to the system, keeps executing, and later runs a function you left for it. The machinery that decides *when* is the **event loop**, and its two queues — one for tasks, one for microtasks — explain every ordering puzzle: why `setTimeout(fn, 0)` runs after a `Promise.then`, why a long loop freezes the UI, why an `await` in a loop is sequential. Module 1 previewed this; this lesson is the real model, plus the callback style that Node was built on and that every later abstraction (promises, `async`) is sugar over.
 

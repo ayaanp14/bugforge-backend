@@ -1,6 +1,20 @@
 ---
 title: Lexical scope, the scope chain and hoisting
 minutes: 12
+seo-title: Lexical Scope and Hoisting in JavaScript: The Scope Chain
+description: JavaScript resolves names lexically, climbing from block to function to module to global scope. How hoisting treats function, var, let and const, and shadowing.
+question: What is lexical scope in JavaScript?
+answer: Lexical scope means JavaScript decides which variable a name refers to by where the code is written, not by where it is called from. Every block, function and module creates a scope; a lookup starts in the innermost one and climbs the scope chain — block, function, module, global — until it finds a declaration, or throws a `ReferenceError`. That fixed chain is what makes closures possible.
+q: What is hoisting in JavaScript?
+a: Hoisting is the engine registering every declaration in a scope before running it. Function declarations are registered complete, so they are callable early; `var` is set to `undefined`; `let`, `const` and `class` stay uninitialised, so using them before their line throws a `ReferenceError`.
+q: Why can you call a function before it is declared in JavaScript?
+a: Function declarations are hoisted with their body, so `main()` may call `square()` defined further down the file. A function stored in a `const`, such as `const helper = () => …`, is not available until its line runs and throws a temporal-dead-zone error if called earlier.
+q: What are the types of scope in JavaScript?
+a: There are four: global scope (`globalThis`), module scope (each ES module or CommonJS file), function scope (parameters and everything declared in the body, including `var`) and block scope (any braces — loop and `if` bodies, `catch` — where `let`, `const` and `class` live).
+q: Why does var at the top of a Node.js file not become a global?
+a: Node wraps every CommonJS file in a function, so a top-level `var` is local to that function, and ES modules have their own top-level scope too. In a browser script, by contrast, top-level `var` and function declarations become properties of `window`.
+q: Why do switch cases throw "identifier has already been declared"?
+a: All case clauses share the one scope of the `switch` block, so declaring the same `let` or `const` in two cases redeclares it. Wrap each case body in braces to give it a block scope of its own.
 ---
 Scope is the answer to "which `x` does this line mean?" JavaScript answers it **lexically** — by where the code is written, not by who called it — through a chain of nested scopes that the engine builds when it parses the file. Understanding the chain explains closures (next lesson), why `var` leaks, why a function can use a variable declared after it, and what a module does to the global namespace. This lesson is that model, made concrete.
 

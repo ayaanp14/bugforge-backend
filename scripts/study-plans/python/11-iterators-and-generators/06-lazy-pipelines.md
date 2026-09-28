@@ -1,6 +1,20 @@
 ---
 title: Lazy pipelines — a worked log-processing example
 minutes: 14
+seo-title: Python Generator Pipelines: Processing Large Files Lazily
+description: A Python generator pipeline chains stages that take an iterable and yield, streaming a log through parse, filter and aggregate in one constant-memory pass.
+question: How do you process a large file in Python without loading it into memory?
+answer: Iterate the file object and chain generator functions: each stage takes an iterable and yields records, so one line at a time flows through parsing, filtering and transforming, and a final function consumes the stream into totals. Memory holds one record plus the running totals whatever the file size, and nothing runs until that consumer starts pulling values.
+q: What is a generator pipeline in Python?
+a: A generator pipeline is a chain of generator functions in which each stage takes an iterable, does one job and yields results to the next (source, parse, filter, transform), ending in one consumer that aggregates. No intermediate lists are built, and each record passes through every stage before the next is read.
+q: How do you unit test a generator function?
+a: Feed it a plain list and compare the list you get back, as in `list(parse(sample))`. Because a stage's contract is iterable in, iterable out, the test needs no files, no stdin and no mocking. Test each stage alone, then the assembled chain.
+q: Where should a data pipeline handle malformed records?
+a: In the stage that has the context to name the problem, usually the parser, which knows the line number. It can report to stderr and continue, as a log processor should, or raise, as a config loader should; either way the decision stays local and later stages see only valid records.
+q: Why use frozen dataclasses for pipeline records?
+a: A frozen dataclass cannot be mutated, so a transform stage must create a new record, for example with `dataclasses.replace`, and a bug cannot corrupt an object an upstream stage still holds. Named fields also read better than tuple indexes once a record has more than two fields.
+q: What turns a lazy pipeline eager by accident?
+a: A stage that returns a list instead of yielding, which forces every earlier stage to run to completion and holds the whole input in memory. Consuming the stream twice, as `len(list(hits))` before a loop does, empties it; materialise with `list()` only where a second pass is truly needed.
 ---
 The previous lessons gave the parts; this one assembles them into the shape that real data-processing code takes in Python: a chain of generator stages, each taking an iterable and yielding, that reads a source once and streams every record through parse, filter, transform and aggregate steps without ever holding the whole input. The worked example processes a web-server log — the kind of task that is a script in every company — and the design points are the ones that make a pipeline maintainable: one job per stage, stages that are independently testable, materialisation only at the end, and errors handled at the stage that can name them.
 

@@ -1,6 +1,20 @@
 ---
 title: The unordered containers — hashing, buckets and custom keys
 minutes: 13
+seo-title: C++ Unordered Map vs Map: Hashing, Buckets and Custom Keys
+description: An unordered map in C++ hashes keys into buckets for average O(1) lookup, worst O(n). Load factor, rehashing, unspecified order and hashing a custom key.
+question: How does std::unordered_map work?
+answer: `std::unordered_map` is a hash table: it computes `std::hash<Key>` of each key, picks a bucket from the hash and links the element into that bucket's chain; lookup hashes again and compares with `==` inside that one bucket. Find, insert and erase are average O(1), but O(n) when many keys collide. When the load factor exceeds `max_load_factor()`, 1.0 by default, the table rehashes into more buckets.
+q: What is the difference between map and unordered_map in C++?
+a: `std::map` is a balanced tree: O(log n) operations, keys iterated in sorted order, and `lower_bound` for range queries. `std::unordered_map` is a hash table: average O(1) operations, but an unspecified iteration order and a worst case of O(n). Use unordered for plain lookup and counting, ordered when order, ranges or a guaranteed bound matter.
+q: Why is the iteration order of unordered_map unpredictable?
+a: The order depends on the hash values, the bucket count and the insertion history, so it differs between standard libraries, versions and table sizes, and can change after a rehash; the standard leaves it unspecified. For deterministic output, copy the elements into a `std::vector`, sort it, and print that.
+q: Why can't I use std::pair as an unordered_map key?
+a: The standard library provides no `std::hash` for `std::pair` or `std::tuple`, so `std::unordered_map<std::pair<int, int>, int>` does not compile until you supply a hash functor as the third template argument. Grid code often avoids the problem by encoding a cell as a single integer, `r * cols + c`.
+q: Does rehashing invalidate iterators in unordered_map?
+a: Yes. A rehash invalidates every iterator into the container, but pointers and references to elements stay valid, because the elements are nodes that are re-linked rather than moved. Without a rehash, an insertion invalidates nothing. Calling `reserve(n)` before inserting n elements avoids the rehashes.
+q: How do you write a hash function for a struct key in C++?
+a: Write a functor whose `operator()` takes `const Key&` and returns `std::size_t`, combining the members' `std::hash` values with a mixing step such as boost's `hash_combine` formula, and pass it as the third template argument. The struct also needs `operator==`, which C++20 can default. A plain `h1 ^ h2` is poor, because `{1, 2}` and `{2, 1}` collide.
 ---
 `std::unordered_map` and `std::unordered_set` answer the same questions as their ordered cousins — is this key present, what is its value, add it, remove it — in average constant time instead of logarithmic, by hashing the key to a bucket instead of walking a tree. The price is order: iteration visits elements in whatever sequence the table happens to hold them, which changes with the number of elements, the library version and the hash function, so any program that *prints* an unordered container must sort first. This lesson covers how the table works (hash, buckets, load factor, rehashing), the average and worst cases, the interface, the rule for deterministic output, how to make a struct usable as a key, and when to choose ordered over unordered.
 

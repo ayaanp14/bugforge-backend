@@ -1,6 +1,20 @@
 ---
 title: Array patterns — reverse, rotate, count, prefix sums
 minutes: 15
+seo-title: Java Array Patterns: Reverse, Rotate, Prefix Sums and Kadane
+description: The standard Java array algorithms: reverse in place, rotate by k with three reversals, frequency arrays, prefix sums, two pointers and Kadane's algorithm.
+question: How do you reverse an array in place in Java?
+answer: To reverse an array in place in Java, walk two indices inward from both ends and swap: `for (int i = 0, j = a.length - 1; i < j; i++, j--)` swaps `a[i]` and `a[j]`. The loop stops when the indices meet or cross, so it handles odd and even lengths and empty arrays, uses no extra array and runs in O(n) time.
+q: How do you rotate an array by k positions in O(1) extra space?
+a: Use three reversals. Normalise `k` with `((k % n) + n) % n`, reverse the whole array, then reverse the first `k` elements and the remaining `n - k`. That rotates right by `k` in O(n) time with no extra array.
+q: What is a prefix sum array?
+a: A prefix sum array stores running totals so any range sum is one subtraction. With `prefix[0] = 0` and `prefix[i + 1] = prefix[i] + a[i]`, the sum from index `from` up to but not including `to` is `prefix[to] - prefix[from]`. Use `long`, because sums overflow before the values do.
+q: What is Kadane's algorithm?
+a: Kadane's algorithm finds the maximum subarray sum in one pass with constant space. At each element, `current = Math.max(a[i], current + a[i])` either extends the running subarray or starts afresh, and `best` keeps the largest `current` seen. Seeding both from `a[0]` handles all-negative arrays.
+q: How do you move all zeros to the end of an array in Java?
+a: Use read and write pointers: walk the array with `read`, copy each non-zero element to `a[write++]`, then fill the positions from `write` to the end with zeros. It is one pass, keeps the non-zero elements in order and needs no extra array.
+q: How do you count character frequencies without a HashMap in Java?
+a: Use an array indexed by value: `int[] freq = new int[26]` and `freq[c - 'a']++` for each lowercase letter. It is the fastest frequency table when the values are small integers or characters; guard the index, since an uppercase letter gives a negative one.
 ---
 A handful of array manipulations appear in an outsized share of interview problems and real code: reversing in place, rotating, counting frequencies with an index-as-key array, prefix sums for range queries, two-pointer partitioning, and matrix walks. Each has a canonical, boundary-safe form. This lesson gives you those forms so you write them without thinking — and recognise them inside bigger problems.
 

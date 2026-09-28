@@ -1,6 +1,20 @@
 ---
 title: Shared state, races and synchronized
 minutes: 15
+seo-title: Java synchronized Explained: Race Conditions and Deadlock
+description: Why count++ from two Java threads loses updates, how synchronized locks an object's monitor, how to avoid deadlock with lock ordering, and wait and notify.
+question: What does synchronized do in Java?
+answer: The `synchronized` keyword in Java lets only one thread at a time run code guarded by the same object's intrinsic lock, or monitor. It gives atomicity — the block runs as one indivisible step relative to other blocks on that lock — and visibility, because everything written before the lock is released is seen by the next thread to acquire it. The lock is reentrant.
+q: What is a race condition in Java?
+a: A race condition is unsynchronised access to shared mutable state where the result depends on thread timing. `count++` is a read, an add and a write, so two threads incrementing one counter lose updates; every read-modify-write or check-then-act on shared state without coordination is a race.
+q: What is the difference between a synchronized method and a synchronized block?
+a: A synchronized instance method locks `this`, and a synchronized static method locks the `Class` object. A `synchronized (obj)` block names its lock and can cover only the lines that need it, which allows a private lock object and a shorter critical section.
+q: How do you prevent deadlock in Java?
+a: Acquire locks in one global, consistent order — for example, always the account with the smaller id first — or use a single lock for both pieces of state, or `tryLock` with a timeout. Never hold a lock while doing I/O or calling code you do not control.
+q: Why must wait() be called in a while loop?
+a: A waiting thread can wake spuriously, or another consumer may take the item first, so the condition must be checked again after every wake-up. `wait`, `notify` and `notifyAll` must also be called while holding the monitor, or they throw `IllegalMonitorStateException`.
+q: Do getters need synchronized in Java?
+a: Yes, when the field is shared and mutable: a read without the lock may see a stale value. Writers and readers must synchronise on the same lock for the visibility guarantee to hold, so locking only the writes is a bug.
 ---
 Two threads and one variable is all it takes. `count++` looks atomic and is three operations — read, add, write — so two threads incrementing a shared counter a million times each end up with something less than two million, a different something each run. That is a **race condition**, and everything in this module is a way to avoid one. The oldest and still most common tool is `synchronized`: a block that only one thread at a time may execute, guarded by a lock that every object carries. This lesson is what a race is, what `synchronized` guarantees, how to use it without deadlocking, and the `wait`/`notify` protocol that lives on the same locks.
 

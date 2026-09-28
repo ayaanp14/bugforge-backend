@@ -1,6 +1,20 @@
 ---
 title: Server and network performance — latency budgets, percentiles, caching and the event loop under load
 minutes: 13
+seo-title: Node.js Performance: p99 Latency, N+1 Queries and Caching
+description: Slow Node.js APIs are usually waiting. Latency budgets at p95 and p99, counting awaits, N+1 queries, caching layers, pools, event loop lag and load testing.
+question: How do you make a Node.js API faster?
+answer: Count the sequential round trips first: run independent queries together with `Promise.all`, replace N+1 loops with one `IN` query or a join, and fetch only the columns you need. Then cache composed payloads in bounded, namespaced caches, keep the event loop free of synchronous CPU work, compress and paginate responses, and track p95 and p99 latency per route.
+q: Why measure p99 latency instead of the average?
+a: Averages hide the tail: a mean of 120 ms can conceal 5% of requests taking three seconds. Tails also compound — a page making ten parallel calls waits for the slowest, so its median sits near the calls' p93 — which is why budgets are set at p95 or p99.
+q: What is the N+1 query problem?
+a: Running one query to fetch a list and then one more query per item, so n items cost n + 1 round trips instead of one or two. Fix it with a single `WHERE id IN (...)` query, a join or a batch endpoint; with a distant database, that loop of awaits is the response time.
+q: What is event loop lag in Node.js?
+a: How late timers fire compared with when they were scheduled — a direct measure of how long requests wait behind synchronous work on Node's single thread. Measure it with `perf_hooks.monitorEventLoopDelay()`; p99 lag above roughly 50–100 ms means requests are queuing behind CPU work.
+q: What is the difference between cache-aside and stale-while-revalidate?
+a: Cache-aside checks the cache and, on a miss, loads the data, stores it and returns it. Stale-while-revalidate serves the stale value immediately and refreshes it in the background. Either way, single-flight loading — one loader per key at a time — stops a miss under load from stampeding the database.
+q: What is backpressure in Node.js?
+a: Slowing a producer when its consumer cannot keep up, instead of buffering without limit until memory runs out. Streams signal it when `write()` returns false; bounded queues, promise pools with a limit, connection pools and rate limiting apply the same idea to servers.
 ---
 A Node service is slow for reasons that rarely appear in a CPU profile: it waits — on a database 500 ms away, on ten sequential awaits that could be one, on a connection pool that is full, on a cold cache. The unit of performance here is **latency at the percentile users feel**, not CPU time, and the levers are round trips, caching, concurrency, and keeping the event loop free. This lesson covers how to think in latency budgets, why p99 matters more than the average, the round-trip arithmetic behind "count your awaits", caching layers and their invalidation, pools and backpressure, event-loop lag as the health metric of a Node process, and how to load-test before users do.
 
@@ -16,7 +30,7 @@ const team = await db.team(user.teamId);     // another 50 — dependent, unavoi
 const [posts, badges] = await Promise.all([db.posts(id), db.badges(id)]);   // independent: one round trip, not two
 ```
 
-In a topology where the database is far away (this repository's API is in Singapore, its MySQL in Phoenix — about 500 ms per round trip), the number of **sequential** awaits *is* the response time. Levers: run independent queries concurrently (`Promise.all`); replace N queries with one (`WHERE id IN (...)`, a join, a batch endpoint — the **N+1** problem is a loop of awaits); fetch only needed columns; cache composed payloads; move the compute next to the data (co-location is the biggest lever of all). The same arithmetic applies to a browser calling an API: waterfalls of dependent fetches are the classic slow page.
+In a topology where the database is far away (an API in Singapore querying a database in Phoenix, say, pays a couple of hundred milliseconds a round trip), the number of **sequential** awaits *is* the response time. Levers: run independent queries concurrently (`Promise.all`); replace N queries with one (`WHERE id IN (...)`, a join, a batch endpoint — the **N+1** problem is a loop of awaits); fetch only needed columns; cache composed payloads; move the compute next to the data (co-location is the biggest lever of all). The same arithmetic applies to a browser calling an API: waterfalls of dependent fetches are the classic slow page.
 
 ## Caching layers
 

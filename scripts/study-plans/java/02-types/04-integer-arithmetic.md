@@ -1,6 +1,20 @@
 ---
 title: Integer arithmetic, overflow and the Math class
 minutes: 14
+seo-title: Java Integer Overflow: Division, Modulo and the Math Class
+description: Java int arithmetic wraps silently on overflow. How to detect it with Math.addExact, why % keeps the dividend's sign, floorMod, safe midpoints and BigInteger.
+question: What happens when an int overflows in Java?
+answer: When an `int` overflows in Java it wraps around silently: `Integer.MAX_VALUE + 1` is `Integer.MIN_VALUE`, with no exception or warning, because `int` is a 32-bit two's complement number. To avoid it, compute in `long` by casting an operand before the operation, use `Math.addExact` or `Math.multiplyExact`, which throw `ArithmeticException`, or use `BigInteger`.
+q: Why is `Math.abs(Integer.MIN_VALUE)` negative?
+a: Its true value, 2,147,483,648, is one more than `Integer.MAX_VALUE`, so negating `Integer.MIN_VALUE` wraps back to itself. That is why hashing code that computes `Math.abs(hash) % n` can still produce a negative index; `Math.floorMod(hash, n)` cannot.
+q: How does the modulo operator work with negative numbers in Java?
+a: `%` is a remainder that takes the sign of the dividend, the left operand: `-7 % 3` is `-1` and `7 % -3` is `1`. For a result always between 0 and n minus 1, use `Math.floorMod(-7, 3)`, which gives `2`.
+q: Why use `low + (high - low) / 2` instead of `(low + high) / 2`?
+a: `low + high` can exceed `Integer.MAX_VALUE` and wrap to a negative number, giving a negative midpoint. `low + (high - low) / 2` cannot overflow when both are non-negative, and `(low + high) >>> 1` is also safe. The JDK's own binary search had this bug for nine years.
+q: Why does `long x = a * b` still overflow in Java?
+a: When `a` and `b` are `int`, the multiplication happens in `int` and overflows before the result is widened to `long`. Cast an operand first, `(long) a * b`, so the whole product is computed in 64 bits.
+q: What does `i = i++` do in Java?
+a: It leaves `i` unchanged. The post-increment saves the old value, increments `i`, and then the assignment writes the saved old value back. Java evaluates operands left to right, so the result is defined, but the statement is always a bug.
 ---
 Integer arithmetic in Java is exact, fast, and *silently wrong* the moment a result leaves the range of its type. Every programmer who has computed the average of two large numbers, or the sum of a big array, or a hash, has met this. The lesson covers what the JVM actually does on overflow, how to detect and avoid it, the rules of `/` and `%` with negative numbers, and the tools in `java.lang.Math`.
 

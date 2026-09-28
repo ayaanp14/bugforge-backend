@@ -1,6 +1,20 @@
 ---
 title: try-with-resources and AutoCloseable
 minutes: 12
+seo-title: Try-With-Resources in Java: AutoCloseable and Close Order
+description: Java try-with-resources closes every AutoCloseable in its header on every exit path, in reverse order, keeping close failures as suppressed exceptions.
+question: What is try-with-resources in Java?
+answer: Try-with-resources, added in Java 7, is a `try` statement that declares resources in its header — `try (BufferedReader br = Files.newBufferedReader(path))` — and closes them automatically on every exit path, in reverse declaration order. Each resource must implement `AutoCloseable`. If both the body and `close()` throw, the body's exception propagates and the close failure is attached to it as a suppressed exception.
+q: In what order does try-with-resources close resources?
+a: In reverse declaration order: the last resource declared is closed first, because later resources may depend on earlier ones. If creating the second resource throws, the first one is still closed.
+q: What is a suppressed exception in Java?
+a: An exception thrown by `close()` while an exception from the try-with-resources body is already propagating. Instead of replacing the body's exception, it is attached to it with `addSuppressed`; `getSuppressed()` returns it, and `printStackTrace` prints it under `Suppressed:`.
+q: What is the difference between AutoCloseable and Closeable?
+a: `AutoCloseable` declares `void close() throws Exception` and is the type every try-with-resources resource must have. `Closeable` is its I/O subinterface, whose `close()` throws `IOException`. Use `Closeable` for I/O classes and `AutoCloseable` for everything else, such as locks or scoped state.
+q: Does the catch block run before or after the resource is closed?
+a: After. In a try-with-resources statement the resources are closed before any `catch` or `finally` block of the same statement runs, so a `catch` block cannot use the resource. Work that needs it open belongs in the body.
+q: How do you write a class that works with try-with-resources?
+a: Implement `AutoCloseable` and release the resource in `close()`. Make `close()` idempotent so a second call does nothing, declare the narrowest exception — no `throws` at all if it cannot fail — and implement it only on classes that genuinely have something to release.
 ---
 Files, sockets, database connections and locks must be released whether or not the code using them throws. Before Java 7 that meant `finally` blocks with null checks and nested `try`s that were wrong more often than right — and when both the work and the cleanup threw, the interesting exception was lost. **try-with-resources** makes the correct pattern the short one: declare the resource in the `try` header and the compiler generates the close, in the right order, preserving every exception.
 

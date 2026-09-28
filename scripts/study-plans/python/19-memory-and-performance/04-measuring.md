@@ -1,6 +1,20 @@
 ---
 title: Measuring — timeit, perf_counter, cProfile, tracemalloc and benchmarking hygiene
 minutes: 14
+seo-title: How to Profile Python Code: timeit, cProfile and tracemalloc
+description: Measure Python performance properly: a monotonic timer for durations, timeit micro-benchmarks, cProfile tottime vs cumtime, tracemalloc and Amdahl's law.
+question: How do you profile Python code?
+answer: To profile Python code, run it under `cProfile`, for example `python -m cProfile -s cumulative app.py`, which reports each function's call count, `tottime` (time in the function itself) and `cumtime` (including its callees). Sort by `tottime` to find the function doing the work and by `cumtime` for the path to it, then compare fixes with `timeit`; `tracemalloc` does the same job for memory.
+q: What is the difference between tottime and cumtime in cProfile?
+a: `tottime` is the time spent inside a function excluding the functions it calls; `cumtime` includes them. A high `tottime` marks the function doing the work, while a high `cumtime` with a low `tottime` marks a path that leads to it.
+q: Why does timeit report the minimum time?
+a: Noise from other processes, caches and the scheduler only ever adds time, so the fastest of several repeats is closest to the code's true cost. `timeit` also disables garbage collection while timing and excludes the setup code; report `min(timeit.repeat(...))`.
+q: Should I use `time.time()` or `time.perf_counter()` to time code?
+a: `time.perf_counter()`. It is monotonic and high-resolution, made for measuring durations, whereas `time.time()` is wall-clock time and can jump when the system clock changes. `time.process_time()` counts CPU time only.
+q: How do you find what is using memory in Python?
+a: Call `tracemalloc.start()`, take a snapshot before and after the suspect code, and print `after.compare_to(before, 'lineno')` to see which lines allocated the growth. `tracemalloc.get_traced_memory()` returns the current and peak sizes; the peak decides whether a program fits its limit.
+q: What does Amdahl's law mean for optimisation?
+a: Speeding up one part is capped by that part's share of the run time: making a phase that takes 75 percent of it infinitely fast gains at most 4×, and a 5 percent phase gains at most 5 percent. Optimise the largest slice first and re-profile after each change.
 ---
 Performance work without measurement is guessing, and most guesses about where a program spends its time are wrong. Python ships the tools to find out: `time.perf_counter` for a stopwatch, `timeit` for micro-benchmarks that handle repetition and noise, `cProfile` with `pstats` to attribute time to functions, and `tracemalloc` to attribute memory to lines. This lesson covers each, how to read their output, the hygiene that makes a measurement mean something — warm-up, repetition, minimum rather than mean, isolating the thing measured — and the discipline of profiling before optimising and stopping when the numbers say so.
 

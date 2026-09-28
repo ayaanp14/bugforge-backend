@@ -1,6 +1,20 @@
 ---
 title: Reading input and printing output
 minutes: 16
+seo-title: Scanner vs BufferedReader in Java: Reading Console Input
+description: Read standard input in Java with Scanner for convenience or BufferedReader for speed. The nextLine after nextInt trap, printf format specifiers and fast output.
+question: How do you read input in Java?
+answer: To read input in Java, wrap `System.in` in a `Scanner` and call `nextInt()`, `next()` or `nextLine()`, which read whitespace-separated tokens or whole lines. For large inputs use a `BufferedReader`, whose `readLine()` returns one line at a time, or `null` at end of input, and parse numbers with `Integer.parseInt`; it is roughly ten times faster than `Scanner`.
+q: What is the difference between Scanner and BufferedReader in Java?
+a: `Scanner` splits input into whitespace-separated tokens and converts them to numbers for you, but uses regular expressions and is roughly ten times slower. `BufferedReader` only reads lines, returning `null` at end of input, so you split and parse them yourself; it is the choice for large inputs.
+q: Why is `nextLine()` skipped after `nextInt()` in Java?
+a: It is not skipped: `nextInt()` reads the number and leaves the line break after it, so the next `nextLine()` returns the empty rest of that line. Call `in.nextLine()` once to discard the leftover, or read every line with `nextLine()` and parse it yourself.
+q: How do I print a number with two decimal places in Java?
+a: Use `System.out.printf("%.2f%n", value)` to print it, or `String.format("%.2f", value)` to get the text; `%n` adds a newline. Other common specifiers are `%d` for integers, `%s` for strings, `%5d` for a right-aligned width and `%,d` for thousands separators.
+q: How do I read input until end of file in Java?
+a: With `BufferedReader`, loop `while ((line = br.readLine()) != null)`, since `readLine()` returns `null` at end of input. With `Scanner`, loop `while (in.hasNextInt())` or `while (in.hasNext())`, which check for another token without consuming it.
+q: Why does my PrintWriter print nothing?
+a: A `PrintWriter` wrapped around a `BufferedWriter` holds output in memory until it is flushed. If the program ends without `out.flush()` or `out.close()`, the buffered text is lost and the output is empty; flush once at the end.
 ---
 Every exercise in this track is a program that reads from standard input and writes to standard output. That is also how competitive programming, coding-round harnesses and most command-line tools work, so it is worth learning properly rather than copying a snippet. This lesson covers the two readers you will use — `Scanner` for convenience, `BufferedReader` for speed — and the output methods, with the exact behaviours that trip people up.
 

@@ -1,6 +1,20 @@
 ---
 title: References, shallow and deep copies, and freezing
 minutes: 13
+seo-title: Shallow vs Deep Copy in JavaScript: Spread, structuredClone
+description: Spread and Object.assign copy one level, structuredClone copies deeply, and Object.freeze is shallow. How to update nested JavaScript objects immutably.
+question: What is the difference between a shallow copy and a deep copy in JavaScript?
+answer: A shallow copy duplicates only an object's top-level properties, so nested objects and arrays are still shared with the original; `{ ...obj }`, `Object.assign({}, obj)` and `arr.slice()` all make shallow copies. A deep copy duplicates everything reachable, so no part is shared: `structuredClone(obj)` does it in Node 17+ and modern browsers, handling Dates, Maps, Sets and cycles but not functions.
+q: How do you deep clone an object in JavaScript?
+a: Use `structuredClone(obj)` where it exists, in Node 17+ and modern browsers. The older `JSON.parse(JSON.stringify(obj))` trick works for plain data but drops `undefined` and functions, turns Dates into strings and throws on cycles; for plain data you can also recurse over `Object.entries`.
+q: Does Object.freeze make an object deeply immutable?
+a: No. `Object.freeze` is shallow: it stops adding, removing and changing the object's own properties, but a nested array or object stays mutable, so `cfg.hosts.push("b")` still works. For a deep freeze, freeze each nested object recursively.
+q: How do you update a nested object immutably in JavaScript?
+a: Spread every level on the path to the change: `{ ...user, address: { ...user.address, city: "Paris" } }`. The result shares the untouched parts with the original, and because a changed object is a new reference, React, Redux and memoisation can detect the change cheaply.
+q: How do you compare two objects in JavaScript?
+a: `===` on objects compares identity, so two separately created objects with the same content are never equal. For structural equality, compare `Object.entries` recursively, use `JSON.stringify` on plain data with a stable key order, or use a library's `isEqual`.
+q: Does passing an object to a function copy it in JavaScript?
+a: No. Passing an object, assigning it or storing it in an array copies only the reference, so a function that mutates its argument changes the caller's object too. Copy at the boundary, for example `this.items = [...items]`, when you must keep a private version.
 ---
 Objects are shared by reference, so "copying" an object is a decision, not an operation: copy the reference (an alias), copy one level of properties (shallow), or copy everything reachable (deep). Getting it wrong is the source of bugs that look supernatural — a change in one place appears in another, a default config mutated by its first user, a React state update that did not re-render. This lesson lays out the three levels, the tools for each (`{...obj}`, `Object.assign`, `structuredClone`, the JSON trick), `Object.freeze` and what it does not do, and the immutable-update idioms that modern code prefers.
 

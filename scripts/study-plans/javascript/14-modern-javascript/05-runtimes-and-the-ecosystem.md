@@ -1,6 +1,20 @@
 ---
 title: Runtimes and the ecosystem — Node, Deno, Bun, browsers, edge, and the web-standard core
 minutes: 12
+seo-title: Node vs Deno vs Bun: JavaScript Runtimes and Edge Compared
+description: Node, Deno, Bun, browsers and edge runtimes share one language but differ in globals and permissions. The WinterCG web APIs, portable code and WebAssembly.
+question: What is the difference between Node, Deno and Bun?
+answer: Node, Deno and Bun are server-side JavaScript runtimes. Node runs on V8 with libuv, carries a CommonJS heritage alongside ESM and has the largest npm ecosystem. Deno also uses V8 but is TypeScript-first, ESM-only, secure by default through permission flags and built on web-standard APIs. Bun runs on JavaScriptCore and aims for Node compatibility, with a fast package manager, bundler and test runner built in.
+q: What are the WinterCG APIs?
+a: The web-standard core that the Web-interoperable Runtimes Community Group, now WinterTC, defined for server and edge runtimes: `fetch`, `Request`, `Response`, `URL`, `AbortController`, Web Streams, `TextEncoder`, `crypto.subtle`, `structuredClone` and more. Code written against them runs on Node, Deno, Bun and Cloudflare Workers unchanged.
+q: How do edge runtimes like Cloudflare Workers differ from Node?
+a: Workers run in V8 isolates with a request-in, response-out model, millisecond cold starts and tight CPU and memory limits. They offer web-standard APIs only — no file system, fetch-only networking, and just a `nodejs_compat` subset of Node's modules.
+q: How do you write JavaScript that runs on several runtimes?
+a: Write against web-standard APIs, detect features rather than runtime names, hide platform I/O behind small adapters, and use package `exports` conditions such as `node`, `deno`, `browser` and `workerd` to ship a different entry file per runtime. Keep Node-only globals like `Buffer` and `__dirname` out of shared code.
+q: When should you use WebAssembly with JavaScript?
+a: For CPU-heavy kernels or existing native libraries — image codecs, compression, cryptography, SQLite, ffmpeg — compiled from Rust, C or Go. It is not a replacement for ordinary JavaScript: it has no DOM access, crossing the boundary has a cost, and V8's JIT already runs normal code well.
+q: Which Node.js versions are LTS?
+a: Even-numbered majors become long-term support releases — 16, 18, 20, 22 and 24 — while odd majors are short-lived. Node 16 reached end-of-life in 2023 and Node 18 in 2025, so plan a yearly move from one LTS major to the next.
 ---
 JavaScript runs in more places than any other language: four browser engines, Node, Deno, Bun, a dozen edge/serverless platforms, and inside other programs. They share the language and increasingly share the **web-standard APIs** — `fetch`, `URL`, `Request`/`Response`, Web Streams, `crypto.subtle`, `TextEncoder` — but differ in globals, module defaults, permissions and what they consider core. This lesson maps the runtimes, the common core that makes code portable, the differences that bite, how to write for several targets at once, the package ecosystem's shape and hazards, and where WebAssembly fits.
 

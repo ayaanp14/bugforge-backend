@@ -1,6 +1,20 @@
 ---
 title: Numbers — doubles, NaN, safe integers and BigInt
 minutes: 14
+seo-title: JavaScript Numbers Explained: 0.1 + 0.2, NaN and BigInt
+description: Every JavaScript number is a 64-bit double: why 0.1 + 0.2 is not 0.3, how to test for NaN, where exact integers end, and when to reach for BigInt.
+question: Why is 0.1 + 0.2 not equal to 0.3 in JavaScript?
+answer: Every JavaScript `number` is a 64-bit IEEE-754 double, which stores fractions in binary, and decimal values such as 0.1 and 0.2 have no exact binary form. Their sum is `0.30000000000000004`, so `0.1 + 0.2 === 0.3` is `false`. Compare with a small tolerance, round only when printing with `toFixed`, or work in integer units such as cents.
+q: How do you check for NaN in JavaScript?
+a: Use `Number.isNaN(x)`. `NaN` is the only value not equal to itself, so `x === NaN` is always `false`, and the global `isNaN` converts its argument first, reporting `isNaN("abc")` as `true`. `Object.is(x, NaN)` also works.
+q: What is Number.MAX_SAFE_INTEGER in JavaScript?
+a: `Number.MAX_SAFE_INTEGER` is 2⁵³ − 1 (9007199254740991), the largest integer `n` for which `n + 1` is still represented exactly. Beyond it `+` silently loses precision — `9007199254740992 + 1` is `9007199254740992` — so use `BigInt` for larger whole numbers.
+q: What is BigInt in JavaScript?
+a: `BigInt` is the arbitrary-precision whole-number type, written with an `n` suffix (`123n`) or created with `BigInt("…")`. It never mixes implicitly with `number` — `1n + 1` throws a `TypeError` — has no fractions, cannot be used with `Math` and has no JSON form.
+q: How do you do integer division in JavaScript?
+a: `/` always gives a floating-point result, so `7 / 2` is `3.5`. Use `Math.floor(a / b)` to round toward negative infinity or `Math.trunc(a / b)` to round toward zero; with BigInt operands, `/` already truncates toward zero.
+q: Why is -7 % 3 equal to -1 in JavaScript?
+a: `%` is a remainder operator whose result takes the sign of the dividend, so `-7 % 3` is `-1` rather than `2`. For a true modulo that is never negative with a positive divisor, write `((a % b) + b) % b`.
 ---
 Every JavaScript `number` is a 64-bit floating-point value. There is no `int`, no `long`, no `decimal` — `7 / 2` is `3.5`, `2 ** 53 + 1` is `2 ** 53`, and `0.1 + 0.2` is `0.30000000000000004`. Most number bugs in the language follow from forgetting one of those three facts. This lesson covers the representation, the special values (`NaN`, the infinities, `-0`), the conversion functions and their differences, integer arithmetic and its limit, the `Math` toolkit, and `BigInt` for when 2⁵³ is not enough.
 

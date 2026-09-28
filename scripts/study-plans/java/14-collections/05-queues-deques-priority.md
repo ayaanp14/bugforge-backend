@@ -1,6 +1,20 @@
 ---
 title: Queues, deques and PriorityQueue
 minutes: 12
+seo-title: Java Queue, Deque and PriorityQueue: ArrayDeque vs Stack
+description: Java queues: offer, poll and peek versus add, remove and element, ArrayDeque as both stack and queue, why to avoid Stack, and how PriorityQueue orders a heap.
+question: Which class should you use for a stack in Java?
+answer: Use `ArrayDeque` for a stack in Java, through its `push`, `pop` and `peek` methods. It is a circular array with O(1) operations at both ends, faster than both `Stack` and `LinkedList`. The legacy `java.util.Stack` extends `Vector`, so every method is synchronised and it exposes index methods that break the stack abstraction; its own Javadoc recommends `Deque` instead.
+q: What is the difference between offer and add in a Java Queue?
+a: Both insert an element, but `add` throws `IllegalStateException` when a bounded queue is full, while `offer` returns `false`. The same pairing holds for `remove` and `poll`, and for `element` and `peek`, when the queue is empty. Use `offer`, `poll` and `peek` in everyday code.
+q: Is a PriorityQueue sorted in Java?
+a: No — only its head is guaranteed to be the smallest element. A `PriorityQueue` is a binary heap, so iterating or printing it shows heap order, not sorted order. To get the elements in order, `poll` repeatedly or copy them into a list and sort it.
+q: How do you make a max-heap in Java?
+a: Give `PriorityQueue` a reversed comparator: `new PriorityQueue<>(Comparator.reverseOrder())`. By default a `PriorityQueue` is a min-heap whose `poll` returns the smallest element; the reversed comparator makes it return the largest.
+q: How do you find the k largest elements efficiently in Java?
+a: Keep a min-heap of size k: offer each element to a `PriorityQueue` and poll whenever its size exceeds k. The heap then holds the k largest, and the whole pass costs O(n log k) rather than the O(n log n) of sorting everything.
+q: Why does ArrayDeque not allow null elements?
+a: Because `poll` and `peek` return `null` to mean the deque is empty. A stored null would be indistinguishable from no element at all, so `ArrayDeque` rejects nulls outright.
 ---
 Queues process elements in an order decided by the structure: first-in-first-out for a plain queue, last-in-first-out for a stack, smallest-first for a priority queue. Java's `Queue` and `Deque` interfaces, `ArrayDeque` and `PriorityQueue` cover all three — and the legacy `Stack` class is the one you must know exists so you can avoid it. This lesson covers the interfaces' two method families, the implementations, and the algorithms (BFS, balanced brackets, top-k, scheduling) each is built for.
 

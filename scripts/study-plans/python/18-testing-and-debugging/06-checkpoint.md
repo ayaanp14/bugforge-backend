@@ -1,6 +1,14 @@
 ---
 title: Checkpoint — Testing and debugging
 minutes: 25
+seo-title: Python Testing and Debugging Quiz: unittest, Mock and pdb
+description: Test your Python testing skills with 12 questions and three programs on unittest, pytest fixtures and parametrize, Mock and patch, tracebacks and logging.
+q: How does a yield fixture guarantee teardown?
+a: A yield fixture is a generator: the runner calls `next()` to get the value, runs the test, then calls `next()` again inside a `finally` block, so the code after the `yield` runs whether the test passed or failed.
+q: What does `side_effect=[TimeoutError(), 42]` make a mock do?
+a: The first call raises `TimeoutError` and the second returns 42; a third call raises `StopIteration` because the list is used up. It is how a retry helper is tested against a counted number of attempts.
+q: Where must `patch` target a name for the code under test to see the mock?
+a: In the module under test, where the name is looked up at call time, not in the module that defines it. After `from rates import fetch_rate` in `billing.py`, the target is `billing.fetch_rate`.
 ---
 This checkpoint covers the whole module: the testing mindset — kinds of test, arrange–act–assert, what to test and designing for testability by injecting the clock, seed and collaborators; `unittest` with its assertion family, fixtures, `subTest` and in-process runs; pytest's plain asserts, fixtures and `parametrize` and the mechanisms behind them; test doubles with `Mock`, `side_effect`, `patch` and the rule about where to patch; and debugging by reading tracebacks, logging, `pdb` and the reproduce–minimise–bisect method.
 

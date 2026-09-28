@@ -1,6 +1,20 @@
 ---
 title: Properties and encapsulation — the underscore, @property and __slots__
 minutes: 13
+seo-title: Python @property: Getters, Setters and Private Attributes
+description: Python has no private keyword: one underscore marks internal state, two trigger name mangling. How @property validates and computes values, and what slots do.
+question: What does @property do in Python?
+answer: `@property` turns a method into an attribute read without parentheses, so a value can be computed, validated or made read-only while callers still write `c.radius`. A matching `@radius.setter` runs on assignment and `@radius.deleter` on `del`. Because a plain attribute can become a property later without changing any caller, Python code does not need Java-style getters and setters.
+q: Does Python have private variables?
+a: No. A single leading underscore, `_balance`, marks an attribute as internal by convention, and nothing stops a caller reading it. A double leading underscore, `__balance`, is name-mangled to `_ClassName__balance`, which avoids clashes with a subclass's attribute of the same name but is not privacy.
+q: Should I write getters and setters in Python?
+a: Not up front. Start with a public attribute; if you later need validation or a computed value, turn it into a `@property` and every caller's `obj.x` keeps working. Methods such as `get_x` and `set_x` add ceremony without adding control.
+q: What is `__slots__` in Python?
+a: `__slots__` declares an instance's attribute names up front, so they are stored in fixed slots instead of a per-instance `__dict__`. Instances use less memory — roughly half for small objects — and assigning a misspelt attribute raises `AttributeError`. Subclasses must declare their own `__slots__`, and `@dataclass(slots=True)` generates it for you.
+q: What is cached_property in Python?
+a: `functools.cached_property` computes a value on first access and stores it in the instance's dict, so later reads cost nothing. Use it for expensive values that never change after construction; if the underlying data can change, the cached value goes stale, and `del obj.attr` clears it.
+q: How do I make a read-only attribute in Python?
+a: Define a `@property` with no setter: reading works and assigning raises `AttributeError`. For a wholly immutable object, use a frozen dataclass or a `NamedTuple`, which suits classes that represent values such as a point or an amount of money.
 ---
 Python has no `private` keyword and does not want one. Encapsulation is done by convention — a leading underscore means "not part of the interface" — and enforced socially rather than by the compiler, on the principle that consenting adults may reach inside an object if they accept the consequences. What Python does offer is `@property`, which lets an attribute *look* like plain data while being computed, validated or read-only, so that a class can start with public attributes and add control later without changing a single caller. This lesson covers the naming conventions and what name mangling actually does, `@property` with setters and deleters, computed and cached attributes, read-only attributes, and `__slots__`.
 

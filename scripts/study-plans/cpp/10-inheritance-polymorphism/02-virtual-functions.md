@@ -1,6 +1,20 @@
 ---
 title: Virtual functions — static type, dynamic type and override
 minutes: 15
+seo-title: C++ Virtual Functions Explained: override, final and Dispatch
+description: A C++ virtual function is chosen at run time from the object's dynamic type, not the reference's static type. Override, final and the two dispatch traps.
+question: What is a virtual function in C++?
+answer: A virtual function is a member function declared `virtual` in a base class, so that a call through a base reference or pointer runs the override belonging to the object's actual (dynamic) type, chosen at run time. Without `virtual`, the call is bound at compile time from the static type. Mark each override with `override`, and give the base a virtual destructor.
+q: What does the override keyword do in C++?
+a: `override` tells the compiler that a function is meant to override a base class virtual function, and makes it a compile error if it does not — a missing `const`, a typo or a different parameter list. Without it, such a mistake silently declares a new function and the base version keeps running.
+q: What is the difference between static type and dynamic type in C++?
+a: The static type is the declared type of an expression, known at compile time; the dynamic type is the type of the object it actually refers to, known at run time. For `Vehicle& v = car;` they are `Vehicle` and `Car`. Non-virtual calls use the static type, virtual calls the dynamic one.
+q: Can you call a virtual function from a constructor in C++?
+a: You can, but it does not reach the derived override. While the base constructor runs, the object is still a `Base` — the derived part does not exist yet — so the call resolves to the base version. Destructors behave the same way in reverse, once the derived part is gone.
+q: What does the final keyword do in C++?
+a: On a virtual function, `final` forbids any further derived class from overriding it; on a class, as in `class Taxi final`, it forbids deriving from the class at all. It documents a design decision and lets the compiler turn some virtual calls into direct calls.
+q: Why are default arguments not virtual in C++?
+a: Default arguments are filled in by the compiler at the call site, which knows only the static type. So a call through a `Base&` runs the derived override but with the base's default argument. Never redefine default arguments in an override.
 ---
 A `Car` bound to a `Vehicle&` is still a `Car`, but which `describe()` runs when you call it through the reference? Without `virtual`, the one `Vehicle` declared — the compiler chose it from the reference's type before the program ran. With `virtual`, the one `Car` provides — chosen at run time from the object's actual type. That single keyword is the difference between inheritance as code reuse and inheritance as polymorphism. This lesson covers what it changes: the two types every expression has, `override` and `final`, calling through a base reference, reaching the base version, and the two places where dispatch does not behave the way intuition says — default arguments and constructors.
 
