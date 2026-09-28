@@ -1,6 +1,18 @@
 ---
 title: The core modules you use every week — fs, path, os, process, util, events, url, crypto
 minutes: 14
+seo-title: Node.js Core Modules: fs, path, process, events and crypto
+description: A working tour of the Node.js standard library: path.join vs path.resolve, fs promises and error codes, process, EventEmitter, URL and secure random tokens.
+question: What are the core modules in Node.js?
+answer: Node.js core modules are the built-in libraries that ship with the runtime and need no install; load them with `require("node:fs")` or `import fs from "node:fs"`. The ones used every week are `path` for file paths, `fs` for files, `os` and `process` for the environment, `events` for `EventEmitter`, `url` for URLs, `util` for helpers and `crypto` for hashes and random tokens.
+q: What is the difference between path.join and path.resolve?
+a: `path.join` concatenates segments and normalises the result, so a relative path stays relative. `path.resolve` always returns an absolute path: it processes segments from right to left until one is absolute, and prepends the current working directory if none is, the same semantics as a series of `cd` commands.
+q: Should I use fs.readFileSync or fs promises in Node.js?
+a: Use `fs/promises` by default. The synchronous methods block the event loop, which is acceptable at startup, for configuration and in command-line tools, but not in a server handling concurrent work; the callback style is legacy. Without an encoding argument every variant returns a `Buffer` instead of a string.
+q: What happens when an EventEmitter emits "error" with no listener?
+a: It throws. An `"error"` event with no listener is raised as an exception, which usually crashes the process, so every emitter that can fail, such as a stream, socket or server, needs an `"error"` listener. Note too that `emit` is synchronous: listeners run in registration order before it returns.
+q: How do you generate a secure random token in Node.js?
+a: Use the `crypto` module: `crypto.randomBytes(16).toString("hex")` for a token or `crypto.randomUUID()` for an id. Never use `Math.random`, which is not cryptographically secure. For passwords use `scrypt`, `pbkdf2` or a bcrypt or argon2 package; a plain `sha256` hash is for checksums, not passwords.
 ---
 Node's standard library is small by design and almost entirely I/O and OS: files, paths, the process, events, URLs, hashing, and utilities. Every one of these you will reach for weekly, and each has one or two rules that are not obvious — `path.join` versus `path.resolve`, three flavours of `fs`, `process.exit` cutting off pending output, `EventEmitter` throwing on an unhandled `"error"`. This lesson is a working tour with the idioms and the traps, organised by module; streams and child processes get their own lessons.
 

@@ -1,6 +1,20 @@
 ---
 title: Dictionaries — the mapping at the centre of Python
 minutes: 14
+seo-title: Python Dictionaries: get vs Brackets, Merging and Views
+description: A Python dictionary maps hashable keys to values with O(1) lookup, in insertion order. When to use get or setdefault, how to merge dicts, and safe iteration.
+question: What is a dictionary in Python?
+answer: A dictionary, `dict`, is Python's mapping from hashable keys to values, with O(1) average lookup, insertion and deletion. Since Python 3.7 it keeps keys in insertion order. `d[k]` raises `KeyError` for a missing key, `d.get(k, default)` returns a default instead, and `k in d` tests whether a key is present.
+q: What is the difference between `d[key]` and `d.get(key)` in Python?
+a: `d[key]` raises `KeyError` when the key is missing, the right failure when it must exist. `d.get(key)` returns `None`, or the default passed as its second argument, so use it when absence is normal. Avoid `d.get(k) or default`: it also replaces a stored `0` or empty string.
+q: How do I merge two dictionaries in Python?
+a: `a | b` (Python 3.9+) or `{**a, **b}` builds a new dict, and `a |= b` or `a.update(b)` merges in place. Merges run left to right, so on a shared key the value from `b` wins.
+q: How do I fix RuntimeError: dictionary changed size during iteration?
+a: The error comes from adding or deleting keys while a loop iterates the dict. Loop over a copy of the keys, `for k in list(d):`, or build a new dict with a comprehension that keeps only the wanted items. Changing the value of an existing key during iteration is fine.
+q: Are Python dictionaries ordered?
+a: Yes. Since Python 3.7 the language guarantees that a dict keeps its keys in insertion order, so iteration and the `keys()`, `values()` and `items()` views follow it. `popitem()` removes the last inserted pair, and `reversed(d)` walks the keys backwards.
+q: How do I sort a dictionary by value in Python?
+a: Sort its items with a key that picks the value: `sorted(d.items(), key=lambda kv: kv[1], reverse=True)` returns the pairs highest value first. `max(d, key=d.get)` gives the single key with the largest value.
 ---
 The dictionary is the data structure Python itself is built on — module namespaces, object attributes, keyword arguments are all dicts — and it is the one you will reach for most often: a mapping from keys to values with constant-time lookup, insertion and deletion, keeping the order in which keys were added. This lesson covers construction, the access methods and which one to use when a key may be missing, the views, iteration, updating and merging, dict comprehensions, and the rule against changing a dict's size while iterating it.
 

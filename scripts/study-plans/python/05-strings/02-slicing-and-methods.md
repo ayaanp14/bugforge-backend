@@ -1,6 +1,18 @@
 ---
 title: Slicing and the string methods
 minutes: 14
+seo-title: Python String Slicing and Methods: Split, Strip, Find, Join
+description: Python string slicing takes a start, a stop and a step; a negative step reverses. The methods for case, whitespace, searching, splitting, joining and replacing.
+question: How does string slicing work in Python?
+answer: Python string slicing, `s[start:stop:step]`, returns a new string from index `start` up to but not including `stop`, taking every `step`-th character. Each part is optional, negative indexes count from the end, and out-of-range bounds clip instead of raising: `s[:3]` is the first three characters, `s[-3:]` the last three and `s[::-1]` the string reversed.
+q: How do I reverse a string in Python?
+a: Slice it with a step of -1: `s[::-1]` returns the characters in reverse order as a new string. `"".join(reversed(s))` is the more readable alternative. Strings are immutable, so both build a new string rather than reversing the original in place.
+q: What is the difference between strip and removesuffix in Python?
+a: `strip(chars)` removes any of the given characters, repeatedly, from both ends — its argument is a set of characters, not a word — so `"happy.py".strip(".py")` gives `"ha"`. `removesuffix(".py")` and `removeprefix`, added in Python 3.9, remove one literal suffix or prefix if it is present.
+q: What is the difference between find and index in Python?
+a: Both return the position of the first occurrence of a substring. When it is absent, `find` returns -1 and `index` raises `ValueError`. Use `in` when you only need yes or no, `find` when absence is normal, and `index` when absence is a bug you want raised.
+q: What is the difference between split() and split(" ") in Python?
+a: `split()` with no argument splits on any run of whitespace and drops leading and trailing whitespace, so `"a b  c".split()` is `["a", "b", "c"]`. `split(" ")` splits at every single space and keeps the empty strings between consecutive spaces. Use `split(sep)` when empty fields matter, as in comma-separated lines.
 ---
 Two things make Python string handling short: slicing, which extracts any substring, reversal or every-other-character in one expression, and a method set that covers case, whitespace, searching, splitting, joining, testing and padding without a library. This lesson gives the slice rule precisely — it is the same rule for lists and tuples — and then the methods grouped by what they do, with the return-value conventions (`find` returns −1, `index` raises) that decide which one to call.
 

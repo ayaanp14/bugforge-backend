@@ -1,6 +1,20 @@
 ---
 title: The exception hierarchy and how to read a stack trace
 minutes: 13
+seo-title: Java Exception Hierarchy: Throwable, Error and Stack Traces
+description: Every Java exception extends Throwable, which splits into Error and Exception, checked or unchecked. The common exceptions and how to read a stack trace.
+question: What is the exception hierarchy in Java?
+answer: The Java exception hierarchy is rooted at `Throwable`, which has two branches. `Error` covers failures of the JVM itself, such as `OutOfMemoryError`, which programs should not catch. `Exception` covers conditions a program may handle: its subclasses are checked, so callers must catch or declare them, except `RuntimeException` and its subclasses, which are unchecked.
+q: What is the difference between Error and Exception in Java?
+a: An `Error` signals that the JVM or platform failed — memory exhausted, stack overflowed, a class missing at load time — and programs should not catch it. An `Exception` is a condition a program might anticipate and recover from, such as a missing file or a bad argument.
+q: Is NullPointerException checked or unchecked?
+a: Unchecked. `NullPointerException` extends `RuntimeException`, so no method has to declare or catch it. It signals a bug — a null reference was dereferenced — and since Java 14 its message names which reference was null.
+q: How do you read a Java stack trace?
+a: Start with the first line: the thread, the exception class and the message, which often names the bad value. Then scan the frames, innermost first, down to the first one in your own package — that is the line to look at. `Caused by:` sections follow for chained exceptions.
+q: What does "... 12 more" mean in a Java stack trace?
+a: It means that many frames identical to the enclosing trace were left out. It appears in `Caused by:` sections, whose lower frames are usually shared with the exception that wrapped them.
+q: When is an exception's stack trace captured in Java?
+a: When the exception object is constructed, in `Throwable`'s constructor — not when it is thrown. Filling in the trace walks the stack, which is why creating exceptions is relatively expensive and why they should not be used for normal control flow.
 ---
 When something goes wrong at run time — an index out of range, a file missing, a null dereferenced — Java creates an **exception object** describing the failure and unwinds the call stack until something catches it. Every exception is an instance of a class in one hierarchy rooted at `Throwable`, and where a class sits in that hierarchy decides whether the compiler forces you to handle it. This lesson is the map of that hierarchy, the exceptions you will meet daily, and how to read the stack trace you get when one escapes.
 

@@ -1,6 +1,20 @@
 ---
 title: Iterators, fail-fast behaviour and safe modification
 minutes: 11
+seo-title: ConcurrentModificationException in Java: Causes and Fixes
+description: A ConcurrentModificationException comes from a fail-fast iterator whose modCount changed. Four safe ways to remove while iterating, ListIterator and map views.
+question: What causes ConcurrentModificationException in Java?
+answer: A `ConcurrentModificationException` in Java is thrown when a collection is structurally modified — an element added or removed — while an iterator over it is active, usually in a single thread: calling `list.remove` inside a for-each loop is the classic case. Collections such as `ArrayList` and `HashMap` count modifications in `modCount`, and the iterator checks that count on every `next()`.
+q: How do you remove elements from a list while iterating in Java?
+a: Use `removeIf` — `list.removeIf(String::isBlank)` — or the iterator's own `remove()`, or loop over the indices backwards and call `remove(i)`. When you need to add elements, collect the changes in a separate collection and apply them after the loop.
+q: What does fail-fast mean in Java?
+a: A fail-fast iterator throws `ConcurrentModificationException` as soon as it notices the collection changed structurally underneath it, instead of silently skipping or repeating elements. The check is best-effort: a removal just before the end of a loop may go undetected, so never rely on it either way.
+q: Does `list.set` cause a ConcurrentModificationException?
+a: No. Only structural modifications — ones that change the size, such as add, remove and clear — increment `modCount`. `set`, `replaceAll` and `Map.Entry.setValue` replace values in place and are safe inside a loop.
+q: What is the difference between fail-fast and fail-safe iterators?
+a: Fail-fast iterators, as in `ArrayList` and `HashMap`, throw on a structural change during iteration. The concurrent collections' iterators never throw: `ConcurrentHashMap`'s are weakly consistent, reflecting the state at some point during iteration, and `CopyOnWriteArrayList` iterates a snapshot.
+q: What is a ListIterator in Java?
+a: A `ListIterator` is the list-only iterator that moves both ways, with `hasPrevious` and `previous`, reports `nextIndex`, and can edit during the walk: `set(e)` replaces the last element returned and `add(e)` inserts at the cursor.
 ---
 `ConcurrentModificationException` is the exception most Java developers meet in their first month: they remove an element from a list while looping over it. Understanding *why* it happens — the fail-fast iterator and its `modCount` — makes the fix obvious and reveals the four correct ways to modify a collection you are walking. This lesson also covers `Iterator`/`ListIterator` directly, and the map views' iteration rules.
 

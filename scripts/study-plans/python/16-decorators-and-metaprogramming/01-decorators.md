@@ -1,6 +1,20 @@
 ---
 title: Decorators — functions that wrap functions
 minutes: 15
+seo-title: Python Decorators Explained: Wraps, Arguments and Stacking
+description: A Python decorator takes a function and returns a replacement: @deco above def f means f = deco(f). How functools.wraps, arguments and stacking work.
+question: What is a decorator in Python?
+answer: A decorator in Python is a function that takes a function and returns a replacement for it, and `@deco` above a `def` is shorthand for `f = deco(f)`. The decorator runs once, when the function is defined; the wrapper it returns runs on every call, usually accepting `*args, **kwargs`, calling the original and returning its result. `functools.wraps` copies the original's name and docstring onto the wrapper.
+q: How do you write a Python decorator that takes arguments?
+a: Add a third level of function. `@retry(3)` first calls `retry(3)`, a decorator factory that returns the real decorator; that decorator takes the function and returns the wrapper. So `@retry(3)` above `def fetch` means `fetch = retry(3)(fetch)`.
+q: Why use `functools.wraps` in a decorator?
+a: Without it the wrapper hides the original: tracebacks, `help()` and test output show the name `wrapper`, and `inspect.signature` shows `(*args, **kwargs)`. `@wraps(fn)` copies `__name__`, `__doc__`, `__qualname__` and `__module__` onto the wrapper and sets `__wrapped__` to the original.
+q: In what order are stacked decorators applied?
+a: Bottom-up. The decorator nearest the `def` wraps the function first and the top one wraps last, so the top one runs outermost on each call: `@logged` over `@memoize` means `logged(memoize(f))`, and `logged` sees even the calls answered from the cache.
+q: What is a class decorator in Python?
+a: A function that takes a class and returns it, or a replacement, at definition time. It is the shape of `@dataclass` and `@total_ordering`, and it is used to register plugins, add methods such as `__repr__`, or validate a class's attributes.
+q: Can a class be used as a decorator in Python?
+a: Yes, because anything callable can decorate. A class whose `__init__` takes the function and whose `__call__` runs it keeps its state in ordinary attributes, with `functools.update_wrapper(self, fn)` as its `@wraps`. On a method it does not bind `self` unless it also defines `__get__`.
 ---
 A decorator is a function that takes a function and returns a function, and the `@name` line above a `def` is only syntax for `f = name(f)`. Everything else follows: a decorator can add behaviour before or after every call (logging, timing, retrying, caching), replace the function entirely, register it somewhere, or check its arguments — without touching the body. Module 4's closures and Module 11's `functools.wraps` were the preparation. This lesson builds decorators from the plain form up: the wrapper shape, `@wraps`, decorators with arguments (three levels of `def`), stacking order, class decorators, and the standard ones you already use.
 

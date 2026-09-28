@@ -1,6 +1,20 @@
 ---
 title: What C++ is, and why it looks the way it does
 minutes: 12
+seo-title: What Is C++? How C++ Works and Its Standard Versions
+description: C++ is a statically typed language compiled to native code and built on the zero-overhead principle. How it differs from C, and what C++11 to C++23 changed.
+question: What is C++?
+answer: C++ is a statically typed, compiled, multi-paradigm programming language that Bjarne Stroustrup began at Bell Labs in 1979 as "C with Classes" and renamed in 1983. A compiler turns C++ source into native machine code for one CPU and operating system, with no virtual machine and no garbage collector. Its design follows the zero-overhead principle: you do not pay for features you do not use.
+q: What is the zero-overhead principle in C++?
+a: It is Stroustrup's two rules: what you don't use, you don't pay for, and what you do use, you couldn't hand-code any better. It is why C++ has no garbage collector and why `operator[]` on a `std::vector` does not check bounds — `at()` does, when you want the check.
+q: What is the difference between C and C++?
+a: C++ began as an extension of C and still compiles most C code, but adds classes, templates, references, overloading, namespaces, exceptions and the standard library. Modern C++ uses `std::string`, `std::vector` and `std::cout` where C uses `char` arrays, `malloc` and `printf`.
+q: What does modern C++ mean?
+a: "Modern C++" means the language since C++11, which brought `auto`, lambdas, move semantics, `std::unique_ptr` and range-based `for`. Its idioms — RAII, smart pointers, value semantics and algorithms instead of hand-written loops — replace much of the older C++ still found online.
+q: What are the C++ standard versions?
+a: The ISO standards are C++98 (with the C++03 bug-fix release), C++11, C++14, C++17, C++20 and C++23; since 2011 a new one has arrived every three years. C++20 added concepts, ranges, `std::format` and modules; C++23 added `std::print` and `std::expected`.
+q: What is undefined behaviour in C++?
+a: Undefined behaviour is an operation the standard makes no promise about, such as signed integer overflow, indexing past the end of an array or reading an uninitialised variable. It need not crash: the optimiser may assume it never happens, so warnings such as `-Wall -Wextra` and the sanitizers are how you find it.
 ---
 C++ is a statically typed, compiled, multi-paradigm language built on one promise: you do not pay for what you do not use, and what you do use costs no more than the hand-written equivalent. Almost everything that makes C++ different from Java or Python — no garbage collector, no bounds checks unless you ask for them, values that are copied rather than shared, a whole category of mistakes the standard refuses to define — follows from that promise. This lesson is the map of those decisions; the other nineteen modules are the territory.
 

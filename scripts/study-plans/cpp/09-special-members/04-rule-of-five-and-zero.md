@@ -1,6 +1,18 @@
 ---
 title: The rule of five and the rule of zero
 minutes: 14
+seo-title: The Rule of Five and Rule of Zero in C++: Special Members
+description: Declaring a destructor or copy in a C++ class silently stops the moves being generated. The five special members, the rule of five and the rule of zero.
+question: What is the rule of five in C++?
+answer: The rule of five says that if a C++ class declares any of the five special member functions — destructor, copy constructor, copy assignment, move constructor or move assignment — it should consider all five. Declaring a destructor or a copy operation stops the moves being generated, so `std::move` silently copies. The rule of zero is the better default: own resources through members like `std::vector` and `std::unique_ptr`, and declare none.
+q: What is the rule of zero in C++?
+a: The rule of zero says a class should declare none of the five special members. If every member manages itself — `std::string`, `std::vector`, `std::unique_ptr` — the generated copy, move and destructor are all correct, and the class cannot leak, double-delete or be shallow-copied. Raw ownership belongs in small single-resource classes.
+q: When does the compiler generate a move constructor?
+a: Only when the class declares no copy constructor, copy assignment, destructor or move operation of its own. Declaring any copy operation or a destructor, even as `= default`, means the moves are not declared, so rvalues bind to the copy constructor. Write `T(T&&) = default;` to get them back.
+q: Why does declaring a destructor make my class slower?
+a: A user-declared destructor, even `~T() = default;`, stops the compiler generating the move constructor and move assignment. `std::move` still compiles, but overload resolution finds only the copy constructor, so every intended move becomes a full copy, with no warning.
+q: What happens when a class declares a move constructor but no copy constructor?
+a: Its copy constructor and copy assignment are deleted, so the type is move-only, like `std::unique_ptr`. `T b = std::move(a);` compiles, while `T b = a;` is an error naming the deleted copy constructor.
 ---
 With moves in the language, a class has five special member functions beyond the default constructor: the destructor, the copy constructor, the copy assignment, the move constructor and the move assignment. The compiler generates each of them under rules that depend on which of the others you declared, and those rules have a consequence that surprises everyone once: writing a destructor switches the moves off. This lesson lays out the generation table, states the rule of five and the rule of zero, and gives the one-line decision for which of them a class should follow.
 

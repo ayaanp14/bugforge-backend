@@ -1,6 +1,20 @@
 ---
 title: StringBuilder — building strings efficiently
 minutes: 12
+seo-title: Java StringBuilder vs StringBuffer: Efficient Concatenation
+description: StringBuilder is Java's mutable string buffer: appending in a loop is linear, while += on a String is quadratic. Its API, string reversal and StringBuffer.
+question: What is StringBuilder in Java?
+answer: `StringBuilder` in Java is a mutable sequence of characters for building strings piece by piece. Its `append`, `insert`, `delete` and `reverse` methods change one growable buffer instead of creating a new `String` each time, so appending n pieces in a loop takes linear time where `+=` on a `String` takes quadratic time. Call `toString()` to get the finished string.
+q: What is the difference between StringBuilder and StringBuffer?
+a: They have the same API, but every `StringBuffer` method is `synchronized`, which makes it slower, while `StringBuilder`, added in Java 5, has no locks. Use `StringBuilder`; the per-call locking of `StringBuffer` does not make a sequence of appends atomic anyway.
+q: Why is string concatenation in a loop slow in Java?
+a: Each `s += x` copies the whole accumulated string into a new one, because strings are immutable, so n appends copy on the order of n squared characters. A `StringBuilder` appends into one buffer that doubles when full, which is linear overall. A single `a + b + c` expression is already efficient.
+q: How do I reverse a string in Java?
+a: Use `new StringBuilder(s).reverse().toString()`. `reverse()` keeps surrogate pairs in order, so an emoji stays intact, which a hand-written loop swapping `char` values does not. In an interview, also mention the two-pointer swap over a `char[]`.
+q: Does `StringBuilder.equals` compare contents?
+a: No. `StringBuilder` does not override `equals`, so it compares identity, and two builders holding the same text are not equal. Compare `a.toString().equals(b.toString())`, use `compareTo`, available since Java 11, or call `"text".contentEquals(builder)`.
+q: How do I clear a StringBuilder in Java?
+a: Call `sb.setLength(0)`. It empties the builder but keeps its buffer, so the builder can be reused without allocating again. `sb.delete(0, sb.length())` also works, and creating a new `StringBuilder` is fine when reuse does not matter.
 ---
 A `String` cannot change, so building one incrementally means copying: `s += "x"` allocates a new string holding all of `s` plus one character, every time. For ten pieces nobody notices; for a hundred thousand it is the difference between milliseconds and minutes. `StringBuilder` is the mutable buffer that fixes this — and the class every "reverse a string" and "build the output" answer uses.
 

@@ -1,10 +1,10 @@
 import { prisma } from "../lib/prisma.js";
 import { cached } from "../lib/cache.js";
 import { APTITUDE_CANONICAL, APTITUDE_CATEGORIES, APTITUDE_TOPICS, aptitudeCanonicalSlug, aptitudeTopic, aptitudeCategory } from "../lib/aptitude-topics.js";
-import { escapeHtml, markdownToHtml } from "../lib/markdown-html.js";
+import { escapeHtml, markdownOutline, markdownToHtml } from "../lib/markdown-html.js";
 import { BUG_HUBS, bugHub } from "../lib/bug-hubs.js";
 import { isCompanyTag } from "../lib/companies.js";
-import { trackDefinition, trackList } from "./study-plans.js";
+import { trackDefinition, trackList, type LessonSeo } from "./study-plans.js";
 import { roadDefinition } from "./roadmap.js";
 import { hubIndex, hubPage, hubsForTags, relatedProblems, type HubSummary } from "./problem-hubs.js";
 import { getCatalogue } from "./dashboard.js";
@@ -69,6 +69,12 @@ export interface PageFacts {
   /** An aptitude question's options, and the index of the correct one. */
   options?: string[];
   answer?: number;
+  /**
+   * The questions a page prints with their answers, in page order — a
+   * lesson's direct answer, then its common questions. Inline Markdown as
+   * authored; the SPA's structured data renders them as plain text.
+   */
+  faq?: Array<{ q: string; a: string }>;
   /** Home → section → … → this page. The last item is the page itself. */
   trail?: Crumb[];
 }
@@ -136,10 +142,26 @@ export const titles = {
   aptitudeCategory: (label: string, topics: number, questions: number) => `${label} Questions with Solutions: ${topics} Topics, ${questions} Practice Questions — ${BRAND}`,
   aptitudeTopic: (label: string) => `${label} Questions with Solutions — Aptitude Practice — ${BRAND}`,
   aptitudeQuestion: (title: string, topicLabel: string) => `${title} — ${topicLabel} Aptitude Question with Solution — ${BRAND}`,
-  studyTrack: (language: string, modules: number, lessons: number) => `Learn ${language}: ${modules}-Module Study Plan with ${lessons} Lessons — ${BRAND}`,
-  studyLesson: (lesson: string, language: string, checkpoint: boolean) => `${lesson} — ${language} ${checkpoint ? "checkpoint" : "lesson"} — ${BRAND}`,
+  // "learn java", "java tutorial": the words a track is searched by. It
+  // was "Learn Java: 20-Module Study Plan with 138 Lessons" — "study plan"
+  // is this site's word, not a searcher's.
+  studyTrack: (language: string, lessons: number) => `Learn ${language}: Free ${language} Tutorial in ${lessons} Lessons — ${BRAND}`,
+  // A lesson's authored search title (its seo-title — "What Is the JVM?
+  // JDK vs JRE vs JVM Explained") when it has one; the lesson's own title
+  // otherwise, which is written for a reader already on the page.
+  studyLesson: (lesson: string, language: string, checkpoint: boolean, searchTitle?: string | null) =>
+    searchTitle ? `${searchTitle} — ${BRAND}` : `${lesson} — ${language} ${checkpoint ? "checkpoint" : "lesson"} — ${BRAND}`,
   test: (name: string, company: string) => (name.includes(company) ? `${name} Mock Test — ${BRAND}` : `${name} Mock Test — ${company} Pattern — ${BRAND}`),
 };
+
+/**
+ * A track's meta description — the SPA's lib/seo/titles has the same
+ * function. Composed rather than the track's blurb plus counts, which ran
+ * to 250–370 characters and was cut mid-list in every result.
+ */
+export function trackDescription(language: string, modules: number, lessons: number, runtime: string): string {
+  return `Learn ${language} free: ${lessons} lessons in ${modules} modules, from first programs to interview questions, with exercises judged on ${runtime} and a certificate.`;
+}
 
 /** A meta description from Markdown — the SPA's lib/seo/summary, mirrored. */
 export function summarise(markdown: string, fallback = "", max = DESCRIPTION_MAX): string {
@@ -193,6 +215,8 @@ const section = (title: string, html: string, id?: string) => (html.trim() ? `<s
 const linkList = (items: Array<{ href: string; label: string; note?: string }>) =>
   `<ul>${items.map((it) => `<li>${link(it.href, it.label)}${it.note ? ` <span class="note">${h(it.note)}</span>` : ""}</li>`).join("")}</ul>`;
 const codeBlock = (lang: string, code: string) => `<pre><code class="language-${h(lang)}">${h(code)}</code></pre>`;
+/** One line of Markdown (`code`, **bold**) as inline HTML — an option, a question, an answer. */
+const inlineMd = (s: string) => markdownToHtml(s, 1_000).replace(/^<p>|<\/p>$/g, "");
 /** "305 easy · 271 medium · 22 hard" */
 const difficultySplit = (counts: Record<string, number>) =>
   ["EASY", "MEDIUM", "HARD"]
@@ -528,7 +552,7 @@ async function trackHead(key: string): Promise<PageHead | null> {
   const modules = track.modules
     .map(
       (m, i) =>
-        `<section><h3>Module ${i + 1}: ${h(m.title)}</h3><p>${h(m.blurb)}</p>${linkList(
+        `<section id="${h(m.slug)}"><h3>Module ${i + 1}: ${h(m.title)}</h3><p>${h(m.blurb)}</p>${linkList(
           m.lessons.map((l) => ({ href: `/study-plans/${key}/${l.slug}`, label: `${l.title}${l.kind === "test" ? " (checkpoint)" : ""}`, note: `${l.minutes} min` })),
         )}</section>`,
     )
@@ -546,8 +570,8 @@ async function trackHead(key: string): Promise<PageHead | null> {
     section("Syllabus", modules, "syllabus");
   return {
     path,
-    title: titles.studyTrack(track.title, track.modules.length, lessons),
-    description: `${track.blurb} ${track.modules.length} modules, ${lessons} lessons, exercises run on ${track.runtime}, quizzes and checkpoints. Free, with a certificate.`,
+    title: titles.studyTrack(track.title, lessons),
+    description: trackDescription(track.title, track.modules.length, lessons, track.runtime),
     facts: { language: track.title, modules: track.modules.map((m) => m.title), lessons, minutes, trail },
     content,
     crumb: track.title,
@@ -562,16 +586,26 @@ async function lessonHead(key: string, lessonSlug: string): Promise<PageHead | n
   if (!mod || !lesson) return null;
   const path = `/study-plans/${key}/${lessonSlug}`;
   const isTest = lesson.kind === "test";
+  const seo = lesson.seo;
   const trail: Crumb[] = [HOME, SECTION.studyPlans, { name: `${track.title} study plan`, path: `/study-plans/${key}` }, { name: lesson.title, path }];
   // The reading and the exercise prompts — what a visitor sees on the page.
   // Solutions, hidden cases and quiz answers never leave the server; the
   // quiz prompts are left out too, so the page reads as a lesson rather
   // than a test paper.
   const exercises = lesson.exercises.map((x) => `<section><h3>${h(x.title)}</h3>${markdownToHtml(x.prompt, 4_000)}</section>`).join("");
-  const at = mod.lessons.findIndex((l) => l.slug === lessonSlug);
-  const prev = mod.lessons[at - 1];
-  const next = mod.lessons[at + 1];
+  // The way on runs across module boundaries, as the page's own does
+  // (services/study-plans lessonFor): a crawler can walk the whole track
+  // lesson by lesson, not just the module it landed in.
+  const flat = track.modules.flatMap((m) => m.lessons);
+  const at = flat.findIndex((l) => l.slug === lessonSlug);
+  const prev = flat[at - 1];
+  const next = flat[at + 1];
   const siblings = mod.lessons.map((l) => ({ href: `/study-plans/${key}/${l.slug}`, label: `${l.title}${l.slug === lessonSlug ? " (this lesson)" : ""}` }));
+  // The page's order: the direct answer under the heading, the contents,
+  // the text with an anchor on every heading, the common questions, then
+  // the exercises — the same blocks the SPA's StudyLessonPage draws.
+  const outline = markdownOutline(lesson.body);
+  const faq = seo?.faq ?? [];
   const content =
     factList([
       ["Course", link(`/study-plans/${key}`, `${track.title} study plan`), { html: true }],
@@ -580,19 +614,40 @@ async function lessonHead(key: string, lessonSlug: string): Promise<PageHead | n
       ["Reading time", `${lesson.minutes} min`],
       ["Runtime", track.runtime],
     ]) +
+    (seo?.question && seo.answer ? `<section id="answer"><h2>${inlineMd(seo.question)}</h2><p>${inlineMd(seo.answer)}</p></section>` : "") +
     (isTest ? `<p>${h(lesson.title)} is the checkpoint that closes the ${h(mod.title)} module: a graded quiz and whole-program exercises, passed at 70%.</p>` : "") +
-    section(isTest ? "Instructions" : "Lesson", markdownToHtml(lesson.body), "lesson") +
+    (outline.length > 1 ? `<nav id="contents" aria-label="On this page"><h2>On this page</h2>${linkList(outline.map((o) => ({ href: `#${o.id}`, label: o.text })))}</nav>` : "") +
+    section(isTest ? "Instructions" : "Lesson", markdownToHtml(lesson.body, 24_000, { anchors: true }), "lesson") +
+    (faq.length ? `<section id="questions"><h2>Common questions</h2>${faq.map((f) => `<h3>${inlineMd(f.q)}</h3><p>${inlineMd(f.a)}</p>`).join("")}</section>` : "") +
     section(lesson.exercises.length === 1 ? "Exercise" : "Exercises", exercises, "exercises") +
     section(`In this module: ${mod.title}`, linkList(siblings), "module") +
     `<p>${prev ? link(`/study-plans/${key}/${prev.slug}`, `← ${prev.title}`) : ""}${prev && next ? " · " : ""}${next ? link(`/study-plans/${key}/${next.slug}`, `${next.title} →`) : ""}</p>`;
   return {
     path,
-    title: titles.studyLesson(lesson.title, track.title, isTest),
-    description: summarise(lesson.body, `${lesson.title}: a ${track.title} lesson with exercises judged on ${track.runtime} and a graded quiz.`),
-    facts: { minutes: lesson.minutes, checkpoint: isTest, language: track.title, track: { title: `${track.title} study plan`, path: `/study-plans/${key}` }, trail },
+    title: titles.studyLesson(lesson.title, track.title, isTest, seo?.title),
+    description: seo?.description ?? summarise(lesson.body, `${lesson.title}: a ${track.title} lesson with exercises judged on ${track.runtime} and a graded quiz.`),
+    facts: {
+      minutes: lesson.minutes,
+      checkpoint: isTest,
+      language: track.title,
+      track: { title: `${track.title} study plan`, path: `/study-plans/${key}` },
+      ...lessonFaq(seo),
+      trail,
+    },
     content,
     crumb: lesson.title,
   };
+}
+
+/**
+ * The questions a lesson page prints, in its order — the direct answer,
+ * then the common questions — for the FAQ its structured data names. The
+ * SPA's StudyLessonPage builds the same list from the same fields.
+ */
+export function lessonFaq(seo: LessonSeo | null): { faq?: Array<{ q: string; a: string }> } {
+  if (!seo) return {};
+  const faq = [...(seo.question && seo.answer ? [{ q: seo.question, a: seo.answer }] : []), ...seo.faq];
+  return faq.length ? { faq } : {};
 }
 
 /** The study plans index's child list: every track with its module count. */
@@ -709,7 +764,6 @@ function aptitudeQuestionHead(slug: string): Promise<PageHead | null> {
     ];
     const options = asStrings(q.options);
     const letter = (i: number) => String.fromCharCode(65 + i);
-    const inlineMd = (s: string) => markdownToHtml(s, 500).replace(/^<p>|<\/p>$/g, "");
     // The page's neighbours in topic order, the same six the API sends it.
     const order = await topicOrder(q.topic);
     const at = order.findIndex((s) => s.slug === slug);

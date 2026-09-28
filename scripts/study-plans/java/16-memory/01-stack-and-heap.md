@@ -1,6 +1,20 @@
 ---
 title: Stack and heap — where every value lives
 minutes: 14
+seo-title: Stack vs Heap in Java: Where Objects and Variables Live
+description: Java keeps local variables in each thread's stack frames and every object on the shared heap. Aliasing, pass-by-value, object sizes and StackOverflowError.
+question: What is the difference between stack and heap memory in Java?
+answer: Stack memory in Java belongs to one thread and holds a frame per method call — its local variables, parameters and references — pushed on call and popped on return. Heap memory is shared by all threads and holds every object and array created with `new`; it is sized by `-Xmx` and cleaned by the garbage collector. A reference on the stack points at an object on the heap.
+q: Is Java pass by value or pass by reference?
+a: Java is always pass-by-value. For an object, the value copied into the method is the reference, so the method can modify the object the caller sees but cannot make the caller's variable point to a different object.
+q: What causes StackOverflowError in Java?
+a: `StackOverflowError` is thrown when method frames exhaust a thread's stack, usually through recursion with no base case or recursion that is simply too deep. The stack is 512 KB to 1 MB per thread by default (`-Xss`); make the recursion iterative or bounded rather than catching the error.
+q: How much memory does an object take in Java?
+a: On a 64-bit JVM with compressed class pointers an object header is 12 bytes, and every object is padded to a multiple of 8, so `new Object()` takes about 16 bytes. An `Integer` is also 16 bytes for 4 bytes of payload.
+q: Why is an int array smaller than a List of Integer?
+a: An `int[]` is one contiguous block of 4-byte values, while a `List<Integer>` holds pointers to separate 16-byte `Integer` objects scattered across the heap. The boxed list takes four or five times the memory and is slower because it defeats the CPU cache.
+q: Are local variables thread-safe in Java?
+a: Yes: each thread has its own stack, so a local variable can never be seen by another thread. The objects a local refers to live on the shared heap, though, and are only safe while no other thread holds a reference to them.
 ---
 Every Java value lives in one of two places. Local variables, parameters and the bookkeeping of a method call live on a **thread's stack**, in a frame that is created on call and discarded on return. Objects — every `new`, every array, every string — live on the **heap**, shared by all threads and reclaimed by the garbage collector. A reference is a stack (or field) value that *points at* a heap object. Almost every "why did this happen" question about Java memory — aliasing, `StackOverflowError`, `OutOfMemoryError`, why passing an array to a method lets the method change it — is answered by drawing this picture correctly. This lesson draws it.
 

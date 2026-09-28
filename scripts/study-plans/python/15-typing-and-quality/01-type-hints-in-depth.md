@@ -1,6 +1,20 @@
 ---
 title: Type hints in depth — generics, unions, Callable, TypeVar and Protocol
 minutes: 15
+seo-title: Python Type Hints: Generics, Optional, Callable and TypeVar
+description: Python type hints beyond the basics: generics, Optional and unions, Callable, TypeVar, Generic classes, Literal, TypedDict and NewType.
+question: What does Optional mean in Python type hints?
+answer: `Optional[X]` in Python type hints means exactly `X | None`: the value is either an `X` or `None`. It does not mean an optional parameter, because a parameter with a default is optional whatever its type. Since Python 3.10 the union is usually written `int | None`, and a type checker then requires a `None` test before the value is used as an `int`.
+q: What is TypeVar in Python?
+a: A `TypeVar` is a type variable that links the types in a signature: with `T = TypeVar("T")`, `def first(xs: Sequence[T]) -> T` tells the checker that `first(["a"])` returns a `str` and `first([1])` an `int`. `TypeVar("N", int, float)` constrains it to listed types, and `bound=` limits it to subtypes of one type.
+q: Should I use List or list for type hints in Python?
+a: Use the built-in `list[int]`, `dict[str, int]` and `tuple[int, ...]`, which accept subscripts since Python 3.9. `typing.List`, `Dict` and `Tuple` are the pre-3.9 spellings, still accepted but no longer needed. The subscript is a hint only, so `isinstance(x, list[int])` is a `TypeError`; use `isinstance(x, list)`.
+q: Should a parameter be hinted as list or Iterable?
+a: As wide as the function allows: `Iterable[int]` if it only loops, which accepts lists, tuples, sets and generators; `Sequence` if it indexes or slices; `Mapping` if it looks keys up. A parameter hinted `list[int]` rejects a tuple. Return the concrete type the function produces, and import the abstract types from `collections.abc`.
+q: How do you type hint a callback function in Python?
+a: Use `Callable[[argument types], return type]` from `collections.abc`: `Callable[[int, str], bool]` is a function taking an int and a string and returning a bool, and `Callable[..., int]` accepts any arguments. It describes functions, lambdas, bound methods and callable objects alike.
+q: What is TypedDict in Python?
+a: `typing.TypedDict` declares a dict with known string keys and a type for each value, such as a `Movie` with `title: str` and `year: int`. A checker then verifies JSON-shaped data without converting it to a class; at run time the value is still a plain dict.
 ---
 Module 4 introduced annotations as documentation that tools can check. This lesson is the vocabulary a real codebase uses: the built-in generics and what to hint on parameters versus returns, unions and `Optional`, `Callable` signatures, `TypeVar` for functions and classes that are generic over a type, `Generic` classes, `ClassVar` and `Final`, `TypedDict` for dict-shaped data, `Literal` for a fixed set of strings, and `Any` as the deliberate escape hatch. All of it runs on 3.11; the 3.12 `type` statement and `def f[T]` syntax are described at the end as reading only.
 

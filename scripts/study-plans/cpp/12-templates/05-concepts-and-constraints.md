@@ -1,6 +1,20 @@
 ---
 title: Concepts and constraints — saying what T must be
 minutes: 15
+seo-title: C++20 Concepts Explained: Requires Clauses and Constraints
+description: C++20 concepts put a template's requirements in its signature, so a wrong type fails at the call. Requires clauses, writing a concept, and subsumption.
+question: What are concepts in C++20?
+answer: A concept is a named compile-time predicate on types, such as `std::integral<T>`, that a template can require. Writing `template <std::integral T>`, a `requires` clause or `std::integral auto` moves the requirement into the signature, so a wrong argument fails at the call with a short message naming the unmet constraint, not with an error from deep inside the template body. The standard concepts live in `<concepts>`.
+q: How do you write your own concept in C++?
+a: Declare a concept as a boolean expression, often a `requires` expression listing code that must compile: `template <typename T> concept Addable = requires(T a, T b) { { a + b } -> std::convertible_to<T>; };`. The body is checked, never run, and the concept can be combined with `&&` and `||` or tested with `static_assert`.
+q: What is the difference between a requires clause and a requires expression?
+a: A `requires` clause attaches a constraint to a template, as in `template <typename T> requires std::integral<T>`, and needs a boolean expression. A `requires` expression, `requires(T a) { a + a; }`, is such a boolean: it lists expressions, types and nested constraints that must be valid. Used inline together they give `requires requires`, a sign the concept deserves a name.
+q: Is bool a std::integral in C++?
+a: Yes. `bool` and `char` are integer types to the language, so both satisfy `std::integral` and `std::is_integral_v`. Add `&& !std::same_as<T, bool>` when a template must reject `bool`. There is also no `std::arithmetic` concept; write `std::integral<T> || std::floating_point<T>` or name your own.
+q: How does overloading on concepts work?
+a: When two templates match equally well, a constrained one beats an unconstrained one, and between two constrained ones the more constrained wins — if the compiler can prove subsumption. That works through named concepts: `std::signed_integral` is built from `std::integral`, so it wins for `int`. Two inline `requires` expressions never subsume each other, so the call is ambiguous.
+q: What does if constexpr do in a template?
+a: `if constexpr` chooses a branch at compile time and discards the others, so they are not instantiated for that type. With `if constexpr (std::integral<T>) return std::to_string(v);`, the `std::to_string` call is never compiled for a `std::string` argument, where an ordinary `if` would try and fail.
 ---
 Every template has requirements: `max_of` needs `<`, `sum` needs `+`, `std::sort` needs a random-access range of things that compare. Before C++20 those requirements lived only in the body, so a wrong argument produced an error from deep inside the template — forty lines of notes ending in a line of library code you did not write. Concepts move the requirement to the signature, where the compiler can check it at the call and say which one failed. This lesson covers `requires` clauses and the standard concepts, writing your own concept with a `requires` expression, constrained `auto`, overloading on concepts and the subsumption rule, and `if constexpr` as the in-body companion.
 

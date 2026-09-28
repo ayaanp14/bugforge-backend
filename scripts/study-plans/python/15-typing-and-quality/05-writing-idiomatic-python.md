@@ -1,6 +1,20 @@
 ---
 title: Writing idiomatic Python — the idioms, the anti-patterns and a refactoring
 minutes: 14
+seo-title: What Is Pythonic Code? Python Idioms and Anti-Patterns
+description: Pythonic code states intent through idioms: enumerate and zip over indexes, comprehensions, defaultdict, join and with, and the anti-patterns that hide bugs.
+question: What does Pythonic mean?
+answer: Pythonic describes code that uses the idioms Python's design makes shorter and clearer, stating the intent rather than the mechanism: `for x in xs` instead of indexing, `enumerate` and `zip`, `if not xs` for emptiness, `is None`, comprehensions, `dict.get` and `defaultdict`, `"".join`, f-strings and `with`. Code that reads like a translation from Java or C is not Pythonic.
+q: How do I loop with an index in Python?
+a: Use `enumerate`: `for i, x in enumerate(xs):` gives each index and element together, and `enumerate(xs, start=1)` counts from 1. To walk two lists in step, use `for x, y in zip(a, b):`. Index loops such as `for i in range(len(xs))` are the classic non-Pythonic pattern.
+q: Why are mutable default arguments a problem in Python?
+a: A default value is evaluated once, when the function is defined, so `def f(xs=[])` shares one list across every call that omits `xs`, and appends pile up between calls. Use `None` as the default and create the list inside: `xs = [] if xs is None else xs`.
+q: Why use join instead of += to build a string in Python?
+a: `"".join(parts)` states the intent in one call and builds the result in a single pass. `s += part` in a loop may copy the growing string at every step, because strings are immutable, which makes it quadratic in the worst case.
+q: What are common Python anti-patterns?
+a: The ones that hide bugs: mutable default arguments, modifying a list while iterating over it, `==` on floats, bare `except:`, `is` on values such as `x is 5`, `import *`, SQL or shell commands built from strings, relying on set order, and `eval` on input. Each looks harmless and fails later.
+q: When should a class be a function or a dataclass instead?
+a: When it has no invariant to protect. A class with only `__init__` and one method that computes a result is really a function, and a class with only fields and getters is a `@dataclass` or a `NamedTuple`. Keep a full class when its methods must maintain rules about its state.
 ---
 "Pythonic" is not a vague compliment; it names a specific set of idioms that the language's design makes shorter, clearer and often faster than their alternatives, and a matching set of anti-patterns that read as a translation from another language. This lesson lists both sides — most have appeared earlier in the track, and this is where they are gathered — and then works through one refactoring from a literal translation of Java-style code to the Python it should have been, so that the idioms are seen doing their job together.
 

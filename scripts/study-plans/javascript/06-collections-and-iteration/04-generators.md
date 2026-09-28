@@ -1,6 +1,20 @@
 ---
 title: Generators — functions that pause, and lazy pipelines
 minutes: 14
+seo-title: JavaScript Generators Explained: yield and Lazy Pipelines
+description: A JavaScript generator pauses at yield and resumes on next(), producing values lazily. Infinite sequences, lazy pipelines, delegation and sending values in.
+question: What is a generator in JavaScript?
+answer: A generator in JavaScript is a function declared with `function*` that can pause at each `yield` and resume later with its local variables intact. Calling it runs nothing; it returns a generator object, an iterator whose `next()` runs the body up to the next `yield`. Generators produce values lazily, so infinite sequences and on-demand pipelines take a few lines.
+q: What does `yield*` do in JavaScript?
+a: `yield* inner` delegates to another iterable: it yields every value of `inner` as if written inline, forwards `next(value)`, `return()` and `throw()` into it, and evaluates to the return value of `inner`. It makes recursive traversals, such as flattening a nested array, a few lines long.
+q: How do you pass a value into a generator?
+a: Call `gen.next(value)`: the argument becomes the result of the `yield` expression the generator is paused on. The first `next()` has no paused `yield` to receive it, so its argument is dropped — which is why a generator that takes input is primed with one empty `next()` first.
+q: Why are generators lazy?
+a: A generator computes its next value only when `next()` is called, so the consumer decides how much work is done. A pipeline of `filter`, `map` and `take` generators can therefore run over infinite or streaming sources without building intermediate arrays, stopping as soon as enough results are taken.
+q: Can an arrow function be a generator?
+a: No — there is no arrow syntax for generators. Use a `function*` declaration or expression, a `*method()` in a class or object literal, or `async function*` for an async generator. A `yield` inside an ordinary function nested in a generator does not belong to the generator.
+q: Where does a generator's return value go?
+a: It becomes the `value` of the final `{ done: true }` result. `for…of` and spread ignore that result, so `[...gen()]` never contains the return value; only manual `next()` calls see it, and it is the value of a `yield*` expression.
 ---
 A generator is a function that can **pause** at `yield`, hand a value out, and later resume exactly where it stopped with all its local variables intact. Call it and nothing runs; you get a generator object that is both an iterator and an iterable. That makes generators the shortest way to implement the iteration protocol — a range, a tree walk, an infinite sequence in three lines — and the natural way to build **lazy pipelines**: `filter`, `map` and `take` that touch only the items actually consumed. They also run backwards: `next(value)` sends data *into* the paused function, which is how coroutines, state machines and (historically) `async`/`await` were built. This lesson covers the syntax, the protocol, delegation with `yield*`, the pipeline toolkit, and where generators earn their keep.
 

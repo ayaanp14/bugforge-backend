@@ -1,6 +1,20 @@
 ---
 title: Records in practice — validation, wither methods and modelling
 minutes: 12
+seo-title: Java Record Examples: Validation, Wither Methods and Map Keys
+description: Java record patterns: validation in the compact constructor, wither methods, nested records, records as HashMap keys, local records and when not to use one.
+question: How do you validate a record in Java?
+answer: To validate a record in Java, write a compact constructor — `public Email { … }` — that checks the parameters and throws `IllegalArgumentException`, or calls `Objects.requireNonNull`, on bad input. It may also reassign the parameters to normalise them, such as trimming and lower-casing an address. Every path that creates the record passes through it, so every instance is valid.
+q: How do you modify a record in Java?
+a: You cannot change a record's fields; you create a new record with one difference. A wither method per commonly changed component, such as `withPort(int newPort)` returning `new Config(host, newPort, tls)`, keeps call sites readable: `base.withPort(8443).withTls(true)`.
+q: Can a record be used as a HashMap key in Java?
+a: Yes, and it makes an ideal key: it is immutable and its generated `equals` and `hashCode` compare by value, so `grid.get(new Cell(2, 3))` finds an entry stored under a different but equal `Cell`. Avoid array components, which compare by identity.
+q: What is a local record in Java?
+a: A record declared inside a method, visible only there and implicitly static, so it cannot capture the method's local variables. It suits a shape that exists only to make one stream pipeline readable, such as an hour-and-count pair.
+q: When should you not use a record in Java?
+a: When the type has identity (two users with equal fields are still different users), when its state changes, when it needs hidden state such as a cache, when a framework requires a no-argument constructor and setters, or when it must extend a class.
+q: Can record components be null in Java?
+a: Yes, unless you forbid it. Call `Objects.requireNonNull` on the component in the compact constructor to reject null; `List.copyOf` and `Map.copyOf` also reject null elements. The generated `equals`, `hashCode` and `toString` all tolerate nulls.
 ---
 Knowing what a record generates is the easy half. The practical half is the handful of patterns that come up every time you use them: validating and normalising in the compact constructor, producing modified copies, nesting records into larger models, using them as map keys and in streams, and recognising the situations where a record is the wrong tool. This lesson is those patterns, with the idioms that experienced Java code uses.
 

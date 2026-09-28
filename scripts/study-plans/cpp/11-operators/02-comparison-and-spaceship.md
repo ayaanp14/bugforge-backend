@@ -1,6 +1,20 @@
 ---
 title: Comparison and the spaceship operator
 minutes: 15
+seo-title: C++20 Spaceship Operator: Three-Way Comparison Explained
+description: The C++20 spaceship operator compares once and answers less, equal or greater. Defaulting it gives all six comparisons; strong, weak and partial ordering.
+question: What is the spaceship operator in C++?
+answer: The spaceship operator `<=>` is C++20's three-way comparison: `a <=> b` answers less, equal or greater in one call and returns a comparison category such as `std::strong_ordering`. The compiler rewrites `a < b` as `(a <=> b) < 0`. Declaring `auto operator<=>(const T&) const = default;` compares the members in declaration order and also defaults `==`, so one line gives all six comparison operators.
+q: Why does a hand-written `operator<=>` not generate `operator==`?
+a: Only a defaulted `<=>` also declares a defaulted `==`. Equality is kept separate because it can often be answered faster — two strings of different length are unequal without comparing any characters. If you write `<=>` yourself you get `<`, `>`, `<=` and `>=`, and must add `bool operator==(const T&) const = default;` or `a == b` does not compile.
+q: What is the difference between strong_ordering, weak_ordering and partial_ordering?
+a: `std::strong_ordering` means equal values are interchangeable, as with `int` and `std::string`. `std::weak_ordering` means equivalent values can still be told apart, such as case-insensitive names. `std::partial_ordering` allows pairs that are unordered, as `double` does with NaN. A defaulted `<=>` returning `auto` deduces the weakest category among the members.
+q: What is a strict weak ordering in C++?
+a: It is the contract `std::sort`, `std::set` and `std::map` require of `<` or a comparator: `a < a` is false, `a < b` implies `!(b < a)`, and both "less" and "neither is less" are transitive. A comparison written with `<=` breaks it — undefined behaviour in `std::sort`, lost elements in a `std::set`.
+q: How do I compare a struct by several fields in C++?
+a: Since C++20, declare `auto operator<=>(const T&) const = default;` and the members are compared lexicographically in declaration order, so declare them in order of significance. Before C++20, write `operator<` as `std::tie(a.x, a.y) < std::tie(b.x, b.y)`, or compose a custom `<=>` key by key, returning at the first result that is not zero.
+q: Does std::set use operator== to find duplicates?
+a: No. `std::set` and `std::map` use only `<`, through `std::less`: two keys count as the same when neither is less than the other. That is why `==` and `<` must agree — when they disagree, a `std::set` and `std::find` see different duplicates.
 ---
 A type that can be compared can be sorted, searched, deduplicated and used as a `std::map` key — most of the standard library opens up the moment `<` and `==` exist. Before C++20 that meant writing six operators by hand and keeping them consistent; since C++20 one line, `auto operator<=>(const T&) const = default;`, produces the whole set from the members in declaration order. This lesson settles what `==` and `<` must promise, how the *three-way comparison* `<=>` and the rewritten expressions work, which of `strong_ordering`, `weak_ordering` and `partial_ordering` a type should return, and what `std::sort` and `std::set` actually call.
 

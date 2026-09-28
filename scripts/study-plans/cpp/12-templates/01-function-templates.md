@@ -1,6 +1,20 @@
 ---
 title: Function templates — one definition, every type
 minutes: 14
+seo-title: C++ Function Templates Explained: Deduction and Headers
+description: A C++ function template is a recipe the compiler instantiates per type. Template argument deduction, explicit arguments and why templates go in headers.
+question: What is a function template in C++?
+answer: A function template is a function written with type parameters, such as `template <typename T> T max_of(const T& a, const T& b)`. It is a recipe, not a function: each time it is called with new types, the compiler deduces `T` from the arguments and instantiates a separate function, so `max_of(3, 9)` creates `max_of<int>`. `std::sort`, `std::swap` and `std::max` are function templates.
+q: Why must C++ templates be defined in header files?
+a: The compiler generates `max_of<int>` where it sees the call, so the complete definition must be visible in that translation unit. With only a declaration in the header and the body in a `.cpp` file, nothing instantiates the version you need and the link fails with an undefined reference. The one-definition rule allows the same template definition in many files.
+q: Why does `max_of(3, 2.5)` fail with deduced conflicting types?
+a: Template argument deduction never converts arguments. The first argument deduces `T = int` and the second `T = double`, and the two deductions conflict. Either convert one argument yourself or name the type explicitly, as in `max_of<double>(3, 2.5)`, which skips deduction so the `3` converts to `3.0` like any argument.
+q: What is the difference between typename and class in a template parameter?
+a: None: in `template <typename T>` and `template <class T>` the two keywords mean exactly the same thing, and `T` may be any type, not only a class. Older code tends to write `class`. The keywords differ only elsewhere — `typename` is also what marks a dependent name as a type.
+q: Does a non-template overload beat a function template in C++?
+a: When both match equally well, yes: overload resolution considers the non-template functions and the deduced template instantiations together, and an exact non-template match wins the tie. A template can still win when it matches better, as when `describe(5L)` picks the template over a `describe(int)` that would need a conversion.
+q: What is an abbreviated function template in C++20?
+a: A function with an `auto` parameter, such as `void show(const auto& value)`, which is shorthand for `template <typename T> void show(const T& value)`. Each `auto` is its own template parameter, so `add(auto a, auto b)` accepts mixed types. Use the long form when the body needs to name the type.
 ---
 A function fixes the types of its parameters when it is written; a function template takes the types as parameters too, and the compiler writes the function you need the first time you call it. `std::max`, `std::swap`, `std::sort` and `std::make_unique` are all function templates, which is why one `std::sort` sorts `int`s, `std::string`s and your own types without a line of dispatch. This lesson settles how a template is declared, how the compiler deduces `T` from a call, when you must spell the argument out, how a template coexists with ordinary overloads, and why a template lives in a header rather than a `.cpp` file.
 

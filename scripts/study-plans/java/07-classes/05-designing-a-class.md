@@ -1,6 +1,20 @@
 ---
 title: Designing a class — cohesion, composition and toString
 minutes: 13
+seo-title: Designing a Class in Java: Cohesion, Composition and toString
+description: Good Java class design: one concept per class, composition, value objects versus entities, overriding toString, the object lifecycle and the builder pattern.
+question: How do you design a good class in Java?
+answer: A well-designed Java class models one concept you can describe in a sentence without "and". Decide first whether it is a value (immutable, equal by content) or an entity (identified by an id, with a lifecycle); keep its fields private and ideally `final`; enforce invariants in the constructor; receive collaborators through the constructor; and override `toString` straight away.
+q: Why should you override toString in Java?
+a: The inherited `Object.toString()` returns the class name and a hash, such as `Order@1b6d3586`, which is useless in logs, debuggers and `println`. Override it with `@Override` so a typo becomes a compile error, include the identifying fields on one line, and leave secrets out.
+q: What is the builder pattern in Java?
+a: The builder pattern constructs an object with many optional parts readably: a static nested `Builder` class has one fluent method per option returning `this`, and `build()` validates and calls the class's private constructor. It suits four or more optional parameters; `StringBuilder` and `HttpRequest.newBuilder()` follow the pattern.
+q: What is the difference between a value object and an entity?
+a: A value object, such as `Money` or `LocalDate`, is identified by its content, is immutable, and bases `equals` and `hashCode` on all its fields. An entity, such as a `Customer` or an `Order`, is identified by an id, usually changes over its lifecycle, and bases equality on that id.
+q: Does Java have destructors?
+a: No. An object lives while a reference from a GC root reaches it, and the garbage collector reclaims it at a time of its choosing; `System.gc()` is only a hint and `finalize()` is deprecated for removal. Resources such as files and sockets are released by `close()`, usually through try-with-resources.
+q: What is composition in Java?
+a: Composition means building a class from other objects it holds as fields — an `Order` has a `Customer` and a list of order lines and delegates work to them. It is a has-a relationship, preferred over inheritance because it hides the inner object's API and can change at run time.
 ---
 Knowing the syntax of classes is not the same as knowing what to put in one. This lesson is about the design choices: what belongs together, how objects hold other objects (composition), values versus entities, the first `Object` method you override (`toString`), and the object lifecycle from `new` to garbage collection. It also names the builder, the pattern for objects with many optional parts.
 

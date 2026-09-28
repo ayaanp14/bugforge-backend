@@ -1,6 +1,20 @@
 ---
 title: Linting, formatting and testing — the quality toolchain
 minutes: 12
+seo-title: ESLint vs Prettier and JavaScript Unit Testing Explained
+description: Linters find likely bugs, formatters fix layout. ESLint flat config and Prettier, good unit tests with node:test, Vitest or Jest, mocking, coverage and CI.
+question: What is the difference between ESLint and Prettier?
+answer: ESLint is a linter: it parses code into an abstract syntax tree and runs rules that catch likely bugs and enforce conventions, such as `no-undef`, `eqeqeq` and `no-unused-vars`. Prettier is a formatter: it rewrites whitespace, line breaks, quotes and commas into one canonical layout and checks no meaning. Run both, with `eslint-config-prettier` so ESLint's formatting rules do not fight Prettier.
+q: What makes a good unit test?
+a: One behaviour per test, a name that reads as a sentence, and an arrange–act–assert body with no loops or conditions. It is deterministic — no real time, randomness or network — independent of the order tests run in, and exercises behaviour through the public interface rather than private structure.
+q: Vitest vs Jest vs `node:test` — which should I use?
+a: Vitest is the default for Vite projects: ESM-native, fast and Jest-compatible. Jest is the CommonJS-first incumbent with a huge ecosystem, and `node:test` ships with Node 18 and later, needs no dependency and suits libraries and scripts. All three share `describe`/`test` blocks, hooks and async tests.
+q: When should you mock in JavaScript tests?
+a: At I/O boundaries — the network, the clock, randomness — and preferably by injecting those dependencies as parameters, so no mocking framework is needed. Mocking your own modules produces tests that pass while the real system fails; keep a few integration tests that use real pieces.
+q: What is the testing pyramid?
+a: Many fast unit tests at the base, fewer integration tests that exercise several modules or a real database, and a small number of slow end-to-end tests at the top that drive a browser through the whole app with a tool such as Playwright.
+q: What is ESLint flat config?
+a: The `eslint.config.js` format that is the default in ESLint 9: the file exports an array of config objects, and later objects override earlier ones for the files they match. A typical config starts from `js.configs.recommended`, adds the typescript-eslint presets, then adds its own rules.
 ---
 The code you write is checked by three kinds of tool before anyone reviews it: a **linter** that finds likely bugs and enforces rules, a **formatter** that removes every argument about style, and a **test runner** that proves behaviour and keeps proving it. Together with type-checking (module 13) and a pre-commit hook plus CI, they form the pipeline every serious JavaScript project runs. This lesson covers what each does and does not do, how ESLint's flat config and Prettier fit together, the shape of a good test (and what `node:test`, Vitest and Jest share), mocking with restraint, coverage as a signal, and the hook-and-CI wiring that makes the whole thing automatic.
 

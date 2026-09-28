@@ -1,6 +1,20 @@
 ---
 title: Aliasing, shallow copies and defensive copies
 minutes: 12
+seo-title: Shallow vs Deep Copy of an Array in Java: Clone and Aliasing
+description: Assigning a Java array copies the reference; clone and Arrays.copyOf make shallow copies. When you need a deep copy, and how defensive copies protect a class.
+question: What is the difference between a shallow copy and a deep copy of an array in Java?
+answer: A shallow copy of a Java array is a new array holding the same values; for an array of objects those values are references, so the copy and the original share their elements. A deep copy duplicates the elements too. `clone()`, `Arrays.copyOf` and `System.arraycopy` are all shallow, and Java has no general deep copy — you write one for your array's shape.
+q: What happens when you assign one array to another in Java?
+a: The reference is copied, not the array. After `int[] b = a;` both variables name the same array, so `b[0] = 99` also changes `a[0]` and `a == b` is true. This is aliasing; for an independent array use `a.clone()` or `Arrays.copyOf`.
+q: How do you copy an array in Java?
+a: Use `a.clone()` or `Arrays.copyOf(a, a.length)` for a full copy, `Arrays.copyOfRange` for part of one, or `System.arraycopy` into an existing array. For a primitive array that is a complete copy; for an object array the elements are shared, so copy them too when they are mutable.
+q: What is a defensive copy in Java?
+a: A defensive copy is a copy a class makes of a mutable object it receives or hands out, so callers cannot change its internal state. For an array field, store `values.clone()` in the constructor and return `values.clone()` from the getter, because arrays have no read-only view.
+q: Does final make an array immutable in Java?
+a: No. `final int[] values` freezes the reference, so the variable cannot point at another array, but `values[0] = 5` is still legal. Protect the contents with defensive copies, or expose an unmodifiable collection instead.
+q: Should a Java method return null or an empty array?
+a: Return an empty array such as `new int[0]` for no results. Callers can then loop over the result without a null check, and one shared constant like `EMPTY = new int[0]` is safe to reuse because a zero-length array has no elements to change.
 ---
 Because an array variable is a reference, two variables can name one array — *aliasing* — and a "copy" can be a copy of the references rather than of the things they point to — a *shallow copy*. Most array bugs that are not off-by-one are one of these two. This lesson makes the distinction concrete and shows the defensive habits that keep other code from changing your arrays behind your back.
 

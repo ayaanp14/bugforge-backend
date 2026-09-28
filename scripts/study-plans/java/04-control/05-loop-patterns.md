@@ -1,6 +1,20 @@
 ---
 title: Loop patterns every program is made of
 minutes: 14
+seo-title: Java Loop Patterns: Two Pointers, Sliding Window and More
+description: The loop patterns behind most Java programs: accumulate, count, find, all and any, max and min, two pointers, sliding window, pairs and sentinels.
+question: What are the common loop patterns in Java?
+answer: The common loop patterns in Java are accumulate, a sum or product seeded with its identity value; count; find the first match with an early exit; all or any; best so far, for a maximum or minimum; two pointers; a sliding window; nested loops over pairs; and reading until a sentinel or end of input. Most interview problems combine two of them.
+q: How do I find the maximum value in an array in Java?
+a: Seed `max` with the first element and loop from index 1, or seed it with `Integer.MIN_VALUE`, and replace it whenever `arr[i] > max`. Never seed with 0, or an all-negative array reports 0. Comparing with `>` keeps the first of tied values and `>=` the last.
+q: What is the two-pointer technique?
+a: Two indices move through an array together, usually from both ends toward each other in a `while (lo < hi)` loop, to check palindromes, find a pair with a given sum in sorted data or reverse in place. Moving them in the same direction at different speeds removes duplicates.
+q: What is the sliding window technique?
+a: A sliding window keeps a running result over a fixed-length run of elements in one pass: add the element entering the window and subtract the one leaving it, instead of re-summing every window. It finds the best sum of k consecutive elements in linear time.
+q: How do I loop over every pair of elements once?
+a: Nest two loops and start the inner one at `i + 1`: `for (int i = 0; i < n; i++) for (int j = i + 1; j < n; j++)`. That visits each unordered pair exactly once, never pairing an element with itself; starting `j` at 0 gives ordered pairs, self-pairs included.
+q: Why do all and any loops start with true and false?
+a: An all-check assumes every element passes and hunts for a counterexample, so it starts `true` and becomes `false` at the first failure; an any-check starts `false` and hunts for a single witness. Both can stop early, and on an empty input all is `true` and any is `false`.
 ---
 Most loops are one of a dozen patterns: accumulate, count, find, check all or any, track a best, walk two things at once, generate pairs, read until a sentinel. Recognising the pattern lets you write the loop without thinking about it — and lets an interviewer see that you have. This lesson names them, shows the canonical form of each, and points out the boundary and initial-value traps in each.
 

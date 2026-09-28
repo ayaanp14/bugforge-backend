@@ -1,6 +1,20 @@
 ---
 title: Enums with fields, constructors and behaviour
 minutes: 14
+seo-title: Java Enum with Values: Fields, Constructors and Methods
+description: Java enum constants can carry data and behaviour. Fields and private constructors, constant-specific methods, enums implementing interfaces and lookup by code.
+question: How do you add fields and a constructor to an enum in Java?
+answer: To add fields and a constructor to an enum in Java, list each constant with its arguments — `EARTH(5.976e+24, 6.37814e6)` — end the list with a semicolon, then declare `final` fields and a constructor that assigns them. The constructor is implicitly private and runs once per constant when the enum class is initialised; methods then read the fields like in any class.
+q: Can an enum have a constructor in Java?
+a: Yes, but it is implicitly `private` and you never call it yourself: each constant declaration calls it once, with its own arguments, when the enum class is initialised. Using `new` on an enum type is a compile error.
+q: How do you give each enum constant different behaviour?
+a: Either declare an abstract method in the enum and give every constant a body that overrides it, or pass the behaviour to the constructor as a lambda field, such as an `IntBinaryOperator`. Both beat a `switch (this)`, which must be edited for every new constant.
+q: How do you look up an enum by a code or value in Java?
+a: Build a `static final Map` from code to constant in a static block after the constants, looping over `values()`, and expose a `fromCode` method that throws `IllegalArgumentException`, or returns an `Optional`, for an unknown code. `valueOf` only matches the exact constant name.
+q: Why can't an enum constructor access a static field?
+a: Enum constants are created first, before the enum's other static fields are initialised, so a static field read in the constructor would still hold its default value. The compiler rejects it with "illegal reference to static field from initializer"; build such tables in a static block instead.
+q: Can an enum implement an interface in Java?
+a: Yes, any number. An enum cannot extend a class, because it already extends `Enum`, but implementing an interface lets its constants plug into polymorphic code that expects that interface type.
 ---
 An enum is a class, so its constants can carry data and its type can have methods. That turns a bare list of names into a table of related facts — a planet's mass, a currency's symbol, an operation's implementation — that lives with the type instead of in parallel arrays or `switch` statements scattered through the code. This lesson covers enum fields and constructors, per-constant behaviour, enums implementing interfaces, and the lookup patterns you will write for every enum that maps to external codes.
 

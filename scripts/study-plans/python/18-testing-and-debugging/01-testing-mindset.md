@@ -1,6 +1,22 @@
 ---
 title: The testing mindset — what to test, how to arrange it, and designing for testability
 minutes: 13
+seo-title: Python Unit Testing Best Practices: Arrange, Act, Assert
+description: What to test in Python and how: unit vs integration vs end-to-end tests, arrange-act-assert, edge cases, flaky tests, and designing code for testability.
+question: What makes a good unit test in Python?
+answer: A good unit test in Python checks one behaviour of one function or class, with no I/O, in three parts: arrange the inputs, act with one call, assert on the outcome. It is named for the behaviour it checks, runs in milliseconds, sets up its own state and gives the same result every run, so a failure explains itself and nobody learns to ignore it.
+q: What is the arrange-act-assert pattern?
+a: The three parts of every test, in order: arrange the inputs, act with one call to the code under test, assert on the outcome. Checking one behaviour per test means a failure points at one thing, whereas a test of five unrelated things stops at the first failure and hides the rest.
+q: What is the difference between unit, integration and end-to-end tests?
+a: A unit test checks one function or class with no I/O, in milliseconds; an integration test runs real parts together, such as code and a database; an end-to-end test drives the whole system through its real interface. The test pyramid is many unit tests, fewer integration tests and a handful end to end.
+q: What should I not unit test?
+a: Private helpers, trivial getters and the standard library. Test behaviour through the public interface, meaning what a function returns or changes, plus the edge cases, the documented errors and every bug you fix, rather than which helpers the code happened to call.
+q: How do I make Python code easier to test?
+a: Pass the world in. Keep a functional core of pure functions that compute from their arguments inside a thin shell that does the I/O, and make the clock, the random generator and collaborators parameters with defaults, so a test can supply a fixed time, a seeded `random.Random` or a fake.
+q: Why is a flaky test worse than no test?
+a: A test that passes only sometimes trains people to ignore red, so real regressions get ignored too. Flakiness usually comes from hidden dependence on the clock, randomness, the network, hash order or the order in which tests run.
+q: Is 100% code coverage worth aiming for?
+a: No. Coverage shows which lines ran, not whether their behaviour was checked, so untested lines are a useful signal but a perfect score is not a goal. `coverage run -m pytest` followed by `coverage report` measures it.
 ---
 A test is a program that runs your code with known inputs and checks the outputs, so that a change which breaks behaviour is caught by a machine instead of a user. That definition already settles most arguments: tests exist to catch regressions and to pin down what the code promises, not to prove correctness or to reach a coverage number. This lesson covers the kinds of test and where each earns its place, the arrange–act–assert shape, what is worth testing, the properties that make a suite trustworthy, and the design moves — pure functions, injected dependencies, fixed clocks and seeds — that make code testable in the first place.
 

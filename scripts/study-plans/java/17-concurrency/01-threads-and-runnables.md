@@ -1,6 +1,20 @@
 ---
 title: Threads and Runnables — starting, joining, interrupting
 minutes: 14
+seo-title: How to Create a Thread in Java: start(), join() and Interrupts
+description: Create a Java thread from a Runnable, start it with start() rather than run(), wait with join() and stop it by interruption. Daemon threads and thread states.
+question: How do you create a thread in Java?
+answer: To create a thread in Java, pass a `Runnable` — usually a lambda — to `new Thread(task, name)` and call `start()`, which creates the new thread and runs the task's `run()` method on it. Call `join()` to wait for it to finish. Prefer passing a `Runnable` over extending `Thread`, and use a thread pool rather than a new thread per task.
+q: What is the difference between start() and run() in Java?
+a: `start()` creates a new thread and calls `run()` on it; calling `run()` directly is an ordinary method call on the current thread, so nothing runs concurrently. Calling `start()` twice on the same thread throws `IllegalThreadStateException`.
+q: What is the difference between Runnable and Callable in Java?
+a: `Runnable.run()` returns nothing and cannot throw checked exceptions; `Callable.call()` returns a value and may throw. A plain `Thread` runs only a `Runnable`; a `Callable` is submitted to an `ExecutorService`, which hands back a `Future` for the result.
+q: How do you stop a thread in Java?
+a: You cannot force it safely: `Thread.stop()` is deprecated for removal because it releases locks in the middle of an update. Call `interrupt()` instead; a blocked thread wakes with `InterruptedException`, and a running one checks `Thread.currentThread().isInterrupted()` in its loop and exits.
+q: What is a daemon thread in Java?
+a: A daemon thread does not keep the JVM alive: the JVM exits when the last non-daemon thread finishes and kills daemons mid-run without running their `finally` blocks. Mark one with `setDaemon(true)` before `start()`, and use it only for background housekeeping.
+q: How should InterruptedException be handled in Java?
+a: Never swallow it with an empty catch. Either let it propagate, or call `Thread.currentThread().interrupt()` in the catch block to restore the interrupt flag, so the code above you still sees the stop request.
 ---
 A thread is an independent path of execution with its own stack, sharing the heap with every other thread in the process. Java had threads in the language from day one — `Thread`, `Runnable`, `synchronized` — which is why so much of the platform, from servlet containers to the collections framework, assumes them. Everything higher-level (executors, futures, parallel streams) is built on what this lesson covers: creating a thread, giving it work, waiting for it, and stopping it politely.
 

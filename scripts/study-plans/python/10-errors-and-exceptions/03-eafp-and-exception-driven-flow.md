@@ -1,6 +1,20 @@
 ---
 title: EAFP and exception-driven flow — suppress, retries, return versus raise
 minutes: 13
+seo-title: Python EAFP Patterns: suppress, Sentinels, Return vs Raise
+description: Entering a Python try block is free and raising costs a little. When EAFP pays off, contextlib.suppress, returning None vs raising, sentinels and retries.
+question: Should a Python function return None or raise an exception?
+answer: Return `None` when absence is a normal outcome the caller expects to test, as `dict.get` and `re.match` do. Raise when absence is exceptional — the caller passed something that should exist — so that forgetting to handle it fails loudly instead of surfacing later as `AttributeError: 'NoneType'`. Never return a plausible value such as `-1`, `0` or `""` as an error code.
+q: Is try except slow in Python?
+a: Entering a `try` block costs almost nothing — since Python 3.11, no instructions at all — while raising and catching costs roughly a microsecond. A `try` around an operation that usually succeeds is therefore cheaper than a check, and one around an operation that usually fails is dearer.
+q: What does contextlib.suppress do?
+a: `with suppress(FileNotFoundError): os.remove(path)` ignores the named exceptions raised in the block, the same as a `try` with `except FileNotFoundError: pass`. Use it around one statement whose failure means the work is already done, such as deleting a file that may not exist.
+q: What is a sentinel value in Python?
+a: A sentinel is a unique private object, usually `_MISSING = object()`, used as a default argument to tell no value given apart from a value of `None`. An `object()` is equal only to itself, so `default is _MISSING` is true only when the caller passed nothing.
+q: How do I retry a function on an exception in Python?
+a: Loop over a fixed number of attempts, `return` on success, catch only the exceptions that mean try again, such as a timeout, and re-raise on the last attempt so the caller sees the real error. Never retry a `ValueError` that will fail identically, and never retry forever.
+q: Why is EAFP better than checking whether a file exists first?
+a: Between `os.path.exists(path)` and `open(path)` the file can vanish, so the check can pass and the open still fail; the check also duplicates work `open` does anyway. Opening inside `try` and catching `FileNotFoundError` is a single, race-free operation.
 ---
 Python raises exceptions for conditions other languages treat as ordinary results: the end of an iterator is `StopIteration`, a missing key is `KeyError`, a missing attribute is `AttributeError`. The language is designed for code that *tries* and *handles*, and the `try` statement is cheap to enter — the cost is in raising, not in guarding. This lesson works through the consequences: the EAFP patterns the standard library expects, `contextlib.suppress` for the "ignore this if it happens" case, when a function should return `None` and when it should raise, sentinel results, retry loops, and the two rules that keep exception-driven code from becoming exception-obscured code.
 

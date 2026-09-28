@@ -1,6 +1,20 @@
 ---
 title: The collections framework — the map and how to choose
 minutes: 14
+seo-title: Java Collections Framework: Hierarchy and How to Choose
+description: The Java collections framework in one map: List, Set, Queue and Map, their main classes, time complexities and null policies, and how to choose between them.
+question: What is the Java collections framework?
+answer: The Java collections framework is the set of data-structure interfaces and classes in `java.util`. Interfaces — `List`, `Set`, `Queue`, `Deque` and `Map` — describe what a collection does; classes such as `ArrayList`, `HashSet`, `HashMap` and `ArrayDeque` decide how, and with it the performance and iteration order. All rely on `equals` and `hashCode` and compare by contents.
+q: Why is Map not a Collection in Java?
+a: A `Map` associates keys with values rather than holding a bag of elements, so it does not fit `Collection`'s contract. Its views are collections, though: `keySet()` is a `Set`, `values()` a `Collection` and `entrySet()` a `Set` of `Map.Entry`.
+q: Which Java collection should I use?
+a: Start with the defaults: `ArrayList` for a sequence, `HashMap` for key-value lookup, `HashSet` for unique elements and `ArrayDeque` for a stack or queue. Switch to `LinkedHashMap` or `LinkedHashSet` for insertion order, `TreeMap` or `TreeSet` for sorting and range queries, and `PriorityQueue` for smallest-first processing.
+q: Which Java collections do not allow null?
+a: `TreeMap` and `TreeSet` reject null keys and elements because they cannot compare them; `List.of`, `Set.of`, `Map.of`, `ConcurrentHashMap` and `ArrayDeque` reject nulls entirely. `ArrayList`, `HashMap` and `HashSet` allow them.
+q: Should you declare a variable as List or ArrayList?
+a: Declare it with the interface — `List<String> names = new ArrayList<>()` — and use interfaces for parameters and return types too. A public method returning `ArrayList` promises that implementation forever; the interface leaves you free to change it.
+q: What is the time complexity of HashMap, TreeMap and ArrayList operations?
+a: `HashMap` and `HashSet` get, put and contains are O(1) on average; `TreeMap` and `TreeSet` operations are O(log n); `ArrayList` get is O(1) and append O(1) amortised, while `contains` and insertion at the front are O(n).
 ---
 `java.util` holds the data structures every Java program is built from: lists, sets, maps, queues. They share one design — interfaces that describe *what* a collection does, classes that decide *how*, and a small set of conventions (`equals`/`hashCode`, `Iterable`, fail-fast iterators, optional operations) that let them interoperate. This lesson is the map of the framework and the decision procedure for picking a structure; the following lessons take each family in depth.
 

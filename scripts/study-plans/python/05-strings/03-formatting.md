@@ -1,6 +1,20 @@
 ---
 title: Formatting — f-strings and the format-spec mini-language
 minutes: 14
+seo-title: Python F-Strings Explained: Format Specs, Padding, Decimals
+description: Python f-strings put expressions in braces, and a format spec after a colon sets width, alignment, padding, decimals and thousands separators. Plus str.format.
+question: What is an f-string in Python?
+answer: An f-string, introduced in Python 3.6, is a string literal prefixed with `f` whose expressions inside braces are evaluated and inserted: `f"{name} bought {n} items"`. After a colon, a format spec shapes the value — `f"{x:.2f}"` for two decimals, `f"{n:05d}"` for zero padding, `f"{n:,}"` for thousands separators — and `f"{x=}"` prints a name with its value.
+q: How do I pad a number with zeros in Python?
+a: Use the `0` flag and a width in a format spec: `f"{42:05d}"` gives `00042`, and it is sign-aware, so `f"{-42:05d}"` gives `-0042`. For a string of digits, `"42".zfill(5)` does the same.
+q: How do I align text in columns with f-strings?
+a: Give each field a width and an alignment — `<` left, `>` right, `^` centre — as in `f"{name:<12}{qty:>4}{price:>8.2f}"`. Numbers align right and strings left by default. The width is a minimum and never truncates, and it can come from a variable: `f"{name:<{w}}"`.
+q: How do I add thousands separators to a number in Python?
+a: Put a comma in the format spec: `f"{1234567:,}"` gives `1,234,567`, and `f"{1e6:,.2f}"` gives `1,000,000.00` — the grouping comes before the precision. An underscore, as in `f"{n:_d}"`, groups with underscores instead.
+q: What is the difference between f-strings, str.format and % formatting?
+a: All three render values with the same kind of format specs. F-strings are the modern default. `str.format` suits a template kept apart from its values, such as one reused in a loop. The C-style `%` operator is legacy that you will read in older code and `logging` calls; write f-strings.
+q: Why does an f-string with quotes inside raise SyntaxError?
+a: Before Python 3.12, an expression inside the braces cannot use the same quote character as the enclosing string, so `f"{d["k"]}"` is a `SyntaxError` on Python 3.11. Use the other quote inside the braces: `f"{d['k']}"`.
 ---
 Every judged exercise ends with output that must match exactly, and almost every real program prints a table, a report or a message with values in it. Python's f-string does both: an expression inside braces, an optional conversion, and a *format spec* after a colon that controls width, alignment, padding, sign, grouping, precision and type. The spec is a small language shared by `format()`, `str.format` and f-strings, and this lesson learns it once. It ends with the older `%` style, which you will read in existing code and should not write.
 

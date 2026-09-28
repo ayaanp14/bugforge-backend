@@ -1,6 +1,22 @@
 ---
 title: The undefined behaviour catalogue — what the compiler is allowed to assume
 minutes: 15
+seo-title: Undefined Behavior in C++: Examples and How to Detect It
+description: Signed overflow, out-of-bounds reads, dangling pointers and data races are undefined behaviour in C++. Why -O2 deletes checks, and finding UB with sanitizers.
+question: What is undefined behaviour in C++?
+answer: Undefined behaviour (UB) in C++ is an operation the standard imposes no requirements on — signed integer overflow, reading past an array, dereferencing a null or dangling pointer, a data race. The compiler may assume it never happens and optimise on that assumption, so a program with UB can print the right answer, crash, or silently lose a check, and behave differently at `-O2` or on another machine.
+q: Is signed integer overflow undefined behaviour in C++?
+a: Yes. `INT_MAX + 1`, `INT_MIN / -1` and `100000 * 100000` in `int` are undefined, so the compiler may assume they never happen; that is why `if (x + 1 < x)` is folded to `false` at `-O2`. Unsigned arithmetic is different: it wraps modulo 2ⁿ by definition.
+q: How do I detect integer overflow in C++?
+a: Test before the operation, in terms that cannot overflow themselves: compare against `std::numeric_limits<int>::max() - b` before adding, compute in a wider type such as `long long`, or use GCC and Clang's `__builtin_add_overflow`, `__builtin_sub_overflow` and `__builtin_mul_overflow`, which return `true` when the result does not fit.
+q: Why does the compiler delete my null check?
+a: If the code dereferences `p` before testing it, that dereference would be undefined behaviour for a null pointer, so the compiler concludes `p` cannot be null and removes the later `if (p == nullptr)` as always false. Undefined behaviour reaches backwards: put the check before the first use.
+q: What is the difference between undefined, unspecified and implementation-defined behaviour?
+a: Implementation-defined behaviour is chosen and documented by the compiler, such as `sizeof(int)`. Unspecified behaviour is one of several allowed outcomes, not necessarily consistent, such as the order in which function arguments are evaluated. Undefined behaviour has no requirements at all, and a program containing it has no meaning.
+q: How do I find undefined behaviour in C++ code?
+a: Compile with `-Wall -Wextra` for the mechanical cases, run with UBSan (`-fsanitize=undefined`) to report overflow and bad shifts at the line where they happen, and with ASan (`-fsanitize=address`) for out-of-bounds access, use after free and double free. On libstdc++, `-D_GLIBCXX_ASSERTIONS` makes container `operator[]` check its bounds.
+q: What is the strict aliasing rule in C++?
+a: Strict aliasing lets the compiler assume that pointers to unrelated types, such as `int*` and `float*`, never point at the same object, so reading a `float` through an `int*` is undefined behaviour. Copy the bytes with `std::memcpy` or C++20's `std::bit_cast` instead.
 ---
 Undefined behaviour is the contract at the centre of C++: the standard lists operations it "imposes no requirements" on, and in exchange the compiler may assume they never happen. That assumption is what makes `-O2` fast — a loop over a signed index needs no wrap-around check because signed overflow *cannot* occur — and it is what makes a program with undefined behaviour unpredictable rather than merely wrong. This lesson catalogues the operations that are undefined, shows how the optimiser turns each into a deleted check, and settles the well-defined tools for detecting them: checked arithmetic, bounds checkers, sanitizers and brace-initialisation.
 

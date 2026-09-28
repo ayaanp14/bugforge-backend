@@ -1,6 +1,20 @@
 ---
 title: Floating point — doubles, precision and BigDecimal
 minutes: 15
+seo-title: Java Floating Point Precision: double vs BigDecimal
+description: A Java double is binary, so 0.1 + 0.2 is 0.30000000000000004. How to compare doubles, what NaN and Infinity mean, and why money needs long cents or BigDecimal.
+question: Why does 0.1 + 0.2 not equal 0.3 in Java?
+answer: In Java, `0.1 + 0.2` is `0.30000000000000004` because a `double` stores numbers in binary IEEE 754 format, and 0.1, 0.2 and 0.3 have no exact binary representation. Each is rounded to the nearest double and the rounding errors do not cancel. Compare computed doubles with a tolerance rather than `==`, and use `long` cents or `BigDecimal` for money.
+q: How do you compare two doubles in Java?
+a: Never with `==` on computed values: check whether `Math.abs(a - b)` is within a tolerance scaled to the numbers' magnitude, such as 1e-9. For ordering, use `Double.compare(a, b)`, which also handles `NaN` and `-0.0` consistently and suits comparators.
+q: Should I use double or BigDecimal for money in Java?
+a: Never `double`: `19.99 * 3` gives 59.97000000000001, and the errors add up. Store money as a `long` count of the smallest unit, such as cents, or use `BigDecimal` built from a `String`, with an explicit `RoundingMode` wherever it rounds.
+q: Why is `new BigDecimal(0.1)` not exactly 0.1?
+a: The constructor receives the `double` 0.1, which is already the binary approximation 0.1000000000000000055511…, and keeps it exactly. Build from a string, `new BigDecimal("0.1")`, or use `BigDecimal.valueOf(0.1)`, which converts through `Double.toString` and gives exactly 0.1.
+q: Why is `NaN == NaN` false in Java?
+a: `NaN`, not a number, is unordered in IEEE 754 floating point, so every comparison involving it is `false`, including one with itself. Test for it with `Double.isNaN(x)`. It comes from operations such as `0.0 / 0` and `Math.sqrt(-1)`, and spreads through any arithmetic that touches it.
+q: What is `Double.MIN_VALUE` in Java?
+a: It is the smallest positive `double`, about 4.9e-324, not the most negative one. The most negative finite `double` is `-Double.MAX_VALUE`, which makes this a classic trick question, since `Integer.MIN_VALUE` is negative.
 ---
 `0.1 + 0.2 == 0.3` is `false` in Java, as in every language that uses IEEE 754 binary floating point. This is not a bug and not a Java quirk — it is what happens when you store base-10 fractions in base-2 — but a programmer who does not understand *why* will write money code that loses cents, comparisons that fail randomly, and loops that never terminate. This lesson makes floating point predictable.
 

@@ -1,6 +1,20 @@
 ---
 title: TypeScript in practice — tsconfig, declaration files, builds, migration and the errors you will see
 minutes: 12
+seo-title: TypeScript tsconfig Strict Mode, .d.ts Files and Migration
+description: The tsconfig options that matter, what strict turns on, .d.ts files and @types, tsc --noEmit beside fast transpilers, migrating JavaScript and common TS errors.
+question: What does strict mode do in tsconfig?
+answer: Setting `"strict": true` in tsconfig.json turns on TypeScript's whole strict family: `noImplicitAny`, `strictNullChecks` — so `null` and `undefined` are no longer part of every type — `strictFunctionTypes`, `strictPropertyInitialization`, `useUnknownInCatchVariables` and more. New projects should always start with it; turning it off to silence errors removes most of TypeScript's value.
+q: What is a .d.ts file in TypeScript?
+a: A declaration file: it describes types with no implementation, which is how the compiler knows about Node's `fs`, the DOM and every JavaScript library. Packages ship their own or get them from DefinitelyTyped as `@types/*` packages, and `tsc --declaration` emits them for your own package.
+q: How do I fix "Could not find a declaration file for module"?
+a: Install the community types with `npm i -D @types/x` when they exist. Otherwise write a declaration file — a full `declare module "x" { … }`, or the one-line stopgap `declare module "x";`, which types everything in that module as `any`.
+q: Does esbuild type-check TypeScript?
+a: No. esbuild, swc and tsx only strip the types so the code can run, which is why they are fast. Run `tsc --noEmit` separately — in the editor, a pre-commit hook and CI — or type errors ship to production unnoticed.
+q: How do you migrate a JavaScript project to TypeScript?
+a: Incrementally. Start with `allowJs` and `checkJs` so the checker runs over the existing `.js` files, add JSDoc types at module boundaries, rename files to `.ts` leaf-first, turn on the strict flags one at a time — `strictNullChecks` is the largest batch — and drive the count of `any` to zero.
+q: What does `import type` do in TypeScript?
+a: `import type { User } from "./types"` imports only a type, and the transpiler erases the whole statement, so no runtime import happens. Under `isolatedModules` or `verbatimModuleSyntax` type-only imports must be marked this way, because a per-file transpiler cannot tell a type from a value.
 ---
 Knowing the type system is half of using TypeScript; the other half is the toolchain around it — a `tsconfig.json` whose dozen important options decide how strict and how compatible your build is, declaration files that describe JavaScript to the compiler, a build step that has to fit next to bundlers and test runners, and a migration path for existing JavaScript. This lesson is the practical layer: the options that matter and why, `.d.ts` files and `@types`, type-only imports, `tsc` versus fast transpilers, the migration recipe, runtime validation as the type system's partner, and the compiler errors you will meet most, decoded.
 

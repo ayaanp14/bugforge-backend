@@ -1,6 +1,20 @@
 ---
 title: The Arrays class and System.arraycopy
 minutes: 13
+seo-title: Java Arrays Class: sort, binarySearch, asList and arraycopy
+description: java.util.Arrays holds the static helpers for Java arrays: toString, equals, sort, binarySearch, fill, copyOf and asList, plus System.arraycopy and their traps.
+question: What is the Arrays class in Java?
+answer: The `java.util.Arrays` class is a set of static helper methods for arrays, which themselves have only a `length` field. It prints (`Arrays.toString`), compares (`Arrays.equals`), sorts (`Arrays.sort`), searches (`Arrays.binarySearch`), fills, copies (`Arrays.copyOf`) and converts arrays (`Arrays.asList`, `Arrays.stream`). `System.arraycopy`, a native bulk copy into an existing array, sits alongside it.
+q: How do you print an array in Java?
+a: Call `Arrays.toString(a)`, which gives `[3, 1, 2]`, or `Arrays.deepToString` for nested arrays. Printing the array itself uses `Object.toString` and shows a type code and hash such as `[I@1b6d3586` instead of the contents.
+q: How do you sort an int array in descending order in Java?
+a: There is no descending sort for a primitive array, because `Arrays.sort` accepts a `Comparator` only for object arrays. Sort ascending and read or reverse it backwards, negate the values, or box to `Integer[]` and call `Arrays.sort(boxed, Collections.reverseOrder())`.
+q: Why does `add` on `Arrays.asList` throw UnsupportedOperationException?
+a: `Arrays.asList` returns a fixed-size view backed by the array: `set` works and writes through to the array, but `add` and `remove` would change its size. Wrap it in `new ArrayList<>(Arrays.asList(...))` for a growable copy. It also does not box primitives, so an `int[]` becomes one element.
+q: What is the difference between Arrays.copyOf and System.arraycopy?
+a: `Arrays.copyOf` allocates and returns a new array of the length you give, padded with defaults or truncated. `System.arraycopy(src, srcPos, dest, destPos, length)` copies into an existing array and handles overlapping ranges correctly. Both are shallow copies.
+q: What does Arrays.binarySearch return if the element is not found?
+a: It returns `-(insertionPoint) - 1`, a negative number that encodes where the value would go to keep the array sorted. The array must already be sorted; on an unsorted array the result is meaningless.
 ---
 Arrays themselves have one field and no useful methods. Everything you actually do with them — sort, search, fill, copy, compare, print, convert — lives in `java.util.Arrays`, a class of static helpers, plus one native method in `System`. Knowing this toolkit saves writing loops and, more importantly, saves writing *wrong* loops.
 

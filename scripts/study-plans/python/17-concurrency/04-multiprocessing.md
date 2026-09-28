@@ -1,6 +1,20 @@
 ---
 title: multiprocessing — Process, Pool, pickling, queues and shared state
 minutes: 13
+seo-title: Python Multiprocessing Explained: Pool, Pickling and Queues
+description: Python multiprocessing runs CPU-bound work in separate processes, each with its own GIL. Process and Pool, chunksize, pickling, the main guard, shared state.
+question: What is multiprocessing in Python?
+answer: Multiprocessing in Python runs functions in separate interpreter processes, each with its own memory and its own GIL, which gives true parallelism for CPU-bound work. The `multiprocessing` module provides `Process` and `Pool`; everything that crosses to a worker, meaning the function, its arguments and its result, is pickled, and starting a process costs tens of milliseconds.
+q: What is the difference between multiprocessing and multithreading in Python?
+a: Threads share one process's memory and one GIL, so they overlap waiting but not Python computation. Processes share nothing: each has its own interpreter and GIL, giving real parallelism for CPU work, at the cost of start-up time and pickling every argument and result.
+q: Why do I get "Can't pickle local object" in multiprocessing?
+a: The worker function or one of its arguments cannot be pickled: lambdas, nested functions, open files, locks, connections and generators cannot. Define the worker at module level, pass plain data rather than resources, and use `functools.partial` on a module-level function instead of a lambda.
+q: What does `chunksize` do in `Pool.map`?
+a: It batches tasks so that each pickle round trip and queue hop carries many items instead of one. Every task has a fixed overhead, so a million tiny tasks without batching can be slower than a plain loop; a `chunksize` in the thousands amortises it.
+q: Why doesn't a global changed in a worker process update the parent?
+a: Each worker has its own copy of memory, so a global it modifies is the child's copy. Return results through `Pool.map`, a `Queue` or a `Pipe` and aggregate them in the parent; `Value`, `Array` and `Manager` share state, but only as a last resort.
+q: What is the difference between fork and spawn in multiprocessing?
+a: With `fork`, the Linux default up to Python 3.13, a worker inherits a copy of the parent's memory. With `spawn`, the default on macOS and Windows, it starts a fresh interpreter and imports the main module, which is why code that starts processes must sit under `if __name__ == '__main__':`.
 ---
 `multiprocessing` is the lower-level module under `ProcessPoolExecutor`: it starts interpreter processes, runs functions in them, and moves data between them. It exists because processes are how CPU-bound Python gets parallel, and its constraints — everything crosses the boundary by pickling, the main module is re-imported by workers, start-up costs tens of milliseconds — are the constraints of that design. This lesson covers `Process` and `Pool`, the `map`/`imap`/`starmap` family, what can and cannot be pickled, the start methods and the main guard, `Queue`/`Pipe` for messages, `Value`/`Array`/`Manager` for shared state in outline, and the cost model that decides when a pool pays.
 

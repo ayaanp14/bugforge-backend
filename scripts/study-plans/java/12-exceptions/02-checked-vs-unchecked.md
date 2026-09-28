@@ -1,6 +1,20 @@
 ---
 title: Checked versus unchecked — the rules and the judgement
 minutes: 13
+seo-title: Checked vs Unchecked Exceptions in Java: When to Use Each
+description: Checked exceptions must be caught or declared with throws; unchecked ones, RuntimeException and its subclasses, need neither. The rules and which to choose.
+question: What is the difference between checked and unchecked exceptions in Java?
+answer: A checked exception in Java is a subclass of `Exception` that is not a `RuntimeException`, such as `IOException`; the compiler requires every method that can throw it to catch it or declare it with `throws`. An unchecked exception — `RuntimeException`, its subclasses, and `Error` — needs neither. Checked exceptions suit expected, recoverable conditions; unchecked ones suit programming errors.
+q: What does the `throws` keyword do in Java?
+a: `throws` in a method signature lists the checked exceptions the method may let escape, passing the obligation to catch or declare them on to its callers. Unchecked exceptions may be listed for documentation but need not be.
+q: How do you fix "unreported exception IOException; must be caught or declared to be thrown"?
+a: Either catch the `IOException` in a `try`/`catch` around the call, or add `throws IOException` to the enclosing method so its callers deal with it. Where neither fits — inside a lambda, for example — wrap it in an `UncheckedIOException` with the original as the cause.
+q: How do you throw a checked exception from a lambda in Java?
+a: You cannot let it escape, because `Function.apply`, `Runnable.run` and the other standard functional methods declare no checked exceptions. Catch it inside the lambda and rethrow it wrapped in an unchecked exception, such as `UncheckedIOException`, passing the original as the cause.
+q: Can an overriding method throw a broader checked exception?
+a: No. An override may throw the same, fewer or narrower checked exceptions than the method it overrides, never broader or new ones. So an override cannot add `throws IOException` when the parent method declares none.
+q: Should I use checked or unchecked exceptions?
+a: Use checked exceptions for expected conditions a caller can plausibly recover from at an API boundary, such as a file that may not exist; use unchecked ones for programming errors like null arguments or bad indices. Modern Java leans unchecked, and an API should never declare `throws Exception`.
 ---
 Java is almost alone among mainstream languages in having **checked exceptions**: failures the compiler forces you to acknowledge at every call site. Whether that was a good idea is a twenty-year argument; that you must understand the rules is not. This lesson covers what the compiler demands, how `throws` propagates, how to convert between the two kinds, and the guidelines the JDK and *Effective Java* use to decide which kind a new exception should be.
 

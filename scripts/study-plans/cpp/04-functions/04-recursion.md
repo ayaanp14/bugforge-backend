@@ -1,6 +1,20 @@
 ---
 title: Recursion — base cases, the call stack and memoisation
 minutes: 15
+seo-title: C++ Recursion: Base Cases, the Call Stack and Memoization
+description: A C++ recursive function needs a base case and a smaller recursive call. How the call stack limits depth, recursion vs loops, memoisation and tail calls.
+question: What is recursion in C++?
+answer: Recursion is a function calling itself on a smaller version of its problem. Every recursive function in C++ needs a base case, answered directly, and a recursive case that moves strictly toward it; without both it never stops. Each call gets its own stack frame with its own parameters, so the depth is limited by the stack — typically 8 MB on a Linux machine.
+q: What causes a stack overflow in recursion?
+a: Each call pushes a frame onto a finite stack, and a missing or unreachable base case — or a correct recursion on too large an input — exhausts it. In C++ that is not a catchable exception: the process dies with a segmentation fault. Rewrite deep linear recursion as a loop.
+q: What is memoisation?
+a: Memoisation stores each subproblem's result the first time it is computed and looks it up afterwards. Naive recursive Fibonacci makes over 330 million calls for `fib(40)`; with a `std::vector<long long>` memo passed by reference, each value is computed once and the run time is linear. Filling the same table with a loop is dynamic programming.
+q: Should I use recursion or iteration in C++?
+a: Use a loop for linear problems — a sum, a factorial, counting digits — because it is shorter, faster and cannot overflow the stack. Use recursion for branching problems such as tree walks, permutations, flood fill and divide and conquer, where a loop would need an explicit stack of its own.
+q: Does C++ guarantee tail call optimisation?
+a: No. GCC and Clang at `-O2` often turn a call in tail position into a jump that reuses the frame, but the C++ standard does not require it and a debug build will not do it. A recursion that works only because the optimiser removed its frames will overflow under different flags, so write the loop.
+q: How do you generate all permutations of a string recursively?
+a: Fix position `k` by swapping each remaining character into it, recurse on `k + 1`, then swap back so the next choice starts from the same state; when `k` reaches the length, record the string. Pass the string and the output vector by reference.
 ---
 A function may call itself. Used well, recursion turns a problem into a smaller copy of the same problem plus one step of work, and the code reads like the definition — a factorial, a tree walk, a flood fill, a permutation generator. Used carelessly, it is a stack overflow or an exponential run time. This lesson settles what every recursive function needs, what the call stack does and how deep it may go, when a loop is the better form, how a memo turns an exponential recursion into a linear one, and the recursion shapes interviews ask for.
 

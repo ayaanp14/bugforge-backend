@@ -1,6 +1,20 @@
 ---
 title: Polymorphism and duck typing — EAFP, hasattr and programming to behaviour
 minutes: 13
+seo-title: Duck Typing in Python: Polymorphism, EAFP vs LBYL
+description: Python calls a method without asking an object's class, so polymorphism needs no inheritance. EAFP vs LBYL, hasattr and getattr, and when a type check is right.
+question: What is duck typing in Python?
+answer: Duck typing means Python code relies on what an object can do, not on its class: it calls the method, and either it works or it raises. Any object with a `speak()` method can be passed to code that calls `speak()`, with no shared base class. The built-ins work this way — `len` accepts anything with `__len__`, and a file-like object is anything with the methods that get called.
+q: What is the difference between EAFP and LBYL in Python?
+a: LBYL, Look Before You Leap, checks a precondition and then acts; EAFP, Easier to Ask Forgiveness than Permission, acts and handles the exception. Python leans EAFP when failure is rare or a check is unreliable, such as a file vanishing; LBYL suits common, cheap checks like `if not xs:`.
+q: What is polymorphism in Python?
+a: Polymorphism is one piece of code working with objects of different types through a shared behaviour: `sum(s.area() for s in shapes)` works for every shape with an `area()` method. In Python this needs no inheritance — duck typing is enough — though subclasses that override a method are polymorphic too.
+q: How do hasattr and getattr work in Python?
+a: `getattr(obj, name, default)` returns the attribute, or the default without raising, and `hasattr(obj, name)` reports whether the attribute exists. They ask about capability rather than type, which suits optional behaviour such as closing an object only if it has a `close` method.
+q: Why is a chain of isinstance checks considered bad practice?
+a: An `if isinstance(...) elif isinstance(...)` chain must be edited every time a new type appears. Give each class its own method instead — `shape.area()` — and adding a type means writing one class. Keep type checks for input validation, dunders that return `NotImplemented`, and telling a string from a sequence.
+q: Why check `isinstance(value, str)` when a function accepts a list of strings?
+a: A string is itself iterable, so `for item in value` walks its characters when a caller passes one string instead of a list. `isinstance(value, str)` is the standard guard in functions that accept one item or many.
 ---
 "If it walks like a duck and quacks like a duck, it is a duck." Python does not ask an object what class it is before calling a method on it; it calls the method and either it works or it raises. That is *duck typing*, and it means polymorphism in Python needs no inheritance at all: any object with a `speak()` method can be passed to code that calls `speak()`. This lesson explains how that differs from class-based polymorphism, the EAFP style that goes with it (try the operation, handle the failure) versus LBYL (check first), the `hasattr`/`getattr` tools, the built-ins that are themselves duck-typed (`len`, `iter`, `sorted`), and where an explicit type check is still right.
 

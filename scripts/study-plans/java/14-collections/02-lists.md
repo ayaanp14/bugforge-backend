@@ -1,6 +1,20 @@
 ---
 title: Lists — ArrayList, LinkedList and the List API
 minutes: 14
+seo-title: ArrayList vs LinkedList in Java: The List API Explained
+description: ArrayList is a growable array with O(1) get; LinkedList is a chain of nodes, rarely faster. How each works, the List API, and the remove and subList traps.
+question: What is the difference between ArrayList and LinkedList in Java?
+answer: ArrayList and LinkedList differ in how they store elements. `ArrayList` keeps them in a growable array, so `get(i)` and appending are O(1), but inserting at the front shifts every element. `LinkedList` is a doubly linked chain of nodes — O(1) at either end, O(n) to reach an index — with more memory per element and poor cache behaviour. `ArrayList` is the right choice almost always.
+q: How does ArrayList grow in Java?
+a: When its backing array is full, `ArrayList` allocates a new array 1.5 times larger and copies the elements across. Spread over many adds, each append costs O(1) amortised. Pre-size with `new ArrayList<>(n)` when the count is known to avoid the copies.
+q: Why does `list.remove(1)` on a `List<Integer>` remove the wrong element?
+a: An `int` argument matches `remove(int index)` exactly, so it removes the element at index 1, not the value 1. To remove by value, box it: `list.remove(Integer.valueOf(1))` calls `remove(Object)`.
+q: What is the difference between `Arrays.asList` and `List.of`?
+a: `Arrays.asList` returns a fixed-size view over an array: `set` writes through to the array, `add` and `remove` throw, and nulls are allowed. `List.of` returns an immutable list that rejects nulls and every change. Wrap either in `new ArrayList<>(…)` for a mutable list.
+q: Is `subList` a copy in Java?
+a: No — `subList` returns a view backed by the original list, so changes write through, and `list.subList(1, 4).clear()` removes that range. A later structural change to the parent invalidates the view; copy with `new ArrayList<>(list.subList(1, 4))` when you need independence.
+q: When should you use LinkedList in Java?
+a: Almost never. Its one real advantage is O(1) insertion or removal at a position already held by an iterator, which is rarely the bottleneck. For a stack or queue `ArrayDeque` is faster, and for a list `ArrayList` is.
 ---
 A `List` is an ordered sequence with index access and duplicates allowed — the collection you reach for first. `ArrayList` implements it on a growable array and is the right choice almost always; `LinkedList` implements it on linked nodes and is the right choice in a narrow set of cases that interviewers like to ask about. This lesson covers how each works, the full `List` API with its traps (`remove(int)` versus `remove(Object)`, `subList` views, `Arrays.asList`), and how to use lists efficiently.
 

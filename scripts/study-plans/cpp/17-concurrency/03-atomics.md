@@ -1,6 +1,20 @@
 ---
 title: Atomics — lock-free counters and compare-exchange
 minutes: 14
+seo-title: C++ Atomics Explained: std::atomic and Compare-Exchange
+description: std::atomic makes one variable's updates indivisible without a lock. Atomic vs mutex in C++, the compare-exchange loop, memory ordering and false sharing.
+question: What is std::atomic in C++?
+answer: `std::atomic<T>` is a C++ template that makes each operation on one variable indivisible without a lock: `counter.fetch_add(1)` compiles to a single instruction on x86-64, so no update is lost and no thread sees a half-written value. Operations on an atomic are never data races. `std::atomic<int>`, `<bool>` and pointers are lock-free on mainstream platforms, and atomics cannot be copied or moved.
+q: When should I use an atomic instead of a mutex?
+a: Use an atomic for a single operation on a single variable — a counter, a flag, a ticket dispenser. Use a mutex for a compound update such as check-then-act, or when two variables must change together, because an atomic makes each operation indivisible, not a sequence of them.
+q: How does compare_exchange_weak work?
+a: `a.compare_exchange_weak(expected, desired)` stores `desired` and returns `true` if `a` still holds `expected`; otherwise it copies the current value into `expected` and returns `false`. The weak form may also fail spuriously, so it belongs in a loop that decides again from the refreshed `expected`; `compare_exchange_strong` suits a single attempt with no loop.
+q: What is the default memory order for C++ atomics?
+a: The default is `std::memory_order_seq_cst`, which gives one global order of atomic operations that every thread agrees on. `memory_order_relaxed` guarantees only atomicity, which is enough for a counter read after the threads are joined, and acquire/release pairs publish data through a flag. Keep the default unless you can justify a weaker order.
+q: What is false sharing?
+a: False sharing is two threads writing different variables that sit in the same 64-byte cache line, so the cores bounce the line between them and a parallel program can run slower than the serial one. Fix it with `alignas(64)` on each hot variable, or accumulate in a local and update the shared atomic once per thread.
+q: Does fetch_add return the old or the new value?
+a: `fetch_add` returns the previous value, which makes it a lock-free ticket dispenser: `int mine = next.fetch_add(1);` gives every thread a distinct number. `++a` and `a += v` perform the same atomic add but yield the new value.
 ---
 A mutex around a single `++` is a heavy tool for a light job. `std::atomic<T>` makes the operations on one variable indivisible without a lock: a `fetch_add` is one instruction the CPU performs as a unit, and no other thread can see the value half-updated. This lesson covers what an atomic promises, the operations on `std::atomic<int>`, the compare-exchange loop that turns any read-modify-write into an atomic one, when an atomic can replace a mutex and when it cannot, the memory-ordering argument (and why the default is the one to use), `std::atomic_flag`, false sharing, and why atomics on `double` are a trap for judged programs.
 

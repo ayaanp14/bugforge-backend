@@ -1,6 +1,20 @@
 ---
 title: Files and paths — java.nio.file
 minutes: 14
+seo-title: How to Read and Write Files in Java with Path and Files
+description: java.nio.file replaces java.io.File: Path names a location and Files reads, writes, copies, lists and walks. Path resolve, normalize and closing Files.lines.
+question: How do you read a file in Java?
+answer: To read a file in Java, use the `java.nio.file` API: `Files.readString(path)` returns the whole file as a UTF-8 string (Java 11+), `Files.readAllLines(path)` returns a list of lines, and `Files.lines(path)` streams them lazily for large files — inside try-with-resources, because it holds the file open. `Files.newBufferedReader(path)` gives a `BufferedReader` for line-by-line reading.
+q: What is the difference between Path and File in Java?
+a: `java.nio.file.Path` is an immutable description of a location, and the `Files` methods that act on it throw exceptions naming the problem, such as `NoSuchFileException`. `java.io.File` is the legacy class whose methods mostly return `false` on failure; convert between them with `toPath()` and `toFile()`.
+q: What does Path resolve do with an absolute path?
+a: It returns the absolute argument and discards the base: resolving `/etc/passwd` against `/srv/app` gives `/etc/passwd`. Before resolving user input against a trusted directory, normalise the result and check that it still `startsWith` the base directory.
+q: What is the difference between normalize and toRealPath in Java?
+a: `normalize()` is purely syntactic: it removes `.` and `..` without touching the disk or following links. `toRealPath()` resolves the path against the real file system, following symbolic links, and throws if the file does not exist.
+q: Why must Files.lines and Files.walk be closed?
+a: They are lazy streams that hold a file or directory handle open while the stream is alive. Use them in try-with-resources, or a long-running process eventually runs out of file descriptors.
+q: How do you write to a file in Java?
+a: `Files.writeString(path, text)` creates or truncates the file; pass `StandardOpenOption.APPEND` to append instead. `Files.write(path, lines)` writes one line per list element, and `Files.newBufferedWriter(path)` gives a buffered writer for larger output.
 ---
 The `java.io.File` class you may have met is twenty-five years old and mostly returns `false` when things go wrong. Since Java 7 the file system API is `java.nio.file`: **`Path`** is an immutable, purely syntactic description of a location; **`Files`** is a utility class of static operations on paths that throw real exceptions with real messages; and the two together read, write, copy, move, list and walk with one-liners that were fifteen lines before. This lesson covers the API you will use ninety-five percent of the time, the path arithmetic behind `..` and relative paths, and the handful of operations that are still surprising.
 

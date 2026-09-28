@@ -1,6 +1,20 @@
 ---
 title: Dunder methods — making a class behave like a built-in
 minutes: 15
+seo-title: Python Magic Methods: Dunders and Operator Overloading
+description: Python operators and built-ins call dunder methods on your class. repr vs str, equality and ordering, len and iteration, arithmetic and NotImplemented.
+question: What are dunder methods in Python?
+answer: Dunder (double-underscore) methods, also called magic methods, are the special methods Python calls to carry out operators and built-in functions: `a + b` calls `a.__add__(b)`, `len(x)` calls `x.__len__()` and `x in c` calls `c.__contains__(x)`. Together they form Python's data model; define one in a class and its instances support the matching syntax, like built-in types.
+q: What is the difference between `__str__` and `__repr__` in Python?
+a: `__repr__` is the unambiguous text for developers, ideally looking like the constructor call; `__str__` is the readable text for users. `print` and `str()` use `__str__` and fall back to `__repr__`, while containers always show their elements' `__repr__` — so define `__repr__` first.
+q: Why return NotImplemented instead of False in `__eq__`?
+a: `NotImplemented` tells Python that this method cannot compare the two types, so it tries the other operand's method and finally falls back to identity. Returning `False` ends the comparison early and blocks that reflected call; with `NotImplemented`, `Money(1) == 5` is still simply `False`.
+q: How do I overload operators in Python?
+a: Define the matching dunder: `__add__` for `+`, `__mul__` for `*`, `__neg__` for unary minus, `__lt__` for `<`. Return a new object and leave the operands unchanged, return `NotImplemented` for types you cannot handle, and add a reflected method such as `__rmul__` so that `3 * x` works as well as `x * 3`.
+q: What does functools.total_ordering do?
+a: `@total_ordering` fills in a class's missing comparison methods: define `__eq__` and one ordering method such as `__lt__`, and it derives `__le__`, `__gt__` and `__ge__`. `sorted`, `min` and `max` need only `__lt__`.
+q: How does Python decide whether an object is truthy?
+a: It calls `__bool__` if the class defines it; otherwise it calls `__len__` and treats zero as false; with neither, every instance is truthy. Add `__bool__` when an object whose length can be zero should still count as true.
 ---
 Every operator and built-in function in Python is a call to a *dunder* (double-underscore) method: `a + b` is `a.__add__(b)`, `len(x)` is `x.__len__()`, `x in c` is `c.__contains__(x)`, `print(x)` is `x.__str__()`. Define the method and your class gets the operator; this is the *data model*, and it is why a user-defined type can be as pleasant to use as a list or an int. This lesson covers the dunders that matter first — representation, equality and ordering, size and containment, iteration, arithmetic, truth and calling — with the conventions (`NotImplemented`, `total_ordering`, reflected operators) that make them behave correctly.
 

@@ -1,6 +1,20 @@
 ---
 title: The string pool, interning and the Integer cache
 minutes: 13
+seo-title: Java String Pool, intern() and the Integer Cache Explained
+description: The Java string pool shares one object per string literal and the Integer cache covers -128 to 127, which is why == sometimes works. How intern() works.
+question: What is the string pool in Java?
+answer: The string pool in Java is the JVM's table of interned `String` objects. Every string literal with the same characters refers to one pooled object, so `"java" == "java"` is true, while `new String("java")` always creates a separate object. `intern()` returns the pooled instance for any string's content. Since Java 7 the pool lives on the heap, so unused entries can be collected.
+q: Why is new String("java") == "java" false?
+a: `new` always creates a fresh object, so `==` compares two different references and returns false. `equals` compares the characters and returns true, and `new String("java").intern() == "java"` is true because `intern()` returns the pooled literal.
+q: Why does Integer == Integer return false for 128?
+a: `Integer.valueOf`, which autoboxing calls, returns cached instances for -128 to 127 and a new object outside that range. Two boxed 127s are therefore the same object and two boxed 128s are not, by default. Compare boxed numbers with `equals`, or unbox them first.
+q: What does String intern() do in Java?
+a: `intern()` looks the string's content up in the string pool, adds it if absent and returns the pooled reference. It gives identity for strings read at run time and saves memory when millions of strings share a few values; it is never a replacement for `equals`.
+q: Is "ja" + "va" == "java" true in Java?
+a: Yes. Two literals form a compile-time constant expression, which `javac` folds into the pooled `"java"`. With a non-final variable in the expression the concatenation happens at run time and creates a new object, so `==` is false.
+q: Why use StringBuilder instead of string concatenation in a loop?
+a: `s += x` in a loop builds a new `String` of the full length on every pass, copying O(n²) characters for n appends. A `StringBuilder` grows its buffer geometrically, to `max(needed, 2 × old + 2)`, so each append is amortised O(1); pre-size it when the final length is known.
 ---
 Two interview questions live here, and both are really questions about the heap. *"Why is `"java" == "java"` true but `new String("java") == "java"` false?"* — the string pool. *"Why is `Integer.valueOf(127) == Integer.valueOf(127)` true but `Integer.valueOf(128) == Integer.valueOf(128)` false?"* — the Integer cache. Both are the JVM sharing immutable objects behind your back, both are invisible until you compare with `==`, and both reward knowing exactly where the line is drawn. This lesson also covers the growth rule of `StringBuilder`, because it is the same idea — memory the runtime manages for you, with behaviour you can predict.
 

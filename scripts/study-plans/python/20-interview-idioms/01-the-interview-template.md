@@ -1,6 +1,20 @@
 ---
 title: The interview template — the round, the file, fast I/O and what is actually judged
 minutes: 14
+seo-title: Python Coding Interview Template: Fast Input and Structure
+description: How a Python coding interview round runs, from clarifying to testing, and the solution template: fast stdin reading, main and solve, the recursion limit.
+question: How do you approach a coding interview problem in Python?
+answer: Approach a coding interview problem in a fixed rhythm: restate it and ask about sizes and edge cases, work an example by hand, state the brute force and its complexity, name the shape of a better idea and its complexity, then code it with a `main` that reads and prints and a `solve` function that does the work. Finally, trace your example and the edge cases through the code, narrating throughout.
+q: How do you read input fast in Python?
+a: Read all input at once with `sys.stdin.buffer.read().split()`: one read, no decoding, and `int()` accepts the byte tokens directly. For 10⁵ lines it is about ten times faster than `input()` in a loop; for ten lines, `input()` is fine and clearer.
+q: Why use `sys.setrecursionlimit` in Python solutions?
+a: The default limit is 1000 frames, so a recursive DFS down a path of 10⁵ nodes raises `RecursionError`. `sys.setrecursionlimit(1_000_000)` allows deeper recursion, but a very deep recursion can still overflow the C stack, so an iterative DFS with an explicit stack is safer for the largest inputs.
+q: Why put a Python solution inside a main function?
+a: Locals are faster than globals, since a local is a slot read and a global a dictionary lookup, and a function can be imported and tested without running the whole program. Guard the call with `if __name__ == '__main__':`.
+q: What do interviewers look for in a coding interview?
+a: Clarifying questions about sizes and edges, the brute force and its complexity, the named pattern and data structure, readable code with a well-named solve function and no globals, and testing on your own example and the edge cases without being asked. A correct solution without these scores lower than a nearly correct one with them.
+q: Why is printing inside a loop slow in Python?
+a: Every `print` call has its own overhead, and for a hundred thousand lines those calls dominate the run time. Build the lines in a list and output them once, with a single `print` of the joined string or one `sys.stdout.write`.
 ---
 Nineteen modules taught the language; this one teaches the round. A Python interview or contest problem is conducted in a fixed rhythm — clarify, example, brute force, complexity, better idea, code, test — and judged on things that are only partly about Python: whether you asked about the edge cases, whether you named the complexity before coding, whether the code you wrote can be read aloud. This lesson gives the rhythm, the file template that every judged solution starts from (fast input, `main`, the recursion limit, batched output), the cost of each line so you can defend it, and the list of what the person across the table is actually scoring.
 

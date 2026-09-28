@@ -1,6 +1,20 @@
 ---
 title: Regular expressions in Java
 minutes: 16
+seo-title: Java Regex Explained: Pattern, Matcher and matches vs find
+description: Regular expressions in Java with Pattern and Matcher: syntax, groups, matches versus find, greedy versus lazy quantifiers, and why to compile once.
+question: How do you use regex in Java?
+answer: To use a regular expression in Java, compile it once with `Pattern.compile` and call `matcher(text)` on the result; the `Matcher` then answers `matches()` for the whole input, `find()` for each occurrence and `group(n)` for captured parts. For one-off checks, `String.matches`, `replaceAll` and `split` take a regex directly. Every backslash in the regex is doubled inside the Java string literal.
+q: What is the difference between matches() and find() in Java?
+a: `matches()` succeeds only if the entire input matches the pattern, so `"abc123".matches("[0-9]+")` is `false`. `find()` searches for the next match anywhere in the input and can be called repeatedly in a loop; `lookingAt()` requires a match at the start only.
+q: Why do I need double backslashes in a Java regex?
+a: The regex is written inside a Java string literal, where a backslash begins an escape such as a newline or a tab. To pass one backslash through to the regex engine, the source must write two, so every regex escape, such as the digit class, appears with a doubled backslash.
+q: What is the difference between greedy and lazy quantifiers in Java regex?
+a: Greedy quantifiers such as `*` and `+` match as much as possible and then back off, so `<.*>` spans from the first `<` to the last `>`. A `?` after one, as in `*?`, makes it lazy, matching as little as possible; a negated class like `[^>]*` is often clearer and faster.
+q: Why should I compile a regex Pattern once?
+a: Compiling parses the regex and is the expensive step, and `String.matches`, `replaceAll` and `split` compile their pattern on every call. Hoist it into a `static final Pattern` and reuse it: a `Pattern` is immutable and thread-safe, while a `Matcher` is not, so create one per use.
+q: How do I use capture groups in Java regex?
+a: Wrap part of the pattern in parentheses; after a successful `find()` or `matches()`, `m.group(1)` returns the first group's text and `m.group(0)` the whole match. Groups are numbered by their opening parenthesis from 1, and a replacement string refers to them as `$1`, `$2`.
 ---
 Regular expressions describe patterns in text: "one or more digits", "an email-shaped thing", "a word at the start of a line". Java's `java.util.regex` is a full-featured engine hiding behind a few `String` methods and two classes, `Pattern` and `Matcher`. This lesson covers the syntax you need, the API around it, and the three mistakes — unescaped metacharacters, `matches` versus `find`, and recompiling in loops — that account for most regex bugs.
 

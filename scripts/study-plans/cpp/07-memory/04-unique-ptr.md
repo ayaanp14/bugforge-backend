@@ -1,6 +1,20 @@
 ---
 title: std::unique_ptr — exclusive ownership, enforced by the type
 minutes: 15
+seo-title: Smart Pointers in C++: Unique Pointer and Exclusive Ownership
+description: A C++ unique pointer owns one heap object, deletes it automatically and can be moved but not copied. Creating one, passing ownership, and custom deleters.
+question: What is `unique_ptr` in C++?
+answer: `std::unique_ptr<T>` is a C++ smart pointer that exclusively owns one heap object and deletes it in its destructor, when the pointer goes out of scope. It cannot be copied, only moved with `std::move`, which transfers ownership and leaves the source null, so a second owner is a compile error. It costs the same as a raw pointer; create one with `std::make_unique<T>(args)`.
+q: Why can't you copy a `unique_ptr`?
+a: Its copy constructor and copy assignment are deleted, because a copy would create two owners that both delete the same object. Ownership is transferred instead with `std::move(p)`, after which `p` is guaranteed to be null and can be tested.
+q: What is the difference between `get()`, `release()` and `reset()`?
+a: `get()` returns the raw pointer while the `unique_ptr` keeps ownership — a borrow. `release()` returns the raw pointer and sets the `unique_ptr` to null, so you must delete it or hand it to another owner. `reset()` deletes the current object now, optionally taking a new one.
+q: Why use `make_unique` instead of `new`?
+a: `std::make_unique<T>(args)` never names `new`, so there is no raw pointer to leak or to wrap twice. Before C++17 it also closed a leak where `f(std::unique_ptr<T>(new T), g())` could allocate and then have `g()` throw before the pointer was wrapped. `make_unique<T[]>(n)` value-initialises an array.
+q: How do you pass a `unique_ptr` to a function?
+a: The parameter type states the ownership. Take `std::unique_ptr<T>` by value to take ownership, called with `std::move(p)`; take `const T&`, `T&` or `T*` just to use the object. Passing `const std::unique_ptr<T>&` needlessly forces callers to own a `unique_ptr`. Factories return `std::unique_ptr<T>` by value.
+q: Should I use `unique_ptr` or `shared_ptr`?
+a: Use `std::unique_ptr` by default: one owner and no overhead over a raw pointer. Use `std::shared_ptr` only when several owners with independent lifetimes genuinely exist, since every copy of it costs an atomic reference-count update.
 ---
 `std::unique_ptr<T>` is the `IntBuffer` of lesson 2 written once, for every type: a small object that holds a pointer, deletes it in its destructor, and cannot be copied. That last property is the point. A raw owning pointer relies on a rule that one owner deletes; a `unique_ptr` makes a second owner a compile error. It costs nothing over the raw pointer — one word of storage with the default deleter, the same indirection — so it is the default way to hold a heap object in modern C++, and the `new`-and-remember-to-`delete` of lesson 2 becomes `std::make_unique`.
 

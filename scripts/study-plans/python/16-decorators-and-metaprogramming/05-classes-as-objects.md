@@ -1,6 +1,20 @@
 ---
 title: Classes as objects — type, __new__, __init_subclass__ and metaclasses in outline
 minutes: 14
+seo-title: Python Metaclasses Explained: type and new vs init
+description: Every Python class is an object made by type, and a metaclass is a subclass of type. New vs init, singletons, subclass hooks and when a metaclass is right.
+question: What is a metaclass in Python?
+answer: A metaclass in Python is the class of a class: a subclass of `type`, used as `class Model(metaclass=Meta)`. Its `__new__` runs when the `class` statement executes and may rewrite the name, bases and namespace before the class exists. Django models, `enum.Enum` and `abc.ABC` use metaclasses, but `__init_subclass__`, class decorators or descriptors handle almost every application need more simply.
+q: What is the difference between `__new__` and `__init__`?
+a: `__new__` is a static method that creates and returns the instance; `__init__` then initialises it. Override `__new__` only to control creation, such as subclassing an immutable type like `int`, `str` or `tuple`, or returning an existing object. If `__new__` returns something that is not an instance of the class, `__init__` is skipped.
+q: Are classes objects in Python?
+a: Yes. Every class is an instance of `type`, so `type(Dog)` is `type` and `type(type)` is `type` itself. Classes therefore have attributes, can be passed to functions, created at run time and modified after creation.
+q: How do you create a class dynamically in Python?
+a: Call `type(name, bases, namespace)`: `type('Cat', (object,), {'sound': 'meow'})` builds the same class a `class` statement would. This is how classes are generated from data such as a table's columns; `types.new_class` is the fuller API.
+q: What is `__init_subclass__` used for?
+a: It is a hook on a base class that runs each time a subclass is defined, receiving the new class as `cls` plus any keyword arguments from the `class` line. It handles plugin registries and definition-time validation without a metaclass; call `super().__init_subclass__(**kwargs)` inside it.
+q: How do you write a singleton in Python?
+a: Override `__new__` to create the instance once, store it on the class and return it on every later call. A module-level instance is usually simpler, because a module is imported once and is already a singleton.
 ---
 A class is an object: `type(Dog)` is `type`, `Dog` has attributes, can be passed to functions, created at run time and modified after creation. That fact is the basis of every framework that registers, validates or generates classes — ORMs, serialisers, plugin systems, `dataclass` itself. This lesson covers `type` as the class factory (`type(name, bases, namespace)`), `__new__` versus `__init__` and the singleton it enables, `__init_subclass__` as the modern hook for "do something when a subclass is defined", `__class_getitem__` behind `list[int]`, and metaclasses — what they are, what they are for, and why `__init_subclass__` or a class decorator is almost always the better tool.
 

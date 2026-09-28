@@ -1,6 +1,20 @@
 ---
 title: The API additions worth knowing, 9 to 21
 minutes: 14
+seo-title: New Java APIs From 9 to 21: List.of, HttpClient, getLast()
+description: Java library additions since Java 9: List.of and Map.of, strip and isBlank, Stream.toList, HttpClient, helpful NullPointerExceptions and sequenced collections.
+question: What is the difference between List.of and Arrays.asList?
+answer: `List.of`, added in Java 9, returns a truly immutable list: every mutator throws `UnsupportedOperationException` and `null` elements are rejected. `Arrays.asList` returns a fixed-size list backed by the array — `set` works and writes through to the array, but `add` and `remove` throw. `Collections.unmodifiableList` is a read-only view of a list that can still change underneath.
+q: What is the difference between strip() and trim() in Java?
+a: `trim()` removes leading and trailing characters up to `U+0020`, while `strip()`, added in Java 11, uses `Character.isWhitespace` and so also removes Unicode spaces such as `U+2003`. `stripLeading()` and `stripTrailing()` remove one side only.
+q: What is a helpful NullPointerException in Java?
+a: Since Java 14, and by default since Java 15, a `NullPointerException` message says which expression was null — for example, that the return value of `Person.name()` was null — instead of giving only a line number.
+q: How do you make an HTTP request in plain Java?
+a: Use `java.net.http.HttpClient`, standard since Java 11: build an `HttpRequest` with `HttpRequest.newBuilder`, then call `send` for a blocking response or `sendAsync` for a `CompletableFuture`. It supports HTTP/2 and WebSockets, replacing `HttpURLConnection`.
+q: What are sequenced collections in Java 21?
+a: `SequencedCollection` gives ordered collections such as `List`, `Deque` and `LinkedHashSet` common methods: `getFirst`, `getLast`, `addFirst`, `addLast`, `removeFirst`, `removeLast` and `reversed()`. `list.getLast()` replaces `list.get(list.size() - 1)`, and `reversed()` is a live view.
+q: What is the difference between Stream.toList() and Collectors.toList()?
+a: `stream.toList()`, added in Java 16, is shorter and always returns an unmodifiable list. `collect(Collectors.toList())` makes no promise about the list's type or mutability — in practice it returns an `ArrayList` — so use it only when the result must be modified.
 ---
 Language features get the headlines; the library additions save you more lines per day. Since Java 9 the standard library has gained immutable collection factories, a dozen `String` methods, a modern HTTP client, `Stream.toList()`, `Collectors.teeing`, helpful `NullPointerException` messages and, in 21, the sequenced collections that finally give `List` a `getLast()`. This lesson is the tour of the ones you will use weekly, grouped by what they replace, with the version each arrived in so you know what your target JDK has.
 

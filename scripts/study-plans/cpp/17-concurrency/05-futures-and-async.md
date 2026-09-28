@@ -1,6 +1,20 @@
 ---
 title: Futures, promises and std::async — results that arrive later
 minutes: 15
+seo-title: C++ std::async, std::future and std::promise Explained
+description: A C++ future is a one-shot channel for a value or an exception. std::async launch policies, promise and packaged task, and the blocking destructor trap.
+question: How do std::async and std::future work in C++?
+answer: `std::async` runs a callable — on a new thread when given `std::launch::async` — and returns a `std::future` for its result. Calling `get()` on the future waits until the value exists, then moves it out, or rethrows the exception the task threw. A future can be read exactly once; `share()` makes a `std::shared_future` for several readers. Futures are how C++ hands results and errors back from another thread.
+q: What is the difference between std::launch::async and std::launch::deferred?
+a: `std::launch::async` starts a new thread immediately. `std::launch::deferred` runs the function lazily on the thread that calls `get()` or `wait()`, and never if nobody does. The default policy allows either, so write `std::launch::async` whenever the point is parallelism.
+q: Why does std::async run sequentially in a loop?
+a: A future returned by `std::async` blocks in its destructor until the task finishes. Calling `std::async` without keeping the result creates a temporary future that is destroyed at the end of the statement, so each iteration waits for its own task. Store the futures in a vector and the tasks overlap.
+q: How are exceptions passed between threads in C++?
+a: Through a future. If a task run by `std::async` or a `std::packaged_task` throws, the library stores the exception and `get()` rethrows it on the calling thread with its dynamic type intact; a `std::promise` stores one with `set_exception`. An exception that escapes a plain `std::thread` body calls `std::terminate`.
+q: What is the difference between std::promise and std::packaged_task?
+a: A `std::promise` lets any code set a future's result by hand, exactly once, with `set_value` or `set_exception`. A `std::packaged_task` wraps a callable and fills its future with the return value or exception when the task is called — the building block of thread pools. Both are move-only.
+q: What is a broken promise error in C++?
+a: When a `std::promise` is destroyed before `set_value` or `set_exception` was called, its future receives a `std::future_error` with the code `broken_promise`, so a thread waiting in `get()` fails with an exception instead of hanging forever.
 ---
 A thread that computes a value has nowhere to put it: `std::thread` returns nothing, and an exception inside its body terminates the whole program. The `<future>` header fixes both with one idea. A **future** is a one-shot channel that will hold either a value or an exception; whoever produces it is elsewhere, and `get()` waits for it and hands it over — or rethrows. This lesson covers the three producers of a future — `std::async`, `std::promise` and `std::packaged_task` — the launch policies and the trap in `std::async`'s destructor, how an exception crosses a thread boundary, and a parallel sum that collects its partial results in a fixed order.
 

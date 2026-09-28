@@ -1,6 +1,20 @@
 ---
 title: Constructor functions and what `new` really does
 minutes: 12
+seo-title: What Does new Do in JavaScript? Constructors vs Factories
+description: JavaScript's new creates an object linked to F.prototype, calls the constructor with it as this and returns it. Writing new by hand, new.target and factories.
+question: What does the `new` keyword do in JavaScript?
+answer: The `new` keyword runs a function as a constructor in four steps: it creates a fresh object whose prototype is `F.prototype`, calls `F` with `this` bound to that object, and returns the object — unless `F` itself returns an object, which then replaces it. Methods put on `F.prototype` are shared by every instance through the prototype chain.
+q: How do you implement `new` yourself in JavaScript?
+a: Create the object with `Object.create(F.prototype)`, call `F.apply(obj, args)`, and return the call's result if it is an object or a function, otherwise `obj`. That reproduces all four steps of `new`; modern code would call `Reflect.construct(F, args)` instead.
+q: What is `new.target` in JavaScript?
+a: `new.target` inside a function is the constructor that was called with `new`, or `undefined` when the function was called plainly. A constructor can use it to detect a forgotten `new`, for example by returning `new Point(x, y)` itself.
+q: What happens if you call a constructor function without `new`?
+a: In strict mode `this` is `undefined`, so the first `this.x = x` throws. In sloppy mode `this` was the global object, so the properties silently became globals — the classic pre-2015 bug. Calling a class without `new` always throws a `TypeError`.
+q: What is the difference between a constructor function and a factory function?
+a: A constructor, called with `new`, shares its methods on the prototype and supports `instanceof`. A factory function simply builds and returns an object: no `new`, no `this`, private state through closures — but its methods are recreated for every object and `instanceof` does not work.
+q: What is the `constructor` property in JavaScript?
+a: Every ordinary function's `prototype` object has a `constructor` property pointing back at the function, and instances inherit it, so `p.constructor === Point`. It is only a convention — replacing `Point.prototype` loses it and anyone can reassign it — so check types with `instanceof`, not `constructor`.
 ---
 Before `class` (2015) every "class" in JavaScript was a plain function called with `new`, and that machinery is still what `class` compiles down to. Understanding it explains the odd vocabulary — why functions have a `.prototype` property, what `constructor` is, why forgetting `new` used to silently corrupt the global object — and it is the direct answer to a favourite interview question: *implement `new` yourself*. This lesson does exactly that, then compares constructors with the factory-function alternative so you can argue for either.
 

@@ -1,6 +1,20 @@
 ---
 title: Sealed interfaces — closed sets of types
 minutes: 12
+seo-title: Sealed Interfaces in Java: Permits and Exhaustive Switch
+description: A sealed interface in Java 17 lists its only implementations with permits. With records it models results and states, and allows exhaustive switches in Java 21.
+question: What is a sealed interface in Java?
+answer: A sealed interface in Java, added in Java 17, names the only types allowed to implement it: `sealed interface Shape permits Circle, Square, Triangle`. Each permitted type must be `final`, `sealed` or `non-sealed`, so the set of implementations is closed and known to the compiler. From Java 21 a pattern-matching `switch` over it can be exhaustive with no `default`.
+q: What modifiers must a permitted subclass of a sealed type have?
+a: Exactly one of `final`, `sealed` or `non-sealed`. `final` ends the branch, `sealed` continues the closed hierarchy with its own `permits`, and `non-sealed` reopens that branch to anyone. Records and enums are implicitly final.
+q: What is the difference between an enum and a sealed interface in Java?
+a: An enum is a fixed set of instances, each one constant. A sealed interface is a fixed set of types, and each type can have any number of instances carrying their own data — a `Circle` with a radius, a `Square` with a side.
+q: How do you model success or failure without exceptions in Java?
+a: Declare a sealed interface with two record implementations, such as `Ok(int value)` and `Err(String message)`, and return one of them. The type says a result is exactly one of two shapes, with no null and no `boolean success` flag, and the caller must handle both.
+q: Where must the permitted subclasses of a sealed interface be declared?
+a: In the same module as the sealed type, or in the same package if the code is in the unnamed module. When every implementation is in the same source file, the `permits` clause may be left out and the compiler infers it.
+q: When should you not use a sealed interface?
+a: When the set of implementations is genuinely open — plugins, user-supplied strategies, or a capability such as `Comparable` — or lives in modules you do not control. Sealing makes adding an operation easy and adding a new type deliberate; choose it only when the alternatives are fixed by design.
 ---
 An ordinary interface is open: anyone, anywhere, can implement it. That is right for `Comparable` and wrong for "the result of a parse is either a success with a value or a failure with a message" — a set of alternatives that is *complete* by design. Java 17's **sealed interfaces** express exactly that: the interface names its permitted implementations, the compiler knows the set is closed, and (with records and pattern matching) Java gains the algebraic data types that functional languages have had for decades.
 

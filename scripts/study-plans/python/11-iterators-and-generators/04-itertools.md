@@ -1,6 +1,20 @@
 ---
 title: itertools — the iterator toolkit
 minutes: 15
+seo-title: Python itertools: groupby, permutations and combinations
+description: Python's itertools gives lazy iterator tools: count, chain, islice, accumulate, groupby for consecutive runs, and product, permutations and combinations.
+question: What is itertools in Python?
+answer: `itertools` is a standard-library module of fast, lazy building blocks for iterators, written in C. Each function takes iterables and returns an iterator, so they chain without intermediate lists. It covers infinite counters (`count`, `cycle`, `repeat`), slicing and chaining (`islice`, `chain`), running totals (`accumulate`), grouping (`groupby`) and combinatorics (`product`, `permutations`, `combinations`).
+q: Why does itertools.groupby not group all equal keys together?
+a: `groupby` groups only consecutive runs of elements with the same key, so on unsorted data a key that appears in two places yields two groups. Sort by the same key first to group the whole data, or use `defaultdict(list)` to group without sorting. Consume each group before advancing, because advancing invalidates it.
+q: What is the difference between permutations and combinations in itertools?
+a: `permutations(xs, r)` yields ordered arrangements of r elements, so `('a', 'b')` and `('b', 'a')` both appear; `combinations(xs, r)` yields unordered subsets of size r in input order, so only `('a', 'b')` appears. Neither repeats an element; `combinations_with_replacement` allows repeats.
+q: How do you get the cartesian product of lists in Python?
+a: `itertools.product(a, b)` yields every pair `(x, y)` with x from a and y from b, replacing nested loops, and `product(range(2), repeat=3)` yields every 3-bit tuple. Sizes multiply quickly, so filter lazily rather than materialising the whole product.
+q: How do you flatten a list of lists with itertools?
+a: `itertools.chain.from_iterable(list_of_lists)` flattens one level lazily, yielding every element of each inner list in turn; wrap it in `list(...)` if a list is needed. `chain(a, b, c)` does the same for iterables passed as separate arguments.
+q: How do you generate the powerset of a list in Python?
+a: Chain the combinations of every size: `chain.from_iterable(combinations(xs, r) for r in range(len(xs) + 1))` yields every subset, from the empty tuple to the full one. The count doubles with each element, so consume it lazily.
 ---
 `itertools` is a set of small, fast, lazy building blocks for iterators: infinite counters, chaining, slicing, running totals, grouping, and the combinatoric generators that interviews keep asking for. Each function takes iterables and returns an iterator, so they compose without intermediate lists, and each is written in C, so a chain of them is usually faster than the equivalent Python loop. This lesson catalogues the ones that matter, with the two that everyone misuses — `groupby`, which groups only consecutive runs, and `tee`, which buffers — called out.
 

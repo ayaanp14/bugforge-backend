@@ -1,6 +1,20 @@
 ---
 title: Sorting, Comparable and Comparator in depth
 minutes: 13
+seo-title: How to Sort a List of Objects in Java: Comparator Chains
+description: Sort a list of objects in Java with Comparator.comparing, thenComparing and reversed. Why the sort is a stable TimSort, the comparator contract, binary search.
+question: How do you sort a list of objects in Java?
+answer: To sort a list of objects in Java, call `list.sort(comparator)` with a comparator built from key extractors: `Comparator.comparing(Person::lastName).thenComparing(Person::firstName)`. Add `reversed()` for descending order and use `comparingInt` for primitive keys. If the class implements `Comparable`, `Collections.sort(list)` uses its natural order. Object sorts use TimSort, which is stable.
+q: How do you sort by multiple fields in Java?
+a: Chain comparators: `Comparator.comparing(Person::lastName).thenComparing(Person::firstName)` sorts by last name, then breaks ties by first name. For mixed directions, pass a reversed comparator into `thenComparing`, because `reversed()` flips everything chained before it.
+q: Why should you not use `a - b` in a comparator?
+a: Subtraction can overflow: with large values of opposite sign the result wraps round and flips its sign, giving wrong orders or TimSort's "Comparison method violates its general contract!" error. Use `Integer.compare(a, b)` or `Comparator.comparingInt` instead.
+q: What sorting algorithm does Java use?
+a: `Arrays.sort` on primitive arrays uses dual-pivot quicksort, which is not stable. Sorting objects — `List.sort`, `Collections.sort`, `Arrays.sort` on an object array — uses TimSort, which is O(n log n), stable and fast on partly sorted data.
+q: What is a stable sort?
+a: A stable sort keeps equal elements in their original relative order. Sorting by last name a list already sorted by first name therefore yields last name, then first name. Java's object sorts are stable; `Arrays.sort` on an `int[]` is not, and need not be.
+q: How do you sort a HashMap by value in Java?
+a: A map cannot be sorted itself, so sort its entries: copy `map.entrySet()` into a list and sort it with `Map.Entry.comparingByValue()`, or stream the entries through `sorted(Map.Entry.comparingByValue())`. For key order, keep a `TreeMap`.
 ---
 Sorting a list of objects in Java is one line once you know the comparator vocabulary — `comparing`, `thenComparing`, `reversed`, `nullsFirst` — and a page of bugs if you do not. This lesson covers the sort entry points, how to build any ordering declaratively, stability, the contract a comparator must satisfy, and binary search on sorted data.
 

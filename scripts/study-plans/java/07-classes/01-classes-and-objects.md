@@ -1,6 +1,20 @@
 ---
 title: Classes, objects and references
 minutes: 14
+seo-title: Classes and Objects in Java: new, this and References
+description: A Java class is a blueprint of fields and methods; an object is an instance made with new. References, the this keyword, and fields versus local variables.
+question: What is the difference between a class and an object in Java?
+answer: A class in Java is a blueprint: it declares the fields (state) and methods (behaviour) its objects have, and it is also a type. An object is an instance of a class, created on the heap with `new`, with its own copy of the fields. Variables never hold the object itself, only a reference to it, so two variables can point to the same object.
+q: What does the new keyword do in Java?
+a: `new` allocates memory for the object's fields on the heap and sets them to their defaults (0, false or null), runs a constructor, and returns a reference to the new object. Each call creates a separate object with its own fields.
+q: What is the this keyword in Java?
+a: `this` is a reference to the object the current instance method or constructor was called on — the receiver. It is implicit when you use a field, and written out to tell a field from a parameter (`this.owner = owner`), to pass or return the current object, or to call another constructor.
+q: Why can't a static method use `this` in Java?
+a: A static method is not called on an object, so there is no receiver for `this` to refer to. For the same reason it cannot read instance fields or call instance methods without an explicit object reference.
+q: What does == compare for objects in Java?
+a: References. `a == b` is true only when both variables point to the same object; two different objects with equal fields are not `==`. A `null` reference points to no object, and calling a method through it throws `NullPointerException`.
+q: What is the difference between a field and a local variable in Java?
+a: A field is declared in the class body, lives inside each object, gets a default value and lasts as long as the object. A local variable is declared in a method, lives in the stack frame, has no default and must be assigned before use, and disappears when its block ends.
 ---
 Up to now every program has been one class with static methods — Java used as a procedural language. Real Java is objects: bundles of *state* (fields) and *behaviour* (methods) that model something. This lesson is the object model itself: what a class declares, what `new` does, what a reference is, and how `this` ties them together. Everything in the next four modules stands on it.
 

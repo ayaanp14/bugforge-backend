@@ -1,6 +1,20 @@
 ---
 title: const, constexpr and auto
 minutes: 14
+seo-title: C++ const vs constexpr and the auto Keyword Explained
+description: In C++, const means a value cannot change after initialisation and constexpr means it is known at compile time. How auto deduces types, and when it hides a bug.
+question: What is the difference between const and constexpr in C++?
+answer: In C++, `const` promises a variable will not change after initialisation, but its value may come from run time, even from input. `constexpr` promises the value is known while compiling, so it can be used as an array bound, a template argument or in `static_assert`. Every `constexpr` variable is also `const`; the reverse is not true.
+q: What does the `auto` keyword do in C++?
+a: `auto` makes the compiler deduce a variable's type from its initialiser: `auto n = v.size();` is `std::size_t` and `auto d = 0.0;` is `double`. It follows the rules of template argument deduction, so plain `auto` always makes a copy and drops references and top-level `const`.
+q: What is a constexpr function in C++?
+a: A `constexpr` function is an ordinary function the compiler may evaluate during compilation when every argument is a constant and the result is needed in a constant expression; otherwise it runs at run time like any other. A compile-time call that would overflow is a compile error. `consteval` (C++20) marks a function that must run at compile time.
+q: What is the difference between `auto`, `auto&` and `const auto&`?
+a: `auto x = expr;` makes a copy and drops references and top-level `const`. `auto&` binds a reference and keeps the `const`, so modifying through it changes the original. `const auto&` binds to anything, including temporaries, without copying — the idiom for reading elements in a range-based `for` loop.
+q: Why does `auto s = "text";` not give a `std::string`?
+a: A string literal is an array of `const char`, and `auto` deduces the pointer it decays to, `const char*`, so `s.size()` does not compile. Write `std::string s = "text";`, or use the `s` suffix from `std::string_literals`: `auto s = "text"s;`.
+q: When should you not use `auto` in C++?
+a: Spell the type when a number's width or signedness matters. `auto total = 0;` is an `int` that overflows past about 2.1 billion, and `auto mean = sum / count;` hides an integer division. Use `auto` when the type is obvious from the right-hand side or cannot be named, such as a lambda or an iterator.
 ---
 Three keywords decide how much the compiler knows about a variable. `const` promises the value will not change after initialisation; `constexpr` promises it is known while compiling; `auto` asks the compiler to work the type out from the initialiser. Used well, each removes a class of mistakes — an accidental assignment, a run-time computation that should have been folded, a silently wrong numeric type. Used carelessly, each hides something. This lesson gives the rules, including the deduction rules for `auto` that most people learn by tripping over them.
 

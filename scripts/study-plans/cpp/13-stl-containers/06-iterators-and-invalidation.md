@@ -1,6 +1,20 @@
 ---
 title: Iterators and invalidation — the contract behind every loop
 minutes: 14
+seo-title: C++ Iterator Invalidation Rules and Erasing While Iterating
+description: Which operations invalidate C++ iterators in vector, deque, list, map and unordered containers, the correct erase-while-iterating loop, and iterator categories.
+question: What is iterator invalidation in C++?
+answer: Iterator invalidation is when an operation on a container leaves an existing iterator, pointer or reference aimed at an element that has moved or been destroyed; using it is undefined behaviour. A `std::vector` that reallocates invalidates everything, and an insert or erase invalidates from that point onwards. Node-based containers — `std::list`, `std::set`, `std::map` — keep an iterator valid until its own element is erased.
+q: How do you erase elements while iterating in C++?
+a: Use the iterator that `erase` returns and advance only when nothing was erased: `for (auto it = c.begin(); it != c.end(); ) { if (cond(*it)) it = c.erase(it); else ++it; }`. The same loop works on vectors, lists, maps, sets and unordered containers. When the decision is a plain predicate, C++20's `std::erase_if(c, pred)` does it in one call.
+q: What are the iterator categories in C++?
+a: Input and output, forward, bidirectional, random access and, since C++17, contiguous — each adds abilities to the one before. Forward iterators belong to `std::forward_list` and the unordered containers, bidirectional to `std::list`, `std::set` and `std::map`, random access to `std::deque`, and contiguous to `std::vector`, `std::array` and `std::string`.
+q: What is the difference between std::next and std::advance?
+a: `std::next(it, n)` returns a moved copy and leaves `it` unchanged, while `std::advance(it, n)` moves the iterator you pass in place and returns nothing. `std::prev` steps backwards and `std::distance(a, b)` counts the steps between two iterators. All are O(1) on random-access iterators and step one at a time on the others.
+q: Why is `v.erase(it)` inside a `for` loop with `++it` wrong?
+a: After `v.erase(it)`, `it` is invalidated and the next element has shifted into its slot, so `++it` skips that element; at the last element it steps past `end()`, which is undefined behaviour. Assign the returned iterator — `it = v.erase(it);` — and increment only in the branch that did not erase.
+q: Does erasing from a std::map invalidate other iterators?
+a: No. In `std::map`, `std::set` and `std::list`, erasing an element invalidates only iterators to that element; every other iterator stays valid. That is why `m.erase(it++)` works on node-based containers, though `it = m.erase(it)` is clearer and works on every container.
 ---
 An iterator is a generalised pointer: something you can dereference to reach an element and increment to reach the next one. Every container hands them out through `begin()` and `end()`, every algorithm in `<algorithm>` takes a pair of them, and the range-based `for` of Module 3 is sugar over them. What makes them more than pointers is that each container promises a *category* — how far and in which directions its iterators can move — and an *invalidation rule* — which operations on the container leave existing iterators pointing at garbage. This lesson covers the categories and what they cost, the helper functions `std::next`, `std::prev`, `std::distance` and `std::advance`, `const_iterator` and reverse iterators, the invalidation table, the one correct way to erase while iterating, and iterator ranges as the interface algorithms share.
 

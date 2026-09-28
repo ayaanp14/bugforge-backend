@@ -1,6 +1,20 @@
 ---
 title: Statements, expressions and the semicolon rules
 minutes: 12
+seo-title: JavaScript Semicolons and ASI: Statements vs Expressions
+description: Automatic semicolon insertion bites after a bare return and before a line opening with a bracket. Statements vs expressions and strict mode in JavaScript.
+question: What is automatic semicolon insertion in JavaScript?
+answer: Automatic semicolon insertion (ASI) is the JavaScript parser's rule for adding semicolons you did not write: at a line break when the next token cannot continue the statement, before a closing brace, and at the end of input. It bites in three places: `return` followed by a newline returns `undefined`, a line starting with `(` or `[` continues the previous line, and `++` binds to the next line.
+q: Do you need semicolons in JavaScript?
+a: Not strictly, because ASI inserts them at most line breaks, but pick one style and let Prettier enforce it. With semicolons, the only trap left is a `return` whose value sits on the next line; without them, a line starting with `(`, `[` or a backtick needs a leading `;`.
+q: What is the difference between a statement and an expression in JavaScript?
+a: An expression evaluates to a value — `2 + 3`, `f(y)`, `a ? b : c`, even `x = 5`. A statement performs an action and produces no value — `let`, `if`, `for`, `return`. A statement cannot appear where a value is expected, which is why `const a = if (x) 1 else 2` is a syntax error.
+q: Why does return on its own line return undefined?
+a: ASI inserts a semicolon straight after `return` when a newline follows it, so the function returns `undefined` and the value on the next line is never reached. Keep the returned value, or at least its opening brace, on the same line as `return`.
+q: What does "use strict" do in JavaScript?
+a: `"use strict"` turns on strict mode: assigning to an undeclared name throws a `ReferenceError` instead of creating a global, writing to a read-only property throws, and `this` in a plain function call is `undefined`. ES modules and class bodies are strict automatically.
+q: Can a reserved word be a property name in JavaScript?
+a: Yes. Reserved words such as `class`, `new` and `delete` cannot name a variable, but they are legal property names, so `obj.class` works while `const class = 1` is a syntax error.
 ---
 A JavaScript program is a sequence of statements, and most statements are built from expressions — but the two are not the same thing, and the language's most notorious quirk, **automatic semicolon insertion**, lives exactly on their boundary. This lesson covers the anatomy of a program: what counts as a statement, what counts as an expression, how blocks and comments work, the rules by which the parser inserts semicolons you did not write, the three places that rule bites, and the conventions (strict mode, naming, formatting) that keep code readable across a team.
 

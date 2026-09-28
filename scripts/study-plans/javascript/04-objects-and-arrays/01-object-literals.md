@@ -1,6 +1,20 @@
 ---
 title: Object literals — properties, keys, iteration and JSON
 minutes: 13
+seo-title: JavaScript Objects: Dot vs Bracket Notation, Keys and JSON
+description: JavaScript objects map string keys to values. Dot vs bracket access, checking a property with Object.hasOwn, key order, and what JSON.stringify drops.
+question: What is the difference between dot and bracket notation in JavaScript?
+answer: Dot notation, `user.name`, reads a property whose key is written as a literal identifier. Bracket notation, `user[key]`, takes any expression and converts it to a string, so it is required when the key is in a variable, is computed, or is not a valid identifier, as in `user["full name"]`. Either way a missing property gives `undefined`, while reading a property of `undefined` throws a `TypeError`.
+q: How do you check if an object has a property in JavaScript?
+a: Use `Object.hasOwn(obj, key)` (ES2022) to test the object's own properties; older code writes `Object.prototype.hasOwnProperty.call(obj, key)`. The `in` operator also sees inherited properties, so `"toString" in {}` is `true`, which is rarely what you mean for data.
+q: What is the order of object keys in JavaScript?
+a: Integer-like keys come first in ascending numeric order, then string keys in insertion order, then symbols. So `{ b: 1, 2: 1, a: 1, 1: 1 }` iterates as `1, 2, b, a`. Rely on insertion order for string keys only.
+q: How do you loop through an object in JavaScript?
+a: Use `for (const [k, v] of Object.entries(obj))`, which visits the object's own enumerable string keys with their values; `Object.keys` and `Object.values` give one side each. Avoid `for…in` for data, because it also visits inherited enumerable properties.
+q: What does JSON.stringify drop in JavaScript?
+a: `JSON.stringify` omits properties whose value is `undefined`, a function or a symbol, turns `NaN` and `Infinity` into `null` and `Date` objects into ISO strings, and throws on `BigInt` values and circular references. `JSON.parse` returns plain objects, so methods and `Date`s do not come back.
+q: When should you use a Map instead of an object in JavaScript?
+a: Use a `Map` when keys are not strings, come from untrusted input, or are added and removed often. A plain object coerces every key to a string, already appears to have inherited names such as `constructor`, and a `__proto__` key from user input can cause prototype pollution.
 ---
 An object in JavaScript is a bag of properties: string (or symbol) keys mapped to values, created most often with a literal `{ }`. There is no class needed, no schema, and any property can be added or removed at any time — which makes objects the language's universal record, dictionary and namespace. This lesson covers the literal syntax and its shorthands, the two ways to access a property and when each is required, the `in`/`hasOwn`/optional-chaining tests, the iteration order rules, and JSON as the wire format objects travel in.
 

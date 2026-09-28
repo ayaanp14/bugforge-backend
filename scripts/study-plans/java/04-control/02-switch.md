@@ -1,6 +1,20 @@
 ---
 title: switch — statements, expressions and arrows
 minutes: 15
+seo-title: Java Switch Statement vs Switch Expression: Arrow Syntax
+description: A Java switch compares one value against constants. Classic fall-through, the arrow form that never falls through, and switch expressions that yield a value.
+question: What is a switch expression in Java?
+answer: A switch expression in Java, standard since Java 14, is a `switch` that produces a value: `String kind = switch (day) { case 6, 7 -> "weekend"; default -> "weekday"; };`. Its arrow branches never fall through, a block branch gives its value with `yield`, and it must be exhaustive, covering every possible value with its cases or a `default`.
+q: What is fall-through in a Java switch?
+a: In the classic colon form, execution jumps to the matching `case` label and keeps running downward through the following cases until a `break`. Forgetting a `break` runs the next case's code too. The arrow form, `case 1 ->`, never falls through.
+q: What types can be used in a switch in Java?
+a: The selector can be a `byte`, `short`, `char` or `int`, their wrapper classes, a `String` since Java 7, or an `enum`. A `long`, `float`, `double` or `boolean` is not allowed, and case labels must be unique compile-time constants. Java 21 adds pattern matching on any reference type.
+q: What does yield do in a Java switch?
+a: `yield` gives the value of a block inside a switch expression: `default -> { log("long month"); yield 31; }`. It is needed only in blocks, since an arrow branch with a single expression yields that expression directly, and `yield` is a contextual keyword rather than a reserved word.
+q: What happens when you switch on a null String in Java?
+a: It throws a `NullPointerException`, and so does a `null` enum selector. Check for `null` with an `if` before the switch, or, from Java 21, add an explicit `case null` branch.
+q: When should I use switch instead of if-else in Java?
+a: Use `switch` when one value is compared against several constants: it reads more clearly and the compiler can dispatch through a jump table. Use `if` for ranges such as `score >= 90`, for conditions on several variables and for comparisons with values that are not constants.
 ---
 `switch` compares one value against a list of constants. It has existed since Java 1.0 in a form inherited from C — with fall-through, the bug generator — and was reworked in Java 14 into a cleaner **arrow form** and a **switch expression** that yields a value. Modern Java code uses the new forms almost exclusively, but you will read the old one in every codebase, so both are here.
 
@@ -136,7 +150,7 @@ And with sealed hierarchies (Module 9) the compiler checks exhaustiveness withou
 | Switch on `long`/`double` | Compile error |
 | `null` selector | `NullPointerException` |
 | Non-exhaustive switch expression | Compile error |
-| `return` instead of `yield` in a block | Returns from the method — probably not intended |
+| `return` instead of `yield` in a block | Compile error — `return` cannot jump out of a switch expression; `yield` the value |
 
 ## Interview angle
 

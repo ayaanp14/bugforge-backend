@@ -1,6 +1,20 @@
 ---
 title: What JavaScript is, and why it looks the way it does
 minutes: 12
+seo-title: What Is JavaScript? ECMAScript, Engines and Where It Runs
+description: JavaScript is a dynamically typed language with first-class functions, prototypes and an event loop. How ECMAScript editions work and where JavaScript runs.
+question: What is JavaScript?
+answer: JavaScript is a dynamically typed programming language with first-class functions, prototype-based objects and a single-threaded event loop. Its specification is ECMAScript, published every year by the TC39 committee, and engines such as V8 implement it. It runs in every web browser, on servers through Node.js, Deno and Bun, and inside desktop, mobile and embedded applications.
+q: What is the difference between JavaScript and ECMAScript?
+a: ECMAScript is the specification and JavaScript is the language that implements it. The TC39 committee maintains ECMAScript and publishes a new edition every year, so names such as ES6 and ES2020 refer to editions of the spec that engines then implement.
+q: What is ES6 in JavaScript?
+a: ES6 is the 2015 edition of ECMAScript, also called ES2015, and the big modernisation of the language. It added `let` and `const`, arrow functions, classes, template literals, destructuring, promises, modules, `Map` and `Set`.
+q: Is JavaScript compiled or interpreted?
+a: Both. Engines parse the source to bytecode and start interpreting it at once, then JIT-compile the functions that run often into optimised machine code while the program runs. There is no separate compile step you run yourself.
+q: What is the difference between JavaScript in the browser and Node.js?
+a: The language is the same; the host objects differ. A browser adds the DOM, `fetch` and `localStorage`, while Node.js adds files, processes and modules through `require("fs")` and friends. `console.log` exists in both, `document` only in a browser.
+q: Why is JavaScript single-threaded?
+a: By design: one thread runs your code on one call stack, and I/O happens elsewhere and calls back through the event loop when it is done. That rules out data races and locks, but a program that blocks the thread freezes everything.
 ---
 JavaScript was written in ten days in 1995 to make web pages move, and it now runs the browser, the server (Node), the phone (React Native), the desktop (Electron) and the build tools of every other language. It is the only language every web developer must know and, by most counts, the most used programming language in the world. Its shape — C-like syntax, first-class functions from Scheme, prototype-based objects from Self, dynamic types, one thread with an event loop — explains most of what will surprise you in this plan. This lesson is the map: what the language is, who defines it, where it runs, and what a JavaScript program is at its simplest.
 

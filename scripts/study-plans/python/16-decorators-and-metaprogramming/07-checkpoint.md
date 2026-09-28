@@ -1,6 +1,14 @@
 ---
 title: Checkpoint — Decorators, descriptors and the data model
 minutes: 25
+seo-title: Python Metaprogramming Quiz: Decorators and Descriptors
+description: Test your Python metaprogramming with 12 questions and three programs on decorators, closures, descriptors, attribute hooks, metaclasses and a Vector type.
+q: What does `@retry(3)` above a `def` expand to?
+a: `f = retry(3)(f)`: `retry(3)` is called first and returns the decorator, which then wraps the function. So `retry` needs three nested levels: the factory taking the arguments, the decorator taking the function, and the wrapper that runs on each call.
+q: When is `__getattr__` called, and what must it raise?
+a: Only when normal attribute lookup, through the instance dict, the class, descriptors and bases, has failed. For names it does not handle it must raise `AttributeError`, so `hasattr` and `getattr` with a default keep working.
+q: Why must `__setattr__` write through `object.__setattr__`?
+a: Because `__setattr__` runs on every assignment, `self.name = value` inside it would call it again and recurse forever. Writing through `object.__setattr__(self, name, value)` stores the value without re-entering the hook.
 ---
 This checkpoint covers the whole module: decorators as `f = deco(f)` with `@wraps`, arguments and stacking, closures with cells, late binding and factories, the descriptor protocol behind properties, methods and validated attributes, the attribute hooks `__getattr__`, `__getattribute__` and `__setattr__` with reflection and `__slots__`, classes as objects with `type`, `__new__`, `__init_subclass__` and metaclasses, and the rest of the data model through a `Vector`.
 

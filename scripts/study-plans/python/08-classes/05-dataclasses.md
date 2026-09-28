@@ -1,6 +1,20 @@
 ---
 title: Dataclasses — classes that are mostly data
 minutes: 14
+seo-title: Python Dataclasses Explained: Defaults, Frozen and Ordering
+description: The dataclass decorator writes the constructor, repr and equality from annotated fields. List defaults, the frozen, order and slots options, and validation.
+question: What is a dataclass in Python?
+answer: A dataclass is a class decorated with `@dataclass` from the `dataclasses` module (Python 3.7+), which generates `__init__`, `__repr__` and `__eq__` from its annotated fields. Options add more: `order=True` for comparisons, `frozen=True` for immutable, hashable instances and `slots=True` for compact ones. The type annotations declare the fields but are not enforced.
+q: How do I use a list as a default value in a dataclass?
+a: Use `field(default_factory=list)`, which calls `list()` to make a fresh list for each instance. A plain `members: list = []` is refused with a `ValueError` that points you to `default_factory`, because one list would otherwise be shared by every instance.
+q: What does frozen=True do in a dataclass?
+a: It makes instances immutable: assigning a field after `__init__` raises `FrozenInstanceError`. Because the fields cannot change, the decorator also generates `__hash__`, so frozen instances work as dict keys and set members, and `dataclasses.replace(p, x=1)` returns a modified copy.
+q: What is `__post_init__` in a dataclass?
+a: `__post_init__` runs right after the generated `__init__`, so validation and derived fields go there: raise `ValueError` for bad values, or compute a field declared with `field(init=False)`. In a frozen dataclass, set a derived field with `object.__setattr__`.
+q: What is the difference between a dataclass and a namedtuple?
+a: A `NamedTuple` is always immutable and really is a tuple, so it unpacks, indexes and compares equal to a plain tuple — `Point(1, 2) == (1, 2)` is `True`. A dataclass is an ordinary class, mutable by default, with options for ordering, freezing and slots.
+q: Why is my dataclass unhashable?
+a: A dataclass that keeps the default `eq=True` and is not frozen has `__hash__` set to `None`, because a mutable object whose equality depends on its fields must not be a key. Use `@dataclass(frozen=True)` for a hashable value type.
 ---
 Most classes are records: a few named fields, an `__init__` that stores them, a `__repr__` that shows them, an `__eq__` that compares them. Writing those by hand is twenty lines of boilerplate per class and a bug every time a field is added to one method and not the others. `@dataclass` (3.7) generates them from the field annotations, and its options add ordering, immutability, hashing, slots and keyword-only construction. This lesson covers the decorator, defaults and `field`, the generated methods, the options that matter, `__post_init__` for validation and derived fields, the helpers `asdict`/`astuple`/`replace`, and when a plain class is still the better tool.
 

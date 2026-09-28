@@ -1,6 +1,20 @@
 ---
 title: Names, binding and mutability — there are no boxes
 minutes: 14
+seo-title: Python Mutable vs Immutable: Variables, Binding and Copies
+description: A Python variable is a name bound to an object, and assignment never copies. Mutable vs immutable types, pass by reference, += on lists and the walrus operator.
+question: What is the difference between mutable and immutable types in Python?
+answer: In Python, a mutable object can be changed in place — `list`, `dict`, `set`, `bytearray` and instances of your own classes — while an immutable one cannot: `int`, `float`, `bool`, `str`, `bytes`, `tuple`, `frozenset` and `None`. Every apparent change to an immutable value, such as `s = s.upper()` or `n += 1`, creates a new object and rebinds the name.
+q: Is Python pass by reference or pass by value?
+a: Neither label fits: Python passes every argument the same way, by binding the caller's object to the parameter name. A function can mutate a mutable argument, such as appending to a list, and the caller sees it; rebinding the parameter, as in `xs = [0]` or `n += 1` on an int, never affects the caller.
+q: Why does changing one list change another in Python?
+a: Because both names are bound to the same list. Assignment such as `b = a` binds a second name to the object and never copies it, so a mutation through either name, like `b.append(4)`, is visible through both. Ask for an independent list with `list(a)`, `a[:]` or `a.copy()`.
+q: What is the difference between `+=` and `+` on a Python list?
+a: `xs += [4]` extends the list in place through `__iadd__`, so every other name bound to that list sees the change; `xs = xs + [4]` builds a new list and rebinds only `xs`. Ints and strings have no in-place form, so for them `+=` always creates a new object and rebinds.
+q: What is the walrus operator in Python?
+a: The walrus operator `:=`, added in Python 3.8, is an assignment expression: it binds a name and yields the value in one step, as in `if (n := len(xs)) > 10:` or `while (chunk := stream.read(1024)):`. It suits a value that is tested and then reused immediately; it does not replace `=`.
+q: What is the difference between a shallow copy and a deep copy in Python?
+a: A shallow copy — `list(xs)`, `xs[:]`, `xs.copy()`, `dict(d)` — is a new container whose elements are the same objects, so the inner lists of a nested list are still shared. `copy.deepcopy` copies recursively and gives a fully independent structure.
 ---
 The mental model that carries a Python programmer through every "why did that change too?" moment is this: a variable is a **name bound to an object**, not a box holding a value. Assignment binds; it never copies. Whether a later change through one name is visible through another depends on one question — is the object *mutable*? — and not on how the names were introduced. This lesson builds that model with the objects you already know, adds the assignment forms (multiple, augmented, unpacking, the walrus), and sets up the copying rules that Module 6 needs for lists.
 

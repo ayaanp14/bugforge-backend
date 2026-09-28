@@ -1,6 +1,20 @@
 ---
 title: Bytecode and the interpreter — code objects, dis, name lookup and the 3.11 specialiser
 minutes: 15
+seo-title: Python Bytecode and dis Explained: How CPython Runs Code
+description: CPython compiles functions to stack-machine bytecode. Reading dis output, code objects, why locals beat globals, and the Python 3.11 specialising interpreter.
+question: What is Python bytecode?
+answer: Python bytecode is the sequence of small stack-machine instructions that CPython compiles each module, function, class and comprehension into before running it. An interpreter loop executes those instructions, such as `LOAD_FAST`, `BINARY_OP` and `RETURN_VALUE`. The `dis` module shows them, and compiled module code is cached as `.pyc` files in `__pycache__`, so the compile happens only once.
+q: Why are local variables faster than globals in Python?
+a: A local is read with `LOAD_FAST`, an index into the frame's slot array; a global needs `LOAD_GLOBAL`, a dictionary lookup in the module's globals and then the built-ins. That is why binding `append = out.append` or `_len = len` before a hot loop helps, though the caches in 3.11 narrow the gap.
+q: What does the dis module do in Python?
+a: `dis.dis(f)` disassembles a function's bytecode, showing each instruction's source line, byte offset, opcode name and argument, and `dis.get_instructions` returns the same as objects. The instruction set changes between Python versions, so use it as a diagnostic, never in a portable program's output.
+q: Why is Python 3.11 faster?
+a: PEP 659's specialising adaptive interpreter rewrites generic instructions into type-specific ones once it sees stable types, so `BINARY_OP` on two ints becomes `BINARY_OP_ADD_INT`. Cheaper frames and zero-cost exceptions add to it, making 3.11 about 10 to 60 percent faster than 3.10 on typical code.
+q: Does the Python compiler optimise code?
+a: Very little. CPython folds constant expressions such as `2 * 60 * 60` into `7200`, drops `if 0:` blocks and turns some literal collections into constants, but it does no inlining, no loop hoisting and no type inference: what you write is what runs.
+q: What is a code object in Python?
+a: The immutable result of compiling a module, function, class or comprehension: `co_code` holds the bytecode, `co_consts` the constants, `co_names` the global and attribute names and `co_varnames` the locals. A function object is a code object plus its globals, defaults and closure.
 ---
 CPython does not run your source; it compiles each function to *bytecode* — a sequence of small instructions for a stack machine — and an interpreter loop executes those. Seeing the bytecode explains the costs of the previous lesson: why a local variable is faster than a global, why `self.x` in a loop is two instructions where `x` is one, what a function call actually does, and what 3.11's specialising interpreter changed. This lesson covers the compilation pipeline and code objects, reading `dis` output, the four kinds of name load, the frame and the value stack, `.pyc` caching and constant folding, and the adaptive interpreter that makes 3.11 the fastest CPython so far.
 
@@ -59,7 +73,7 @@ A call creates a *frame*: the code object, a slot array for locals, a value stac
 
 ## The compiler's own optimisations
 
-`x = 2 * 60 * 60` stores `7200` — constant folding; `if 0:` blocks are dropped; `"a" "b"` is joined; a `for` over a literal list `[1, 2, 3]` iterates a constant tuple; `x in [a, b]` with constants becomes a frozenset test. Nothing else: no inlining, no loop hoisting, no type inference. What you write is what runs, one instruction per operation.
+`x = 2 * 60 * 60` stores `7200` — constant folding; `if 0:` blocks are dropped; `"a" "b"` is joined; a `for` over a literal list `[1, 2, 3]` iterates a constant tuple; `x in [1, 2]` tests a constant tuple and `x in {1, 2}` a constant frozenset. Nothing else: no inlining, no loop hoisting, no type inference. What you write is what runs, one instruction per operation.
 
 ## The 3.11 specialising adaptive interpreter
 

@@ -1,6 +1,18 @@
 ---
 title: Destructors and the rule of three
 minutes: 14
+seo-title: The Rule of Three in C++: Destructors and Copy-and-Swap
+description: If a C++ class needs a destructor, copy constructor or copy assignment, it needs all three. When destructors run and the copy-and-swap idiom.
+question: What is the rule of three in C++?
+answer: The rule of three says that if a C++ class needs a user-written destructor, copy constructor or copy assignment operator, it almost certainly needs all three. A hand-written destructor means the class owns a resource, such as a heap block, and the generated copies would duplicate the pointer rather than the resource, causing a double delete. Since C++11 it extends to the rule of five, which adds the two move operations.
+q: When is a destructor called in C++?
+a: When the object's lifetime ends: a local at the closing brace of its block, a member when its enclosing object is destroyed, a heap object at `delete`, a container element when it is erased or the container dies, and a temporary at the end of the full-expression that created it. You never call it by name in ordinary code.
+q: In what order are objects destroyed in C++?
+a: Local objects are destroyed in reverse order of construction, last declared first. Within an object, the destructor body runs first, then the members are destroyed in reverse declaration order, then the base classes. That order means an object is always destroyed before anything it depends on.
+q: What is the copy-and-swap idiom?
+a: Copy-and-swap writes assignment as `T& operator=(T other) { swap(*this, other); return *this; }`. The by-value parameter is built by the copy constructor, the swap gives `*this` the new data, and `other`'s destructor frees the old. It needs no self-assignment check, gives the strong exception guarantee and also serves as move assignment.
+q: Why should a destructor never throw in C++?
+a: Destructors are implicitly `noexcept`, so an exception escaping one calls `std::terminate`. A destructor that threw during stack unwinding would otherwise put two exceptions in flight, which C++ cannot handle. Release resources and, if a release can fail, report it another way.
 ---
 A destructor is the other half of ownership. The constructor acquires; the destructor releases; and because C++ runs the destructor at a moment the language defines exactly — not "eventually", as a garbage collector would — a class can hold a heap block, a file or a lock with the certainty that it will be given back. This lesson pins down when destructors run and in what order, states the rule of three and why the three functions travel together, builds an owning buffer class that gets every case right, and finishes with the copy-and-swap idiom that makes assignment correct by construction.
 

@@ -1,6 +1,18 @@
 ---
 title: Move semantics — rvalue references, std::move and noexcept
 minutes: 15
+seo-title: C++ Move Semantics Explained: std::move and Rvalue References
+description: A C++ move transfers an object's contents instead of copying them. Rvalue references, what std::move really does, move constructors and noexcept.
+question: What are move semantics in C++?
+answer: Move semantics let a C++ object transfer its contents to another instead of copying them, leaving the source valid but empty. A move constructor `T(T&&)` or move assignment takes an rvalue reference, steals the source's pointers in constant time and nulls them. They are chosen for temporaries and for objects wrapped in `std::move`, which makes returning, passing and inserting large objects cheap.
+q: What does `std::move` actually do?
+a: Nothing at run time: `std::move` is a cast to `T&&` that marks an object as expendable, so overload resolution chooses the move constructor or move assignment. The transfer happens inside that function; for a type without a move constructor, `std::move` selects the copy constructor and the object is copied.
+q: What is an rvalue reference in C++?
+a: An rvalue reference, written `T&&`, is a reference that binds only to rvalues — temporaries and objects cast with `std::move` — which the caller will not use again, so a function overloaded on `T&&` may take the argument's contents. Inside the function the named parameter is itself an lvalue, so passing it on needs another `std::move`.
+q: What state is an object in after it has been moved from?
+a: Valid but unspecified: it can still be destroyed, assigned to and asked `size()`, but what it holds is up to the type. After move construction a `std::vector` source is guaranteed empty and a `std::unique_ptr` null, while a `std::string` is unspecified. Give it a new value before reading it again.
+q: Why should move constructors be noexcept?
+a: When `std::vector` reallocates, it moves its elements to the new block only if their move constructor is `noexcept`; otherwise it copies every element, to keep the strong exception guarantee of `push_back`. An unmarked move constructor is therefore silently skipped in the place moves matter most.
 ---
 A copy duplicates a value; a move *transfers* it, leaving the source empty but valid. C++11 added moves because copying was the wrong default for the most common thing programs do with big objects — build one in a function and hand it back — and because a temporary that is about to die has nothing to lose by giving its contents away. This lesson explains what an rvalue reference binds to, why `std::move` moves nothing, how to write a move constructor and move assignment, what state a moved-from object is allowed to be in, and why `noexcept` on a move is the difference between `std::vector` moving your elements and copying them.
 

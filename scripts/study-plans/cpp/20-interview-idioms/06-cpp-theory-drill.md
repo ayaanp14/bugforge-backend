@@ -1,6 +1,22 @@
 ---
 title: The C++ theory drill — thirty questions, thirty answers
 minutes: 25
+seo-title: C++ Interview Questions and Answers: 30 Theory Questions
+description: Thirty C++ interview questions answered: RAII, the rule of five, std::move, smart pointers, virtual dispatch, slicing, STL containers, noexcept and data races.
+question: What are the most common C++ interview questions?
+answer: The most common C++ theory questions cover RAII, the rule of three, five and zero, what `std::move` does, `unique_ptr` versus `shared_ptr`, how virtual dispatch works through a vtable, why base-class destructors must be virtual, object slicing, `std::map` versus `std::unordered_map`, iterator invalidation, `noexcept` and data races. A strong answer gives the definition, names the mechanism and states the one consequence that matters.
+q: What is RAII in C++?
+a: RAII — Resource Acquisition Is Initialisation — ties a resource's lifetime to an object's: the constructor acquires it and the destructor releases it, and the destructor runs on every exit from the scope, including exceptions and early returns. `std::vector`, `std::unique_ptr`, `std::lock_guard` and `std::ofstream` are all RAII types, which is why C++ needs no `finally`.
+q: What does std::move actually do?
+a: Nothing at run time: `std::move` is a cast to an rvalue reference, which lets overload resolution choose the move constructor or move assignment. The move happens there, leaving the source valid but unspecified — fit to assign to or destroy. `std::move` on a `const` object silently selects the copy.
+q: What is the rule of five in C++?
+a: A class that manages a resource and declares any of the destructor, copy constructor, copy assignment, move constructor or move assignment usually needs all five. A user-declared destructor or copy operation suppresses the implicit moves, so the class silently copies where it could move. The rule of zero avoids all five by letting members such as `std::vector` and `std::unique_ptr` own the resources.
+q: How does a virtual function call work in C++?
+a: Each class with virtual functions has a table of function pointers, the vtable, and each object carries a hidden pointer to its class's table. A call through a base pointer or reference loads that pointer, indexes the table and calls indirectly, so the function is chosen by the object's dynamic type.
+q: Why must a base class destructor be virtual?
+a: Deleting a derived object through a base pointer whose destructor is not virtual is undefined behaviour: in practice only the base destructor runs and the derived part is never destroyed. Any class meant to be deleted through a base pointer declares `virtual ~Base() = default;`.
+q: What is the difference between unique_ptr and shared_ptr?
+a: `std::unique_ptr` is exclusive ownership: one pointer wide, move-only, and it frees the object in its destructor — the default choice. `std::shared_ptr` shares ownership through a reference-counted control block; copies are allowed, each costs an atomic increment, and the object is freed when the last owner goes. `std::make_shared` puts the object and the control block in one allocation.
 ---
 Every C++ interview has a theory section, and its questions have barely changed since C++11: the rule of five, how a virtual call works, what `std::move` actually does, when `shared_ptr` is right. This lesson is the drill: thirty questions, each with the answer an interviewer wants to hear — the definition first, the one consequence that matters, then a stop so the follow-up can come — and a pointer to the module that teaches it in depth. Read it twice a week before interviews. A C++ answer is expected to name a mechanism: not "moves are faster" but "a move steals the pointer and leaves the source empty".
 

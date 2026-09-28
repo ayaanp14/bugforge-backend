@@ -1,6 +1,22 @@
 ---
 title: The pitfalls that fail interviews
 minutes: 14
+seo-title: Java Coding Interview Pitfalls: Overflow, == and Modulo
+description: The Java mistakes that fail coding interviews: int overflow, integer division, % with negatives, == on strings and Integers, split on a regex, recursion depth.
+question: What are the most common Java mistakes in coding interviews?
+answer: The most common Java mistakes in coding interviews are `int` overflow in sums, products and `(lo + hi) / 2`; integer division and `%` with negative numbers; comparing strings or boxed `Integer`s with `==`; string concatenation in a loop; `split` treating its argument as a regex; sorting an `int[]` on adversarial input; recursion too deep for the stack; and forgetting to flush buffered output.
+q: Why does -7 % 3 return -1 in Java?
+a: Java's `%` takes the sign of the dividend, so a negative left operand gives a negative remainder. Use `Math.floorMod(-7, 3)`, which returns 2, or `((a % m) + m) % m` when you need a non-negative result for hashing, circular indexes or modular arithmetic.
+q: Is Integer a = 1000, b = 1000; a == b true in Java?
+a: No. Autoboxing caches `Integer` values only from -128 to 127 by default, so two boxed 1000s are different objects and `==` compares their references. Use `equals`, or unbox to `int` first.
+q: Why does split(".") return an empty array in Java?
+a: `split` takes a regular expression, and `.` matches any character, so every character is a separator and the empty strings left over are dropped as trailing empties. Use `split(Pattern.quote("."))` or an escaped dot to split on a literal full stop.
+q: How do you avoid integer overflow when computing mid in binary search?
+a: `(lo + hi) / 2` overflows when both are near `Integer.MAX_VALUE`; write `lo + (hi - lo) / 2` or `(lo + hi) >>> 1`. More generally, use `long` for anything that multiplies or accumulates, and `Math.addExact` or `multiplyExact` to throw instead of wrapping silently.
+q: How do you avoid StackOverflowError in a deep DFS in Java?
+a: Java's default stack handles roughly 10⁴ to 2 × 10⁴ frames, so a recursive DFS over a path of 10⁵ nodes overflows. Rewrite it with an explicit stack, or run the recursion in a thread created with a larger stack size, such as `new Thread(null, task, "dfs", 1 << 26)`.
+q: Why is Arrays.sort on an int array risky in competitive programming?
+a: Dual-pivot quicksort on primitives is O(n²) on adversarial input, and some judges include anti-quicksort tests. Shuffle the array first, sort an `Integer[]` or a `List` (TimSort, guaranteed O(n log n)), or use counting sort when values are bounded.
 ---
 Most rejected solutions are not wrong algorithms. They are right algorithms with an `int` that overflowed, a `/` that truncated, a `==` that compared references, or a sort that hit its worst case. Interviewers know the list; this lesson is that list, each item with the one-line fix, organised so you can run it as a review pass over your own code before you say "done". Nothing here is new — every item was taught in an earlier module — but seeing them together is what turns knowledge into a reflex.
 

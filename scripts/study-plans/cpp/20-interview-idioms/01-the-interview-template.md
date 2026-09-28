@@ -1,6 +1,20 @@
 ---
 title: The interview template — the contest idioms and what they cost
 minutes: 13
+seo-title: C++ Competitive Programming Template: bits/stdc++.h, Fast I/O
+description: What each line of the C++ contest template costs: bits/stdc++.h, using namespace std, the two fast-I/O lines, long long by default and why endl is slow.
+question: What does ios::sync_with_stdio(false) do in C++?
+answer: `ios::sync_with_stdio(false)` turns off the synchronisation between the C++ streams and C's `stdio`, so `cin` and `cout` keep their own buffers and run much faster — in one measurement, reading a million integers fell from about 400 ms to under 200 ms. Afterwards, never mix `scanf` or `printf` with `cin` or `cout`. It is usually paired with `cin.tie(nullptr)`, which stops `cin` flushing `cout` before every read.
+q: What is bits/stdc++.h?
+a: `<bits/stdc++.h>` is an internal header of libstdc++, GCC's standard library, that includes every standard header at once. It is not part of the C++ standard: it works with GCC and with Clang on Linux using libstdc++, but not with MSVC or libc++, and it makes each compile noticeably slower. Fine in a contest, never in production code.
+q: Why is using namespace std considered bad practice?
+a: It makes every name in `std` visible unqualified, so your own names can collide with the library's: a global `int count` makes `count(v.begin(), v.end(), 2)` an ambiguous reference, and `rank`, `size`, `distance`, `next` and `left` clash the same way. In a short solution it is harmless; in a header it affects every file that includes it, so it never goes there.
+q: What does cin.tie(nullptr) do?
+a: By default `cin` is tied to `cout`, so `cout` is flushed before every read to make a prompt appear before the program waits. `cin.tie(nullptr)` removes that tie and the flush per read. Interactive problems are the exception: there you flush explicitly after each query.
+q: Why is endl slower than a newline in C++?
+a: `std::endl` writes a newline and then flushes the stream, which is a system call; a plain newline character only writes into the buffer, which leaves in large chunks. In one measurement, printing a million lines took about 500 ms with `endl` and about 40 ms with a newline.
+q: When should I use long long instead of int in C++?
+a: Use `long long` for anything that sums or multiplies. `int` is 32 bits, about ±2.1 × 10⁹, so a sum of 10⁵ values up to 10⁵ or `n * (n - 1) / 2` at 10⁵ overflows it, and signed overflow is undefined behaviour. `long long` holds about ±9.2 × 10¹⁸; keep `int` for indexes and loop counters.
 ---
 Every timed round starts the same way: a statement, an input format, a limit, and forty minutes. The candidates who do well have stopped thinking about the mechanics — the includes, the fast reader, which integer type — because they type a template from memory and spend the minutes on the problem. C++ has a well-known contest template, and nineteen modules of this track have told you not to write two lines of it. This lesson gives you the template, measures what each line buys and costs, and draws the boundary: these are idioms for a clock, and knowing *why* they stay out of production code is what an interviewer is listening for.
 

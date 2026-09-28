@@ -1,6 +1,20 @@
 ---
 title: Visibility, volatile and the Java Memory Model
 minutes: 15
+seo-title: What Does volatile Do in Java? Happens-Before and the JMM
+description: A volatile field makes writes visible to other Java threads but not atomic. Happens-before in the Java Memory Model, safe publication, double-checked locking.
+question: What does volatile do in Java?
+answer: The `volatile` keyword in Java guarantees that every read of a field sees the latest write to it from any thread, and a volatile write happens-before every later read, so nothing written before it is reordered after it. It gives visibility and ordering but not atomicity: `count++` on a volatile field is still a race. Use it for stop flags and for publishing immutable objects.
+q: What is happens-before in Java?
+a: Happens-before is the Java Memory Model's ordering rule: if action A happens-before action B, B is guaranteed to see A's writes. The edges come from unlocking then locking the same monitor, a volatile write then a read of it, `Thread.start()`, `join()` and the `java.util.concurrent` hand-offs.
+q: What is the difference between volatile and synchronized?
+a: `volatile` gives visibility and ordering for one field without locking; `synchronized` adds mutual exclusion, so compound updates such as check-then-act or `count++` run atomically. A volatile field can replace a lock only for a single flag or a reference to an immutable object.
+q: Why does double-checked locking need volatile?
+a: Without `volatile` on the instance field, a second thread can see a non-null reference before the object's fields have been written and use a half-built object. With `volatile` the pattern is correct since Java 5 — though the lazy holder idiom is simpler and needs no locking at all.
+q: Why are immutable objects thread-safe in Java?
+a: The Java Memory Model guarantees that `final` fields are seen correctly initialised by any thread once the constructor has finished and the reference is shared without a race. Nothing changes afterwards, so there is nothing to race on.
+q: Why does my loop never see a flag set by another thread?
+a: Without `volatile` or a lock, the JIT may hoist the read out of the loop and compile `while (true)`, or the core may keep reading an old value. Declare the flag `volatile` so every read sees the latest write; a `println` that makes it work is hiding a race.
 ---
 Mutual exclusion is half of concurrency. The other half is **visibility**: when thread A writes a variable, when — if ever — does thread B see the new value? The intuitive answer, "immediately", is wrong. Compilers reorder statements, CPUs keep values in registers and per-core caches, and the JIT hoists a read out of a loop if nothing tells it the value can change. The **Java Memory Model** (JMM) is the contract that says exactly which writes a read is guaranteed to see, and `volatile`, `final`, locks and the other *synchronisation actions* are how you invoke it. This lesson makes that contract usable.
 

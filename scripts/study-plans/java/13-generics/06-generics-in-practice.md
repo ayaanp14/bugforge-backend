@@ -1,6 +1,20 @@
 ---
 title: Generics in practice — idioms and error messages
 minutes: 12
+seo-title: Java Generics Errors Explained: Unchecked Casts and Idioms
+description: Java generics compiler errors decoded: unchecked cast, generic array creation, capture of ?, name clash. Plus everyday idioms and when not to use generics.
+question: What does an unchecked cast warning mean in Java?
+answer: An unchecked cast warning means the Java compiler cannot verify a cast involving generic types, such as `(List<String>) obj`, because type arguments are erased and only the raw class can be checked at run time. If the promise is wrong, a `ClassCastException` appears later. Prove the code safe, then suppress with `@SuppressWarnings("unchecked")` on the smallest scope and a comment.
+q: How do you fix `List<Integer> cannot be converted to List<Number>`?
+a: The error comes from invariance: a `List<Integer>` is not a `List<Number>`. If the method only reads the list, declare the parameter as `List<? extends Number>`, which accepts a list of any `Number` subtype.
+q: How should you use `@SuppressWarnings("unchecked")`?
+a: Only after proving the code safe — usually because every write is typed — and on the smallest element possible, a local variable declaration or a single method, never a whole class. Add a comment saying why it is safe; unexplained suppressions are where heap pollution hides.
+q: Why does a `Comparator.comparing` chain fail to compile?
+a: The first call in the chain has no target type, so a lambda such as `p -> p.lastName()` gets `Object` as its parameter type and `lastName` is not found. Give that lambda an explicit parameter type — `(Person p) -> p.lastName()` — and the chain compiles.
+q: When should you not make a class generic?
+a: When the type parameter would always be the same type — a `Config<T>` where `T` is always `String` — or would not be used in the body. Make code generic when it would otherwise be duplicated per type, or when the element type is part of the contract, as in `Repository<T>`.
+q: What does "cannot select from a type variable" mean?
+a: The code tried a static access through a type parameter, such as `T.class`, which erasure makes impossible. Pass a `Class<T>` parameter instead, as `Enum.valueOf(Day.class, s)` and `EnumMap` do.
 ---
 The previous lessons gave the rules; this one is the everyday texture: the idioms experienced Java code uses with generics, the compiler messages you will actually see and what each means, and the judgement calls — when to make something generic, when not to, how much wildcard is too much.
 

@@ -1,6 +1,20 @@
 ---
 title: try, catch and finally — the exact semantics
 minutes: 14
+seo-title: Java Try, Catch and Finally: Does Finally Run After Return?
+description: How Java try, catch and finally work: handler order, multi-catch, finally running after return, a return in finally overriding everything, and rethrowing.
+question: Does finally run after return in Java?
+answer: Yes. In Java a `finally` block runs even when the `try` or `catch` block executes `return`: the return value is computed first, then `finally` runs, then the method returns that value. `finally` is skipped only when the JVM exits through `System.exit`, the thread is killed or the process crashes. A `return` inside `finally` overrides the original one.
+q: What happens if finally has a return statement?
+a: The `return` in `finally` wins: the method returns that value, and any exception propagating from the `try` or `catch` is silently discarded. The compiler warns that the finally clause cannot complete normally, and reviewers reject it — never return from `finally`.
+q: In what order should catch blocks be written?
+a: From the most specific type to the most general, because handlers are tried top to bottom and the first match wins. A `catch (IOException e)` above `catch (FileNotFoundException e)` makes the narrower one unreachable, and the compiler rejects it as already caught.
+q: What is multi-catch in Java?
+a: Multi-catch handles several exception types in one block: `catch (NumberFormatException | DateTimeParseException e)`. The alternatives must not be subclasses of one another, and the parameter `e` is implicitly final. Use it when the handling is identical for every type.
+q: What happens when both try and finally throw an exception?
+a: The exception thrown in `finally` replaces the one in flight, and the original from the `try` block is lost. The same happens when a `catch` block throws. That loss of the real error is what try-with-resources fixes with suppressed exceptions.
+q: Is a try block expensive in Java?
+a: No. Entering a `try` costs nothing, because the JVM records handler ranges in a table. The cost is in throwing: constructing the exception walks the stack to fill in its trace, and then the stack unwinds. Code that never throws pays nothing.
 ---
 `try`/`catch`/`finally` looks simple and has several precise rules that interviewers probe: the order handlers are tried, what `finally` does to a `return`, what happens when both `catch` and `finally` throw, and how multi-catch and rethrow interact with the type system. This lesson pins down each rule with the smallest example that demonstrates it.
 

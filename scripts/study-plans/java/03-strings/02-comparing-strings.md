@@ -1,6 +1,20 @@
 ---
 title: Comparing strings — equals, compareTo and hashCode
 minutes: 12
+seo-title: How to Compare Strings in Java: equals vs == and compareTo
+description: Compare Java strings with equals, never ==, which checks identity. How compareTo orders strings, ignoring case, and why hashCode agrees with equals.
+question: What is the difference between == and equals() for strings in Java?
+answer: For strings in Java, `==` checks whether two references point to the same object, while `equals()` compares the characters. Strings read from input or built at run time are new objects, so `input == "yes"` is `false` even when the user typed yes. Always compare content with `equals`, or with `equalsIgnoreCase` to ignore case.
+q: How does `compareTo` work for strings in Java?
+a: It compares two strings character by character by UTF-16 code unit and returns a negative number, zero or a positive number. At the first difference it returns the difference of the two characters; if one string is a prefix of the other, the difference in length. Only the sign is guaranteed.
+q: Why does "Zebra" sort before "apple" in Java?
+a: `compareTo` orders by character code, and every uppercase ASCII letter comes before every lowercase one: 'Z' is 90 and 'a' is 97. Use `compareToIgnoreCase` or `String.CASE_INSENSITIVE_ORDER` to sort names, and a `Collator` for locale-correct order.
+q: How do I compare strings that may be null in Java?
+a: Use `Objects.equals(a, b)`, which returns `true` when both are `null` and never throws. When one side is a constant, put it first, `"yes".equals(input)`, since `equals` returns `false` for a `null` argument instead of throwing.
+q: Why must equals and hashCode agree for strings?
+a: Hash-based collections such as `HashMap` find a key's bucket by `hashCode` and then the entry by `equals`. If two equal strings had different hash codes, a lookup would search the wrong bucket and never find the key; `String` guarantees they agree.
+q: Is a switch on a String case-sensitive in Java?
+a: Yes. Since Java 7 a `switch` on a `String` compares contents, compiled into a `hashCode` lookup followed by an `equals` check, so it is case-sensitive, and a `null` selector throws `NullPointerException`.
 ---
 Comparing strings correctly is a rite of passage: every Java programmer has shipped a `==` that worked in tests and failed with real input. This lesson makes the rules precise, and then goes further into ordering (`compareTo`), case-insensitive comparison, and the `hashCode` contract that lets strings work as map keys.
 

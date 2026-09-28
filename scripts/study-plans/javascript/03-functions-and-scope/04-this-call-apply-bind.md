@@ -1,6 +1,20 @@
 ---
 title: this — the five binding rules, call, apply and bind
 minutes: 15
+seo-title: The this Keyword in JavaScript: call vs apply vs bind
+description: JavaScript sets this by how a function is called: arrow, new, call or bind, method call, or plain call. Why this is undefined in a callback, and three fixes.
+question: How does the this keyword work in JavaScript?
+answer: In JavaScript, `this` is decided by how a function is called, not where it is written. Five rules apply in order: an arrow function uses the enclosing scope's `this`; `new` binds a fresh object; `call`, `apply` and `bind` set it explicitly; `obj.method()` binds `obj`; and a plain call gives `undefined` in strict mode, or the global object in sloppy mode.
+q: What is the difference between call, apply and bind in JavaScript?
+a: `call` invokes the function now with a given `this` and the arguments listed one by one; `apply` does the same with the arguments as an array; `bind` invokes nothing and returns a new function whose `this`, and optionally leading arguments, are fixed permanently.
+q: Why is this undefined in my callback?
+a: The method was passed on its own, for example `setTimeout(obj.method, 0)`, and later called as a plain function, so there is no receiver and strict mode gives `undefined`. Wrap it in an arrow, `() => obj.method()`, bind it with `obj.method.bind(obj)`, or define it as an arrow class field.
+q: Can you bind an arrow function in JavaScript?
+a: You can call `bind` on an arrow, but it has no effect on `this`: an arrow has no `this` of its own and always uses the one from the scope where it was created. `bind` can still fix its leading arguments.
+q: Should you use arrow functions as object methods?
+a: No. An arrow written as an object-literal property takes `this` from the surrounding scope, not from the object, so `this.name` does not find the object's field. Use method shorthand for methods and arrows for the callbacks inside them.
+q: What is this at the top level in Node.js?
+a: In a CommonJS file top-level `this` is `module.exports`; in an ES module it is `undefined`; in a browser script it is `window`. Because it differs by environment, never rely on it, and write `globalThis` when you need the global object.
 ---
 `this` is the most misunderstood word in JavaScript because it is the one thing *not* decided lexically: its value depends on **how a function is called**, not where it was written — with the exception of arrow functions, which have no `this` of their own and borrow the enclosing one. There are exactly five rules, applied in order of precedence, and once you know them every "why is `this` undefined in my callback" has a one-line answer. This lesson states the rules, shows the classic loss of `this`, and covers the three methods — `call`, `apply`, `bind` — that set it explicitly.
 

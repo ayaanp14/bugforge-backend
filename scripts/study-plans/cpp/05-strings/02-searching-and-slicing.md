@@ -1,6 +1,20 @@
 ---
 title: Searching and slicing
 minutes: 14
+seo-title: C++ String find and substr: npos, Replace All and Trim
+description: C++ string find returns an index or npos, and substr copies a slice. The right npos test, counting and replacing every occurrence, trimming and prefix checks.
+question: How do you find a substring in a C++ string?
+answer: Call `s.find(needle)` on a `std::string`: it returns the index of the first occurrence, or `std::string::npos` — the largest `std::size_t` — when there is none. Always test `pos != std::string::npos`; `s.find(x) >= 0` is always true, because the result is unsigned. `rfind` searches from the right, and both take an optional start position.
+q: What is string::npos in C++?
+a: `std::string::npos` is a static constant equal to the largest `std::size_t`, and every `find` function returns it when nothing matches. Compare against it with `!=` or `==`; storing the result in an `int` turns it into -1 and hides the real test.
+q: How does substr work in C++?
+a: `s.substr(pos, count)` returns a new string of up to `count` characters starting at `pos`; leave out `count` to go to the end. A count past the end is clamped, but `pos > size()` throws `std::out_of_range`. It copies, so it costs time proportional to the slice and allocates.
+q: How do you replace all occurrences of a substring in C++?
+a: Loop on `find` from a moving position: `while ((pos = text.find(from, pos)) != std::string::npos) { text.replace(pos, from.size(), to); pos += to.size(); }`. Advancing by the replacement's length, not the match's, stops the loop finding its own output — replacing "a" with "aa" would otherwise never end.
+q: How do you check if a string starts or ends with a substring in C++?
+a: C++20 adds `s.starts_with("tmp_")` and `s.ends_with(".pdf")`, which also accept a single character. Before C++20 the idiom was `s.rfind(prefix, 0) == 0`. `contains()` arrives only in C++23; on C++20 write `s.find(x) != std::string::npos`.
+q: How do you trim whitespace from a string in C++?
+a: Find the first and last non-whitespace characters with `find_first_not_of` and `find_last_not_of`, passing the whitespace characters to skip. If the first search returns `npos` the string is blank, so return an empty string; otherwise return `substr(start, end - start + 1)`. The `npos` check must come first, or `substr` throws.
 ---
 Most string work is finding a position and cutting at it: the extension after the last dot, the value after the `=`, every occurrence of a word. `std::string` gives you a family of `find` functions that all answer with an index, the sentinel `npos` for "not there", and `substr`, `erase`, `insert` and `replace` to act on the index. This lesson settles how those pieces fit, the one idiom that keeps `npos` from turning into a bug, and the two loops — count every occurrence, replace every occurrence — that every text program eventually needs.
 

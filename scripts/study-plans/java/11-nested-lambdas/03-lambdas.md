@@ -1,6 +1,20 @@
 ---
 title: Lambda expressions
 minutes: 15
+seo-title: Java Lambda Expressions: Syntax, Target Types and Captures
+description: A Java lambda expression is an anonymous function typed by the functional interface its context expects. Syntax forms, this, captured variables and exceptions.
+question: What is a lambda expression in Java?
+answer: A lambda expression in Java is an anonymous function — parameters, an arrow and a body, as in `(a, b) -> a + b`. It has no type of its own: the compiler gives it the functional interface the context expects, such as `Function` or `Runnable`, and checks it against that interface's single abstract method. Lambdas arrived in Java 8 and drive streams, comparators and callbacks.
+q: What does `this` refer to inside a Java lambda?
+a: The enclosing instance. A lambda introduces no new `this`; it is lexically part of the surrounding method, so `this.name` reads the enclosing object's field. In an anonymous class, by contrast, `this` is the anonymous object itself.
+q: Can a lambda modify a local variable in Java?
+a: No. A captured local must be effectively final, because the lambda holds a copy of its value; reassigning it is a compile error. Fields, `this` and the contents of captured objects can change, so use a field, a one-element array or an `AtomicInteger` when state must change.
+q: Are Java lambdas compiled to anonymous classes?
+a: No. `javac` puts the body in a private synthetic method and emits an `invokedynamic` instruction; on first execution `LambdaMetafactory` generates a small class implementing the interface. No class file is written per lambda, and a non-capturing lambda is typically one shared instance.
+q: Can a lambda throw a checked exception?
+a: Only if the functional interface's method declares it. `Runnable.run` and `Function.apply` declare none, so a checked exception inside them must be caught in the body or wrapped in an unchecked one; `Callable.call()` declares `throws Exception` and accepts anything.
+q: What is the difference between a lambda and an anonymous class?
+a: A lambda implements the one abstract method of an interface, has no fields, and its `this` is the enclosing instance. An anonymous class can extend a class or implement an interface, override several methods and hold state, and its `this` is itself. Lambdas are also cheaper: no class file per occurrence.
 ---
 A lambda expression is an anonymous function: parameters, an arrow, a body. Its type is whatever functional interface the context expects, and it compiles to something lighter than an anonymous class. Lambdas are the syntax behind streams, comparators, executors, callbacks and most Java written since 2014. This lesson covers every form of the syntax, how the compiler assigns a type, what `this` and captured variables mean inside one, and the rules for keeping lambdas readable.
 

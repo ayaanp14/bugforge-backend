@@ -1,6 +1,20 @@
 ---
 title: The prototype chain — how JavaScript objects inherit
 minutes: 13
+seo-title: JavaScript Prototype Chain Explained: How Objects Inherit
+description: Every JavaScript object links to a prototype, and property lookup walks that chain until null. Shadowing, Object.create, instanceof and prototype pollution.
+question: What is the prototype chain in JavaScript?
+answer: The prototype chain is how JavaScript objects inherit. Every object has a hidden link to another object, its prototype; reading a property the object does not have walks up those links until the property is found or the chain ends at `null`. Methods live once on a shared prototype, writes create own properties that shadow inherited ones, and `instanceof` asks whether a prototype is on the chain.
+q: What is the difference between `__proto__` and `prototype` in JavaScript?
+a: `__proto__` is an object's link to its own prototype — the legacy accessor for what `Object.getPrototypeOf` returns. `prototype` is a property of functions: the object that instances made with `new F()` will link to. They are different links, so `F.prototype` is not the prototype of `F` itself.
+q: What does `instanceof` check in JavaScript?
+a: `x instanceof F` checks whether `F.prototype` appears anywhere in the prototype chain of `x`. It says nothing about how `x` was made, so `Object.create(null) instanceof Object` is `false`, and objects from two copies of the same library can fail the check.
+q: What is the difference between `in` and `Object.hasOwn`?
+a: The `in` operator is `true` when the property is found anywhere on the prototype chain; `Object.hasOwn(obj, key)` is `true` only for the object's own properties. An inherited property therefore passes `in` but fails `Object.hasOwn` until an own property shadows it.
+q: Why use `Object.create(null)` in JavaScript?
+a: `Object.create(null)` makes an object with no prototype at all: nothing inherited, no `toString`, no `constructor`, no `__proto__` accessor. That makes it a clean dictionary for keys that come from user input, where an inherited name or a `"__proto__"` key could otherwise misbehave.
+q: What is prototype pollution?
+a: Prototype pollution happens when untrusted keys — a `"__proto__"` key in a parsed JSON body passed to a deep merge, say — write to `Object.prototype`, so every object in the process gains that property. Guard with `Object.create(null)` or a `Map` for input-keyed data, and merges that skip `__proto__`, `constructor` and `prototype`.
 ---
 JavaScript has no classes in the Java sense — `class` is syntax over something older and simpler. Every object has a hidden link to another object, its **prototype**; when you read a property the object does not have, the engine follows the link and looks there, then at *that* object's prototype, and so on until it hits `null`. That walk is the whole inheritance system. Methods live once on a shared prototype rather than being copied into every instance, `instanceof` is a question about that chain, and half the "why does `toString` exist on my empty object" surprises are answered by drawing it. This lesson makes the chain explicit: how to read and set it, how lookup and shadowing work, and the built-in chains you are already standing on.
 

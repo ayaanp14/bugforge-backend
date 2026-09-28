@@ -1,6 +1,20 @@
 ---
 title: The object model — objects, references, reference counting and the cycle collector
 minutes: 15
+seo-title: Python Memory Management: Reference Counting and GC
+description: How Python manages memory: each value is a heap object, reference counting frees it at once, and a generational collector clears cycles. Plus weakrefs.
+question: How does memory management work in Python?
+answer: Memory management in CPython rests on reference counting: every object's header counts the references to it, and the object is freed the moment that count reaches zero. Reference cycles, where objects refer to each other, never reach zero, so a generational cycle collector finds and frees them periodically. `del x` removes a name, not the object; the object goes when its last reference does.
+q: Does `del` free memory in Python?
+a: Not directly. `del x` removes the name `x` and decrements the object's reference count; the object is freed only if that was its last reference. Another name, a container slot or an attribute pointing at the same object keeps it alive.
+q: Why does an integer take 28 bytes in Python?
+a: Every Python value is a full heap object with a header, a reference count and a pointer to its type, plus its data, so `sys.getsizeof(0)` is 28 on 64-bit CPython 3.11. A list stores 8-byte pointers to such objects, so a list of a million ints costs about 8 MB of pointers plus 28 MB of int objects.
+q: What does Python's garbage collector do?
+a: It frees reference cycles, which reference counting alone cannot. It tracks container objects in three generations, examines the youngest often and the older ones rarely, because most objects die young; `gc.collect()` forces a full collection and returns the number of unreachable objects it found.
+q: What is a weak reference in Python?
+a: A reference that does not raise the reference count, created with `weakref.ref(obj)`. When the last strong reference goes, the object is freed and the weak reference returns `None`. `WeakValueDictionary` builds caches that do not keep their entries alive.
+q: How do I reduce memory usage in Python?
+a: Use `__slots__` on classes with many instances, generators instead of materialised lists, `array.array` or NumPy for numbers, tuples for fixed records, and drop references to large intermediates as soon as you are done with them.
 ---
 Every value in Python is an object on the heap with a header — a reference count and a pointer to its type — and every variable, container slot and attribute is a *reference* to one. That single fact explains the memory cost of an integer (28 bytes, not 4), why `a = b` copies nothing, why `del` rarely frees anything, when an object actually disappears, and why two objects that point at each other need a separate collector. This lesson covers the object header and what things cost, references and the `is`/`==` distinction, reference counting and its immediate frees, the generational cycle collector and the `gc` module, weak references, and the levers — `__slots__`, sharing, generators — that reduce memory.
 

@@ -1,6 +1,20 @@
 ---
 title: Designing a class — invariants, interfaces and a worked example
 minutes: 14
+seo-title: How to Design a Class in Python: Invariants and Interfaces
+description: A good Python class protects an invariant behind a small interface. Value objects vs entities, validating before changing state, hiding storage, and testing it.
+question: How do I design a good class in Python?
+answer: Design a Python class around an invariant — a fact about its data that every method maintains — and a small interface of verbs and queries. Decide first whether it is a value, immutable and compared by its fields, or an entity, mutable and equal only to itself. Validate before changing state, hide the storage behind underscores, and return data rather than printing.
+q: What is a class invariant?
+a: A class invariant is a condition on an object's data that holds after every method call, such as an inventory's quantities never being negative. The constructor establishes it, every mutating method checks before it changes anything, and callers may rely on it everywhere else.
+q: What is the difference between a value object and an entity?
+a: A value object, such as an amount of money, is defined by its fields: two with equal fields are equal, and it should be immutable and hashable, like a frozen dataclass. An entity, such as an account or an inventory, has a life cycle, is mutated, and is equal only to itself.
+q: When should I not write a class in Python?
+a: When there is no invariant and no behaviour, only fields, use a dataclass or a dict instead. And a class that is just a bag of loosely related functions with no shared state belongs in a module.
+q: Should I inherit from dict or list to reuse their methods?
+a: Usually not. Subclassing `dict` or `list` hands callers dozens of inherited methods, any of which can break your invariant. Hold the collection in a private attribute instead — an inventory has a dict, it is not one — and expose only the operations the domain needs.
+q: Why should a class return data instead of printing it?
+a: A method that prints ties the class to one output format and makes it unusable anywhere else, tests included. Return the data and let the caller, usually `main`, decide how to display it.
 ---
 The mechanics of classes are the previous five lessons; this one is about judgement. A class earns its existence by protecting an *invariant* — a fact about its data that every method maintains and every caller may assume — and by presenting a *small interface* that says what the object does rather than how it stores things. This lesson works through the design of one class, `Inventory`, from the questions to ask before writing it, through representation, constructor, invariants and interface, to the tests that pin it, and ends with the checklist that separates a class that helps from a class that merely groups functions.
 

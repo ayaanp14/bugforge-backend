@@ -1,6 +1,20 @@
 ---
 title: Class loading, initialisation order and the JIT
 minutes: 15
+seo-title: Java Class Loading, Static Block Order and the JIT Compiler
+description: How Java loads, links and initialises classes, when a static block runs, the order for new Child(), the class-loader hierarchy and what the JIT compiler does.
+question: How does class loading work in Java?
+answer: Java loads each class lazily, the first time it is needed. A class loader finds the bytes and creates the `Class` object; linking verifies the bytecode and gives static fields their default values; initialisation runs the static initialisers once, thread-safely, on first active use. Loaders delegate parent-first — bootstrap, platform, then application — so core classes such as `String` cannot be replaced.
+q: When does a static block run in Java?
+a: At class initialisation, on the first active use of the class: `new`, a static method call, a non-constant static field access or `Class.forName`. It runs once and thread-safely. Reading a compile-time constant, writing `Foo.class` or declaring a variable of the type does not trigger it.
+q: What is the order of initialisation for new Child() in Java?
+a: Parent static initialisers, then Child static initialisers, once per class. Then for every object: Parent instance initialisers and constructor body, then Child instance initialisers and constructor body. The implicit `super()` call is what puts the parent first.
+q: What does NoClassDefFoundError Could not initialize class mean?
+a: The class's static initialiser threw an exception earlier. The first attempt to use the class raised `ExceptionInInitializerError`, and every later use fails with `NoClassDefFoundError: Could not initialize class`; find that first error in the log to see the real cause.
+q: What does the JIT compiler do in Java?
+a: The just-in-time compiler turns hot bytecode into native code while the program runs. HotSpot interprets first, compiles hot methods with C1, then with C2 if they stay hot; C2 inlines small methods, applies escape analysis and speculative optimisation, and deoptimises when an assumption breaks.
+q: What is the lazy holder idiom for a singleton in Java?
+a: A private static nested `Holder` class holds the instance in a `static final` field, and `get()` returns `Holder.INSTANCE`. The holder initialises on the first call, exactly once and thread-safely, because class initialisation guarantees it — no `synchronized` or `volatile` needed.
 ---
 Two more things the runtime does behind your back. **Class loading** brings a `.class` file into the JVM the first time it is needed, through a chain of loaders that decides which version of a class you get and when its `static` initialisers run — the mechanics behind `ClassNotFoundException`, `NoClassDefFoundError`, the lazy singleton idiom, and every "why did my static block run *there*?" surprise. **Just-in-time compilation** turns hot bytecode into machine code while the program runs, which is why Java is fast after warming up, why microbenchmarks lie, and why a method that "does nothing" can take zero time. Both are asked about; both are simpler than their reputations.
 

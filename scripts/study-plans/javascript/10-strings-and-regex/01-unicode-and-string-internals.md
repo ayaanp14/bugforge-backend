@@ -1,6 +1,18 @@
 ---
 title: Unicode and how JavaScript strings really work
 minutes: 13
+seo-title: JavaScript Unicode Strings: UTF-16, Emoji Length and NFC
+description: JavaScript strings are UTF-16 code units, so an emoji has length 2. Code points vs grapheme clusters, Intl.Segmenter, normalize NFC, case mapping and sorting.
+question: Why is the length of an emoji 2 in JavaScript?
+answer: JavaScript strings are sequences of UTF-16 code units, not characters, and `length` counts code units. An emoji such as the grinning face (U+1F600) lies above U+FFFF, so it is stored as a surrogate pair of two code units. Count code points with `[...str].length`, and count what a reader sees as one character with `Intl.Segmenter` at grapheme granularity.
+q: How do you count characters in a JavaScript string correctly?
+a: It depends on what "character" means. `str.length` counts UTF-16 code units; `[...str].length` counts code points, so an emoji counts once; and `Intl.Segmenter` with `granularity: "grapheme"` counts what a reader sees, so a family emoji of three people joined by zero-width joiners, five code points in all, counts as one.
+q: Why are two identical-looking strings not equal in JavaScript?
+a: Accented letters can be stored two ways: "é" as one precomposed code point (U+00E9) or as `e` followed by a combining acute accent (U+0301). They render identically but compare unequal and have different lengths. Call `normalize("NFC")` on both before comparing, hashing or storing user text.
+q: How do you reverse a string with emoji in JavaScript?
+a: Not with `str.split("").reverse().join("")`, which splits by code unit and breaks surrogate pairs into invalid characters. `[...str].reverse().join("")` reverses by code point and keeps a single emoji intact; only splitting into graphemes with `Intl.Segmenter` also keeps combining marks and multi-part emoji sequences together.
+q: How do you sort strings alphabetically in JavaScript?
+a: Not with a bare `sort()`, which compares UTF-16 code units, so `"Z"` sorts before `"a"` and accented letters go to the end. Use `a.localeCompare(b)`, or create one `Intl.Collator` and pass its `compare`, which is much faster in a loop; the `numeric: true` option sorts `"file2"` before `"file10"`.
 ---
 A JavaScript string is a sequence of **UTF-16 code units**, not of characters — and every string bug that looks impossible ("length is 2 for one emoji", "reverse() broke my text", "these two identical strings are not equal") comes from that gap. This lesson gives you the three layers — code units, code points, grapheme clusters — the APIs that work at each, normalisation, case mapping and comparison across languages, and the rules for which layer a given task needs. It matters for anything that stores names, counts characters, truncates text, sorts, or searches.
 

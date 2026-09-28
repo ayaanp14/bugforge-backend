@@ -1,6 +1,20 @@
 ---
 title: Multidimensional data — grids, layout and neighbours
 minutes: 15
+seo-title: C++ 2D Vector and 2D Array: Grids, Row-Major and Neighbours
+description: A C++ grid is one block of memory read through two indices. How to declare a 2D vector, read a grid from input and visit neighbours in bounds.
+question: How do you declare a 2D vector in C++?
+answer: Declare a 2D vector in C++ as `std::vector<std::vector<int>> grid(rows, std::vector<int>(cols));`, which makes `rows` copies of a `cols`-element row, all zero; give the inner vector a second argument to fill with another value. Access a cell as `grid[r][c]`. When both sizes are compile-time constants, `std::array` of `std::array` works too, and a flat `std::vector<int>` indexed `r * cols + c` is the fastest layout.
+q: What is row-major order?
+a: Row-major order stores a grid row after row: all of row 0, then row 1, and so on. Cell `(r, c)` of an `R × C` grid is at index `r * C + c`, and the inverse is `r = i / C`, `c = i % C`. Looping over rows outside and columns inside therefore walks memory sequentially.
+q: Why does `std::vector<std::vector<int>> g(R, C)` not compile?
+a: The two-argument constructor takes a count and a value to copy, and here the value must be a row, not an `int`. Write `g(R, std::vector<int>(C))` so that each of the `R` rows is a copy of a `C`-element vector.
+q: How do I visit the four neighbours of a grid cell?
+a: Put the offsets in two arrays, `DR = {-1, 1, 0, 0}` and `DC = {0, 0, -1, 1}`, loop over them, compute `nr = r + DR[d]` and `nc = c + DC[d]`, and skip any neighbour outside `0 <= nr < rows` and `0 <= nc < cols` before touching it. For eight neighbours, loop `dr` and `dc` over `-1..1` and skip `(0, 0)`.
+q: How do I pass a 2D vector to a function in C++?
+a: Pass it by `const std::vector<std::vector<int>>&` to read it and by non-const reference to modify it. Passing by value copies every row — the most common accidental copy in grid code. A built-in 2D array needs every dimension but the first, as in `int g[][4]`, with the row count passed alongside.
+q: How do I read a grid from input in C++?
+a: Read the row and column counts, size the grid, then fill it with two nested loops of `std::cin >> grid[r][c]`; `>>` skips whitespace, so line breaks do not matter. For a character grid of `.` and `#`, read each row as a `std::string`, which already is a row of `char`.
 ---
 Most "2-D" problems — a board, an image, a maze, a matrix, a spreadsheet — are one-dimensional memory read through two indices. Once you see the layout, choosing a representation, reading a grid from input, visiting a cell's neighbours and staying inside the bounds all become the same small set of idioms. This lesson settles those idioms with `std::vector<std::vector<int>>`, `std::array` of `std::array` and a flat vector, and gives the neighbour loop that every grid exercise in this track — and most grid interview questions — reduces to.
 

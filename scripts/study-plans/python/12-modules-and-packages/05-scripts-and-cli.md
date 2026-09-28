@@ -1,6 +1,18 @@
 ---
 title: Scripts and the command line — argv, argparse, exit codes and streams
 minutes: 14
+seo-title: How to Parse Command-Line Arguments in Python: argparse
+description: Python's argparse parses arguments, options, types, choices and sub-commands and generates --help. Plus sys.argv, stderr for errors and exit codes.
+question: How do you parse command-line arguments in Python?
+answer: Use the standard-library `argparse` module: create an `ArgumentParser`, declare arguments with `add_argument` (positionals by name; options with `-x` or `--long`; `type=int` to convert; `choices`, `default`, and `action="store_true"` for flags), then call `parse_args()`. It generates `--help` and exits with status 2 on bad usage. For one or two plain arguments, `sys.argv[1:]` is enough.
+q: What is sys.argv in Python?
+a: `sys.argv` is the list of command-line arguments as strings, split by the shell: `sys.argv[0]` is the script path and `sys.argv[1:]` are the arguments. Reading it directly is fine for one or two positional arguments; once there are options, defaults or help, use `argparse`.
+q: How do I add sub-commands with argparse?
+a: Call `add_subparsers(dest="command", required=True)` on the parser, then `add_parser("add")` for each sub-command and add its arguments to that sub-parser. `args.command` names the one that ran, and `set_defaults(func=handler)` on each sub-parser lets `main` dispatch with `args.func(args)`.
+q: Should error messages go to stdout or stderr?
+a: To stderr. Stdout carries the program's results and stderr its messages, so `tool > out.json` captures results while errors still reach the terminal, and warnings never corrupt a pipe. `print(msg, file=sys.stderr)` writes there, and `sys.exit("error: ...")` prints its message to stderr and exits with status 1.
+q: What exit code should a Python script return?
+a: `0` for success, `1` for a general failure and `2` for bad usage, which is what argparse uses. Shells, `make` and CI test the code, so `tool && next` runs `next` only on success. Write `main(argv=None)` returning the code and call `sys.exit(main())` under the main guard.
 ---
 A script is a program meant to be run from a shell, and a good one follows the conventions every other command-line tool follows: arguments and options parsed properly, `--help` that explains them, output on stdout and messages on stderr, an exit status that says whether it worked, and a structure that keeps the logic testable apart from the parsing. This lesson covers `sys.argv`, `argparse` with its argument kinds and sub-commands, the three streams and why errors go to stderr, exit codes, reading from a file or stdin interchangeably, environment variables, and the `main(argv)` shape that makes a script importable and testable.
 

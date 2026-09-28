@@ -1,6 +1,18 @@
 ---
 title: Code style and PEP 8 — layout, naming, imports, docstrings and the tools that enforce them
 minutes: 13
+seo-title: What Is PEP 8? Python Style Guide, Naming and Docstrings
+description: PEP 8 is Python's style guide: four-space indents, snake case functions, PascalCase classes and PEP 257 docstrings, enforced by ruff and black.
+question: What is PEP 8 in Python?
+answer: PEP 8 is the style guide for Python code, published in 2001 and followed across the Python community. It sets layout (four-space indentation, a line-length limit, two blank lines between top-level definitions), naming (`snake_case` functions, `PascalCase` classes, `UPPER_SNAKE` constants) and import order. Linters and formatters such as `ruff` and `black` now check or apply most of it automatically.
+q: What is the maximum line length in PEP 8?
+a: PEP 8 sets 79 characters, and 72 for docstrings and comments. Many projects choose 88, black's default, or 100, and record the choice in `pyproject.toml`. What matters is having one agreed limit, not the particular number.
+q: What are the Python naming conventions?
+a: `snake_case` for functions, methods and variables; `PascalCase` for classes and exceptions; `UPPER_SNAKE` for constants; short `lowercase` names for modules; a leading underscore for internal names; and a trailing underscore, as in `class_`, to avoid a keyword. Never use `l`, `O` or `I` as single-character names.
+q: What is the difference between ruff and black?
+a: `ruff` is a linter: it finds problems such as unused imports, undefined names, `== None`, bare `except` and mutable defaults, and `ruff check --fix` repairs the safe ones. `black`, like `ruff format`, is a formatter that rewrites layout into one canonical form. Most projects run both, in the editor and in CI.
+q: How do you write a docstring in Python?
+a: Following PEP 257, use triple double quotes and start with a one-line summary in the imperative that ends with a full stop, then a blank line, then what a caller needs: arguments the names do not explain, the return value and exceptions raised. Google and NumPy styles add structured sections.
 ---
 PEP 8 is the style guide the Python community converged on in 2001 and has followed since; reading code that follows it costs nothing, and reading code that does not costs a little on every line. The guide's rules fall into layout, naming, expressions and imports, and nearly all of them are now enforced or applied automatically by two tools — `ruff` (a linter) and `black` or `ruff format` (a formatter) — so the human part is knowing *why* the rules exist and the few that a tool cannot decide for you. This lesson covers the rules that matter, the PEP 257 docstring conventions, the linter/formatter workflow, and what "readable" means beyond compliance.
 

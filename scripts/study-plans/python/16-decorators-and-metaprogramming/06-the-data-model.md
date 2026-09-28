@@ -1,6 +1,20 @@
 ---
 title: The data model — the rest of the dunders, and a Vector that uses them
 minutes: 14
+seo-title: Python Data Model: Operator Overloading and NotImplemented
+description: The Python data model maps operators to special methods: reflected and in-place arithmetic, NotImplemented, formatting, truthiness and a Vector class.
+question: How does operator overloading work in Python?
+answer: Operator overloading in Python works through special methods: `a + b` calls `a.__add__(b)`, and if that returns `NotImplemented`, Python tries the reflected `b.__radd__(a)` before raising `TypeError`. `a += b` tries `__iadd__` first and falls back to `a = a + b`. When the right operand's type is a subclass that overrides the reflected method, that method is tried first.
+q: Should a dunder method return NotImplemented or raise TypeError?
+a: Return `NotImplemented`, the singleton, for an operand you do not handle. That tells Python to try the other operand's reflected method; raising `TypeError` yourself skips that attempt and breaks mixed-type operations that could have worked.
+q: What is `__radd__` for in Python?
+a: It is reflected addition, called for `a + b` when `a.__add__(b)` is missing or returns `NotImplemented`. The reflected methods are what make `3 * v` work for a vector class, often simply `__rmul__ = __mul__` when the operation is commutative.
+q: Why can't I rely on `__del__` in Python?
+a: `__del__` runs when an object's reference count reaches zero, which is usually prompt in CPython but never guaranteed: not for cycles, not at interpreter shutdown, not on other implementations, and exceptions in it are printed and ignored. Release resources with `with` or `close()`, or use `weakref.finalize`.
+q: What does `__missing__` do on a dict subclass?
+a: `dict.__getitem__` calls it for an absent key and returns its result instead of raising `KeyError`; `defaultdict` is built on the same hook. `get`, `in` and `setdefault` do not call it.
+q: What is the difference between `__index__` and `__int__`?
+a: `__int__` converts an object for `int(x)`; `__index__` declares that the object really is an integer, so `range`, slicing, `bin` and `hex` accept it. A float has `__int__` but not `__index__`, which is why a float cannot be used as a list index.
 ---
 Module 8 covered the dunders a value type needs first. This lesson completes the map: `__call__`, `__format__`, `__index__`, `__bool__`, `__contains__`, the in-place operators (`__iadd__`), unary and reflected arithmetic, `__matmul__`, `__missing__` for dict subclasses, `__reversed__`, `__del__` and why it cannot be relied on, and the dispatch rules — `NotImplemented`, reflected fallbacks, subclass priority — that make mixed-type operations work. It ends with a `Vector` class that exercises most of them, as the checkpoint will.
 

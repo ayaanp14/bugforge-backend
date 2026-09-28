@@ -1,6 +1,20 @@
 ---
 title: The collections idiom sheet
 minutes: 15
+seo-title: Java Collections for Coding Interviews: Heaps, Deques, TreeMap
+description: Java idioms behind common interview problems: frequency maps, top-k heaps, monotonic stacks, sliding windows, prefix sums, TreeMap, BFS and bitmasks.
+question: How do you find the top k frequent elements in Java?
+answer: To find the top k frequent elements in Java, count occurrences with `HashMap.merge(key, 1, Integer::sum)`, then offer the entries to a `PriorityQueue` ordered by count — a min-heap — and poll whenever its size exceeds k. The heap keeps the k largest in O(n log k) time; poll them out and reverse for descending order, breaking ties in the comparator.
+q: Why use ArrayDeque instead of Stack in Java?
+a: `Stack` is a legacy class that extends the synchronised `Vector`; `ArrayDeque` is faster and the idiomatic choice — `push`, `pop` and `peek` as a stack, `offer`, `poll` and `peek` as a queue. It does not accept `null` elements.
+q: What is a monotonic stack?
+a: A stack of indexes kept in order of their values, used for next-greater-element and histogram problems. For each new element, pop every index whose value is smaller — the new element is their next greater — then push it. Each index is pushed and popped once, so the pass is O(n).
+q: How do you count subarrays that sum to k in Java?
+a: Keep a running prefix sum in a `long` and a `HashMap` from each prefix sum to how often it has occurred, starting with 0 seen once. At each element add the count of `run - k` to the answer, then record `run`. The whole pass is O(n).
+q: How do you find the longest substring without repeating characters?
+a: Use a sliding window: advance `hi` along the string, remember each character's last index in a map, and when the current character was last seen inside the window, move `lo` just past that position. The largest `hi - lo + 1` is the answer, found in O(n).
+q: What is TreeMap floorKey used for?
+a: `floorKey(x)` returns the largest key less than or equal to x, and `ceilingKey`, `lowerKey` and `higherKey` give the other nearest keys, each in O(log n). They answer nearest-value and interval questions, such as whether a time slot is still free.
 ---
 Interview problems repeat. Under the surface of "find the k most frequent", "longest substring without repeats", "merge intervals" and "next greater element" are perhaps fifteen shapes, and each has a two-to-six-line Java idiom that experienced candidates type without thinking. This lesson is the sheet: the idiom, the structure it uses, the complexity, and the trap. Learn them as vocabulary — you should be able to say "frequency map, then a min-heap of size k" as one phrase.
 

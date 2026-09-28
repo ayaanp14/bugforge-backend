@@ -1,6 +1,20 @@
 ---
 title: Where to catch — strategies, boundaries and the result-object alternative
 minutes: 13
+seo-title: JavaScript Error Handling Best Practices: Where to Catch
+description: Catch JavaScript errors at boundaries, where a failure becomes an outcome. Expected failures versus bugs, rethrow versus wrap, retries and result objects.
+question: Where should you catch errors in JavaScript?
+answer: Catch errors at boundaries — the places where a failure means something to someone: an HTTP handler that turns it into a status code, a CLI's main function, a UI event handler, a job runner, one item of a batch. Code in between should catch only to recover, to add context by wrapping with `cause`, or to clean up in `finally`; otherwise let the error propagate and log it once, at the boundary.
+q: Should you rethrow or wrap an error in JavaScript?
+a: Rethrow with `throw err` when the caller can handle the original error just as well, which is most of the time. Wrap with `new Error(message, { cause: err })` when crossing an abstraction, to add context only this layer knows — which file, which record — or to turn a library's errors into your own.
+q: When should you return a result object instead of throwing?
+a: When failure is ordinary, frequent or plural: parsers that reject half their input, lookups that often find nothing, validators that report many problems at once. A result like `{ ok: false, error }` makes failure visible in the signature; exceptions stay right for rare failures that cross many layers.
+q: When is it safe to retry a failed operation?
+a: Only when the failure is transient — a timeout, a 503, a connection reset — and the operation is idempotent, so repeating it cannot charge a payment twice. Bound the attempts, back off between them, and wrap the final failure with the attempt count and the last `cause`.
+q: What should an `uncaughtException` handler do in Node.js?
+a: Log the error, clean up — flush logs, close connections — and exit with `process.exit(1)`. It must not keep the process running: after an uncaught exception the state may be inconsistent, so a supervisor such as systemd, PM2 or a container orchestrator restarts it instead.
+q: Why is an empty `catch` block bad practice?
+a: `catch (e) {}` swallows every error, including bugs such as a `TypeError`, and the program carries on in a state it never expected, so the failure surfaces later somewhere unrelated. If you cannot handle an error, let it propagate; if it truly does not matter, keep the `try` to that one call and say why in a comment.
 ---
 Knowing the syntax of `try`/`catch` is the easy part; knowing *where* to put one is the skill. Catch too early and you swallow information the caller needed; catch too late and one bad record aborts a batch of ten thousand; never catch and the process dies on a typo in a config file. The working rule: errors are handled at **boundaries** — the places where a failure has a meaning to someone (a request, a job, a file, a UI action) — and everything between the throw and the boundary lets them pass, adding context at most. This lesson gives that rule its details: expected failures versus bugs, rethrow versus wrap, per-item recovery, retries, result objects, and the two process-level nets.
 

@@ -1,6 +1,20 @@
 ---
 title: Exceptions — try, except, else, finally, raise
 minutes: 14
+seo-title: Python Try Except Explained: Else, Finally and Raise
+description: How Python's try statement works: except matches a class or its subclasses, else runs on success and finally always runs. Raising, re-raising and chaining.
+question: How does try except work in Python?
+answer: Python runs the `try` block; if it raises, the first `except` clause that matches the exception's class or one of its parents handles it, and an unmatched exception propagates to the caller. The optional `else` block runs only when the `try` raised nothing, and `finally` always runs, even after a `return`. Keep the `try` block small, covering only the call that can fail.
+q: What is the difference between else and finally in a Python try statement?
+a: `else` runs only when the `try` block completed without raising, which keeps code that should not be protected by the handler out of the `try`. `finally` runs in every case — success, a handled exception, an unhandled one, or a `return` — which makes it the place for cleanup.
+q: Why should I not use a bare except in Python?
+a: A bare `except:` catches everything, including `KeyboardInterrupt` from Ctrl-C and `SystemExit` from `sys.exit`, so the program becomes hard to stop and real bugs vanish. Catch the specific exception you can handle; `except Exception` is the widest handler that is ever appropriate, and only at a boundary, with logging.
+q: What does `raise ... from e` do in Python?
+a: `raise NewError(...) from e` chains the exceptions explicitly: `e` becomes the new exception's `__cause__`, and the traceback shows both, marked as the direct cause. `raise X from None` suppresses the chain when the original is noise, and a bare `raise` inside a handler re-raises the current exception with its traceback intact.
+q: In what order should except clauses go?
+a: Most specific first. Handlers are tried top to bottom and each matches its class or any subclass, so an `except Exception` above an `except ValueError` catches the `ValueError` first and makes the second clause unreachable.
+q: Which built-in exception should I raise in Python?
+a: Raise the one whose meaning fits: `ValueError` for a right-typed but wrong-valued argument, `TypeError` for the wrong type, `KeyError` or `IndexError` for a missing key or position, `NotImplementedError` for an abstract operation. The message should say what was expected and what arrived.
 ---
 An exception is an object that interrupts normal control flow: raised at the point of failure, it unwinds the call stack until a handler catches it, running cleanup blocks on the way, or reaches the top and ends the program with a traceback. Python uses exceptions for everything from `KeyError` to the end of a file, so handling them well is not an edge-case skill but the normal texture of the code. This lesson covers the full `try` statement, the standard hierarchy and how to choose what to catch, `raise` in its forms, re-raising and chaining with `from`, and the difference between catching an error and hiding it.
 
@@ -102,7 +116,7 @@ A handler must do something meaningful: recover (retry, use a default the caller
 - A `try` block that covers more than the call that can raise.
 - Handlers in general-to-specific order, making the specific ones dead.
 - Catching and returning `None` or `0`, converting a loud failure into a silent wrong answer.
-- `raise e` inside a handler instead of `raise` — it rewrites the traceback's origin to the handler.
+- `raise e` inside a handler where a bare `raise` was meant — it works, but adds the handler's line to the traceback; a bare `raise` re-raises exactly what was caught.
 - Forgetting that `finally` runs even after a `return` in the `try`, and that a `return` in `finally` overrides everything.
 
 ## Key takeaways

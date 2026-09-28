@@ -1,6 +1,20 @@
 ---
 title: Class templates — Stack<T>, Pair<A, B> and deduction
 minutes: 14
+seo-title: C++ Class Templates Explained: CTAD and Dependent Names
+description: A C++ class template stamps out a class per argument list. Out-of-class members, default template arguments, CTAD and when typename is required.
+question: What is a class template in C++?
+answer: A class template is a class written with type parameters, such as `template <typename T> class Stack`, from which the compiler generates a separate class for each argument list: `Stack<int>` and `Stack<std::string>` are unrelated types. Member functions are instantiated only when called, so a template can offer operations that only some types support. `std::vector`, `std::map` and `std::unique_ptr` are class templates.
+q: How do you define a class template member function outside the class?
+a: Repeat the template header and qualify the name with the template's arguments: `template <typename T> void Stack<T>::pop() { … }`. The `<T>` is required outside the class body, and the definition must still live in the header, because the compiler needs it wherever the member is first used.
+q: What is class template argument deduction (CTAD)?
+a: CTAD, added in C++17, lets the compiler deduce a class template's arguments from a constructor call or an aggregate initialiser, so `std::vector v{1, 2, 3}` is a `std::vector<int>` and `std::pair p{1, 2.5}` a `std::pair<int, double>`. It deduces all arguments or none, and a deduction guide can steer what it deduces.
+q: Why is typename needed before a dependent name?
+a: Inside a template, a name such as `C::value_type` depends on `C`, which is unknown while the template is parsed, and it could name a type or a value. The compiler assumes it is not a type unless you write `typename C::value_type`; without it GCC reports that `typename` is needed because `C` is a dependent scope.
+q: What does `std::vector v{3}` deduce?
+a: A `std::vector<int>` holding one element, the value 3, because braces prefer the `std::initializer_list` constructor. For three zero-valued elements use parentheses: `std::vector<int> v(3)`, or `std::vector v(3, 0)` with deduction.
+q: What are default template arguments?
+a: Trailing template parameters can have defaults, like function parameters: `template <typename A, typename B = A> struct Pair` makes `Pair<double>` mean `Pair<double, double>`. That is why `std::map<std::string, int>` compiles with two arguments although the template has four — the comparator and the allocator are defaulted.
 ---
 `std::vector<int>` is not a class; `std::vector` is a class template and `std::vector<int>` is one class stamped out of it. Every container, smart pointer and vocabulary type in the standard library is built the same way, and writing your own is how you stop duplicating a `Stack` for `int` and another for `std::string`. This lesson covers declaring a class template, defining its members outside the class body, default template arguments, class template argument deduction (C++17), and the `typename` keyword the compiler demands when a name depends on `T`.
 

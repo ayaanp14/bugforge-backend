@@ -1,6 +1,20 @@
 ---
 title: Value categories, temporaries and copy elision
 minutes: 15
+seo-title: Lvalue vs Rvalue in C++: Copy Elision and NRVO Explained
+description: Every C++ expression is an lvalue, prvalue or xvalue, and the category decides whether it is copied or moved. Temporaries, copy elision and NRVO.
+question: What is the difference between an lvalue and an rvalue in C++?
+answer: In C++, an lvalue is an expression that names an object which persists beyond it, such as a variable, `*p` or `v[i]`; you can take its address. An rvalue is either a prvalue — a pure value with no object yet, like `42`, `a + b` or a call returning by value — or an xvalue, such as `std::move(a)`, whose contents may be taken. `T&&` binds only to rvalues.
+q: What is copy elision in C++?
+a: Copy elision is constructing an object directly in its final location instead of copying or moving a temporary into it. Since C++17 it is guaranteed when an object is initialised from a prvalue of the same type, as in `T a = T(1);` or `return T(v);`, so it works even for types whose copy and move constructors are deleted.
+q: What is NRVO in C++?
+a: Named return value optimisation lets the compiler build a returned local variable directly in the caller's object, skipping the copy or move. Unlike prvalue elision it is permitted, not guaranteed; when it does not happen, `return local;` falls back to an implicit move rather than a copy.
+q: Should I use `return std::move(local);`?
+a: No. `std::move(local)` is not a plain name, so it disqualifies NRVO and forces a move the compiler could have skipped; GCC and Clang warn with `-Wpessimizing-move`. Write `return local;` and the compiler applies NRVO or, failing that, an implicit move.
+q: How long does a temporary live in C++?
+a: Until the end of the full-expression that created it, usually the semicolon. Binding it directly to a `const T&` or `T&&` local extends its lifetime to the reference's, but only for a direct binding: `const char* p = makeString().c_str();` leaves `p` dangling when the statement ends.
+q: Why does `std::move` on a const object copy?
+a: `std::move(k)` on a `const T` yields `const T&&`, which cannot bind to the move constructor's `T&&` parameter, so overload resolution picks the copy constructor instead, with no error or warning. For the same reason a `const` data member is always copied, never moved.
 ---
 Every C++ expression has a type and a **value category**, and the category is what decides whether an initialisation copies, moves or does neither. The three categories have unlovely names — lvalue, prvalue, xvalue — but the ideas behind them are plain: does the expression name an object that persists, is it a pure value that has not been given a home yet, or is it an object whose contents may be taken? This lesson gives the taxonomy in those terms, explains when a temporary is created and when it dies, states the C++17 guarantee that a prvalue initialises its target with no copy at all, and settles the two return-statement questions every C++ interviewer asks.
 

@@ -1,6 +1,20 @@
 ---
 title: Writing generic classes and methods
 minutes: 14
+seo-title: How to Write a Generic Class and Generic Method in Java
+description: How to write a generic class and a generic method in Java: where type parameters go, how inference works, why statics cannot use T, and generic arrays.
+question: How do you write a generic class in Java?
+answer: To write a generic class in Java, declare type parameters in angle brackets after the class name — `public class Pair<A, B>` — and use them as types for fields, constructor parameters and methods. A generic method declares its own parameters before the return type, as in `static <T> T firstOrDefault(List<T> list, T fallback)`, and the compiler infers them at each call.
+q: Where does the type parameter go in a generic method?
+a: Before the return type: `public static <T> T firstOrDefault(List<T> list, T fallback)`. The compiler infers `T` at each call from the arguments and the target type, so callers rarely write it; an explicit witness looks like `Main.<Integer>firstOrDefault(List.of(), 0)`.
+q: Can a static method use the class's type parameter?
+a: No. A class's type parameter belongs to instances, and under erasure one class serves every `T`, so a static member using it fails with "non-static type variable T cannot be referenced from a static context". A static method declares its own, as in `static <T> Registry<T> empty()`.
+q: How do you create a generic array in Java?
+a: You cannot write `new T[n]`. Use an `Object[]` as the backing store and cast on the way out, with `@SuppressWarnings("unchecked")` on the smallest scope — exactly how `ArrayList` works — or call `Array.newInstance` with a `Class<T>` token.
+q: What happens if a method redeclares T inside a generic class?
+a: It creates a second, unrelated type parameter that shadows the class's `T`, silently breaking the connection between them. Give method-level parameters a fresh letter, as in `<U> Box<U> map(Function<T, U> f)`.
+q: Can records be generic in Java?
+a: Yes. `record Pair<A, B>(A first, B second) {}` declares a generic record, with its type parameters after the name just like a class, and gets the constructor and accessors in one line.
 ---
 Using `List<String>` is the easy half. Writing your own generic types — a `Pair<A, B>`, a `Stack<T>`, a `Result<T>`, a `static <T> T firstOrDefault(List<T>, T)` — is where generics stop being syntax and become a design tool. This lesson covers declaring type parameters on classes, interfaces and methods, how the compiler infers type arguments, and the common mistakes when a class and a method both introduce `T`.
 

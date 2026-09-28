@@ -1,6 +1,20 @@
 ---
 title: The standards — what each C++ added, and what runs here
 minutes: 12
+seo-title: C++ Versions Explained: C++11, C++14, C++17, C++20, C++23
+description: C++ ships a new standard every three years. What C++11, C++14, C++17, C++20 and C++23 each added, feature-test macros, and what modern C++ really means.
+question: What are the C++ standards, from C++11 to C++23?
+answer: The C++ standards are the ISO editions of the language: C++98/03, then C++11, C++14, C++17, C++20 and C++23, on a three-year cycle since 2011. C++11 and C++20 were the large releases — `auto`, lambdas, move semantics and smart pointers, then concepts, ranges, modules and `std::format`. C++14, C++17 and C++23 mostly refined them, with C++17 adding `std::optional`, `std::variant` and structured bindings.
+q: What is modern C++?
+a: Modern C++ is a style rather than a compiler version: RAII and no raw `new`, value semantics and return by value, `const` and `constexpr` by default, `auto` where the type is obvious, algorithms and ranges over hand-written loops, `std::string_view` and `std::span` for read-only parameters, `enum class` and `nullptr`. A C++17 compiler running those habits is modern; a C++20 compiler running C++03 habits is not.
+q: What features did C++11 add?
+a: C++11 brought `auto`, `decltype`, `nullptr`, `enum class`, lambdas, rvalue references and move semantics, range-based `for`, brace initialisation, variadic templates, `std::unique_ptr` and `std::shared_ptr`, `std::unordered_map`, `<chrono>`, and `std::thread`, `std::mutex` and `std::atomic`. Every later standard builds on it.
+q: What is the difference between C++17 and C++20?
+a: C++17 added vocabulary types (`std::optional`, `std::variant`, `std::string_view`), structured bindings, `if constexpr` and `std::filesystem`. C++20 was a much larger release: concepts, ranges, modules, coroutines, the `<=>` operator, `std::format`, `std::span`, `std::jthread` and designated initialisers.
+q: How do I check which C++ standard my compiler is using?
+a: Print the `__cplusplus` macro: it expands to the standard's date — `201103L` for C++11, `201402L`, `201703L`, `202002L` for C++20 and `202302L` for C++23. Library features have their own macros, such as `__cpp_lib_format`, defined by the `<version>` header. MSVC reports `199711L` unless `/Zc:__cplusplus` is set, so test `_MSVC_LANG` there.
+q: What is the default C++ standard in GCC?
+a: GCC 14 defaults to C++17, so C++20 features such as concepts or `std::format` fail with confusing errors until you pass `-std=c++20`. A compiler is always told its standard with a flag, and GCC, Clang and MSVC each implement new standards at their own pace.
 ---
 "C++" names a family of standards, not one language. The C++ of a 2003 textbook has no `auto`, no lambdas, no smart pointers in the library and no move semantics; the C++ this track teaches has all of those and treats them as the default. A version number is therefore the first thing to establish about any C++ code: what it may use, what its compiler must support, and which idioms it should be judged by. This lesson lays out the timeline, what each standard contributed, how a program can ask its own compiler what it supports, exactly what compiles on this track's runtime, and what "modern C++" means when people use it as a compliment.
 

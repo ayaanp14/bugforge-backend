@@ -1,6 +1,20 @@
 ---
 title: Property descriptors and the object protocols — toString, valueOf, toJSON, Symbol.toPrimitive
 minutes: 13
+seo-title: JavaScript Property Descriptors, valueOf, toString and toJSON
+description: Every JavaScript property has writable, enumerable and configurable flags. How toString, valueOf, Symbol.toPrimitive and toJSON convert objects.
+question: What are property descriptors in JavaScript?
+answer: A property descriptor is the record of a JavaScript property's attributes: `value` and `writable` for a data property, or `get` and `set` for an accessor, plus `enumerable` and `configurable`. Properties made by assignment or literals have every flag `true`; `Object.defineProperty` defaults them to `false`. `Object.getOwnPropertyDescriptor` reads one, and `Object.freeze` and non-enumerable class methods are built on them.
+q: What is the difference between `Object.freeze`, `Object.seal` and `Object.preventExtensions`?
+a: `preventExtensions` stops new properties being added; `seal` also makes every property non-configurable, so none can be deleted or redefined, though values stay writable; `freeze` also makes them non-writable. All three are shallow — nested objects stay mutable.
+q: When does JavaScript call `valueOf` and when `toString`?
+a: It depends on the ToPrimitive hint. A string context such as `${obj}` tries `toString` first; numeric contexts, `+` and `==` against a primitive try `valueOf` first. A `Symbol.toPrimitive` method, when defined, overrides both, and `Date` treats the default hint as string.
+q: How do you customise `JSON.stringify` for a class?
+a: Define a `toJSON()` method: `JSON.stringify` calls it and serialises its return value instead of the object, which is how `Date` emits an ISO string. Return `undefined` to omit the value. From outside, a replacer passed to `JSON.stringify` and a reviver passed to `JSON.parse` do the same job.
+q: Why does `Object.keys` not list class methods?
+a: Class methods are defined non-enumerable on the prototype, and `Object.keys` lists only an object's own enumerable properties. For the same reason methods are missing from `JSON.stringify` output and from a spread copy of an instance.
+q: What is `Symbol.toPrimitive` in JavaScript?
+a: `Symbol.toPrimitive` is the method key that takes over converting an object to a primitive. JavaScript calls it with a hint — `"string"`, `"number"` or `"default"` — and it wins over both `toString` and `valueOf`. It must return a primitive, or a `TypeError` is thrown.
 ---
 Two more layers sit under ordinary property access. Every property has a **descriptor** — is it writable, does it show up in loops, can it be deleted or redefined — and `Object.defineProperty` lets you set those bits, which is how `Object.freeze`, non-enumerable class methods and read-only constants are built. And the language consults a handful of **well-known methods** when it needs to turn your object into something else: `toString` for strings, `valueOf` for numbers, `toJSON` for `JSON.stringify`, `Symbol.toPrimitive` to take over all of it, `Symbol.toStringTag` for the `[object X]` label. Implement them and your class plugs into template literals, `+`, sorting, JSON and logging without callers doing anything special.
 

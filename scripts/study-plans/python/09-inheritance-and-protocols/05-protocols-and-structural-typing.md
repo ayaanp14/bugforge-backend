@@ -1,6 +1,20 @@
 ---
 title: Protocols and structural typing — typing.Protocol
 minutes: 13
+seo-title: Python typing.Protocol: Structural Typing vs ABCs
+description: A Python Protocol lists methods, and any object that has them conforms with no inheritance. Type-checked duck typing, runtime checks, and Protocol vs ABC.
+question: What is a Protocol in Python?
+answer: A `Protocol`, from the `typing` module (Python 3.8+), is a class that lists methods and attributes; any object that has them satisfies it, with no inheritance or registration. That is structural typing: a type checker such as mypy verifies every call site, while nothing changes at run time. It lets type hints describe duck-typed code, such as a parameter accepting anything with a `speak()` method.
+q: What is the difference between Protocol and ABC in Python?
+a: A `Protocol` is structural: any class with the right members conforms, the type checker verifies it, and it should hold no implementation. An ABC is nominal: classes must inherit from it or be registered, it can share concrete methods, and it refuses to instantiate an incomplete subclass.
+q: What does `@runtime_checkable` do?
+a: It lets a `Protocol` be used with `isinstance`, which otherwise raises `TypeError`. The check only looks for the member names, not their signatures, so an object with a non-callable attribute of the right name still passes.
+q: What is structural typing in Python?
+a: Structural typing decides compatibility by an object's shape — the methods and attributes it has — rather than by the classes it inherits from, which is nominal typing. `typing.Protocol` brings structural typing to Python's type hints, matching how duck-typed code already behaves.
+q: Can a Python Protocol declare attributes?
+a: Yes. `name: str` in a protocol matches any object with a `name` of a compatible type, whether an instance attribute, a class attribute or a property. A read-only `@property` in a protocol is satisfied by a plain attribute too.
+q: Should I write my own Protocol or use a standard one?
+a: Use the standard ones first: `Iterable`, `Sequence`, `Mapping`, `Callable`, `Hashable` and the `Supports…` protocols such as `SupportsInt` already describe the common shapes. Write your own only for operations of your own, like a `Speaker` with `speak()`.
 ---
 Duck typing has always been how Python code works; `typing.Protocol` (3.8) is how a type checker can *verify* it. A protocol is a class that lists methods and attributes; any object that has them satisfies the protocol — no inheritance, no registration — and `mypy` will report a caller that passes something that does not. That is *structural* typing (shape decides) as opposed to *nominal* typing (declared lineage decides), and it is what type hints for duck-typed code should say. This lesson covers declaring a protocol, using it as a hint, `@runtime_checkable` for `isinstance`, protocols with attributes and generic protocols, the `Supports…` protocols in the standard library, and when to choose a protocol over an ABC.
 

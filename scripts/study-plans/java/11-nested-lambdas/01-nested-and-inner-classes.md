@@ -1,6 +1,20 @@
 ---
 title: Static nested and inner classes
 minutes: 13
+seo-title: Static Nested Class vs Inner Class in Java Explained
+description: An inner class holds a hidden reference to its outer instance; a static nested class does not. When to use each, Outer.this, and the inner-class memory leak.
+question: What is the difference between a static nested class and an inner class in Java?
+answer: A static nested class is declared inside another class with the `static` modifier; it has no link to an outer instance and can be created on its own. An inner class, a non-static member class, carries a hidden reference, `Outer.this`, to the outer instance it was created from, so it reads that instance's fields directly — and keeps it alive.
+q: How do you create an instance of an inner class in Java?
+a: Inside an instance method of the outer class, `new Inner()` uses `this` as the enclosing instance. From outside, qualify it with an outer object: `outer.new Inner()`. From a static method with no outer instance the compiler refuses: "an enclosing instance that contains Outer.Inner is required".
+q: Why can inner classes cause memory leaks in Java?
+a: Every inner class instance holds a hidden `Outer.this` reference, so while the inner object is reachable its outer object cannot be garbage-collected. An inner-class listener stored in a long-lived collection is the classic case — on Android it kept whole `Activity` objects alive.
+q: Should a nested class be static or non-static?
+a: Static, unless it needs the enclosing instance. Effective Java (item 24) gives the rule: if a nested class does not need access to the enclosing instance, make it static. A non-static one costs a hidden field, a hidden constructor parameter and a lifetime dependency on its outer object.
+q: Can an inner class have static members in Java?
+a: Since Java 16, yes. Before Java 16 an inner class could declare only compile-time constants as static members. Nested interfaces, enums and records are implicitly static, so they can never be inner classes.
+q: How do you access an outer class field from an inner class?
+a: Unqualified names resolve outward, so `count` inside the inner class reads the outer instance's field when nothing shadows it. When an inner field or parameter has the same name, `Outer.this.x` reaches the outer field and `this.x` the inner one.
 ---
 A class can be declared inside another class. Java has four kinds of such *nested* classes — static nested, inner (non-static member), local and anonymous — and the first two differ in one crucial way: an **inner** class instance secretly holds a reference to an instance of the outer class; a **static nested** class does not. That reference is convenient, and it is also the cause of memory leaks and confusing `this` rules. This lesson makes the distinction sharp and gives the rule for which to use.
 

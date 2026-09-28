@@ -1,6 +1,20 @@
 ---
 title: The standard library map — where to look before you write it
 minutes: 14
+seo-title: Python Standard Library Overview: Which Module to Use
+description: The Python standard library, grouped by job: text, collections, numbers, dates, files, formats, concurrency and testing, with the module to reach for in each.
+question: What is in the Python standard library?
+answer: The Python standard library is the set of modules that ships with every Python installation, the "batteries included". It covers text (`re`, `textwrap`), data structures (`collections`, `itertools`), numbers (`math`, `statistics`, `decimal`), dates (`datetime`, `zoneinfo`), files (`pathlib`, `shutil`), formats (`json`, `csv`, `sqlite3`), concurrency (`asyncio`, `threading`), networking and testing (`unittest`).
+q: What does "batteries included" mean in Python?
+a: It is Python's long-standing slogan for its large standard library: an installation already includes modules for parsing dates, reading CSV and JSON, hashing files, regular expressions, SQLite databases and serving HTTP, so many programs need no third-party packages at all.
+q: How do I find what functions a Python module has?
+a: In the REPL, `dir(module)` lists its names, `help(module)` prints its docstrings and `help(module.function)` shows one signature. The documentation at docs.python.org/3/library/ gives each module's functions with signatures, version notes such as "Changed in version 3.10" and examples. A two-line experiment on a small value settles the rest.
+q: Is pickle safe to use in Python?
+a: Only for data your own program wrote. Unpickling can run arbitrary code while it rebuilds objects, so never call `pickle.load` on data from outside a trust boundary. Use `json` for data exchanged with other programs, and `tomllib` or `configparser` for configuration files.
+q: Which Python module should I use to time code?
+a: `time.perf_counter()` for measuring elapsed time, since it has the highest available resolution and is not affected by changes to the system clock; `time.monotonic()` for timeouts; `time.time()` only for wall-clock timestamps. For benchmarking small snippets, the `timeit` module runs the code many times.
+q: How do I run a shell command from Python?
+a: Use `subprocess.run` with the command as a list of arguments, for example `subprocess.run(["ls", "-l"], capture_output=True, text=True)`, which returns the exit code and the captured output. Passing a list rather than a string built from input avoids shell injection.
 ---
 "Batteries included" is Python's oldest slogan, and the batteries are the reason a Python program that parses a date, reads a CSV, hashes a file and serves it over HTTP is a hundred lines rather than a thousand. The skill is knowing the map: which module holds the thing you need, so that you look there before writing it yourself. This lesson is that map — the modules grouped by job, with the one or two functions each is used for — plus how to read the documentation and how to explore a module from the REPL. Later modules of this track go deep on the areas that matter most; this one is the index.
 

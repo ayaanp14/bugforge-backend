@@ -1,6 +1,20 @@
 ---
 title: Engines, runtimes and running code with Node
 minutes: 13
+seo-title: What Is Node.js? V8, libuv and How JavaScript Runs
+description: Node.js is the V8 engine plus libuv and a standard library. How V8 parses, interprets and JIT-compiles JavaScript, the process global, and when Node exits.
+question: What is Node.js?
+answer: Node.js is a runtime that runs JavaScript outside the browser. It wraps Chrome's V8 engine with libuv, which supplies the event loop and asynchronous I/O, and a standard library of modules such as `fs`, `http`, `path` and `crypto`. Instead of the DOM it gives programs host globals such as `process`, `console`, `require` and the timer functions.
+q: How does the V8 engine execute JavaScript?
+a: V8 parses the source into a syntax tree, compiles it to bytecode that its Ignition interpreter runs straight away, profiles which functions are hot, and JIT-compiles those with TurboFan into optimised machine code. If a type speculation fails, it deoptimises back to bytecode.
+q: What is a hidden class in V8?
+a: A hidden class is the internal shape V8 shares between objects created with the same properties in the same order. Objects that share a shape let the JIT emit fast monomorphic code, which is why predictable object shapes and types run faster.
+q: What is the process object in Node.js?
+a: `process` is Node's global for the running program. It holds `argv` (command-line arguments), `env` (environment variables), the `stdin`, `stdout` and `stderr` streams, `version`, `platform` and `cwd()`, and `exit(code)` to end the process.
+q: When does a Node.js program exit?
+a: A Node process stays alive while anything is pending — a timer, an open socket, an unfinished read — and exits once the event loop has nothing left to do. `process.exit(code)` ends it immediately, while `process.exitCode = 1` sets the code and lets pending work finish.
+q: Which Node.js versions are LTS?
+a: Node ships a new major version every six months, and the even-numbered majors — 16, 18, 20, 22 — become Long-Term Support releases in October and are maintained for 30 months. Projects pin a version with `.nvmrc` or the `engines` field in `package.json`.
 ---
 "JavaScript is slow" was true in 2005 and false by 2010, and the reason is the **engine**: the program inside every browser and inside Node that turns your source into machine code while it runs. Understanding roughly how V8 does that — and what Node adds around it — explains why some code is fast, why `node --version` matters, what `process` and `console` really are, and how a script starts and stops. This lesson is the runtime tour: engine, host, and the command line.
 

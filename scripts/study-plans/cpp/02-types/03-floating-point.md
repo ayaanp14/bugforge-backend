@@ -1,6 +1,20 @@
 ---
 title: Floating point — representation, error and printing
 minutes: 15
+seo-title: C++ Float and Double: Why 0.1 + 0.2 Is Not 0.3
+description: A C++ double has 53 bits of precision, so 0.1 + 0.2 is not exactly 0.3. How to compare doubles with a tolerance, print them with fixed decimals and detect NaN.
+question: Why is 0.1 + 0.2 not equal to 0.3 in C++?
+answer: A `double` stores numbers in binary with 53 bits of precision, and only fractions whose denominator is a power of two, such as 0.5 or 0.25, are exact. `0.1` and `0.2` are each rounded slightly high, so their sum rounds to 0.30000000000000004, while the literal `0.3` rounds slightly below 0.3. Compare doubles with a tolerance, never with `==`.
+q: How do you compare two doubles in C++?
+a: Test whether they are close rather than equal: `std::fabs(a - b) <= std::max(relTol * scale, absTol)`, where `scale` is the larger magnitude, `relTol` is about 1e-9 and `absTol` is a small floor for values near zero. `std::numeric_limits<double>::epsilon()` is the gap after 1.0, not a general tolerance.
+q: What is the difference between float and double in C++?
+a: `float` is 4 bytes with 24 bits of precision, about 7 decimal digits, and cannot hold every whole number above 16777216; `double` is 8 bytes with 53 bits, 15 to 17 digits. Default to `double`: literals such as `0.5` already are, `<cmath>` is written for it, and it is no slower on a modern CPU.
+q: How do you print a double with fixed decimal places in C++?
+a: Write `std::cout << std::fixed << std::setprecision(2) << x;` or use `std::format("{:.2f}", x)`. Without `std::fixed`, `setprecision` counts significant digits rather than decimals, and the default format prints six significant digits and switches to scientific notation for large values.
+q: How do you check for NaN in C++?
+a: Use `std::isnan(x)` from `<cmath>`. NaN, produced by `0.0 / 0.0` or `std::sqrt(-1.0)`, compares false with everything, including itself, so `x != x` is the classic test and `==` never finds one. `std::isinf` and `std::isfinite` test for infinity.
+q: Should you store money in a double in C++?
+a: No. Most decimal amounts cannot be stored exactly, so rounding surprises follow — `2.675` is stored just below 2.675 and prints as `2.67` with two decimals. Keep money in a `long long` count of cents, where arithmetic and comparison are exact, and print the whole and fractional parts separately.
 ---
 A `double` is not a real number. It is a 64-bit pattern that stands for one of a finite set of fractions, and every value between two of them is rounded to the nearer one before you ever get to use it. Almost every floating-point surprise — `0.1 + 0.2 != 0.3`, a total that is off by a cent, a loop that never terminates — is that rounding, seen from a distance. This lesson gives the representation in enough detail to predict the surprises, the comparison idiom that replaces `==`, the printing controls that make output deterministic, and the two cases where the right answer is not a `double` at all.
 

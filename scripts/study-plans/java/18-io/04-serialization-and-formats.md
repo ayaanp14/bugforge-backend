@@ -1,6 +1,20 @@
 ---
 title: Serialization, CSV and the formats you actually use
 minutes: 14
+seo-title: Java Serialization Explained: serialVersionUID and transient
+description: How Java serialization writes an object graph with ObjectOutputStream, what serialVersionUID and transient do, why untrusted data is dangerous, and CSV parsing.
+question: How does serialization work in Java?
+answer: Serialization in Java turns an object graph into bytes. A class opts in by implementing the `Serializable` marker interface; `ObjectOutputStream.writeObject` then reflectively writes the class name, its `serialVersionUID` and every non-transient, non-static field, recursively. `ObjectInputStream.readObject` rebuilds the objects without calling their constructors. JSON or Protobuf with explicit mapping is the recommended alternative today.
+q: What is serialVersionUID in Java?
+a: It is the version stamp of a serialisable class's format. If you omit it the compiler computes one from the class's shape, so adding a method changes it and old data fails with `InvalidClassException`. Declare it explicitly and change it only when the format really changes.
+q: What does the transient keyword do in Java?
+a: `transient` excludes a field from serialization: it is not written, and after deserialisation it holds its default — `null`, `0` or `false`. Use it for caches, derived values, secrets and fields that cannot be serialised, and rebuild them in `readObject`.
+q: Why is Java deserialization dangerous?
+a: Deserialising untrusted bytes lets the sender choose which classes are instantiated and how their fields are set, and gadget chains of ordinary library classes can execute arbitrary code during `readObject`. Filter classes with `ObjectInputFilter`, or better, use a data format such as JSON.
+q: Is the constructor called during deserialization in Java?
+a: Not for serialisable classes: `readObject` recreates them without running their constructors, so invariants a constructor enforced are not re-checked; only the first non-serialisable superclass's no-arg constructor runs. Records are the exception — they are rebuilt through their canonical constructor.
+q: How do you parse CSV with quoted commas in Java?
+a: Not with `split(",")`. Walk the line character by character with a flag for whether you are inside quotes: a comma outside quotes ends a field, and a doubled quote inside a quoted field is an escaped quote. In production, use Apache Commons CSV or OpenCSV.
 ---
 Sooner or later an object has to leave the JVM — into a file, across a socket, into a cache — and come back. Java shipped its own answer in 1997: mark a class `Serializable` and `ObjectOutputStream` writes the whole object graph. It still works, it is still on interview lists, and the platform's own architects now advise against it. This lesson explains how it works and what its knobs (`serialVersionUID`, `transient`, `readObject`) do, why it is a security problem, and then the formats real systems use — JSON, CSV, `Properties` — including the CSV parser that everyone gets wrong on the first try.
 

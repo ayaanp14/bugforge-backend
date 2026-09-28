@@ -1,6 +1,20 @@
 ---
 title: Copy semantics — what a copy is, and when the default one is wrong
 minutes: 14
+seo-title: C++ Copy Constructor and Copy Assignment: Deep vs Shallow
+description: A C++ copy constructor builds a new object from an existing one; copy assignment replaces an object's value. Deep vs shallow copies and non-copyable types.
+question: What is a copy constructor in C++?
+answer: A copy constructor is the special member function `T(const T& other)` that builds a new object as a copy of an existing one, as in `T b = a;` or when an object is passed by value. If you declare none, the compiler generates one that copies each member in declaration order. That memberwise copy is right for members like `std::string` and `std::vector`, but shallow and wrong for an owning raw pointer.
+q: What is the difference between a copy constructor and copy assignment?
+a: The copy constructor creates a new object from an existing one (`T b = a;`). Copy assignment, `T& operator=(const T&)`, replaces the value of an object that already exists (`b = a;`), so it must first give up what it holds, and must survive being assigned to itself.
+q: What is the difference between a deep copy and a shallow copy?
+a: A shallow copy copies a pointer member, so both objects point at the same data; a deep copy allocates new storage and copies the data, so the objects are independent. The generated copy is shallow for raw pointers: with an owning pointer, both destructors delete the same block, which is undefined behaviour.
+q: Why does a copy constructor take its argument by const reference?
+a: A by-value parameter would itself have to be copied, which would call the copy constructor, which would need another copy — endless recursion, so the compiler rejects `T(T other)`. `const` lets it copy from const objects and temporaries, and promises not to change the source.
+q: How do I make a class non-copyable in C++?
+a: Delete the copy operations: `T(const T&) = delete;` and `T& operator=(const T&) = delete;`. Any attempt to copy is then a compile error naming the deleted function. This also suppresses the implicit move operations, so declare them explicitly if the type should still be movable.
+q: Why check for self-assignment in a copy assignment operator?
+a: Because `a = a` really happens, through aliases such as `v[i] = v[j]` with `i == j`. An assignment that deletes its own data and then copies from `other` would read freed memory. The guard `if (this == &other) return *this;` compares addresses; the copy-and-swap idiom avoids needing it.
 ---
 C++ has value semantics: `Probe b = a;` makes a second, independent object, not a second name for the first as it would in Java. That is what lets a class own memory, a file or a lock and clean it up when it dies — and it means every class must answer a question Java classes never face: *what does it mean to copy one of these?* The compiler answers memberwise, and its answer is right for most classes and catastrophically wrong for the rest. This lesson settles which copy operations exist, what the generated ones do, when you must write your own, and how to say "this type cannot be copied at all".
 

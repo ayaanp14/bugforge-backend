@@ -1,6 +1,22 @@
 ---
 title: Pattern matching — instanceof, switch and record patterns
 minutes: 15
+seo-title: Java Pattern Matching: instanceof, switch and Record Patterns
+description: Pattern matching in Java: instanceof binds a typed variable without a cast, and Java 21 switch matches types and record patterns with exhaustiveness checks.
+question: What is pattern matching in Java?
+answer: Pattern matching in Java tests a value's shape and binds its parts in one step. `if (o instanceof String s)` checks the type and gives a typed variable `s` without a cast (final in Java 16). Java 21 extends it to `switch`, whose cases can be type patterns and record patterns with `when` guards, and the compiler checks that a switch over a sealed type covers every subtype.
+q: How does instanceof pattern matching work in Java?
+a: `o instanceof String s` tests whether `o` is a `String` and, if it is, binds it to `s` with that type, so no cast is needed. `s` is in scope wherever the match is certain: the `if` body, the right-hand side of `&&`, and after an early return on the negated test.
+q: What is an exhaustive switch in Java?
+a: A switch the compiler proves covers every possible value, so no `default` is needed. Over a sealed type it must handle every permitted subtype, and adding a new subtype turns every switch that forgets it into a compile error.
+q: What is a record pattern in Java?
+a: A record pattern deconstructs a record into its components inside `instanceof` or a `case`, as in `case Point(int x, int y)`, and patterns can nest, such as a `Line` of two `Point`s. Record patterns are final since Java 21, and `var` may stand for a component type.
+q: What happens when you switch on null in Java?
+a: The switch throws `NullPointerException`, as switches always have, unless it has a `case null` (or `case null, default`) that handles the null selector explicitly.
+q: Does pattern matching replace the visitor pattern in Java?
+a: Mostly, when you own both the types and the operations: a sealed hierarchy with an exhaustive pattern `switch` gives the same guarantee without the boilerplate. The visitor still helps when new operations must be added in another module without touching the hierarchy's definition.
+q: Which Java version added pattern matching for switch?
+a: Java 21 made pattern matching for `switch` and record patterns final, after previews that began in Java 17. Pattern matching for `instanceof` was final earlier, in Java 16.
 ---
 Pattern matching is the biggest change to how Java code *reads* since lambdas. It began quietly in Java 16 — `if (o instanceof String s)` binds `s` without a cast — and by Java 21 it lets a `switch` take a value of a sealed type apart by shape, down through nested records, with the compiler checking that every case is covered. The result is that the "sum type + function by cases" style of functional languages is now idiomatic Java, and the visitor pattern is mostly retired. This lesson covers all three pieces, what compiles on the runtime you have (Java 17-level: `instanceof` patterns, records, sealed types) and what needs 21 (pattern `switch`, record patterns), and the exhaustiveness rule that makes it safe.
 

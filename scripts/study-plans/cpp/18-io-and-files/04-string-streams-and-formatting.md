@@ -1,6 +1,20 @@
 ---
 title: String streams and formatting — building text in memory
 minutes: 14
+seo-title: C++ stringstream, std::quoted and std::format Explained
+description: A C++ stringstream reads and builds text in memory. Why reusing one needs clear(), how std::quoted round-trips text with spaces, and std::format for tables.
+question: What is stringstream used for in C++?
+answer: A `std::stringstream` is a C++ stream whose buffer is a `std::string`, with the same `<<`, `>>` and manipulators as `std::cin` and `std::cout`. `std::istringstream` splits a line you already hold into tokens or typed fields; `std::ostringstream` builds formatted text in memory, which `str()` returns as a copy. All three come from `<sstream>`.
+q: Why does my istringstream fail after calling str()?
+a: Setting new contents with `str(s)` does not reset the state bits. A stream read to its end has `eofbit` and `failbit` set, so every later read fails until you call `clear()`. Always write the pair `in.clear(); in.str(next);`, or construct a fresh `std::istringstream` for each line.
+q: What does std::quoted do in C++?
+a: `std::quoted` from `<iomanip>` writes a string wrapped in double quotes, escaping any embedded quote or backslash, and reads such a quoted string back as one token, spaces included. Whatever `<< std::quoted(s)` wrote, `>> std::quoted(t)` reads back into an equal string.
+q: What is the difference between std::format and stream manipulators?
+a: `std::format` returns a string built from a format string such as `{:>8.2f}`; nothing carries over between calls, and a literal format string is checked at compile time. Stream manipulators change the stream's state instead: `std::fixed` and `std::setprecision` stay in effect until changed, while `std::setw` applies to the next field only.
+q: Why does std::to_string print six decimal places?
+a: Up to C++23, `std::to_string` on a `double` formats like `printf`'s `%f`, always with six decimals, so `std::to_string(3.14159)` is `3.141590`. For a chosen precision use `std::format("{:.2f}", x)` or an `ostringstream` with `std::fixed` and `std::setprecision(2)`.
+q: How do I use a runtime format string with std::format?
+a: Pass it to `std::vformat` together with `std::make_format_args(args...)`. `std::format` itself requires a format string known at compile time, so `std::format(runtimeString, x)` is a compile error rather than a run-time surprise.
 ---
 A string stream is the third member of the family: the same formatter as `std::cin` and `std::cout`, with a `std::string` as the buffer. Reading from one turns a line you already hold into tokens; writing to one builds a report in memory that you can measure, inspect and print in a single call. Module 5 met `std::istringstream` as a line splitter and `std::ostringstream` as a string builder; this lesson covers what that left out — reusing a stream without the state bug that bites everyone once, round-tripping strings that contain spaces with `std::quoted`, and `std::format` as the modern way to build formatted text, including formatting straight into an existing string.
 

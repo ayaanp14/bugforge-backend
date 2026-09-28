@@ -1,6 +1,20 @@
 ---
 title: Parallel streams, ordering and performance
 minutes: 13
+seo-title: Java Parallel Streams: When They Help and When They Hurt
+description: Java parallel streams split the source across the common ForkJoinPool. The rules a parallel pipeline must keep, what ordering costs, and when it is faster.
+question: How do parallel streams work in Java?
+answer: A parallel stream in Java splits its source into chunks with a `Spliterator`, processes the chunks as tasks on the common `ForkJoinPool`, and merges the partial results with a combiner. Calling `parallel()` or `parallelStream()` switches the whole pipeline. It is correct only with stateless, side-effect-free lambdas and associative reductions, and faster only for large, CPU-bound work on a source that splits well.
+q: When should you use parallel streams in Java?
+a: Only for large, CPU-bound, independent work on a source that splits well — an array, an `ArrayList` or an `IntStream.range` — on a machine with idle cores, and only after measuring. The JDK authors' rule of thumb is element count times per-element cost above 10 000.
+q: Why is my parallel stream slower than the sequential one?
+a: Common causes are small data or cheap operations, a source that splits badly (`LinkedList`, `Stream.iterate`, `BufferedReader.lines()`), order-preserving operations such as `limit` and `findFirst`, costly merges such as `groupingBy` into a `HashMap`, and lambdas that block on I/O.
+q: What thread pool do Java parallel streams use?
+a: The common `ForkJoinPool`, sized to the number of cores minus one, plus the calling thread. It is shared by every parallel stream and `CompletableFuture` in the JVM, so a lambda that blocks on I/O starves everything else using it.
+q: Why does `forEach(list::add)` on a parallel stream lose elements?
+a: Several threads add to the same unsynchronised `ArrayList` at once — a race that loses elements, throws `ArrayIndexOutOfBoundsException` or leaves silent garbage. Use `collect` or `toList()`, whose combiner merges per-thread results safely.
+q: Why must a parallel reduce be associative?
+a: Chunks are combined in an unpredictable order and grouping, so only an associative operation, where `(a op b) op c` equals `a op (b op c)`, gives the same result every run. Subtraction is not associative, so a parallel subtraction reduce varies from run to run.
 ---
 `.parallel()` is one method call that splits a pipeline across every core in the machine. It is also the easiest way in Java to make a correct program wrong, or a fast program slower, so it deserves a lesson of its own: how the work is split, what the pipeline must promise in return, when it actually pays, and how streams compare to loops when the clock is running.
 

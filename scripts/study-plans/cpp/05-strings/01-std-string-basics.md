@@ -1,6 +1,20 @@
 ---
 title: std::string — a value type for text
 minutes: 13
+seo-title: C++ Strings Explained: std::string Basics and Concatenation
+description: C++ std::string is an owning value type: copies are independent and == compares content. Indexing, appending and comparing strings, and C string traps.
+question: What is std::string in C++?
+answer: `std::string` is the C++ standard library's owning string type: it stores its own characters and length, grows on demand, and frees its memory when it goes out of scope. It is a value type, so `b = a` copies the characters and `==` compares content, not addresses. Index it with `[]`, which is unchecked, or `at()`, which throws `std::out_of_range`.
+q: How do you concatenate strings in C++?
+a: Use `+=` to append a string, a literal or a single `char` to an existing `std::string`, or `+` to build a new one. At least one operand must be a `std::string`: `"abc" + "def"` does not compile, because two literals are pointers. Append a number's digits with `std::to_string`.
+q: What is the difference between a C string and std::string?
+a: A C string is a `const char*` pointing at characters that end in a zero byte, with no stored length and no ownership. `std::string` owns its buffer, stores its length, may even contain zero bytes, and frees itself; `c_str()` hands a C API a null-terminated pointer that stays valid until the string is modified.
+q: How do you compare strings in C++?
+a: With `==`, `<` and the other comparison operators, once at least one side is a `std::string`. They compare content lexicographically by character code, so "Banana" sorts before "apple" (capitals come first) and "app" before "apple". Comparing two bare literals compares their addresses instead.
+q: What is the difference between size() and length() for a C++ string?
+a: None: `size()` and `length()` return the same number of characters, as a `std::size_t`. Because that type is unsigned, `s.size() - 1` on an empty string is not -1 but the largest `size_t` there is, so check `empty()` first.
+q: Why is `s = s + c` slow in a loop?
+a: Each `s + c` builds a brand-new string and copies every existing character into it, so n appends do quadratic work. `s += c` appends in place in amortised constant time, because the buffer grows geometrically like a `std::vector`; call `reserve(n)` when the final size is known.
 ---
 C's text is an array of `char` ending in a zero byte — no length, no bounds, no ownership. C++ keeps that representation for literals and C APIs but builds `std::string` on top: an owning value type that knows its length, grows on demand, copies deeply, compares by content and frees its memory on scope exit. This lesson settles what a `std::string` is, how to build, index, grow and compare one, and where the C string boundary still shows through.
 

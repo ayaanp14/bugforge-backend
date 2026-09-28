@@ -1,6 +1,20 @@
 ---
 title: Extending classes — super, constructors and what is inherited
 minutes: 14
+seo-title: Inheritance in Java: extends, super and Constructor Chaining
+description: Inheritance in Java lets a subclass extend one parent and reuse its members. What is inherited, super() and constructor chaining, protected, Object and final.
+question: What is inheritance in Java?
+answer: Inheritance in Java lets one class extend another with the `extends` keyword: the subclass gets the parent's accessible fields and methods, can add its own and can override some. It models an is-a relationship — a `SavingsAccount` is an `Account`. A class has exactly one parent, every class ultimately descends from `Object`, and constructors are not inherited.
+q: What is the super keyword in Java?
+a: `super` reaches the parent class from a subclass. `super(args)` as the first statement of a constructor calls a parent constructor, and `super.method()` runs the parent's version of a method the subclass has overridden. It cannot be chained: `super.super.x` is illegal.
+q: Are private members inherited in Java?
+a: They are present in every subclass object — the memory is there — but not accessible by name from the subclass, which reaches them only through the parent's public or protected methods. Constructors are not inherited at all.
+q: Why does a subclass fail to compile when the parent has no no-argument constructor?
+a: Every constructor starts by calling a parent constructor, and if you write none the compiler inserts `super()`. When the parent declares only constructors with parameters, that implicit call matches nothing, so each subclass constructor must call `super(...)` with arguments explicitly.
+q: Does Java support multiple inheritance?
+a: Not of classes: a class can extend only one parent, which avoids the diamond problem of two parents defining the same method. Java allows multiple inheritance of type through interfaces, and a class can implement any number of them.
+q: What does final mean on a class or method in Java?
+a: A `final` class, such as `String`, cannot be extended, and a `final` method cannot be overridden. Use it on value classes, whose immutability depends on it, and on methods subclasses must not alter, such as a template's fixed steps or security checks.
 ---
 Inheritance lets a class be defined as a *variation* of another: a `SavingsAccount` **is an** `Account` with interest added. The subclass gets the parent's fields and methods, may add more, and may replace some. Java has single inheritance of classes (one parent), a root class every class descends from (`Object`), and precise rules about constructors that trip up most people the first time. This lesson is the mechanics; the next ones are what you can do with them.
 

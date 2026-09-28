@@ -1,6 +1,20 @@
 ---
 title: throw, try, catch, finally — the mechanics, precisely
 minutes: 12
+seo-title: JavaScript Try Catch Finally: How Throw and Errors Work
+description: JavaScript throw sends an error up the call stack to the nearest catch, running every finally on the way. What finally overrides, Error cause and the stack.
+question: How do try, catch and finally work in JavaScript?
+answer: In JavaScript, `throw` stops the current function and passes a value up the call stack until a `catch` receives it; if nothing does, Node prints the error and exits with code 1. A `catch` takes everything thrown inside its `try`, bugs included. `finally` runs after `try` and `catch` on every path — normal completion, `return` or a propagating throw — which makes it the place for cleanup.
+q: Does `finally` run after `return` in JavaScript?
+a: Yes. `finally` runs on every exit from the `try` or `catch`: normal completion, `return`, `break`, `continue` or a propagating exception. A `return` or `throw` inside `finally` overrides the outcome, so a `return` there silently swallows an exception — never return from `finally`.
+q: Can you throw a string in JavaScript?
+a: You can — `throw` accepts any value — but you should not. A thrown string has no stack trace and no `message`, fails `instanceof Error` checks, and shows up in logs as `Uncaught oops` with no location. Always throw an `Error` or a subclass; the `no-throw-literal` lint rule enforces it.
+q: What is the `cause` option of an Error in JavaScript?
+a: `cause` is an option of the `Error` constructor, `new Error(message, { cause: err })`, added in ES2022 and Node 16.9. It keeps the original error attached when you wrap it with context, so the caller reads the new message and can still reach the original type and stack through `err.cause`.
+q: Why does `JSON.stringify` of an Error return `{}`?
+a: An error's `message` and `stack` are own properties but non-enumerable, and `JSON.stringify` serialises only enumerable ones. Serialise errors explicitly — `{ name, message, stack }` for your logs, and without the stack for anything a user will see.
+q: When is the stack trace of a JavaScript Error captured?
+a: When the `Error` object is created, not when it is thrown. An error constructed in a helper and thrown somewhere else points at the helper, which is why errors should be created at the point of failure rather than prepared ahead of time.
 ---
 Errors in JavaScript are values that travel: `throw` hands one up the call stack until some `catch` takes it, running every `finally` on the way. The rules are small but the corners are sharp — a `finally` can override a `return`, you can throw anything (and people do), `catch` catches *everything* including bugs, and in async code the stack it unwinds is not the one you think (module 8). This lesson pins the synchronous mechanics down exactly, describes what an `Error` object carries, and sets the vocabulary — throw, propagate, catch, rethrow, wrap — the rest of the module uses.
 

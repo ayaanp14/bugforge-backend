@@ -1,6 +1,20 @@
 ---
 title: Formatting output and text blocks
 minutes: 13
+seo-title: Java printf and String.format: Specifiers and Text Blocks
+description: Format Java output with String.format and printf: %d, %s, %.2f, width, padding, thousands separators and rounding, plus multi-line text blocks.
+question: How do you format a string in Java?
+answer: To format a string in Java, call `String.format(format, args...)`, which returns the text, or `System.out.printf`, which prints it. Each specifier in the format consumes the next argument: `%d` for integers, `%s` for any value, `%.2f` for two decimal places and `%n` for a newline. Width and flags pad and align, so `%5d` right-aligns in five columns and `%05d` pads with zeros.
+q: How does `%.2f` round in Java?
+a: `%.2f` rounds half up, applied to the shortest decimal representation of the double, the digits `Double.toString` prints, not to its exact binary value. So `String.format("%.2f", 2.675)` gives `2.68`, where C's `printf` prints `2.67`. For money, format a `BigDecimal` instead.
+q: How do I add a thousands separator in Java?
+a: Use the `,` flag: `String.format("%,d", 1234567)` gives `1,234,567`. The separator follows the default locale, so a German machine prints dots; pass `Locale.ROOT` for stable output, or use `NumberFormat` for currency and percentages.
+q: How do I pad a number with leading zeros in Java?
+a: Use the `0` flag with a width: `String.format("%05d", 42)` gives `00042`. The width counts the whole result, so `%08.2f` of 3.14159 gives `00003.14`; `%5d` pads with spaces on the left and `%-5d` on the right.
+q: What is a text block in Java?
+a: A text block, added in Java 15, is a multi-line string literal that opens with three double quotes and a line break and closes with three double quotes. The indentation common to every line and the closing delimiter is stripped, line endings become newlines, and a lone double quote inside needs no escaping.
+q: Are Java format strings checked at compile time?
+a: No. The compiler does not check them, so mistakes surface at run time: a specifier with no matching argument throws `MissingFormatArgumentException`, and a mismatch such as `%d` with a `String` throws `IllegalFormatConversionException`. Test every format string you write.
 ---
 Getting text to look right — two decimals, aligned columns, a leading zero, a thousands separator, a multi-line template — is a solved problem in Java, but the solution is a mini-language you have to learn once. This lesson covers `String.format`/`printf` thoroughly, then the text blocks that Java 15 added for multi-line strings.
 

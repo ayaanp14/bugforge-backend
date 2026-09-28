@@ -1,6 +1,20 @@
 ---
 title: logging — levels, loggers, handlers and formats
 minutes: 14
+seo-title: Python Logging: Levels, Handlers, Formats and basicConfig
+description: Python's logging module records what a program did at five levels: per-module loggers, basicConfig, handlers and formatters, lazy arguments and tracebacks.
+question: How do you use logging in Python?
+answer: Call `logging.basicConfig(level=logging.INFO, format="%(levelname)s:%(name)s:%(message)s")` once at application start-up, create `log = logging.getLogger(__name__)` at the top of each module, then call `log.debug`, `log.info`, `log.warning`, `log.error` or `log.critical`. Messages below the configured level are dropped. The default threshold is `WARNING`, which is why `info` prints nothing until configured.
+q: What are the logging levels in Python?
+a: Five, in increasing severity: `DEBUG` (10) for diagnostic detail, `INFO` (20) for milestones, `WARNING` (30) for something unexpected but handled, `ERROR` (40) for a failed operation and `CRITICAL` (50) when the program cannot continue. A logger drops messages below its threshold, which is `WARNING` by default.
+q: Why does logging.info not print anything?
+a: The root logger's default level is `WARNING`, so `INFO` and `DEBUG` messages are dropped until logging is configured. Call `logging.basicConfig(level=logging.INFO)` once at start-up, before anything is logged, because `basicConfig` does nothing once the root logger already has handlers.
+q: Why use %s instead of f-strings in Python log calls?
+a: With `log.debug("user %s", user)` the message is formatted only if a handler actually emits it, so disabled levels cost almost nothing, whereas an f-string is built on every call at every level. The `%s` form also lets log aggregators group identical messages by their template.
+q: How do I log an exception with its traceback in Python?
+a: Call `log.exception("failed on record %s", record_id)` inside an `except` block. It logs at `ERROR` level and appends the full traceback, the same as `log.error(..., exc_info=True)`. Re-raise afterwards if the caller still needs to handle the failure.
+q: Should a library call logging.basicConfig?
+a: No. A library only calls `logging.getLogger(__name__)` and logs; levels, handlers and formats belong to the application, which configures them once in `main`. A library that configures logging hijacks the application's output. A `NullHandler` on the library's top logger is the polite default.
 ---
 `print` is for a program's output; `logging` is for its diary — what it did, what went wrong, in what order — written to stderr, a file, or a service, at a verbosity the operator chooses without editing the code. The module has more parts than it first appears to need, and this lesson explains them in the order they matter: levels, the module-level logger idiom, `basicConfig` with a format, the logger hierarchy, handlers and formatters, `logging.exception` for tracebacks, lazy `%s` formatting, and the reason a library never configures logging.
 

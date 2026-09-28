@@ -1,6 +1,20 @@
 ---
 title: Counting and grouping — Counter, defaultdict and the accumulation idioms
 minutes: 13
+seo-title: Python Counter and defaultdict: Counting and Grouping
+description: Count with collections.Counter and group with defaultdict. How Counter orders ties, nested defaultdicts, inverting a dict, and why groupby needs sorted input.
+question: How do I count occurrences of items in Python?
+answer: Use `collections.Counter`: `Counter(words)` builds a dict subclass mapping each item to how often it appears, and a missing key reads as 0 instead of raising `KeyError`. `most_common(n)` returns the n commonest pairs, highest count first, with ties in first-seen order. On a plain dict the same count is `counts[w] = counts.get(w, 0) + 1`.
+q: What is defaultdict in Python?
+a: `collections.defaultdict(factory)` is a dict that calls `factory()` to create the value the first time a missing key is accessed, and stores it. `defaultdict(list)` groups items with `groups[key].append(x)` and `defaultdict(int)` counts; any zero-argument callable works as the factory.
+q: What is the difference between Counter and defaultdict(int)?
+a: Both count without a `KeyError`, but `Counter` adds a counting API: `most_common`, `update`, `subtract`, `total`, `elements`, and arithmetic such as `+` and `&`. It also reads a missing key as 0 without inserting it, whereas reading a missing key from a `defaultdict` creates the entry.
+q: How do I group a list of items by key in Python?
+a: Create `groups = defaultdict(list)` and append each item under its key: `groups[dept].append(name)`. The plain-dict spelling is `groups.setdefault(dept, []).append(name)`. Sort the keys before printing, since a dict iterates in insertion order.
+q: Why does itertools.groupby not group all my items?
+a: `itertools.groupby` groups only consecutive elements with equal keys, so unsorted input gives one group per run rather than one per key. Sort by the same key first, or use `defaultdict(list)`, which collects every item for a key wherever it appears.
+q: How do I invert a dictionary in Python?
+a: When the values are unique, `{v: k for k, v in d.items()}` swaps keys and values. When several keys share a value, later keys overwrite earlier ones, so group instead: append each key to `by_value[v]` in a `defaultdict(list)`.
 ---
 Half of all dictionary code does one of two things: counts how often each key occurs, or collects the items that share a key into a list. Both have a plain-dict spelling, a `setdefault` spelling, and a `collections` type that says exactly what is meant — `Counter` for counting, `defaultdict` for grouping. This lesson gives all three for each job, the `Counter` API (`most_common`, arithmetic, `elements`), `defaultdict` with different factories including nested ones, inverting a mapping, and the reason `itertools.groupby` is *not* the grouping tool it sounds like.
 

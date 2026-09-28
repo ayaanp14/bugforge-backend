@@ -1,6 +1,20 @@
 ---
 title: Lists — the mutable sequence
 minutes: 14
+seo-title: Python Lists: Methods, Time Complexity and Copying
+description: A Python list is an ordered, mutable sequence. Every list method with its time complexity, aliasing versus shallow and deep copies, and the nested-list trap.
+question: What is a list in Python?
+answer: A list in Python is an ordered, mutable sequence that can hold any mix of objects. It is indexed and sliced like a string; `append` and `pop()` at the end run in O(1) amortised time, while `insert`, `pop(i)`, `remove` and the `in` test are O(n). Methods that change a list in place, such as `append` and `sort`, return `None`.
+q: What is the difference between a shallow copy and a deep copy of a list in Python?
+a: A shallow copy — `a.copy()`, `list(a)` or `a[:]` — is a new list holding the same element objects, so nested lists are shared with the original. `copy.deepcopy(a)` copies recursively and shares nothing. For a list of numbers or strings the two behave the same.
+q: Why does changing one row change every row in `[[0] * n] * m`?
+a: Multiplying a list repeats the reference, not the object, so `[[0] * n] * m` holds m references to one inner list. Write `[[0] * n for _ in range(m)]` instead: the comprehension builds a fresh row on every iteration.
+q: Why does `xs = xs.append(x)` set my list to `None`?
+a: `append` changes the list in place and returns `None`, as do `sort`, `reverse` and `extend`. Assigning the result rebinds the name to `None` and throws the list away. Call the method on its own line, or use `sorted(xs)` when a new list is wanted.
+q: What is the time complexity of Python list operations?
+a: Indexing, `append` and `pop()` are O(1) — `append` amortised, because the list over-allocates and grows geometrically. `insert`, `pop(i)`, `remove`, `del` and `x in xs` are O(n), and `sort` is O(n log n). Use `collections.deque` for a queue and a set for repeated membership tests.
+q: How do I remove items from a list while iterating over it?
+a: Do not change a list's length while a `for` loop walks it, or elements get skipped. Build a new list with a comprehension, loop over a copy with `for x in xs[:]`, or walk the indexes backwards when deleting in place.
 ---
 The list is Python's workhorse collection: an ordered, mutable sequence of any objects, growable at the end in constant time, indexable and sliceable like a string, and — because it is mutable — the first place the name-versus-object model of Module 2 produces a visible surprise. This lesson covers construction, the methods grouped by what they do, the cost of each, the aliasing and copying rules, and the `[[0] * n] * m` trap that every learner meets exactly once.
 

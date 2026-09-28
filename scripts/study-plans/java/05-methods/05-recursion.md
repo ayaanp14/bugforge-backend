@@ -1,6 +1,20 @@
 ---
 title: Recursion — methods that call themselves
 minutes: 16
+seo-title: Recursion in Java: Base Case, Stack Overflow and Memoization
+description: A recursive Java method calls itself on smaller input until a base case. Why deep recursion throws StackOverflowError, and how memoization helps.
+question: What is recursion in Java?
+answer: Recursion in Java is a method calling itself to solve a smaller version of the same problem and then combining the result, as in `factorial(n)` returning `n * factorial(n - 1)`. Every recursion needs a base case answered directly and progress toward it on every call. Each call uses a stack frame, so very deep recursion throws `StackOverflowError`.
+q: What causes StackOverflowError in Java recursion?
+a: Each recursive call pushes a frame onto the thread's stack, and the default stack holds roughly ten to twenty thousand simple frames. A missing base case, a call that makes no progress, or linear-depth recursion over a large input exhausts it; rewrite deep recursion as a loop.
+q: Does Java do tail-call optimisation?
+a: No. The JVM does not perform tail-call optimisation, so a tail-recursive method, one whose recursive call is its last action, still uses a new stack frame per call and can overflow. Write the loop instead when the depth could be large.
+q: Why is recursive Fibonacci slow?
+a: The naive version recomputes the same values again and again: `fib(n)` calls `fib(n - 1)` and `fib(n - 2)`, whose work overlaps, so the number of calls grows exponentially and `fib(45)` takes seconds. Memoization stores each answer the first time, cutting it to O(n) calls.
+q: When should I use recursion instead of a loop?
+a: Use recursion for trees and nested structures, divide and conquer, and backtracking searches, where the recursive definition is the algorithm and the depth stays small or logarithmic. Use a loop for linear scans, counting and accumulating, and anything whose depth would grow with a large input.
+q: What is a base case in recursion?
+a: The base case is an input the method answers directly without calling itself, such as `if (n <= 1) return 1;` in factorial. Without one, or without every call moving toward it, the calls never stop and the program ends with a `StackOverflowError`.
 ---
 A recursive method solves a problem by solving a smaller version of the same problem and combining. It is the natural way to express anything tree-shaped, anything defined inductively, and most "try every possibility" searches. It is also the place where the call stack stops being an abstraction: every recursive call is a frame, and the JVM's default stack holds only a few thousand of them. This lesson gives you the discipline — base case, progress, trust — and the tools to keep recursion correct and fast.
 

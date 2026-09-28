@@ -1,6 +1,20 @@
 ---
 title: Map and Set — real keyed collections
 minutes: 12
+seo-title: JavaScript Map and Set Explained: Map vs Object
+description: A JavaScript Map takes any value as a key and keeps insertion order; a Set stores unique values. Map vs object, SameValueZero, set algebra and group-by.
+question: What is the difference between a Map and an object in JavaScript?
+answer: A JavaScript `Map` is a real dictionary: keys can be any value, including objects and `NaN`, entries keep insertion order, `size` is a property, and no inherited keys such as `constructor` get in the way. A plain object takes only string and symbol keys and suits records with known fields and JSON. Use a Map for dictionaries keyed by data, especially user data.
+q: What is a Set in JavaScript?
+a: A `Set` is a collection of unique values: `add` ignores duplicates, `has` and `delete` are O(1), `size` counts the members and iteration follows insertion order. `[...new Set(arr)]` is the standard way to remove duplicates from an array.
+q: How does a JavaScript Map compare keys?
+a: With SameValueZero: the same as `===`, except that `NaN` equals `NaN` (and `+0` equals `-0`). Objects are compared by identity, so two different `{ id: 1 }` literals are two separate keys, and an entry can only be found through the reference used to set it.
+q: How do you count occurrences with a Map in JavaScript?
+a: Loop over the items and write `counts.set(w, (counts.get(w) ?? 0) + 1)`. The map ends up holding each distinct item with its count, in the order each was first seen, and `[...counts].sort(([, a], [, b]) => b - a)` sorts the entries by count.
+q: How do you find the intersection of two arrays efficiently?
+a: Put one array in a `Set` and filter the other with `has`: `a.filter((x) => setB.has(x))`. `Set.has` is O(1), so the whole thing is O(n); filtering with `Array.includes` instead is O(n²). Node 22 adds a built-in `intersection` method; Node 16 does not have it.
+q: Why does `JSON.stringify` of a Map return `{}`?
+a: A Map's entries are not properties of the Map object, and `JSON.stringify` serialises only own enumerable properties, so a Map comes out as `{}`. Convert it first: `Object.fromEntries(map)` when the keys are strings, or `[...map]` for an array of pairs.
 ---
 For twenty years JavaScript had one collection, the array, and one dictionary, the object — and the object was a poor dictionary: keys became strings, `"constructor"` was already "there", `__proto__` was a security hole, and getting the size meant `Object.keys(o).length`. `Map` and `Set` (2015) are the real thing: any value as a key, insertion order guaranteed, a `size`, O(1) operations, and iteration built in. This lesson is when to use each, the operations, the key-equality rule, the set algebra you have to write yourself on Node 16, and the frequency-count and group-by idioms that make up most of their use.
 

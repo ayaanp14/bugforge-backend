@@ -1,6 +1,20 @@
 ---
 title: Type traits and metaprogramming — computing with types
 minutes: 15
+seo-title: C++ Type Traits Explained: SFINAE, decltype and if constexpr
+description: C++ type traits answer compile-time questions about types and build new ones. The key traits, decltype and declval, if constexpr dispatch and reading SFINAE.
+question: What are type traits in C++?
+answer: Type traits are class templates in `<type_traits>` that answer questions about a type at compile time or build a new type from it. Predicates such as `std::is_integral_v<T>` are `bool` constants; transformers such as `std::remove_cvref_t<T>` and `std::conditional_t<B, T, F>` produce types. They are built by specialisation and drive `if constexpr` dispatch, forwarding references and generic containers.
+q: What is SFINAE in C++?
+a: SFINAE stands for substitution failure is not an error: when substituting deduced template arguments into a candidate's signature produces an invalid type, that candidate is silently dropped from overload resolution instead of ending compilation. `std::enable_if_t<condition, T>` exploits it to switch overloads on and off. It is the pre-C++20 technique; concepts say the same thing more clearly.
+q: What is the difference between decltype(x) and decltype((x))?
+a: `decltype(x)` on a plain variable name gives its declared type, such as `int`. Extra parentheses make it an lvalue expression, and `decltype` of an lvalue expression is a reference, so `decltype((x))` is `int&`. It is a well-known interview question and a common source of unexpected references.
+q: What does std::declval do?
+a: `std::declval<T>()` pretends to produce a value of type `T` inside an unevaluated context such as `decltype`, `sizeof` or a `requires` expression, so you can ask what an expression would return without an object or a usable constructor: `decltype(std::declval<C>().size())`. It has no definition, so using it in evaluated code is an error.
+q: Why is `std::is_same_v<T, std::string>` false inside `f(T&& x)`?
+a: For an lvalue `std::string` argument, the forwarding reference deduces `T` as `std::string&`, which is not the same type as `std::string`. Strip the reference and cv-qualifiers first — `std::is_same_v<std::remove_cvref_t<T>, std::string>` — and the test works for lvalues and rvalues alike.
+q: Should I use constexpr functions or template metaprogramming?
+a: Compute values with `constexpr` functions and types with traits. The old recursive style — `Factorial<N>` defined through `Factorial<N - 1>` plus a specialisation for 0 — instantiates a class per step and cannot use a loop, while a `constexpr` function is ordinary C++ with loops that the compiler evaluates when its arguments are constants.
 ---
 A type trait is a class template that answers a question about a type at compile time — is it an integer, is it a pointer, what is it once the `const` and the `&` are stripped — or that manufactures a new type from an old one. `<type_traits>` holds a hundred of them, every one built from the specialisation machinery of lesson 3, and they are what makes `if constexpr` dispatch, forwarding references and generic containers work. This lesson covers the traits you will actually use, `decltype` and `std::declval` for naming the type of an expression, `if constexpr` as the dispatch tool, SFINAE and `std::enable_if` as the pre-C++20 technique you must be able to read, and why a `constexpr` function beats template recursion for computing values.
 
@@ -73,7 +87,7 @@ template <typename C>
 using SizeOf = decltype(std::declval<C>().size());     // the type size() returns, for any C that has one
 ```
 
-`std::declval<T>()` pretends to produce a `T` inside an unevaluated context — `decltype`, `sizeof`, a `requires` expression — so you can ask what an expression *would* be without needing an object, or even a constructor. It has no definition and calling it in real code is a link error by design. The `decltype(i)` versus `decltype((i))` distinction is a well-known interview question: a name gives the declared type, a parenthesised name is an lvalue expression and gives a reference.
+`std::declval<T>()` pretends to produce a `T` inside an unevaluated context — `decltype`, `sizeof`, a `requires` expression — so you can ask what an expression *would* be without needing an object, or even a constructor. It has no usable definition: calling it outside an unevaluated context is ill-formed, and the standard libraries make that a compile-time error. The `decltype(i)` versus `decltype((i))` distinction is a well-known interview question: a name gives the declared type, a parenthesised name is an lvalue expression and gives a reference.
 
 ## if constexpr dispatch
 

@@ -1,6 +1,20 @@
 ---
 title: Exception safety — guarantees, noexcept and RAII
 minutes: 14
+seo-title: C++ Exception Safety Guarantees, noexcept and RAII
+description: The basic, strong and no-throw exception safety guarantees in C++, how RAII gives the basic one for free, what noexcept promises and why std::vector checks it.
+question: What are the exception safety guarantees in C++?
+answer: C++ functions give one of three exception safety guarantees. No-throw: the operation cannot fail, as with destructors and `swap`. Strong: if it throws, the state is exactly as before — commit or roll back, as with `std::vector::push_back`. Basic: if it throws, nothing leaks and every invariant holds, but the state may have changed. Anything weaker, such as a leak or a broken invariant, is a bug.
+q: What does noexcept mean in C++?
+a: `noexcept` declares that a function will not let an exception escape. It is a promise, not a check: if an exception does escape, `std::terminate` is called. Destructors are implicitly `noexcept`, and the operator form `noexcept(expr)` asks at compile time whether an expression could throw, without evaluating it.
+q: Why should move constructors be noexcept?
+a: When a `std::vector` reallocates, it uses `std::move_if_noexcept`: it moves the elements only if the move constructor is `noexcept`, or the type cannot be copied, and copies them otherwise, to keep the strong guarantee of `push_back`. A move constructor without `noexcept` therefore makes every reallocation copy, silently.
+q: Can a destructor throw an exception in C++?
+a: It must not let one escape. Destructors are implicitly `noexcept` since C++11, so a throwing destructor calls `std::terminate`, and a throw during stack unwinding would leave two exceptions in flight. Put cleanup that can fail in an explicit function such as `close()`, and have the destructor call it inside `try { … } catch (...) { }`.
+q: How does RAII make C++ code exception safe?
+a: RAII ties each resource to an object whose destructor releases it, and stack unwinding runs destructors on every exit path, including exceptions. A `std::ofstream`, `std::lock_guard` or `std::unique_ptr` is therefore released when a later line throws, while a raw `fopen`, `lock()` or `new` leaks. RAII gives the basic guarantee automatically.
+q: How do you give a function the strong exception guarantee?
+a: Do all the work that can throw on a temporary, then commit with operations that cannot throw: build a fresh map, then `items_.swap(fresh)`. If anything throws, the original was never touched. Copy-and-swap assignment is this recipe, and a scope guard that restores a backup on exit is the alternative.
 ---
 An exception that passes through a function is a return the function did not plan. What does the caller find afterwards — the old state, a new one, or half of each with a file handle leaked on the way? *Exception safety* is the discipline of answering that question for every function you write, and C++ makes the good answers cheap if you let objects own resources. This lesson settles the three guarantees, how RAII delivers the basic one for free, what `noexcept` promises and why `std::vector` reads it, why a destructor must never throw, and when a return value is the better tool.
 

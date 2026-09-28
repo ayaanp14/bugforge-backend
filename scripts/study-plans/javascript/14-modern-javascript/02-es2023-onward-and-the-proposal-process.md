@@ -1,6 +1,20 @@
 ---
 title: ES2023 onward, and how features get into the language
 minutes: 12
+seo-title: New JavaScript Features ES2023–ES2025 and the TC39 Stages
+description: What ES2023, ES2024 and ES2025 added to JavaScript, from toSorted and Object.groupBy to Set methods, how TC39 stages work, and how to polyfill safely.
+question: What are the TC39 proposal stages?
+answer: TC39, the Ecma committee that designs JavaScript, moves each proposal through stages: 0 strawperson, 1 problem accepted for exploration, 2 draft spec text, 2.7 spec complete and awaiting tests, 3 candidate — the design is stable and implementations begin — and 4 finished, with two shipping implementations, after which the feature joins the next yearly ECMAScript edition. Use stage 4 freely and stage 3 with care.
+q: What is the difference between `toSorted` and `sort`?
+a: `sort()` sorts the array in place and returns that same array; `toSorted()`, added in ES2023, returns a sorted copy and leaves the original untouched. `toReversed`, `toSpliced` and `with(index, value)` are the non-mutating twins of `reverse`, `splice` and index assignment.
+q: What does `Object.groupBy` return?
+a: `Object.groupBy(items, keyFn)`, from ES2024, returns a null-prototype object whose keys are the callback's results and whose values are arrays of the matching items. `Map.groupBy` does the same but returns a `Map`, so the keys can be of any type, including objects.
+q: What does `Promise.withResolvers` do?
+a: `Promise.withResolvers()`, from ES2024, returns `{ promise, resolve, reject }` — a promise together with the functions that settle it — so code outside the executor can resolve it later. It replaces the hand-written deferred pattern used to bridge events and queues.
+q: Which JavaScript features arrived in ES2025?
+a: Set methods such as `union`, `intersection` and `difference`; iterator helpers like `map`, `filter`, `take` and `toArray` on any iterator; `RegExp.escape`; JSON modules with import attributes; `Promise.try`; and duplicate named groups in regular expressions.
+q: Is it safe to use a stage 3 proposal?
+a: Only with a transpiler or polyfill, and only if you can absorb a late change: stage 3 designs are stable but not final. Stage 4 features are safe to use, transpiled when your runtime lacks them; stage 2 and below — the pipeline operator and pattern matching, for example — are reading material.
 ---
 Node 16 — this plan's runtime — stops at ES2022, so everything in this lesson is **reading**: the features you will meet in newer runtimes and codebases, what each replaces, and the process that produces them, so you can judge a proposal's maturity before adopting it. The exercises write polyfills for several of these on Node 16, which is the best way to understand exactly what they do — and the realistic situation of supporting a runtime older than the feature.
 

@@ -1,6 +1,22 @@
 ---
 title: The Python theory drill — thirty questions, thirty answers
 minutes: 25
+seo-title: Python Interview Questions and Answers: 30 Theory Questions
+description: Thirty Python interview questions with the answers interviewers expect: the GIL, how dicts work, generators, decorators, is vs ==, mutable defaults, memory.
+question: What are the most common Python interview questions?
+answer: The most common Python interview questions ask for a mechanism: what the GIL is, how a dict works, `is` versus `==`, mutable versus immutable types, why a mutable default argument is shared, what a generator, a decorator and a context manager do, how arguments are passed and how memory is managed. A strong answer gives the definition, the one consequence that matters, then stops.
+q: How are arguments passed in Python?
+a: By assignment, often called pass by object reference: the parameter is bound to the same object the caller passed. Mutating that object is visible to the caller; rebinding the parameter to a new object is not.
+q: What is the difference between a list and a tuple in Python?
+a: Both are ordered sequences. A list is mutable and over-allocates so appends are cheap; a tuple is immutable, slightly smaller, hashable when its elements are, and signals a fixed record, which is why a tuple can be a dict key and a list cannot.
+q: What is a generator in Python?
+a: A function containing `yield`, which returns an iterator that produces values lazily, one per `next()`, keeping its frame suspended between them. It processes streams of any length in constant memory and composes into pipelines; a generator expression is the inline form.
+q: What is the difference between an iterable and an iterator in Python?
+a: An iterable has `__iter__`, which returns an iterator; an iterator has `__next__`, raises `StopIteration` when exhausted and is its own iterable. A list can be iterated many times, but an iterator is consumed once.
+q: What is the difference between a shallow and a deep copy in Python?
+a: A shallow copy, made by `list(xs)`, `xs[:]` or `copy.copy`, is a new container holding the same element objects, so nested lists are shared. `copy.deepcopy` copies the elements recursively, giving a fully independent structure.
+q: What is the difference between `@staticmethod` and `@classmethod`?
+a: A static method receives no implicit first argument; it is a plain function in the class's namespace. A class method receives the class as `cls`, which makes it the tool for alternative constructors that also work in subclasses.
 ---
 Every Python interview has a theory section, and its questions have barely changed in a decade: what the GIL is, how a dict works, what a generator does, why a mutable default is wrong, the difference between `is` and `==`. This lesson is the drill: thirty questions, each with the answer an interviewer wants to hear — the definition first, the one consequence that matters, then a stop so the follow-up can come — and a pointer to the module that teaches it in depth. Read it twice a week before interviews. A Python answer is expected to name a mechanism: not "lists are slow to search" but "`in` on a list is a linear scan; a set hashes".
 

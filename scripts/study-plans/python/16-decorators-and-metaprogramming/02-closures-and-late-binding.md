@@ -1,6 +1,20 @@
 ---
 title: Closures and late binding — cells, factories and stateful callables
 minutes: 13
+seo-title: Python Closures Explained: Late Binding and Loop Lambdas
+description: A Python closure keeps the variables of the scope it was made in, in cells read at call time. Why loop lambdas see the last value, nonlocal and factories.
+question: What is a closure in Python?
+answer: A closure in Python is a function that remembers variables from the enclosing function it was created in, even after that function has returned. The shared variables live in cells, visible through `__closure__` and `co_freevars`, and the closure reads a cell when it runs, not when it is created. That late binding is why closures made in a loop all see the loop variable's final value.
+q: Why do lambdas created in a loop all return the same value?
+a: Because they share one variable. The loop has a single `i`, held in one cell, and each lambda reads that cell when it is called, after the loop has ended, so every call sees the final value: three lambdas made over `range(3)` all return 2.
+q: How do you fix late binding in a Python closure?
+a: Either call a factory function once per iteration, so each call has its own local and therefore its own cell (`def make(i): return lambda: i`), or copy the value at creation with a default argument, `lambda i=i: i`. The factory is clearer when the closure is more than a line.
+q: When do you need nonlocal in Python?
+a: When an inner function rebinds a variable of the enclosing function, as `count += 1` does. Without `nonlocal` the assignment makes the name local, and the read before it raises `UnboundLocalError`. Reading the variable, or mutating a shared list with `append`, needs no declaration.
+q: What is a function factory in Python?
+a: A function that configures and returns another function, with the configuration held in the closure: `make_validator(0, 100)` returns a `valid(x)` that checks the range. The result is a plain function usable as a `key`, a callback or with `map`; `functools.partial` covers the case of fixed arguments.
+q: Should I use a closure or a class with `__call__`?
+a: A closure suits one piece of state and one behaviour. When the state grows, needs inspecting or resetting, or deserves a readable `repr`, a class with `__call__` keeps the callable interface and adds named attributes and methods.
 ---
 A closure is a function that carries the variables of the scope it was created in, and Module 4 introduced it along with the trap: every closure created in a loop sees the loop variable's *final* value. This lesson goes underneath — what a cell is, how `__closure__` shows it, why late binding is the only consistent rule — and then covers the design patterns that closures make possible: factories that configure behaviour, accumulators with `nonlocal`, callbacks that remember context, and the point at which a closure with state should become a class with `__call__`.
 

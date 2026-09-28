@@ -1,6 +1,18 @@
 ---
 title: Static members — state that belongs to the class
 minutes: 13
+seo-title: C++ Static Members: Static Data, Functions and Singletons
+description: A C++ static member belongs to the class, with one copy shared by every object. Inline static data, static functions, class constants and singletons.
+question: What is a static member in C++?
+answer: A static member in C++ belongs to the class rather than to any object. A static data member has exactly one instance, in static storage, shared by every object and alive for the whole program; declare it `inline static` (C++17) so the class body is its definition. A static member function has no `this`, cannot touch non-static members, and is called as `ClassName::function()`.
+q: Why do I get "undefined reference" for a static member variable?
+a: Before C++17 a static data member declared in the class also had to be defined exactly once in a `.cpp` file, as in `int Session::alive_ = 0;`; without that definition the linker reports an undefined reference. Declaring it `inline static` inside the class makes the declaration the definition and fixes it.
+q: What is a Meyers singleton?
+a: A singleton whose one instance is a function-local static: `static Logger& instance() { static Logger only; return only; }`. It is constructed lazily on the first call, thread-safely since C++11, and avoids the static initialisation order fiasco. The design is still a hidden global; passing the object explicitly is usually better.
+q: Why does my instance counter go negative?
+a: The compiler-generated copy constructor copies the members but does not run your constructor's body, so it never increments the counter, yet the destructor still decrements it for every copy. Either count in a hand-written copy constructor too, or delete copying for a class where copies make no sense.
+q: How do I define a constant inside a C++ class?
+a: Use a `static constexpr` data member, such as `static constexpr int kMaxSide = 1024;`, named from outside as `Grid::kMaxSide`. It is usable in constant expressions and implicitly inline since C++17. A non-literal type such as `std::string` cannot be `constexpr`; declare it `static inline const` instead.
 ---
 Every data member so far has lived inside each object: two `Account`s, two balances. Some state belongs to the *type* instead — how many objects exist, the next id to hand out, a constant every object shares, a lookup table built once. A `static` member has exactly one instance per class, held in static storage (Module 7, lesson 1) and alive for the whole program whether or not any object exists. This lesson covers static data members and the C++17 `inline` that made them painless, the copy trap that makes instance counters drift, static member functions and the named-constructor pattern they enable, constants inside classes, and the singleton — the static-member design that interviews ask about and codebases regret.
 

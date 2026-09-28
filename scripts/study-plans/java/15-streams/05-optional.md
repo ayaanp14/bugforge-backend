@@ -1,6 +1,20 @@
 ---
 title: Optional — a return type, not a null replacement
 minutes: 13
+seo-title: What Is Optional in Java? OrElse vs OrElseGet Explained
+description: Java Optional is a return type for a result that may be absent. Creating one, orElse versus orElseGet, map and flatMap chains, and where it does not belong.
+question: What is Optional in Java?
+answer: `Optional<T>` in Java is a container that holds either one non-null value or nothing, added in Java 8 as the return type for results that may be absent, such as `findFirst` or a `findById` lookup. Callers read it with `orElse`, `orElseGet`, `orElseThrow` or `ifPresent` and chain `map` and `flatMap`, so the empty case cannot be forgotten the way `null` is.
+q: What is the difference between orElse and orElseGet?
+a: `orElse(value)` evaluates its argument every time, even when the `Optional` holds a value, because arguments are evaluated before the call. `orElseGet(supplier)` runs the supplier only when the `Optional` is empty. Use `orElse` for a constant and `orElseGet` for a method call.
+q: Why is `Optional.get()` discouraged?
+a: On an empty `Optional`, `get()` throws `NoSuchElementException` — the very failure the type exists to prevent — and `isPresent()` followed by `get()` is just a null check with more characters. Use `orElseThrow()`, which fails the same way but says so, or `orElse`, `orElseGet` or `ifPresent`.
+q: Should Optional be used as a field or method parameter?
+a: No. As a field it is not `Serializable` and adds an object per value; keep the field nullable and return an `Optional` from the getter. As a parameter it forces every caller to wrap values; overload the method or accept a default instead.
+q: What is the difference between map and flatMap on Optional?
+a: Use `map` when the function returns a plain value; the result is wrapped in an `Optional` for you. Use `flatMap` when the function itself returns an `Optional`, so the result is `Optional<Address>` rather than `Optional<Optional<Address>>`.
+q: What is the difference between `Optional.of` and `Optional.ofNullable`?
+a: `Optional.of(x)` requires a non-null value and throws `NullPointerException` if `x` is null. `Optional.ofNullable(x)` returns an empty `Optional` for null, bridging from nullable APIs. Use `of` when null would be a bug, so it fails early.
 ---
 `Optional<T>` is a box that holds one value or nothing. It arrived with streams because `findFirst`, `max` and the one-argument `reduce` needed an honest way to say "there may be no answer", and it has since become the standard return type for lookups that can fail. It is **not** a general replacement for `null`, and most of the ugliness in Optional-heavy code comes from using it where a plain value, a plain `null` or an exception was right. This lesson covers the API, the idioms, and the six anti-patterns interviewers watch for.
 

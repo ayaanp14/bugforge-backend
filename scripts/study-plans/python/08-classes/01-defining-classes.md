@@ -1,6 +1,20 @@
 ---
 title: Defining classes — __init__, self, attributes and methods
 minutes: 14
+seo-title: Python Classes Explained: Constructors, self and Attributes
+description: A Python class bundles data and behaviour. What self is, how the init method sets attributes, class vs instance attributes, and the shared-list trap.
+question: What is self in Python?
+answer: `self` is the conventional name for the first parameter of an instance method, and it receives the instance the method was called on. Python passes it automatically: `acct.deposit(50)` runs as `Account.deposit(acct, 50)`. Every attribute access inside a method goes through it — `self.balance`, never a bare `balance`, which would be a local variable of the method.
+q: What does `__init__` do in Python?
+a: `__init__` is the initialiser that runs when you call a class: Python creates an empty instance, then calls `__init__` with it as `self` and the call's arguments after it. Its job is to set the instance's attributes, and it returns `None` — the object already exists, made by `__new__`.
+q: What is the difference between class attributes and instance attributes in Python?
+a: An instance attribute is set on one object, usually through `self` in `__init__`, and lives in that object's `__dict__`. A class attribute is assigned in the class body and shared by every instance; reading `obj.name` checks the instance first and falls back to the class.
+q: Why is a list defined in the class body shared by all instances?
+a: A class-body assignment such as `members = []` runs once and creates one list stored on the class, so `self.members.append(x)` mutates that shared list for every instance. Create per-instance state in `__init__` instead, with `self.members = []`.
+q: Why do I get TypeError: takes 1 positional argument but 2 were given?
+a: The method was defined without `self`. Calling `obj.method(x)` passes the instance as the first argument, so a method written as `def deposit(amount)` receives two arguments for one parameter. Add `self` as the first parameter.
+q: What is `__repr__` in Python and why should I define it?
+a: `__repr__` returns an object's developer-facing text, shown in tracebacks, at the interactive prompt and inside containers such as `print([obj])`. The default `<__main__.Account object at 0x…>` says nothing, so return text that looks like the constructor call, such as `Account(owner='ada', balance=120)`.
 ---
 A class bundles data and the functions that operate on it into one kind of object, and Python's version is unusually transparent: an instance is a dictionary of attributes with a pointer to its class, a method is an ordinary function whose first parameter receives the instance, and `self` is nothing more than the name that parameter is given by convention. Seeing that plainly removes most of the mystery. This lesson covers the `class` statement, `__init__`, instance versus class attributes and the trap between them, methods and how `obj.method()` becomes `Class.method(obj)`, and `__repr__` as the first dunder every class should have.
 

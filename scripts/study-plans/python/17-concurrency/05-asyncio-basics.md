@@ -1,6 +1,20 @@
 ---
 title: asyncio basics — coroutines, await, tasks and gather
 minutes: 15
+seo-title: Python asyncio Explained: async, await, Tasks and gather
+description: asyncio runs many waits on one thread: async def makes a coroutine, await yields to the event loop, and gather runs them concurrently with ordered results.
+question: How do async and await work in Python?
+answer: In Python, `async def` defines a coroutine function: calling it returns a coroutine object that does nothing until it is awaited or scheduled. `await` runs an awaitable and, while it waits, hands control back to the asyncio event loop, which runs other coroutines. `asyncio.run(main())` starts the loop, and `asyncio.gather` runs several coroutines concurrently, returning their results in argument order.
+q: What happens if you call a coroutine without `await`?
+a: Nothing runs. Calling an `async def` function only creates a coroutine object; if it is never awaited or scheduled as a task, the body never executes and Python emits a RuntimeWarning that the coroutine was never awaited.
+q: What is the difference between `await` and `asyncio.create_task`?
+a: `await coro` runs the coroutine to completion before the next line, so two awaits in a row are sequential. `create_task(coro)` schedules it to start at the next `await` and returns a `Task` to collect later, so the work overlaps. Keep a reference to every task you create.
+q: Why does `time.sleep` freeze an asyncio program?
+a: The event loop is a single thread, and a coroutine keeps it until it awaits. A blocking call such as `time.sleep`, `requests.get` or a long CPU loop stops every other coroutine; use `await asyncio.sleep`, an async client, or `await asyncio.to_thread(fn)` for blocking code.
+q: Does `asyncio.gather` return results in order?
+a: Yes. `gather(*awaitables)` runs them concurrently and returns a list of results in argument order, whatever order they finished in. That makes it the deterministic tool, like `executor.map` for threads.
+q: How do you add a timeout in asyncio?
+a: Wrap the awaitable in `asyncio.wait_for(aw, timeout=1.0)`, which cancels it and raises `asyncio.TimeoutError` when time runs out, or use `async with asyncio.timeout(1.0):` from Python 3.11. Cancellation is cooperative: `CancelledError` arrives at the coroutine's current `await`.
 ---
 `asyncio` runs many waiting operations on one thread. An `async def` function is a *coroutine*: calling it builds an object that does nothing until the event loop drives it, and inside it `await` hands control back to the loop until the awaited thing is ready. The loop runs whichever coroutine can make progress, so ten downloads overlap on one thread — with no locks needed, because a switch happens only at `await`. This lesson covers the vocabulary (coroutine, task, event loop, awaitable), `asyncio.run`, `await` versus creating tasks, `gather` for ordered fan-out, `sleep` as the model of a wait, and the mistakes — calling without awaiting, blocking the loop — that every beginner makes once.
 

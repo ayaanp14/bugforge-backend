@@ -1,6 +1,20 @@
 ---
 title: fetch, URLs, CORS and talking to servers
 minutes: 13
+seo-title: JavaScript Fetch API: Error Handling, Timeouts and CORS
+description: The fetch API resolves for any HTTP status and rejects only on network failure. Checking res.ok, timeouts with AbortController, URLSearchParams and CORS.
+question: How do you handle fetch errors in JavaScript?
+answer: `fetch` rejects only on a network failure: a DNS error, a refused connection, a CORS block or an abort. An HTTP error such as 404 or 500 resolves normally with `res.ok` set to `false`, so every client must check `res.ok`, read the error body and throw its own error. Parsing with `res.json()` can throw too, when the server returns something other than JSON.
+q: How do you set a timeout on fetch?
+a: `fetch` never times out by itself. Create an `AbortController`, call `setTimeout(() => controller.abort(), 8000)`, pass `controller.signal` in the request options and clear the timer in a `finally` block; an aborted request rejects with an error named `AbortError`. Abort superseded requests too, so a slow old response cannot overwrite a newer one.
+q: What is CORS?
+a: Cross-Origin Resource Sharing (CORS) is the browser-enforced way a server relaxes the same-origin policy: its `Access-Control-Allow-Origin` header says which other origins may read its responses. Requests with a JSON body, a custom header such as `Authorization`, or a method like PUT or DELETE are preceded by an `OPTIONS` preflight that the server must approve.
+q: How do you fix a CORS error?
+a: On the server. A CORS error means the server did not allow your page's origin, or rejected the preflight, and the browser refused to let your code read the response. Configure the API to send `Access-Control-Allow-Origin` for your origin and to answer `OPTIONS` preflights; nothing in the client can override it, and curl and Node never enforce CORS.
+q: Why can't res.json() be called twice?
+a: A response body is a stream that can be read only once, so a second `res.json()` or `res.text()` throws because the body has already been used. Call `res.clone()` before the first read if two consumers need it, or keep the parsed value and pass that around.
+q: Where should you store an auth token in the browser?
+a: The safest place is an `HttpOnly` session cookie with `SameSite`, which JavaScript cannot read, so an XSS attack cannot steal it. A bearer token your code must send is best kept in memory; `localStorage` is readable by any script on the origin, so an XSS can exfiltrate whatever is stored there.
 ---
 `fetch` is how a page (and, since Node 18, a server) talks HTTP: a promise of a `Response`, from which you read a body once. It looks simple and hides four decisions that every client gets wrong at least once — a 404 is **not** a rejection, a body can be read only once, requests to other origins are governed by CORS (which the browser enforces and the server configures), and nothing times out unless you make it. This lesson covers the request and response objects, error handling done right, JSON in and out, `URL`/`URLSearchParams` for building addresses, `AbortController`, CORS as a mental model, credentials and cookies, and the tools beyond `fetch` — SSE and WebSockets.
 

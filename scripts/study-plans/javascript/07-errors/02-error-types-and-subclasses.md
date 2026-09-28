@@ -1,6 +1,20 @@
 ---
 title: The built-in error types, and designing your own
 minutes: 12
+seo-title: JavaScript Error Types: TypeError vs RangeError, Custom Errors
+description: JavaScript's built-in errors: TypeError for the wrong kind of value, RangeError for an impossible one, SyntaxError, ReferenceError, and custom error classes.
+question: What are the error types in JavaScript?
+answer: JavaScript has seven built-in error types, all inheriting from `Error`: `TypeError` for a value of the wrong type, `RangeError` for the right type but an impossible value, `SyntaxError` for text that does not parse, `ReferenceError` for an undeclared name, `URIError`, the unused `EvalError`, and `AggregateError` for several failures at once. Branch on the type or a code, never on the message text.
+q: What is the difference between TypeError and RangeError?
+a: A `TypeError` means a value is the wrong type for an operation, such as reading a property of `undefined` or calling something that is not a function. A `RangeError` means the type is right but the value is impossible, such as `new Array(-1)` or `(1).toFixed(101)`.
+q: What causes a ReferenceError in JavaScript?
+a: Reading an identifier that was never declared, or a `let`, `const` or `class` in its temporal dead zone before its declaration has run. It almost always signals a bug — a typo, a missing import — so leave it to the engine rather than throwing it for bad input.
+q: How should you design custom errors in JavaScript?
+a: Extend `Error` with one base class such as `AppError`, set `this.name = this.constructor.name`, give each failure a stable machine-readable `code`, add structured fields such as `field` or `status`, and pass `cause` when wrapping. Keep the tree shallow — two or three levels.
+q: Why give a custom error a `code` as well as a class?
+a: `instanceof` only works inside one process with one copy of the class. A string code such as `"E_VALIDATION"` survives serialisation, logging, duplicate package versions and a different language on the other end of the wire, and nobody renames it by accident.
+q: Can you catch a stack overflow in JavaScript?
+a: Yes. In V8, `Maximum call stack size exceeded` is an ordinary `RangeError`, so a `try`/`catch` further up the stack can catch it — though there is usually little to do but report it and fix the missing base case.
 ---
 The language ships seven error constructors, and the runtime throws each for a specific class of mistake — `TypeError` for "wrong kind of value", `RangeError` for "right kind, impossible value", `SyntaxError` for text that does not parse, `ReferenceError` for a name that does not exist. Knowing which is which tells you what a stack trace means before you read the message, and it tells you which to throw yourself when input is bad. Above them you build **your own** hierarchy — an `AppError` base with a machine-readable `code`, subclasses per failure kind, `cause` for wrapping — so callers can handle by type instead of parsing messages. This lesson covers both halves and how errors should cross a JSON boundary.
 

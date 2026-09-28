@@ -1,6 +1,20 @@
 ---
 title: The idiom sheet — the one-liners worth knowing by heart, and the traps inside them
 minutes: 11
+seo-title: JavaScript One-Liners and Gotchas for Coding Interviews
+description: JavaScript one-liners interviewers expect for counting, grouping, sorting, strings, objects and numbers, and the trap in each, from sort to parseInt.
+question: Which JavaScript one-liners should you know for coding interviews?
+answer: The JavaScript one-liners that come up in every round: counting with `freq.set(x, (freq.get(x) ?? 0) + 1)`, deduping with `[...new Set(xs)]`, sorting a copy with a comparator, building ranges and grids with `Array.from`, summing with `reduce` and an initial value, reversing a string by code points with `[...s].reverse().join("")`, and transforming objects with `Object.entries` and `Object.fromEntries`. Know the trap behind each one.
+q: Why does `["1", "2", "3"].map(parseInt)` return `[1, NaN, NaN]`?
+a: `map` passes the value and the index, and `parseInt` reads its second argument as the radix. So it runs `parseInt("1", 0)`, `parseInt("2", 1)` and `parseInt("3", 2)`: radix 0 means base 10, radix 1 is invalid, and 3 is not a binary digit. Use `.map(Number)` instead.
+q: Why is 0.1 + 0.2 not equal to 0.3 in JavaScript?
+a: Numbers are binary floating-point doubles, and neither 0.1 nor 0.2 is exactly representable in binary, so their sum is 0.30000000000000004. Compare with a tolerance such as `Math.abs(a - b) < Number.EPSILON`, or work in integers — cents rather than pounds.
+q: Why is the length of an emoji string 2 in JavaScript?
+a: `length` counts UTF-16 code units, and characters outside the Basic Multilingual Plane, such as most emoji, take two units — a surrogate pair. Spread the string, `[...s]`, or iterate it with `for…of` to work with code points; `split("")` splits the pair apart.
+q: Is `JSON.parse(JSON.stringify(obj))` a good deep clone?
+a: Only for plain JSON data. The round trip drops `undefined` and functions, loses `Map` and `Set`, turns a `Date` into a string and `NaN` into `null`, and throws on cycles. `structuredClone(obj)` copies Dates, Maps, Sets and cycles correctly.
+q: Why does `Math.max(...arr)` fail on large arrays?
+a: Spreading passes every element as a separate argument, and engines cap how many arguments one call can take, so a very large array throws a `RangeError`. Find the minimum and maximum with a loop or `reduce` instead.
 ---
 Every language has a set of small moves that experienced practitioners write without thinking, and an interviewer notices when you have them: they free your attention for the problem, and they signal fluency more reliably than any theory answer. This is the JavaScript sheet — collection idioms, string idioms, object idioms, number idioms — each with the trap that catches people who half-remember it. Read it once for recognition, then let the exercises make them yours.
 

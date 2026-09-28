@@ -1,6 +1,20 @@
 ---
 title: Variables, constants and var
 minutes: 12
+seo-title: Types of Variables in Java: final, Constants and var
+description: Java has local variables, parameters, instance fields and static fields. How final works, why static final constants are inlined, and when to use var.
+question: What are the types of variables in Java?
+answer: Java has four kinds of variables: local variables, declared inside a method or block; parameters, set by the caller; instance fields, one copy per object on the heap; and static fields, one copy per class. Fields default to zero, `false` or `null`, while a local variable must be assigned before it is read.
+q: What does the final keyword mean for a variable in Java?
+a: A `final` variable can be assigned exactly once, and a second assignment is a compile error. It freezes the variable, not the object it refers to: a `final List` can still be added to, and a `final int[]` can still have its elements changed.
+q: What is a constant in Java?
+a: A constant is a `static final` field with a compile-time constant value, such as `public static final int MAX_RETRIES = 3;`, named in UPPER_SNAKE_CASE. The compiler inlines its value into every class that uses it, so changing it means recompiling those classes too.
+q: What is var in Java?
+a: `var`, added in Java 10, lets the compiler infer a local variable's type from its initialiser: `var names = new ArrayList<String>();` declares an `ArrayList<String>`. It is still static typing, and it works only for locals with an initialiser, not for fields, parameters or return types.
+q: Why does Java say variable might not have been initialized?
+a: A local variable is read on a path where the compiler cannot prove it was assigned. Locals have no default value and the definite-assignment rule checks every branch, so an `if` without an `else` can leave one unassigned; add the `else` or give the variable an initial value.
+q: Why does `x = x` in a constructor not set the field?
+a: The parameter `x` shadows the field of the same name, so `x = x` assigns the parameter to itself and the field keeps its default. Write `this.x = x;` to reach the field; the compiler accepts the self-assignment without an error.
 ---
 A variable is a named slot with a declared type. Java has four kinds — local variables, parameters, instance fields and static fields — and they differ in where they live, when they get a default, and how long they last. This lesson also covers `final`, the difference between a constant and a merely-final variable, and the `var` keyword that Java 10 added.
 

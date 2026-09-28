@@ -1,6 +1,18 @@
 ---
 title: Class methods and static methods
 minutes: 12
+seo-title: Python classmethod vs staticmethod: When to Use Each
+description: An instance method gets self, a class method gets cls and a static method gets neither. Alternative constructors, class-level counters and namespaced helpers.
+question: What is the difference between classmethod and staticmethod in Python?
+answer: A `@classmethod` receives the class as its first argument, `cls`, so it can build instances or change class-level state; a `@staticmethod` receives neither class nor instance and is a plain function living in the class namespace. Both can be called on the class or on an instance. An ordinary method, by contrast, receives the instance as `self`.
+q: When should I use a classmethod in Python?
+a: Use `@classmethod` for alternative constructors — `from_iso`, `from_dict`, `today` — that parse or compute their arguments and then return `cls(...)`, and for reading or changing state that belongs to the class, such as an instance counter or a shared setting.
+q: Why should a classmethod call `cls()` instead of the class name?
+a: `cls` is whichever class the method was called on, so a subclass that inherits `from_iso` gets an instance of itself back. A hard-coded `Date(...)` would return the base class even when called as `UTCDate.from_iso(...)`.
+q: When should I use a staticmethod in Python?
+a: Use `@staticmethod` for a helper that belongs with the class conceptually but needs neither the instance nor the class, such as a validation rule. A module-level function beside the class is often simpler; if the function needs `cls`, it should be a class method.
+q: Why does `self.count += 1` not update a class counter?
+a: It reads the class attribute, adds one and assigns the result as a new instance attribute on `self`, which shadows the class value and leaves it unchanged. Update it through the class instead: `type(self).count += 1`, or `cls.count += 1` inside a class method.
 ---
 Not every function in a class body needs an instance. A method that builds an instance from some other form — a string, a dictionary, a file — has no `self` to work with yet; a helper that merely belongs with the class conceptually needs neither the instance nor the class. Python marks these with two decorators: `@classmethod` receives the class as its first argument, `@staticmethod` receives nothing. This lesson explains both, the alternative-constructor pattern that is `@classmethod`'s main job, why class methods respect subclassing where hard-coded class names do not, class-level counters and constants, and the case for a module-level function instead.
 

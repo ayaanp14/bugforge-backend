@@ -1,6 +1,20 @@
 ---
 title: concurrent.futures — executors, futures, map and as_completed
 minutes: 13
+seo-title: Python ThreadPoolExecutor and concurrent.futures Explained
+description: The concurrent.futures module runs calls on thread or process pools. Submit vs map, ordered results vs completion order, exceptions, timeouts and pool size.
+question: What is `ThreadPoolExecutor` in Python?
+answer: `ThreadPoolExecutor` is the thread pool in Python's `concurrent.futures` module: `submit(fn, *args)` schedules a call on a free worker and returns a `Future`, and `map(fn, items)` returns the results in input order. Used as a `with` block, it waits for every job before exiting. `ProcessPoolExecutor` has the same interface but runs the calls in separate processes, for CPU-bound work.
+q: What is the difference between `executor.map` and `as_completed`?
+a: `map` yields results in the order the inputs were submitted, whatever finished first, which makes output deterministic. `as_completed` yields futures in the order they finish, which suits progress reporting; sort its results before printing them as an answer.
+q: How do exceptions work in a `ThreadPoolExecutor`?
+a: A job that raises does not crash the pool. The exception is stored in its `Future` and re-raised when you call `future.result()`, or returned by `future.exception()`. With `map`, the exception is raised when iteration reaches that item, and iteration stops there.
+q: Can a `Future` timeout stop a running job?
+a: No. `future.result(timeout=2)` raises `TimeoutError` if the job has not finished, but the job keeps running; `cancel()` only works on a job that has not started. Long jobs must check a stop flag or an `Event` themselves.
+q: How many workers should a Python thread pool have?
+a: For I/O-bound threads, more workers than cores is normal: the default is `min(32, cpu_count + 4)`, and 10 to 50 suits network calls, bounded by what the remote side tolerates. For CPU-bound process pools, the CPU count is the ceiling that helps.
+q: Why does `ProcessPoolExecutor` need a main guard?
+a: Under the spawn start method, the default on Windows and macOS, each worker imports the main module to find the function, so without `if __name__ == '__main__':` every worker would run the pool-creating code again. The function must also be defined at module level, and its arguments must be picklable.
 ---
 `concurrent.futures` is the interface most concurrent Python code should use: an *executor* runs callables on a pool of threads or processes, each call returns a *future* that will hold the result, and the same three methods — `submit`, `map`, `shutdown` — work for both pools. The result of a job is fetched with `future.result()`, which re-raises any exception the job raised, and `map` hands results back in submission order — the property that makes threaded output deterministic. This lesson covers the two executors, `submit` versus `map`, `as_completed` and `wait`, exceptions and timeouts, pool sizing, and when to switch from threads to processes.
 

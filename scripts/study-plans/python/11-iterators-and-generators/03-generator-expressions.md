@@ -1,6 +1,18 @@
 ---
 title: Generator expressions — lazy comprehensions
 minutes: 12
+seo-title: Python Generator Expressions vs List Comprehensions
+description: A Python generator expression is a lazy, one-shot comprehension in parentheses. When it beats a list comprehension and how any, all and next stop early.
+question: What is a generator expression in Python?
+answer: A generator expression is a comprehension written in parentheses, such as `(x * x for x in xs)`, that produces a generator instead of a list. Values are computed only as a consumer asks for them, so memory stays constant however long the input is. It is one-shot, and it cannot be indexed, sliced or passed to `len`.
+q: What is the difference between a generator expression and a list comprehension?
+a: A list comprehension in square brackets builds the whole list at once, holding every element in memory; a generator expression in parentheses produces values lazily, one at a time. Use the generator to feed a single consumer such as `sum`, `any` or `join`, and the list when values are reused, indexed or measured.
+q: Is sum() faster with a generator or a list comprehension?
+a: The generator usually wins and always uses less memory: `sum(x * x for x in xs)` adds values as they are produced, while `sum([x * x for x in xs])` first allocates and grows a full list. For `sorted` and `set`, which must see every value anyway, the two cost about the same time.
+q: How do I get the first item that matches a condition in Python?
+a: Use `next()` with a generator expression and a default: `next((x for x in xs if x % 7 == 0), None)`. The generator stops at the first match, so no further work is done, and the default is returned instead of `StopIteration` when nothing matches.
+q: Is there a tuple comprehension in Python?
+a: No. `(x for x in xs)` in parentheses is a generator expression, not a tuple. To build a tuple, pass a generator expression to the constructor: `tuple(x for x in xs)`. Sets and dicts have their own comprehensions, written with braces.
 ---
 A generator expression is a comprehension in parentheses that produces a generator instead of a list: `(x * x for x in xs)`. It is the same lazy machinery as a generator function, written inline for the one-line cases — the argument to `sum`, `max`, `any`, `all`, `"".join`, `sorted`, `set`, `dict`, or a `for` loop. Choosing it over a list comprehension is a memory decision (O(1) instead of O(n)) and sometimes a time decision (short-circuit consumers stop early). This lesson covers the syntax and its one-shot nature, when it beats a list comprehension and when it does not, the short-circuit consumers, the `next(gen, default)` idiom, and the scoping detail that makes the first `for` clause evaluate eagerly.
 

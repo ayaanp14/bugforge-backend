@@ -1,6 +1,20 @@
 ---
 title: Scope, lifetime and static context
 minutes: 12
+seo-title: Variable Scope in Java: Shadowing and Static Context
+description: Scope is where a Java name can be used; lifetime is how long its value exists. Local and field scope, shadowing, static context and effectively final.
+question: What is the scope of a variable in Java?
+answer: The scope of a variable in Java is the part of the code where its name can be used. A local variable is in scope from its declaration to the end of its enclosing block, a parameter for the whole method, and a field throughout its class. Scope is not lifetime: an object lives on the heap for as long as anything refers to it.
+q: What is the difference between scope and lifetime in Java?
+a: Scope is where a name can be used in the source; lifetime is how long the thing it names exists at run time. A local reference disappears when its block ends, but the object it pointed to lives on if it was returned, stored in a field or added to a collection.
+q: Can a local variable shadow a field in Java?
+a: Yes: inside that scope the bare name means the local or parameter, and `this.name` reaches the field, which is why constructors write `this.x = x`. A local cannot shadow another local of the same method, so redeclaring one in an inner block is a compile error.
+q: Why can't a static method access instance variables in Java?
+a: A static method belongs to the class and runs without an object, so it has no `this` through which to reach instance fields or methods. Use an explicit object, as in `new App().counter++`, or make the member static if it uses no instance state. Instance code may use static members freely.
+q: What does effectively final mean in Java?
+a: A local variable is effectively final if it is never reassigned after it is initialised, even without the `final` keyword. Lambdas and anonymous or local classes may capture only such locals, because they copy the value, and a copy of a variable that later changed would be wrong.
+q: In what order are fields initialised in Java?
+a: For an object, field initialisers and instance initialiser blocks run in the order they appear in the source, then the constructor body. Static field initialisers and static blocks run once, in textual order, when the class is first used; a field read before its initialiser has run holds its default value.
 ---
 *Scope* is where a name can be used; *lifetime* is how long the thing it names exists. They are different — a field is in scope only inside its class but lives as long as its object; a local is in scope for a block and lives for one execution of it. Getting them straight explains the compile errors around shadowing and static context, and, later, why lambdas can only capture effectively-final variables.
 

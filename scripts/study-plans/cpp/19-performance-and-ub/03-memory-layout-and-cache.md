@@ -1,6 +1,20 @@
 ---
 title: Memory layout and the cache — contiguity, padding and traversal order
 minutes: 15
+seo-title: C++ Cache-Friendly Code: Struct Padding and Loop Order
+description: Memory moves in 64-byte cache lines. Why std::vector beats std::list, how C++ struct padding and alignment work, row-major loop order, and AoS vs SoA layouts.
+question: What is struct padding in C++?
+answer: Struct padding is the unused bytes a C++ compiler inserts so that every member sits at an offset that is a multiple of its alignment, and so that the struct's size is a multiple of its largest alignment. `struct { char tag; int value; char flag; }` is 12 bytes on x86-64, half of it padding; ordering the members by descending size makes it 8. `sizeof` includes the padding.
+q: Why is std::vector faster than std::list?
+a: A `std::vector` stores its elements in one contiguous block, so each 64-byte cache line brings in the next several elements and the prefetcher streams the rest. A `std::list` puts each element in its own node, reachable only through the previous node's pointer, so a traversal can pay a cache miss per element. The list's O(1) insert still needs a traversal to find the position.
+q: What is the difference between row-major and column-major traversal?
+a: C++ stores a two-dimensional array row-major: `a[r][c]` sits at index `r * C + c`, so a row is contiguous. Looping with the column index innermost walks memory sequentially; putting the row index innermost jumps a whole row per step and can load a new cache line on every access. Make the innermost loop walk the innermost index.
+q: What is a cache line?
+a: A cache line is the unit in which a processor moves memory between RAM and its caches — 64 bytes on ordinary x86-64 hardware. Reading one `int` brings in the fifteen after it, so sequential access is nearly free, while scattered access pays roughly 100 ns for each miss to main memory.
+q: What is the difference between array of structs and struct of arrays?
+a: An array of structs (AoS) keeps each element's fields together; a struct of arrays (SoA) keeps one array per field. When a hot loop reads one field of many elements, SoA makes those values contiguous so no cache line carries unused fields; when a loop uses every field of each element, AoS is just as fast and simpler to write.
+q: Why is processing a sorted array faster?
+a: Because of branch prediction. A branch such as `if (value < threshold)` over sorted data follows a pattern the processor predicts almost perfectly, while over random data it guesses wrong about half the time, and each misprediction costs roughly fifteen to twenty cycles. A branchless form avoids the cost on unpredictable data.
 ---
 A modern processor does not read memory a byte at a time; it reads **cache lines** of 64 bytes, keeps the lines it used recently in a small fast cache, and stalls for a hundred nanoseconds whenever it needs one that is not there. That one fact decides more C++ performance questions than any algorithm: why `std::vector` beats `std::list` at everything the complexity table says the list should win, why the order of two nested loops changes a matrix sum tenfold, why a struct's members should be sorted by size, and why an array of structs is sometimes the wrong shape. This lesson gives the model — lines, locality, padding, stride — and two counting exercises that make it concrete.
 

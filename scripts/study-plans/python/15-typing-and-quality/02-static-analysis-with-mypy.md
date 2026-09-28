@@ -1,6 +1,20 @@
 ---
 title: Static analysis with mypy — narrowing, strictness and the run-time view of hints
 minutes: 13
+seo-title: What Is mypy? Static Type Checking and Narrowing in Python
+description: mypy checks Python type hints without running the code. How narrowing makes an optional value usable, what cast does, and running mypy in strict mode.
+question: What is mypy?
+answer: mypy is the reference static type checker for Python. It reads a program without running it, infers the type of every expression from literals, annotations and library stubs, and reports mismatches, such as a `str` passed where a `float` is expected or an `int | None` used as an `int`. It checks shape, not state, and barely checks functions that have no annotations.
+q: What is type narrowing in Python?
+a: Narrowing is a type checker refining a union after a test: after `if x is None: return`, a value hinted `int | None` is treated as `int`. `is None`, `isinstance`, `callable`, truthiness, `assert`, early returns and `match` class patterns all narrow; a custom test function narrows only when declared `-> TypeGuard[T]`.
+q: What does typing.cast do?
+a: `cast(int, value)` tells the type checker to treat `value` as an `int` and does nothing at run time: no conversion and no check. It is a promise, and if it is wrong the error appears somewhere else later, so use it sparingly and never to silence an error that is real.
+q: What is `TYPE_CHECKING` used for in Python?
+a: `typing.TYPE_CHECKING` is `False` at run time and treated as `True` by type checkers, so imports under `if TYPE_CHECKING:` are seen only by the checker. It breaks import cycles and avoids heavy imports needed only for hints; combine it with `from __future__ import annotations` so those names are never evaluated at run time.
+q: Are Python type hints enforced at run time?
+a: No. The interpreter stores annotations in `__annotations__` and otherwise ignores them, so a wrong type passes silently until something breaks. Tools read them instead: mypy and pyright check them statically, and libraries such as `dataclasses`, `functools.singledispatch` and `pydantic` read them at run time.
+q: What does mypy --strict do?
+a: `mypy --strict` turns on the checks a mature codebase needs, including requiring every function to be annotated and flagging calls into unannotated code and functions that return `Any`. New projects should start strict; existing ones tighten one flag at a time, with the settings in a `[tool.mypy]` table in `pyproject.toml`.
 ---
 A type checker reads a program without running it and reports every place where a value could have a type the code does not handle: an `int | None` used as an `int`, a function called with the wrong argument, a method that does not exist on the declared type. `mypy` is the reference checker (`pyright` is the other widely used one, built into VS Code's Pylance). This lesson covers what a checker does and does not catch, *narrowing* — the way `isinstance` and `is None` tests make a union usable — `cast`, `reveal_type`, `TYPE_CHECKING`, `# type: ignore`, the strictness levels, and the run-time side: `__annotations__`, `get_type_hints` and the string annotations of `from __future__ import annotations`.
 
@@ -69,7 +83,7 @@ class Node:
     def link(self, other: Node) -> None: ...   # a class referring to itself: fine with the future import
 ```
 
-`from __future__ import annotations` (3.7) stores every annotation as a string instead of evaluating it, which allows forward references and cheap imports; `typing.get_type_hints(obj)` evaluates them back to objects when a library needs the real types at run time (dataclasses do this).
+`from __future__ import annotations` (3.7) stores every annotation as a string instead of evaluating it, which allows forward references and cheap imports; `typing.get_type_hints(obj)` evaluates them back to objects when a library needs the real types at run time (libraries that validate data at run time rely on it).
 
 ## Strictness
 

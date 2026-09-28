@@ -1,6 +1,20 @@
 ---
 title: Conversions, promotion and casting
 minutes: 15
+seo-title: Type Casting in Java: Widening, Narrowing and Promotion
+description: Java widens numeric types automatically and narrows them only with a cast, which truncates or wraps. Promotion, integer division and the cast hidden in +=.
+question: What is type casting in Java?
+answer: Type casting in Java converts a value from one type to another. Widening conversions, such as `int` to `long` or `double`, happen automatically because the magnitude is preserved. Narrowing conversions, such as `double` to `int`, need an explicit cast like `(int) 3.99`, which truncates toward zero to 3; an integer cast to a smaller type keeps only its low-order bits.
+q: Why does `byte c = a + b;` not compile in Java?
+a: Binary numeric promotion turns both `byte` operands into `int` before adding, so `a + b` is an `int`, and assigning an `int` to a `byte` needs a cast: `byte c = (byte) (a + b);`. Arithmetic on `byte`, `short` and `char` always yields an `int`.
+q: Why does `double d = 7 / 2` give 3.0 in Java?
+a: Both operands are `int`, so the division is integer division and yields 3, which is only then widened to 3.0. Convert an operand before dividing, `7 / 2.0` or `(double) 7 / 2`, to get 3.5; `(double) (7 / 2)` is still 3.0.
+q: Does casting to int round or truncate in Java?
+a: It truncates toward zero: `(int) 3.99` is 3 and `(int) -3.99` is -3. To round, use `Math.round`, which returns a `long` for a `double` argument, so `(int) Math.round(x)` is the usual round-to-int.
+q: Why does `x += 2.5` compile when `x = x + 2.5` does not?
+a: A compound assignment includes a hidden cast: `x += y` means `x = (T) (x + y)`, where `T` is the type of `x`. For `int x = 10`, `x += 2.5` silently truncates to 12, while `x = x + 2.5` is refused as a lossy conversion from `double` to `int`.
+q: How do I convert a String to an int in Java?
+a: Call `Integer.parseInt("42")`, or `Long.parseLong` and `Double.parseDouble` for other types. Each throws `NumberFormatException` on text that is not a valid number, including `"4.0"`, `" 42"` with a space and the empty string; `String.valueOf(42)` goes the other way.
 ---
 Java moves values between numeric types constantly — `int` into `long`, `char` into `int`, `double` into `int` — and it has precise rules for when that happens silently, when it needs a cast, and what is lost. Getting these rules right explains half of the "why is my answer wrong" questions in numeric code.
 

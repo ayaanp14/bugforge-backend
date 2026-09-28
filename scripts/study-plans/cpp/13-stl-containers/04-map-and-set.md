@@ -1,6 +1,20 @@
 ---
 title: std::map and std::set — the ordered containers
 minutes: 14
+seo-title: C++ Map and Set: Find, Insert and Lower Bound Explained
+description: std::map and std::set are balanced trees with O(log n) lookup. Why the subscript operator inserts, what insert returns, and lower and upper bound queries.
+question: What is std::map in C++?
+answer: `std::map<Key, T>` is an ordered associative container that stores unique keys, each with a value, as `std::pair<const Key, T>` nodes in a balanced binary tree — a red–black tree in mainstream libraries. Find, insert and erase are O(log n), iteration visits the keys in sorted order, and `lower_bound(k)` finds the first key not less than `k`. `std::set<Key>` is the same structure with keys only.
+q: Does operator[] insert into std::map?
+a: Yes. `m[key]` returns a reference to the value and first inserts a value-initialised element — `0`, an empty string — when the key is absent. That suits counting with `++counts[word]`, but a presence test written with `m[key]` creates the key. Look up with `find`, `count`, `contains` (C++20) or `at`, which throws `std::out_of_range`.
+q: What is the difference between find, count and contains in std::map?
+a: All three look up without inserting and run in O(log n). `find` returns an iterator to the element or `end()`, so it also gives you the value; `count` returns 0 or 1, or the number of matches in a multimap; `contains`, added in C++20, returns a `bool`. Use `find` when you need the value and `contains` when you only test.
+q: What do lower_bound and upper_bound return on a std::set?
+a: `lower_bound(k)` returns an iterator to the first element whose key is not less than `k`, and `upper_bound(k)` to the first whose key is greater than `k`; both return `end()` when there is none. Use the member versions: the free `std::lower_bound` compiles on a set but walks it in O(n), because tree iterators are not random access.
+q: What is the difference between insert, emplace and try_emplace in std::map?
+a: None of them overwrites an existing key, and each returns `{iterator, bool}` saying whether it inserted. `insert` takes a ready pair, `emplace` constructs the pair in place, and `try_emplace` (C++17) constructs nothing at all when the key is already present. To overwrite, use `m[k] = v` or `insert_or_assign`.
+q: What is the difference between std::map and std::multimap?
+a: `std::multimap` and `std::multiset` allow equal keys, kept in insertion order among themselves. `insert` always succeeds, `count(k)` returns the number of matches, `equal_range(k)` gives the run of them, and `erase(k)` removes all of them — remove just one with `erase(find(k))`.
 ---
 `std::map` and `std::set` are balanced binary trees (red–black trees in every mainstream implementation) that keep their elements sorted by key. Everything about them follows from that: lookup, insertion and erasure are O(log n); iteration visits the elements in key order for free; and "the first key not less than k" is a single call, which is the question a hash table cannot answer at all. This lesson covers the interface that matters — `operator[]` and the insertion it hides, `find`/`count`/`contains`, what `insert` returns, `emplace` and `try_emplace`, `lower_bound`/`upper_bound`, in-order iteration with structured bindings — then custom comparators, the `multi` variants, and `extract`/`merge` in brief.
 

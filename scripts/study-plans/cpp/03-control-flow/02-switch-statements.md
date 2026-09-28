@@ -1,6 +1,20 @@
 ---
 title: switch — labels, fallthrough and what to switch on
 minutes: 13
+seo-title: C++ Switch Statement: Case, Break and Fallthrough
+description: A C++ switch jumps to the case matching one integral or enum value and falls through without break. The fallthrough attribute, enums, and switching on strings.
+question: How does a switch statement work in C++?
+answer: A C++ `switch` compares one integral or enumeration value against constant `case` labels and jumps straight to the matching one, or to `default` if none matches. Execution then continues until a `break`; without one it falls through into the next label's statements. The labels must be compile-time constants, so a `double` or a `std::string` cannot be switched on.
+q: What is fallthrough in a C++ switch?
+a: Fallthrough is execution continuing from one `case` into the next because no `break` ended it. Stacked empty labels such as `case 'a': case 'e':` rely on it legitimately; a body running into the next body is usually a forgotten `break`, which `-Wimplicit-fallthrough` in `-Wextra` warns about. Mark an intended one with `[[fallthrough]];`.
+q: Can you use a string in a switch statement in C++?
+a: No. `switch` needs an integral or enumeration value and constant labels, and comparing strings is a run-time operation. Use an `if` chain for a few words, or map the word to an `enum class` once and switch on the enum, which also gets the compiler's missing-case warning.
+q: What does "jump to case label crosses initialization" mean?
+a: All `case` labels share one scope, the switch body, so a variable initialised under one label would still be in scope, uninitialised, at the next. C++ forbids jumping past an initialisation, so the compiler refuses. Wrap that case's statements in their own braces: `case 1: { int d = n * 2; break; }`.
+q: Should a switch on an enum have a default case?
+a: Usually not. With no `default`, `-Wswitch` (part of `-Wall`) warns whenever an enumerator is not handled, so adding a new value later flags every switch that forgot it. Handle every enumerator and put a fallback `return` after the switch, because an enum can still hold a value that matches none.
+q: When should I use switch instead of if-else in C++?
+a: Use `switch` when one integral or enum value is compared against constants, when several values share one body, or when you want `-Wswitch` to catch a missing enumerator. Use `if` for ranges such as `score >= 90`, compound conditions, or values that are a `double`, a string or a pointer.
 ---
 A `switch` compares one integral value against a set of constants and jumps straight to the matching label. That is a different thing from an `if` chain, not a shorthand for one: the compiler may turn it into a jump table or a binary search, the labels must be compile-time constants, and control *falls through* from one label to the next unless you stop it. Every one of those properties is a feature when the switch is written for it and a bug when it is not. This lesson covers the anatomy, fallthrough, variables declared inside cases, and what to do instead of switching on a string.
 
@@ -54,7 +68,7 @@ switch (c) {
 }
 ```
 
-A body that runs and then continues into the next body is where the bugs live — a forgotten `break` after `case 1:` silently adds case 2's work to case 1. GCC and Clang warn (`-Wimplicit-fallthrough`, part of `-Wextra`). When the fallthrough is what you want, say so with the C++17 attribute:
+A body that runs and then continues into the next body is where the bugs live — a forgotten `break` after `case 1:` silently adds case 2's work to case 1. GCC and Clang warn with `-Wimplicit-fallthrough` (part of GCC's `-Wextra`; Clang enables it only by name). When the fallthrough is what you want, say so with the C++17 attribute:
 
 ```cpp
 switch (level) {

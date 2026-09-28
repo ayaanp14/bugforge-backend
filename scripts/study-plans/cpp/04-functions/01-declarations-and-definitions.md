@@ -1,6 +1,20 @@
 ---
 title: Declarations and definitions — the shape of a function
 minutes: 12
+seo-title: C++ Functions: Declaration vs Definition and Prototypes
+description: A C++ function declaration, or prototype, states the signature; the definition adds the body. Declaring before use, void, return values and nodiscard.
+question: What is the difference between a function declaration and a definition in C++?
+answer: A function declaration, also called a prototype, gives the compiler a function's return type, name and parameter types, followed by a semicolon: `long long cube(long long x);`. A definition adds the body that does the work. A function may be declared many times but defined exactly once in the whole program, and a declaration must appear before its first call.
+q: What does "was not declared in this scope" mean in C++?
+a: It is a compiler error: the code calls a function, or uses a name, that the compiler has not yet seen a declaration of. The compiler reads a file top to bottom, so a function defined lower down needs a prototype above the call, or its definition moved up.
+q: What is a function signature in C++?
+a: A function's signature is its name plus the types of its parameters, such as `cube(long long)`. The return type is not part of it, which is why two functions in the same scope cannot differ only in what they return.
+q: What happens if a non-void function has no return statement?
+a: Falling off the end of a non-`void` function is undefined behaviour, not a compile error, and the optimiser may assume it never happens; `-Wall` warns "control reaches end of non-void function". `main` is the one exception: reaching its closing brace returns 0.
+q: What is a forward declaration in C++?
+a: A forward declaration is a prototype written before a function's definition, so that calls above the definition compile. It lets `main` come first in a file, and it is required when two functions call each other, because whichever is defined first needs to know about the other.
+q: What does `[[nodiscard]]` do in C++?
+a: `[[nodiscard]]` on a function declaration makes the compiler warn when a call ignores the return value. Put it on predicates and pure computations whose result is the point; since C++20 `std::vector::empty()` carries it, because `v.empty();` as a statement usually meant `v.clear()`.
 ---
 A C++ program is a set of functions calling each other, and `main` is only the one the runtime calls first. This lesson settles the vocabulary (signature, parameter, argument, prototype), the difference between *declaring* a function and *defining* it, why the order of functions in a file matters and how a forward declaration lifts the constraint, what `void` and the implicit `return 0` of `main` mean, and why small functions are the unit that testing, reuse and reading are built on.
 

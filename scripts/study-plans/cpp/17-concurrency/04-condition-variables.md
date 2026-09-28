@@ -1,6 +1,20 @@
 ---
 title: Condition variables — waiting without spinning
 minutes: 14
+seo-title: C++ Condition Variable: Producer-Consumer, Spurious Wakeups
+description: A C++ condition variable lets a thread sleep until shared state changes. Waiting with a predicate, lost wake-ups, notify one vs all and a bounded queue.
+question: How does std::condition_variable work in C++?
+answer: A `std::condition_variable` lets a thread sleep until another thread changes some shared state. It is always used with a `std::mutex`, the state that mutex guards, and a predicate: the waiter calls `cv.wait(lock, pred)` with a `std::unique_lock`, which releases the mutex while sleeping and re-acquires it before returning. The producer changes the state under the mutex, then calls `notify_one()` or `notify_all()`.
+q: What is a spurious wakeup?
+a: A spurious wakeup is a return from `wait` that no notify caused; operating systems permit them. A waiter that treats waking up as proof the condition holds will, for example, read an empty queue. Pass a predicate — `cv.wait(lock, [&] { return !q.empty(); })` — and it re-checks and goes back to sleep.
+q: What is a lost wakeup?
+a: A lost wakeup happens when the producer notifies before the consumer has started waiting, so nobody receives the signal and the consumer may sleep forever. Keeping the state under the mutex and testing a predicate with the mutex held prevents it: a consumer that arrives late sees the condition already true and never waits.
+q: What is the difference between notify_one and notify_all?
+a: `notify_one` wakes a single waiter and suits a change any one thread can handle, such as one item pushed to a queue. `notify_all` wakes every waiter and is right for shutdown, a start signal for a group, or waiters on different predicates. Waking too many threads is only slow; waking too few can leave threads asleep forever.
+q: Why does condition_variable need a unique_lock?
+a: `wait` must release the mutex while the thread sleeps and re-acquire it when the thread wakes, and only `std::unique_lock` can be unlocked and re-locked that way. Passing a `std::lock_guard` is a compile error; `std::condition_variable_any` accepts other lock types at some cost in speed.
+q: How do you implement a producer-consumer queue in C++?
+a: Guard a `std::queue` with one mutex and two condition variables: producers wait on "not full" while the queue is at capacity, consumers wait on "not empty" while it is empty, and each side notifies the other after changing it. A `close()` that sets a flag and calls `notify_all` lets consumers drain what is left and exit.
 ---
 A mutex answers "who may touch this now?". It does not answer "when will there be something to take?". A consumer that finds the queue empty could unlock, check again, unlock, check again — burning a core to discover nothing has changed — or sleep for a millisecond and add that millisecond to every hand-off. `std::condition_variable` is the third option: the thread sleeps until another thread says the state has changed. This lesson covers the protocol (a mutex, a state, a predicate), spurious and lost wake-ups, `notify_one` against `notify_all`, a bounded producer–consumer queue, and shutting such a queue down so that every thread exits.
 

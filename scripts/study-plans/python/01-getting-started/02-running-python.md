@@ -1,6 +1,20 @@
 ---
 title: Running Python — the REPL, scripts, modules and the judge
 minutes: 12
+seo-title: How to Run a Python Script: REPL, python -m and Main Guard
+description: Run Python as a REPL, a script, a module with python -m or a one-liner with -c. What the main guard does, how exit codes work, and which flags help.
+question: What does `if __name__ == "__main__":` do in Python?
+answer: The main guard, `if __name__ == "__main__":`, runs the code under it only when the file is executed directly as the program, not when it is imported. The interpreter sets a running script's `__name__` to `"__main__"` and an imported module's to its module name, so one file can be a script and also a module whose functions a test imports without reading input or printing.
+q: How do I run a Python script from the command line?
+a: Run `python script.py`, or `python3 script.py` on systems where `python` is still Python 2. The interpreter compiles the whole file, then executes it top to bottom; unlike the REPL, a script prints nothing unless you call `print`. `python -i script.py` runs it and then opens the REPL with its names defined.
+q: What does `python -m` do?
+a: `python -m module` runs a module as a script, found by its import name on the import path rather than by a file path. Standard-library tools are run this way — `python -m venv .venv`, `python -m http.server 8000`, `python -m json.tool` — and `python -m pip` always installs into that same interpreter.
+q: What is the Python REPL?
+a: The REPL (read–eval–print loop) is the interactive prompt you get by running `python` with no arguments. It evaluates each line, echoes an expression's value using `repr`, keeps the last value in `_`, and offers `help()` and `dir()` for quick lookups. Leave it with `exit()` or Ctrl-D.
+q: What exit code does a Python script return?
+a: A script that reaches the end of the file exits with status 0, which means success. `sys.exit(2)` exits with 2, `sys.exit("message")` prints the message to standard error and exits with 1, and an uncaught exception prints a traceback to standard error and exits with 1.
+q: Why does calling a function before its def raise NameError?
+a: A `def` statement binds the function's name only when execution reaches it, so a call placed above the `def` runs while the name does not exist yet. Definitions execute in order; put the calls after them, typically inside a `main()` called at the bottom of the file.
 ---
 There are four ways to hand code to the interpreter, and knowing which one you are in explains a whole class of "it works here but not there" confusions: the REPL, a script file, a module run with `-m`, and a one-liner with `-c`. This lesson walks through each, fixes the `if __name__ == "__main__":` idiom that every serious script uses, explains exit codes, and describes exactly how the study judge runs the programs you write in this track.
 

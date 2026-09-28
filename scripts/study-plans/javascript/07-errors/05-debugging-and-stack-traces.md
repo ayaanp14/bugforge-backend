@@ -1,6 +1,20 @@
 ---
 title: Reading stack traces and decoding the errors you will see most
 minutes: 12
+seo-title: How to Read a JavaScript Stack Trace and Fix Common Errors
+description: A JavaScript stack trace lists frames innermost first: find the first frame in your code and read its line and column. Plus the most common errors decoded.
+question: How do you read a stack trace in JavaScript?
+answer: Read a JavaScript stack trace from the top. The first line is the error's name and message; each line after it is a frame, `at function (file:line:column)`, innermost first, down to the entry point. Skip native and framework frames to the first frame in your own code, open that line, and use the column to see which expression failed.
+q: What does `Cannot read properties of undefined` mean?
+a: The expression to the left of the property access is `undefined` — not the property itself. If `user.profile.name` fails reading `'name'`, then `user.profile` is `undefined`. Common causes are an unawaited promise, a missing key, a misspelled property, or `find` returning `undefined`.
+q: What causes `x is not a function` in JavaScript?
+a: Something you called is not a function. The usual causes are the wrong import shape (default versus named), a property that holds data rather than a method, a method called on the wrong object, or calling the result of a function instead of the function itself.
+q: Why are async stack traces short in JavaScript?
+a: A callback or `.then` handler runs from the event loop after the frames that scheduled it have returned, so those frames are gone. V8 stitches some `await` frames back together as async stack traces, on by default since Node 12, but that does not help plain callbacks.
+q: What is a source map?
+a: A source map is a file that maps positions in minified or bundled code, such as `main.js:1:48213`, back to the original file, line and function. Browser devtools apply source maps automatically; Node needs the `--enable-source-maps` flag, and production error trackers upload them for readable traces.
+q: What does `Maximum call stack size exceeded` mean?
+a: A function recursed without end until the call stack ran out, and V8 threw a `RangeError`. Look for a recursive function with a missing base case, or a getter or setter that calls itself by reading or assigning its own property.
 ---
 A stack trace is the single most useful diagnostic you will ever get for free, and most developers read only its first line. This lesson teaches the whole thing — the frame format, top-down order, which frames are yours, why async traces are short, what source maps do — and then decodes the dozen error messages that account for the majority of JavaScript bugs, each with its one-sentence cause and the fix. It closes with the debugging tools that beat `console.log` and the habit that beats all of them: reproduce, then read.
 
@@ -36,7 +50,7 @@ Node prints frames from `node:internal` for its own machinery; browsers show fra
 | `x is not defined` | an identifier does not exist in scope | a typo, a missing `import`/`require`, a variable declared in another block |
 | `Cannot access 'x' before initialization` | `let`/`const`/`class` used in its temporal dead zone | code order; circular imports |
 | `Assignment to constant variable.` | reassigning a `const` | you meant `let`, or you meant to mutate a property |
-| `Maximum call stack size exceeded` | unbounded recursion (a `RangeError`) | a missing base case; a getter/setter calling itself; `toJSON` returning `this` |
+| `Maximum call stack size exceeded` | unbounded recursion (a `RangeError`) | a missing base case; a getter/setter calling itself (`get x() { return this.x; }`) |
 | `Unexpected token } in JSON at position 42` | `JSON.parse` on text that is not JSON | an HTML error page, a trailing comma, single quotes, an empty response |
 | `Unexpected end of JSON input` | `JSON.parse("")` or truncated text | an empty body |
 | `Cannot set properties of undefined (setting 'x')` | assigning through `undefined` | an uninitialised object, `arr[i]` past the end |

@@ -1,6 +1,18 @@
 ---
 title: Recursion — base cases, the call stack and memoisation
 minutes: 14
+seo-title: Python Recursion: Base Cases, Recursion Limit and Memoization
+description: A recursive Python function needs a base case and a smaller recursive case. The call stack, RecursionError at 1000 frames, and memoisation with functools.cache.
+question: How does recursion work in Python?
+answer: A recursive Python function calls itself on a smaller version of its input and stops at a base case small enough to answer directly. Each call adds a frame to the call stack, and the frames unwind as the calls return. CPython limits the depth to 1 000 frames by default and does not eliminate tail calls, so deep recursion over long inputs is better written as a loop.
+q: What is the maximum recursion depth in Python?
+a: CPython's default limit is 1 000 frames, reported by `sys.getrecursionlimit()`; exceeding it raises `RecursionError: maximum recursion depth exceeded`. `sys.setrecursionlimit` raises the cap, but each frame costs real memory and a deep enough recursion can crash the interpreter, so recursing on halves or using an explicit stack is safer.
+q: How do I fix RecursionError: maximum recursion depth exceeded?
+a: First check for a missing base case, or a recursive case that does not shrink the input on some path. If the recursion is correct but too deep, as when it recurses once per element of a long list, rewrite it as a loop with an explicit stack, recurse on halves for log n depth, or raise the limit with `sys.setrecursionlimit`.
+q: Does Python have tail call elimination?
+a: No. CPython does not eliminate tail calls, so `return f(n - 1)` still adds a stack frame and a long tail-recursive chain hits the recursion limit. A tail-recursive function converts mechanically into a `while` loop, and that loop is the Python way to write it.
+q: How do I cache a recursive function in Python?
+a: Decorate it with `@functools.cache` (Python 3.9; `@lru_cache(maxsize=None)` before that), which stores each result in a dictionary keyed by the arguments. This memoisation turns the exponential naive `fib` into a linear one. The arguments must be hashable and the function pure: same arguments, same result, no side effects.
 ---
 A recursive function calls itself on a smaller version of its input and stops at a case small enough to answer directly. Python supports it like any language, with one limit that matters more here than elsewhere: the interpreter refuses to nest calls more than about 1 000 deep by default, and the stack it uses is real memory. This lesson gives the two-part shape of every recursive function, shows what the call stack does on each call, explains `RecursionError` and `sys.setrecursionlimit`, and turns exponential recursion into linear with memoisation — by hand and with `functools.cache`.
 

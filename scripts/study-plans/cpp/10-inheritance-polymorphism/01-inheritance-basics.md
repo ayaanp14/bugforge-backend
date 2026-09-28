@@ -1,6 +1,20 @@
 ---
 title: Inheritance basics — deriving, protected and the order of construction
 minutes: 14
+seo-title: Inheritance in C++: Protected Access and Constructor Order
+description: A C++ derived class contains its base and inherits its members. Public vs private inheritance, protected access, construction order and name hiding.
+question: How does inheritance work in C++?
+answer: In C++, `class Derived : public Base` makes every `Derived` object contain a complete `Base` subobject and gives it the base's public and protected members, so a `Derived` can be used wherever a `Base&` or `Base*` is expected. Write `public` explicitly: a `class` inherits privately by default. Constructors, the destructor and assignment operators are not inherited; the base constructor is called from the derived initialiser list.
+q: In what order are constructors and destructors called in C++ inheritance?
+a: Construction runs the base class constructor first, then the derived class's members in declaration order, then the derived constructor body. Destruction is the exact reverse: the derived destructor body, then its members in reverse order, then the base destructor. The initialiser list's order changes nothing.
+q: What is the difference between protected and private in C++?
+a: A `private` member is accessible only inside the class and its friends. A `protected` member is also accessible in member functions of derived classes, but only through an object of the derived type. Prefer private data with protected functions; protected data couples every derived class to the base's representation.
+q: Why is a base class function hidden in the derived class?
+a: Declaring a function named `print` in a derived class hides every `print` in the base, not only the one with the same parameters, because name lookup stops at the first class that declares the name. Add `using Base::print;` to bring the base overloads back, or call `Base::print(x)` explicitly.
+q: What is the difference between public and private inheritance in C++?
+a: Public inheritance means is-a: the base's public members stay public and a derived object converts to a `Base&`. Private inheritance, the default for `class`, makes every inherited member private and hides the relationship, so outside code cannot use the derived class as the base; it means "implemented in terms of".
+q: How do I inherit constructors in C++?
+a: Write `using Base::Base;` in the derived class (C++11). It declares a derived constructor for each base constructor, forwarding the arguments, while the derived members take their default member initialisers. A derived class with members that need arguments still writes its own constructor.
 ---
 A class can be built on another: `class Car : public Vehicle` makes every `Car` contain a `Vehicle` and gives it that class's members. Java has the same idea with `extends`; C++ differs in the details that matter — an access specifier on the base itself, a `protected` level between public and private, a construction sequence the compiler fixes and you cannot reorder, constructors that are not inherited unless you ask, and a name-lookup rule that hides base functions wholesale. This lesson settles those mechanics. The next lesson adds `virtual`, which is where inheritance stops being code reuse and becomes polymorphism.
 

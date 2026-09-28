@@ -1,6 +1,18 @@
 ---
 title: While loops — repeat until a condition changes
 minutes: 12
+seo-title: Python While Loops: Break, Continue, Else and Do-While
+description: A Python while loop repeats while its condition is true, testing it before each pass. While True with break, continue, the loop else and reading to a sentinel.
+question: How does a while loop work in Python?
+answer: A Python `while` loop runs its indented body for as long as its condition is true, testing the condition before every iteration, so a loop whose condition starts false runs zero times. Something in the body must change what the condition depends on, or the loop never ends. Use `while` when the number of iterations is not known in advance, and `for` for counts and collections.
+q: Does Python have a do-while loop?
+a: No. Write `while True:` with a `break` where the exit test belongs, typically right after reading: the body runs at least once and the read is written only once. For a read-then-test loop the walrus operator is shorter: `while (line := input()) != "END":`.
+q: What is the difference between break and continue in Python?
+a: `break` leaves the loop immediately and skips its `else` clause; `continue` abandons the current iteration and goes back to the condition test, or to the next element in a `for` loop. `continue` works as the loop's guard clause, keeping the rest of the body flat.
+q: When does the else of a while loop run in Python?
+a: The `else` block runs when the loop ends because its condition became false, and not when the loop is left by `break`. That makes it the natural "searched and did not find" branch, replacing a `found` flag set inside the loop and tested after it.
+q: How do I stop an infinite while loop in Python?
+a: Press Ctrl-C to interrupt the running program. To prevent one, make sure something in the body changes what the condition tests, never use floating-point equality as the exit test, and give a loop that should converge a maximum number of iterations.
 ---
 A `while` loop runs its body as long as its condition is true, and that is the whole statement — Python has no `do … while` and no C-style `for (init; test; step)`. The consequence is that `while` is reserved for the loops where you *do not know in advance how many times* you will go round: reading until a sentinel, iterating a numerical process to convergence, walking a linked structure, retrying until success. Everything with a known count or a known collection is a `for` (next lesson). This lesson covers the statement, `break` and `continue`, the `else` clause that only `while` and `for` have, and the three loop shapes that come up again and again.
 

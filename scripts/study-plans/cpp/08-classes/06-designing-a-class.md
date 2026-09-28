@@ -1,6 +1,20 @@
 ---
 title: Designing a class — headers, sources and a worked design
 minutes: 15
+seo-title: How to Split a C++ Class into Header and Source Files
+description: A C++ class definition goes in the header and member function bodies in the .cpp file. Include guards, the one-definition rule and a worked class design.
+question: What goes in a header file and what goes in a source file in C++?
+answer: In C++, the header (`.h`) holds what every user needs to compile a call: the full class definition, private data members included, one-line inline member functions, declarations of free functions, templates and `constexpr` functions. The source file (`.cpp`) holds the bodies of longer member functions and free functions, and helpers nobody else needs. Every file that uses the class includes the header, which carries an include guard or `#pragma once`.
+q: What is `#pragma once` in C++?
+a: `#pragma once` at the top of a header tells the compiler to include that file only once per translation unit, preventing "redefinition" errors when it is reached through two other headers. It is not in the standard, but every compiler in use supports it; the portable alternative is an `#ifndef`/`#define`/`#endif` include guard.
+q: What is the one-definition rule in C++?
+a: The one-definition rule (ODR) says a function or variable may be declared many times but defined exactly once in the whole program, or the linker reports "multiple definition". A class may be defined in every translation unit that includes its header, provided the definitions are identical, and an `inline` function may be defined once per translation unit.
+q: Why do I get a "multiple definition" linker error from a header?
+a: A function defined in a header without `inline` is compiled into every `.cpp` file that includes it, so the linker finds several definitions. Mark it `inline`, define it inside the class body (which makes it implicitly inline), or move the body to one source file.
+q: Why are private members in the header file?
+a: Because they must be: the compiler needs the complete class definition, private data members included, to know an object's size and layout wherever one is created. Private members are visible in the header but not accessible — privacy in C++ is access control, not secrecy.
+q: Why should I not write `using namespace std;` in a header?
+a: A `using` directive in a header applies to every file that includes it, pulling all of `std` into their global scope, and name clashes then appear far from the cause. Qualify names as `std::string` in headers and keep any `using` directive local to a source file.
 ---
 A class used from more than one file has to be *declared* wherever it is used and *defined* exactly once, and C++ makes that split visible: the class goes in a header, its member functions go in a source file, and the one-definition rule polices the boundary. This lesson covers that mechanism — what belongs in `date.h` versus `date.cpp`, include guards, why `inline` matters — and then walks one design from the first question to the last: choose the representation, state the invariant, write the constructor that enforces it, keep the interface small.
 

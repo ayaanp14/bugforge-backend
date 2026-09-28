@@ -1,6 +1,20 @@
 ---
 title: Attribute access — __getattr__, __getattribute__, __setattr__, __dict__ and __slots__
 minutes: 13
+seo-title: Python getattr vs getattribute: Attribute Access Hooks
+description: Python calls the getattr hook only when lookup fails, getattribute on every read and setattr on every write. The recursion trap, reflection and slots.
+question: What is the difference between `__getattr__` and `__getattribute__` in Python?
+answer: `__getattr__` runs only when normal attribute lookup fails, so it is a safe fallback for delegation and for exposing dict keys as attributes. `__getattribute__` runs on every attribute read, including reads inside its own body, so it must delegate to `super().__getattribute__` to avoid infinite recursion. It is slower and rarely needed; `__getattr__`, a property or a descriptor almost always does the job.
+q: Why does `__setattr__` cause infinite recursion?
+a: `__setattr__` runs on every assignment, so `self.x = value` inside it calls it again, forever. Write through `object.__setattr__(self, name, value)` or `super().__setattr__` instead, including in `__init__`, whose assignments also go through the hook.
+q: What should `__getattr__` raise for unknown names?
+a: `AttributeError`. `hasattr` and `getattr(obj, name, default)` work by catching `AttributeError`, so a `__getattr__` that returns `None` or raises `KeyError` for names it does not handle breaks both.
+q: Why does `__getattr__` not intercept `len()` or indexing?
+a: The interpreter looks special methods such as `__len__` and `__getitem__` up on the type, not the instance, so `len(obj)`, `obj[i]` and operators bypass the instance attribute hooks. A proxy that must support them has to define those methods itself.
+q: How do I get or set an attribute by name in Python?
+a: Use `getattr(obj, name)`, `getattr(obj, name, default)`, `setattr(obj, name, value)`, `delattr` and `hasattr`, which take the name as a string. They drive configuration-driven code, such as `setattr(self, key, value)` for each key of a dict or `getattr(self, 'handle_' + command)` for dispatch by name.
+q: What does `__slots__` do to attribute access?
+a: `__slots__` replaces the per-instance `__dict__` with fixed slots, so instances are smaller, access is faster and a misspelt attribute raises `AttributeError` instead of creating a new one. `vars(obj)` then raises, and a subclass without its own `__slots__` gets a `__dict__` back.
 ---
 Every dot in Python is a call: `obj.x` runs `type(obj).__getattribute__(obj, "x")`, and `obj.x = v` runs `__setattr__`. Three hooks let a class intercept those calls — `__getattr__` for names that were not found, `__getattribute__` for every read, `__setattr__`/`__delattr__` for every write — and with `__dict__`, `getattr`/`setattr`/`hasattr` and `__slots__` they are the toolkit for proxies, dynamic attributes, immutable objects and attribute-based APIs. This lesson gives each hook its exact trigger, the recursion trap in the write hooks, the reflection functions, and the judgement of when interception is worth its opacity.
 

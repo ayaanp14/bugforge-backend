@@ -1,6 +1,20 @@
 ---
 title: constexpr, consteval and compile-time tables
 minutes: 15
+seo-title: C++ constexpr vs const, consteval and constinit Explained
+description: In C++, const means read-only and constexpr a compile-time constant. How constexpr functions run, what consteval and constinit add, and compile-time tables.
+question: What is the difference between const and constexpr in C++?
+answer: In C++, `const` means read-only after initialisation, and the value may come from run time; `constexpr` means a constant expression whose value is known at compile time, usable as an array bound, a template argument or a `case` label. Every `constexpr` variable is also `const`, but a `const` variable counts as a constant expression only when its initialiser was one — `const int k = n;` read from input is not.
+q: What is a constexpr function in C++?
+a: A `constexpr` function is one the compiler is allowed to evaluate at compile time. It runs at compile time when the context demands a constant — a `constexpr` variable, an array bound, a template argument, a `static_assert` — and as an ordinary function when called with run-time arguments. Since C++20 its body may use loops, `std::vector` and `std::string`, provided no allocation escapes.
+q: What is the difference between consteval and constexpr?
+a: A `constexpr` function may run at compile time or at run time; a `consteval` function (C++20) is an immediate function that must be evaluated at compile time, so calling it with a run-time value is a compile error. A `consteval` function can take non-constant arguments only from inside another `consteval` function.
+q: What does constinit do in C++20?
+a: `constinit` requires a static-storage variable to be initialised at compile time but, unlike `constexpr`, leaves it mutable afterwards. Its initialisation can never depend on another global's run-time initialisation, which rules out the static initialisation order problem.
+q: What is if constexpr used for?
+a: `if constexpr (cond)` evaluates a constant condition at compile time and discards the branch not taken, so inside a template the discarded branch is never instantiated and may contain code that would not compile for that type. It replaced most uses of tag dispatch and `enable_if`.
+q: Can a constexpr function use std::vector?
+a: Yes, since C++20, as long as the memory is freed before the evaluation ends: a `std::vector` may live inside a `constexpr` function but cannot be a `constexpr` global, because its allocation would outlive the evaluation. Return compile-time data in a `std::array` instead.
 ---
 A C++ compiler is also an interpreter. Mark a function `constexpr` and the compiler may run it while compiling, turning a computation into a constant baked into the executable; mark it `consteval` and it *must*. Since C++20 the interpreted subset is most of the language — loops, locals, `std::array`, even `std::vector` and `std::string` inside the function — so lookup tables and unit conversions can be computed before the program starts and *checked* before it starts too, with `static_assert`. This lesson settles what `const` and `constexpr` each promise, what a `constexpr` function may contain, how to force compile-time evaluation, how to build a table in `std::array`, and the one rule about `consteval` that stops most first attempts from compiling.
 

@@ -1,6 +1,20 @@
 ---
 title: Sorting and searching — comparators, stability and binary search
 minutes: 15
+seo-title: C++ Sort: Custom Comparators, Stable Sort, Binary Search
+description: How std::sort works, writing a comparator that is a strict weak ordering, when stable sort is needed, partial sort and nth element, and lower and upper bound.
+question: How do you sort with a custom comparator in C++?
+answer: Pass a callable as the third argument to `std::sort`: it takes two elements by `const&` and returns `true` when the first must come strictly before the second. `std::sort(v.begin(), v.end(), [](const Player& a, const Player& b) { return a.score > b.score; })` sorts by descending score. The comparator must be a strict weak ordering — use `<` or `>`, never `<=` — and a tie-break on a second key makes the order total.
+q: What is the difference between std::sort and std::stable_sort?
+a: `std::sort` is an introsort that makes no promise about the relative order of equal elements. `std::stable_sort` is a merge sort that keeps equal elements in their input order, at the cost of a temporary buffer — O(n log n) with it, O(n log² n) without. Use it, or a tie-break key, whenever equal keys occur and their order matters.
+q: Why is a comparator written with <= undefined behaviour?
+a: `std::sort` requires a strict weak ordering, in which `comp(a, a)` is false. With `<=` an element compares before itself, and introsort, which trusts the comparator to stop its inner scans, can run past the end of the array and crash. The result is undefined behaviour, not merely a wrong order.
+q: What is the difference between lower_bound and upper_bound?
+a: On a sorted range, `std::lower_bound` returns the first element not less than the value — where it would be inserted — and `std::upper_bound` the first element greater than it. Their difference is the number of copies of the value. Both take O(log n) comparisons and need the range sorted by the same comparator.
+q: How do you find the median in linear time in C++?
+a: Use `std::nth_element(v.begin(), v.begin() + n / 2, v.end())`: it places at position `n / 2` the element a full sort would put there and partitions the rest around it, in O(n) on average. Then read `v[n / 2]`. For an even `n`, the lower middle is the largest element of the left part.
+q: How do you remove duplicates from a vector in C++?
+a: Sort it, then erase the tail that `std::unique` returns: `std::sort(v.begin(), v.end()); v.erase(std::unique(v.begin(), v.end()), v.end());`. `std::unique` removes only consecutive duplicates, which is why the sort comes first, and it does not shrink the vector until `erase` cuts the tail.
 ---
 `std::sort` is the algorithm everyone knows and the one most often called wrong: with a comparator that is not a strict weak ordering, with equal keys whose order the program then silently depends on, or followed by a binary search that uses a different rule from the sort. This lesson settles the comparator contract, sorting records by a key with a tie-break, when `std::stable_sort` is required, the cheaper partial orders `std::partial_sort` and `std::nth_element`, and the four binary-search functions that a sorted range unlocks.
 

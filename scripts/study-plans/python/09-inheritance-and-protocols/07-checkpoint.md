@@ -1,6 +1,14 @@
 ---
 title: Checkpoint — Inheritance, protocols and duck typing
 minutes: 25
+seo-title: Python Inheritance Quiz: MRO, ABCs, Protocols and Duck Typing
+description: Test your Python OOP with 12 questions and three programs on super, duck typing, abstract base classes, the MRO and mixins, Protocol and composition.
+q: Why does `describe()` in a base class run the subclass's `speak()`?
+a: Because `self` is the subclass instance, and attribute lookup for `self.speak` starts at the instance's own class. Every Python method is effectively virtual, so the override runs with nothing declared.
+q: For `class D(B, C)` where both inherit from `A`, what does `super()` in `B` call?
+a: `C`'s method. `D.__mro__` is `(D, B, C, A, object)`, and `super()` calls the next class in the MRO of the instance's type, so from `B` the next class is its sibling `C`, not its parent `A`.
+q: Which two methods make a class a full `collections.abc.Sequence`?
+a: `__getitem__` and `__len__`. Inherit from `Sequence` and implement those two — handling a `slice` in `__getitem__` if you want slicing — and it supplies `__contains__`, `__iter__`, `__reversed__`, `index` and `count`.
 ---
 This checkpoint covers the whole module: subclassing with `super()` and attribute lookup, duck typing with EAFP and `hasattr`, abstract base classes and `collections.abc`, multiple inheritance with the MRO, cooperative `super()` and mixins, `typing.Protocol` with `runtime_checkable`, and composition over inheritance with Liskov, delegation and `UserDict`.
 

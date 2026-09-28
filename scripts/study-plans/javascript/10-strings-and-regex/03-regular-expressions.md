@@ -1,6 +1,18 @@
 ---
 title: Regular expressions — syntax, flags, groups and the five methods
 minutes: 14
+seo-title: JavaScript Regex: Flags, Groups, Greedy vs Lazy and matchAll
+description: JavaScript regular expressions from syntax to methods: the seven flags, classes, greedy vs lazy quantifiers, named groups, matchAll and the lastIndex trap.
+question: What is a regular expression in JavaScript?
+answer: A regular expression (regex) in JavaScript is a small pattern language for matching text, written as a literal between slashes or built at run time with `new RegExp(pattern, flags)`. Flags such as `g`, `i` and `u` change how it matches. You use it through `test` for a yes-or-no answer, `matchAll` to extract every match with its groups, and `replace` to transform text.
+q: What is the difference between greedy and lazy quantifiers?
+a: A greedy quantifier such as `*` or `+` takes as much text as possible and gives some back when the rest of the pattern fails; a lazy one (`*?`, `+?`) takes as little as possible and extends. Greedy `<.+>` on `<a><b>` matches the whole string and lazy `<.+?>` only `<a>`; a negated class like `<[^>]+>` is usually what was meant.
+q: Why does regex test() return true then false in JavaScript?
+a: The regex has the `g` or `y` flag, which makes `test` and `exec` stateful: each match stores where it ended in `lastIndex`, and the next call starts searching from there. Reusing one global regex across strings therefore alternates results. Drop `g` for yes-or-no tests, create the regex inside the function, or reset `lastIndex` to 0.
+q: How do you get all regex matches with their groups in JavaScript?
+a: Use `matchAll` with a global regex: `for (const m of text.matchAll(re))` yields every match with its numbered groups, `m.groups` for named ones and `m.index`. `match` with the `g` flag returns only the full matched strings, without groups, and `matchAll` throws if the regex lacks `g`.
+q: What are named capture groups in JavaScript regex?
+a: A named group, written `(?<name>...)`, captures text like a numbered group but gives it a name: read it as `m.groups.name`, insert it in a replacement string with `$<name>`, and match the same text again later in the pattern with a named backreference. Names keep code readable when groups are added or reordered.
 ---
 A regular expression is a small program for matching text, and JavaScript's engine is a good one: full backtracking, lookaround, named groups, Unicode. The syntax is dense but finite; this lesson covers all of it that matters — literals and the constructor, the seven flags, character classes and quantifiers, greedy versus lazy, anchors and boundaries, capturing/non-capturing/named groups, alternation and backreferences — then the five methods you call (`test`, `exec`, `match`, `matchAll`, `replace`) and the one stateful trap (`lastIndex` with the `g` flag) that has cost everyone an afternoon.
 

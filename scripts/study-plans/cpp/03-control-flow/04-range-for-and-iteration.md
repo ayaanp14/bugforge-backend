@@ -1,6 +1,20 @@
 ---
 title: Range-based for — iterating without indices
 minutes: 13
+seo-title: C++ Range-Based For Loop: auto, auto& and const auto&
+description: The C++ range-based for loop visits each element without an index. When to use auto, auto& or const auto&, and iterating a map with structured bindings.
+question: What is a range-based for loop in C++?
+answer: A range-based `for` loop, added in C++11, visits each element of a container in turn: `for (const auto& x : v)`. It works on anything with `begin()` and `end()` — standard containers, `std::string`, built-in arrays and initialiser lists — and removes the index, the bound and the subscript. The declaration decides whether each element is copied or referenced.
+q: Should I use `auto` or `const auto&` in a range-based for loop?
+a: Use `const auto&` to read, `auto&` to modify elements in place, and plain `auto` only for small types such as `int` or `char`. `for (auto s : strings) s += "x";` alters copies and leaves the container unchanged with no warning, and `auto` over a vector of strings copies every string.
+q: How do you iterate over a map in C++?
+a: Use a range-based `for` with C++17 structured bindings: `for (const auto& [key, value] : m)`. A `std::map` visits its entries in key order, and each entry is a `std::pair<const K, V>`, so through `auto&` you can modify the value but never the key.
+q: Can you modify a vector while iterating over it with a range-based for?
+a: You can change its elements through `auto&`, but not its size. `push_back` or `erase` inside the loop invalidates the iterators the loop holds — `push_back` may reallocate the storage — which is undefined behaviour. Build the result in a second container, or erase with explicit iterators and `it = v.erase(it)`.
+q: How do you get the index in a range-based for loop?
+a: The loop hands you elements, not positions. When the body needs the position, a neighbour or two ranges in lockstep, use an index loop; when only the position is missing, keep a counter beside the loop and increment it each pass. `std::views::enumerate` arrives only in C++23.
+q: What does a range-based for loop expand to?
+a: Roughly: bind the range to `auto&& __range`, take `std::begin` and `std::end` once, then run `for (; __begin != __end; ++__begin)`, initialising the declared variable from `*__begin` each pass. That is why the end is computed only once, and why changing the container's size breaks the loop.
 ---
 Most loops over a container do not need an index; they need each element in turn. The range-based `for`, added in C++11, says exactly that — `for (element : container)` — and removes the three places an index loop can be wrong: the start, the bound and the subscript. What it does not remove is the question of *how* each element is handed to you: by copy, by reference or by const reference, spelled `auto`, `auto&` and `const auto&`. Choosing wrongly is silent — a loop that modifies copies compiles and does nothing. This lesson covers what the loop expands to, the three declarations and when each is right, structured bindings over a `std::map`, when an index loop is still the answer, and why a container must not change while it is being iterated.
 

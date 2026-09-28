@@ -1,6 +1,20 @@
 ---
 title: Composition over inheritance — Liskov, delegation and wrapping built-ins
 minutes: 14
+seo-title: Composition Over Inheritance in Python: Liskov and UserDict
+description: Inheritance means is-a and composition has-a. The Liskov substitution principle, delegation with getattr, why subclassing dict skips overrides, and UserDict.
+question: What is composition over inheritance in Python?
+answer: Composition over inheritance means building a class by holding other objects and forwarding to them (has-a) rather than subclassing them (is-a). A `Stack` that keeps a list in an attribute exposes only push, pop and length, whereas `class Stack(list)` leaks every list method. Inherit only when the subclass can stand in for its base everywhere and the shared code is substantial.
+q: What is the Liskov substitution principle?
+a: The Liskov substitution principle says a subclass must be usable wherever its base class is, without callers noticing. The classic violation is a mutable `Square(Rectangle)`: setting a square's width must also change its height, so code that expects `set_width` to leave the height alone breaks.
+q: Why does dict.update not call my overridden `__setitem__`?
+a: The built-in `dict` is written in C, and its `update`, constructor and `setdefault` call the C implementation directly, skipping Python overrides. Subclass `collections.UserDict` instead, which routes every operation through `__setitem__`, or build on `collections.abc.MutableMapping`.
+q: What is the difference between UserDict and dict in Python?
+a: `collections.UserDict` is a Python class that keeps a real dict in `.data` and sends every operation through its basic methods, so overriding `__setitem__` affects `update` and the constructor too. A `dict` subclass is faster, but its C methods ignore such overrides.
+q: How do I delegate methods to another object in Python?
+a: Write forwarding methods for the operations you want to expose, or define `__getattr__` to pass every other attribute lookup to the wrapped object, as in `return getattr(self._items, name)`. `__getattr__` does not forward dunders, so methods such as `__len__` must be written by hand.
+q: When should I use inheritance instead of composition?
+a: Inherit when the subclass truly is a base in every context the base is used, shares substantial implementation with it, and you control both classes. Otherwise compose — especially for has-a relationships, for hiding most of a wrapped object's interface, or when behaviour should vary at run time.
 ---
 Inheritance says *is-a*; composition says *has-a*. A `Car` has an `Engine`; it is not one. Most of the trouble people have with class hierarchies comes from using inheritance for *has-a* relationships because it is the quickest way to reuse methods — and the cost arrives later, when the subclass cannot honour the base class's contract. This lesson states the Liskov substitution principle with the standard broken example, shows delegation as the composition mechanism (explicit forwarding and `__getattr__`), explains why subclassing `dict` and `list` misbehaves and what `UserDict`/`UserList` fix, and closes with the strategy pattern as composition of behaviour.
 

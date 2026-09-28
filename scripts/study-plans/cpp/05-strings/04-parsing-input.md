@@ -1,6 +1,20 @@
 ---
 title: Parsing input
 minutes: 14
+seo-title: How to Split a String in C++: Delimiters and Parsing Input
+description: Split a C++ string on whitespace with istringstream, or on a delimiter with getline or a find loop. Trimming fields, key=value pairs and validating input.
+question: How do you split a string in C++?
+answer: C++ has no `split` function, so there are two idioms. To split on whitespace, wrap the line in a `std::istringstream` and read with `>>`, which skips runs of spaces and tabs. To split on a delimiter such as a comma, call `std::getline(stream, field, ',')` in a loop, or use a `find` and `substr` loop, which also keeps a trailing empty field.
+q: How do you split a string by a delimiter in C++?
+a: Wrap the text in a `std::istringstream` and loop `while (std::getline(iss, field, ','))`; each call reads up to the next comma, and an empty field between two commas comes out as an empty string. A delimiter at the very end yields no final empty field, so use a `find` and `substr` loop when that field matters.
+q: What is istringstream used for in C++?
+a: `std::istringstream`, from `<sstream>`, is an input stream over a string, so `>>` and `std::getline` work on a line exactly as they do on `std::cin`. It splits a line into whitespace-separated tokens and validates numbers: `if (iss >> count)` is false when the token is not an integer.
+q: How do you parse key=value pairs in C++?
+a: Find the first `=` with `line.find('=')`, report the line as invalid if that returns `npos`, and otherwise take `substr(0, eq)` as the key and `substr(eq + 1)` as the value, trimming both. Cutting on the first `=` lets the value contain one; store the pairs in a `std::map<std::string, std::string>`.
+q: How do you read N lines after a number in C++?
+a: Read the count with `std::cin >> n`, call `std::cin.ignore()` to drop the newline that `>>` left behind, then call `std::getline(std::cin, line)` n times. Trust the count rather than the end of input, because another section may follow the records.
+q: How do you handle Windows line endings when reading lines in C++?
+a: `std::getline` stops at the newline but keeps the carriage return before it, so lines from a file saved on Windows end in one extra character. After each read, if the line is not empty and `line.back()` is the carriage return, call `line.pop_back()`; the check costs one comparison.
 ---
 Every program in this track starts the same way: text arrives on standard input and must become numbers, names and records before any logic runs. The judge never sends malformed input by accident, but it does send the edges — a blank line, spaces around a token, an empty field, a count of zero — and a parser that assumes the happy path fails there. This lesson settles the reading patterns: tokens versus lines, splitting on whitespace with `std::istringstream`, splitting on a delimiter with `std::getline` or a `find` loop, trimming, "N then N lines", `key=value` pairs, and validating what you read.
 

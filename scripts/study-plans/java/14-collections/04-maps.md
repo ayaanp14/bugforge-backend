@@ -1,6 +1,20 @@
 ---
 title: Maps — HashMap internals, TreeMap, LinkedHashMap and the modern API
 minutes: 16
+seo-title: How HashMap Works Internally in Java: Buckets and Resizing
+description: Java HashMap hashes each key to a bucket, checks equals, treeifies long chains and resizes at 0.75 load. Plus TreeMap, LinkedHashMap, merge and computeIfAbsent.
+question: How does HashMap work internally in Java?
+answer: A Java `HashMap` stores entries in an array of buckets, 16 by default. To `put` a key it spreads the key's `hashCode`, picks a bucket from it, then walks that bucket comparing hashes and `equals`, replacing or appending a node. When the size passes 0.75 of the capacity the table doubles, and since Java 8 a bucket chain longer than eight becomes a red-black tree.
+q: What happens when two keys have the same hash in a HashMap?
+a: They collide in one bucket, and the map keeps both nodes in that bucket's chain, telling them apart with `equals`. Lookups walk the chain, so many collisions degrade towards O(n); since Java 8 a chain longer than eight is converted to a red-black tree, bounding it at O(log n) for `Comparable` keys.
+q: What is the difference between HashMap, LinkedHashMap and TreeMap?
+a: `HashMap` is O(1) on average with no iteration order. `LinkedHashMap` adds insertion order, or access order with a flag, which together with `removeEldestEntry` makes an LRU cache. `TreeMap` keeps keys sorted in a red-black tree at O(log n), with navigation such as `floorKey` and `headMap`.
+q: Can a HashMap have a null key?
+a: Yes, one. `HashMap` allows a single null key and any number of null values, which makes `get` returning null ambiguous — use `containsKey` to tell an absent key from a null value. `TreeMap` and `ConcurrentHashMap` do not allow null keys.
+q: What does computeIfAbsent do in Java?
+a: `computeIfAbsent(key, fn)` returns the value for `key`, first storing `fn(key)` if the key is absent or mapped to null. It is the multimap idiom: `map.computeIfAbsent(k, x -> new ArrayList<>()).add(v)` creates each list on first use. For counting, `merge(word, 1, Integer::sum)` does the same job.
+q: Why is the HashMap load factor 0.75?
+a: It is a compromise between time and space: a load factor of 1.0 would mean more collisions, and 0.5 would waste more of the table. When the number of entries exceeds capacity times 0.75, the table doubles and every entry is redistributed.
 ---
 `Map<K, V>` is the most used data structure after `List`, and `HashMap` is the one every interviewer asks about: how it stores entries, what happens on collision, why it resizes, why `hashCode` matters. This lesson covers that machinery, the three main implementations, and the Java 8 methods — `getOrDefault`, `merge`, `computeIfAbsent`, `putIfAbsent` — that replaced most of the null-checking boilerplate maps used to require.
 

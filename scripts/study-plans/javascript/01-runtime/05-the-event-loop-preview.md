@@ -1,6 +1,20 @@
 ---
 title: The event loop — a first look
 minutes: 14
+seo-title: JavaScript Event Loop: setTimeout vs Promise Output Order
+description: JavaScript runs one task at a time on one call stack. Why promise callbacks run before setTimeout(0), how microtasks drain, and how to predict log order.
+question: What is the event loop in JavaScript?
+answer: The event loop is how JavaScript runs asynchronous code on a single thread. The engine runs one task — the script, a timer callback, an I/O callback — to completion on its one call stack, then drains the whole microtask queue (promise callbacks and `queueMicrotask`), then takes the oldest task from the task queue. So synchronous code prints first, promise callbacks second and `setTimeout(fn, 0)` last.
+q: Why does Promise.then run before setTimeout 0?
+a: A `.then` callback is a microtask and a `setTimeout` callback is a task. After the current script finishes, the event loop drains every microtask before it takes the next task, so promise callbacks always run before a timer, even one with a 0 ms delay.
+q: What is the difference between a microtask and a macrotask?
+a: Tasks, often called macrotasks, come from timers, I/O and events, and the event loop runs one per turn. Microtasks come from promise reactions and `queueMicrotask`; they run after the current task and before the next, and the queue is drained completely, including microtasks queued by microtasks.
+q: Does setTimeout with 0 delay run immediately?
+a: No. `setTimeout(fn, 0)` schedules `fn` as a task for a later turn, so it runs only after the current script and every pending microtask have finished. The delay is a minimum: if the stack stays busy for 100 ms, a 10 ms timer fires after about 100 ms.
+q: Is JavaScript single-threaded?
+a: Yes. Your code runs on one thread with one call stack, so two callbacks never interleave and no locks are needed. Concurrency comes from host APIs doing the waiting and the event loop running their callbacks between tasks; Worker threads give real parallelism.
+q: What happens if you block the event loop?
+a: Everything waits. While a long synchronous loop keeps the call stack busy, no timer callback, I/O callback or UI event can run, so a page freezes and a server stops responding. CPU-heavy work belongs in a Worker thread or in chunks spread across turns.
 ---
 JavaScript runs your code on one thread, and yet a Node server handles thousands of connections and a browser stays responsive while a download runs. The trick is the **event loop**: the engine runs one piece of code to completion, then picks up the next piece from a queue — a timer that fired, a file that finished reading, a click. Nothing runs *at the same time* as your code; things run *after* it. This lesson is the first look — enough to predict the order of `console.log`s in code with `setTimeout` and promises, which is one of the most common interview questions in the language. Module 8 goes deep.
 

@@ -1,6 +1,20 @@
 ---
 title: Constructors — building a valid object
 minutes: 15
+seo-title: C++ Constructors and the Member Initialiser List Explained
+description: How C++ constructors build a valid object: member initialiser lists, initialisation order, default and delegating constructors, and the explicit keyword.
+question: What is a member initialiser list in C++?
+answer: A member initialiser list is the part of a C++ constructor between the colon and the body, as in `Account(std::string o) : owner_(std::move(o)), balance_(0) {}`. It constructs each member directly with its value. Assigning in the body instead default-constructs the member first and then assigns, and is impossible for `const` members, references and types without a default constructor. Members are initialised in declaration order, whatever order the list uses.
+q: In what order are class members initialised in C++?
+a: In the order they are declared in the class, never the order written in the member-initialiser list. If a member's initialiser reads a member declared after it, it reads an uninitialised value. `-Wreorder`, part of `-Wall`, warns when the list's order differs from the declaration order.
+q: What does the explicit keyword do in C++?
+a: `explicit` stops a constructor from being used for implicit conversions. Without it, a one-argument constructor lets `Money m = 250;` or `charge(250)` silently turn an `int` into a `Money`; with it, only direct forms such as `Money m{250};` compile. Mark single-argument constructors `explicit` unless the conversion is the point.
+q: Why did my default constructor disappear?
+a: The compiler generates a default constructor only when a class declares no constructors at all. As soon as you add any constructor, `Account a;` stops compiling. Write `Account() = default;` to get the compiler-generated one back, or `= delete` to forbid it on purpose.
+q: What is a delegating constructor in C++?
+a: A constructor whose member-initialiser list names another constructor of the same class, as in `Money() : Money(0) {}`. The target runs first, then the delegating constructor's body. The delegation must be the only entry in the list, and it keeps validation in one place.
+q: How does a constructor report invalid arguments in C++?
+a: By throwing an exception, such as `std::invalid_argument`, since a constructor has no return value. A constructor that throws produces no object at all, so validating there guarantees that every object which exists is valid and member functions need not check again.
 ---
 A constructor turns raw storage into an object that keeps its promises. It runs exactly once per object, before any other member function can, and it is the only code that ever sees the members before they hold meaningful values. This lesson covers the constructors you write and the ones the compiler writes for you, the member-initialiser list and why it beats assignment in the body, the rule that members are initialised in declaration order whatever the list says, delegating constructors, `explicit`, and `= default` / `= delete`.
 

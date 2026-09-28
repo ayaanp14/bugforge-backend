@@ -1,6 +1,20 @@
 ---
 title: Loop patterns — search, accumulate, sentinel, EOF and two pointers
 minutes: 14
+seo-title: C++ Loop Patterns: Two Pointers, Sentinels and Invariants
+description: The loops behind most C++ programs: linear search, sum and max, sentinel and end-of-input reading, loop invariants and the two-pointer technique.
+question: What is the two-pointer technique?
+answer: The two-pointer technique walks two indices through sorted data, typically one from each end toward the other, instead of testing every pair with nested loops. To find two elements that sum to a target, move the low index up when the sum is too small and the high index down when it is too large; that takes at most n - 1 steps instead of about n²/2 pair checks.
+q: What is a loop invariant?
+a: A loop invariant is a statement that is true at the top of every iteration, such as "best is the largest of `a[0..i)`". Establish it before the loop, show the body keeps it, and the exit condition turns it into the result — which is how you check a loop is correct without running it.
+q: How do you read input until a sentinel value in C++?
+a: Put the read and the test in one condition: `while (std::cin >> x && x != 0)`. The read runs first; if it fails, `&&` stops before testing a stale `x`, and if it succeeds the sentinel check decides. The sentinel itself is consumed and never counted.
+q: How do you find the maximum of an array in C++?
+a: Start from the first element, not from 0 — `int hi = 0;` reports 0 as the maximum of `{-3, -7}` — then compare each element and keep the larger. When reading values as you go, start from `std::numeric_limits<int>::min()`. To keep the position, compare `a[i] > a[best]`; the strict `>` keeps the first of several equal maxima.
+q: How do you print values separated by spaces without a trailing space?
+a: Print the separator before every value except the first — `if (i > 0) std::cout << ' ';` — since n values need n - 1 separators. For large outputs, build the line in a `std::string`, adding a space whenever it is not empty, and print it once.
+q: Why should a sum of ints use a long long in C++?
+a: A sum of many `int` values can pass the `int` limit of about 2.1 billion, and signed overflow is undefined behaviour rather than merely a wrong answer. A `long long` accumulator holds a thousand values near two billion with room to spare.
 ---
 Almost every loop you will write in this track is one of about six loops with the names changed. Recognising which one you are writing is what lets you write it right the first time: a search knows what it prints when nothing matches, an accumulation knows what it starts from, a reading loop knows what ends it. This lesson catalogues them, states the invariant each keeps, and adds two that separate a working solution from a fast one: the two-pointer sweep over sorted data and building output once.
 
@@ -70,7 +84,7 @@ while (!std::cin.eof()) {     // wrong
 }
 ```
 
-`eof()` becomes true only after a read has *tried* to go past the end, so after the last number the loop runs once more: the read fails and `use(x)` sees what the failed read left — since C++11, `0`. The "n then n values" format sidesteps the question with a counted loop; "until EOF" is for formats that do not say how much is coming.
+`eof()` becomes true only after a read has *tried* to go past the end, so after the last number the loop runs once more: the read fails and `use(x)` sees `x` unchanged — at end of input nothing is converted, so the last value is processed twice. (Storing `0` is what a *conversion* failure does since C++11, such as reading `abc` into an `int`.) The "n then n values" format sidesteps the question with a counted loop; "until EOF" is for formats that do not say how much is coming.
 
 ## State the invariant
 

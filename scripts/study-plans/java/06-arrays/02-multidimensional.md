@@ -1,6 +1,20 @@
 ---
 title: Two-dimensional and jagged arrays
 minutes: 12
+seo-title: 2D Arrays in Java: Jagged Arrays and Arrays of Arrays
+description: A Java 2D array is an array of arrays, so rows can differ in length. Creating grids and jagged arrays, iterating, deep copying and printing with deepToString.
+question: How do 2D arrays work in Java?
+answer: A 2D array in Java, such as `int[][]`, is an array of arrays: an outer array whose elements are references to separate row arrays. `new int[3][4]` creates three rows of four zeros; `grid.length` is the number of rows and `grid[r].length` the length of row `r`. Because rows are independent objects, they can differ in length, which makes a jagged array.
+q: What is a jagged array in Java?
+a: A jagged array is a 2D array whose rows have different lengths. `new int[4][]` creates only the outer array with every row `null`, and each row is then assigned on its own, for example `triangle[r] = new int[r + 1]` for Pascal's triangle.
+q: How do you print a 2D array in Java?
+a: Use `Arrays.deepToString(grid)`. `Arrays.toString(grid)` prints only each row's type code and hash, such as `[I@1b6d3586`, because the outer array's elements are arrays; `deepToString` descends into every row and prints its values.
+q: How do you deep copy a 2D array in Java?
+a: Clone each row: create a new outer array and assign `copy[r] = grid[r].clone()` in a loop. `grid.clone()`, `Arrays.copyOf` and `System.arraycopy` on the outer array copy only the row references, so the copy and the original would share their rows.
+q: How many objects does `new int[3][4]` create in Java?
+a: Four: the outer `int[3]` array and three `int[4]` row arrays. Each row is a separate object on the heap, which is why rows can be shared, replaced or left `null`.
+q: How do you get the number of rows and columns of a 2D array in Java?
+a: `grid.length` is the number of rows and `grid[r].length` is the length of row `r`. `grid[0].length` is the column count only when the array is rectangular; in a jagged array each row must be measured separately.
 ---
 Java has no true multi-dimensional arrays. `int[][]` is an *array of arrays*: an outer array whose elements are references to inner arrays, each of which can be any length — or null. That model explains everything about how grids are created, iterated, copied and sized, and it is what makes "jagged" arrays possible.
 

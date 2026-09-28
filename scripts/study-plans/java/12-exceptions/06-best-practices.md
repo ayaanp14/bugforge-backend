@@ -1,6 +1,20 @@
 ---
 title: Exception handling that survives production
 minutes: 13
+seo-title: Java Exception Handling Best Practices for Production Code
+description: Java exception handling best practices: never swallow, catch the narrowest type, log once, keep the cause, fail fast, and no exceptions for control flow.
+question: What are the best practices for exception handling in Java?
+answer: The core Java exception handling best practices are: never swallow an exception with an empty `catch`; catch the narrowest type you can actually handle; log an exception once, where it is handled, and otherwise wrap it with its cause or let it propagate; validate arguments and fail fast; keep `try` blocks small; and never use exceptions for ordinary control flow.
+q: Why is an empty catch block bad?
+a: It turns a failure into silent data loss: the program carries on in a broken state and nothing records what went wrong. If ignoring an exception is genuinely intended, catch the narrowest type and say so in a comment; otherwise handle it or let it propagate.
+q: Why should you not catch Exception in Java?
+a: `catch (Exception e)` also catches `NullPointerException`, `ClassCastException` and every other bug, so programming errors are treated as recoverable failures and get retried or ignored. Catch the specific type you can handle, and let bugs crash loudly so they are fixed.
+q: Should you log and rethrow an exception?
+a: No. Every layer that logs and rethrows prints another copy of the same trace, turning one failure into pages of logs. Log once, where the exception is actually handled; everywhere else, wrap it with the cause or let it pass.
+q: Why not use exceptions for control flow in Java?
+a: Throwing is expensive, since constructing an exception walks the stack, and exceptions in normal flow hide the real exceptions of the same type. Test conditions you can test, such as `i < array.length`; catching is fine only when the API offers nothing else, as with `Integer.parseInt`.
+q: Are assertions enabled by default in Java?
+a: No. `assert` statements run only when the JVM is started with `-ea`, so they must never validate user input or method arguments — use an `if` and `IllegalArgumentException` for that. Assertions check internal invariants during tests and development.
 ---
 The syntax of exceptions is a day's work; the judgement takes longer. Most exception bugs in real systems are not syntax — they are swallowed failures, exceptions used as `if` statements, `catch (Exception e)` hiding a `NullPointerException`, and logs that say "error" with no context. This lesson is the set of practices that experienced Java teams enforce in review, each with the failure it prevents.
 

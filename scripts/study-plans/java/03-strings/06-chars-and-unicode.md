@@ -1,6 +1,20 @@
 ---
 title: Characters, Unicode and encodings
 minutes: 14
+seo-title: Java char and Unicode: Code Points, UTF-16 and Charsets
+description: A Java char is a 16-bit UTF-16 code unit, so an emoji takes two. Code points versus code units, the Character class, and why to always name the charset.
+question: What is a char in Java?
+answer: A `char` in Java is an unsigned 16-bit number holding one UTF-16 code unit, which is not always a whole character. Characters up to U+FFFF fit in one `char`, but emoji and other characters beyond it need two, a surrogate pair, so a string holding one emoji has a `length()` of 2. Use `codePoints()` or `codePointAt` to work with whole Unicode characters.
+q: What is the difference between a char and a code point in Java?
+a: A `char` is a 16-bit UTF-16 code unit; a code point is the number Unicode assigns to a character, from U+0000 to U+10FFFF. Code points above U+FFFF take two `char` values, so `length()` counts units while `codePointCount` counts characters.
+q: Why does an emoji have a length of 2 in Java?
+a: `String.length()` counts UTF-16 code units, and an emoji such as U+1F600 lies outside the Basic Multilingual Plane, so it is stored as a surrogate pair of two `char` values. `s.codePointCount(0, s.length())` returns 1 for it.
+q: Why should I always specify a charset in Java?
+a: `getBytes()` and `new String(bytes)` without a charset use the platform default, which before Java 18 was Windows-1252 on Windows and UTF-8 on Linux, so text decoded on another machine can turn into mojibake. Pass `StandardCharsets.UTF_8` explicitly.
+q: How do I get the byte length of a string in Java?
+a: Encode it and count: `s.getBytes(StandardCharsets.UTF_8).length`. `length()` counts UTF-16 code units, not bytes, and UTF-8 uses one to four bytes per character, so `"é"` takes two. Database column limits and HTTP `Content-Length` are in bytes.
+q: How do I check if a char is a digit or a letter in Java?
+a: Use `Character.isDigit(c)` and `Character.isLetter(c)`, which are Unicode-aware and also accept digits and letters from other scripts. For a strict ASCII check compare ranges, `c >= '0' && c <= '9'`, and turn an ASCII digit into its value with `c - '0'`.
 ---
 A Java `char` is not a character. It is a 16-bit UTF-16 *code unit*, and a `String` is a sequence of those units. For English text the distinction never shows; for an emoji, a Chinese name, or a file read with the wrong encoding, it decides whether your code is correct. This lesson gives you the model: code points versus code units, the `Character` utilities, and how bytes become strings.
 

@@ -1,6 +1,20 @@
 ---
 title: Validation, guard clauses and assertions — failing early with a useful message
 minutes: 12
+seo-title: JavaScript Input Validation: Guard Clauses and Assertions
+description: Validate JavaScript input at the edge with guard clauses that name the bad value, check numbers with Number.isFinite, and assert invariants with node:assert.
+question: How do you validate input in JavaScript?
+answer: Validate input in JavaScript where it enters the program — request bodies, CLI arguments, files, environment variables — once, converting it into clean, well-typed values the rest of the code can trust. Use guard clauses at the top of a function that throw a `TypeError` or `RangeError` naming the parameter, the rule and the actual value, and check numbers with `Number.isFinite`, since `typeof` admits `NaN`.
+q: How do you check if a value is a real number in JavaScript?
+a: Use `Number.isFinite(x)`, or `Number.isInteger(x)` for whole numbers. `typeof x === "number"` also accepts `NaN` and `Infinity`, and `Number()` is lenient — `Number("")` is `0` — so convert the text first, then check the result.
+q: What is the difference between validation and an assertion?
+a: Validation checks external data — a request body, a file, user input — and its failure is an expected outcome such as a 400 response. An assertion checks an internal invariant the code believes is already true; if it fails, the bug is in the program, and a loud `AssertionError` should stop the operation.
+q: What is a guard clause?
+a: A guard clause is a check at the top of a function that throws or returns as soon as an input is invalid, ordered from wrong type to wrong value to domain rule. The happy path then runs last, unindented, instead of nested inside `if` blocks.
+q: Should a form validator stop at the first error?
+a: No. A form or config file should collect every problem into an array and report them together, or the user fixes one error and discovers the next on every round trip. A function called from code, by contrast, fails on the first problem with one throw.
+q: What does fail fast mean?
+a: Fail fast means detecting a bad state as early and as close to its cause as possible, and stopping instead of continuing with corrupt data. It does not mean crashing the server: the boundary still decides the outcome, such as a 400 response, but nothing proceeds past a check that has failed.
 ---
 Most exceptions worth having are thrown on purpose, at the edge, the moment a bad value arrives — because the alternative is a `TypeError` twelve calls later in code that had nothing to do with the mistake. This lesson is the craft of that early failure: validating inputs where they enter, guard clauses that keep the happy path flat, `TypeError`/`RangeError` with messages that name the value, collecting *all* problems for a form, invariants asserted with `node:assert`, and the specific traps around `JSON.parse`, numbers and property lookups that make JavaScript validation different from other languages.
 

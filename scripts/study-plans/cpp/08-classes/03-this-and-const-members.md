@@ -1,6 +1,18 @@
 ---
 title: this, const member functions and chaining
 minutes: 14
+seo-title: C++ this Pointer and Const Member Functions Explained
+description: Inside a C++ member function, this points at the object it was called on. Const member functions, const overloads, mutable and method chaining.
+question: What is a const member function in C++?
+answer: A const member function, declared with `const` after its parameter list as in `int size() const;`, promises not to modify the object it is called on: inside it `this` is a pointer to const and every data member is read-only. Only const member functions can be called on a `const` object or through a `const T&`, so every function that does not modify the object should be marked `const`.
+q: What is the this pointer in C++?
+a: `this` is a keyword that, inside a non-static member function, is a pointer to the object the function was called on. Every unqualified member name is short for `this->member`; write `this` explicitly to return `*this`, pass the object on, or name a member hidden by a parameter. Static member functions have no `this`.
+q: What does the mutable keyword do in C++?
+a: `mutable` lets a data member be modified inside a `const` member function. It is for state that is not part of the object's logical value, such as a cached result, an access counter or a mutex. A `mutable` member whose changes callers can observe makes the `const` promise a lie.
+q: How does method chaining work in C++?
+a: Each mutator returns a reference to its own object, with return type `T&` and `return *this;`, so the next call runs on the same object: `q.from("users").where("age > 18").limit(10)`. Returning `T` by value instead would make each call modify a temporary copy, leaving the original unchanged.
+q: Why can't I call a non-const member function on a const object?
+a: The call would pass a `const` object as a non-const `this`, which could modify it, so the compiler refuses with "passing 'const Account' as 'this' argument discards qualifiers". Mark the member function `const` if it does not modify the object, or provide a const overload.
 ---
 Every member function runs on behalf of one object, and two questions follow from that: how does the function name that object, and what may it do to it? The first answer is `this`. The second is `const`, which turns a member function's promise not to modify its object into something the compiler checks — and, through const objects, `const T&` parameters and const/non-const overloads, into a rule that shapes every interface you will write. This lesson settles both, adds `mutable` for the members the promise should not cover, shows why mutators that return `*this` can be chained, and ends with the question of when an operation should not be a member at all.
 

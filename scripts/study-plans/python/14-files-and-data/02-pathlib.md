@@ -1,6 +1,20 @@
 ---
 title: pathlib — paths as objects
 minutes: 13
+seo-title: Python pathlib vs os.path: Working with Paths as Objects
+description: Python's pathlib models a path as an object: join with a slash, split name, stem and suffix, list with glob and rglob, and read, write and create files.
+question: What is pathlib in Python?
+answer: `pathlib` is the standard-library module that represents file-system paths as `Path` objects instead of strings. `Path("data") / "q1.csv"` joins parts on every platform; `.name`, `.stem`, `.suffix` and `.parent` take a path apart; `.exists()`, `.read_text()` and `.glob()` work with the disk. It replaces the string functions of `os.path` in new code.
+q: How do I join paths in Python?
+a: With pathlib, use the `/` operator: `Path("data") / "reports" / "q1.csv"` inserts the right separator on every platform and accepts strings or paths on the right. The older equivalent is `os.path.join("data", "reports", "q1.csv")`. Never build paths by concatenating strings with hard-coded slashes.
+q: How do I get a file extension in Python?
+a: `Path(name).suffix` returns the last extension, such as `.gz`, and `.stem` the name without it. Both split at the last dot, so for `report.tar.gz` the suffix is `.gz` and the stem `report.tar`; `.suffixes` returns every extension, `['.tar', '.gz']`, and `with_suffix(".zip")` replaces the last one.
+q: How do I list all files in a directory recursively in Python?
+a: `Path("data").rglob("*.csv")` yields every matching path at every depth, `glob("*.csv")` searches one directory and `iterdir()` lists direct children. All three yield in arbitrary file-system order, so wrap them in `sorted()` when order matters. `os.walk` is the lower-level alternative that lets you prune directories.
+q: How do I create a directory if it does not exist in Python?
+a: Call `Path("out/logs").mkdir(parents=True, exist_ok=True)`, which creates any missing parents, like `mkdir -p`, and does nothing if the directory already exists. Without those arguments it raises `FileNotFoundError` for a missing parent and `FileExistsError` for an existing directory.
+q: What is the difference between pathlib and os.path?
+a: `os.path` works on strings with functions such as `join`, `basename`, `dirname` and `splitext`; `pathlib` offers the same operations on an immutable `Path` object (`/`, `.name`, `.parent`, `.stem`, `.suffix`) and adds I/O such as `read_text`. New code uses `pathlib`, and most functions that take a filename accept either.
 ---
 A path is not a string. It has a directory part, a name, a stem and a suffix; it can be joined, made absolute, tested for existence, listed, created and removed; and the separator differs between operating systems. `pathlib.Path` (3.4) models all of that as an object with methods, replacing the string juggling of `os.path` with `/` for joining and readable names for everything else. This lesson covers constructing and joining paths, the parts, the queries, reading and writing through a path, listing and searching a tree, creating and deleting, and the pure-path classes that manipulate paths without touching the file system.
 

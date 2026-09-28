@@ -1,6 +1,18 @@
 ---
 title: Lambdas and higher-order functions
 minutes: 13
+seo-title: Python Lambda Functions: Sort Keys, Map, Filter and Reduce
+description: A Python lambda is an inline one-expression function. How key functions sort by any criterion, map and filter versus comprehensions, partial and reduce.
+question: What is a lambda function in Python?
+answer: A lambda in Python is an anonymous function written as `lambda params: expression`, whose body is a single expression that is returned automatically. It cannot contain statements, assignments or loops, though a conditional expression is fine. Lambdas belong inline as arguments, such as `sorted(pairs, key=lambda p: p[1])`; a function worth naming should be a `def`, which gives tracebacks a real name.
+q: How do I sort a list with a lambda in Python?
+a: Pass it as the `key`: `sorted(pairs, key=lambda p: p[1])` sorts by each element's second item. Return a tuple to sort by several criteria in order, and negate a numeric part to reverse just that one: `key=lambda p: (-p[1], p[0])` sorts by the second value descending, then the first ascending.
+q: Should I use map and filter or a list comprehension in Python?
+a: Use `map` or `filter` when the function already exists, as in `map(int, tokens)` or `filter(None, xs)`. The moment you would write a lambda, a comprehension is clearer: `[x * 2 for x in xs]` and `[x for x in xs if x > 0]`. `map` and `filter` return lazy iterators, so wrap them in `list()` to see the values.
+q: What does functools.partial do in Python?
+a: `partial(f, *args, **kwargs)` returns a new function with some of `f`'s arguments fixed, as in `square = partial(power, exponent=2)` or `partial(int, base=2)`. It replaces a lambda that only wraps a call, keeps its function and arguments inspectable, and binds values immediately, which fixes late binding in loops.
+q: What does reduce do in Python?
+a: `functools.reduce(f, iterable, initial)` folds a sequence into one value by applying `f(accumulator, element)` from left to right: `reduce(operator.mul, [1, 2, 3, 4], 1)` is 24. It is not a built-in on purpose — `sum`, `min`, `max`, `math.prod` and `join` cover the common folds, and a loop is often clearer.
 ---
 A higher-order function takes a function as an argument or returns one, and Python is full of them: `sorted(key=…)`, `max(key=…)`, `map`, `filter`, `functools.reduce`, `functools.partial`, and every callback and decorator you will meet. A `lambda` is the anonymous one-expression function you hand to them when a `def` would be ceremony. This lesson covers the `lambda` syntax and its single limitation, the key-function idiom that sorts and selects by any criterion, `map`/`filter` and when a comprehension beats them, `partial` for fixing arguments, `reduce` for folds, and the `operator` module that names every operator as a function.
 

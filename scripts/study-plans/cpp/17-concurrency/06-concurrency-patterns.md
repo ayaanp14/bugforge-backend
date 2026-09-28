@@ -1,6 +1,18 @@
 ---
 title: Concurrency patterns — pools, reductions and the deterministic-output rule
 minutes: 15
+seo-title: C++ Thread Pool Implementation and Concurrency Patterns
+description: How to write a thread pool in C++ with a queue, a condition variable and packaged tasks, plus split-and-reduce, message passing and rules that prevent deadlock.
+question: How do you implement a thread pool in C++?
+answer: A C++ thread pool starts a fixed number of worker threads once. Each worker loops, waiting on a `std::condition_variable` for the next task in a mutex-guarded queue and running it outside the lock. `submit` wraps the caller's function in a `std::packaged_task` and returns its `std::future`; the destructor sets a stop flag, calls `notify_all`, lets the workers drain the queue, and joins them.
+q: Should I use std::thread or std::async?
+a: Use `std::thread` or `std::jthread` for long-lived workers with a lifecycle, such as a pool, a consumer loop or a server: you own them, join them and arrange how they communicate. Use `std::async` for a fixed set of independent computations whose results, or exceptions, you want back through futures.
+q: How do you split work across threads in C++?
+a: Give each thread a contiguous chunk, `[i * n / t, (i + 1) * n / t)`, so it walks memory in order, and let it accumulate into a local. After joining, combine the locals on the main thread in index order. When element costs vary, hand out indices dynamically with `next.fetch_add(1)` instead.
+q: Why is a parallel floating-point sum different on each run?
+a: Floating-point addition is not associative, so adding the same partial sums in a different order can change the last bits of the result. Keep each thread's partial and add them on the main thread in a fixed order, never through a shared `std::atomic<double>`.
+q: What does "share memory by communicating" mean?
+a: It means passing data between threads as messages through a queue instead of sharing a mutable structure: a producer moves an item into the queue and a consumer moves it out, so no two threads ever hold the same object at once. In C++ that is `std::move` plus a thread-safe queue.
 ---
 The earlier lessons gave the primitives; this one gives the shapes they are combined into, because production concurrency is a handful of patterns applied carefully rather than clever synchronisation. A thread pool turns "a thread per task" into "a queue and a fixed number of workers". Work splitting and reduction is the shape of every parallel loop. Immutable data and message passing remove most locks by removing the sharing. A short list of rules avoids deadlock in practice. The lesson ends with the interview answer to "threads or async?" and the checklist that keeps a judged concurrent program deterministic.
 

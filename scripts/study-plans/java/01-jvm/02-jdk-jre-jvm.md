@@ -1,6 +1,20 @@
 ---
 title: JDK, JRE and JVM — the three layers
 minutes: 14
+seo-title: What Is the JVM? JDK vs JRE vs JVM Explained
+description: The JVM runs Java bytecode, the JRE adds the class library, and the JDK adds javac and the developer tools. How the three nest, and the JVM's memory areas.
+question: What is the JVM?
+answer: The Java Virtual Machine (JVM) is the program that runs Java bytecode. It loads `.class` files, verifies them, interprets the bytecode and JIT-compiles hot methods to native code, while its garbage collector reclaims objects nothing uses. The JVM is a specification with several implementations — HotSpot, inside OpenJDK, is the common one — and it also runs Kotlin, Scala and other JVM languages.
+q: What is the difference between JDK, JRE and JVM?
+a: They are nested layers. The JVM executes bytecode; the JRE is the JVM plus the Java class library a program needs to run; the JDK is the JRE plus developer tools such as `javac`, `jar`, `javadoc` and `jshell`.
+q: Do I need the JDK or the JRE?
+a: Install the JDK: you need it to compile code, and since Java 11 there is no separate JRE download. When an application needs a small runtime of its own, `jlink` builds one containing only the modules it uses.
+q: What are the memory areas of the JVM?
+a: The method area (Metaspace in HotSpot) holds class metadata; the heap holds every object and array; each thread has its own JVM stack of method frames and a PC register; native method stacks serve code called through JNI.
+q: Where are local variables and objects stored in Java?
+a: Local variables, including references, live in the running thread's stack frame; objects always live on the heap. A variable of a class type holds a reference to an object, never the object itself.
+q: Is the JVM platform independent?
+a: No — bytecode is platform independent, the JVM is not. Each operating system and CPU has its own JVM build, and each of them runs the same `.class` files, which is what makes Java programs portable.
 ---
 Three acronyms come up in every Java interview, and candidates routinely get them tangled. They are nested layers, each containing the one below it. Get the picture right once and you will never confuse them again.
 

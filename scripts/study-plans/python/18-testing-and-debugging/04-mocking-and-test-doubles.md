@@ -1,6 +1,20 @@
 ---
 title: Mocking and test doubles — Mock, patch, side_effect and where to patch
 minutes: 15
+seo-title: Python Mocking: unittest.mock, patch and Where to Patch
+description: Python unittest.mock replaces dependencies in tests: Mock records calls, patch swaps a name where it is looked up, and autospec keeps mocks honest.
+question: How do you mock a function in Python?
+answer: To mock a function in Python, use `unittest.mock.patch` with the dotted path of the name the code under test looks up: `with patch('billing.fetch_rate', return_value=0.2):` replaces it with a `MagicMock` for the block and restores it afterwards. The mock records every call, so the test can check the outcome and, when the interaction matters, `assert_called_once_with`.
+q: Why does my patch have no effect?
+a: It targets the wrong name. Patch where the name is looked up, not where it is defined: if `billing.py` does `from rates import fetch_rate`, patch `billing.fetch_rate`; if it does `import rates` and calls `rates.fetch_rate()`, patch `rates.fetch_rate`.
+q: What is `side_effect` in Python mock?
+a: It scripts what a mock does when called. An exception is raised; a list returns its items one per call, raising any exception instance in it; a function is called with the arguments. `side_effect=[TimeoutError(), TimeoutError(), 42]` tests a retry loop.
+q: What is the difference between Mock and MagicMock?
+a: Both accept any attribute access or call and record it. `MagicMock` also implements dunder methods such as `__len__`, `__iter__` and `__enter__`, so it can stand in for a container or a context manager; `patch` uses a `MagicMock` by default.
+q: What is the difference between a mock, a stub and a fake?
+a: A stub returns canned answers, a fake is a working lightweight implementation such as an in-memory dict for a database, a spy records calls, and a mock records calls and can assert on them. Prefer a fake when the collaborator has state and the outcome is what matters.
+q: What do `spec` and `autospec` do?
+a: A bare `Mock` accepts any attribute, so a test can pass against a method that was renamed. `Mock(spec=SmtpSender)` allows only the real class's attributes, and `patch(..., autospec=True)` also checks call signatures, raising `TypeError` on a wrong call.
 ---
 A unit test wants to run one piece of code without the network, the database, the clock or the file system it depends on. A *test double* stands in for the dependency: it answers with canned values, records what was asked of it, or both. `unittest.mock` provides `Mock` and `MagicMock` objects that accept any call and remember it, `patch` to swap a name for a mock during a test, `side_effect` to script answers and exceptions, and `spec`/`autospec` to keep a mock honest about the real interface. This lesson covers the vocabulary of doubles, the `Mock` API, `patch` in its three forms and the rule about *where* to patch, scripted behaviour, and the judgement of when a fake beats a mock.
 

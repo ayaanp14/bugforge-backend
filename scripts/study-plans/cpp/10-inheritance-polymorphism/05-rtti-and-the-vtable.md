@@ -1,6 +1,20 @@
 ---
 title: RTTI and the vtable — how dispatch works and when to ask an object its type
 minutes: 15
+seo-title: What Is a Vtable in C++? Virtual Dispatch, RTTI and typeid
+description: Each polymorphic C++ class has a vtable of function pointers and each object a hidden vptr. Downcasting with dynamic cast, typeid and std::variant.
+question: What is a vtable in C++?
+answer: A vtable (virtual table) is a static array of function pointers that C++ compilers create for each class with virtual functions, one slot per virtual function, holding that class's overrides. Every object of the class carries a hidden vptr pointing at its class's vtable, so a virtual call loads the vptr, loads the slot and calls through it. The standard does not mandate vtables, but every mainstream compiler uses them.
+q: How does `dynamic_cast` work in C++?
+a: `dynamic_cast` checks at run time, using the object's type information, whether a base pointer or reference really refers to the target type. For pointers it returns the converted pointer, or `nullptr` on failure; for references it throws `std::bad_cast`. It works only on polymorphic types, classes with at least one virtual function.
+q: What is the difference between `dynamic_cast` and `static_cast`?
+a: `dynamic_cast` checks the object's real type at run time and returns `nullptr` or throws when the downcast is wrong. `static_cast` performs the same conversion with no check: it is faster, but casting to a type the object does not have is undefined behaviour. Use `static_cast` downward only when the type is already known.
+q: What is RTTI in C++?
+a: Run-time type information is the type data the compiler keeps for polymorphic classes, used by `dynamic_cast` and `typeid`. Some code bases disable it with `-fno-rtti` to save the tables, and then neither is available. Relying on it heavily is a design smell: a virtual function usually does the job better.
+q: How much memory does a vptr add to an object?
+a: One pointer — 8 bytes on a 64-bit platform — in every object of a class with at least one virtual function. A class holding a single `int` and one virtual function is therefore 16 bytes rather than 4, once alignment padding is included.
+q: When should you use `std::variant` instead of virtual functions?
+a: Use `std::variant` with `std::visit` when the set of types is closed and known up front but new operations are added often: values live inline, with no base class, vptr or heap. Use virtual functions when anyone may add new types and the set of operations is fixed, as in a plugin system.
 ---
 `virtual` is a promise the compiler keeps with a data structure. Knowing what it is — a table of function pointers per class and one hidden pointer per object — explains the cost of a virtual call, why a constructor's virtual calls stay in the base, and what `dynamic_cast` and `typeid` have to work with. This lesson opens that box, then covers run-time type information: casting a base pointer down safely, why the reference form throws, what `typeid` reports and must never be used to print, and the design signal a pile of `dynamic_cast`s sends. It closes with `std::variant` and `std::visit`, the alternative for a fixed set of types.
 

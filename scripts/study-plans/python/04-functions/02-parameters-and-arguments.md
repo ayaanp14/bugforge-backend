@@ -1,6 +1,20 @@
 ---
 title: Parameters and arguments — positional, keyword, defaults, *args and **kwargs
 minutes: 15
+seo-title: Python Args and Kwargs: Default and Keyword Arguments
+description: How Python matches positional and keyword arguments, why a mutable default is shared between calls, and what args, kwargs, the bare star and the slash do.
+question: What are `*args` and `**kwargs` in Python?
+answer: In a Python function signature, `*args` collects any extra positional arguments into a tuple and `**kwargs` collects any extra keyword arguments into a dict. The names are conventional; the stars are the syntax. They let a function such as `print` accept any number of values, and let a wrapper forward options it does not itself understand. In a call, `f(*seq)` and `f(**d)` unpack the other way.
+q: Why is a mutable default argument a bad idea in Python?
+a: A default value is evaluated once, when the `def` runs, and the same object is reused by every call that omits the argument. With `def append_to(x, xs=[])`, every call appends to one shared list. Use `None` as the default and create a fresh list inside: `if xs is None: xs = []`.
+q: What is the difference between positional and keyword arguments in Python?
+a: Positional arguments are matched to parameters by order, keyword arguments by name and in any order, as in `greet(greeting="Hi", name="Ada")`. Positional arguments must come first in a call, and passing a parameter twice or naming one that does not exist raises `TypeError`.
+q: What do `*` and `/` mean in a Python function signature?
+a: A bare `*` makes every parameter after it keyword-only, so `def connect(host, port, *, timeout=10)` must be called with `timeout=5`, not a third positional value. A `/`, added in Python 3.8, makes every parameter before it positional-only, as most built-ins are: `len(obj=xs)` is a `TypeError`.
+q: How do I pass a list as arguments to a function in Python?
+a: Unpack it with a star: `f(*seq)` spreads a sequence into positional arguments, so `move(*point)` with `point = (3, 4)` calls `move(3, 4)`. `f(**options)` spreads a dict into keyword arguments. `f(xs)` without the star passes the whole list as one argument.
+q: What is the order of parameters in a Python function signature?
+a: Positional-only parameters, then `/`, then ordinary parameters, then `*args` or a bare `*`, then keyword-only parameters, then `**kwargs`: `def f(pos_only, /, normal, *args, kw_only, **kwargs)`. Among positional parameters, those with defaults must follow those without.
 ---
 Python's calling convention is richer than most languages': arguments can be passed by position or by name, parameters can have defaults, a function can accept any number of positional or keyword arguments, and a signature can *forbid* one style or the other. Every part of that is useful and one part — a mutable default — is the most famous bug in the language. This lesson takes the signature apart piece by piece, gives the ordering rule that ties the pieces together, and shows the unpacking that goes the other way, from a list or dict into a call.
 
@@ -104,7 +118,7 @@ print(*range(5))                       # 0 1 2 3 4
 first, *rest = [1, 2, 3]               # the same star in an assignment
 ```
 
-A common shape is a function that takes a list and a function that takes separate arguments meeting through a star: `max(*xs)` versus `max(xs)` both work, and the former fails on an empty list with a different error.
+A common shape is a function that takes a list and a function that takes separate arguments meeting through a star: `max(xs)` and `max(*xs)` agree for two or more elements, but `max(*[5])` is `max(5)` — a `TypeError`, since an `int` is not iterable — and an empty list fails with a different error in each form.
 
 ## Arguments are objects, not copies
 

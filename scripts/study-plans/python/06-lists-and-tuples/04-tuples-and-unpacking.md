@@ -1,6 +1,20 @@
 ---
 title: Tuples, unpacking and named tuples
 minutes: 13
+seo-title: Python List vs Tuple: Unpacking and Named Tuples Explained
+description: A Python tuple is an immutable sequence for fixed records, multiple return values and dict keys. Tuple vs list, one-element tuples, unpacking and namedtuple.
+question: What is the difference between a list and a tuple in Python?
+answer: A list is mutable and a tuple is immutable. A list holds a variable number of items of the same kind and grows with `append`; a tuple holds a fixed-shape record such as a coordinate, carries multiple return values and, when every element is hashable, can be a dictionary key or set member. Tuples are also slightly smaller and faster to build.
+q: How do I create a tuple with one element in Python?
+a: Add a trailing comma: `(5,)` or just `5,`. The comma makes a tuple and the parentheses only group, so `(5)` is the integer 5 — `type((1))` is `int` while `type((1,))` is `tuple`. An empty tuple is `()`.
+q: Are Python tuples really immutable?
+a: A tuple's structure is fixed — which objects it holds, in what order — but those objects may still change. With `t = ([1, 2], 3)`, `t[0].append(9)` succeeds while `t[0] = [0]` raises `TypeError`. A tuple that contains a list is not hashable either.
+q: What is tuple unpacking in Python?
+a: Unpacking assigns the elements of an iterable to several names at once: `a, b = pair`, `first, *rest = xs`, or the swap `a, b = b, a`. The counts must match or Python raises `ValueError: too many values to unpack`; one starred target collects the surplus as a list, possibly empty.
+q: How does `a, b = b, a` swap two variables?
+a: The right-hand side `b, a` is evaluated first into a tuple, and only then unpacked into `a` and `b`, so neither value is lost. The same rule lets `xs[i], xs[j] = xs[j], xs[i]` swap two list elements in one line.
+q: What is a namedtuple in Python?
+a: `collections.namedtuple` creates a tuple subclass whose fields have names: `Point = namedtuple("Point", ["x", "y"])` gives `p.x` as well as `p[0]`, a readable `repr`, `_replace` and `_asdict`. `typing.NamedTuple` is the class-syntax version with type hints; a dataclass is the step up when a record must be mutable.
 ---
 A tuple is an immutable sequence, and that one property makes it the right type for three jobs: a fixed-shape record (`(name, age, city)`), a value returned from a function that has several results, and a key in a dictionary or a member of a set. Python's unpacking syntax — `a, b = pair`, `first, *rest = xs`, the parallel assignment `a, b = b, a` — is what makes tuples pleasant rather than clumsy. This lesson fixes the literal syntax (the comma, not the parentheses), the immutability rule and its one exception, unpacking in all its forms, and `namedtuple` for records whose fields deserve names.
 

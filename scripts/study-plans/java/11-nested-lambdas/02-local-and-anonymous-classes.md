@@ -1,6 +1,20 @@
 ---
 title: Local and anonymous classes
 minutes: 11
+seo-title: Anonymous Class in Java: Local Classes and Effectively Final
+description: A Java anonymous class declares and instantiates an unnamed subclass in one expression. Local classes, effectively final captures, and when a lambda is better.
+question: What is an anonymous class in Java?
+answer: An anonymous class in Java is a class with no name, declared and instantiated in one expression: `new Type() { … }` creates a subclass of a class, or an implementation of an interface, and returns one instance of it. It can override methods and add fields but has no constructor. Before lambdas it was how Java passed behaviour such as a `Comparator` or `Runnable`.
+q: Why must local variables used in an anonymous class be effectively final?
+a: The anonymous object may outlive the method, so Java copies each captured local into a hidden field when the object is created. A copy of a variable that could later change would be wrong, so the compiler forbids reassigning it: "local variables referenced from an inner class must be final or effectively final".
+q: Can an anonymous class have a constructor?
+a: No — it has no name to give a constructor. Use an instance initialiser block for set-up, and pass any arguments in the parentheses of `new Type(args) { … }`, where they go to the superclass constructor.
+q: When should you use an anonymous class instead of a lambda?
+a: When a lambda cannot do the job: the type has more than one abstract method, you are extending an abstract or concrete class, the object needs fields of its own, or `this` must mean the new object. For a single-method interface, prefer a lambda.
+q: What is a local class in Java?
+a: A local class is a named class declared inside a method or block and visible only there. It is a full class — constructors, fields, several methods — and, like an anonymous class, it can capture effectively final locals of the enclosing method.
+q: What does effectively final mean in Java?
+a: A variable is effectively final when it is never reassigned after initialisation, even without the `final` keyword. Only such locals may be captured by lambdas, local classes and anonymous classes; to change captured state, use a field, a one-element array or an `AtomicInteger`.
 ---
 Two more places a class can be declared: inside a method (a **local class**) and inline at the point of use, without a name (an **anonymous class**). Both can capture variables from the surrounding method, which is where the *effectively final* rule comes from, and both were the way Java passed behaviour around before lambdas. You will read anonymous classes in every codebase older than 2014 and still write them when a lambda cannot do the job.
 

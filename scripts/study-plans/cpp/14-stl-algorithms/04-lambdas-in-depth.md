@@ -1,6 +1,20 @@
 ---
 title: Lambdas in depth — captures, closures, std::function and recursion
 minutes: 15
+seo-title: C++ Lambda Captures, Closures and Recursive Lambdas
+description: A C++ lambda is an object of a compiler-generated closure class. Capture by value vs by reference, init-captures, mutable, std::function and recursive lambdas.
+question: How do lambda captures work in C++?
+answer: A C++ lambda is an object of a unique compiler-generated closure class: each captured variable becomes a data member and the body becomes `operator()`. `[x]` copies `x` into the closure and `[&x]` stores a reference to it; `[=]` and `[&]` capture whatever the body uses. By-value captures are read-only unless the lambda is `mutable`, and a `[&]` lambda that outlives its scope dangles.
+q: When should a lambda capture by value instead of by reference?
+a: Capture by reference only when the lambda is called before the enclosing scope ends, such as a comparator passed to `std::sort`. Capture by value, or with an init-capture, whenever the lambda outlives the scope — returned, stored in a container or member, or handed to a thread — because a `[&]` lambda would then refer to destroyed locals.
+q: What does mutable do in a C++ lambda?
+a: `mutable` removes the `const` from the closure's `operator()`, so by-value captures can be modified inside the body. The state lives in the closure object: copying the lambda copies the state, and the original variable outside is never changed. An algorithm that takes the lambda by value advances only its own copy.
+q: What is the difference between std::function and auto for a lambda?
+a: `auto` keeps the lambda's own unique type, so calls can be inlined and cost nothing extra. `std::function<R(Args...)>` erases the type so different callables can share one type — for dispatch tables and stored callbacks — at the cost of an indirect call, possible heap allocation and no inlining. Calling an empty `std::function` throws `std::bad_function_call`.
+q: How do you write a recursive lambda in C++?
+a: `auto f = [&f](…)` does not compile, because `f` is used before its type is deduced. Either declare the variable as a `std::function` and capture it by reference, or write a generic lambda that receives itself, `[](auto&& self, int n) -> long long { … }`, and recurse through `self(self, n - 1)`. C++23 adds deducing `this` for the second idiom.
+q: What is an init-capture in C++?
+a: An init-capture, `[name = expression]`, declares a new closure member initialised from any expression: `[n = 0]` gives the lambda its own counter, and `[buf = std::move(bigVector)]` moves a resource in — the only way to capture a move-only object such as a `std::unique_ptr`. A closure holding a move-only member cannot be stored in a `std::function`.
 ---
 Module 4, lesson 5 introduced the lambda as a function written in place. This lesson takes the lid off: a lambda is an object of a compiler-generated class, its captures are that object's data members, and once you see that, every rule follows — why `[&]` dangles, why `mutable` exists and what copying a lambda copies, why `std::function` costs something `auto` does not, and how a lambda calls itself. The exercises build a counter that owns its state through an init-capture and a command table of `std::function` values.
 

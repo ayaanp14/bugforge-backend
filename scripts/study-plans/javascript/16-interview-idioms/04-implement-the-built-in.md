@@ -1,6 +1,20 @@
 ---
 title: Implement the built-in — the reimplementation questions and the details that decide them
 minutes: 14
+seo-title: JavaScript Polyfill Interview Questions: Promise.all and Bind
+description: How to implement Promise.all, bind, new, reduce, a Promise class and JSON.stringify for JavaScript interviews, and the spec detail each answer hinges on.
+question: How do you implement Promise.all in JavaScript?
+answer: Return a new promise that wraps each input with `Promise.resolve`, attaches a `then` handler, and stores each value at its own index, so the results keep input order rather than completion order. A counter of pending items resolves the outer promise when it reaches zero, the first rejection rejects it, and an empty input resolves `[]` immediately.
+q: How do you implement `bind` in JavaScript?
+a: Return a function that calls the target with `apply`, passing the bound `this` and the preset arguments followed by the new ones. The detail interviewers probe: when the bound function is called with `new`, the bound `this` is ignored — detect it with `this instanceof bound`, and link the bound function's `prototype` to the target's.
+q: How do you write a Promise from scratch?
+a: As a state machine that settles once, from pending to fulfilled or rejected. `then` returns a new promise; its handlers run in a microtask even when the promise has already settled; a missing handler passes the value or reason through; a thrown error rejects the next promise; and a returned thenable is adopted.
+q: Why does `reduce` throw on an empty array?
+a: With no initial value, `reduce` starts from the first present element, and an empty array has none, so it throws `TypeError: Reduce of empty array with no initial value`. A correct reimplementation checks whether a seed was passed at all — the argument count — rather than whether it is `undefined`.
+q: What does `JSON.stringify` do with `undefined`, functions and `NaN`?
+a: As object values, `undefined`, functions and symbols are left out; inside arrays they become `null`. `NaN` and `Infinity` are written as `null`, a `toJSON` method such as `Date`'s is honoured, and a circular reference throws a `TypeError`.
+q: What is the difference between `includes` and `indexOf`?
+a: `includes` compares with SameValueZero, so `[NaN].includes(NaN)` is `true`; `indexOf` uses strict equality, so `[NaN].indexOf(NaN)` is `-1`. Both treat `+0` and `-0` as equal; `includes` returns a boolean, `indexOf` the position or `-1`.
 ---
 "Implement `Promise.all`." "Write `bind`." "How would you implement `Array.prototype.reduce`?" These questions test whether you understand the semantics of things you use every day — not whether you can recite them. The trap is that the obvious ten-line version is wrong in ways the interviewer knows about: `bind` must work with `new`, `map` must skip holes, `reduce` must throw on an empty array without a seed, `Promise.all` must preserve order and reject on the first failure, `JSON.stringify` must drop `undefined` in objects but write `null` in arrays. This lesson lists the questions that recur, the spec details each one hinges on, and the shape of a correct answer; the exercises and the checkpoint have you write them.
 

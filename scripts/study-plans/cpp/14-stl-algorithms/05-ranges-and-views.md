@@ -1,6 +1,20 @@
 ---
 title: Ranges and views — C++20 pipelines
 minutes: 15
+seo-title: C++20 Ranges and Views Explained: Pipelines and Projections
+description: C++20 range algorithms take the container and a projection; views build lazy pipelines with the pipe operator. How to materialise a view and what dangles.
+question: What are ranges and views in C++20?
+answer: C++20 ranges, in `<ranges>`, are a new layer over the STL. The constrained algorithms in `std::ranges` take a whole container, check it with concepts and accept a projection, as in `std::ranges::sort(people, {}, &Person::age)`. Views in `std::views`, such as `filter`, `transform` and `take`, are lazy, non-owning adaptors composed with `|`: nothing is computed until the pipeline is iterated.
+q: What is a projection in std::ranges algorithms?
+a: A projection is a callable applied to each element before the comparator or predicate sees it, passed as the last argument. `std::ranges::sort(people, {}, &Person::age)` sorts by age with the default `std::ranges::less`, and `std::ranges::find(people, name, &Person::name)` searches one member. A pointer-to-member is the commonest projection.
+q: How do you convert a view to a vector in C++20?
+a: Copy it out: `std::ranges::copy(view, std::back_inserter(out));`. The iterator-pair constructor often fails because `filter` and `take` produce an end sentinel of a different type from the iterator; `std::views::common` bridges that. `std::ranges::to<std::vector>()` is the neater answer, but it is C++23.
+q: Why are C++20 views lazy?
+a: A view is a recipe, not a result: `filter` runs its predicate and `transform` its function only when an element is requested by a loop or an algorithm. That is why `std::views::iota(1) | std::views::take(5)` terminates although `iota(1)` is infinite — `take` stops asking after five elements. It also means a `transform` view recomputes on every read.
+q: Why can't I iterate a const filter_view?
+a: `std::views::filter` caches the position of the first matching element the first time `begin()` is called, so its `begin()` is not `const`, and a `const` filter view does not compile in a range-for. Build the view and walk it without `const`, and do not modify the source between walks, or the cached position goes stale.
+q: Can a view outlive the container it refers to?
+a: No. A view built from an lvalue container holds a reference to it, so returning `v | std::views::filter(pred)` from the function that owns `v` leaves a dangling view. A pipeline started from an rvalue container moves it into an `owning_view` and is safe; otherwise return a `std::vector`.
 ---
 Every algorithm so far took two iterators, and every pipeline needed an intermediate vector per step. C++20's `<ranges>` fixes both. The constrained algorithms in `std::ranges::` take the container itself and a **projection** that says which part of each element to look at; the **views** in `std::views::` are lazy, non-owning adaptors that compose with `|` into a pipeline that computes nothing until it is walked. This lesson settles what each brings, how a pipeline is materialised into a vector on a C++20 runtime, and the handful of rules — caching, `const`, re-evaluation, lifetime — that keep views honest.
 

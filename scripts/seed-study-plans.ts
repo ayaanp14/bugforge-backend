@@ -6,7 +6,10 @@
  *   node scripts/run-prod.mjs scripts/seed-study-plans.ts --seed   # against production
  *
  * --validate checks every track on its own terms (scripts/study-plans/dsl.ts:
- * slugs, one test per module, quiz answers in range, cases present). With
+ * slugs, one test per module, quiz answers in range, cases present, and each
+ * lesson's search fields — SEARCH-FIELDS.md), and that no two lessons of any
+ * track share a search title or description; --only narrows the per-module
+ * report to those modules (the uniqueness check always covers everything). With
  * --run it also sends every exercise's reference solution through the real
  * program judge (src/lib/program-judge.ts, on STUDY_EXECUTOR — Paiza by
  * default) and requires ACCEPTED on every case: the one proof that the
@@ -24,7 +27,7 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "../src/lib/prisma.js";
 import { judgeProgram } from "../src/lib/program-judge.js";
-import { validateTrack, summarize, type TrackSeed } from "./study-plans/dsl.js";
+import { validateTrack, validateAcrossTracks, summarize, type TrackSeed } from "./study-plans/dsl.js";
 import { javaTrack } from "./study-plans/java/track.js";
 import { javascriptTrack } from "./study-plans/javascript/track.js";
 import { cppTrack } from "./study-plans/cpp/track.js";
@@ -126,6 +129,7 @@ async function seedTrack(track: TrackSeed, position: number): Promise<void> {
         quiz: lesson.quiz as unknown as Prisma.InputJsonValue,
         passMark: lesson.passMark,
         xp: lesson.xp,
+        seo: lesson.seo ? (lesson.seo as unknown as Prisma.InputJsonValue) : Prisma.DbNull,
       };
       await prisma.studyLesson.upsert({
         where: { key: lessonKey(track, lesson.slug) },
@@ -154,10 +158,17 @@ async function main() {
   let bad = 0;
   for (const { track } of TRACKS) {
     console.log(summarize(track));
-    const problems = validateTrack(track);
+    // --only narrows the report to those modules, so the author of one
+    // module is not buried under another's (--seed of those modules is
+    // then gated on them alone, as the seed itself is).
+    const problems = validateTrack(track).filter((p) => !only || [...only].some((slug) => p.startsWith(`module ${slug} `) || p.startsWith(`module ${slug}:`)));
     for (const p of problems) console.error(`  ✗ ${p}`);
     bad += problems.length;
   }
+  // Search titles and descriptions are unique across every track, whichever ones this run names.
+  const clashes = validateAcrossTracks(ALL_TRACKS);
+  for (const p of clashes) console.error(`  ✗ ${p}`);
+  bad += clashes.length;
   if (bad) {
     console.error(`\n${bad} problem(s). Nothing written.`);
     process.exitCode = 1;

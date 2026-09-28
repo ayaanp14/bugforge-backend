@@ -1,6 +1,20 @@
 ---
 title: From source to running program
 minutes: 14
+seo-title: How to Compile and Run Java: javac, java and JAR Files
+description: Compile Java source into bytecode with javac, then run the class by name with java. The classpath, runnable JAR files, jshell, javap and the errors they cause.
+question: How do you compile and run a Java program?
+answer: Run `javac Hello.java` to compile the source into bytecode in `Hello.class`, then `java Hello` to run it — the class name, not the file name. The `java` launcher starts a JVM, finds the class on the classpath, verifies it and calls its `public static void main(String[] args)`. Since Java 11, `java Hello.java` compiles a single file in memory and runs it in one step.
+q: Why can't I run `java Hello.class`?
+a: The `java` launcher takes a class name, not a file name, and searches the classpath for it. Given `Hello.class` it looks for a class literally named `Hello.class`, finds none and fails; run `java Hello` instead.
+q: What is the classpath in Java?
+a: The classpath is the list of directories and JAR files the JVM searches for classes, set with `-cp` and separated by `:` on Unix and `;` on Windows. It defaults to the current directory, and most "works on my machine" failures are classpath problems.
+q: How do I create a runnable JAR file?
+a: Compile into a directory, then run `jar --create --file app.jar --main-class com.example.Main -C out .` — the `--main-class` option writes `Main-Class:` into `META-INF/MANIFEST.MF`, which tells `java -jar app.jar` which class's `main` to call.
+q: What causes "Error: Main method not found in class"?
+a: The launcher found the class but no `public static void main(String[] args)` in it. Every part of that signature is checked, so a missing `static`, a different parameter type or a misspelled `main` all produce this error.
+q: How do I see the bytecode of a Java class?
+a: Run `javap -c -p Hello` on the compiled class. It disassembles the `.class` file and prints each method's bytecode instructions, including the default constructor the compiler generated and calls such as `invokevirtual`.
 ---
 You will spend most of this track inside an editor with a Run button, but the button hides four steps you should be able to perform by hand and explain in an interview: write, compile, package, run. This lesson walks the whole pipeline on the command line.
 

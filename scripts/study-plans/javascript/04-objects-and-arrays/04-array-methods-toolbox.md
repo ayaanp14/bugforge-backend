@@ -1,6 +1,20 @@
 ---
 title: The array methods toolbox — map, filter, reduce and friends
 minutes: 14
+seo-title: JavaScript map, filter and reduce: Array Methods Explained
+description: In JavaScript, map transforms, filter keeps and reduce folds an array to one value. Patterns for sums, counts and groupBy, find vs filter, and map vs forEach.
+question: How do map, filter and reduce work in JavaScript?
+answer: `map`, `filter` and `reduce` are JavaScript array methods that take a callback and run the loop for you without changing the original array. `map` returns a new array of the same length with every element transformed; `filter` returns the elements that pass a test; `reduce` folds the array into a single value — a sum, a count, a lookup object — starting from the seed you pass.
+q: What is the difference between map and forEach in JavaScript?
+a: `map` returns a new array built from the callback's results; `forEach` returns `undefined` and exists for side effects. A `map` whose result is ignored should be `forEach`, and a `forEach` that pushes into an outside array should be `map`. Neither can `break`, and neither waits for `await`.
+q: Why should you pass an initial value to reduce?
+a: Without a seed, `reduce` uses the first element as the accumulator and throws a `TypeError` on an empty array. Passing one, such as `0` for a sum or `{}` for a lookup, also makes the accumulator's type explicit.
+q: How do you group an array by a key in JavaScript?
+a: Reduce into an object: `arr.reduce((groups, x) => { (groups[x.city] ??= []).push(x); return groups; }, {})`. Mutating the `{}` seed you created is safe and fast, whereas spreading a new object on every step is O(n²) on large inputs.
+q: What is the difference between find and filter in JavaScript?
+a: `find` returns the first element that passes the test, or `undefined`, and stops searching there; `filter` always returns an array of every match, possibly empty. Use `find` for one item, and `some` rather than `filter(...).length > 0` to test whether any match.
+q: What does flatMap do in JavaScript?
+a: `flatMap` maps each element to an array and flattens the result one level, so it can expand one element into several, or drop it by returning `[]` — a filter and a map in one pass.
 ---
 Most array code in modern JavaScript is a chain of methods: `filter` to keep, `map` to transform, `reduce` to summarise, `find` to locate, `some`/`every` to test, `flatMap` to expand. Each takes a callback, runs the loop for you, and returns something new — which makes pipelines readable and, because they never mutate the source, safe. This lesson is the toolbox with the shape of each method, the `reduce` patterns that replace half the loops you would otherwise write, when to chain and when a plain loop is better, and the mistakes that recur.
 

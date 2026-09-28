@@ -1,6 +1,20 @@
 ---
 title: Loops — while, do-while, for and for-each
 minutes: 14
+seo-title: Java Loops Explained: For, While, Do-While and For-Each
+description: Java has four loops: while checks first, do-while runs at least once, for counts, and for-each visits every element. Scope rules and off-by-one errors.
+question: What are the types of loops in Java?
+answer: Java has four loops. `while` checks its condition before each iteration and may run zero times; `do-while` checks after the body, so it runs at least once; `for` puts the initialiser, condition and update in one header for counted iteration; and the enhanced `for`, or for-each, visits every element of an array or `Iterable` without an index.
+q: What is the difference between while and do-while in Java?
+a: A `while` loop checks its condition before each iteration, so its body can run zero times. A `do-while` loop checks after the body, so the body always runs at least once, which suits ask-then-validate input loops. The `do-while` ends with a semicolon after the condition.
+q: Why do I get ConcurrentModificationException in a for-each loop?
+a: Adding to or removing from a collection while a for-each loop iterates over it invalidates the loop's iterator, which throws `ConcurrentModificationException`, usually on the next iteration. Remove through an explicit `Iterator` with `it.remove()`, use `removeIf`, or loop backwards by index.
+q: Can I modify an array inside a for-each loop in Java?
+a: Not through the loop variable: it is a copy of each element, so `for (int v : arr) v = 0;` leaves the array unchanged. To write elements, use an indexed `for` loop and assign `arr[i]`. For objects the copy is a reference, so calling a method on it does change the object.
+q: How do I avoid off-by-one errors in loops?
+a: Use half-open ranges, start inclusive and end exclusive, as in `for (int i = 0; i < n; i++)`, so the count is `end - start`. Test the loop by hand with n equal to 0, 1 and 2, and never change the loop variable inside a `for` body. A condition of `i <= n` runs n + 1 times.
+q: What is the scope of a for loop variable in Java?
+a: A variable declared in the `for` header exists only inside the loop and is gone after the closing brace, which is why two loops in a row can both declare `int i`. Declare it before the loop when you need its final value afterwards.
 ---
 Java has four loop forms and they are not interchangeable: each states something different about *what is known before the loop starts*. Choosing the right one is half of writing a clear loop; the other half is getting the boundaries right, which is where the off-by-one errors live. This lesson covers all four, the scope rules, and the boundary habits that eliminate the classic bugs.
 

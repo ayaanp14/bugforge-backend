@@ -1,6 +1,20 @@
 ---
 title: Mutexes and locks — making shared writes safe
 minutes: 15
+seo-title: C++ std::mutex Explained: Data Races, Locks and Deadlock
+description: A data race in C++ is undefined behaviour. How std::mutex and the RAII lock types protect shared data, and how lock ordering and scoped locks prevent deadlock.
+question: What is a data race in C++?
+answer: A data race in C++ is two threads accessing the same memory location, at least one of them writing, with nothing ordering the accesses. The standard makes it undefined behaviour, not merely a wrong count: the compiler assumes no race exists and may keep a shared counter in a register. Protect the data with a `std::mutex` and an RAII lock, or make the single variable a `std::atomic`.
+q: What is the difference between lock_guard, scoped_lock and unique_lock?
+a: `std::lock_guard` locks one mutex for a scope. `std::scoped_lock` (C++17) does the same for any number of mutexes, acquiring them together with a deadlock-avoiding algorithm, and is the modern default. `std::unique_lock` can defer locking, unlock early, re-lock and be moved, and it is the lock `std::condition_variable` requires.
+q: How do you prevent deadlock in C++?
+a: Break the cycle of waiting: hold one lock at a time where possible; when you need two, take them with `std::scoped_lock` or in one fixed global order in every thread; never call a callback or other unknown code while holding a lock; and keep critical sections short.
+q: Why should I not call lock() and unlock() by hand?
+a: An early `return` or an exception between the two calls skips `unlock()`, leaving the mutex locked forever and every other thread blocked on it. The RAII lock types unlock in their destructor on every path out of the scope. Name the lock, too: an unnamed `std::lock_guard` temporary unlocks at the semicolon.
+q: Do reads need a mutex too?
+a: Yes, if any thread writes the data. A read that skips the lock races with the write and is still undefined behaviour, so every access to guarded data takes the lock. Data that no thread writes — a `const` table built before the threads start — needs no lock at all.
+q: What is std::shared_mutex used for?
+a: `std::shared_mutex` allows many readers at once under `std::shared_lock`, or one writer under `std::unique_lock`. It suits data read far more often than it is written, such as a configuration table; for frequently written data a plain `std::mutex` is faster.
 ---
 The moment two threads write the same variable, the program stops being the program you wrote. This lesson defines the data race precisely — it is undefined behaviour, not merely a wrong count — and then covers the tools that remove it: `std::mutex` and the RAII lock types (`std::lock_guard`, `std::scoped_lock`, `std::unique_lock`), the discipline of small critical sections, the deadlock that two locks taken in opposite orders produce and the ordering rules that prevent it, and `std::shared_mutex` for data that is read far more often than it is written.
 

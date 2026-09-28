@@ -1,6 +1,20 @@
 ---
 title: Characters and conversions
 minutes: 14
+seo-title: C++ String to Int, Int to String and Char Arithmetic
+description: Converting text to numbers and back in C++: stoi and its exceptions, the non-throwing charconv parser, char digit arithmetic and the cctype unsigned char cast.
+question: How do you convert a string to an int in C++?
+answer: Use `std::stoi(s)` from `<string>`: it skips leading whitespace, reads an optional sign and digits, and returns the `int`. It throws `std::invalid_argument` when there are no digits and `std::out_of_range` when the value does not fit, and it ignores trailing text, so `std::stoi("42abc")` is 42. C++17's `std::from_chars` parses without exceptions and reports what it consumed.
+q: What is the difference between stoi and from_chars?
+a: `std::stoi` skips leading whitespace, accepts a `+`, ignores trailing text and throws on failure. `std::from_chars` (C++17, `<charconv>`) skips nothing, accepts only a `-` sign, never throws or allocates, and reports through `ptr` and `ec`; checking `ec == std::errc()` and `ptr == last` confirms the whole token was a number.
+q: How do you convert a char digit to an int in C++?
+a: Subtract the character zero: `'7' - '0'` is 7, because the digit characters have consecutive codes, 48 to 57. The reverse is `static_cast<char>('0' + d)`. Check with `std::isdigit` first — `'x' - '0'` is 72, and nothing stops you using it.
+q: Why cast to unsigned char before calling isdigit or toupper?
+a: The `<cctype>` functions require an argument representable as `unsigned char` or equal to `EOF`. `char` is signed on x86-64 Linux, so any byte above 127 arrives as a negative number, and passing it is undefined behaviour. Write `std::isdigit(static_cast<unsigned char>(c))`, and cast `std::toupper`'s `int` result back to `char`.
+q: How do you convert an int to a string in C++?
+a: `std::to_string(42)` returns "42" and is exact for every integer type. For floating point it always prints six decimals, like `printf`'s `%f` — `std::to_string(3.5)` is "3.500000" — so use `std::format("{:.2f}", x)` or a stream with `std::setprecision` when the format matters.
+q: Why does `c + 1` print a number instead of a letter?
+a: A `char` is a small integer, and arithmetic promotes it to `int`, so `'A' + 1` is the `int` 66 and prints as digits. Cast the result back to print a letter: `static_cast<char>(c + 1)` prints `B`.
 ---
 A `char` is a number that the stream prints as a letter. Hold on to that and everything here follows: why `'7' - '0'` is 7, why `c + 1` is an `int`, why `<cctype>` needs an `unsigned char` cast most tutorials omit, and how text becomes a number and back — `std::to_string`, the `std::stoi` family that throws, and C++17's `std::from_chars` that does not. Parsing a token that might not be a number is where text programs fail their hidden cases; this lesson gives two correct ways to do it.
 

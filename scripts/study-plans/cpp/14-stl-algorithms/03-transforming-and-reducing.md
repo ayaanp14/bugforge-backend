@@ -1,6 +1,20 @@
 ---
 title: Transforming and reducing — transform, accumulate and the erase–remove idiom
 minutes: 15
+seo-title: C++ Transform and Accumulate: Map, Filter and Reduce in STL
+description: Map, filter and reduce in C++ with transform, accumulate and partition. Why accumulate needs 0LL, how back inserter grows output, and the erase-remove idiom.
+question: How does std::accumulate work in C++?
+answer: `std::accumulate(first, last, init)` from `<numeric>` is a left fold: it starts from `init`, adds each element in turn and returns the total. The accumulator has the type of `init`, not of the elements, so `std::accumulate(v.begin(), v.end(), 0)` sums a `std::vector<long long>` in `int` and can overflow. Write `0LL` for integer sums, `0.0` for doubles and `std::string{}` to join strings.
+q: What does std::transform do?
+a: `std::transform` applies a function to every element of a range and writes the results through an output iterator — into a destination that already has room, back into the source for an in-place transform, or through `std::back_inserter` to grow a container. The binary form walks two ranges in step and combines each pair.
+q: What is std::back_inserter?
+a: `std::back_inserter(c)`, from `<iterator>`, is an output iterator that calls `c.push_back` for every value written to it, so an algorithm such as `std::copy_if` or `std::transform` can fill an empty vector. Without it the destination must already hold enough elements. `std::front_inserter` and `std::inserter` do the same through `push_front` and `insert`.
+q: What is the difference between std::reduce and std::accumulate?
+a: `std::accumulate` folds strictly left to right. `std::reduce`, added in C++17, may combine elements in any order and grouping so that it can run in parallel, which means the operation must be associative and commutative. It is fine for integer addition but wrong for string concatenation, and floating-point results may differ in the last digits.
+q: Why doesn't std::remove_if change the vector's size?
+a: An algorithm sees only iterators, so it cannot erase from a container. `std::remove_if` shifts the elements to keep towards the front and returns the new logical end, leaving unspecified leftovers beyond it. Call `v.erase(newEnd, v.end())` afterwards — the erase–remove idiom — or `std::erase_if(v, pred)` in C++20.
+q: How do you compute prefix sums in C++?
+a: `std::partial_sum(v.begin(), v.end(), out.begin())` writes the running totals, after which the sum of `v[i..j]` is `prefix[j] - prefix[i - 1]`. It accumulates in the input's value type, so a `std::vector<int>` can overflow even when the output holds `long long`; `std::inclusive_scan` with an initial value of `0LL` avoids that.
 ---
 Most data processing is three verbs: *map* each element to something else, *filter* the ones that matter, *reduce* them to one result. The standard library spells them `std::transform`, `std::copy_if`/`std::remove_if`/`std::partition`, and `std::accumulate`/`std::reduce`, with `std::all_of`/`any_of`/`none_of` and `std::count_if` as the yes/no reductions. This lesson settles how each writes its output — into existing space, through `std::back_inserter`, or by shifting survivors to the front — and the one trap that fails more submissions than any other in this module: `std::accumulate` sums in the type of its *initial value*, so a bare `0` sums in `int` and overflows.
 

@@ -1,6 +1,20 @@
 ---
 title: CommonJS and ES modules — two module systems, one runtime
 minutes: 14
+seo-title: CommonJS vs ES Modules in Node.js: require vs import
+description: CommonJS loads with a synchronous require and copies values; ES modules use static import, live bindings and top-level await. Interop, file types and cycles.
+question: What is the difference between CommonJS and ES modules?
+answer: CommonJS is Node's original module system: `require` is a synchronous function call that returns a cached `module.exports`, and destructured values are copies. ES modules are the language standard: `import` and `export` are static, the module graph is linked asynchronously before it runs, and imports are live bindings. ES modules are always strict, allow top-level `await`, and have no `require` or `__dirname`.
+q: How does Node decide whether a file is CommonJS or an ES module?
+a: By extension first, then the nearest `package.json`. A `.mjs` file is always an ES module and a `.cjs` file always CommonJS; a `.js` file follows the `"type"` field, where `"module"` means ESM and `"commonjs"` or no field at all means CommonJS.
+q: How do I fix "Cannot use import statement outside a module"?
+a: Node is reading ES module syntax in a file it treats as CommonJS. Rename the file to `.mjs`, or set `"type": "module"` in the nearest `package.json`. The reverse error, "require is not defined in ES module scope", means CommonJS code in a file Node treats as an ES module.
+q: Can you require an ES module in Node.js?
+a: Not on Node 16: calling `require` on an ES module throws `ERR_REQUIRE_ESM`, so CommonJS code loads it with `await import()`, which works in both systems. The other direction works, and an ES module importing a CommonJS file receives `module.exports` as the default export. Node 22 later allowed `require` of ES modules that use no top-level `await`.
+q: What is a live binding in ES modules?
+a: A live binding is an import that always reflects the exporting module's current value rather than a copy. If a module exports `let count` and later increments it, every `import { count }` sees the new number, and importers cannot assign to it. A value destructured from `require` in CommonJS is a copy and never updates.
+q: What happens with circular imports in JavaScript?
+a: CommonJS hands the second module the partially filled `exports` of the first, often an empty object, so it silently sees `undefined`. ES modules throw `ReferenceError: Cannot access 'x' before initialization` when a binding is read before it has been evaluated. The fix for both is to move the shared piece into a third module or defer its use to call time.
 ---
 JavaScript had no module system for its first fifteen years; Node invented one (**CommonJS**, `require`/`module.exports`) and the language later standardised another (**ES modules**, `import`/`export`). Today both run in Node, they differ in ways that matter — synchronous versus asynchronous loading, copied values versus live bindings, `__dirname` versus `import.meta.url` — and most real projects mix them through the interop rules. This lesson covers what a module *is* (a file with its own scope), each system's mechanics and caching, the differences, the interop rules as they stand on Node 16, circular imports, and dynamic `import()`.
 

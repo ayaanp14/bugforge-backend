@@ -1,6 +1,20 @@
 ---
 title: Non-type and variadic templates — numbers and packs as parameters
 minutes: 14
+seo-title: C++ Variadic Templates and Fold Expressions Explained
+description: Variadic templates take any number of arguments as a parameter pack, and C++17 fold expressions apply one operator across it. Plus non-type template parameters.
+question: What is a variadic template in C++?
+answer: A variadic template is a template that accepts any number of arguments through a parameter pack: `template <typename... Ts> void f(const Ts&... args)`. `args...` expands the pack into a comma-separated list, `sizeof...(args)` counts it, and a pack may be empty. Before C++17 each element was processed by recursion; fold expressions such as `(args + ...)` now do it in one line.
+q: What is a fold expression in C++17?
+a: A fold expression applies one binary operator across a whole parameter pack: `(xs + ...)` is a unary right fold, `(... + xs)` a unary left fold, and `(0 + ... + xs)` a binary fold with a starting value. The parentheses are part of the syntax. The comma fold `((std::cout << xs << ' '), ...)` runs an expression once per element, in order.
+q: What happens when you fold an empty parameter pack?
+a: A unary fold over an empty pack is a compile error for most operators, so `(xs + ...)` with no arguments fails. Only `&&`, `||` and the comma operator have defaults: `true`, `false` and nothing. A binary fold supplies its own initial value, so `(0 + ... + xs)` is simply `0` for an empty pack.
+q: What is a non-type template parameter?
+a: A template parameter that is a compile-time value rather than a type, as in `template <typename T, std::size_t N> class Ring`. The value is part of the type, so `Ring<int, 4>` and `Ring<int, 8>` are different types and the size needs no data member. The argument must be a constant expression; a value read at run time cannot be used.
+q: How does std::array know its size without storing it?
+a: The size is a non-type template parameter: `std::array<int, 4>` has `N = 4` baked into its type, so the object is exactly the size of four `int`s, with no size field. A function template can deduce `N` from a built-in array's type too, which is how `std::size(arr)` works.
+q: How do you recurse over a parameter pack?
+a: Peel off the first argument and call the function again with the rest: `template <typename First, typename... Rest> void print(const First& first, const Rest&... rest)` prints `first` and calls `print(rest...)`. A non-template `print()` is the base case for the empty pack; `if constexpr (sizeof...(rest) > 0)` can replace it.
 ---
 A template parameter does not have to be a type. `std::array<int, 4>` takes a number, `std::bitset<64>` takes a number, and `std::tuple<int, std::string, double>` takes as many types as you give it. Both ideas — a *non-type* parameter that is a compile-time value, and a *parameter pack* that stands for any number of arguments — are what let a container know its size without storing it and a `print` function accept three arguments of three types. This lesson covers non-type parameters, packs and `sizeof...`, recursion over a pack, and the C++17 fold expressions that replace most of that recursion with one line.
 

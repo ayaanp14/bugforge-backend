@@ -1,6 +1,20 @@
 ---
 title: Binary I/O and the filesystem
 minutes: 15
+seo-title: C++ Binary File I/O and std::filesystem Explained
+description: Write and read binary records in C++ with write() and read(), why padding and endianness matter, and std::filesystem for paths, sizes and directory listings.
+question: How do you write a struct to a binary file in C++?
+answer: Open a `std::ofstream` with `std::ios::binary` and call `out.write(reinterpret_cast<const char*>(&r), sizeof r)`; read it back with `in.read(reinterpret_cast<char*>(&r), sizeof r)`. This works only for trivially copyable types — numbers, `char` arrays and structs of them. A `std::string` or `std::vector` member writes its pointer, not its contents, and the file is readable only with the same struct layout and byte order.
+q: Why is sizeof a struct larger than the sum of its members?
+a: The compiler inserts padding so each member sits at an address that is a multiple of its alignment. A struct holding an `int32_t` then a `double` is 16 bytes, not 12, because four padding bytes put the `double` on an 8-byte boundary. Ordering members from largest to smallest often removes the interior padding.
+q: What is endianness?
+a: Endianness is the order in which a multi-byte number's bytes are stored: little-endian machines such as x86-64 store the least significant byte first, so an `int` holding 1 is `01 00 00 00`, while big-endian machines store it the other way round. A binary file written with `write` uses the CPU's order, so portable formats serialise each integer byte by byte in a declared order.
+q: How do I list the files in a directory in C++?
+a: Use C++17 `std::filesystem`: `for (const auto& entry : std::filesystem::directory_iterator(dir))` visits every entry, with `entry.path().filename()` and `entry.is_regular_file()`. The order is unspecified — whatever the operating system returns — so collect the names into a vector and sort them when the output must be deterministic.
+q: How do I get a file's size in C++?
+a: `std::filesystem::file_size(path)` returns the size in bytes as `std::uintmax_t`. It throws `std::filesystem::filesystem_error` for a missing file or a directory; the overload taking a `std::error_code&` reports the failure through it instead of throwing.
+q: Why open a file with std::ios::binary?
+a: It disables newline translation. On Linux it changes nothing, but on Windows a text-mode stream rewrites every newline byte as a carriage return plus newline, which corrupts any `0x0A` byte inside binary data such as a `double`. Always use binary mode for `read` and `write`.
 ---
 Text I/O turns every number into digits and back, which is slow, loses precision for floating point, and makes a record's size depend on its values. Binary I/O writes the bytes an object already occupies in memory — a `double` is eight bytes on disk exactly as it is in RAM — and reads them straight back, so a file of fixed-width records can be indexed by arithmetic: record `i` starts at byte `i * sizeof(Record)`. The price is that the bytes mean nothing without the struct that wrote them, and nothing about their order is portable across machines. This lesson covers `write`/`read`, what may safely be written that way, endianness, and `std::filesystem` — the C++17 library for paths, sizes, directories and listings that a file-handling program needs around its streams.
 

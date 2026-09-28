@@ -1,6 +1,18 @@
 ---
 title: Dates and times — datetime, timedelta and zoneinfo
 minutes: 14
+seo-title: Python datetime and Time Zones: timedelta, zoneinfo, UTC
+description: Python's datetime does calendar-correct arithmetic with timedelta, parses with strptime and converts zones with zoneinfo. Aware versus naive, and storing UTC.
+question: What is the difference between naive and aware datetimes in Python?
+answer: A naive `datetime` has no time zone: it is a wall-clock reading with no claim about where. An aware `datetime` carries a `tzinfo`, such as `timezone.utc` or `ZoneInfo("Asia/Kolkata")`, and represents an actual instant. Comparing or subtracting a naive and an aware datetime raises `TypeError`, so store aware UTC values and convert to local time only for display.
+q: How do I convert a string to a datetime in Python?
+a: Use `datetime.strptime(text, format)` with C directives such as `%d/%m/%Y %H:%M`; it raises `ValueError` if the text does not match, which doubles as validation. For ISO 8601 text such as `2024-05-01T09:30:00`, `datetime.fromisoformat` is simpler, and `strftime` formats the other way.
+q: How do I convert between time zones in Python?
+a: Make the datetime aware, then call `astimezone` with the target zone: `utc_dt.astimezone(ZoneInfo("Asia/Kolkata"))`. `zoneinfo`, added in Python 3.9, reads the IANA database and follows daylight-saving rules. Do not confuse it with `replace(tzinfo=...)`, which only labels a reading with a zone and converts nothing.
+q: How do I add a month to a date in Python?
+a: Not with `timedelta`, which holds only days, seconds and microseconds, because months have no fixed length. Use `replace(month=...)` and clip the day to the month's length, which `calendar.monthrange(year, month)[1]` gives, or the third-party `dateutil.relativedelta`. Adding days, by contrast, is calendar-correct: `d + timedelta(days=30)`.
+q: Why is datetime.utcnow() deprecated?
+a: `utcnow()` and `utcfromtimestamp()` return naive datetimes that merely hold UTC readings, which are easily mistaken for local time and cannot be compared with aware values. Python 3.12 deprecated them; use `datetime.now(timezone.utc)` and `datetime.fromtimestamp(ts, tz=timezone.utc)`, which return aware datetimes.
 ---
 Dates are where programs go wrong quietly: a month with 30 days, a year that is not a leap year, a clock that jumps an hour, a timestamp that is in one zone on the server and another in the browser. The `datetime` module handles the calendar arithmetic correctly if you use its types rather than strings and integers, and `zoneinfo` (3.9) gives it real time zones from the IANA database. This lesson covers `date`, `time`, `datetime` and `timedelta`, parsing and formatting with `strptime`/`strftime` and the ISO methods, arithmetic and comparison, naive versus aware datetimes, converting between zones, and the rule that keeps a system sane: store UTC, display local.
 

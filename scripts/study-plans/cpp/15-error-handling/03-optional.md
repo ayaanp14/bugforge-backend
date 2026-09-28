@@ -1,6 +1,20 @@
 ---
 title: std::optional — a value that may be absent
 minutes: 13
+seo-title: C++17 std::optional Explained: Nullopt, Value and Defaults
+description: std::optional, added in C++17, holds a value or nothing. Returning one from a lookup, checked and unchecked access, and why there is no optional reference.
+question: What is std::optional in C++?
+answer: `std::optional<T>`, in `<optional>` since C++17, is a type that either holds a value of type `T` or holds nothing, so absence is part of the type instead of a sentinel such as `-1` or `nullptr`. Return a value to engage it and `std::nullopt` to leave it empty; test it with `if (opt)` or `has_value()`, then read it with `*opt`, `value()` or `value_or(default)`.
+q: What happens if you dereference an empty std::optional?
+a: `*opt` and `opt->member` on an empty optional are undefined behaviour — there is no check, just as with a pointer. `opt.value()` is the checked form and throws `std::bad_optional_access` when empty, and `opt.value_or(x)` returns `x` instead. Dereference only right after testing `if (opt)`.
+q: Does value_or evaluate its argument when the optional has a value?
+a: Yes. `value_or(x)` is an ordinary function call, so its argument is always evaluated: `opt.value_or(expensiveDefault())` calls `expensiveDefault()` even when `opt` is engaged. It also returns `T` by value, which copies a large value; in a hot path, test and dereference instead.
+q: Why is there no std::optional of a reference?
+a: The committee could not agree whether assigning to an optional reference should rebind it or assign through to the referenced object, so `std::optional<int&>` is ill-formed in C++17 and C++20; C++26 adds it, with rebinding. Return a `T*` that may be `nullptr`, a `std::optional<std::reference_wrapper<T>>`, or an index instead.
+q: Does `if (opt)` check whether the value is zero?
+a: No. `if (opt)` tests whether the optional is engaged, not what it holds, so a `std::optional<int>` containing `0` is `true`. That is the point: `0` and `-1` no longer double as a not-found marker. Compare the value itself with `*opt == 0` when that is what you mean.
+q: How are std::optional values compared?
+a: By value, with an empty optional ordered before every engaged one and equal only to another empty one. An engaged `optional<int>` holding 5 equals `5`, while comparing an empty optional with `5` is simply false. This makes optionals usable as `std::map` keys and in `std::sort`, and C++20 adds `<=>` for them.
 ---
 Some functions sometimes have no answer: a search that finds nothing, a configuration key that was never set, an average of zero numbers. C used a *sentinel* — `-1`, `NULL`, `EOF`, `std::string::npos` — a value smuggled through the normal channel that the caller must know to check and can forget, and that some types cannot spare at all (which `int` is "no int"?). `std::optional<T>`, in `<optional>` since C++17, makes absence part of the type: it either holds a `T` or holds nothing, it says which, and the compiler makes the caller ask. This lesson settles how to build, test, read and compare one, when to return it, and the one thing it cannot hold.
 

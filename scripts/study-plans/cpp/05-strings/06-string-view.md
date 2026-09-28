@@ -1,6 +1,20 @@
 ---
 title: std::string_view — a window onto text
 minutes: 13
+seo-title: C++ String View Explained: When to Use It and Lifetime Rules
+description: A C++17 string view is a non-owning pointer and length with an O(1) substr, the best read-only text parameter. When it dangles, and converting back to a string.
+question: What is std::string_view in C++?
+answer: `std::string_view` (C++17) is a non-owning, read-only view of characters that someone else owns: just a pointer and a length, sixteen bytes on x86-64 and cheap to copy. It supports the read-only string interface, including `find` and an O(1) `substr`, and accepts literals and `std::string` without copying. It must never outlive, or survive a modification of, the text it points at.
+q: Should I use string_view or const std::string& for parameters?
+a: Take `std::string_view` by value when a function only reads text: a literal, a `std::string` or another view all pass without a copy, whereas `const std::string&` builds a temporary string — allocating past 15 characters — when called with a literal. Take `std::string` when the function stores the text or needs a null-terminated `c_str()`.
+q: When does a string_view dangle?
+a: When the characters it points at are destroyed or moved. `std::string_view v = s + "x";` dangles at once, because `+` returns a temporary; returning a view of a local string dangles; and a view of a `std::vector<std::string>` element dies when `push_back` reallocates. A view must not outlive its string, and that string must not change while it is in use.
+q: How do you convert a string_view to a std::string?
+a: Construct one explicitly: `std::string s(sv);` or `std::string(sv)`. `std::string s = sv;` does not compile, because the conversion copies and allocates and the library makes you ask for it; assigning `s = sv;` and appending `s += sv;` to an existing string are allowed.
+q: Is string_view null-terminated?
+a: Not necessarily. A view of part of a string stops where `size()` says, but the bytes after it continue, so `sv.data()` passed to `printf`, `fopen` or `strlen` reads past the window. Build a `std::string` and use its `c_str()` when a C API needs a terminator.
+q: Why is string_view substr faster than string substr?
+a: `std::string::substr` allocates a new string and copies the characters, while `std::string_view::substr` only adjusts a pointer and a length, in constant time. A tokeniser built from views allocates nothing until you convert a piece you want to keep into a `std::string`.
 ---
 Every `std::string` you pass, slice or compare costs a copy somewhere: a function taking `const std::string&` allocates when called with a literal, `substr` copies what it returns, and a parser that cuts a line into fields copies the whole line again in pieces. `std::string_view` (C++17) answers all three: a pointer and a length that *refer to* characters someone else owns. It is sixteen bytes on this platform, trivially copyable, its `substr` costs nothing — and it brings the one lifetime rule this lesson exists to make you respect.
 

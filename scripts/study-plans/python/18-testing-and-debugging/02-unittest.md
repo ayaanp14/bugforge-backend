@@ -1,6 +1,20 @@
 ---
 title: unittest — TestCase, assertions, fixtures, subTest and running suites
 minutes: 15
+seo-title: Python unittest Explained: TestCase, setUp and subTest
+description: The unittest framework in the Python standard library: TestCase methods, assertEqual and assertRaises, setUp and tearDown, subTest tables and running suites.
+question: How do you write a unit test with Python's unittest?
+answer: To write a unit test with Python's `unittest`, subclass `unittest.TestCase` and add methods whose names start with `test`, each checking one behaviour with an assertion method such as `assertEqual` or `assertRaises`. `setUp` builds fresh state before every test and `tearDown` cleans up after it. Run the tests with `python -m unittest`, or call `unittest.main()` at the bottom of the file.
+q: Why use `assertEqual` instead of `assertTrue(a == b)`?
+a: The specific assertion gives a specific message: `assertEqual([1, 2], [1, 3])` shows where the lists differ, while `assertTrue` on the comparison reports only 'False is not true'. Every assertion method also takes a `msg=` argument for extra context.
+q: What is the difference between `setUp` and `setUpClass`?
+a: `setUp` runs before every test method, so each test starts from fresh state; `setUpClass`, a classmethod, runs once for the whole class and suits expensive shared state. `tearDown` and `tearDownClass` are their counterparts, and `addCleanup` registers a release step that runs even after a failure.
+q: What does `subTest` do in unittest?
+a: It checks every row of a table inside one test method. Without it, a loop of assertions stops at the first failing row; inside `with self.subTest(text=text):`, every row runs and each failure is reported with its parameters.
+q: How do you test that an exception is raised in unittest?
+a: Use `assertRaises` as a context manager, `with self.assertRaises(ValueError) as ctx:`, around the call, then inspect `ctx.exception`. `assertRaisesRegex` also checks the message; name the specific exception rather than `Exception`.
+q: Why is my unittest test not running?
+a: Test methods must start with `test` and test files must match the discovery pattern, `test*.py` by default. A method named `check_total` is silently never run; `python -m unittest -v` lists every test that did run.
 ---
 `unittest` is the test framework in the standard library: tests are methods named `test_*` on a `TestCase` subclass, assertions are methods (`assertEqual`, `assertRaises`, …) that produce readable failure messages, `setUp` and `tearDown` build and clear state around each test, and `python -m unittest` discovers and runs them. It is more verbose than pytest (next lesson) and it is everywhere — CI images, older code bases, environments where nothing can be installed — so knowing it well is not optional. This lesson covers the class, the assertion family, fixtures at three scopes, `subTest` for tables, skipping and expected failures, and running a suite in-process so a program can report its own results.
 

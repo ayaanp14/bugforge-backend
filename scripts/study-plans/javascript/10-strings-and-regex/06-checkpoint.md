@@ -1,6 +1,14 @@
 ---
 title: Checkpoint — Strings, Unicode, regular expressions and parsing
 minutes: 25
+seo-title: JavaScript Regex and Unicode Strings Quiz: Practice Test
+description: Test your JavaScript strings with 12 questions and three programs on UTF-16 and Unicode, string methods, Intl, regex flags and groups, lookarounds and parsing.
+q: Can toUpperCase change the length of a string in JavaScript?
+a: Yes. Case mapping is Unicode-aware, so `"straße".toUpperCase()` returns `"STRASSE"`, one character longer. It is also locale-independent: Turkish text needs `toLocaleUpperCase("tr")` to turn `i` into a dotted capital `İ`.
+q: Why are nested regex quantifiers dangerous?
+a: A pattern that repeats a group whose parts can match the same text, such as a word followed by optional whitespace, repeated, gives the engine exponentially many ways to split a failing input, so matching time doubles with each extra character. That catastrophic backtracking lets one crafted request pin a CPU; rewrite the pattern so each repetition consumes something unambiguous.
+q: Where does operator precedence live in a recursive-descent parser?
+a: In the structure of the grammar, not in the order of `if` statements: the lowest-precedence rule sits at the top and calls the next rule for its operands, so `expr` handles `+` and `-` by calling `term`, which handles `*` and `/` by calling `factor`. Deeper rules bind tighter.
 ---
 This checkpoint covers UTF-16 code units versus code points versus grapheme clusters, normalisation, case mapping and locale-aware comparison; the string toolbox, template literals, tagged templates and `Intl` formatting; regular-expression syntax, flags, groups, the five methods and `lastIndex`; lookarounds, Unicode property escapes, escaping input and catastrophic backtracking; and hand-written parsing with sticky tokenizers, recursive descent and CSV quoting.
 

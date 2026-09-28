@@ -1,6 +1,20 @@
 ---
 title: Numbers — int, float and the arithmetic that surprises
 minutes: 13
+seo-title: Python Integer Division, Modulo and Big Integers Explained
+description: Python ints never overflow, / always returns a float, // floors toward negative infinity and % takes the divisor's sign. Plus pow, round and math tools.
+question: What is the difference between `/` and `//` in Python?
+answer: In Python, `/` is true division and always returns a `float` — `7 / 2` is `3.5` and `6 / 3` is `2.0` — while `//` is floor division, which rounds toward negative infinity: `7 // 2` is `3` and `-7 // 2` is `-4`. On two ints `//` returns an int, so use it for indexes and counts; `%` gives the matching remainder, with the divisor's sign.
+q: Does Python have a maximum integer size?
+a: No. Python's `int` is arbitrary-precision: the object grows as the value needs, so `2 ** 64` and `10 ** 100` are exact and nothing overflows; huge values are only slower. `sys.maxsize` is the largest size a container can have, not a limit on `int`.
+q: How does modulo work with negative numbers in Python?
+a: Python's `%` takes the sign of the divisor, because `//` floors: `-7 % 2` is `1` and `7 % -2` is `-1`. The identity `a == b * (a // b) + a % b` always holds, so `x % n` for a positive `n` is always between 0 and `n - 1`, which makes wrapping an index simple.
+q: Why does round(2.5) return 2 in Python?
+a: Python's `round` uses round half to even, also called banker's rounding: a value exactly halfway rounds to the nearest even integer, so `round(2.5)` is `2` and `round(3.5)` is `4`. This avoids the upward bias of always rounding halves up. `int()` instead truncates toward zero.
+q: How do I calculate a power modulo a number in Python?
+a: Call `pow(base, exp, mod)`, which computes `base ** exp % mod` by modular exponentiation without building the full power. `pow(2, 10 ** 6, 10 ** 9 + 7)` finishes instantly, whereas `2 ** 10 ** 6 % m` first builds a number of about 300 000 digits.
+q: How do I check if a number is a perfect square in Python?
+a: Use `math.isqrt(n)`, the exact integer square root: `math.isqrt(n) ** 2 == n` is true only for perfect squares. `int(math.sqrt(n))` goes through a float and can give the wrong answer for large `n`.
 ---
 Python has three numeric types and one of them is unlike anything in C or Java: `int` has no upper limit. `2 ** 1000` is an ordinary integer, factorials of hundreds do not overflow, and the questions that fill C++ interviews — "does this product fit in 64 bits?" — simply do not arise. What does arise is the *semantics* of division and remainder, which Python defines carefully and differently from most languages, and the difference between the exact `int` and the approximate `float`. This lesson settles the integer side; the next one is about floating point.
 

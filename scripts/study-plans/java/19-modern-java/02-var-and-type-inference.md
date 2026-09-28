@@ -1,6 +1,20 @@
 ---
 title: var and type inference — what the compiler already knows
 minutes: 12
+seo-title: Java var Keyword: Local Variable Type Inference Explained
+description: Java's var infers a local variable's static type from its initialiser; it is not dynamic typing. Where var is allowed, what it infers and when to avoid it.
+question: What is var in Java?
+answer: `var` in Java, added in Java 10, is local variable type inference: the compiler works out a local variable's type from its initialiser, and the variable stays statically typed with that type fixed. It is not dynamic typing and not `Object`. `var` needs an initialiser and works only for locals, loop variables, try-with-resources variables and, from Java 11, lambda parameters.
+q: Is var dynamic typing in Java?
+a: No. The type is inferred once, at compile time, from the initialiser and never changes; assigning a value of another type later is a compile error, exactly as if the type had been written out.
+q: Where can you not use var in Java?
+a: Not for fields, method parameters or return types, not without an initialiser, not with `null`, and not with a bare lambda or method reference, because there is nothing to infer the type from. `var x;` and `var n = null;` do not compile.
+q: What type does `var list = new ArrayList<>()` infer?
+a: `ArrayList<Object>`: with `var` the diamond has no target type to infer its argument from. Write `var list = new ArrayList<String>()`, or declare `List<String> list = new ArrayList<>()`.
+q: Does var infer the interface or the concrete class?
+a: The concrete class: `var names = new ArrayList<String>()` is an `ArrayList<String>`, not a `List<String>`, so a `LinkedList` cannot be assigned to it later. Declare the interface type explicitly when that is what you want.
+q: When should you not use var in Java?
+a: When the reader cannot tell the type from the line — `var users = repository.findActive()` could be a list, a set, a stream or an optional. Use `var` when the initialiser names the type, as with `new`, a literal, a cast or `Path.of`.
 ---
 `var list = new ArrayList<String>();` — Java 10 let you stop writing the type twice. `var` is **local variable type inference**: the variable is still statically typed, the compiler simply works the type out from the initialiser. It is not dynamic typing, not `Object`, and not optional in the places it is allowed — a `var` with no initialiser is a compile error. This lesson covers exactly where `var` is permitted, what type it infers (including the surprising cases), the style rules that keep it readable, and the other inference features it joined: the diamond, generic method inference and lambda parameter inference.
 

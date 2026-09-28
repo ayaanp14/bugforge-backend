@@ -1,6 +1,20 @@
 ---
 title: asyncio patterns — TaskGroup, queues, semaphores, async iteration and bridging
 minutes: 14
+seo-title: Python asyncio TaskGroup, Semaphore and Queue Patterns
+description: Structured asyncio in Python: TaskGroup, a Semaphore to bound concurrency, Queue workers, async for and async with, and running blocking code off the loop.
+question: What is `asyncio.TaskGroup` in Python?
+answer: `asyncio.TaskGroup`, new in Python 3.11, is an async context manager that owns the tasks created with `tg.create_task` inside it. The `async with` block waits for all of them; if one raises, the others are cancelled and the errors are raised together as an `ExceptionGroup`, caught with `except*`. That is structured concurrency: no task outlives its block and no exception is lost.
+q: How do you limit concurrency in asyncio?
+a: Create `sem = asyncio.Semaphore(n)` and wrap each request in `async with sem:`, so at most n run at once while `gather` still returns results in input order. A thousand coroutines are cheap to create, but a thousand simultaneous connections are not cheap for the server.
+q: Should I use a TaskGroup or `asyncio.gather`?
+a: Use a `TaskGroup` when the tasks should fail together, since one error cancels the rest. Use `gather(..., return_exceptions=True)` when the tasks are independent and you want every result, with exceptions collected as values.
+q: How do you call blocking code from asyncio?
+a: `await asyncio.to_thread(fn, *args)` runs a blocking function on a worker thread and awaits its result, keeping the event loop free. For CPU-bound work, `await loop.run_in_executor(process_pool, fn, arg)` sends it to a process pool instead.
+q: Why do I get "'async_generator' object is not iterable"?
+a: An async generator must be consumed with `async for` inside a coroutine, not with a plain `for`. The same applies to comprehensions over it, which must be async comprehensions such as `[x async for x in ticker(3)]`.
+q: When should I not use asyncio?
+a: When the work is CPU-bound, use processes. When there are only a few waits and the libraries are blocking, such as a handful of `requests` calls, `ThreadPoolExecutor.map` is simpler and needs no rewrite. asyncio pays off with many concurrent waits and async-native libraries.
 ---
 The basics give you coroutines and `gather`; real programs need the shapes built on them: a group of tasks that fails together, a bounded number of concurrent requests, a producer feeding consumers through a queue, an `async for` over a stream, an `async with` around a connection, and a way to call the synchronous world without freezing the loop. This lesson covers `TaskGroup` (new in 3.11), `Semaphore` for rate limiting, `asyncio.Queue` workers, `as_completed` and its ordering caveat, async iterators, generators and context managers, `to_thread` and `run_in_executor`, and the guidance on when asyncio is the wrong tool.
 

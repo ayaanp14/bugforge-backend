@@ -1,6 +1,20 @@
 ---
 title: Integer arithmetic and bits
 minutes: 15
+seo-title: C++ Integer Overflow and Bitwise Operators Explained
+description: Signed integer overflow in C++ is undefined behaviour and unsigned arithmetic wraps. Overflow checks, division and modulo, bit masks and the C++20 bit header.
+question: What happens on integer overflow in C++?
+answer: In C++, signed integer overflow is undefined behaviour: the program has no defined meaning from that point, and the optimiser assumes overflow never happens, so a check written after it may be deleted. Unsigned arithmetic is different — it wraps modulo 2ⁿ, so `0u - 1` is 4294967295. Detect signed overflow before it happens, by widening to `long long` or comparing against `std::numeric_limits`.
+q: How do you check for integer overflow in C++?
+a: Check before the operation, never after. Widen — compute `static_cast<long long>(a) + b` and range-check the result — or compare against the limit first, such as `a > std::numeric_limits<int>::max() - b` for a positive `b`. GCC and Clang also provide `__builtin_add_overflow`, `__builtin_sub_overflow` and `__builtin_mul_overflow`.
+q: How do division and modulo work with negative numbers in C++?
+a: Integer `/` truncates toward zero and `%` takes the sign of the dividend, so `-7 / 2` is -3 and `-7 % 2` is -1. For a remainder that always falls in 0 to m - 1, use `((a % m) + m) % m`. Dividing by zero is undefined behaviour.
+q: What are the bitwise operators in C++?
+a: `&` (and), `|` (or), `^` (exclusive or), `~` (complement), `<<` (shift left) and `>>` (shift right); with 5 and 3, `5 & 3` is 1, `5 | 3` is 7 and `5 ^ 3` is 6. Because `&` and `|` bind more loosely than `==`, parenthesise every test: `(x & 1) == 0`.
+q: Why is `1 << 40` undefined in C++?
+a: The literal `1` is an `int`, and shifting by a count at least as wide as the promoted type — 32 bits here — is undefined behaviour, even when the result is assigned to a `long long`. Write `1LL << 40` or `1ull << 40` so the shift happens in a 64-bit type.
+q: How do you count the set bits of an integer in C++?
+a: C++20's `<bit>` header provides `std::popcount(x)`, which returns the number of 1 bits, alongside `std::bit_width`, `std::has_single_bit`, `std::countl_zero` and `std::countr_zero`. They accept only unsigned types, so passing an `int` does not compile.
 ---
 Integer arithmetic in C++ compiles to the CPU's own add, multiply and shift instructions and nothing more: no range check, no promotion to a big integer, no exception. That is where the speed comes from, and it is why the rules at the edges are yours to know. Signed and unsigned types behave differently when a result does not fit, small types quietly become `int` before any arithmetic happens, division rounds in a definite direction, and the shift operators have holes the standard refuses to fill. This lesson states each rule, shows how to detect overflow without committing it, and covers the bit operators and the C++20 `<bit>` header that make masks and flags readable.
 

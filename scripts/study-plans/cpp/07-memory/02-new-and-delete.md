@@ -1,6 +1,20 @@
 ---
 title: new and delete — dynamic memory and the ownership contract
 minutes: 14
+seo-title: C++ new and delete: Dynamic Memory, Ownership and Leaks
+description: In C++, new constructs an object on the heap and delete destroys it. Ownership, leaks, double deletes, and why modern code uses smart pointers.
+question: What do new and delete do in C++?
+answer: In C++, `new T(args)` allocates heap storage, constructs a `T` in it and returns a `T*`; `delete p` runs the object's destructor and frees the storage. Arrays use `new T[n]` and `delete[] p`, and mixing the forms is undefined behaviour. Nothing frees a `new`ed object automatically, so every `new` needs exactly one matching `delete` on every path — which is why modern code uses `std::make_unique` and containers instead.
+q: What is the difference between delete and delete[] in C++?
+a: `delete` destroys a single object created with `new`; `delete[]` destroys every element of an array created with `new[]` and frees the block. The array form records the element count so that each destructor runs. Using the wrong form is undefined behaviour, however it happens to behave today.
+q: What is a memory leak in C++?
+a: A leak is a heap block whose owner has lost track of it, so it is never deleted: a missing `delete`, an early `return` or an exception that skips it, or a pointer overwritten with a new address. The memory is reclaimed only at exit, and the object's destructor never runs.
+q: What happens if you delete a pointer twice?
+a: Deleting the same block twice is undefined behaviour: it hands the allocator a block it already has, which typically corrupts its free lists and crashes later, somewhere unrelated. It comes from two pointers that both believe they own the object; the fix is a single owner.
+q: Does new return nullptr when memory runs out?
+a: No. Plain `new` throws `std::bad_alloc` when allocation fails, unlike C's `malloc`, which returns null. `new (std::nothrow) T` returns `nullptr` instead, for code that must not throw. `delete nullptr` is defined and does nothing.
+q: What is the difference between new and malloc?
+a: `new` allocates and runs a constructor, and `delete` runs the destructor and frees; `malloc` and `free` are C's allocator and call neither. The two families must never be mixed: freeing a `new`ed pointer with `free`, or deleting a `malloc` block, is undefined behaviour.
 ---
 `new` is the one expression that creates an object nothing will destroy for you, and `delete` is the promise that somebody will. Between them is a contract — exactly one piece of code owns the object and is responsible for ending it — and every memory bug in lesson 6 is a broken version of that contract. This lesson covers the two forms of `new` and `delete`, the ways a `delete` gets skipped or doubled, and why modern code writes `new` almost never: not because it is dangerous by itself, but because the bookkeeping it demands is better done by a class.
 

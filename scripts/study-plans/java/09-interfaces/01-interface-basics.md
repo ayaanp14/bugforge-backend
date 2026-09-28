@@ -1,6 +1,20 @@
 ---
 title: Interfaces — contracts without implementation
 minutes: 13
+seo-title: What Is an Interface in Java? Implements and Marker Interfaces
+description: A Java interface is a contract of public abstract methods; a class can implement several at once. Constants, programming to an interface and marker interfaces.
+question: What is an interface in Java?
+answer: An interface in Java is a type defined by the methods a class must provide: abstract method signatures that are implicitly `public abstract`, plus `public static final` constants and no instance state. A class `implements` any number of interfaces, and code written against the interface type — such as `List<String> names = new ArrayList<>()` — works with every implementation.
+q: Can an interface have fields in Java?
+a: Only constants. Every field declared in an interface is implicitly `public static final`, so interfaces have no instance state to inherit. Putting constants in an interface for classes to implement is an anti-pattern; use a `final` class with a private constructor instead.
+q: Why must interface methods be implemented as public in Java?
+a: Interface methods are implicitly `public`, and an implementation cannot narrow the access of the method it overrides. Leaving out `public` in the class gives the compile error "attempting to assign weaker access privileges".
+q: Can a class implement multiple interfaces in Java?
+a: Yes — a class can implement any number, as in `class Duck implements Swimmer, Flyer`, which is how Java provides multiple inheritance of type. If two interfaces declare the same abstract method signature, one implementation satisfies both.
+q: What is a marker interface in Java?
+a: A marker interface has no methods and tags a class as a type that library code can test with `instanceof`; `Serializable`, `Cloneable` and `RandomAccess` are examples. Annotations now do most tagging, but a marker interface still helps when a method parameter must require the tag.
+q: Why declare `List<String> list = new ArrayList<>()` instead of using ArrayList as the type?
+a: Declaring variables and parameters with the interface type means code depends on the contract, not one class. Swapping in a `LinkedList` then changes a single line, and a method that takes `List<String>` accepts every list rather than only `ArrayList`.
 ---
 An interface is a **type** defined purely by what it can do: a set of method signatures with no state and (originally) no bodies. A class that `implements` an interface promises to provide those methods, and any code written against the interface type works with every implementation, present and future. Interfaces are how Java achieves multiple inheritance of *type*, and "program to an interface" is the most repeated design advice in the language for good reason.
 

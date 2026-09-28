@@ -1,6 +1,20 @@
 ---
 title: Writing clean solutions under time pressure
 minutes: 12
+seo-title: How to Write Clean C++ Code in a Coding Interview
+description: What interviewers score beyond a correct C++ answer: read-solve-print structure, one-job helpers, names, const and auto, edge cases and stated complexity.
+question: How do you write clean code in a C++ coding interview?
+answer: Separate reading, solving and printing: `main` handles input and output, and a pure function takes its input by `const&` or `std::string_view` and returns the answer by value. Add small helpers with one job, names that say what is true, guard clauses for edge cases and `long long` where values accumulate. Then state the time and space complexity, and the trade-off, without being asked.
+q: Should I use auto in a C++ interview?
+a: Use `auto` where the spelled type is long and adds nothing — iterators, lambdas, structured bindings, map entries — and write the type where the type is the point: `auto total = 0;` is an `int` and may overflow, while `long long total = 0;` says what you meant. In range-`for`, `const auto&` reads and `auto&` modifies.
+q: What do interviewers look for in a coding interview?
+a: Correctness on the example and the edge cases; a complexity stated unprompted, with its trade-off; sound types and ownership — `const&` parameters, `long long` where it matters, no raw `new`; a clear read-solve-print structure; and communication: the plan before the code, the invariant during it and a review pass after.
+q: How should I test my solution in a coding interview?
+a: Trace the statement's example line by line, then the smallest inputs — empty, one element — then a boundary such as a window exactly `k` wide, then an adversarial case: all equal, all negative, sorted descending, or a value that overflows `int`. Tracing a four-element input aloud finds most off-by-one errors.
+q: What should I do when I am stuck in a coding interview?
+a: Say what you know and what you need — better than O(n²), say — then simplify to small n, a sorted input or a single query and grow the solution from there. A brute force written cleanly and labelled as the baseline earns partial credit and often shows where the optimisation lies.
+q: Should I return -1 or std::optional when there is no answer?
+a: Return `std::optional<T>`: it states in the type that there may be no answer, whereas a `-1` sentinel collides with a legitimate negative result. Return a `std::pair` or a small `struct` for two results, unpacked with a structured binding at the call.
 ---
 Two candidates solve the same problem correctly in the same forty minutes, and one is hired. The difference is almost always what the interviewer could *see*: a structure that made the correctness obvious, names that said what things were, edge cases handled in visible lines, `const` and `long long` in the right places, and a complexity stated without prompting. Clean code in an interview is not style points; it is how you make your thinking legible to someone deciding whether to trust you with a codebase. These are the C++ habits that produce that legibility without costing minutes.
 

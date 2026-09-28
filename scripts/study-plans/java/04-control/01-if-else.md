@@ -1,6 +1,20 @@
 ---
 title: if, else and the shape of a decision
 minutes: 12
+seo-title: Java If-Else Statements: Else If, Guard Clauses and Ternary
+description: How if, else if and else work in Java: the condition must be a boolean, else binds to the nearest if, and guard clauses with early returns flatten nesting.
+question: How does an if-else statement work in Java?
+answer: An if-else statement in Java runs one block when its condition is `true` and the `else` block otherwise. The condition must be a `boolean` expression, since no other type converts to one, so `if (count)` does not compile. In an `else if` chain the conditions are tested top to bottom and the first true one wins; always use braces, because indentation does not decide what the `if` controls.
+q: Does Java have elif?
+a: No. Java has no `elif` keyword; `else if` is simply an `else` whose statement is another `if`. The conditions are tested from the top and the first true one wins, so put the most specific test first.
+q: What is the dangling else problem in Java?
+a: When an `if` without braces contains another `if`, a following `else` could belong to either. Java binds an `else` to the nearest unmatched `if`, whatever the indentation says, so it belongs to the inner one. Braces remove the ambiguity.
+q: Why does `if (x = 5)` not compile in Java?
+a: `x = 5` is an assignment whose value is the `int` 5, and an `if` condition must be a `boolean`; Java converts nothing to `boolean`. `if (flag = true)` does compile, because that assignment yields a `boolean`, and is always true, a famous bug; write `if (flag)`.
+q: What is a guard clause in Java?
+a: A guard clause is an `if` at the top of a method that handles an exceptional case and leaves at once with `return` or `throw`, such as `if (order == null) return;`. A series of guards replaces nested conditions, so the main logic sits unindented at the end.
+q: How do I return a boolean without an if statement in Java?
+a: Return the condition itself: `return age >= 18;` replaces an `if` that returns `true` in one branch and `false` in the other. A condition is an ordinary `boolean` value, so it can also be stored in a well-named variable such as `isWeekend`.
 ---
 `if` is the first control-flow statement everyone learns and the one whose *style* most affects whether code can be read. This lesson covers the semantics precisely — including the dangling `else` and the boolean rules — and then the conventions that turn a nest of conditions into something a reviewer can follow: guard clauses, early returns, and expressing conditions as boolean values rather than branches.
 

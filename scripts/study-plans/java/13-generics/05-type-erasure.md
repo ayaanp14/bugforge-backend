@@ -1,6 +1,20 @@
 ---
 title: Type erasure and its consequences
 minutes: 14
+seo-title: What Is Type Erasure in Java? Bridge Methods and Limits
+description: Type erasure strips Java generic type arguments after compiling: a List of String is a plain List at run time. Why new T fails, bridge methods, heap pollution.
+question: What is type erasure in Java?
+answer: Type erasure is how Java implements generics: the compiler checks every generic use, then replaces each type parameter with `Object` or its first bound and inserts casts where values are read. At run time `List<String>` and `List<Integer>` are the same `List` class. Erasure kept older code and JVMs compatible, and it is why `new T()` and `new T[n]` are illegal.
+q: Why can't you create an instance of a type parameter with `new T()`?
+a: At run time `T` has been erased to `Object`, so there is no class to instantiate. Pass the knowledge in instead: a `Supplier<T>` and call `factory.get()`, or a `Class<T>` token and call `getDeclaredConstructor().newInstance()`.
+q: Why can't you overload methods on generic type arguments?
+a: Because both erase to the same signature. `process(List<String>)` and `process(List<Integer>)` both become `process(List)`, and the compiler reports a name clash. Give the methods different names, or write one generic method.
+q: What is a bridge method in Java?
+a: A bridge method is a hidden method the compiler generates so an override with a specialised signature still overrides the erased parent. If `IntNode extends Node<Integer>` overrides `set(Integer)`, the compiler adds a `set(Object)` that casts and calls it; `Method.isBridge()` reveals them.
+q: What is heap pollution in Java?
+a: Heap pollution is a variable of a parameterised type referring to an object that is not of that type, such as a `List<String>` holding an `Integer` after a raw-type `add`. Raw types, unchecked casts and generic varargs cause it, and it surfaces later as a `ClassCastException` where no cast is visible.
+q: Why is `instanceof List<String>` illegal in Java?
+a: The JVM cannot see the `String`: after erasure only the raw `List` class exists, so the test could not be carried out. `instanceof List<?>` is allowed, and a cast to `List<String>` compiles only with an unchecked warning, checking nothing beyond "is it a List".
 ---
 Everything the compiler knows about `List<String>` it forgets before the class file is written. That decision — **erasure** — is why Java generics are backward compatible, and why a whole list of natural-looking things are impossible: `new T()`, `T[]`, `instanceof List<String>`, overloading on type arguments, a static field of type `T`. This lesson explains what erasure does, walks through each limitation with the reason, and covers the two artefacts it leaves behind — bridge methods and heap pollution.
 

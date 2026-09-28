@@ -1,6 +1,18 @@
 ---
 title: Scope and closures — LEGB, global, nonlocal and late binding
 minutes: 15
+seo-title: Python Scope and Closures: LEGB, Global and Nonlocal
+description: Python looks names up local, enclosing, global, then built-in. Why assignment makes a name local and raises UnboundLocalError, global vs nonlocal, and closures.
+question: What is the LEGB rule in Python?
+answer: The LEGB rule is the order in which Python looks up a name: Local (the current function), Enclosing (any outer function scopes), Global (the module), then Built-in (names such as `len` and `print`); the first match wins. One twist: assigning a name anywhere in a function makes it local for the whole function, unless it is declared `global` or `nonlocal`.
+q: What causes UnboundLocalError in Python?
+a: Assigning to a name anywhere in a function makes it local for the whole function, so reading it before that assignment fails. `count += 1` inside a function, with `count` defined at module level, raises `UnboundLocalError` because the global is never consulted. Declare `global count` or, better, return the new value.
+q: What is the difference between global and nonlocal in Python?
+a: `global name` makes assignments in a function bind the module-level name, creating it if needed; `nonlocal name` makes them bind the name in the nearest enclosing function, where it must already exist. Both are rare in good code, and a closure that keeps a counter is the usual legitimate use of `nonlocal`.
+q: What is a closure in Python?
+a: A closure is a function that refers to names from an enclosing function's scope and keeps them alive after that function has returned: `multiplier(2)` can return an inner `multiply` that remembers `factor`. The closure captures the variable, not its value, and reads the current value each time it runs.
+q: Why do lambdas created in a loop all return the same value in Python?
+a: They all close over the same loop variable and read it when called, after the loop has finished, so three `lambda x: x + i` built over `range(3)` all add 2. Bind the value at creation time with a default argument, `lambda x, i=i: x + i`, with `functools.partial`, or with a factory function.
 ---
 Where does a name come from? Python answers with one rule — **LEGB**: local, enclosing, global, built-in — and one twist: *assignment* anywhere in a function makes the name local to the whole function, even on lines before the assignment. That twist produces `UnboundLocalError`, the `global` and `nonlocal` keywords exist to override it, and closures — functions that remember the enclosing scope they were created in — follow from the same rule. This lesson fixes the rule, the two keywords, the closure mechanism, and the late-binding behaviour that surprises everyone who builds functions in a loop.
 

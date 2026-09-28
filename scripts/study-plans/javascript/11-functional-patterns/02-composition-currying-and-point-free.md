@@ -1,6 +1,20 @@
 ---
 title: Composition, currying and point-free style — building programs from small functions
 minutes: 13
+seo-title: Currying in JavaScript: Pipe, Compose and Point-Free Style
+description: Currying turns f(a, b, c) into f(a)(b)(c). Build pipe and compose with reduce, partial application and data-last helpers, and see when point-free style hurts.
+question: What is currying in JavaScript?
+answer: Currying transforms a function of several arguments into a chain of functions that each take one, so `add(a, b, c)` becomes `add(a)(b)(c)` and every call fixes one argument. A generic `curry` helper collects arguments until it has as many as `fn.length`, then calls the function. Currying produces the one-argument steps that `pipe` and `compose` chain together.
+q: What is the difference between currying and partial application?
+a: Currying turns an n-argument function into a chain of one-argument calls. Partial application fixes some arguments now, in one call, and returns a function that takes the rest later: `partial(greet, "Hello", "Ada")` returns a function awaiting the remaining arguments. Both produce specialised functions from general ones.
+q: How do you implement pipe and compose in JavaScript?
+a: Both fold over the functions with the value as the accumulator. `pipe` runs left to right, `(...fns) => (x) => fns.reduce((acc, f) => f(acc), x)`, so `pipe(f, g)(x)` is `g(f(x))`. `compose` uses `reduceRight` and runs right to left, matching mathematical notation. Both expect one-argument functions.
+q: What is point-free style in JavaScript?
+a: Point-free, or tacit, style defines functions without naming their arguments, such as `const names = map(prop("name"))` instead of an arrow that takes `users`. It reads well for a pipeline of well-named steps and badly when it turns into nested combinators; `["1", "2", "3"].map(parseInt)` returning `[1, NaN, NaN]` is the cautionary tale.
+q: Why does auto-curry break with default parameters?
+a: A generic `curry` decides when to call the function by comparing the arguments collected with `fn.length`, and `length` stops counting at the first parameter with a default value or a rest parameter. The function is then called too early. State the arity explicitly instead, as a `curryN(3, fn)` helper does.
+q: What does data-last mean in functional JavaScript?
+a: Data-last means a utility takes its configuration first and the data it operates on last, `map(fn, xs)` rather than `map(xs, fn)`. Partially applying the configuration then yields exactly the one-argument function a pipeline needs. Ramda and `lodash/fp` are data-last by design; plain Lodash is data-first and suits chaining.
 ---
 Once functions are pure, they compose: the output of one is the input of the next, and a program becomes a pipeline of small, named, testable steps. Two mechanical tools make that pleasant in JavaScript — `pipe`/`compose` to chain unary functions, and **currying**/partial application to turn multi-argument helpers into the unary pieces a pipeline wants — plus one design convention, **data-last**, that decides whether a library composes well. This lesson builds the tools, shows the style they enable (including "point-free" code with no named parameters), compares it honestly with method chaining, and marks the places where the style stops helping.
 

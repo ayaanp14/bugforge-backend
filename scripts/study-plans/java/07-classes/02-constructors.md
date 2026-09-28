@@ -1,6 +1,20 @@
 ---
 title: Constructors and initialisation order
 minutes: 15
+seo-title: Java Constructors: Default, Chaining and Initialization Order
+description: A Java constructor validates arguments and sets up a new object. Default constructors, overloading, this() chaining, initialisation order and static factories.
+question: What is a constructor in Java?
+answer: A constructor in Java is a special block that initialises a new object: it has the class's name, no return type (not even `void`), and runs once for every `new`. Its job is to establish the object's invariants — validate the arguments, throw `IllegalArgumentException` on bad input and assign every `final` field — so no object ever exists in a broken state.
+q: What is a default constructor in Java?
+a: If a class declares no constructor, the compiler generates a no-argument default constructor that does nothing beyond the field initialisers. Declaring any constructor removes it, so existing `new X()` calls stop compiling until you add a no-argument constructor yourself.
+q: What is constructor chaining in Java?
+a: Constructor chaining is one constructor calling another of the same class with `this(...)`, usually to supply default values while keeping validation in one place. `this(...)` must be the first statement and chains must not be circular; `super(...)` calls the parent's constructor instead.
+q: In what order are fields and constructors initialised in Java?
+a: For `new Sub()` where `Sub extends Base`: every field is set to its default, `Sub`'s constructor calls `super(...)`, `Base`'s field initialisers and instance blocks run in textual order, then `Base`'s constructor body, then `Sub`'s initialisers and blocks, and finally `Sub`'s constructor body.
+q: Can a constructor be private in Java?
+a: Yes. A private constructor stops other classes from calling `new`, which is how singletons, utility classes and classes built only through static factory methods control their instances. The class itself can still call it, for example from a `static` factory.
+q: Why use a static factory method instead of a constructor in Java?
+a: A static factory method has a name (`fromHex` rather than a second constructor taking ints), can return a cached instance as `Integer.valueOf` does, and can return a subtype or an existing object. A constructor always creates a new object of exactly its own class.
 ---
 A constructor turns freshly allocated memory into a valid object. Get it right and an object can never exist in a broken state; get it wrong and every method must defend against half-built objects. This lesson covers constructor rules, overloading and chaining with `this(...)`, the exact order in which fields, initialiser blocks and constructor bodies run, and the validation that belongs there.
 
@@ -26,7 +40,7 @@ A `final` field must be assigned exactly once by the end of every constructor �
 
 ## The default constructor
 
-If you declare **no** constructor, the compiler generates a public no-argument one that does nothing beyond field initialisers. Declare *any* constructor and the default disappears — `new BankAccount()` becomes a compile error unless you add one explicitly. This surprises people who add a parameterised constructor to a class that other code creates with `new X()`.
+If you declare **no** constructor, the compiler generates a no-argument one, with the same access as the class (public for a public class), that does nothing beyond field initialisers. Declare *any* constructor and the default disappears — `new BankAccount()` becomes a compile error unless you add one explicitly. This surprises people who add a parameterised constructor to a class that other code creates with `new X()`.
 
 ## Overloading and chaining with `this(...)`
 
@@ -127,7 +141,7 @@ Constructors are **not inherited**: a subclass must declare its own (or accept t
 
 ## Interview angle
 
-- *"What happens if you declare no constructor?"* A public no-arg default is generated — until you declare any constructor.
+- *"What happens if you declare no constructor?"* A no-arg default with the class's own access is generated — until you declare any constructor.
 - *"Can a constructor be private?"* Yes: singletons, factories, utility classes.
 - *"Order of field initialisers and constructor body?"* Initialisers first (after the super constructor), then the body.
 - *"Can a constructor return a value?"* No; it has no return type. Static factories can return anything.

@@ -1,6 +1,20 @@
 ---
 title: Pointer arithmetic and arrays
 minutes: 14
+seo-title: C++ Pointer Arithmetic: Arrays, Ranges and C Strings
+description: Adding i to a C++ pointer moves it i elements, not bytes; subtracting two pointers counts elements. Half-open ranges, the end pointer and C strings.
+question: How does pointer arithmetic work in C++?
+answer: Pointer arithmetic in C++ moves a pointer by whole elements, not bytes: for a `T*`, `p + i` advances `i * sizeof(T)` bytes to the `i`-th element after `p`. `p[i]` is defined as `*(p + i)`, and subtracting two pointers into the same array gives the number of elements between them as a `std::ptrdiff_t`. Arithmetic is only valid within an array and one past its end.
+q: What is the one-past-the-end pointer in C++?
+a: For an array of `N` elements, `a + N` points one past the last element. You may form it, compare with it and subtract it, but never dereference it. It is the `end` of the half-open range `[begin, end)` that every standard algorithm takes; going further, or to `a - 1`, is undefined behaviour.
+q: Why does C++ use half-open ranges [begin, end)?
+a: Because the arithmetic has no special cases: the length is `end - begin`, an empty range is `begin == end`, and splitting at `mid` gives `[begin, mid)` and `[mid, end)` with nothing lost or counted twice. "Not found" is reported by returning `end`, as `std::find` does.
+q: Why does `3[a]` compile in C++?
+a: Because `a[i]` is defined as `*(a + i)`, and addition commutes, so `3[a]` is `*(3 + a)` — the same element as `a[3]`. It is a curiosity that shows subscripting is built on pointer arithmetic; never write it.
+q: What is a C string in C++?
+a: A C string is an array of `char` whose end is marked by a terminating null character, the byte 0, rather than a stored length. The literal `"hello"` is six chars including the terminator, and functions such as `strlen` walk until they find it. `std::string` knows its length and replaces C strings except when talking to C APIs.
+q: How do I convert a pointer to an array index?
+a: Subtract the array's start: if `p` points into `a`, then `p - a` is its index, as a `std::ptrdiff_t`. That is what to print when a program asks where an element is, never the address itself. Subtracting pointers into two different arrays is undefined behaviour.
 ---
 A pointer into an array can be moved. `p + 1` is the next element, `q - p` is how many elements apart two pointers are, and `p[i]` is nothing more than `*(p + i)`. That is how arrays and pointers are the same thing at the machine level, how every C string is walked, and — through `begin` and `end` — how the entire standard library expresses "a range of elements". This lesson settles the arithmetic, the half-open range convention, the one pointer you may form but never dereference, and the C string.
 

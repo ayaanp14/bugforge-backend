@@ -1,6 +1,20 @@
 ---
 title: Regex in practice — lookarounds, Unicode properties, escaping input, ReDoS, and knowing when to stop
 minutes: 13
+seo-title: JavaScript Regex Lookahead, Lookbehind and ReDoS Explained
+description: Regex lookahead and lookbehind assert context without consuming it. Unicode property escapes, escaping input for new RegExp, and catastrophic backtracking.
+question: What is a lookahead in regex?
+answer: A lookahead is a zero-width assertion: `x(?=y)` matches `x` only if `y` follows, and the negative form `x(?!y)` only if it does not, without consuming `y`. Lookbehinds, `(?<=y)x` and `(?<!y)x`, check what precedes instead and have worked in JavaScript since ES2018. Stacking several lookaheads at the start of a pattern expresses rules that must all hold, as in password validation.
+q: What is catastrophic backtracking in regex?
+a: Catastrophic backtracking is exponential matching time caused by nested quantifiers, or adjacent quantified parts that can match the same text, on an input that fails: the engine tries every way to split it, and a 40-character string can pin a CPU for minutes, which is the ReDoS attack. Make each repetition unambiguous, prefer negated classes, anchor patterns and limit input length.
+q: How do you escape user input for new RegExp in JavaScript?
+a: Escape every regex metacharacter before building the pattern, with the standard one-line `escapeRegExp` helper that runs `replace` over the characters `. * + ? ^ $ { } ( ) | [ ]` and the backslash. Unescaped, a `.` matches anything, a `(` throws a `SyntaxError`, and a crafted input can trigger catastrophic backtracking. `RegExp.escape` arrived as a built-in in 2025.
+q: What are Unicode property escapes in JavaScript regex?
+a: Unicode property escapes, a backslash and `p` followed by a property name in braces, match characters by Unicode category and need the `u` flag: property `L` is any letter in any script, `Lu` an uppercase letter, `N` any number and `Script=Han` a single script. They replace `[A-Za-z]`, which fails on "café"; the ASCII word, digit and boundary shorthands stay ASCII even with `u`.
+q: How do you add commas to a number with regex?
+a: Globally replace each position that is not a word boundary and is followed by one or more groups of exactly three digits with no digit after them; a lookahead does the "followed by" without consuming anything, so `"1234567"` becomes `"1,234,567"`. It is a classic interview exercise, but in real code `Intl.NumberFormat` does the job and handles locales.
+q: Should you parse HTML with regex?
+a: No. HTML nests and depends on context, with attributes, comments, whitespace and unclosed tags, so a pattern that extracts text between tags breaks on real pages. Use a parser: `DOMParser` in browsers, `cheerio` or `parse5` in Node. Regex is the right tool for tokens and flat shapes, not for nested structure.
 ---
 The syntax lesson makes regexes *possible*; this one makes them *safe and useful*. Lookarounds let you assert context without consuming it (thousands separators, password rules, "a word not followed by…"); Unicode property escapes replace `[A-Za-z]` with something that works for every language; a function replacer turns `replace` into a small compiler. Then the two hazards every production regex must be checked for: user input pasted into a pattern (escape it), and **catastrophic backtracking** — patterns that take seconds or hours on a crafted input and can knock a server over. The lesson ends with the honest list of things a regex should not be asked to do.
 

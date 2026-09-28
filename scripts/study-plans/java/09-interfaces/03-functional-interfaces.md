@@ -1,6 +1,20 @@
 ---
 title: Functional interfaces and the shape of a lambda
 minutes: 13
+seo-title: Functional Interfaces in Java: Lambdas and java.util.function
+description: A Java functional interface has one abstract method, which a lambda implements. @FunctionalInterface, Supplier, Consumer, Function, Predicate and composition.
+question: What is a functional interface in Java?
+answer: A functional interface in Java is an interface with exactly one abstract method, such as `Runnable`, `Comparator` or `Predicate<T>`. That single method is what a lambda expression or method reference implements: every lambda's type is a functional interface. Default and static methods do not count toward the one, and the optional `@FunctionalInterface` annotation makes adding a second abstract method a compile error.
+q: What is the difference between Supplier, Consumer, Function and Predicate in Java?
+a: They differ by input and output. `Supplier<T>` takes nothing and returns a `T` (`get`); `Consumer<T>` takes a `T` and returns nothing (`accept`); `Function<T, R>` turns a `T` into an `R` (`apply`); `Predicate<T>` takes a `T` and returns a boolean (`test`).
+q: Can a functional interface have default methods?
+a: Yes. Only abstract methods count, so a functional interface can have any number of default and static methods; abstract redeclarations of `Object`'s public methods, such as the `equals` that `Comparator` declares, do not count either.
+q: What is the @FunctionalInterface annotation for?
+a: It asks the compiler to check that the interface has exactly one abstract method, so adding a second one becomes a compile error instead of silently breaking every lambda that implements the interface. It is optional: any interface with a single abstract method is functional.
+q: What is the difference between Runnable and Callable in Java?
+a: `Runnable.run()` takes nothing, returns nothing and cannot throw checked exceptions. `Callable<V>.call()` returns a value of type `V` and is declared `throws Exception`, so a task that produces a result or may fail with a checked exception is a `Callable`.
+q: What is the difference between andThen and compose in Java?
+a: `f.andThen(g)` applies `f` first and then `g`; `f.compose(g)` applies `g` first and then `f`. With `twice = x -> x * 2` and `plusOne = x -> x + 1`, `twice.andThen(plusOne).apply(5)` is 11 and `twice.compose(plusOne).apply(5)` is 12.
 ---
 A **functional interface** is an interface with exactly one abstract method. That single method is what a lambda expression or a method reference *implements* — every lambda in Java has a functional interface as its type. Understanding this link is what makes lambdas, streams and most modern Java APIs readable rather than magical. This lesson is the interface side; Module 11 covers the lambda syntax and captures in full.
 

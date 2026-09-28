@@ -1,6 +1,20 @@
 ---
 title: What TypeScript adds — erased types, inference, and any versus unknown versus never
 minutes: 13
+seo-title: TypeScript any vs unknown vs never, and Type Inference
+description: TypeScript checks types at compile time, then erases them. How inference, literal types and as const work, and when to use any, unknown or never.
+question: What is the difference between any and unknown in TypeScript?
+answer: In TypeScript, `any` and `unknown` both accept every value, but `any` switches type checking off: every property access and call on it compiles, and whatever is derived from it is `any` too. `unknown` is the type-safe counterpart — nothing can be done with it until it is narrowed with `typeof`, `instanceof`, `Array.isArray` or a type guard. Use `unknown` for JSON, user input and `catch` variables.
+q: What is the never type in TypeScript?
+a: `never` is the empty type: no value has it. It is the return type of a function that always throws or never finishes, the type left after every union member has been narrowed away, and the tool for exhaustiveness checks — assigning the leftover to a `never` variable fails to compile when a case is missing.
+q: Do TypeScript types exist at run time?
+a: No. The compiler checks the types and then erases them, so the emitted JavaScript contains no annotations and runs exactly as plain JavaScript would. A type error is a compile-time message, never a runtime exception, which is why data from JSON or users must be validated at the boundary.
+q: Why does `const` infer a literal type but `let` infers `string`?
+a: `const a = "left"` can never be reassigned, so TypeScript gives it the literal type `"left"`. `let b = "left"` may be reassigned later, so its type widens to `string`. Literals inside objects and arrays widen too, unless you add `as const`.
+q: What does `as const` do in TypeScript?
+a: `as const` stops widening: every literal keeps its exact type, object properties become `readonly` and arrays become readonly tuples. `{ mode: "dark" } as const` has the type `{ readonly mode: "dark" }` rather than `{ mode: string }` — the tool for configuration objects and fixed tuples.
+q: How do you type-check a plain JavaScript file?
+a: Add `// @ts-check` at the top of the file, or set `checkJs` in tsconfig, and write the types in JSDoc comments such as `/** @param {number} a */`. The TypeScript checker then runs over the `.js` file with no build step — the usual first step of a migration.
 ---
 TypeScript is JavaScript plus a **static type system**: annotations and inference that let a compiler check your program before it runs, then erase everything and emit plain JavaScript. Nothing about the runtime changes — no types exist at run time, no performance difference, the same engines — which is both the point and the trap: a type is a *promise about* a value, checked at compile time, and a value that arrives from JSON, a database or a user can break the promise without anyone noticing unless you check at the boundary. This lesson covers what the compiler does, the basic types and how inference assigns them, literal types and widening, and the three special types — `any`, `unknown`, `never` — whose correct use is most of the difference between TypeScript that helps and TypeScript that lies.
 

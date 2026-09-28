@@ -1,6 +1,18 @@
 ---
 title: Virtual destructors and slicing — the two ways a hierarchy loses data
 minutes: 14
+seo-title: C++ Virtual Destructors and Object Slicing Explained
+description: Deleting a derived object through a base pointer without a virtual destructor is undefined behaviour. Object slicing in C++, and how to prevent both bugs.
+question: Why do you need a virtual destructor in C++?
+answer: A base class needs a virtual destructor whenever objects may be deleted through a pointer to the base. If `~Base()` is not virtual, `delete basePtr` on a `Derived` object is undefined behaviour: in practice only the base destructor runs, so the derived part is never cleaned up. With `virtual ~Base() = default;` the derived destructor runs first, then the base's. Rule: any class with a virtual function gets one.
+q: What is object slicing in C++?
+a: Object slicing happens when a derived object is copied into a base-class value, such as a by-value `Base` parameter, `Base b = derived;` or an element of `std::vector<Base>`. Only the base part is copied; the derived members are cut off, and the copy's virtual calls run the base versions. Pass polymorphic objects by reference or pointer instead.
+q: How do you prevent object slicing in C++?
+a: Never copy polymorphic objects into base-typed values: take parameters as `const Base&` or `Base*`, hold collections as `std::vector<std::unique_ptr<Base>>`, and return `std::unique_ptr<Base>` from factories. For polymorphic copies add a virtual `clone()`, and make the base abstract or delete its public copy operations so that slicing becomes a compile error.
+q: Does `std::shared_ptr` need a virtual destructor?
+a: Not strictly: a `std::shared_ptr` created by `std::make_shared<Derived>()` records the deleter for `Derived` in its control block, so the right destructor runs. `std::unique_ptr<Base>` and a raw `delete` have no such record, and a design that relies on the detail breaks when the pointer type changes, so declare the destructor virtual anyway.
+q: Should every C++ class have a virtual destructor?
+a: No. Only a polymorphic base, a class with virtual functions that may be deleted through a base pointer, needs one. Core Guidelines rule C.35 says a base class destructor should be either public and virtual or protected and non-virtual. Classes not meant as bases, such as `std::vector`, have none and avoid the vptr.
 ---
 Two bugs follow polymorphic classes everywhere. The first: an object created as a `Derived` and deleted through a `Base*` runs only the base destructor — unless that destructor is virtual — so the derived part is never cleaned up, and the standard calls the whole operation undefined behaviour. The second: an object copied *into* a `Base` — a by-value parameter, an element of a `std::vector<Base>`, a plain `Base b = derived;` — keeps only the base part, silently. Neither is a compile error. This lesson explains both, shows what the compiler and the sanitizers say, and gives the rules that make them impossible: a virtual destructor on every polymorphic base, and references, pointers or `unique_ptr`s wherever a derived object travels.
 

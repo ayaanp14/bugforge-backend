@@ -1,6 +1,20 @@
 ---
 title: Overloading rules — members, free functions and the compound-first idiom
 minutes: 14
+seo-title: C++ Operator Overloading: Member vs Free Function Rules
+description: An overloaded operator in C++ is a function named operator plus the symbol. When to make it a member or a free function, what cannot be overloaded, and ++.
+question: How does operator overloading work in C++?
+answer: Operator overloading in C++ lets a class give an operator such as `+`, `==` or `<<` a meaning for its own type: `a + b` is compiled as a call to a function named `operator+`. Precedence, associativity and the number of operands stay fixed, and at least one operand must be a class or enumeration type. Five operators cannot be overloaded: `.`, `.*`, `::`, `?:` and `sizeof`.
+q: Should an overloaded operator be a member or a free function?
+a: It depends on the operator. `=`, `[]`, `()` and `->` must be members, and operators that modify their left operand, such as `+=` and `++`, naturally are. Symmetric binary operators like `+`, `==` and `<<` should be free functions, often hidden friends, because a member's left operand never gets an implicit conversion — `3 * price` would not compile.
+q: Which operators cannot be overloaded in C++?
+a: Five: member access `.`, pointer-to-member access `.*`, scope resolution `::`, the conditional operator `?:` and `sizeof`. You also cannot invent operators such as `**`, change an operator's precedence or arity, or redefine an operator for built-in types alone. `&&`, `||` and `,` can be overloaded but should not be, because the overloads lose short-circuit evaluation.
+q: How do you overload prefix and postfix ++ in C++?
+a: Prefix `operator++()` increments and returns `*this` by reference. Postfix `operator++(int)` takes an unused `int` parameter that only distinguishes the two signatures, saves a copy, increments through the prefix version and returns the old value by value. That copy is why `++it` is preferred to `it++` in loops.
+q: How do you implement operator+ using operator+=?
+a: Write `+=` as a member that updates `*this` and returns a reference, then write `+` as a free function that takes its left operand by value, applies `+=` to that copy and returns it: `return a += b;`. There is one implementation, so `a + b` and `a += b` can never disagree, and a temporary left operand is moved rather than copied.
+q: What should an overloaded operator return?
+a: Arithmetic operators such as `+` return a new value by value; comparisons return `bool`; assignment, compound assignment and prefix `++` return `*this` by reference so they chain; postfix `++` returns the old value by value; stream `<<` returns the stream by reference. Never return a reference to a local variable.
 ---
 `a + b` means addition for `int`, `double` and `std::string`, and C++ lets it mean addition for your `Fraction`, `Money` or `Vec2` too: `total += price * qty` instead of `total.add(price.times(qty))`. The mechanism is only a function with a strange name, but the rules about *which* operators, *where* the function lives and *what* it returns decide whether the result reads like arithmetic or like a trap. This lesson settles those rules and the one idiom — compound first, binary from compound — that produces a consistent set every time.
 

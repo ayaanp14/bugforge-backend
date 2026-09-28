@@ -1,6 +1,20 @@
 ---
 title: Subscript, call and function objects
 minutes: 15
+seo-title: C++ Functors Explained: Subscript and Call Operators
+description: A functor is a C++ object with an overloaded call operator. Const and non-const subscript pairs, comparators for sets and priority queues, and custom hash keys.
+question: What is a functor in C++?
+answer: A functor, or function object, is an object of a class that overloads the call operator `operator()`, so it can be called like a function while keeping state between calls in its members. The standard library accepts functors wherever it needs a comparison or a hash — `std::sort`, `std::set`, `std::priority_queue`, `std::unordered_map` — and every lambda is a functor whose class the compiler writes.
+q: Why does operator[] need a const and a non-const overload?
+a: A function that receives a container as `const T&` can call only `const` member functions, so without a `const` overload `c[i]` does not compile there. The non-const version returns `T&` so `c[i] = x` assigns to the element; the const version returns `const T&` for reading. The compiler picks one by the object's constness.
+q: How do I use a custom comparator with std::priority_queue?
+a: Pass the comparator type as the third template argument: `std::priority_queue<T, std::vector<T>, Cmp>`. It must return `true` when its first argument has lower priority, because the queue keeps the element that is largest by that rule on top. With `std::greater<T>` it becomes a min-heap. Make the comparator's `operator()` `const`.
+q: How do I use a struct as a key in std::unordered_map?
+a: Give the struct an `operator==` and a hash: either specialise `template <> struct std::hash<Point>` or pass a hasher type as the third template argument. The hash's call operator takes the key by `const&` and returns `std::size_t`. Combine the members' hashes with a mixing step rather than a plain XOR, and keep the hash consistent with `==`.
+q: How do you write a two-dimensional subscript in C++20?
+a: In C++20 `operator[]` takes exactly one argument, so `m[r, c]` is the comma operator, not two indices. Use `operator()(r, c)` for element access, or make `operator[](r)` return a `std::span` over the row so that `m[r][c]` works. A multi-argument `operator[]` arrived only in C++23.
+q: What is the difference between a functor and a lambda in C++?
+a: Nothing fundamental: a lambda is a functor the compiler writes, with the captures as data members and the body as `operator()`. Write a named class when the callable needs a name, several members or a type you can spell as a template argument, such as a container's comparator; use a lambda otherwise.
 ---
 Two operators turn a class into something that *behaves like* a container or a function. `operator[]` makes `grid[r]` and `table["key"]` possible and is why `std::vector` and `std::map` read like arrays; `operator()` makes an object callable, and an object that can be called — a *function object*, or functor — is what `std::sort`, `std::priority_queue`, `std::map` and `std::unordered_map` accept wherever they need a comparison or a hash. This lesson settles the const/non-const pair every `operator[]` needs, bounds checking, `operator()` for both multi-index access and callable state, comparators as types, and the `std::hash` specialisation that lets your own struct be a hashed key.
 

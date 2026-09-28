@@ -1,6 +1,20 @@
 ---
 title: Function types, generics, keyof and the utility types
 minutes: 13
+seo-title: TypeScript Generics, keyof and Utility Types Explained
+description: TypeScript generics let one function work for many types. Constraints, keyof, indexed access, mapped types and utility types like Partial, Pick and Omit.
+question: What are generics in TypeScript?
+answer: Generics are type parameters, written `<T>`, that let one function, class or type work for many types while staying precise. `function first<T>(xs: T[]): T | undefined` returns a number for a number array and a string for a string array, because the compiler infers `T` from the arguments at each call. Constraints such as `T extends { length: number }` limit what `T` may be.
+q: What does `K extends keyof T` mean?
+a: `keyof T` is the union of `T`'s property names as literal types, and `K extends keyof T` restricts `K` to one of them. With the indexed access type `T[K]` — the type of property `K` — it types a function such as `pluck(items, key)` so a misspelled key fails to compile and the return type follows the property.
+q: What is the difference between Partial, Pick and Omit?
+a: `Partial<T>` makes every property optional, `Pick<T, K>` keeps only the keys `K`, and `Omit<T, K>` keeps every key except `K`. Typical uses: `Partial<User>` for an update payload, `Pick<User, "id" | "name">` for a list view and `Omit<User, "passwordHash">` for a public shape.
+q: How is `Omit` implemented in TypeScript?
+a: As `Pick<T, Exclude<keyof T, K>>`: `Exclude` removes the unwanted keys from the union `keyof T`, and `Pick` builds an object type from the keys that remain. Most utility types are small mapped or conditional types like this one.
+q: What is a mapped type in TypeScript?
+a: A type built by iterating over the keys of another type and transforming each property, written `{ [K in keyof T]: … }`. `Partial` is `{ [K in keyof T]?: T[K] }` and `Readonly` adds `readonly` the same way; key remapping with `as` can rename the keys too.
+q: What does `ReturnType` do in TypeScript?
+a: `ReturnType<F>` gives the return type of a function type, so `ReturnType<typeof makeStore>` names what `makeStore` returns without writing that type out. `Parameters<F>` gives the argument tuple the same way; both are conditional types built with `infer`.
 ---
 Generics are how TypeScript types code that works for many types without giving up precision: `first(xs: number[]): number` and `first(xs: string[]): string` become one `first<T>(xs: T[]): T`, and the compiler fills in `T` at each call. Combined with `keyof`, indexed access and constraints, generics express the relationships real code has — "this key must exist on that object", "the return type is the property's type" — and the standard library's **utility types** (`Partial`, `Pick`, `Record`, `ReturnType`…) are generics you will use daily. This lesson covers function typing, generic functions and constraints, `keyof`/indexed access, the utility types with what each is made of, and a first look at mapped and conditional types so their error messages make sense.
 

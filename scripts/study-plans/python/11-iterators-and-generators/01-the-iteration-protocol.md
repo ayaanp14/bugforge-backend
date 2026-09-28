@@ -1,6 +1,20 @@
 ---
 title: The iteration protocol — iter, next and StopIteration
 minutes: 13
+seo-title: Python Iterable vs Iterator: iter, next and StopIteration
+description: An iterable gives an iterator via iter(); the iterator returns values from next() until StopIteration. How for loops use it and how to write an iterator class.
+question: What is the difference between an iterable and an iterator in Python?
+answer: An iterable is any object `iter()` accepts, because it has `__iter__` (or `__getitem__`): a list, string, dict, range or file. An iterator is the object that produces the values: its `__next__` returns the next value or raises `StopIteration`, and its `__iter__` returns itself. A list can be looped over any number of times; an iterator is one-shot.
+q: How does a for loop work in Python?
+a: A `for` loop calls `iter()` on the object once, then calls `next()` on the resulting iterator for each pass and stops when it raises `StopIteration`. `list()`, `sum()`, `max()`, `join` and unpacking consume objects the same way, so implementing the protocol makes a class work with all of them.
+q: Why does zip or map return nothing the second time?
+a: `zip`, `map`, `filter`, `enumerate`, file objects and generators are iterators, and an iterator is one-shot: once it has raised `StopIteration`, it stays exhausted. Lists and `range` are iterables that hand out a fresh iterator each time. Materialise with `list(...)` when you need two passes.
+q: How do you write an iterator class in Python?
+a: Give the class an `__iter__` that returns `self` and a `__next__` that advances the stored state and returns the next value, raising `StopIteration` when there are no more. For a container that can be looped over repeatedly, make `__iter__` return a new iterator each time, usually by writing it as a generator.
+q: What does "TypeError: 'list' object is not an iterator" mean?
+a: It means `next()` was called on a list. A list is iterable but not an iterator, so call `iter(xs)` first and call `next()` on the result. `next(it, default)` returns the default instead of raising `StopIteration` when the iterator is exhausted.
+q: What does iter() with two arguments do?
+a: `iter(callable, sentinel)` calls `callable()` repeatedly and yields each result until one equals `sentinel`. `iter(lambda: f.read(4096), b"")` reads a binary file in chunks until the empty bytes at the end: the cleanest read-until-sentinel loop, with no `while True` and no `break`.
 ---
 Every `for` loop, comprehension, `sum`, `list()` and `zip` in Python runs on one small protocol: ask an object for an *iterator* with `iter()`, call `next()` on it until it raises `StopIteration`. Understanding that protocol explains why a file can be looped over only once, why `zip` and `enumerate` are lazy, why `range` can be iterated twice but `map(...)` cannot, and how to write a class that `for` understands. This lesson defines iterable and iterator precisely, desugars the `for` loop, shows the built-in iterators and what exhaustion means, writes an iterator class by hand, and covers the two-argument `iter(callable, sentinel)` form.
 

@@ -1,6 +1,20 @@
 ---
 title: Overloading and default arguments
 minutes: 13
+seo-title: C++ Function Overloading and Default Arguments Explained
+description: C++ overloads share a name and differ in parameter types; the compiler ranks conversions to pick one. Ambiguous calls, string literals and default arguments.
+question: What is function overloading in C++?
+answer: Function overloading lets several C++ functions share one name as long as their parameter lists differ in number or types, such as `area(long long)` and `area(double)`. At each call the compiler ranks the viable overloads by conversion — exact match, promotion, standard conversion, then user-defined conversion — and picks the best. The return type never distinguishes overloads, and a tie is a compile error.
+q: Why is my overloaded function call ambiguous?
+a: Two overloads needed conversions of the same rank, so neither was better. With `f(int)` and `f(double)`, `f(3L)` is ambiguous because `long` to `int` and `long` to `double` are both standard conversions. Pass an argument of the exact type, or add an overload for it.
+q: What are default arguments in C++?
+a: A default argument is a value the compiler inserts when a call leaves that argument out, as in `std::string frame(const std::string& text, char border = '*');`. Defaults must be trailing, are written once on the first declaration the caller sees rather than repeated on the definition, and are evaluated afresh at every call.
+q: Can you overload a function by return type in C++?
+a: No. Overloads are told apart only by their parameter lists, so `int f()` and `double f()` in the same scope is an error: a call `f();` could not choose between them. Parameter names, default arguments and top-level `const` on a by-value parameter do not distinguish overloads either.
+q: Why does a string literal call the bool overload instead of the string one?
+a: A literal such as `"hello"` is a `const char` array; decaying to a pointer and converting to `bool` is a standard conversion, while building a `std::string` is a user-defined one, which ranks lower. So with `show(const std::string&)` and `show(bool)`, `show("hello")` calls the `bool` one. Add a `const char*` overload or take `std::string_view`.
+q: Should I use overloading or default arguments?
+a: Use a default when the parameter is genuinely optional and the function behaves the same way with or without it, such as a separator or a padding width. Use overloads when the parameter types differ, when the behaviours differ, or when the optional argument would change the return type.
 ---
 Two functions may share a name if their parameter lists differ; a parameter may have a value the caller can leave out. Both features exist to make call sites read naturally — `area(4)`, `area(3, 5)`, `frame("hi")` — and both have rules that surprise people who have only seen them work. This lesson settles how the compiler picks an overload (and when it refuses to), the string and pointer cases that pick the wrong one, where a default argument may be written, and when each feature is the clearer choice.
 

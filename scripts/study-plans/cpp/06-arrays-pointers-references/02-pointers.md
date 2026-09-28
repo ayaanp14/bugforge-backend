@@ -1,6 +1,20 @@
 ---
 title: Pointers — addresses, nullptr and the arrow
 minutes: 14
+seo-title: What Is a Pointer in C++? Dereferencing and nullptr Explained
+description: A C++ pointer is a variable holding an object's address. How address-of and dereference work, what nullptr means, the arrow operator and when to use a pointer.
+question: What is a pointer in C++?
+answer: A pointer in C++ is a variable that holds the memory address of another object. `&x` gives the address of `x`, `*p` is the object `p` points at, and `p->m` means `(*p).m`. A pointer can be reassigned to point elsewhere or set to `nullptr` to point at nothing, and dereferencing a null or uninitialised pointer is undefined behaviour.
+q: What is nullptr in C++?
+a: `nullptr` (C++11) is the null pointer literal: a pointer holding it points at no object. Unlike `NULL` or `0` it has its own type and cannot be mistaken for an integer. A pointer converts to `bool`, so `if (p)` tests for non-null; check before every dereference, never after.
+q: What is the difference between the `.` and `->` operators in C++?
+a: `.` accesses a member of an object; `->` accesses a member through a pointer, and `p->m` is exactly `(*p).m`. The parentheses in the long form are needed because `.` binds tighter than `*`, so `*p.m` means `*(p.m)` and does not compile for a pointer.
+q: Why does `int* a, b;` not declare two pointers?
+a: The asterisk binds to the name, not to the type, so `int* a, b;` declares `a` as an `int*` and `b` as a plain `int`. Write `int *a, *b;` or, clearer, one declaration per line.
+q: Why use pointers in C++ at all?
+a: Four reasons: the object may be absent, which a pointer expresses with `nullptr`; it must be reseated to point at different objects over time; you are working with arrays or C APIs, which speak pointers; or the object is dynamically allocated, where modern code wraps the pointer in `std::unique_ptr`. Otherwise use a reference or a value.
+q: What is a double pointer in C++?
+a: A pointer to a pointer, such as `int** pp = &p;`. `*pp` is the pointer `p` itself and `**pp` is the `int` it points at. It appears as `char** argv` in `main` and in C APIs that hand a pointer back through an output parameter.
 ---
 Every object in a running C++ program sits at an address, and a pointer is a variable that holds one. That single idea is underneath half of the track: references are a disciplined pointer, iterators a generalised one, `std::vector` a pointer plus a size, and dynamic memory (Module 7, Memory, ownership and RAII) pointers with an ownership contract. This lesson settles the two operators, what a null pointer is, why you would want a pointer at all, and the one rule — check before you dereference — that keeps a program out of undefined behaviour.
 

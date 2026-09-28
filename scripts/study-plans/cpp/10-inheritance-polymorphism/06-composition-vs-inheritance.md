@@ -1,6 +1,20 @@
 ---
 title: Composition versus inheritance — is-a, has-a and the shapes to avoid
 minutes: 14
+seo-title: Composition vs Inheritance in C++: Is-a, Has-a and LSP
+description: Prefer composition in C++: public inheritance promises is-a and substitutability. The Liskov principle, the square-rectangle trap and the diamond.
+question: Should I use composition or inheritance in C++?
+answer: In C++, prefer composition — holding the other type as a member — and use public inheritance only when you need run-time polymorphism through a base interface. Public inheritance promises that the derived class is-a base and can substitute for it everywhere, invariants included, and couples it to the base's representation. Composition expresses has-a: you choose what to expose, can swap the part at run time and stay decoupled.
+q: What is the Liskov substitution principle?
+a: The Liskov substitution principle says a derived class must honour every promise its base makes, so that code written against the base keeps working when handed a derived object. Having the same functions is not enough: it must behave compatibly, preserving the base's invariants.
+q: Why is a square not a rectangle in object-oriented design?
+a: A mutable `Rectangle` promises that `setWidth` and `setHeight` change the sides independently, so code that sets width 5 and height 2 expects area 10. A `Square` must keep its sides equal and breaks that promise, giving 4 instead. Drop the setters and make both immutable, or do not derive.
+q: What is the diamond problem in C++?
+a: When a class derives from two classes that share a base, it contains two copies of that base, and accessing their members is ambiguous. Virtual inheritance (`: virtual Device`) makes the paths share one subobject, constructed by the most derived class. `std::iostream` is the standard library's own diamond.
+q: What is private inheritance used for in C++?
+a: Private inheritance means "implemented in terms of": the base's members become private and outside code cannot treat the derived class as the base. A member usually does the same job more clearly; private inheritance earns its place only to override a virtual function of the implementation, reach its protected members, or benefit from the empty base optimisation.
+q: Why should you not inherit from std::vector?
+a: Public inheritance would expose every `std::vector` operation, including ones that break your class's rules, and `std::vector` has no virtual destructor, so deleting through a `std::vector*` is undefined behaviour. Hold a vector as a member and forward the operations you want, as `std::stack` does with its underlying container.
 ---
 Inheritance is the most expensive relationship in C++: it couples the derived class to the base's representation, promises that a derived object can stand in for a base one everywhere, and cannot be undone without touching every user. Composition — a member object — makes none of those promises. This lesson gives the test for choosing between them (is-a versus has-a, and what "is-a" actually obliges you to), shows the classic square-and-rectangle failure, covers the two forms of inheritance that are not is-a — private and multiple — and states the rule the Core Guidelines and thirty years of practice agree on: prefer composition, and reach for public inheritance only to get run-time polymorphism through a base interface.
 

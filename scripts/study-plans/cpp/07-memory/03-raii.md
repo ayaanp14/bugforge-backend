@@ -1,6 +1,18 @@
 ---
 title: RAII — a resource's lifetime is an object's lifetime
 minutes: 15
+seo-title: What Is RAII in C++? Resource Acquisition Is Initialization
+description: RAII ties a resource to an object's lifetime: acquire in the constructor, release in the destructor. Scope guards, exceptions and why C++ has no finally.
+question: What is RAII in C++?
+answer: RAII (Resource Acquisition Is Initialisation) is the C++ idiom of tying a resource to an object's lifetime: the constructor acquires it and the destructor releases it. Because destructors run automatically on every exit from a scope — normal return, early `return` or an exception — the resource is always released. `std::vector`, `std::unique_ptr`, `std::ofstream` and `std::lock_guard` are all RAII types.
+q: Why does C++ not have a finally block?
+a: Because RAII does the job better. `finally` attaches cleanup to a block, so every function that opens a file must remember to close it; RAII attaches cleanup to a type, so `std::ofstream` closes itself everywhere it is used. Several resources are several declarations destroyed in reverse order, not nested `try` blocks.
+q: Do destructors run when an exception is thrown in C++?
+a: Yes. During stack unwinding — the walk from the `throw` to the matching `catch` — every automatic object in every abandoned frame is destroyed before the handler runs, in reverse order of construction. That is what makes RAII cleanup reliable even on the exception path.
+q: What is a scope guard in C++?
+a: A scope guard is a small RAII object that holds a callable, usually a lambda, and runs it in its destructor, so a piece of cleanup code executes at the end of the scope however it is left. Its copy operations are deleted, and it must be given a name: an unnamed temporary runs its action immediately.
+q: Can a destructor throw an exception in C++?
+a: It must not. Destructors are implicitly `noexcept`, so an exception escaping one calls `std::terminate`, and during stack unwinding there is no sensible alternative. A release that can fail should report the failure another way, or swallow it.
 ---
 C++ has no `finally`, no `using` block, no `with` statement and no garbage collector, and it needs none of them, because it has something those languages lack: a destructor that runs at a moment the compiler can see. **Resource Acquisition Is Initialisation** — RAII, an awkward name for a simple rule — says: acquire the resource in a constructor, release it in the destructor, and let the object's lifetime carry the resource's. Every path out of a scope then releases it, including the paths you did not write. This lesson shows the rule, the guarantees it rests on, the resources it is used for, and why it is the idiom that makes exceptions usable at all.
 

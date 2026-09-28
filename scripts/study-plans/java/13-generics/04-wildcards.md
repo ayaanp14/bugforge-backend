@@ -1,6 +1,20 @@
 ---
 title: Wildcards and PECS
 minutes: 15
+seo-title: Java Wildcards and PECS: Extends vs Super Explained
+description: PECS means Producer Extends, Consumer Super: read from a Java wildcard with extends, write with super. Why generics are invariant, and wildcard capture.
+question: What is PECS in Java generics?
+answer: PECS stands for Producer Extends, Consumer Super, the rule for choosing a wildcard in Java generics. A parameter the method reads from, a producer, takes `? extends T`: `List<? extends Number>` yields `Number`s but accepts no additions. A parameter the method writes to, a consumer, takes `? super T`. A parameter that is both read and written takes a plain `List<T>`.
+q: Why is `List<Integer>` not a `List<Number>` in Java?
+a: Because Java generics are invariant. If the assignment were allowed, code could add a `Double` through the `List<Number>` view into a list that is still a `List<Integer>`, and reading it back as an `Integer` would fail. Arrays permit this and throw `ArrayStoreException` at run time.
+q: What is the difference between `List<?>` and `List<Object>`?
+a: `List<?>` accepts a list of any element type, but reads come back as `Object` and nothing except `null` can be added. `List<Object>` accepts only a list actually declared as `List<Object>`, to which anything can be added.
+q: Can you add elements to a `List<? extends Number>`?
+a: Only `null`. The compiler does not know which subtype of `Number` the list really holds — it might be a `List<Double>` — so adding an `Integer` could corrupt it. Reading is safe, because every element is at least a `Number`.
+q: What is the difference between `? extends T` and `? super T`?
+a: `? extends T` means `T` or an unknown subtype: you can read elements as `T` but cannot add them. `? super T` means `T` or an unknown supertype: you can add `T` values, but reads come back as `Object`. Use `extends` for producers and `super` for consumers.
+q: What is wildcard capture in Java?
+a: When a method taking `List<?>` passes the list to a generic helper such as `<T> void swapHelper(List<T> list)`, the compiler captures the unknown type as a fresh `T` for that call, so the helper can read and write. "capture of ?" in error messages refers to it.
 ---
 `List<Integer>` is not a `List<Number>`, even though `Integer` is a `Number`. That single fact — generics are **invariant** — is why wildcards exist: `List<? extends Number>` is a list of *some* subtype of `Number`, `List<? super Integer>` a list of *some* supertype. Which one to use is decided by whether you read from or write to the list, and the mnemonic **PECS** — Producer Extends, Consumer Super — makes it mechanical. This lesson covers the three wildcard forms, why invariance is necessary, and how to write flexible signatures like the JDK's.
 

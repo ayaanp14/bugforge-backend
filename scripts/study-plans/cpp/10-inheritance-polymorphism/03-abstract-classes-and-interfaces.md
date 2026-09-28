@@ -1,6 +1,18 @@
 ---
 title: Abstract classes and interfaces — programming to a contract
 minutes: 14
+seo-title: Abstract Class in C++: Pure Virtual Functions and Interfaces
+description: A pure virtual function makes a C++ class abstract, so it cannot be instantiated. Interface classes, the NVI idiom and containers of polymorphic objects.
+question: What is an abstract class in C++?
+answer: An abstract class in C++ is a class with at least one pure virtual function, declared with `= 0` as in `virtual double area() const = 0;`. It cannot be instantiated and is used only through references and pointers. A derived class becomes concrete once it overrides every pure virtual function. An abstract class with no data and only pure virtual functions is C++'s equivalent of an interface.
+q: What is a pure virtual function?
+a: A virtual function declared with `= 0`, which the base class does not have to implement and every concrete derived class must override. Its presence makes the class abstract. It may still be given a body outside the class, which overrides can call as `Base::f()`.
+q: How do you create an interface in C++?
+a: C++ has no `interface` keyword; an interface is an abstract class with no data members, only pure virtual functions and a virtual destructor. A class implements it by deriving publicly and overriding every function, and may implement several interfaces at once through multiple inheritance.
+q: Can you have a vector of an abstract class in C++?
+a: Not by value: `std::vector<Shape>` cannot hold an abstract type, and for a concrete base it would slice every element. Hold the objects through owning pointers as `std::vector<std::unique_ptr<Shape>>`, filled with `std::make_unique<Circle>(r)`; the vector deletes each object through the base's virtual destructor.
+q: What is the non-virtual interface (NVI) idiom?
+a: NVI keeps a class's public function non-virtual and has it call a private virtual function that derived classes override. The base keeps control of the public entry point, so it can add checks or logging around every call, while derived classes still customise the behaviour.
 ---
 Some base classes exist only to be derived from. A `Shape` has an area, but there is no formula for the area of "a shape" — only of a circle or a rectangle. C++ expresses that with a *pure virtual function*: a function the base declares and refuses to define, which makes the class *abstract* and forces every concrete derived class to supply the body. This lesson covers the syntax, what an abstract class can and cannot do, the interface class as C++'s version of Java's `interface`, a `Shape` hierarchy used the way library code uses one, and the container that holds a mixed collection of shapes without losing anything: `std::vector<std::unique_ptr<Shape>>`.
 

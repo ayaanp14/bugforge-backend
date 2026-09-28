@@ -1,6 +1,20 @@
 ---
 title: Higher-order functions — composition, currying and callbacks
 minutes: 13
+seo-title: Higher-Order Functions in JavaScript: Compose and Currying
+description: A higher-order function takes or returns a function, like map, filter and reduce. Writing pipe, compose, curry, once and debounce, and error-first callbacks.
+question: What is a higher-order function in JavaScript?
+answer: A higher-order function is a function that takes another function as an argument or returns one. Array methods such as `map`, `filter` and `reduce` are the everyday examples: you pass the callback and the loop runs inside the method. Functions you write yourself — `compose`, `pipe`, `curry`, `once`, `debounce` — return configured functions and rely on closures to hold their state.
+q: What is the difference between currying and partial application?
+a: Currying turns an n-argument function into a chain of one-argument functions, as in `add(2)(3)`. Partial application fixes some arguments now and takes the rest in one later call. Both are closures over the arguments already supplied.
+q: How do you implement compose and pipe in JavaScript?
+a: Reduce over the functions, starting from the input value. `pipe` uses `reduce`, so `pipe(f, g, h)(x)` is `h(g(f(x)))` and runs left to right; `compose` uses `reduceRight` and applies the functions right to left, as in mathematics.
+q: Why does map(parseInt) return NaN in JavaScript?
+a: `map` calls its callback with `(element, index, array)`, and `parseInt` reads the second argument as the radix, so `["1", "2", "3"].map(parseInt)` gives `[1, NaN, NaN]`. Use `.map(Number)` or `.map((s) => parseInt(s, 10))`.
+q: What is the difference between debounce and throttle?
+a: `debounce` runs a function only once calls have stopped for a given time, which suits search-as-you-type. `throttle` runs it at most once per interval however often it is called, which suits scroll handlers. Both are closures over a timer or a timestamp.
+q: What is an error-first callback in Node.js?
+a: It is Node's callback convention: the callback is the last argument, and its first parameter is an error or `null`, followed by the result. Check the error first and return; call the callback exactly once and always asynchronously. `util.promisify` turns such a function into one that returns a promise.
 ---
 Once functions are values, a whole style of programming opens: build small functions, then combine them with other functions. `map`, `filter` and `reduce` are the everyday examples; `compose`, `pipe`, `curry`, `debounce` and `once` are the ones you write yourself. This lesson is that style — how to think in functions that take and return functions, the idioms that recur across every codebase, and the callback convention that predates promises and still underlies Node.
 

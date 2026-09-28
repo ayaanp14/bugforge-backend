@@ -1,6 +1,20 @@
 ---
 title: Promises — a value that is not here yet
 minutes: 14
+seo-title: JavaScript Promises Explained: Then, Catch and Chaining
+description: A JavaScript promise is pending, then fulfilled or rejected, exactly once. What then returns, how rejections reach catch, and the unhandled rejection crash.
+question: What is a promise in JavaScript?
+answer: A promise in JavaScript is an object standing in for a result that arrives later. It starts pending and settles exactly once, either fulfilled with a value or rejected with a reason. Handlers attached with `then` and `catch` always run asynchronously as microtasks, even on a promise that has already settled, and each `then` returns a new promise, which is what lets chains compose.
+q: What does `then` return in JavaScript?
+a: A new promise, settled by what the handler does: return a value and it fulfils with that value; return a promise and it waits for and adopts that promise's outcome; throw and it rejects. A handler that starts asynchronous work but forgets to `return` it lets the chain run ahead with `undefined`.
+q: What is the difference between `then(ok, fail)` and `then(ok).catch(fail)`?
+a: With `then(ok, fail)`, `fail` does not see errors thrown inside `ok`, because both handlers belong to the same step. With `then(ok).catch(fail)`, `fail` catches a rejection of the original promise and any error thrown in `ok`, which is why the second form is preferred.
+q: What is an unhandled promise rejection?
+a: It is a promise that rejects with no handler attached. Node prints a warning and, since Node 15, crashes the process by default; browsers fire an `unhandledrejection` event. End every chain in a `catch`, or return the promise to a caller that will handle it.
+q: How do you convert a callback function to a promise?
+a: In Node, `util.promisify(fn)` turns an error-first callback function into one that returns a promise, and most of `fs` already has an `fs.promises` version. Otherwise wrap the call in `new Promise((resolve, reject) => …)` and resolve or reject from inside the callback.
+q: What is the explicit promise construction antipattern?
+a: It is wrapping code that already returns promises in `new Promise(…)`. The wrapper adds nothing and is easy to get wrong, for example by never passing on a rejection; return or chain the existing promise instead. Keep `new Promise` for wrapping callback- or event-based APIs such as `setTimeout` or `emitter.once`.
 ---
 A promise is an object standing in for a result that will arrive later: it is **pending**, then either **fulfilled** with a value or **rejected** with a reason, exactly once, forever. Everything else — `then`, chaining, `catch`, `async`/`await` — is built on that one idea. Promises fixed what callbacks could not: a result you can hold, pass around and attach to after the fact; errors that propagate along a chain to one `catch`; and composition operators (`all`, `race`) that work on any asynchronous operation. This lesson covers the state machine, the chaining rules that trip people up (return!), how rejections travel, how to build promises around callback code, and the mistakes that show up in code review every week.
 

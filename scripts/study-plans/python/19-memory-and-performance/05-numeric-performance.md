@@ -1,6 +1,20 @@
 ---
 title: Numeric performance — boxed numbers, array, bytes and NumPy vectorisation
 minutes: 14
+seo-title: Why Is NumPy Faster Than Python Lists? Vectorization
+description: Numbers in a Python list are boxed objects, so numeric loops allocate per element. The array module, memoryview, NumPy dtypes, broadcasting and vectorisation.
+question: Why is NumPy faster than Python lists?
+answer: NumPy is faster than Python lists because an array stores raw machine numbers of one dtype in a contiguous block, and its operations run as C loops over that block. A list holds pointers to separate boxed number objects, and a Python loop over it pays for type dispatch, allocation and reference-count updates on every element. The NumPy array also uses a fraction of the memory.
+q: What is vectorisation in NumPy?
+a: Writing a computation as whole-array operations, such as ufuncs, boolean masks, slicing and broadcasting, instead of a Python loop over elements, so the loop runs in C. `np.where(cond, a, b)` replaces an if inside the loop, and `np.cumsum`, `np.unique` and `np.bincount` replace the common accumulating loops.
+q: What is broadcasting in NumPy?
+a: The rule that lets arrays of different shapes combine: shapes are aligned from the right, and a dimension of size 1 stretches to match. A `(2, 1)` column plus a `(3,)` row gives a `(2, 3)` result, replacing nested loops over rows and columns.
+q: Can NumPy integers overflow?
+a: Yes. Fixed-width dtypes such as `int64` wrap around silently past 2⁶³ − 1 instead of promoting to Python's arbitrary-precision int, so large products and powers can come out wrong without an error. Use a float dtype, or Python ints when exactness matters.
+q: What is the Python array module for?
+a: `array.array` is the standard library's typed, compact sequence: `array('d', ...)` stores raw 8-byte doubles with no object per element and reads or writes raw bytes with `frombytes` and `tobytes`. Iterating it still creates Python objects, so it saves memory more than time.
+q: When is NumPy not worth importing?
+a: For a single pass over a list, such as one `sum`, `max` or `Counter`, the built-ins are already C loops and within a small factor of NumPy, with no conversion. NumPy pays off for several operations on the same data, 2-D structure, broadcasting or arrays that live for the whole program.
 ---
 Numeric code is where Python's object model costs the most: every integer and float in a list is a separate heap object, every `+` dispatches through the type, and a loop that adds a million floats performs a million allocations. The escape is to keep numbers *unboxed* — raw machine values in a contiguous block — and to run the loop in C: built-ins such as `sum` and `max`, the `array` and `bytes` types, and above all NumPy, whose arrays and vectorised operations are how numeric Python reaches C speed without leaving Python. This lesson covers why the loop is slow, the standard-library raw types (`array`, `bytes`, `bytearray`, `memoryview`), NumPy arrays, dtypes and broadcasting, the vectorisation habit, reductions, and what remains for Numba and Cython.
 
@@ -64,7 +78,7 @@ The rule: no Python-level loop over array elements. `for i in range(len(xs)): ys
 
 ## Reductions and precision
 
-`xs.sum()` on float64 uses pairwise summation and is more accurate than a naive loop; `math.fsum` is exact-rounded for Python floats. Integer reductions on `int64` overflow silently — `np.arange(10**6)**3` wraps — so choose `dtype=np.float64` or `object` when values grow, or compute in Python ints when exactness matters. `np.isclose`/`np.allclose` compare floats with tolerance.
+`xs.sum()` on float64 uses pairwise summation and is more accurate than a naive loop; `math.fsum` is exact-rounded for Python floats. Integer reductions on `int64` overflow silently — `np.arange(10**7)**3` wraps (its largest cube is 10²¹, past the int64 limit of about 9.2 × 10¹⁸) — so choose `dtype=np.float64` or `object` when values grow, or compute in Python ints when exactness matters. `np.isclose`/`np.allclose` compare floats with tolerance.
 
 ## Where the standard library is enough
 

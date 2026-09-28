@@ -1,6 +1,20 @@
 ---
 title: Regular expressions — the re module
 minutes: 15
+seo-title: Python Regex Explained: re.search, re.match, Groups and sub
+description: The Python re module finds, extracts, replaces and splits text by pattern. search vs match, findall, named groups, sub, flags and greedy vs lazy quantifiers.
+question: How do you use regular expressions in Python?
+answer: Python's regular expressions live in the `re` module: `re.search(pattern, text)` finds the first match anywhere and returns a `Match` object or `None`, `re.findall` returns every match as a list, `re.sub` replaces matches and `re.split` splits on them. Write patterns as raw strings with an `r` prefix so that their backslashes reach the regex engine intact.
+q: What is the difference between re.match and re.search in Python?
+a: `re.match` only matches at the start of the string, while `re.search` finds the first match anywhere in it; `re.fullmatch` requires the whole string to match. All three return a `Match` object, or `None` when nothing matches, so test the result before calling `.group()` on it.
+q: How do groups work in Python regular expressions?
+a: Parentheses capture: after a match, `m.group(1)` is the first group's text, `m.group(0)` the whole match and `m.groups()` a tuple of every group. `(?P<year>...)` names a group, read back with `m.group("year")` or `m.groupdict()`, and `(?:...)` groups without capturing.
+q: Why does re.findall return tuples?
+a: When a pattern contains capturing groups, `findall` returns the groups instead of the whole match: a list of tuples for several groups, or group 1's text alone for one. Make grouping parentheses non-capturing with `(?:...)`, or use `re.finditer` and `m.group()` to get whole matches.
+q: What is the difference between greedy and lazy matching in regex?
+a: Quantifiers such as `*` and `+` are greedy: they match as much as possible, so `<.*>` on `<a><b>` matches the whole string. Adding `?` makes one lazy, and `<.*?>` matches only `<a>`, but forbidding the closing character, as in `<[^>]*>`, is usually faster and clearer.
+q: Why should regex patterns be raw strings in Python?
+a: Without the `r` prefix, Python processes backslash escapes before the regex engine sees the pattern, so a word boundary turns into a backspace character and a backreference to group 1 into a control character. A raw string passes every backslash through unchanged.
 ---
 A regular expression describes a set of strings by a pattern — "one or more digits", "a word, a colon, then anything" — and the `re` module finds, extracts, replaces and splits by such patterns. It is the right tool when the format is more than one delimiter deep, when you need "the numbers anywhere in this text", or when validation is a shape rather than a value. It is the wrong tool for anything `split` or `startswith` can do, and for parsing nested structures. This lesson gives the syntax that covers most uses, the six functions, groups, flags, and the greedy-versus-lazy rule.
 

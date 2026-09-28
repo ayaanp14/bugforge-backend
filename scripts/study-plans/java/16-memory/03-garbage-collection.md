@@ -1,6 +1,20 @@
 ---
 title: Garbage collection — generations, pauses and the collectors
 minutes: 15
+seo-title: Java Garbage Collection Explained: Generations, G1 and ZGC
+description: How Java garbage collection works: mark, sweep, copy and compact, young and old generations, minor vs full GC, stop-the-world pauses, G1, ZGC and GC logs.
+question: How does garbage collection work in Java?
+answer: Garbage collection in Java finds the objects still reachable from GC roots, marks them live and reclaims the memory of everything else, usually compacting the survivors. Because most objects die young, the heap is split into a young generation, collected often and cheaply by copying, and an old generation, collected rarely. G1 has been the default collector since Java 9.
+q: What is the difference between minor and major GC in Java?
+a: A minor GC collects only the young generation; it is frequent and fast because most of Eden is already dead. A major or full GC collects the whole heap, old generation included; it is slower and should be rare. Frequent full GCs point to a leak, an undersized heap or premature promotion.
+q: What is a stop-the-world pause in garbage collection?
+a: A stop-the-world pause halts every application thread at a safepoint so the collector can trace the object graph safely. Classic collectors pause for the whole collection; G1 and ZGC do most of their marking concurrently and stop the world only briefly, trading some throughput for shorter pauses.
+q: Which garbage collector does Java use by default?
+a: G1 (Garbage-First) has been the default since Java 9. It divides the heap into equal regions and collects the ones with the most garbage first, aiming at a pause target set by `-XX:MaxGCPauseMillis`, 200 ms by default. ZGC suits very large heaps where pauses must stay sub-millisecond.
+q: Does System.gc() force garbage collection?
+a: No — `System.gc()` only suggests a collection. The JVM may ignore it, and `-XX:+DisableExplicitGC` turns it into a no-op; when it is honoured it is usually a full pause, so production code should not call it.
+q: What does GC overhead limit exceeded mean?
+a: The JVM throws `OutOfMemoryError: GC overhead limit exceeded` when it has spent more than 98% of recent time collecting and recovered less than 2% of the heap. The heap is effectively full of live data: look for a leak, or give the program the memory it genuinely needs.
 ---
 The garbage collector is the part of the JVM people are most often asked about and least often understand beyond "it frees memory". The good news: the ideas are few. Every collector must *find* the live objects (mark), *reclaim* the rest (sweep or copy), and usually *defragment* (compact). The generational hypothesis says most objects die young, so the heap is split by age and the young part is collected often and cheaply. The differences between Serial, Parallel, G1 and ZGC are about **how many threads** do that work and **how long the application is paused** while they do. This lesson gives you the model and the vocabulary to read a GC log.
 

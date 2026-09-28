@@ -1,6 +1,20 @@
 ---
 title: Hashing and keys — what makes an object usable in a dict or set
 minutes: 13
+seo-title: What Is Hashable in Python? Why Lists Cannot Be Dict Keys
+description: Dicts and sets hash a key to a slot, so equal keys must hash equally and never change. Why lists are unhashable, and how to make your own class a valid key.
+question: What does hashable mean in Python?
+answer: An object is hashable in Python when it has a hash value that never changes while it is in use and it compares with `==`, so that equal objects hash equally. Dicts and sets use that hash to find a key's slot in O(1) average time. Immutable built-ins such as `int`, `str`, `frozenset` and tuples of hashables are hashable; `list`, `dict` and `set` are not.
+q: Why can't a list be a dictionary key in Python?
+a: A list is mutable, so its hash would change whenever its contents did, and a dict that stored it under the old hash could never find it again. Python therefore makes lists unhashable and raises `TypeError: unhashable type: 'list'`; use a tuple as the key instead.
+q: How do I make a custom class hashable in Python?
+a: Define `__hash__` alongside `__eq__`, returning the hash of a tuple of exactly the fields `__eq__` compares, such as `hash((self.x, self.y))`. Defining `__eq__` alone sets `__hash__` to `None` and makes instances unhashable; `@dataclass(frozen=True)` writes both methods for you.
+q: How does a Python dictionary work internally?
+a: A dict is a hash table. Inserting a key computes `hash(key)`, reduces it to a slot index and stores the key and value there, probing onward on a collision; a lookup repeats the calculation and compares with `==` only in the probed slots. The table resizes as it fills, so operations stay O(1) on average.
+q: Why does hash() of a string change between runs?
+a: CPython salts string hashing with a random seed at start-up to defeat collision attacks, so `hash("a")` is stable within one process but differs between processes. Never print, store or compare string hashes across runs; ints and tuples of ints hash the same every time.
+q: Why does `{1: "a", True: "b"}` have only one key?
+a: Because `1 == True` and `hash(1) == hash(True)`, the dict treats them as the same key: the second value replaces the first and the key stays `1`. The same goes for `1.0`, which also equals 1 and hashes equally.
 ---
 Dictionaries and sets are fast because they do not search; they *hash*. A key's hash — an integer computed from its value — picks a slot in a table, and equality is checked only against the one or two keys that landed there. That design imposes one rule on keys, explains why lists cannot be keys and tuples can, decides how your own classes behave as keys, and is the reason string hashes are randomised. This lesson explains the mechanism at the level an interviewer expects, states the hash/equality contract, shows what the built-in types do, and what to define in a class of your own.
 

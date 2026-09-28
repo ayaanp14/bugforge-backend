@@ -1,6 +1,20 @@
 ---
 title: Static fields, methods and initialisation
 minutes: 13
+seo-title: Static Keyword in Java: Static Fields, Methods and Blocks
+description: Static members in Java belong to the class, not an object. Static fields, methods and blocks, when a class is initialised, utility classes and singletons.
+question: What does static mean in Java?
+answer: In Java, `static` marks a field, method, block or nested class as belonging to the class itself rather than to any object. A static field has exactly one copy for the whole program, created when the class is initialised; a static method has no `this` and is called through the class name, as in `Math.abs(x)`. Constants, pure functions, factories and `main` are static.
+q: Can a static method be overridden in Java?
+a: No. A subclass can declare a static method with the same signature, but it hides the parent's method instead of overriding it, and the call is resolved at compile time from the reference's declared type. `@Override` on a static method is a compile error.
+q: When does a static block run in Java?
+a: Once, when the class is initialised — lazily, on its first active use, such as creating an instance, calling a static method or reading a non-constant static field. Static blocks and static field initialisers run top to bottom, superclasses first, under a JVM lock.
+q: Why can't a static method access instance variables in Java?
+a: A static method is not called on an object, so it has no `this` and no instance fields to read. It can use its parameters, static fields and other static methods; to reach instance state it needs an object reference passed in or created.
+q: How do you create a thread-safe singleton in Java?
+a: Hold the instance in a `private static final` field, give the class a private constructor and return the field from a static accessor. The JVM's class-initialisation lock makes creation thread-safe with no extra code; Effective Java prefers an `enum` with one constant, which is also safe against serialization and reflection.
+q: What is a utility class in Java?
+a: A utility class holds only static methods, like `Math`, `Arrays` or `Collections`. Declare it `final` with a private constructor so it can be neither instantiated nor extended, and call its methods through the class name or a static import.
 ---
 `static` marks a member as belonging to the **class** rather than to any object: one copy for the whole program, reachable without an instance. Used well it gives you constants, counters, utility methods and factories. Used carelessly it gives you global mutable state, the source of some of the hardest bugs in Java programs. This lesson covers what `static` means at run time, when to use it, and the class-initialisation sequence behind it.
 

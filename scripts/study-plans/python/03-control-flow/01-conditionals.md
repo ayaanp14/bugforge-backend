@@ -1,6 +1,20 @@
 ---
 title: Conditionals — if, elif, else and the shapes that read well
 minutes: 12
+seo-title: Python If Elif Else Statements: Conditions and Guard Clauses
+description: Python tries the if and elif conditions in order, runs the first true block and leaves the rest to else. Guard clauses, membership tests and one-line if-else.
+question: How does if, elif and else work in Python?
+answer: Python's `if` statement tests its condition and, if it is false, tries each `elif` condition in order; the first true condition runs its indented block and the rest are skipped, while an optional `else` catches everything the earlier conditions rejected. A condition is any expression, truth-tested, so `if xs:` means the list is non-empty. No braces or parentheses are needed.
+q: How do I check multiple conditions in one if statement in Python?
+a: Combine them with `and`, `or` and `not`, which short-circuit, so `if xs and xs[0] > 0:` never indexes an empty list. To compare one value against several options, test membership: `if cmd in ("quit", "exit", "q"):`. For a range, chain comparisons: `if lo <= x <= hi:`.
+q: How do I write an if-else on one line in Python?
+a: Use the conditional expression `a if condition else b`, for example `label = "even" if n % 2 == 0 else "odd"`. It is an expression, so it fits in an argument, an f-string or a return. Keep it for choosing between two values; for actions or three or more arms, write the full statement.
+q: What is a guard clause in Python?
+a: A guard clause is an early `return`, `continue` or `raise` that deals with an exceptional case at the top of a function or loop body, so the main path stays unindented. Handle the exits first and the work last, instead of wrapping the whole body in nested `if` blocks.
+q: Does Python have a switch statement?
+a: Not a classic `switch`. An `elif` chain that maps a key to a value or a function is often better as a dictionary, such as `OPS[op](a, b)`. Python 3.10 added `match`, which compares a value against structural patterns rather than constants and binds the parts it names.
+q: Why is my if condition always true in Python?
+a: Usually because the value is truthy when you expected false: any non-empty string, including `"no"`, `"0"` and `"False"`, is true, and a function named without being called, as in `if is_ready:`, is always true. Compare with the value you mean, and call the function: `if is_ready():`.
 ---
 Every branch in a Python program is an `if`, and the language has exactly one form of it: a condition, a colon, an indented block, optionally `elif` blocks and an `else`. What makes conditional code good or bad is not the syntax but the shape — flat rather than nested, guard clauses that return early, conditions that read as sentences — and this lesson is about those shapes as much as the keywords. It covers the statement, the truth testing behind it, the conditional expression, membership and identity tests as conditions, and the refactorings that turn a five-level nest into a flat list of cases.
 

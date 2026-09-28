@@ -1444,6 +1444,11 @@ model StudyLesson {
   /// Percent of the quiz needed to clear a test; null for a lesson.
   passMark  Int?
   xp        Int         @default(10)
+  /// What search engines are told about the lesson and the questions the
+  /// page answers: { title, description, question, answer, faq[{q, a}] }
+  /// (scripts/study-plans/dsl.ts LessonSeo). Null until a seed writes it —
+  /// the page then falls back to the lesson's title and opening.
+  seo       Json?
 
   @@index([moduleId, position])
 }

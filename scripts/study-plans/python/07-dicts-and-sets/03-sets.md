@@ -1,6 +1,20 @@
 ---
 title: Sets — membership, deduplication and set algebra
 minutes: 13
+seo-title: Python Sets: Union, Intersection, Difference and frozenset
+description: A Python set holds distinct hashable items with O(1) membership. Set operations, remove vs discard, frozenset, why set order changes, and removing duplicates.
+question: What is a set in Python?
+answer: A set in Python is an unordered collection of distinct hashable objects with O(1) average membership testing. Build one with `{1, 2, 3}`, `set(iterable)` or a set comprehension; `{}` is an empty dict, so an empty set is `set()`. The operators `|`, `&`, `-` and `^` give union, intersection, difference and symmetric difference.
+q: How do I remove duplicates from a list in Python and keep the order?
+a: Use `list(dict.fromkeys(xs))`: dict keys are unique and keep insertion order, so the result lists each element once, in first-seen order. `list(set(xs))` also removes duplicates but loses the order, because a set has none.
+q: What is the difference between remove and discard on a Python set?
+a: `s.remove(x)` raises `KeyError` when `x` is absent; `s.discard(x)` quietly does nothing. Use `discard` when absence is normal and `remove` when an absent element would mean a bug.
+q: Why does a Python set print in a different order each run?
+a: Set iteration order depends on the elements' hashes, and CPython randomises string hashes per process, so `{"b", "a"}` can print in either order. Never print a set or build output by iterating one; print `sorted(s)` or `" ".join(sorted(s))` instead.
+q: What is a frozenset in Python?
+a: A `frozenset` is an immutable set. Because it is hashable, it can be a dictionary key or a member of another set, where a plain set raises `TypeError: unhashable type`. It supports every set operation that does not modify the set.
+q: Why is `x in set` faster than `x in list`?
+a: A set finds an element through its hash in O(1) average time, while a list compares element by element in O(n). Testing `x in some_list` inside a loop is therefore quadratic; convert the list to a set once and every test becomes constant time.
 ---
 A set is an unordered collection of distinct hashable objects with constant-time membership. That single property — `x in s` is O(1) regardless of size — turns quadratic "is this element in that list" loops into linear ones, and the set operations (union, intersection, difference) express "in both", "in either", "in one but not the other" without loops at all. This lesson covers construction, the mutating and non-mutating operations, `frozenset`, the ordering caveat that decides how a set is printed, and the recipes: deduplicate (with and without order), find duplicates, compare two collections.
 

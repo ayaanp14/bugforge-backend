@@ -1,6 +1,20 @@
 ---
 title: The string toolbox, template literals, tagged templates and Intl formatting
 minutes: 12
+seo-title: JavaScript String Methods and Tagged Template Literals
+description: JavaScript string methods precisely: slice vs substring, split edge cases, replace vs replaceAll, plus template literals, tagged templates and Intl formatting.
+question: What is a tagged template in JavaScript?
+answer: A tagged template is a template literal with a function name placed directly before it. JavaScript calls that function with the literal's string parts as an array and the interpolated values as separate arguments, before any concatenation, so the function decides what interpolation means: escaping HTML, turning values into SQL parameters, or building CSS. `String.raw` is a built-in tag that returns the raw text.
+q: What is the difference between slice and substring in JavaScript?
+a: `slice` accepts negative indices, counting from the end, and returns an empty string when the start is after the end. `substring` treats negative arguments as 0 and silently swaps reversed arguments. Prefer `slice`: its behaviour is predictable, while `substring`'s silent fixes hide bugs.
+q: What is the difference between replace and replaceAll in JavaScript?
+a: With a string pattern, `replace` changes only the first occurrence and `replaceAll` changes every one. With a regular expression, `replace` replaces all matches only if the regex has the `g` flag, and `replaceAll` requires that flag. Both interpret `$` sequences in a string replacement, so pass a function when the replacement is user data.
+q: How do you format a number with commas in JavaScript?
+a: Use `Intl.NumberFormat`: `new Intl.NumberFormat("en-US").format(1234567.891)` returns `"1,234,567.891"`, and the `de-DE` locale gives `"1.234.567,891"`. The same API formats currencies, percentages, compact numbers and units. Create the formatter once and reuse it, because construction loads locale data while `format` is cheap.
+q: What does "".split(",") return in JavaScript?
+a: `[""]`, an array holding one empty string, not an empty array. Likewise a trailing separator yields an empty last element: `"a,b,".split(",")` is `["a", "b", ""]`. Check for empty input first, or filter out empty strings, when parsing a list.
+q: Why does a template literal print [object Object]?
+a: Interpolation converts each value with `String()`, and a plain object without its own `toString` becomes `"[object Object]"`. Arrays join with commas, and `null` and `undefined` print as words. Format values explicitly, with `JSON.stringify` for debugging objects and `Intl` formatters for numbers and dates shown to users.
 ---
 Most string work is a dozen methods used well: find, slice, split, join, trim, pad, replace. The rest is *formatting* — turning numbers, dates and lists into text that is right for a reader — which is where hand-written code goes wrong in every locale but the author's, and where `Intl` gets it right for free. This lesson covers the methods with their exact semantics (`slice` versus `substring`, `indexOf` versus `includes`, `split` corner cases), template literals and the tagged-template mechanism that lets a function process a literal (the basis of `html`, `sql` and `css` tags), and the `Intl` formatters for numbers, currencies, dates and lists.
 

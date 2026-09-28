@@ -1,6 +1,14 @@
 ---
 title: Checkpoint — TypeScript preview
 minutes: 24
+seo-title: TypeScript Quiz: Generics, Narrowing and Utility Types Test
+description: Test your TypeScript with 12 questions and three programs on inference, any and unknown, structural typing, discriminated unions, generics and narrowing.
+q: What is the difference between `any`, `unknown` and `never`?
+a: `any` accepts every value and disables checking wherever it is used; `unknown` accepts every value but must be narrowed before use; `never` has no values at all and marks functions that never return and unions that have been exhausted.
+q: Why does a class name not matter for assignability in TypeScript?
+a: TypeScript is structurally typed: assignability depends on the shape — the properties a value has — not on the name it was declared with. Two classes with the same public members are interchangeable unless they have private members.
+q: Why must `tsc --noEmit` run in CI when esbuild builds the code?
+a: esbuild strips TypeScript types without checking them, so a build can succeed with type errors in it. A separate `tsc --noEmit` step in CI is what actually type-checks the project and stops those errors shipping.
 ---
 This checkpoint covers erased types and inference, literal types and widening, `any`/`unknown`/`never`; object types, `interface` versus `type`, structural typing and excess-property checks, intersections, discriminated unions and `satisfies`; function types, generics with constraints, `keyof`/indexed access and the utility types; narrowing, exhaustiveness, type guards, assertion functions and the escape hatches; and the toolchain — tsconfig, declaration files, builds, migration, runtime validation.
 

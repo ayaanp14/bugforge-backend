@@ -1,6 +1,20 @@
 ---
 title: The cost model — what the built-in operations really cost
 minutes: 15
+seo-title: Python Time Complexity of List, Dict and Set Operations
+description: The Big-O cost of Python built-ins: list append vs insert, in on a list vs a set, dict lookup, deque, heapq and bisect, and the loops that hide a quadratic.
+question: What is the time complexity of Python list operations?
+answer: For a Python list, indexing, `len`, `append` and `pop()` from the end are O(1), with `append` amortised. Inserting or popping at the front, `x in lst`, `index` and `remove` are O(n), because they shift or scan every element; a slice copies, costing its length; and sorting is O(n log n). Dict and set lookups, by contrast, are O(1) on average.
+q: Is `x in list` slower than `x in set` in Python?
+a: Yes. `in` on a list is a linear scan, O(n); `in` on a set or dict hashes the value, O(1) on average. Inside a loop over n items, a list membership test makes the whole loop O(n²), the most common hidden quadratic.
+q: Why is `list.pop(0)` slow in Python?
+a: Removing the first element shifts every remaining element one place left, which is O(n), so draining a list as a queue that way is O(n²). `collections.deque` does `popleft` and `appendleft` in O(1).
+q: Why is string concatenation in a loop slow in Python?
+a: Strings are immutable, so `text += piece` may copy the whole growing string each time, making the loop quadratic. Collect the pieces in a list and call `''.join(parts)` once, which is a single O(total) pass.
+q: How many operations per second can Python do?
+a: Roughly 10 to 50 million simple bytecode operations a second, so a Python loop iteration doing a few operations costs about 50 to 100 ns. That makes 10⁶ iterations about 0.1 s and 10⁷ about a second, while C-level built-ins such as `sum` and `sorted` run 10 to 100 times faster per element.
+q: What is the time complexity of `heapq` and `bisect`?
+a: `heappush` and `heappop` are O(log n) and `nlargest(k, xs)` is O(n log k). `bisect_left` and `bisect_right` are O(log n) searches on a sorted list, but `insort` is O(n) because inserting shifts the elements after it.
 ---
 A Python program's speed is decided first by its algorithm and second by which built-in operations it leans on, because each built-in has a cost fixed by its implementation: appending to a list is amortised constant time, inserting at the front is linear, `x in some_list` scans, `x in some_set` hashes. Knowing the table below is what lets you look at a loop and see the quadratic hiding in it. This lesson gives the costs of the list, dict, set, string and deque operations, the hidden costs — copying, hashing, allocation, function calls — and the substitutions that turn a slow shape into a fast one.
 

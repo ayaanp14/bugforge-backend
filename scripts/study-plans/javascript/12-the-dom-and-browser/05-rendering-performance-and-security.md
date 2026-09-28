@@ -1,6 +1,18 @@
 ---
 title: Rendering performance and front-end security — the two things a page must not get wrong
 minutes: 13
+seo-title: XSS and CSRF Prevention, Rendering and Core Web Vitals
+description: Prevent XSS with escaping, sanitising and CSP, and CSRF with SameSite cookies. Plus how the browser renders, defer vs async and the Core Web Vitals.
+question: What is XSS and how do you prevent it?
+answer: Cross-site scripting (XSS) happens when attacker-controlled text is rendered as markup, so the attacker's script runs with your users' cookies, storage and API access. Prevent it in layers: render data with `textContent` or framework bindings, escape it when markup is unavoidable, sanitise user HTML with an allow-list library such as DOMPurify, send a Content Security Policy without `'unsafe-inline'`, and keep session cookies `HttpOnly`.
+q: What is CSRF and how do you prevent it?
+a: Cross-site request forgery (CSRF) is a malicious page making the user's browser send a request to your site with the user's cookies attached automatically. The modern defence is `SameSite=Lax` or `Strict` session cookies, which block the cross-site POST, plus anti-CSRF tokens where cookies must be `SameSite=None`, checks of the `Origin` header, and no state changes on GET.
+q: What is the difference between defer and async on a script tag?
+a: Both download the script in parallel with HTML parsing. `defer` runs scripts in document order after parsing finishes; `async` runs each one as soon as it has downloaded, in no guaranteed order, which suits independent scripts such as analytics. A script tag with neither attribute blocks parsing until it downloads and runs.
+q: What are the Core Web Vitals?
+a: Three measures of what users feel: Largest Contentful Paint (LCP), when the main content shows, with a target under 2.5 seconds; Interaction to Next Paint (INP), input responsiveness, under 200 milliseconds; and Cumulative Layout Shift (CLS), visual stability, under 0.1. Measure them in the lab with Lighthouse and from real users with `PerformanceObserver`.
+q: Why animate transform and opacity instead of top and left?
+a: Changing `top`, `left` or `width` forces the browser through layout and paint on every frame, while `transform` and `opacity` on a promoted layer only need compositing, the cheapest stage of the pipeline. At 60 Hz each frame has about 16.7 milliseconds for all JavaScript, style, layout and paint, so skipping stages keeps animations smooth.
 ---
 A page can be correct and still fail its users in two ways: it can be **slow** — janky scrolling, a spinner over a white screen, an input that lags behind the keyboard — or it can be **unsafe** — a comment field that runs someone else's script in your users' sessions. Both have well-understood causes and defences. This lesson covers how the browser turns DOM and CSS into pixels and what makes that expensive; the loading path from HTML to interactive; the measurement tools and the vitals; then the front-end threat model: XSS and its defences (escaping, `textContent`, sanitisers, CSP), CSRF and `SameSite`, clickjacking, open redirects, third-party scripts and dependency risk.
 

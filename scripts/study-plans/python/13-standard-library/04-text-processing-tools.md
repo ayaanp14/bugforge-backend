@@ -1,6 +1,18 @@
 ---
 title: Text-processing tools — textwrap, difflib, string.Template and re in depth
 minutes: 14
+seo-title: Python Text Tools: textwrap, difflib and Regex Lookarounds
+description: Python's textwrap wraps text, difflib finds close matches, string.Template fills safe templates; plus regex named groups, lookarounds and sub with a function.
+question: What is a lookahead in a Python regex?
+answer: A lookahead in a Python regular expression is an assertion that checks what follows the current position without consuming it. `(?=...)` is positive and `(?!...)` negative, so `re.findall(r"[0-9]+(?= kg)", "5 kg, 12 lb, 7 kg")` returns `['5', '7']`, the numbers followed by " kg" without the unit. Lookbehinds, `(?<=...)` and `(?<!...)`, check what precedes and must be fixed width.
+q: How do I find the closest matching string in Python?
+a: Use `difflib.get_close_matches(word, possibilities, n=3, cutoff=0.6)`, which returns up to n candidates whose similarity is at least the cutoff, best first: the "did you mean?" helper, so a typed "appel" suggests "apple". For a similarity score between two sequences, use `difflib.SequenceMatcher(None, a, b).ratio()`, a number from 0 to 1.
+q: How do I remove the indentation from a multi-line string in Python?
+a: `textwrap.dedent(text)` removes the whitespace common to the start of every line, the usual fix for an indented triple-quoted string inside a function. `textwrap.indent(text, prefix)` does the reverse, and `textwrap.fill(text, width)` rewraps a paragraph to a width.
+q: What is string.Template used for in Python?
+a: `string.Template` fills `$name` placeholders with `substitute`, or with `safe_substitute`, which leaves missing placeholders in place instead of raising `KeyError`. It is deliberately less powerful than f-strings and `str.format`: it cannot read attributes or call methods, so it is safe for templates supplied by users or files.
+q: Can re.sub take a function as the replacement?
+a: Yes. When the replacement is a function, `re.sub` calls it with each match object and inserts the string it returns, so `re.sub(r"[0-9]+", lambda m: str(int(m.group()) * 2), "a1 b22")` gives `'a2 b44'`. Use it when the replacement depends on the matched text.
 ---
 Beyond the string methods and the regular-expression basics of Module 5, the standard library has a second tier of text tools that turn common jobs into a call: wrapping and indenting paragraphs, computing what changed between two versions, fuzzy-matching a typed name against the valid ones, filling templates safely, and the parts of `re` — named groups, lookarounds, `sub` with a function, `VERBOSE` — that make a regex readable. This lesson covers `textwrap`, `difflib`, `string.Template` and `unicodedata`, then the regex features in depth.
 
@@ -33,7 +45,7 @@ difflib.SequenceMatcher(None, a, b).ratio()           # 0.8333… similarity in 
 for tag, i1, i2, j1, j2 in difflib.SequenceMatcher(None, a, b).get_opcodes():
     print(tag, a[i1:i2], b[j1:j2])                    # equal / replace / delete / insert with the slices
 list(difflib.unified_diff(old_lines, new_lines, lineterm=""))   # a patch-style diff, like `diff -u`
-difflib.get_close_matches("appel", ["apple", "ample", "apply"], n=2, cutoff=0.6)   # ['apple', 'apply']
+difflib.get_close_matches("appel", ["apple", "ample", "apply"], n=2, cutoff=0.6)   # ['apply', 'apple'] — both score 0.8, and a tie comes out in reverse order
 ```
 
 `SequenceMatcher` works on any sequences (characters, words, lines) and its `ratio` is the standard "how similar" number; `get_close_matches` is the "did you mean?" helper; `unified_diff` and `ndiff` render changes for humans. `HtmlDiff` produces a side-by-side table.
