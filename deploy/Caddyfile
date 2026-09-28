@@ -1,38 +1,56 @@
 # TLS termination and the reverse proxy in front of the API.
 #
-# Cloudflare is in front of this (proxied DNS), so the public certificate is
-# Cloudflare's. This certificate secures Cloudflare -> origin, which is what
-# "Full (strict)" in the Cloudflare dashboard requires. It is a Cloudflare
-# Origin Certificate: free, valid for years, and trusted by Cloudflare only —
-# which is correct, because nothing else should be reaching this port.
+# Browsers reach this box directly: the `api` record is DNS-only (grey cloud)
+# since 2026-09-28. On Cloudflare's free plan Indian visitors are served from
+# London and Amsterdam, not Mumbai, so every API call went India -> Europe ->
+# this box -> Europe -> India. Measured from India that day, per request on a
+# warm connection: 340-390 ms through Cloudflare (LHR), 53-62 ms straight
+# here; the API itself answered in 2-4 ms at p50 either way (this file's
+# access log). A new connection was 0.8-1.2 s against 0.2 s. What that gave
+# up: Cloudflare's DDoS/WAF cover for the API, and its edge cache of
+# /api/problems/facets (which the API also caches in-process). The site's
+# own pages are still on Cloudflare.
+#
+# The certificate is Let's Encrypt's, obtained and renewed by Caddy (HTTP-01
+# on 80 or TLS-ALPN-01 on 443, both open in the security group) and kept in
+# the caddy-data volume. It is publicly trusted, so it also satisfies
+# Cloudflare's "Full (strict)": turning the orange cloud back on needs no
+# change here. ./certs holds the old Cloudflare Origin Certificate, which only
+# Cloudflare trusts and browsers would refuse.
 
 {
-	# Nothing here needs an ACME account: the certificate is supplied.
+	# Nothing uses the admin API; a config change is a container restart.
 	admin off
-	# Caddy would otherwise try to reach Let's Encrypt for a cert it has.
-	auto_https disable_redirects
+
+	servers {
+		# compose publishes 443/tcp only. Advertising HTTP/3 (Alt-Svc) would
+		# send browsers to a UDP port nothing answers on.
+		protocols h1 h2
+
+		# Express runs with `trust proxy = 1` and keys its rate limiters on
+		# req.ip, so the address it sees must be the visitor's, and must not be
+		# something a visitor can choose. A request arriving from Cloudflare
+		# (the record proxied again, or the few minutes of cached DNS after the
+		# switch) carries the visitor in CF-Connecting-IP; a direct request's
+		# visitor is the peer itself. Trusting that header only from
+		# Cloudflare's ranges gives {client_ip} the right answer both ways --
+		# from anywhere else it is ignored, so it cannot be forged to get a
+		# fresh rate-limit bucket.
+		#
+		# https://www.cloudflare.com/ips-v4 and /ips-v6, as of 2026-09-28. A
+		# range missing here only means that edge's visitors share its
+		# address while the record is proxied.
+		trusted_proxies static 173.245.48.0/20 103.21.244.0/22 103.22.200.0/22 103.31.4.0/22 141.101.64.0/18 108.162.192.0/18 190.93.240.0/20 188.114.96.0/20 197.234.240.0/22 198.41.128.0/17 162.158.0.0/15 104.16.0.0/13 104.24.0.0/14 172.64.0.0/13 131.0.72.0/22 2400:cb00::/32 2606:4700::/32 2803:f800::/32 2405:b500::/32 2405:8100::/32 2a06:98c0::/29 2c0f:f248::/32
+		client_ip_headers CF-Connecting-IP
+	}
 }
 
 api.codekairo.com {
-	tls /etc/caddy/certs/origin.pem /etc/caddy/certs/origin.key
-
-	# Express runs with `trust proxy = 1` and keys its rate limiters on
-	# req.ip, so the client address has to survive the hop. Cloudflare puts
-	# the real client in CF-Connecting-IP; Caddy would otherwise forward the
-	# Cloudflare edge address and every visitor would share one rate-limit
-	# bucket.
-	@cf header CF-Connecting-IP *
-	handle @cf {
-		reverse_proxy api:3001 {
-			header_up X-Forwarded-For {http.request.header.CF-Connecting-IP}
-			header_up X-Real-IP {http.request.header.CF-Connecting-IP}
-		}
-	}
-
-	# Anything arriving without that header did not come through Cloudflare.
-	# The firewall should already have dropped it; this is the second lock.
-	handle {
-		respond "Direct access is not allowed" 403
+	reverse_proxy api:3001 {
+		# Replaces the X-Forwarded-For that reverse_proxy would build (which,
+		# from a trusted peer, keeps the incoming list and appends the edge,
+		# and Express would then read the edge as the visitor).
+		header_up X-Forwarded-For {client_ip}
 	}
 
 	encode zstd gzip

@@ -16,13 +16,17 @@ services:
     image: caddy:2-alpine
     restart: unless-stopped
     ports:
+      # 80 answers Let's Encrypt's HTTP-01 challenge and redirects to 443.
       - "80:80"
       - "443:443"
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
-      # The Cloudflare Origin Certificate (see deploy/README.md). Cloudflare
-      # terminates TLS for the public; this pair secures the last hop.
+      # The old Cloudflare Origin Certificate. Unused since the API went
+      # DNS-only (2026-09-28, see the Caddyfile): the Let's Encrypt
+      # certificate Caddy uses now lives in caddy-data.
       - ./certs:/etc/caddy/certs:ro
+      # Caddy's certificates and ACME account, and its access log. Losing
+      # this volume means re-issuing on the next start.
       - caddy-data:/data
       - caddy-config:/config
     depends_on:

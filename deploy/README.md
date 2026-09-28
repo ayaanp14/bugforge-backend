@@ -78,8 +78,8 @@ aws lightsail attach-static-ip --static-ip-name codekairo-ip \
   --instance-name codekairo-api --region ap-south-1 --profile default
 ```
 
-Firewall: 80 and 443 from anywhere (Cloudflare reaches them), 22 from your own
-address only.
+Firewall: 80 and 443 from anywhere (browsers, and Let's Encrypt's challenge),
+22 from your own address only.
 
 ```bash
 aws lightsail put-instance-public-ports --instance-name codekairo-api \
@@ -105,18 +105,17 @@ cat ~/.ssh/github_deploy.pub      # paste into repo -> Settings -> Deploy keys
 git clone git@github.com:ayaanp14/bugforge-backend.git ~/codekairo-backend
 ```
 
-## 2. Cloudflare Origin Certificate
+## 2. TLS certificate
 
-Public TLS is Cloudflare's; this secures Cloudflare → origin, which is what
-**Full (strict)** requires.
+Nothing to do: Caddy obtains a Let's Encrypt certificate for
+`api.codekairo.com` on first start and renews it itself, keeping it in the
+`caddy-data` volume. It needs the `api` record to reach this box (step 6) —
+or, while the record is still proxied, Cloudflare to pass `http://` through
+to port 80, which it does as long as "Always Use HTTPS" is off.
 
-1. Cloudflare dashboard → SSL/TLS → Origin Server → **Create Certificate**.
-2. Hostnames `api.codekairo.com`, RSA, 15 years.
-3. Save the certificate as `deploy/certs/origin.pem` and the private key as
-   `deploy/certs/origin.key` **on the instance**. Both are gitignored.
-4. SSL/TLS → Overview → set encryption mode to **Full (strict)**.
-
-`chmod 600 deploy/certs/origin.key`.
+Until 2026-09-28 the API sat behind Cloudflare with a Cloudflare Origin
+Certificate in `deploy/certs/` (trusted by Cloudflare only). The Caddyfile
+header says why that changed.
 
 ## 3. Environment
 
@@ -205,20 +204,23 @@ npx tsx scripts/seed-roadmap.ts --seed      # "no stages are seeded" at boot oth
 ## 6. Cut DNS over
 
 Only after step 5 verifies. In Cloudflare, change the `api` record to an **A**
-record pointing at the static IP, **proxied (orange cloud)**.
+record pointing at the static IP, **DNS only (grey cloud)**. Proxied, the
+free plan serves Indian visitors from Europe and every API call pays for the
+trip — 340–390 ms a request against 53–62 ms direct, measured 2026-09-28.
 
 Check before and after:
 
 ```bash
 curl -s https://api.codekairo.com/health
 curl -si https://api.codekairo.com/api/seo/head?path=/problems/two-sum | head -5
+curl -s https://api.codekairo.com/cdn-cgi/trace   # the API's 404 = direct; a colo= line = still proxied
 ```
 
-WebSockets need no special handling — Caddy proxies the Upgrade handshake, and
-Cloudflare passes it through on a proxied record.
+WebSockets need no special handling — Caddy proxies the Upgrade handshake.
 
-**Keep Railway running until this is verified.** Rollback is pointing the DNS
-record back; TTL is the only delay.
+Turning the orange cloud back on needs nothing on this box: the Let's Encrypt
+certificate satisfies Full (strict), and the Caddyfile reads the visitor from
+`CF-Connecting-IP` when the peer is a Cloudflare address.
 
 ---
 
