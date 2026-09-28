@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { optionalAuth } from "../middleware/auth.js";
 import { rateLimit } from "../middleware/rate-limit.js";
+import { isAutomatedAgent } from "../lib/automated-agent.js";
 import { parseClientError, parseEvents, recordEvents, reportError } from "../lib/telemetry.js";
 
 /**
@@ -32,9 +33,14 @@ function platformOf(body: unknown): "web" | "android" {
 
 // POST /api/events — a batch of product events
 router.post("/", ingestLimiter, optionalAuth, (req, res) => {
-  const events = parseEvents(req.body);
   res.status(204).end();
-  recordEvents(events, { userId: req.user?.userId ?? null, platform: platformOf(req.body) });
+  // A rendering crawler runs the SPA and reports page views like a reader;
+  // they were ~98% of the table (lib/automated-agent.ts). Answered the same
+  // way, so nothing about the response changes for it. Errors below are
+  // still taken from crawlers: a page that crashes in Googlebot's renderer
+  // is a page that does not get indexed.
+  if (isAutomatedAgent(req.headers["user-agent"])) return;
+  recordEvents(parseEvents(req.body), { userId: req.user?.userId ?? null, platform: platformOf(req.body) });
 });
 
 // POST /api/events/errors — one client-side error
