@@ -49,6 +49,7 @@ import { prisma } from "./lib/prisma.js";
 import { ROBOTS_TXT } from "./lib/robots.js";
 import { setIo, duelRoom, USER_NAMESPACE, userRoom } from "./lib/realtime.js";
 import { markActiveDuelsAbsent, setDuelPresence } from "./lib/duels.js";
+import { watchMatches } from "./services/match-watch.js";
 import { warmRedis, closeRedis } from "./lib/redis.js";
 import { startCacheInvalidationListener } from "./lib/cache.js";
 import { encodeCode } from "./lib/obfuscation.js";
@@ -411,6 +412,10 @@ io.on("connection", (socket) => {
     socket.leave(duelRoom(duelId));
     if (duelsJoined.has(duelId)) leftDuel(duelId);
   });
+
+  // ── Battles knockout matches: the players' code, relayed live to the
+  // organizers watching (services/match-watch-rules.ts has the protocol).
+  watchMatches(io, socket);
 
   /**
    * The room this socket has been admitted to, if it is the one named.

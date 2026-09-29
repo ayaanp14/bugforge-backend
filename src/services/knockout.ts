@@ -383,6 +383,29 @@ export async function matchRoom(userId: string, matchId: string) {
   };
 }
 
+/**
+ * Who a socket's account is to one match, for the live code relay
+ * (services/match-watch.ts): one of its two players, an organizer (who is
+ * not one of them), or nobody — and the match's clock, so a player's code
+ * is relayed only while the match is being played.
+ */
+export async function matchSeat(userId: string, matchId: string) {
+  const m = await prisma.tournamentMatch.findUnique({
+    where: { id: matchId },
+    select: { status: true, startedAt: true, endsAt: true, playerAId: true, playerBId: true, tournament: { select: { orgId: true, status: true } } },
+  });
+  if (!m || m.tournament.status !== "published") return null;
+  const side = m.playerAId === userId ? ("a" as const) : m.playerBId === userId ? ("b" as const) : null;
+  return {
+    side,
+    // A player never watches: an organizer who also plays sees only their own editor.
+    manager: side ? false : await viewerRole(userId, m.tournament.orgId),
+    status: m.status,
+    startedAt: m.startedAt,
+    endsAt: m.endsAt,
+  };
+}
+
 /** The reader's standing in a knockout, for its public page: checked in, and the match to go to. */
 export async function knockoutViewer(tournamentId: string, userId: string) {
   const [entry, match] = await Promise.all([
