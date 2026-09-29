@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { headFor, sitemapXml } from "../services/seo.js";
-import { battlesHead, battlesIndexHtml, battlesSitemapXml } from "../services/battles-seo.js";
+import { battlesCard, battlesHead, battlesIndexHtml, battlesSitemapXml } from "../services/battles-seo.js";
 
 /**
  * What the site's edge asks the API on a crawler's behalf.
@@ -69,6 +69,25 @@ router.get("/battles/index", async (_req, res) => {
   res.setHeader("X-Battles-Seo", "1");
   res.setHeader("Cache-Control", "public, max-age=600, stale-while-revalidate=3600");
   res.json({ content: await battlesIndexHtml() });
+});
+
+/**
+ * A public tournament's link-preview card (lib/battles-card) — the og:image
+ * its head names, fetched from here by WhatsApp, LinkedIn, X and Telegram
+ * like a shared win's card. The head's URL carries the card's version: asked
+ * with the current one, the answer never changes and may be kept a year;
+ * with an old or missing one it is today's card, kept five minutes.
+ */
+router.get("/battles/card/:slug.png", async (req, res) => {
+  res.setHeader("X-Battles-Seo", "1");
+  const card = await battlesCard(String(req.params["slug"] ?? "").toLowerCase());
+  if (!card) {
+    res.setHeader("Cache-Control", "public, max-age=300");
+    res.status(404).type("text/plain").send("No such tournament");
+    return;
+  }
+  res.setHeader("Cache-Control", req.query["v"] === card.version ? "public, max-age=31536000, immutable" : "public, max-age=300");
+  res.type("image/png").send(card.png);
 });
 
 router.get("/battles/sitemaps/:name.xml", async (req, res) => {

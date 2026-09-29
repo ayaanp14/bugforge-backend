@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { orgSeo, seoOf, tournamentSeo, type OrgRow, type TournamentRow } from "./battles-seo.js";
+import { orgSeo, seoOf, tournamentCard, tournamentSeo, type OrgRow, type TournamentRow } from "./battles-seo.js";
 
 // What the tournament site tells a search engine about a tournament and an
 // organizer. The Worker writes it into the HTML and the pages set it at
@@ -82,6 +82,30 @@ test("a cancelled tournament is served but not indexed", () => {
   const head = tournamentSeo(knockout({ status: "cancelled" }), NOW)!;
   assert.equal(head.index, false);
   assert.equal(head.facts.kind === "tournament" && head.facts.cancelled, true);
+});
+
+test("a public tournament's preview is its own card, addressed by what it draws", () => {
+  const head = tournamentSeo(knockout(), NOW)!;
+  assert.match(head.image!.url, /^https?:\/\/[^/]+\/api\/seo\/battles\/card\/freshers-knockout\.png\?v=[0-9a-f]{10}$/);
+  assert.equal(head.image!.width, 1200);
+  assert.equal(head.image!.height, 630);
+  assert.equal(head.image!.alt, "Freshers Knockout — a 1v1 coding knockout by The Coding Club on CodeKairo Battles");
+  // The runtime head carries it too, so the page and the edge name one picture.
+  assert.equal(seoOf(head)!.image!.url, head.image!.url);
+  // A new title, time or phase is a new address; what the card does not draw is not.
+  const v = (row: TournamentRow, now = NOW) => tournamentSeo(row, now)!.image!.url;
+  assert.notEqual(v(knockout({ title: "Freshers Cup" })), v(knockout()));
+  assert.notEqual(v(knockout({ startsAt: new Date("2026-10-03T05:30:00Z") })), v(knockout()));
+  assert.notEqual(v(knockout(), new Date("2026-10-03T05:00:00Z")), v(knockout()));
+  assert.equal(v(knockout({ entries: 30, description: "New words" })), v(knockout()));
+  assert.equal(tournamentSeo(knockout({ format: "icpc", teamSize: 3 }), NOW)!.image!.alt, "Freshers Knockout — an ICPC-style coding contest by The Coding Club on CodeKairo Battles");
+});
+
+test("no card for a tournament nobody else may open", () => {
+  assert.equal(tournamentCard(knockout({ status: "draft" }), NOW), null);
+  assert.equal(tournamentCard(knockout({ status: "review" }), NOW), null);
+  assert.equal(tournamentCard(knockout({ org: { slug: "x", name: "X", verifiedAt: null } }), NOW), null);
+  assert.equal(tournamentCard(knockout({ status: "cancelled" }), NOW)!.phase, "cancelled");
 });
 
 const org: OrgRow = { slug: "the-coding-club", name: "The Coding Club", kind: "club", website: "https://club.example.edu", city: "Pune", about: null, verifiedAt: VERIFIED };

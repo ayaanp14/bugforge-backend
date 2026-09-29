@@ -3,6 +3,7 @@ import { prisma } from "../lib/prisma.js";
 import { cached, invalidate } from "../lib/cache.js";
 import { escapeHtml } from "../lib/markdown-html.js";
 import { BATTLES_URL } from "../lib/sites.js";
+import { CARD_HEIGHT, CARD_WIDTH, cardVersion, renderTournamentCard, type TournamentCard } from "../lib/battles-card.js";
 import { isHiddenStatus, tournamentPhase, type TournamentPhase } from "./battles-rules.js";
 
 /**
@@ -44,7 +45,10 @@ const SITEMAP_TTL_MS = 15 * 60 * 1000;
  * the Worker's next ask gets the new answer, not up to five minutes of the old.
  */
 export function forgetBattlesHeads(slugs: { tournaments?: readonly string[]; org?: string }): void {
-  for (const slug of slugs.tournaments ?? []) invalidate(`battles-seo:t:${slug}`);
+  for (const slug of slugs.tournaments ?? []) {
+    invalidate(`battles-seo:t:${slug}`);
+    invalidate(`battles-seo:card:${slug}`);
+  }
   if (slugs.org) invalidate(`battles-seo:o:${slugs.org}`);
   invalidate("battles-seo:index");
 }
@@ -100,6 +104,14 @@ export interface BattlesHead {
   content: string;
   /** The breadcrumb label: the page's own name. */
   crumb: string;
+  /**
+   * The link-preview picture (og:image), when the page has its own: a
+   * tournament's card (lib/battles-card), GET /api/seo/battles/card/<slug>.png
+   * on the API's public origin — as a shared win's card is (services/seo.ts
+   * shareHead), and robots.txt allows /api/ — with the card's content
+   * version in the query. Absent: the site's card.
+   */
+  image?: { url: string; width: number; height: number; alt: string };
 }
 
 /** The part of a head a page needs at runtime (the payloads carry it; no body). */
@@ -205,6 +217,45 @@ function entryRule(t: TournamentRow): string {
 }
 
 /**
+ * What a tournament's card draws, or null when the tournament is not public
+ * (the same rule as its head: the card of a draft must not exist either).
+ */
+export function tournamentCard(t: TournamentRow, now = new Date()): TournamentCard | null {
+  if (isHiddenStatus(t.status) || !t.org.verifiedAt) return null;
+  const format = t.format === "icpc" ? "icpc" : "knockout";
+  const phase = tournamentPhase(t, now);
+  if (phase === "draft" || phase === "review") return null;
+  return {
+    slug: t.slug,
+    title: t.title,
+    org: t.org.name,
+    verified: true,
+    format,
+    teamSize: t.teamSize,
+    capacity: t.capacity,
+    startsAt: t.startsAt,
+    registrationClosesAt: t.registrationClosesAt,
+    durationMinutes: t.durationMinutes,
+    problems: t.problems,
+    phase,
+  };
+}
+
+/** Where the API answers from the outside (services/seo.ts reads the same variable). */
+const API_ORIGIN = (process.env["BACKEND_PUBLIC_URL"] ?? "https://api.codekairo.com").replace(/\/+$/, "");
+
+/** The card's address: versioned by what it draws, so a change is a new URL to every cache. */
+function cardImage(card: TournamentCard): NonNullable<BattlesHead["image"]> {
+  const format = card.format === "icpc" ? "an ICPC-style coding contest" : "a 1v1 coding knockout";
+  return {
+    url: `${API_ORIGIN}/api/seo/battles/card/${card.slug}.png?v=${cardVersion(card)}`,
+    width: CARD_WIDTH,
+    height: CARD_HEIGHT,
+    alt: `${card.title} — ${format} by ${card.org} on ${BRAND}`,
+  };
+}
+
+/**
  * A tournament's head, or null when it is not public — a draft, an edit
  * waiting for approval, or one of an organization CodeKairo has not
  * verified: the page 404s for them too.
@@ -258,6 +309,7 @@ export function tournamentSeo(t: TournamentRow, now = new Date()): BattlesHead |
     `<p>${link("/tournaments", "More tournaments")} · ${link(orgPath, `More from ${t.org.name}`)}</p>`,
   ].join("");
 
+  const card = tournamentCard(t, now);
   return {
     path,
     title,
@@ -265,6 +317,7 @@ export function tournamentSeo(t: TournamentRow, now = new Date()): BattlesHead |
     index: phase !== "cancelled",
     crumb: t.title,
     content,
+    ...(card ? { image: cardImage(card) } : {}),
     facts: {
       kind: "tournament",
       name: t.title,
@@ -425,6 +478,26 @@ export async function battlesHead(path: string): Promise<BattlesHead | null> {
     });
   }
   return null;
+}
+
+/**
+ * A public tournament's card as PNG, with the version it draws — for GET
+ * /api/seo/battles/card/<slug>.png. The row is read at most once a minute
+ * per slug and each version is drawn once (~100 ms) and kept an hour, so a
+ * burst of previews, or of made-up `?v=`s, costs one render.
+ */
+export async function battlesCard(slug: string): Promise<{ png: Buffer; version: string } | null> {
+  if (!/^[a-z0-9][a-z0-9-]*$/.test(slug)) return null;
+  const card = await cached(`battles-seo:card:${slug}`, 60_000, async () => {
+    const t = await prisma.tournament.findUnique({ where: { slug }, select: TOURNAMENT_SELECT });
+    if (!t) return null;
+    const { _count, ...row } = t;
+    return tournamentCard({ ...row, entries: _count.entries, problems: _count.problems });
+  });
+  if (!card) return null;
+  const version = cardVersion(card);
+  const png = await cached(`battles-card:${slug}:${version}`, 60 * 60_000, () => renderTournamentCard(card));
+  return { png, version };
 }
 
 /* ── The list, for the prerendered index pages ─────────────────── */
