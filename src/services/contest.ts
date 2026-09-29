@@ -13,6 +13,7 @@
 import { prisma } from "../lib/prisma.js";
 import { cached, invalidate } from "../lib/cache.js";
 import { BattlesError } from "./battles-error.js";
+import { isHiddenStatus } from "./battles-rules.js";
 import { computeStandings, contestState, endsAt, freezeAt, problemLetter, type ContestVerdict, type ContestWindow } from "./contest-rules.js";
 
 /** The judge's verdicts in contest terms. Anything unlisted (an engine failure never gets this far) is not recorded. */
@@ -128,7 +129,7 @@ export async function contestRoom(userId: string, tournamentId: string) {
     }),
     isManager(userId, t.orgId),
   ]);
-  if (!manager && (t.status === "draft" || !t.org.verifiedAt)) throw new BattlesError(404, "No such contest.");
+  if (!manager && (isHiddenStatus(t.status) || !t.org.verifiedAt)) throw new BattlesError(404, "No such contest.");
   const team = entry?.status === "approved" ? entry.team : null;
   if (!team && !manager) throw new BattlesError(403, "Only teams entered in this contest can open its room.");
   if (t.status === "cancelled") throw new BattlesError(409, "This contest was cancelled.");
@@ -179,7 +180,7 @@ export async function contestRoom(userId: string, tournamentId: string) {
 export async function contestStandings(tournamentId: string, viewerId: string | null) {
   const t = await loadContest(tournamentId);
   const manager = await isManager(viewerId, t.orgId);
-  if (!manager && (t.status === "draft" || !t.org.verifiedAt)) throw new BattlesError(404, "No such contest.");
+  if (!manager && (isHiddenStatus(t.status) || !t.org.verifiedAt)) throw new BattlesError(404, "No such contest.");
   const now = new Date();
   const header = contestHeader(t, now);
   if (header.state === "before") throw new BattlesError(409, "The scoreboard opens when the contest starts.");

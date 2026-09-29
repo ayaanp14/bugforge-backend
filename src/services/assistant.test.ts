@@ -99,6 +99,7 @@ const QUESTIONS: Array<[string, RegExp, string?]> = [
   ["how do I contact support about a refund", /support@codekairo\.com/],
   ["how can I host a coding contest for my college", /create an \*\*organization\*\*/],
   ["how is penalty time counted in an ICPC style contest", /20 per rejected attempt/],
+  ["can I delete or edit my tournament on battles after publishing", /\*\*deleted until it starts\*\*/],
   ["what are the ranks", /Novice\*\* 0–99/],
   ["does rating start at 1200", /starts at \*\*0\*\*/],
   ["which programming languages are supported", /13 programming languages/],

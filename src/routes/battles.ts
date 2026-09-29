@@ -2,11 +2,13 @@ import { Router, type NextFunction, type Request, type Response } from "express"
 import { adminOnly, optionalAuth, requireAuth } from "../middleware/auth.js";
 import {
   BattlesError,
+  approveTournament,
   cancelTournament,
   createOrg,
   createTournament,
   decideEntry,
   deleteTeam,
+  deleteTournament,
   hostDashboard,
   listTournaments,
   manageView,
@@ -18,6 +20,7 @@ import {
   setOrgVerified,
   setProblems,
   tournamentPage,
+  tournamentsForReview,
   updateOrg,
   updateTournament,
   uploadTeams,
@@ -47,21 +50,24 @@ import { bracketView, checkIn, matchRoom } from "../services/knockout.js";
  * Organizers (requireAuth; owner/admin of the org, else 404):
  *   GET    /api/battles/host                        my orgs + their tournaments
  *   POST   /api/battles/orgs                        { name, kind, website?, city?, about? }
- *   PATCH  /api/battles/orgs/:id
+ *   PATCH  /api/battles/orgs/:id                    a verified org goes back for verification
  *   POST   /api/battles/orgs/:id/tournaments        a draft
  *   GET    /api/battles/manage/:id                  settings, problems, entries, teams
- *   PATCH  /api/battles/manage/:id                  settings
+ *   PATCH  /api/battles/manage/:id                  settings; a published one goes to review
+ *   DELETE /api/battles/manage/:id                  only one that never ran
  *   PUT    /api/battles/manage/:id/problems         { problemIds } in order
  *   POST   /api/battles/manage/:id/publish
- *   POST   /api/battles/manage/:id/cancel
+ *   POST   /api/battles/manage/:id/cancel           published only
  *   POST   /api/battles/manage/:id/reveal           lift the freeze after the end
  *   POST   /api/battles/manage/:id/teams            { list } — ICPC team upload
  *   DELETE /api/battles/teams/:teamId
  *   PATCH  /api/battles/entries/:entryId            { status: approved | rejected }
  *
  * Site admin (requireAuth + adminOnly):
- *   GET    /api/battles/admin/orgs                  verification queue
- *   POST   /api/battles/admin/orgs/:id/verify       { verified }
+ *   GET    /api/battles/admin/orgs                  verification queue (re-verifications with their changes)
+ *   POST   /api/battles/admin/orgs/:id/verify       { verified, version? }
+ *   GET    /api/battles/admin/tournaments           edited tournaments waiting for approval
+ *   POST   /api/battles/admin/tournaments/:id/approve  { version? }
  */
 
 type Authed = Request & { user: { userId: string; email: string } };
@@ -95,7 +101,9 @@ router.get("/orgs/:slug", optionalAuth, wrap(async (req, res) => { res.json(awai
 
 // ── Site admin ────────────────────────────────────────────────────────
 router.get("/admin/orgs", requireAuth, adminOnly, wrap(async (_req, res) => { res.json(await orgsForReview()); }));
-router.post("/admin/orgs/:id/verify", requireAuth, adminOnly, wrap(async (req, res) => { res.json(await setOrgVerified(param(req, "id"), body(req)["verified"])); }));
+router.post("/admin/orgs/:id/verify", requireAuth, adminOnly, wrap(async (req, res) => { res.json(await setOrgVerified(param(req, "id"), body(req)["verified"], body(req)["version"])); }));
+router.get("/admin/tournaments", requireAuth, adminOnly, wrap(async (_req, res) => { res.json(await tournamentsForReview()); }));
+router.post("/admin/tournaments/:id/approve", requireAuth, adminOnly, wrap(async (req, res) => { res.json(await approveTournament(param(req, "id"), body(req)["version"])); }));
 
 // ── Everything below needs a session ─────────────────────────────────
 router.use(requireAuth);
@@ -118,6 +126,7 @@ router.post("/orgs/:id/tournaments", wrap(async (req, res) => {
 
 router.get("/manage/:id", wrap(async (req, res) => { res.json(await manageView(req.user.userId, param(req, "id"))); }));
 router.patch("/manage/:id", wrap(async (req, res) => { res.json(await updateTournament(req.user.userId, param(req, "id"), body(req))); }));
+router.delete("/manage/:id", wrap(async (req, res) => { res.json(await deleteTournament(req.user.userId, param(req, "id"))); }));
 router.put("/manage/:id/problems", wrap(async (req, res) => { res.json(await setProblems(req.user.userId, param(req, "id"), body(req)["problemIds"])); }));
 router.post("/manage/:id/publish", wrap(async (req, res) => { res.json(await publishTournament(req.user.userId, param(req, "id"))); }));
 router.post("/manage/:id/cancel", wrap(async (req, res) => { res.json(await cancelTournament(req.user.userId, param(req, "id"))); }));

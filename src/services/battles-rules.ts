@@ -60,7 +60,17 @@ export function emailDomainAllowed(email: string | null | undefined, domains: re
   return domains.some((d) => host === d || host.endsWith(`.${d}`));
 }
 
-export type TournamentPhase = "draft" | "cancelled" | "registration" | "registration_closed" | "live" | "finished";
+/**
+ * Statuses players never see: a draft, and a published tournament whose edit
+ * is waiting for the site admin (`review`). Every check that hides a draft
+ * from outsiders hides both — a public tournament an organizer has just
+ * changed shows nothing until a person has looked at the change.
+ */
+export function isHiddenStatus(status: string): boolean {
+  return status === "draft" || status === "review";
+}
+
+export type TournamentPhase = "draft" | "review" | "cancelled" | "registration" | "registration_closed" | "live" | "finished";
 
 interface PhaseInput {
   status: string;
@@ -80,6 +90,7 @@ interface PhaseInput {
  */
 export function tournamentPhase(t: PhaseInput, now: Date): TournamentPhase {
   if (t.status === "draft") return "draft";
+  if (t.status === "review") return "review";
   if (t.status === "cancelled") return "cancelled";
   if (now < t.registrationClosesAt) return "registration";
   if (now < t.startsAt) return "registration_closed";
@@ -238,6 +249,108 @@ export function publishBlocker(t: { status: string; startsAt: Date; registration
   if (t.registrationClosesAt <= now) return "Registration would already be closed. Move the dates forward first.";
   return null;
 }
+
+/** What stands between an edited tournament and the admin approving it, or null. */
+export function approveBlocker(t: { status: string; startsAt: Date }, now: Date): string | null {
+  if (t.status !== "review") return "Only a tournament waiting for approval can be approved.";
+  if (t.startsAt <= now) return "Its start time passed while it waited. The organizer has to move the dates first.";
+  return null;
+}
+
+/**
+ * Why a tournament cannot be deleted, or null when it can. Only one that never
+ * ran: once it has started, or anyone has competed in it, its results are on
+ * players' profiles (trophy marks, the Tournaments record), and cancelling is
+ * the way to call it off. A cancelled tournament that never ran may go.
+ */
+export function deleteBlocker(t: { status: string; startsAt: Date }, activity: { attempts: number; drawn: boolean }, now: Date): string | null {
+  if (activity.attempts > 0 || activity.drawn) return "Players have already competed in this tournament, so it can only be cancelled.";
+  if (t.status === "published" && t.startsAt <= now) return "This tournament has started, so it can only be cancelled.";
+  return null;
+}
+
+// ── What changed since the admin last looked ─────────────────────────────
+
+/** A tournament's settings as stored JSON (`Tournament.approvedSnapshot`): dates as ISO strings. */
+export type TournamentSnapshot = Omit<TournamentFields, "registrationClosesAt" | "startsAt"> & { registrationClosesAt: string; startsAt: string };
+
+export function tournamentSnapshot(f: TournamentFields): TournamentSnapshot {
+  return { ...f, registrationClosesAt: f.registrationClosesAt.toISOString(), startsAt: f.startsAt.toISOString() };
+}
+
+/** An organization's details as stored JSON (`BattleOrg.verifiedSnapshot`). */
+export interface OrgSnapshot {
+  name: string;
+  kind: string;
+  website: string | null;
+  city: string | null;
+  about: string | null;
+}
+
+export const orgSnapshot = (o: OrgSnapshot): OrgSnapshot => ({ name: o.name, kind: o.kind, website: o.website ?? null, city: o.city ?? null, about: o.about ?? null });
+
+/** One field as the admin reads it: its value now, and — when it changed — what it was. */
+export interface FieldView {
+  field: string;
+  label: string;
+  value: string;
+  /** What it was when last approved or verified; null when unchanged or nothing is on record. */
+  before: string | null;
+}
+
+type FieldSpec<T> = ReadonlyArray<readonly [key: keyof T & string, label: string, show: (v: unknown) => string]>;
+
+const orNone = (empty: string) => (v: unknown) => (v === null || v === undefined || v === "" ? empty : String(v));
+
+/** The product calendar is Indian time; the admin reads dates the way the organizer's players will. */
+const IST = new Intl.DateTimeFormat("en-IN", { timeZone: "Asia/Kolkata", weekday: "short", day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: false });
+const istTime = (v: unknown) => (typeof v === "string" && !Number.isNaN(Date.parse(v)) ? `${IST.format(new Date(v))} IST` : "—");
+
+const TOURNAMENT_FIELDS: FieldSpec<TournamentSnapshot> = [
+  ["title", "Title", orNone("—")],
+  ["description", "Description", orNone("None")],
+  ["format", "Format", (v) => (v === "icpc" ? "ICPC-style contest" : v === "knockout" ? "1v1 knockout" : orNone("—")(v))],
+  ["teamSize", "Team size", orNone("—")],
+  ["capacity", "Places", orNone("No limit")],
+  ["registrationClosesAt", "Registration closes", istTime],
+  ["startsAt", "Starts", istTime],
+  ["durationMinutes", "Length", (v) => `${String(v)} min`],
+  ["allowedDomains", "Email domains", (v) => (Array.isArray(v) && v.length ? v.map((d) => `@${String(d)}`).join(", ") : "Anyone")],
+  ["inviteCode", "Invite code", orNone("None")],
+  ["requiresApproval", "Organizer approves entrants", (v) => (v ? "Yes" : "No")],
+  ["freezeMinutes", "Scoreboard freeze", (v) => (v ? `${String(v)} min before the end` : "None")],
+];
+
+const ORG_KIND_LABEL: Record<string, string> = { college: "College or university", club: "Student club or chapter", company: "Company", community: "Community" };
+
+const ORG_FIELDS: FieldSpec<OrgSnapshot> = [
+  ["name", "Name", orNone("—")],
+  ["kind", "Kind", (v) => ORG_KIND_LABEL[String(v)] ?? orNone("—")(v)],
+  ["website", "Website", orNone("None")],
+  ["city", "City", orNone("None")],
+  ["about", "About", orNone("None")],
+];
+
+/**
+ * Every field, with what it was beside the ones that changed. Compared on the
+ * stored values, not the words shown, so a change the display rounds away (a
+ * second, a trailing space the reader trims anyway) still counts.
+ */
+function describe<T extends object>(spec: FieldSpec<T>, before: T | null, after: T): FieldView[] {
+  return spec.map(([key, label, show]) => {
+    const now = (after as Record<string, unknown>)[key];
+    const was = before ? (before as Record<string, unknown>)[key] : undefined;
+    const changed = before !== null && JSON.stringify(was ?? null) !== JSON.stringify(now ?? null);
+    return { field: key, label, value: show(now), before: changed ? show(was) : null };
+  });
+}
+
+export const describeTournament = (before: TournamentSnapshot | null, after: TournamentSnapshot) => describe(TOURNAMENT_FIELDS, before, after);
+export const describeOrg = (before: OrgSnapshot | null, after: OrgSnapshot) => describe(ORG_FIELDS, before, after);
+
+/** Whether an edit changed anything a player would see — the trigger for a new review. */
+export const tournamentChanged = (before: TournamentSnapshot, after: TournamentSnapshot) => describeTournament(before, after).some((f) => f.before !== null);
+export const orgChanged = (before: OrgSnapshot, after: OrgSnapshot) => describeOrg(before, after).some((f) => f.before !== null);
 
 export interface TeamRow {
   line: number;

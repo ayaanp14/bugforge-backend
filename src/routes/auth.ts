@@ -8,7 +8,7 @@ import { JWT_SECRET } from "../lib/secrets.js";
 import { consumeChallenge, generateOtp, issueChallenge } from "../lib/otp-store.js";
 import { forgetSessions, revokeSession } from "../lib/session-revocation.js";
 import { burnCompare, hashPassword, needsRehash, passwordProblem, verifyPassword } from "../lib/passwords.js";
-import { emailVerificationRequired, sendAuthCode } from "../lib/auth-mail.js";
+import { emailVerificationRequired, sendAuthCode, welcomeNewAccount } from "../lib/auth-mail.js";
 import { redeemHandoff } from "../lib/handoff-store.js";
 import { readEmail, readUsername } from "../lib/identity.js";
 
@@ -137,7 +137,8 @@ router.post("/register", async (req, res) => {
       throw err;
     }
 
-    // Seed the in-app welcome notification
+    // Seed the in-app welcome notification. The welcome *mail* waits for the
+    // code (see /verify-email): this address is not proven yet.
     void createNotificationOnce(user.id, WELCOME);
 
     // Trigger registration webhook
@@ -291,7 +292,10 @@ router.post("/verify-email", async (req, res) => {
       return;
     }
     if (!user.emailVerified) {
-      await prisma.user.update({ where: { id: user.id }, data: { emailVerified: new Date() }, select: { id: true } });
+      // Conditional on the column still being null, so of two requests that
+      // raced here only the one that actually flipped it sends the welcome.
+      const flipped = await prisma.user.updateMany({ where: { id: user.id, emailVerified: null }, data: { emailVerified: new Date() } });
+      if (flipped.count === 1) welcomeNewAccount(user, "email");
     }
 
     const token = establishSession(res, user);
@@ -505,7 +509,7 @@ router.post("/reset-password", async (req, res) => {
     // the password a second time.
     const account = await prisma.user.findUnique({
       where: { email: payload.email },
-      select: { id: true, sessionsValidFrom: true, emailVerified: true },
+      select: { id: true, email: true, name: true, username: true, sessionsValidFrom: true, emailVerified: true },
     });
     if (!account) {
       res.status(400).json({ error: "Invalid or expired reset session." });
@@ -534,6 +538,9 @@ router.post("/reset-password", async (req, res) => {
       select: { id: true },
     });
     forgetSessions(updated.id);
+    // A registration that never entered its code, finished through a reset:
+    // this is the account's first way in, so it is welcomed now.
+    if (!account.emailVerified) welcomeNewAccount(account, "email");
 
     res.json({ message: "Password reset successfully. You can now log in with your new password." });
   } catch (err) {

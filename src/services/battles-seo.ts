@@ -1,9 +1,9 @@
 import type { Prisma } from "@prisma/client";
 import { prisma } from "../lib/prisma.js";
-import { cached } from "../lib/cache.js";
+import { cached, invalidate } from "../lib/cache.js";
 import { escapeHtml } from "../lib/markdown-html.js";
 import { BATTLES_URL } from "../lib/sites.js";
-import { tournamentPhase, type TournamentPhase } from "./battles-rules.js";
+import { isHiddenStatus, tournamentPhase, type TournamentPhase } from "./battles-rules.js";
 
 /**
  * What a search engine is told about the tournament site's own content —
@@ -37,6 +37,17 @@ const BRAND = "CodeKairo Battles";
 const DESCRIPTION_MAX = 158;
 const HEAD_TTL_MS = 5 * 60 * 1000;
 const SITEMAP_TTL_MS = 15 * 60 * 1000;
+
+/**
+ * Drop the heads a change of visibility makes stale — a tournament hidden for
+ * review, approved, deleted; an organization sent back for verification — so
+ * the Worker's next ask gets the new answer, not up to five minutes of the old.
+ */
+export function forgetBattlesHeads(slugs: { tournaments?: readonly string[]; org?: string }): void {
+  for (const slug of slugs.tournaments ?? []) invalidate(`battles-seo:t:${slug}`);
+  if (slugs.org) invalidate(`battles-seo:o:${slugs.org}`);
+  invalidate("battles-seo:index");
+}
 
 export interface Crumb {
   name: string;
@@ -100,6 +111,8 @@ const FORMAT_TITLE = { knockout: "1v1 Coding Knockout", icpc: "ICPC-Style Coding
 const FORMAT_NAME = { knockout: "1v1 knockout", icpc: "ICPC-style contest" } as const;
 const PHASE_LABEL: Record<TournamentPhase, string> = {
   draft: "Draft",
+  // Never public (tournamentSeo returns null for it); here so the table is whole.
+  review: "Waiting for approval",
   cancelled: "Cancelled",
   registration: "Registration open",
   registration_closed: "Registration closed",
@@ -192,11 +205,12 @@ function entryRule(t: TournamentRow): string {
 }
 
 /**
- * A tournament's head, or null when it is not public — a draft, or one of an
- * organization CodeKairo has not verified: the page 404s for them too.
+ * A tournament's head, or null when it is not public — a draft, an edit
+ * waiting for approval, or one of an organization CodeKairo has not
+ * verified: the page 404s for them too.
  */
 export function tournamentSeo(t: TournamentRow, now = new Date()): BattlesHead | null {
-  if (t.status === "draft" || !t.org.verifiedAt) return null;
+  if (isHiddenStatus(t.status) || !t.org.verifiedAt) return null;
   const format = t.format === "icpc" ? "icpc" : "knockout";
   const phase = tournamentPhase(t, now);
   const path = `/t/${t.slug}`;

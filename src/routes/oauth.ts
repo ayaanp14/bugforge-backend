@@ -12,6 +12,7 @@ import {
 } from "../lib/auth-session.js";
 import { asSite, siteUrl, type Site } from "../lib/sites.js";
 import { issueHandoff } from "../lib/handoff-store.js";
+import { welcomeNewAccount } from "../lib/auth-mail.js";
 
 /**
  * Social sign-in, ported off NextAuth.
@@ -460,7 +461,11 @@ async function upsertSocialUser(args: UpsertArgs): Promise<SocialUserResult> {
 
     void createNotificationOnce(dbUser.id, WELCOME);
     fireRegistrationWebhook(dbUser);
+    welcomeNewAccount(dbUser, args.provider);
   } else {
+    // A password account still waiting on its code, proven by this sign-in:
+    // its first way in, so it is welcomed like a new one.
+    const firstProof = !dbUser.emailVerified;
     const updateData: { name: string | null; avatar_url: string | null; username?: string; emailVerified?: Date } = {
       name: args.name || dbUser.name,
       avatar_url: args.avatarUrl || dbUser.avatar_url,
@@ -470,6 +475,7 @@ async function upsertSocialUser(args: UpsertArgs): Promise<SocialUserResult> {
     }
     if (!dbUser.emailVerified) updateData.emailVerified = new Date();
     dbUser = await prisma.user.update({ where: { email: args.email }, data: updateData, select: SOCIAL_USER_SELECT });
+    if (firstProof) welcomeNewAccount(dbUser, args.provider);
   }
 
   // The link row records that this provider identity belongs to this

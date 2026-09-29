@@ -17,6 +17,7 @@
 import type { Prisma } from "@prisma/client";
 import { prisma } from "../lib/prisma.js";
 import { BattlesError } from "./battles-error.js";
+import { isHiddenStatus } from "./battles-rules.js";
 import { VERDICTS } from "./contest.js";
 import { isDuplicateKey } from "../lib/seat-claim.js";
 import {
@@ -269,7 +270,7 @@ export async function bracketView(tournamentId: string, viewerId: string | null)
   });
   if (!t || t.format !== "knockout") throw new BattlesError(404, "No such knockout.");
   const manager = await viewerRole(viewerId, t.orgId);
-  if (!manager && (t.status === "draft" || !t.org.verifiedAt)) throw new BattlesError(404, "No such knockout.");
+  if (!manager && (isHiddenStatus(t.status) || !t.org.verifiedAt)) throw new BattlesError(404, "No such knockout.");
 
   const [matches, champion] = await Promise.all([
     prisma.tournamentMatch.findMany({

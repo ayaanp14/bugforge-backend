@@ -1,13 +1,22 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import {
+  approveBlocker,
+  deleteBlocker,
+  describeOrg,
+  describeTournament,
   emailDomainAllowed,
+  isHiddenStatus,
   normalizeDomains,
+  orgChanged,
+  orgSnapshot,
   parseTeamList,
   publishBlocker,
   readTournamentFields,
   registrationDecision,
+  tournamentChanged,
   tournamentPhase,
+  tournamentSnapshot,
 } from "./battles-rules.js";
 
 /** The tournament site's pure rules (battles-rules.ts), without a database. Run with: npm test */
@@ -158,5 +167,87 @@ describe("parseTeamList", () => {
     assert.match(r.errors[1], /Line 2: there is already a team called "A"/);
     assert.match(r.errors[2], /Line 3: "B" has no members/);
     assert.match(r.errors[3], /Line 4: X is already in the team on line 1/);
+  });
+});
+
+describe("editing after the fact (2026-09-29)", () => {
+  it("hides an edit waiting for approval exactly as it hides a draft", () => {
+    assert.equal(isHiddenStatus("draft"), true);
+    assert.equal(isHiddenStatus("review"), true);
+    assert.equal(isHiddenStatus("published"), false);
+    assert.equal(isHiddenStatus("cancelled"), false);
+    assert.equal(tournamentPhase({ ...base, status: "review" }, NOW), "review");
+  });
+
+  it("approves only a tournament in review that has not reached its start", () => {
+    assert.match(approveBlocker({ ...base, status: "published" }, NOW) ?? "", /waiting for approval/);
+    assert.match(approveBlocker({ ...base, status: "review" }, at("2026-10-06T10:00:00Z")) ?? "", /start time passed/);
+    assert.equal(approveBlocker({ ...base, status: "review" }, NOW), null);
+  });
+
+  it("deletes what never ran, and nothing anyone competed in", () => {
+    const none = { attempts: 0, drawn: false };
+    assert.equal(deleteBlocker({ ...base, status: "draft", startsAt: at("2026-09-01T00:00:00Z") }, none, NOW), null);
+    assert.equal(deleteBlocker({ ...base, status: "published" }, none, NOW), null);
+    assert.equal(deleteBlocker({ ...base, status: "review", startsAt: at("2026-09-30T00:00:00Z") }, none, NOW), null);
+    assert.match(deleteBlocker({ ...base, status: "published", startsAt: at("2026-09-30T00:00:00Z") }, none, NOW) ?? "", /started/);
+    assert.match(deleteBlocker({ ...base, status: "cancelled" }, { attempts: 3, drawn: false }, NOW) ?? "", /competed/);
+    assert.match(deleteBlocker({ ...base, status: "published" }, { attempts: 0, drawn: true }, NOW) ?? "", /competed/);
+  });
+
+  const settings = {
+    title: "T1 DSA grind",
+    description: "Arrays and strings.",
+    format: "knockout" as const,
+    teamSize: 1,
+    capacity: 64,
+    registrationClosesAt: at("2026-10-02T12:00:00Z"),
+    startsAt: at("2026-10-02T14:30:00Z"),
+    durationMinutes: 60,
+    allowedDomains: ["iitb.ac.in"],
+    inviteCode: null,
+    requiresApproval: false,
+    freezeMinutes: 0,
+  };
+
+  it("names each changed setting with what players saw before", () => {
+    const before = tournamentSnapshot(settings);
+    const after = tournamentSnapshot({ ...settings, title: "T1 DSA grind (final)", capacity: null, startsAt: at("2026-10-02T15:30:00Z"), allowedDomains: [] });
+    const changed = describeTournament(before, after).filter((f) => f.before !== null);
+    assert.deepEqual(
+      changed.map((f) => [f.label, f.before, f.value]),
+      [
+        ["Title", "T1 DSA grind", "T1 DSA grind (final)"],
+        ["Places", "64", "No limit"],
+        ["Starts", changed[2]!.before, changed[2]!.value],
+        ["Email domains", "@iitb.ac.in", "Anyone"],
+      ],
+    );
+    // Dates read in Indian time, the product's calendar: 14:30 UTC is 20:00 IST.
+    assert.match(changed[2]!.before!, /20:00 IST$/);
+    assert.match(changed[2]!.value, /21:00 IST$/);
+    assert.equal(tournamentChanged(before, after), true);
+    assert.equal(tournamentChanged(before, tournamentSnapshot({ ...settings })), false);
+  });
+
+  it("with nothing on record, shows every setting and marks none as changed", () => {
+    const fields = describeTournament(null, tournamentSnapshot(settings));
+    assert.equal(fields.length, 12);
+    assert.ok(fields.every((f) => f.before === null));
+  });
+
+  it("an organization's edit is a change only when a detail differs", () => {
+    const verified = orgSnapshot({ name: "codekairo T1", kind: "club", website: null, city: "Pune", about: null });
+    assert.equal(orgChanged(verified, orgSnapshot({ ...verified })), false);
+    const renamed = orgSnapshot({ ...verified, name: "Codekairo T1 Club", website: "https://t1.example.org" });
+    assert.deepEqual(
+      describeOrg(verified, renamed)
+        .filter((f) => f.before !== null)
+        .map((f) => [f.label, f.before, f.value]),
+      [
+        ["Name", "codekairo T1", "Codekairo T1 Club"],
+        ["Website", "None", "https://t1.example.org"],
+      ],
+    );
   });
 });

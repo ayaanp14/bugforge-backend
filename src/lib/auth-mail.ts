@@ -1,6 +1,7 @@
 import type { ChallengePurpose } from "./otp-store.js";
 import { brevoConfigured, sendTransactional } from "./brevo.js";
 import { codeHtml, codeSubject, codeText } from "./auth-mail-copy.js";
+import { welcomeHtml, welcomeSubject, welcomeText, type SignInRoad, type WelcomeRecipient } from "./welcome-mail-copy.js";
 
 /**
  * Delivering one-time codes, and whether an address has to be verified.
@@ -85,6 +86,59 @@ export async function sendAuthCode(email: string, otp: string, purpose: Challeng
     console.error(`[auth] code delivery failed for ${purpose}:`, (err as Error)?.message ?? err);
   }
   return false;
+}
+
+/**
+ * Sends the welcome mail. Resolves true when Brevo accepted it; never throws.
+ *
+ * Brevo only. The two hosted flows are not fallbacks here: OTP_FLOW_URL
+ * renders a code, and a welcome that could not be mailed is not worth
+ * rescuing the way a code is — nobody is locked out without it, and the
+ * in-app welcome notification is written regardless.
+ */
+export async function sendWelcome(person: WelcomeRecipient, env: NodeJS.ProcessEnv = process.env): Promise<boolean> {
+  if (!brevoConfigured(env)) {
+    if (env["NODE_ENV"] !== "production") console.log(`[auth] welcome mail for ${person.email} not sent (BREVO_API_KEY is not set)`);
+    return false;
+  }
+  return sendTransactional(
+    {
+      to: person.email,
+      subject: welcomeSubject(person),
+      html: welcomeHtml(person),
+      text: welcomeText(person),
+      tags: ["welcome", person.via],
+    },
+    env,
+  );
+}
+
+/**
+ * Welcome an account whose address has just been proven for the first time.
+ *
+ * The callers decide *when*, and the rule is "the first proof", not "the
+ * account row was created": a password account is created at /register with
+ * an address nobody has confirmed yet, and mailing it then would send our
+ * welcome to whoever the registrant typed in. So a social account (born
+ * verified) is welcomed as it is created, and a password account when its
+ * `emailVerified` goes from null to set — by its code, by a completed reset,
+ * or by a Google/GitHub sign-in on the same address. That column only ever
+ * moves once, which is what keeps this to one mail per person. With
+ * `EMAIL_VERIFICATION=off` a password account is never proven and never
+ * welcomed — the switch exists for the Playwright suite, whose
+ * `*@codekairo.test` addresses should not be mailed anyway.
+ *
+ * Fire-and-forget: sign-in never waits on the provider.
+ */
+export function welcomeNewAccount(
+  user: { email: string | null; name: string | null; username: string | null },
+  via: string,
+): void {
+  if (!user.email) return;
+  const road: SignInRoad = via === "google" || via === "github" ? via : "email";
+  void sendWelcome({ email: user.email, name: user.name, username: user.username, via: road }).catch((err) => {
+    console.error("[auth] welcome mail failed:", (err as Error)?.message ?? err);
+  });
 }
 
 /**
