@@ -21,12 +21,11 @@ import { Resvg, initWasm } from "@resvg/resvg-wasm";
  * and Cloudflare keeps the versioned URL a year.
  *
  * The look is the site's own card (frontend scripts/make-battles-og-image.mjs):
- * white ground, ink type, one teal, hairlines, Gilroy and JetBrains Mono —
+ * white ground, ink type, one teal, Gilroy —
  * no gradient, glow or grid (frontend DESIGN_SYSTEM.md). No person's name
  * ever goes on it, as nowhere in battles-seo.
  *
- * content/og holds what it draws with: the Gilroy weights and JetBrains Mono
- * decompressed to TTF from the site's own woff2 (satori reads TTF/OTF/WOFF,
+ * content/og holds what it draws with: the Gilroy weights decompressed to TTF from the site's own woff2 (satori reads TTF/OTF/WOFF,
  * not WOFF2), and the light brand mark as PNG. The Dockerfile copies
  * content/ beside dist/, hence the path.
  */
@@ -46,6 +45,9 @@ export interface TournamentCard {
   phase: "registration" | "registration_closed" | "live" | "finished" | "cancelled";
 }
 
+/** Bumped with any change to the layout, so the new look is a new URL too (the platforms keep the old picture per URL). */
+const CARD_DESIGN = 2;
+
 export const CARD_WIDTH = 1200;
 export const CARD_HEIGHT = 630;
 
@@ -55,7 +57,7 @@ export const CARD_HEIGHT = 630;
  * WhatsApp's, LinkedIn's) keeps showing the old picture.
  */
 export function cardVersion(card: TournamentCard): string {
-  const drawn = [card.slug, card.title, card.org, card.verified, card.format, card.teamSize, card.capacity, card.startsAt.toISOString(), card.registrationClosesAt.toISOString(), card.durationMinutes, card.problems, card.phase];
+  const drawn = [CARD_DESIGN, card.slug, card.title, card.org, card.verified, card.format, card.teamSize, card.capacity, card.startsAt.toISOString(), card.registrationClosesAt.toISOString(), card.durationMinutes, card.problems, card.phase];
   return createHash("sha1").update(JSON.stringify(drawn)).digest("hex").slice(0, 10);
 }
 
@@ -86,34 +88,30 @@ const STATUS: Record<TournamentCard["phase"], { label: string; accent: boolean }
   cancelled: { label: "Cancelled", accent: false },
 };
 
-/** What the four fact columns say, by format. */
-function facts(c: TournamentCard): { label: string; value: string; note: string }[] {
+/** The four figures along the bottom — a big value and one word, by format. */
+function facts(c: TournamentCard): { value: string; unit: string }[] {
   const icpc = c.format === "icpc";
   return [
-    { label: c.phase === "finished" ? "Held" : c.phase === "live" ? "Started" : "Starts", value: day(c.startsAt), note: clock(c.startsAt) },
-    icpc ? { label: "Contest", value: minutes(c.durationMinutes), note: "one clock, every team" } : { label: "Each match", value: minutes(c.durationMinutes), note: "first accepted wins" },
-    { label: "Problems", value: c.problems ? String(c.problems) : "—", note: c.problems ? "revealed at the start" : "not set yet" },
-    icpc
-      ? { label: "Teams", value: c.capacity ? `${c.capacity} places` : "Open", note: `up to ${c.teamSize} a team` }
-      : {
-          label: "Players",
-          value: c.capacity ? `${c.capacity} places` : "Open",
-          note: c.phase === "registration" ? `closes ${day(c.registrationClosesAt)}` : "seeded by rating",
-        },
+    { value: day(c.startsAt), unit: clock(c.startsAt) },
+    { value: minutes(c.durationMinutes), unit: icpc ? "contest" : "a match" },
+    { value: c.problems ? String(c.problems) : "TBA", unit: c.problems === 1 ? "problem" : "problems" },
+    c.capacity ? { value: String(c.capacity), unit: icpc ? "team places" : "places" } : { value: "Open", unit: "no cap" },
   ];
 }
 
 /**
  * The title's size by its length: one line at display size for a short
  * name, down to three lines for the 140 characters a title may have
- * (battles-rules titleMax). Gilroy Bold averages ~0.53 em a character.
+ * (battles-rules titleMax). Gilroy Bold averages ~0.53 em a character over
+ * the 1,056 px measure.
  */
 function titleSize(title: string): { size: number; lines: number } {
   const n = title.length;
-  if (n <= 22) return { size: 84, lines: 1 };
-  if (n <= 46) return { size: 68, lines: 2 };
-  if (n <= 72) return { size: 56, lines: 2 };
-  return { size: 46, lines: 3 };
+  if (n <= 18) return { size: 112, lines: 1 };
+  if (n <= 24) return { size: 96, lines: 1 };
+  if (n <= 40) return { size: 76, lines: 2 };
+  if (n <= 62) return { size: 64, lines: 2 };
+  return { size: 52, lines: 3 };
 }
 
 /* ── The tree ──────────────────────────────────────────────────── */
@@ -121,11 +119,10 @@ function titleSize(title: string): { size: number; lines: number } {
 // palette.ts, light mode — the colours make-battles-og-image.mjs draws with.
 const INK = "#111111";
 const SECONDARY = "#5F5F5F";
-const DISABLED = "#9A9A9A";
 const HAIRLINE = "#E5E5E5";
+const MIST = "#F1F1F1";
 const TEAL = "#018790";
 const TEAL_DEEP = "#005461";
-const MONO = "JetBrains Mono";
 
 type Style = Record<string, string | number>;
 interface Node {
@@ -145,69 +142,67 @@ const text = (style: Style, value: string): Node => ({ type: "div", props: { sty
 function svg(width: number, height: number, children: Node[]): Node {
   return { type: "svg", props: { width, height, viewBox: "0 0 24 24", fill: "none", children } };
 }
-const path = (d: string, extra: Record<string, unknown> = {}): Node => ({ type: "path", props: { d, stroke: "currentColor", strokeWidth: 2.2, strokeLinecap: "round", strokeLinejoin: "round", ...extra } });
+const path = (d: string, extra: Record<string, unknown> = {}): Node => ({ type: "path", props: { d, stroke: "currentColor", strokeWidth: 3, strokeLinecap: "round", strokeLinejoin: "round", ...extra } });
 
-/** The check the page's "Verified organizer" line wears (NavIcons CheckGlyph). */
-const check = (size: number, color: string) => el({ color, width: size, height: size }, svg(size, size, [path("M5 12.5 10 17.5 19 7")]));
-/** A chevron after the call to action. */
-const chevron = (size: number, color: string) => el({ color, width: size, height: size }, svg(size, size, [path("M9 5.5 15.5 12 9 18.5")]));
+/** The check the page's "Verified organizer" line wears (NavIcons CheckGlyph), in a teal disc. */
+const verifiedMark = (size: number) =>
+  el({ alignItems: "center", justifyContent: "center", width: size, height: size, borderRadius: size / 2, backgroundColor: TEAL, color: "#FFFFFF", flexShrink: 0 }, svg(size * 0.62, size * 0.62, [path("M5 12.5 10 17.5 19 7")]));
 
+/**
+ * The card. Sized for the thumbnail, not the file: LinkedIn's preview is
+ * drawn from a copy ~300 px wide and WhatsApp's is ~400, so a quarter of
+ * every size here is what a reader sees. The first cut (2026-09-29) had
+ * 16–20 px labels, notes and the page's address, and on LinkedIn they were
+ * a grey smear that made the whole card look broken; nothing here is under
+ * 36 px or lighter than semibold, and the hairlines became solid shapes.
+ */
 function tree(c: TournamentCard, mark: string): Node {
   const status = STATUS[c.phase];
   const { size, lines } = titleSize(c.title);
-  const eyebrow = c.format === "icpc" ? `ICPC-style contest · teams of up to ${c.teamSize}` : "1v1 coding knockout";
-  const call = c.phase === "registration" ? (c.format === "icpc" ? "Ask the organizer to enter your team" : "Register free") : c.phase === "live" ? `Follow the ${c.format === "icpc" ? "scoreboard" : "bracket"}` : c.phase === "finished" ? "See the results" : null;
+  const format = c.format === "icpc" ? `ICPC-style contest · teams of ${c.teamSize}` : "1v1 coding knockout";
 
   const header = el(
     { alignItems: "center", justifyContent: "space-between", width: "100%" },
     el(
-      { alignItems: "center", gap: 16 },
-      { type: "img", props: { src: mark, width: 73, height: 48, style: { width: 73, height: 48 } } },
-      el({ fontSize: 34, fontWeight: 600, letterSpacing: "-0.01em", color: INK }, "CodeKairo", el({ color: TEAL, marginLeft: 9 }, "Battles")),
+      { alignItems: "center", gap: 18 },
+      { type: "img", props: { src: mark, width: 88, height: 58, style: { width: 88, height: 58 } } },
+      el({ fontSize: 44, fontWeight: 700, letterSpacing: "-0.015em", color: INK }, "CodeKairo", el({ color: TEAL, marginLeft: 11 }, "Battles")),
     ),
     el(
-      { alignItems: "center", gap: 12, height: 48, paddingLeft: 20, paddingRight: 22, borderRadius: 24, border: `1.5px solid ${status.accent ? TEAL : HAIRLINE}`, color: status.accent ? TEAL_DEEP : SECONDARY, fontSize: 22, fontWeight: 600 },
-      el({ width: 12, height: 12, borderRadius: 6, backgroundColor: status.accent ? TEAL : DISABLED }),
+      { alignItems: "center", gap: 14, height: 68, paddingLeft: 26, paddingRight: 30, borderRadius: 34, backgroundColor: status.accent ? TEAL_DEEP : MIST, color: status.accent ? "#FFFFFF" : SECONDARY, fontSize: 32, fontWeight: 700 },
+      el({ width: 16, height: 16, borderRadius: 8, backgroundColor: status.accent ? "#00B7B5" : "#9A9A9A" }),
       status.label,
     ),
   );
 
   const who = el(
-    { alignItems: "center", marginTop: 18, fontSize: 30, fontWeight: 500, color: SECONDARY, maxWidth: "100%" },
-    el({ flexShrink: 0, marginRight: 10 }, "by"),
-    text({ color: INK, fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", flexShrink: 1 }, c.org),
-    c.verified && el({ alignItems: "center", flexShrink: 0, marginLeft: 18, gap: 6, fontSize: 22, color: TEAL_DEEP }, check(24, TEAL), "Verified organizer"),
+    { alignItems: "center", marginTop: 20, fontSize: 40, fontWeight: 600, color: SECONDARY, maxWidth: "100%" },
+    el({ flexShrink: 0, marginRight: 12 }, "by"),
+    text({ color: INK, fontWeight: 700, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", flexShrink: 1 }, c.org),
+    c.verified && el({ marginLeft: 14, flexShrink: 0 }, verifiedMark(40)),
   );
 
   const band = el(
-    { width: "100%", borderTop: `1.5px solid ${HAIRLINE}`, borderBottom: `1.5px solid ${HAIRLINE}` },
+    { width: "100%", borderTop: `3px solid ${HAIRLINE}`, paddingTop: 30 },
     ...facts(c).map((f, i) =>
       el(
-        { flexDirection: "column", flex: 1, minWidth: 0, paddingTop: 22, paddingBottom: 22, paddingLeft: i ? 28 : 0, borderLeft: i ? `1.5px solid ${HAIRLINE}` : "none" },
-        text({ fontFamily: MONO, fontSize: 16, fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase", color: DISABLED }, f.label),
-        text({ marginTop: 10, fontSize: 38, fontWeight: 700, letterSpacing: "-0.02em", color: INK, whiteSpace: "nowrap" }, f.value),
-        text({ marginTop: 6, fontSize: 20, fontWeight: 500, color: SECONDARY, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }, f.note),
+        { flexDirection: "column", flex: i === 0 ? 1.35 : 1, minWidth: 0 },
+        text({ fontSize: 50, fontWeight: 700, letterSpacing: "-0.02em", lineHeight: 1.05, color: INK, whiteSpace: "nowrap" }, f.value),
+        text({ marginTop: 6, fontSize: 36, fontWeight: 600, lineHeight: 1.1, color: SECONDARY, whiteSpace: "nowrap" }, f.unit),
       ),
     ),
   );
 
-  const footer = el(
-    { alignItems: "center", justifyContent: "space-between", width: "100%", marginTop: 22 },
-    text({ fontFamily: MONO, fontSize: 20, color: SECONDARY }, `battles.codekairo.com/t/${c.slug}`.slice(0, 64)),
-    call && el({ alignItems: "center", gap: 4, fontSize: 24, fontWeight: 600, color: TEAL_DEEP }, call, chevron(24, TEAL)),
-  );
-
   return el(
-    { width: CARD_WIDTH, height: CARD_HEIGHT, flexDirection: "column", backgroundColor: "#FFFFFF", padding: "52px 72px 44px", fontFamily: "Gilroy", color: INK },
+    { width: CARD_WIDTH, height: CARD_HEIGHT, flexDirection: "column", backgroundColor: "#FFFFFF", padding: "48px 72px 50px", fontFamily: "Gilroy", color: INK },
     header,
     el(
       { flexDirection: "column", flex: 1, justifyContent: "center", width: "100%" },
-      text({ fontFamily: MONO, fontSize: 21, fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase", color: TEAL_DEEP }, eyebrow),
-      text({ marginTop: 14, fontSize: size, fontWeight: 700, lineHeight: 1.06, letterSpacing: "-0.025em", color: INK, lineClamp: lines, maxWidth: "100%" }, c.title),
+      text({ fontSize: 34, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: TEAL_DEEP }, format),
+      text({ marginTop: 10, fontSize: size, fontWeight: 700, lineHeight: 1.04, letterSpacing: "-0.03em", color: INK, lineClamp: lines, maxWidth: "100%" }, c.title),
       who,
     ),
     band,
-    footer,
   );
 }
 
@@ -227,16 +222,12 @@ function assets(): Promise<Assets> {
     const read = (name: string) => fs.readFile(new URL(name, DIR));
     const wasm = await fs.readFile(createRequire(import.meta.url).resolve("@resvg/resvg-wasm/index_bg.wasm"));
     await initWasm(wasm);
-    const [g500, g600, g700, m400, m600, mark] = await Promise.all(
-      ["Gilroy-500.ttf", "Gilroy-600.ttf", "Gilroy-700.ttf", "JetBrainsMono-400.ttf", "JetBrainsMono-600.ttf", "mark-light-144.png"].map(read),
-    );
+    const [g500, g600, g700, mark] = await Promise.all(["Gilroy-500.ttf", "Gilroy-600.ttf", "Gilroy-700.ttf", "mark-light-144.png"].map(read));
     return {
       fonts: [
         { name: "Gilroy", data: g500, weight: 500 },
         { name: "Gilroy", data: g600, weight: 600 },
         { name: "Gilroy", data: g700, weight: 700 },
-        { name: MONO, data: m400, weight: 400 },
-        { name: MONO, data: m600, weight: 600 },
       ],
       mark: `data:image/png;base64,${mark.toString("base64")}`,
     };
