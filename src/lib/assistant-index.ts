@@ -19,6 +19,17 @@
  * ("cost" for a plan, "leave" for a forfeit) are the alias table's job.
  * A section's heading counts three times, so "duels" lands on the Duels
  * section before a passing mention elsewhere.
+ *
+ * How much a question gets (2026-09-29, the handbook at 84 KB): with 1,100-
+ * character chunks and up to ten of them in 9 KB, nearly every question
+ * filled the whole budget — "what is my streak" drew seven sections — and
+ * the previous question's chunks rode along on every message whether or not
+ * the thread needed them. Measured over the questions in
+ * services/assistant.test.ts, 800-character chunks, at most six, in 5 KB,
+ * with the previous question consulted only for a follow-up, carry half the
+ * text (6.7 KB → 3.4 KB a question on average) and find the answering
+ * sentence for every question the old settings did, and one more. A tighter
+ * `relative` floor was tried and lost answers; it stays at 0.4.
  */
 
 export interface BriefingChunk {
@@ -33,7 +44,11 @@ export interface BriefingChunk {
 }
 
 /** A chunk grows until the next piece would take it past this. */
-const CHUNK_CHARS = 1100;
+const CHUNK_CHARS = 800;
+
+/** What one message may carry: at most this many chunks, within this many characters. */
+export const PICK_MAX = 6;
+export const PICK_CHARS = 5000;
 
 const slug = (s: string) =>
   s
@@ -207,6 +222,11 @@ const ALIASES: Record<string, string[]> = {
   language: ["language"],
   limit: ["allowance", "plan"],
   quota: ["allowance", "plan"],
+  // "my old interviews" — the pages call it history.
+  past: ["history"],
+  old: ["history"],
+  previous: ["history"],
+  earlier: ["history"],
 };
 
 /** The table in stems, as `tokens` produces them — written in plain words above so it reads. */
@@ -222,7 +242,17 @@ const STEMMED_ALIASES: Map<string, string[]> = (() => {
 
 export interface BriefingIndex {
   chunks: BriefingChunk[];
-  search(query: string, opts?: { maxChars?: number; minScore?: number; max?: number; relative?: number }): BriefingChunk[];
+  search(
+    query: string,
+    opts?: {
+      maxChars?: number;
+      minScore?: number;
+      max?: number;
+      relative?: number;
+      /** Earlier words the query leans on — the previous question. They count half. */
+      context?: string;
+    },
+  ): BriefingChunk[];
 }
 
 export function buildIndex(chunks: BriefingChunk[]): BriefingIndex {
@@ -245,13 +275,15 @@ export function buildIndex(chunks: BriefingChunk[]): BriefingIndex {
 
   return {
     chunks,
-    search(query, { maxChars = 9000, minScore = 1.2, max = 10, relative = 0.4 } = {}) {
+    search(query, { maxChars = PICK_CHARS, minScore = 1.2, max = PICK_MAX, relative = 0.4, context = "" } = {}) {
       const base = tokens(query);
-      if (!base.length) return [];
-      // Aliases count half: they widen a question, they do not outvote it.
+      const around = context ? tokens(context) : [];
+      if (!base.length && !around.length) return [];
+      // Context and aliases count half: they widen a question, they do not outvote it.
       const weights = new Map<string, number>();
       for (const w of base) weights.set(w, (weights.get(w) ?? 0) + 1);
-      for (const w of base) for (const a of STEMMED_ALIASES.get(w) ?? []) if (!weights.has(a)) weights.set(a, 0.5);
+      for (const w of around) weights.set(w, (weights.get(w) ?? 0) + 0.5);
+      for (const w of [...base, ...around]) for (const a of STEMMED_ALIASES.get(w) ?? []) if (!weights.has(a)) weights.set(a, 0.5);
 
       const scored = docs
         .map((d, i) => {
@@ -282,6 +314,33 @@ export function buildIndex(chunks: BriefingChunk[]): BriefingIndex {
       return picked.sort((x, y) => x.order - y.order);
     },
   };
+}
+
+/** Words that point back into the conversation rather than name a topic. Not "there": "is there a dark mode" asks something new. */
+const REFERS = /\b(it|its|that|this|those|these|they|them|one|same|also|too|else|more)\b/;
+/** Openings that carry the last question on: "and elite?", "what about points?". */
+const CONTINUES = /^(and|also|but|so|then|what about|how about|what if)\b/;
+
+/**
+ * Whether a question leans on the one before it. Deliberately loose: a
+ * standalone question taken for a follow-up still searches on its own words
+ * at full weight, so the cost of a wrong guess is a chunk, not the answer.
+ */
+export function isFollowUp(question: string): boolean {
+  const q = question.trim().toLowerCase();
+  return CONTINUES.test(q) || (tokens(q).length <= 4 && REFERS.test(q));
+}
+
+/**
+ * The chunks a message carries: those for the question alone — or, when it
+ * is a follow-up ("and how long does it last?") or finds nothing by itself
+ * ("why?"), for the question and the previous one together, the previous
+ * counting half, so "it" is found where the thread left it.
+ */
+export function pickChunks(index: BriefingIndex, question: string, previous: string | null): BriefingChunk[] {
+  const own = index.search(question);
+  if (!previous || (own.length && !isFollowUp(question))) return own;
+  return index.search(question, { context: previous });
 }
 
 /**

@@ -5,8 +5,8 @@ import { PLANS } from "../lib/plans.js";
 import { getDashboard } from "./dashboard.js";
 import { entitlementFor } from "./entitlements.js";
 import { providerConfig } from "./interview-ai.js";
-import { roadDefinition, roadmapFor } from "./roadmap.js";
-import { buildIndex, chunkBriefing, renderChunks, type BriefingIndex } from "../lib/assistant-index.js";
+import { roadDefinition, roadmapFor, type RoadDefinition } from "./roadmap.js";
+import { buildIndex, chunkBriefing, pickChunks, renderChunks, type BriefingIndex } from "../lib/assistant-index.js";
 
 /**
  * The site assistant: a chat that knows the product and the account asking.
@@ -17,8 +17,9 @@ import { buildIndex, chunkBriefing, renderChunks, type BriefingIndex } from "../
  * site no longer has. All of it used to go into every message — ~81 KB,
  * ~21k tokens — and the model answered worse for it; now it is indexed
  * (lib/assistant-index) and a message carries a fixed core (the rules, the
- * overview, a map of every section) plus the ~9 KB that score best against
- * the question (2026-09-24). And the account's own standing is the same
+ * overview, a map of every section) plus the chunks that score best against
+ * the question (2026-09-24) — at most six, within 5 KB, ~3.4 KB on average
+ * since 2026-09-29, when they were ~9 KB. And the account's own standing is the same
  * composed payloads the dashboard already builds, appended per message as a
  * compact block (cached for half a minute), so "what should I solve next" is
  * answered from the road and "how many interviews do I have left" from the
@@ -39,8 +40,6 @@ const REQUEST_TIMEOUT_MS = Number(process.env.ASSISTANT_TIMEOUT_MS ?? 60_000);
 const HISTORY_TURNS = 10;
 /** An earlier answer is context, not reference: its opening is what a follow-up leans on. */
 const HISTORY_ANSWER_CHARS = 700;
-/** How much of the indexed briefing a message may carry. */
-const BRIEFING_CHARS = 9000;
 const MAX_MESSAGE_CHARS = 2000;
 
 const RULES = `You are the CodeKairo assistant, built into the site to help people use it.
@@ -62,7 +61,7 @@ const HANDBOOK = readFileSync(new URL("../../content/handbook.md", import.meta.u
 const fmtLimit = (n: number | null, unit: string) => (n === null ? `unlimited ${unit}` : `${n} ${unit}`);
 
 /** The plan table, as prose the model can quote. Generated: prices live in lib/plans.ts. */
-function plansSection(): string {
+export function plansSection(): string {
   const lines = PLANS.map((p) => {
     const e = p.entitlements;
     return [
@@ -75,8 +74,7 @@ function plansSection(): string {
 }
 
 /** The road as seeded: tiers, chests and every stage. Generated from the same tables the roadmap page reads. */
-async function roadSection(): Promise<string> {
-  const road = await roadDefinition();
+export function roadSection(road: RoadDefinition): string {
   // One heading per tier, so the index can hand a question one tier rather
   // than all nineteen stages; the summary carries the totals and the chests.
   const chest = (t: { rewardXp: number; interviewCredits: number }) =>
@@ -112,12 +110,16 @@ interface Briefing {
   index: BriefingIndex;
 }
 
+/** The handbook and the two generated sections, indexed. Pure — the road is passed in — so a test searches what production searches. */
+export function briefingIndex(road: RoadDefinition): BriefingIndex {
+  const handbook = chunkBriefing(HANDBOOK);
+  const extra = chunkBriefing(`${plansSection()}\n\n${roadSection(road)}`, handbook.length);
+  return buildIndex([...handbook, ...extra]);
+}
+
 async function briefing(): Promise<Briefing> {
   return cached("assistant:briefing:v2", 5 * 60 * 1000, async () => {
-    const road = await roadSection();
-    const handbook = chunkBriefing(HANDBOOK);
-    const extra = chunkBriefing(`${plansSection()}\n\n${road}`, handbook.length);
-    const index = buildIndex([...handbook, ...extra]);
+    const index = briefingIndex(await roadDefinition());
     const overview = HANDBOOK.slice(HANDBOOK.indexOf("\n") + 1, HANDBOOK.indexOf("\n## ")).trim();
     const sections = [...new Set(index.chunks.map((c) => c.section))].filter((t) => !t.startsWith("DSA roadmap as seeded — tier"));
     const list = sections.map((t) => `- ${t}`).join("\n");
@@ -128,17 +130,12 @@ async function briefing(): Promise<Briefing> {
 
 /**
  * The briefing a message carries: the chunks that score best against the
- * question — and against the previous question, so "and how long does it
- * last?" still finds the section the thread is about.
+ * question — with the previous question folded in when this one leans on it,
+ * so "and how long does it last?" still finds the section the thread is about
+ * (lib/assistant-index `pickChunks`).
  */
 function pickBriefing(index: BriefingIndex, question: string, previous: string | null): string {
-  let picked = index.search(question, { maxChars: BRIEFING_CHARS });
-  if (previous) {
-    const have = new Set(picked.map((c) => c.id));
-    const used = picked.reduce((n, c) => n + c.text.length, 0);
-    const more = index.search(previous, { maxChars: Math.max(0, BRIEFING_CHARS - used), max: 4 }).filter((c) => !have.has(c.id));
-    picked = [...picked, ...more].sort((a, b) => a.order - b.order);
-  }
+  const picked = pickChunks(index, question, previous);
   return picked.length
     ? `# Briefing (the parts of the handbook relevant to this question)\n\n${renderChunks(picked)}`
     : "# Briefing\n\nNothing in the handbook matched this question closely. Answer from the overview and the section list if you can; otherwise say you do not know and point to the nearest page.";

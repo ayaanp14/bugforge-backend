@@ -18,8 +18,11 @@ test("chunks carry their section heading and a ### block's label", () => {
 test("the handbook packs into small chunks, in order", () => {
   const chunks = chunkBriefing(HANDBOOK);
   assert.ok(chunks.length > 40);
-  // One piece may exceed the target rather than be cut mid-sentence, but none is a wall.
-  assert.ok(chunks.every((c) => c.text.length < 2500), chunks.filter((c) => c.text.length >= 2500).map((c) => c.id).join(", "));
+  // One piece may exceed the target rather than be cut mid-sentence, but none
+  // is a wall: a chunk this size costs a quarter of a message's budget for one
+  // bullet. Split the bullet — one topic per bullet — rather than raise this.
+  const walls = chunks.filter((c) => c.text.length >= 1500);
+  assert.deepEqual(walls.map((c) => `${c.id} (${c.text.length})`), []);
   assert.deepEqual(
     chunks.map((c) => c.order),
     chunks.map((_, i) => i),
