@@ -3,6 +3,7 @@ import { prisma } from "../lib/prisma.js";
 import { requireAuth } from "../middleware/auth.js";
 import { prettyLabel } from "../lib/interview-labels.js";
 import { estimatedQuestions, voiceDurationMinutes } from "../lib/interview-duration.js";
+import { conversationLanguage, interviewerFor } from "../lib/interviewers.js";
 import { checkInterviewQuota, checkVoiceDuration } from "../services/entitlements.js";
 import { normalizeStarterCode } from "../lib/starter-code.js";
 import {
@@ -362,6 +363,11 @@ router.post("/start", requireAuth, async (req: any, res) => {
       }
 
       const durationMin = voiceDurationMinutes(req.body?.durationMin);
+      // Validated like the length, never a refused round: an interviewer
+      // the table does not know is stored as none (the round an older
+      // client always got), a language it does not know opens in English.
+      const interviewer = interviewerFor(req.body?.interviewer)?.id ?? null;
+      const language = conversationLanguage(req.body?.language);
 
       // Longer rounds are a paid feature, so the length is checked as well as
       // the count — otherwise free could ask for thirty minutes twice a week.
@@ -385,6 +391,8 @@ router.post("/start", requireAuth, async (req: any, res) => {
           provider: provider.id,
           realtimeModel: provider.model,
           durationLimitSec: durationMin * 60,
+          // The rest of the state fills in as the round runs (stateOf).
+          voiceState: { interviewer, language },
         },
       });
 
@@ -399,6 +407,8 @@ router.post("/start", requireAuth, async (req: any, res) => {
         setup: config,
         language: languageFor(config),
         durationLimitSec: durationMin * 60,
+        interviewer,
+        conversationLanguage: language,
       });
     }
 

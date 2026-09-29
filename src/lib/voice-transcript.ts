@@ -17,6 +17,16 @@ export interface VoiceState {
   interruptions: number;
   /** Last resumption handle the model gave us, so a drop can pick back up. */
   resumeHandle: string | null;
+  /**
+   * Who runs the round and the language it opens in (lib/interviewers.ts),
+   * chosen in the lobby and written once by /start. Kept here rather than in
+   * columns of their own: they are how the round is conducted, like the rest
+   * of this, and a JSON key needs no schema push. Null on a round started
+   * before the choice existed, which keeps the voice it always had. Server
+   * owned — the events route never merges them from the client.
+   */
+  interviewer: string | null;
+  language: string | null;
 }
 
 export const EMPTY_STATE: VoiceState = {
@@ -26,7 +36,12 @@ export const EMPTY_STATE: VoiceState = {
   topicsCovered: [],
   interruptions: 0,
   resumeHandle: null,
+  interviewer: null,
+  language: null,
 };
+
+/** The fields /start writes and a client's state report may not overwrite. */
+export const SERVER_OWNED_STATE = ["interviewer", "language"] as const;
 
 /**
  * A stored state may predate any field here, so every read goes through this.
