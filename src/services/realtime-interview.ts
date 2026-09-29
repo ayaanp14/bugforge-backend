@@ -1,4 +1,5 @@
 import type { InterviewConfig } from "./interview-ai.js";
+import type { ConversationLanguage, Interviewer, InterviewerId } from "../lib/interviewers.js";
 
 /**
  * The realtime (spoken) interview layer.
@@ -35,6 +36,14 @@ export interface InterviewContext {
   askedSoFar: string[];
   currentQuestion: number;
   candidateName: string | null;
+  /**
+   * The persona the candidate picked: its name goes in the brief, its id picks
+   * the provider's voice. Null on a round started before the choice existed —
+   * no name, and the voice every round had then.
+   */
+  interviewer: Interviewer | null;
+  /** The language the interviewer opens in; it still follows the candidate after that. */
+  openingLanguage: ConversationLanguage;
 }
 
 /** What the browser needs to open the session, and nothing more. */
@@ -64,6 +73,13 @@ export interface RealtimeProvider {
 
 /* ── the interviewer's brief ───────────────────────────────────────────── */
 
+/** How the brief names each opening language the lobby offers. */
+const OPENING_LANGUAGE: Record<ConversationLanguage, string> = {
+  english: "English",
+  hindi: "Hindi — the candidate chose it for this round",
+  hinglish: "Hinglish, Hindi and English mixed the way engineers in India actually talk — the candidate chose it for this round",
+};
+
 /**
  * Spoken interviewing is a different skill from written interviewing, so this
  * is its own prompt rather than the written RUBRIC with a note bolted on.
@@ -84,6 +100,13 @@ export function systemInstruction(context: InterviewContext): string {
     : "";
 
   const named = context.candidateName ? ` The candidate's name is ${context.candidateName}.` : "";
+  // The candidate chose this interviewer by name in the lobby and heard it
+  // introduce itself by that name in the sample. Left unnamed, the model is
+  // free to introduce itself as anyone, and a name other than the card's
+  // reads as a different interviewer from the one picked.
+  const persona = context.interviewer
+    ? ` Your name is ${context.interviewer.name}: use it when you introduce yourself, and never call yourself anything else.`
+    : "";
 
   /**
    * The length the model plans against: twice the real one.
@@ -114,7 +137,7 @@ export function systemInstruction(context: InterviewContext): string {
     ? `Topics the candidate asked to be interviewed on: ${context.topics.join(", ")}. Stay within them, and read each one in the light of the role — "cloud" means something different to an analyst than to a platform engineer.`
     : `No topics were chosen, so the role decides them: cover the ground a strong ${context.role} must know for a ${context.round} round, chosen the way a hiring panel for that title would choose it.`;
 
-  return `You are an experienced interviewer running a live, spoken ${context.round} round for a ${context.role} position — you interview as a senior practitioner of that role's own field would, and you have run hundreds of these.${named} The round is at ${context.difficulty} difficulty, for someone at the ${context.experience} experience band. Interview style: ${context.style}.
+  return `You are an experienced interviewer running a live, spoken ${context.round} round for a ${context.role} position — you interview as a senior practitioner of that role's own field would, and you have run hundreds of these.${persona}${named} The round is at ${context.difficulty} difficulty, for someone at the ${context.experience} experience band. Interview style: ${context.style}.
 
 ## The role decides everything you ask
 
@@ -136,7 +159,7 @@ Your words are converted to speech and the candidate hears them in real time. Ev
 
 ## Which language you speak
 
-Open in English. From then on, follow the candidate:
+Open in ${OPENING_LANGUAGE[context.openingLanguage]}. From then on, follow the candidate:
 
 - They answer in English, you stay in English.
 - They answer in Hindi, you switch to Hindi and stay there.
@@ -204,6 +227,8 @@ export function buildContext(args: {
   askedSoFar?: string[];
   currentQuestion?: number;
   candidateName?: string | null;
+  interviewer?: Interviewer | null;
+  openingLanguage?: ConversationLanguage;
 }): InterviewContext {
   return {
     role: args.roleLabel,
@@ -217,12 +242,30 @@ export function buildContext(args: {
     askedSoFar: args.askedSoFar ?? [],
     currentQuestion: args.currentQuestion ?? 1,
     candidateName: args.candidateName ?? null,
+    interviewer: args.interviewer ?? null,
+    openingLanguage: args.openingLanguage ?? "english",
   };
 }
 
 /* ── Gemini Live ───────────────────────────────────────────────────────── */
 
 const GEMINI_HOST = "generativelanguage.googleapis.com";
+
+/**
+ * Each interviewer's Gemini prebuilt voice: the original eight Live voices,
+ * the set every Live model has offered. The lobby's samples are the same
+ * voices through the TTS model (frontend/scripts/make-interviewer-samples.mjs).
+ */
+export const GEMINI_VOICES: Record<InterviewerId, string> = {
+  kate: "Kore",
+  parker: "Puck",
+  charles: "Charon",
+  ava: "Aoede",
+  finn: "Fenrir",
+  leah: "Leda",
+  owen: "Orus",
+  zoe: "Zephyr",
+};
 
 /**
  * Ephemeral tokens are the whole reason the browser can hold the socket. The
@@ -303,7 +346,14 @@ const gemini: RealtimeProvider = {
           generationConfig: {
             responseModalities: ["AUDIO"],
             speechConfig: {
-              voiceConfig: { prebuiltVoiceConfig: { voiceName: process.env["GEMINI_LIVE_VOICE"] || "Charon" } },
+              // GEMINI_LIVE_VOICE only for a round that predates the choice.
+              voiceConfig: {
+                prebuiltVoiceConfig: {
+                  voiceName: context.interviewer
+                    ? GEMINI_VOICES[context.interviewer.id]
+                    : process.env["GEMINI_LIVE_VOICE"] || "Charon",
+                },
+              },
             },
           },
           systemInstruction: { parts: [{ text: systemInstruction(context) }] },

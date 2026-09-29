@@ -11,8 +11,10 @@ import {
   candidateWordCount,
   coalesce,
   sanitizeEvents,
+  SERVER_OWNED_STATE,
   stateOf,
 } from "../lib/voice-transcript.js";
+import { conversationLanguage, interviewerFor } from "../lib/interviewers.js";
 import { voiceDurationMinutes } from "../lib/interview-duration.js";
 import { finalizeInterview, invalidateInterviewHistory } from "../services/interview-completion.js";
 import {
@@ -215,6 +217,9 @@ router.get("/session/:sessionId/voice", requireAuth, async (req: any, res) => {
       language: languageFor(config),
       topics: topicsFor(config),
       state,
+      /** Who runs the round (null: started before there was a choice) and the language it opens in. */
+      interviewer: interviewerFor(state.interviewer)?.id ?? null,
+      conversationLanguage: conversationLanguage(state.language),
       transcript: events,
       /** Where a resumed client must continue counting from. */
       nextSequence: (highWater._max.sequence ?? 0) + 1,
@@ -294,6 +299,8 @@ router.post("/session/:sessionId/voice/session", requireAuth, async (req: any, r
         askedSoFar: asked.map((a) => a.text ?? "").filter(Boolean),
         currentQuestion: state.currentQuestion,
         candidateName: user?.name ?? null,
+        interviewer: interviewerFor(state.interviewer),
+        openingLanguage: conversationLanguage(state.language),
       }),
       // Resuming picks the conversation back up inside the model rather than
       // starting a second interview with the same candidate.
@@ -360,11 +367,23 @@ router.post("/session/:sessionId/voice/events", requireAuth, async (req: any, re
     // tables and neither reads the other, so awaiting them in turn spent a
     // round trip for nothing on an endpoint the browser posts on a timer for
     // the whole round.
+    //
+    // The interviewer and language were fixed by /start. The client never
+    // reports them, and a report that did would re-voice the round on its
+    // next reconnect, so they are dropped rather than merged.
+    const reported =
+      req.body?.state && typeof req.body.state === "object" && !Array.isArray(req.body.state)
+        ? Object.fromEntries(
+            Object.entries(req.body.state as Record<string, unknown>).filter(
+              ([key]) => !(SERVER_OWNED_STATE as readonly string[]).includes(key),
+            ),
+          )
+        : null;
     const stateWrite =
-      req.body?.state && typeof req.body.state === "object"
+      reported
         ? prisma.mockInterviewSession.update({
             where: { id: session.id },
-            data: { voiceState: { ...stateOf(session.voiceState), ...req.body.state } as object },
+            data: { voiceState: { ...stateOf(session.voiceState), ...reported } as object },
             // Nothing reads this back, and without a select the update returns
             // the whole session — voiceState, summary, every report column —
             // on an endpoint posted on a timer for the length of the round.
