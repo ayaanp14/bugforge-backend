@@ -38,6 +38,21 @@ export const DUEL_INCLUDE = {
 const WIN_XP: Record<string, number> = { easy: 40, medium: 60, hard: 90 };
 export const winXp = (difficulty?: string | null) => WIN_XP[(difficulty ?? "").toLowerCase()] ?? 50;
 
+/**
+ * Whether a duel pays XP and rating at all: matchmade duels only.
+ *
+ * A private room is people who chose each other — a friend, or a second
+ * account of your own — so anything it paid could be farmed on demand: open
+ * a room, join it from the other account, forfeit, repeat. Like a custom
+ * lobby in a game, it is for the fight, not the ladder; the public queue
+ * picks the opponent, which is what makes a win there worth counting.
+ *
+ * Duel XP only. The problem underneath still pays its own first-solve XP
+ * wherever it is solved (lib/solve-payout.ts) — once per problem, never per
+ * duel, so a room cannot farm that either.
+ */
+export const paysXp = (duel: { visibility: string }): boolean => duel.visibility === "public";
+
 /* ── the duel row, briefly remembered ─────────────────────────────── */
 
 /**
@@ -270,25 +285,29 @@ export async function applyDuelResult(
     return settled;
   }
 
-  const prize = winXp(duel.problem?.difficulty ?? duel.challenge?.difficulty);
-  const consolation = Math.round(prize * 0.25);
-  const winners = duel.participants.filter((p) => p.team === me.team).map((p) => p.userId);
-  const losers = duel.participants.filter((p) => p.team !== me.team).map((p) => p.userId);
+  // A private room is decided the same way and pays nothing (paysXp);
+  // `xpAwarded` stays 0, which the result screen and history already read.
+  if (paysXp(duel)) {
+    const prize = winXp(duel.problem?.difficulty ?? duel.challenge?.difficulty);
+    const consolation = Math.round(prize * 0.25);
+    const winners = duel.participants.filter((p) => p.team === me.team).map((p) => p.userId);
+    const losers = duel.participants.filter((p) => p.team !== me.team).map((p) => p.userId);
 
-  // One statement per team per table, all independent, rather than two
-  // updates per player in a row (eleven round trips for a 2v2).
-  await Promise.all([
-    prisma.duelParticipant.updateMany({ where: { duelId, team: me.team }, data: { xpAwarded: prize } }),
-    prisma.duelParticipant.updateMany({ where: { duelId, team: { not: me.team } }, data: { xpAwarded: consolation } }),
-    prisma.user.updateMany({
-      where: { id: { in: winners } },
-      data: { xp: { increment: prize }, rating: { increment: Math.round(prize / 3) } },
-    }),
-    losers.length
-      ? prisma.user.updateMany({ where: { id: { in: losers } }, data: { xp: { increment: consolation } } })
-      : Promise.resolve(),
-  ]);
-  forgetDuel(duelId);
+    // One statement per team per table, all independent, rather than two
+    // updates per player in a row (eleven round trips for a 2v2).
+    await Promise.all([
+      prisma.duelParticipant.updateMany({ where: { duelId, team: me.team }, data: { xpAwarded: prize } }),
+      prisma.duelParticipant.updateMany({ where: { duelId, team: { not: me.team } }, data: { xpAwarded: consolation } }),
+      prisma.user.updateMany({
+        where: { id: { in: winners } },
+        data: { xp: { increment: prize }, rating: { increment: Math.round(prize / 3) } },
+      }),
+      losers.length
+        ? prisma.user.updateMany({ where: { id: { in: losers } }, data: { xp: { increment: consolation } } })
+        : Promise.resolve(),
+    ]);
+    forgetDuel(duelId);
+  }
 
   // Everyone's XP just moved, and the dashboard header is cached.
   for (const p of duel.participants) {

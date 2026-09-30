@@ -25,6 +25,7 @@ import {
   freshPublicSince,
   loadDuel,
   markUserInDuel,
+  paysXp,
   reconcileDuel,
   winXp,
 } from "../lib/duels.js";
@@ -850,8 +851,10 @@ async function closeByWalkover(
   forgetDuel(id);
   // A walkover still pays the side that stayed — the consolation rate,
   // not a full prize, since no problem was solved. It used to pay nothing at
-  // all, so being forfeited against was worth less than losing.
-  if (claim.count > 0 && winnerTeam !== null) {
+  // all, so being forfeited against was worth less than losing. Matchmade
+  // duels only: a forfeit in a private room was the quickest farm of all
+  // (lib/duels paysXp).
+  if (claim.count > 0 && winnerTeam !== null && paysXp(duel)) {
     const winners = duel.participants.filter((p) => p.team === winnerTeam).map((p) => p.userId);
     const prize = Math.round(winXp(duel.problem?.difficulty ?? duel.challenge?.difficulty) * 0.5);
     await Promise.all([
