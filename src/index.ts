@@ -12,6 +12,7 @@ import interviewsVoiceRouter from "./routes/interviews-voice.js";
 import billingRouter from "./routes/billing.js";
 import campusRouter from "./routes/campus.js";
 import meRouter from "./routes/me.js";
+import usersRouter from "./routes/users.js";
 import problemsRouter from "./routes/problems.js";
 import executionRouter from "./routes/execution.js";
 import leaderboardRouter from "./routes/leaderboard.js";
@@ -921,6 +922,7 @@ app.use(["/api/auth/forgot-password", "/api/auth/resend-verification"], otpReque
 app.use("/api/auth", authRouter);
 app.use("/api/auth", oauthRouter);
 app.use("/api/me", meRouter);
+app.use("/api/users", usersRouter);
 app.use("/api/problems", problemsRouter);
 app.use("/api/leaderboard", leaderboardRouter);
 app.use("/api/bug-challenges", bugChallengesRouter);
