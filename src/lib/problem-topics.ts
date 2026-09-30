@@ -1,4 +1,4 @@
-import { isCompanyTag } from "./companies.js";
+import { COMPANY_RENAMED, isCompanyTag } from "./companies.js";
 import { slugify } from "./slug.js";
 
 /**
@@ -287,10 +287,24 @@ export function companyHub(tag: string): CompanyHub | undefined {
   return { tag, slug: slugify(tag), label: tag };
 }
 
+/** Where a renamed company's old hub address now lives (COMPANY_RENAMED): "facebook" → "meta". */
+export function renamedCompanyHubSlug(slug: string): string | undefined {
+  for (const [from, to] of Object.entries(COMPANY_RENAMED)) if (slugify(from) === slug) return slugify(to);
+  return undefined;
+}
+
 /**
  * What a company hub says about itself. One sentence of fact — the tag is
- * the catalogue's — and one of what the list is for.
+ * the catalogue's — one of what the list holds, and one of what the list is
+ * for. The middle one is counted from the hub's own problems (its most
+ * common topics), so no two company hubs open with the same paragraph: they
+ * did, word for word but the name, until 2026-09-30. Nothing about how the
+ * company interviews is claimed — the site has no source for that.
  */
-export function companyBlurb(label: string, count: number): string {
-  return `${count} problems the CodeKairo catalogue tags as commonly asked in ${label}'s coding rounds, from easy warm-ups to the harder questions, each judged by hidden tests in 13 languages. The tag is the catalogue's own annotation of where a problem tends to come up — not a list published by ${label}, which CodeKairo is not affiliated with.`;
+export function companyBlurb(label: string, count: number, topTopics: ReadonlyArray<{ label: string; count: number }> = []): string {
+  const topics = topTopics.map((t) => `${t.label} (${t.count})`);
+  const common = topics.length
+    ? ` The most common topics among them are ${topics.length > 1 ? `${topics.slice(0, -1).join(", ")} and ${topics[topics.length - 1]}` : topics[0]}.`
+    : "";
+  return `${count} problems the CodeKairo catalogue tags as commonly asked in ${label}'s coding rounds, from easy warm-ups to the harder questions, each judged by hidden tests in 13 languages.${common} The tag is the catalogue's own annotation of where a problem tends to come up — not a list published by ${label}, which CodeKairo is not affiliated with.`;
 }

@@ -37,13 +37,15 @@ export const BANK_ANALOGIES: AptitudeSeed[] = [
     topic: "analogies-classification",
     title: "Hunger is to food",
     prompt: "**Hunger : Food :: Thirst : ?**",
-    options: ["Drink", "Water", "Dry", "Throat"],
+    // "Cup", not "Drink": a drink is also a noun that ends thirst, so two
+    // options were defensible (found writing the extras, 2026-10-01).
+    options: ["Cup", "Water", "Dry", "Throat"],
     answer: 1,
     difficulty: "easy",
     hints: ["Food is what relieves hunger.", "What relieves thirst?"],
     solution:
-      "1. The relation is need to what satisfies it.\n2. Thirst is satisfied by **water**.\n3. *Drink* is a verb here rather than the substance, and *dry* and *throat* are unrelated.\n\nAnswer: **Water**.",
-    approach: "Match the part of speech as well as the meaning. Food is a noun, so the answer must be a noun too.",
+      "1. The relation is a need to the substance that satisfies it.\n2. Thirst is satisfied by **water**.\n3. A *cup* only holds it, *dry* is the condition rather than the cure, and *throat* is where it is felt.\n\nAnswer: **Water**.",
+    approach: "Match the relation exactly, not the topic: food is the substance that ends hunger, so the answer is the substance that ends thirst — not its container, its cause or its place.",
     tags: ["need"],
     timeTargetSec: 35,
   },
@@ -217,12 +219,14 @@ export const BANK_ANALOGIES: AptitudeSeed[] = [
     topic: "analogies-classification",
     title: "Cubes in an analogy",
     prompt: "**4 : 64 :: 5 : ?**",
-    options: ["100", "125", "150", "625"],
+    // "25", not "100": 64 is also 4 × 4², and that rule gave 100 — a second
+    // defensible answer (found writing the extras, 2026-10-01).
+    options: ["25", "125", "150", "625"],
     answer: 1,
     difficulty: "easy",
     hints: ["64 is 4 cubed.", "What is 5 cubed?"],
     solution: "1. 64 = 4³.\n2. 5³ = **125**.\n\nAnswer: **125**.",
-    approach: "Since 64 is both 4³ and 8², check the second pair to break the tie. Here 5² = 25 is not offered, so the cube is intended.",
+    approach: "Find the power that takes the first number to the second and keep it: 4³ = 64, so 5³. The options 25 (5²) and 625 (5⁴) are there to catch a changed power.",
     tags: ["numeric analogy"],
     timeTargetSec: 35,
   },
@@ -404,13 +408,15 @@ export const BANK_ANALOGIES: AptitudeSeed[] = [
     slug: "an2-odd-wild-animal",
     topic: "analogies-classification",
     title: "The odd animal",
-    prompt: "Which one does **not** belong?\n\n**Dog, Cat, Lion, Horse**",
-    options: ["Dog", "Cat", "Lion", "Horse"],
+    // "Pig", not "Horse": the horse was the only herbivore, a second
+    // three-to-one split (found writing the extras, 2026-10-01).
+    prompt: "Which one does **not** belong?\n\n**Dog, Cat, Lion, Pig**",
+    options: ["Dog", "Cat", "Lion", "Pig"],
     answer: 2,
     difficulty: "easy",
     hints: ["Three of these are commonly kept by people.", "A lion is a wild animal."],
     solution:
-      "1. Dog, cat and horse are domestic animals.\n2. A **lion** is wild.\n\nAnswer: **Lion**.",
+      "1. Dog, cat and pig are domestic animals.\n2. A **lion** is wild.\n\nAnswer: **Lion**.",
     approach: "Domestic versus wild is the intended split. All four are mammals, so that shared property cannot decide it.",
     tags: ["classification"],
     timeTargetSec: 30,

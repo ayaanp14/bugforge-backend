@@ -739,7 +739,7 @@ export const NUMBER_PROBLEMS: CatalogProblem[] = [
       slug: "excel-sheet-column-number",
       title: "Excel Sheet Column Number",
       difficulty: "EASY" as const,
-      tags: ["Math", "String", "Amazon", "Microsoft", "Zoho", "Facebook"],
+      tags: ["Math", "String", "Amazon", "Microsoft", "Zoho", "Meta"],
       signature: { funcName: "titleToNumber", params: [{ name: "columnTitle", type: "string" as const }], returns: "int" as const },
       description: describe(
         "Given a string `columnTitle` that represents the column title as it appears in an Excel sheet, return its corresponding column number.\n\n```\nA  -> 1\nB  -> 2\n…\nZ  -> 26\nAA -> 27\nAB -> 28\n…\n```",
@@ -808,7 +808,7 @@ export const NUMBER_PROBLEMS: CatalogProblem[] = [
       slug: "excel-sheet-column-title",
       title: "Excel Sheet Column Title",
       difficulty: "EASY" as const,
-      tags: ["Math", "String", "Microsoft", "Amazon", "Zoho", "Facebook"],
+      tags: ["Math", "String", "Microsoft", "Amazon", "Zoho", "Meta"],
       signature: { funcName: "convertToTitle", params: [{ name: "columnNumber", type: "int" as const }], returns: "string" as const },
       description: describe(
         "Given an integer `columnNumber`, return its corresponding column title as it appears in an Excel sheet.\n\n```\n1  -> A\n2  -> B\n…\n26 -> Z\n27 -> AA\n28 -> AB\n…\n```",

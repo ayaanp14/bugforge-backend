@@ -4,6 +4,7 @@ import { prisma } from "../lib/prisma.js";
 import { requireAuth } from "../middleware/auth.js";
 import {
   PLANS,
+  freeForAll,
   isPaidPlan,
   planFor,
   priceOf,
@@ -48,7 +49,8 @@ function asPeriod(value: unknown): BillingPeriod {
  * @access  Public
  *
  * The catalogue is a constant and `checkoutEnabled` a deployment setting, so
- * the browser may keep its copy for a while.
+ * the browser may keep its copy for a while — the free-for-all flag flips
+ * once, and five minutes late is fine.
  */
 router.get("/plans", browserCache(300, { shared: true }), (_req, res) => {
   res.json({
@@ -56,6 +58,8 @@ router.get("/plans", browserCache(300, { shared: true }), (_req, res) => {
     currency: "INR",
     /** False when no keys are set: the UI then shows plans without checkout. */
     checkoutEnabled: isConfigured(),
+    /** While active, every plan's limits are lifted for everyone and checkout is refused (lib/plans). */
+    freeForAll: freeForAll(),
   });
 });
 
@@ -73,6 +77,7 @@ router.get("/me", requireAuth, async (req: any, res) => {
       entitlements: entitlement.plan.entitlements,
       currentPeriodEnd: entitlement.currentPeriodEnd,
       usage: entitlement.usage,
+      freeForAll: entitlement.freeForAll,
       remaining: {
         interviewsThisWeek:
           entitlement.plan.entitlements.interviewsPerWeek === null
@@ -109,15 +114,25 @@ router.get("/me", requireAuth, async (req: any, res) => {
  */
 router.post("/checkout", requireAuth, async (req: any, res) => {
   try {
-    if (!isConfigured()) {
-      return res.status(503).json({ error: "Payments are not configured on this deployment." });
-    }
-
     const planId = String(req.body?.planId ?? "");
     const period = asPeriod(req.body?.period);
 
     if (!isPaidPlan(planId)) {
       return res.status(400).json({ error: "That plan cannot be purchased." });
+    }
+
+    // Nothing to sell while everything is free: the pricing page disables
+    // the buttons, and this is the same answer for a client that did not.
+    const offer = freeForAll();
+    if (offer.active) {
+      return res.status(409).json({
+        error: `Everything on CodeKairo is free for every account until ${offer.untilLabel} — there is nothing to buy until then.`,
+        freeForAll: offer,
+      });
+    }
+
+    if (!isConfigured()) {
+      return res.status(503).json({ error: "Payments are not configured on this deployment." });
     }
 
     const plan = planFor(planId);

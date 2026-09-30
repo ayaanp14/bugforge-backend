@@ -91,7 +91,7 @@ export const BANK_MATH_REASONING: AptitudeSeed[] = [
   {
     slug: "mr2-calendar-odd-days",
     topic: "mathematical-reasoning",
-    title: "The day after a hundred days",
+    title: "The day after 61 days",
     prompt: "If today is **Monday**, what day will it be after **61 days**?",
     options: ["Friday", "Saturday", "Sunday", "Monday"],
     answer: 1,
@@ -404,7 +404,7 @@ export const BANK_MATH_REASONING: AptitudeSeed[] = [
   {
     slug: "mr2-venn-three-sets",
     topic: "mathematical-reasoning",
-    title: "Three sports",
+    title: "Two sports, one overlap",
     prompt:
       "In a group, **30 play cricket**, **25 play football** and **20 play both**. How many play **at least one** of the two?",
     options: ["30", "35", "45", "55"],
@@ -570,7 +570,7 @@ export const BANK_MATH_REASONING: AptitudeSeed[] = [
   {
     slug: "mr2-inequality-not-determined",
     topic: "mathematical-reasoning",
-    title: "When nothing follows",
+    title: "Which inequality must hold",
     prompt:
       "If **P ≥ Q**, **Q > R** and **S < R**, which of the following is **definitely true**?",
     options: ["P > S", "S > Q", "P = R", "Q < S"],

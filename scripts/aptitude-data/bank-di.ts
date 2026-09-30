@@ -412,7 +412,7 @@ export const BANK_DI: AptitudeSeed[] = [
     topic: "caselets",
     title: "Profit across two products",
     prompt:
-      "A shop sells **200 units of product X at ₹50 each**, on which it makes **20% profit**, and **150 units of product Y at ₹80 each**, on which it makes **25% profit**.\n\nWhat is the shop's **total profit**?",
+      "A shop sells **200 units of product X at ₹50 each**, on which its profit is **20% of the selling price**, and **150 units of product Y at ₹80 each**, on which its profit is **25% of the selling price**.\n\nWhat is the shop's **total profit**?",
     options: ["₹4,400", "₹4,600", "₹4,800", "₹5,000"],
     answer: 3,
     difficulty: "medium",

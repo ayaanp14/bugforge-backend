@@ -1,0 +1,498 @@
+{
+  "ns2-unit-digit-7pow95-minus-3pow58": {
+    "shortcut": "Only the exponents mod 4 matter: 95 → 3 and 58 → 2, so compare 7³ = 343 with 3² = 9. 343 − 9 = 334 ends in 4, and since 7⁹⁵ is far larger than 3⁵⁸ the true difference ends in 4 too.",
+    "trap": "6 — subtracting the unit digits the wrong way round (9 − 3 = 6) instead of borrowing to get 13 − 9 = 4."
+  },
+  "ns2-remainder-2pow51-by-7": {
+    "shortcut": "Powers of 2 leave 2, 4, 1 on division by 7, repeating every 3. The digits of 51 sum to 6, so 51 is a multiple of 3 and 2⁵¹ lands on the last value of the cycle, 1.",
+    "trap": "2 — reading 51 mod 3 = 0 as the first position of the cycle 2, 4, 1; a zero remainder means the last position."
+  },
+  "ns2-largest-four-digit-divisible-88": {
+    "shortcut": "Test the options from the top with 88 = 8 × 11: 9988 fails 8 (988 ÷ 8 is not whole), 9968 fails 11 (9 − 9 + 6 − 8 = −2) and 9954 fails 8, while 9944 passes both (944 = 8 × 118, alternating sum 0).",
+    "trap": "9988 — it passes the test for 11 and its last two digits are divisible by 4, so checking 4 in place of 8 accepts it; 988 ÷ 8 = 123.5, so it is a multiple of 44 but not of 88."
+  },
+  "ns2-hcf-of-decimals": {
+    "shortcut": "Try the options from the largest: 1.75 does not divide 5.6 (3.2 times) and 0.7 does not divide 1.75 (2.5 times), but 0.35 goes into 1.75, 5.6 and 7 exactly 5, 16 and 20 times.",
+    "trap": "0.07 — writing 1.75, 5.6 and 7 as 175, 56 and 7 without padding to two decimals, which gives HCF 7 and then 0.07 after shifting two places."
+  },
+  "ns2-lcm-of-five-numbers": {
+    "shortcut": "Drop 22 and 54, since they divide 198 and 108. Then test options against 108 = 4 × 27: 1980 is not a multiple of 27 and 2970 is not a multiple of 4, while 5940 = 108 × 55 = 135 × 44 = 198 × 30.",
+    "trap": "2970 — taking the factor 2 only once (2 × 3³ × 5 × 11) and missing the 2² in 108 = 2² × 3³."
+  },
+  "ns2-trailing-zeros-125-factorial": {
+    "shortcut": "Zeros in n! = (n − sum of n's digits in base 5) ÷ 4. 125 is 1000 in base 5, digit sum 1, so (125 − 1) ÷ 4 = 31.",
+    "trap": "25 — stopping at ⌊125/5⌋ and forgetting the extra five in each multiple of 25 (five more) and the third five in 125 (one more)."
+  },
+  "ns2-remainder-one-divisible-thirteen": {
+    "shortcut": "Each answer must be 2520k + 1. 3361 fails at once (3360 has digit sum 12, so 9 does not divide it). Divide the rest by 13 from the smallest: 10081 leaves 6, and 17641 = 13 × 1357.",
+    "trap": "3361 — 3360 is divisible by 6, 7, 8 and 10, so it survives a check that skips 9; it also leaves 7 on division by 13."
+  },
+  "ns2-remainder-342-then-19": {
+    "shortcut": "Take the simplest such number, 47 itself (k = 0): 47 ÷ 19 leaves 9. Because 19 × 18 = 342, every other number of the form 342k + 47 leaves the same 9.",
+    "trap": "Cannot be determined — assuming the unknown quotient k hides the answer, without checking that 19 divides 342 exactly."
+  },
+  "ns2-prime-factors-count": {
+    "shortcut": "Every power of 6 holds two primes, so count 6's exponent twice: 2 × 10 + 17 + 27 = 64.",
+    "trap": "54 — adding the exponents 10 + 17 + 27 as they stand, leaving the composite base 6 unsplit."
+  },
+  "ns2-greatest-number-same-remainder": {
+    "shortcut": "Two differences are enough: HCF(70, 105) = 35. Trying the largest option first also settles it — 70 leaves 62 from both 62 and 132 but 27 from 237, while 35 leaves 27 every time.",
+    "trap": "70 — the first difference, 132 − 62; it gives both of those the remainder 62 but leaves 27 from 237."
+  },
+  "ns2-unit-digit-three-factors": {
+    "shortcut": "Pair 3⁶⁵ with 7⁶⁵ to make 21⁶⁵, which ends in 1. What remains is 6⁵⁹ × 7⁶, and 6 × 9 = 54 ends in 4.",
+    "trap": "8 — the unit digit of 3 × 6 = 18, as if 7⁷¹ ended in 1; 71 mod 4 = 3, so it ends in 3 and 8 × 3 = 24 gives 4."
+  },
+  "ns2-even-factors-1440": {
+    "shortcut": "With 2⁵ in the factorisation, a factor's power of 2 can be 0 to 5, and five of those six choices make it even: 5/6 of the 36 factors = 30.",
+    "trap": "36 — the total number of factors of 1440, forgetting to remove the 6 odd ones (the factors of 45)."
+  },
+  "ns2-least-added-1056-23": {
+    "shortcut": "Jump to a round multiple: 23 × 50 = 1150, less 23 × 4 = 92, is 1058 — just 2 above 1056.",
+    "trap": "21 — the remainder of 1056 ÷ 23, which is what must be subtracted (1035 = 23 × 45), not added."
+  },
+  "ns2-largest-of-four-powers": {
+    "shortcut": "4³⁰ is 2⁶⁰ in disguise, so those two tie and neither can be the single answer. Of the rest, 3⁴⁰ = 9²⁰ beats 5²⁰ at the same exponent.",
+    "trap": "2⁶⁰ — chosen for its large exponent; written with exponent 20 it is 8²⁰, smaller than 3⁴⁰ = 9²⁰."
+  },
+  "ns2-surd-expression-value": {
+    "shortcut": "Estimate: x = 2 + √3 ≈ 3.732, so x² ≈ 13.93 and x³ ≈ 51.98. Then 51.98 − 27.86 − 26.12 + 5 ≈ 3.00, and every option is a whole number.",
+    "trap": "5 — assuming x² − 4x + 1 = 0 wipes out every x term and leaves the constant; (x² − 4x + 1)(x + 2) = x³ − 2x² − 7x + 2, which uses up 2 of the 5."
+  },
+  "ns2-factorial-sum-remainder-24": {
+    "shortcut": "Stop at 3!: every term from 4! = 24 on is a multiple of 24. The sum is odd (1 plus even terms), which rules out 6 at a glance, and 1 + 2 + 6 = 9.",
+    "trap": "15 — it is 24 − 9, the amount needed to reach the next multiple of 24, confused with the remainder itself."
+  },
+  "ns2-hcf-lcm-other-number": {
+    "shortcut": "The other number must divide the LCM 693 = 3² × 7 × 11. 66 and 88 are even and 121 needs 11², so only 99 fits.",
+    "trap": "66 — like every option it shares HCF 11 with 77, so a check of the HCF alone passes it; its LCM with 77 is 462, not 693."
+  },
+  "ns2-product-4107-hcf-37": {
+    "shortcut": "4107 is odd, so neither number is even — 74 and 148 are out. Of 37 and 111 the larger is 111, and 37 × 111 = 4107 confirms it.",
+    "trap": "37 — the HCF itself, which here is the smaller of the two numbers; the question asks for the larger."
+  },
+  "ns2-digits-in-2pow40": {
+    "shortcut": "2¹⁰ = 1024 ≈ 10³, so 2⁴⁰ = 1024⁴ ≈ 1.1 × 10¹², a number with 13 digits.",
+    "trap": "12 — the integer part of 12.04 taken as the digit count, missing the +1 for the leading digit."
+  },
+  "ns2-remainder-17pow200-by-18": {
+    "shortcut": "17² = 289 = 16 × 18 + 1, so 17² leaves 1, and 17²⁰⁰ = (17²)¹⁰⁰ leaves 1 as well.",
+    "trap": "17 — assuming 17ⁿ always leaves 17; that holds only for odd powers, and 200 is even."
+  },
+  "ns2-total-factors-4200": {
+    "shortcut": "Write 4200 = 7 × 600. 600 = 2³ × 3 × 5² has 4 × 2 × 3 = 24 factors, and the coprime 7 doubles the count to 48.",
+    "trap": "36 — the count for 2² × 3 × 5² × 7 = 2100, from dropping one factor of 2 in the factorisation."
+  },
+  "ns2-sum-of-factors-36": {
+    "shortcut": "A perfect square has an odd sum of factors, which rules out 78 and 96. 1 + 36 + 2 + 18 is already 57, past 55, leaving 91.",
+    "trap": "55 — the sum of the proper factors only, leaving out 36 itself (91 − 36 = 55)."
+  },
+  "ns2-greatest-four-digit-lcm": {
+    "shortcut": "Every option ends in 00 with its last three digits divisible by 8, so only the factor 3 in the LCM 600 decides. Digit sums 9, 11, 15, 17 leave 9000 and 9600, and the larger wins.",
+    "trap": "9800 — the largest option and divisible by 25 and 40, but its digit sum 17 fails 3, so it is not a multiple of 15 or 75."
+  },
+  "ns2-missing-digit-divisible-3": {
+    "shortcut": "Cast out threes: 5 + 1, 3 and 2 + 4 vanish, leaving 7, which is 1 more than a multiple of 3. The digit must add 2 more, and 2 is the smallest that does.",
+    "trap": "0 — picked on reflex as the smallest digit; it leaves the digit sum at 22, not a multiple of 3."
+  },
+  "ns2-primes-below-fifty": {
+    "shortcut": "Beyond 2 and 3 every prime is 6k ± 1. Below 50 there are 16 such numbers; striking 25, 35 and 49 leaves 13, and adding 2 and 3 gives 15.",
+    "trap": "14 — scanning only the odd numbers and missing 2, the one even prime."
+  },
+  "ns2-least-subtracted-9999-45": {
+    "shortcut": "The result must end in 0 or 5 and have a digit sum divisible by 9: 9999 − 9 = 9990 (digit sum 27) does both.",
+    "trap": "36 — it is 45 − 9, the amount to add (9999 + 36 = 10035 = 45 × 223), confused with the amount to subtract."
+  },
+  "ns2-sum-odd-numbers-100-200": {
+    "shortcut": "The first n odd numbers sum to n². Odd numbers up to 199 are the first 100 (sum 10,000) and up to 99 the first 50 (sum 2,500), so 10,000 − 2,500 = 7500.",
+    "trap": "No natural slip lands exactly on another option; 7250 is the most tempting, only 250 below the answer, so a rough count × average does not rule it out — the exact count is 50 and the average 150."
+  },
+  "ns2-telescoping-series": {
+    "shortcut": "The first term alone is 1/2 and the endless series sums to 1, so the answer lies strictly between 1/2 and 1 — only 9/10 does.",
+    "trap": "1/10 — keeping the leftover 1/10 from the cancellation and forgetting the leading 1, so 1 − 1/10 becomes just 1/10."
+  },
+  "ns2-difference-of-consecutive-odd-squares": {
+    "shortcut": "Test the smallest pair: 3² − 1² = 8, and of the options only 8 divides 8.",
+    "trap": "6 — testing only 5 and 7 gives 49 − 25 = 24, which 6 divides; the pair 3 and 5 gives 16, which it does not."
+  },
+  "ns2-remainder-sum-of-powers": {
+    "shortcut": "Fermat's little theorem gives 17⁶ ≡ 1 (mod 7) with no work, since 7 is prime and does not divide 17; 6 ≡ −1 makes 6¹⁷ ≡ −1, and the two cancel to 0.",
+    "trap": "6 — the remainder of 6¹⁷ alone, as if 17⁶ added nothing; 17⁶ leaves 1, and 6 + 1 = 7 leaves 0."
+  },
+  "ns2-count-multiples-between": {
+    "shortcut": "LCM 60: ⌊600/60⌋ − ⌊200/60⌋ = 10 − 3 = 7 counts 600 itself, and 'between' excludes it, leaving 6.",
+    "trap": "7 — counting 600 as one of the numbers; 'between 200 and 600' shuts out the endpoint."
+  },
+  "ns2-6n-squared-plus-6n": {
+    "shortcut": "n = 1 gives 12, so any number that always divides the expression must divide 12 — 18 and 24 are out. 12 is the fuller guarantee, since n(n + 1) is always even.",
+    "trap": "24 — n = 3 and n = 4 give 72 and 120, both multiples of 24, but n = 1 gives 12 and n = 2 gives 36, neither of which 24 divides."
+  },
+  "ns2-crt-two-conditions": {
+    "shortcut": "Both remainders fall 2 short of the divisor (5 − 3 = 7 − 5 = 2), so N + 2 is a multiple of 35 and the smallest N is 35 − 2 = 33.",
+    "trap": "23 — the first option that leaves 3 on division by 5; 23 ÷ 7 leaves 2, not 5."
+  },
+  "ns2-unit-digit-4pow54": {
+    "shortcut": "4⁵⁴ = 16²⁷, and every power of 16 ends in 6.",
+    "trap": "4 — assuming the power keeps the base's unit digit, which is true for 4 only at odd exponents."
+  },
+  "ns2-power-equation": {
+    "shortcut": "No need to find x: 5⁽ˣ⁻³⁾ = 5ˣ ÷ 5³ = 3125 ÷ 125 = 25.",
+    "trap": "125 — from taking 3125 as 5⁶ (5⁶ is 15,625), which makes x − 3 = 3."
+  },
+  "ns2-sum-first-20-even": {
+    "shortcut": "The 20 evens run 2 to 40 with average 21, so the sum is 20 × 21 = 420.",
+    "trap": "400 — using n² = 20², the formula for the first n odd numbers."
+  },
+  "ns2-least-added-4321-19": {
+    "shortcut": "Peel off round multiples of 19: 4321 − 3800 = 521, 521 − 380 = 141, 141 − 133 = 8, so 4321 leaves 8 and needs 19 − 8 = 11 more.",
+    "trap": "8 — the remainder of 4321 ÷ 19, which is the amount to subtract (4313 = 19 × 227), not to add."
+  },
+  "ns2-three-digit-divisible-by-9-and-11": {
+    "shortcut": "Test from the top: 999 fails 11 (alternating sum 9), while 990 has digit sum 18 and alternating sum 0, so it passes both tests.",
+    "trap": "999 — the largest three-digit number and a multiple of 9, but 999 ÷ 11 leaves 9."
+  },
+  "ns2-remainder-power-of-three-mod-five": {
+    "shortcut": "A remainder on division by 5 follows from the unit digit. 3²¹ ends in 3 (21 leaves 1 on division by 4), and a number ending in 3 leaves 3.",
+    "trap": "1 — stopping at 3²⁰ = (3⁴)⁵, which leaves 1, and forgetting the one extra factor of 3."
+  },
+  "ns2-number-of-zeros-in-product": {
+    "shortcut": "Count fives term by term: each of the ten terms holds one, and 50 and 100 each hold a second, so 10 + 2 = 12; twos are plentiful.",
+    "trap": "11 — counting the zeros printed in the terms (one each in 10 to 90, two in 100); the extra five in 50 pairs with a spare 2 to make a twelfth."
+  },
+  "tw2-a10-b15-together": {
+    "shortcut": "For two workers, time together = product ÷ sum: 10 × 15 ÷ 25 = 6 days.",
+    "trap": "5 days — half of A's 10 days, as if B were as fast as A; B is slower, so the pair need longer than 5."
+  },
+  "tw2-a6-b10-together": {
+    "shortcut": "Product ÷ sum: 6 × 10 ÷ 16 = 60 ÷ 16 = 3.75 days.",
+    "trap": "4 days — 30 ÷ 8 rounded to a whole day out of habit, since most answers in the chapter are integers; the exact 3.75 days is on offer."
+  },
+  "tw2-together-8-a-12-b-alone": {
+    "shortcut": "For the missing partner, time = product ÷ difference: 8 × 12 ÷ (12 − 8) = 96 ÷ 4 = 24 days.",
+    "trap": "20 days — adding the two times (8 + 12); rates subtract, but times do not."
+  },
+  "tw2-twice-efficient-12": {
+    "shortcut": "B supplies 1 of the pair's 3 shares of output, so alone B needs 3 × 12 = 36 days (and A needs 1.5 × 12 = 18).",
+    "trap": "18 days — A's time alone; A is the faster worker, while the question asks about B."
+  },
+  "tw2-three-times-good-60-less": {
+    "shortcut": "Times are in the ratio 1 : 3, so the 60-day gap is 2 parts: A 30, B 90. Together = 30 × 90 ÷ 120 = 22.5 days.",
+    "trap": "30 days — A's time alone, stopping before combining the two rates."
+  },
+  "tw2-25-percent-more-efficient": {
+    "shortcut": "Efficiency 5 : 4 means time 4 : 5, so the 10-day gap is one part and A takes 4 × 10 = 40 days.",
+    "trap": "50 — B's time, the first number the equation 0.2t = 10 produces; A takes 0.8 × 50."
+  },
+  "tw2-abc-together-4-c-alone": {
+    "shortcut": "Back-substitute: with C = 9, 1/12 + 1/18 + 1/9 = 3/36 + 2/36 + 4/36 = 9/36 = 1/4, exactly the trio's rate.",
+    "trap": "6 days — subtracting only A's rate (1/4 − 1/12 = 1/6) and forgetting to take B's off as well."
+  },
+  "tw2-pairs-abc": {
+    "shortcut": "Take 60 units: the pairs do 5, 4 and 3 a day, which counts each person twice, so the trio does 12 ÷ 2 = 6 a day and needs 60 ÷ 6 = 10 days.",
+    "trap": "12 days — the fastest pair's time, as if adding C changed nothing; a third worker must make the job quicker than any pair."
+  },
+  "tw2-a-alone-from-pairs": {
+    "shortcut": "Take 30 units: the trio does 3 a day and B + C does 2, so A does 1 a day — 30 days. The A + B figure is never needed.",
+    "trap": "60 days — subtracting the wrong pair (1/10 − 1/12 = 1/60), which gives C's time, not A's."
+  },
+  "tw2-a-works-5-then-b-finishes": {
+    "shortcut": "A would have needed 10 more days for the rest; B needed 12, so B is 1.2 times as slow: 1.2 × 15 = 18 days.",
+    "trap": "24 days — doubling B's 12 days as if A had done half the job; A did only a third."
+  },
+  "tw2-together-4-days-b-finishes": {
+    "shortcut": "A's 4 days cover 4/12 = 1/3 of the job, so B does 2/3 — 10 of his 15 days. He has already worked 4, leaving 6.",
+    "trap": "5 days — taking the work left as the third that A did (4/12) rather than the 2/5 still undone; 1/3 × 15 = 5."
+  },
+  "tw2-together-20-b-leaves": {
+    "shortcut": "The pair would have finished the last third in 10 days; A alone took 20, so A works at half the pair's rate and needs 2 × 30 = 60 days.",
+    "trap": "50 days — adding A's extra 20 days to the pair's 30, as if the solo stint only stretched the schedule; those 20 days cover just the last third."
+  },
+  "tw2-a-leaves-five-days-before": {
+    "shortcut": "Pretend A stays to the end: he would add 5/20 = 1/4 of a job, so the pair (12 days a job, 20 × 30 ÷ 50) would finish 1¼ jobs in the time: 1.25 × 12 = 15 days.",
+    "trap": "12 days — the time if both worked throughout, ignoring that A leaves early."
+  },
+  "tw2-alternate-days-20-30": {
+    "shortcut": "Two alternate days equal one joint day. The pair together need 20 × 30 ÷ 50 = 12 days, a whole number, so alternation takes exactly 24.",
+    "trap": "25 days — adding a day for A to finish off, without noticing that the 12 two-day cycles land exactly on the whole job."
+  },
+  "tw2-alternate-pipes": {
+    "shortcut": "In 12 units, every A-then-B pair of hours adds 5, so after 4 hours 2 units remain and the turn is A's; 2 of A's 3 units an hour take 40 minutes.",
+    "trap": "5 h — giving the fifth hour to B, whose 2 units an hour would fill the last 2 units in exactly an hour; A started, so the fifth hour is A's."
+  },
+  "tw2-pipes-two-in-one-out": {
+    "shortcut": "Call the tank 60 units: A adds 5 and B 4 an hour, C removes 3, so the net is 6 an hour and the tank fills in 10 hours.",
+    "trap": "12 h — A's time alone, on the idea that B's inflow roughly cancels C's outflow; B adds 4 units an hour but C removes only 3, so the tank fills sooner."
+  },
+  "tw2-leak-empties-full": {
+    "shortcut": "Filler against leak: time = product ÷ difference = 6 × 12 ÷ (12 − 6) = 12 hours.",
+    "trap": "18 h — adding the two times (6 + 12); the leak removes half the tap's rate, which doubles 6 hours to 12."
+  },
+  "tw2-leak-adds-an-hour": {
+    "shortcut": "Leak time = product ÷ difference of the two filling times: 4 × 5 ÷ (5 − 4) = 20 hours.",
+    "trap": "10 h — half of 4 × 5, from dividing by 2 as if the delay were two hours; the delay is one hour, so the product itself is the answer."
+  },
+  "tw2-cistern-nine-to-ten": {
+    "shortcut": "Leak time = product ÷ difference of the two filling times: 9 × 10 ÷ (10 − 9) = 90 hours.",
+    "trap": "45 h — half of 9 × 10, from dividing by 2 as if the delay were two hours; with a one-hour gap, product ÷ difference = 90 ÷ 1."
+  },
+  "tw2-close-one-pipe": {
+    "shortcut": "Had the first pipe run all 18 minutes, 18/20 + 18/30 = 1.5 tanks would flow; the extra half tank is 10 minutes of the first pipe, so it shut after 18 − 10 = 8 minutes.",
+    "trap": "12 min — giving the first pipe the 3/5 that the second pipe supplies (3/5 × 20 = 12) instead of the remaining 2/5."
+  },
+  "tw2-both-open-4-min-then-one": {
+    "shortcut": "The second pipe runs throughout and must supply 1 − 4/10 = 3/5 of the tank, which is 9 of its 15 minutes; 9 − 4 = 5 more.",
+    "trap": "4 min — tempting because it echoes the 4 minutes already run; the joint run filled 2/3, and the last third at 1/15 a minute takes 5."
+  },
+  "tw2-waste-pipe-capacity": {
+    "shortcut": "Call the cistern 120 units: the taps give 7 a minute and the net is 2, so the waste pipe removes 5 units = 3 gallons a minute, and 120 units = 120 × 3/5 = 72 gallons.",
+    "trap": "No slip gives another option exactly; 60 gallons is the most tempting because it reuses the 60 minutes in the question, but the volume comes from the waste pipe's 24-minute emptying time × 3 gallons."
+  },
+  "tw2-men-and-women-equivalence": {
+    "shortcut": "Count in men: 4 women = 2 men, so the team is 6 men, twice the 3 who need 20 days — 10 days.",
+    "trap": "15 days — counting all 8 workers as women (120 woman-days ÷ 8); the 4 men are worth 8 women."
+  },
+  "tw2-women-and-children": {
+    "shortcut": "5 women are half a 7-day crew, so alone they need 14 days — the same as the 10 children. Two 14-day teams together take 7 days.",
+    "trap": "3.5 days — halving 7 on the reflex that two groups halve the time; that holds only if each group alone takes 7 days, and here each takes 14."
+  },
+  "tw2-men-days-to-more-men": {
+    "shortcut": "Time falls to 6/8 = 3/4, so the crew rises by 4/3: 12 × 4/3 = 16 men.",
+    "trap": "14 — adding the 2 days saved to the 12 men, a direct adjustment where an inverse one is needed."
+  },
+  "tw2-more-men-join": {
+    "shortcut": "The last 12 days' work for 12 men takes 16 men 12 × 12/16 = 9 days, so the total is 8 + 9 = 17.",
+    "trap": "16 days — cutting the remaining 12 days by a third because the crew grew by a third; a third more men cuts time by a quarter, to 9 days."
+  },
+  "tw2-men-leave": {
+    "shortcut": "What is left is 12 days' work for 24 men; 16 men need 12 × 24/16 = 18 days.",
+    "trap": "16 days — adding a third to the remaining 12 days because a third of the men left; two thirds of the crew need 3/2 of the time, 18 days."
+  },
+  "tw2-contractor-more-men": {
+    "shortcut": "100 men do a third of the job in 15 days; doing the last third in 10 days needs 100 × 15/10 = 150 men, so 50 more.",
+    "trap": "100 — doubling the crew on the feeling that the last third must go twice as fast; it must go 1.5 times as fast (a third in 10 days, not 15)."
+  },
+  "tw2-hectares-reaped": {
+    "shortcut": "80 hectares per 192 man-days is 5 hectares per 12 man-days; 36 × 30 = 1,080 man-days is 90 such blocks, so 450 hectares.",
+    "trap": "360 — scaling by the men alone (80 × 36/8) and forgetting the move from 24 to 30 days."
+  },
+  "tw2-wall-length": {
+    "shortcut": "Man-days go from 120 to 105, a ratio of 7/8, so the wall is 56 × 7/8 = 49 m.",
+    "trap": "56 m — assuming 35 men for half the days cancels out; 35 is 1.75 times 20, not twice, so output falls to 7/8 of 56."
+  },
+  "tw2-hours-per-day": {
+    "shortcut": "Cancel before multiplying: 12 × 39 × 5 ÷ (30 × 6) = 2 × 39 × 5 ÷ 30 = 390 ÷ 30 = 13 days.",
+    "trap": "15 days — the nearest option to 15.6, which is what ignoring the change from 5-hour to 6-hour days gives (12 × 39 ÷ 30)."
+  },
+  "tw2-men-women-hours": {
+    "shortcut": "21 women = 14 men. Days = 21 × 15/14 × 8/6; 21/14 = 3/2 and 15 × 8/6 = 20, so 3/2 × 20 = 30.",
+    "trap": "20 — counting the 21 women as 21 men (21 × 15/21 × 8/6 = 20); they are worth only 14 men."
+  },
+  "tw2-half-and-third": {
+    "shortcut": "In 5 days together they finish 1/2 + 1/3 = 5/6 of the job, so the whole takes 5 × 6/5 = 6 days.",
+    "trap": "5 days — treating a half plus a third as the whole job; 1/2 + 1/3 = 5/6 leaves a sixth undone."
+  },
+  "tw2-four-fifths-in-20": {
+    "shortcut": "Work left : work done = 1 : 4, so the time left is 20 ÷ 4 = 5 days; the whole job is 25 days, which checks.",
+    "trap": "4 days — dividing 20 by 5 (the denominator) instead of by 4, the number of fifths already done."
+  },
+  "tw2-payment-share-c": {
+    "shortcut": "In the 3 days A does 3/6 = 1/2 and B does 3/8, so C's part is 1 − 1/2 − 3/8 = 1/8, and 600 ÷ 8 = ₹75.",
+    "trap": "No slip lands exactly on another option; ₹150 is the most tempting, since a quarter of the pay feels right for a helper, but C's rate of 1/24 a day covers only 1/8 of the work."
+  },
+  "tw2-abc-help-c-alone": {
+    "shortcut": "In the 4 days A does 4/8 = 1/2 and B 4/12 = 1/3, leaving C 1/6 of the job in 4 days — so C alone needs 24.",
+    "trap": "20 days — adding A's and B's times (8 + 12); times never add, and C's rate is 1/4 − 1/8 − 1/12 = 1/24."
+  },
+  "tw2-tank-tap-and-leak-capacity": {
+    "shortcut": "The tap's filling time is product ÷ difference of the two emptying times: 8 × 12 ÷ 4 = 24 hours, and 24 × 360 L = 8,640 L.",
+    "trap": "4,320 L — multiplying the tap's 360 L an hour by the 12-hour emptying time instead of the tap's own 24-hour filling time."
+  },
+  "tw2-b-alone-after-a-quits": {
+    "shortcut": "B's rate is half of (A + B) + (B + C) − (A + C). In 60 units that is (6 + 4 − 5) ÷ 2 = 2.5 a day, so 60 ÷ 2.5 = 24 days.",
+    "trap": "40 days — subtracting the wrong pair (1/8 − 1/10 = 1/40), which gives C's time, not B's."
+  },
+  "ns-remainder-power-of-seven": {
+    "shortcut": "The remainder on 5 can be read off the unit digit: 7¹⁰⁰ ends in 1 because 100 is a multiple of 4, so it leaves 1.",
+    "trap": "2 — treating 100 mod 4 = 0 as the first position of the cycle 2, 4, 3, 1; a zero remainder means the last position."
+  },
+  "ns-unit-digit-product": {
+    "shortcut": "Pair them: 3²³ × 7²³ = 21²³ ends in 1, leaving 3²⁴ = 81⁶, which also ends in 1.",
+    "trap": "9 — reading 3⁴⁷ as ending in 3 (as if 47 left 1 on division by 4) and multiplying by the 3 from 7²³."
+  },
+  "ns-hcf-lcm-product": {
+    "shortcut": "The other number must be a multiple of 12 that divides 360: 48 and 90 fail at once, and 120 shares 24 with 72, leaving 60.",
+    "trap": "120 — a multiple of 12 whose LCM with 72 is indeed 360, but HCF(72, 120) = 24, not 12."
+  },
+  "ns-divisible-by-nine-digit": {
+    "shortcut": "Cast out nines: 4 + 5 vanishes, leaving 3, so x must bring the total to a multiple of 9: x = 6.",
+    "trap": "3 — it makes the digit sum 15, which passes the test for 3 but not for 9."
+  },
+  "ns-count-of-divisors": {
+    "shortcut": "√360 ≈ 19, and the divisors below it — 1, 2, 3, 4, 5, 6, 8, 9, 10, 12, 15, 18 — number 12. Each pairs with one above, so 24.",
+    "trap": "18 — the count for 2² × 3² × 5 = 180, from dropping one factor of 2 when factorising 360."
+  },
+  "ns-trailing-zeros-factorial": {
+    "shortcut": "Zeros in n! = (n − sum of n's digits in base 5) ÷ 4. 100 is 400 in base 5, digit sum 4, so (100 − 4) ÷ 4 = 24.",
+    "trap": "20 — stopping at ⌊100/5⌋ and missing the extra five in each of 25, 50, 75 and 100."
+  },
+  "ns-consecutive-odd-sum": {
+    "shortcut": "Back-substitute from the options: 23 as the largest gives 19, 21, 23, which sum to 63.",
+    "trap": "21 — the middle number, 63 ÷ 3, given as the answer when the question asks for the largest."
+  },
+  "pc-successive-up-down": {
+    "shortcut": "Write it as (1 + 0.2)(1 − 0.2) = 1 − 0.2² = 0.96: a difference of squares, so an equal rise and fall always ends below the start.",
+    "trap": "No change — assuming +20% and −20% cancel; the 20% cut is taken from the larger 120, so it removes 24."
+  },
+  "pc-population-growth": {
+    "shortcut": "Add 10% twice, the second 10% also on the first year's gain: 5,000 + 5,000 + 500 = 10,500 added, giving 60,500.",
+    "trap": "60,000 — adding 20% as simple growth; the second year's 10% is on 55,000, not 50,000."
+  },
+  "pc-failing-marks": {
+    "shortcut": "The pass mark is 240 + 30 = 270 = 45%; 270 ÷ 45 = 6 per 1%, so 100% is 600.",
+    "trap": "540 — the nearest option to 240 ÷ 0.45 ≈ 533, which is what forgetting to add the 30 missing marks gives."
+  },
+  "pc-more-than-less-than": {
+    "shortcut": "25% more is 1/4 more; the reverse is 1/(4 + 1) = 1/5 less, i.e. 20%.",
+    "trap": "25% — assuming the reverse change is the same percentage; the gap of 25 is measured against A's 125, not B's 100."
+  },
+  "pc-share-percentage-points": {
+    "shortcut": "Divide new by old: 36 ÷ 30 = 1.2, a 20% rise.",
+    "trap": "6% — the rise in percentage points (36 − 30) read as a percentage change."
+  },
+  "pc-consumption-cut": {
+    "shortcut": "Spending fixed means price × consumption is constant: price × 5/4, so consumption × 4/5 — a cut of 1/5 = 20%.",
+    "trap": "25% — matching the price rise; a 25% cut with a 25% rise leaves spending at 1.25 × 0.75 = 93.75% of the old amount."
+  },
+  "pl-selling-price-from-profit": {
+    "shortcut": "10% of 800 is 80 and 5% is 40, so the profit is 120 and the price ₹920.",
+    "trap": "₹880 — adding only 10% (₹80) and dropping the extra 5% (₹40)."
+  },
+  "pl-markup-then-discount": {
+    "shortcut": "Net change = a + b + ab/100 with b = −10: 40 − 10 − 4 = 26%.",
+    "trap": "30% — subtracting the 10% discount from the 40% markup; the discount is taken on 140, so it removes 14, not 10."
+  },
+  "pl-equal-selling-price": {
+    "shortcut": "The loss-making article cost more (₹1,500 against ₹1,000), so the loss outweighs the gain, ruling out break-even and any profit; the loss is 100 on 2,500 = 4%.",
+    "trap": "No profit, no loss — assuming an equal 20% gain and 20% loss cancel; the percentages are on different cost prices."
+  },
+  "pl-false-weight": {
+    "shortcut": "The dealer hands over 9 parts and charges for 10, so the profit is 1/9 of the cost = 11.11%.",
+    "trap": "10% — dividing the 100 g saved by 1,000 g; profit is measured on the 900 g actually delivered."
+  },
+  "pl-sp-of-20-equals-cp-of-25": {
+    "shortcut": "The 5 extra articles' worth is profit earned on 20 articles, so profit = 5/20 = 25%.",
+    "trap": "20% — dividing the 5 by 25 instead of 20; profit is measured on the cost of the 20 articles sold."
+  },
+  "pl-successive-discounts": {
+    "shortcut": "The second 10% comes off 80, not 100, so it removes only 8: 20 + 8 = 28%.",
+    "trap": "30% — adding the two discounts (20 + 10); the second applies to the already reduced price."
+  },
+  "rp-divide-in-ratio": {
+    "shortcut": "C's share is 4/9 of the total, just under half: 4/9 of 5,400 = 2,400, and no other option is near 44%.",
+    "trap": "₹1,800 — an equal three-way split (5,400 ÷ 3), which is also B's share of 3 parts; C holds 4 parts."
+  },
+  "rp-combine-two-ratios": {
+    "shortcut": "Cross-multiply: A : B : C = (2 × 4) : (3 × 4) : (3 × 5) = 8 : 12 : 15.",
+    "trap": "2 : 3 : 5 — writing the ratios side by side without making B's two values (3 and 4) equal."
+  },
+  "rp-partnership-time-weighted": {
+    "shortcut": "Capital ratio 2 : 3 and time ratio 12 : 8 = 3 : 2 cancel exactly, so the profit splits evenly.",
+    "trap": "A ₹8,000, B ₹10,000 — the option nearest a split by capital alone (2 : 3 gives ₹7,200 and ₹10,800); B's shorter time cancels his larger stake."
+  },
+  "rp-coins-in-a-bag": {
+    "shortcut": "Back-substitute: 60 fifty-paise coins means 40 rupee coins and 80 25-paise coins, worth 40 + 30 + 20 = ₹90.",
+    "trap": "40 — the number of ₹1 coins (2 parts × 20 sets), read from the wrong place in the ratio."
+  },
+  "rp-inverse-variation-workers": {
+    "shortcut": "Men rise by 15/12 = 5/4, so days fall by 4/5: 20 × 4/5 = 16.",
+    "trap": "25 — treating it as direct variation (20 × 15/12); more men need fewer days, not more."
+  },
+  "rp-fourth-proportional": {
+    "shortcut": "6 is 1.5 times 4, so the fourth term is 1.5 times 10 = 15.",
+    "trap": "12 — adding the difference (10 + 2) instead of keeping the ratio; proportion means equal ratios, not equal gaps."
+  },
+  "av-teacher-joins": {
+    "shortcut": "Teacher = old average + (n + 1) × rise = 15 + 31 × 1 = 46.",
+    "trap": "45 — 15 + 30 × 1, which lifts the 30 students but forgets that the teacher also sits at the new average of 16."
+  },
+  "av-replacement": {
+    "shortcut": "Test by difference: (85 − 65) ÷ 8 = 2.5 exactly, while 80 and 90 give 1.875 and 3.125.",
+    "trap": "90 kg — adding 25 to 65 (2.5 read as 25, or multiplied by 10 rather than by the 8 people)."
+  },
+  "av-consecutive-even": {
+    "shortcut": "Five evenly spaced evens sit at −4, −2, 0, +2, +4 around the mean, so the largest is 24 + 4 = 28.",
+    "trap": "26 — the answer for five consecutive integers (22 to 26); even numbers are 2 apart, so the top is two steps of 2 above 24."
+  },
+  "av-misread-entry": {
+    "shortcut": "64 and 46 are the same digits swapped, and a swap always errs by 9 × the digit gap = 9 × 2 = 18, so the average rises by 1.8.",
+    "trap": "44.2 — subtracting 46 from 64 digit by digit without borrowing (22 instead of 18), so the rise becomes 2.2."
+  },
+  "av-batsman-innings": {
+    "shortcut": "Check an option: 17 × 43 = 731, and 16 × 40 + 91 = 640 + 91 = 731 — they match, so 43.",
+    "trap": "45 — the option nearest 731 ÷ 16 ≈ 45.7, which comes from dividing the new total by the old count of 16 innings instead of 17."
+  },
+  "av-first-fifty-naturals": {
+    "shortcut": "Pair 1 with 50, 2 with 49 and so on: all 25 pairs total 51, so every pair averages 25.5.",
+    "trap": "25 — taking half of 50 rather than the midpoint of 1 and 50."
+  },
+  "ag-father-thrice-son": {
+    "shortcut": "When the father is twice the son, the age gap equals the son's age. The gap is 2s now, so 2s = s + 12 and s = 12.",
+    "trap": "No slip gives another option exactly; 14 is the closest miss — father 42, then 54 against 26, just over twice — so a rough check by eye can pass it."
+  },
+  "ag-ratio-now-and-later": {
+    "shortcut": "Back-substitute: A = 30 makes B = 42, and six years on 36 : 48 = 3 : 4.",
+    "trap": "42 — B's present age (7 × 6), picked when the question asks for A's."
+  },
+  "ag-mother-daughter-sum": {
+    "shortcut": "Five years ago the ages summed to 50 − 10 = 40, split 7 : 1 into 35 and 5; the mother is now 35 + 5 = 40.",
+    "trap": "35 — the mother's age five years ago, given without adding the 5 years back."
+  },
+  "ag-ten-years-ago-half": {
+    "shortcut": "The sum is 3k + 4k = 7k, and 35 is the only option divisible by 7.",
+    "trap": "No slip gives another option exactly; 30 is the most tempting because it is 3 × 10 and seems to fit both the 3 : 4 ratio and the 10 years, but it is not a multiple of 7."
+  },
+  "ag-product-and-difference": {
+    "shortcut": "With a gap of 2, the mean age m satisfies (m − 1)(m + 1) = m² − 1 = 48, so m = 7 and the sum is 14.",
+    "trap": "16 — the sum of 4 and 12, another factor pair of 48 grabbed without checking that their difference is 8, not 2."
+  },
+  "ag-percent-of-past-and-future": {
+    "shortcut": "125% = 5/4, so present : past = 5 : 4. The one-part gap is 10 years, so the present age is 5 × 10 = 50.",
+    "trap": "60 — his age 10 years hence, the base of the 83⅓%, given in place of the present age."
+  },
+  "cl4-shop-week-highest-day": {
+    "shortcut": "Only days above the 200 average can win: Thursday (220) and Friday (250), and Friday is larger.",
+    "trap": "Thursday — at 220 it is the first figure above 200 in a top-down scan, easy to settle on before reaching Friday's 250."
+  },
+  "cl4-shop-week-average": {
+    "shortcut": "Measure from 200: −50, 0, −20, +20, +50, 0 sum to zero, so the average is 200.",
+    "trap": "180 — the option nearest 1,200 ÷ 7 ≈ 171, which comes from dividing by a full week; the shop opened only six days."
+  },
+  "cl4-shop-week-wednesday-share": {
+    "shortcut": "1% of 1,200 is 12, and 180 ÷ 12 = 15, so the share is 15%.",
+    "trap": "18% — reading 180 out of 1,000, as if the total were a round thousand instead of 1,200."
+  },
+  "tc4-marks-highest-total": {
+    "shortcut": "Measure each mark from 75: Amit +2 − 10 + 7 = −1, Bina +10 − 3 − 7 = 0, Chetan −9 + 15 − 1 = +5, Divya +17 − 17 + 1 = +1. Chetan leads.",
+    "trap": "Divya — she has the top single mark (92 in Maths), but her 58 in Physics holds her total to 226, below Chetan's 230."
+  },
+  "tc4-marks-average-maths": {
+    "shortcut": "Measure from 80: −3, +5, −14, +12 sum to zero, so the average is 80.",
+    "trap": "76 — the option nearest the average of all twelve marks (905 ÷ 12 ≈ 75.4), from averaging the whole table instead of the Maths column."
+  },
+  "sc4-along-with-agreement": {
+    "shortcut": "Three of the four verbs — were, are, have been — are plural. With 'along with the students' set aside the subject is 'the teacher', so the one singular verb, was, wins.",
+    "trap": "\"The teacher along with the students were present.\" — the verb is pulled into agreeing with the nearer plural noun, students."
+  },
+  "sc4-neither-of-the-two": {
+    "shortcut": "Read neither as 'not one': 'not one of the two candidates was selected' — a singular verb with a plural noun after 'of the two'. Only one option has both.",
+    "trap": "\"Neither of the two candidates were selected.\" — the verb agrees with the plural candidates beside it instead of the singular subject, neither."
+  },
+  "sc4-since-versus-for": {
+    "shortcut": "Since needs a point in time, so every option with 'since five years' is out; three use it, leaving the one with 'for'.",
+    "trap": "\"I have been living here since five years.\" — its tense is right, which makes it look correct, but a stretch of time takes for, not since."
+  },
+  "sc4-scarcely-when": {
+    "shortcut": "Only 'no sooner', a comparative, takes than; scarcely and hardly are not comparatives and pair with when.",
+    "trap": "than — borrowed from 'no sooner … than', the pair most candidates learn first."
+  }
+}

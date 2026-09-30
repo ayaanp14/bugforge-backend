@@ -31,13 +31,15 @@ import { BANK_FINAL } from "./bank-final.js";
 import { BANK_EXTRA } from "./bank-extra.js";
 import { BANK_PSEUDOCODE } from "./bank-pseudocode.js";
 import { BANK_CORE_CS } from "./bank-core-cs.js";
+import { withExtras } from "./extras.js";
 
 /**
- * The whole aptitude bank, in the order topics appear in the syllabus.
+ * The whole aptitude bank, in the order topics appear in the syllabus, with
+ * each question's shortcut and trap from extras/*.json (extras.ts).
  * scripts/seed-aptitude.ts validates and upserts this; add a file here and
  * its questions are picked up automatically.
  */
-export const APTITUDE_QUESTIONS: AptitudeSeed[] = [
+export const APTITUDE_QUESTIONS: AptitudeSeed[] = withExtras([
   ...QUANT_ARITHMETIC,
   ...QUANT_APPLIED,
   ...LOGICAL,
@@ -70,4 +72,4 @@ export const APTITUDE_QUESTIONS: AptitudeSeed[] = [
   ...BANK_EXTRA,
   ...BANK_PSEUDOCODE,
   ...BANK_CORE_CS,
-];
+]);

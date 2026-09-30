@@ -1,6 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { briefingIndex } from "./assistant.js";
+import { freeForAll } from "../lib/plans.js";
 import type { RoadDefinition } from "./roadmap.js";
 import { isFollowUp, pickChunks, PICK_CHARS, renderChunks } from "../lib/assistant-index.js";
 
@@ -168,5 +169,14 @@ test("follow-ups are told apart from new questions", () => {
   }
   for (const q of ["is there a dark mode", "how do I reset my password", "what happens to my streak if I miss a day and then solve two problems"]) {
     assert.equal(isFollowUp(q), false, q);
+  }
+});
+
+// While the free-for-all period runs (lib/plans FREE_FOR_ALL_UNTIL) the plan
+// table opens with the offer, and "is everything free?" must land on it —
+// skipped once the period is over, when the paragraph is gone by design.
+test("\"is everything free right now\" is handed the free-for-all paragraph while it runs", { skip: !freeForAll().active && "the free-for-all period is over" }, () => {
+  for (const q of ["is everything free right now", "why is the pro plan free", "can I buy a plan", "when does the free period end"]) {
+    assert.match(briefingFor(q), /Free for everyone until 1 January 2027/, q);
   }
 });

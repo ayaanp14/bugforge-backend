@@ -197,6 +197,66 @@ export function isOwnerEmail(email: string | null | undefined, env: NodeJS.Proce
   return ownerEmails(env).has(email.trim().toLowerCase());
 }
 
+/* ── The free-for-all period ──────────────────────────────────────────── */
+
+/**
+ * Until this instant every account is treated as if it held the top of the
+ * ladder: every limit on every plan is lifted and nothing can be bought.
+ *
+ * Decided on 2026-10-01 — everything free for every user until 1 January.
+ * The plans stay listed (the pricing page shows what each will cost after
+ * the date) but activePlan() in services/entitlements hands every quota
+ * check the lifted entitlements, and POST /api/billing/checkout refuses, so
+ * nobody pays for what they already have. A subscription bought before the
+ * period keeps its row and resumes as bought when the period ends.
+ *
+ * Midnight IST, the product calendar (lib/clock.ts): "until 1 January"
+ * means the Indian 1 January, not 05:30 that morning. The same instant is
+ * written in frontend/src/content/free-for-all.ts for the copy that is
+ * baked at build time (FAQ, feature guide, meta description); the pricing
+ * page and the interview lobby read it from /api/billing instead.
+ */
+export const FREE_FOR_ALL_UNTIL = new Date("2027-01-01T00:00:00+05:30");
+
+export interface FreeForAll {
+  /** Whether the period is running at the instant asked about. */
+  active: boolean;
+  /** When it ends, ISO 8601 — the client formats it. */
+  until: string;
+  /** The end as people read it: "1 January 2027". */
+  untilLabel: string;
+}
+
+/** The date as it is read in India, where the calendar the product keeps runs. */
+export function freeForAllUntilLabel(): string {
+  return FREE_FOR_ALL_UNTIL.toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric", timeZone: "Asia/Kolkata" });
+}
+
+export function freeForAll(now: Date = new Date()): FreeForAll {
+  return { active: now.getTime() < FREE_FOR_ALL_UNTIL.getTime(), until: FREE_FOR_ALL_UNTIL.toISOString(), untilLabel: freeForAllUntilLabel() };
+}
+
+/** Every limit lifted — what the period gives each plan. The Elite ceiling, spelled out. */
+export const LIFTED_ENTITLEMENTS: PlanEntitlements = {
+  interviewsPerWeek: null,
+  voiceDurationsMin: [10, 20, 30],
+  bugsPerDay: null,
+  problemsPerDay: null,
+  duelsPerDay: null,
+  assistantMessagesPerDay: null,
+};
+
+/**
+ * The plan as it stands while the period runs: the same id, name and prices
+ * — a Pro subscriber is still on Pro until their date, and the pricing page
+ * still lists Starter at ₹199 — with every limit lifted. The owner plan is
+ * already unlimited and is returned as it is.
+ */
+export function withFreeForAll(plan: Plan, now: Date = new Date()): Plan {
+  if (plan.id === "owner" || !freeForAll(now).active) return plan;
+  return { ...plan, entitlements: LIFTED_ENTITLEMENTS };
+}
+
 const BY_ID = new Map(PLANS.map((plan) => [plan.id, plan]));
 
 export const FREE_PLAN = BY_ID.get("free") as Plan;

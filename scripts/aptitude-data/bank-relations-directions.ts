@@ -732,12 +732,15 @@ export const BANK_RELATIONS_DIRECTIONS: AptitudeSeed[] = [
     topic: "direction-sense",
     title: "Shadow on the left at sunrise",
     prompt: "At **sunrise**, a man's shadow falls to his **left**. Which direction is he facing?",
+    // The answer was stored as "South" with a solution that had the compass
+    // mirrored; with west on the left hand, north is ahead (found writing the
+    // extras, 2026-10-01).
     options: ["North", "South", "East", "West"],
-    answer: 1,
+    answer: 0,
     difficulty: "medium",
     hints: ["At sunrise the sun is in the east, so shadows point west.", "If west is on his left, what is ahead?"],
     solution:
-      "1. The sun rises in the east, so shadows fall towards the west.\n2. West is on his left, so facing that way means south is ahead.\n3. He faces **south**.\n\nAnswer: **South**.",
+      "1. The sun rises in the east, so shadows fall towards the west.\n2. Stand with west on your left hand: east is then on your right, and north is ahead.\n3. He faces **north**.\n4. Check: facing north, the rising sun in the east is on his right, so his shadow falls to his left. ✓\n\nAnswer: **North**.",
     approach: "Fix the sun's side first, so the shadow points the opposite way. Then rotate yourself until the shadow lands where the question puts it.",
     tags: ["shadows"],
     timeTargetSec: 75,

@@ -11,7 +11,7 @@ import "dotenv/config";
 import { prisma } from "../src/lib/prisma.js";
 import { APTITUDE_TOPICS, aptitudeTopic } from "../src/lib/aptitude-topics.js";
 import { APTITUDE_QUESTIONS } from "./aptitude-data/index.js";
-import { uncoveredTopics, validateAptitudeSeed } from "./aptitude-data/types.js";
+import { storedApproach, uncoveredTopics, validateAptitudeSeed } from "./aptitude-data/types.js";
 
 const args = process.argv.slice(2);
 const wants = (flag: string) => args.includes(flag);
@@ -52,7 +52,8 @@ async function seed() {
       difficulty: q.difficulty,
       hints: q.hints,
       solution: q.solution.trim(),
-      approach: q.approach.trim(),
+      // The idea, then the shortcut and the common trap (types.ts storedApproach).
+      approach: storedApproach(q),
       tags: q.tags ?? [],
       timeTargetSec: q.timeTargetSec ?? 90,
       orderIndex: index,

@@ -1,0 +1,522 @@
+{
+  "sc2-agreement-neither-nor": {
+    "shortcut": "Cover 'Neither the teacher nor' and read what is left: 'the students … present' can only take **were**. Among the four verbs (was, were, is, has been), were is the only plural form, so the choice is made without weighing the teacher at all.",
+    "trap": "\"Neither the teacher nor the students was present.\" — agreeing the verb with the first subject, the teacher, simply because it is read first; the verb must match the nearer noun, students."
+  },
+  "sc2-agreement-each-every": {
+    "shortcut": "Strike out 'of the boys' and only 'Each was given a prize' reads right. Two options use plural verbs (were, have) and one damages the noun (boy), leaving a single candidate.",
+    "trap": "\"Each of the boys were given a prize.\" — letting the plural boys, which sits right next to the verb, decide the agreement, when the subject is the singular Each."
+  },
+  "sc2-agreement-collective": {
+    "shortcut": "'Unanimously' signals the committee acting as one body, so the verb is singular — and **has** is the only singular verb among the options; have, are and were are all plural.",
+    "trap": "\"The committee have decided unanimously.\" — British usage allows a plural verb with a collective noun, so it sounds natural, but a body deciding unanimously is acting as one unit and takes the singular."
+  },
+  "sc2-agreement-one-of": {
+    "shortcut": "Find what 'who' refers to: students, not one, so the relative clause needs a plural verb. That removes 'who has passed'; 'the student' fails on number and 'whom' on case.",
+    "trap": "\"He is one of the students who has passed.\" — agreeing 'who' with the singular one, the subject of the main clause, instead of with students, the noun the clause actually describes."
+  },
+  "sc2-tense-since": {
+    "shortcut": "'Since + a point in time' with an action still going on demands a perfect form, and only one option contains 'has' or 'have' at all, so a scan for it finds the answer.",
+    "trap": "\"He is living here since 2015.\" — the present continuous carried over from Hindi ('2015 se yahan rah raha hai') and common in Indian English; with 'since' and an ongoing action, English needs 'has been living'."
+  },
+  "sc2-tense-past-perfect": {
+    "shortcut": "Keep the later action (reached) in the simple past and look for 'had already left' beside it. One option has 'had' on the wrong clause and another pairs 'had left' with the present 'reach'; only one has both parts right.",
+    "trap": "\"When I reached the station, the train already left.\" — two simple pasts sound like a natural story, but they blur the order; the train leaving came first, so it needs 'had left'."
+  },
+  "sc2-tense-conditional": {
+    "shortcut": "'If I were you' is a fixed hypothetical formula that always pairs with 'would'. Two options have 'were', and 'will' knocks one of them out.",
+    "trap": "\"If I was you, I would accept the offer.\" — 'I was' is the normal past of 'be' and common in speech, but a hypothetical condition takes the subjunctive 'were' for every subject."
+  },
+  "sc2-tense-by-the-time": {
+    "shortcut": "'By the time' sets a deadline: the main clause takes 'will have + participle' and the time clause stays in the plain present ('we arrive'). Only one option pairs those two forms.",
+    "trap": "\"By the time we arrive, the film will start.\" — the simple future suggests the film starts after arrival; 'by the time' means the starting is complete before then, which needs 'will have started'."
+  },
+  "sc2-preposition-different-from": {
+    "shortcut": "Pair the adjective with its verb: things 'differ from' each other, so they are 'different from'. That removes 'than' and 'to … than' at once, and 'differing' is the wrong form.",
+    "trap": "\"His answer is different than mine.\" — common in American speech and it sounds like an ordinary comparison, but formal English, which these papers test, uses 'different from'."
+  },
+  "sc2-preposition-comply-with": {
+    "shortcut": "Think of the noun: 'compliance with the rules'. The preposition carries over to the verb, so 'comply with' is the only possible form; to, of and for never follow comply.",
+    "trap": "\"The company must comply to the rules.\" — borrowed from 'conform to' or 'adhere to', which mean much the same thing, but comply takes 'with'."
+  },
+  "sc2-preposition-superior-to": {
+    "shortcut": "Swap in 'better': 'better than the old one' becomes 'superior to the old one'. Superior already means better, so 'than' and 'more' both go and only 'superior to' survives.",
+    "trap": "\"This model is superior than the old one.\" — treating superior like an ordinary comparative such as better, which takes 'than'; the -ior words take 'to'."
+  },
+  "sc2-article-a-an": {
+    "shortcut": "Sound the noun, not the spelling: university and unique begin with a 'y' sound and take a; hour begins with a vowel sound and takes an. Only 'a university' matches.",
+    "trap": "\"He is an university student.\" — choosing 'an' because university begins with the vowel letter u; the article follows the sound, and 'yoo' is a consonant sound."
+  },
+  "sc2-article-the": {
+    "shortcut": "A superlative always needs 'the', so look for 'the best': only one option has it, and that option also keeps 'the class'.",
+    "trap": "\"He is best student in the class.\" — dropping the article, as spoken Indian English often does before a superlative; best singles out one student and requires 'the'."
+  },
+  "sc2-parallel-not-only": {
+    "shortcut": "'Not only' is followed by a bare verb (sings), so 'but also' must be followed by a bare verb (dances). That rules out the extra 'she', the stray 'also well' and the misplaced 'Not only she'.",
+    "trap": "\"She not only sings but also she dances.\" — repeating the subject sounds emphatic, but it turns the second half into a full clause while the first half is just a verb."
+  },
+  "sc2-parallel-list": {
+    "shortcut": "The first two items, accuracy and patience, are nouns, so the third must be a noun too: punctuality. Every option containing 'being' or 'to be' mixes forms and is out.",
+    "trap": "\"The job requires accuracy, patience and being punctual.\" — the gerund phrase reads smoothly in speech, but it breaks the run of nouns; 'punctuality' keeps the list parallel."
+  },
+  "sc2-modifier-walking": {
+    "shortcut": "Ask 'who was walking?' and check the noun straight after the comma. Flowers and 'the beauty' cannot walk, and the fourth option hangs the phrase on the flowers again; only 'she' can do the walking.",
+    "trap": "\"Walking through the park, the flowers looked beautiful.\" — the meaning is obvious, so the error slips past, but grammatically it says the flowers were walking through the park."
+  },
+  "sc2-modifier-only": {
+    "shortcut": "Add 'and nobody else' after the word 'only' governs: 'Only she (and nobody else) was given the prize' fits the brief, while 'only the prize (and nothing else)' and 'only given (not sold)' limit other things.",
+    "trap": "\"She was only given the prize.\" — the everyday position of 'only', so it sounds natural, but it limits the verb (she was merely given it), not the recipient."
+  },
+  "sc2-pronoun-case": {
+    "shortcut": "'Between' is a preposition, so every pronoun after it is an object form: me, him, her, us, them. That removes both options with 'I', and 'myself' has no earlier 'I' to reflect.",
+    "trap": "\"Between you and I, the plan is flawed.\" — hypercorrection: 'you and I' is taught as the polite form, so it gets used everywhere, including after a preposition, which needs 'me'."
+  },
+  "sc2-pronoun-agreement": {
+    "shortcut": "'They own' and 'theirs own' are ungrammatical in any register, so the real choice is 'their' against 'his or her'. Everyone takes a singular verb ('everyone is'), and the formal rule tested here keeps the pronoun singular too.",
+    "trap": "\"Everyone must bring their own pen.\" — singular 'their' is normal in modern usage, so it sounds right, but placement papers still test the formal singular 'his or her'."
+  },
+  "sc2-double-negative": {
+    "shortcut": "Count the negatives: 'not' plus 'nobody' makes two, which removes both 'nobody' options. Of the two with 'anybody', 'did not saw' fails because 'did' is always followed by the base form.",
+    "trap": "\"I did not saw anybody in the hall.\" — it fixes the double negative, so it looks corrected, but it marks the past twice; after 'did' the verb stays 'see'."
+  },
+  "sc2-reported-speech": {
+    "shortcut": "Run three quick checks: 'was going' removes 'is going', 'the next day' removes 'tomorrow', and 'said' removes 'says'. One option passes all three.",
+    "trap": "\"He said that he was going to Delhi tomorrow.\" — the tense is shifted back but 'tomorrow' is kept, which only makes sense on the speaker's own day; reported speech needs 'the next day'."
+  },
+  "sc2-active-passive": {
+    "shortcut": "Passive = 'be' in the original tense + the past participle. Prepared is simple past, so the passive is 'was prepared' — the only option with both the past 'was' and the full participle.",
+    "trap": "\"The meal is prepared by the chef.\" — the passive structure is right but the tense has drifted to the present; the active 'prepared' is past, so the passive needs 'was'."
+  },
+  "sc2-redundancy": {
+    "shortcut": "The prefix re- already means 'again', so any option adding 'again', 'once more' or a second re- repeats itself. Here the shortest option is the correct one.",
+    "trap": "\"Please repeat that again.\" — a common spoken phrase, so it sounds normal, but repeat already contains the idea of 'again'."
+  },
+  "sc2-comparison-incomplete": {
+    "shortcut": "Put the same noun on both sides: climate against climate. 'That of Shimla' is the only option that supplies the second climate while keeping 'The climate of Delhi' intact; 'more hotter' is a double comparative.",
+    "trap": "\"The climate of Delhi is hotter than Shimla.\" — the intended meaning is clear, so it passes a quick read, but it compares a climate with a town; 'that of' supplies the missing climate."
+  },
+  "sc2-comparison-double": {
+    "shortcut": "Better is already the comparative of good, so it cannot take 'more' or 'the more'; 'more good' fails because good has an irregular comparative. One option is left.",
+    "trap": "\"This book is more better than that one.\" — adding 'more' for emphasis, as speech often does; better is already comparative, so 'more' doubles it."
+  },
+  "sl2-connector-contrast": {
+    "shortcut": "Mark the halves + and −: training hard (+), failing to reach the final (−). A change of sign needs a contrast word, and 'nevertheless' is the only contrast connector among the four.",
+    "trap": "\"therefore\" — 'trained hard' primes a result word, but the outcome goes against the effort, so the link is contrast, not consequence."
+  },
+  "sl2-connector-result": {
+    "shortcut": "Unsafe bridge → closed: the second half happened because of the first. 'However', 'otherwise' and 'nonetheless' all signal contrast or an alternative; 'accordingly' is the only result word.",
+    "trap": "\"however\" — the most familiar connector after a semicolon and often picked by reflex, but it signals contrast, while the closure follows directly from the danger."
+  },
+  "sl2-connector-addition": {
+    "shortcut": "Both halves are drawbacks of the scheme, so the second piles on to the first. 'however', 'instead' and 'otherwise' each turn the argument; only 'furthermore' continues it.",
+    "trap": "\"however\" — 'expensive' followed by 'will take years' can feel like a turn, but both are objections pointing the same way, so the connector must add, not contrast."
+  },
+  "sl2-blank-single-word": {
+    "shortcut": "Scanty, missing and doubtful all say the same thing — weak evidence — so none of them can be uniquely right. The odd one out, 'overwhelming', is also the only word that makes an acquittal surprising after 'Despite'.",
+    "trap": "\"doubtful\" — 'doubtful evidence' sounds legal and apt beside an acquittal, but it explains the verdict instead of clashing with it, which 'Despite' requires."
+  },
+  "sl2-blank-two-words": {
+    "shortcut": "'dull … tedious' and 'acclaimed … satisfying' agree with themselves and 'brief … short' repeats itself, so all three go. Only 'acclaimed … disappointing' sets the praise against the critics' own verdict, the tension that 'Although' and 'strangely' point to.",
+    "trap": "\"acclaimed … satisfying\" — acclaimed is the right first word, so the pair looks half-proved, but a satisfying ending agrees with the acclaim and leaves 'Although' nothing to contrast."
+  },
+  "sl2-blank-cause-word": {
+    "shortcut": "Put the plain word 'convincing' in the blank and pick the option closest to it: cogent. Weak and obscure are its opposites, and length has nothing to do with persuading anyone.",
+    "trap": "\"lengthy\" — a long argument can sound thorough and forceful, so it seems to explain winning opponents over, but length says nothing about whether an argument convinces."
+  },
+  "sl2-blank-negative-word": {
+    "shortcut": "Knowing 'brusque' is not needed: approachable, cheerful and patient are all qualities that would invite concerns, so each fails and elimination leaves brusque (curt, abrupt).",
+    "trap": "\"patient\" — the least warm of the three positive words, so it can pass for reserved or distant, but a patient manager would encourage staff to speak up, not discourage them."
+  },
+  "sl2-para-jumble-bicycle": {
+    "shortcut": "Two options open with P, whose 'They' has no noun to point back to, so both go. Between the two starting with Q, 'first' (P) must come before 'Later' (S): Q P S R.",
+    "trap": "\"Q S P R\" — the right opener, but 'Later they were bred…' is placed before 'They were used first…'; the time markers demand first, then later, then today."
+  },
+  "sl2-para-jumble-tea": {
+    "shortcut": "P begins with 'It', which needs tea already named, so both options starting with P fall. Then 'soon spread' (P) must precede 'By the seventeenth century' (S): Q P S R.",
+    "trap": "\"Q S P R\" — jumping from the origin straight to the dated Europe sentence; 'It soon spread along trade routes' must come right after Q, since 'soon' ties it to the first drinking in China."
+  },
+  "sl2-blank-vocabulary-fit": {
+    "shortcut": "Look for the opposite of 'omitting': vague and hurried both imply leaving things out, and biased is about fairness, not completeness. Meticulous is the only word about thoroughness.",
+    "trap": "\"biased\" — witness accounts are often called biased, so it reads naturally, but bias concerns slant, not completeness, and the sentence praises the account for leaving nothing out."
+  },
+  "sl2-blank-pair-cause": {
+    "shortcut": "'Because' needs cause and effect pointing the same way. Only a negative first word can produce 'harder', and 'confusing' is the only negative first word — so 'confusing … harder' without testing the rest.",
+    "trap": "\"detailed … harder\" — very detailed instructions can feel overwhelming, so the pair seems to follow, but detail normally makes assembly easier, so the 'Because' link does not hold."
+  },
+  "sl2-connector-example": {
+    "shortcut": "Delhi withdrawing old diesel cars is itself a ban on older vehicles, so the second half agrees with the first. That rules out all three opposing connectors (in contrast, nevertheless, conversely) at once.",
+    "trap": "\"in contrast\" — 'several cities' against one named city looks like a comparison, but Delhi did exactly what the other cities did, so nothing is being contrasted."
+  },
+  "cd2-teacher-plus-two": {
+    "shortcut": "With the +2 shift fixed, check only the letters where the options differ: I+2 = K (third), L+2 = N (fourth) and N+2 = P (last). EJKNFTGP is the only option passing all three.",
+    "trap": "\"EJKNFTGO\" — shifting the final N by one place instead of two after seven correct steps; N + 2 = P."
+  },
+  "cd2-madras-plus-one": {
+    "shortcut": "The options differ only at letters 2, 3 and 6: O+1 = P, M+1 = N and Y+1 = Z. CPNCBZ is the only option with all three.",
+    "trap": "\"CPNCBY\" — copying Y unchanged because it sits at the end of the alphabet; Y + 1 is Z, and only Z itself would wrap round."
+  },
+  "cd2-friend-plus-two": {
+    "shortcut": "Check only where the options differ: A+2 = C (second), N+2 = P (third), D+2 = F (fourth) and E+2 = G (last). ECPFNG passes every check.",
+    "trap": "\"ECPGNF\" — every shift done correctly but F and G written in each other's places (fourth and sixth), a transcription slip that is easy to miss because the letters themselves are right."
+  },
+  "cd2-sister-minus-one": {
+    "shortcut": "Letters 2 and 4 settle it: N−1 = M and L−1 = K. TMBKD is the only option with both; VOBKD shifts forward and goes at a glance.",
+    "trap": "\"TMBLD\" — leaving the fourth letter L unchanged in the middle of a run of −1 shifts; L − 1 = K."
+  },
+  "cd2-delhi-minus-one": {
+    "shortcut": "U−1 = T, A−1 = Z and I−1 = H separate the options: LTLAZH is the only one with T, Z and H in place, and NVNCBJ, the +1 code, goes first.",
+    "trap": "\"NVNCBJ\" — applying the shift in the wrong direction; DELHI → CDKGH moves each letter back one place, so M becomes L, not N."
+  },
+  "cd2-mouse-plus-three": {
+    "shortcut": "Check the letters where the options differ: S+3 = V (first), H+3 = K (second), T+3 = W (last). VKLIW is the only option passing all three.",
+    "trap": "\"VKLIV\" — shifting the final T by only two places, to V, after four correct +3 steps; T + 3 = W."
+  },
+  "cd2-road-plus-three": {
+    "shortcut": "The options differ at the first, second and last letters: S+3 = V, W+3 = Z and N+3 = Q. Only VZDQ has all three.",
+    "trap": "\"VYDQ\" — counting W itself as the first of the three steps (W, X, Y); counting starts at the next letter, X, Y, Z, so W becomes Z."
+  },
+  "cd2-sand-plus-one": {
+    "shortcut": "The options differ at B (C or D), I (J or K) and D (E or F). With +1, B→C, I→J and D→E, so CJSE is the only fit.",
+    "trap": "\"CJSF\" — moving the last letter D two places to F; D + 1 = E. The first three letters being right makes the final slip easy to miss."
+  },
+  "cd2-dog-plus-two": {
+    "shortcut": "A+2 = C and T+2 = V settle it: ECV is the only option with C in the middle and V at the end.",
+    "trap": "\"EBV\" — shifting A by only one place, to B; DOG → FQI moves every letter two places, so A becomes C."
+  },
+  "cd2-tripple-minus-one": {
+    "shortcut": "EJTQPTF is the +1 code and goes at once. Among the rest only the fifth and last letters differ: O−1 = N and E−1 = D, which gives CHRONRD.",
+    "trap": "\"CHRONRE\" — copying the final E unchanged after six correct shifts; E − 1 = D."
+  },
+  "cd2-noida-plus-one": {
+    "shortcut": "The options differ at the first (D or E), third (L or M) and last (H or J) letters. D+1 = E, L+1 = M and I+1 = J give EFMIJ.",
+    "trap": "\"EFMIH\" — shifting the final I backwards to H; every letter in NOIDA → OPJEB moves forward, so I becomes J."
+  },
+  "cd2-position-shift-house": {
+    "shortcut": "With shifts of +1 to +5 by position, check only the letters where the options differ: T+1 = U, B+3 = E and E+5 = J. UCEPJ is the only option passing all three.",
+    "trap": "\"UCEPI\" — reusing the fourth position's +4 on the fifth letter; the fifth shift is +5, so E becomes J, not I."
+  },
+  "cd2-computer-reverse-shift": {
+    "shortcut": "The code must start with MEDICINE's last letter (E) and end with its first (M), which removes MFEJDJOF and EOJDJEFN. Of the two left, the fifth letter of the reversed word is I, so its code is J.",
+    "trap": "\"MFEJDJOF\" — applying the +1 shift but forgetting the reversal; RFUVQNPC begins with COMPUTER's last letter R, so the code must begin with MEDICINE's last letter E."
+  },
+  "cd2-letter-sum-cat": {
+    "shortcut": "Once the sum rule checks out, the units digit decides: P (16) + I (9) + G (7) has units 6 + 9 + 7 = 22 → 2, and only 32 ends in 2.",
+    "trap": "\"31\" — taking P as the 15th letter (that is O); P is the 16th, and 16 + 9 + 7 = 32."
+  },
+  "cd2-word-length-minus-one": {
+    "shortcut": "Codes this small cannot be letter sums, so count letters: GOVERNMENT = GOVERN (6) + MENT (4) = 10, and the pattern takes one away, giving 9.",
+    "trap": "\"10\" — counting GOVERNMENT's letters and stopping there, forgetting that each example's code is one less than its length."
+  },
+  "cd2-digit-substitution-rose": {
+    "shortcut": "SEARCH contains PREACH's 'EA' and ends in its 'CH', and PREACH is 961473, so the code must contain 14 and end in 73. Only 214673 does both.",
+    "trap": "\"214763\" — swapping R and C near the end, as if the word were SEACRH; R = 6 comes before C = 7."
+  },
+  "cd2-digit-substitution-pale": {
+    "shortcut": "P = 2 and E = 4 fix the opening 24, which already removes 215394; the code stops at L = 3 because PEARL has only five letters, leaving 24153.",
+    "trap": "\"241539\" — it opens with the correct 2415, so a candidate matching only the first few digits picks it; it has six digits for a five-letter word."
+  },
+  "cd2-digit-substitution-ripple": {
+    "shortcut": "PILLER begins with RIPPLE's P and I (3, 1) and ends with R (6), so the code is 31 _ _ _ 6 — this removes 318862 and 381826. The middle L, L, E = 8, 8, 2 then picks 318826 over 318286.",
+    "trap": "\"318862\" — reversing the last two letters, as if the word ended in RE like RIPPLE's LE; PILLER ends E then R, so 2 then 6."
+  },
+  "cd2-digit-substitution-paint": {
+    "shortcut": "ACCEPT ends in PT, which PAINT codes as 78, and has CC = 55 in second and third place (EXCEL gives C = 5). Only 455978 has both 455 at the front and 78 at the end.",
+    "trap": "\"455798\" — putting P = 7 before E = 9, as if the word were ACCPET; the fourth letter is E, so 9 comes before 7."
+  },
+  "cd2-digit-substitution-lose": {
+    "shortcut": "SLAIN ends in AIN, the last three letters of GAIN (2468), so the code ends in 468; S = 5 and L = 1 from LOSE then put 51 in front: 51468.",
+    "trap": "\"15468\" — writing L before S because LOSE lists L first; SLAIN starts with S, so 5 comes first."
+  },
+  "cd2-substitution-language-play": {
+    "shortcut": "'play' appears only in sentences 2 and 3, and the one code word those two share is 'ma'. Sentence 1 is not needed at all.",
+    "trap": "\"pa\" — pa appears in sentences 1 and 3, whose shared English word is 'you', not 'play'; picking it comes from intersecting the wrong pair of sentences."
+  },
+  "cd2-substitution-language-good": {
+    "shortcut": "Eliminate by count: 'nik', 'pa' and 'la' each occur in only one sentence, but 'good' occurs in both, so none of them can mean it. Only 'ka' appears twice.",
+    "trap": "\"pa\" — matching by position: 'good' is the last English word and 'pa' the last code word in 'nik ka pa'; a code need not keep English word order."
+  },
+  "cd2-symbol-arithmetic-one": {
+    "shortcut": "Only two operations need BODMAS after rewriting: 12 ÷ 6 = 2 and 3 × 2 = 6. What remains, 2 − 6 + 8, is quickest regrouped as 2 + 8 − 6 = 4.",
+    "trap": "\"6\" — working strictly left to right after substituting: 12 ÷ 6 = 2, 2 − 3 = −1, −1 × 2 = −2, −2 + 8 = 6; the multiplication 3 × 2 must come before the subtraction."
+  },
+  "cd2-symbol-arithmetic-two": {
+    "shortcut": "Simplify the division first: 12 ÷ 4 = 3, so 18 × 3 = 54, and the tail + 5 − 6 is a net −1, giving 53.",
+    "trap": "No option comes from a single natural slip. 57 is the likeliest wrong pick: a candidate who reaches 54 and misreads the tail 'R 5 S 6' as a small gain grabs the nearest larger option, but + 5 − 6 is a net loss of 1."
+  },
+  "cd2-symbol-arithmetic-three": {
+    "shortcut": "Only the middle block needs care: 4 ÷ 2 × 3 runs left to right to 6 (not 4 ÷ 6). The outer 6 and − 5 net to +1, so the answer is 6 + 1 = 7.",
+    "trap": "\"11\" — turning × into + and then leaving the original + as addition instead of changing it to ÷: 6 + 4 + 2 × 3 − 5 = 11."
+  },
+  "cd2-number-pattern-n-n-plus-one": {
+    "shortcut": "The outputs rise by 12 and then 14, so the next rise is 16: 56 + 16 = 72, with no need to name the rule.",
+    "trap": "\"64\" — seeing 8 and reaching for 8² by reflex; the examples fail that test at once, since 7 maps to 56, not 49."
+  },
+  "cd2-number-pattern-small": {
+    "shortcut": "The outputs 6, 12, 20 rise by 6 and then 8, so the next rise is 10: 20 + 10 = 30.",
+    "trap": "\"25\" — squaring 5 by reflex; the examples rule that out immediately, since 2 maps to 6, not 4."
+  },
+  "cd2-alphabet-odd-values": {
+    "shortcut": "Anchor on E, the 5th letter, whose value is 9. I is four letters after E and each step adds 2, so I = 9 + 8 = 17.",
+    "trap": "\"19\" — using 2n + 1 instead of 2n − 1 (18 + 1), or counting I as the 10th letter; A = 1 shows the rule takes one away from double the position."
+  },
+  "cd2-alphabet-sum-cab": {
+    "shortcut": "CAB uses each of the first three letters once, so the value is 1 + 2 + 3 = 6 whatever the order of the letters.",
+    "trap": "\"5\" — valuing A at 0, as zero-based indexing would, which gives 3 + 0 + 2 = 5; the question fixes A = 1."
+  },
+  "cd2-alphabetical-order": {
+    "shortcut": "A and E clearly come before the rest, so the fourth letter is the second of M, R, S, T — that is R.",
+    "trap": "\"S\" — overlooking the E near the end of MASTER and sorting only A, M, R, S, T, which makes S the fourth."
+  },
+  "cd2-reverse-word-code": {
+    "shortcut": "A reversal ends with the original's first letter and puts the original's second letter fourth, so the code must end in N, I. Only AIDNI ends that way.",
+    "trap": "\"AIDIN\" — reversing correctly until the last two letters and then writing them in INDIA's original order (I, N) instead of reversed (N, I)."
+  },
+  "cd2-opposite-letters": {
+    "shortcut": "The example already shows A→Z. B and D are one and three steps in from A, so their opposites are one and three steps back from Z: Y and W, giving YZW.",
+    "trap": "\"YZX\" — stopping one short for D and taking X, which is C's opposite; D is the 4th letter, so its opposite is the 4th from the end, W."
+  },
+  "cd2-mixed-shift-two-halves": {
+    "shortcut": "The options differ at C (D or E), H (I or H) and R (S or T). A +1 shift gives D, I and S, so DIBJS is the only fit.",
+    "trap": "\"DHBJS\" — leaving H unchanged, a skipped letter in a run of +1 shifts; H + 1 = I."
+  },
+  "cd2-code-for-number-word": {
+    "shortcut": "Decode just the ends: T − 1 = S and U − 1 = T. Only SEAT starts with S and ends with T; REST, TEAM and SEAL each fail one end.",
+    "trap": "\"TEAM\" — the code starts with T, and a candidate who decodes F → E and B → A and then guesses a word keeps that T; every letter moves back one, so the word begins with S."
+  },
+  "cd2-decode-minus-two": {
+    "shortcut": "Decode the two letters that separate the options: H − 2 = F and F − 2 = D. Only FOOD starts with F and ends with D.",
+    "trap": "\"GOOD\" — taking only one step back from H, to G, a slip made easier because GOOD is such a common word; the shift is two, so H becomes F."
+  },
+  "cd2-count-letters-between": {
+    "shortcut": "Use the EJOTY anchors (E 5, J 10, O 15, T 20, Y 25): T is 20, eight to the left is 12, and two after J (10) is L.",
+    "trap": "\"M\" — counting T itself as the first of the eight steps (T, S, R, Q, P, O, N, M); the count starts at S, so it lands on L."
+  },
+  "cd2-letter-from-right": {
+    "shortcut": "The 7th from the right sits six places back from Z: 26 − 6 = 20, and 20 is T by the EJOTY anchors (E 5, J 10, O 15, T 20, Y 25).",
+    "trap": "\"S\" — computing 26 − 7 = 19; Z itself is the first letter from the right, so the 7th is only six places back from it."
+  },
+  "pnc2-arrange-leader": {
+    "shortcut": "Place the two E's first: choose their positions in C(6,2) = 15 ways, then arrange L, A, D, R in the other four in 4! = 24 ways. 15 × 24 = 360.",
+    "trap": "\"720\" — computing 6! as if the two E's were different letters; swapping them gives the same word, so every arrangement is counted twice."
+  },
+  "pnc2-arrange-mathematics": {
+    "shortcut": "Read the options: 39,916,800 is 11! itself and 9,979,200 is 11! ÷ 4. Three repeated pairs need a divisor of 8, so the answer is half of 9,979,200: 4,989,600.",
+    "trap": "\"9,979,200\" — spotting only two of the repeated pairs (usually M and A, missing the second T) and dividing 11! by 4 instead of 8."
+  },
+  "pnc2-vowels-together": {
+    "shortcut": "A random arrangement puts the three vowels in the three odd places with chance 1/C(6,3) = 1/20, so the count is 720 ÷ 20 = 36.",
+    "trap": "\"720\" — ignoring the restriction and counting every arrangement of DETAIL, 6!; the odd-position rule leaves only 3! × 3!."
+  },
+  "pnc2-word-together-block": {
+    "shortcut": "O and A fill 2 of 6 positions, and 5 of the C(6,2) = 15 position pairs are adjacent, so one arrangement in three keeps them together: 720 ÷ 3 = 240.",
+    "trap": "\"120\" — gluing O and A into one block and arranging 5! = 120 units, but forgetting that the block can read OA or AO."
+  },
+  "pnc2-committee-3-from-5-4": {
+    "shortcut": "C(5,2) is the handshake count for 5 people, 10, and exactly two men leaves one seat for any of the 4 women: 10 × 4 = 40.",
+    "trap": "\"84\" — computing C(9,3), every committee of 3 from the 9 people, and dropping the 'exactly 2 men' condition."
+  },
+  "pnc2-committee-at-least-two-women": {
+    "shortcut": "Cross-check from the other side: C(7,3) = 35 committees in all, 4 with no woman and 3 × 6 = 18 with one, so 35 − 22 = 13.",
+    "trap": "\"12\" — counting only committees with exactly 2 women (3 × 4) and forgetting the all-women committee that 'at least 2' also includes."
+  },
+  "pnc2-handshakes-45": {
+    "shortcut": "Back-substitute with n(n − 1)/2: 10 gives 10 × 9 ÷ 2 = 45 exactly, while 9 gives 36 and 11 gives 55.",
+    "trap": "\"9\" — spotting 9 × 10 = 90 and taking the smaller factor; with n guests each shakes n − 1 hands, so n is the larger factor, 10."
+  },
+  "pnc2-diagonals-octagon": {
+    "shortcut": "Diagonal counts for 4 to 8 sides run 2, 5, 9, 14, 20 — each extra side adds one more than the step before (+3, +4, +5, +6).",
+    "trap": "\"28\" — counting every line joining two vertices, C(8,2) = 28, and forgetting that 8 of those lines are sides, not diagonals."
+  },
+  "pnc2-three-digit-no-repeat-with-zero": {
+    "shortcut": "Count all ordered picks, 6 × 5 × 4 = 120, then remove those led by 0: 0 _ _ leaves 5 × 4 = 20. 120 − 20 = 100.",
+    "trap": "\"120\" — treating all six digits alike, 6 × 5 × 4, and so counting strings like 012 that are really two-digit numbers."
+  },
+  "pnc2-even-three-digit": {
+    "shortcut": "Of the 5 × 4 × 3 = 60 three-digit numbers, each of the 5 digits ends an equal share, and 2 of them are even: 60 × 2/5 = 24.",
+    "trap": "\"36\" — counting the odd units digits (1, 3, 5) instead of the even ones: 3 × 4 × 3 = 36 is the number of odd numbers."
+  },
+  "pnc2-circular-eight": {
+    "shortcut": "Divide the row count by the number of seats: 8! ÷ 8 = 40,320 ÷ 8 = 5,040, since each circular seating appears 8 times as a rotation.",
+    "trap": "\"40,320\" — using 8! as for a row; around a table the 8 rotations of one seating are the same arrangement."
+  },
+  "pnc2-garland": {
+    "shortcut": "Start from 6! = 720 and divide by 6 rotations and 2 flips at once: 720 ÷ 12 = 60.",
+    "trap": "\"120\" — treating the garland like a round table, (6 − 1)! = 120, without halving for the fact that it can be turned over."
+  },
+  "pnc2-select-balls": {
+    "shortcut": "Three balls of different colours with only three colours means one of each, so no C(15,3) is needed: 4 × 5 = 20, then 20 × 6 = 120.",
+    "trap": "No option comes from a clean slip; 60 is the most tempting, as halving 120 feels natural to a candidate used to removing order, but one ball from each colour group has no order to remove."
+  },
+  "pnc2-ncr-value": {
+    "shortcut": "Cancel before multiplying: 9 ÷ 3 = 3 and 8 ÷ 2 = 4, leaving 10 × 3 × 4 = 120.",
+    "trap": "\"720\" — multiplying 10 × 9 × 8 and forgetting to divide by 3!; that is P(10,3), the ordered count."
+  },
+  "pnc2-npr-value": {
+    "shortcut": "Take 6! = 720 and divide by 3! = 6 for the three unused places: 720 ÷ 6 = 120.",
+    "trap": "\"216\" — using 6³, which lets the same item be used again; a permutation takes each item at most once, so 6 × 5 × 4."
+  },
+  "pnc2-books-on-shelf": {
+    "shortcut": "A block of 4 on a 7-slot shelf can start in 4 places; then 4! orders inside the block and 3! for the physics books: 4 × 24 × 6 = 576.",
+    "trap": "\"144\" — arranging the maths books (4!) and the physics books (3!) but forgetting that the maths block itself can sit in 4 different places."
+  },
+  "pnc2-select-at-least-one": {
+    "shortcut": "Write each selection as a 5-bit in/out string: they run from 00001 to 11111, which is 1 to 31 in binary, so there are 31 non-empty selections.",
+    "trap": "\"32\" — counting all 2⁵ subsets and forgetting that one of them is the empty selection, which 'one or more' rules out."
+  },
+  "pr2-two-dice-sum-eight": {
+    "shortcut": "Sum 8 sits one step from the peak at 7, which has 6 ways, so it has 5: 5/36. Sums equally far from 7, such as 6 and 8, always share a count.",
+    "trap": "\"1/6\" — listing (2,6), (3,5), (4,4) and doubling all three for order; (4,4) has no reverse, so the count is 5, not 6."
+  },
+  "pr2-two-dice-doublet": {
+    "shortcut": "Whatever the first die shows, the second must match it, which has probability 1/6 — no need to count the 36 outcomes.",
+    "trap": "\"1/3\" — counting each doublet twice, as if (3,3) had a reversed order like (2,5) and (5,2); each doublet is one outcome, so 6/36."
+  },
+  "pr2-card-face-card": {
+    "shortcut": "Work in one suit: 3 face cards (J, Q, K) out of 13, and every suit is the same, so 3/13 without counting to 52.",
+    "trap": "\"4/13\" — counting the ace with the jack, queen and king (16 cards); only jacks, queens and kings are face cards."
+  },
+  "pr2-card-queen-or-club": {
+    "shortcut": "Take the 13 clubs and add only the 3 queens that are not clubs: 16/52 = 4/13. Adding the outside queens avoids the overlap by construction.",
+    "trap": "\"17/52\" — adding 4 queens and 13 clubs without removing the queen of clubs, which is counted in both."
+  },
+  "pr2-two-cards-both-kings": {
+    "shortcut": "Count pairs: C(4,2) = 6 king pairs out of C(52,2) = 1,326 pairs, and 1,326 ÷ 6 = 221, so 1/221.",
+    "trap": "\"1/169\" — using 4/52 for both draws, as if the first king were put back; without replacement the second draw is 3/51."
+  },
+  "pr2-balls-two-red": {
+    "shortcut": "The second draw's 4/8 is exactly 1/2, so the answer is simply half the first draw's 5/9: 5/18.",
+    "trap": "\"5/9\" — stopping at the first draw's chance of red; both balls must be red, so it is multiplied by 4/8 for the second."
+  },
+  "pr2-balls-one-each": {
+    "shortcut": "Take one order and double it: white then black is 4/9 × 5/8 = 20/72, and black then white is the same, so 40/72 = 5/9.",
+    "trap": "\"5/18\" — counting only white-then-black, 4/9 × 5/8 = 5/18; black-then-white is equally likely, so the answer doubles to 5/9."
+  },
+  "pr2-three-coins-exactly-two": {
+    "shortcut": "Exactly two heads just means choosing which single coin shows tails: 3 choices out of 8 outcomes, 3/8.",
+    "trap": "\"1/2\" — counting 'at least two heads' (HHT, HTH, THH, HHH = 4/8); 'exactly two' excludes HHH."
+  },
+  "pr2-coin-all-tails": {
+    "shortcut": "No heads is the single outcome TTTT; halving once per coin gives 1/2 → 1/4 → 1/8 → 1/16.",
+    "trap": "\"1/8\" — stopping one halving short, which is the answer for three coins; four coins need (1/2)⁴ = 1/16."
+  },
+  "pr2-leap-year-53-mondays": {
+    "shortcut": "The two spare days are different weekdays, each a Monday with chance 1/7, and they cannot both be Monday, so the chances simply add: 1/7 + 1/7 = 2/7.",
+    "trap": "\"1/7\" — using the ordinary-year answer with one spare day; 366 = 52 weeks + 2 days, so a leap year has two spare days."
+  },
+  "pr2-ordinary-year-53-sundays": {
+    "shortcut": "Divide the days by 7 and put the remainder over 7: 365 = 7 × 52 + 1, so the probability is 1/7.",
+    "trap": "\"2/7\" — borrowing the leap-year answer; 365 = 52 × 7 + 1 leaves only one spare day, not two."
+  },
+  "pr2-at-least-one-solves": {
+    "shortcut": "Add and remove the overlap: 1/2 + 1/3 − 1/6 = 4/6 = 2/3. It must beat the better solver's 1/2 and stay below 1/2 + 1/3 = 5/6, and 2/3 is the only option that does.",
+    "trap": "\"5/6\" — adding 1/2 and 1/3 directly, which counts the case where both solve it twice; subtracting 1/6 gives 2/3."
+  },
+  "pr2-both-hit-target": {
+    "shortcut": "'Both' can never be likelier than either marksman alone, so 3/5 and 4/5 go at once; cancelling the 3s in 3/5 × 2/3 leaves 2/5.",
+    "trap": "\"3/5\" — taking the weaker marksman's probability as the chance both hit, as if one hitting guaranteed the other; independent events multiply, 3/5 × 2/3 = 2/5."
+  },
+  "pr2-number-divisible-by-5": {
+    "shortcut": "One number in every five is a multiple of 5, and 1 to 50 is a whole number of fives, so the probability is exactly 1/5 with no counting.",
+    "trap": "\"1/10\" — writing 5/50 by putting the divisor 5 on top instead of the count of multiples, which is 50 ÷ 5 = 10."
+  },
+  "pr2-prime-from-twenty": {
+    "shortcut": "Four primes among the single digits (2, 3, 5, 7) and four in the teens (11, 13, 17, 19): 8/20 = 2/5.",
+    "trap": "\"9/20\" — counting 1 as a prime, which makes nine; 1 has only one divisor and is not prime."
+  },
+  "pr2-tickets-multiple-of-3-or-5": {
+    "shortcut": "⌊20/3⌋ + ⌊20/5⌋ − ⌊20/15⌋ = 6 + 4 − 1 = 9, so 9/20; the only number up to 20 counted twice is 15.",
+    "trap": "\"1/2\" — adding 6 multiples of 3 and 4 multiples of 5 to get 10/20 without noticing that 15 was counted in both."
+  },
+  "pr2-two-children-both-girls": {
+    "shortcut": "Each child is a girl with probability 1/2 independently, so both are girls with probability 1/2 × 1/2 = 1/4; no list is needed.",
+    "trap": "\"1/3\" — listing only three cases (two boys, one of each, two girls) as if equally likely; 'one of each' happens two ways, BG and GB."
+  },
+  "pr2-defective-bulbs": {
+    "shortcut": "4 in 20 is 1 in 5 defective, so 4 in 5 are good: 4/5.",
+    "trap": "\"1/5\" — answering with the probability of a defective bulb, 4/20, when the question asks for one that is not defective."
+  },
+  "pr2-two-defective-from-box": {
+    "shortcut": "Draw one at a time and cancel: 7/10 × 6/9 = 7/10 × 2/3 = 14/30 = 7/15.",
+    "trap": "\"7/10\" — stopping at the first draw's chance of a good bulb; the second must be good too (6/9), which brings it down to 7/15."
+  },
+  "rc2-monsoon-main-idea": {
+    "shortcut": "The first sentence (two monsoons) and the last (total against distribution) frame the passage, and only one option covers both ends; each of the other three misstates a single detail.",
+    "trap": "\"Kerala receives most of India's annual rainfall.\" — the passage puts Kerala and 'three-quarters of the country's annual rainfall' in one sentence, but Kerala is only where the south-west monsoon arrives."
+  },
+  "rc2-monsoon-detail": {
+    "shortcut": "Scan for 'north-east': its sentence says it 'returns in October'. The June date and the six-week spread sit in the south-west monsoon's sentence.",
+    "trap": "\"Early June\" — the first date in the passage, but it belongs to the south-west monsoon's arrival in Kerala, not to the north-east monsoon's return."
+  },
+  "rc2-monsoon-inference": {
+    "shortcut": "Combine the last two claims: models predict totals well, but distribution decides crops. So a normal, correctly forecast total can still come with crop damage — only one option says that.",
+    "trap": "\"Forecasting models are no longer useful.\" — overreading the 'unfortunate' limitation; the passage says forecasting has 'improved markedly' and is merely weaker on distribution."
+  },
+  "rc2-sleep-main-idea": {
+    "shortcut": "'The practical consequence' flags the conclusion; pair it with 'That view has been overturned'. One option joins the two with 'so', and that is the claim.",
+    "trap": "\"Long working hours are the main cause of poor sleep.\" — it uses the passage's own themes, but reverses the logic: the passage says cutting sleep costs more than it gains, not that work causes poor sleep."
+  },
+  "rc2-sleep-detail": {
+    "shortcut": "The passage's list has three items, and three options repeat its verbs word for word (consolidates, clears, rehearses); the option with no matching verb is the answer.",
+    "trap": "\"Rehearses motor sequences\" — it sounds the most technical and least likely brain task, so a reader going on plausibility may pick it, yet it is quoted directly from the passage."
+  },
+  "rc2-sleep-tone": {
+    "shortcut": "'Uncomfortable' and 'reliably loses more than it gains' are negative judgments, which removes Approving and Indifferent; nothing in the passage is confused, so Bewildered goes too.",
+    "trap": "\"Indifferent\" — the passage is calm and evidence-based, so its measured tone can pass for no attitude at all, but calling the trade a reliable loss is a clear judgment."
+  },
+  "rc2-cities-main-idea": {
+    "shortcut": "Follow the 'once assumed … evidence suggests otherwise' pattern: the argument is the correction of the planners' assumption, with induced demand as the reason. Only one option gives both the correction and the reason.",
+    "trap": "\"Roads should never be built.\" — an extreme version that looks like the natural conclusion, but the passage says outright that the finding 'does not mean roads should never be built'."
+  },
+  "rc2-cities-term": {
+    "shortcut": "The sentence before 'Economists call this induced demand' is the definition: journeys 'previously not made at all' drawn in by extra capacity. Only one option mentions new journeys.",
+    "trap": "\"Demand created by advertising\" — 'induced' suggests something artificially stimulated, which outside knowledge links to marketing; the passage defines it as new journeys drawn in by added road capacity."
+  },
+  "rc2-cities-inference": {
+    "shortcut": "The chain is capacity → lower cost of driving → more journeys. The option that works on the cost of driving uses that same chain; the others deny the passage or add claims it never makes.",
+    "trap": "\"Congestion has no solution.\" — a pessimistic reading of 'cannot be engineered away', but the passage says only that supply alone will not do it, leaving other measures open."
+  },
+  "rc2-library-main-idea": {
+    "shortcut": "The question asks about change, so go straight to the 'no longer … ; they argue …' sentence: books out, a place to sit without buying in. Only one option names that swap.",
+    "trap": "\"It now rests on the cost of running libraries.\" — the passage mentions a small budget, so cost feels relevant, but the budget describes the library; it is not the new defence."
+  },
+  "rc2-library-tone": {
+    "shortcut": "Every detail chosen — a free service, open to all, a tiny budget, one of the few places to sit without buying — shows the library in a good light, and Sympathetic is the only positive option.",
+    "trap": "\"Neutral and statistical\" — the passage uses economic terms and makes no open appeal, so it can look detached, but it contains no statistics and its choice of details is warm."
+  },
+  "rc2-library-detail": {
+    "shortcut": "Three options add a new fact (donations, staff numbers, opening hours); the one that only rewords a sentence — 'regardless of what they can spend' — is the explicit mention.",
+    "trap": "\"They employ more staff than most companies.\" — the passage does compare the library with 'a mid-sized company', but on budget, not staff, and the comparison makes the library smaller, not bigger."
+  },
+  "rc2-antibiotic-main-idea": {
+    "shortcut": "Two options contradict the opening lines ('not a future risk', 'rather than of misuse alone') and one, 'no longer be prescribed', goes beyond the text. The survivor keeps both halves of the response.",
+    "trap": "\"Antibiotic resistance is caused only by misuse of drugs.\" — the popular view, and misuse is mentioned, but the passage says resistance comes from use 'rather than of misuse alone', with misuse only accelerating it."
+  },
+  "rc2-antibiotic-inference": {
+    "shortcut": "The last sentence makes both responses necessary: sparing use only delays, and only new drugs replace. An option that makes either one enough breaks the passage; the answer keeps sparing use insufficient on its own.",
+    "trap": "\"New antibiotics would make careful prescribing unnecessary.\" — the passage does say only new drugs can replace what is lost, but resistance follows from any use, so new drugs would be worn down too."
+  },
+  "rc2-antibiotic-detail": {
+    "shortcut": "Translate 'accelerates' as 'speeds up': only one option contains that verb, and its second half matches 'resistance is the predictable result of use'.",
+    "trap": "\"Is the sole cause of resistance\" — the common belief, which the passage names only to reject: resistance results from use 'rather than of misuse alone'."
+  },
+  "rc2-antibiotic-title": {
+    "shortcut": "The passage's key phrase is 'the predictable result of use', so the title must mention resistance. Only one option names resistance at all; the other three are about infections, history or prescribing.",
+    "trap": "\"How to Prescribe Medicines\" — the advice to use drugs 'more sparingly' touches on prescribing, but the passage gives no guidance on how to prescribe, and the title ignores resistance entirely."
+  },
+  "rc2-sleep-purpose": {
+    "shortcut": "The passage makes two moves — 'That view has been overturned' (a correction) and 'The practical consequence' (a conclusion). The option that names both moves is the purpose; the others describe content that is not there.",
+    "trap": "\"Recommend a specific number of hours of sleep\" — the warning against cutting sleep feels like advice, but the passage never gives a figure or a recommendation."
+  },
+  "rc2-monsoon-vocabulary": {
+    "shortcut": "Distribution is set against 'the total' in the same sentence, so it cannot mean the total, and the crop clause ties it to rainfall, not goods. That leaves how the rainfall is spread.",
+    "trap": "\"The total quantity of rainfall\" — rainfall is the passage's subject, so any rainfall option looks safe, but the sentence contrasts distribution with 'the total', so it cannot mean the same thing."
+  },
+  "rc2-cities-detail": {
+    "shortcut": "'Once assumed' appears only in the first sentence, which states the assumption word for word: widening a road would ease congestion.",
+    "trap": "\"That drivers respond to the cost of driving\" — true within the passage, but it is the evidence that overturned the planners' view, not the view itself."
+  },
+  "rc2-library-inference": {
+    "shortcut": "'One of the few remaining places' means such places were once commoner and are now scarce; the option saying they 'have become uncommon' restates it. The rest contradict the passage or go far beyond it.",
+    "trap": "\"Libraries no longer stock books.\" — a misreading of 'no longer argue chiefly about books': the defence has moved away from books, not the collection."
+  }
+}

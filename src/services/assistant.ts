@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { prisma } from "../lib/prisma.js";
 import { cached } from "../lib/cache.js";
-import { PLANS } from "../lib/plans.js";
+import { PLANS, freeForAll } from "../lib/plans.js";
 import { getDashboard } from "./dashboard.js";
 import { entitlementFor } from "./entitlements.js";
 import { providerConfig } from "./interview-ai.js";
@@ -60,8 +60,13 @@ const HANDBOOK = readFileSync(new URL("../../content/handbook.md", import.meta.u
 
 const fmtLimit = (n: number | null, unit: string) => (n === null ? `unlimited ${unit}` : `${n} ${unit}`);
 
-/** The plan table, as prose the model can quote. Generated: prices live in lib/plans.ts. */
-export function plansSection(): string {
+/**
+ * The plan table, as prose the model can quote. Generated: prices live in
+ * lib/plans.ts. While the free-for-all period runs it opens with the offer,
+ * so "is everything free?" lands here — the briefing is rebuilt every five
+ * minutes, which is how the paragraph goes away when the period ends.
+ */
+export function plansSection(now: Date = new Date()): string {
   const lines = PLANS.map((p) => {
     const e = p.entitlements;
     return [
@@ -70,7 +75,11 @@ export function plansSection(): string {
       `  Highlights: ${p.highlights.join("; ")}.`,
     ].join("\n");
   });
-  return `## Plans\n\nPrices are in Indian rupees. Yearly is ten months for twelve.\n\n${lines.join("\n")}`;
+  const offer = freeForAll(now);
+  const opening = offer.active
+    ? `**Free for everyone until ${offer.untilLabel}**: every limit on every plan is lifted for every account — unlimited mock interviews a week, voice rounds of 10/20/30 minutes, unlimited bug hunts a day — and nobody can buy a plan until then (checkout is paused; the plans below are what each will cost from ${offer.untilLabel}). A plan bought earlier keeps its dates and resumes as bought when the period ends.\n\n`
+    : "";
+  return `## Plans\n\n${opening}Prices are in Indian rupees. Yearly is ten months for twelve.\n\n${lines.join("\n")}`;
 }
 
 /** The road as seeded: tiers, chests and every stage. Generated from the same tables the roadmap page reads. */
@@ -170,6 +179,7 @@ async function buildAccountBlock(userId: string, email: string | null): Promise<
     todaysContestProblem: dash.dailyContest?.problem ? `[${dash.dailyContest.problem.title}](/problems/${dash.dailyContest.problem.slug}), ${dash.dailyContest.streak.solvedToday ? "solved today" : "not solved today"}` : null,
     plan: {
       name: ent.plan.name,
+      freeForAll: ent.freeForAll.active ? `every limit lifted for every account until ${ent.freeForAll.untilLabel}; nothing to buy until then` : null,
       interviewsThisWeek: `${ent.usage.interviewsThisWeek} of ${e.interviewsPerWeek ?? "unlimited"}`,
       bonusInterviews: ent.usage.interviewCredits,
       bugHuntsToday: `${ent.usage.bugsToday} of ${e.bugsPerDay ?? "unlimited"}`,

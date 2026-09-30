@@ -1,7 +1,7 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 
-import { FREE_PLAN, OWNER_PLAN, PLANS, isOwnerEmail, isPaidPlan, periodEnd, planFor, priceOf } from "./plans.js";
+import { FREE_FOR_ALL_UNTIL, FREE_PLAN, LIFTED_ENTITLEMENTS, OWNER_PLAN, PLANS, freeForAll, isOwnerEmail, isPaidPlan, periodEnd, planFor, priceOf, withFreeForAll } from "./plans.js";
 import { dayStart, weekStart } from "../services/entitlements.js";
 
 /**
@@ -190,5 +190,45 @@ describe("owner accounts", () => {
     assert.equal(PLANS.some((plan) => plan.id === "owner"), false);
     // A subscription row claiming "owner" grants nothing: only the allow-list does.
     assert.equal(planFor("owner").id, "free");
+  });
+});
+
+describe("free-for-all period", () => {
+  const before = new Date("2026-12-31T23:59:59+05:30");
+  const at = new Date("2027-01-01T00:00:00+05:30");
+
+  it("runs until midnight IST on 1 January 2027 and not a second longer", () => {
+    assert.equal(freeForAll(before).active, true);
+    assert.equal(freeForAll(at).active, false);
+    assert.equal(freeForAll(new Date("2026-10-01T00:00:00Z")).active, true);
+    // Midnight in India is still the previous evening in UTC: the instant is the Indian one.
+    assert.equal(FREE_FOR_ALL_UNTIL.toISOString(), "2026-12-31T18:30:00.000Z");
+    assert.equal(freeForAll(before).until, FREE_FOR_ALL_UNTIL.toISOString());
+  });
+
+  it("names the date the way it is read in India", () => {
+    assert.equal(freeForAll(before).untilLabel, "1 January 2027");
+  });
+
+  it("lifts every limit on every listed plan while it runs, keeping the plan's identity and prices", () => {
+    for (const plan of PLANS) {
+      const lifted = withFreeForAll(plan, before);
+      assert.equal(lifted.id, plan.id);
+      assert.equal(lifted.name, plan.name);
+      assert.equal(lifted.monthly, plan.monthly);
+      assert.equal(lifted.yearly, plan.yearly);
+      assert.deepEqual(lifted.entitlements, LIFTED_ENTITLEMENTS, `${plan.id} lifted`);
+      assert.equal(lifted.entitlements.interviewsPerWeek, null);
+      assert.equal(lifted.entitlements.bugsPerDay, null);
+      assert.deepEqual(lifted.entitlements.voiceDurationsMin, [10, 20, 30]);
+    }
+    // The table itself is untouched: the pricing page still lists Free's real limits.
+    assert.equal(FREE_PLAN.entitlements.interviewsPerWeek, 2);
+  });
+
+  it("hands the plan back unchanged once the period is over, and never touches the owner plan", () => {
+    assert.equal(withFreeForAll(FREE_PLAN, at), FREE_PLAN);
+    assert.equal(withFreeForAll(planFor("pro"), at), planFor("pro"));
+    assert.equal(withFreeForAll(OWNER_PLAN, before), OWNER_PLAN);
   });
 });

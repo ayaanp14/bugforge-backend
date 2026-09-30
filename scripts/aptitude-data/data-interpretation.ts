@@ -73,7 +73,9 @@ export const DATA_INTERPRETATION: AptitudeSeed[] = [
     topic: "tables-and-charts",
     title: "Ratio of A to C over four years",
     prompt: `${SALES_TABLE}\n\nWhat is the ratio of **total Product A sales** to **total Product C sales** across all four years?`,
-    options: ["18 : 17", "17 : 18", "12 : 13", "36 : 34"],
+    // "36 : 35", not "36 : 34" — that was 18 : 17 unreduced, a second right
+    // answer (found writing the extras, 2026-10-01).
+    options: ["18 : 17", "17 : 18", "12 : 13", "36 : 35"],
     answer: 0,
     difficulty: "medium",
     hints: ["Total A = 120 + 150 + 210 + 240; total C = 100 + 130 + 200 + 250.", "720 : 680 — now reduce it."],

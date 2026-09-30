@@ -351,12 +351,14 @@ export const BANK_INTEREST: AptitudeSeed[] = [
     topic: "interest",
     title: "Amount after simple interest",
     prompt: "What **amount** will **₹15,000** grow to in **4 years** at **9% per annum simple interest**?",
+    // The key was stored as ₹21,600 with the final addition wrong; 15,000 +
+    // 5,400 is ₹20,400 (found writing the extras, 2026-10-01).
     options: ["₹19,800", "₹20,400", "₹21,000", "₹21,600"],
-    answer: 3,
+    answer: 1,
     difficulty: "easy",
     hints: ["Interest = 36% of the principal.", "15,000 + 5,400."],
     solution:
-      "1. Total rate = 9 × 4 = 36%.\n2. Interest = 36% of 15,000 = ₹5,400.\n3. Amount = 15,000 + 5,400 = **₹21,600**.\n\nAnswer: **₹21,600**.",
+      "1. Total rate = 9 × 4 = 36%.\n2. Interest = 36% of 15,000 = ₹5,400.\n3. Amount = 15,000 + 5,400 = **₹20,400**.\n\nAnswer: **₹20,400**.",
     approach: "Amount = principal + interest under simple interest, or P(1 + RT/100) in one step.",
     tags: ["simple interest"],
     timeTargetSec: 50,

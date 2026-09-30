@@ -118,6 +118,16 @@ export async function hubIndex(): Promise<HubIndex> {
   return { topics, companies, uncovered };
 }
 
+/** A company hub's three most common topics with a page of their own, most frequent first — its intro's middle sentence. */
+function commonTopics(rows: CatalogueRow[]): Array<{ label: string; count: number }> {
+  const counts = new Map<string, number>();
+  for (const row of rows) for (const tag of tagsOf(row)) if (!isCompanyTag(tag) && topicHubByTag(tag)) counts.set(tag, (counts.get(tag) ?? 0) + 1);
+  return [...counts.entries()]
+    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+    .slice(0, 3)
+    .map(([tag, count]) => ({ label: topicHubByTag(tag)!.label, count }));
+}
+
 const toHubProblem = (row: CatalogueRow): HubProblem => ({
   slug: row.slug,
   title: row.title,
@@ -137,7 +147,7 @@ export async function hubPage(kind: "topic" | "company", slug: string): Promise<
   if (!summary) return null;
   const groups = groupByTag(await getCatalogue());
   const rows = groups.get(summary.tag) ?? [];
-  const blurb = kind === "topic" ? (topicHubBySlug(slug)?.blurb ?? "") : companyBlurb(summary.label, summary.count);
+  const blurb = kind === "topic" ? (topicHubBySlug(slug)?.blurb ?? "") : companyBlurb(summary.label, summary.count, commonTopics(rows));
   const related = pool.filter((h) => h.slug !== slug).slice(0, 12);
   return { ...summary, blurb, problems: rows.map(toHubProblem), related };
 }

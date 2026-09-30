@@ -123,7 +123,7 @@ export const BANK_SYLLOGISMS_SEATING: AptitudeSeed[] = [
   {
     slug: "sy2-either-or",
     topic: "syllogisms",
-    title: "All birds fly",
+    title: "Feathers and swimming",
     prompt:
       "**Statements:**\n1. All birds have feathers.\n2. Some creatures with feathers can swim.\n\n**Conclusions:**\nI. Some birds can swim.\nII. All creatures with feathers are birds.\n\nWhich conclusion follows?",
     options: ["Only I", "Only II", "Both", "Neither"],
@@ -143,7 +143,7 @@ export const BANK_SYLLOGISMS_SEATING: AptitudeSeed[] = [
   {
     slug: "sy2-all-pens-blue",
     topic: "syllogisms",
-    title: "Some pens are blue",
+    title: "All pens are blue",
     prompt:
       "**Statements:**\n1. All pens are blue.\n2. All blue things are attractive.\n\n**Conclusions:**\nI. All pens are attractive.\nII. Some attractive things are pens.\n\nWhich conclusion follows?",
     options: ["Only I", "Only II", "Both", "Neither"],
@@ -308,7 +308,7 @@ export const BANK_SYLLOGISMS_SEATING: AptitudeSeed[] = [
   {
     slug: "sa2-row-five-second-from-left",
     topic: "seating-arrangement",
-    title: "Second from the left",
+    title: "Second from the right",
     prompt:
       "Five people A, B, C, D and E sit in a row. **C is at the extreme left**, **B is next to C**, **A is in the middle**, and **D is at the extreme right**. Who is **second from the right**?",
     options: ["A", "B", "C", "E"],
@@ -369,17 +369,20 @@ export const BANK_SYLLOGISMS_SEATING: AptitudeSeed[] = [
     topic: "seating-arrangement",
     title: "Facing outwards",
     prompt:
-      "Five people sit around a circular table **facing outwards**. If **A is to the immediate left of B**, then from B's point of view, in which direction is A?",
+      // Asked "where is A from B's point of view" until 2026-10-01 — which is
+      // simply B's left, as stated — with the reversal keyed anyway. The
+      // question now asks the reversed relation it was always keying.
+      "Five people sit around a circular table **facing outwards**. If **A is to the immediate left of B**, then from A's point of view, in which direction is B?",
     options: ["Immediate left", "Immediate right", "Opposite", "Cannot be determined"],
     answer: 1,
     difficulty: "medium",
     hints: [
       "If A is on B's left, then B is on A's right.",
-      "The question asks where A is relative to B, which reverses the relation.",
+      "The question asks where B is relative to A, which reverses the relation.",
     ],
     solution:
-      "1. A is immediately to the left of B.\n2. Turning the relation round, B is immediately to the right of A — which places A immediately to B's **right**.\n3. The direction the group faces does not change this reversal; it only decides which way round the table 'left' points.\n\nAnswer: **Immediate right**.",
-    approach: "Reversing a left-right relation always swaps the side. Facing outwards changes the mapping to clockwise, not the reversal itself.",
+      "1. A is immediately to the left of B: standing where B stands, A is the neighbour on the left hand.\n2. Turn the relation round: from where A stands, B is the neighbour on the right hand.\n3. The direction the group faces does not change this reversal; it only decides whether 'left' runs clockwise or anticlockwise round the table.\n\nAnswer: **Immediate right**.",
+    approach: "Reversing a left-right relation always swaps the side. Facing outwards changes which way round the table 'left' runs, not the reversal itself.",
     tags: ["circular"],
     timeTargetSec: 90,
   },

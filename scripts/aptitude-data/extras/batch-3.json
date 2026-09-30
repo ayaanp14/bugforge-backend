@@ -1,0 +1,530 @@
+{
+  "ls2-n-squared-plus-n": {
+    "shortcut": "Spot 30 = 5 × 6 and jump straight to 6 × 7 = 42. Of the options only 42 is a product of two consecutive whole numbers, so no differences are needed.",
+    "trap": "40 — adding the last difference, 10, a second time (30 + 10); the gaps grow by 2, so the next one is 12."
+  },
+  "ls2-perfect-squares": {
+    "shortcut": "The gaps 3, 5, 7, 9 are the odd numbers, so the next gap is 11 and 25 + 11 = 36 — the same as reading the blank as the sixth square, 6².",
+    "trap": "49 — miscounting positions and writing 7²; the five given terms run from 1² to 5², so the blank is the sixth square."
+  },
+  "ls2-perfect-cubes": {
+    "shortcut": "The next cube is 5³, and every power of 5 ends in 5 — 125 is the only option that does, so no multiplying is needed.",
+    "trap": "81 — reading 64 as 8² instead of 4³ and continuing with 9²; the earlier terms 8 and 27 are not squares, so the series is cubes."
+  },
+  "ls2-odd-squares": {
+    "shortcut": "The gaps 8, 16, 24 are multiples of 8, so the next gap is 32 and 49 + 32 = 81 — confirming the roots 1, 3, 5, 7, 9.",
+    "trap": "64 — taking the next square after 7², i.e. 8², and forgetting that the roots skip every even number."
+  },
+  "ls2-n-squared-minus-one": {
+    "shortcut": "Each term is a product of two numbers two apart: 1 × 3, 2 × 4, 3 × 5, 4 × 6, 5 × 7, so the next is 6 × 8 = 48.",
+    "trap": "50 — flipping the offset to 7² + 1; the terms sit one below the squares (4 − 1, 9 − 1, …), not one above, so the answer is 49 − 1."
+  },
+  "ls2-n-cubed-minus-one": {
+    "shortcut": "The gaps 19, 37, 61 rise by 18 then 24, so the next rise is 30: gap 91, and 124 + 91 = 215. Units check: 6³ ends in 6, so 6³ − 1 ends in 5.",
+    "trap": "216 — spotting 6³ and forgetting to subtract the 1 that every term carries (8 − 1, 27 − 1, …)."
+  },
+  "ls2-n-cubed-minus-n": {
+    "shortcut": "Read each term as three consecutive numbers multiplied: 6 × 7 × 8, 5 × 6 × 7, 4 × 5 × 6, 3 × 4 × 5, 2 × 3 × 4 — so the next is 1 × 2 × 3 = 6.",
+    "trap": "12 — noticing that 120 halves to 60 and halving 24 as well; 60 → 24 is not a halving, so that rule never held."
+  },
+  "ls2-n-cubed-plus-n-squared": {
+    "shortcut": "Factor each term as n² × (n + 1): 1 × 2, 4 × 3, 9 × 4, 16 × 5, so the next is 25 × 6 = 150.",
+    "trap": "160 — doubling 80 because the terms roughly double near the end; the ratios are falling (6, 3, 2.2), and the true next term, 150, is only about × 1.9."
+  },
+  "ls2-odd-differences": {
+    "shortcut": "Subtract 2 from each option: only 38 leaves a perfect square (36), matching the series as 1, 4, 9, 16, 25 raised by 2.",
+    "trap": "36 — either repeating the last gap (27 + 9) or writing 6² and dropping the + 2 that every term carries."
+  },
+  "ls2-diff-3-5-7-9": {
+    "shortcut": "Odd gaps flip the parity each step (4 even, 7 odd, 12 even, 19 odd, 28 even), so the blank is odd — ruling out 38 — and 39 − 3 = 36 is the only square fit.",
+    "trap": "37 — adding the last gap, 9, again (28 + 9); the gaps rise by 2, so the next is 11."
+  },
+  "ls2-diff-5-7-9-11": {
+    "shortcut": "Add 2 to every term: 4, 9, 16, 25, 36 are the squares 2² to 6², so the blank is 7² − 2 = 47.",
+    "trap": "45 — repeating the last gap, 11 (34 + 11); the gaps climb by 2, so the next is 13."
+  },
+  "ls2-diff-4-8-12-16": {
+    "shortcut": "The gaps are 4 × 1, 4 × 2, 4 × 3 …, so term n = 5 + 2n(n − 1); for the sixth term that is 5 + 2 × 6 × 5 = 65.",
+    "trap": "61 — adding the last gap, 16, again (45 + 16); the gaps step up by 4, so the next is 20."
+  },
+  "ls2-diff-5-10-15-20": {
+    "shortcut": "The gaps are 5 × 1, 2, 3, 4, so term n = 6 + 5 × (1 + 2 + … + (n − 1)); the sixth term is 6 + 5 × 15 = 81.",
+    "trap": "76 — repeating the last gap, 20 (56 + 20); the gaps grow by 5, so the next is 25."
+  },
+  "ls2-diff-6-9-12-15": {
+    "shortcut": "Divide by 3: 2, 4, 7, 11 has gaps 2, 3, 4, so its next term is 16 and the answer is 3 × 16 = 48.",
+    "trap": "45 — adding the last gap, 12, again (33 + 12); the gaps rise by 3, so the next is 15."
+  },
+  "ls2-decreasing-differences": {
+    "shortcut": "Each term is two numbers two apart multiplied: 10 × 12, 9 × 11, 8 × 10, 7 × 9, 6 × 8, so the next is 5 × 7 = 35.",
+    "trap": "33 — subtracting the last gap, 15, again (48 − 15); the gaps shrink by 2, so the next drop is 13."
+  },
+  "ls2-decreasing-1-2-3": {
+    "shortcut": "Term n is 20 minus a triangular number (0, 1, 3, 6, 10), so the sixth is 20 − 15 = 5.",
+    "trap": "6 — subtracting 4 again (10 − 4); each drop is one bigger than the last, so the next is 5."
+  },
+  "ls2-double-plus-one": {
+    "shortcut": "The gaps 2, 4, 8, 16 double, so the next gap is 32 and 31 + 32 = 63. Every term is odd, which rules out 64 on sight.",
+    "trap": "64 — writing the next power of two, 2⁶, and dropping the − 1; each term is one less than a power of two (2 − 1, 4 − 1, …)."
+  },
+  "ls2-double-plus-one-large": {
+    "shortcut": "Each term is one less than a power of two (16, 32 … 256), so the next is 512 − 1 = 511; every term is odd, which rules out 512 at once.",
+    "trap": "383 — adding the last gap, 128, again (255 + 128); the gaps double each time (16, 32, 64, 128), so the next is 256."
+  },
+  "ls2-times-two-plus-one-variant": {
+    "shortcut": "Add 1 to every term: 3, 6, 12, 24, 48 doubles cleanly, so the blank is 96 − 1 = 95. After the first, every term is odd, so 96 is out.",
+    "trap": "96 — the next term of the shifted series 3, 6, 12, 24, 48, i.e. forgetting to take back the 1 added (47 × 2 + 2 is the same slip)."
+  },
+  "ls2-multiply-add-increasing": {
+    "shortcut": "The gaps 6, 13, 27, 55 each double the last and add 1, so the next gap is 111 and 106 + 111 = 217.",
+    "trap": "212 — doubling 106 and forgetting the growing add-on; after + 1, + 2, + 3, + 4 comes + 5, so 212 + 5."
+  },
+  "ls2-alternating-multiply-add": {
+    "shortcut": "The operands 3, 4, 5, 6 simply count up, so the sixth step is × 7. Units digit: 161 × 7 ends in 7, and only 1,127 does.",
+    "trap": "966 — multiplying 161 by 6, the last number used; 6 was an addition, and the operand has moved on to 7."
+  },
+  "ls2-multiply-divide-alternate": {
+    "shortcut": "Split by position: 8, 12, 18 and 24, 36, ? each grow by × 1.5, so the blank is 36 × 1.5 = 54.",
+    "trap": "48 — reading 24, 36 as an arithmetic run and adding 12; the even-position terms grow by × 1.5, not by a fixed 12."
+  },
+  "ls2-divide-then-add": {
+    "shortcut": "Every even-position term is half the one before it (50 = 100 ÷ 2, 26 = 52 ÷ 2), and the blank is sixth, so it is 28 ÷ 2 = 14.",
+    "trap": "30 — adding 2 again (28 + 2); the + 2 was just used to reach 28, so the halving is due."
+  },
+  "ls2-divide-multiply-alternate": {
+    "shortcut": "The even-position terms 24, 48, ? double each time, so the sixth term is 96 — no need to track the ÷ 2, × 4 alternation.",
+    "trap": "384 — continuing the odd-position run 48, 96, 192 by doubling 192; the blank sits in an even position, where the run is 24, 48, 96."
+  },
+  "ls2-plus-three-minus-two": {
+    "shortcut": "The even-position terms 10, 11, ? rise by 1, so the sixth term is 12 — each + 3, − 2 pair nets + 1.",
+    "trap": "10 — adding the net + 1 to the last term 9; the + 1 links terms two apart, and the step due now is + 3."
+  },
+  "ls2-two-interleaved": {
+    "shortcut": "The steps run − 1, + 2, − 1, + 2, − 1, so the seventh step is + 2 and 23 + 2 = 25.",
+    "trap": "22 — applying − 1 again (23 − 1) after losing track of the alternation; the − 1 was just used, so + 2 comes next."
+  },
+  "ls2-fibonacci": {
+    "shortcut": "Add the last two terms: 5 + 8 = 13. As a check, consecutive ratios settle near 1.6, and 8 × 1.6 ≈ 12.8.",
+    "trap": "11 — adding the last gap, 3, to 8; the gaps 0, 1, 1, 2, 3 are themselves Fibonacci, so the next gap is 5, not 3."
+  },
+  "ls2-triangular-numbers": {
+    "shortcut": "Halve the terms: 0, 1, 3, 6, 10 are the triangular numbers, whose next member is 15, so the answer is 2 × 15 = 30.",
+    "trap": "28 — adding the last gap, 8, again (20 + 8); the gaps rise by 2, so the next is 10."
+  },
+  "ls2-sum-of-squares": {
+    "shortcut": "Use the sum-of-squares formula n(n + 1)(2n + 1)/6 with n = 6: 6 × 7 × 13 ÷ 6 = 91.",
+    "trap": "80 — adding the last gap, 25, again (55 + 25); the gaps are the squares 4, 9, 16, 25, so the next is 36."
+  },
+  "ls2-factorials": {
+    "shortcut": "Every option is a multiple of 120: 240 = 120 × 2, 480 = 120 × 4, 600 = 120 × 5, 720 = 120 × 6. The multipliers so far are 2, 3, 4, 5, so × 6 → 720.",
+    "trap": "600 — multiplying by 5 again (120 × 5); the multiplier rises by one each step, so the next is 6."
+  },
+  "ls2-multiply-increasing": {
+    "shortcut": "The terms are 2 × 1!, 2 × 2!, 2 × 3!, 2 × 4!, so the next is 2 × 5! = 2 × 120 = 240.",
+    "trap": "96 — doubling 48 because the series opens 2, 4 like a doubling one; 4 → 12 is × 3 and 12 → 48 is × 4, so × 5 is due."
+  },
+  "ls2-divide-increasing": {
+    "shortcut": "Each term is 240 divided by a factorial: 240 ÷ 1, ÷ 2, ÷ 6, ÷ 24, so the next is 240 ÷ 120 = 2.",
+    "trap": "5 — writing down the next divisor instead of using it; the step is ÷ 5, and 10 ÷ 5 = 2."
+  },
+  "ls2-powers-of-two": {
+    "shortcut": "The terms are 2⁰ to 2⁴, so the blank is 2⁵ = 32; each term is also one more than the sum of all before it (1 + 1 + 2 + 4 + 8 = 16).",
+    "trap": "24 — adding the last gap, 8, again (16 + 8); the gaps double as well, so the next one is 16."
+  },
+  "ls2-geometric-doubling": {
+    "shortcut": "The terms are 5 × 1, 5 × 2, 5 × 4, 5 × 8, so the next is 5 × 16 = 80.",
+    "trap": "60 — adding the last gap, 20, again (40 + 20); in a doubling series the gaps double too, so the next gap is 40."
+  },
+  "ls2-three-n-squared": {
+    "shortcut": "The gaps 9, 15, 21 rise by 6, so the next gap is 27 and 48 + 27 = 75.",
+    "trap": "69 — adding the last gap, 21, again (48 + 21); the gaps climb by 6, so the next is 27."
+  },
+  "ls2-primes": {
+    "shortcut": "Only one option is prime: 12 and 14 are even and 15 = 3 × 5, which leaves 13.",
+    "trap": "15 — adding the last gap, 4, again (11 + 4); prime gaps follow no rule, and 15 = 3 × 5 is not prime."
+  },
+  "ls2-primes-later": {
+    "shortcut": "Test the options in order above 23: 25 = 5² and 27 = 3³ fail, so the next prime is 29 — 31 is prime too but comes later.",
+    "trap": "25 — continuing the gap pattern 2, 4, 2, 4 with another 2 (23 + 2); 25 = 5² is not prime, and the next prime is 29."
+  },
+  "ls2-hundreds-differences": {
+    "shortcut": "Scale down by 10: 1, 10, 20, 31 has gaps 9, 10, 11, so its next term is 43 and the answer is 430.",
+    "trap": "420 — adding the last gap, 110, again (310 + 110); the gaps rise by 10, so the next is 120."
+  },
+  "ls2-concatenation": {
+    "shortcut": "Each term's second number starts the next (1|3 → 3|5 → … → 9|11), so the blank begins with 11 and adds the next odd number, 13: 1113.",
+    "trap": "1,315 — thinking the pairs do not overlap and starting after 11 with 13|15; each new pair repeats the previous pair's last number, so it is 11|13."
+  },
+  "ls2-letters-plus-two": {
+    "shortcut": "Skip one letter each time: B (c) D (e) F (g) H (i) J — the letter skipped after H is I, so the answer is J.",
+    "trap": "I — taking the letter straight after H; the step is + 2, so I is the letter skipped, not the answer."
+  },
+  "ls2-letters-plus-three": {
+    "shortcut": "Skip two letters each time: after K skip L and M to land on N (position 14, one short of the O = 15 landmark).",
+    "trap": "M — counting K itself as the first of the three steps (K, L, M); K + 3 means three moves on from K: L, M, N."
+  },
+  "ls2-letters-increasing-gap": {
+    "shortcut": "The positions 1, 3, 6, 10 are the triangular numbers, so the next is 15 — the O landmark.",
+    "trap": "N — adding 4 again (10 + 4 = 14); the gaps grow 2, 3, 4, so the next is 5, reaching 15 = O."
+  },
+  "ls2-letters-backwards": {
+    "shortcut": "Take every other letter going back from Z: after T, skip S and land on R.",
+    "trap": "S — the letter just before T, forgetting to skip one; the step is − 2, so S is jumped over and R is next."
+  },
+  "ls2-letter-pairs": {
+    "shortcut": "Each pair is a letter and its mirror, with positions adding to 27 (A 1 + Z 26), so D (4) pairs with 23 = W.",
+    "trap": "DV — looks right because D correctly follows C, but the second letters Z, Y, X step back by one, so X is followed by W, not V."
+  },
+  "ls2-odd-one-out-cubes": {
+    "shortcut": "The roots run 2, 3, 4, ?, 6, 7, so the fourth slot should be 5² = 25 — the 24 sitting there is the intruder.",
+    "trap": "9 — the only odd number among the options, so it looks out of place on parity; but 9 = 3² fits the squares like the rest (49 is odd too)."
+  },
+  "ls2-odd-one-out-primes": {
+    "shortcut": "33 has digit sum 6, so it is divisible by 3 (33 = 3 × 11); the other numbers pass that test and are prime.",
+    "trap": "41 — the jump from 33 to 41 is 8 while the earlier gaps are 6, so it looks out of rhythm; but the test is primality, and 41 is prime."
+  },
+  "ls2-missing-middle": {
+    "shortcut": "Add 1 to each term: 4, 8, 16, ?, 64, 128 are powers of two, so the blank is 32 − 1 = 31.",
+    "trap": "23 — adding the last gap, 8, again (15 + 8); the gaps double (4, 8, 16), so the next is 16, and 31 × 2 + 1 = 63 confirms it."
+  },
+  "tsd2-convert-ms-to-kmh": {
+    "shortcut": "1 m/s = 3.6 km/h, so 10 m/s = 36 km/h and 20 m/s is double that: 72 km/h.",
+    "trap": "80 km/h — rounding the factor 3.6 up to 4 to save time (20 × 4); the exact 18/5 gives 72 km/h."
+  },
+  "tsd2-train-crosses-pole": {
+    "shortcut": "180 m in 12 s is 15 m/s, and since 5 m/s = 18 km/h, 15 m/s = 3 × 18 = 54 km/h.",
+    "trap": "60 km/h — rounding the conversion factor 3.6 up to 4 (15 × 4); 15 × 18/5 is exactly 54 km/h."
+  },
+  "tsd2-train-crosses-bridge": {
+    "shortcut": "72 km/h is the stock 20 m/s (36 km/h = 10 m/s, doubled), so the 400 m of train plus bridge take 400 ÷ 20 = 20 s.",
+    "trap": "18 s — tempting because 18 sits in the 18/5 factor; no wrong option comes from a one-step slip (the bridge alone gives 12.5 s, not offered), and 400 m at 20 m/s is 20 s."
+  },
+  "tsd2-platform-length": {
+    "shortcut": "In one line: 54 × 5/18 × 20 = 300 m of train plus platform; strip off the 120 m train to leave 180 m.",
+    "trap": "150 m — converting 54 km/h by dividing by 4 instead of 3.6 (13.5 m/s), which gives 270 m in 20 s and 270 − 120 = 150."
+  },
+  "tsd2-two-trains-opposite": {
+    "shortcut": "108 km/h is 3 × 36 km/h, and 36 km/h = 10 m/s, so the relative speed is 30 m/s and 300 m clears in 10 s.",
+    "trap": "12 s — the tidy answer for a relative speed of 25 m/s (300 ÷ 25), which is 90 km/h; no wrong option comes from a natural slip, and 108 km/h is 30 m/s."
+  },
+  "tsd2-two-trains-same-direction": {
+    "shortcut": "The gap in speeds, 18 km/h, is exactly 5 m/s, so the 250 m of both trains takes 250 ÷ 5 = 50 s with no fractions.",
+    "trap": "30 s — counting only the slower train's 150 m (150 ÷ 5); the faster train must also clear its own 100 m to be completely past."
+  },
+  "tsd2-train-passes-man": {
+    "shortcut": "At a relative 60 km/h the train gains 1 km a minute, so 150 m takes 0.15 min = 9 s.",
+    "trap": "8 s — ignoring the man's speed and using 68 km/h alone (≈ 18.9 m/s), which gives about 7.9 s; the relative speed is 60 km/h."
+  },
+  "tsd2-average-speed-round-trip": {
+    "shortcut": "More time is spent at the slower 40, so the average falls below 50 — striking out 50 and 52 — and 2 × 40 × 60 ÷ 100 = 48 picks it from 45.",
+    "trap": "50 km/h — the plain mean of 40 and 60, which would need equal times; with equal distances the slower leg lasts longer and drags the average down."
+  },
+  "tsd2-three-equal-parts": {
+    "shortcut": "One kilometre of each stretch takes 1/10 + 1/20 + 1/60 = 1/6 h, so 3 km take 1/6 h — 18 km/h.",
+    "trap": "30 km/h — averaging the three speeds, (10 + 20 + 60) ÷ 3; six of the ten hours are spent at 10 km/h, so the true average is far lower."
+  },
+  "tsd2-late-and-early": {
+    "shortcut": "Distance = (product of speeds ÷ difference of speeds) × time gap = (24 ÷ 2) × ¼ h = 3 km.",
+    "trap": "2 km — taking the time gap as the 10 minutes late alone and ignoring the 5 minutes early; the two trips differ by 15 minutes."
+  },
+  "tsd2-late-late": {
+    "shortcut": "Distance = (product of speeds ÷ difference of speeds) × time gap = (30 ÷ 1) × 4/60 h = 2 km.",
+    "trap": "1 km — using the 2 minutes late as the whole time gap (1 km takes 12 min against 10 min); the gap between the trips is 6 − 2 = 4 minutes."
+  },
+  "tsd2-boat-downstream-upstream": {
+    "shortcut": "Downstream is always the larger figure and the pair must average to the still-water 15, which only 18 and 12 does in the order asked.",
+    "trap": "12 and 18 km/h — the right numbers in the wrong order; the question asks for downstream first, and downstream is the faster 18."
+  },
+  "tsd2-boat-from-two-speeds": {
+    "shortcut": "Every option adds to 16, so check the difference instead: boat − stream must be the upstream 10, and only 13 − 3 = 10.",
+    "trap": "12 and 4 km/h — it adds to the downstream 16 like every option, but 12 − 4 = 8, not the upstream 10."
+  },
+  "tsd2-boat-round-trip-time": {
+    "shortcut": "Round-trip time = 2db ÷ (b² − s²) = 2 × 24 × 10 ÷ (100 − 4) = 480 ÷ 96 = 5 h.",
+    "trap": "4 h — doubling the downstream leg (2 × 24/12) as if the return also ran at 12 km/h; upstream the boat makes only 8 km/h."
+  },
+  "tsd2-boat-still-water-from-times": {
+    "shortcut": "Times 2 : 6 mean speeds 3 : 1, so boat : stream = (3 + 1) : (3 − 1) = 2 : 1; downstream 15 is 3 parts, so the boat's 2 parts are 10 km/h.",
+    "trap": "15 km/h — reading the downstream speed (30 ÷ 2) as the still-water speed; the stream is helping on that leg."
+  },
+  "tsd2-distance-from-speed-time": {
+    "shortcut": "60 km/h is 1 km a minute, and 2 h 30 min is 150 minutes, so the car covers 150 km.",
+    "trap": "120 km — multiplying by the 2 hours and dropping the 30 minutes; the extra half hour adds another 30 km."
+  },
+  "tsd2-time-from-distance-speed": {
+    "shortcut": "Back-substitute: 55 × 6 = 330 (55 × 2 = 110, tripled), so 6 h.",
+    "trap": "5 h — no wrong option comes from a standard slip; 5 h tempts after rounding 55 up to 60 (330 ÷ 60 = 5.5), but 55 × 5 is only 275."
+  },
+  "tsd2-increase-speed-save-time": {
+    "shortcut": "The 2 hours saved at 40 km/h are 80 km that must be spread over the 4 new hours: + 20 km/h, so 40 + 20 = 60 km/h.",
+    "trap": "50 km/h — a modest rise that feels enough; the classic slip (direct proportion, 40 × 4/6 ≈ 26.7) is not offered, and 50 km/h would still take 240 ÷ 50 = 4.8 h."
+  },
+  "tsd2-two-thirds-distance": {
+    "shortcut": "Weight each speed by its time: 2 h at 30 and 1 h at 60 give (60 + 60) ÷ 3 = 40 km/h.",
+    "trap": "45 km/h — the plain mean of 30 and 60; the car spends twice as long at 30 km/h, which pulls the average down to 40."
+  },
+  "tsd2-relative-speed-catch-up": {
+    "shortcut": "2 km/h is 2,000 m in 60 minutes, i.e. 100 m every 3 minutes — the gap closes in 3 min.",
+    "trap": "5 min — reading 0.05 h (0.1 km ÷ 2 km/h) as 5 minutes; 0.05 of an hour is 0.05 × 60 = 3 minutes."
+  },
+  "tsd2-two-trains-meet": {
+    "shortcut": "330 = 3 × 110, the combined speed, so they meet after 3 h; check: 180 km + 150 km = 330 km.",
+    "trap": "5 h — close to the time the faster train alone would need (330 ÷ 60 = 5.5 h), forgetting the other train closes the gap too; subtracting the speeds (33 h) is not offered."
+  },
+  "tsd2-meeting-point-distance": {
+    "shortcut": "The gap splits in the ratio of the speeds, 40 : 60 = 2 : 3, so the first train covers 2/5 × 300 = 120 km.",
+    "trap": "180 km — the second train's share (60 × 3), which is measured from the other station."
+  },
+  "tsd2-race-head-start": {
+    "shortcut": "In the same time the distances are in the ratio of the speeds, 100 : 90, so B runs at 0.9 × 10 = 9 m/s.",
+    "trap": "9.5 m/s — no wrong option comes from a natural slip; 9.5 m/s looks like a safe 'slightly slower', but it would leave B only 5 m behind, not 10."
+  },
+  "tsd2-race-beats-by-time": {
+    "shortcut": "The last 20 m is a tenth of the race and takes B 5 s, so B's full time is 10 × 5 = 50 s and A's is 5 s less: 45 s.",
+    "trap": "50 s — B's time for the race; A finishes 5 seconds sooner."
+  },
+  "tsd2-circular-track-same-direction": {
+    "shortcut": "Back-check: in 200 s the runners cover 1,000 m and 600 m, exactly one 400 m lap apart.",
+    "trap": "100 s — the time for the faster to gain half a lap (200 m at 2 m/s); they meet only when the full 400 m is gained. Adding the speeds (50 s) is not offered."
+  },
+  "tsd2-circular-track-opposite": {
+    "shortcut": "Together they cover 10 m of track a second, so the 600 m lap closes in 60 s; check: 240 m + 360 m = 600 m.",
+    "trap": "100 s — the faster runner's own lap time (600 ÷ 6), as if they could meet only back at the start; running towards each other they meet part-way round."
+  },
+  "tsd2-speed-reduced-time-increase": {
+    "shortcut": "Distance = (product of speeds ÷ difference of speeds) × delay = (3,000 ÷ 10) × 1/3 h = 100 km.",
+    "trap": "120 km — no wrong option comes from a single slip; 120 km tempts because it is a whole 2 h at 60 km/h, but at 50 km/h it takes 2.4 h, a delay of 24 minutes, not 20."
+  },
+  "tsd2-walk-and-ride": {
+    "shortcut": "Walk both ways = 2 × (walk + ride) − (ride both) = 11 h 30 min − 4 h = 7 h 30 min.",
+    "trap": "7 h — treating 5 h 45 min as 5.45 h: 2 × 5.45 − 4 = 6.9 h, which rounds to 7; 45 minutes is 0.75 h, giving exactly 7.5 h."
+  },
+  "tsd2-stoppage-time": {
+    "shortcut": "The bus moves for only 45/54 = 5/6 of each hour, so it stands still for 1/6 of an hour — 10 minutes.",
+    "trap": "12 min — dividing the 9 km lost by 45, the speed with stoppages (9/45 h = 12 min); the lost distance is made up at the running speed of 54."
+  },
+  "tsd2-man-covers-half-at": {
+    "shortcut": "Back-substitute: 240 km means 120 km at 30 km/h (4 h) plus 120 km at 20 km/h (6 h) — exactly 10 h.",
+    "trap": "260 km — tempting after the arithmetic-mean slip (25 km/h × 10 h = 250 km, not offered); 260 km would take 4 h 20 min + 6 h 30 min = 10 h 50 min."
+  },
+  "tsd2-train-speed-from-two-poles": {
+    "shortcut": "The platform adds 10 s to the pole's 15 s, so train : platform = 15 : 10 and the train is 1.5 × 100 = 150 m.",
+    "trap": "200 m — no wrong option comes from a single slip (train plus platform, 250 m, is not offered); at 10 m/s a 200 m train would pass the pole in 20 s, not 15."
+  },
+  "tsd2-speed-ratio-time-ratio": {
+    "shortcut": "For a fixed distance time ∝ 1/speed, so just flip the ratio; squared ratios such as 16 : 25 belong to areas, never to this inverse law.",
+    "trap": "4 : 5 — copying the speed ratio; the faster car (5) takes less time, so its share of the time ratio must be smaller."
+  },
+  "tsd2-two-cars-different-times": {
+    "shortcut": "Distance = (product of speeds ÷ difference of speeds) × time gap = (2,700 ÷ 15) × 1 h = 180 km.",
+    "trap": "120 km — no wrong option comes from a single slip; 120 km tempts because it is a whole 2 h at 60 km/h, but at 45 km/h it takes 2 h 40 min, only 40 minutes longer."
+  },
+  "tsd2-cyclist-and-walker": {
+    "shortcut": "Catch-up time = head start × slower speed ÷ (faster − slower) = 2 h × 5 ÷ 10 = 1 h after 8 a.m., so 9:00 a.m.",
+    "trap": "8:30 a.m. — adding the speeds (10 km ÷ 20 km/h = 30 min) instead of subtracting them; the cyclist chases in the same direction."
+  },
+  "tsd2-boat-time-ratio": {
+    "shortcut": "Speeds down : up = 2 : 1, so boat : stream = (2 + 1) : (2 − 1) = 3 : 1, and the boat does 3 × 3 = 9 km/h.",
+    "trap": "6 km/h — copying the 2 : 1 time ratio onto boat and stream (2 × 3); that gives speeds 9 and 3, a 3 : 1 ratio, not 2 : 1."
+  },
+  "tsd2-train-length-two-speeds": {
+    "shortcut": "Back-substitute: at 22 km/h the relative speeds are 20 and 18 km/h, and 20 × 9 = 18 × 10 = 180 — the lengths agree with no unit conversion.",
+    "trap": "24 km/h — a rough check nearly works (22 × 9 = 198 against 20 × 10 = 200), so it looks right; only 22 km/h makes the two lengths exactly equal."
+  },
+  "tsd2-distance-covered-in-minutes": {
+    "shortcut": "18 km/h is 0.3 km a minute, so 40 minutes give 40 × 0.3 = 12 km.",
+    "trap": "9 km — half the hourly speed, a rough 'about half an hour' guess; 40 minutes is two-thirds of an hour. Reading 40 min as 0.4 h (7.2 km) is the other slip, but it is not offered."
+  },
+  "tsd2-two-thirds-time-remaining": {
+    "shortcut": "80 km at 20 km/h uses 4 of the 5 hours, and with one hour left the speed equals the remaining distance: 40 km/h.",
+    "trap": "30 km/h — dividing the whole 120 km by the 4 hours already used; those hours are spent, and 40 km remain for the single hour left."
+  },
+  "tsd2-escalator-walking": {
+    "shortcut": "Two times combine like parallel resistors: 90 × 60 ÷ (90 + 60) = 5,400 ÷ 150 = 36 s.",
+    "trap": "30 s — subtracting the times (90 − 60), which treats the escalator as working against the man; moving with him, the rates add."
+  },
+  "tsd2-sound-and-distance": {
+    "shortcut": "The round-trip average is 2 × 12 × 8 ÷ 20 = 9.6 km/h, so 10 h cover 96 km and one way is 48 km.",
+    "trap": "36 km — no wrong option comes from a natural slip; 36 km tempts because it divides neatly by 12 (3 h), but the return then takes 4.5 h, 7.5 h in all."
+  },
+  "tsd2-fraction-of-speed-late": {
+    "shortcut": "Back-substitute: 60 min at 3/4 speed becomes 60 × 4/3 = 80 min — exactly 20 minutes late.",
+    "trap": "75 min — the usual slip (the delay as a quarter of the usual time, giving 80 min) is not offered, and 75 min looks close; but 75 × 4/3 = 100 min, 25 minutes late."
+  },
+  "tsd2-man-and-train-bridge": {
+    "shortcut": "A quarter of an hour at 5 km/h is a quarter of 5,000 m: 1,250 m.",
+    "trap": "1,000 m — a round kilometre that looks about right; at 5 km/h it takes only 12 minutes. Writing 15 min as 0.15 h (750 m) is the other slip, but it is not offered."
+  },
+  "tsd2-two-trains-crossing-time-ratio": {
+    "shortcut": "12 km/h is 12,000 m in 60 minutes, i.e. 200 m a minute, so the 240 m take 1.2 min = 72 s.",
+    "trap": "80 s — rounding the relative speed 10/3 m/s down to 3 m/s before dividing (240 ÷ 3); keeping the fraction gives 72 s."
+  },
+  "tw-two-workers-together": {
+    "shortcut": "For two workers, time together = product ÷ sum = 12 × 18 ÷ 30 = 216 ÷ 30 = 7.2 days.",
+    "trap": "7.5 days — averaging the times to 15 days and halving, as if both were 15-day workers; the faster worker counts for more, pulling the time below 7.5."
+  },
+  "tw-a-leaves-early": {
+    "shortcut": "A's 4 days do 4/10 of the job; B does the other 6/10, which takes him 0.6 × 15 = 9 days in all — 4 of them already worked, so 5 more.",
+    "trap": "7.5 — half of B's 15 days, as if the 4 days together had done only half the job; they did 4 × (1/10 + 1/15) = 2/3, leaving a third for B."
+  },
+  "tw-pipes-and-cistern": {
+    "shortcut": "Back-substitute: in 4.5 h A fills 3/4, B fills 1/2 and C drains 1/4 — net exactly one tank.",
+    "trap": "4 h — mistaking the net rate (3 + 2 − 1 = 4 units an hour on an 18-unit tank) for the time; the time is 18 ÷ 4 = 4.5 h."
+  },
+  "tw-twice-as-efficient": {
+    "shortcut": "B supplies one-third of the combined rate, so alone he takes 3 × 8 = 24 days (A, with two-thirds, takes 1.5 × 8 = 12).",
+    "trap": "12 days — A's time, not B's; B is the slower worker, so his time must be the longer one."
+  },
+  "tw-men-and-women": {
+    "shortcut": "Rates: 3 men do 1/30 of the job a day (half of 6 men's 1/15) and 5 women also 1/30; together 1/15, so 15 days.",
+    "trap": "10 — converting 3 men and 5 women into 10 women-equivalents and then writing that head-count as the answer; 10 women take 15 days."
+  },
+  "tw-alternate-days": {
+    "shortcut": "Together they would take 6 days (10 × 15 ÷ 25); alternating halves the pace, so 12 days — exact because 6 is a whole number.",
+    "trap": "13 — adding a final day out of habit, as if work remained after the sixth A–B cycle; 6 cycles of 5 units finish the 30 exactly."
+  },
+  "tsd-train-passes-pole": {
+    "shortcut": "10 m/s = 36 km/h is the anchor pair; 150 m in 15 s is exactly 10 m/s, so 36 km/h with no arithmetic.",
+    "trap": "40 km/h — rounding the factor 3.6 up to 4 (10 × 4); 10 × 18/5 is exactly 36 km/h."
+  },
+  "tsd-train-crosses-platform": {
+    "shortcut": "500 m in 25 s is 20 m/s, which is twice the 10 m/s = 36 km/h anchor: 72 km/h.",
+    "trap": "80 km/h — converting 20 m/s with a rounded factor of 4 instead of 3.6; 20 × 18/5 = 72 km/h."
+  },
+  "tsd-boat-there-and-back": {
+    "shortcut": "Round-trip time = 2db ÷ (b² − s²) = 2 × 45 × 12 ÷ (144 − 9) = 1,080 ÷ 135 = 8 h.",
+    "trap": "10 h — doubling the upstream leg (2 × 45/9) as if the boat fought the current both ways; downstream it takes only 3 h."
+  },
+  "tsd-average-speed-round-trip": {
+    "shortcut": "The harmonic mean of two speeds is their product over their plain mean: 2,400 ÷ 50 = 48 km/h.",
+    "trap": "50 km/h — the plain mean of 60 and 40; the slower return lasts longer (3 h against 2 h for 120 km), dragging the average down to 48."
+  },
+  "tsd-trains-opposite-directions": {
+    "shortcut": "54 km/h = 15 m/s and 36 km/h = 10 m/s are stock pairs, so the relative speed is 25 m/s and 300 m clears in 12 s.",
+    "trap": "10 s — converting 90 km/h by dividing by 3 instead of 3.6 (30 m/s); 90 × 5/18 is 25 m/s, giving 12 s."
+  },
+  "tsd-late-and-early": {
+    "shortcut": "Speeds 4 : 6 make times 3 : 2; the one-part difference is the 15-minute gap, so the slow walk is 3 parts = 45 min = ¾ h, and ¾ × 4 = 3 km.",
+    "trap": "2 km — taking the gap as the 10 minutes late alone and ignoring the 5 minutes early; 2 km gives trips of 30 and 20 minutes, only 10 apart."
+  },
+  "in-simple-interest-basic": {
+    "shortcut": "10% of 8,000 is 800, so 7.5% is 600 a year, and four years give 4 × 600 = ₹2,400.",
+    "trap": "₹2,000 — no wrong option comes from a natural slip; ₹2,000 tempts as a round quarter of the principal, but 7.5% × 4 years is 30%, not 25%."
+  },
+  "in-compound-two-years": {
+    "shortcut": "Year 1 earns ₹1,000; year 2 earns 10% of 11,000 = ₹1,100; together ₹2,100.",
+    "trap": "₹2,000 — simple interest (10% × 2 years); compounding adds the second year's interest on the first year's ₹1,000."
+  },
+  "in-ci-minus-si": {
+    "shortcut": "The gap is the second year's interest on the first year's interest: the first year earns ₹400, and 8% of 400 = ₹32.",
+    "trap": "₹40 — squaring 8% as 0.008 instead of 0.0064 (5,000 × 0.008); 0.08² is 0.0064, giving ₹32."
+  },
+  "in-doubling-rate": {
+    "shortcut": "12.5% is exactly 1/8, so eight years of one-eighth each add one whole principal — the sum doubles.",
+    "trap": "10% — a round rate that feels right; at 10% simple interest money doubles in 10 years, not 8. The tripling slip (RT = 200) gives 25%, which is not offered."
+  },
+  "in-principal-from-amount": {
+    "shortcut": "Back-substitute: ₹5,000 → 5,500 → 6,050 in two 10% steps.",
+    "trap": "₹5,500 — dividing by 1.1 only once (one year's growth); two years need 6,050 ÷ 1.21."
+  },
+  "in-half-yearly-compounding": {
+    "shortcut": "Two 10% steps: 16,000 → 17,600 → 19,360, so ₹3,360; the ₹160 above simple interest is 10% of the first half's ₹1,600.",
+    "trap": "₹3,200 — 20% of 16,000, i.e. simple or annual interest; half-yearly compounding earns interest on the first half's ₹1,600 too."
+  },
+  "pnc-arrange-mango": {
+    "shortcut": "MANGO has no repeated letter, so nothing divides 5! = 120; a smaller count such as 60 would need a letter to appear twice.",
+    "trap": "60 — stopping the product after three factors (5 × 4 × 3), which counts three-letter arrangements; all five letters are used, so 5 × 4 × 3 × 2 × 1."
+  },
+  "pnc-arrange-banana": {
+    "shortcut": "Choose places: the three A's take C(6,3) = 20 sets of slots, the two N's C(3,2) = 3 of the rest, and B the last — 20 × 3 = 60.",
+    "trap": "120 — dividing 6! by 3! for the A's but forgetting the two N's; 720 ÷ 6 must be halved again."
+  },
+  "pnc-committee-at-least-one-woman": {
+    "shortcut": "Count the single failing case instead of three good ones: C(5,3) = 10 all-male committees, so 84 − 10 = 74.",
+    "trap": "84 — every committee of 3 from 9, forgetting to remove the 10 made of men only."
+  },
+  "pnc-three-digit-distinct": {
+    "shortcut": "It is ⁶P₃ = 6 × 5 × 4 = 120; 216 = 6³ would allow digits to repeat.",
+    "trap": "216 — 6 × 6 × 6, letting digits repeat; each place has one fewer digit to choose from."
+  },
+  "pnc-round-table": {
+    "shortcut": "The 6! = 720 straight-line seatings count each round seating 6 times, once per rotation, so 720 ÷ 6 = 120.",
+    "trap": "720 — 6!, treating the round table as a row; rotating everyone one seat gives the same seating."
+  },
+  "pnc-handshakes": {
+    "shortcut": "n(n − 1) = 132 and √132 ≈ 11.5, so n and n − 1 straddle it: 12 × 11 = 132, giving n = 12.",
+    "trap": "11 — picking the smaller factor of 12 × 11; 11 people make only 11 × 10 ÷ 2 = 55 handshakes."
+  },
+  "pr-two-dice-sum-nine": {
+    "shortcut": "Only a first die of 3, 4, 5 or 6 can reach 9, and each has exactly one partner — 4 of 36, i.e. 1/9.",
+    "trap": "1/6 — the probability for a sum of 7, the figure everyone remembers; a sum of 9 has only 4 ordered pairs, not 6."
+  },
+  "pr-king-or-heart": {
+    "shortcut": "Count the 13 hearts, then add only the 3 kings that are not hearts: 16/52 = 4/13.",
+    "trap": "17/52 — adding 4 kings and 13 hearts and counting the king of hearts twice; removing the overlap gives 16/52."
+  },
+  "pr-two-red-without-replacement": {
+    "shortcut": "Cancel before multiplying: 4/10 × 3/9 = 2/5 × 1/3 = 2/15.",
+    "trap": "4/25 — using (4/10)², the with-replacement answer; after one red is drawn only 3 reds remain among 9 balls."
+  },
+  "pr-three-coins-at-least-two-heads": {
+    "shortcut": "Count with binomials: C(3,2) + C(3,3) = 3 + 1 = 4 of the 2³ = 8 outcomes, so 1/2.",
+    "trap": "3/8 — counting exactly two heads only and forgetting HHH, which also has at least two heads."
+  },
+  "pr-leap-year-53-sundays": {
+    "shortcut": "The 2 spare days hand an extra appearance to 2 of the 7 weekdays, each weekday equally likely to be one of them — so 2/7 for Sunday.",
+    "trap": "1/7 — the answer for an ordinary year, which has one spare day; a leap year has two."
+  },
+  "pr-problem-solved-by-either": {
+    "shortcut": "Solved by at least one must beat the better solver's 3/4 alone, and only 11/12 does.",
+    "trap": "1/2 — multiplying the two success chances (2/3 × 3/4), which is the chance both solve it; one solver is enough."
+  },
+  "ma-mixing-two-prices": {
+    "shortcut": "52 sits 12/20 = 3/5 of the way from 40 to 60, so the dearer rice makes up 3/5 of the mix: cheaper : dearer = 2 : 3.",
+    "trap": "3 : 2 — setting the gaps the wrong way round (12 : 8); the cheaper rice takes the dearer price's gap, 60 − 52 = 8."
+  },
+  "ma-add-water-to-milk": {
+    "shortcut": "In parts, 2 : 1 must become 2 : 2, so add one more part — and one part is 60 ÷ 3 = 20 L.",
+    "trap": "10 L — keeping the total at 60 L and aiming for 30 L each (30 − 20); adding water raises the total, and the 40 L of milk does not change."
+  },
+  "ma-replace-twice": {
+    "shortcut": "The first draw removes 10 L of milk, the second only 9 L (a tenth of 90), so 100 − 10 − 9 = 81 L.",
+    "trap": "80 L — taking 10 L of milk out each time; the second 10 L drawn is only 90% milk."
+  },
+  "ma-two-alloys": {
+    "shortcut": "50 lies a third of the way from 40 to 70, so alloy B is a third of the blend: A : B = 2 : 1.",
+    "trap": "1 : 2 — putting the gaps the wrong way round (10 : 20); the target 50 is nearer A's 40, so there must be more of A."
+  },
+  "ma-skilled-and-unskilled": {
+    "shortcut": "Each skilled worker is ₹100 above the mean and each unskilled ₹50 below, so balance needs two unskilled per skilled: 10 and 20.",
+    "trap": "20 — the unskilled count, from reading the 1 : 2 ratio the wrong way round; the skilled group, farther from the mean, is the smaller one."
+  },
+  "ma-dilute-acid": {
+    "shortcut": "Strength falls from 30% to 20%, a factor of 2/3, so the volume must grow by 3/2: 40 L → 60 L, add 20 L.",
+    "trap": "10 L — matching the 10-point drop in strength; 12 L of acid in 50 L is still 24%, so 20 L are needed."
+  },
+  "me-rectangle-from-perimeter": {
+    "shortcut": "Divide each option by 16: only 192 gives a breadth (12) that fits the perimeter, since 2 × (16 + 12) = 56; 224 gives 14 and a perimeter of 60.",
+    "trap": "224 cm² — taking the breadth as 56 ÷ 4 = 14, the side of a square with that perimeter; with length 16 the breadth is 28 − 16 = 12."
+  },
+  "me-circle-from-circumference": {
+    "shortcut": "Area = C² ÷ (4π) = 44 × 44 × 7 ÷ 88 = 22 × 7 = 154 cm², straight from the circumference.",
+    "trap": "144 cm² — misremembering the stock r = 7 circle area as the familiar square 12²; 22/7 × 49 = 154."
+  },
+  "me-cylinder-volume": {
+    "shortcut": "A radius of 7 gives the stock base area 154 cm² (22/7 × 49), so the volume is 154 × 10 = 1,540 cm³.",
+    "trap": "1,440 cm³ — recalling the r = 7 base area as 144 instead of 154 and multiplying by 10; 22/7 × 49 is 154."
+  },
+  "me-cube-from-surface-area": {
+    "shortcut": "A cube's volume must be a perfect cube: of the options only 216 = 6³ is one (144, 196 and 256 are squares, not cubes).",
+    "trap": "144 cm³ — distrusting an answer equal to the given 216 and reaching for another option; 144 is not even a cube, and a = 6 really makes 6a² and a³ both 216."
+  },
+  "me-triangle-5-12-13": {
+    "shortcut": "5-12-13 is right-angled, so area = ½ × 5 × 12 = 30 and the hypotenuse never enters; options built on 13, like 32.5 = ½ × 5 × 13, are out.",
+    "trap": "60 cm² — multiplying the legs and forgetting the ½; the rectangle 5 × 12 is twice the triangle."
+  },
+  "me-path-inside-field": {
+    "shortcut": "Path area = 2w(l + b) − 4w² = 4 × 50 − 16 = 184 m².",
+    "trap": "200 m² — laying four 2 m strips along the full sides (2 × 2 × 50) and so counting the four 2 × 2 corners twice; subtract 16 m²."
+  }
+}

@@ -1369,7 +1369,7 @@ export const GRAPHS4_PROBLEMS: CatalogProblem[] = [
       slug: "the-maze-ii",
       title: "The Maze II",
       difficulty: "MEDIUM" as const,
-      tags: ["Array", "Matrix", "Graph", "Breadth-First Search", "Shortest Path", "Google", "Amazon", "Facebook"],
+      tags: ["Array", "Matrix", "Graph", "Breadth-First Search", "Shortest Path", "Google", "Amazon", "Meta"],
       signature: { funcName: "shortestDistance", params: [{ name: "maze", type: "int[][]" as const }, { name: "start", type: "int[]" as const }, { name: "destination", type: "int[]" as const }], returns: "int" as const },
       description: describe(
         "A ball rolls through a maze of empty spaces (`0`) and walls (`1`). When it starts rolling in one of the four directions it does **not stop until it hits a wall**; only then may it pick a new direction.\n\nGiven the ball's `start` and a `destination`, return the shortest distance the ball travels to stop at the destination, or `-1` if it can never stop there. Distance counts empty cells travelled, not including the starting cell.",

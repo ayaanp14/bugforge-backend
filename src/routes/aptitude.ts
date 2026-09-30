@@ -5,6 +5,7 @@ import { questionBySlug, questionIndex, topicOrder } from "../services/aptitude-
 import { cachedShared } from "../lib/cache.js";
 import { browserCache } from "../lib/http-cache.js";
 import { APTITUDE_CATEGORIES, APTITUDE_DIFFICULTIES, APTITUDE_TOPICS, aptitudeCanonicalSlug, aptitudeCategory, aptitudeTopic, type AptitudeDifficulty } from "../lib/aptitude-topics.js";
+import { APTITUDE_ESSENTIALS } from "../lib/aptitude-essentials.js";
 
 /**
  * Aptitude preparation.
@@ -175,7 +176,9 @@ router.get("/questions", optionalAuth, browserCache(120), async (req: any, res) 
     for (const entry of byQuestion.values()) if (entry.correct) solved += 1;
 
     res.json({
-      topic,
+      // The topic's formula/rules sheet (lib/aptitude-essentials) rides with
+      // its first page of questions: the page shows it above the list.
+      topic: { ...topic, ...(APTITUDE_ESSENTIALS[topic.id] ? { essentials: APTITUDE_ESSENTIALS[topic.id] } : {}) },
       category: APTITUDE_CATEGORIES.find((category) => category.id === topic.category) ?? null,
       questions: rows.map((row) => {
         const entry = byQuestion.get(row.id);

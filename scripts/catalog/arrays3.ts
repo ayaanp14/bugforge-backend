@@ -416,7 +416,7 @@ export const ARRAY3_PROBLEMS: CatalogProblem[] = [
       slug: "non-decreasing-array",
       title: "Non-decreasing Array",
       difficulty: "MEDIUM" as const,
-      tags: ["Array", "Greedy", "Amazon", "Google", "Facebook"],
+      tags: ["Array", "Greedy", "Amazon", "Google", "Meta"],
       signature: { funcName: "checkPossibility", params: [{ name: "nums", type: "int[]" as const }], returns: "bool" as const },
       description: describe(
         "Given an array `nums`, return `true` if it can be made **non-decreasing** by modifying **at most one** element.\n\nAn array is non-decreasing if `nums[i] <= nums[i + 1]` holds for every `i`.",
@@ -498,7 +498,7 @@ export const ARRAY3_PROBLEMS: CatalogProblem[] = [
       slug: "monotonic-array",
       title: "Monotonic Array",
       difficulty: "EASY" as const,
-      tags: ["Array", "Facebook", "Amazon"],
+      tags: ["Array", "Meta", "Amazon"],
       signature: { funcName: "isMonotonic", params: [{ name: "nums", type: "int[]" as const }], returns: "bool" as const },
       description: describe(
         "An array is **monotonic** if it is entirely non-increasing or entirely non-decreasing.\n\nGiven an integer array `nums`, return `true` if it is monotonic and `false` otherwise.",
@@ -1634,7 +1634,7 @@ export const ARRAY3_PROBLEMS: CatalogProblem[] = [
       slug: "check-if-all-1s-are-at-least-length-k-places-away",
       title: "Check If All 1's Are at Least Length K Places Away",
       difficulty: "EASY" as const,
-      tags: ["Array", "Amazon", "Facebook"],
+      tags: ["Array", "Amazon", "Meta"],
       signature: {
         funcName: "kLengthApart",
         params: [{ name: "nums", type: "int[]" as const }, { name: "k", type: "int" as const }],

@@ -226,10 +226,13 @@ export const BANK_FINAL: AptitudeSeed[] = [
   {
     slug: "sl4-connector-concession",
     topic: "sentence-completion",
-    title: "Conceding a point",
+    // "consequently", not "admittedly": conceding the deadline point fits
+    // the sentence too, so two options were defensible (found writing the
+    // extras, 2026-10-01).
+    title: "Pushing back on a point",
     prompt:
       "Fill in the blank:\n\n> The plan is expensive; ______, it is the only option that meets the deadline.",
-    options: ["moreover", "admittedly", "however", "therefore"],
+    options: ["moreover", "consequently", "however", "therefore"],
     answer: 2,
     difficulty: "medium",
     hints: [
@@ -237,7 +240,7 @@ export const BANK_FINAL: AptitudeSeed[] = [
       "Which connector introduces an opposing consideration?",
     ],
     solution:
-      "1. The first clause criticises the plan; the second defends it.\n2. **However** marks that turn.\n3. *Moreover* would add another criticism, and *therefore* would draw a conclusion from it.\n\nAnswer: **however**.",
+      "1. The first clause criticises the plan; the second defends it.\n2. **However** marks that turn.\n3. *Moreover* would add another criticism, and *therefore* and *consequently* would draw a conclusion from it.\n\nAnswer: **however**.",
     approach: "Read both halves and decide whether the second agrees with the first or pushes back. Only contrast connectors push back.",
     tags: ["connectors"],
     timeTargetSec: 45,
@@ -505,8 +508,8 @@ export const BANK_FINAL: AptitudeSeed[] = [
   {
     slug: "me4-triangle-equilateral-perimeter",
     topic: "mensuration",
-    title: "Side from the perimeter",
-    prompt: "An equilateral triangle has a **perimeter of 36 cm**. What is its **height**? (Take √3 = 1.73.)",
+    title: "Height from the perimeter",
+    prompt: "An equilateral triangle has a **perimeter of 36 cm**. What is its **height**?",
     options: ["6√3 cm", "8√3 cm", "10√3 cm", "12√3 cm"],
     answer: 0,
     difficulty: "medium",

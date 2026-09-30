@@ -1,0 +1,522 @@
+{
+  "in2-si-basic": {
+    "shortcut": "24% is 25% less 1%: a quarter of 12,000 is 3,000, minus 120 gives ₹2,880. Or 8% of 12,000 is 960 a year, × 3.",
+    "trap": "₹3,120 — rounding 24% up to 25% (₹3,000) and then adding the 1% (₹120) instead of taking it off."
+  },
+  "in2-si-find-principal": {
+    "shortcut": "35% of P is 1,750, so 1% of P is 50 and P is 5,000. Back-check: 7% of 5,000 is 350 a year, × 5 = 1,750.",
+    "trap": "₹4,500 looks right if 1,750 ÷ 0.35 is estimated rather than worked; 35% of 4,500 is only ₹1,575, short of the ₹1,750 stated."
+  },
+  "in2-si-find-rate": {
+    "shortcut": "1% of 8,000 is 80, so ₹1,920 is 24% of the principal; spread over 4 years that is 6% a year.",
+    "trap": "5% — dividing by the amount (₹9,920) instead of the principal gives about 4.8%, which rounds to it. Simple interest is always a percentage of the principal."
+  },
+  "in2-si-find-time": {
+    "shortcut": "₹1,800 is 30% of 6,000, and at 5% a year it takes 30 ÷ 5 = 6 years to build 30%.",
+    "trap": "5 — taking 5% of the amount ₹7,800 (₹390 a year) gives about 4.6 years, which rounds to it; interest is charged on the ₹6,000 only."
+  },
+  "in2-si-doubles-in-eight": {
+    "shortcut": "Doubling means the interest equals P, so each of the 8 years must earn 1/8 of P — and 1/8 = 12.5%.",
+    "trap": "12% — truncating 100 ÷ 8 to a whole number; 12% for 8 years is only 96%, just short of doubling."
+  },
+  "in2-si-triples": {
+    "shortcut": "At 10% the interest adds one more P every 10 years: 2P at year 10, 3P at year 20.",
+    "trap": "10 — that is when the sum doubles (100% interest); tripling needs 200% interest, twice as long."
+  },
+  "in2-si-doubles-then-quadruples": {
+    "shortcut": "Doubling in 10 years fixes the rate at 10% a year; four times needs 300% interest, and 300 ÷ 10 = 30 years.",
+    "trap": "20 — doubling the doubling time as if the interest compounded (2 → 4 in another 10 years). Under simple interest 20 years only triples the sum."
+  },
+  "in2-ci-two-years": {
+    "shortcut": "Step it: year one earns ₹2,000, year two earns 10% of 22,000 = ₹2,200, total ₹4,200.",
+    "trap": "₹4,000 — taking 10% for 2 years as a flat 20%, which is simple interest; the second year also earns 10% on the first year's ₹2,000."
+  },
+  "in2-ci-three-years": {
+    "shortcut": "Add 10% three times: 10,000 → 11,000 → 12,100 → 13,310. Each step adds a copy of the last figure shifted one place.",
+    "trap": "₹13,000 — adding a flat 30%, which is the simple-interest amount; compounding adds interest on interest, ₹310 more."
+  },
+  "in2-ci-minus-si-two-years": {
+    "shortcut": "The gap is only year two's interest on year one's interest: year one earns ₹800, and 10% of 800 is ₹80.",
+    "trap": "₹100 is the tempting round figure, but it would need interest-on-interest at 12.5%; at 10% the ₹800 first-year interest earns just ₹80."
+  },
+  "in2-ci-minus-si-find-principal": {
+    "shortcut": "At 5% the two-year gap is always P ÷ 400, since (1/20)² = 1/400, so P = 50 × 400. Check: ₹1,000 of first-year interest earns 5% = ₹50.",
+    "trap": "₹25,000 — writing 0.05² as 0.002 instead of 0.0025; 50 ÷ 0.002 gives exactly it."
+  },
+  "in2-ci-half-yearly": {
+    "shortcut": "Two 10% periods compound to 21% (10 + 10 + 1), and 21% of 8,000 is ₹1,680.",
+    "trap": "₹1,600 — applying 20% once, as if compounding were annual; the second half-year also earns 10% on the first half's ₹800."
+  },
+  "in2-ci-quarterly": {
+    "shortcut": "Quarterly compounding beats a flat 8% (₹10,800) by only a few tens of rupees, so ₹10,824 is the only option that fits; ₹10,850 would need 8.5%.",
+    "trap": "₹10,800 — applying a flat 8% for the year, which ignores the interest each quarter earns on the quarters before."
+  },
+  "in2-ci-principal-from-amount": {
+    "shortcut": "9,261 is 21³ and 1.05 is 21/20, so the principal is 20³ = ₹8,000.",
+    "trap": "₹8,400 — dividing by 1.05 only twice (9,261 ÷ 1.1025); three years means three divisions, and ₹8,400 is the amount after the first year."
+  },
+  "in2-ci-successive-amounts": {
+    "shortcut": "4,410 = 4,000 × 1.05², a recognisable 5% amount; 5% of 4,410 is 220.50, which confirms it at once.",
+    "trap": "6% — treating it as simple interest: ₹220.50 a year puts the principal at 4,410 − 441 = ₹3,969, and 220.50 ÷ 3,969 ≈ 5.6%."
+  },
+  "in2-si-successive-amounts": {
+    "shortcut": "Extrapolate back in one line: P = (5 × 1,560 − 3 × 1,680) ÷ (5 − 3) = (7,800 − 5,040) ÷ 2 = ₹1,380.",
+    "trap": "₹1,440 — subtracting the ₹120 difference once from ₹1,560; that ₹120 covers two years, so three years of interest is ₹180."
+  },
+  "in2-si-two-parts": {
+    "shortcut": "At 8% on all ₹2,600 the interest would be ₹208; the extra ₹22 comes from the 2% gap on the 10% part, so that part is 22 ÷ 0.02 = ₹1,100.",
+    "trap": "₹1,000 — it gives ₹100 + ₹128 = ₹228, close enough to ₹230 that a rough check passes it; the missing ₹2 needs another ₹100 at the 2% gap."
+  },
+  "in2-si-rate-difference": {
+    "shortcut": "3% extra for 4 years is 12% of the sum, so 1% of the sum is 300 ÷ 12 = 25 and the sum is ₹2,500.",
+    "trap": "₹3,000 — it looks right because ₹300 is a neat 10% of it, but the extra rate over 4 years is 12%, which on ₹3,000 gives ₹360."
+  },
+  "in2-ci-doubles-in-five": {
+    "shortcut": "Chain the doublings — 1 → 2 by year 5, 2 → 4 by year 10, 4 → 8 by year 15 — instead of scaling the multiple.",
+    "trap": "20 — counting 8 ÷ 2 = 4 doublings; 8 is 2³, so three doublings of 5 years each."
+  },
+  "in2-ci-triples-in-four": {
+    "shortcut": "1 → 3 takes 4 years and 3 → 9 takes the same 4 years, because each 4-year stretch multiplies by 3: 8 years.",
+    "trap": "12 — counting 9 ÷ 3 = 3 triplings instead of 9 = 3²; two triplings reach nine times."
+  },
+  "in2-si-total-interest-two-rates": {
+    "shortcut": "Per year: 6% of 5,000 = 300 and 8% of 4,000 = 320, so ₹620 a year and ₹1,240 over two.",
+    "trap": "₹1,280 — swapping the rates (8% on ₹5,000 and 6% on ₹4,000), which gives ₹800 + ₹480."
+  },
+  "in2-si-amount-after-time": {
+    "shortcut": "One multiplication: 15,000 × 1.36. A third of 15,000 is 5,000 and 36% is 400 more, so the interest is ₹5,400 and the amount ₹20,400.",
+    "trap": "₹21,000 — rounding the rate up to 10% (40% of 15,000 = 6,000); at 9% the four years add 36%, only ₹5,400."
+  },
+  "in2-ci-population-style": {
+    "shortcut": "4% is a factor of 26/25 and 6,250 = 625 × 10, so the amount is 10 × 26² = ₹6,760 with no decimals.",
+    "trap": "₹6,500 — stopping after the first year's growth (6,250 + 250); the second year adds 4% of 6,500 = ₹260."
+  },
+  "in2-si-fraction-of-principal": {
+    "shortcut": "The interest is 1/8 of P over 3 years, so 1/24 of P a year, and 100 ÷ 24 = 4⅙%.",
+    "trap": "4% — rounding 12.5% ÷ 3 down to a whole number; 4% for 3 years is only 12%, short of the 12.5% needed."
+  },
+  "in2-si-equal-amounts": {
+    "shortcut": "₹400 is 40% of 1,000, and 40% at 5% a year takes 40 ÷ 5 = 8 years.",
+    "trap": "7 — compounding the 5% (1.05⁷ ≈ 1.407 reaches ₹1,400 in about 7 years); simple interest adds a flat ₹50 a year."
+  },
+  "in2-ci-first-year-interest": {
+    "shortcut": "Multiply by 1.1 without finding P: 500 × 1.1 = ₹550, and the same step gives ₹605 for year three.",
+    "trap": "₹500 — assuming each year's interest is the same, which holds only under simple interest; compound interest also charges 10% on the first ₹500."
+  },
+  "in2-si-borrow-and-lend": {
+    "shortcut": "One step: the 2% gap for 3 years is 6% of 5,000 = ₹300.",
+    "trap": "₹600 — that is the interest he pays on the loan (4% × 3 years of ₹5,000), not his gain; the gain is only the 2% margin."
+  },
+  "in2-si-sum-of-two-interests": {
+    "shortcut": "24% − 10% = 14% of P is ₹280, so 1% is ₹20 and P is ₹2,000. Back-check: ₹480 − ₹200 = ₹280.",
+    "trap": "₹2,800 echoes the ₹280 and looks right if the gap is taken as 10% of the sum; the actual gap is 24% − 10% = 14%, which on ₹2,800 would be ₹392."
+  },
+  "in2-ci-effective-rate-two-years": {
+    "shortcut": "Grow a base of 100 twice: 100 → 120 → 144, so the overall rise is 44%.",
+    "trap": "40% — adding 20% + 20% as if it were simple interest; the second year's 20% also applies to the first year's 20, adding 4 more."
+  },
+  "in2-si-installments": {
+    "shortcut": "Carry everything to the end of year 2: ₹1,000 grows to ₹1,100, while the first instalment earns a year's 5%, so 2.05x = 1,100 and x ≈ ₹537.",
+    "trap": "₹550 — splitting the ₹1,100 owed after two years into equal halves, forgetting that the first payment, made a year early, clears part of the debt and earns its own 5%."
+  },
+  "in2-ci-amount-after-half-year-partial": {
+    "shortcut": "5% for three periods on 8,000 is 8,000 × (21/20)³, and since 8,000 = 20³ that is 21³ = ₹9,261.",
+    "trap": "₹9,300 is the tempting round figure just above the simple-interest ₹9,200; half-yearly compounding adds only ₹61 over simple interest here, landing on ₹9,261."
+  },
+  "in2-si-average-rate": {
+    "shortcut": "Add the rate-years: 5 × 2 + 8 × 3 + 10 × 2 = 54, so the interest is 54% of ₹10,000.",
+    "trap": "₹5,600 — swapping the stretches, giving 8% two years and 10% three (10 + 16 + 30 = 56%); 'thereafter' covers only years 6 and 7."
+  },
+  "in2-ci-difference-three-years": {
+    "shortcut": "At 10%, every ₹1,000 has a three-year gap of ₹31 (1,331 − 1,300), so ₹93 = 3 × 31 means ₹3,000.",
+    "trap": "₹3,500 or ₹4,000 tempt a solver who guesses from the size of the gap; at ₹31 per ₹1,000 they would give ₹108.50 and ₹124, not ₹93."
+  },
+  "in2-si-simple-vs-compound-same": {
+    "shortcut": "Try ₹100 at 10%: both schemes pay ₹10 in year one; in year two compound pays ₹11 against ₹10. The tie holds only for the first period.",
+    "trap": "\"They are never equal\" — assuming compounding always earns more; it only pulls ahead once there is interest to earn interest, after the first year."
+  },
+  "di2-revenue-highest-growth": {
+    "shortcut": "Compare multiples, not differences: Gamma triples (80 → 240) while every other company less than doubles, so no percentages are needed.",
+    "trap": "\"Beta\" — its rise of ₹100 crore is the largest in rupees, but on a base of 200 it is only 50%."
+  },
+  "di2-revenue-total-2024": {
+    "shortcut": "Pair the column: 180 + 180 = 360 and 240 + 160 = 400, so the total is 760.",
+    "trap": "₹740 crore — taking Delta's 160 (its 2022 figure, a number that also sits in the 2024 column as Gamma's) instead of its 180."
+  },
+  "di2-revenue-share-of-beta": {
+    "shortcut": "Pair 210 + 250 = 460 and 300 + 240 = 540: the 2025 total is exactly 1,000, so Beta's 300 is 30% on sight.",
+    "trap": "40% — dividing Beta's 300 by the other three companies' 700 instead of the full 1,000 gives about 43%, which rounds to it."
+  },
+  "di2-revenue-average-alpha": {
+    "shortcut": "Alpha rises by a steady 30 a year, so its average is the midpoint of the two middle years: (150 + 180) ÷ 2 = 165.",
+    "trap": "₹150 crore — grabbing a 'middle' value from the row (Alpha's 2023 figure); with four evenly spaced values the mean lies halfway between the second and third."
+  },
+  "di2-revenue-ratio": {
+    "shortcut": "Back-check the option: 3 : 5 means Gamma is 60% of Delta, and 60% of 200 is 120.",
+    "trap": "2 : 3 — pairing Gamma's 120 with Delta's 2024 figure (180) instead of its 2023 figure (200)."
+  },
+  "di2-revenue-decline": {
+    "shortcut": "Only the Beta and Delta rows are not steadily rising; each has one dip, and the dips fall in different years (Beta 2023, Delta 2024).",
+    "trap": "\"Only in 2023\" — stopping at Beta's dip (200 → 180) and missing Delta's fall from 200 to 180 a year later."
+  },
+  "di2-students-percentage-girls": {
+    "shortcut": "220/300 = 11/15; 1/15 is 6⅔%, so 11/15 is 73⅓%. Or: 225 girls would be 75%, and 220 is a little under.",
+    "trap": "75% — reading 220 out of 300 as roughly three-quarters; exactly three-quarters would need 225 girls."
+  },
+  "di2-students-ratio-boys-girls": {
+    "shortcut": "Boys outnumber girls in Science, so the first term must be the larger — that rules out 2 : 3 and 3 : 4; 240 : 160 ÷ 80 = 3 : 2.",
+    "trap": "2 : 3 — writing girls first; the question asks for boys to girls."
+  },
+  "di2-students-share-of-total": {
+    "shortcut": "With a total of exactly 1,000, a share in percent is the count ÷ 10: 400 → 40%.",
+    "trap": "30% — the share of Commerce or Arts (300 students each), picked up by reading the wrong row's total."
+  },
+  "di2-students-more-boys": {
+    "shortcut": "Compare boys with half of each stream's total: 240 > 200 and 180 > 150 lead, while 80 < 150 does not.",
+    "trap": "\"None\" — reading the totals row, where boys and girls are level at 500; equal totals hide two boy-heavy streams balanced by one girl-heavy stream."
+  },
+  "di2-students-difference": {
+    "shortcut": "The gap equals |2 × boys − total|: Science 80, Commerce 60, Arts 140. Arts is also the only stream where one side is under a third.",
+    "trap": "\"Science\" — taking boys minus girls with its sign, so Arts' 80 − 220 = −140 looks the smallest; the size of the gap is what counts."
+  },
+  "di2-expense-amount": {
+    "shortcut": "35% of 80 equals 80% of 35 = 28, which is quicker to do in the head.",
+    "trap": "₹24 lakh — taking only the 30% part (0.3 × 80) and dropping the extra 5% (₹4 lakh)."
+  },
+  "di2-expense-difference": {
+    "shortcut": "1% of ₹60 lakh is ₹0.6 lakh and the two heads are 10 points apart, so ₹6 lakh. Check: 15 − 9 = 6.",
+    "trap": "₹10 lakh — reading the 10-point gap as ₹10 lakh without applying it to the ₹60 lakh total."
+  },
+  "di2-expense-ratio": {
+    "shortcut": "Rent is the larger head, so the first term must be bigger — that leaves 4 : 3, 3 : 2 and 2 : 1; 20 : 15 divides by 5 to 4 : 3.",
+    "trap": "3 : 4 — reversing the order, marketing first; the question asks for rent to marketing."
+  },
+  "di2-expense-total-from-part": {
+    "shortcut": "20% is one-fifth, so the total is 15 × 5 = ₹75 lakh.",
+    "trap": "₹60 lakh — dividing by 25% (the raw-materials row) instead of rent's 20%; 15 ÷ 0.25 = 60."
+  },
+  "di2-expense-angle": {
+    "shortcut": "25% is a quarter of the circle, and a quarter of 360° is a right angle: 90°.",
+    "trap": "72° — 360° ÷ 5, as if all five heads had equal slices; that is rent's 20%, not raw materials' 25%."
+  },
+  "di2-production-total-unit": {
+    "shortcut": "Unit B rises by 50 a month, so its total is (first + last) × 4 ÷ 2 = (300 + 450) × 2 = 1,500.",
+    "trap": "1,600 — multiplying March's 400 by four as if it were the average; the average of 300 to 450 is 375."
+  },
+  "di2-production-highest-month": {
+    "shortcut": "Compare March and April directly: April gains 50 in A and 50 in B but loses 150 in C, so March is ahead by 50; January and February are far lower.",
+    "trap": "\"April\" — it leads in two of the three columns, but Unit C's drop from 600 to 450 leaves its total at 1,450 against March's 1,500."
+  },
+  "di2-production-average-per-month": {
+    "shortcut": "Work from 500: the deviations 0, −100, +100, −50 sum to −50, and −50 ÷ 4 = −12.5, giving 487.5.",
+    "trap": "500 — seeing +100 and −100 cancel and taking 500 as the average, forgetting that April's 450 pulls it down by 12.5."
+  },
+  "di2-production-percentage-increase": {
+    "shortcut": "150 on a base of 400 is 3/8, and 3/8 = 37.5%.",
+    "trap": "27.5% — dividing the rise of 150 by April's 550 instead of January's 400 gives 27.3%, which rounds to it."
+  },
+  "di2-production-which-unit-fell": {
+    "shortcut": "Units A and B climb by exactly 50 every month, so only C, the irregular column, can fall — and 600 → 450 does.",
+    "trap": "\"None of them\" — assuming the steady monthly rises of Units A and B hold for every column; C falls from 600 to 450."
+  },
+  "di2-caselet-college-admissions": {
+    "shortcut": "Chain the fractions: 40% × ¼ = 10%, and 10% of 1,200 = 120.",
+    "trap": "100 — splitting the 1,200 equally among the three colleges (400 each) before taking a quarter; College A took 40%, which is 480."
+  },
+  "di2-caselet-college-c": {
+    "shortcut": "C's share is 100 − 75 = 25%, a quarter of 1,200 = 300.",
+    "trap": "420 — that is College B's 35% of 1,200; reading the wrong college's share."
+  },
+  "di2-caselet-factory-shifts": {
+    "shortcut": "Shift sizes are 3 : 2, so the average sits 3/5 of the way from 12 to 15: 12 + 1.8 = 13.8.",
+    "trap": "13.2 — weighting the wrong way (2/5 of the way from 12 to 15), as if the smaller night shift were the larger."
+  },
+  "di2-caselet-shop-profit": {
+    "shortcut": "Take 20% on the whole ₹22,000 (₹4,400), then add the extra 5% on Y's ₹12,000 (₹600): ₹5,000.",
+    "trap": "₹4,400 — applying X's 20% to the combined revenue of ₹22,000, missing the higher 25% margin on Y."
+  },
+  "di2-caselet-survey": {
+    "shortcut": "280 + 220 is exactly 500, so the 90 counted twice must equal the number counted zero times: neither = both = 90.",
+    "trap": "100 is the tempting round figure, but it needs exactly 400 readers of at least one paper; 280 + 220 − 90 = 410, leaving 90."
+  },
+  "di2-caselet-survey-only-a": {
+    "shortcut": "Only A = readers of at least one paper minus all of B's readers: 410 − 220 = 190.",
+    "trap": "220 — B's total, the figure printed beside A's in the prompt; 'only A' is A's 280 less the 90 who read both."
+  },
+  "di2-caselet-budget-split": {
+    "shortcut": "Work in parts: build's 5 plus half of testing's 4 is 7 of 12 parts, and 7 × 40,000 = ₹2,80,000.",
+    "trap": "₹2,00,000 — the build budget before the transfer; half of testing (₹80,000) still has to be added."
+  },
+  "di2-caselet-attendance": {
+    "shortcut": "Guess 84 and check the deviations: −4, +8, −8, +4, 0 sum to zero, so 84 is the average.",
+    "trap": "82 — averaging the first and last days (80 and 84), a shortcut that works only when the figures rise evenly."
+  },
+  "di2-caselet-target-shortfall": {
+    "shortcut": "She needs 240 more to reach 600, plus the extra 10% of 600 (60): 300.",
+    "trap": "240 — meeting the target exactly (600 − 360) and forgetting the extra 10% of 600."
+  },
+  "di2-caselet-two-departments": {
+    "shortcut": "Weights 40 : 60 put the average 60% of the way from ₹30,000 to ₹50,000: 30,000 + 12,000 = ₹42,000.",
+    "trap": "₹40,000 — the plain midpoint of the two averages, which ignores that engineering has more people."
+  },
+  "di2-caselet-discount-scheme": {
+    "shortcut": "Take the discount off the bill in one step: 20% of 1,500 is 300, and 2,400 − 300 = ₹2,100.",
+    "trap": "₹1,920 — discounting the whole ₹2,400 by 20%; only the ₹1,500 food portion gets the discount."
+  },
+  "di2-caselet-fuel-cost": {
+    "shortcut": "Fuel costs ₹10 a kilometre (₹100 ÷ 10 km); the fleet drives 12 × 150 = 1,800 km, so ₹18,000.",
+    "trap": "₹15,000 — it echoes the 15 litres a van, but it is the cost of 10 vans, not 12; 15 litres × ₹100 × 12 = ₹18,000."
+  },
+  "ma2-two-rice-varieties": {
+    "shortcut": "₹35 is a third of the way from ₹30 to ₹45, so the dearer rice is one part in three: 2 : 1.",
+    "trap": "1 : 2 — writing the distances 5 : 10 in the same order as the prices instead of crossing them; that mix would average ₹40."
+  },
+  "ma2-tea-blend-profit": {
+    "shortcut": "₹64.50 is a quarter of the way from ₹62 to ₹72 (2.5 of 10), so the dearer tea is one part in four: 3 : 1.",
+    "trap": "1 : 3 — keeping the distances 2.5 : 7.5 uncrossed; that blend would cost ₹69.50 a kg."
+  },
+  "ma2-milk-water-cost": {
+    "shortcut": "Selling at milk's own cost price, the whole gain comes from free water, so the water must be 25% of the milk bought: 1 : 4.",
+    "trap": "1 : 3 — making water 25% of the mixture rather than 25% of the milk; 1 : 3 gives a 33⅓% gain."
+  },
+  "ma2-replace-milk-twice": {
+    "shortcut": "Each draw takes 10% of whatever milk is there: 40 → 36 → 32.4.",
+    "trap": "36 L — stopping after one replacement; the second draw removes a further 3.6 L of milk."
+  },
+  "ma2-replace-three-times": {
+    "shortcut": "Take 10% off three times: 80 → 72 → 64.8 → 58.32.",
+    "trap": "64.8 L — stopping one draw short (80 × 0.9² instead of 80 × 0.9³)."
+  },
+  "ma2-alloy-copper-tin": {
+    "shortcut": "45% is nearer 60%, so A must be the larger share — only 5 : 3 and 4 : 3 qualify, and 4 : 3 gives (240 + 60) ÷ 7 ≈ 42.9%, so 5 : 3.",
+    "trap": "3 : 5 — pairing each alloy with its own distance from 45 (15 for A, 25 for B) instead of crossing them; that mix is only 35% copper."
+  },
+  "ma2-average-price-of-mixture": {
+    "shortcut": "Quantities 15 : 25 = 3 : 5, so the price is 3/8 of the way from ₹32 to ₹40: 32 + 3 = ₹35.",
+    "trap": "₹36 — the plain mean of ₹40 and ₹32, which ignores that there is more of the cheaper sugar."
+  },
+  "ma2-milk-water-ratio-after-adding": {
+    "shortcut": "Milk stays 36 L and water becomes 19 L; 19 is prime and does not divide 36, so the ratio cannot reduce — only 36 : 19 fits.",
+    "trap": "2 : 1 — the neat ratio 36 : 19 nearly is; it would need 18 L of water, i.e. 9 L added rather than 10."
+  },
+  "ma2-two-vessels-equal": {
+    "shortcut": "The milk fractions 5/8 and 5/12 average to (30 + 20)/96 = 25/48, so water is 23/48: 25 : 23.",
+    "trap": "5 : 4 — scaling the first vessel to 24 L (15 : 9) but adding the second unscaled as 5 : 7, giving 20 : 16; equal capacity means equal volumes."
+  },
+  "ma2-quantity-of-water-to-add": {
+    "shortcut": "Back-check the option: 18 + 10 = 28 L of water against 42 L of milk is 3 : 2.",
+    "trap": "6 L — raising water from 30% to 40% of the original 60 L (24 L); adding water grows the total, so 40% of 70 L is what is needed."
+  },
+  "ma2-acid-concentration": {
+    "shortcut": "Alligate the 20% solution with 100% acid at 50%: (100 − 50) : (50 − 20) = 5 : 3, so 50 L of solution takes 30 L of acid.",
+    "trap": "25 L — adding half the volume on the hunch that half makes 50%; it gives 35 L of acid in 75 L, only about 46.7%."
+  },
+  "ma2-profit-from-mixture": {
+    "shortcut": "Read it off the ratio: 1 L of free water per 4 L of paid milk is a 1/4 = 25% gain; a 1 : 3 mix would give 33⅓%.",
+    "trap": "20% — measuring the free litre against the 5 L of mixture instead of the 4 L he paid for."
+  },
+  "me2-rectangle-area-from-ratio": {
+    "shortcut": "Sides 3k and 2k give 5k = 40, so k = 8 and the area is 6k² = 6 × 64 = 384.",
+    "trap": "400 cm² — splitting the half-perimeter 40 equally into a 20 × 20 square, ignoring the 3 : 2 ratio."
+  },
+  "me2-square-diagonal-area": {
+    "shortcut": "The diagonal splits the square into two triangles, each ½ × 8 × 4 = 16, so the area is 32.",
+    "trap": "16 cm² — taking the side as half the diagonal (4 cm); the side is 8 ÷ √2 ≈ 5.66 cm."
+  },
+  "me2-circle-area-from-radius": {
+    "shortcut": "Remember r = 7 → 154 cm²; doubling the radius to 14 quadruples the area: 4 × 154 = 616.",
+    "trap": "308 cm² — cancelling 14 against the 7 in 22/7 but dropping the resulting 2, so 22 × 14 instead of 22 × 2 × 14."
+  },
+  "me2-circumference-from-area": {
+    "shortcut": "Once r = 7, circumference = 2 × area ÷ r = 2 × 154 ÷ 7 = 44 cm.",
+    "trap": "22 cm — computing πr (22/7 × 7) and forgetting the 2 in 2πr; that is only half the circle."
+  },
+  "me2-triangle-heron": {
+    "shortcut": "Split the 14 cm side as 5 + 9: the 5-12-13 and 9-12-15 right triangles share a height of 12, so the area is ½ × 14 × 12 = 84.",
+    "trap": "91 cm² — treating 13 and 14 as the legs of a right triangle (½ × 13 × 14); the triangle is not right-angled."
+  },
+  "me2-equilateral-triangle-area": {
+    "shortcut": "The height is half the side times √3, i.e. 6√3, so the area is ½ × 12 × 6√3 = 36√3.",
+    "trap": "72 cm² — using ½ × base × side, as if the 12 cm side were the height; the height is only 6√3 ≈ 10.4 cm."
+  },
+  "me2-cuboid-volume": {
+    "shortcut": "Pair the 5 with the 12 first: 12 × 5 = 60, then 60 × 8 = 480. The volume must be a multiple of 96 (12 × 8), and only 480 is.",
+    "trap": "440 cm³ — slipping 12 × 8 to 88 (as if 11 × 8) and multiplying by 5; 12 × 8 is 96."
+  },
+  "me2-cuboid-surface-area": {
+    "shortcut": "Group it as top and bottom plus the band of walls: 2 × 60 + 2 × 4 × (10 + 6) = 120 + 128 = 248.",
+    "trap": "188 cm² — leaving out one 10 × 6 face, as for an open box; a closed cuboid has all six faces."
+  },
+  "me2-cube-diagonal": {
+    "shortcut": "Space diagonal² = 3a² = 108, so the diagonal is √108 = 6√3 ≈ 10.4 cm — longer than a face diagonal (≈ 8.5) but shorter than 12.",
+    "trap": "6√2 cm — the diagonal of one face; the question asks for the diagonal through the cube."
+  },
+  "me2-cylinder-curved-surface": {
+    "shortcut": "For r = 7, 2πr is 44; multiply by the height: 44 × 10 = 440.",
+    "trap": "748 cm² — adding the two circular ends (2πr(r + h) = 44 × 17), which is the total surface, not the curved one."
+  },
+  "me2-sphere-volume": {
+    "shortcut": "(4/3)π × 27 = 36π, and 36π lies between 36 × 3.1 = 111.6 and 36 × 3.2 = 115.2 — only 113.1 fits.",
+    "trap": "132 cm³ — slipping 792 ÷ 7 to 792 ÷ 6 when finishing 36 × 22/7; dividing by 7 gives 113.1."
+  },
+  "me2-cone-volume": {
+    "shortcut": "A third of the height is 4, and πr² for r = 7 is 154, so the volume is 154 × 4 = 616.",
+    "trap": "528 cm³ — multiplying the base circumference (44) by the height, a surface-style product rather than (1/3)πr²h."
+  },
+  "me2-path-around-garden": {
+    "shortcut": "Path area = garden perimeter × width + four corner squares: 160 × 2 + 4 × 4 = 336.",
+    "trap": "316 m² — forgetting the four 2 × 2 corners gives 320, and 316 is the nearest option to it; the corners add 16, making 336."
+  },
+  "me2-carpet-cost": {
+    "shortcut": "Multiply the easy pair first: 15 × 40 = 600, then 600 × 12 = ₹7,200.",
+    "trap": "₹8,000 looks right as a round figure (200 m² × ₹40), but the room is 15 × 12 = 180 m², not 200."
+  },
+  "me2-parallelogram-area": {
+    "shortcut": "Base × height with no halving: 18 × 9 = 2 × 81 = 162.",
+    "trap": "81 cm² — halving as for a triangle; a parallelogram is two such triangles, so base × height in full."
+  },
+  "me2-trapezium-area": {
+    "shortcut": "Split it into a 12 × 10 rectangle (120) and side triangles with a combined base of 8 (½ × 8 × 10 = 40): 160.",
+    "trap": "200 cm² — multiplying the longer parallel side by the height (20 × 10), as if it were a rectangle."
+  },
+  "me2-wire-bent-into-square": {
+    "shortcut": "The side is a quarter of 2πr, i.e. πr/2 = (22/7 × 28) ÷ 2 = 44, and 44² = 1,936.",
+    "trap": "3,136 cm² — taking the square's side as the circle's diameter (56 cm); the wire's 176 cm length gives a 44 cm side."
+  },
+  "me2-square-area-increase": {
+    "shortcut": "Successive-change rule: 20 + 20 + (20 × 20)/100 = 44%.",
+    "trap": "40% — doubling the 20% as though area grew in step with the side; the extra 4% is the corner piece 0.2 × 0.2."
+  },
+  "me2-cube-volume-increase": {
+    "shortcut": "Picture a 2 × 2 × 2 stack: a cube with doubled edges is built from 8 of the original cubes.",
+    "trap": "4 — squaring the factor as for area; volume has three dimensions, so 2³."
+  },
+  "me2-room-four-walls": {
+    "shortcut": "Two 8 × 4 walls (64) and two 6 × 4 walls (48) make 112 m².",
+    "trap": "128 m² — treating all four walls as 8 m × 4 m; two of them are only 6 m wide."
+  },
+  "ls-squares-plus-one": {
+    "shortcut": "Parity alternates even, odd, even, odd, even, so the next term is odd (35 or 37); the gaps 3, 5, 7, 9 call for 11, not 9.",
+    "trap": "35 — repeating the last gap of 9 instead of letting the odd gaps grow to 11."
+  },
+  "ls-multiply-add-alternating": {
+    "shortcut": "The gaps 4, 8, 16, 32 double each time, so the next gap is 64: 63 + 64 = 127.",
+    "trap": "95 — repeating the last gap of 32 instead of doubling it to 64."
+  },
+  "ls-alternating-two-series": {
+    "shortcut": "The gaps alternate +6 and −3, and the sixth term follows a −3, so it takes +6: 11 + 6 = 17.",
+    "trap": "18 — reading the upward jumps as growing (+6, then +7); they stay at +6, while each alternate series climbs by a steady 3."
+  },
+  "ls-letter-skip-two": {
+    "shortcut": "Skip two letters each time: after J drop K and L, landing on M.",
+    "trap": "\"L\" — skipping only one letter after J; the series skips two each time (B, C after A; E, F after D)."
+  },
+  "ls-fibonacci-like": {
+    "shortcut": "Test the rule on the last three: 10 + 16 = 26 confirms add-the-previous-two, so 16 + 26 = 42.",
+    "trap": "36 — repeating the last gap of 10; each gap equals the term two places back, so the next gap is 16."
+  },
+  "ls-odd-one-out-series": {
+    "shortcut": "The run is 2³ to 6³ with 100 wedged between 4³ and 5³; a cube between 64 and 125 would need a whole number between 4 and 5, and none exists.",
+    "trap": "64 — it is also a square (8²), so a candidate hunting for the 'square' may pick it; but 64 = 4³ fits the cube run, while 100 is only a square."
+  },
+  "cd-shift-by-one": {
+    "shortcut": "Check one letter per option: D must become E (drops DPH) and G must become H (drops EPG); FQI shifts by two, leaving EPH.",
+    "trap": "\"DPH\" — keeping the D because the code DBU already starts with D; every letter moves one step, so D → E."
+  },
+  "cd-reverse-and-shift": {
+    "shortcut": "The code's first letter is the word's last letter + 1: N → O leaves OFQ and OQF, and the middle E → F picks OFQ.",
+    "trap": "\"QFO\" — shifting each letter but forgetting to reverse; BOOK's code LPPC reads CPPL backwards, so the reversal is part of the rule."
+  },
+  "cd-number-code-sum": {
+    "shortcut": "Only the units digit matters: P, I, N, K are 16, 9, 14, 11, and 6 + 9 + 4 + 1 ends in 0, so 50 is the only possible option.",
+    "trap": "48 — misplacing N as the 12th letter instead of the 14th; the units digits already demand an answer ending in 0."
+  },
+  "cd-substitution-language": {
+    "shortcut": "Pit, na, lat and tuk each appear once, so none can mean 'water', which occurs in both meanings; som is the only survivor.",
+    "trap": "\"lat\" — it sits beside som in the second sentence and a quick reader pairs it with 'water'; lat appears in one sentence only, so it must be 'is' or 'cold'."
+  },
+  "cd-position-value-shift": {
+    "shortcut": "Test one letter per option: S + 3 = V drops CWU, B + 1 = C drops DWV, U + 2 = W drops CVV — leaving CWV.",
+    "trap": "\"CWU\" — carrying the middle shift of +2 into the third letter; the shifts rise +1, +2, +3, so S → V."
+  },
+  "br-only-son-of-father": {
+    "shortcut": "Replace 'the only son of my father' with 'me': the photograph shows 'the son of me', so the speaker is the father.",
+    "trap": "\"Brother\" — reading 'son of my father' as a brother; the word 'only' rules a brother out, so the phrase points back to the speaker."
+  },
+  "br-brother-of-mother": {
+    "shortcut": "She and the speaker are in the same generation (both grandchildren of the mother's parents) but not siblings, which makes her a cousin.",
+    "trap": "\"Niece\" — she is the mother's niece, not the speaker's; a niece is a sibling's child, one generation below."
+  },
+  "br-woman-photo-daughter": {
+    "shortcut": "Swap 'the only daughter of my mother' for 'me': the girl is 'my daughter'.",
+    "trap": "\"Niece\" — reading 'daughter of my mother' as a sister and her child as a niece; 'only' means the speaker has no sister."
+  },
+  "br-family-of-six": {
+    "shortcut": "Count generations: A and E sit two above C and D (A → B → C, D), so E, a woman, is the grandmother.",
+    "trap": "\"Mother\" — E is B's mother; transferring that relation to D skips a generation."
+  },
+  "ds-walk-and-turn": {
+    "shortcut": "Two right turns reverse the heading, so the third leg undoes the first; only the 15 m middle leg, heading east, remains.",
+    "trap": "\"15 m west\" — taking a right turn from north as west; facing north, right is east."
+  },
+  "ds-shadow-direction": {
+    "shortcut": "Morning shadows point west; with west on his right hand, the man faces north (east on his left).",
+    "trap": "\"South\" — putting the sun in the west, so the shadow points east; east on the right means facing south."
+  },
+  "ds-pythagoras-displacement": {
+    "shortcut": "The distance must be under 6 + 8 = 14 and over 8; 6-8-10 is the 3-4-5 triangle doubled.",
+    "trap": "14 km — adding the two legs, which is the distance walked, not the straight-line distance from the start."
+  },
+  "ds-left-turns": {
+    "shortcut": "Net the turns: left + left + right is one left, and a left from south faces east.",
+    "trap": "\"West\" — turning left from south as it looks on a map; facing south, the person's left hand points east."
+  },
+  "sy-all-cats-animals": {
+    "shortcut": "Chain the 'all' statements forward: cats → animals → living things gives I; II runs the chain backwards, and 'all A are B' never turns into 'all B are A'.",
+    "trap": "\"Both I and II\" — reversing the 'all' statements; plenty of living things (trees, dogs) are not cats."
+  },
+  "sy-some-pens-are-books": {
+    "shortcut": "One counter-drawing kills II: draw papers larger than books, so some paper is not a book. I survives every drawing because the pen-books sit inside papers.",
+    "trap": "\"Both I and II\" — reading 'All books are papers' backwards as 'all papers are books'."
+  },
+  "sy-no-a-is-b": {
+    "shortcut": "'Some lazy are rich' plus 'no lazy is a student' gives the standard 'some rich are not students'; a 'no' conclusion needs both premises universal.",
+    "trap": "\"Both\" — stretching 'some rich people are not students' to 'no rich person is a student'; rich people who are not lazy may still be students."
+  },
+  "sa-row-of-five": {
+    "shortcut": "With C and E fixed at the ends, the A–B pair and D fill seats 2–4; D comes after B, so the pair must start at seat 2, putting B in seat 3.",
+    "trap": "\"A\" — placing B to A's left by reading 'right' from the viewer's side, which gives C, B, A, D, E; facing north, B immediately right of A gives C, A, B, D, E."
+  },
+  "sa-circle-of-six": {
+    "shortcut": "Six seats make three opposite pairs; P–S and Q–R are two of them, so T and U must be the third — no need to fix left and right.",
+    "trap": "\"P\" — T sits right beside S and S is opposite P, so a hurried reader carries 'opposite P' over to T; T's opposite is the one person left unpaired, U."
+  },
+  "an-doctor-hospital": {
+    "shortcut": "Hospital is a place of work; School is the only option that is a place.",
+    "trap": "\"Student\" — it follows 'works with' (doctor : patient), a different relation from 'works in'."
+  },
+  "an-odd-one-out-words": {
+    "shortcut": "Name the category of the first two — flowers — and test each item against it: only Mango is a fruit.",
+    "trap": "\"Marigold\" — it shares the 'Ma' opening with Mango and is less of a bouquet flower than rose or jasmine, but it is still a flower; Mango alone is a fruit."
+  },
+  "an-square-cube-analogy": {
+    "shortcut": "Only one option ends in 4, the units digit of 12²: 144.",
+    "trap": "132 — 12 × 11, a product of neighbours that looks square-like; 81 is 9 × 9, so the partner is 12 × 12."
+  },
+  "mr-data-sufficiency-age": {
+    "shortcut": "Ask what each statement fixes: I gives only a gap and II only the brother's age; a gap plus one age fixes Ravi (19 + 5).",
+    "trap": "\"II alone is enough\" — it pins the brother at 19, and a hurried reader forgets the question asks for Ravi's age."
+  },
+  "mr-clock-angle": {
+    "shortcut": "At 3:30 the hour hand is halfway between 3 and 4 and the minute hand is on 6: 2½ hour-gaps × 30° = 75°.",
+    "trap": "90° — leaving the hour hand on the 3; in 30 minutes it moves 15° towards the 4."
+  },
+  "mr-calendar-day": {
+    "shortcut": "Four weeks after Saturday 15 August is Saturday 12 September; three days more is Tuesday the 15th.",
+    "trap": "\"Monday\" — counting August as 30 days (2 odd days); August has 31, which is 3 odd days."
+  },
+  "mr-statement-and-assumption": {
+    "shortcut": "Negate each: if nobody wanted a first-attempt pass the advert would fall flat, so I is needed; if other routes exist the advert still stands, so II is not.",
+    "trap": "\"Both\" — accepting II because the advert sounds exclusive; it promises success, not that it is the only way."
+  }
+}

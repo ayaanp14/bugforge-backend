@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { lessonFaq, summarise, titles, trackDescription } from "./seo.js";
+import { contentCardFor, contentCardUrl, lessonFaq, summarise, titles, trackDescription } from "./seo.js";
 
 // The meta description of every content page — a problem statement, a bug
 // report, a lesson — comes through here, and the SPA's lib/seo/summary is
@@ -36,16 +36,16 @@ test("one long sentence is cut on a word with an ellipsis", () => {
  * HTML the edge served; these pin the shapes so a change here is a
  * deliberate one made in both places.
  */
-test("every content page kind has a title with its intent and the brand last", () => {
-  assert.equal(titles.problem("Two Sum", "Easy"), "Two Sum — Easy Coding Problem & Solution — CodeKairo");
-  assert.equal(titles.topicHub("Arrays", 343), "Arrays Coding Problems: 343 Practice Questions with Solutions — CodeKairo");
-  assert.equal(titles.companyHub("TCS", 57), "TCS Coding Interview Questions: 57 Tagged Problems to Practise — CodeKairo");
+test("every content page kind has a title with its intent first and the brand where it fits", () => {
+  assert.equal(titles.problem("Two Sum", "Easy"), "Two Sum — Easy Problem & Solution — CodeKairo");
+  assert.equal(titles.topicHub("Arrays", 343), "Arrays Coding Problems: 343 Questions with Solutions");
+  assert.equal(titles.companyHub("TCS", 57), "TCS Coding Interview Questions: 57 Tagged Problems");
   assert.equal(titles.bugHunt("The Checkout Meltdown", "JavaScript"), "The Checkout Meltdown — JavaScript Bug Hunt — CodeKairo");
-  assert.equal(titles.bugHub("JavaScript", 105, "language"), "JavaScript Debugging Practice: 105 Bug Hunts on Real Code — CodeKairo");
+  assert.equal(titles.bugHub("JavaScript", 105, "language"), "JavaScript Debugging Practice: 105 Bug Hunts on Real Code");
   assert.equal(titles.bugHub("Database", 29, "category"), "Database Bug Hunts: 29 Debugging Challenges — CodeKairo");
-  assert.equal(titles.aptitudeCategory("Quantitative Aptitude", 13, 517), "Quantitative Aptitude Questions with Solutions: 13 Topics, 517 Practice Questions — CodeKairo");
-  assert.equal(titles.aptitudeTopic("Percentages"), "Percentages Questions with Solutions — Aptitude Practice — CodeKairo");
-  assert.equal(titles.aptitudeQuestion("Remainder of a large power", "Number System"), "Remainder of a large power — Number System Aptitude Question with Solution — CodeKairo");
+  assert.equal(titles.aptitudeCategory("Quantitative Aptitude", 517), "517 Quantitative Aptitude Questions with Solutions");
+  assert.equal(titles.aptitudeTopic("Percentages"), "Percentages Aptitude Questions with Solutions — CodeKairo");
+  assert.equal(titles.aptitudeQuestion("Remainder of a large power", "Number System"), "Remainder of a large power — Number System Aptitude Question");
   assert.equal(titles.studyTrack("Java", 138), "Learn Java: Free Java Tutorial in 138 Lessons — CodeKairo");
   assert.equal(titles.studyLesson("Records", "Java", false), "Records — Java lesson — CodeKairo");
   assert.equal(titles.studyLesson("Module test", "Java", true), "Module test — Java checkpoint — CodeKairo");
@@ -72,6 +72,34 @@ test("a lesson's FAQ is its direct answer first, then its common questions", () 
       { q: "Why?", a: "Because." },
     ],
   });
+});
+
+/*
+ * The content pages' link-preview cards (lib/content-card): drawn from the
+ * page's own head, only for the five kinds that have one, at an address the
+ * SPA's lib/content-card rebuilds from the path alone.
+ */
+test("a content page's preview card says what its head says, and hubs keep the site's card", () => {
+  type Head = Parameters<typeof contentCardFor>[1];
+  const problem = { path: "/problems/two-sum", title: titles.problem("Two Sum", "Easy"), description: "", crumb: "Two Sum", facts: { difficulty: "Easy", keywords: ["Array", "Hash Table", "Math"] } } as Head;
+  const card = contentCardFor("/problems/two-sum", problem);
+  assert.equal(card?.kind, "problem");
+  assert.equal(card?.title, "Two Sum");
+  assert.equal(card?.eyebrow, "Easy · Array · Hash Table");
+  const lesson = { path: "/study-plans/java/if-else", title: titles.studyLesson("if, else", "Java", false, "Java If-Else Statements"), description: "", crumb: "if, else", facts: { language: "Java", minutes: 12 } } as Head;
+  assert.equal(contentCardFor("/study-plans/java/if-else", lesson)?.title, "Java If-Else Statements");
+  const hub = { path: "/challenges/arrays", title: "Arrays", description: "" } as Head;
+  assert.equal(contentCardFor("/challenges/arrays", hub), null);
+  assert.equal(contentCardFor("/bug-hunts/javascript", { ...hub, path: "/bug-hunts/javascript" }), null);
+  assert.match(contentCardUrl("/problems/two-sum"), /\/api\/seo\/card\.png\?path=%2Fproblems%2Ftwo-sum&d=1$/);
+});
+
+test("the brand is added only where the whole title fits in 60 characters", () => {
+  const long = titles.problem("Find First and Last Position of Element in Sorted Array", "Medium");
+  assert.equal(long, "Find First and Last Position of Element in Sorted Array — Medium Problem & Solution");
+  for (const t of [titles.problem("Two Sum", "Easy"), titles.test("Foundation", "Infosys"), titles.aptitudeTopic("Percentages")]) {
+    assert.ok(t.endsWith(" — CodeKairo") && t.length <= 60, t);
+  }
 });
 
 test("two aptitude questions of one topic never share a title", () => {

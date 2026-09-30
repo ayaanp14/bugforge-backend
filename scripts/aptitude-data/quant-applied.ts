@@ -390,7 +390,10 @@ export const QUANT_APPLIED: AptitudeSeed[] = [
     topic: "probability",
     title: "Two reds without replacement",
     prompt: "A bag has **4 red** and **6 blue** balls. Two balls are drawn one after another **without replacement**. What is the probability that both are red?",
-    options: ["6/45", "2/15", "4/25", "1/5"],
+    // "3/25" (4/10 × 3/10 — the numerator reduced, the denominator not),
+    // not "6/45", which was 2/15 unreduced, a second right answer (found
+    // writing the extras, 2026-10-01).
+    options: ["3/25", "2/15", "4/25", "1/5"],
     answer: 1,
     difficulty: "medium",
     hints: ["After one red is drawn, 3 reds remain among 9 balls.", "(4/10) × (3/9)."],

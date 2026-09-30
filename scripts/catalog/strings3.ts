@@ -422,7 +422,7 @@ export const STRING3_PROBLEMS: CatalogProblem[] = [
       slug: "verifying-an-alien-dictionary",
       title: "Verifying an Alien Dictionary",
       difficulty: "EASY" as const,
-      tags: ["Array", "String", "Hash Table", "Facebook", "Amazon", "Google"],
+      tags: ["Array", "String", "Hash Table", "Meta", "Amazon", "Google"],
       signature: {
         funcName: "isAlienSorted",
         params: [{ name: "words", type: "string[]" as const }, { name: "order", type: "string" as const }],

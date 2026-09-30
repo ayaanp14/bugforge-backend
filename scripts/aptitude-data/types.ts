@@ -16,8 +16,33 @@ export interface AptitudeSeed {
   hints: string[];
   solution: string;
   approach: string;
+  /**
+   * The faster route to this question's answer — the one-line method or
+   * check a practised candidate uses. From extras/*.json (see extras.ts).
+   */
+  shortcut?: string;
+  /**
+   * The wrong option a hurried candidate picks, quoted as it appears in
+   * `options`, and the slip that produces it. From extras/*.json.
+   */
+  trap?: string;
   tags?: string[];
   timeTargetSec?: number;
+}
+
+/** A shortcut or trap longer than this is a second solution, not a note. */
+export const EXTRA_MAX_CHARS = 420;
+
+/**
+ * What is stored as the question's `approach` (AptitudeQuestion.approach —
+ * "the idea or shortcut the question is really testing"): the authored idea,
+ * then the shortcut and the common trap as labelled paragraphs. Folded into
+ * the one column so the page ("The idea"), the prerendered HTML and the
+ * assistant all carry them without a schema change (2026-10-01: the question
+ * pages averaged ~131 words of their own, thin beside every other prep site).
+ */
+export function storedApproach(q: AptitudeSeed): string {
+  return [q.approach.trim(), q.shortcut?.trim() ? `**Shortcut.** ${q.shortcut.trim()}` : "", q.trap?.trim() ? `**Common trap.** ${q.trap.trim()}` : ""].filter(Boolean).join("\n\n");
 }
 
 export interface SeedProblem {
@@ -46,6 +71,12 @@ export function validateAptitudeSeed(questions: AptitudeSeed[]): SeedProblem[] {
     if (q.hints.some((hint) => !hint.trim())) bad("empty hint");
     if (!q.solution.trim()) bad("empty solution");
     if (!q.approach.trim()) bad("empty approach");
+    for (const [field, value] of [["shortcut", q.shortcut], ["trap", q.trap]] as const) {
+      if (value === undefined) continue;
+      if (!value.trim()) bad(`empty ${field}`);
+      if (value.length > EXTRA_MAX_CHARS) bad(`${field} over ${EXTRA_MAX_CHARS} characters`);
+      if (value.includes("__CODEXA_")) bad(`${field} contains a judge sentinel`);
+    }
     if (q.timeTargetSec !== undefined && (!Number.isInteger(q.timeTargetSec) || q.timeTargetSec < 20 || q.timeTargetSec > 900)) bad("timeTargetSec out of range");
   }
   return problems;

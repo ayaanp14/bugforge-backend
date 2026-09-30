@@ -166,6 +166,7 @@ const ALIASES: Record<string, string[]> = {
   subscription: ["plan", "billing"],
   subscribe: ["plan", "billing"],
   upgrade: ["plan", "billing"],
+  buy: ["plan", "billing", "checkout"],
   refund: ["billing", "payment", "support"],
   cancel: ["billing", "plan"],
   premium: ["plan", "pro"],

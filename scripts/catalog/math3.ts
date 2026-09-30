@@ -1089,7 +1089,7 @@ export const MATH3_PROBLEMS: CatalogProblem[] = [
       slug: "check-if-it-is-a-straight-line",
       title: "Check If It Is a Straight Line",
       difficulty: "EASY" as const,
-      tags: ["Array", "Math", "Geometry", "Amazon", "Google", "Facebook"],
+      tags: ["Array", "Math", "Geometry", "Amazon", "Google", "Meta"],
       signature: { funcName: "checkStraightLine", params: [{ name: "coordinates", type: "int[][]" as const }], returns: "bool" as const },
       description: describe(
         "You are given an array `coordinates` where `coordinates[i] = [x, y]` is a point in the plane.\n\nReturn `true` if all the points lie on a single straight line.",

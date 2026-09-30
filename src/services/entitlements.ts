@@ -1,6 +1,6 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "../lib/prisma.js";
-import { FREE_PLAN, OWNER_PLAN, isOwnerEmail, planFor, type Plan } from "../lib/plans.js";
+import { FREE_PLAN, OWNER_PLAN, freeForAll, isOwnerEmail, planFor, withFreeForAll, type FreeForAll, type Plan } from "../lib/plans.js";
 
 /**
  * Who is allowed to do what, and how much of it they have already done.
@@ -31,6 +31,8 @@ export interface Entitlement {
   /** Null when the user is on free — nothing to expire. */
   currentPeriodEnd: Date | null;
   usage: Usage;
+  /** The free-for-all period (lib/plans FREE_FOR_ALL_UNTIL): while it runs, `plan.entitlements` are the lifted ones. */
+  freeForAll: FreeForAll;
 }
 
 /**
@@ -71,6 +73,12 @@ export async function isOwnerAccount(userId: string, email?: string | null): Pro
  * two are somehow active — an upgrade paid before the old one expired — the
  * one that runs longest wins, which is always the one the user paid most
  * recently for.
+ *
+ * While the free-for-all period runs (lib/plans FREE_FOR_ALL_UNTIL) the plan
+ * comes back with every limit lifted — the same id and name, so "you are on
+ * Pro until <date>" stays true, but the entitlements every check below reads
+ * are Elite's. Done here and nowhere else, for the same reason the owner
+ * branch is: this is the one place limits come from.
  */
 export async function activePlan(userId: string, email?: string | null): Promise<{ plan: Plan; currentPeriodEnd: Date | null }> {
   const [owner, subscription] = await Promise.all([
@@ -83,8 +91,8 @@ export async function activePlan(userId: string, email?: string | null): Promise
   ]);
 
   if (owner) return { plan: OWNER_PLAN, currentPeriodEnd: null };
-  if (!subscription) return { plan: FREE_PLAN, currentPeriodEnd: null };
-  return { plan: planFor(subscription.planId), currentPeriodEnd: subscription.currentPeriodEnd };
+  if (!subscription) return { plan: withFreeForAll(FREE_PLAN), currentPeriodEnd: null };
+  return { plan: withFreeForAll(planFor(subscription.planId)), currentPeriodEnd: subscription.currentPeriodEnd };
 }
 
 /**
@@ -179,6 +187,7 @@ export async function entitlementFor(userId: string, email?: string | null): Pro
     plan,
     currentPeriodEnd,
     usage: { interviewsThisWeek: interviews, bugsToday: bugs, interviewCredits: credits, assistantMessagesToday: assistant },
+    freeForAll: freeForAll(),
   };
 }
 

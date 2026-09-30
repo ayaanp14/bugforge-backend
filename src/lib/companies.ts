@@ -18,6 +18,19 @@ export const COMPANY_TAGS: readonly string[] = [
   "Tech Mahindra", "Mphasis", "Virtusa", "Mindtree",
 ];
 
+/**
+ * A company the catalogue once tagged under an old name, and the name it
+ * goes by. "Facebook" and "Meta" were two hubs listing the same company's
+ * problems (found by the 2026-09-30 SEO audit); the tags were renamed in
+ * scripts/catalog and in each database by scripts/merge-company-tag.ts, and
+ * the old hub address answers a 301 to the new one (services/seo.ts). The
+ * old name stays in COMPANY_TAGS so a database not yet migrated still reads
+ * it as a company rather than a topic.
+ */
+export const COMPANY_RENAMED: Readonly<Record<string, string>> = {
+  Facebook: "Meta",
+};
+
 const COMPANY_SET = new Set(COMPANY_TAGS);
 
 export const isCompanyTag = (tag: string): boolean => COMPANY_SET.has(tag);

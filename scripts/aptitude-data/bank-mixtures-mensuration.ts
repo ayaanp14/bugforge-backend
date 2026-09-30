@@ -296,8 +296,12 @@ export const BANK_MIXTURES_MENSURATION: AptitudeSeed[] = [
     slug: "me2-equilateral-triangle-area",
     topic: "mensuration",
     title: "Area of an equilateral triangle",
-    prompt: "What is the **area of an equilateral triangle** of side **12 cm**? (Take √3 = 1.73.)",
-    options: ["36√3 cm²", "48√3 cm²", "62.28 cm²", "72 cm²"],
+    // "144√3 cm²" (the ÷ 4 forgotten), not "62.28 cm²" — that was 36√3 at
+    // the √3 the prompt gave, a second right answer (found writing the
+    // extras, 2026-10-01); the options are all in √3 form, so no value of
+    // √3 is offered.
+    prompt: "What is the **area of an equilateral triangle** of side **12 cm**?",
+    options: ["36√3 cm²", "48√3 cm²", "144√3 cm²", "72 cm²"],
     answer: 0,
     difficulty: "medium",
     hints: ["Area = (√3/4)a².", "(√3/4) × 144."],

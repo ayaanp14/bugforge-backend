@@ -109,7 +109,7 @@ export const DP3_PROBLEMS: CatalogProblem[] = [
       slug: "paint-house",
       title: "Paint House",
       difficulty: "MEDIUM" as const,
-      tags: ["Array", "Dynamic Programming", "Amazon", "Facebook", "LinkedIn"],
+      tags: ["Array", "Dynamic Programming", "Amazon", "Meta", "LinkedIn"],
       signature: { funcName: "minCost", params: [{ name: "costs", type: "int[][]" as const }], returns: "int" as const },
       description: describe(
         "A row of `n` houses must each be painted red, blue or green. `costs[i] = [red, blue, green]` gives the cost of each colour for house `i`.\n\n**No two adjacent houses may share a colour.** Return the minimum total cost.",
@@ -823,7 +823,7 @@ export const DP3_PROBLEMS: CatalogProblem[] = [
       slug: "wildcard-matching",
       title: "Wildcard Matching",
       difficulty: "HARD" as const,
-      tags: ["String", "Dynamic Programming", "Greedy", "Amazon", "Google", "Facebook"],
+      tags: ["String", "Dynamic Programming", "Greedy", "Amazon", "Google", "Meta"],
       signature: {
         funcName: "isMatch",
         params: [{ name: "s", type: "string" as const }, { name: "p", type: "string" as const }],

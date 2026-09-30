@@ -184,12 +184,15 @@ export const VERBAL: AptitudeSeed[] = [
     topic: "sentence-completion",
     title: "Two blanks at once",
     prompt: "Fill in the blanks:\n\n> Although the report was ______, its conclusions were widely ______ by experts.",
-    options: ["thorough … accepted", "thorough … disputed", "vague … praised", "brief … ignored"],
+    // "vague … dismissed", not "vague … praised": a vague report that was
+    // nevertheless praised is a contrast too, so two options were defensible
+    // (found writing the extras, 2026-10-01).
+    options: ["thorough … accepted", "thorough … disputed", "vague … dismissed", "brief … ignored"],
     answer: 1,
     difficulty: "medium",
     hints: ["'Although' means the two halves must clash.", "A thorough report whose conclusions were accepted would be no contrast at all."],
     solution:
-      "1. *Although* demands a contrast between the two halves.\n2. **thorough … disputed** delivers it: a careful report whose conclusions were nevertheless challenged.\n3. *thorough … accepted* and *vague … praised* are not contrasts of the right kind, and *brief … ignored* reads as consistent rather than contrary.\n\nAnswer: **thorough … disputed**.",
+      "1. *Although* demands a contrast between the two halves.\n2. **thorough … disputed** delivers it: a careful report whose conclusions were nevertheless challenged.\n3. *thorough … accepted*, *vague … dismissed* and *brief … ignored* each run the same way — the quality of the report and the fate of its conclusions agree — so none gives *although* anything to mark.\n\nAnswer: **thorough … disputed**.",
     approach: "With two blanks, fix the relation the connector demands, then test pairs rather than single words. One wrong half is enough to eliminate an option.",
     tags: ["double blank"],
     timeTargetSec: 60,
@@ -244,7 +247,7 @@ export const VERBAL: AptitudeSeed[] = [
       "The passage explicitly says output did not collapse, so the reason for hybrid work must lie elsewhere.",
     ],
     solution:
-      "1. The passage states that output did not collapse under remote work, which rules out the first option.\n2. It says what suffered was informal exchange, and that firms adopt hybrid schedules for the *social fabric* rather than productivity.\n3. That is exactly option **2**. The third option overstates the passage; the fourth exaggerates a supporting detail into a claim the author never makes.\n\nAnswer: **Hybrid schedules are being adopted mainly to restore informal interaction, not to fix output.**",
+      "1. The passage states that output did not collapse under remote work, which rules out *Remote work reduces productivity and should be abandoned*.\n2. It never says offices are unnecessary — it ends with firms bringing people back part of the week — so *The pandemic proved that offices are unnecessary* overreaches.\n3. Corridor conversations mattered, but the passage does not call them the most productive part of the day; that option inflates a supporting detail.\n4. The last sentence carries the point: firms adopt hybrid schedules for the *social fabric* rather than for output. That is the fourth option.\n\nAnswer: **Hybrid schedules are being adopted mainly to restore informal interaction, not to fix output.**",
     approach:
       "The main idea is the claim every other sentence supports. Reject options that are true but minor (a supporting detail) and options that push the author's point further than the text goes.",
     tags: ["main idea"],

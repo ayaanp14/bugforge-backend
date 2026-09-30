@@ -351,7 +351,7 @@ export const BANK_AVERAGES: AptitudeSeed[] = [
     hints: ["Total = 6 × 3.95 = 23.7.", "Subtract the two known pair totals, 6.8 and 7.7."],
     solution:
       "1. Total = 6 × 3.95 = 23.7.\n2. First pair = 6.8; second pair = 7.7; together 14.5.\n3. Remaining pair = 23.7 − 14.5 = 9.2, so their average is 9.2 ÷ 2 = **4.6**.\n\nAnswer: **4.6**.",
-    approach: "Work in totals throughout and divide only at the very end. Averaging averages would be wrong even here, where the groups happen to be equal.",
+    approach: "Work in totals throughout and divide only at the very end. Averaging the pair averages happens to work here because every group has two numbers — it fails the moment the groups differ in size.",
     tags: ["groups"],
     timeTargetSec: 90,
   },

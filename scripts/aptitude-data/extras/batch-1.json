@@ -1,0 +1,642 @@
+{
+  "ps-for-sum-of-evens": {
+    "shortcut": "The survivors are the first five even numbers, and the sum of the first k evens is k(k + 1): 5 × 6 = 30, with no loop trace needed.",
+    "trap": "25 is the sum of the odd values 1 + 3 + 5 + 7 + 9, which is what a candidate gets by reading i MOD 2 == 0 as \"i is odd\" and keeping the numbers that leave remainder 1."
+  },
+  "ps-while-halving-count": {
+    "shortcut": "Truncating halvings from n down to 1 take ⌊log₂ n⌋ steps: 2⁶ = 64 ≤ 100 < 128 = 2⁷, so the loop runs 6 times.",
+    "trap": "7 comes from counting the seven values 100, 50, 25, 12, 6, 3, 1 instead of the six halvings between them, or from rounding log₂ 100 ≈ 6.6 up instead of down."
+  },
+  "ps-nested-triangular-count": {
+    "shortcut": "The increment runs once for every pair with j ≤ i ≤ 4: the 4 pairs with j = i plus C(4, 2) = 6 pairs with j < i, which makes 10.",
+    "trap": "16 is 4 × 4, the count for a square grid; it assumes the inner loop always runs to 4 when its bound is the current i."
+  },
+  "ps-swap-without-temp": {
+    "shortcut": "The last two lines keep a + b = 17 fixed, so once b becomes 12 the other value must be 17 − 12 = 5: the output is the originals exchanged, 5 12.",
+    "trap": "\"17 12\" is the state after the second assignment; a candidate who stops there never applies Set a = a − b, so a still holds the sum 17."
+  },
+  "ps-if-else-grade-chain": {
+    "shortcut": "Place 72 in its band: it sits in 60–74, the third band from the top, so grade 3 is printed.",
+    "trap": "4 tempts a candidate who sees 72 fail both upper tests and jumps straight to the final Else, overlooking the marks >= 60 rung that catches it first."
+  },
+  "ps-array-position-of-max": {
+    "shortcut": "Skip the trace: find the largest element, 23, and count its place in {4, 19, 7, 23, 2, 11}. It is 4th, and pos ends holding exactly that place.",
+    "trap": "23 is the largest value, not its position; picking it means printing A[pos] instead of pos."
+  },
+  "ps-array-print-backwards": {
+    "shortcut": "A loop from the last index down to 0 prints the array reversed, so read {3, 8, 1, 9, 4} from right to left.",
+    "trap": "\"3 8 1 9 4\" is the array in stored order, picked by reading \"For i = 4 down to 0\" as if the counter went up."
+  },
+  "ps-string-vowel-count": {
+    "shortcut": "Count the consonants instead: P, S, D, C, D are 5 of the 10 letters, so the other 5 are vowels.",
+    "trap": "3 counts only the distinct vowels E, U and O; the repeated O and E each pass the test again and add to c."
+  },
+  "ps-recursion-skip-factorial": {
+    "shortcut": "Only odd numbers are ever multiplied, so the answer must be odd, which rules out 210 and 5040; 7 × 5 × 3 = 105.",
+    "trap": "5040 is 7!, the result of stepping n down by 1 instead of 2 so that the even factors 6, 4 and 2 slip into the product."
+  },
+  "ps-recursion-call-count": {
+    "shortcut": "Count the arguments, not the arithmetic: each integer from 5 down to 0 is passed exactly once, so there are six calls.",
+    "trap": "5 forgets that G(0) is itself a call; it counts only the calls that recurse and stops before the base case."
+  },
+  "ps-call-by-value-effect": {
+    "shortcut": "The first number comes from inside Change and must be 12, leaving \"12 4\" or \"12 12\"; by value, a is untouched, so 12 4.",
+    "trap": "\"12 12\" treats x as another name for a, as call by reference would; by value, the tripling dies with the copy."
+  },
+  "ps-call-by-reference-mixed": {
+    "shortcut": "Only the ref parameter keeps its +10, so the sum is the original 1 + 2 plus a single 10: 13.",
+    "trap": "23 adds 10 to both p and q, treating the value parameter y as if it were also passed by reference."
+  },
+  "ps-euclid-what-it-computes": {
+    "shortcut": "Try Mystery(4, 6): the pair goes (6, 4) → (4, 2) → (2, 0) and returns 2, which is the GCD, not the LCM 12, the remainder 4 or the larger value 6.",
+    "trap": "\"The remainder when a is divided by b\" is picked by spotting a MOD b in the body and ignoring the loop, which keeps taking remainders until b reaches 0."
+  },
+  "ps-reverse-the-digits": {
+    "shortcut": "r = r × 10 + last digit is digit reversal, so write 4021 backwards: 1204, with the interior 0 staying in the middle.",
+    "trap": "1240 comes from reversing only the non-zero digits (4 2 1 → 1 2 4) and tacking the zero on the end, as if a 0 digit added nothing where it stood."
+  },
+  "ps-power-by-repeated-multiply": {
+    "shortcut": "Powers of 3 end in 3, 9, 7, 1 in turn, so the fourth power ends in 1, and 81 is the only option that does.",
+    "trap": "64 is 4³, the result of swapping the arguments and reading P(3, 4) as base 4 with exponent 3."
+  },
+  "ps-for-loop-with-step": {
+    "shortcut": "Find the last value: the largest 5 + 7k not above 50 is 47, at k = 6, so k runs 0 to 6, which is seven passes.",
+    "trap": "6 comes from dividing the range 45 by the step 7 and dropping the +1 for the starting value i = 5."
+  },
+  "ps-while-with-break": {
+    "shortcut": "s runs through the triangular numbers 1, 3, 6, 10, 15, 21, and the loop stops at the first one strictly above 15, which is 21.",
+    "trap": "15 is picked by stopping as soon as s reaches 15, as if the test were s >= 15 or ran after the update; 15 > 15 is false, so one more pass adds 6."
+  },
+  "ps-repeat-until-runs-once": {
+    "shortcut": "Rule out 0 first, since a post-tested loop cannot print it; one subtraction then takes x to −4, already below 5, so the count stops at 1.",
+    "trap": "0 treats the loop as pre-tested: x = 3 already satisfies x < 5, but the condition is checked only after the body has run."
+  },
+  "ps-nested-dependent-product-sum": {
+    "shortcut": "The sum of i × j over i ≤ j is (square of the sum + sum of the squares) ÷ 2 = (36 + 14) ÷ 2 = 25.",
+    "trap": "14 is 1 + 4 + 9, the diagonal terms alone, picked by reading the inner loop as running only j = i."
+  },
+  "ps-product-with-reset": {
+    "shortcut": "Only the last two passes matter: 6 × 4 = 24 is trimmed to 4, then 4 × 5 = 20, which is not strictly above 20 and so stays.",
+    "trap": "120 is 5!, the product with the If ignored; the trim at i = 4 changes every later value."
+  },
+  "ps-count-multiples-of-three-or-four": {
+    "shortcut": "The pattern repeats every 12: 1 to 12 holds 3, 4, 6, 8, 9 and 12, six hits, and 60 is five such blocks, so 6 × 5 = 30.",
+    "trap": "35 adds the 20 multiples of 3 to the 15 multiples of 4 and counts 12, 24, 36, 48 and 60 twice, although the OR moves the counter only once for each."
+  },
+  "ps-bubble-sort-single-pass": {
+    "shortcut": "Only 5 travels: it is larger than 1, 4 and 2, so it slides past each and stops before 8, and everything it passed shifts one place left, giving 1 4 2 5 8.",
+    "trap": "\"1 2 4 5 8\" is the fully sorted array, chosen by assuming the whole sort has run when the code makes a single pass."
+  },
+  "ps-selection-sort-swap-count": {
+    "shortcut": "Reversing 4 3 2 1 needs just two exchanges, 4↔1 and 3↔2; each selection pass makes one of them, and the guard skips the last pass.",
+    "trap": "3 assumes selection sort always makes n − 1 = 3 swaps and misses the m != i guard, which skips the third pass because 3 is already in place."
+  },
+  "ps-linear-search-comparisons": {
+    "shortcut": "A search that stops on the first hit makes exactly as many comparisons as that hit's position, and 25 first appears at position 4.",
+    "trap": "3 counts only the failed comparisons before the match; cmp is increased before the test, so the matching comparison counts too."
+  },
+  "ps-binary-search-iteration-count": {
+    "shortcut": "15 = 2⁴ − 1 indices make a perfect search tree of depth 4 (8, then 4 or 12, then 2, 6, 10 or 14); odd indices are its leaves, so index 13 is found on probe 4.",
+    "trap": "3 counts only the probes that moved low or high and forgets the fourth, matching probe, which also increments steps before Break."
+  },
+  "ps-reverse-string-in-place": {
+    "shortcut": "The first letter must end up last and the last first, so the answer starts with M and ends with A, and only MHTIROGLA does.",
+    "trap": "\"ALGORITHM\" assumes every pair is swapped twice and so restored, which would happen only if the loop ran to n; stopping at n / 2 swaps each pair once."
+  },
+  "ps-palindrome-routine-purpose": {
+    "shortcut": "Test tiny strings: Check(\"ab\") is FALSE although its letters are distinct and in order, and Check(\"abca\") is FALSE despite the repeated a, which leaves only the palindrome test.",
+    "trap": "\"Whether s contains a repeated character\" tempts because the loop compares characters for equality, but it compares only mirror positions, so a repeat anywhere else is never noticed."
+  },
+  "ps-sum-of-digits-trace": {
+    "shortcut": "Casting out nines: 9407 leaves remainder 2 on division by 9, so its digit sum must too, and 20 is the only option that does.",
+    "trap": "18 tempts as the nearest multiple of 9 for a number beginning with 9, but no slip in the loop produces it; the digits 7, 0, 4, 9 sum to 20."
+  },
+  "ps-nested-loop-with-continue": {
+    "shortcut": "The counter moves once for each ordered pair of different values from {1, 2, 3}: 3 × 2 = 6.",
+    "trap": "9 reads Continue as \"carry on to the next line\", so the increment would run for all 3 × 3 pairs; in fact it skips the rest of that pass."
+  },
+  "ps-read-print-swap-difference": {
+    "shortcut": "Both branches print the absolute difference |a − b|, so no branch needs deciding: after the two assignments a = 20 and b = 6, and |20 − 6| = 14.",
+    "trap": "8 is 14 − 6, the difference of the raw inputs; it skips the two assignments that turn a into the sum 20 and b into 6."
+  },
+  "ps-three-variable-rotation": {
+    "shortcut": "Eliminate: Set p = r makes p 9, ruling out \"2 5 9\" and \"5 9 2\", and Set q = t makes q the old p, 2, ruling out \"9 5 2\".",
+    "trap": "\"9 5 2\" reads the code as a plain swap of p and r, overlooking that r is then overwritten with 5 and q receives the saved 2."
+  },
+  "ps-count-binary-ones": {
+    "shortcut": "Each 1 bit is an odd value in the halving chain 45, 22, 11, 5, 2, 1, and four of those values are odd.",
+    "trap": "3 drops the final pass at n = 1, as if the loop ran while n > 1; that last remainder is the leading 1 bit of 101101."
+  },
+  "ps-rotate-array-left-by-one": {
+    "shortcut": "Check the ends: A[4] gets the saved first element, 10, and A[0] gets the old A[1], 20; only \"20 30 40 50 10\" has both.",
+    "trap": "\"50 10 20 30 40\" is a rotation to the right, picked by misreading A[i] = A[i + 1] as moving each value one place right."
+  },
+  "ps-matrix-anti-diagonal-sum": {
+    "shortcut": "i + j = 4 is the line from the top-right corner through the centre to the bottom-left corner: 1 + 4 + 3 = 8.",
+    "trap": "11 is 2 + 4 + 5, the main diagonal, which is what adding the cells where i = j gives instead of those where i + j = 4."
+  },
+  "ps-frequency-routine-purpose": {
+    "shortcut": "Test A = {5, 5} with x = 5: F returns 2, which is not a first position (1), a sum (10) or TRUE, so it can only be a count.",
+    "trap": "\"TRUE when x is present in A and FALSE otherwise\" tempts because c is non-zero exactly when x is present, but the function returns the number itself and never stops early."
+  },
+  "ps-loop-that-never-hits-zero": {
+    "shortcut": "20 is not a multiple of 3, so x jumps from 2 to −1 and never equals 0; only the guard can end the loop, at the first c above 100, which is 101.",
+    "trap": "7 counts the passes until x first goes negative (17, 14, 11, 8, 5, 2, −1), as if the guard were x > 0 rather than x != 0."
+  },
+  "ps-mutual-recursion-trace": {
+    "shortcut": "B(1) = 1 × A(0) = 0 wipes out everything below it, so A(4) = 4 + 3 × (2 + 0) = 10.",
+    "trap": "6 is B(3) on its own; it forgets the pending 4 + that A(4) still has to add once B(3) returns."
+  },
+  "ps-continue-and-break-together": {
+    "shortcut": "Only i = 1 to 8 are ever added, so take 1 + … + 8 = 36 and remove the multiples of 3 in that range, 3 + 6 = 9: 36 − 9 = 27.",
+    "trap": "37 adds 10 as well, missing that i = 10 passes the MOD test and then triggers Break because 10 > 8."
+  },
+  "ps-range-of-an-array": {
+    "shortcut": "mx − mn is just the largest minus the smallest element, so skip the loop: 27 − 3 = 24. The repeated 3 changes nothing.",
+    "trap": "11 is 14 − 3, what a candidate gets by leaving mx at its seed A[0] = 14 and letting only mn move."
+  },
+  "ps-collatz-step-count": {
+    "shortcut": "Once the chain reaches 16 = 2⁴, exactly four halvings remain; 7 reaches 16 on step 12, so the total is 12 + 4 = 16.",
+    "trap": "17 counts the values in the chain from 7 to 1 rather than the arrows between them; the first value costs no pass of the loop."
+  },
+  "pf-c-integer-and-float-division": {
+    "shortcut": "The first specifier is %d, so it prints an integer, and C truncates 3.5 to 3, not 4; the cast binds before /, so the second value is a true 3.5.",
+    "trap": "\"3 3.0\" applies the cast after the division, as (float)(a / b); the cast outranks /, so 7 is converted first and the division keeps its .5."
+  },
+  "pf-c-pre-and-post-increment": {
+    "shortcut": "i is bumped twice, so it ends at 7, which rules out \"5 5 7\" and \"6 5 6\"; j copied i before any bump (5) and k after both (7).",
+    "trap": "\"7 6 7\" treats j = i++ like ++i, as if the increment happened before j was assigned; the postfix form hands over the old value 5."
+  },
+  "pf-c-operator-precedence": {
+    "shortcut": "Only 18 / 3 % 4 needs thought: / and % share a level and go left to right, so it is 6 % 4 = 2, and the line is 10 − 8 + 2 = 4.",
+    "trap": "8 comes from doing % before /: 3 % 4 = 3, then 18 / 3 = 6, giving 10 − 8 + 6 = 8."
+  },
+  "pf-c-short-circuit-and": {
+    "shortcut": "a++ yields 0, so && is settled by its left side: ++b and b = 100 never run, but a's own increment still happens, giving 1 5.",
+    "trap": "\"1 6\" evaluates both operands as a non-short-circuit & would, bumping b to 6 even though the result was already false."
+  },
+  "pf-c-static-local-variable": {
+    "shortcut": "d is rebuilt at every call, so every pair must end in 1, leaving \"11 11 11\" or \"11 21 31\"; the static c climbs, so 11 21 31.",
+    "trap": "\"11 11 11\" treats static int c = 0 as running on every call; a static's initialiser runs once and its value persists."
+  },
+  "pf-c-pass-by-value-swap": {
+    "shortcut": "swap receives copies and returns nothing, so main's x and y cannot change: print them exactly as declared, 3 8.",
+    "trap": "\"8 3\" trusts the function's name; the exchange happens only between the private copies a and b, which vanish on return."
+  },
+  "pf-c-pointer-arithmetic": {
+    "shortcut": "p starts at index 1, so *(p + 2) is index 3, which holds 40; *p + 2 is plain arithmetic on the value, 20 + 2 = 22.",
+    "trap": "\"30 22\" counts p + 2 from the start of the array, landing on a[2], and forgets that p already points one element in."
+  },
+  "pf-c-sizeof-array-vs-pointer": {
+    "shortcut": "Inside f the parameter is really int *, so the ratio is pointer size over int size, 8 ÷ 4 = 2; in main the true array gives 40 ÷ 4 = 10.",
+    "trap": "\"10 10\" assumes the array keeps its size when passed; an array parameter decays to a pointer, so sizeof sees only 8 bytes."
+  },
+  "pf-c-strlen-vs-sizeof": {
+    "shortcut": "For an array initialised from a literal, sizeof can never be less than strlen + 1, which leaves only \"9 10\" once PLACEMENT is counted as 9 letters.",
+    "trap": "\"9 9\" forgets the terminating null character that the literal adds to the array's storage."
+  },
+  "pf-c-switch-fall-through": {
+    "shortcut": "Enter at case 2 and print every label's output until the first break: B, then C, then break.",
+    "trap": "\"B\" treats each case as a self-contained branch that stops at the next label; in C, cases fall through until a break."
+  },
+  "pf-c-nested-ternary": {
+    "shortcut": "The inner ?: nests inside the true branch: 3 passes x > 2 and fails x > 4, so the value is the inner false branch, 200.",
+    "trap": "100 is picked by stopping at the first true test, x > 2, and taking the first number after a ?, without evaluating the inner x > 4."
+  },
+  "pf-c-signed-unsigned-comparison": {
+    "shortcut": "When an int meets an unsigned int, the int converts: −1 becomes UINT_MAX, 4294967295 on 32 bits, which is not below 1.",
+    "trap": "\"less\" reads the comparison as ordinary mathematics, −1 < 1, missing the silent conversion of a to unsigned."
+  },
+  "pf-c-char-as-int": {
+    "shortcut": "One value, two views: 'A' + 2 = 67, which %c shows as the letter two after A, C, and %d as the number 67.",
+    "trap": "\"67 67\" assumes that adding an int turns the char into a number %c cannot show as a letter; %c prints whatever code it is given as a character."
+  },
+  "pf-c-index-commutes": {
+    "shortcut": "x[y] is defined as *(x + y), so 3[a] is a[3] = 40, and 40 − 20 = 20.",
+    "trap": "10 takes 3[a] as the third element, 30, counting from 1 instead of reading index 3; 30 − 20 = 10."
+  },
+  "pf-c-global-shadowed-by-local": {
+    "shortcut": "The local int x = 20 hides the global for the whole of f, so f prints 21 and main's global 10 is untouched.",
+    "trap": "\"21 21\" assumes the assignment inside f reaches the global x; it changes only the local copy that shadows it."
+  },
+  "pf-c-negative-division-and-modulo": {
+    "shortcut": "C99 truncates towards zero, so the quotient is −3 and the remainder takes the dividend's sign; check (−3) × 2 + (−1) = −7.",
+    "trap": "\"-4 1\" carries over Python's floor rules, which round −3.5 down to −4 and give a remainder with the divisor's sign."
+  },
+  "pf-java-string-equality": {
+    "shortcut": "equals compares contents, so the third value is true; new String always makes a fresh object, so a == c is false; pooled literals make a == b true.",
+    "trap": "\"false false true\" assumes == on two separately declared Strings always compares different objects, missing that identical literals are interned as one."
+  },
+  "pf-java-integer-cache": {
+    "shortcut": "Integer.valueOf caches −128 to 127: 127 sits inside the cache (same object, true) and 128 just outside it (two objects, false).",
+    "trap": "\"true true\" assumes == on Integer compares values as it does on int; it compares references, and only the cached range shares them."
+  },
+  "pf-java-string-immutable": {
+    "shortcut": "Neither call's return value is assigned, and a String never changes in place, so s prints exactly as declared.",
+    "trap": "\"PLACEMENT test\" assumes both methods modify s in place; each builds a new String that is thrown away at once."
+  },
+  "pf-java-division-print": {
+    "shortcut": "Read each piece by its operand types: int ÷ int gives 2, int ÷ double gives 2.5, and 5 % 2 is 1, which matches one option only.",
+    "trap": "\"2.5 2.5 1\" expects 5 / 2 to give 2.5, as in Python 3; with two int operands Java discards the fraction."
+  },
+  "pf-java-concat-precedence": {
+    "shortcut": "Eliminate: 1 + 2 is added before any String appears, so the output starts with 3, not 12, which rules out 1239 and 12345; 4 and 5 are then appended as text, not summed, which rules out 339.",
+    "trap": "12345 assumes the String turns every + in the line into concatenation; left-to-right evaluation adds 1 + 2 before the \"3\" is reached."
+  },
+  "pf-java-static-counter": {
+    "shortcut": "Main.count is shared and ends at 3 after three constructions, ruling out \"1 1 1\" and \"1 3 1\"; p.id was fixed at 1 when p was made.",
+    "trap": "\"3 3 3\" treats id as a live view of count; each constructor copies the current count into id, so p keeps its snapshot of 1."
+  },
+  "pf-java-array-vs-int-parameter": {
+    "shortcut": "Writing through a copied reference (a[0] = 99) reaches the caller's array; assigning to a copied int (x = 99) does not, so 99 1.",
+    "trap": "\"1 1\" takes \"Java is pass by value\" to mean the array cannot change either; the copied value is a reference to the same array."
+  },
+  "pf-java-stringbuilder-parameter": {
+    "shortcut": "Ask which line mutates an object: append does, while s = s + … only repoints the local name, so only sb's text changes.",
+    "trap": "\"A changed B changed\" treats s = s + \" changed\" as changing the caller's String, when it builds a new String bound only to the parameter."
+  },
+  "pf-java-ternary-numeric-promotion": {
+    "shortcut": "A ?: with an int and a double operand has type double, fixed at compile time, so the chosen 1 prints as 1.0.",
+    "trap": "1 looks only at the branch taken; the expression's type is promoted to double before any branch is chosen."
+  },
+  "pf-java-switch-fall-through": {
+    "shortcut": "Jump to case 3 and read down to the first break: Mid, then Late (no break in between), then break.",
+    "trap": "\"Mid\" assumes each group of labels ends at the next case label; without a break, execution falls into case 5 and prints Late."
+  },
+  "pf-java-finally-after-return": {
+    "shortcut": "main can print f()'s result only after f has fully returned, and finally runs before that, so F appears before 1.",
+    "trap": "1 assumes return leaves the method at once and skips finally; a finally block runs on every exit path, return included."
+  },
+  "pf-java-int-overflow": {
+    "shortcut": "32-bit two's complement wraps round: MAX_VALUE + 1 is MIN_VALUE, −2³¹ = −2147483648.",
+    "trap": "2147483648 does the sum in ordinary arithmetic; that value does not fit in an int, and Java wraps silently instead of widening."
+  },
+  "pf-py-floor-and-true-division": {
+    "shortcut": "/ always returns a float (3.5) and // floors towards minus infinity, so −3.5 becomes −4, not −3.",
+    "trap": "\"3 3.5 -3\" truncates −3.5 towards zero as C does; Python's // rounds down, to −4."
+  },
+  "pf-py-list-alias-vs-slice-copy": {
+    "shortcut": "a and b name one list, so their lengths must match, ruling out \"3 4 5\"; c copies the list after the 4 is appended, so it ends with 5 elements.",
+    "trap": "\"3 4 5\" tempts as a neat staircase from reading every line as making its own list, but b = a copies nothing, so a and b must report the same length."
+  },
+  "pf-py-default-mutable-argument": {
+    "shortcut": "Each print runs straight after its call, so the first line is [1] and the second must contain 2, which leaves two options; both calls share one stored default list, so it is [1, 2].",
+    "trap": "\"[1] and then [2]\" assumes a fresh empty list on every call, which is true only for defaults created inside the body."
+  },
+  "pf-py-string-methods-return-new": {
+    "shortcut": "No line begins s =, so s cannot come to refer to anything new, and a str cannot change in place: it prints python.",
+    "trap": "\"PYTHON\" assumes both methods change s in place; upper() would then give PYTHON, and the replace would find no lowercase p to change."
+  },
+  "pf-py-repeated-list-multiplication": {
+    "shortcut": "Count the objects: [0] * 3 runs once, so there is one inner list with two references to it; one write, two rows showing it.",
+    "trap": "\"[[7, 0, 0], [0, 0, 0]]\" assumes * 2 builds two independent rows, as a comprehension would."
+  },
+  "pf-py-equality-vs-identity": {
+    "shortcut": "Two list displays always build two objects, so is must be False; the same contents make == True.",
+    "trap": "\"True True\" assumes equal small lists are cached like small integers; lists are mutable and never shared this way."
+  },
+  "pf-py-string-slicing": {
+    "shortcut": "s[2:6] has 6 − 2 = 4 letters starting at index 2 (A), which rules out ACE and LACE; the reversed slice reads backwards (TNE) and the last three forwards (ENT).",
+    "trap": "\"LACE TNE ENT\" counts positions from 1, so it starts at L; Python indexes from 0, so index 2 is A."
+  },
+  "pf-py-for-else": {
+    "shortcut": "The first multiple of 4 in 3 to 7 is 4, so the loop breaks there; a break skips the else, and i keeps the value 4.",
+    "trap": "7 assumes the loop variable ends on the last value of range(3, 8), as after a full run; the break at i = 4 stops it there."
+  },
+  "pf-py-rebinding-a-parameter": {
+    "shortcut": "Only what happens before lst = [9, 9] reaches the caller, and that is the append(4); everything after it touches a new list.",
+    "trap": "\"[1, 2, 3, 4, 5]\" misses that the rebinding cuts the link, and so lets the append(5) land on the caller's list too."
+  },
+  "pf-py-local-shadows-global": {
+    "shortcut": "f never says global, so its x = 20 is private to f: f() gives 20 and the module-level x is still 10.",
+    "trap": "\"20 20\" assumes x = 20 inside f overwrites the global; without a global statement it creates a separate local."
+  },
+  "pf-py-comprehension-and-generator": {
+    "shortcut": "The evens add to 2 + 4 + 6 = 12, and index 2 of the doubled list is double the third element, 3 × 2 = 6.",
+    "trap": "\"21 6\" sums every number in the list, overlooking the if n % 2 == 0 filter inside the generator."
+  },
+  "pf-py-short-circuit-no-call": {
+    "shortcut": "and stops at a false left side and or at a true one; both left operands decide here, so g never runs and nothing extra prints.",
+    "trap": "\"g g False True\" assumes both g() calls execute; each is skipped because its operator already knows the result."
+  },
+  "ds-postfix-evaluate": {
+    "shortcut": "Rebuild the infix as it is read: 5 × (6 + 2) − 12 ÷ 4 = 40 − 3 = 37.",
+    "trap": "40 is the value left on the stack after the *, chosen by stopping when the stack first shrinks to one item and ignoring the 12 4 / − still to come."
+  },
+  "ds-infix-to-postfix": {
+    "shortcut": "The first operator in the string must be * (B C *), which rules out \"A B + C * D E / -\" and \"A B C + * D / E -\"; + must follow it before D appears, because A + B × C is the whole left operand of −.",
+    "trap": "\"A B C * D E / + -\" holds every lower-precedence operator to the end, and so evaluates A − (B × C + D ÷ E), a different expression."
+  },
+  "ds-prefix-evaluate": {
+    "shortcut": "Evaluate the innermost operator with two numbers after it first: − 5 2 → 3, then * 3 3 → 9, then + 9 9 → 18.",
+    "trap": "9 is the result of * 3 3, picked by forgetting the leading + that still adds the first 9."
+  },
+  "ds-stack-permutation": {
+    "shortcut": "A push-in-order stack can never output the pattern high, low, middle (such as 3, 1, 2); scan each option for it, and only 3, 1, 2, 4 contains one.",
+    "trap": "\"2, 4, 3, 1\" looks impossible because 1 comes out last, but push 1, push 2, pop 2, push 3, push 4, pop 4, pop 3, pop 1 produces it."
+  },
+  "ds-queue-two-stacks": {
+    "shortcut": "Count total work, not the worst call: no element is pushed or popped more than twice, so any sequence of n operations costs O(n) in all, which is O(1) per operation.",
+    "trap": "O(n) prices the single worst dequeue, the one that empties A into B, instead of averaging over the sequence as amortised cost requires."
+  },
+  "ds-circular-queue-count": {
+    "shortcut": "rear sits one slot behind front, (3 + 1) mod 8 = 4, which is the definition of full in the one-empty-slot scheme: capacity 8 − 1 = 7.",
+    "trap": "1 takes the gap front − rear = 4 − 3 without adding n, measuring the empty stretch instead of the occupied one."
+  },
+  "ds-level-order-structure": {
+    "shortcut": "Nodes must leave in the order they were discovered, level by level, which is first in, first out; a heap orders by key and a hash table has no order, so a queue.",
+    "trap": "\"A stack\" is the usual tool for tree traversals through recursion, but last in, first out dives deep and produces a depth-first order."
+  },
+  "ds-singly-list-o1-operation": {
+    "shortcut": "With only a head pointer, anything that needs the last node or a search walks n links; only the front needs no traversal.",
+    "trap": "\"Inserting a node at the end\" is O(1) only when a tail pointer is kept, and this list has just the head."
+  },
+  "ds-dll-insert-pointers": {
+    "shortcut": "Count the arrows touching the new node: two leaving it (prev and next) and two entering it (the predecessor's next and the successor's prev), which makes 4.",
+    "trap": "2 carries over the singly linked count, forgetting that the new node's prev and the successor's prev must also be set."
+  },
+  "ds-circular-list-tail-pointer": {
+    "shortcut": "tail.next is the head, so a tail pointer reaches both ends in one hop; front and end insertion are the same splice, differing only in whether tail moves.",
+    "trap": "\"At the end only\" reasons as for a plain tail pointer and forgets that circularity hands over the head for free."
+  },
+  "ds-loop-detection": {
+    "shortcut": "O(1) space rules out anything that stores nodes, the hash set and the sorted addresses, and Kadane's algorithm solves maximum subarray, which leaves the two-pointer method.",
+    "trap": "\"Recording every visited node in a hash set\" does detect a loop and is the usual first idea, but it needs O(n) space."
+  },
+  "ds-max-nodes-height": {
+    "shortcut": "Height 5 counted in edges means 6 full levels, 2⁶ − 1 = 63; a count of the form 2ᵏ − 1 is always odd, which rules out 32 and 64.",
+    "trap": "31 is 2⁵ − 1, the formula for height counted in nodes; with a single node at height 0 the tree has one more level."
+  },
+  "ds-full-binary-tree-leaves": {
+    "shortcut": "Count edges: 10 internal nodes with 2 children each give 20 edges, so 21 nodes in all, and 21 − 10 = 11 are leaves.",
+    "trap": "20 counts two leaves per internal node, forgetting that most of those children are themselves internal nodes."
+  },
+  "ds-postorder-from-two-traversals": {
+    "shortcut": "Each subtree ends with its own root: the left subtree rooted at B reads D E B, the right rooted at C with F on its right reads F C, then A.",
+    "trap": "\"D B E F C A\" copies the left subtree in inorder (D B E) instead of postorder, putting B before its right child E."
+  },
+  "ds-bst-inorder-sorted": {
+    "shortcut": "In a BST left < node < right, so visiting left, node, right yields increasing keys, and that is exactly inorder.",
+    "trap": "\"Preorder\" tempts as the traversal usually listed first and the one that rebuilds a BST, but it starts at the root, which is rarely the smallest key."
+  },
+  "ds-bst-search-worst": {
+    "shortcut": "Worst case means worst shape: keys inserted in sorted order make a chain of height n − 1, so a search can take O(n).",
+    "trap": "\"O(log n)\" is the balanced or average case, guaranteed only by self-balancing trees such as AVL, not by a plain BST."
+  },
+  "ds-bst-delete-two-children": {
+    "shortcut": "The inorder successor is the next larger key: in 20, 30, 40, 50, 60, 70, 80 the key after 50 is 60.",
+    "trap": "40 is the inorder predecessor, the largest key in the left subtree; it is a valid replacement in general, but not the successor asked for."
+  },
+  "ds-bst-preorder-to-postorder": {
+    "shortcut": "Postorder puts each subtree's root after its children: 30 must follow 20 and 40, and 70 must come just before the final 50, and only one option has both.",
+    "trap": "\"20, 30, 40, 50, 60, 70, 80\" is the sorted order, which is the inorder traversal of any BST, not the postorder."
+  },
+  "ds-avl-min-nodes": {
+    "shortcut": "The minimum is N(h) = F(h + 3) − 1 with Fibonacci 1, 1, 2, 3, 5, 8, 13, so N(4) = F(7) − 1 = 13 − 1 = 12.",
+    "trap": "7 is N(3), the answer one level down, which is what counting height in nodes rather than edges produces."
+  },
+  "ds-min-heap-insert": {
+    "shortcut": "5 sifts up along its own path only, index 5 → 2 → 0, so 20, 30 and 40 never move, and the displaced 15 and 10 each drop one level.",
+    "trap": "\"5, 20, 15, 30, 40, 10\" swaps the new key straight with the root, skipping its parent 15 on the way up."
+  },
+  "ds-valid-max-heap": {
+    "shortcut": "Check the last parent first: in six elements index 2 has one child, index 5, and 7 < 10 kills [9, 8, 7, 6, 5, 10]; the root kills [8, 9, …] and 5 < 6 kills [10, 5, 9, 2, 6, 3].",
+    "trap": "\"[9, 8, 7, 6, 5, 10]\" is almost descending and looks heap-like, but 10 sits at index 5 as a child of 7."
+  },
+  "ds-heap-extract-max": {
+    "shortcut": "After 50 goes, the new root must be the larger child 40, which rules out 35 at the top; 35 then lands at index 2, a leaf, and 30, 10 and 20 never move.",
+    "trap": "\"35, 30, 40, 10, 20\" moves the last leaf to the root and stops, skipping the sift-down against the larger child 40."
+  },
+  "ds-quicksort-worst-case": {
+    "shortcut": "Sorted input with a first-element pivot is quicksort's textbook worst case: every split is 0 against n − 1, so the recursion is n deep with linear work per level.",
+    "trap": "\"O(n log n)\" is quicksort's average case, quoted without checking that this pivot rule makes every partition lopsided."
+  },
+  "ds-lomuto-partition": {
+    "shortcut": "Lomuto keeps the small keys in the order it meets them, 2, 1, 3, which rules out two options; the final pivot swap sends the large key at index 3, 6, to the last slot, which rules out the option ending in 7.",
+    "trap": "\"1, 2, 3, 4, 8, 5, 7, 6\" sorts the left part, as though partitioning ordered it; 2 is met before 1 and stays in front."
+  },
+  "ds-unstable-sort": {
+    "shortcut": "Instability comes from long-distance swaps; of these four only quicksort's partition makes them, while the other three never move one equal key past another.",
+    "trap": "\"Merge sort\" splits and recombines, so it looks as if it could scramble equal keys, but taking from the left run on a tie keeps it stable."
+  },
+  "ds-bubble-sort-swaps": {
+    "shortcut": "On a reversed array every comparison finds the larger element in front, so the passes swap 4, 3, 2 and 1 times: 4 + 3 + 2 + 1 = 10.",
+    "trap": "4 counts only the swaps in the first pass, which carries 5 to the end; three more passes are still needed."
+  },
+  "ds-insertion-sort-best": {
+    "shortcut": "Best case is stated for a general n, which rules out the single-element O(1); on sorted input each element costs one failed comparison, so O(n).",
+    "trap": "\"O(1) on a single-element array\" is the fastest possible run, but best case is defined for inputs of arbitrary size n."
+  },
+  "ds-merge-sort-space": {
+    "shortcut": "Heapsort, insertion sort and selection sort all work in place with swaps; only merging needs a scratch buffer as long as the runs, O(n).",
+    "trap": "\"Heapsort\" shares merge sort's O(n log n) guarantee, so it is assumed to share the memory cost, but it sorts in place."
+  },
+  "ds-binary-search-comparisons": {
+    "shortcut": "Halve until nothing is left: 1000 → 500 → 250 → 125 → 62 → 31 → 15 → 7 → 3 → 1 is ten probes.",
+    "trap": "9 is ⌊log₂ 1000⌋ without the +1; 2⁹ = 512 positions are too few to cover 1000."
+  },
+  "ds-min-max-comparisons": {
+    "shortcut": "Each of the 99 non-maxima must lose once and each of the 99 non-minima must win once, 198 verdicts; only the 50 opening pairings of untouched elements deliver two verdicts at once, so 198 − 50 = 148.",
+    "trap": "198 runs two separate scans of 99 comparisons each, never letting one comparison serve both the minimum and the maximum."
+  },
+  "ds-linear-probing-index": {
+    "shortcut": "All three keys hash to 2, so they fill consecutive slots from 2 in insertion order, and the third lands at 2 + 2 = 4.",
+    "trap": "3 probes only one step past the home slot, forgetting that 22 already took index 3."
+  },
+  "ds-primary-clustering": {
+    "shortcut": "Primary clustering needs a fixed step of 1 so that runs merge; quadratic probing and double hashing vary the step, and chaining keeps keys outside the table.",
+    "trap": "\"Quadratic probing\" suffers secondary clustering, and the similar name makes it tempting, but it cures the primary kind."
+  },
+  "ds-complete-graph-edges": {
+    "shortcut": "Each of the 12 vertices has degree 11, and each edge is counted from both ends: 12 × 11 ÷ 2 = 66.",
+    "trap": "132 is 12 × 11 without halving, which counts each undirected edge twice, as if the graph were directed."
+  },
+  "ds-adjacency-list-space": {
+    "shortcut": "One header per vertex plus one node per edge end: isolated vertices still need their headers and dense graphs still need their nodes, so neither term can be dropped.",
+    "trap": "\"O(E)\" counts only the list nodes and forgets the V headers, which dominate when the graph has few edges."
+  },
+  "ds-dfs-order": {
+    "shortcut": "A → B → D → E is forced; at E the alphabetical rule picks C before F, and C is a dead end, so F comes last.",
+    "trap": "\"A, B, C, D, E, F\" is the breadth-first order, visiting A's neighbours B and C before going deeper."
+  },
+  "ds-bfs-shortest-path": {
+    "shortcut": "F's only neighbour is E, and E is two hops from A through C, so the distance to F is 2 + 1 = 3.",
+    "trap": "4 follows the depth-first route A → B → D → E → F instead of the shorter path through C."
+  },
+  "ds-topological-sort-condition": {
+    "shortcut": "A topological order exists exactly for DAGs: a directed cycle would force a vertex to come before itself, and connectivity plays no part.",
+    "trap": "\"is strongly connected\" sounds rigorous, but a strongly connected graph with two or more vertices always contains a cycle, so it rules an order out."
+  },
+  "ds-row-major-address": {
+    "shortcut": "Each row is 20 × 4 = 80 bytes: three whole rows are 240 bytes and five elements add 20, so 1000 + 260 = 1260.",
+    "trap": "1320 is 1000 + 4 × 80, which counts row 3 itself as a whole row and ignores the column offset; only rows 0 to 2 precede it."
+  },
+  "ds-fib-recursive-calls": {
+    "shortcut": "Every non-base call has exactly two children, so calls = 2 × leaves − 1; the leaves are the fib(1) and fib(0) calls, fib(6) = 8 of them, giving 15.",
+    "trap": "8 counts only the base-case calls at the leaves of the call tree and forgets the 7 internal calls that spawned them."
+  },
+  "ds-tower-of-hanoi-moves": {
+    "shortcut": "2⁶ − 1 = 63; the count 2M + 1 is always odd, which rules out 36 and 64 on sight.",
+    "trap": "64 is 2⁶ without the −1, from misremembering the formula 2ⁿ − 1."
+  },
+  "cs-fcfs-avg-waiting": {
+    "shortcut": "Weight each burst by how many processes queue behind it: 24 × 2 + 3 × 1 + 3 × 0 = 51, and 51 ÷ 3 = 17.",
+    "trap": "27 is the average completion time, (24 + 27 + 30) ÷ 3, which is turnaround rather than waiting time."
+  },
+  "cs-sjf-avg-waiting": {
+    "shortcut": "Sort the bursts to 3, 6, 7, 8; each delays every job after it, so the total wait is 3 × 3 + 6 × 2 + 7 × 1 = 28, and 28 ÷ 4 = 7.",
+    "trap": "7.75 runs P1 first because it is listed first and only then goes shortest-first, giving waits 0, 6, 9 and 16, which total 31."
+  },
+  "cs-round-robin-waiting": {
+    "shortcut": "P2 and P3 finish in their first turn, so they wait 4 and 7; P1 waits only between its first slice and its return, 10 − 4 = 6. The total 17 ÷ 3 = 5.67.",
+    "trap": "7.00 takes P1's wait as 10, the time it resumes, without subtracting the 4 units it had already run: (10 + 4 + 7) ÷ 3 = 7."
+  },
+  "cs-srtf-avg-waiting": {
+    "shortcut": "Total waiting = sum of completions − sum of arrivals − sum of bursts = (5 + 10 + 17 + 26) − 6 − 26 = 26, so the average is 6.50.",
+    "trap": "7.75 runs the jobs without preemption: P1 keeps the CPU to 8, then P2, P4 and P3 follow, giving waits 0, 7, 9 and 15, which total 31."
+  },
+  "cs-deadlock-not-a-condition": {
+    "shortcut": "Coffman's four are mutual exclusion, hold and wait, no preemption and circular wait; priority inversion is a scheduling problem outside that list.",
+    "trap": "\"Mutual exclusion\" sounds like a safeguard rather than a cause, so candidates strike it out, but deadlock is impossible on shareable resources, which makes it the first of the four."
+  },
+  "cs-deadlock-resource-ordering": {
+    "shortcut": "A cycle needs someone holding a higher number while requesting a lower one; increasing-order requests make every wait point upwards, so no cycle can close.",
+    "trap": "\"Hold and wait\" tempts because the rule restricts requests, but processes still hold lower-numbered resources while waiting for higher ones."
+  },
+  "cs-min-resources-deadlock-free": {
+    "shortcut": "8 units is the largest pool that can still deadlock, every process stuck at 2 of its 3; one more unit always lets someone finish, so 9.",
+    "trap": "8 stops at the deadlocked allocation of 2 units each and forgets the extra unit that breaks the stalemate."
+  },
+  "cs-fifo-page-faults": {
+    "shortcut": "Count the hits instead: only the 1 and 2 straight after the 5, and the final 5, find their page resident, so 12 − 3 = 9 faults.",
+    "trap": "10 is what LRU gives on this string with three frames, and FIFO with four; mixing up the policy or remembering Belady's larger figure lands on it."
+  },
+  "cs-lru-page-faults": {
+    "shortcut": "Only the two re-references to 0 hit, because 0 is always recent when it returns, so 8 − 2 = 6 faults.",
+    "trap": "7 is the FIFO count: evicting the oldest-loaded page throws 0 out at the reference to 3, so the next 0 faults as well."
+  },
+  "cs-belady-anomaly": {
+    "shortcut": "OPT is optimal for every frame count, so an extra frame cannot hurt it, and LRU shares its nesting property; that rules out three options at once.",
+    "trap": "\"LRU\" tempts as the other everyday policy, but LRU is a stack algorithm, so more frames can never cause more faults."
+  },
+  "cs-page-table-entries": {
+    "shortcut": "Entries = address space ÷ page size = 2³² ÷ 2¹² = 2²⁰.",
+    "trap": "\"2^12 (4 K)\" confuses the 12 offset bits of a 4 KB page with the page-number bits; 12 bits index bytes inside a page, not pages."
+  },
+  "cs-tlb-effective-access": {
+    "shortcut": "Every access pays 20 + 100 ns and only the misses pay a second 100: 120 + 0.2 × 100 = 140 ns.",
+    "trap": "\"120 ns\" is the cost of a hit alone, ignoring the 20% of accesses that must also read the page table."
+  },
+  "cs-internal-fragmentation": {
+    "shortcut": "A 10 KB process in 4 KB pages takes 3 pages, 12 KB, and wastes 2 KB inside its last page; waste inside an allocation is internal fragmentation.",
+    "trap": "\"Segmentation\" is famous for fragmentation, but its waste is external: holes between variable-sized segments, not inside them."
+  },
+  "cs-thread-private-stack": {
+    "shortcut": "Two threads can be inside different functions at once, so each needs its own return addresses and program counter, the stack and registers; the rest is process-wide.",
+    "trap": "\"The global data section\" feels per-thread because each thread can change globals, but they are shared, which is exactly why races happen."
+  },
+  "cs-counting-semaphore-value": {
+    "shortcut": "Net change = signals − waits = 4 − 6 = −2, so 10 − 2 = 8.",
+    "trap": "4 is 10 − 6, applying the waits and forgetting the four signals that add units back."
+  },
+  "cs-relation-2nf-not-3nf": {
+    "shortcut": "Look for a non-key attribute determining another non-key attribute: B → C is one, so 3NF fails; 2NF can fail only through part of a composite key, and A stands alone.",
+    "trap": "\"3NF but not BCNF\" treats B → C as only a BCNF violation, but 3NF's exemption needs a prime attribute on the right, and C is not prime."
+  },
+  "cs-3nf-not-bcnf": {
+    "shortcut": "AB → C with C → B is the textbook gap: C is not a superkey, so BCNF fails, but B is prime, so 3NF holds.",
+    "trap": "\"2NF but not 3NF\" reads C → B as a transitive dependency, missing that B belongs to the candidate key AB and so is exempt."
+  },
+  "cs-candidate-key-count": {
+    "shortcut": "B cannot be derived, so pair it with each other attribute and take closures: AB, BC and BD each reach all of A, B, C, D, while B alone reaches nothing, giving 3.",
+    "trap": "1 stops at AB, the key visible on a left-hand side, without testing BC and BD."
+  },
+  "cs-sql-having-average": {
+    "shortcut": "Only Sales can be borderline: (30000 + 50000) ÷ 2 = 40000 exactly, which fails the strict > 40000, while HR (50000) and IT (45000) pass.",
+    "trap": "\"Sales, HR and IT\" treats > as >=, keeping Sales although its average equals 40000 exactly."
+  },
+  "cs-sql-count-null": {
+    "shortcut": "COUNT(column) = rows − NULLs in that column = 5 − 2 = 3, beside COUNT(*) = 5.",
+    "trap": "\"5 and 5\" assumes COUNT(manager_id) counts every row, NULL included."
+  },
+  "cs-left-outer-join-rows": {
+    "shortcut": "Rows = the sum over students of max(matches, 1): Asha 2, Ravi 1 padded with NULLs, Meena 1, which makes 4.",
+    "trap": "3 assumes a left join returns exactly one row per left-table row, but Asha matches two marks and appears twice."
+  },
+  "cs-natural-join-max-tuples": {
+    "shortcut": "No join can exceed the cross product, and it is reached when every tuple shares a single B value: 200 × 100 = 20000.",
+    "trap": "200 assumes each R tuple matches at most one S tuple, which holds only if B is a key of S."
+  },
+  "cs-sql-clause-order": {
+    "shortcut": "Eliminate the rules SQL does not have: WHERE can filter unindexed columns, letter case is not what blocks the alias, and both clauses run on the server, which leaves evaluation order.",
+    "trap": "\"ORDER BY runs on the client and WHERE runs on the server\" sounds plausible because sorting feels like presentation, but the database engine runs both."
+  },
+  "cs-truncate-vs-delete": {
+    "shortcut": "DROP removes the table itself and UPDATE removes nothing; of the two that empty a table, DELETE is DML, so TRUNCATE.",
+    "trap": "\"DELETE\" does remove every row when given no WHERE and keeps the table, but it is DML, not DDL."
+  },
+  "cs-acid-durability": {
+    "shortcut": "Atomicity and isolation govern work still in progress and consistency governs valid states; only durability speaks about changes after the commit, which is when the power fails here.",
+    "trap": "\"Atomicity\" is linked with crash recovery, but it concerns undoing uncommitted work as all or nothing, not keeping committed work."
+  },
+  "cs-isolation-level-dirty-read": {
+    "shortcut": "The name says it: Read Committed reads only committed data, so no dirty reads, but holds no read locks to the end, so a re-read can change.",
+    "trap": "\"Repeatable Read\" also prevents dirty reads, but it prevents non-repeatable reads too, which the question says must still be allowed."
+  },
+  "cs-clustered-index": {
+    "shortcut": "Eliminate: the primary key is the usual clustered index, its leaves hold the rows, and one per column would need several physical row orders at once, which leaves at most one per table.",
+    "trap": "\"A clustered index stores only pointers and never the rows themselves\" describes a non-clustered index; a clustered index's leaves are the rows."
+  },
+  "cs-primary-key-vs-unique": {
+    "shortcut": "PRIMARY KEY = UNIQUE + NOT NULL, and only one option matches that equation.",
+    "trap": "\"Neither allows NULL, and a table may have only one of each\" tempts because both reject duplicates, but UNIQUE accepts NULL and a table may carry several UNIQUE constraints."
+  },
+  "cs-router-layer": {
+    "shortcut": "Forwarding between networks by IP address is routing, and IP is the layer 3 protocol; forwarding by MAC address would make it a switch at layer 2.",
+    "trap": "\"Data link layer\" tempts because a router's interfaces handle frames and MAC addresses, but its forwarding decision uses the IP address, which is layer 3."
+  },
+  "cs-presentation-layer": {
+    "shortcut": "Encryption, compression and encoding change how data is represented, not where it goes, which is the job of layer 6, presentation.",
+    "trap": "\"Application layer\" is right for TCP/IP, where these duties fold into the application, but the question asks about the OSI model."
+  },
+  "cs-tcp-not-a-feature": {
+    "shortcut": "8 bytes is UDP's header, four 2-byte fields; TCP's minimum is 20, and the other three statements are TCP's defining features.",
+    "trap": "\"It delivers bytes to the application in order\" tempts because IP packets can arrive out of order, but TCP reorders them by sequence number."
+  },
+  "cs-three-way-handshake": {
+    "shortcut": "Nothing can be acknowledged before it is sent, so SYN must come first and a bare ACK last, and only SYN, SYN-ACK, ACK fits.",
+    "trap": "\"SYN, ACK, SYN-ACK\" starts correctly, but the server does not acknowledge first and send its own SYN separately; one SYN-ACK does both."
+  },
+  "cs-dns-port": {
+    "shortcut": "Three of the options are file or mail transfer ports (20 FTP data, 25 SMTP, 110 POP3), so the odd one out, 53, is DNS.",
+    "trap": "25 tempts because DNS MX lookups are bound up with mail delivery, but 25 is SMTP itself."
+  },
+  "cs-dns-a-record": {
+    "shortcut": "A stands for address (IPv4) and AAAA for the four-times-longer IPv6 address; CNAME aliases, MX names mail servers and NS names name servers.",
+    "trap": "\"CNAME\" also starts from a host name, but it maps that name to another name, never to an IP address."
+  },
+  "cs-subnet-usable-hosts": {
+    "shortcut": "A /26 is a quarter of a /24's 256 addresses, 64, and removing the network and broadcast addresses leaves 62.",
+    "trap": "64 counts all 2⁶ addresses and forgets that the all-zeros and all-ones host values are reserved."
+  },
+  "cs-broadcast-address": {
+    "shortcut": "A broadcast address has all host bits set, so it must be odd, which rules out .64; .63 belongs to the block before 75, and .255 would need a /24 mask.",
+    "trap": "\"192.168.10.255\" applies the default /24 broadcast and ignores the .192 mask that cuts the octet into blocks of 64."
+  },
+  "cs-http-403": {
+    "shortcut": "\"Understood but refused, and retrying will not help\" rules out a redirect (301), a missing resource (404) and 401, whose whole purpose is to invite a retry with credentials.",
+    "trap": "\"401 Unauthorized\" matches the wording \"refuses to authorise\", but 401 really means unauthenticated and invites a retry with credentials."
+  },
+  "cs-switch-domains": {
+    "shortcut": "A switch gives each port its own collision domain (24) and floods broadcasts everywhere, so only a router or VLAN would split the single broadcast domain.",
+    "trap": "\"1 collision domain and 1 broadcast domain\" is the answer for a hub, which shares one medium among all its ports."
+  },
+  "cs-tcp-flow-control": {
+    "shortcut": "Flow control protects the receiver, so the receiver must set the limit, and only the advertised-window option involves the receiver at all.",
+    "trap": "\"The slow-start congestion window\" also throttles the sender, but it protects the network (congestion control), not the receiver."
+  },
+  "cs-go-back-n-window": {
+    "shortcut": "A memory hook: the largest Go-Back-N window equals the largest sequence number, 2⁴ − 1 = 15.",
+    "trap": "16 uses all 2⁴ sequence numbers, which lets a fully retransmitted window be mistaken for a fresh one."
+  }
+}

@@ -1,0 +1,602 @@
+{
+  "mr2-clock-angle-4-20": {
+    "shortcut": "At 20 minutes the minute hand points exactly at the 4, so the whole angle is the hour hand's drift past the 4: 20 × 0.5° = 10°.",
+    "trap": "\"0°\" — seeing the minute hand on the 4 and assuming the hour hand is still on the 4 too, forgetting it has crept 10° towards the 5 in twenty minutes."
+  },
+  "mr2-clock-angle-7-20": {
+    "shortcut": "The minute hand sits on the 4; from the 4 to the 7 is three hour-marks (90°), plus the hour hand's 20-minute drift of 10° beyond the 7, so 100°.",
+    "trap": "\"90°\" — counting the three hour-marks from 4 to 7 and treating the hour hand as parked on the 7, ignoring the 10° it has moved by 7:20."
+  },
+  "mr2-clock-hands-together": {
+    "shortcut": "The minute hand laps the hour hand once every 12/11 hours (65 5/11 minutes), so 24 ÷ 12/11 = 22 meetings.",
+    "trap": "\"24\" — assuming one meeting every hour; the meeting due between 11 and 1 happens only once, at 12, so each 12 hours loses one."
+  },
+  "mr2-clock-right-angle": {
+    "shortcut": "In 24 hours the minute hand gains 24 × 11/12 = 22 full laps on the hour hand, and each lap passes through 90° and 270° once: 2 × 22 = 44.",
+    "trap": "\"48\" — allowing two right angles every hour; around 3 and 9 o'clock one right angle is shared by two hours, so 2 are lost every 12 hours."
+  },
+  "mr2-clock-gains": {
+    "shortcut": "On the 24-hour clock the true time elapsed is 14 − 8 = 6 hours; at 5 minutes an hour the clock is half an hour ahead, so 2:30 p.m.",
+    "trap": "\"2:35 p.m.\" — counting the hour marks 8, 9, 10, 11, 12, 1, 2 as seven hours; seven marks bound only six hours, which gain 30 minutes, not 35."
+  },
+  "mr2-calendar-odd-days": {
+    "shortcut": "63 is a multiple of 7, so 61 days is 9 weeks minus 2 days: two days before Monday is Saturday.",
+    "trap": "\"Friday\" — getting the remainder 5 but counting Monday itself as the first of the five days (Monday to Friday) instead of starting from Tuesday."
+  },
+  "mr2-calendar-same-date-next-year": {
+    "shortcut": "52 weeks (364 days) after 15 March 2027 is Monday 13 March 2028, because the leap day pulls the date back one; 15 March is two days later, Wednesday.",
+    "trap": "\"Tuesday\" — adding one day because 2027 is not a leap year, missing that the span runs past 29 February 2028."
+  },
+  "mr2-calendar-month-later": {
+    "shortcut": "Four weeks after 10 June is 8 July, again a Wednesday; 10 July is two days on — Friday.",
+    "trap": "\"Saturday\" — giving June 31 days, which adds 3 odd days instead of 2."
+  },
+  "mr2-calendar-days-before": {
+    "shortcut": "Seven weeks (49 days) ago was also a Thursday; 45 days ago is 4 days after that — Friday, Saturday, Sunday, Monday.",
+    "trap": "\"Tuesday\" — finding 3 odd days but counting Thursday itself as the first step back (Thursday, Wednesday, Tuesday)."
+  },
+  "mr2-data-sufficiency-age": {
+    "shortcut": "Spot what each statement lacks: I has no number and II never mentions Ravi. Each supplies the other's missing piece (brother 25, so Ravi 17), so both are needed.",
+    "trap": "\"II alone is sufficient\" — II gives a firm number (the brother is 25 now), and the hurried reader silently borrows 'Ravi is 8 years younger' from I."
+  },
+  "mr2-data-sufficiency-one-enough": {
+    "shortcut": "A square has only one free dimension, so any single length — side, perimeter or diagonal — fixes its area. Both statements are lengths, so each works alone.",
+    "trap": "\"I alone only\" — stopping once perimeter 40 → side 10 → area 100 works, without testing II, whose diagonal 10√2 also gives side 10."
+  },
+  "mr2-data-sufficiency-insufficient": {
+    "shortcut": "Look for two values that pass both statements: 6 and 8 are both even and lie between 4 and 10. Two survivors mean insufficient — nothing more to check.",
+    "trap": "\"Both together are sufficient\" — combining the clues, landing on 6 as the first even number above 4 and missing that 8 fits equally well."
+  },
+  "mr2-statement-assumption-advert": {
+    "shortcut": "Negation test: if nobody wanted government jobs, the advert would be pointless, so I is needed; if some people got such jobs elsewhere, the advert still works, so II is not.",
+    "trap": "\"Both\" — reading 'secure a government job' as a claim that the institute is the only route; the advert promises success, not exclusivity."
+  },
+  "mr2-statement-conclusion": {
+    "shortcut": "II carries 'all' and a feeling the statement never mentions — a universal claim about emotions cannot follow from a pay notice — while I is the precondition of any pay rise.",
+    "trap": "\"Both\" — treating 'a pay rise makes staff happy' as given; the statement says nothing about satisfaction, let alone that of every employee."
+  },
+  "mr2-cause-and-effect": {
+    "shortcut": "One statement is a government decision and the other a market figure; a price set by the government drives buyers' choices, never the reverse, so I causes II.",
+    "trap": "\"Both are effects of a common cause\" — a fuel crisis could explain both, but the statements show a direct link: dearer petrol pushes buyers to electric scooters."
+  },
+  "mr2-course-of-action": {
+    "shortcut": "A course of action must fix the problem, not remove the activity. Coaching fixes the failures; dropping mathematics merely ends the subject, so only I.",
+    "trap": "\"Both\" — noting that nobody can fail a subject that is no longer taught; that removes the problem by abandoning the subject, not by solving it."
+  },
+  "mr2-number-puzzle-sum-product": {
+    "shortcut": "Back-substitute: a difference of 1 with a sum of 15 means 7 and 8, and 7 × 8 = 56 checks at once.",
+    "trap": "\"7\" — finding the pair 7 and 8 and reporting the smaller number instead of their difference."
+  },
+  "mr2-number-puzzle-two-digit": {
+    "shortcut": "Every option's digits already sum to 9, so just test the drop on reversal: 63 − 36 = 27, while 54 − 45 = 9 and 72 − 27 = 45.",
+    "trap": "\"72\" — its reversal is literally 27, the number in the question, but 72 − 27 = 45, not a drop of 27."
+  },
+  "mr2-number-puzzle-consecutive": {
+    "shortcut": "For three consecutive integers, largest = (sum + 3) ÷ 3 = 75 ÷ 3 = 25.",
+    "trap": "\"24\" — stopping at 72 ÷ 3, which is the middle integer, not the largest."
+  },
+  "mr2-venn-two-sets": {
+    "shortcut": "Physics-only is 35 − 15 = 20, so physics-only plus all 30 chemists gives 50 students in at least one subject; 60 − 50 = 10.",
+    "trap": "\"5\" — computing 35 + 30 − 60 = 5, which is the smallest overlap the numbers force, not the number studying neither."
+  },
+  "mr2-venn-only-one": {
+    "shortcut": "Exactly one = A + B − 2 × both = 105 − 40 = 65, since the 20 readers of both are counted twice in 60 + 45.",
+    "trap": "\"85\" — computing the union 60 + 45 − 20, which counts readers of at least one newspaper and still includes the 20 who read both."
+  },
+  "mr2-venn-three-sets": {
+    "shortcut": "The 20 who play both are already inside the 30 cricketers, so only 25 − 20 = 5 footballers are new: 30 + 5 = 35.",
+    "trap": "\"55\" — adding 30 + 25 and counting the 20 who play both sports twice."
+  },
+  "mr2-logical-deduction-boxes": {
+    "shortcut": "B ('here') and C ('not in B') contradict each other, so exactly one of them is true — that uses up the single truth. A's statement must be false, so the prize is in A.",
+    "trap": "\"Box C\" — taking A's statement as the lone truth, ruling out A and B, and not noticing that C's 'not in B' is then true as well."
+  },
+  "mr2-logical-deduction-liars": {
+    "shortcut": "C's claim defeats itself: if A and B both lied, A's 'B is lying' would be true. So C lies, making B's 'C is lying' true, and A, who calls B a liar, lies.",
+    "trap": "\"A and C\" — assuming A truthful, deducing that B lies and so C tells the truth, then stopping without checking C's claim that A lies."
+  },
+  "mr2-pattern-matchsticks": {
+    "shortcut": "Ten separate squares would need 40 sticks, but the 9 walls between neighbours are shared, so 40 − 9 = 31.",
+    "trap": "\"40\" — multiplying 4 sticks by 10 squares, which counts each of the 9 shared walls twice."
+  },
+  "mr2-cubes-painted": {
+    "shortcut": "In a 3 × 3 × 3 cut each of the cube's 12 edges has exactly one middle cube, and those are the two-face cubes: 12.",
+    "trap": "\"8\" — counting the corner cubes, which have three painted faces, not two."
+  },
+  "mr2-cubes-one-face": {
+    "shortcut": "Each face is a 4 × 4 grid whose inner 2 × 2 block of 4 cubes has one painted face; six faces × 4 = 24.",
+    "trap": "\"8\" — giving the hidden 2 × 2 × 2 core (no face painted) or the 8 corners instead of the cubes in the middle of each face."
+  },
+  "mr2-arrangement-handshake": {
+    "shortcut": "Double the matches: n(n − 1) = 90, a product of two consecutive integers, 10 × 9. The larger factor, 10, is the number of teams.",
+    "trap": "\"9\" — taking the smaller of the two consecutive factors of 90; 9 teams play only 36 matches."
+  },
+  "mr2-average-speed-reasoning": {
+    "shortcut": "Each of the other three tests can sit at most 20 above the average of 80, a surplus of 60, so the weakest can fall 60 below: 80 − 60 = 20.",
+    "trap": "\"60\" — pushing only one other test to 100 so that the pair averages 80, instead of pushing all three others to 100."
+  },
+  "mr2-inequality-reasoning": {
+    "shortcut": "Elimination: in A > B > C = D > E a term further right can never exceed one on its left, which kills 'E > B' and 'C > A'; B > C = D kills 'B = D'.",
+    "trap": "\"B = D\" — the only '=' in the chain links C and D, right next to B; but B > C = D makes B strictly greater than D."
+  },
+  "mr2-inequality-not-determined": {
+    "shortcut": "S < R < Q ≤ P puts S below everything, so any option placing S above a term (S > Q, Q < S) dies at sight, and Q > R rules out P = R.",
+    "trap": "\"P = R\" — reading the ≥ as allowing equality further down the chain; it only lets P equal Q, and Q > R keeps P strictly above R."
+  },
+  "rp2-divide-1200-in-237": {
+    "shortcut": "C holds 7 of the 12 parts — just over half — so C's share must exceed ₹600; only ₹700 does (7/12 × 1,200).",
+    "trap": "\"₹300\" — sharing correctly but reading off B's 3 parts, the middle term, instead of C's 7."
+  },
+  "rp2-combine-ab-bc": {
+    "shortcut": "Use the N-pattern: A = 2 × 4, B = 3 × 4, C = 3 × 5, which gives 8 : 12 : 15 in one line.",
+    "trap": "\"2 : 3 : 5\" — gluing the two ratios together as written, though B is 3 in one and 4 in the other."
+  },
+  "rp2-chain-three-ratios": {
+    "shortcut": "Check C : B = 11 : 6 in each option: 77 : 42 = 11 : 6, while 66 : 42 = 11 : 7. With 30 : 42 = 5 : 7 as well, 30 : 42 : 77 is the only fit.",
+    "trap": "\"30 : 42 : 66\" — scaling the second ratio by 6, like the first, instead of by 7; 42 : 66 is 7 : 11, not 6 : 11."
+  },
+  "rp2-add-ten-to-both": {
+    "shortcut": "Both ratios have a gap of 2 parts and the gap never changes, so a part is the same size in both; adding 10 moved the smaller from 3 parts to 5, so 1 part = 5 and it is 15.",
+    "trap": "\"18\" — its check, 28 : 40 = 0.70, sits within a whisker of 5 : 7 ≈ 0.714, so a rough decimal test passes it; only 15 gives 25 : 35 = 5 : 7 exactly."
+  },
+  "rp2-add-seven-larger": {
+    "shortcut": "Test the options as the larger number: 28 means 14 and 28, and adding 7 gives 21 : 35 = 3 : 5 exactly.",
+    "trap": "\"14\" — solving x = 14 and stopping; x is the smaller number, and the question asks for the larger, 2x."
+  },
+  "rp2-hcf-lcm-from-ratio": {
+    "shortcut": "The numbers are 12 and 16, and their LCM must be divisible by both; 24, 36 and 60 are not divisible by 16, so 48.",
+    "trap": "\"24\" — it looks right as a multiple of 12 and of both ratio terms 3 and 4, but 24 is not divisible by 16."
+  },
+  "rp2-lcm-180-ratio-45": {
+    "shortcut": "The sum is 9x and the LCM is 20x, so sum = 180 × 9/20 = 81 — no need to find the numbers.",
+    "trap": "\"90\" — it looks right as half of 180 and 9 parts of a round 10, but x = 10 gives 40 and 50, whose LCM is 200, not 180."
+  },
+  "rp2-expression-in-x-y": {
+    "shortcut": "The top exceeds the bottom by 7y, so the ratio is above 1: 1 + 7y/(8x + 2y) = 1 + 14/44 = 1 + 7/22, i.e. 29 : 22.",
+    "trap": "\"22 : 29\" — computing 58 and 44 correctly but writing the ratio upside down."
+  },
+  "rp2-2a-3b-over-3a-2b": {
+    "shortcut": "The two expressions add to 5(a + b) = 35 and differ by b − a = 1, so they are 18 and 17, the first the larger.",
+    "trap": "\"17 : 18\" — getting 18 and 17 but writing them in the wrong order."
+  },
+  "rp2-x-plus-y-over-x-minus-y": {
+    "shortcut": "Componendo–dividendo: (x + y)/(x − y) = (2 + 3)/(2 − 3). Since x < y the bottom is negative, so the answer is −5.",
+    "trap": "\"5\" — taking the difference as 3 − 2 = 1 and dropping the minus sign that x − y carries when x is the smaller."
+  },
+  "rp2-three-equal-products": {
+    "shortcut": "When 3A = 4B = 6C the variables go as the reciprocals 1/3 : 1/4 : 1/6; × 12 gives 4 : 3 : 2, and 3 × 4 = 4 × 3 = 6 × 2 confirms it.",
+    "trap": "\"3 : 4 : 6\" — copying the coefficients; a larger coefficient means a smaller variable, so the order reverses."
+  },
+  "rp2-fractional-ratio-shares": {
+    "shortcut": "Every share is a whole number of ₹34 parts (782 ÷ 23 = 34), so only ₹204 (6 × 34) and ₹272 (8 × 34) survive; ½ is the smallest fraction, so the first share is ₹204.",
+    "trap": "\"₹272\" — also a multiple of ₹34, but it is the ⅔ person's 8 parts; the ½ person gets the smallest share, 6 parts."
+  },
+  "rp2-nested-shares": {
+    "shortcut": "Clear the fractions with B = 3 units: A = 2 and C = 12, so 17 units = ₹3,400, one unit = ₹200 and B = 3 × 200 = ₹600.",
+    "trap": "\"₹400\" — working in the 2 : 3 : 12 units and reading off A's 2 units instead of B's 3."
+  },
+  "rp2-three-shares-two-ratios": {
+    "shortcut": "Once the ratio is 8 : 12 : 15, C's fraction is 15/35 = 3/7, and 3/7 × 3,500 = 1,500.",
+    "trap": "\"₹1,200\" — building 8 : 12 : 15 correctly but reading off B's 12 parts instead of C's 15."
+  },
+  "rp2-sum-98-two-ratios": {
+    "shortcut": "With the numbers in 10 : 15 : 24 (49 parts), the second is 15/49 of 98 = 15 × 2 = 30.",
+    "trap": "\"20\" — sharing 98 correctly but taking the first number's 10 parts instead of the second's 15."
+  },
+  "rp2-salaries-after-increments": {
+    "shortcut": "2 × 1.15 = 2.3 and 5 × 1.2 = 6 exactly, so scaled by 10 the ratio must start 23 and end 60 — only one option does.",
+    "trap": "\"23 : 33 : 62\" — the first two terms are right, but 5 × 1.20 has slipped to 6.2 instead of 6."
+  },
+  "rp2-incomes-expenditures-savings": {
+    "shortcut": "Back-substitute: an income of ₹1,200 makes the second ₹1,600; taking off ₹200 savings leaves expenditures of ₹1,000 and ₹1,400, exactly 5 : 7.",
+    "trap": "\"₹1,000\" — solving y = 200 and taking 5y, the first person's expenditure, instead of the income 3x."
+  },
+  "rp2-coins-ratio-value": {
+    "shortcut": "Turn counts into value: 5 × ₹1 : 6 × 50p : 8 × 25p = 5 : 3 : 2, so the 50-paise coins are worth 3/10 × ₹210 = ₹63, which is 126 coins.",
+    "trap": "\"105\" — finding 21 sets but multiplying by the ₹1 coins' 5 instead of the 50-paise coins' 6."
+  },
+  "rp2-milk-water-to-reverse": {
+    "shortcut": "With the milk fixed, the water must go from half the milk to twice the milk — four times its present 20 L — so add 3 × 20 = 60 L.",
+    "trap": "\"20 L\" — making the water equal the old 40 L of milk, which only reaches 40 : 40 = 1 : 1, not 1 : 2."
+  },
+  "rp2-two-alloys-equal-weights": {
+    "shortcut": "Copper is 5/8 = 15/24 of one alloy and 7/12 = 14/24 of the other; equal weights give 29 copper out of 48, so zinc is 19: 29 : 19.",
+    "trap": "\"12 : 8\" — adding the ratio terms (5 + 7 : 3 + 5), which weights the alloys unequally because one is split into 8 parts and the other into 12."
+  },
+  "rp2-boys-girls-scholarship": {
+    "shortcut": "Treat everyone at 20%, then add the girls' extra 5 points on their 40% share: 20% + 2% = 22% hold one, so 78% do not.",
+    "trap": "\"80%\" — applying the boys' 20% to the whole school because boys are the majority, forgetting the girls' higher 25% rate."
+  },
+  "rp2-fourth-proportional": {
+    "shortcut": "15 is 3 × 5, so the fourth term is 3 × 8 = 24.",
+    "trap": "\"18\" — adding the difference 8 − 5 = 3 to 15; a proportion works by multiplying, not adding."
+  },
+  "rp2-third-proportional": {
+    "shortcut": "12 is 3 × 4, so the next term of the proportion 4, 12, x is 3 × 12 = 36.",
+    "trap": "\"48\" — multiplying 4 × 12, the first step of the mean proportional √(ab), instead of 12² ÷ 4."
+  },
+  "rp2-mean-proportional": {
+    "shortcut": "√(9 × 16) = √9 × √16 = 3 × 4 = 12 — no need to multiply out to 144.",
+    "trap": "\"12.5\" — taking the arithmetic mean (9 + 16)/2 instead of the geometric mean."
+  },
+  "rp2-proportion-with-decimal": {
+    "shortcut": "From 5 to 8 is × 1.6, so x = 0.75 × 1.6 = 1.2.",
+    "trap": "\"1.25\" — the familiar partner of 0.75, but 0.75 : 1.25 = 3 : 5 = 0.6, just short of 5 : 8 = 0.625."
+  },
+  "rp2-men-days-inverse": {
+    "shortcut": "The days shrink by 12/20 = 3/5, so the men must grow by 5/3: 15 × 5/3 = 25.",
+    "trap": "\"30\" — treating 12 days as roughly half of 20 and doubling the men; 30 men would finish in 300 ÷ 30 = 10 days."
+  },
+  "rp2-circle-areas-ratio": {
+    "shortcut": "Plug r = 2 and r = 3 into πr²: 4π and 9π, so 4 : 9.",
+    "trap": "\"2 : 3\" — keeping the radius ratio and forgetting that area depends on the square of the radius."
+  },
+  "rp2-p-q-r-chain": {
+    "shortcut": "Scale p : q so that q matches: 3 : 4 = 6 : 8, and q : r = 8 : 9, so p : r = 6 : 9 = 2 : 3.",
+    "trap": "\"3 : 4\" — it looks right because q : r = 8 : 9 is close to 1, but copying p : q ignores that factor; (3/4) × (8/9) = 2/3."
+  },
+  "rp2-divide-60-two-parts": {
+    "shortcut": "The smaller part is 2/5 of 60, which is 40% of 60 = 24.",
+    "trap": "\"36\" — sizing one part at 12 but multiplying by 3, which gives the larger part."
+  },
+  "rp2-ages-ratio-future": {
+    "shortcut": "The age gap is 1 part in both ratios, so a part is the same size before and after; 5 years moved the younger from 4 parts to 5, so 1 part = 5 years and the younger is 20.",
+    "trap": "\"25\" — the younger's age five years from now (or the elder's today), not the younger's present age."
+  },
+  "sy4-all-engineers-graduates": {
+    "shortcut": "The middle term 'graduates' is never covered in full (predicate of an 'all', subject of a 'some'), so no engineer–unemployed link follows; II is statement 2 simply converted.",
+    "trap": "\"Both\" — reasoning that engineers are graduates and some graduates are unemployed, so some engineers must be; the unemployed graduates can all be non-engineers."
+  },
+  "sy4-no-book-magazine": {
+    "shortcut": "Standard pattern: 'No A is B' + 'All B are C' gives 'Some C are not A' — some printed things (the magazines) are not books.",
+    "trap": "\"Both\" — stretching 'no book is a magazine' into 'no printed thing is a book'; books themselves may well be printed, so II fails."
+  },
+  "sy4-all-fruits-sweet": {
+    "shortcut": "The all-chain gives 'All mangoes are perishable', and any valid 'all' conclusion converts to a 'some': some perishable things are mangoes.",
+    "trap": "\"Only I\" — rejecting II as a reversed 'all' statement; the limited 'some' converse of a valid 'all' conclusion always holds."
+  },
+  "sy4-some-not-follow": {
+    "shortcut": "Two 'some' premises prove nothing, so check the conclusions as a pair: 'some pens are expensive' and 'no pen is expensive' share both terms and contradict, so one must hold.",
+    "trap": "\"Neither\" — correctly seeing that neither conclusion is proved on its own and stopping before noticing that I and II together cover every case."
+  },
+  "sy4-all-a-are-b-converse": {
+    "shortcut": "'All A are B' converts only to 'Some B are A': I is that limited converse and II the full reversal.",
+    "trap": "\"Neither\" — rejecting I as a reversed 'all' statement; the partial converse 'some graduates are lawyers' is valid because lawyers exist."
+  },
+  "sa4-four-in-a-row": {
+    "shortcut": "Once B and D take seats 1 and 2, only seats 3 and 4 are free, and 'C immediately right of A' fills them as A, C — C ends up at the right without the 'not at an end' clue.",
+    "trap": "\"D\" — reading 'D is immediately to the right of B' as 'D is at the right end'; D sits right next to B, in seat 2."
+  },
+  "sa4-circle-four": {
+    "shortcut": "With P and Q opposite, R and S take the other two seats, which face each other — so S is opposite R whichever side R is on.",
+    "trap": "\"Nobody\" — assuming S's seat is unknown because S is never mentioned; with three seats filled, S takes the fourth, opposite R."
+  },
+  "sa4-rank-in-class": {
+    "shortcut": "35 − 12 = 23 students rank above Priya, so she is the 24th from the top.",
+    "trap": "\"23rd\" — subtracting 12 from 35, which counts the students above her rather than giving her own position."
+  },
+  "sa4-ordering-ages": {
+    "shortcut": "Only P is said to be older than M, and M is older than N, O and Q, so exactly one person sits above M: second oldest.",
+    "trap": "\"P\" — answering with the oldest instead of the second oldest."
+  },
+  "sa4-floors-five": {
+    "shortcut": "Only C is below B — A is above B, and D and E are above A — so B has exactly one floor under it: second from the bottom.",
+    "trap": "\"E\" — counting from the top: in the order C, B, A, E, D upwards, E is second from the top, not the bottom."
+  },
+  "sl4-blank-although": {
+    "shortcut": "'Although' plus 'accepted without debate' needs a word that should have provoked debate — a negative one. Only 'damning' is negative.",
+    "trap": "\"persuasive\" — it fits the easy acceptance, but a persuasive report accepted readily is no contrast, and 'although' demands one."
+  },
+  "sl4-blank-so-that": {
+    "shortcut": "The result 'even a beginner could follow them' is positive, so the blank must make instructions easier; technical, lengthy and obscure all make them harder.",
+    "trap": "\"lengthy\" — read as 'detailed enough to guide a beginner', but length makes instructions harder to follow, not easier."
+  },
+  "sl4-connector-concession": {
+    "shortcut": "A negative first clause and a positive second one make a contrast; of the four, only 'however' turns the argument — 'moreover' adds, and 'therefore' and 'consequently' both conclude.",
+    "trap": "\"therefore\" — the semicolon looks like a cause-and-effect join, but being the only option that meets the deadline does not follow from being expensive; the second clause answers the first, so the join is a contrast."
+  },
+  "sl4-blank-pair-contrast": {
+    "shortcut": "'But surprisingly' means the second half defied the first; only a dull first half makes a positive second word surprising, and 'lively' is the only positive word paired with 'dull'.",
+    "trap": "\"exciting … thrilling\" — 'thrilling' fits 'surprisingly' on its own, but after an exciting first half a thrilling second gives 'but' nothing to contrast."
+  },
+  "sl4-para-jumble-vaccine": {
+    "shortcut": "P begins 'The idea', which needs an antecedent, so both P-first options go; S's 'But the evidence…' answers P's ridicule, so P precedes S: Q P S R.",
+    "trap": "\"P Q S R\" — 'at first' makes P sound like an opening, but 'the idea' points back to Jenner's vaccine, which only Q introduces."
+  },
+  "ma4-two-grades-rice": {
+    "shortcut": "56 is below the midpoint 60, so more of the cheaper rice is needed — 3 : 2 or 7 : 3; 3 : 2 gives (150 + 140) ÷ 5 = 58, so 7 : 3.",
+    "trap": "\"3 : 7\" — pairing each price with its own distance from 56, (56 − 50) : (70 − 56), which inverts the alligation."
+  },
+  "ma4-milk-water-30-percent": {
+    "shortcut": "Water's share falls from 30% to 20%, so the total must grow by 30/20 = 1.5 times: 50 L → 75 L, which means adding 25 L of milk.",
+    "trap": "\"20 L\" — assuming a one-third fall in the water's share needs a third more liquid (about 17 L, rounded up); the total must actually grow by half."
+  },
+  "ma4-three-way-alligation": {
+    "shortcut": "Measure from ₹50: 5 kg at −10 and 5 kg at +30 net +100 over 20 kg, lifting the price by ₹5 to ₹55.",
+    "trap": "\"₹58\" — averaging the three prices, (40 + 50 + 80) ÷ 3 ≈ 56.7, and taking the nearest option, ignoring that twice as much sits at ₹50."
+  },
+  "ma4-alligation-marks": {
+    "shortcut": "The overall 60 sits nearer 70, so passed candidates outnumber failed ones — 3 : 1 or 2 : 1; 2 : 1 gives (140 + 30) ÷ 3 ≈ 56.7, so 3 : 1.",
+    "trap": "\"1 : 3\" — pairing each group with its own distance from 60 instead of the other group's, which inverts the ratio."
+  },
+  "ma4-replace-third-time": {
+    "shortcut": "Each draw takes 20% of whatever milk is left: 100 → 80 → 80 − 16 = 64 L.",
+    "trap": "\"60 L\" — subtracting 20 L of milk twice; the second draw is already diluted and removes only 16 L of milk."
+  },
+  "rc3-rail-main-idea": {
+    "shortcut": "Strike every option that states something the passage never discusses — resistance, sundial accuracy, early timetables; the one left carries the whole argument.",
+    "trap": "\"Towns resisted the introduction of standard time.\" — the word 'imposed' suggests opposition, but the passage says only that nobody argued for it, not that anyone fought it."
+  },
+  "rc3-rail-detail": {
+    "shortcut": "The cue word 'before' points to the second sentence — 'Before them, every town kept its own clock by the sun' — which the option repeats almost word for word.",
+    "trap": "\"By a national standard\" — 'a single national time' appears in the first sentence, but that is what the railways brought, not what came before them."
+  },
+  "rc3-rail-inference": {
+    "shortcut": "Find the option that restates the final sentence in general words: 'the trains could not run without it' is a technical requirement, and 'not because anyone had argued for it' is 'without public debate'.",
+    "trap": "\"Local time was more accurate than standard time.\" — sun time feels like the 'true' time, but the passage never compares accuracy; that idea comes from outside knowledge."
+  },
+  "rc3-rail-tone": {
+    "shortcut": "Scan for judgement words and find none: every sentence reports a fact or a cause ('because the trains could not run'), which marks the tone as explanatory.",
+    "trap": "\"Nostalgic\" — the look back at towns keeping their own sun time can feel wistful, but the passage expresses no longing or regret."
+  },
+  "rc3-rail-vocabulary": {
+    "shortcut": "Substitute each option into 'A timetable made those minutes ___': minutes cannot be painful, illegal or expensive, but they can be unbearable in practice.",
+    "trap": "\"Physically painful\" — the word's literal sense of pain that cannot be borne; the sentence is about minutes a timetable could not work with."
+  },
+  "me4-square-side-from-perimeter": {
+    "shortcut": "The side is 16 and 16² ends in 6, leaving 196 or 256; 196 is 14², so the area is 256 cm².",
+    "trap": "\"196 cm²\" — the other option ending in 6, so a units-digit check alone does not remove it; it is 14², the square of the wrong side."
+  },
+  "me4-cylinder-total-surface": {
+    "shortcut": "With r = 7 and π = 22/7, 2πr is exactly 44, so the answer is 44 × (r + h) = 44 × 10 = 440 cm².",
+    "trap": "\"308 cm²\" — the two circular ends alone (2 × 154 cm²), leaving out the curved surface of 132 cm²."
+  },
+  "me4-triangle-equilateral-perimeter": {
+    "shortcut": "The height splits the triangle into two 30-60-90 halves whose short leg is 6 cm; the long leg is √3 times it, 6√3 cm.",
+    "trap": "\"12√3 cm\" — multiplying the 12 cm side by √3 and forgetting the half in (√3/2) × side."
+  },
+  "me4-circle-radius-doubled": {
+    "shortcut": "Try r = 1 and r = 2: the areas are π and 4π, a factor of 4.",
+    "trap": "\"2\" — assuming area grows in step with the radius; that is true of the circumference, not the area."
+  },
+  "me4-room-floor-tiles": {
+    "shortcut": "Four 50 cm tiles fill one square metre, and the floor is 48 m², so 48 × 4 = 192.",
+    "trap": "\"144\" — counting 12 tiles along both walls; 12 fits the 6 m side, but the 8 m side takes 16."
+  },
+  "av2-primes-between-30-and-50": {
+    "shortcut": "Measure from 40: −9, −3, +1, +3, +7 sum to −1, so the average is 40 − 1/5 = 39.8.",
+    "trap": "\"40.8\" — it looks right because the primes cluster around 40, but their deviations from 40 sum to −1, so the average sits just below 40, not above."
+  },
+  "av2-first-five-multiples-of-three": {
+    "shortcut": "The first n multiples of k average k(n + 1)/2 = 3 × 6/2 = 9.",
+    "trap": "\"6\" — counting 0 as the first multiple, so the list becomes 0, 3, 6, 9, 12."
+  },
+  "av2-even-numbers-2-to-50": {
+    "shortcut": "The first n even numbers average n + 1; from 2 to 50 there are 25 of them, so 26.",
+    "trap": "\"25\" — the count of even numbers from 2 to 50, not their average."
+  },
+  "av2-squares-first-five": {
+    "shortcut": "The average of the first n squares is (n + 1)(2n + 1)/6 = 6 × 11/6 = 11.",
+    "trap": "\"9\" — squaring the middle number 3, as if the midpoint rule for evenly spaced lists applied to squares."
+  },
+  "av2-teacher-included": {
+    "shortcut": "Newcomer = old average + new headcount × rise = 15 + 31 × 1 = 46.",
+    "trap": "\"31\" — adding the two averages, 15 + 16, instead of comparing the totals 450 and 496."
+  },
+  "av2-manager-joins": {
+    "shortcut": "Manager = old average + new headcount × rise = 15,000 + 21 × 500 = ₹25,500.",
+    "trap": "\"₹20,000\" — it looks like a sensible manager's pay, but ₹5,000 above the old average spread over 21 people lifts it by only about ₹238, not ₹500."
+  },
+  "av2-replacement-weight": {
+    "shortcut": "The newcomer must match the leaver and add 2.5 kg for each of the 8 people: 65 + 20 = 85 kg.",
+    "trap": "\"75 kg\" — it looks like a sensible 10 kg rise, but 10 kg shared by 8 people lifts the average by only 1.25 kg."
+  },
+  "av2-misread-entry": {
+    "shortcut": "Swapped digits change a number by 9 × their difference: 64 − 46 = 9 × 2 = 18, and 18 over 10 numbers adds 1.8.",
+    "trap": "\"44.0\" — rounding the correction 18 ÷ 10 = 1.8 up to 2."
+  },
+  "av2-two-groups-combined": {
+    "shortcut": "Start at 20 and move towards 30 in proportion to the second group's share: 20 + 10 × 20/50 = 24.",
+    "trap": "\"25\" — averaging 20 and 30 as if the groups were the same size; the 30 results at 20 outweigh the 20 at 30."
+  },
+  "av2-two-classes-combined": {
+    "shortcut": "Start at 40 and move towards 60 by the larger class's share: 40 + 20 × 50/80 = 52.5.",
+    "trap": "\"50\" — the plain mean of 40 and 60, which ignores that the 50-student class pulls the result towards 60."
+  },
+  "av2-three-classes": {
+    "shortcut": "Measure from 60: 25 students at −10 and 45 at +10 net +200 over 100 students, so 60 + 2 = 62.",
+    "trap": "\"60\" — the plain mean of 50, 60 and 70; the biggest class scores 70, so the overall average must sit above 60."
+  },
+  "av2-batsman-seventeenth": {
+    "shortcut": "Back-check the options: a new average of 43 needs the 17th innings to be 43 + 16 × 3 = 91 — exactly the score given.",
+    "trap": "\"44\" — it feels right because 91 is more than double 40, but 44 would need 44 + 16 × 4 = 108 in the 17th innings."
+  },
+  "av2-runs-to-raise-average": {
+    "shortcut": "Runs needed = old average + new innings count × rise = 48 + 13 × 5 = 113.",
+    "trap": "\"103\" — it looks close enough, but it would lift the average by only (103 − 48) ÷ 13 ≈ 4.2, not 5."
+  },
+  "av2-fourth-innings": {
+    "shortcut": "Fourth innings = old average + new count × rise = 42 + 4 × 2 = 50.",
+    "trap": "\"46\" — adding the 2-run rise to the new average of 44, forgetting that the innings must also lift the three earlier ones by 2 each."
+  },
+  "av2-excluded-number": {
+    "shortcut": "Excluded number = old average + remaining count × drop = 27 + 4 × 2 = 35.",
+    "trap": "\"30\" — it looks right as 'a bit above 27', but removing 30 leaves 105 ÷ 4 = 26.25, not 25."
+  },
+  "av2-new-observation": {
+    "shortcut": "New observation = old average + new count × rise = 12 + 7 × 1 = 19.",
+    "trap": "\"13\" — taking the new observation to be the new average; adding 13 lifts the average only to 85 ÷ 7 ≈ 12.1."
+  },
+  "av2-discard-two-numbers": {
+    "shortcut": "At the average the two would total 76, but they total 100; removing that excess of 24 across the 48 numbers left drops the average by 0.5, to 37.5.",
+    "trap": "\"38\" — assuming two numbers out of fifty cannot move the average; both lie above 38, so removing them must pull it down."
+  },
+  "av2-eleven-results-sixth": {
+    "shortcut": "Measure from 50: the first six total −6 and the last six +12; all eleven total 0, so the sixth, counted twice, is 50 + 6 = 56.",
+    "trap": "\"52\" — taking the last group's average as the sixth result; the sixth has to be found from the double count in the two group totals."
+  },
+  "av2-eleven-numbers-middle": {
+    "shortcut": "Measure from 10.9: the first six are −0.4 each (−2.4) and the last six +0.5 each (+3.0), so the double-counted sixth is 10.9 + 0.6 = 11.5.",
+    "trap": "\"11.0\" — averaging the two group averages, (10.5 + 11.4) ÷ 2 ≈ 10.95, and rounding; the sixth number is the overlap, not a mean."
+  },
+  "av2-abc-weights": {
+    "shortcut": "Take C out first: C = 135 − 80 = 55 from the three-person and A–B totals, then B = 86 − 55 = 31 kg.",
+    "trap": "\"26 kg\" — it keeps B well below both pair averages and looks plausible, but it makes A = 54 and C = 60, and 54 + 26 + 60 = 140, not 135."
+  },
+  "av2-workshop-technicians": {
+    "shortcut": "Balance the surplus: 7 technicians are ₹4,000 above ₹8,000 (₹28,000 in all) and each other worker is ₹2,000 below, so 14 others are needed — 21 in all.",
+    "trap": "\"20\" — a round total that nearly balances: 7 technicians and 13 others average (84,000 + 78,000) ÷ 20 = ₹8,100, just above ₹8,000."
+  },
+  "av2-six-numbers-pairs": {
+    "shortcut": "Measure from 3.95: the first pair is 2 × (−0.55) = −1.1 and the second 2 × (−0.1) = −0.2, so the last pair must make up +1.3, or +0.65 each: 4.6.",
+    "trap": "\"4.5\" — close to the answer and a clean-looking figure, but it gives a total of 6.8 + 7.7 + 9.0 = 23.5, not 6 × 3.95 = 23.7."
+  },
+  "av2-temperature-monday-thursday": {
+    "shortcut": "The two totals differ by 3 × (37 − 34) = 9, which is Monday − Thursday = Monday ÷ 5, so Monday = 45°.",
+    "trap": "\"36°\" — solving correctly but reporting Thursday's temperature (4/5 × 45) instead of Monday's."
+  },
+  "av2-expenditure-and-savings": {
+    "shortcut": "The average monthly spend is 1,800 + 400 × 3/12 = ₹1,900, and the savings add 1,200 ÷ 12 = ₹100 a month: ₹2,000.",
+    "trap": "\"₹1,900\" — the average monthly expenditure, forgetting to add the ₹100 a month he saved."
+  },
+  "av2-family-after-five-years": {
+    "shortcut": "The parents now average 23 + 5 = 28, so the family totals 2 × 28 + 1 = 57, and 57 ÷ 3 = 19.",
+    "trap": "\"17\" — adding five years to the couple's total once instead of to each parent: (46 + 5 + 1) ÷ 3 ≈ 17.3."
+  },
+  "av2-seven-consecutive": {
+    "shortcut": "Smallest + largest = 2 × 20 = 40 and they are 6 apart, so the largest is (40 + 6) ÷ 2 = 23.",
+    "trap": "\"24\" — stepping four places up from the middle term instead of three; the middle is the 4th of seven, so only three terms lie above it."
+  },
+  "av2-five-consecutive-even": {
+    "shortcut": "Smallest + largest = 2 × 24 = 48 and they are 8 apart (four steps of 2), so the smallest is (48 − 8) ÷ 2 = 20.",
+    "trap": "\"22\" — stepping down only one even number from 24; the middle of five terms has two terms below it."
+  },
+  "av2-multiply-each-by-three": {
+    "shortcut": "Picture all eight numbers equal to 20; tripled, every one becomes 60, so the average is 60.",
+    "trap": "\"23\" — adding 3 to the average; multiplying every value multiplies the average, and only adding a constant adds to it."
+  },
+  "av2-at-most-greater-than-zero": {
+    "shortcut": "Take 19 ones and a single −19: the total is 0 with 19 positives. All 20 positive would force a positive total.",
+    "trap": "\"20\" — counting zeros as positive: all 20 numbers can be 0, but zero is not greater than zero."
+  },
+  "av2-average-speed-two-legs": {
+    "shortcut": "Pick a leg length both speeds divide, say 120 km: 2 h + 3 h = 5 h for 240 km, so 48 km/h — the answer does not depend on the distance.",
+    "trap": "\"50 km/h\" — averaging the two speeds; the car spends longer at 40 km/h, which pulls the average below 50."
+  },
+  "sy2-all-dogs-animals": {
+    "shortcut": "Two linked 'all' premises give 'All dogs are living beings' (I), and that conclusion converts to 'some living beings are dogs' (II).",
+    "trap": "\"Only I\" — rejecting II as a reversed 'all' statement; the limited 'some' converse is valid because dogs exist."
+  },
+  "sy2-all-roses-flowers": {
+    "shortcut": "'Flowers' is never covered in full — predicate of an 'all', subject of a 'some' — so nothing links roses to fading; II is an illegal full converse.",
+    "trap": "\"Only I\" — assuming the quick-fading flowers include some roses; they can all be other flowers."
+  },
+  "sy2-some-books-pens": {
+    "shortcut": "II turns 'All pens are pencils' round, so every option containing II goes at once; I is the standard some + all result.",
+    "trap": "\"Both\" — accepting II, which reverses 'All pens are pencils'; pencils may include many things that are not pens."
+  },
+  "sy2-no-cats-dogs": {
+    "shortcut": "Standard pattern: 'No A is B' + 'All B are C' gives 'Some C are not A' — some pets (the dogs) are not cats — and never 'No A is C'.",
+    "trap": "\"Only I\" — carrying 'no cat is a dog' across to all pets; cats can be pets even though no cat is a dog."
+  },
+  "sy2-all-a-b-no-b-c": {
+    "shortcut": "'All A are B' + 'No B is C' is the pattern that yields a universal 'No A is C' (I), and statement 1 converts to 'some hardworking people are students' (II).",
+    "trap": "\"Only I\" — rejecting II as a reversal of 'all students are hardworking'; the limited 'some' converse is valid because students exist."
+  },
+  "sy2-some-not-conclusion": {
+    "shortcut": "Draw it: doctors partly overlap writers, and writers sit inside educated. The overlap is educated (I), but the other doctors can lie outside educated, breaking II.",
+    "trap": "\"Both\" — upgrading 'some doctors are educated' to 'all'; only the doctors who are writers are known to be educated."
+  },
+  "sy2-either-or": {
+    "shortcut": "Put the swimming feathered creatures in the feathered-but-not-bird region and I fails; II reverses 'all birds have feathers', so it fails too.",
+    "trap": "\"Only I\" — using the real-world fact that some birds, like ducks, swim; the statements alone allow every swimmer to be a non-bird."
+  },
+  "sy2-all-pens-blue": {
+    "shortcut": "All + all chains forwards to 'All pens are attractive', and that conclusion converts to 'some attractive things are pens'.",
+    "trap": "\"Only I\" — rejecting II as a reversed 'all'; the limited 'some' converse of a valid 'all' conclusion always holds."
+  },
+  "sy2-no-a-is-b-some-b-c": {
+    "shortcut": "'Some rich people are generous' + 'no rich person is a teacher' gives 'some generous people are not teachers'; a premise with 'some' can never yield a universal 'no'.",
+    "trap": "\"Both\" — extending the 'no' to every generous person; generous people who are not rich may still be teachers."
+  },
+  "sy2-all-squares-rectangles": {
+    "shortcut": "II runs the chain backwards, so drop every option containing II; the forward chain squares → rectangles → quadrilaterals gives I.",
+    "trap": "\"Both\" — accepting II, the full reversal of the chain; many quadrilaterals are not squares."
+  },
+  "sy2-some-a-not-b": {
+    "shortcut": "I is statement 1 converted ('All tall people are players' → 'some players are tall'); II is the exact contradictory of statement 2.",
+    "trap": "\"Neither\" — rejecting I as a reversed 'all' statement; the limited converse holds because tall people exist."
+  },
+  "sy2-three-statements": {
+    "shortcut": "An all-chain carries forwards only: pencils → erasers holds, and II, the whole chain reversed, goes at once.",
+    "trap": "\"Both\" — accepting II, the full reversal of the chain; erasers may include many things that are not pencils."
+  },
+  "sy2-possibility-conclusion": {
+    "shortcut": "Standard pattern: 'Some A are B' + 'No B is C' gives 'Some A are not C' — some fruits (the apples) are not sour.",
+    "trap": "\"Both\" — spreading 'no apple is sour' to all fruits; fruits that are not apples may be sour."
+  },
+  "sy2-all-managers-employees": {
+    "shortcut": "II is statement 2 converted, valid at sight; I would need 'employees' covered in full by a premise, but it is only the predicate of an 'all' and the subject of a 'some'.",
+    "trap": "\"Both\" — assuming the shareholder employees include some managers; they can all be employees who are not managers."
+  },
+  "sy2-no-conclusion-follows": {
+    "shortcut": "Some + some yields nothing, so test the pair: 'some cars are trains' and 'no car is a train' share both terms and contradict, so exactly one is true.",
+    "trap": "\"Neither\" — correctly finding that neither is proved alone and missing that the two conclusions together exhaust every case."
+  },
+  "sa2-row-five-middle": {
+    "shortcut": "Seat 3 cannot be P, Q or T (seats 1, 2 and 5), and S must sit next to T to be between R and T, so the middle seat is R's.",
+    "trap": "\"S\" — 'S is between R and T' suggests the middle, but S is between them in seat 4, with R in seat 3."
+  },
+  "sa2-row-five-second-from-left": {
+    "shortcut": "C, B, A and D fill seats 1, 2, 3 and 5; the one unnamed seat, 4 — second from the right — must be E's.",
+    "trap": "\"B\" — the person second from the left; the question asks for second from the right."
+  },
+  "sa2-circle-six-opposite": {
+    "shortcut": "Six seats form three opposite pairs; A–D and B–C are two of them, so E and F must share the third — E is opposite F with no left–right work at all.",
+    "trap": "\"C\" — the last person placed by an 'opposite' clue looks like E's partner, but C is already paired with B."
+  },
+  "sa2-circle-eight-third-to-left": {
+    "shortcut": "Label Q as 0: seats 1 and 2 clockwise lie between, and P sits at 3. The other way round there are 4, and 2 + 4 = the 6 people besides P and Q.",
+    "trap": "\"3\" — counting P's own seat among those between; 'third to the left' includes the destination seat."
+  },
+  "sa2-facing-outward": {
+    "shortcut": "Swap the side when you swap the viewer: 'A is on B's left' is the same fact as 'B is on A's right'. Facing outwards only decides which way round the table 'left' runs, so it changes nothing here.",
+    "trap": "\"Immediate left\" — copying the stated side across without reversing it; the question moves the viewpoint from B to A, and a left-right relation always flips when it is read from the other person."
+  },
+  "sa2-ranking-from-both-ends": {
+    "shortcut": "Ravi has 11 people on his left and 17 on his right: 11 + 17 + 1 = 29.",
+    "trap": "\"30\" — adding 12 and 18, which counts Ravi twice."
+  },
+  "sa2-ranking-find-position": {
+    "shortcut": "15 students rank above Meera, so she and everyone below her number 40 − 15 = 25 — she is 25th from the bottom.",
+    "trap": "\"24\" — subtracting 16 from 40, which counts the students below her rather than giving her own rank."
+  },
+  "sa2-between-two-people": {
+    "shortcut": "The people between sit in positions 8, 9, 10 and 11 — four of them.",
+    "trap": "\"5\" — taking the gap 12 − 7 as the headcount, which includes Sunil's own seat."
+  },
+  "sa2-tallest-shortest": {
+    "shortcut": "The shortest is whoever is never said to be taller than anyone: E appears only as 'shorter than C'.",
+    "trap": "\"C\" — the shortest person in the second clue, picked before the last clue puts E below C."
+  },
+  "sa2-ordering-heaviest": {
+    "shortcut": "The heaviest is whoever is never called lighter than anyone: T appears only on the heavier side.",
+    "trap": "\"S\" — reading 'S is heavier than R' and missing the 'but lighter than T' that follows."
+  },
+  "sa2-days-of-week-puzzle": {
+    "shortcut": "B cannot take the earlier of the two free days, since A comes first; with Monday, Wednesday and Thursday taken, the later free day is Friday.",
+    "trap": "\"Tuesday\" — swapping A and B, reading 'A visits before B' as B visiting first."
+  },
+  "sa2-floors-puzzle": {
+    "shortcut": "The top floor belongs to whoever is never said to live below anyone: S appears only as 'above P'.",
+    "trap": "\"P\" — taken from the first clue, 'P lives above Q', before the last clue puts S above P."
+  },
+  "sa2-row-facing-south": {
+    "shortcut": "Facing south, each person's right hand points west; the observer facing north has his right hand to the east. Opposite facings mirror sides, so the observer's right end is A's left.",
+    "trap": "\"Right\" — accepting the observer's 'right end' as A's own right, forgetting that someone facing the observer has left and right reversed."
+  },
+  "sa2-two-rows-facing": {
+    "shortcut": "Put X's row facing north with X at the west end (his left). Y faces south, and for someone facing south west is the right, so Y is at his right end.",
+    "trap": "\"Left end\" — assuming the person opposite sits at the end with the same name; rows facing each other mirror left and right."
+  }
+}

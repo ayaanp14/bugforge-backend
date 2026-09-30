@@ -1,0 +1,226 @@
+{
+  "ag2-father-three-times-five-years-ago": {
+    "shortcut": "The father's age must be a multiple of 3, which leaves 45 and 48. Test 45: son 15, and five years back 40 and 10 — exactly four times. 48 gives 43 and 11, which fails.",
+    "trap": "40 is the father's age five years ago (4 × 10). Solving correctly and then reading off the past age instead of the present one produces it."
+  },
+  "ag2-man-three-times-fifteen-hence": {
+    "shortcut": "When one person is twice another, the gap equals the younger's age at that moment. The gap is 2s now and always, so in fifteen years 2s = s + 15 → s = 15, and the man is 45.",
+    "trap": "No natural slip lands on a wrong option; 36 is the likeliest guess because, like 45, it is a clean multiple of 3. But a son of 12 gives 51 and 27 in fifteen years — not twice."
+  },
+  "ag2-twice-ten-years-ago-thrice": {
+    "shortcut": "Since A = 2B, the gap equals B's present age b. Ten years ago A was three times B, so the gap was then 2(b − 10). Equate the two: b = 2b − 20 → b = 20.",
+    "trap": "15 tempts because it makes A a tidy 30, yet ten years back that is 20 and 5 — four times, not three. Only 20 (A 40, then 30 and 10) survives the check."
+  },
+  "ag2-ratio-6-5-after-15": {
+    "shortcut": "Both ratios have a gap of one part (6 − 5 and 9 − 8), and the gap in years never changes, so the part size is the same: 6x + 15 = 9x → x = 5, A = 30.",
+    "trap": "25 is B's present age (5 × 5): x is found correctly and then substituted into the wrong person's ratio term."
+  },
+  "ag2-ratio-3-5-after-9": {
+    "shortcut": "Scale 3 : 4 up to 6 : 8 so both ratios show a gap of two parts. A then goes from 3 parts to 6 in nine years, so one part = 3 and B = 5 × 3 = 15.",
+    "trap": "9 is A's present age (3 × 3), from putting x = 3 into A's term instead of B's; it also echoes the nine years in the question."
+  },
+  "ag2-ratio-3-4-eight-years-ago": {
+    "shortcut": "Both ratios have a one-part gap, so the part size is unchanged between them: 3x − 8 = 2x → x = 8, and the sum is 7x = 56.",
+    "trap": "42 looks right because 18 and 24 reduce to exactly 3 : 4, but every option is a multiple of 7 and fits the present ratio; eight years back 42 gives 10 : 16 = 5 : 8, not 2 : 3."
+  },
+  "ag2-one-year-ago-four-hence": {
+    "shortcut": "Each ratio has a one-part gap, so the part size is fixed: over the five years the younger climbs from 5 parts to 6, so one part = 5 years. He was 25 a year ago and is 26 now.",
+    "trap": "25 is the younger's age one year ago (5 × 5) — the right x, but the one year is never added back to reach the present."
+  },
+  "ag2-mother-daughter-sum-fifty": {
+    "shortcut": "Five years ago the sum was 50 − 10 = 40, split 7 : 1 into 35 and 5. Add the five years back: the mother is 40.",
+    "trap": "35 is the mother's age five years ago; splitting 40 in the ratio 7 : 1 and stopping there, without adding the five years back, produces it."
+  },
+  "ag2-difference-16-six-years-ago": {
+    "shortcut": "Six years ago the elder was three times the younger, so the fixed 16-year gap was two parts: the younger was 8 then and is 14 now.",
+    "trap": "16 tempts because it is the gap stated in the question, but a younger of 16 means 10 and 26 six years ago — not three times."
+  },
+  "ag2-father-30-older": {
+    "shortcut": "In 12 years the father is three times the son, so the fixed 30-year gap is two parts: the son will be 15 then, so he is 3 now.",
+    "trap": "6 comes from stopping at 2s = 6 in s + 42 = 3s + 36 and forgetting to halve it; a son of 6 would be 18 against 48 in 12 years, not a third."
+  },
+  "ag2-twenty-years-older-twice": {
+    "shortcut": "When A is twice B, the gap equals B's age at that moment. The gap is 20, so B is 20 in five years and 15 now.",
+    "trap": "20 is B's age five years from now — the gap-equals-age step done right, but the five years never taken off."
+  },
+  "ag2-product-756-ratio-7-3": {
+    "shortcut": "756 ÷ 21 = 36, so the multiplier is 6 and the ages are 42 and 18. Six years on they are 48 and 24, and the unchanged gap of 24 equals the son's age: exactly 2 : 1.",
+    "trap": "No natural slip lands on a wrong option; 5 : 3 is the likeliest guess because it looks like a gentle narrowing of 7 : 3. It would need the 24-year gap to be two parts, i.e. ages 60 and 36, not 48 and 24."
+  },
+  "ag2-product-48-difference-2": {
+    "shortcut": "Two numbers 2 apart multiply to one less than the square of their mean: 48 + 1 = 49 = 7², so the ages are 6 and 8 and the sum is 2 × 7 = 14.",
+    "trap": "16 comes from grabbing the familiar factor pair 4 × 12 without checking the difference, which is 8, not 2."
+  },
+  "ag2-present-150-percent-of-past": {
+    "shortcut": "150% means present : past = 3 : 2. The one-part gap is the 8 years, so the present age is 3 × 8 = 24.",
+    "trap": "16 comes from expanding 1.5(a − 8) as 1.5a − 8, dropping the 1.5 on the 8; it is also his age eight years ago, so it feels doubly right."
+  },
+  "ag2-rajan-fifteen-hence": {
+    "shortcut": "The two moments are 15 + 5 = 20 years apart and the later age is five times the earlier, so the 20 years are four parts: he was 5 then and is 10 now.",
+    "trap": "15 tempts because it echoes the question's fifteen years, but it gives 30 after fifteen years against 10 five years ago — only three times, not five."
+  },
+  "ag2-father-as-old-at-birth": {
+    "shortcut": "If the father was the son's present age when the son was born, the father is now exactly twice the son: 38 ÷ 2 = 19, and five years back 14.",
+    "trap": "19 is the son's present age; a hurried candidate halves 38 and stops before taking off the five years the question asks about."
+  },
+  "ag2-a-two-older-b-twice-c": {
+    "shortcut": "C = B/2 should be a whole number, so try the even options: B = 8 gives 10 + 8 + 4 = 22, and B = 10 gives 12 + 10 + 5 = 27.",
+    "trap": "9 comes from treating B as the middle age and taking 27 ÷ 3; the ages 12, 10 and 5 are not evenly spaced, and B = 9 would total only 24.5."
+  },
+  "ag2-five-children-three-year-gaps": {
+    "shortcut": "Take the gaps off first: the four elder children carry 3 + 6 + 9 + 12 = 30 extra years, so the remaining 20 is shared equally five ways — the youngest is 4.",
+    "trap": "10 is the middle child's age (50 ÷ 5); dividing the total by five gives the average, which belongs to the third child, not the youngest."
+  },
+  "ag2-husband-wife-child-averages": {
+    "shortcut": "Align both groups at five years ago instead: the three totalled 81 three years ago, so 81 − 6 = 75 two years earlier. Take off the wife and child's 40: the husband was 35 then and is 40 now.",
+    "trap": "35 is the husband's age five years ago; aligning the groups in the past and forgetting to add the five years back yields it."
+  },
+  "ag2-family-of-five-youngest": {
+    "shortcut": "Take five years off all five members: 100 − 25 = 75. The youngest drops to exactly 0, so 75 is the other four's total, and 75 ÷ 4 = 18.75.",
+    "trap": "15 comes from dividing 75 by five instead of four — the youngest adds nothing to that total, yet is still counted as a member."
+  },
+  "ag2-father-four-more-than-four-times": {
+    "shortcut": "Back-substitute: each option gives the son as (f − 4) ÷ 4. For 28 the son is 6, and in four years 32 = 3 × 10 + 2. 24 (son 5) gives 28 against 29 and fails.",
+    "trap": "32 is the father's age after four years (28 + 4); solving correctly and reading off the future age instead of the present one gives it."
+  },
+  "ag2-ratio-4-3-a-26-in-six": {
+    "shortcut": "Take the six years off A first: 20 = 4 parts, so one part is 5 and B = 3 parts = 15. As a check, 20 : 15 reduces to 4 : 3.",
+    "trap": "21 is B's age in six years (15 + 6); answering for the moment the 26 refers to, instead of the present, gives it."
+  },
+  "ag2-sachin-rahul-difference": {
+    "shortcut": "One part = 7 years ÷ (9 − 7) = 3.5, so Sachin = 7 × 3.5 = 24.5. His age must be a multiple of 3.5, which rules out 22.5 and 26.5 at once.",
+    "trap": "28 tempts as the only whole number and a multiple of 7, so it looks like '7 parts', but Rahul would then be 36 and the gap 8 years, not 7."
+  },
+  "ag2-five-years-ago-twice": {
+    "shortcut": "A's age must be a multiple of 9: 36, 45 or 54. Test 45: B is 25, and five years back 40 and 20 — exactly twice. 36 gives 31 and 15, which fails.",
+    "trap": "40 is A's age five years ago (2 × 20); solving correctly and quoting the past age instead of the present one gives it."
+  },
+  "ag2-sum-of-ages-after-n-years": {
+    "shortcut": "Six years ago the sum was 60 − 12 = 48, split 5 : 1 into 40 and 8. The son is wanted twelve years after that: 8 + 12 = 20.",
+    "trap": "14 is the son's present age; the question asks for his age after six years, and stopping at the present gives it."
+  },
+  "ag2-average-age-of-class-with-teacher": {
+    "shortcut": "Teacher = old average + new headcount × rise = 16 + 25 × 1 = 41: the teacher matches the old average and then adds a year for each of the 25 people now counted.",
+    "trap": "36 looks like a plausible teacher's age, 20 years above the students, but it lifts the average by only 20 ÷ 25 = 0.8 year; a full year needs 25 years above 16."
+  },
+  "ag2-elder-thrice-younger-difference": {
+    "shortcut": "The gap is two-thirds of the elder's age (3 parts − 1 part), so elder = 12 × 3/2 = 18. Check: 18 − 12 = 6 and 18 = 3 × 6.",
+    "trap": "24 comes from the 'twice as old' habit, where the gap equals the younger and the elder is double the gap; with 'three times' the gap is two parts, so 24 (younger 12) is only twice."
+  },
+  "vo-synonym-abate": {
+    "shortcut": "Link abate to rebate, a reduction: abate means to lessen. Only Subside describes something weakening; Intensify is the reverse and Persist means no change.",
+    "trap": "Intensify is the reverse of the meaning; it tempts a candidate who confuses abate with abet (as in 'aid and abet'), which means to encourage or egg on."
+  },
+  "vo-antonym-frugal": {
+    "shortcut": "Swap in a plain synonym — careful with money — and look for its reverse, spending freely: Extravagant. Cautious and Modest are merely different, not opposite.",
+    "trap": "Thrifty is the synonym, placed first; a candidate who matches the meaning and forgets that the question asks for the opposite picks it."
+  },
+  "vo-synonym-meticulous": {
+    "shortcut": "The sentence praises records of every experiment, so the word is positive and about completeness; Hurried and Careless are opposites and Occasional is about frequency, leaving Thorough.",
+    "trap": "Careless tempts because it contains 'care', the very idea meticulous is about, but it is the opposite — a word association, not a match in meaning."
+  },
+  "vo-antonym-transient": {
+    "shortcut": "Substitute 'temporary' for transient; its opposite is Permanent. Brief is a synonym, and Fragile and Sudden describe strength and speed rather than duration.",
+    "trap": "Brief is a synonym of transient; a hurried candidate spots the matching meaning and forgets that the question asks for the opposite."
+  },
+  "vo-word-in-context-candid": {
+    "shortcut": "Candid is an adjective for frank speech, so it needs a noun that can be honest: an account qualifies, a room or the weather cannot, and 'candid the door' uses it as a verb.",
+    "trap": "\"The photograph was candid about the weather.\" tempts because 'candid photograph' (an unposed shot) is a real phrase, but a photograph cannot be frank about anything."
+  },
+  "sc-subject-verb-agreement": {
+    "shortcut": "Ask what is on the desk: one list. The three plural verbs (were, have been, are) fall together for the same reason, leaving the singular is.",
+    "trap": "\"The list of items are on the desk.\" makes the verb agree with items, the plural noun sitting next to it, instead of the true subject, list."
+  },
+  "sc-dangling-modifier": {
+    "shortcut": "Discard the passives first: both 'was missed by Ram' versions make the bus the subject. Of the two left, 'running down the street by him' is garbled, so the answer is the one with Ram right after the comma.",
+    "trap": "\"Running down the street, the bus was missed by Ram.\" keeps the correct opening phrase and sounds formal, but the first noun after the comma is the bus, so the bus does the running."
+  },
+  "sc-tense-consistency": {
+    "shortcut": "A past reporting verb needs two backshifts: will → would and tomorrow → the next day. Only one option has both; every other keeps comes, will, tomorrow or says.",
+    "trap": "\"He said that he will come tomorrow.\" repeats the words as they were spoken; it sounds natural in conversation but skips both backshifts that the past verb said requires."
+  },
+  "sc-preposition-choice": {
+    "shortcut": "Married takes the same 'to' as engaged to and wedded to. In English 'married with' means having something alongside, as in 'married with two children', never the spouse.",
+    "trap": "\"She is married with a doctor.\" carries over the 'with' (ke saath) of Hindi and other Indian languages, so it sounds right to many candidates, but English uses married to."
+  },
+  "sc-parallel-structure": {
+    "shortcut": "Pick the option whose three items share one form: only the -ing trio does. 'Likes read, swim and cycle' fails for another reason — likes cannot take a bare verb.",
+    "trap": "\"She likes reading, to swim and cycling.\" opens and closes with -ing forms, so it sounds parallel at a glance; the infinitive in the middle breaks the pattern."
+  },
+  "sl-blank-contrast": {
+    "shortcut": "'Seemed attractive at first' flags a coming reversal — 'at first' nearly always sets up a but. Only however turns the sentence; the other three carry it on in the same direction.",
+    "trap": "therefore tempts as the stock connector after a semicolon, but the risks do not follow from the proposal looking attractive — they overturn that first impression."
+  },
+  "sl-blank-two-words": {
+    "shortcut": "'Although' needs the halves to pull opposite ways. thorough … accepted and brief … ignored run the same way, so they go at once; thorough … disputed is the clean clash of a careful report meeting rejection.",
+    "trap": "thorough … accepted keeps the right first word, and a thorough report being accepted sounds natural, but it gives 'although' no contrast to mark."
+  },
+  "sl-para-jumble-four": {
+    "shortcut": "Q is the only sentence that names the bicycle, so it opens; that leaves Q P S R and Q S P R, and S's 'Since then' needs P's date before it.",
+    "trap": "P S Q R keeps the P–S link and runs in date order, but P opens with 'It', which has nothing to refer to until Q names the bicycle."
+  },
+  "sl-blank-cause": {
+    "shortcut": "Read 'so' into the blank: the flood is the reason and the postponement the result. Only consequently means 'so'; the others signal contrast, an alternative or time.",
+    "trap": "nevertheless tempts as the formal connector most often drilled after a semicolon, but it would mean the match was postponed despite the flood — the reverse of the logic."
+  },
+  "rc-remote-work-main-idea": {
+    "shortcut": "Paraphrase the last sentence — hybrid work is for the social fabric, not for output — and match it. Only the hybrid-schedules option says that; the other three contradict a stated fact or inflate a detail.",
+    "trap": "\"The pandemic proved that offices are unnecessary.\" builds on the true line that output did not collapse, but ignores the passage's point that informal exchange suffered — the reason firms are bringing people back."
+  },
+  "rc-remote-work-inference": {
+    "shortcut": "Match the option to a phrase in the text: 'a perk for a favoured few' means few people had it, i.e. remote work was uncommon. Each other option needs a fact the passage never supplies.",
+    "trap": "\"Informal exchange cannot occur online.\" stretches the text: the passage says informal exchange suffered, not that it became impossible, so 'cannot' overstates it."
+  },
+  "rc-tone-question": {
+    "shortcut": "Place the tone on a scale from Enthusiastic to Hostile. The loaded list (ambitious, uncertain, optimistic by its architects' own admission) is doubt, but the dry 'One waits with interest' stops short of attack: Sceptical.",
+    "trap": "Hostile tempts because the list of weaknesses reads like criticism, but the author never condemns the scheme; the closing line withholds judgement, which is doubt, not hostility."
+  },
+  "di-sales-growth-percent": {
+    "shortcut": "The rise is 350 on a base of 400, which is 7/8. Since 1/8 = 12.5%, 7/8 = 87.5%.",
+    "trap": "75% echoes the 750 in the Total column and is the growth only as far as 700; the extra 50 on a base of 400 adds another 12.5 points."
+  },
+  "di-sales-share-of-b": {
+    "shortcut": "Use 2022's 45% as the benchmark: 45% of the later totals is 216, 270 and 337.5, and B's 200, 190 and 260 fall short each time, so 2022 wins.",
+    "trap": "2025 has B's largest absolute sales (260), but the total grew even faster that year; picking the biggest number instead of the biggest fraction gives it."
+  },
+  "di-sales-average-product-c": {
+    "shortcut": "Take 150 as a base: the deviations −50, −20, +50 and +100 add to +80, and 80 ÷ 4 = 20, so the average is 150 + 20 = 170.",
+    "trap": "180 is Product A's average (720 ÷ 4) — the result of reading down the neighbouring column instead of Product C."
+  },
+  "di-sales-ratio-a-to-c": {
+    "shortcut": "A's total is the larger, so the first term must be the bigger: 17 : 18 and 12 : 13 go at once. 720 : 680 ÷ 40 = 18 : 17; 36 : 35 only looks like the unreduced 72 : 68.",
+    "trap": "17 : 18 has the right numbers in the wrong order — it is C to A, the smaller total set against the larger."
+  },
+  "di-marks-highest-average": {
+    "shortcut": "Subtract 80 from every mark and add the differences: Aditi +7, Chirag +5, Divya −10, Bhavesh −13. Aditi leads without any full totals.",
+    "trap": "Chirag tempts with the two highest single marks in the table (91 and 90), but his 65 in English costs him; his total of 325 is two short of Aditi's 327."
+  },
+  "di-marks-subject-average": {
+    "shortcut": "Take 80 as a base: −4 + 5 + 10 − 8 = +3, so the average is 80 + 3/4 = 80.75.",
+    "trap": "81.25 is Chirag's own average (325 ÷ 4) — the result of reading across the row of the top Physics scorer instead of down the Physics column."
+  },
+  "di-caselet-office-staff": {
+    "shortcut": "Women are 60% × 1/4 + 40% × 1/2 = 15% + 20% = 35% of the staff, and 35% of 240 = 84.",
+    "trap": "96 comes from swapping the fractions — half of engineering (72) plus a quarter of the rest (24); it is also the non-engineering headcount, which makes it look familiar."
+  },
+  "di-caselet-library-books": {
+    "shortcut": "Work in shares of the whole library: 10% of 40% = 4% and 20% of 25% = 5%, so 9% of 5,000 = 450.",
+    "trap": "550 comes from applying the 20% to non-fiction (1,750, giving 350) instead of reference: 200 + 350 = 550."
+  },
+  "di-caselet-two-shops": {
+    "shortcut": "The gross is 24,500, and 90% of it is simply 9 × 2,450 = 22,050 — one single-digit multiplication instead of working out the discount and subtracting it.",
+    "trap": "₹24,500 is the combined gross before the discount; computing both shops' revenue correctly and forgetting the 10% gives it."
+  },
+  "di-caselet-exam-results": {
+    "shortcut": "The sections weigh 50 : 30 = 5 : 3, so the overall rate lies 3/8 of the way from 80 towards 60: 80 − 20 × 3/8 = 80 − 7.5 = 72.5%.",
+    "trap": "70% is the plain average of 80% and 60%, which ignores that Section A has 50 students against B's 30 and so counts for more."
+  },
+  "di-caselet-production-target": {
+    "shortcut": "Estimate from 500 a day: 12 × 500 = 6,000 is 300 more than the 5,700 needed, and 300 ÷ 12 = 25, so the rate is 500 − 25 = 475.",
+    "trap": "525 comes from dividing the 6,300 already produced by the 12 days left (6,300 ÷ 12) instead of the 5,700 still to make."
+  },
+  "di-caselet-travel-budget": {
+    "shortcut": "Stay in parts: a 10% saving on flights' 5 parts is half a part, so meals rise from 1 part to 1.5 parts, and one part is 90,000 ÷ 9 = 10,000: ₹15,000.",
+    "trap": "₹10,000 is the original meals budget (one ninth of 90,000); converting the ratio correctly and forgetting to add the ₹5,000 flight saving gives it."
+  }
+}

@@ -1,0 +1,562 @@
+{
+  "sy3-all-metals-conductors": {
+    "shortcut": "A named member inherits its class's property, so I is immediate. II is statement 1 read backwards, and an 'all' converts only to 'some' (some conductors are metals), never to 'all' — so every option containing II goes.",
+    "trap": "\"Both\" — accepting II as a harmless restatement of statement 1; graphite and salt water conduct without being metals, so the reversed 'all' fails."
+  },
+  "sy3-some-chairs-tables": {
+    "shortcut": "Some + all, with the shared term (tables) ending the first premise and starting the second, always yields 'some' between the outer terms: some chairs are wooden. II swaps the terms of an 'all', which is never allowed.",
+    "trap": "\"Both\" — reading II as statement 2 said another way; 'all tables are wooden' leaves room for wooden doors and chairs that are not tables."
+  },
+  "sy3-no-fish-mammals": {
+    "shortcut": "I is the stock 'all + no → no' result. The point to catch is II: an 'all' statement always converts to a 'some' in reverse, so 'all whales are mammals' guarantees 'some mammals are whales'.",
+    "trap": "\"Only I\" — rejecting II because the statements speak of 'all' whales and never mention 'some'; a valid 'all' always licenses the weaker reversed 'some'."
+  },
+  "sy3-all-poets-writers": {
+    "shortcut": "The shared term (writers) is the larger class in the 'all' premise, so the journalist writers can sit entirely outside the poets — I fails. II just swaps the terms of a 'some', which is always valid.",
+    "trap": "\"Both\" — chaining poets → writers → journalists as if the link passed through; the writers who are journalists need not include a single poet."
+  },
+  "sy3-all-a-b-all-c-b": {
+    "shortcut": "Same subject and predicate, one 'some' and one 'no' — I and II are a complementary pair, so exactly one is true. Once neither is proved alone, the answer is Either I or II without drawing a diagram.",
+    "trap": "\"Neither\" — correctly seeing that neither conclusion is proved and stopping there, missing that 'some cats are dogs' and 'no cat is a dog' cannot both be false."
+  },
+  "sy3-only-a-few": {
+    "shortcut": "All + no gives 'no pen is heavy'. A universal negative converts freely, so it equally says 'no heavy thing is a pen' — the exact denial of II, which therefore cannot follow.",
+    "trap": "\"Neither\" — losing the thread in the double negative and doubting that pens inherit 'not heavy'; a subset shares every exclusion that applies to its superset."
+  },
+  "sy3-chain-with-some": {
+    "shortcut": "Draw teachers as a circle touching doctors on one side and singers on the other — nothing forces doctors and singers to meet, so I fails. II merely swaps the terms of statement 2.",
+    "trap": "\"Both\" — chaining doctors → teachers → singers as though the teachers who are doctors must be the same teachers who sing."
+  },
+  "sa3-six-in-a-row": {
+    "shortcut": "Ends and neighbours fill seats 1, 2, 5 and 6 (A, B, D, C), so only seats 3 and 4 remain; 'E between B and F' puts E beside B. Seat 3 is E, and F never needs placing.",
+    "trap": "\"F\" — counting third from C's end (C, D, F) instead of from A's end."
+  },
+  "sa3-circle-five": {
+    "shortcut": "The two clues chain all five people (Q–P–R–S–T). When a chain uses everyone at a round table, its two ends must be neighbours, so T sits beside Q with nobody between.",
+    "trap": "\"R\" — reading Q–P–R–S–T as a straight row, where R sits in the middle between the end seats Q and T; around a table T and Q touch."
+  },
+  "sa3-rank-from-both-ends-2": {
+    "shortcut": "Count the others: 8 students rank above him and 25 below, so the class is 8 + 25 + 1 = 34.",
+    "trap": "35 — adding 9 and 26 directly, which counts the student himself twice."
+  },
+  "sa3-position-after-swap": {
+    "shortcut": "Position from the left = total − position from the right + 1 = 40 − 19 + 1 = 22. Amit's original 11th is a red herring: he simply inherits Sunil's seat.",
+    "trap": "\"21st\" — computing 40 − 19 and forgetting the +1 when converting Sunil's position to a count from the left."
+  },
+  "sa3-between-count": {
+    "shortcut": "Between positions p and q from the same end sit q − p − 1 people: 15 − 8 − 1 = 6. Listing them confirms it: 9th to 14th is six seats.",
+    "trap": "7 — taking the plain difference 15 − 8, which counts one of the two boys as well."
+  },
+  "sa3-ordering-marks": {
+    "shortcut": "For the top scorer, find the one who is never beaten: E appears only on the winning side (E > D) and no clue puts anyone above E. No full chain needed.",
+    "trap": "\"D\" — stopping at 'D scored more than A' as the top of the chain and missing the final clue that E scored more than D."
+  },
+  "sa3-ordering-middle": {
+    "shortcut": "With five people, third tallest is the median — two above, two below. Q has P and S above and R and T below, so it is Q whichever end is counted from.",
+    "trap": "\"R\" — skipping the clue 'S is taller than P' leaves P > Q > R > T, where third from the top is R."
+  },
+  "sl3-blank-despite": {
+    "shortcut": "'Despite' flips the expected outcome, so the blank must normally predict success. Only 'thorough' is positive; careless, brief and reluctant would all predict the poor show.",
+    "trap": "\"careless\" — picking the word that explains the poor performance, which is what 'because' would need, not 'despite'."
+  },
+  "sl3-blank-because": {
+    "shortcut": "The blank must be a condition a storm leaves behind and that stops play. 'Dry', 'level' and 'spacious' all favour play, so only 'waterlogged' explains a cancellation.",
+    "trap": "\"level\" — the most tempting of the rest because it describes a ground's surface; but a level ground is a reason to play, not to cancel, and storms do not level grounds."
+  },
+  "sl3-blank-scientist": {
+    "shortcut": "Trivial, expected and routine all mean roughly 'unremarkable', and three near-synonyms cannot all be right — the odd one, 'momentous', matches overturning a century of assumptions.",
+    "trap": "\"expected\" — reading 'assumptions that had stood for a century' as if the discovery confirmed them; 'overturned' means it defied expectation."
+  },
+  "sl3-blank-two-contrast": {
+    "shortcut": "'But' needs the second half to turn against the first. 'grand … precise' praises twice, 'modest … thin' and 'weak … poor' criticise twice, so all three go; 'grand … vague' is the one turn — big ambition, thin detail.",
+    "trap": "\"grand … precise\" — accepting 'grand' for ambition and not checking that 'precise' also praises, so the 'but' has nothing to contrast."
+  },
+  "sl3-blank-two-agreement": {
+    "shortcut": "'Since' needs cause and effect in step: clear instructions → early finish, unclear → late. Only 'precise … sooner' keeps them in step; every other pair mismatches cause and effect.",
+    "trap": "\"unclear … sooner\" — it shares 'sooner' with the answer, so checking only the second blank gives a coin toss; unclear instructions cannot cause an early finish."
+  },
+  "sl3-connector-time": {
+    "shortcut": "Two dates in order (March, then June) signal a sequence, and 'subsequently' is the only time word; 'conversely' and 'nevertheless' mark contrast, 'similarly' comparison.",
+    "trap": "\"nevertheless\" — the semicolon slot looks like a contrast pivot, but adoption after review is no surprise, so nothing is being conceded."
+  },
+  "sl3-para-jumble-printing": {
+    "shortcut": "Only Q names the press, so it opens; R ('Today') closes. That removes 'P Q S R' and 'S Q P R'. 'Within fifty years' measures from the fifteenth-century date, so P must follow Q directly.",
+    "trap": "\"Q S P R\" — putting the consequence (cheap books) straight after the invention; 'Within fifty years' needs Q's date immediately before it."
+  },
+  "di3-sales-total-region": {
+    "shortcut": "Pair the figures into equal sums: 200 + 180 = 380 and 160 + 220 = 380, so South = 2 × 380 = 760.",
+    "trap": "\"₹740 lakh\" — a running-total slip, taking 160 + 180 as 320 instead of 340 (200 + 320 + 220 = 740)."
+  },
+  "di3-sales-best-quarter": {
+    "shortcut": "Q4 holds the largest figure in every row (180, 220, 170, 190), so its column total must be the highest — no addition needed.",
+    "trap": "\"Q3\" — the runner-up at 620 and the pick for anyone who totals only the first three columns and assumes the rise stops there; Q4 is higher in every region."
+  },
+  "di3-sales-east-growth": {
+    "shortcut": "The rise of 80 on a base of 90 is 8/9, and 1/9 ≈ 11.1%, so 8/9 ≈ 100 − 11.1 = 88.9%.",
+    "trap": "80% — taking the rise of 80 lakh itself as the percentage, as if the base were 100 rather than 90."
+  },
+  "di3-sales-average-west": {
+    "shortcut": "Use 150 as a base: the excesses are 0, 20, 0 and 40, averaging 15, so the mean is 165.",
+    "trap": "\"₹170 lakh\" — averaging only the lowest and highest quarters, (150 + 190) ÷ 2, instead of all four."
+  },
+  "di3-sales-share-q3": {
+    "shortcut": "A quarter of the 620 total is 155, and North's 160 is just above it, so the share is a little over 25% — only 'about 26%' fits.",
+    "trap": "\"about 29%\" — reading South's 180 instead of North's 160: 180/620 ≈ 29%."
+  },
+  "di3-sales-region-decline": {
+    "shortcut": "Look for any figure smaller than the one before it: North and East never dip, leaving South (200 → 160) and West (170 → 150). The key credits West, the row that dips after a rise and then recovers.",
+    "trap": "\"South\" — its 200 → 160 drop is the largest fall in the table and catches the eye first; but it is South's opening move, with no earlier quarter to rise from. Only West rises and then falls."
+  },
+  "di3-caselet-hostel": {
+    "shortcut": "Multiply the fractions first: 60% × 2/5 = 3/5 × 2/5 = 6/25 = 24%, and 24% of 450 is 108.",
+    "trap": "135 — halving the 270 undergraduates instead of taking two-fifths of them."
+  },
+  "di3-caselet-hostel-pg": {
+    "shortcut": "Postgraduate men are 40% × ½ = 20% of the hostel, and a fifth of 450 is 90.",
+    "trap": "100 — rounding 450 up to 500 for easy arithmetic (40% of 500 = 200, half of it 100); the true postgraduate count is 180."
+  },
+  "di3-caselet-library-loans": {
+    "shortcut": "Chain the fractions: reference is 40% = 2/5, and 2/5 × 1/6 = 1/15, so Monday's reference loans are 1,200 ÷ 15 = 80.",
+    "trap": "96 — dividing the 480 reference loans by 5 instead of 6, as if thinking of a five-day week."
+  },
+  "di3-caselet-two-machines": {
+    "shortcut": "Both machines run at 30 units an hour, so together they are one 60-an-hour machine: 60 × 6 = 360.",
+    "trap": "330 — scaling B's 300 units by a half (150), as if 6 hours were half its 10-hour run, while scaling A correctly to 180."
+  },
+  "di3-caselet-electricity-bill": {
+    "shortcut": "Charge everything at ₹8, then refund the cheap band: 250 × 8 = 2,000, minus 100 × 3 = 300, gives ₹1,700.",
+    "trap": "\"₹2,000\" — charging all 250 units at ₹8 and ignoring the cheaper first 100."
+  },
+  "di3-caselet-conference": {
+    "shortcut": "Neither = both − (A + B − 100): the two sessions sum to 105%, overshooting by 5, so neither = 25 − 5 = 20% of 800 = 160.",
+    "trap": "120 — subtracting only the afternoon 60% and the 25% overlap from 100% (15%), forgetting the 20% who attended the morning alone."
+  },
+  "di3-caselet-transport-cost": {
+    "shortcut": "Test the options on one lorry: 150 units × ₹30 = ₹4,500, exactly one trip, and 2,400 = 16 full lorries, so no part-empty trip raises the cost.",
+    "trap": "\"₹45\" — dividing the ₹4,500 trip cost by 100 instead of by the 150-unit load."
+  },
+  "di3-caselet-scores": {
+    "shortcut": "Work in deviations from 84: −12 × 2 + 0 × 3 + 6 × 5 = +6, spread over a total weight of 10, gives 84 + 0.6 = 84.6.",
+    "trap": "\"82.0\" — taking the plain mean (72 + 84 + 90) ÷ 3 and ignoring that the 90 carries half the total weight."
+  },
+  "pl2-gain-percent-basic": {
+    "shortcut": "27.50 × 4 = 110, so the ₹1.10 gain is 110/2,750 = 1/25 of the cost — exactly 4%.",
+    "trap": "3% — dividing the ₹1.10 gain by the selling price 28.60 gives about 3.8%, and truncating that lands on 3%."
+  },
+  "pl2-cp-from-sp-and-profit": {
+    "shortcut": "A 10% profit makes SP = 11/10 of CP, so CP = 27.50 × 10/11; 27.50 ÷ 11 = 2.50, and ten of those is ₹25.00.",
+    "trap": "\"₹24.75\" — subtracting 10% of the selling price (2.75) from 27.50, when the 10% is of the cost."
+  },
+  "pl2-cp-from-loss": {
+    "shortcut": "A 20% loss leaves 4/5 of the cost, so CP = 480 × 5/4: a quarter of 480 is 120, and 480 + 120 = 600.",
+    "trap": "\"₹576\" — adding 20% of the ₹480 sale (96) instead of treating 480 as 80% of the cost."
+  },
+  "pl2-sp-of-12-equals-cp-of-15": {
+    "shortcut": "Per article, SP : CP = 15 : 12 = 5 : 4, and a 5 : 4 ratio is a quarter above cost — 25%.",
+    "trap": "20% — dividing the 3-article difference by 15 instead of by the 12 actually sold."
+  },
+  "pl2-cp-of-20-equals-sp-of-16": {
+    "shortcut": "Per article, SP : CP = 20 : 16 = 5 : 4 — fewer articles fetch the same money, so SP is the larger figure — a gain of 1/4 = 25%.",
+    "trap": "20% — dividing the 4-article difference by 20 instead of by the 16 sold."
+  },
+  "pl2-markup-then-discount-profit": {
+    "shortcut": "Net % = a − b − ab/100 = 40 − 25 − 10 = 5%. The 10 is the discount biting into the 40% mark-up itself.",
+    "trap": "15% — subtracting the discount from the mark-up (40 − 25), forgetting the discount is taken on the larger marked price."
+  },
+  "pl2-markup-30-gain-4": {
+    "shortcut": "The sale must keep 104/130 of the marked price, and 104/130 = 8/10 (13 × 8 = 104), so 80% is kept — a 20% discount.",
+    "trap": "25% — measuring the ₹26 cut against the ₹104 sale price instead of the ₹130 marked price."
+  },
+  "pl2-equal-sp-gain-loss-15": {
+    "shortcut": "Loss = (x/10)² % with x = 15, i.e. 1.5² = 2.25%. The ₹1,955 price never enters, so both cost-price divisions can be skipped.",
+    "trap": "\"No loss\" — assuming a 15% gain and a 15% loss cancel; the loss falls on the dearer horse (cost ₹2,300) and outweighs the gain on the ₹1,700 one."
+  },
+  "pl2-two-articles-99-each": {
+    "shortcut": "(10/10)² = 1% loss by the equal-selling-price rule; a quick confirmation: 99 = 90 × 1.1 = 110 × 0.9, so cost 200 against sales of 198.",
+    "trap": "\"No loss\" — letting the 10% gain and 10% loss cancel; the loss is on the ₹110 article and the gain on the ₹90 one."
+  },
+  "pl2-false-weight-800": {
+    "shortcut": "The price of 1,000 g is collected for 800 g delivered: 1000/800 = 5/4, a mark-up of 25%.",
+    "trap": "20% — dividing the 200 g shortfall by the full 1,000 g instead of by the 800 g actually delivered."
+  },
+  "pl2-false-weight-900": {
+    "shortcut": "1000/900 = 10/9, a gain of 1/9 = 11.11%. Short-weighting by 1/n of the claimed weight always yields a gain of 1/(n − 1).",
+    "trap": "10% — taking the missing 100 g over the full 1,000 g rather than over the 900 g handed over."
+  },
+  "pl2-sp-doubled-profit-tripled": {
+    "shortcut": "Doubling SP adds exactly one SP to the profit, and that addition is 3P − P = 2P. So SP = 2P and CP = SP − P = P: profit equals cost, 100%.",
+    "trap": "50% — measuring the profit of 100 against the selling price of 200 instead of the cost of 100."
+  },
+  "pl2-loss-equals-cp-of-five-balls": {
+    "shortcut": "Losing the cost of 5 balls means ₹720 recovers the cost of 17 − 5 = 12 balls, so one ball costs 720 ÷ 12 = ₹60.",
+    "trap": "\"₹55\" — valuing the loss at the selling price of 5 balls (5 × 720/17 ≈ ₹212) instead of their cost, which gives 17c ≈ 932 and c ≈ ₹55."
+  },
+  "pl2-toffees-per-rupee": {
+    "shortcut": "The count per rupee varies inversely with price: raising the price by 6/5 divides the count by 6/5, and 6 × 5/6 = 5.",
+    "trap": "4 — knocking 20% off the 6 toffees gives 4.8, and rounding down to a whole toffee gives 4; the count must be 6 ÷ 1.2, not 6 × 0.8."
+  },
+  "pl2-rice-mixture-rate": {
+    "shortcut": "The 200 kg cost a round ₹3,000, i.e. ₹15 a kg; adding 16% gives 15 × 1.16 = ₹17.40.",
+    "trap": "\"₹17.00\" — averaging the two buying rates, (13.50 + 16) ÷ 2 = 14.75, then adding 16% gives about 17.11; the 120 kg at ₹16 should weigh more."
+  },
+  "pl2-tea-mixture-profit": {
+    "shortcut": "Skip the totals: 84 ÷ 70 = 6 ÷ 5 (both divide by 14), so the selling price is a fifth above cost — 20%.",
+    "trap": "18% — dividing the ₹14 margin by the ₹84 selling price gives 16.7%, and the nearest option is 18%; profit is measured on the ₹70 cost."
+  },
+  "pl2-successive-discounts-three": {
+    "shortcut": "Merge two at a time with a + b − ab/100: 10 and 20 give 28, then 28 and 30 give 58 − 8.4 = 49.6%.",
+    "trap": "60% — adding 10 + 20 + 30, as if each discount came off the original price."
+  },
+  "pl2-successive-discounts-two-on-2000": {
+    "shortcut": "25% off then 20% off keeps 3/4 × 4/5 = 3/5 of the price, and 3/5 of 2,000 is ₹1,200.",
+    "trap": "\"₹1,100\" — adding the discounts to 45% and taking that off ₹2,000 in one go."
+  },
+  "pl2-buy-three-get-one-free": {
+    "shortcut": "The price per article falls from P to 3P/4 (three payments spread over four articles) — a quarter off, 25%.",
+    "trap": "33⅓% — dividing the one free article by the three paid for instead of by the four taken home."
+  },
+  "pl2-discount-percent-from-prices": {
+    "shortcut": "The sale keeps 680/800 = 85% of the marked price (8 × 85 = 680), so the discount is 15%.",
+    "trap": "17.5% — dividing the ₹120 discount by the ₹680 sale price (≈17.6%) instead of by the ₹800 marked price."
+  },
+  "pl2-profit-on-sp-to-cp": {
+    "shortcut": "A profit of 1/n of SP is 1/(n − 1) of CP: 25% = 1/4 of SP becomes 1/3 of CP = 33⅓%.",
+    "trap": "25% — assuming a percentage on the selling price carries straight over to the cost price, though the cost is the smaller base."
+  },
+  "pl2-cp-96-percent-of-sp": {
+    "shortcut": "Profit 4 on a cost of 96 is 1/24 ≈ 4.17%. Since the base is under 100, the answer must sit just above 4% — only 4.17% does.",
+    "trap": "4% — reading the 4-point gap as the percentage, i.e. measuring profit on the selling price of 100 instead of the cost of 96."
+  },
+  "pl2-gain-then-cost-rises": {
+    "shortcut": "The sale stays at 120 while the cost becomes 125, so SP/CP = 120/125 = 24/25 = 0.96 — a 4% loss.",
+    "trap": "\"5% loss\" — taking the ₹5 shortfall against the original cost of 100 rather than the new cost of 125."
+  },
+  "pl2-mango-rate-for-profit": {
+    "shortcut": "Scale the price by the ratio of the multipliers: 12 × 1.20/0.80 = 12 × 3/2 = ₹18.",
+    "trap": "\"₹15\" — stopping at the cost price recovered from the loss (12 ÷ 0.8) and forgetting to add the 20% profit."
+  },
+  "pl2-sp-for-15-percent-gain": {
+    "shortcut": "New SP = old SP × 115/90 = 1,080 × 23/18; 1,080 ÷ 18 = 60, and 60 × 23 = ₹1,380.",
+    "trap": "\"₹1,350\" — adding 25% (the jump from −10% to +15%) to ₹1,080, when both percentages refer to the cost."
+  },
+  "pl2-cheaper-purchase-condition": {
+    "shortcut": "The ₹35 is the gap between the two selling prices: 110% of CP versus 120% of 90% = 108% of CP. So 2% of CP = ₹35 and CP = 35 × 50 = ₹1,750.",
+    "trap": "\"₹2,000\" — the tempting round figure; check it: SP 2,200 at 10% profit, new cost 1,800 sold at 20% for 2,160, a gap of ₹40, not ₹35."
+  },
+  "pl2-two-articles-no-net-gain": {
+    "shortcut": "Alligation: the rates +20% and −10% balance at 0 when the costs are in the ratio 10 : 20 = 1 : 2, so the profit article cost 1/3 of ₹900 = ₹300.",
+    "trap": "\"₹600\" — getting the 1 : 2 split right but giving the larger share to the article sold at a profit; the higher rate goes with the smaller cost."
+  },
+  "pl2-damaged-items": {
+    "shortcut": "Sell 90% of the stock at 1.2 times cost: 1.2 × 0.9 = 1.08, so the profit is 8% — no rupee totals needed.",
+    "trap": "10% — subtracting the 10% wastage from the 20% mark-up (20 − 10) instead of multiplying 1.2 × 0.9."
+  },
+  "pl2-consignment-two-parts": {
+    "shortcut": "Net rate = (2/3 × 5) − (1/3 × 2) = (10 − 2)/3 = 8/3 % of the value, so the value is 400 × 300/8 = ₹15,000.",
+    "trap": "\"₹12,000\" — counting only the 5% profit on two-thirds (10/3 % of the value) and forgetting to subtract the loss on the other third."
+  },
+  "pl2-markup-20-discount-10-gain-40": {
+    "shortcut": "Test the options: ₹500 is marked up to 600, sells at 540 after 10% off, and yields exactly ₹40 profit.",
+    "trap": "\"₹400\" — taking the net rate as 20 − 10 = 10%, so CP = 40 ÷ 0.10."
+  },
+  "pl2-buy-and-resell-twice": {
+    "shortcut": "Net cash: received 120 + 130 = 250, paid 100 + 110 = 210, so the profit is ₹40 — no need to treat the dearer buy-back as a loss.",
+    "trap": "\"₹30\" — comparing only the final sale (130) with the first purchase (100), or booking the ₹10 dearer buy-back as a loss (20 − 10 + 20)."
+  },
+  "pl2-sp-for-6000-at-15": {
+    "shortcut": "15% of 1,000 is 150, so 15% of 6,000 is 6 × 150 = 900 and the selling price is ₹6,900.",
+    "trap": "\"₹6,600\" — stopping after the 10% block (600) and forgetting the further 5% (300)."
+  },
+  "pl2-cp-from-20-loss-400": {
+    "shortcut": "₹400 is 4/5 of the cost, so one fifth is ₹100 and the cost is 5 × 100 = ₹500.",
+    "trap": "\"₹480\" — adding 20% of the ₹400 selling price, when the 20% loss is measured on the cost."
+  },
+  "pl2-cp-of-10-equals-sp-of-8": {
+    "shortcut": "Per pen, SP : CP = 10 : 8 = 5 : 4, so each pen sells for a quarter more than it costs — 25%.",
+    "trap": "20% — dividing the 2-pen difference by 10 instead of by the 8 pens sold."
+  },
+  "pl2-equal-gain-loss-prices": {
+    "shortcut": "Test the options for equal distances: only ₹27 sits 6 above ₹21 and 6 below ₹33; ₹24 (3 and 9) and ₹30 (9 and 3) are lopsided.",
+    "trap": "\"₹30\" — a round figure just under the profitable ₹33 that feels right, but it makes the loss at ₹21 (₹9) three times the gain at ₹33 (₹3)."
+  },
+  "pc2-find-the-number": {
+    "shortcut": "30% = 3/10, so N = 12.6 × 10/3 = 126 ÷ 3 = 42. Sense check: 30% of 40 is only 12, so the answer sits a little above 40.",
+    "trap": "40 — dividing 12 rather than 12.6 by 0.3, dropping the decimal part."
+  },
+  "pc2-what-percent-of-a-day": {
+    "shortcut": "3 hours is 1/8 of 24; a quarter day (6 hours) is 25%, so half of that is 12.5%.",
+    "trap": "10% — treating 3 hours as 'about a tenth' of the day; a tenth of 24 hours is only 2.4 hours."
+  },
+  "pc2-pass-mark-fail-by": {
+    "shortcut": "Pass mark = 125 + 40 = 165, and 33% ≈ 1/3, so the total ≈ 3 × 165 = 495; only 500 is near, and 0.33 × 500 = 165 exactly.",
+    "trap": "400 — treating the 125 he scored as the 33% (125 ÷ 0.33 ≈ 379) and taking the nearest option, forgetting the 40-mark shortfall."
+  },
+  "pc2-income-more-then-less": {
+    "shortcut": "25% more = 1/4 more, so B = 4/5 of A — a fifth less, 20%. General rule: 1/n more ↔ 1/(n + 1) less.",
+    "trap": "25% — reusing the same percentage in reverse, though the gap of 25 is now measured against A's larger 125."
+  },
+  "pc2-income-less-then-more": {
+    "shortcut": "20% less = 1/5 less, so B = 5/4 of A — a quarter more, 25%. General rule: 1/n less ↔ 1/(n − 1) more.",
+    "trap": "20% — assuming the percentage works the same in both directions, though the gap of 20 is measured against the smaller 80."
+  },
+  "pc2-consumption-cut-25": {
+    "shortcut": "Price up by 1/4 → consumption down by 1/(4 + 1) = 1/5 = 20%, since 5/4 × 4/5 = 1 keeps price × quantity fixed.",
+    "trap": "25% — cutting consumption by the same 25% the price rose, which leaves spending at 125 × 75 = 9,375, below the original 10,000."
+  },
+  "pc2-price-rise-from-cut": {
+    "shortcut": "Consumption down by 1/5 → price up by 1/(5 − 1) = 1/4 = 25%, since 4/5 × 5/4 = 1.",
+    "trap": "20% — assuming the price rose by the same 20% that consumption fell."
+  },
+  "pc2-successive-increase-decrease": {
+    "shortcut": "(1 + 0.2)(1 − 0.2) = 1 − 0.2² = 0.96 by the difference of squares, so the salary ends 4% lower — a decrease whatever the order.",
+    "trap": "\"No change\" — letting +20% and −20% cancel, forgetting the cut is taken on the raised 120, not the original 100."
+  },
+  "pc2-net-effect-on-revenue": {
+    "shortcut": "0.8 × 1.3 is 8 × 13 = 104 hundredths, so revenue ends at 104% — up 4%.",
+    "trap": "\"10% increase\" — adding −20% and +30% without the cross term (−20 × 30/100 = −6)."
+  },
+  "pc2-markup-discount-net": {
+    "shortcut": "The 10% discount also removes 10% of the 30% mark-up, i.e. 3 points: 30 − 10 − 3 = 17% increase.",
+    "trap": "\"20% increase\" — subtracting 10 from 30 directly, as though the discount were taken on the original price."
+  },
+  "pc2-original-after-both-changes": {
+    "shortcut": "The net effect is a 4% loss, so the original must exceed 9,600, and 4% of 10,000 is exactly 400 (10,000 − 400 = 9,600).",
+    "trap": "\"9,216\" — applying the 0.96 factor to 9,600 a second time (multiplying) instead of dividing by it."
+  },
+  "pc2-election-valid-votes": {
+    "shortcut": "Combine the fractions first: 80% × 45% = 36% of all votes polled, and 36% of 7,500 = 2,700.",
+    "trap": "\"3,375\" — taking 45% of all 7,500 votes polled, ignoring the 20% that were invalid."
+  },
+  "pc2-three-candidates-winner-share": {
+    "shortcut": "The winner's 11,628 beats the other two combined (8,772), so the share tops 50%; 60% would need 12,240, so 57% is the only fit.",
+    "trap": "60% — rounding 11,628 up to 12,000 and the total down to 20,000 before dividing, which inflates the share."
+  },
+  "pc2-two-numbers-more-than-third": {
+    "shortcut": "The ratio is 1.2 : 1.5 = 4 : 5 = 80%; the third number cancels, so no base needs choosing.",
+    "trap": "70% — subtracting the 30-point gap (50 − 20) from 100% instead of dividing 120 by 150."
+  },
+  "pc2-percent-of-percent": {
+    "shortcut": "40% of 60 against 240 = 40% × 60/240 = 40% × 1/4 = 10% — the 24 never needs computing.",
+    "trap": "15% — computing 60/240 = 25% and then taking 40% off it (25 × 0.6) instead of 40% of it (25 × 0.4)."
+  },
+  "pc2-twenty-percent-a-equals-thirty-b": {
+    "shortcut": "The smaller percentage goes with the larger quantity, so A > B: only 3 : 2 and 5 : 4 qualify, and 0.2 × 3 = 0.3 × 2 settles it.",
+    "trap": "\"2 : 3\" — copying the percentages across in order (20 : 30) instead of swapping them."
+  },
+  "pc2-ninety-percent-a-thirty-b": {
+    "shortcut": "B/A = 90/30 = 3 (the percentages swap sides), and three times a quantity is 300% of it.",
+    "trap": "200 — giving how much more B is than A (3A is 200% more than A) instead of B as a percentage of A."
+  },
+  "pc2-savings-increase": {
+    "shortcut": "Rise in savings = rise in income − rise in spending = 20 − 7.5 = 12.5, against savings of 25 — half, so 50%.",
+    "trap": "40% — taking the 10% rise on the whole income (10) rather than on the 75 spent, which leaves savings of 35."
+  },
+  "pc2-scholarship-percentage": {
+    "shortcut": "Without a scholarship: 75% of boys and 50% of girls, weighted 0.6 : 0.4 → 45 + 20 = 65%. Elimination alone works: only 65% lies strictly between 50% and 75%.",
+    "trap": "35% — computing the scholarship holders correctly (15% + 20%) and stopping, when the question asks for those without one."
+  },
+  "pc2-failed-in-both": {
+    "shortcut": "Passed both = 100 − 35 − 45 + 20 = 40%: the two failure figures subtract the 'failed both' group twice, so add it back once.",
+    "trap": "20% — subtracting both failure rates (35 + 45 = 80) from 100 without adding back the 20% counted twice."
+  },
+  "pc2-population-two-years-ago": {
+    "shortcut": "Check the options forwards: 1,60,000 × 1.05 = 1,68,000, then × 1.05 = 1,76,400 — an exact match, no division by 1.1025 needed.",
+    "trap": "\"1,68,000\" — going back only one year (176,400 ÷ 1.05) and stopping there."
+  },
+  "pc2-machine-depreciation": {
+    "shortcut": "Two years at 10% keeps 0.9² = 0.81 of the value, so the machine is worth 81% of ₹1,00,000 = ₹81,000.",
+    "trap": "\"₹80,000\" — taking 10% of the original ₹1,00,000 in both years (simple, not compound, depreciation)."
+  },
+  "pc2-exceeds-by": {
+    "shortcut": "Test the options: only 180 has a tenth of 18; 30% of 180 is 54 and 20% is 36, and 54 − 36 = 18.",
+    "trap": "200 — the tempting round figure, but its 30% and 20% (60 and 40) differ by 20, not 18."
+  },
+  "pc2-absent-students": {
+    "shortcut": "32 present is 80% = 4/5 of the class, so one fifth is 8 and the class is 5 × 8 = 40.",
+    "trap": "36 — adding a few absentees to 32 by eye looks reasonable, but 80% of 36 is 28.8, not 32; a full fifth of the class (8) must be absent."
+  },
+  "pc2-dilute-salt-solution": {
+    "shortcut": "Strength × total stays constant: strength falls from 15 to 10 (× 2/3), so the total rises × 3/2, from 80 to 120 kg — 40 kg of water.",
+    "trap": "\"30 kg\" — cutting the strength by a third tempts adding about a third of 80 kg (≈ 26.7) and taking the nearest option; the total must grow by half."
+  },
+  "pc2-fraction-changed": {
+    "shortcut": "The changes multiply the fraction by 1.2/0.9 = 4/3. Test the options: 5/7 × 4/3 = 20/21, while 3/5, 5/8 and 7/9 give 4/5, 5/6 and 28/27.",
+    "trap": "\"7/9\" — the option closest in size to 20/21, which looks right if the changes seem small; but they raise the fraction by a third, so the original must be near 0.71."
+  },
+  "pc2-eight-percent-x-four-percent-y": {
+    "shortcut": "8% of x = 4% of y means y = 2x, so any percentage of x halves when expressed against y: 20% becomes 10%.",
+    "trap": "20% — carrying the 20% straight across as if x and y were equal, ignoring that y is twice x."
+  },
+  "pc2-chain-of-comparisons": {
+    "shortcut": "Multiply the factors: 6/5 × 3/4 = 18/20 = 90%.",
+    "trap": "95% — netting the percentages (+20 − 25 = −5) as if both were measured on C."
+  },
+  "pc2-quarter-of-quarter": {
+    "shortcut": "25% of 25% is 1/4 × 1/4 = 1/16, so the quantity is 16 × 25 = 400.",
+    "trap": "100 — undoing only one of the two 25% steps (25 × 4) and stopping."
+  },
+  "pc2-metric-tonnes-quintals": {
+    "shortcut": "40 quintals = 4 tonnes, which is twice 2 tonnes — 200%. Converting towards the larger unit keeps the numbers small.",
+    "trap": "50% — dividing the wrong way (20/40), expressing 2 tonnes as a percentage of 40 quintals."
+  },
+  "pc2-what-is-45-percent-of-750": {
+    "shortcut": "Swap the roles: 45% of 750 = 750% of 45 = 7.5 × 45 = 337.5. Or half of 750 (375) minus 5% (37.5).",
+    "trap": "325 — halving 750 to 375 and then taking off 50 (5% of 1,000) instead of 37.5 (5% of 750)."
+  },
+  "pc2-students-good-at-maths": {
+    "shortcut": "28% of 25 = 25% of 28 — swapping the percentage and the number turns it into a quarter of 28, which is 7.",
+    "trap": "6 — rounding 72% to 75%, so 'not good' becomes 25% of 25 ≈ 6; the exact complement is 28%."
+  },
+  "pc2-salary-cut-then-raise-needed": {
+    "shortcut": "A cut of 1/5 is undone by a rise of 1/4, since 4/5 × 5/4 = 1 — so 25%.",
+    "trap": "20% — reversing the cut with the same 20%, which from 80 only climbs back to 96."
+  },
+  "pc2-x-percent-of-200": {
+    "shortcut": "x% of 200 = 200% of x = 2x, so 2x = 40 and x = 20.",
+    "trap": "40 — copying the result 40 as the percentage, confusing the quantity with the rate."
+  },
+  "pc2-two-successive-discounts-single": {
+    "shortcut": "The 20% cut acts on only 90% of the price, so it removes 18 points, not 20: 10 + 18 = 28%.",
+    "trap": "30% — adding the two reductions (10 + 20), as though both came off the original price."
+  },
+  "an2-pen-write": {
+    "shortcut": "'Write' is a verb, so the answer must be a verb too; only 'Cut' is one — 'Sharp', 'Metal' and 'Kitchen' fall on part of speech alone.",
+    "trap": "\"Sharp\" — the first quality a knife brings to mind, but 'write' is what a pen does, not what it is like."
+  },
+  "an2-bird-nest": {
+    "shortcut": "A nest is a home the bird builds, so look for the home a bee builds: 'Hive' is the only structure among the options.",
+    "trap": "\"Honey\" — the strongest bee association, but it is what a bee makes, not where it lives."
+  },
+  "an2-hunger-food": {
+    "shortcut": "Food is the substance that ends hunger, so take the substance that ends thirst. 'Dry' (an adjective) and 'Throat' (a body part) drop at once, leaving 'Water' as the basic substance.",
+    "trap": "\"Cup\" — close enough to thirst to tempt, but the analogy pairs a need with the substance that ends it, and a cup is only what the water comes in."
+  },
+  "an2-book-author": {
+    "shortcut": "'Author' is a person, so the answer must be a person: 'Artist' is the only one among the options.",
+    "trap": "\"Canvas\" — the base a painting is made on, as paper is a book's; but 'author' names the maker, not the material."
+  },
+  "an2-cow-calf": {
+    "shortcut": "Adult to young within one species: for Dog only 'Puppy' qualifies, because each other option is the young of a different animal.",
+    "trap": "\"Cub\" — used for the young of wolves and foxes, the dog's wild cousins, which makes it feel close; a dog's young is a puppy."
+  },
+  "an2-foot-man": {
+    "shortcut": "A hoof is a mammal's foot, which rules out bird, fish and snake at once: 'Horse' is the only hoofed creature.",
+    "trap": "\"Bird\" — the only other option that walks on feet, but a bird's feet end in claws, not hooves."
+  },
+  "an2-carpenter-wood": {
+    "shortcut": "Wood is a raw material, so the answer must be a material: 'Iron'. 'Hammer' and 'Anvil' are tools, and 'Fire' only heats the work.",
+    "trap": "\"Hammer\" — the blacksmith's signature tool; but wood is what a carpenter shapes, not what he shapes it with."
+  },
+  "an2-clock-time": {
+    "shortcut": "Time is what a clock's face reads out, so choose what a thermometer's scale reads: 'Temperature', in degrees.",
+    "trap": "\"Heat\" — closely linked, but heat is energy, whereas a thermometer reads temperature."
+  },
+  "an2-light-blind": {
+    "shortcut": "Blind = unable to receive light, so the answer means unable to receive sound: 'Deaf'. 'Loud' and 'Silent' describe sound, not a person.",
+    "trap": "\"Dumb\" — paired with deaf in the old phrase 'deaf and dumb', but it means unable to speak, not unable to hear."
+  },
+  "an2-guitar-strings": {
+    "shortcut": "Strings are what a guitarist's fingers work to make the notes; on a piano the fingers work the 'Keys'.",
+    "trap": "\"Pedals\" — a real part of a piano, but they only sustain or soften notes; the fingers play the keys."
+  },
+  "an2-teacher-student": {
+    "shortcut": "A student is the person a teacher serves, so look for the person a doctor serves: 'Hospital' and 'Medicine' are not people, and a nurse works alongside the doctor.",
+    "trap": "\"Nurse\" — the other person in the doctor's world, but a colleague, not the one being served."
+  },
+  "an2-ocean-water": {
+    "shortcut": "Water is the substance an ocean consists of; 'Sand' is the only substance among the options — camel is an animal, heat a condition, dry an adjective.",
+    "trap": "\"Heat\" — the desert's defining condition, but the pair is place to what it consists of, and a desert consists of sand."
+  },
+  "an2-poet-poem": {
+    "shortcut": "A poem is a work, so pick the only work: 'Symphony'. Orchestra (performers), piano (instrument) and concert (event) are not works.",
+    "trap": "\"Orchestra\" — closely tied to composers, but it performs the work; a poet writes a poem and a composer a symphony."
+  },
+  "an2-square-of-nine": {
+    "shortcut": "Squares of numbers ending in 1 end in 1, which leaves 111 and 121; 121 = 11 × 11.",
+    "trap": "77 — multiplying 11 by the first term's 7 (reading 49 as 7 × 7 with one 7 fixed) instead of squaring 11."
+  },
+  "an2-cube-of-four": {
+    "shortcut": "125 is the only perfect cube among the options, and 5³ = 125 matches 4³ = 64.",
+    "trap": "25 — squaring instead of cubing: 5² = 25 is offered precisely for the candidate who saw 64 as a square (8²) rather than as 4³."
+  },
+  "an2-cube-of-two": {
+    "shortcut": "27 is the only perfect cube among the options, and 3³ = 27 matches 2³ = 8.",
+    "trap": "9 — squaring 3 out of habit; 2² is 4, not 8, so the given pair already rules squaring out."
+  },
+  "an2-square-root": {
+    "shortcut": "4 × 4 = 16, so the pair is number → square root; 7 × 7 = 49, and no other option squares to 49.",
+    "trap": "8 — the root of 64, the square next to 49; a candidate unsure of 7² who guesses from size can land on it."
+  },
+  "an2-square-root-large": {
+    "shortcut": "A square ending in 9 has a root ending in 3 or 7, so 169 → 13 or 17, and 17² = 289 is far too big — 13.",
+    "trap": "12 — assuming the root rises by one from 11, though 144 (12²) lies between 121 and 169."
+  },
+  "an2-n-times-n-plus-one": {
+    "shortcut": "42 = 6² + 6, so the rule is n² + n: 7² + 7 = 49 + 7 = 56.",
+    "trap": "49 — reading 42 as 6 × 7 with 7 as a fixed multiplier, so 7 × 7; the multiplier is n + 1, which moves on to 8."
+  },
+  "an2-doubling-plus": {
+    "shortcut": "12 = 2 × 6 = 2 × (5 + 1), so the rule is 2(n + 1): 2 × 9 = 18.",
+    "trap": "16 — doubling 8 and dropping the +2 that the given pair (2 × 5 + 2 = 12) requires."
+  },
+  "an2-odd-flower": {
+    "shortcut": "Apple, banana and mango are sweet fruits eaten raw; 'Potato' is the only one that grows underground as a tuber and is cooked as a vegetable.",
+    "trap": "\"Banana\" — the only one that grows in bunches on a large herb rather than on a tree; that split is weaker than fruit versus vegetable, which leaves exactly one out."
+  },
+  "an2-odd-indoor-game": {
+    "shortcut": "Three need a ball and a field; 'Chess' needs neither, and it is also the only two-player board game — every split points to it.",
+    "trap": "\"Football\" — the only one played without a bat or stick, but chess breaks a sharper line: indoor, board, no ball."
+  },
+  "an2-odd-alloy": {
+    "shortcut": "Brass is made of two of the others (copper + zinc), so it cannot share their class — it is the one mixture among three elements.",
+    "trap": "\"Iron\" — copper, zinc and brass look like one family (brass and its two ingredients), leaving iron as the outsider; but element versus alloy is the real split."
+  },
+  "an2-odd-shape": {
+    "shortcut": "Count the sides: 3, 4, 0, 4 — the circle alone has no straight sides or corners.",
+    "trap": "\"Triangle\" — the only three-sided figure beside two four-sided ones, but the circle differs from all three by having no sides at all."
+  },
+  "an2-odd-month": {
+    "shortcut": "Knuckle rule: months landing on a knuckle have 31 days — January, March and July do; June falls in a hollow, 30 days.",
+    "trap": "\"July\" — sitting right after June, it is easy to assume it shares June's 30 days; July and August both have 31."
+  },
+  "an2-odd-non-prime": {
+    "shortcut": "The digit-sum test shows 9 is divisible by 3 without being 3 itself, so it is the only composite; the rest are prime.",
+    "trap": "11 — the only two-digit number, a surface feature; primality leaves 9 out alone."
+  },
+  "an2-odd-not-square": {
+    "shortcut": "Squares never end in 2 (only in 0, 1, 4, 5, 6 or 9), so 62 falls on its units digit alone.",
+    "trap": "36 — the only even square, which invites an odd-versus-even split; but 62 is even too, so parity divides them 2–2 and only squareness leaves one out."
+  },
+  "an2-odd-wild-animal": {
+    "shortcut": "Ask which one lives with people: dog, cat and pig are domestic; 'Lion' is the only wild animal.",
+    "trap": "\"Cat\" — the smallest of the four, and the only one kept indoors; but size and housing are not the grouping. Domestic against wild is, and only the lion is wild."
+  },
+  "an2-odd-bat": {
+    "shortcut": "Three have feathers and lay eggs; the bat has fur and gives birth to live young — the only mammal.",
+    "trap": "\"Eagle\" — the only bird of prey, which makes it stand out; but bird versus mammal is the sharper split."
+  },
+  "an2-odd-country": {
+    "shortcut": "Delhi, Mumbai and Chennai are Indian cities; 'Nepal' is a whole country (its matching city would be Kathmandu).",
+    "trap": "\"Delhi\" — the capital among the cities, which feels special; but a capital is still a city, while Nepal is not a city at all."
+  },
+  "an2-odd-vowel-letters": {
+    "shortcut": "First letters step B → F → J by four places each, but J → M is only three — MO breaks the step. It is also the only group holding a vowel (O).",
+    "trap": "\"BD\" — as the first pair it looks like the odd starter of the pattern; but all four share the gap of two, and only MO breaks the +4 step."
+  },
+  "an2-doctor-patient-treat": {
+    "shortcut": "Kitchen is a place, so the answer must be a place: 'Court' is the only location among the options.",
+    "trap": "\"Law\" — the judge's field, as cooking is the chef's; but kitchen names the workplace, not the discipline."
+  },
+  "an2-hot-cold": {
+    "shortcut": "Hot and cold are opposites, so strike the synonym 'Win' and the associated 'Battle' and 'Army': only 'Defeat' is the opposite of victory.",
+    "trap": "\"Win\" — it pairs naturally with victory, but as a synonym; hot : cold is a pair of opposites."
+  },
+  "an2-part-whole": {
+    "shortcut": "A petal is a part of the flower, so look for the whole a chapter forms: 'Book'. 'Page' is a smaller unit and 'Author' is not a whole.",
+    "trap": "\"Story\" — a chapter does advance a story, but a story needs no chapters; the chapter is a structural division of a book, as a petal is of a flower."
+  },
+  "an2-degree-relation": {
+    "shortcut": "Warm → hot goes one step further along the same scale, so cool → one step further towards cold: 'Cold'. 'Mild' moves the wrong way.",
+    "trap": "\"Ice\" — the coldest-sounding option, but it is a thing, not a degree word; warm : hot pairs two adjectives."
+  }
+}

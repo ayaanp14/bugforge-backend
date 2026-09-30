@@ -1,5 +1,7 @@
 import { Router } from "express";
-import { headFor, sitemapXml } from "../services/seo.js";
+import { contentCardImageFor, headFor, sitemapXml } from "../services/seo.js";
+import { CONTENT_CARD_DESIGN } from "../lib/content-card.js";
+import { contentCardLimiter } from "../middleware/rate-limit.js";
 import { battlesCard, battlesHead, battlesIndexHtml, battlesSitemapXml } from "../services/battles-seo.js";
 
 /**
@@ -69,6 +71,24 @@ router.get("/battles/index", async (_req, res) => {
   res.setHeader("X-Battles-Seo", "1");
   res.setHeader("Cache-Control", "public, max-age=600, stale-while-revalidate=3600");
   res.json({ content: await battlesIndexHtml() });
+});
+
+/**
+ * A content page's link-preview card (lib/content-card) — the og:image its
+ * head names: /api/seo/card.png?path=/problems/two-sum&d=<design>. Asked with
+ * the current design it is kept a day (a retitled page's picture should not
+ * outlive a day in a shared cache); with an old one, five minutes.
+ */
+router.get("/card.png", contentCardLimiter, async (req, res) => {
+  const path = typeof req.query["path"] === "string" ? req.query["path"] : "";
+  const png = path.length <= 200 ? await contentCardImageFor(path) : null;
+  if (!png) {
+    res.setHeader("Cache-Control", "public, max-age=300");
+    res.status(404).type("text/plain").send("No card for that page");
+    return;
+  }
+  res.setHeader("Cache-Control", req.query["d"] === String(CONTENT_CARD_DESIGN) ? "public, max-age=86400" : "public, max-age=300");
+  res.type("image/png").send(png);
 });
 
 /**

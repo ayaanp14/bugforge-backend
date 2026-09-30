@@ -520,13 +520,15 @@ export const BANK_NUMBER_SYSTEM: AptitudeSeed[] = [
     slug: "ns2-6n-squared-plus-6n",
     topic: "number-system",
     title: "A divisibility that always holds",
-    prompt: "For every natural number **n**, the expression **6n² + 6n** is always divisible by:",
+    // Asked as "is always divisible by" until 2026-10-01, when 6 was a
+    // second right answer; the question wants the largest guarantee.
+    prompt: "For every natural number **n**, which is the **largest** of these that always divides **6n² + 6n**?",
     options: ["6", "12", "18", "24"],
     answer: 1,
     difficulty: "medium",
     hints: ["Factorise the expression.", "6n(n + 1), and one of n, n + 1 must be even."],
     solution:
-      "1. 6n² + 6n = 6n(n + 1).\n2. n and n + 1 are consecutive, so one of them is even and n(n + 1) is always even.\n3. Therefore 6n(n + 1) is always a multiple of 6 × 2 = **12**.\n4. Check n = 1: 12; n = 2: 36; n = 3: 72 — all multiples of 12, and 36 is not a multiple of 24, ruling that out. ✓\n\nAnswer: **12**.",
+      "1. 6n² + 6n = 6n(n + 1).\n2. n and n + 1 are consecutive, so one of them is even and n(n + 1) is always even.\n3. Therefore 6n(n + 1) is always a multiple of 6 × 2 = **12** — 6 divides it too, but 12 is the larger guarantee.\n4. Check n = 1: 12; n = 2: 36; n = 3: 72 — all multiples of 12, and 36 is a multiple of neither 18 nor 24, ruling both out. ✓\n\nAnswer: **12**.",
     approach:
       "Factorise, then use the fact that a product of consecutive integers carries guaranteed factors: two consecutive always give a 2, three consecutive always give a 6. Testing one or two small values rules out the larger options.",
     tags: ["algebra", "divisibility"],

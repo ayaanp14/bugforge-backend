@@ -268,7 +268,7 @@ export const BANK_CODING: AptitudeSeed[] = [
     ],
     solution:
       "1. PALE → P=2, A=1, L=3, E=4.\n2. EARTH → E=4 (consistent), A=1 (consistent), R=5, T=9, H=0.\n3. PEARL = P,E,A,R,L = 2,4,1,5,3 = **24153**.\n\nAnswer: **24153**.",
-    approach: "Check the answer's length against the word's — PEARL has five letters, so the code has five digits. That alone rules out two options.",
+    approach: "Check the answer's length against the word's — PEARL has five letters, so the code has five digits. Here that alone rules out every other option; usually it removes one or two before any decoding.",
     tags: ["substitution"],
     timeTargetSec: 105,
   },

@@ -567,13 +567,15 @@ export const BANK_PNC_PROBABILITY: AptitudeSeed[] = [
     title: "Two good bulbs",
     prompt:
       "From a box of **10 bulbs** of which **3 are defective**, two are drawn at random. What is the probability that **both are good**?",
-    options: ["7/15", "7/10", "21/45", "3/5"],
+    // "1/15" (both defective: C(3,2)/C(10,2)), not "21/45" — that was 7/15
+    // unreduced, a second right answer (found writing the extras, 2026-10-01).
+    options: ["7/15", "7/10", "1/15", "3/5"],
     answer: 0,
     difficulty: "medium",
     hints: ["Good bulbs = 7. Choose 2 from them.", "C(7,2)/C(10,2) = 21/45."],
     solution:
       "1. Favourable = C(7,2) = 21.\n2. Total = C(10,2) = 45.\n3. Probability = 21/45 = **7/15**.\n\nAnswer: **7/15**.",
-    approach: "Reduce the fraction at the end — 21/45 and 7/15 are the same value, and papers usually list the reduced form.",
+    approach: "Reduce the fraction at the end — 21/45 is 7/15, and papers list the reduced form. Read the question twice: 1/15 is the chance that both are *defective*, the opposite event.",
     tags: ["balls"],
     timeTargetSec: 75,
   },

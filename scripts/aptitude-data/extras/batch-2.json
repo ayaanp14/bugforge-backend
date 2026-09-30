@@ -1,0 +1,590 @@
+{
+  "br2-only-daughter-of-my-mother": {
+    "shortcut": "A woman speaking of 'the only daughter of my mother' means herself, so the sentence collapses to 'his mother is me' — mother, with no chain to draw.",
+    "trap": "\"Aunt\" — reading 'the only daughter of my mother' as the speaker's sister, which makes the man her sister's son; the word 'only' leaves no room for a sister."
+  },
+  "br2-no-brother-portrait": {
+    "shortcut": "With no siblings, 'my father's son' is the speaker, so the sentence reads 'that man's father is me' — the man is his son.",
+    "trap": "\"His own\" — stopping once 'my father's son' resolves to the speaker and forgetting that the phrase describes the portrait man's father, not the man himself."
+  },
+  "br2-grandfathers-only-son": {
+    "shortcut": "Replace 'my grandfather's only son' with 'my father' in one step; the sentence becomes 'the daughter of my father' — his sister.",
+    "trap": "\"Cousin\" — treating the grandfather's son as an uncle; with the word 'only', that son can only be the speaker's own father."
+  },
+  "br2-only-son-of-my-mothers-mother": {
+    "shortcut": "Mother's mother's only son is the maternal uncle in one hop; then reverse the direction the question asks — a woman is her uncle's niece.",
+    "trap": "\"Sister\" — dropping one 'mother's' and reading 'the only son of my mother', which would make the man her brother."
+  },
+  "br2-fathers-brothers-son": {
+    "shortcut": "Any child of a parent's sibling is a cousin, and a father's brother is a parent's sibling, so no further tracing is needed.",
+    "trap": "\"Brother\" — skipping the middle link and reading 'father's son'; a brother shares your parents, while this boy's father is your uncle."
+  },
+  "br2-fathers-sisters-daughter": {
+    "shortcut": "'The only sister of my father' is a paternal aunt, and an aunt's daughter is always a cousin — the word 'only' changes nothing here.",
+    "trap": "\"Niece\" — confusing the father's sister with Rajan's own sister, whose daughter would be his niece."
+  },
+  "br2-brother-of-sons-son": {
+    "shortcut": "Count generations: a son's son is two below Y, and a brother stays on the same level, so X is two below Y — a grandson.",
+    "trap": "\"Son\" — dropping one 'son of' and making X the brother of Y's son, which places him only one generation down."
+  },
+  "br2-p-q-r-s-t-chain": {
+    "shortcut": "Count the upward links from Q: mother (R), her father (S), his mother (T). Three steps up is a great-grandparent, and brother P shares every link.",
+    "trap": "\"Grandson\" — counting only two links and stopping at S, the grandfather, instead of climbing one more step to S's mother T."
+  },
+  "br2-e-related-to-c": {
+    "shortcut": "A, B and D form one set of siblings, so B's mother and D's father are that family's two parents — and the mother and father of the same children are wife and husband.",
+    "trap": "\"Mother\" — attaching the word 'mother' from 'E is B's mother' to C, when C, as D's father, stands in E's own generation."
+  },
+  "br2-deepak-ravi-rekha": {
+    "shortcut": "Ravi's brother shares Ravi's mother, so Deepak is Rekha's son at once; Atul plays no part in this question.",
+    "trap": "\"Nephew\" — pulling Atul into the chain: Deepak is Atul's nephew, but the question asks about Rekha, who is his mother."
+  },
+  "br2-atul-to-deepak": {
+    "shortcut": "Deepak's mother is Rekha and Atul is her brother; a mother's brother is by definition the maternal uncle.",
+    "trap": "\"Brother\" — copying 'Rekha is the sister of Atul' and giving Atul's relation to Rekha instead of to her son Deepak."
+  },
+  "br2-a-mother-father-is-b-father": {
+    "shortcut": "Two people with the same father are siblings, so A's mother and B are siblings; a sibling's child is a nephew or niece.",
+    "trap": "\"Brother or sister\" — dropping 'mother's' and reading 'A's father is B's father', which would make A and B siblings."
+  },
+  "br2-ravi-mother-only-daughter": {
+    "shortcut": "Rani is a daughter of her father; if he has only one daughter, it is Rani, so the sentence reads 'Ravi's mother is Rani'.",
+    "trap": "\"Aunt\" — reading 'the only daughter of Rani's father' as Rani's sister, which would make Rani Ravi's aunt; 'only' leaves no room for a sister."
+  },
+  "br2-girl-no-sister-no-daughter": {
+    "shortcut": "A male speaker's 'only daughter of my mother' is his sister, so the girl's mother is Rajesh's sister — and a sister's daughter is a niece.",
+    "trap": "\"Daughter\" — applying the woman-speaker rule, where 'the only daughter of my mother' is the speaker herself; Rajesh is male, so it must be his sister."
+  },
+  "br2-nephew-maternal-grandmother": {
+    "shortcut": "The nephew's mother is the man's sister, and a maternal grandmother is the mother's mother — so the lady is simply the sister's mother.",
+    "trap": "\"Grandmother\" — copying 'grandmother' from the sentence, which gives the lady's relation to the nephew, not to the sister."
+  },
+  "br2-x-y-z-w": {
+    "shortcut": "Y and Z are siblings, so the father of one and the mother of the other are the same couple: X is W's husband.",
+    "trap": "\"Father\" — carrying the label from 'X is Y's father' across to W, who is Y's mother and so X's wife, not his child."
+  },
+  "br2-m-n-o-p": {
+    "shortcut": "Siblings share a parent, and 'sister' fixes M as female, so M is P's daughter — the sexes of N and O never matter.",
+    "trap": "\"Sister\" — copying 'M is the sister of N' and giving M's relation to her sibling instead of to the parent P."
+  },
+  "br2-a-b-c-d-brother": {
+    "shortcut": "A and C are both B's children, and D is C's brother, so all three are siblings — D is A's brother.",
+    "trap": "\"Uncle\" — taking C for B's sibling rather than her child, which lifts D one generation above A."
+  },
+  "br2-symbols-mother-sister": {
+    "shortcut": "× (sister) keeps the generation, so the mother of Q is also the mother of Q's sibling R: P is the mother of R.",
+    "trap": "\"P is the sister of R\" — reading only the last symbol, ×, and taking its meaning as the whole relation."
+  },
+  "br2-symbols-father-brother": {
+    "shortcut": "− (brother) keeps the generation, so P, the father of Q, is also the father of Q's sibling R.",
+    "trap": "\"P is the uncle of R\" — treating 'brother' as a move to another branch of the family; a brother of P's son is P's son, not his nephew."
+  },
+  "br2-wife-son-husband": {
+    "shortcut": "The husband of a boy's mother is his father: Q is P's husband and P is R's mother, so Q is R's father.",
+    "trap": "\"Son\" — answering in the reverse direction: R is Q's son, but the question asks what Q is to R."
+  },
+  "br2-bindu-mahipal": {
+    "shortcut": "Bindu is Raman's daughter and Raman is Mahipal's son: two generations down means granddaughter. Neena is not on the path.",
+    "trap": "\"Daughter\" — dropping Raman's generation, as though Bindu were Raman's sister rather than his daughter."
+  },
+  "br2-b-related-to-d": {
+    "shortcut": "P's mother-in-law E is the mother of P's husband B, and D is E's husband, so D is B's father. Q is never needed.",
+    "trap": "\"Son-in-law\" — carrying 'in-law' over from 'mother-in-law of P'; that relation belongs to P, while B is E and D's own son."
+  },
+  "br2-son-of-my-fathers-sons-son": {
+    "shortcut": "Strip the matching tail: 'son of that man' = 'son of my father's son', so that man = 'my father's son', which for a woman is her brother.",
+    "trap": "\"Father\" — dropping the final 'son', so the man's son becomes her father's son (her brother) and the man looks like her father."
+  },
+  "br2-boy-son-of-daughter": {
+    "shortcut": "Net generations: uncle (+1), his father (+2), that man's daughter (+1), her son (0). The boy is on the girl's own level and male, so brother among the options.",
+    "trap": "\"Nephew\" — reading 'the father of my uncle' as 'my father', which makes his daughter the girl's sister and the boy her sister's son."
+  },
+  "br2-a-father-b-c-daughter": {
+    "shortcut": "E is a son, so the answer is male; three downward links from A (A → B → C → E) make him a great-grandson, not a grandson.",
+    "trap": "\"Grandson\" — counting the people between A and E (B and C) instead of the three links, which drops one generation."
+  },
+  "br2-that-woman-mother-brother-daughter": {
+    "shortcut": "She is the daughter of his mother's brother — his maternal uncle's child — and cousin works both ways, so he is her cousin.",
+    "trap": "\"Nephew\" — dropping 'daughter of' and treating the woman as the mother's sibling herself; he would then be her nephew."
+  },
+  "ds2-north-then-east": {
+    "shortcut": "The straight-line gap must be more than the longer leg (4 km) and less than the two legs added (7 km); only 5 km fits.",
+    "trap": "\"7 km\" — adding the two legs, which gives the distance walked, not how far he is from the start."
+  },
+  "ds2-three-four-hypotenuse": {
+    "shortcut": "The gap lies strictly between 4 km (the longer leg) and 7 km (the sum of the legs), so 5 km is the only candidate.",
+    "trap": "\"25 km\" — computing 3² + 4² = 25 and forgetting to take the square root."
+  },
+  "ds2-south-left-left": {
+    "shortcut": "Two left turns face him the opposite way, so the second 5 km undoes the first; only the 3 km leg remains, and left of south is east.",
+    "trap": "\"3 km west\" — taking a left turn from south as west; facing south, the left hand points east."
+  },
+  "ds2-north-left-left": {
+    "shortcut": "Two lefts reverse his heading, so the 5 km legs cancel; the 3 km leg points left of north, which is west.",
+    "trap": "\"3 km east\" — turning left from north to east by mistake; facing north, the left hand points west."
+  },
+  "ds2-rectangle-back-to-start": {
+    "shortcut": "Each leg is undone by an equal leg the opposite way (20 N with 20 S, 30 E with 30 W), so the displacement is zero.",
+    "trap": "\"50 m\" — adding one north leg and one east leg (20 + 30), as if he had stopped halfway round."
+  },
+  "ds2-north-east-south": {
+    "shortcut": "He has walked three sides of a rectangle, so he is exactly the fourth side, 20 m, from the start.",
+    "trap": "\"50 m\" — adding all three legs, 15 + 20 + 15, which is the distance walked rather than the displacement."
+  },
+  "ds2-six-eight-legs": {
+    "shortcut": "The path is a U — up 6, across 8, down 6 — and the open end of the U is 8 m wide.",
+    "trap": "\"10 m\" — spotting 6 and 8 and applying the 6-8-10 triangle, forgetting that the southward 6 m cancels the northward one."
+  },
+  "ds2-west-right-right-left": {
+    "shortcut": "The two right turns reverse him, so the 10 m legs cancel; both 5 m legs point north (right of west, left of east), giving 10 m north.",
+    "trap": "\"5 m north\" — the most tempting slip: losing track of the last leg and counting only the first 5 m northward stretch."
+  },
+  "ds2-diagonal-walk": {
+    "shortcut": "The answer must beat 2 km and fall short of the 4 km walked; the only option between them is 2√2 km (≈ 2.83).",
+    "trap": "\"4 km\" — adding the four 1 km legs, which is the distance walked, not the straight-line distance."
+  },
+  "ds2-two-villages": {
+    "shortcut": "AC must lie between 10 km and 20 km; 10√2 ≈ 14.14 is the exact value, while 14 km is only a rounding of it.",
+    "trap": "\"20 km\" — adding AB and BC as if the road ran through B, rather than taking the straight line from A to C."
+  },
+  "ds2-two-men-apart": {
+    "shortcut": "The two paths are perpendicular legs of 4 and 3, so their ends are a 3-4-5 hypotenuse apart: 5 km.",
+    "trap": "\"1 km\" — subtracting 3 from 4 as if both walked along the same line; they walked at right angles."
+  },
+  "ds2-two-buses-diagonal": {
+    "shortcut": "East–west gap = 40 + 30 = 70 and north–south gap = 30 + 40 = 70; equal gaps make a square's diagonal, 70√2 km (≈ 99).",
+    "trap": "\"100 km\" — seeing each bus 50 km from the depot (3-4-5) and adding 50 + 50, which assumes they went in exactly opposite directions."
+  },
+  "ds2-facing-north-right-right-left": {
+    "shortcut": "Net turn: right + right − left = one right, and one right from north is east.",
+    "trap": "\"West\" — reaching south correctly and then turning left to west; facing south, the left hand points east."
+  },
+  "ds2-facing-south-clockwise": {
+    "shortcut": "Net rotation 90° + 180° = 270° clockwise, the same as 90° anticlockwise; south turned 90° anticlockwise faces east.",
+    "trap": "\"West\" — stopping after the 90° clockwise turn and forgetting the further 180° that reverses west to east."
+  },
+  "ds2-facing-west-180-right": {
+    "shortcut": "180° then a right turn = 270° clockwise = one left turn, and left from west is south.",
+    "trap": "\"North\" — skipping the 180° turn and turning right straight from west, which gives north."
+  },
+  "ds2-facing-east-45-degrees": {
+    "shortcut": "Two 45° clockwise steps make one right turn and 90° anticlockwise is one left turn; a right and a left undo each other, leaving east.",
+    "trap": "\"West\" — treating the 90° anticlockwise turn as clockwise, which carries him from south on to west."
+  },
+  "ds2-shadow-sunrise-left": {
+    "shortcut": "At sunrise every shadow points west. Facing north, west is on the left hand; facing south, it is on the right — so the hand the shadow falls on fixes the heading.",
+    "trap": "\"East\" — facing the rising sun because the question says sunrise; the shadow would then fall straight behind him, not to his left."
+  },
+  "ds2-shadow-sunset-right": {
+    "shortcut": "Sunset shadows point east, and east is on the right hand only when facing north (facing south it is on the left).",
+    "trap": "\"South\" — mirroring the compass and putting east on the right when facing south; facing south, east is on the left."
+  },
+  "ds2-a-south-of-b-c-east": {
+    "shortcut": "From C, go west to reach B, then south to reach A; the two moves combine to south-west.",
+    "trap": "\"North-east\" — giving the bearing of C from A, which is the reverse of what is asked."
+  },
+  "ds2-rotation-north-becomes-east": {
+    "shortcut": "Every direction moves one quarter clockwise, so shift each part: S → W and W → N turn south-west into north-west.",
+    "trap": "\"South-east\" — rotating the wrong way (anticlockwise), which carries south-west to south-east."
+  },
+  "ds2-rotation-southeast-becomes-north": {
+    "shortcut": "NE → W is a 135° anticlockwise turn; three 45° steps anticlockwise from west run SW, S, SE.",
+    "trap": "\"North-east\" — applying the 135° turn clockwise instead: 270° + 135° = 405° = 45°, north-east."
+  },
+  "ds2-clock-hands-direction": {
+    "shortcut": "With 12 at north the dial is a compass read clockwise, so 3 sits a quarter turn clockwise: east.",
+    "trap": "\"West\" — turning a quarter anticlockwise from north, as if 3 sat on the left of the dial; clockwise from north gives east."
+  },
+  "ds2-anil-net-direction": {
+    "shortcut": "Only the direction is asked, so check signs: the two 10 m sideways legs are opposite and cancel, and no leg ever points north — due south.",
+    "trap": "\"East\" — the most tempting wrong pick: the first left from south correctly points east, and a solver who drops the final westward leg sees him end up east of home."
+  },
+  "ds2-northwest-clockwise": {
+    "shortcut": "A 90° clockwise turn moves each diagonal one place along NE → SE → SW → NW → NE, so NW becomes NE.",
+    "trap": "\"South-west\" — turning 90° anticlockwise instead: 315° − 90° = 225°, south-west."
+  },
+  "ds2-square-perimeter-walk": {
+    "shortcut": "East 8 and west 8 cancel, so only the 8 m north leg survives as displacement.",
+    "trap": "\"8√2 m\" — picturing him at the opposite corner of the square; after three sides he is at the corner next to the start."
+  },
+  "ma3-wheat-blend": {
+    "shortcut": "The cheap wheat is ₹6 below the mean and the dear wheat ₹6 above; equal deviations balance only with equal quantities, 1 : 1.",
+    "trap": "\"3 : 2\" — writing the ratio of the prices, 36 : 24, instead of the ratio of their differences from ₹30."
+  },
+  "ma3-milk-water-profit-20": {
+    "shortcut": "A 20% gain at cost price means 6 litres are sold for every 5 litres paid for, so 1 litre in every 6 is free water: water : milk = 1 : 5.",
+    "trap": "\"1 : 6\" — comparing the water with the whole 6-litre mixture instead of with the 5 litres of milk."
+  },
+  "ma3-replace-once": {
+    "shortcut": "The first draw is pure milk, so exactly 10 L of milk leaves the can: 50 − 10 = 40 L.",
+    "trap": "\"45 L\" — treating the 10 L as 10% of the milk (50 × 0.9); it is 10 of 50 litres, one fifth."
+  },
+  "ma3-two-alloys-copper": {
+    "shortcut": "40 is a third of the way from 30 to 60, so the mixture is two-thirds alloy P: 2 : 1.",
+    "trap": "\"1 : 2\" — pairing each alloy with its own distance from 40 (10 : 20); each share goes with the other alloy's distance."
+  },
+  "ma3-spirit-water": {
+    "shortcut": "Alligate pure spirit (100%) against the 40% solution at 50%: (50 − 40) : (100 − 50) = 1 : 5, so spirit = 60 ÷ 5 = 12 L.",
+    "trap": "\"10 L\" — the most tempting wrong pick: reading the 10-point rise from 40% to 50% as 10 litres, when the added spirit also enlarges the total."
+  },
+  "ma3-average-price-three": {
+    "shortcut": "Take ₹30 as the base: 10 kg at −10 and 20 kg at +10 net +₹100 over 50 kg, which is +₹2 — so ₹32.",
+    "trap": "\"₹30\" — averaging 20, 30 and 40 plainly, ignoring that the dearest grade comes in twice the quantity of the cheapest."
+  },
+  "ma3-milk-water-remove-and-add": {
+    "shortcut": "Only the milk falls: removing 4 of 20 litres keeps 4/5 of it, 15 → 12 L; the vessel is back to 20 L, so water is 8 L and the ratio 3 : 2.",
+    "trap": "\"11 : 9\" — treating the 4 L drawn off as pure milk (15 − 4 = 11, 5 + 4 = 9) instead of mixture holding 1 L of water."
+  },
+  "ma3-two-vessels-unequal": {
+    "shortcut": "Each vessel holds 6 L of milk (3/5 of 10, 2/5 of 15), so milk is 12 of the 25 litres: 12 : 13.",
+    "trap": "\"13 : 12\" — working out the water first and writing water : milk, when the ratio asked for is milk to water."
+  },
+  "ma3-alligation-wages": {
+    "shortcut": "₹600 is a third of the way from ₹500 to ₹800, so skilled workers are one third of the staff: 1 : 2.",
+    "trap": "\"2 : 1\" — giving each group its own distance from ₹600 (200 : 100); the nearer wage, ₹500, belongs to the larger group."
+  },
+  "ma3-sugar-solution": {
+    "shortcut": "With the sugar fixed, volume is inversely proportional to strength: 40 × 25/20 = 50 L, so 10 L of water goes in.",
+    "trap": "\"8 L\" — measuring the 5-point drop against the old strength, 40 × 5/25 = 8; it must be measured against the new 20%: 40 × 5/20 = 10."
+  },
+  "ma3-tea-mixture-ratio-for-price": {
+    "shortcut": "₹110 at a 10% profit is a cost of ₹100, the exact midpoint of ₹80 and ₹120, so the parts are equal: 1 : 1.",
+    "trap": "\"1 : 3\" — alligating with the selling price ₹110 as the mean: (120 − 110) : (110 − 80) = 10 : 30."
+  },
+  "ma3-acid-two-solutions": {
+    "shortcut": "30% is a third of the way from 20% to 50%, so the strong solution is a third of the mix: 2 : 1.",
+    "trap": "\"1 : 2\" — setting each solution against its own distance from 30% (10 : 20), which inverts the ratio."
+  },
+  "ma3-petrol-kerosene": {
+    "shortcut": "₹100 at a 25% gain means a cost of ₹80; 80 is two-thirds of the way from 40 to 100, so petrol is two-thirds of the mix: 1 : 2.",
+    "trap": "\"1 : 4\" — treating kerosene like free water (gain = kerosene ÷ petrol = 25%); it costs ₹40, so the mixture's cost must be found first."
+  },
+  "ma3-replace-water-twice-ratio": {
+    "shortcut": "Each draw takes an eighth of the milk present: 64 → 56 (8 L out) → 49 (7 L out).",
+    "trap": "\"48 L\" — subtracting 8 L of milk both times; the second draw is mixture and carries only 7 L of milk."
+  },
+  "pnc3-arrange-apple": {
+    "shortcut": "Choose 2 of the 5 places for the Ps (C(5,2) = 10), then arrange A, L and E in 3! = 6 ways: 60.",
+    "trap": "\"120\" — using 5! as if all five letters were different; swapping the two Ps makes no new word, so the count halves."
+  },
+  "pnc3-arrange-success": {
+    "shortcut": "Place the letters by group: C(7,3) = 35 spots for the Ss, C(4,2) = 6 for the Cs, 2 ways for U and E — 35 × 6 × 2 = 420.",
+    "trap": "\"840\" — dividing 7! = 5,040 by 3! for the Ss only and forgetting the repeated C."
+  },
+  "pnc3-choose-team": {
+    "shortcut": "9 × 8 × 7 × 6 ÷ 24: cancel 8 × 6 against 24 to leave 9 × 7 × 2 = 126.",
+    "trap": "\"3,024\" — multiplying 9 × 8 × 7 × 6 and stopping, which counts ordered line-ups; a team has no order, so divide by 4! = 24."
+  },
+  "pnc3-committee-with-captain": {
+    "shortcut": "Half of P(8,3) = 336 also works: an ordered triple with the captain first counts each team twice, once per order of the other two — 336 ÷ 2 = 168.",
+    "trap": "\"56\" — counting the C(8,3) teams and forgetting that each team can name any of its 3 members as captain."
+  },
+  "pnc3-four-digit-even": {
+    "shortcut": "Of all 5 × 4 × 3 × 2 = 120 arrangements, each digit ends an equal share and 2 of the 5 digits are even: 120 × 2/5 = 48.",
+    "trap": "\"60\" — halving 120 as if half the digits were even; only 2 of the 5 (2 and 4) are."
+  },
+  "pnc3-word-vowels-together": {
+    "shortcut": "In a random order of 6 letters, two given letters sit side by side with chance 2/6 = 1/3, so 720 ÷ 3 = 240.",
+    "trap": "\"120\" — gluing O and E into one block and arranging 5 items, but forgetting the block can read OE or EO."
+  },
+  "pnc3-select-from-two-groups": {
+    "shortcut": "Exactly 3 women forces exactly 2 men: C(4,3) = C(4,1) = 4 and C(6,2) = 15, so 4 × 15 = 60.",
+    "trap": "\"120\" — choosing the 2 men as 6 × 5 = 30 without halving for order, then 4 × 30 = 120."
+  },
+  "pnc3-shake-hands-ten": {
+    "shortcut": "The first person shakes 11 hands, the next 10 new ones, and so on: 11 + 10 + … + 1 = 66.",
+    "trap": "\"132\" — counting 12 × 11 handshakes, which counts A-with-B and B-with-A as two."
+  },
+  "pnc3-seat-in-a-row": {
+    "shortcut": "By symmetry each of the 5 people sits at the left end in exactly 1/5 of the 120 orders: 120 ÷ 5 = 24.",
+    "trap": "\"120\" — arranging all five with 5! and ignoring that one seat is already taken."
+  },
+  "pnc3-ncr-identity": {
+    "shortcut": "Choosing the 10 to include is the same as choosing the 2 to leave out, so this is a handshake count: 12 × 11 ÷ 2 = 66.",
+    "trap": "\"132\" — computing 12 × 11 and forgetting to divide by 2!, the order of the two left out."
+  },
+  "pnc3-flags-signals": {
+    "shortcut": "Fill the three positions in order: 5 choices, then 4, then 3 — 60.",
+    "trap": "\"125\" — allowing a flag to be used more than once (5 × 5 × 5); there are only 5 different flags, each used once."
+  },
+  "pnc3-subsets-of-four": {
+    "shortcut": "The subset counts by size are row 6 of Pascal's triangle: 1 + 6 + 15 + 20 + 15 + 6 + 1 = 64 = 2⁶.",
+    "trap": "\"12\" — multiplying 2 × 6 instead of raising 2 to the sixth power."
+  },
+  "pr3-dice-sum-more-than-nine": {
+    "shortcut": "Sums above 9 mirror sums below 5 (12 ↔ 2, 11 ↔ 3, 10 ↔ 4), which have 1 + 2 + 3 = 6 ways: 6/36 = 1/6.",
+    "trap": "\"1/9\" — counting unordered pairs ({4,6}, {5,5}, {5,6}, {6,6}) as 4 of 36; (4,6) and (6,4) are separate outcomes."
+  },
+  "pr3-card-red-king": {
+    "shortcut": "Only two cards qualify — the king of hearts and the king of diamonds — so 2/52 = 1/26 with no multiplying.",
+    "trap": "\"1/13\" — counting all four kings (4/52) and ignoring the 'red' condition."
+  },
+  "pr3-two-balls-same-colour": {
+    "shortcut": "Ordered draws: (3 × 2 + 5 × 4) ÷ (8 × 7) = 26/56 = 13/28.",
+    "trap": "\"15/28\" — counting the 3 × 5 = 15 mixed pairs, the complement, instead of the pairs of one colour."
+  },
+  "pr3-coin-four-tosses": {
+    "shortcut": "Exactly three heads means exactly one tail, and the tail can sit in any of 4 places out of 16 outcomes: 4/16 = 1/4.",
+    "trap": "\"1/8\" — multiplying (1/2)³ for the three heads, ignoring the fourth coin's tail and the 4 positions it can take."
+  },
+  "pr3-at-least-one-head": {
+    "shortcut": "Of the 8 equally likely outcomes only TTT has no head, so 7/8 — and any option below 1/2 is out at sight.",
+    "trap": "\"3/8\" — reading 'at least one head' as 'exactly one head' (3 of the 8 outcomes)."
+  },
+  "pr3-number-divisible-3-or-5": {
+    "shortcut": "The pattern repeats every 15: in 1–15 the qualifiers are 3, 5, 6, 9, 10, 12 and 15 — seven — so the probability is 7/15.",
+    "trap": "\"8/15\" — adding 10 multiples of 3 and 6 multiples of 5 to get 16/30, counting 15 and 30 twice."
+  },
+  "pr3-two-students-selected": {
+    "shortcut": "Draw in order: 6/10 × 5/9 = 30/90 = 1/3.",
+    "trap": "\"3/5\" — using 6/10, the chance for a single pick, and forgetting that the second student must also be a girl."
+  },
+  "pr3-independent-both-fail": {
+    "shortcut": "Turn each pass chance into a fail chance (0.4 and 0.3) and multiply: 0.12. Check: at least one passes = 0.6 + 0.7 − 0.42 = 0.88 = 1 − 0.12.",
+    "trap": "\"0.42\" — multiplying the pass chances 0.6 × 0.7, which is the probability that both pass."
+  },
+  "pr3-ticket-number": {
+    "shortcut": "Every fourth ticket is a multiple of 4, and 40 is itself one, so the fraction is exactly 1/4.",
+    "trap": "\"1/5\" — the most tempting slip: counting multiples of 5 (8 of 40) by misreading the divisor."
+  },
+  "pr3-dice-both-even": {
+    "shortcut": "Both dice must succeed at a half-chance each, so the answer must sit below 1/2: 1/2 × 1/2 = 1/4.",
+    "trap": "\"1/2\" — giving the probability for one die and forgetting that both must be even."
+  },
+  "pr3-cards-not-face": {
+    "shortcut": "Face cards are 3 of the 13 in each suit, so non-face cards are 10 of 13 in every suit: 10/13 straight away.",
+    "trap": "\"9/13\" — counting aces as face cards (16 cards), which leaves 36/52 = 9/13; only J, Q and K are face cards."
+  },
+  "pr3-either-a-or-b": {
+    "shortcut": "Split into pieces: only A = 0.2, only B = 0.3, both = 0.2; together they make 0.7.",
+    "trap": "\"0.9\" — adding 0.4 + 0.5 and so counting the 0.2 overlap twice."
+  },
+  "me3-square-perimeter-from-area": {
+    "shortcut": "Perimeter = 4√area; 169 = 13², so 4 × 13 = 52 cm.",
+    "trap": "\"676 cm\" — multiplying the area 169 by 4 instead of first taking its square root."
+  },
+  "me3-rectangle-diagonal": {
+    "shortcut": "The diagonal must exceed 24 but fall short of 24 + 7 = 31; 25² = 625 = 576 + 49 confirms 25 cm.",
+    "trap": "\"31 cm\" — adding the two sides, 24 + 7, as if the diagonal were a walk round two edges."
+  },
+  "me3-circle-sector-area": {
+    "shortcut": "A quarter of πr²: (22/7) × 14 × 14 ÷ 4 = 22 × 7 = 154 cm² once the 7 and the 4 cancel.",
+    "trap": "\"616 cm²\" — stopping at the full circle's area and forgetting to take one quarter for the quadrant."
+  },
+  "me3-cube-volume-from-surface": {
+    "shortcut": "One face is 150 ÷ 6 = 25 cm², and volume = face area × √(face area) = 25 × 5 = 125 cm³.",
+    "trap": "\"216 cm³\" — taking the edge as 6 (the number of faces) instead of √(150 ÷ 6) = 5."
+  },
+  "me3-cylinder-volume-litres": {
+    "shortcut": "πr² with r = 7 is the stock 154 m² (22 × 7); multiplying by the 5 m height gives 770 m³.",
+    "trap": "\"660 m³\" — no option comes from a standard slip; 660 m³ is what a hurried 22 × 6 × 5 gives when 49 ÷ 7 is misread as 6."
+  },
+  "me3-triangle-base-height": {
+    "shortcut": "Base = 2 × area ÷ height = 168 ÷ 12 = 14 cm.",
+    "trap": "\"7 cm\" — dividing 84 by 12 and forgetting the ½ in the area formula."
+  },
+  "me3-rhombus-area": {
+    "shortcut": "The diagonals cut the rhombus into four right triangles with legs 8 and 6, each of area 24: 4 × 24 = 96 cm².",
+    "trap": "\"192 cm²\" — multiplying the diagonals 16 × 12 and forgetting to halve."
+  },
+  "me3-circle-radius-ratio-circumference": {
+    "shortcut": "Every length of a circle — radius, diameter, circumference — keeps the radius ratio, so 3 : 5 carries straight over.",
+    "trap": "\"9 : 25\" — squaring the ratio as for area; circumference grows with r, not r²."
+  },
+  "me3-wall-bricks": {
+    "shortcut": "Divide dimension by dimension: 500/25 × 300/10 × 16/8 = 20 × 30 × 2 = 1,200.",
+    "trap": "\"2,000\" — the brick's volume is 2,000 cm³, and a hurried solver picks that figure from the working instead of dividing it into the wall's 24,00,000 cm³."
+  },
+  "me3-square-inscribed-circle": {
+    "shortcut": "An inscribed circle fills π/4 of its square: 196 × 11/14 = 154 cm².",
+    "trap": "\"616 cm²\" — using the side 14 as the radius; the side is the diameter, so the radius is 7."
+  },
+  "vo2-synonym-lucid": {
+    "shortcut": "Lucid comes from Latin lux, light, like lucent and translucent: an explanation light passes through is clear.",
+    "trap": "\"Technical\" — explanations are often technical, so it fits the sentence, but lucid is about clarity, not subject matter."
+  },
+  "vo2-synonym-prudent": {
+    "shortcut": "Prudent is a contracted form of provident — looking ahead; a prudent investor avoids needless risk, which is cautious.",
+    "trap": "\"Stubborn\" — a careful person who refuses risks can look obstinate, but prudence is foresight, not refusing to budge."
+  },
+  "vo2-synonym-benevolent": {
+    "shortcut": "-volent means wishing (as in volition): benevolent is well-wishing, and its mirror malevolent is ill-wishing.",
+    "trap": "\"Wealthy\" — benefactors are often rich, so the word gets linked with money; benevolence is goodwill, not wealth."
+  },
+  "vo2-synonym-tenacious": {
+    "shortcut": "A tenacious grip or a tenacious defender never lets go — the sense is refusing to give up, which is persistent.",
+    "trap": "\"Fragile\" — confusing tenacious with tenuous (thin, flimsy); tenacious means the reverse, holding firm."
+  },
+  "vo2-synonym-obsolete": {
+    "shortcut": "The noun obsolescence, as in 'planned obsolescence', is products being made to go out of date — so obsolete means outdated.",
+    "trap": "\"Fragile\" — old equipment is often worn and breakable, but obsolete means no longer in use, however sturdy it is."
+  },
+  "vo2-synonym-eloquent": {
+    "shortcut": "Eloquent praises how well someone speaks or writes — an eloquent speech is fluent and expressive, which is what articulate means.",
+    "trap": "\"Silent\" — recalling the phrase 'an eloquent silence', where a silence says a lot; the word itself means fluent, and silent is its opposite."
+  },
+  "vo2-synonym-diligent": {
+    "shortcut": "The noun diligence, as in 'due diligence', means careful and steady effort, so diligent means hardworking.",
+    "trap": "\"Cheerful\" — a positive word that fits praise of a good student, but it says nothing about effort."
+  },
+  "vo2-synonym-ambiguous": {
+    "shortcut": "ambi- means both (ambidextrous, ambivalent): a statement open to both readings is unclear.",
+    "trap": "\"Brief\" — vague replies are often short ones, but ambiguous is about having two meanings, not about length."
+  },
+  "vo2-synonym-arduous": {
+    "shortcut": "Arduous comes from Latin arduus, steep: an uphill task is a difficult one.",
+    "trap": "\"Pleasant\" — confusing arduous with ardent or ardour (warm enthusiasm); arduous describes hard, tiring work."
+  },
+  "vo2-synonym-candid": {
+    "shortcut": "A candid photo or a candid interview shows things as they are — open and truthful, which is frank.",
+    "trap": "\"Rude\" — blunt honesty can sound impolite, but candid means honest and open, not discourteous."
+  },
+  "vo2-synonym-scrutinise": {
+    "shortcut": "Scrutiny is close inspection ('under scrutiny'), so to scrutinise is to examine closely.",
+    "trap": "\"Approve\" — officials scrutinise documents before approving them, but the checking and the approving are different acts."
+  },
+  "vo2-synonym-abundant": {
+    "shortcut": "Abundant goes with abound, 'to exist in great numbers' — an abundant harvest is a plentiful one.",
+    "trap": "\"Scarce\" — confusing abundant with absent, both starting ab-; scarce is the exact opposite."
+  },
+  "vo2-synonym-vigilant": {
+    "shortcut": "A vigilant guard or a vigilance committee is on the lookout — the word always describes keeping watch.",
+    "trap": "\"Angry\" — the related word vigilante suggests an angry mob; vigilant itself only means alert and watchful."
+  },
+  "vo2-synonym-reluctant": {
+    "shortcut": "Latin re- (back) + luctari (to struggle): pulling back against doing something, hence unwilling.",
+    "trap": "\"Careless\" — reluctant work can look half-hearted, but reluctance is about willingness, not attention."
+  },
+  "vo2-synonym-novice": {
+    "shortcut": "Test it in a phrase: 'a novice driver' is a learner, so beginner fits and expert reverses it.",
+    "trap": "\"Teacher\" — both words belong to learning, but the novice is the one being taught, not the one teaching."
+  },
+  "vo2-antonym-scarce": {
+    "shortcut": "Scarce means in short supply, so the reverse is 'more than enough': plentiful. Rare and small sit on the scarce side, and costly is off the axis.",
+    "trap": "\"Rare\" — a synonym of scarce, picked by anyone who answers as though the question asked for the closest meaning."
+  },
+  "vo2-antonym-humble": {
+    "shortcut": "Humble means having a low view of one's own importance; the reverse is an inflated view — arrogant. Quiet and poor touch side senses only.",
+    "trap": "\"Modest\" — the synonym of humble, the pick of a reader who misses the word 'opposite'."
+  },
+  "vo2-antonym-condense": {
+    "shortcut": "A condensed book is a shortened one; its opposite is an expanded edition — expand.",
+    "trap": "\"Freeze\" — condensation happens on cooling, so a science association pulls towards freezing, which does not reverse condensing."
+  },
+  "vo2-antonym-optimist": {
+    "shortcut": "Optimist and pessimist are a Latin pair, from optimus 'best' and pessimus 'worst', so the matching form is the antonym.",
+    "trap": "\"Realist\" — often set against the optimist in speech ('I'm just a realist'), but a realist sits in the middle, not at the opposite pole."
+  },
+  "vo2-antonym-generous": {
+    "shortcut": "Generous means giving freely; the reverse is refusing to spend — miserly, from miser.",
+    "trap": "\"Liberal\" — in 'a liberal helping' it means generous, so it is the synonym a reader who misses 'opposite' picks."
+  },
+  "vo2-antonym-artificial": {
+    "shortcut": "Artificial means made by human skill (arti- + -ficial, 'made'); the opposite of man-made is found in nature: natural.",
+    "trap": "\"Synthetic\" — a near-synonym, picked by anyone who treats the question as closest meaning rather than opposite."
+  },
+  "vo2-antonym-victory": {
+    "shortcut": "Triumph is a win, so the antonym must name a loss; only failure does.",
+    "trap": "\"Success\" — the synonym of triumph, picked when the word 'opposite' is missed."
+  },
+  "vo2-antonym-accelerate": {
+    "shortcut": "Retard means to slow down, as in flame-retardant (slows burning) — the exact reverse of accelerate.",
+    "trap": "\"Continue\" — keeping a steady speed feels like the opposite of speeding up, but the true reverse is slowing down."
+  },
+  "vo2-antonym-transparent": {
+    "shortcut": "On the light scale, transparent lets all light through, translucent some and opaque none — the far end is opaque.",
+    "trap": "\"Fragile\" — glass is both transparent and fragile, but fragility is about strength, not light."
+  },
+  "vo2-antonym-frugal": {
+    "shortcut": "A lavish feast versus a frugal meal: lavish spends to excess, frugal spends sparingly.",
+    "trap": "\"Elegant\" — understated elegance can seem the opposite of showy luxury, but elegance is about taste, not spending."
+  },
+  "vo2-antonym-ancient": {
+    "shortcut": "Ancient history versus modern history — the standard textbook pairing gives the antonym directly.",
+    "trap": "\"Antique\" — a near-synonym of ancient, chosen by a reader who answers as though asked for the closest meaning."
+  },
+  "vo2-antonym-deny": {
+    "shortcut": "Put it in a courtroom: 'he denied the theft' reverses to 'he admitted the theft' — admit.",
+    "trap": "\"Refuse\" — deny can mean refuse ('deny entry'), so it is a synonym in that sense, never an opposite."
+  },
+  "vo2-antonym-praise": {
+    "shortcut": "A commendation is an award for merit, so commend means praise; its reverse is criticise.",
+    "trap": "\"Praise\" — the synonym of commend, picked by a reader who takes the question as closest meaning."
+  },
+  "vo2-usage-affect-effect": {
+    "shortcut": "Affect is the Action (verb), Effect the End result (noun): 'had little ___' needs the noun, while 'did not ___ the match' and 'deeply ___' need affect.",
+    "trap": "\"The medicine had little affect on her.\" — it looks right because affect means influence, but after 'had little' only the noun effect fits."
+  },
+  "vo2-usage-principal-principle": {
+    "shortcut": "Principle is only ever a noun meaning a rule or belief; a person, or an adjective meaning main, is always principal — so only 'guiding principle' survives.",
+    "trap": "\"The principle reason was cost.\" — 'principle reason' sounds like 'a reason of principle', but the adjective meaning main is principal."
+  },
+  "vo2-usage-stationary": {
+    "shortcut": "stAtionary = stAnding still; a car waiting at a signal is standing, so the 'a' spelling fits only that sentence.",
+    "trap": "\"The car remained stationery at the signal.\" — the same sentence with the paper-and-pens spelling; a hurried eye sees the right meaning and misses the 'e'."
+  },
+  "vo2-usage-complement": {
+    "shortcut": "Compliment with an 'i' is praise ('I like it'); complement completes. Only the wine-and-meal sentence is about completing.",
+    "trap": "\"I would like to complement the chef.\" — praising the chef needs compliment with an 'i'; complement would mean completing him."
+  },
+  "vo2-usage-lie-lay": {
+    "shortcut": "Swap in recline or place: 'going to recline' works, so lie; 'place the book' needs lay; and the book 'is lying', not laying.",
+    "trap": "\"I am going to lay down for a rest.\" — common in speech, but lay needs an object; resting oneself takes lie."
+  },
+  "vo2-usage-fewer-less": {
+    "shortcut": "People and books can be counted, patience cannot — so fewer people, fewer books, less patience; only one option pairs them correctly.",
+    "trap": "\"There were less people than expected.\" — everyday speech uses less here, but people are countable and take fewer."
+  },
+  "vo2-usage-among-between": {
+    "shortcut": "Between is for two (think 'twain'), among for three or more: four winners take among, and the sentences about two things would need between.",
+    "trap": "\"The prize was divided between the four winners.\" — it sounds natural, but with four recipients the rule these papers test calls for among."
+  },
+  "vo2-one-word-illegible": {
+    "shortcut": "Legible comes from Latin legere, to read: readable handwriting is legible, so unreadable handwriting is illegible. Illiterate describes a person, not writing.",
+    "trap": "\"Illiterate\" — it also involves not reading, but it describes a person who cannot read, not writing that cannot be read."
+  },
+  "vo2-one-word-autobiography": {
+    "shortcut": "The definition has two parts — a whole life story, written by its subject — and only autobiography meets both; biography fails the second, memoir the first.",
+    "trap": "\"Memoir\" — also written by the subject, but a memoir recalls selected experiences or one period, not the whole life story."
+  },
+  "vo2-one-word-omnipresent": {
+    "shortcut": "The definition hands over the word: 'present in all places' = omni (all) + present.",
+    "trap": "\"Omniscient\" — often paired with omnipresent in descriptions of God, but it means all-knowing, not present everywhere."
+  },
+  "vo2-one-word-pessimist": {
+    "shortcut": "Pessimist comes from Latin pessimus, 'worst' — the person who expects the worst.",
+    "trap": "\"Cynic\" — a cynic also expects bad things, but of people's motives; expecting the worst outcome is pessimism."
+  },
+  "vo2-one-word-manuscript": {
+    "shortcut": "manu- is the hand in manual and manicure; hand + script (writing) gives a document written by hand.",
+    "trap": "\"Transcript\" — a transcript is a written copy of something else (trans-, across), typed or handwritten; nothing in it means 'by hand'."
+  },
+  "vo2-idiom-once-in-a-blue-moon": {
+    "shortcut": "A blue moon is the rare second full moon in one calendar month, roughly every two to three years — so the idiom means very rarely.",
+    "trap": "\"At night\" — the literal reading: the moon appears at night, but the idiom is about rarity, not the time of day."
+  },
+  "vo2-idiom-turn-a-blind-eye": {
+    "shortcut": "The verb 'turn' marks a choice: the eye is turned away on purpose. Nelson is said to have raised his telescope to his blind eye to ignore a signal.",
+    "trap": "\"To lose one's sight\" — the literal reading of 'blind'; the idiom describes deliberately ignoring something, not losing vision."
+  },
+  "vo2-idiom-break-the-ice": {
+    "shortcut": "The 'ice' is the frosty silence between strangers; an icebreaker game at the start of a session is what gets people talking.",
+    "trap": "\"To cause damage\" — the literal reading of breaking something; the idiom is about easing awkwardness, not destruction."
+  },
+  "vo2-idiom-hit-the-nail": {
+    "shortcut": "A hammer striking the nail's head dead-centre is precise, so the idiom praises an exact remark: 'You have hit the nail on the head.'",
+    "trap": "\"To finish a job\" — driving a nail home sounds like completing work, but the idiom praises accuracy, especially of a remark."
+  },
+  "vo2-spelling-accommodate": {
+    "shortcut": "The word is big enough to accommodate two cs and two ms: acc-omm-odate. Only one option doubles both.",
+    "trap": "\"Accomodate\" — the commonest misspelling, with a single m; both the c and the m are doubled."
+  },
+  "vo2-spelling-separate": {
+    "shortcut": "Separate shares 'par' with part and pare — to separate is to part — so the vowel after the p is a.",
+    "trap": "\"Seperate\" — spelt as it is often pronounced, with an e after the p; the correct vowel there is a."
+  },
+  "vo2-spelling-occurrence": {
+    "shortcut": "Check three things at once — cc, rr and the -ence ending; only one option has all three.",
+    "trap": "\"Occurence\" — the commonest misspelling, with a single r; occur doubles its r before -ence, as in occurred."
+  }
+}

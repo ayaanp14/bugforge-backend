@@ -5,6 +5,9 @@ import { escapeHtml, markdownOutline, markdownToHtml } from "../lib/markdown-htm
 import { BUG_HUBS, bugHub } from "../lib/bug-hubs.js";
 import { isCompanyTag } from "../lib/companies.js";
 import { PROBLEM_CANONICAL, problemCanonicalSlug } from "../lib/problem-canonical.js";
+import { renamedCompanyHubSlug } from "../lib/problem-topics.js";
+import { TEST_GUIDES } from "../lib/test-guides.js";
+import { APTITUDE_ESSENTIALS } from "../lib/aptitude-essentials.js";
 import { trackDefinition, trackList, type LessonSeo } from "./study-plans.js";
 import { roadDefinition } from "./roadmap.js";
 import { hubIndex, hubPage, hubsForTags, relatedProblems, type HubSummary } from "./problem-hubs.js";
@@ -12,6 +15,7 @@ import { getCatalogue } from "./dashboard.js";
 import { bugHubIndex, bugHubPage, bugPath } from "./bug-hunts.js";
 import { topicOrder } from "./aptitude-bank.js";
 import { CARD_HEIGHT, CARD_WIDTH, getShareCard } from "./share-cards.js";
+import { CONTENT_CARD_DESIGN, CONTENT_CARD_HEIGHT, CONTENT_CARD_WIDTH, contentCardPng, type ContentCard } from "../lib/content-card.js";
 
 /**
  * What a search engine is told about the app's public content.
@@ -133,26 +137,40 @@ const LANGUAGE_LIST = "JavaScript, TypeScript, Python, Java, C++, C, C#, Go, Kot
  * last; the intent ("Coding Problem & Solution", "Aptitude Question") in
  * the middle so two pages never share a title.
  */
+/**
+ * Google shows about 600 px of a title — some 60 characters — and names the
+ * site on its own line above it, so the brand is added only where the whole
+ * title still fits. Until 2026-09-30 every template ended in it and 2,891 of
+ * the 3,229 indexable titles ran past 60 (an aptitude question's median was
+ * 88), so what a result cut off was the intent. The SPA's lib/seo/titles has
+ * the same rule; the H1 is the title less the brand (lib/seo/prerender).
+ */
+const TITLE_BUDGET = 60;
+const branded = (core: string): string => {
+  const full = `${core} — ${BRAND}`;
+  return full.length <= TITLE_BUDGET ? full : core;
+};
+
 export const titles = {
-  problem: (title: string, difficulty: string) => `${title} — ${difficulty} Coding Problem & Solution — ${BRAND}`,
-  topicHub: (label: string, count: number) => `${label} Coding Problems: ${count} Practice Questions with Solutions — ${BRAND}`,
-  companyHub: (label: string, count: number) => `${label} Coding Interview Questions: ${count} Tagged Problems to Practise — ${BRAND}`,
-  bugHunt: (title: string, language: string) => `${title} — ${language} Bug Hunt — ${BRAND}`,
+  problem: (title: string, difficulty: string) => branded(`${title} — ${difficulty} Problem & Solution`),
+  topicHub: (label: string, count: number) => branded(`${label} Coding Problems: ${count} Questions with Solutions`),
+  companyHub: (label: string, count: number) => branded(`${label} Coding Interview Questions: ${count} Tagged Problems`),
+  bugHunt: (title: string, language: string) => branded(`${title} — ${language} Bug Hunt`),
   bugHub: (label: string, count: number, kind: "language" | "category") =>
-    kind === "language" ? `${label} Debugging Practice: ${count} Bug Hunts on Real Code — ${BRAND}` : `${label} Bug Hunts: ${count} Debugging Challenges — ${BRAND}`,
-  aptitudeCategory: (label: string, topics: number, questions: number) => `${label} Questions with Solutions: ${topics} Topics, ${questions} Practice Questions — ${BRAND}`,
-  aptitudeTopic: (label: string) => `${label} Questions with Solutions — Aptitude Practice — ${BRAND}`,
-  aptitudeQuestion: (title: string, topicLabel: string) => `${title} — ${topicLabel} Aptitude Question with Solution — ${BRAND}`,
+    branded(kind === "language" ? `${label} Debugging Practice: ${count} Bug Hunts on Real Code` : `${label} Bug Hunts: ${count} Debugging Challenges`),
+  aptitudeCategory: (label: string, questions: number) => branded(`${questions} ${label} Questions with Solutions`),
+  aptitudeTopic: (label: string) => branded(`${label} Aptitude Questions with Solutions`),
+  aptitudeQuestion: (title: string, topicLabel: string) => branded(`${title} — ${topicLabel} Aptitude Question`),
   // "learn java", "java tutorial": the words a track is searched by. It
   // was "Learn Java: 20-Module Study Plan with 138 Lessons" — "study plan"
   // is this site's word, not a searcher's.
-  studyTrack: (language: string, lessons: number) => `Learn ${language}: Free ${language} Tutorial in ${lessons} Lessons — ${BRAND}`,
+  studyTrack: (language: string, lessons: number) => branded(`Learn ${language}: Free ${language} Tutorial in ${lessons} Lessons`),
   // A lesson's authored search title (its seo-title — "What Is the JVM?
   // JDK vs JRE vs JVM Explained") when it has one; the lesson's own title
   // otherwise, which is written for a reader already on the page.
   studyLesson: (lesson: string, language: string, checkpoint: boolean, searchTitle?: string | null) =>
-    searchTitle ? `${searchTitle} — ${BRAND}` : `${lesson} — ${language} ${checkpoint ? "checkpoint" : "lesson"} — ${BRAND}`,
-  test: (name: string, company: string) => (name.includes(company) ? `${name} Mock Test — ${BRAND}` : `${name} Mock Test — ${company} Pattern — ${BRAND}`),
+    branded(searchTitle ? searchTitle : `${lesson} — ${language} ${checkpoint ? "checkpoint" : "lesson"}`),
+  test: (name: string, company: string) => branded(name.includes(company) ? `${name} Mock Test` : `${name} Mock Test — ${company} Pattern`),
 };
 
 /**
@@ -249,9 +267,124 @@ const HEAD_TTL_MS = 60 * 60 * 1000;
  * are answered; anything else is null too.
  */
 export async function headFor(path: string): Promise<PageHead | PageRedirect | null> {
+  const head = await pageHead(path);
+  if (!head || "redirect" in head) return head;
+  const card = contentCardFor(path, head);
+  return card ? { ...head, image: contentCardImage(path, head.title) } : head;
+}
+
+/* ── Link-preview cards ──────────────────────────────────────────── */
+
+/**
+ * The preview card a content page shares with (lib/content-card), built
+ * from the head the page already has, so the picture says what the page
+ * says. Null for anything that is not a problem, bug hunt, lesson, aptitude
+ * question or test pattern — those keep the site's own card.
+ */
+export function contentCardFor(path: string, head: PageHead): ContentCard | null {
+  const f = head.facts ?? {};
+  const name = head.crumb ?? head.title;
+  let m: RegExpExecArray | null;
+  if (/^\/problems\/[a-z0-9-]+$/.test(path)) {
+    const difficulty = f.difficulty ?? "";
+    return {
+      kind: "problem",
+      label: "Coding problem",
+      eyebrow: [difficulty, ...(f.keywords ?? []).slice(0, 2)].filter(Boolean).join(" · "),
+      title: name,
+      facts: [
+        { value: difficulty || "Any level", unit: "difficulty" },
+        { value: "13", unit: "languages" },
+        { value: "Editorial", unit: "and solutions" },
+      ],
+    };
+  }
+  if ((m = /^\/bug-hunts\/([a-z0-9-]+)$/.exec(path)) && !bugHub(m[1])) {
+    return {
+      kind: "bug",
+      label: "Bug hunt",
+      eyebrow: [f.language, f.difficulty].filter(Boolean).join(" · "),
+      title: name,
+      facts: [
+        { value: f.language ?? "Real", unit: "codebase" },
+        { value: f.difficulty ?? "Any level", unit: "difficulty" },
+        { value: "Hidden", unit: "tests" },
+      ],
+    };
+  }
+  if (/^\/study-plans\/[a-z0-9-]+\/[a-z0-9-]+$/.test(path)) {
+    return {
+      kind: "lesson",
+      label: `${f.language ?? "Study"} ${f.checkpoint ? "checkpoint" : "lesson"}`,
+      eyebrow: `${f.language ?? ""} study plan`.trim(),
+      // The lesson's search title (what its <title> leads with), not the
+      // heading written for a reader already on the page.
+      title: head.title.replace(/\s+—\s+CodeKairo$/, ""),
+      facts: [
+        { value: f.minutes ? `${f.minutes} min` : "Short", unit: "read" },
+        { value: f.checkpoint ? "Graded" : "Exercises", unit: f.checkpoint ? "checkpoint" : "judged" },
+        { value: "Free", unit: "course" },
+      ],
+    };
+  }
+  if (/^\/aptitude\/q\/[a-z0-9-]+$/.test(path)) {
+    return {
+      kind: "aptitude",
+      label: "Aptitude question",
+      eyebrow: f.topic ?? "Aptitude",
+      title: name,
+      facts: [
+        { value: f.difficulty ?? "Any level", unit: "difficulty" },
+        { value: f.minutes ? `${Math.round(f.minutes * 60)} s` : "Timed", unit: "time target" },
+        { value: "Worked", unit: "solution" },
+      ],
+    };
+  }
+  if (/^\/tests\/[a-z0-9-]+$/.test(path)) {
+    return {
+      kind: "test",
+      label: "Placement mock test",
+      eyebrow: f.company ? `${f.company} pattern` : "Company pattern",
+      title: name,
+      facts: [
+        { value: f.minutes ? `${f.minutes} min` : "Timed", unit: "full length" },
+        { value: f.questions ? String(f.questions) : "Mixed", unit: "questions" },
+        { value: "Full", unit: "review" },
+      ],
+    };
+  }
+  return null;
+}
+
+/**
+ * The card's address. No content hash in it, unlike the Battles card: the
+ * SPA's runtime head names the same picture (src/lib/content-card.ts) and
+ * can build this from the page's path alone. A retitled page's old picture
+ * lingers only as long as the platforms' own caches of the URL.
+ */
+export const contentCardUrl = (path: string): string => `${API_ORIGIN}/api/seo/card.png?path=${encodeURIComponent(path)}&d=${CONTENT_CARD_DESIGN}`;
+
+/** The alt is the page's title with the brand once — what the SPA's lib/content-card writes too. */
+function contentCardImage(path: string, title: string): NonNullable<PageHead["image"]> {
+  return { url: contentCardUrl(path), width: CONTENT_CARD_WIDTH, height: CONTENT_CARD_HEIGHT, alt: `${title.replace(/\s+—\s+CodeKairo$/, "")} — ${BRAND}` };
+}
+
+/** The PNG for GET /api/seo/card.png, or null when the path has no card. */
+export async function contentCardImageFor(path: string): Promise<Buffer | null> {
+  const head = await pageHead(path);
+  if (!head || "redirect" in head) return null;
+  const card = contentCardFor(path, head);
+  return card ? contentCardPng(JSON.stringify(card), card) : null;
+}
+
+async function pageHead(path: string): Promise<PageHead | PageRedirect | null> {
   let m: RegExpExecArray | null;
   if (path === "/challenges") return challengesIndex();
-  if ((m = /^\/challenges\/company\/([a-z0-9-]+)$/.exec(path))) return hubHead("company", m[1]);
+  if ((m = /^\/challenges\/company\/([a-z0-9-]+)$/.exec(path))) {
+    // A renamed company's old hub (Facebook → Meta, lib/companies COMPANY_RENAMED) moves for good.
+    const moved = renamedCompanyHubSlug(m[1]);
+    return moved ? { redirect: `/challenges/company/${moved}` } : hubHead("company", m[1]);
+  }
   if ((m = /^\/challenges\/([a-z0-9-]+)$/.exec(path))) return hubHead("topic", m[1]);
   if ((m = /^\/problems\/([a-z0-9][a-z0-9-]*)$/.exec(path))) return problemHead(m[1]);
   if (path === "/bug-hunts") return bugHuntsIndex();
@@ -418,10 +551,15 @@ async function hubHead(kind: "topic" | "company", slug: string): Promise<PageHea
   return {
     path,
     title: kind === "topic" ? titles.topicHub(page.label, page.count) : titles.companyHub(page.label, page.count),
-    description:
+    // Composed descriptions go through summarise() for its 158-character
+    // cap, which drops whole trailing sentences — so each puts what the
+    // page is first and the lines it can lose last (2026-09-30: 90 of 91
+    // hubs and every test pattern ran past 160 and were cut mid-sentence).
+    description: summarise(
       kind === "topic"
         ? `${page.count} ${page.label.toLowerCase()} coding problems with editorials and reference solutions in 13 languages — ${difficultySplit(page.byDifficulty)} — judged by hidden tests. Read any problem free on ${BRAND}.`
         : `${page.count} coding problems the ${BRAND} catalogue tags as commonly asked at ${page.label} — ${difficultySplit(page.byDifficulty)} — each with an editorial and solutions in 13 languages. Practise free.`,
+    ),
     facts: { topic: page.label, count: page.count, keywords: kind === "topic" ? [page.label] : undefined, company: kind === "company" ? page.label : undefined, trail },
     content,
     crumb: page.label,
@@ -522,7 +660,7 @@ async function bugHubHead(id: string): Promise<PageHead | null> {
   return {
     path,
     title: titles.bugHub(page.label, page.count, page.kind),
-    description: `${page.count} ${page.noun} — ${difficultySplit(page.byDifficulty)} — each a small project with a planted bug, a bug report, the code as shipped and hidden tests that decide whether the fix is complete. Read any hunt free on ${BRAND}.`,
+    description: summarise(`${page.count} ${page.noun} — ${difficultySplit(page.byDifficulty)} — each a small project with a planted bug, a bug report and hidden tests that decide whether the fix is complete. Read any hunt free on ${BRAND}.`),
     facts: { language: page.kind === "language" ? page.label : undefined, topic: page.kind === "category" ? page.label : undefined, count: page.count, trail },
     content,
     crumb: page.label,
@@ -707,8 +845,8 @@ async function aptitudeCategoryHead(id: string): Promise<PageHead | null> {
     section("Other sections", linkList(APTITUDE_CATEGORIES.filter((c) => c.id !== id).map((c) => ({ href: `/aptitude/${c.id}`, label: c.label }))), "related");
   return {
     path,
-    title: titles.aptitudeCategory(category.label, topics.length, questions),
-    description: `${category.blurb} ${questions} ${category.label.toLowerCase()} questions across ${topics.length} topics, each with a time target, hints, a worked solution and an approach note. Free on ${BRAND}.`,
+    title: titles.aptitudeCategory(category.label, questions),
+    description: summarise(`${questions} ${category.label.toLowerCase()} questions across ${topics.length} topics, each with a time target, hints, a worked solution and an approach note. ${category.blurb} Free on ${BRAND}.`),
     facts: { topic: category.label, count: questions, trail },
     content,
     crumb: category.label,
@@ -736,12 +874,16 @@ function aptitudeTopicHead(topicId: string): Promise<PageHead | null> {
         ["Cost", "Free, unlimited on every plan"],
       ]) +
       `<p>${h(topic.blurb)}</p>` +
+      // The formulas, rules and method (lib/aptitude-essentials): what a search
+      // for "<topic> formulas" wants, and until 2026-10-01 the page had only
+      // the one-sentence blurb before its question list.
+      (APTITUDE_ESSENTIALS[topicId] ? section(`${topic.label}: the essentials`, markdownToHtml(APTITUDE_ESSENTIALS[topicId], 8_000), "essentials") : "") +
       section("Questions", linkList(rows.map((r) => ({ href: `/aptitude/q/${r.slug}`, label: r.title, note: titleCase(r.difficulty) }))), "questions") +
       (siblings.length ? section(`More ${categoryLabel.toLowerCase()} topics`, linkList(siblings.map((t) => ({ href: `/aptitude/${t.id}`, label: t.label }))), "related") : "");
     return {
       path,
       title: titles.aptitudeTopic(topic.label),
-      description: `${topic.blurb} ${rows.length} ${topic.label} questions with hints, worked solutions and time targets — ${difficultySplit(byDifficulty)}. Free on ${BRAND}.`,
+      description: summarise(`${rows.length} ${topic.label} questions with hints, worked solutions and time targets — ${difficultySplit(byDifficulty)}. ${topic.blurb} Free on ${BRAND}.`),
       facts: { topic: `${topic.label} (${categoryLabel})`, count: rows.length, trail },
       content,
       crumb: topic.label,
@@ -803,7 +945,8 @@ function aptitudeQuestionHead(slug: string): Promise<PageHead | null> {
       // The title leads the description: thirty sentence-correction
       // questions share the prompt "Choose the grammatically correct
       // sentence", and only the title tells their pages apart.
-      description: `${q.title}: ${summarise(q.prompt, `a ${label} aptitude question with a worked solution.`, 110)} Answer and worked solution on ${BRAND}.`,
+      // The prompt gets what the title and the closing line leave of 158.
+      description: `${q.title}: ${summarise(q.prompt, `a ${label} aptitude question with a worked solution.`, Math.max(60, 115 - q.title.length))} Answer and worked solution on ${BRAND}.`,
       facts: { difficulty, topic: label, minutes: q.timeTargetSec / 60, options, answer: q.answer, trail },
       content,
       crumb: q.title,
@@ -856,13 +999,18 @@ function testHead(slug: string): Promise<PageHead | null> {
       (asStrings(t.highlights).length ? `<ul>${asStrings(t.highlights).map((x) => `<li>${h(x)}</li>`).join("")}</ul>` : "") +
       section("Sections", `<table><thead><tr><th>Section</th><th>Questions</th><th>Time</th><th>Kind</th><th>Marks each</th></tr></thead><tbody>${rows}</tbody></table>`, "sections") +
       section("Instructions", markdownToHtml(t.instructions, 6_000), "instructions") +
+      // The written preparation guide (lib/test-guides): what a search for
+      // "<company> test pattern" is answered by — the results are guides, and
+      // this page was a mock-test lobby of ~240 own words (2026-10-01).
+      (TEST_GUIDES[slug] ? section("How to prepare for this pattern", markdownToHtml(TEST_GUIDES[slug], 12_000), "guide") : "") +
       (t.sourceNote ? section("About this pattern", `<p>${h(t.sourceNote)}</p>`, "source") : "") +
       `<p>Modelled on the published pattern; not affiliated with ${h(t.company)}. Every sitting draws a fresh paper from ${link("/aptitude", "the aptitude bank")}${t.sections.some((s) => s.kind === "coding") ? ` and ${link("/challenges", "the problem catalogue")}` : ""}.</p>` +
       (others.length ? section("Similar patterns", linkList(others.map((o) => ({ href: `/tests/${o.slug}`, label: o.name, note: o.company }))), "related") : "");
     return {
       path,
       title: titles.test(t.name, t.company),
-      description: `${t.blurb} A full-length timed mock modelled on the ${t.company} pattern, with a fresh paper every sitting and a full review with solutions.`,
+      // What the page is first; the pattern's blurb (its rules) where it fits.
+      description: summarise(`A full-length timed mock modelled on the ${t.company} pattern, with a fresh paper every sitting and a full review with solutions. ${t.blurb}`),
       facts: { company: t.company, minutes, questions: t.totalQuestions, trail },
       content,
       crumb: t.name,

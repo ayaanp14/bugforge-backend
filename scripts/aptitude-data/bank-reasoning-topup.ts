@@ -315,8 +315,11 @@ export const BANK_REASONING_TOPUP: AptitudeSeed[] = [
     title: "Two blanks with a contrast",
     prompt:
       "Fill in the blanks:\n\n> The proposal was ______ in ambition but ______ in detail.",
+    // "modest … thin", not "modest … thorough": modest in ambition but
+    // thorough in detail is a contrast too, so two options were defensible
+    // (found writing the extras, 2026-10-01).
     options: [
-      "modest … thorough",
+      "modest … thin",
       "grand … vague",
       "grand … precise",
       "weak … poor",
@@ -325,7 +328,7 @@ export const BANK_REASONING_TOPUP: AptitudeSeed[] = [
     difficulty: "medium",
     hints: ["'But' demands the two halves clash.", "An ambitious plan with weak detail is the contrast."],
     solution:
-      "1. *But* requires a contrast between the two qualities.\n2. **grand … vague** delivers it: large in ambition, weak in detail.\n3. 'Grand … precise' praises both, and 'weak … poor' criticises both.\n\nAnswer: **grand … vague**.",
+      "1. *But* requires a contrast between the two qualities.\n2. **grand … vague** delivers it: large in ambition, weak in detail.\n3. 'Grand … precise' praises both, while 'modest … thin' and 'weak … poor' criticise both — none turns.\n\nAnswer: **grand … vague**.",
     approach: "Test pairs rather than single words. One half that agrees with the other kills the option when the connector demands contrast.",
     tags: ["double blank"],
     timeTargetSec: 60,
@@ -465,16 +468,19 @@ export const BANK_REASONING_TOPUP: AptitudeSeed[] = [
     slug: "di3-sales-region-decline",
     topic: "tables-and-charts",
     title: "Which region declined",
-    prompt: `${SALES_TABLE}\n\nWhich region's sales **fell** in **two different quarters** compared with the quarter before?`,
+    // Asked as "fell in two different quarters" until 2026-10-01, which no
+    // region does (South and West each fall once); the key was West, the
+    // one row that rises and then falls, so the question now asks that.
+    prompt: `${SALES_TABLE}\n\nWhich region's sales **fell in a quarter after rising** in the quarter before?`,
     options: ["North", "South", "East", "West"],
     answer: 3,
     difficulty: "hard",
     hints: [
-      "Track each region quarter by quarter.",
-      "South fell once, from Q1 to Q2; West fell from Q2 to Q3.",
+      "Track each region quarter by quarter, looking for a rise followed by a fall.",
+      "South's only fall is its first move, Q1 to Q2 — nothing rose before it.",
     ],
     solution:
-      "1. North rises every quarter; East rises every quarter.\n2. South falls once (200 → 160) and then rises.\n3. West falls from 170 to 150 in Q3, and this is the only region asked about with a decline after a rise — checking the full row 150, 170, 150, 190 shows one fall.\n4. Comparing the two candidates, **West** is the region whose row dips and recovers.\n\nAnswer: **West**.",
+      "1. North rises every quarter; East rises every quarter.\n2. South falls once (200 → 160), but that is its first move: there is no earlier quarter it rose from.\n3. West goes 150 → 170 → 150 → 190: a rise, then a fall of 20 in Q3, then a recovery.\n4. **West** is the only region that fell after rising.\n\nAnswer: **West**.",
     approach: "Walk along each row noting every drop. Regions that rise monotonically can be eliminated at a glance.",
     tags: ["trends"],
     timeTargetSec: 105,

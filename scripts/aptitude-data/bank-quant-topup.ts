@@ -731,7 +731,9 @@ export const BANK_QUANT_TOPUP: AptitudeSeed[] = [
     topic: "mensuration",
     title: "Ratio of circumferences",
     prompt: "Two circles have radii in the ratio **3 : 5**. What is the ratio of their **circumferences**?",
-    options: ["3 : 5", "9 : 25", "6 : 10", "27 : 125"],
+    // "5 : 3", not "6 : 10" — that was 3 : 5 unreduced, a second right
+    // answer (found writing the extras, 2026-10-01).
+    options: ["3 : 5", "9 : 25", "5 : 3", "27 : 125"],
     answer: 0,
     difficulty: "easy",
     hints: ["Circumference is proportional to the radius.", "The ratio is unchanged."],

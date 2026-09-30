@@ -1539,7 +1539,7 @@ export const MATRICES4_PROBLEMS: CatalogProblem[] = [
       slug: "number-of-corner-rectangles",
       title: "Number of Corner Rectangles",
       difficulty: "MEDIUM" as const,
-      tags: ["Array", "Matrix", "Math", "Dynamic Programming", "Facebook", "Google", "Amazon"],
+      tags: ["Array", "Matrix", "Math", "Dynamic Programming", "Meta", "Google", "Amazon"],
       signature: { funcName: "countCornerRectangles", params: [{ name: "grid", type: "int[][]" as const }], returns: "int" as const },
       description: describe(
         "Given a binary grid, count the **corner rectangles**: four distinct cells holding `1` that form the corners of an axis-aligned rectangle. The rectangle must have positive width and height, but the cells in between may hold anything.",
@@ -2009,7 +2009,7 @@ export const MATRICES4_PROBLEMS: CatalogProblem[] = [
       slug: "number-of-submatrices-that-sum-to-target",
       title: "Number of Submatrices That Sum to Target",
       difficulty: "HARD" as const,
-      tags: ["Array", "Matrix", "Hash Table", "Prefix Sum", "Facebook", "Google", "Amazon"],
+      tags: ["Array", "Matrix", "Hash Table", "Prefix Sum", "Meta", "Google", "Amazon"],
       signature: { funcName: "numSubmatrixSumTarget", params: [{ name: "matrix", type: "int[][]" as const }, { name: "target", type: "int" as const }], returns: "int" as const },
       description: describe(
         "Count the non-empty submatrices whose elements sum to `target`. A submatrix is a rectangle `(x1, y1) … (x2, y2)` with `x1 <= x2` and `y1 <= y2`, and two submatrices are different whenever any of those four coordinates differ — even if the values are identical.",
@@ -2431,7 +2431,7 @@ export const MATRICES4_PROBLEMS: CatalogProblem[] = [
       slug: "shortest-distance-from-all-buildings",
       title: "Shortest Distance from All Buildings",
       difficulty: "HARD" as const,
-      tags: ["Array", "Matrix", "Breadth-First Search", "Google", "Facebook", "Amazon"],
+      tags: ["Array", "Matrix", "Breadth-First Search", "Google", "Meta", "Amazon"],
       signature: { funcName: "shortestDistance", params: [{ name: "grid", type: "int[][]" as const }], returns: "int" as const },
       description: describe(
         "A grid holds `0` for empty land, `1` for a building and `2` for an obstacle. You want to build a house on an **empty** cell so that the total travel distance to **all** buildings is as small as possible. Travel is 4-directional and passes only through empty land.\n\nReturn that smallest total distance, or `-1` if no empty cell can reach every building.",

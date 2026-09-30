@@ -610,8 +610,11 @@ export const BANK_GRAMMAR: AptitudeSeed[] = [
     title: "Two blanks",
     prompt:
       "Fill in the blanks:\n\n> Although the novel was ______, critics found its ending strangely ______.",
+    // "dull … tedious", not "dull … gripping": a dull novel with a gripping
+    // ending is a contrast too, so two options were defensible (found writing
+    // the extras, 2026-10-01).
     options: [
-      "dull … gripping",
+      "dull … tedious",
       "acclaimed … disappointing",
       "acclaimed … satisfying",
       "brief … short",
@@ -620,7 +623,7 @@ export const BANK_GRAMMAR: AptitudeSeed[] = [
     difficulty: "medium",
     hints: ["'Although' demands a contrast between the two halves.", "A praised novel with a poor ending creates that tension."],
     solution:
-      "1. *Although* requires the two halves to clash.\n2. **acclaimed … disappointing** delivers it: a well-received novel with a weak ending.\n3. 'Acclaimed … satisfying' agrees rather than contrasts, and 'brief … short' repeats itself.\n\nAnswer: **acclaimed … disappointing**.",
+      "1. *Although* requires the two halves to clash.\n2. **acclaimed … disappointing** delivers it: a well-received novel with a weak ending.\n3. 'Dull … tedious' and 'acclaimed … satisfying' agree with themselves rather than contrast, and 'brief … short' repeats itself.\n\nAnswer: **acclaimed … disappointing**.",
     approach: "With two blanks, test pairs rather than single words. One wrong half is enough to eliminate the option.",
     tags: ["double blank"],
     timeTargetSec: 60,

@@ -14,6 +14,7 @@ import { cached, cachedShared } from "../lib/cache.js";
 import { browserCache } from "../lib/http-cache.js";
 import { getJudgeProblem, getJudgeSuite, type JudgeProblem } from "../lib/test-suite-cache.js";
 import { codingPool, questionIndex } from "../services/aptitude-bank.js";
+import { TEST_GUIDES } from "../lib/test-guides.js";
 
 /**
  * Full-length placement tests.
@@ -347,6 +348,9 @@ router.get("/:slug", optionalAuth, cacheWhenAnonymous, async (req: any, res) => 
         ...testSummary(test),
         instructions: test.instructions,
         sourceNote: test.sourceNote,
+        // The pattern's preparation guide (lib/test-guides), shown under the
+        // instructions; null for a pattern that has none yet.
+        guide: TEST_GUIDES[String(req.params.slug)] ?? null,
         sections: test.sections.map((section) => {
           const rules = (section.blueprint ?? []) as unknown as DrawRule[];
           const coding = section.kind === "coding";

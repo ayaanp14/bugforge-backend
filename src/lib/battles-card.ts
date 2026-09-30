@@ -1,8 +1,5 @@
-import fs from "node:fs/promises";
 import { createHash } from "node:crypto";
-import { createRequire } from "node:module";
-import satori from "satori";
-import { Resvg, initWasm } from "@resvg/resvg-wasm";
+import { HAIRLINE, INK, MIST, SECONDARY, TEAL, TEAL_DEEP, el, renderCard, text, type Child, type Node } from "./og-card.js";
 
 /**
  * A tournament's link-preview picture (og:image), 1200×630 PNG — what
@@ -116,28 +113,8 @@ function titleSize(title: string): { size: number; lines: number } {
 
 /* ── The tree ──────────────────────────────────────────────────── */
 
-// palette.ts, light mode — the colours make-battles-og-image.mjs draws with.
-const INK = "#111111";
-const SECONDARY = "#5F5F5F";
-const HAIRLINE = "#E5E5E5";
-const MIST = "#F1F1F1";
-const TEAL = "#018790";
-const TEAL_DEEP = "#005461";
-
-type Style = Record<string, string | number>;
-interface Node {
-  type: string;
-  props: { style?: Style; children?: Child | Child[]; [k: string]: unknown };
-}
-type Child = Node | string;
-
-/** A box; satori lays out every element with more than one child as flex, so each is one. */
-function el(style: Style, ...children: Array<Child | null | false>): Node {
-  const kids = children.filter((c): c is Child => c !== null && c !== false);
-  return { type: "div", props: { style: { display: "flex", ...style }, children: kids.length === 1 ? kids[0] : kids } };
-}
-/** A run of text that may wrap or clamp: a block, since satori clamps only blocks. */
-const text = (style: Style, value: string): Node => ({ type: "div", props: { style: { display: "block", ...style }, children: value } });
+// The palette and the element helpers are lib/og-card's, shared with the
+// content pages' cards (the colours make-battles-og-image.mjs draws with).
 
 function svg(width: number, height: number, children: Node[]): Node {
   return { type: "svg", props: { width, height, viewBox: "0 0 24 24", fill: "none", children } };
@@ -208,47 +185,7 @@ function tree(c: TournamentCard, mark: string): Node {
 
 /* ── Rendering ─────────────────────────────────────────────────── */
 
-interface Assets {
-  fonts: { name: string; data: Buffer; weight: 400 | 500 | 600 | 700 }[];
-  mark: string;
-}
-
-const DIR = new URL("../../content/og/", import.meta.url);
-let loading: Promise<Assets> | null = null;
-
-/** The fonts, the mark and resvg's WASM, read once per process. */
-function assets(): Promise<Assets> {
-  loading ??= (async () => {
-    const read = (name: string) => fs.readFile(new URL(name, DIR));
-    const wasm = await fs.readFile(createRequire(import.meta.url).resolve("@resvg/resvg-wasm/index_bg.wasm"));
-    await initWasm(wasm);
-    const [g500, g600, g700, mark] = await Promise.all(["Gilroy-500.ttf", "Gilroy-600.ttf", "Gilroy-700.ttf", "mark-light-144.png"].map(read));
-    return {
-      fonts: [
-        { name: "Gilroy", data: g500, weight: 500 },
-        { name: "Gilroy", data: g600, weight: 600 },
-        { name: "Gilroy", data: g700, weight: 700 },
-      ],
-      mark: `data:image/png;base64,${mark.toString("base64")}`,
-    };
-  })();
-  // A failed read is retried on the next card rather than remembered.
-  loading.catch(() => {
-    loading = null;
-  });
-  return loading;
-}
-
-/** The card as PNG bytes. */
-export async function renderTournamentCard(card: TournamentCard): Promise<Buffer> {
-  const { fonts, mark } = await assets();
-  const svgText = await satori(tree(card, mark) as unknown as Parameters<typeof satori>[0], { width: CARD_WIDTH, height: CARD_HEIGHT, fonts });
-  const resvg = new Resvg(svgText, { fitTo: { mode: "original" }, font: { loadSystemFonts: false } });
-  const image = resvg.render();
-  try {
-    return Buffer.from(image.asPng());
-  } finally {
-    image.free();
-    resvg.free();
-  }
+/** The card as PNG bytes (the fonts, mark and WASM are lib/og-card's). */
+export function renderTournamentCard(card: TournamentCard): Promise<Buffer> {
+  return renderCard((mark) => tree(card, mark), CARD_WIDTH, CARD_HEIGHT);
 }

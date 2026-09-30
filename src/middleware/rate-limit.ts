@@ -266,6 +266,18 @@ export const resumeAiLimiter = rateLimit({
  * person shares a handful of wins in an hour. Each is a ~100 KB row, so the
  * ceiling is what keeps a script from filling the table. Keyed by account.
  */
+/**
+ * The content pages' link-preview cards (GET /api/seo/card.png). A render is
+ * ~70 ms of CPU and the route is unsigned, ahead of the general limiter; a
+ * platform fetches a preview once per share, so this only stops a script
+ * walking all 3,229 pages to keep the one box busy drawing.
+ */
+export const contentCardLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 60,
+  message: "Too many preview images. Please slow down.",
+});
+
 export const shareCardLimiter = rateLimit({
   windowMs: 60 * 60 * 1000,
   max: 30,
