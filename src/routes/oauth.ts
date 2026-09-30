@@ -1,4 +1,4 @@
-import { Router } from "express";
+import { Router, type Request, type Response } from "express";
 import crypto from "node:crypto";
 import { prisma } from "../lib/prisma.js";
 import { WELCOME, createNotificationOnce } from "../services/notifications.js";
@@ -10,10 +10,11 @@ import {
   readSessionToken,
   SESSION_COOKIE,
 } from "../lib/auth-session.js";
-import { asSite, siteUrl, type Site } from "../lib/sites.js";
+import { asSite, oauthCallbackUri as callbackUri, siteUrl, type Site } from "../lib/sites.js";
 import { issueHandoff } from "../lib/handoff-store.js";
 import { welcomeNewAccount } from "../lib/auth-mail.js";
 import { forgetSessions } from "../lib/session-revocation.js";
+import { isLinkState, linkResult, readLinkState } from "../lib/github.js";
 
 /**
  * Social sign-in, ported off NextAuth.
@@ -37,7 +38,6 @@ const GOOGLE_CLIENT_ID = process.env["GOOGLE_CLIENT_ID"];
 const GOOGLE_CLIENT_SECRET = process.env["GOOGLE_CLIENT_SECRET"];
 
 type Intent = "login" | "register";
-type Provider = "github" | "google";
 
 const STATE_COOKIE = "oauth_state";
 const INTENT_COOKIE = "auth_intent";
@@ -80,16 +80,6 @@ function handoffUrl(site: Site, token: string): string {
   return `${siteUrl(site)}/auth/callback?code=${encodeURIComponent(code)}`;
 }
 
-/** Callback URL registered with the provider's OAuth app. */
-function callbackUri(
-  req: { protocol: string; get: (h: string) => string | undefined },
-  provider: Provider,
-): string {
-  const base =
-    process.env["BACKEND_PUBLIC_URL"] ?? `${req.protocol}://${req.get("host") ?? "localhost:3001"}`;
-  return `${base.replace(/\/+$/, "")}/api/auth/${provider}/callback`;
-}
-
 /** Issue the CSRF state and remember the intent and the starting site for the callback leg. */
 function beginHandoff(
   res: { cookie: (name: string, value: string, options: object) => unknown },
@@ -122,8 +112,80 @@ router.get("/github", (req, res) => {
   res.redirect(authorize.toString());
 });
 
+/** The authorization code for an access token, or null (logged) when GitHub refuses it. */
+async function exchangeGitHubCode(code: string, redirectUri: string): Promise<string | null> {
+  const tokenRes = await fetch("https://github.com/login/oauth/access_token", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Accept: "application/json" },
+    body: JSON.stringify({
+      client_id: GITHUB_ID,
+      client_secret: GITHUB_SECRET,
+      code,
+      redirect_uri: redirectUri,
+    }),
+  });
+  const tokenData = (await tokenRes.json()) as {
+    access_token?: string;
+    token_type?: string;
+    scope?: string;
+    error?: string;
+  };
+  if (!tokenData.access_token) {
+    console.error("[auth] GitHub token exchange failed:", tokenData.error);
+    return null;
+  }
+  return tokenData.access_token;
+}
+
+const githubHeaders = (accessToken: string) => ({
+  Authorization: `Bearer ${accessToken}`,
+  Accept: "application/vnd.github+json",
+  "User-Agent": "CodeKairo",
+});
+
+/**
+ * The callback leg of connecting a GitHub account to a profile (started by
+ * POST /api/me/github/connect). It signs nobody in and links nothing: it
+ * learns which GitHub account approved, and hands /profile a signed ticket
+ * naming it, which the page posts back under its own session
+ * (POST /api/me/github/complete). lib/github.ts says why the link cannot
+ * be made here. The user's GitHub token is used for the one /user call and
+ * dropped.
+ */
+async function finishGitHubConnect(req: Request, res: Response, state: string): Promise<void> {
+  const back = (query: string) => res.redirect(`${siteUrl("main")}/profile?${query}`);
+  const started = readLinkState(state);
+  if (!started) return back("github_error=expired");
+  // "Cancel" on GitHub's consent screen.
+  if (typeof req.query["error"] === "string") return back("github_error=denied");
+  const code = typeof req.query["code"] === "string" ? req.query["code"] : null;
+  if (!code || !GITHUB_ID || !GITHUB_SECRET) return back("github_error=failed");
+
+  try {
+    const accessToken = await exchangeGitHubCode(code, callbackUri(req, "github"));
+    if (!accessToken) return back("github_error=failed");
+    const profileRes = await fetch("https://api.github.com/user", { headers: githubHeaders(accessToken) });
+    if (!profileRes.ok) return back("github_error=failed");
+    const profile = (await profileRes.json()) as { id?: unknown; login?: unknown };
+    if (typeof profile.id !== "number" || typeof profile.login !== "string") return back("github_error=failed");
+    back(`github=${encodeURIComponent(linkResult(started.userId, String(profile.id), profile.login))}`);
+  } catch (err) {
+    console.error("[auth] GitHub connect callback error:", err);
+    back("github_error=failed");
+  }
+}
+
 // GET /api/auth/github/callback - exchange the code and sign the user in
 router.get("/github/callback", async (req, res) => {
+  // The connect flow shares this callback (so the OAuth app needs no second
+  // URL) and is told apart by its state, which is signed and names the
+  // account connecting — none of the sign-in cookies below are involved.
+  const incomingState = typeof req.query["state"] === "string" ? req.query["state"] : "";
+  if (isLinkState(incomingState)) {
+    await finishGitHubConnect(req, res, incomingState);
+    return;
+  }
+
   const intent = asIntent(req.cookies?.[INTENT_COOKIE]);
   const site = asSite(req.cookies?.[SITE_COOKIE]);
   const expectedState = req.cookies?.[STATE_COOKIE];
@@ -142,35 +204,13 @@ router.get("/github/callback", async (req, res) => {
   }
 
   try {
-    const tokenRes = await fetch("https://github.com/login/oauth/access_token", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Accept: "application/json" },
-      body: JSON.stringify({
-        client_id: GITHUB_ID,
-        client_secret: GITHUB_SECRET,
-        code,
-        redirect_uri: callbackUri(req, "github"),
-      }),
-    });
-    const tokenData = (await tokenRes.json()) as {
-      access_token?: string;
-      token_type?: string;
-      scope?: string;
-      error?: string;
-    };
-
-    const accessToken = tokenData.access_token;
+    const accessToken = await exchangeGitHubCode(code, callbackUri(req, "github"));
     if (!accessToken) {
-      console.error("[auth] GitHub token exchange failed:", tokenData.error);
       res.redirect(failureUrl(site, intent, "oauth_failed"));
       return;
     }
 
-    const ghHeaders = {
-      Authorization: `Bearer ${accessToken}`,
-      Accept: "application/vnd.github+json",
-      "User-Agent": "CodeKairo",
-    };
+    const ghHeaders = githubHeaders(accessToken);
 
     const profileRes = await fetch("https://api.github.com/user", { headers: ghHeaders });
     if (!profileRes.ok) {

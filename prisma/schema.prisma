@@ -25,6 +25,23 @@ model Account {
   @@unique([provider, providerAccountId])
 }
 
+/// A GitHub account its owner proved is theirs (the connect flow: POST
+/// /api/me/github/connect → GitHub → routes/oauth.ts → /profile → POST
+/// /api/me/github/complete), shown as the GitHub card on /profile. Only the
+/// identity is kept — never a token; the activity is read with the server's
+/// own token and cached (services/github-connection.ts). `githubId` is
+/// GitHub's numeric user id, which survives a rename; `login` is the name last
+/// seen and is corrected whenever a read finds it changed. Separate from
+/// `Account` on purpose: that row is a way to sign in, this one is a profile
+/// section, and either can exist without the other.
+model GitHubConnection {
+  userId   String   @id
+  githubId String   @unique @db.VarChar(32)
+  login    String   @db.VarChar(64)
+  linkedAt DateTime @default(now())
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
 model Session {
   id           String   @id @default(cuid())
   sessionToken String   @unique @db.VarChar(500)
@@ -81,6 +98,7 @@ model User {
   remindDailyKata       Boolean                   @default(true)
   weeklyDigest          Boolean                   @default(true)
   accounts              Account[]
+  githubConnection      GitHubConnection?
   bugSubmissions        BugSubmission[]
   codeDrafts            CodeDraft[]
   roomsCreated          PairRoom[]

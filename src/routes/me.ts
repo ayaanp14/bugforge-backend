@@ -9,6 +9,9 @@ import { hashPassword, passwordProblem, verifyPassword } from "../lib/passwords.
 import { forgetSessions } from "../lib/session-revocation.js";
 import { establishSession } from "../lib/auth-session.js";
 import { USERNAME_RULE, readUsername } from "../lib/identity.js";
+import { oauthCallbackUri } from "../lib/sites.js";
+import { githubConnectUrl, readLinkResult } from "../lib/github.js";
+import { GitHubLinkError, getGitHubCard, linkGitHub, unlinkGitHub } from "../services/github-connection.js";
 
 const router = Router();
 
@@ -406,6 +409,56 @@ router.post("/notifications/read", requireAuth, async (req, res) => {
     console.error("POST /api/me/notifications/read error:", err);
     res.status(500).json({ error: "Internal server error" });
   }
+});
+
+// ── GitHub on the profile (services/github-connection.ts) ────────────
+// Under /api/me rather than /api/auth for the reason /password is: these act
+// on the signed-in account, so they sit behind the platform guard and the
+// Bearer session, never a cookie a cross-site page could ride.
+
+// GET /api/me/github — the profile's GitHub card: the connection and its activity
+router.get("/github", requireAuth, async (req, res) => {
+  res.json(await getGitHubCard(req.user!.userId));
+});
+
+// POST /api/me/github/connect — { url }: where to send the browser to prove a GitHub account
+router.post("/github/connect", requireAuth, (req, res) => {
+  const url = githubConnectUrl(oauthCallbackUri(req, "github"), req.user!.userId);
+  if (!url) {
+    res.status(503).json({ error: "Connecting GitHub is not available right now." });
+    return;
+  }
+  res.json({ url });
+});
+
+// POST /api/me/github/complete — { code }: the ticket the callback put on /profile?github=
+router.post("/github/complete", requireAuth, async (req, res) => {
+  const code = (req.body as { code?: unknown } | undefined)?.code;
+  const result = typeof code === "string" ? readLinkResult(code) : null;
+  if (!result) {
+    res.status(400).json({ error: "That GitHub link has expired. Connect again from your profile." });
+    return;
+  }
+  // The ticket names the account that started the connect; only that
+  // account's own session may apply it (lib/github.ts says why).
+  if (result.userId !== req.user!.userId) {
+    res.status(403).json({ error: "This GitHub link was started from a different CodeKairo account. Connect again from your profile." });
+    return;
+  }
+  try {
+    res.json(await linkGitHub(result.userId, result.githubId, result.login));
+  } catch (err) {
+    if (err instanceof GitHubLinkError) {
+      res.status(409).json({ error: err.message });
+      return;
+    }
+    throw err;
+  }
+});
+
+// DELETE /api/me/github — disconnect; answers with the card as it now stands
+router.delete("/github", requireAuth, async (req, res) => {
+  res.json(await unlinkGitHub(req.user!.userId));
 });
 
 // GET /api/me/dashboard — everything the dashboard home needs, in one round-trip

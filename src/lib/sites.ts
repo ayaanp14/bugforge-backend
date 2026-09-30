@@ -24,3 +24,18 @@ export type Site = "main" | "battles";
 export const asSite = (value: unknown): Site => (value === "battles" && BATTLES_URL ? "battles" : "main");
 
 export const siteUrl = (site: Site): string => (site === "battles" ? BATTLES_URL : FRONTEND_URL);
+
+/**
+ * The callback URL registered with a provider's OAuth app. Here rather than
+ * in routes/oauth.ts because the GitHub connect flow starts in routes/me.ts
+ * and ends in the sign-in callback, and the provider refuses the code
+ * exchange unless both legs send the identical `redirect_uri`.
+ */
+export function oauthCallbackUri(
+  req: { protocol: string; get: (h: string) => string | undefined },
+  provider: "github" | "google",
+): string {
+  const base =
+    process.env["BACKEND_PUBLIC_URL"] ?? `${req.protocol}://${req.get("host") ?? "localhost:3001"}`;
+  return `${base.replace(/\/+$/, "")}/api/auth/${provider}/callback`;
+}

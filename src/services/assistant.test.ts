@@ -106,6 +106,8 @@ const QUESTIONS: Array<[string, RegExp, string?]> = [
   ["why does optional chaining fail in my javascript submission", /Node 12/],
   ["how do I share my win on linkedin", /LinkedIn does not let a site fill/],
   ["how many badges are there", /19 achievement badges/],
+  ["can I show my github contributions on my profile", /Connect GitHub/],
+  ["does codekairo store my github token", /keeps no GitHub token/],
   ["will my subscription auto renew", /No auto-renewal/],
   ["what happens if I upgrade in the middle of a plan", /\*\*Upgrading\*\*/],
   ["can I post a poll in the community", /\*\*poll\*\* \(2–4 options/],
