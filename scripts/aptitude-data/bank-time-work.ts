@@ -414,7 +414,7 @@ export const BANK_TIME_WORK: AptitudeSeed[] = [
   {
     slug: "tw2-men-days-to-more-men",
     topic: "time-and-work",
-    title: "Fewer days, more men",
+    title: "More men to finish in 6 days instead of 8",
     prompt: "**12 men** can complete a work in **8 days**. How many **men** are needed to finish it in **6 days**?",
     options: ["14", "15", "16", "18"],
     answer: 2,

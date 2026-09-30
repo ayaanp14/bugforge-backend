@@ -59,7 +59,7 @@ export const BANK_MIXTURES_MENSURATION: AptitudeSeed[] = [
   {
     slug: "ma2-replace-milk-twice",
     topic: "mixtures-alligation",
-    title: "Replacing milk with water twice",
+    title: "Two 4-litre replacements in 40 litres of milk",
     prompt:
       "A vessel holds **40 litres of milk**. **4 litres** is removed and replaced with water, and this is done **twice** in all. How much **milk** remains?",
     options: ["30.8 L", "32.4 L", "32.8 L", "36 L"],

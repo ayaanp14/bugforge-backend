@@ -156,7 +156,7 @@ export const BANK_MATH_REASONING: AptitudeSeed[] = [
   {
     slug: "mr2-data-sufficiency-age",
     topic: "mathematical-reasoning",
-    title: "Data sufficiency: how old is Ravi",
+    title: "Data sufficiency: Ravi's age from his older brother's",
     prompt:
       "**Question:** What is Ravi's age?\n\n**Statement I:** Ravi is 8 years younger than his brother.\n**Statement II:** Ravi's brother will be 30 in five years.\n\nWhich statements are needed?",
     options: [

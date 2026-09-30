@@ -7,6 +7,7 @@ import { cachedShared, invalidate } from "../lib/cache.js";
 import { browserCache } from "../lib/http-cache.js";
 import { catalogueNeighbours, getCatalogue, listProblemsWithStatus, loadProblemState, problemIdBySlug, publishedProblemExists, type ProblemState } from "../services/dashboard.js";
 import { isCompanyTag } from "../lib/companies.js";
+import { problemCanonicalSlug } from "../lib/problem-canonical.js";
 import { isJudgeLanguage } from "../lib/judge0.js";
 import { hubIndex, hubPage, hubsForTags, relatedProblems } from "../services/problem-hubs.js";
 
@@ -480,6 +481,9 @@ router.get("/:slug", optionalAuth, browserCache(120, { shared: true }), async (r
         topics: tags.filter((t) => !isCompanyTag(t)),
         related,
         hubs,
+        // The address the page's canonical names: its own, or the first copy
+        // of a problem the catalogue carries twice (lib/problem-canonical).
+        canonicalSlug: problemCanonicalSlug(problem.slug),
       };
     });
 

@@ -4,6 +4,7 @@ import { APTITUDE_CANONICAL, APTITUDE_CATEGORIES, APTITUDE_TOPICS, aptitudeCanon
 import { escapeHtml, markdownOutline, markdownToHtml } from "../lib/markdown-html.js";
 import { BUG_HUBS, bugHub } from "../lib/bug-hubs.js";
 import { isCompanyTag } from "../lib/companies.js";
+import { PROBLEM_CANONICAL, problemCanonicalSlug } from "../lib/problem-canonical.js";
 import { trackDefinition, trackList, type LessonSeo } from "./study-plans.js";
 import { roadDefinition } from "./roadmap.js";
 import { hubIndex, hubPage, hubsForTags, relatedProblems, type HubSummary } from "./problem-hubs.js";
@@ -379,6 +380,7 @@ function problemHead(slug: string): Promise<PageHead | null> {
       (solutionHtml ? section("Reference solution", solutionHtml, "solution") : "") +
       (related.length ? section(primary ? `More ${primary.label.toLowerCase()} problems` : "Related problems", linkList(related.map(problemRow)), "related") : "") +
       (primary ? `<p>${link(hubPath(primary), `All ${primary.count} ${primary.label.toLowerCase()} problems`)} · ${link("/challenges", "the whole catalogue")}</p>` : "");
+    const canonical = problemCanonicalSlug(slug);
     return {
       path: `/problems/${slug}`,
       title: titles.problem(p.title, difficulty),
@@ -386,6 +388,7 @@ function problemHead(slug: string): Promise<PageHead | null> {
       facts: { difficulty, keywords: topics, trail },
       content,
       crumb: p.title,
+      ...(canonical !== slug ? { canonical: `/problems/${canonical}` } : {}),
     };
   });
 }
@@ -410,7 +413,7 @@ async function hubHead(kind: "topic" | "company", slug: string): Promise<PageHea
       ["Cost", "Free on every plan; sign in to run and submit"],
     ]) +
     `<p>${h(page.blurb)}</p>` +
-    section(`Every ${noun}`, levels.join(""), "problems") +
+    section(`All ${noun}`, levels.join(""), "problems") +
     (page.related.length ? section(kind === "topic" ? "Other topics" : "Other companies", linkList(page.related.map((r) => ({ href: hubPath(r), label: r.label, note: `${r.count} problems` }))), "related") : "");
   return {
     path,
@@ -486,7 +489,10 @@ function bugHuntHead(idOrSlug: string): Promise<PageHead | PageRedirect | null> 
     return {
       path,
       title: titles.bugHunt(b.title, language),
-      description: summarise(b.bugReport || b.description, `${b.title}: a debugging challenge on real ${language} code — read the bug report, find the bug, fix it and pass the hidden tests.`),
+      // The briefing, not the bug report: every report opens with its ticket
+      // header ("BUG-2107 · Priority: Critical · Reported by: …"), and cut
+      // at 160 characters that header was the whole search snippet (2026-09-30).
+      description: summarise(b.description || b.bugReport, `${b.title}: a debugging challenge on real ${language} code — read the bug report, find the bug, fix it and pass the hidden tests.`),
       facts: { difficulty, language, keywords, trail },
       content,
       crumb: b.title,
@@ -929,8 +935,10 @@ export function sitemapXml(name: string): Promise<string | null> {
       case "problems": {
         // No updatedAt on the problem table; a creation date would only say
         // when the row appeared, so no lastmod is claimed at all.
+        // A second copy of a problem (PROBLEM_CANONICAL) is left out, as a
+        // restated aptitude question is below: a sitemap lists canonicals.
         const rows = await prisma.problem.findMany({ where: { isPublished: true }, select: { slug: true }, orderBy: { createdAt: "asc" } });
-        return urlset(rows.map((r) => ({ path: `/problems/${r.slug}` })));
+        return urlset(rows.filter((r) => !(r.slug in PROBLEM_CANONICAL)).map((r) => ({ path: `/problems/${r.slug}` })));
       }
       case "bug-hunts": {
         const rows = await prisma.bugChallenge.findMany({ where: { isPublished: true }, select: { id: true, slug: true }, orderBy: { createdAt: "asc" } });
