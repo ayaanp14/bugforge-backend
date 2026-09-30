@@ -96,8 +96,8 @@ export async function activePlan(userId: string, email?: string | null): Promise
  * closed round, a written round with at least one answer on disk, or a
  * spoken round whose audio actually began.
  */
-/** A round that was actually sat — see `interviewsThisWeek`. */
-const SAT_ROUND: Prisma.MockInterviewSessionWhereInput = {
+/** A round that was actually sat — see `interviewsThisWeek`. Also the admin panel's "sat" column (services/admin-interviews.ts). */
+export const SAT_ROUND: Prisma.MockInterviewSessionWhereInput = {
   OR: [
     { status: "completed" },
     { questions: { some: { userAnswer: { not: null } } } },

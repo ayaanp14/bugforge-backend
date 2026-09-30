@@ -7,13 +7,16 @@ import { listJobs, recentRuns, runJobNow } from "../lib/scheduler.js";
 import { activePlan } from "../services/entitlements.js";
 import { solvedBy } from "../services/admin-solved.js";
 import { bugSubmissionDetail, problemSubmissionDetail } from "../services/admin-submissions.js";
+import { interviewDetail, interviewList, interviewSummary, interviewsOf } from "../services/admin-interviews.js";
+import { userDepth } from "../services/admin-user-depth.js";
 import { invalidateProblem } from "./problems.js";
 import { emailEnabled } from "../lib/email.js";
 
 /**
  * The admin panel's API: what the creator needs to run the product from a
  * page rather than a terminal — who signed up, what broke, what got used,
- * who paid, which problems are live, and the reminder jobs.
+ * who paid, who sat which mock interview, which problems are live, and the
+ * reminder jobs.
  *
  * Read-mostly by design. The two writes (publish toggle, run a job) are the
  * two things that were being done with scripts against production; anything
@@ -89,6 +92,7 @@ router.get("/overview", async (_req, res) => {
     errors24h,
     errorGroups24h,
     interviews24h,
+    voiceInterviews24h,
     duels24h,
     contestEntriesToday,
     runs,
@@ -112,6 +116,7 @@ router.get("/overview", async (_req, res) => {
     prisma.errorReport.count({ where: { createdAt: { gte: dayAgo } } }),
     prisma.$queryRaw<Array<{ n: bigint }>>`SELECT COUNT(DISTINCT fingerprint) AS n FROM ErrorReport WHERE createdAt >= ${dayAgo}`,
     prisma.mockInterviewSession.count({ where: { createdAt: { gte: dayAgo } } }),
+    prisma.mockInterviewSession.count({ where: { createdAt: { gte: dayAgo }, mode: "voice" } }),
     prisma.duel.count({ where: { createdAt: { gte: dayAgo } } }),
     prisma.dailyContestEntry.count({ where: { startedAt: { gte: dayAgo } } }),
     recentRuns(12),
@@ -125,6 +130,7 @@ router.get("/overview", async (_req, res) => {
       submissions24h,
       accepted24h,
       interviews24h,
+      voiceInterviews24h,
       duels24h,
       contestEntriesToday,
     },
@@ -261,18 +267,44 @@ const USER_ROW = {
     take: 1,
     select: { planId: true, currentPeriodEnd: true },
   },
+  _count: { select: { submissions: true, mockSessions: true } },
 } as const;
 
-// GET /api/admin/users?q=<email|username|name> — lookup, or the newest accounts
+/**
+ * The orders the user list offers. "active" reads UserStats.lastActive, which
+ * a solve moves; an account that only browses keeps its signup-day value, so
+ * the Activity block in the detail (AppEvent) is the truer "last seen".
+ */
+const USER_SORTS = {
+  newest: { createdAt: "desc" },
+  active: { stats: { lastActive: "desc" } },
+  xp: { xp: "desc" },
+  interviews: { mockSessions: { _count: "desc" } },
+  submissions: { submissions: { _count: "desc" } },
+} satisfies Record<string, Prisma.UserOrderByWithRelationInput>;
+
+type UserSort = keyof typeof USER_SORTS;
+const isUserSort = (v: unknown): v is UserSort => typeof v === "string" && v in USER_SORTS;
+
+// GET /api/admin/users?q=<email|username|name>&sort=newest|active|xp|interviews|submissions&page=1
 router.get("/users", async (req, res) => {
   const q = termArg(req.query["q"]);
-  const users = await prisma.user.findMany({
-    where: q ? { OR: [{ email: { contains: q } }, { username: { contains: q } }, { name: { contains: q } }] } : {},
-    orderBy: { createdAt: "desc" },
-    take: 25,
-    select: USER_ROW,
-  });
-  res.json({ q, users });
+  const sort: UserSort = isUserSort(req.query["sort"]) ? req.query["sort"] : "newest";
+  const page = intArg(req.query["page"], 1, 1, 1000);
+  const take = 25;
+  const where: Prisma.UserWhereInput = q ? { OR: [{ email: { contains: q } }, { username: { contains: q } }, { name: { contains: q } }] } : {};
+  const [total, users] = await Promise.all([
+    prisma.user.count({ where }),
+    prisma.user.findMany({
+      where,
+      // createdAt breaks ties so a page boundary never repeats or drops a row.
+      orderBy: [USER_SORTS[sort], { createdAt: "desc" }],
+      skip: (page - 1) * take,
+      take,
+      select: USER_ROW,
+    }),
+  ]);
+  res.json({ q, sort, page, pageSize: take, total, users });
 });
 
 // GET /api/admin/users/:id — one account in full
@@ -286,6 +318,14 @@ router.get("/users/:id", async (req, res) => {
       bugsXp: true,
       rating: true,
       location: true,
+      emailVerified: true,
+      gender: true,
+      website: true,
+      github: true,
+      linkedin: true,
+      twitter: true,
+      updatedAt: true,
+      sessionsValidFrom: true,
       remindStreak: true,
       remindDailyKata: true,
       weeklyDigest: true,
@@ -309,7 +349,7 @@ router.get("/users/:id", async (req, res) => {
     res.status(404).json({ error: "No such user" });
     return;
   }
-  const [plan, recentErrors, solved] = await Promise.all([
+  const [plan, recentErrors, solved, interviews, depth] = await Promise.all([
     activePlan(user.id, user.email),
     prisma.errorReport.findMany({
       where: { userId: id },
@@ -318,8 +358,10 @@ router.get("/users/:id", async (req, res) => {
       select: { id: true, source: true, kind: true, message: true, path: true, createdAt: true, fingerprint: true },
     }),
     solvedBy(user.id),
+    interviewsOf(user.id),
+    userDepth(user.id),
   ]);
-  res.json({ user, plan: { id: plan.plan.id, name: plan.plan.name, currentPeriodEnd: plan.currentPeriodEnd }, recentErrors, solved });
+  res.json({ user, plan: { id: plan.plan.id, name: plan.plan.name, currentPeriodEnd: plan.currentPeriodEnd }, recentErrors, solved, interviews, depth });
 });
 
 // GET /api/admin/submissions/:id — one problem submission with its code
@@ -340,6 +382,34 @@ router.get("/bug-submissions/:id", async (req, res) => {
     return;
   }
   res.json(submission);
+});
+
+/* ── interviews ────────────────────────────────────────────────────── */
+
+const INTERVIEW_MODES = ["written", "voice"] as const;
+const INTERVIEW_STATUSES = ["started", "completed", "abandoned"] as const;
+
+// GET /api/admin/interviews/summary?days=30 — who sat rounds, on what, how it went
+router.get("/interviews/summary", async (req, res) => {
+  res.json(await interviewSummary(intArg(req.query["days"], 30, 1, 365)));
+});
+
+// GET /api/admin/interviews?days=30&mode=written|voice&status=&q=&page=1 — every round, newest first
+router.get("/interviews", async (req, res) => {
+  const mode = INTERVIEW_MODES.find((m) => m === req.query["mode"]) ?? null;
+  const status = INTERVIEW_STATUSES.find((s) => s === req.query["status"]) ?? null;
+  const days = intArg(req.query["days"], 30, 1, 365);
+  res.json({ days, mode, status, ...(await interviewList({ days, mode, status, q: termArg(req.query["q"]), page: intArg(req.query["page"], 1, 1, 1000) })) });
+});
+
+// GET /api/admin/interviews/:id — one round: setup, answers and marks, transcript, incidents
+router.get("/interviews/:id", async (req, res) => {
+  const session = await interviewDetail(String(req.params["id"]));
+  if (!session) {
+    res.status(404).json({ error: "No such interview" });
+    return;
+  }
+  res.json(session);
 });
 
 /* ── problems ──────────────────────────────────────────────────────── */
