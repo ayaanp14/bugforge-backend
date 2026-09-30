@@ -2,6 +2,8 @@ import { Router, type RequestHandler } from "express";
 import { prisma } from "../lib/prisma.js";
 import { isDuplicateKey } from "../lib/seat-claim.js";
 import { optionalAuth, requireAuth } from "../middleware/auth.js";
+import { executionLimiter } from "../middleware/rate-limit.js";
+import { containsReservedMarker } from "../lib/batch.js";
 import { aptitudeTopic, aptitudeCategory } from "../lib/aptitude-topics.js";
 import { attemptClock, codingMarks, drawPaper, markFor, type DrawRule, type PaperSection, type SectionPlan } from "../lib/mock-tests.js";
 import { isJudgeLanguage } from "../lib/judge0.js";
@@ -738,6 +740,22 @@ async function judgeArena(problemId: string) {
   return problem ? { problem, cases } : null;
 }
 
+/**
+ * What one Run or Submit may hand the engine, the same bounds /api/run and
+ * /api/submit apply. These two routes had neither those nor the execution
+ * limiter: a sitting's Submit runs the whole ~5,000-case suite, and one
+ * account could send hundreds a minute into the single paced queue every
+ * judge on the site shares (lib/paiza.ts), 512 KB of source apiece.
+ */
+const MAX_CODE_CHARS = 65_536;
+
+/** The refusal for code the judge will not take, or null for code it will. */
+function codeProblem(code: unknown): string | null {
+  if (typeof code !== "string" || code.length > MAX_CODE_CHARS) return "Code must be a string of at most 64 KB";
+  if (containsReservedMarker(code)) return "Code must not contain the reserved marker __CODEXA_";
+  return null;
+}
+
 /** Compiles and runs one submission against the given cases, in one batch. */
 async function judge(problem: JudgeProblem, code: string, language: string, cases: Array<{ input: string; expectedOutput: string }>) {
   const driver = problem.signature ? buildDriver(language as DriverLanguage, problem.signature as Signature, code) : null;
@@ -798,9 +816,11 @@ router.put("/attempts/:id/code", requireAuth, async (req: any, res) => {
  * Body: { problemId, language, code }. Runs the visible cases only, exactly
  * as an assessment platform's Run button does. Nothing is graded here.
  */
-router.post("/attempts/:id/run", requireAuth, async (req: any, res) => {
+router.post("/attempts/:id/run", requireAuth, executionLimiter, async (req: any, res) => {
   try {
     const body = (req.body ?? {}) as Record<string, unknown>;
+    const refused = codeProblem(body["code"] ?? "");
+    if (refused) return res.status(400).json({ error: refused });
     const problemId = String(body["problemId"] ?? "");
     const [context, arena] = await Promise.all([codingContext(req.params.id, req.user.userId, problemId), judgeArena(problemId)]);
     if (!context.ok) return res.status(context.status).json({ error: context.message });
@@ -840,9 +860,11 @@ router.post("/attempts/:id/run", requireAuth, async (req: any, res) => {
  * The candidate is told how many cases passed, which is what these platforms
  * report, but never which hidden case failed or what it contained.
  */
-router.post("/attempts/:id/submit-code", requireAuth, async (req: any, res) => {
+router.post("/attempts/:id/submit-code", requireAuth, executionLimiter, async (req: any, res) => {
   try {
     const body = (req.body ?? {}) as Record<string, unknown>;
+    const refused = codeProblem(body["code"] ?? "");
+    if (refused) return res.status(400).json({ error: refused });
     const problemId = String(body["problemId"] ?? "");
     const [context, arena] = await Promise.all([codingContext(req.params.id, req.user.userId, problemId), judgeArena(problemId)]);
     if (!context.ok) return res.status(context.status).json({ error: context.message });

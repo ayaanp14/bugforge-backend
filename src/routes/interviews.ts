@@ -4,7 +4,7 @@ import { requireAuth } from "../middleware/auth.js";
 import { prettyLabel } from "../lib/interview-labels.js";
 import { estimatedQuestions, voiceDurationMinutes } from "../lib/interview-duration.js";
 import { conversationLanguage, interviewerFor } from "../lib/interviewers.js";
-import { checkInterviewQuota, checkVoiceDuration } from "../services/entitlements.js";
+import { SAT_ROUND_REFUSAL, checkInterviewQuota, checkVoiceDuration, satRoundFits } from "../services/entitlements.js";
 import { normalizeStarterCode } from "../lib/starter-code.js";
 import {
   askNextQuestion,
@@ -762,6 +762,23 @@ router.post("/session/:sessionId/answer", requireAuth, async (req: any, res) => 
     const isLast = asked >= budget;
     const nextIndex = current.orderIndex + 1;
 
+    // A typed round is sat — and charged — from its first answer (entitlements
+    // SAT_ROUND), so the allowance is asked again here, not only at /start:
+    // rounds opened ahead and answered later all slipped through on one slot.
+    // Asked before the write, then counted again with the answer in
+    // (satRoundFits), which is what stops two rounds racing for the last slot.
+    // Every later turn skips all of it; the rows in hand say which this is.
+    const firstAnswer = !alreadyAnswered && !session.questions.some((q) => q.userAnswer !== null);
+    let onCredit = session.onCredit;
+    if (firstAnswer) {
+      const quota = await checkInterviewQuota(req.user.userId, req.user.email);
+      if (quota.denial) return res.status(402).json(quota.denial);
+      if (quota.onCredit !== session.onCredit) {
+        await prisma.mockInterviewSession.update({ where: { id: session.id }, data: { onCredit: quota.onCredit }, select: { id: true } });
+      }
+      onCredit = quota.onCredit;
+    }
+
     // The answer is recorded first and on its own. Nothing here is scored —
     // marking happens once, at /complete — so this write is the entire cost of
     // a turn when the next question was prefetched in time. A retry keeps the
@@ -774,6 +791,14 @@ router.post("/session/:sessionId/answer", requireAuth, async (req: any, res) => 
         // along with the question text and feedback, on every turn.
         select: { id: true },
       });
+    }
+    if (firstAnswer && !(await satRoundFits(req.user.userId, req.user.email, onCredit))) {
+      await prisma.mockInterviewQuestion.update({
+        where: { id: current.id },
+        data: { userAnswer: null, status: "pending" },
+        select: { id: true },
+      });
+      return res.status(402).json(SAT_ROUND_REFUSAL);
     }
     const recorded = alreadyAnswered ? (current.userAnswer ?? answer) : answer;
 

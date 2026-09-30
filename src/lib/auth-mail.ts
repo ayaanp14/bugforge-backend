@@ -35,12 +35,63 @@ const LEGACY_OTP_FLOW_URL = "https://flow.sokt.io/func/scriPfBslH2w";
 const SEND_TIMEOUT_MS = 10_000;
 
 /**
+ * Verification codes one address may be sent in an hour.
+ *
+ * The request limiters are per caller, and the address being mailed is not
+ * the caller's to choose freely: register victim@x with a password of your
+ * own and every sign-in with it mails the victim a fresh code (the account
+ * is unverified, so /login answers with one), ten per quarter hour per
+ * address you send from. This caps what reaches one inbox that way —
+ * wherever the requests come from. A person waiting on a code asks for two
+ * or three.
+ *
+ * Verification only, never a reset. A cap on resets would let anyone who
+ * knows an address spend its budget with six requests and keep its owner
+ * out of recovery for as long as they cared to repeat it; resets stay under
+ * the per-caller limiter alone. The owner of an address someone else
+ * registered recovers it through a reset anyway, which also verifies it.
+ *
+ * In-process, like the limiters, and bounded the same way.
+ */
+const CODES_PER_ADDRESS_PER_HOUR = 6;
+const ADDRESS_WINDOW_MS = 60 * 60 * 1000;
+const MAX_TRACKED_ADDRESSES = 20_000;
+const sentTo = new Map<string, { count: number; resetAt: number }>();
+
+function withinAddressBudget(email: string, now = Date.now()): boolean {
+  if (sentTo.size >= MAX_TRACKED_ADDRESSES) {
+    for (const [key, bucket] of sentTo) if (bucket.resetAt <= now) sentTo.delete(key);
+    if (sentTo.size >= MAX_TRACKED_ADDRESSES) sentTo.clear();
+  }
+  const key = email.trim().toLowerCase();
+  let bucket = sentTo.get(key);
+  if (!bucket || bucket.resetAt <= now) {
+    bucket = { count: 0, resetAt: now + ADDRESS_WINDOW_MS };
+    sentTo.set(key, bucket);
+  }
+  bucket.count += 1;
+  return bucket.count <= CODES_PER_ADDRESS_PER_HOUR;
+}
+
+/** Test seam. */
+export function resetAddressBudgets(): void {
+  sentTo.clear();
+}
+
+/**
  * Sends a code to an address. Resolves true when something accepted it.
  * Never throws: the caller answers the client the same way either way, so an
  * address cannot be tested through a delivery failure.
  */
 export async function sendAuthCode(email: string, otp: string, purpose: ChallengePurpose, env: NodeJS.ProcessEnv = process.env): Promise<boolean> {
   const isProd = env["NODE_ENV"] === "production";
+
+  // Past the budget nothing is sent, and the caller cannot tell: it answers
+  // the same way whether or not a mail went out. The address is not logged.
+  if (purpose === "verify_email" && !withinAddressBudget(email)) {
+    console.warn(`[auth] ${purpose} code not sent: that address has had ${CODES_PER_ADDRESS_PER_HOUR} codes this hour`);
+    return false;
+  }
 
   if (brevoConfigured(env)) {
     const sent = await sendTransactional(

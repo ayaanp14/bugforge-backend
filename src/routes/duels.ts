@@ -561,7 +561,12 @@ router.get("/:id", requireAuth, async (req, res) => {
     } else {
       lastReconcile.delete(id);
     }
-    res.json(duel);
+    // The invite code is the key to a private room's empty seat, and this
+    // read answered anyone signed in with the id — the row went out whole.
+    // Only a seated player shares it; everyone else sees the same duel
+    // without it. The participants are already on the row, so this is free.
+    const seated = duel.participants.some((p) => p.userId === req.user!.userId);
+    res.json(seated ? duel : { ...duel, roomCode: null });
   } catch (err) {
     console.error("GET /api/duels/:id error:", err);
     res.status(500).json({ error: "Internal server error" });

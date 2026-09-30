@@ -44,7 +44,7 @@ import { platformGuard } from "./middleware/platformGuard.js";
 import { displayNameOf } from "./lib/display-name.js";
 import { readUsername } from "./lib/identity.js";
 import { securityHeaders } from "./middleware/security-headers.js";
-import { authLimiter, generalLimiter, loginAccountLimiter, otpRequestLimiter } from "./middleware/rate-limit.js";
+import { authLimiter, generalLimiter, loginAccountLimiter, otpRequestLimiter, registerLimiter } from "./middleware/rate-limit.js";
 import { prisma } from "./lib/prisma.js";
 import { ROBOTS_TXT } from "./lib/robots.js";
 import { setIo, duelRoom, USER_NAMESPACE, userRoom } from "./lib/realtime.js";
@@ -112,13 +112,46 @@ interface SocketData {
   userId?: string;
 }
 
+/**
+ * Which pages may open a socket at all.
+ *
+ * `cors` below governs the long-polling transport only: a browser applies
+ * no CORS to a WebSocket upgrade, and engine.io checks nothing about the
+ * origin unless told to. The handshake also accepts the `__session` cookie
+ * (identifySocket), which the OAuth callbacks set on this host as
+ * SameSite=None — so any page a signed-in person visited could open
+ * `wss://api.codekairo.com` with their cookie attached and be seated as
+ * them: joined to `user_<id>` with its kick notices, the host's recovery
+ * codes and the call's WebRTC signalling (the partner's addresses). The REST
+ * routes never had this hole; the guard's custom headers force a preflight.
+ *
+ * A browser always sends Origin on a WebSocket handshake, so a foreign one
+ * is refused here, once per connection. No Origin means no browser — a
+ * script — and nothing that can carry a victim's cookie. This host's own
+ * origin is allowed too: React Native's Android WebSocket stamps the target
+ * URL's origin when the app sets none (mobile/src/screens/pair), and this
+ * host serves no page an attacker could run script from.
+ */
+const SELF_ORIGIN = (() => {
+  try {
+    return new URL(process.env["BACKEND_PUBLIC_URL"] ?? `http://localhost:${PORT}`).origin;
+  } catch {
+    return null;
+  }
+})();
+const SOCKET_ORIGINS = new Set([...ALLOWED_ORIGINS, ...(SELF_ORIGIN ? [SELF_ORIGIN] : [])]);
+
 const io = new Server<DefaultEventsMap, DefaultEventsMap, DefaultEventsMap, SocketData>(httpServer, {
   cors: {
     origin: ALLOWED_ORIGINS,
     methods: ["GET", "POST"],
     allowedHeaders: ALLOWED_HEADERS,
     credentials: true
-  }
+  },
+  allowRequest: (req, callback) => {
+    const origin = req.headers.origin;
+    callback(null, !origin || SOCKET_ORIGINS.has(origin));
+  },
 });
 
 // Routes push duel updates through this handle rather than importing the server
@@ -881,6 +914,7 @@ app.use(
   authLimiter,
 );
 app.use("/api/auth/login", loginAccountLimiter);
+app.use("/api/auth/register", registerLimiter);
 app.use(["/api/auth/forgot-password", "/api/auth/resend-verification"], otpRequestLimiter);
 
 // Routes

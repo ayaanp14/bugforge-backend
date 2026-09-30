@@ -13,6 +13,7 @@ import {
 import { asSite, siteUrl, type Site } from "../lib/sites.js";
 import { issueHandoff } from "../lib/handoff-store.js";
 import { welcomeNewAccount } from "../lib/auth-mail.js";
+import { forgetSessions } from "../lib/session-revocation.js";
 
 /**
  * Social sign-in, ported off NextAuth.
@@ -346,8 +347,9 @@ router.get("/google/callback", async (req, res) => {
     // A Google identity is only trusted for an address Google has verified.
     // Sign-in links to an existing account by email, so an unverified one
     // (a Workspace account whose owner never confirmed it, a typo'd alias)
-    // could otherwise claim a password account it does not own.
-    if (profile.email_verified === false) {
+    // could otherwise claim a password account it does not own. Absent is
+    // refused too: the claim is what the link rests on, not a default.
+    if (profile.email_verified !== true) {
       console.warn("[auth] Google identity with unverified email refused");
       res.redirect(failureUrl(site, intent, "oauth_failed"));
       return;
@@ -466,16 +468,41 @@ async function upsertSocialUser(args: UpsertArgs): Promise<SocialUserResult> {
     // A password account still waiting on its code, proven by this sign-in:
     // its first way in, so it is welcomed like a new one.
     const firstProof = !dbUser.emailVerified;
-    const updateData: { name: string | null; avatar_url: string | null; username?: string; emailVerified?: Date } = {
+    const updateData: {
+      name: string | null;
+      avatar_url: string | null;
+      username?: string;
+      emailVerified?: Date;
+      password_hash?: null;
+      sessionsValidFrom?: Date;
+    } = {
       name: args.name || dbUser.name,
       avatar_url: args.avatarUrl || dbUser.avatar_url,
     };
     if (!dbUser.username) {
       updateData.username = await generateUsername(args.name || "user");
     }
-    if (!dbUser.emailVerified) updateData.emailVerified = new Date();
+    if (firstProof) {
+      updateData.emailVerified = new Date();
+      // Whoever registered an address that was never confirmed chose the
+      // password without proving they own it — and anyone can register any
+      // address. Keeping that password here is account pre-hijacking: sign
+      // up as victim@x with your own password, wait for the victim to sign
+      // in with Google (which verifies the account), then sign in with the
+      // password and share the account from then on. The provider has just
+      // proven who owns the address, so its password goes; the owner can set
+      // one with "Forgot password", which the login route already offers an
+      // account without one. Anything signed in before this point is ended
+      // with it — floored to the second, as /me/password does, so the token
+      // minted below (whose `iat` is whole seconds) is not refused with them.
+      updateData.password_hash = null;
+      updateData.sessionsValidFrom = new Date(Math.floor(Date.now() / 1000) * 1000);
+    }
     dbUser = await prisma.user.update({ where: { email: args.email }, data: updateData, select: SOCIAL_USER_SELECT });
-    if (firstProof) welcomeNewAccount(dbUser, args.provider);
+    if (firstProof) {
+      forgetSessions(dbUser.id);
+      welcomeNewAccount(dbUser, args.provider);
+    }
   }
 
   // The link row records that this provider identity belongs to this

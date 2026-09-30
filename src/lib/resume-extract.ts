@@ -107,8 +107,56 @@ const CONTACT_IN_TEXT = /[\w.+-]+@[\w-]+\.[\w.]+|(?:\+?\d[\d\s().-]{8,}\d)/;
  * stops here rather than trusting the file's size.
  */
 const MAX_TEXT_CHARS = 300_000;
-/** The largest document.xml a DOCX may unpack to before it is refused unread. */
+/** The largest document.xml a DOCX may unpack to before it is refused. */
 const MAX_DOCX_XML_BYTES = 25 * 1024 * 1024;
+/** A page header or footer is a line or two; a megabyte of one is not a header. */
+export const MAX_DOCX_PART_BYTES = 1024 * 1024;
+/** Word writes three of each at most (first page, even, default) per section. */
+const MAX_DOCX_HEADER_PARTS = 12;
+
+const TOO_LARGE_INSIDE =
+  "That document is far larger inside than a resume should be. Save a copy with the images removed and upload that.";
+
+/**
+ * One zip entry inflated to text, refused the moment it passes `limit` bytes.
+ *
+ * The size a zip declares for an entry is written by whoever made the zip,
+ * and JSZip only compares it with what it inflated after inflating all of
+ * it, in memory. A five-megabyte upload is ~5 GB of deflated zeros — on a
+ * 2 GB box MySQL shares — so the bytes are counted as they arrive and the
+ * stream is dropped at the cap. The entry's declared size is still checked
+ * first by the caller, since refusing an honest oversized file costs nothing.
+ */
+function inflateEntry(file: JSZip.JSZipObject, limit: number): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const stream = file.nodeStream("nodebuffer");
+    const chunks: Buffer[] = [];
+    let size = 0;
+    let settled = false;
+    const fail = (err: Error) => {
+      if (settled) return;
+      settled = true;
+      // pause, not destroy: JSZip's adapter keeps pushing into a destroyed
+      // stream and pako would inflate the rest of the bomb for nothing. A
+      // paused stream fills its buffer, and the full buffer pauses JSZip.
+      stream.pause();
+      reject(err);
+    };
+    stream.on("data", (chunk: Buffer) => {
+      if (settled) return;
+      size += chunk.length;
+      if (size > limit) return fail(new ResumeFileError(413, TOO_LARGE_INSIDE));
+      chunks.push(chunk);
+    });
+    // A corrupt entry, or one whose declared size JSZip found to be a lie.
+    stream.on("error", () => fail(new ResumeFileError(400, "That file could not be opened. It may be corrupted — save it again from Word and retry.")));
+    stream.on("end", () => {
+      if (settled) return;
+      settled = true;
+      resolve(Buffer.concat(chunks).toString("utf8"));
+    });
+  });
+}
 
 /* ── PDF ───────────────────────────────────────────────────────────────── */
 
@@ -465,14 +513,14 @@ export async function extractDocx(bytes: Uint8Array): Promise<ExtractedResume> {
   if (!document) {
     throw new ResumeFileError(415, "That file is a zip archive but not a Word document. Upload a .docx or a PDF.");
   }
-  // JSZip knows the unpacked size from the central directory; a zip bomb is
-  // refused before a byte of it is inflated.
+  // The central directory's unpacked size refuses an honest oversized file
+  // before a byte is inflated; inflateEntry refuses a dishonest one.
   const unpacked = (document as unknown as { _data?: { uncompressedSize?: number } })._data?.uncompressedSize;
   if (typeof unpacked === "number" && unpacked > MAX_DOCX_XML_BYTES) {
-    throw new ResumeFileError(413, "That document is far larger inside than a resume should be. Save a copy with the images removed and upload that.");
+    throw new ResumeFileError(413, TOO_LARGE_INSIDE);
   }
-  const xml = await document.async("string");
-  const walked = walkDocumentXml(xml.length > MAX_DOCX_XML_BYTES ? xml.slice(0, MAX_DOCX_XML_BYTES) : xml);
+  const xml = await inflateEntry(document, MAX_DOCX_XML_BYTES);
+  const walked = walkDocumentXml(xml);
   if (walked.paragraphs.reduce((n, p) => n + p.length, 0) > MAX_TEXT_CHARS) {
     let total = 0;
     walked.paragraphs = walked.paragraphs.filter((p) => (total += p.length) <= MAX_TEXT_CHARS);
@@ -480,10 +528,14 @@ export async function extractDocx(bytes: Uint8Array): Promise<ExtractedResume> {
 
   // Headers and footers: text an ATS often skips. Included at the top so a
   // name or email placed there still parses, and flagged as a risk.
-  const headerFooterFiles = Object.keys(zip.files).filter((name) => /^word\/(header|footer)\d*\.xml$/.test(name));
+  // Bounded twice: how many parts are read, and how far each may inflate —
+  // these were read whole and unchecked, the easiest zip bomb in the file.
+  const headerFooterFiles = Object.keys(zip.files)
+    .filter((name) => /^word\/(header|footer)\d*\.xml$/.test(name))
+    .slice(0, MAX_DOCX_HEADER_PARTS);
   const edgeParagraphs: string[] = [];
   for (const name of headerFooterFiles) {
-    const content = await zip.file(name)!.async("string");
+    const content = await inflateEntry(zip.file(name)!, MAX_DOCX_PART_BYTES);
     edgeParagraphs.push(...walkDocumentXml(content).paragraphs);
   }
   const headerContact = edgeParagraphs.some((p) => CONTACT_IN_TEXT.test(p));

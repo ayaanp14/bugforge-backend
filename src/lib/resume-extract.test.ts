@@ -2,7 +2,7 @@ import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import JSZip from "jszip";
 import PDFDocument from "pdfkit";
-import { extractDocx, extractPdf, extractResume, normalizeText } from "./resume-extract.js";
+import { MAX_DOCX_PART_BYTES, extractDocx, extractPdf, extractResume, normalizeText } from "./resume-extract.js";
 import { renderDocx, renderPdf } from "./resume-export.js";
 import { ResumeFileError, sniffFormat } from "./resume-files.js";
 import { parseResumeText } from "./resume-parse.js";
@@ -159,6 +159,17 @@ describe("DOCX", () => {
   it("refuses a document with almost no text", async () => {
     const tiny = await W(p("Hi"));
     await assert.rejects(() => extractDocx(tiny), (e: ResumeFileError) => e.status === 422);
+  });
+  it("refuses a header part that inflates past its cap instead of inflating it whole", async () => {
+    // A few kilobytes on the wire; unbounded, the same trick at the upload
+    // limit is gigabytes in memory. Headers were read with no check at all.
+    const bomb = `<w:hdr>${" ".repeat(MAX_DOCX_PART_BYTES + 64 * 1024)}</w:hdr>`;
+    const zip = new JSZip();
+    zip.file("word/document.xml", `<w:document><w:body>${p("Aarav Sharma — Software Engineer with five years of backend experience. ".repeat(4))}</w:body></w:document>`);
+    zip.file("word/header1.xml", bomb);
+    const docx = await zip.generateAsync({ type: "nodebuffer", compression: "DEFLATE" });
+    assert.ok(docx.length < 64 * 1024, "the archive itself is small");
+    await assert.rejects(() => extractDocx(docx), (e: ResumeFileError) => e.status === 413);
   });
 });
 

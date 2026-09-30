@@ -92,6 +92,19 @@ export const GZIP_OUTPUT_LANGS = new Set([
   "javascript", "typescript", "python", "java", "kotlin", "csharp", "go", "ruby",
 ]);
 
+/**
+ * The most a gzipped block may inflate to. The block is whatever follows the
+ * last BEGIN line, and the user's code can print that line itself and exit
+ * before the driver does (process.exit, sys.exit, System.exit) — so the bytes
+ * decoded here are attacker-chosen. Paiza returns up to 100,000 characters of
+ * stdout, which as a deflate bomb is ~77 MB inflated, and a 5,000-case submit
+ * runs several chunks at once on a 2 GB box that MySQL shares. An honest block
+ * is a whole suite's answers: under a few megabytes even on Judge0, which runs
+ * the suite in one go. Past the cap zlib refuses, the block stays raw, and the
+ * cases are judged against base64 — a wrong answer, which it is.
+ */
+export const MAX_DECODED_STDOUT_BYTES = 16 * 1024 * 1024;
+
 /** If stdout is GZIP_MARKER + base64(gzip(...)), decode it; else return as-is. */
 export function decodeBatchStdout(stdout: string | null): string | null {
   if (!stdout) return stdout;
@@ -99,10 +112,10 @@ export function decodeBatchStdout(stdout: string | null): string | null {
   if (!trimmed.startsWith(GZIP_MARKER)) return stdout;
   const b64 = trimmed.slice(GZIP_MARKER.length).replace(/\s+/g, "");
   try {
-    return gunzipSync(Buffer.from(b64, "base64")).toString("utf8");
+    return gunzipSync(Buffer.from(b64, "base64"), { maxOutputLength: MAX_DECODED_STDOUT_BYTES }).toString("utf8");
   } catch {
-    // Truncated/corrupt compressed payload: fall through to raw so the
-    // missing-chunk handling reports it honestly.
+    // Truncated/corrupt compressed payload, or one past the cap above: fall
+    // through to raw so the missing-chunk handling reports it honestly.
     return stdout;
   }
 }

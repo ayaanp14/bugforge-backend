@@ -17,6 +17,7 @@ import {
 import { conversationLanguage, interviewerFor } from "../lib/interviewers.js";
 import { voiceDurationMinutes } from "../lib/interview-duration.js";
 import { finalizeInterview, invalidateInterviewHistory } from "../services/interview-completion.js";
+import { SAT_ROUND_REFUSAL, checkInterviewQuota, satRoundFits } from "../services/entitlements.js";
 import {
   buildContext,
   realtimeProvider,
@@ -245,6 +246,9 @@ router.get("/session/:sessionId/voice", requireAuth, async (req: any, res) => {
  * by design, so a resumed session needs a fresh one.
  */
 router.post("/session/:sessionId/voice/session", requireAuth, async (req: any, res) => {
+  // Set once this request has stamped the round's start (below), so a failure
+  // after it can take the stamp back.
+  let claimedStart = false;
   try {
     const check = await guard(req.params.sessionId, req.user.userId);
     if (!check.ok) return res.status(check.status).json({ error: check.error });
@@ -264,6 +268,26 @@ router.post("/session/:sessionId/voice/session", requireAuth, async (req: any, r
     const provider = realtimeProvider();
     if (!provider.isConfigured()) {
       return res.status(503).json({ error: "Voice interviews are not available on this deployment" });
+    }
+
+    // The first connect is when a spoken round counts as sat (entitlements
+    // SAT_ROUND) and so when it is charged: the allowance is asked again here,
+    // not only at /start, and before the credential — a refusal costs the
+    // model nothing. Stamp, then count with the stamp in (satRoundFits), and
+    // take the stamp back if the round does not fit. `onCredit` is decided
+    // now too, so the round spends whichever allowance it is actually sat on.
+    if (!session.startedAt) {
+      const quota = await checkInterviewQuota(req.user.userId, req.user.email);
+      if (quota.denial) return res.status(402).json(quota.denial);
+      const stamp = await prisma.mockInterviewSession.updateMany({
+        where: { id: session.id, startedAt: null },
+        data: { startedAt: new Date(), onCredit: quota.onCredit },
+      });
+      claimedStart = stamp.count === 1;
+      if (claimedStart && !(await satRoundFits(req.user.userId, req.user.email, quota.onCredit))) {
+        await prisma.mockInterviewSession.updateMany({ where: { id: session.id }, data: { startedAt: null } });
+        return res.status(402).json(SAT_ROUND_REFUSAL);
+      }
     }
 
     const config = configFrom(session.savedInterview);
@@ -307,13 +331,7 @@ router.post("/session/:sessionId/voice/session", requireAuth, async (req: any, r
       typeof req.body?.resume === "boolean" && req.body.resume ? state.resumeHandle : null,
     );
 
-    // First connect is also when the clock starts.
-    if (!session.startedAt) {
-      await prisma.mockInterviewSession.update({
-        where: { id: session.id },
-        data: { startedAt: new Date() },
-      });
-    }
+    // The clock started with the stamp above, which is also the charge.
 
     res.json({
       provider: credential.provider,
@@ -323,6 +341,13 @@ router.post("/session/:sessionId/voice/session", requireAuth, async (req: any, r
       expiresAt: credential.expiresAt,
     });
   } catch (error: any) {
+    // No credential, no round: a first connect that failed after its stamp
+    // takes the stamp back, or a provider outage would spend the slot.
+    if (claimedStart) {
+      await prisma.mockInterviewSession
+        .updateMany({ where: { id: req.params.sessionId, startedAt: { not: null } }, data: { startedAt: null } })
+        .catch((err: unknown) => console.error("[voice] could not undo the start stamp:", (err as Error)?.message));
+    }
     if (error instanceof RealtimeUnavailable) {
       return res.status(503).json({ error: error.message });
     }

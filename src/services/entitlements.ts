@@ -227,6 +227,40 @@ export async function checkInterviewQuota(userId: string, email?: string | null)
 }
 
 /**
+ * Whether a round that has just been stamped as sat still fits the allowance
+ * it was admitted on — `onCredit` names which one.
+ *
+ * The quota counts rounds *sat*, not rounds opened, so that a round abandoned
+ * at the door costs nothing; but it was only checked when a round was opened.
+ * Nothing counted a round until its first answer (typed) or first connect
+ * (voice), so opening five before sitting any admitted all five on one slot
+ * left — a free account's week of paid Gemini Live rounds. The routes now
+ * check again at the moment a round becomes sat: they stamp it (the answer,
+ * `startedAt`), then ask this, which counts the stamped round with the rest,
+ * and undo the stamp when it does not fit. Two rounds racing for the last
+ * slot cannot both pass: whichever stamped second counts the first.
+ */
+export async function satRoundFits(userId: string, email: string | null | undefined, onCredit: boolean): Promise<boolean> {
+  if (onCredit) {
+    const [granted, spent] = await Promise.all([
+      prisma.roadmapReward.aggregate({ where: { userId }, _sum: { interviewCredits: true } }),
+      prisma.mockInterviewSession.count({ where: { userId, onCredit: true, ...SAT_ROUND } }),
+    ]);
+    return spent <= (granted._sum.interviewCredits ?? 0);
+  }
+  const [{ plan }, used] = await Promise.all([activePlan(userId, email), interviewsThisWeek(userId)]);
+  const limit = plan.entitlements.interviewsPerWeek;
+  return limit === null || used <= limit;
+}
+
+/** What a round refused at that moment is told; the numbers moved under it, so none are quoted. */
+export const SAT_ROUND_REFUSAL = {
+  error: "You have used this week's mock interviews on your plan. Upgrade for more, clear a tier of the DSA roadmap for a bonus round, or come back on Monday.",
+  reason: "quota_exceeded",
+  upgrade: true,
+} as const;
+
+/**
  * The assistant's daily allowance. Checked before the model is called, so a
  * refusal costs no tokens off the shared free tier.
  */

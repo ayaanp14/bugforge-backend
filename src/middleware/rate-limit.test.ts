@@ -2,7 +2,7 @@ import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { EventEmitter } from "node:events";
 import type { Request, Response } from "express";
-import { loginAccountLimiter, rateLimit } from "./rate-limit.js";
+import { loginAccountLimiter, rateLimit, registerLimiter } from "./rate-limit.js";
 
 /** Enough of Express for the limiter: an address, a body, a status, `finish`. */
 function call(limiter: ReturnType<typeof rateLimit>, ip: string, body?: unknown, outcome = 401): number {
@@ -52,5 +52,11 @@ describe("rate limiting", () => {
     assert.equal(last, 401);
     assert.equal(call(loginAccountLimiter, "10.0.0.99", { identifier: "victim@example.com" }), 429, "the eleventh guess at the same account is refused whatever its address");
     assert.equal(call(loginAccountLimiter, "10.0.0.99", { identifier: "someone-else" }), 401, "other accounts are unaffected");
+  });
+
+  it("counts every registration, successful or not", () => {
+    for (let i = 0; i < 30; i++) assert.equal(call(registerLimiter, "10.9.9.9", undefined, 201), 201);
+    assert.equal(call(registerLimiter, "10.9.9.9", undefined, 201), 429, "a success is not refunded: each one is an account, a hash and a mail");
+    assert.equal(call(registerLimiter, "10.9.9.10", undefined, 201), 201, "another address has its own budget");
   });
 });

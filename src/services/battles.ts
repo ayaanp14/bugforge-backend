@@ -583,10 +583,22 @@ export async function uploadTeams(userId: string, tournamentId: string, list: un
   const idents = parsed.teams.flatMap((team) => team.members.map((m) => m.toLowerCase()));
   const emails = idents.filter((m) => m.includes("@"));
   const usernames = idents.filter((m) => !m.includes("@"));
-  const [users, existingTeams] = await Promise.all([
+  const [users, existingTeams, org] = await Promise.all([
     prisma.user.findMany({ where: { OR: [{ email: { in: emails } }, { username: { in: usernames } }] }, select: { id: true, email: true, username: true } }),
     prisma.tournamentTeam.findMany({ where: { tournamentId: t.id }, select: { name: true } }),
+    emails.length > 0 ? prisma.battleOrg.findUnique({ where: { id: t.orgId }, select: { verifiedAt: true } }) : Promise.resolve(null),
   ]);
+  // A handle is public; an address is not. Anyone may create an org and a
+  // draft contest, and a list of addresses pasted here used to answer, line
+  // by line, which ones have an account ("no CodeKairo account for …") and
+  // — once uploaded — whose account each is, down to the name, while
+  // entering those people in a contest they never chose. The organizer view
+  // shows only an entrant's email domain for the same reason (manageView).
+  // Addresses are for organizations the platform has verified; everyone
+  // else lists usernames, which tell them nothing a profile does not.
+  if (emails.length > 0 && !org?.verifiedAt) {
+    throw new BattlesError(403, "Adding people by email address needs a verified organization. List their CodeKairo usernames instead, or add addresses once the organization is verified.");
+  }
   const byIdent = new Map<string, string>();
   for (const u of users) {
     if (u.email) byIdent.set(u.email.toLowerCase(), u.id);

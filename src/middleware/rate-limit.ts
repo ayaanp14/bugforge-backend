@@ -149,6 +149,24 @@ export const loginAccountLimiter = rateLimit({
   },
 });
 
+/**
+ * Creating accounts, counted whether they succeed or not.
+ *
+ * `authLimiter` refunds a success, which is right for a login and wrong
+ * here: every registration *is* a success for the one making them. Under it
+ * alone one address could create accounts at the general limit — 300 a
+ * minute — and each costs a cost-12 bcrypt (bcryptjs, ~250 ms of this
+ * process's own thread, so a few a second starve every other request), a
+ * verification mail against Brevo's 300-a-day plan, and an account that can
+ * queue code on the shared engine. Thirty an hour still lets a computer lab
+ * behind one NAT sign up together.
+ */
+export const registerLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 30,
+  message: "Too many accounts created from this address. Try again later.",
+});
+
 /** Asking for a code by email, which also sends mail on our behalf. */
 export const otpRequestLimiter = rateLimit({
   windowMs: 60 * 60 * 1000,
