@@ -1777,10 +1777,40 @@ model Tournament {
   entries     TournamentEntry[]
   submissions TournamentSubmission[]
   matches     TournamentMatch[]
+  reminders   TournamentReminder[]
 
   // The public list: published, by start time.
   @@index([status, startsAt])
   @@index([orgId, createdAt])
+}
+
+/// A reminder email to a tournament's approved entrants: the two the
+/// scheduler sends by itself, 24 hours and 1 hour before the start, and any
+/// an organizer or a CodeKairo admin sends by hand
+/// (services/tournament-reminders.ts). The row is the claim and the log.
+/// `claim` is unique per tournament: `day@<start ms>` / `hour@<start ms>` for
+/// the scheduled ones — once per start time, and again if the start moves —
+/// and `manual@<ms>` for a button press.
+model TournamentReminder {
+  id           String    @id @default(cuid())
+  tournamentId String
+  claim        String    @db.VarChar(40)
+  /// day | hour | manual
+  kind         String    @db.VarChar(8)
+  /// Who pressed the button; null for the scheduled ones.
+  sentById     String?
+  /// Entrants it was addressed to, and how many mails the provider accepted.
+  recipients   Int       @default(0)
+  mailed       Int       @default(0)
+  createdAt    DateTime  @default(now())
+  /// Set when the last mail was handed over; null while it is still sending.
+  finishedAt   DateTime?
+
+  tournament Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+
+  @@unique([tournamentId, claim])
+  // The cooldown and the history read a tournament's reminders newest first.
+  @@index([tournamentId, createdAt])
 }
 
 /// A tournament's problem set, in order. Hidden from players until it starts.

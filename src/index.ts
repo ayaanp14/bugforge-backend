@@ -60,6 +60,7 @@ import { isSessionRevoked, revokedSessionsSweep } from "./lib/session-revocation
 import { describeError, errorTelemetry, noteRequestError, reportError } from "./lib/telemetry.js";
 import { registerJob, startScheduler } from "./lib/scheduler.js";
 import { registerReminderJobs } from "./services/reminders.js";
+import { tournamentRemindersJob } from "./services/tournament-reminders.js";
 import { contestPayoutJob } from "./services/daily-contest-rewards.js";
 import { pushUnreadCount } from "./services/notifications.js";
 
@@ -1114,6 +1115,8 @@ httpServer.listen(PORT, () => {
   registerJob(revokedSessionsSweep);
   // Yesterday's contest XP, paid as the new day's problem is assigned.
   registerJob(contestPayoutJob);
+  // Battles: each tournament's entrants mailed 24 h and 1 h before the start.
+  registerJob(tournamentRemindersJob);
   startScheduler();
   // No socket survived the restart, and none said goodbye (lib/duels).
   void markActiveDuelsAbsent();

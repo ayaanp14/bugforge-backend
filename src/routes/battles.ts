@@ -1,5 +1,5 @@
 import { Router, type NextFunction, type Request, type Response } from "express";
-import { adminOnly, optionalAuth, requireAuth } from "../middleware/auth.js";
+import { adminOnly, isAdminEmail, optionalAuth, requireAuth } from "../middleware/auth.js";
 import {
   BattlesError,
   approveTournament,
@@ -28,6 +28,7 @@ import {
 } from "../services/battles.js";
 import { contestRoom, contestStandings, revealResults } from "../services/contest.js";
 import { bracketView, checkIn, matchRoom } from "../services/knockout.js";
+import { reminderStatus, sendReminderNow } from "../services/tournament-reminders.js";
 
 /**
  * CodeKairo Battles — the API behind battles.codekairo.com (services/battles.ts).
@@ -63,6 +64,10 @@ import { bracketView, checkIn, matchRoom } from "../services/knockout.js";
  *   DELETE /api/battles/teams/:teamId
  *   PATCH  /api/battles/entries/:entryId            { status: approved | rejected }
  *
+ * Organizers or site admins (requireAuth; else 404):
+ *   GET    /api/battles/tournaments/:id/reminders   the reminder dialog: schedule, history, preview
+ *   POST   /api/battles/tournaments/:id/reminders   mail every approved entrant now (cooldown + cap)
+ *
  * Site admin (requireAuth + adminOnly):
  *   GET    /api/battles/admin/orgs                  verification queue (re-verifications with their changes)
  *   POST   /api/battles/admin/orgs/:id/verify       { verified, version? }
@@ -89,12 +94,16 @@ const wrap =
 const param = (req: Request, name: string) => String(req.params[name]);
 const body = (req: Request) => (req.body ?? {}) as Record<string, unknown>;
 const viewerOf = (req: Request) => ((req as Partial<Authed>).user ? { userId: (req as Authed).user.userId } : null);
+/** A signed-in caller and whether they are a CodeKairo admin — who may send a tournament's reminder besides its organizers. */
+const remindingViewer = (req: Authed) => ({ userId: req.user.userId, isAdmin: isAdminEmail(req.user.email) });
 
 const router = Router();
 
 // ── Public ────────────────────────────────────────────────────────────
 router.get("/tournaments", wrap(async (_req, res) => { res.json(await listTournaments()); }));
-router.get("/tournaments/:slug", optionalAuth, wrap(async (req, res) => { res.json(await tournamentPage(param(req, "slug"), viewerOf(req))); }));
+router.get("/tournaments/:slug", optionalAuth, wrap(async (req, res) => {
+  res.json(await tournamentPage(param(req, "slug"), (req as Partial<Authed>).user ? remindingViewer(req) : null));
+}));
 router.get("/contest/:id/standings", optionalAuth, wrap(async (req, res) => { res.json(await contestStandings(param(req, "id"), viewerOf(req)?.userId ?? null)); }));
 router.get("/bracket/:id", optionalAuth, wrap(async (req, res) => { res.json(await bracketView(param(req, "id"), viewerOf(req)?.userId ?? null)); }));
 router.get("/orgs/:slug", optionalAuth, wrap(async (req, res) => { res.json(await orgPage(param(req, "slug"), viewerOf(req)?.userId ?? null)); }));
@@ -116,6 +125,8 @@ router.post("/tournaments/:id/check-in", wrap(async (req, res) => { res.json(awa
 router.get("/match/:id", wrap(async (req, res) => { res.json(await matchRoom(req.user.userId, param(req, "id"))); }));
 router.get("/contest/:id", wrap(async (req, res) => { res.json(await contestRoom(req.user.userId, param(req, "id"))); }));
 router.delete("/tournaments/:id/register", wrap(async (req, res) => { res.json(await withdraw(req.user.userId, param(req, "id"))); }));
+router.get("/tournaments/:id/reminders", wrap(async (req, res) => { res.json(await reminderStatus(remindingViewer(req), param(req, "id"))); }));
+router.post("/tournaments/:id/reminders", wrap(async (req, res) => { res.json(await sendReminderNow(remindingViewer(req), param(req, "id"))); }));
 
 router.get("/host", wrap(async (req, res) => { res.json(await hostDashboard(req.user.userId)); }));
 router.post("/orgs", wrap(async (req, res) => { res.status(201).json({ org: await createOrg(req.user.userId, body(req)) }); }));

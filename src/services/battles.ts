@@ -51,6 +51,7 @@ import { BattlesError } from "./battles-error.js";
 import { knockoutViewer } from "./knockout.js";
 import { CHECK_IN_MINUTES } from "./knockout-rules.js";
 import { forgetBattlesHeads, orgSeo, seoOf, tournamentSeo } from "./battles-seo.js";
+import { offersReminder } from "./tournament-reminders.js";
 
 export { BattlesError };
 
@@ -443,7 +444,7 @@ export async function listTournaments() {
  * — until step 3's contest room opens it at the start. The invite code is
  * never sent; `needsInviteCode` says whether one is asked for.
  */
-export async function tournamentPage(slug: string, viewer: { userId: string } | null) {
+export async function tournamentPage(slug: string, viewer: { userId: string; isAdmin?: boolean } | null) {
   const t = await prisma.tournament.findUnique({
     where: { slug },
     select: {
@@ -488,6 +489,8 @@ export async function tournamentPage(slug: string, viewer: { userId: string } | 
     viewer: viewer
       ? {
           canManage,
+          // "Send reminder" in the masthead: its organizers and CodeKairo's admins, before the start (services/tournament-reminders).
+          canRemind: offersReminder(t, canManage, viewer.isAdmin === true, new Date()),
           entry: entry ? { status: entry.status, team: entry.team?.name ?? null } : null,
           knockout: t.format === "knockout" && entry ? await knockoutViewer(t.id, viewer.userId) : null,
         }

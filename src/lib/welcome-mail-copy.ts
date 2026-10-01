@@ -1,4 +1,5 @@
 import { FRONTEND_URL } from "./sites.js";
+import { ASSET_ORIGIN, CODE, FONT_FACES, L, MONO, ON_TEAL, PREHEADER_FILLER, SANS, TEAL_DEEP, escapeHtml } from "./mail-design.js";
 
 /**
  * The welcome mail — what a new account finds in its inbox the moment its
@@ -29,9 +30,6 @@ import { FRONTEND_URL } from "./sites.js";
  *    escaped, trimmed to a first name and capped — see `firstName`.
  */
 
-/** Where the mark and the fonts are fetched from, whatever site sent the mail. */
-const ASSET_ORIGIN = "https://codekairo.com";
-
 /** How the account signs in, as named in the mail. */
 export type SignInRoad = "email" | "google" | "github";
 
@@ -42,34 +40,8 @@ export interface WelcomeRecipient {
   via: SignInRoad;
 }
 
-// The tokens, copied from frontend/src/lib/palette.ts (LIGHT, DARK, TEAL,
-// ON_TEAL, EDITOR_*). A mail cannot read CSS variables, so they are literal
-// here; change them there first.
-const L = {
-  ground: "#F7F7F7",
-  panel: "#FFFFFF",
-  ink: "#111111",
-  secondary: "#5F5F5F",
-  muted: "#737373",
-  border: "#E5E5E5",
-  well: "#F4F4F4",
-  accent: "#018790",
-  highlight: "#005461",
-};
-const TEAL_DEEP = "#005461";
-const ON_TEAL = { secondary: "rgba(255,255,255,0.78)", muted: "rgba(255,255,255,0.64)" };
-const CODE = {
-  text: "#0F2E33",
-  keyword: TEAL_DEEP,
-  string: "#00827F",
-  number: "#007C7B",
-  comment: "#5F7173",
-  operator: "#3D5558",
-  gutter: "#AFAFAF",
-};
-
-const SANS = "Gilroy,-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif";
-const MONO = "'JetBrains Mono','SFMono-Regular',Menlo,Consolas,'Liberation Mono',monospace";
+// The tokens (ink, the teal family, the editor's syntax colours, the type
+// stacks) are shared with the tournament reminder: lib/mail-design.ts.
 
 const ROAD_LABEL: Record<SignInRoad, string> = {
   email: "email + password",
@@ -104,10 +76,6 @@ const FIRST_MOVES: Array<{ title: string; body: string; link: string; path: stri
     path: "/mock-interview",
   },
 ];
-
-function escapeHtml(s: string): string {
-  return s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c] as string);
-}
 
 /**
  * The name to greet, or null to greet nobody in particular.
@@ -214,9 +182,7 @@ export function welcomeHtml(person: WelcomeRecipient, origin: string = FRONTEND_
   const name = firstName(person.name);
   const heading = name ? `Welcome to CodeKairo, ${escapeHtml(name)}.` : "Welcome to CodeKairo.";
   const email = escapeHtml(person.email);
-  // Invisible filler after the preheader, so the inbox preview stops at our
-  // sentence instead of running on into the first words of the body.
-  const filler = "&#847;&zwnj;&nbsp;".repeat(40);
+  const filler = PREHEADER_FILLER;
 
   return `<!doctype html>
 <html lang="en" xmlns="http://www.w3.org/1999/xhtml">
@@ -229,10 +195,7 @@ export function welcomeHtml(person: WelcomeRecipient, origin: string = FRONTEND_
 <meta name="supported-color-schemes" content="light dark">
 <title>${escapeHtml(welcomeSubject(person))}</title>
 <style>
-@font-face{font-family:Gilroy;font-weight:400;font-style:normal;src:url(${ASSET_ORIGIN}/fonts/Gilroy-400.woff2) format("woff2")}
-@font-face{font-family:Gilroy;font-weight:600;font-style:normal;src:url(${ASSET_ORIGIN}/fonts/Gilroy-600.woff2) format("woff2")}
-@font-face{font-family:Gilroy;font-weight:700;font-style:normal;src:url(${ASSET_ORIGIN}/fonts/Gilroy-700.woff2) format("woff2")}
-@font-face{font-family:'JetBrains Mono';font-weight:400 700;font-style:normal;src:url(${ASSET_ORIGIN}/fonts/JetBrainsMono.woff2) format("woff2")}
+${FONT_FACES}
 body{margin:0;padding:0;-webkit-text-size-adjust:100%;text-size-adjust:100%}
 a{text-decoration:none}
 @media (max-width:620px){

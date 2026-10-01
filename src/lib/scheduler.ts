@@ -25,6 +25,14 @@ export interface Job {
   periodOf(now: Date): string | null;
   /** Do the work; the returned object is stored as the run's result. */
   run(now: Date): Promise<Record<string, unknown>>;
+  /**
+   * For a job due on every tick that keeps its own claims (the tournament
+   * reminders): true when a run did nothing, and its row is then deleted
+   * rather than kept — 288 empty rows a day would bury the panel's log. The
+   * row still held the period while the run was going; a late second
+   * instance that runs the same period again finds the job's own claims taken.
+   */
+  idle?(result: Record<string, unknown>): boolean;
 }
 
 const jobs = new Map<string, Job>();
@@ -36,6 +44,9 @@ export function registerJob(job: Job): void {
 export function listJobs(): Job[] {
   return [...jobs.values()];
 }
+
+/** The period of a run started from the admin panel rather than the timer. */
+const MANUAL_PREFIX = "manual-";
 
 /** Whether the insert failed because the row already exists. */
 const isDuplicate = (err: unknown): boolean => (err as { code?: string })?.code === "P2002";
@@ -53,9 +64,14 @@ export async function runJob(job: Job, period: string, now = new Date()): Promis
     throw err;
   }
 
-  console.log(`[jobs] ${id} starting`);
+  if (!job.idle) console.log(`[jobs] ${id} starting`);
   try {
     const result = await job.run(now);
+    // An operator's "run now" keeps its row either way: the panel shows what it did.
+    if (job.idle?.(result) && !period.startsWith(MANUAL_PREFIX)) {
+      await prisma.jobRun.delete({ where: { id } }).catch(() => undefined);
+      return id;
+    }
     await prisma.jobRun.update({ where: { id }, data: { finishedAt: new Date(), result: result as object } });
     console.log(`[jobs] ${id} done`, JSON.stringify(result));
   } catch (err) {
@@ -77,7 +93,7 @@ export function runJobNow(name: string): Promise<string | null> {
   const job = jobs.get(name);
   if (!job) return Promise.reject(new Error(`Unknown job: ${name}`));
   const now = new Date();
-  return runJob(job, `manual-${now.toISOString().replace(/[:.]/g, "-")}`, now);
+  return runJob(job, `${MANUAL_PREFIX}${now.toISOString().replace(/[:.]/g, "-")}`, now);
 }
 
 let ticking = false;
