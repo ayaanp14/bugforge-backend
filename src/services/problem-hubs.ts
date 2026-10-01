@@ -371,16 +371,84 @@ export async function hubPage(kind: "topic" | "company", slug: string): Promise<
  * state every judge already invalidates.
  */
 export async function hubProgress(kind: "topic" | "company", slug: string, userId: string): Promise<{ solved: string[]; attempted: string[] } | null> {
-  const index = await hubIndex();
-  const summary = (kind === "topic" ? index.topics : index.companies).find((h) => h.slug === slug);
-  if (!summary) return null;
-  const [catalogue, state] = await Promise.all([getCatalogue(), loadProblemState(userId)]);
-  const groups = groupByTag(catalogue);
-  const rows = kind === "topic" ? topicRows(topicHubBySlug(slug)!, groups, catalogue) : (groups.get(summary.tag) ?? []);
+  const [rows, state] = await Promise.all([hubRows(kind, slug), loadProblemState(userId)]);
+  if (!rows) return null;
   return {
     solved: rows.filter((r) => state.solved.has(r.id)).map((r) => r.slug),
     attempted: rows.filter((r) => state.attempted.has(r.id)).map((r) => r.slug),
   };
+}
+
+/** One hub's rows in catalogue order, or null when there is no such hub. */
+async function hubRows(kind: "topic" | "company", slug: string): Promise<CatalogueRow[] | null> {
+  const index = await hubIndex();
+  const summary = (kind === "topic" ? index.topics : index.companies).find((h) => h.slug === slug);
+  if (!summary) return null;
+  const catalogue = await getCatalogue();
+  const groups = groupByTag(catalogue);
+  return kind === "topic" ? topicRows(topicHubBySlug(slug)!, groups, catalogue) : (groups.get(summary.tag) ?? []);
+}
+
+const LEVEL_RANK: Record<string, number> = { EASY: 0, MEDIUM: 1, HARD: 2 };
+
+/** The page's order: easy, then medium, then hard — the catalogue's order within a level. Stable, so pages never overlap. */
+function inPageOrder(rows: CatalogueRow[]): CatalogueRow[] {
+  return rows
+    .map((r, i) => [r, i] as const)
+    .sort(([a, i], [b, j]) => (LEVEL_RANK[a.difficulty.toUpperCase()] ?? 1) - (LEVEL_RANK[b.difficulty.toUpperCase()] ?? 1) || i - j)
+    .map(([r]) => r);
+}
+
+/** How many problems one page of a hub's list holds. */
+export const HUB_PAGE_SIZE = 100;
+
+export interface HubProblemsPage {
+  problems: HubProblem[];
+  /** Problems in the whole list (at this difficulty, when one is asked for). */
+  total: number;
+  /** The offset of the next page, or null after the last. */
+  next: number | null;
+}
+
+/**
+ * One page of a hub's problem list, for the page's infinite scroll. The
+ * hub payload used to carry every problem — 667 for Arrays, 914 for Amazon,
+ * ~80 KB of JSON and as many rows mounted at once (2026-10-02) — while a
+ * reader looks at the first screenful; the list now arrives 100 at a time
+ * as it is scrolled. `difficulty` narrows it to one level (the list's
+ * Easy/Medium/Hard chips), so the hard problems are one click away rather
+ * than behind every easy one. The edge HTML still lists every problem
+ * (services/seo.ts reads hubPage), so a crawler loses nothing.
+ */
+export async function hubProblems(kind: "topic" | "company", slug: string, o: HubProblemsQuery): Promise<HubProblemsPage | null> {
+  const rows = await hubRows(kind, slug);
+  return rows ? pageOfHub(rows, o) : null;
+}
+
+export interface HubProblemsQuery {
+  offset: number;
+  limit: number;
+  difficulty?: Difficulty;
+  q?: string;
+}
+
+/** The pure half of hubProblems: order, narrow, search and slice a hub's rows (hub-problems.test.ts). */
+export function pageOfHub(rows: CatalogueRow[], o: HubProblemsQuery): HubProblemsPage {
+  let list = inPageOrder(rows);
+  if (o.difficulty) list = list.filter((r) => r.difficulty.toUpperCase() === o.difficulty);
+  // The list's search box, answered here so it covers the whole hub and not
+  // only the pages already loaded: every word must appear in the title or
+  // in one of the problem's topics ("window max", "dp grid").
+  const words = (o.q ?? "").toLowerCase().split(/\s+/).filter(Boolean);
+  if (words.length) {
+    list = list.filter((r) => {
+      const text = `${r.title} ${tagsOf(r).filter((t) => !isCompanyTag(t)).join(" ")}`.toLowerCase();
+      return words.every((w) => text.includes(w));
+    });
+  }
+  const page = list.slice(o.offset, o.offset + o.limit);
+  const end = o.offset + page.length;
+  return { problems: page.map(toHubProblem), total: list.length, next: end < list.length ? end : null };
 }
 
 /** The hubs a problem's tags link to: its topics first, then its companies. */

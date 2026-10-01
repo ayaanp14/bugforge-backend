@@ -9,7 +9,7 @@ import { catalogueNeighbours, getCatalogue, listProblemsWithStatus, loadProblemS
 import { isCompanyTag } from "../lib/companies.js";
 import { problemCanonicalSlug } from "../lib/problem-canonical.js";
 import { isJudgeLanguage } from "../lib/judge0.js";
-import { hubIndex, hubPage, hubProgress, hubsForTags, relatedProblems } from "../services/problem-hubs.js";
+import { HUB_PAGE_SIZE, hubIndex, hubPage, hubProblems, hubProgress, hubsForTags, relatedProblems } from "../services/problem-hubs.js";
 
 const router = Router();
 
@@ -432,11 +432,47 @@ router.get("/hubs/:kind/:slug", browserCache(300, { shared: true }), async (req,
       res.status(404).json({ error: "No such hub" });
       return;
     }
+    // Still whole for the SPA build before 2026-10-02, which reads it; the
+    // table now takes it 100 at a time from /problems below, and this goes
+    // once that build is out.
     res.json(page);
   } catch (err) {
     console.error("GET /api/problems/hubs/:kind/:slug error:", err);
     res.status(500).json({ error: "Internal server error" });
   }
+});
+
+/**
+ * One page of a hub's problem list, easy → medium → hard, for the page's
+ * problem table — 100 rows at a time as the table itself is scrolled, and
+ * the table's search box (`q`, every word in the title or a topic) answered
+ * over the whole hub (services/problem-hubs hubProblems). Public and
+ * shared-cached like the hub itself.
+ *
+ *   GET /api/problems/hubs/topic/arrays/problems?offset=100&limit=100&difficulty=hard&q=window
+ *     → { problems, total, next }   (next: the following offset, or null)
+ */
+router.get("/hubs/:kind/:slug/problems", browserCache(300, { shared: true }), async (req, res) => {
+  const kind = req.params["kind"];
+  const slug = String(req.params["slug"]).toLowerCase();
+  const offset = Number(req.query["offset"] ?? 0);
+  const limit = Number(req.query["limit"] ?? HUB_PAGE_SIZE);
+  const level = typeof req.query["difficulty"] === "string" && req.query["difficulty"] ? req.query["difficulty"].toUpperCase() : undefined;
+  const q = typeof req.query["q"] === "string" ? req.query["q"].trim() : "";
+  if ((kind !== "topic" && kind !== "company") || !/^[a-z0-9][a-z0-9-]{0,79}$/.test(slug)) {
+    res.status(404).json({ error: "No such hub" });
+    return;
+  }
+  if (!Number.isInteger(offset) || offset < 0 || offset > 100_000 || !Number.isInteger(limit) || limit < 1 || limit > HUB_PAGE_SIZE || (level !== undefined && level !== "EASY" && level !== "MEDIUM" && level !== "HARD") || q.length > 80) {
+    res.status(400).json({ error: `offset must be a whole number from 0, limit 1–${HUB_PAGE_SIZE}, difficulty easy, medium or hard, and the search at most 80 characters` });
+    return;
+  }
+  const page = await hubProblems(kind, slug, { offset, limit, difficulty: level as "EASY" | "MEDIUM" | "HARD" | undefined, q });
+  if (!page) {
+    res.status(404).json({ error: "No such hub" });
+    return;
+  }
+  res.json(page);
 });
 
 /**
