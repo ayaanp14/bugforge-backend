@@ -3,16 +3,13 @@ import { prisma } from "../lib/prisma.js";
 import { isDuplicateKey } from "../lib/seat-claim.js";
 import { optionalAuth, requireAuth } from "../middleware/auth.js";
 import { executionLimiter } from "../middleware/rate-limit.js";
-import { containsReservedMarker } from "../lib/batch.js";
 import { aptitudeTopic, aptitudeCategory } from "../lib/aptitude-topics.js";
 import { attemptClock, codingMarks, drawPaper, markFor, type DrawRule, type PaperSection, type SectionPlan } from "../lib/mock-tests.js";
 import { isJudgeLanguage } from "../lib/judge0.js";
-import { runBatch } from "../lib/batch-judge.js";
-import { buildDriver, remapDiagnostics, type Language as DriverLanguage, type Signature } from "../lib/driver-codegen.js";
+import { codeProblem, judgeArena, judgeCode as judge } from "../lib/assessment-judge.js";
 import { ENGINE_DOWN_MESSAGE, isEngineDown } from "../lib/engine-error.js";
 import { cached, cachedShared } from "../lib/cache.js";
 import { browserCache } from "../lib/http-cache.js";
-import { getJudgeProblem, getJudgeSuite, type JudgeProblem } from "../lib/test-suite-cache.js";
 import { codingPool, questionIndex } from "../services/aptitude-bank.js";
 import { TEST_GUIDES } from "../lib/test-guides.js";
 
@@ -733,53 +730,12 @@ async function codingContext(attemptId: string, userId: string, problemId: strin
   return { ok: true, attempt, sectionIndex, marks: paper[sectionIndex].marksPerQuestion ?? 1 };
 }
 
-/**
- * The problem as the judge sees it — limits and signature — with its suite,
- * both from the in-process cache (src/lib/test-suite-cache.ts). Fetched
- * alongside the sitting rather than after it: neither depends on the other.
+/*
+ * judgeArena, codeProblem and judge live in lib/assessment-judge.ts, shared
+ * with the skill tests. These routes had neither the code cap nor the
+ * execution limiter until 2026-09-30; keeping one copy is how the two
+ * engines stay bounded alike.
  */
-async function judgeArena(problemId: string) {
-  if (!problemId) return null;
-  const [problem, cases] = await Promise.all([getJudgeProblem(problemId), getJudgeSuite(problemId)]);
-  return problem ? { problem, cases } : null;
-}
-
-/**
- * What one Run or Submit may hand the engine, the same bounds /api/run and
- * /api/submit apply. These two routes had neither those nor the execution
- * limiter: a sitting's Submit runs the whole ~5,000-case suite, and one
- * account could send hundreds a minute into the single paced queue every
- * judge on the site shares (lib/paiza.ts), 512 KB of source apiece.
- */
-const MAX_CODE_CHARS = 65_536;
-
-/** The refusal for code the judge will not take, or null for code it will. */
-function codeProblem(code: unknown): string | null {
-  if (typeof code !== "string" || code.length > MAX_CODE_CHARS) return "Code must be a string of at most 64 KB";
-  if (containsReservedMarker(code)) return "Code must not contain the reserved marker __CODEXA_";
-  return null;
-}
-
-/** Compiles and runs one submission against the given cases, in one batch. */
-async function judge(problem: JudgeProblem, code: string, language: string, cases: Array<{ input: string; expectedOutput: string }>) {
-  const driver = problem.signature ? buildDriver(language as DriverLanguage, problem.signature as Signature, code) : null;
-  const batch = await runBatch(
-    driver ? driver.code : code,
-    language,
-    cases.map((c) => ({ input: c.input, expectedOutput: c.expectedOutput })),
-    { timeLimitMs: problem.timeLimitMs, memoryLimitMb: problem.memoryLimitMb }
-  );
-  const passed = batch.perCase.filter((r) => r.passed).length;
-  const firstFailure = batch.perCase.find((r) => !r.passed);
-  return {
-    batch,
-    passed,
-    verdict: firstFailure ? firstFailure.verdict : "ACCEPTED",
-    error: firstFailure
-      ? remapDiagnostics((firstFailure.compile_output || firstFailure.stderr || "").trim() || null, driver ? driver.toEditorLine : null)
-      : null,
-  };
-}
 
 /**
  * PUT /api/tests/attempts/:id/code

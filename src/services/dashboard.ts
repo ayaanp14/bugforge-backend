@@ -11,6 +11,8 @@ import { isCompanyTag } from "../lib/companies.js";
 // The same shape of cycle: roadmap imports invalidateDashboard from here.
 import { roadmapBadgesFor } from "./roadmap.js";
 import { studyBandFor } from "./study-plans.js";
+// The same shape of cycle again: skill-credentials imports invalidateDashboard.
+import { credentialsFor } from "./skill-credentials.js";
 
 /**
  * Query functions shared by the per-widget /api/me routes and the aggregated
@@ -725,6 +727,7 @@ async function buildDashboard(userId: string) {
     roadmap,
     study,
     tournaments,
+    credentials,
   ] = await Promise.all([
     getDashboardUser(userId, { problemState: problemStatePromise, rank: rankPromise }),
     queryUserCounters(userId),
@@ -743,11 +746,13 @@ async function buildDashboard(userId: string) {
     studyBandFor(userId),
     // The profile's Tournaments section: Battles events played and placings.
     tournamentsFor(userId),
+    // The profile's Certifications section: skill-test credentials that stand.
+    credentialsFor(userId),
   ]);
 
   const difficultyStats = computeDifficultyStats(problemState);
   const problemInsights = computeProblemInsights(problemState);
   const { social, savedInterviews } = counters;
 
-  return { me, social, difficultyStats, submissions, heatmap, rank, leaderboard, pairing, continueSolving, problemInsights, bugInsights, savedInterviews, dailyContest, roadmap, study, tournaments };
+  return { me, social, difficultyStats, submissions, heatmap, rank, leaderboard, pairing, continueSolving, problemInsights, bugInsights, savedInterviews, dailyContest, roadmap, study, tournaments, credentials };
 }

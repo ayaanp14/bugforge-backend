@@ -7,6 +7,9 @@ import { isCompanyTag } from "../lib/companies.js";
 import { PROBLEM_CANONICAL, problemCanonicalSlug } from "../lib/problem-canonical.js";
 import { renamedCompanyHubSlug } from "../lib/problem-topics.js";
 import { TEST_GUIDES } from "../lib/test-guides.js";
+import { isSkillLevel, LEVEL_LABEL, SKILLS, skillDef } from "../lib/skill-catalog.js";
+import { credentialPath, normalizeCredentialCode } from "../lib/skill-tests.js";
+import { poolTopics, verifyCredential } from "./skill-credentials.js";
 import { APTITUDE_ESSENTIALS } from "../lib/aptitude-essentials.js";
 import { trackDefinition, trackList, type LessonSeo } from "./study-plans.js";
 import { roadDefinition } from "./roadmap.js";
@@ -171,6 +174,8 @@ export const titles = {
   studyLesson: (lesson: string, language: string, checkpoint: boolean, searchTitle?: string | null) =>
     branded(searchTitle ? searchTitle : `${lesson} — ${language} ${checkpoint ? "checkpoint" : "lesson"}`),
   test: (name: string, company: string) => branded(name.includes(company) ? `${name} Mock Test` : `${name} Mock Test — ${company} Pattern`),
+  // "java certification test": the phrase searched; "skill test" is in the H1 and description. Fits 60 characters for every skill.
+  skillTest: (skill: string, level: string) => branded(`${skill} Certification Test (${level})`),
 };
 
 /**
@@ -252,6 +257,7 @@ const SECTION = {
   studyPlans: { name: "Study plans", path: "/study-plans" },
   aptitude: { name: "Aptitude", path: "/aptitude" },
   tests: { name: "Placement tests", path: "/tests" },
+  skillTests: { name: "Skill tests", path: "/skill-tests" },
   roadmap: { name: "DSA roadmap", path: "/roadmap" },
 } as const;
 
@@ -403,6 +409,12 @@ async function pageHead(path: string): Promise<PageHead | PageRedirect | null> {
     if (m[1] === "attempt" || m[1] === "result") return null;
     return testHead(m[1]);
   }
+  if (path === "/skill-tests") return skillTestsIndex();
+  if ((m = /^\/skill-tests\/([a-z0-9-]+)$/.exec(path))) {
+    if (m[1] === "attempt" || m[1] === "result") return null;
+    return skillTestHead(m[1]);
+  }
+  if ((m = /^\/verify\/([a-z0-9-]{8,12})$/.exec(path))) return credentialHead(m[1]);
   if (path === "/roadmap") return roadmapIndex();
   if ((m = /^\/share\/([a-z0-9]{10,40})$/.exec(path))) return shareHead(m[1]);
   return null;
@@ -1032,6 +1044,97 @@ async function testsIndex(): Promise<PageHead> {
   return { path: "/tests", title: "Placement tests", description: "", content, section: "index" };
 }
 
+/* ── Skill tests ─────────────────────────────────────────────────── */
+
+function skillTestHead(slug: string): Promise<PageHead | null> {
+  return cached(`seo:head:skill-test:v1:${slug}`, HEAD_TTL_MS, async () => {
+    const t = await prisma.skillTest.findFirst({
+      where: { slug, published: true },
+      select: {
+        skill: true, level: true, title: true, blurb: true, instructions: true, durationSec: true, totalQuestions: true, passPercent: true, distinctionPercent: true, validityMonths: true,
+        sections: { orderBy: { orderIndex: "asc" }, select: { name: true, durationSec: true, questionCount: true, kind: true, marksPerQuestion: true } },
+      },
+    });
+    if (!t) return null;
+    const def = skillDef(t.skill);
+    const skillLabel = def?.label ?? t.skill;
+    const levelLabel = isSkillLevel(t.level) ? LEVEL_LABEL[t.level] : t.level;
+    const path = `/skill-tests/${slug}`;
+    const minutes = Math.round(t.durationSec / 60);
+    const trail: Crumb[] = [HOME, SECTION.skillTests, { name: t.title, path }];
+    const [others, covered] = await Promise.all([
+      prisma.skillTest.findMany({ where: { published: true, NOT: { slug } }, select: { slug: true, title: true }, orderBy: { orderIndex: "asc" } }),
+      poolTopics(t.skill, t.level),
+    ]);
+    const rows = t.sections
+      .map((s) => `<tr><td>${h(s.name)}</td><td>${s.questionCount}</td><td>${Math.round(s.durationSec / 60)} min</td><td>${s.kind === "coding" ? "Coding" : "Multiple choice"}</td><td>${s.marksPerQuestion}</td></tr>`)
+      .join("");
+    const content =
+      factList([
+        ["Skill", skillLabel],
+        ["Level", levelLabel],
+        ["Duration", `${minutes} minutes`],
+        ["Questions", String(t.totalQuestions)],
+        ["Pass mark", `${t.passPercent}% (distinction at ${t.distinctionPercent}%)`],
+        ["Credential", `Verifiable, valid for ${t.validityMonths / 12} years`],
+      ]) +
+      `<p>${h(t.blurb)}</p>` +
+      section("Sections", `<table><thead><tr><th>Section</th><th>Questions</th><th>Time</th><th>Kind</th><th>Marks each</th></tr></thead><tbody>${rows}</tbody></table>`, "sections") +
+      (def && covered.length ? section("What it covers", `<ul>${def.topics.filter((x) => covered.includes(x.id)).map((x) => `<li>${h(x.label)}</li>`).join("")}</ul>`, "topics") : "") +
+      section("Rules", markdownToHtml(t.instructions, 6_000), "rules") +
+      (others.length ? section("Other skill tests", linkList(others.map((o) => ({ href: `/skill-tests/${o.slug}`, label: o.title }))), "related") : "");
+    return {
+      path,
+      title: titles.skillTest(skillLabel, levelLabel),
+      description: summarise(`A free ${minutes}-minute ${skillLabel} skill test at ${levelLabel.toLowerCase()} level. Pass with ${t.passPercent}% to earn a verifiable CodeKairo credential and a profile frame. ${t.blurb}`),
+      facts: { minutes, questions: t.totalQuestions, trail },
+      content,
+      crumb: t.title,
+    };
+  });
+}
+
+/** The skill tests index's child list: every test, by skill. */
+async function skillTestsIndex(): Promise<PageHead> {
+  const rows = await prisma.skillTest.findMany({ where: { published: true }, select: { slug: true, title: true, skill: true, durationSec: true, totalQuestions: true }, orderBy: { orderIndex: "asc" } });
+  const content = section(
+    "Every skill test",
+    SKILLS.filter((skill) => rows.some((r) => r.skill === skill.id))
+      .map((skill) => `<h3>${h(skill.label)}</h3><p>${h(skill.blurb)}</p>${linkList(rows.filter((r) => r.skill === skill.id).map((t) => ({ href: `/skill-tests/${t.slug}`, label: t.title, note: `${Math.round(t.durationSec / 60)} min · ${t.totalQuestions} questions` })))}`)
+      .join(""),
+    "tests",
+  );
+  return { path: "/skill-tests", title: "Skill tests", description: "", content, section: "index" };
+}
+
+/**
+ * /verify/<code> — a credential's public check, the page a certificate's
+ * printed link and a LinkedIn "Licenses & certifications" entry lead to.
+ * Noindex (the route table says so): it answers "is this real?" for the
+ * one person asking; it is not a page for search. A code that resolves to
+ * nothing is a 404, so a forged certificate's link says so plainly.
+ */
+async function credentialHead(raw: string): Promise<PageHead | null> {
+  const code = normalizeCredentialCode(raw);
+  if (!code) return null;
+  const c = await verifyCredential(code, null);
+  if (!c) return null;
+  const who = c.holder.name || c.holder.username || "A CodeKairo member";
+  const state = c.status === "valid" ? "Verified" : c.status === "expired" ? "Expired" : "Revoked";
+  const title = `${state}: ${who} — ${c.name} | ${BRAND}`;
+  const description =
+    c.status === "valid"
+      ? `${who} passed the CodeKairo ${c.name} skill test${c.band === "distinction" ? " with distinction" : ""}. Credential ${c.code}, issued ${c.issuedAt.toISOString().slice(0, 10)}, valid until ${c.expiresAt.toISOString().slice(0, 10)}.`
+      : `Credential ${c.code} (${c.name}, held by ${who}) is ${c.status}.`;
+  return {
+    path: credentialPath(c.code),
+    title,
+    description: summarise(description),
+    crumb: "Credential",
+    content: `<p>${h(description)}</p><p><a href="/skill-tests/${h(c.test.slug)}">About the ${h(c.test.title)} test</a> · <a href="/skill-tests">All skill tests</a></p>`,
+  };
+}
+
 /* ── The roadmap ─────────────────────────────────────────────────── */
 
 /** The roadmap index's child list: every tier, its stages, their problems. */
@@ -1109,8 +1212,13 @@ export function sitemapXml(name: string): Promise<string | null> {
         return urlset(rows.filter((r) => !(r.slug in APTITUDE_CANONICAL)).map((r) => ({ path: `/aptitude/q/${r.slug}`, lastmod: r.updatedAt })));
       }
       case "tests": {
-        const rows = await prisma.mockTest.findMany({ where: { published: true }, select: { slug: true, updatedAt: true }, orderBy: { slug: "asc" } });
-        return urlset(rows.map((r) => ({ path: `/tests/${r.slug}`, lastmod: r.updatedAt })));
+        // The placement patterns and the skill tests: both are tests a
+        // visitor reads the rules of before sitting one.
+        const [rows, skill] = await Promise.all([
+          prisma.mockTest.findMany({ where: { published: true }, select: { slug: true, updatedAt: true }, orderBy: { slug: "asc" } }),
+          prisma.skillTest.findMany({ where: { published: true }, select: { slug: true, updatedAt: true }, orderBy: { slug: "asc" } }),
+        ]);
+        return urlset([...rows.map((r) => ({ path: `/tests/${r.slug}`, lastmod: r.updatedAt })), ...skill.map((r) => ({ path: `/skill-tests/${r.slug}`, lastmod: r.updatedAt }))]);
       }
       case "categories": {
         // The hub pages: the catalogue's topics and companies, the bug hunts'

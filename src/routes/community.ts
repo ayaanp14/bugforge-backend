@@ -6,6 +6,7 @@ import { verifyAchievement } from "../services/achievements.js";
 import { optionalAuth, requireAuth } from "../middleware/auth.js";
 import { communityWriteLimiter } from "../middleware/rate-limit.js";
 import { cached, cachedShared, invalidate } from "../lib/cache.js";
+import { WORN_CREDENTIAL_SELECT } from "../lib/skill-tests.js";
 import { invalidateUnread } from "../services/notifications.js";
 import { invalidateDashboard, querySocialCounts } from "../services/dashboard.js";
 
@@ -18,7 +19,10 @@ const router = Router();
 // number the profile and the dashboard rank by (services/me.ts getTierTitle).
 // The feed used to apply the ladder to `xp`, so one account was "Novice" on
 // its profile and "Apprentice" on its posts (QA-010). XP stays for the count.
-const AUTHOR_SELECT = { id: true, name: true, username: true, avatar_url: true, xp: true, rating: true, roadmapRewards: { select: { tierKey: true } } } as const;
+// `wornCredential` is the skill-test credential whose frame the author
+// chose to wear (lib/skill-tests.ts WORN_CREDENTIAL_SELECT), drawn in place
+// of the chest ring.
+const AUTHOR_SELECT = { id: true, name: true, username: true, avatar_url: true, xp: true, rating: true, roadmapRewards: { select: { tierKey: true } }, ...WORN_CREDENTIAL_SELECT } as const;
 
 /** Feed page size cap. */
 const MAX_TAKE = 30;
@@ -211,7 +215,7 @@ const RANK = {
 type Candidate = {
   id: string; userId: string; type: string; visibility: string; content: string;
   meta: unknown; createdAt: Date; editedAt?: Date | null; resolvedCommentId?: string | null;
-  user: { id: string; name: string | null; username: string | null; avatar_url: string | null; xp: number };
+  user: { id: string; name: string | null; username: string | null; avatar_url: string | null; xp: number; roadmapRewards?: { tierKey: string }[]; wornCredential?: unknown };
   _count: { comments: number; likes: number };
   tags: { tag: string }[];
 };
@@ -1508,6 +1512,9 @@ async function querySuggestions(userId: string) {
             : "New here";
       return {
         id: u.id, name: u.name, username: u.username, avatar_url: u.avatar_url, xp: u.xp,
+        // The flair travels with the author everywhere else; the rail drew
+        // these avatars bare because this map rebuilt the row without it.
+        roadmapRewards: u.roadmapRewards, wornCredential: u.wornCredential,
         reason, mutuals: mutual, followers: followers.get(u.id) ?? 0, posts: postCount,
         score,
       };

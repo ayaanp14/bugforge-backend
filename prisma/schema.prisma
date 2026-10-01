@@ -132,6 +132,15 @@ model User {
   feedback              Feedback[]
   aptitudeAttempts      AptitudeAttempt[]
   mockAttempts          MockAttempt[]
+  skillAttempts         SkillAttempt[]
+  skillCredentials      SkillCredential[]         @relation("credentialOwner")
+  /// The credential whose frame this account wears round its avatar, or null
+  /// for none (the roadmap ring, when there is one). Always one of the
+  /// account's own credentials — the route checks — and cleared when the
+  /// credential is revoked. A column here rather than a flag on the
+  /// credential so every author payload reads it with one joined select.
+  wornCredentialId      String?
+  wornCredential        SkillCredential?          @relation("wornCredential", fields: [wornCredentialId], references: [id], onDelete: SetNull)
   dailyContests         DailyContestEntry[]
   revokedSessions       RevokedSession[]
   resumes               Resume[]
@@ -178,6 +187,7 @@ model Problem {
   problemTimers         ProblemTimer[]
   dailyContests         DailyContest[]
   mockCodeAnswers       MockCodeAnswer[]
+  skillCodeAnswers      SkillCodeAnswer[]
   tournamentProblems    TournamentProblem[]
   tournamentSubmissions TournamentSubmission[]
   roadmapStages         RoadmapStageProblem[]
@@ -1141,6 +1151,223 @@ model MockCodeAnswer {
   @@index([attemptId, sectionIndex])
 }
 
+// ── Skill tests: one skill at one level, certified ───────────────────────────
+
+/// A skill test ("Java · Intermediate"). Content, seeded from
+/// scripts/skill-test-data. It runs on the placement-test engine's rules
+/// (lib/mock-tests.ts: a paper drawn per sitting, server-owned deadlines,
+/// sections taken in order) but keeps its own tables, because two things are
+/// different in kind: its multiple-choice questions come from a private bank
+/// whose key never leaves the server — not during a sitting and not in the
+/// result, since a credential is only worth what a stranger cannot look up —
+/// and a passing sitting issues a SkillCredential.
+model SkillTest {
+  id                 String             @id @default(cuid())
+  slug               String             @unique @db.VarChar(80)
+  /// lib/skill-catalog.ts SkillId.
+  skill              String             @db.VarChar(40)
+  /// "basic" | "intermediate" | "advanced"
+  level              String             @db.VarChar(20)
+  title              String
+  blurb              String             @db.Text
+  /// Markdown shown before the clock starts.
+  instructions       String             @db.Text
+  /// Judge languages the coding section accepts; [] = any.
+  languages          Json               @default("[]")
+  durationSec        Int
+  totalQuestions     Int
+  passPercent        Int                @default(60)
+  distinctionPercent Int                @default(85)
+  /// Days after a sitting closes before the test can be sat again.
+  cooldownDays       Int                @default(7)
+  /// How long a credential from this test stays valid.
+  validityMonths     Int                @default(24)
+  orderIndex         Int                @default(0)
+  published          Boolean            @default(true)
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+  sections           SkillTestSection[]
+  attempts           SkillAttempt[]
+  credentials        SkillCredential[]
+
+  @@unique([skill, level])
+  @@index([published, orderIndex])
+}
+
+/// One timed section of a skill test and the rule for filling it — the same
+/// shape as MockTestSection, read by the same drawPaper. An "mcq" section's
+/// blueprint is pinned to its pool (`category: "<skill>:<level>"`), so it
+/// can only ever draw from SkillQuestion rows of that skill and level.
+model SkillTestSection {
+  id               String    @id @default(cuid())
+  testId           String
+  key              String    @db.VarChar(40)
+  name             String
+  orderIndex       Int
+  durationSec      Int
+  questionCount    Int
+  instructions     String?   @db.Text
+  /// "mcq" | "coding"
+  kind             String    @default("mcq") @db.VarChar(10)
+  marksPerQuestion Float     @default(1)
+  blueprint        Json
+  test             SkillTest @relation(fields: [testId], references: [id], onDelete: Cascade)
+
+  @@unique([testId, key])
+  @@index([testId, orderIndex])
+}
+
+/// The private multiple-choice bank. Rows are content keyed by a stable key
+/// from the bank files; a question that leaves the files is deactivated,
+/// never deleted, because a sitting in progress may hold its id.
+model SkillQuestion {
+  id          String   @id @default(cuid())
+  key         String   @unique @db.VarChar(80)
+  skill       String   @db.VarChar(40)
+  level       String   @db.VarChar(20)
+  topic       String   @db.VarChar(60)
+  /// "single" | "multi" (all-or-nothing on the exact set).
+  kind        String   @default("single") @db.VarChar(10)
+  /// Markdown.
+  prompt      String   @db.Text
+  options     Json
+  /// Indices of the correct options. Never serialised to a client.
+  answer      Json
+  /// Why the key is right. For reviewers; never shown to a candidate.
+  explanation String   @db.Text
+  /// An output-prediction question the judge has proved (seed --run).
+  checked     Boolean  @default(false)
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([skill, level, active])
+}
+
+/// One sitting of a skill test. Mirrors MockAttempt — see the comments there
+/// for `activeKey` and the deadlines — plus the grade a credential is issued
+/// on and the integrity signals the client reported.
+model SkillAttempt {
+  id             String            @id @default(cuid())
+  userId         String
+  testId         String
+  /// "in-progress" | "submitted" | "expired"
+  status         String            @default("in-progress") @db.VarChar(16)
+  /// "<userId>:<testId>" while live, null once closed (one live sitting per
+  /// person per test, enforced by the unique index; MockAttempt explains why).
+  activeKey      String?           @unique @db.VarChar(80)
+  startedAt      DateTime          @default(now())
+  expiresAt      DateTime
+  sectionEndsAt  DateTime?
+  currentSection Int               @default(0)
+  submittedAt    DateTime?
+  /// The paper as drawn: [{ key, name, durationSec, kind, marksPerQuestion, questionIds }].
+  paper          Json
+  score          Float?
+  maxScore       Float?
+  percent        Int?
+  /// "distinction" | "pass" | "fail", set at grading.
+  band           String?           @db.VarChar(16)
+  correctCount   Int?
+  wrongCount     Int?
+  skippedCount   Int?
+  sectionScores  Json?
+  /// Per-topic marks: [{ topic, total, correct }].
+  topicScores    Json?
+  /// Counters the runner reported: { tabHidden, paste, fullscreenExit }.
+  signals        Json              @default("{}")
+  /// Why grading flagged the sitting for review; [] when it did not.
+  flags          Json              @default("[]")
+  test           SkillTest         @relation(fields: [testId], references: [id], onDelete: Cascade)
+  user           User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  answers        SkillAnswer[]
+  codeAnswers    SkillCodeAnswer[]
+
+  // The cooldown and the detail page read one person's sittings of one test.
+  @@index([userId, testId, startedAt])
+  @@index([userId, startedAt])
+  // Admin review: recent sittings of a test.
+  @@index([testId, submittedAt])
+}
+
+/// One multiple-choice answer within a sitting. `selected` is the option
+/// indices chosen ([] or null = unanswered); `correct` is judged on save and
+/// never returned while the sitting is live.
+model SkillAnswer {
+  id           String       @id @default(cuid())
+  attemptId    String
+  questionId   String
+  sectionIndex Int
+  selected     Json?
+  correct      Boolean      @default(false)
+  marked       Boolean      @default(false)
+  timeSec      Int          @default(0)
+  updatedAt    DateTime     @updatedAt
+  attempt      SkillAttempt @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+
+  @@unique([attemptId, questionId])
+  @@index([attemptId, sectionIndex])
+}
+
+/// One coding problem within a sitting — MockCodeAnswer's twin, plus how
+/// closely the best submission matches the problem's published editorial
+/// solution in the same language (0–1), which grading flags above a bar.
+model SkillCodeAnswer {
+  id           String       @id @default(cuid())
+  attemptId    String
+  problemId    String
+  sectionIndex Int
+  language     String       @default("python") @db.VarChar(20)
+  code         String       @db.MediumText
+  verdict      String?      @db.VarChar(32)
+  passedCases  Int          @default(0)
+  totalCases   Int          @default(0)
+  runtimeMs    Int?
+  memoryKb     Int?
+  submissions  Int          @default(0)
+  timeSec      Int          @default(0)
+  similarity   Float?
+  updatedAt    DateTime     @updatedAt
+  attempt      SkillAttempt @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+  problem      Problem      @relation(fields: [problemId], references: [id], onDelete: Cascade)
+
+  @@unique([attemptId, problemId])
+  @@index([attemptId, sectionIndex])
+}
+
+/// A credential: the account passed this test. One row per (account, test) —
+/// a later, better sitting raises its band and renews it in place, so the
+/// public code printed on a certificate never changes. `code` is what
+/// /verify/<code> resolves; it is random, never derived from an id.
+model SkillCredential {
+  id            String    @id @default(cuid())
+  /// "CK-7H3K-9QXM": Crockford base32, no I/L/O/U.
+  code          String    @unique @db.VarChar(16)
+  userId        String
+  testId        String
+  /// Copied from the test so an author payload can draw the frame without
+  /// a second join.
+  skill         String    @db.VarChar(40)
+  level         String    @db.VarChar(20)
+  /// "pass" | "distinction"
+  band          String    @db.VarChar(16)
+  percent       Int
+  /// The sitting that earned the standing shown.
+  attemptId     String
+  issuedAt      DateTime
+  expiresAt     DateTime
+  revokedAt     DateTime?
+  revokedReason String?   @db.Text
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  user          User      @relation("credentialOwner", fields: [userId], references: [id], onDelete: Cascade)
+  test          SkillTest @relation(fields: [testId], references: [id], onDelete: Cascade)
+  wornBy        User[]    @relation("wornCredential")
+
+  @@unique([userId, testId])
+  @@index([userId, issuedAt])
+}
+
 // ── Daily contest: one kata a day, ranked like a contest ─────────────────────
 
 /// The kata of one UTC day. A row is created the first time anyone asks for
@@ -1686,24 +1913,24 @@ model ShareCard {
 
 /// A college, club, company or community that hosts tournaments.
 model BattleOrg {
-  id          String    @id @default(cuid())
-  slug        String    @unique @db.VarChar(80)
-  name        String    @db.VarChar(120)
-  kind        String    @db.VarChar(16) // college | club | company | community
-  website     String?   @db.VarChar(300)
-  city        String?   @db.VarChar(80)
-  about       String?   @db.Text
+  id               String    @id @default(cuid())
+  slug             String    @unique @db.VarChar(80)
+  name             String    @db.VarChar(120)
+  kind             String    @db.VarChar(16) // college | club | company | community
+  website          String?   @db.VarChar(300)
+  city             String?   @db.VarChar(80)
+  about            String?   @db.Text
   /// Set by the site admin. Until then the org's tournaments cannot be
   /// published — anyone may create an org, so "IIT Bombay" must be checked
   /// by a person before students see it. An edit to a verified org clears it
   /// again: what players see must be what was checked.
-  verifiedAt  DateTime?
+  verifiedAt       DateTime?
   /// The details as the admin last verified them (battles-rules OrgSnapshot),
   /// so a re-verification shows what changed instead of asking for it all again.
   verifiedSnapshot Json?
-  createdById String
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  createdById      String
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
 
   members     BattleOrgMember[]
   tournaments Tournament[]

@@ -58,7 +58,7 @@ type PublicUserRow = NonNullable<Awaited<ReturnType<typeof findUser>>>;
  */
 export function publicProfileOf(
   user: PublicUserRow,
-  dash: Pick<Dashboard, "me" | "social" | "difficultyStats" | "heatmap" | "roadmap" | "tournaments" | "submissions">,
+  dash: Pick<Dashboard, "me" | "social" | "difficultyStats" | "heatmap" | "roadmap" | "tournaments" | "submissions" | "credentials">,
   viewerId: string | null,
 ) {
   const me = dash.me;
@@ -83,6 +83,8 @@ export function publicProfileOf(
       tierTitle: me.tierTitle,
       globalRank: me.globalRank,
       roadmapRewards: me.roadmapRewards,
+      // The frame round the avatar; its code is already public (/verify).
+      wornCredential: me.wornCredential ?? null,
       stats: me.stats
         ? {
             problemsSolved: me.stats.problemsSolved,
@@ -98,6 +100,12 @@ export function publicProfileOf(
     roadmap: dash.roadmap,
     tournaments: dash.tournaments,
     submissions: dash.submissions,
+    // Credentials that stand today, each with the code its verify page
+    // resolves. Not the score — what a credential certifies is its band —
+    // and not which one is worn (the frame says that).
+    credentials: (dash.credentials ?? [])
+      .filter((c) => c.status === "valid")
+      .map((c) => ({ code: c.code, skill: c.skill, level: c.level, name: c.name, testSlug: c.testSlug, band: c.band, issuedAt: c.issuedAt, expiresAt: c.expiresAt })),
   };
 }
 

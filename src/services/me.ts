@@ -1,6 +1,7 @@
 import { prisma } from "../lib/prisma.js";
 import { cachedShared, invalidate } from "../lib/cache.js";
 import { daysBetween } from "../lib/clock.js";
+import { WORN_CREDENTIAL_SELECT } from "../lib/skill-tests.js";
 import { countSolved, getRank, loadProblemState, type ProblemState } from "./dashboard.js";
 
 // Zero-based rank ladder: rating ≡ lifetime XP, so the bar moves from solve #1
@@ -118,6 +119,8 @@ export const ME_SELECT = {
   createdAt: true,
   /** The roadmap chests opened — the frame and the flair the account wears. */
   roadmapRewards: { select: { tierKey: true } },
+  /** The skill-test credential worn round the avatar, if any. */
+  ...WORN_CREDENTIAL_SELECT,
   stats: {
     select: {
       problemsSolved: true,
@@ -243,6 +246,7 @@ export async function getDashboardUser(
         rating: true,
         createdAt: true,
         roadmapRewards: { select: { tierKey: true } },
+        ...WORN_CREDENTIAL_SELECT,
         stats: {
           select: {
             problemsSolved: true,

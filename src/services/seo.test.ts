@@ -54,6 +54,9 @@ test("every content page kind has a title with its intent first and the brand wh
   assert.equal(titles.studyLesson("Records", "Java", false, null), "Records — Java lesson — CodeKairo");
   assert.equal(titles.test("TCS NQT — Foundation", "TCS"), "TCS NQT — Foundation Mock Test — CodeKairo");
   assert.equal(titles.test("Foundation", "Infosys"), "Foundation Mock Test — Infosys Pattern — CodeKairo");
+  assert.equal(titles.skillTest("Java", "Basic"), "Java Certification Test (Basic) — CodeKairo");
+  // The longest skill still fits the 60-character budget, without the brand.
+  assert.equal(titles.skillTest("Problem Solving (DSA)", "Intermediate"), "Problem Solving (DSA) Certification Test (Intermediate)");
 });
 
 test("a track's description fits a results page and the SPA's copy of it", () => {
