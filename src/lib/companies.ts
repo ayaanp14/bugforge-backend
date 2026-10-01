@@ -16,6 +16,13 @@ export const COMPANY_TAGS: readonly string[] = [
   // Indian service-based hiring rounds
   "TCS", "Infosys", "Wipro", "Capgemini", "Cognizant", "Accenture", "Zoho", "HCL",
   "Tech Mahindra", "Mphasis", "Virtusa", "Mindtree",
+  // Tagged by later catalog waves and missed here until 2026-10-01, when the
+  // catalogue's Topics strip was found listing Oracle, Paytm, Swiggy and
+  // twenty more as if they were techniques.
+  "Oracle", "Salesforce", "Samsung", "Atlassian", "Rubrik", "Intuit", "Arcesium", "Databricks",
+  "Morgan Stanley", "Nutanix", "Sprinklr", "Spotify",
+  "Paytm", "Swiggy", "Cred", "Zomato", "Directi", "Ola", "Razorpay", "Freshworks", "Myntra",
+  "Dream11", "Hotstar", "PhonePe",
 ];
 
 /**

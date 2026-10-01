@@ -9,7 +9,7 @@ import { catalogueNeighbours, getCatalogue, listProblemsWithStatus, loadProblemS
 import { isCompanyTag } from "../lib/companies.js";
 import { problemCanonicalSlug } from "../lib/problem-canonical.js";
 import { isJudgeLanguage } from "../lib/judge0.js";
-import { hubIndex, hubPage, hubsForTags, relatedProblems } from "../services/problem-hubs.js";
+import { hubIndex, hubPage, hubProgress, hubsForTags, relatedProblems } from "../services/problem-hubs.js";
 
 const router = Router();
 
@@ -437,6 +437,31 @@ router.get("/hubs/:kind/:slug", browserCache(300, { shared: true }), async (req,
     console.error("GET /api/problems/hubs/:kind/:slug error:", err);
     res.status(500).json({ error: "Internal server error" });
   }
+});
+
+/**
+ * The signed-in reader's standing on one hub — which of its problems they
+ * have solved or tried, by slug — for the page's progress line, its plan's
+ * ticks and the list's. Kept off the hub payload above, which is public and
+ * shared-cached; this one is per account and never cached by a browser
+ * (a solve must show on the next visit).
+ *
+ *   GET /api/problems/hubs/topic/arrays/progress → { solved: [slug], attempted: [slug] }
+ */
+router.get("/hubs/:kind/:slug/progress", requireAuth, async (req, res) => {
+  const kind = req.params["kind"];
+  const slug = String(req.params["slug"]).toLowerCase();
+  if ((kind !== "topic" && kind !== "company") || !/^[a-z0-9][a-z0-9-]{0,79}$/.test(slug)) {
+    res.status(404).json({ error: "No such hub" });
+    return;
+  }
+  const progress = await hubProgress(kind, slug, req.user!.userId);
+  if (!progress) {
+    res.status(404).json({ error: "No such hub" });
+    return;
+  }
+  res.setHeader("Cache-Control", "private, no-store");
+  res.json(progress);
 });
 
 // 2. GET /api/problems/[slug] — Problem detail

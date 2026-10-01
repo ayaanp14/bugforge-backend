@@ -1172,4 +1172,875 @@ Exactly the number of candidates times the cost of each check: O(n³) for triple
 - [Count Good Triplets](/problems/count-good-triplets): every triple, checked directly.
 - [Count Square Sum Triples](/problems/count-square-sum-triples): enumerating two values, deriving the third.
 - [Reordered Power of 2](/problems/reordered-power-of-2): enumerating the targets instead.`,
+  "combinatorics": `### When to reach for it
+
+"How many ways", "how many distinct arrangements", and nearly always "modulo 10⁹ + 7": far too many to list, so the count comes from a formula or a recurrence. Independent choices multiply; positions picked from a set are a binomial coefficient; a bag of items put in order is a multinomial.
+
+### The pattern
+
+Match the objects one to one with something standard. A right-or-down path through an m × n grid is a sequence of m − 1 downs and n − 1 rights: C(m + n − 2, m − 1) paths. A word's orderings are n! divided by the factorial of each letter's count. Under a prime modulus p, divide by multiplying with the inverse \`pow(x, p - 2, p)\` (Fermat's little theorem). Failing a formula, a [Dynamic Programming](/challenges/dynamic-programming) recurrence counts.
+
+\`\`\`python
+def make_choose(n, mod=10**9 + 7):  # C(a, b) % mod for 0 <= a <= n, mod prime
+    fact = [1] * (n + 1)
+    for i in range(1, n + 1):
+        fact[i] = fact[i - 1] * i % mod
+    inv = [1] * (n + 1)
+    inv[n] = pow(fact[n], mod - 2, mod)     # Fermat: x^(p-2) is 1/x mod p
+    for i in range(n, 0, -1):
+        inv[i - 1] = inv[i] * i % mod
+    def choose(a, b):
+        return 0 if b < 0 or b > a else fact[a] * inv[b] % mod * inv[a - b] % mod
+    return choose
+\`\`\`
+
+### Cost
+
+O(n) to build the tables, then O(1) per binomial. Pascal's rule — each entry the sum of the two above it — fills an O(n × k) table with no division, for a non-prime modulus.
+
+### Common mistakes
+
+- Dividing after reducing: \`(a % p) / b\` is not \`(a / b) % p\`; multiply by the inverse.
+- Overflow: two residues below 10⁹ + 7 multiply to about 10¹⁸, beyond 32 bits. Reduce after every product.
+- Counting one arrangement twice: ordered where the question is unordered, or identical items treated as distinct.
+- Off-by-one formulas (m − 1 moves down, not m); check each against brute force on tiny inputs.
+
+### Start with
+
+- [Sum of All Subset XOR Totals](/problems/sum-of-all-subset-xor-totals): a bit set in any element is set in half the subset XORs.
+- [Unique Paths](/problems/unique-paths): a path as a choice of positions.
+- [Count Anagrams](/problems/count-anagrams): factorials over repeated letters, modulo a prime.`,
+  "brainteaser": `### When to reach for it
+
+The brute force simulates n rounds or sums over every pair or triple, n reaches 10⁵ or 10⁹, and yet the problem is too plain to want a data structure. Odd operations ("replace \`nums[i]\` with \`nums[i] AND (nums[i] XOR x)\`"), rounds of toggles and games with perfect play are typical; games have their own page, [Game Theory](/challenges/game-theory).
+
+### The pattern
+
+Write the brute force, run it for n from 1 to 20, and study the table. Then ask what the operation cannot change — a parity, a bit that can only be cleared, a total — or how often each element contributes. In Bulb Switcher, bulb i is toggled once per divisor of i; divisors pair up as d and i ÷ d except a square root, so only perfect squares stay on: ⌊√n⌋ of them.
+
+\`\`\`python
+from math import isqrt
+
+def bulbs_on_brute(n):              # the simulation, for small n
+    on = [False] * (n + 1)
+    for step in range(1, n + 1):
+        for i in range(step, n + 1, step):
+            on[i] = not on[i]
+    return sum(on)
+
+def bulbs_on(n):                    # odd number of divisors: perfect squares
+    return isqrt(n)
+\`\`\`
+
+### Cost
+
+The observation turns O(n²) or O(n × rounds) into O(n) or O(1). The brute force runs only on small cases: its job is to find the pattern and check it.
+
+### Common mistakes
+
+- Trusting a pattern seen in four or five cases; compare the formula with the simulation on twenty.
+- \`int(sqrt(n))\` can be off by one for large n; use an integer square root such as Python's \`isqrt\`.
+- Edge cases the formula treats differently: n = 0, n = 1, an empty array.
+- In XORs over all pairs, reasoning about values instead of how often each appears; XOR keeps only each count's parity.
+
+### Start with
+
+- [Nim Game](/problems/nim-game): a multiple of 4 always loses.
+- [Bulb Switcher](/problems/bulb-switcher): counting divisors without counting them.
+- [Bitwise XOR of All Pairings](/problems/bitwise-xor-of-all-pairings): how often each value enters the total.`,
+  "geometry": `### When to reach for it
+
+Points as \`[x, y]\`, circles as \`[x, y, r]\`, rectangles or heights on a grid, with a question about collinearity, distance, area or containment. Integer coordinates, up to 10⁴ or 10⁹, say that the exact answer needs no floating point.
+
+### The pattern
+
+Replace division and square roots with multiplication. Three points are collinear when the cross product of \`b - a\` and \`c - a\` is zero — no slope, no vertical special case — and its sign tells a left turn from a right. Compare distances by their squares: dx² + dy² ranks points as the distance does, and a point is inside or on a circle when dx² + dy² ≤ r². To group points by slope, reduce the direction by its gcd, fix its sign and use it as a [Hash Table](/challenges/hash-table) key.
+
+\`\`\`python
+from math import gcd
+
+def cross(o, a, b):                 # > 0 left turn, < 0 right turn, 0 collinear
+    return (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0])
+
+def direction(p, q):                # slope from p to q as an exact key, p != q
+    dx, dy = q[0] - p[0], q[1] - p[1]
+    g = gcd(dx, dy)
+    dx, dy = dx // g, dy // g
+    if dx < 0 or (dx == 0 and dy < 0):
+        dx, dy = -dx, -dy           # one sign, so p→q and q→p agree
+    return dx, dy
+\`\`\`
+
+### Cost
+
+Every pair of points is O(n²); with a map of directions per anchor point, Max Points on a Line is O(n²) time and O(n) space.
+
+### Common mistakes
+
+- Floating-point slopes: \`dy / dx\` fails on vertical lines, close slopes can round alike, and Java's \`Double\` keys tell 0.0 from −0.0.
+- Overflow: with coordinates up to 10⁹, a cross product or squared distance reaches about 10¹⁸; use 64-bit integers.
+- Duplicate points have no direction between them; count them apart and add them to every line through that point.
+- Reading "inside or on" as \`<\`: a point on the boundary satisfies \`<=\`.
+
+### Start with
+
+- [Check If It Is a Straight Line](/problems/check-if-it-is-a-straight-line): one cross product per point.
+- [K Closest Points to Origin](/problems/k-closest-points-to-origin): ranking by squared distance.
+- [Max Points on a Line](/problems/max-points-on-a-line): exact slopes as hash keys.`,
+  "rolling-hash": `### When to reach for it
+
+Many substring comparisons: every window of length m against a pattern, every window of one array against every window of another, every prefix against the suffix of the same length. "The longest repeated" or "the longest common" piece adds a [Binary Search](/challenges/binary-search) on the length, since a repeat of length L contains repeats of every shorter length.
+
+### The pattern
+
+Read a window as the digits of a number in base B, modulo a large prime M. To slide one step, subtract the outgoing character times Bᵐ⁻¹, multiply by B, add the incoming character and reduce. Equal windows always hash alike and unequal ones rarely do, so on a match compare the characters, or keep two hashes with different moduli. Prefix hashes give any substring's hash in O(1).
+
+\`\`\`python
+def find_all(text, pattern, B=256, M=(1 << 61) - 1):
+    m, hp, hw = len(pattern), 0, 0
+    top = pow(B, m - 1, M)              # weight of the outgoing character
+    for a, b in zip(pattern, text):
+        hp, hw = (hp * B + ord(a)) % M, (hw * B + ord(b)) % M
+    out = []
+    for i in range(len(text) - m + 1):
+        if hw == hp and text[i:i + m] == pattern:   # confirm: hashes collide
+            out.append(i)
+        if i + m < len(text):
+            hw = ((hw - ord(text[i]) * top) * B + ord(text[i + m])) % M
+    return out
+\`\`\`
+
+### Cost
+
+O(n + m) time and O(1) extra space, plus O(m) per confirmation — O(n × m) on \`aaaa…a\`, where every window matches; two hashes and no confirming stay linear at a tiny risk.
+
+### Common mistakes
+
+- One small modulus: 10⁵ window hashes modulo about 10⁹ in a set give about n² ÷ 2M ≈ 5 false matches.
+- A negative value after removing the outgoing character in Java, C++ or JavaScript; add M before the remainder.
+- Overflow: with M near 10⁹ and a small base, \`hash * B\` fits even JavaScript's 2⁵³; M = 2⁶¹ − 1 needs 128-bit products.
+- Weighting the outgoing character by Bᵐ instead of Bᵐ⁻¹.
+
+### Start with
+
+- [Maximum Length of Repeated Subarray](/problems/maximum-length-of-repeated-subarray): window hashes plus a binary search on length.
+- [String Matching: All Occurrences](/problems/string-matching-all-occurrences): Rabin–Karp, overlaps included.
+- [Longest Happy Prefix](/problems/longest-happy-prefix): prefix and suffix hashes grown together.`,
+  "quickselect": `### When to reach for it
+
+"The k-th largest", "the k-th smallest", "the median", "the k closest": one position of the sorted order, or the items below it, but not the order itself. Sorting costs O(n log n), a [Heap](/challenges/heap) capped at k O(n log k), and quickselect O(n) on average.
+
+### The pattern
+
+Pick a random pivot and split the values into below, equal and above. If position k falls among the equal ones, the pivot is the answer; otherwise continue in the side that holds k, shifting k when it is the upper side. The k-th largest is position n − k + 1 in ascending order. In-place versions, with Lomuto's or Hoare's partition, narrow a \`[lo, hi]\` range instead of building lists.
+
+\`\`\`python
+import random
+
+def kth_smallest(nums, k):          # k is 1-based; average O(n)
+    pivot = random.choice(nums)
+    lo = [x for x in nums if x < pivot]
+    hi = [x for x in nums if x > pivot]
+    if k <= len(lo):
+        return kth_smallest(lo, k)
+    if k > len(nums) - len(hi):
+        return kth_smallest(hi, k - (len(nums) - len(hi)))
+    return pivot                    # every copy of pivot sits between lo and hi
+\`\`\`
+
+### Cost
+
+About n + n/2 + n/4 + … ≈ 2n steps: O(n) on average, O(n²) when every pivot is an extreme. The lists above take O(n) extra space; in place it is O(1). Median of medians guarantees O(n) but is slower in practice.
+
+### Common mistakes
+
+- Always pivoting on the first or last element, so already-sorted input costs O(n²).
+- A two-way partition, such as Lomuto's, on many equal values: an array of identical numbers shrinks by one element per round.
+- Mixing up 1-based k, a 0-based index, and largest with smallest.
+- Expecting the k low items to come out sorted; K Closest Points to Origin has to sort them afterwards.
+
+### Start with
+
+- [Kth Smallest Element](/problems/kth-smallest-element): the select itself, on distinct values.
+- [Kth Largest Element in an Array](/problems/kth-largest-element-in-an-array): duplicates, and counting from the other end.
+- [K Closest Points to Origin](/problems/k-closest-points-to-origin): selecting by squared distance, then sorting the k.`,
+  "string-matching": `### When to reach for it
+
+"Find every occurrence", "is goal a rotation of s", "is s made of copies of one block". Checking each start position letter by letter is O(n × m): fine for short strings, too slow when the text runs to 10⁵ and the pattern is long or mostly one letter.
+
+### The pattern
+
+Reduce first. \`goal\` is a rotation of \`s\` exactly when the lengths match and \`goal\` occurs in \`s + s\`; \`s\` repeats a shorter block exactly when it occurs in \`s + s\` without its first and last characters. Then search in linear time. The Z-function gives each position's longest match with the string's start; over \`pattern + text\`, a text position whose value reaches the pattern's length starts a match. [KMP](/challenges/kmp) builds a border table instead.
+
+\`\`\`python
+def find_all(text, pattern):        # every start index, overlaps included
+    s, m = pattern + text, len(pattern)
+    n = len(s)
+    z, l, r = [0] * n, 0, 0         # z[i]: common prefix of s and s[i:]
+    for i in range(1, n):
+        if i < r:
+            z[i] = min(r - i, z[i - l])
+        while i + z[i] < n and s[z[i]] == s[i + z[i]]:
+            z[i] += 1
+        if i + z[i] > r:
+            l, r = i, i + z[i]
+    return [i - m for i in range(m, n) if z[i] >= m]
+\`\`\`
+
+### Cost
+
+The Z-function and KMP take O(n + m) time and space, Rabin–Karp the same on average. A library search is not guaranteed linear: Java's \`indexOf\` is naive, O(n × m) at worst.
+
+### Common mistakes
+
+- Missing overlapping matches by resuming at i + m after a match at i, not i + 1.
+- Skipping the length check in the rotation test: "ab" occurs in "abcabc" but is not a rotation of "abc".
+- Joining pattern and text with a separator that can occur in the input, so a match spans the join.
+- Comparing \`text[i:i + m] == pattern\` at every position: a hidden O(m) copy per step.
+
+### Start with
+
+- [Rotate String](/problems/rotate-string): a rotation is a substring of \`s + s\`.
+- [Repeated Substring Pattern](/problems/repeated-substring-pattern): \`s\` inside \`s + s\` with its ends trimmed.
+- [String Matching: All Occurrences](/problems/string-matching-all-occurrences): every overlapping match in linear time.`,
+  "bucket-sort": `### When to reach for it
+
+Ordering by a key whose range is small and known: a frequency (1 to n), a score out of 100, a character. "Top k frequent" and "sort by frequency" are the interview forms; the textbook one spreads evenly distributed real numbers into equal slices of their range. For keys up to 10⁹ and a small n, a comparison sort or a heap is simpler.
+
+### The pattern
+
+Count, then make one list per possible key — for frequencies, indices 0 to n — and append each value to its count's list. Reading from the top index down gives the most frequent first; take the first k. A tie rule such as "smaller value first" needs each bucket sorted, or the values appended in that order. One bucket per small integer value is [Counting Sort](/challenges/counting-sort).
+
+\`\`\`python
+from collections import Counter
+
+def top_k_frequent(nums, k):        # most frequent first; ties in any order
+    count = Counter(nums)
+    buckets = [[] for _ in range(len(nums) + 1)]    # index = frequency
+    for x, c in count.items():
+        buckets[c].append(x)
+    out = []
+    for f in range(len(nums), 0, -1):   # highest frequency first
+        out.extend(buckets[f])
+    return out[:k]
+\`\`\`
+
+### Cost
+
+Counting, filling and reading are each O(n): O(n) time and space, against O(n log n) for sorting by count and O(n log k) for a heap. The textbook version averages O(n) but degrades to sorting one crowded bucket.
+
+### Common mistakes
+
+- Sizing the buckets by the number of distinct values rather than n + 1, when one value can make up the whole input.
+- Bucketing by value instead of by count, which needs a slot for every possible value.
+- Reading the buckets from index 0, least frequent first.
+- Ignoring the tie rule, which Top K Frequent Elements and Sort Characters By Frequency both state.
+
+### Start with
+
+- [Top K Frequent Elements](/problems/top-k-frequent-elements): buckets indexed by count, read from the top.
+- [Sort Characters By Frequency](/problems/sort-characters-by-frequency): the same buckets, each character repeated by its count.`,
+  "kmp": `### When to reach for it
+
+A pattern in a long text where the naive scan could reach O(n × m) — and, more often in interviews, a question about borders, prefixes that are also suffixes: "the longest happy prefix", "the shortest palindrome by adding characters in front", "the smallest period", "is s one block repeated".
+
+### The pattern
+
+\`pi[i]\` is the length of the longest proper prefix of \`s[:i + 1]\` that is also its suffix. Build it left to right: extend the previous border by one character, or on a mismatch fall back to the border's border, \`k = pi[k - 1]\`, until it extends or reaches 0. To search, run it over \`pattern + "#" + text\`: a value equal to the pattern's length ends a match. For Shortest Palindrome, the last value over \`s + "#" + s[::-1]\` is the longest palindromic prefix. The smallest period is \`n - pi[n - 1]\`.
+
+\`\`\`python
+def prefix_function(s):             # pi[i]: longest proper border of s[:i + 1]
+    pi = [0] * len(s)
+    for i in range(1, len(s)):
+        k = pi[i - 1]               # the border we try to extend
+        while k and s[i] != s[k]:
+            k = pi[k - 1]           # fall back to the border's border
+        if s[i] == s[k]:
+            k += 1
+        pi[i] = k
+    return pi
+\`\`\`
+
+### Cost
+
+O(n) time and space: k rises by at most one per character, so the fallbacks total at most n. A search is O(n + m), with O(m) space if the text streams against the pattern's table.
+
+### Common mistakes
+
+- Counting the whole string as its own border; borders are proper, so \`pi[0]\` is 0.
+- Falling back to \`pi[k]\` instead of \`pi[k - 1]\`; the length-k prefix's border sits at its last index.
+- A separator that can occur in the input, so a border runs across the join.
+- Resetting to 0 on a mismatch instead of falling back: it misses \`aab\` in \`aaab\`.
+
+### Start with
+
+- [Longest Happy Prefix](/problems/longest-happy-prefix): the table's last value.
+- [Shortest Palindrome](/problems/shortest-palindrome): a border of the string joined to its reverse.`,
+  "merge-sort": `### When to reach for it
+
+A sort that must be O(n log n) on every input, or stable, or on a linked list, or on data too large for memory. Above all here: counting pairs i < j whose values satisfy an order condition — inversions, \`nums[i] > 2 * nums[j]\`, earlier values that are smaller — where brute force is O(n²) and n reaches 10⁵.
+
+### The pattern
+
+Split in half, sort each half recursively, and merge with two pointers that take the smaller head. With both halves sorted, every cross pair has its left element earlier in the array, and a pointer moving only forward through the right half counts them for every left element in one pass; pairs inside a half were counted lower down. Count before merging when the condition differs from the merge's comparison, as in Reverse Pairs. A [Binary Indexed Tree](/challenges/binary-indexed-tree) counts the same pairs one insertion at a time.
+
+\`\`\`python
+from heapq import merge
+
+def reverse_pairs(nums):            # pairs i < j with nums[i] > 2 * nums[j]
+    def go(a):                      # (a sorted, pairs inside a)
+        if len(a) <= 1: return a, 0
+        (L, x), (R, y) = go(a[:len(a) // 2]), go(a[len(a) // 2:])
+        count, j = x + y, 0
+        for v in L:                 # both halves sorted: j only moves forward
+            while j < len(R) and v > 2 * R[j]: j += 1
+            count += j
+        return list(merge(L, R)), count     # the linear merge
+    return go(nums)[1]
+\`\`\`
+
+### Cost
+
+T(n) = 2T(n/2) + O(n): O(n log n) on every input, O(n) extra space, recursion O(log n) deep. Linked lists merge by relinking, with no buffer.
+
+### Common mistakes
+
+- Taking from the right half on a tie (\`<\` instead of \`<=\`), which makes the sort unstable.
+- Counting cross pairs after the merge, when an element's half is no longer known.
+- Overflow: \`2 * nums[j]\` passes 2³¹ − 1 when values reach 10⁹; compute it in 64 bits.
+- With an inclusive \`hi\`, recursing on \`[lo, mid]\` and \`[mid, hi]\`: a two-element range never shrinks.
+
+### Start with
+
+- [Reverse Pairs](/problems/reverse-pairs): a cross-pair count taken before each merge.
+- [Create Sorted Array Through Instructions](/problems/create-sorted-array-through-instructions): for each value, the earlier values smaller and larger.`,
+  "sieve-of-eratosthenes": `### When to reach for it
+
+Primality or factors for many numbers below a bound you can allocate: count the primes below n, factorise every element of an array with values up to 10⁶. Trial division costs O(√n) a number, O(n√n) for all; one sieve answers them all. For a single number, or values up to 10¹², trial division is the tool — see [Number Theory](/challenges/number-theory).
+
+### The pattern
+
+Mark every number from 2 up as prime. For each still-marked p with p × p ≤ n, cross out p², p² + p, p² + 2p and so on; a smaller multiple k × p with k < p has a smaller prime factor and is already crossed out. Record the first prime to reach each number and the sieve also factorises: divide x by its smallest prime factor until 1 is left, O(log x) steps. A number is prime when it is its own smallest factor.
+
+\`\`\`python
+def smallest_prime_factors(n):      # spf[x] for x <= n; spf[x] == x means prime
+    spf = list(range(n + 1))
+    p = 2
+    while p * p <= n:
+        if spf[p] == p:             # nothing smaller divides p, so p is prime
+            for m in range(p * p, n + 1, p):
+                if spf[m] == m:     # first prime to reach m is its smallest
+                    spf[m] = p
+        p += 1
+    return spf
+\`\`\`
+
+### Cost
+
+O(n log log n) time — the crossings sum to n/2 + n/3 + n/5 + …, about n × ln ln n — and O(n) memory: ten million flags are 10 MB as bytes, about 80 MB as a Python list.
+
+### Common mistakes
+
+- Stopping the outer loop before √n: \`range(2, int(sqrt(n)))\` leaves 49 marked prime when n = 49. The bound is p × p ≤ n, inclusive.
+- Allocating n flags, then clearing \`is_prime[0]\` and \`is_prime[1]\`, which fails when n is 0 or 1 — Count Primes allows both.
+- Crossing out the multiples of every p, not only the primes: still correct, but O(n log n).
+- Counting 0 and 1 as primes because they were never cleared.
+
+### Start with
+
+- [Count Primes](/problems/count-primes): the sieve itself, counted strictly below n.`,
+  "suffix-array": `### When to reach for it
+
+Many questions about one string's substrings: the longest one that repeats, how many are distinct, the longest common substring of two strings, or comparing two substrings over and over inside a loop. Sorted suffixes put each substring beside its other occurrences.
+
+### The pattern
+
+The suffix array lists the suffix starts in sorted order; its inverse, \`rank[i]\`, says where suffix i landed. Prefix doubling sorts by the first 1, 2, 4, 8 … characters, each round sorting pairs of the previous ranks. Kasai's algorithm then fills the LCP array, the common prefix of each pair of neighbours, in O(n). Equal-length substrings at i and j are equal when their suffixes' LCP reaches the length, and otherwise ordered as \`rank[i]\` and \`rank[j]\`. For a few thousand characters, \`lcp[i][j] = lcp[i + 1][j + 1] + 1\` when \`s[i] == s[j]\` does the same with less code.
+
+\`\`\`python
+def suffix_array(s):                # starts of the suffixes, in sorted order
+    n, k = len(s), 1
+    rank, sa = [ord(c) for c in s], list(range(n))
+    while True:
+        key = lambda i: (rank[i], rank[i + k] if i + k < n else -1)
+        sa.sort(key=key)            # by the first 2k characters
+        new = [0] * n
+        for a, b in zip(sa, sa[1:]):
+            new[b] = new[a] + (key(a) != key(b))
+        rank, k = new, 2 * k
+        if not n or rank[sa[-1]] == n - 1:  # every rank distinct: sorted
+            return sa
+\`\`\`
+
+### Cost
+
+Prefix doubling with a comparison sort is O(n log² n); radix-sorting the pairs gives O(n log n), and SA-IS O(n). Kasai is O(n). Space is O(n), against O(n²) for the quadratic table.
+
+### Common mistakes
+
+- Sorting the suffixes as strings, \`sorted(range(n), key=lambda i: s[i:])\`, which copies O(n²) characters.
+- Ranking a suffix that has run out of characters after one that continues; the empty remainder sorts first — the \`-1\` in the key.
+- Reading the LCP of two arbitrary suffixes from one entry; it is the LCP array's minimum between their ranks.
+- Stopping the doubling after a fixed number of rounds, not when every rank is distinct.
+
+### Start with
+
+- [Number of Ways to Separate Numbers](/problems/number-of-ways-to-separate-numbers): an O(1) comparison of equal-length substrings inside a dynamic programming table.`,
+  "trie": `### When to reach for it
+
+Many words and questions about their prefixes: does any stored word start with this, which root is the shortest prefix of this word, is every prefix of a word also a word. A whole-word lookup is a [Hash Table](/challenges/hash-table) job. Built over bits, highest first, a trie also finds the largest XOR of two numbers.
+
+### The pattern
+
+Each node maps a character to a child and flags where a word ends. Insert walks the word, creating missing children, and flags the last node; search walks the same way and fails at the first missing child. Every node passed spells a prefix of the word, so the first flagged one is its shortest stored prefix.
+
+\`\`\`python
+def insert(trie, word):
+    node = trie
+    for ch in word:
+        node = node.setdefault(ch, {})  # the child, created if missing
+    node["$"] = True                    # a word ends here
+
+def shortest_root(trie, word):          # shortest stored prefix, or None
+    node = trie
+    for i, ch in enumerate(word):
+        node = node.get(ch, {})         # {} once the path runs out
+        if "$" in node: return word[:i + 1]
+    return None
+\`\`\`
+
+### Cost
+
+O(L) per insert or search for a word of length L, however many words are stored, and at most one node per character inserted. A 26-slot array per node is faster than a dictionary and far larger.
+
+### Common mistakes
+
+- Taking a path for a word: "app" lies on the path of "apple" but is stored only if its node is flagged.
+- Checking the flag only at the end of the word, which misses every shorter root.
+- 26-slot arrays for 10⁵ words of length 100: up to 2.6 × 10⁸ slots.
+- Building a bit trie lowest bit first, when the highest differing bit decides an XOR.
+
+### Start with
+
+- [Replace Words](/problems/replace-words): the shortest stored prefix of each word.
+- [Longest Word in Dictionary](/problems/longest-word-in-dictionary): a word whose every prefix is flagged.
+- [Maximum XOR of Two Numbers in an Array](/problems/maximum-xor-of-two-numbers-in-an-array): a trie over bits, greedy from the top.`,
+  "trees": `### When to reach for it
+
+"n nodes and n − 1 edges", "rooted at node 0", "\`manager[i]\` is the manager of i", "the subtree of node i". With one path between any two nodes there is no route to choose and nothing to mark visited but the parent. Most questions are a value flowing down from the root (an arrival time, a depth) or a summary flowing up from the leaves (a subtree's size or label counts).
+
+### The pattern
+
+Build an adjacency list and run a [Depth-First Search](/challenges/depth-first-search) from the root, passing the parent so the walk never climbs back up. Values flowing down travel as arguments; values flowing up are combined after the children return.
+
+\`\`\`python
+def subtree_sizes(n, edges):            # tree rooted at node 0
+    adj, size = [[] for _ in range(n)], [1] * n
+    for u, v in edges:
+        adj[u].append(v)
+        adj[v].append(u)
+    def walk(u, parent):
+        for v in adj[u]:
+            if v != parent:             # never back up the edge just used
+                walk(v, u)
+                size[u] += size[v]      # v's subtree is complete by now
+    walk(0, -1)
+    return size
+\`\`\`
+
+### Cost
+
+O(n) time and space, since a tree has n − 1 edges. The recursion is as deep as the tree is tall, n − 1 for a path. A parent array is the same tree: u's children are the i with \`parent[i] == u\`.
+
+### Common mistakes
+
+- Walking back to the parent: each undirected edge is stored both ways, so the recursion never ends.
+- Recursing 10⁵ levels in Python (default limit 1,000 frames); process a breadth-first order in reverse instead, children before parents.
+- Assuming an edge \`[u, v]\` names the parent first; root the tree yourself.
+- Forgetting the one-node tree, whose edge list is empty.
+
+### Start with
+
+- [Reachable Nodes With Restrictions](/problems/reachable-nodes-with-restrictions): one walk that refuses some nodes.
+- [Time Needed to Inform All Employees](/problems/time-needed-to-inform-all-employees): a time passed down a manager array.
+- [Minimum Fuel Cost to Report to the Capital](/problems/minimum-fuel-cost-to-report-to-the-capital): subtree sizes decide the cars on each road.`,
+  "segment-tree": `### When to reach for it
+
+An array that changes while range questions arrive: the sum, minimum or OR of \`nums[l..r]\` between updates, 10⁵ of each. Prefix sums answer a range in O(1) but take O(n) per update; a segment tree does both in O(log n). Indexed by value, it counts the inserted values below x. For prefix sums alone, a [Binary Indexed Tree](/challenges/binary-indexed-tree) is shorter.
+
+### The pattern
+
+Iteratively, the values sit at \`tree[n:]\` and node \`i\` combines children \`2i\` and \`2i + 1\`. An update changes a leaf and every ancestor: a sum adds the delta, a minimum or OR recomputes each from its two children. A query on \`[l, r)\` climbs from both ends; at an odd end, the node just inside lies in the range but its parent does not, so it is added alone.
+
+\`\`\`python
+def add(tree, n, i, delta):             # nums[i] += delta; nums[i] is tree[n + i]
+    i += n
+    while i:
+        tree[i] += delta                # the leaf, then every ancestor
+        i //= 2
+
+def range_sum(tree, n, l, r):           # sum of nums[l:r]
+    total, l, r = 0, l + n, r + n
+    while l < r:
+        total += (tree[l] if l % 2 else 0) + (tree[r - 1] if r % 2 else 0)
+        l, r = (l + 1) // 2, r // 2
+    return total
+\`\`\`
+
+### Cost
+
+O(log n) per update and per query, in 2n cells. Building is O(n): fill the leaves, then each node from its children, \`n - 1\` down to 1. The recursive form extends to range updates (lazy propagation) but needs up to 4n cells.
+
+### Common mistakes
+
+- Sizing a recursive tree at 2n cells: unless n is a power of two it needs up to 4n.
+- Mixing half-open \`[l, r)\` and closed \`[l, r]\` ranges.
+- Storing something two halves cannot be combined into, such as a count of distinct values.
+- Indexing by value when values reach 10⁹; compress them to ranks first.
+
+### Start with
+
+- [Create Sorted Array Through Instructions](/problems/create-sorted-array-through-instructions): counts indexed by value, two range sums per insertion.
+- [Find Subarray With Bitwise OR Closest to K](/problems/find-subarray-with-bitwise-or-closest-to-k): a range OR, binary searched from each left end.`,
+  "binary-indexed-tree": `### When to reach for it
+
+Counting pairs \`i < j\` by value — inversions, smaller elements after each one, reverse pairs, range sums within bounds — when n reaches 10⁵ and the pair loop is O(n²). Also running totals under single-element changes, or an item's position in a list being rearranged. It needs an inverse, as sums and XOR have; for range minimums use a [Segment Tree](/challenges/segment-tree).
+
+### The pattern
+
+Positions start at 1. Cell \`i\` holds the sum of the last \`i & -i\` values up to position \`i\`, so \`add\` climbs by adding the lowest set bit and \`prefix\` descends by clearing it. For inversions, compress the values to ranks 1 to m and scan: the earlier values greater than x number \`seen - prefix(tree, rank[x])\`; then call \`add(tree, rank[x], 1)\`.
+
+\`\`\`python
+def add(tree, i, delta):                # tree[0] is unused; i starts at 1
+    while i < len(tree):
+        tree[i] += delta
+        i += i & -i                     # climb: add the lowest set bit
+
+def prefix(tree, i):                    # sum of positions 1..i
+    total = 0
+    while i > 0:
+        total += tree[i]
+        i -= i & -i                     # descend: clear the lowest set bit
+    return total
+\`\`\`
+
+### Cost
+
+O(log n) per \`add\` and per \`prefix\`, with n + 1 cells of memory. Counting pairs over n elements is O(n log n), including the sort that compresses the values. Any range sum is \`prefix(r) - prefix(l - 1)\`.
+
+### Common mistakes
+
+- Using position 0: \`0 & -0\` is 0, so \`add\` loops for ever. Shift every position up by one.
+- Skipping coordinate compression when values are negative or reach 10⁹.
+- \`prefix(rank)\` where \`prefix(rank - 1)\` was meant; that choice decides whether equal values count.
+- Reading \`tree[i]\` as the value at i; that is \`prefix(i) - prefix(i - 1)\`.
+
+### Start with
+
+- [Count Inversions](/problems/count-inversions): ranks and prefix counts in one scan.
+- [Queries on a Permutation With Key](/problems/queries-on-a-permutation-with-key): positions that shift as items move to the front.
+- [Count of Smaller Numbers After Self](/problems/count-of-smaller-numbers-after-self): the same count, scanning from the right.`,
+  "ordered-set": `### When to reach for it
+
+A collection that changes while you ask about its order: the smallest free chair, the smallest value at least \`arr[i]\` to its right, the maximum and minimum after each change. A [Heap](/challenges/heap) suffices when only one end matters; an ordered set also removes any element and finds ceilings (the first value at least x) and floors (the last value at most x).
+
+### The pattern
+
+Java's \`TreeSet\` and \`TreeMap\` (\`ceiling\`, \`floor\`, \`higher\`, \`lower\`, \`pollFirst\`) and C++'s \`std::set\` and \`std::map\` (\`lower_bound\`, \`upper_bound\`) are balanced search trees. Python has none built in; a list kept sorted with \`bisect\` does the lookups. Scanning from the right, querying before inserting, gives each index its ceiling among the elements after it.
+
+\`\`\`python
+from bisect import bisect_left, insort
+
+def odd_jumps(arr):                     # the j > i with the smallest arr[j] >= arr[i]
+    right, out = [], [-1] * len(arr)    # right: sorted (value, index) pairs after i
+    for i in range(len(arr) - 1, -1, -1):
+        k = bisect_left(right, (arr[i], i))     # equal values: the smaller index
+        if k < len(right):
+            out[i] = right[k][1]
+        insort(right, (arr[i], i))
+    return out
+\`\`\`
+
+### Cost
+
+A balanced tree inserts, removes and finds a ceiling or floor in O(log n). A sorted Python list finds in O(log n) but inserts in O(n) as elements shift: fine for tens of thousands, and \`sortedcontainers\` goes further.
+
+### Common mistakes
+
+- Repeated values in a \`TreeSet\` or \`std::set\`, which keep one copy; use a \`TreeMap\` of counts or a \`std::multiset\`.
+- Erasing a value from a \`std::multiset\`, which removes every copy; erase the one iterator \`find\` returns.
+- \`ceiling(x)\` may return x itself, \`higher(x)\` never does; "at least" or "greater than" decides.
+- No element qualifying: Java gives \`null\`, C++ \`end()\`, \`bisect\` the list's length.
+
+### Start with
+
+- [The Number of the Smallest Unoccupied Chair](/problems/the-number-of-the-smallest-unoccupied-chair): the smallest free chair as friends come and go.
+- [132 Pattern](/problems/132-pattern): the smallest value on the right above the minimum on the left.
+- [Odd Even Jump](/problems/odd-even-jump): ceilings and floors, scanning from the right.`,
+  "monotonic-queue": `### When to reach for it
+
+The maximum or minimum of a window sliding forward: of every window of size k, of \`dp[j]\` over the last k positions, of prefix sums in the shortest subarray reaching k with negatives allowed. It is a [Monotonic Stack](/challenges/monotonic-stack) with a second exit at the front for old indices. If elements leave out of order, use a heap with lazy deletion.
+
+### The pattern
+
+Keep indices whose values decrease from front to back (for a maximum). Before pushing \`i\`, pop from the back every index whose value is no larger: \`i\` is newer and at least as large, so it outlasts them. Drop the front once it leaves the window; the front is the window's answer. In a DP, expire, read the front for \`dp[i]\`, then push.
+
+\`\`\`python
+from collections import deque
+
+def max_sliding_window(nums, k):
+    dq, out = deque(), []               # indices; their values decrease
+    for i, x in enumerate(nums):
+        while dq and nums[dq[-1]] <= x:
+            dq.pop()                    # beaten by a newer, larger value
+        dq.append(i)
+        if dq[0] <= i - k:
+            dq.popleft()                # fell out of the window
+        if i >= k - 1: out.append(nums[dq[0]])
+    return out
+\`\`\`
+
+### Cost
+
+Each index is pushed and popped at most once: O(n) time and O(k) space, against O(n log n) for a heap of \`(value, index)\` pairs.
+
+### Common mistakes
+
+- Storing values, not indices, so there is no telling when the front expired.
+- An off-by-one in the bound: the window of size k ending at \`i\` starts at \`i - k + 1\`.
+- In a DP, pushing \`i\` before reading the front, so \`dp[i]\` is computed from itself.
+- In Shortest Subarray with Sum at Least K, popping the front only on expiry; it also leaves once it meets the sum, as later ends only lengthen that subarray.
+
+### Start with
+
+- [Sliding Window Maximum](/problems/sliding-window-maximum): the plain decreasing deque.
+- [Constrained Subsequence Sum](/problems/constrained-subsequence-sum): the best \`dp[j]\` among the last k positions.
+- [Shortest Subarray with Sum at Least K](/problems/shortest-subarray-with-sum-at-least-k): an increasing deque of prefix sums, popped from both ends.`,
+  "memoization": `### When to reach for it
+
+A recursion that is correct but slow because the same arguments keep coming back: a Fibonacci-like recurrence, the paths onward from each cell, Collatz step counts shared by many starting values. The arguments that change are the state; if the distinct states fit in memory, cache each answer. A cache also spares you the filling order a bottom-up table needs — that form is on [Dynamic Programming](/challenges/dynamic-programming).
+
+### The pattern
+
+Write the recursion with its base cases, make sure everything the result depends on is an argument, then cache: Python's \`functools.cache\` does it in one line; elsewhere use a hash map keyed by the arguments, or an array holding a sentinel such as −1.
+
+\`\`\`python
+from functools import cache
+
+def count_increasing_paths(grid):       # strictly increasing paths, any length
+    m, n = len(grid), len(grid[0])
+    @cache
+    def paths_from(r, c):               # the cell alone, plus every way onward
+        total = 1
+        for nr, nc in ((r + 1, c), (r - 1, c), (r, c + 1), (r, c - 1)):
+            if 0 <= nr < m and 0 <= nc < n and grid[nr][nc] > grid[r][c]:
+                total += paths_from(nr, nc)
+        return total
+    return sum(paths_from(r, c) for r in range(m) for c in range(n))
+\`\`\`
+
+### Cost
+
+Distinct states × work per state, plus a cache entry per state: O(m × n) above. The first call can recurse as deep as the longest chain of states, past Python's 1,000-frame default on large inputs.
+
+### Common mistakes
+
+- Depending on state outside the arguments — a visited set, a running total — so a cached answer is reused where it no longer holds.
+- A mutable argument as the key: Python refuses a list. Pass indices or tuples.
+- A memo kept in a global or a class field and not cleared between test cases.
+- Caching a recursion whose arguments rarely repeat, which spends memory for nothing.
+
+### Start with
+
+- [Climbing Stairs](/problems/climbing-stairs): the recursion that is exponential without a cache.
+- [Sort Integers by The Power Value](/problems/sort-integers-by-the-power-value): one cache shared by every starting value.
+- [Number of Increasing Paths in a Grid](/problems/number-of-increasing-paths-in-a-grid): a memo where a table's order would be awkward.`,
+  "bitmask": `### When to reach for it
+
+One dimension is tiny — up to 20 tasks, nodes or slots, the ten primes below 30, a grid five cells wide — and what matters is which items are used, not their order: "assign every task", "visit every node". 2²⁰ is about a million states; much beyond 20 items, look elsewhere.
+
+### The pattern
+
+Let \`dp[mask]\` be the best result using exactly the items in \`mask\`. A transition adds an item (\`mask | (1 << i)\`) or a submask; increasing \`mask\` order works, as setting a bit makes the number larger. A walk through every node must also know where it is: the state is (mask, last item). Bit basics are on [Bit Manipulation](/challenges/bit-manipulation).
+
+\`\`\`python
+def min_sessions(tasks, limit):         # fewest sessions of at most limit hours
+    n = len(tasks)
+    best = [(n + 1, 0)] * (1 << n)      # best[mask]: (sessions, hours in the last one)
+    best[0] = (1, 0)
+    for mask in range(1 << n):
+        s, used = best[mask]
+        for i, t in enumerate(tasks):
+            if not mask & (1 << i):     # task i is not done yet
+                nxt = (s, used + t) if used + t <= limit else (s + 1, t)
+                best[mask | (1 << i)] = min(best[mask | (1 << i)], nxt)
+    return best[-1][0]
+\`\`\`
+
+### Cost
+
+O(2ⁿ × n) time and O(2ⁿ) space when each transition adds one item. Looping over every submask of every mask is O(3ⁿ), about 1.4 × 10⁷ for n = 15. A last item in the state multiplies both by n.
+
+### Common mistakes
+
+- A state missing what the future needs: a walk through every node needs the current node too.
+- Starting entries at 0 in a minimisation, so impossible subsets look free; start at infinity.
+- The submask loop \`sub = (sub - 1) & mask\` ends at 0: handle the empty submask apart, or it is skipped or never stops.
+- One bit per slot when a slot holds two items; use two bits, or base 3.
+
+### Start with
+
+- [Minimum Number of Work Sessions to Finish the Tasks](/problems/minimum-number-of-work-sessions-to-finish-the-tasks): a pair of numbers per subset.
+- [Shortest Path Visiting All Nodes](/problems/shortest-path-visiting-all-nodes): breadth-first search over (node, visited set).
+- [Count the Number of Square-Free Subsets](/problems/count-the-number-of-square-free-subsets): a mask over the ten primes below 30.`,
+  "digit-dp": `### When to reach for it
+
+"How many integers from 1 to n" (or in \`[low, high]\`) have a property of their digits: contain a 7, repeat no digit, have a digit sum divisible by k — or how often digit d is written. With n up to 10¹⁸ testing each is hopeless, but n has at most 19 digits. A range is \`count(high) - count(low - 1)\`.
+
+### The pattern
+
+It is [Dynamic Programming](/challenges/dynamic-programming) over the digits of n, chosen from the most significant end. The state is the position, a tight flag — true while every digit so far equals n's, so the next may not exceed n's digit there — and whatever the property needs: a count, a sum modulo k, a mask of digits used, whether the number has started. Memoise on that state.
+
+\`\`\`python
+from functools import cache
+
+def count_digit_one(n):                 # 1s written across 0..n
+    s = str(n)
+    @cache
+    def go(i, tight, ones):             # s[:i] decided; tight: equal to n so far
+        if i == len(s):
+            return ones
+        top = int(s[i]) if tight else 9
+        return sum(go(i + 1, tight and d == top, ones + (d == 1)) for d in range(top + 1))
+    return go(0, True, 0)
+\`\`\`
+
+### Cost
+
+States × choices: positions × 2 for the flag × the property's own range, with up to 10 digits tried from each state. Counting ones up to 10⁹ takes a few hundred states and a few thousand steps; looping over the numbers takes a billion.
+
+### Common mistakes
+
+- Letting the next digit run to 9 while the prefix is still tight, which counts numbers above n.
+- Leading zeros: 007 is 7, so for "no repeated digit" its zeros must not count; carry a started flag.
+- \`count(high) - count(low)\` for an inclusive range, which drops \`low\` itself.
+- A memo array shared across different n: tight states depend on n's digits, so clear it, or cache only the states that are not tight.
+
+### Start with
+
+- [Number of Digit One](/problems/number-of-digit-one): the tight flag and a running count.`,
+  "shortest-path": `### When to reach for it
+
+Weighted edges and the cheapest route: a signal reaching every node, the cheapest flight, the fewest obstacles removed. The weights choose the algorithm. All equal: [Breadth-First Search](/challenges/breadth-first-search). Only 0 and 1: a deque, 0-cost moves pushed at the front. Non-negative: Dijkstra. Negative, or a cap on edges: Bellman–Ford. All pairs on a few hundred nodes: Floyd–Warshall.
+
+### The pattern
+
+Dijkstra keeps a heap of \`(distance, node)\` pairs. Pop the smallest, skip it if stale (larger than the distance recorded), and otherwise relax each outgoing edge, pushing any neighbour whose distance improves. A node's distance is final when first popped, which needs every weight to be non-negative.
+
+\`\`\`python
+import heapq
+
+def dijkstra(adj, src):                 # adj[u] = [(v, w), ...] with w >= 0
+    dist, heap = {src: 0}, [(0, src)]
+    while heap:
+        d, u = heapq.heappop(heap)
+        if d > dist[u]: continue        # a stale entry
+        for v, w in adj[u]:
+            if d + w < dist.get(v, float("inf")):
+                dist[v] = d + w
+                heapq.heappush(heap, (d + w, v))
+    return dist
+\`\`\`
+
+### Cost
+
+Dijkstra with a binary heap is O((V + E) log V) time and O(V + E) space. 0-1 BFS is O(V + E). Bellman–Ford is O(V × E), or O(k × E) for k rounds. Floyd–Warshall is O(V³).
+
+### Common mistakes
+
+- Dijkstra with a negative edge, after which a popped distance is no longer final.
+- Marking a node done when it is first pushed, as BFS does; a cheaper route to it can turn up later.
+- "At most k stops" by Dijkstra on distance alone, which discards a dearer route with stops to spare; run k + 1 Bellman–Ford rounds, each reading the previous round's copy.
+- \`INT_MAX\` as infinity plus a weight, which overflows in Java or C++.
+
+### Start with
+
+- [Network Delay Time](/problems/network-delay-time): Dijkstra from one source, then the largest distance.
+- [Cheapest Flights Within K Stops](/problems/cheapest-flights-within-k-stops): a cap on edges, in Bellman–Ford rounds.
+- [Minimum Obstacle Removal to Reach Corner](/problems/minimum-obstacle-removal-to-reach-corner): 0-1 BFS on a grid.`,
+  "minimum-spanning-tree": `### When to reach for it
+
+"Connect all the points, cities or computers at minimum total cost", any two linkable at a known price. The answer is a tree of n − 1 links. It is not a shortest-path question: it minimises total weight, not any distance between two nodes. Edges may be listed, or implicit: every pair of points, priced by distance.
+
+### The pattern
+
+Kruskal sorts the edges by weight and keeps each one whose ends are still in different components, tracked by [Union Find](/challenges/union-find), until n − 1 are kept. Prim grows one tree from any node: it keeps each outside node's cheapest link into the tree, adds the cheapest such node and updates the rest. On a complete graph, Prim with a plain array never builds the edges.
+
+\`\`\`python
+def min_cost_connect(points):           # Prim on the complete graph, O(n²)
+    n, total = len(points), 0
+    cost = [0] + [float("inf")] * (n - 1)   # cheapest link from each node into the tree
+    done = [False] * n
+    for _ in range(n):
+        u = min((cost[i], i) for i in range(n) if not done[i])[1]
+        done[u], total = True, total + cost[u]
+        x, y = points[u]
+        for v, (px, py) in enumerate(points):
+            if not done[v]:
+                cost[v] = min(cost[v], abs(px - x) + abs(py - y))
+    return total
+\`\`\`
+
+### Cost
+
+Kruskal is O(E log E) for the sort plus near-constant union-find work per edge. Prim with a heap is O(E log V). Prim with an array, as above, is O(V²): the better choice when every pair is an edge, since E is then about V² ÷ 2.
+
+### Common mistakes
+
+- Summing Dijkstra's tree: the shortest paths from one node rarely form the cheapest tree overall.
+- Adding an edge in Kruskal without checking that its ends are in different components, which closes a cycle.
+- Building and sorting all n(n − 1) ÷ 2 pairs of a dense graph, which the array version of Prim never needs.
+- Assuming connectivity: fewer than n − 1 edges taken means there is no spanning tree.
+
+### Start with
+
+- [Min Cost to Connect All Points](/problems/min-cost-to-connect-all-points): a complete graph priced by Manhattan distance.`,
+  "biconnected-component": `### When to reach for it
+
+"Which connections are critical", "which single server, road or cell disconnects the rest if it fails", "the fewest removals that split the network" — single points of failure in an undirected graph. Removing each edge in turn and re-testing connectivity costs O(E × (V + E)); one depth-first search with low-link values finds every bridge and articulation point in O(V + E).
+
+### The pattern
+
+Number the nodes in the order a [Depth-First Search](/challenges/depth-first-search) discovers them (\`disc\`); \`low[u]\` is the smallest number u's subtree reaches by tree edges down, then one other edge up. After child v returns, u–v is a bridge if \`low[v] > disc[u]\`, and u an articulation point if \`low[v] >= disc[u]\`. Non-tree edges join a node to an ancestor or descendant, so depth can serve as \`disc\`.
+
+\`\`\`python
+def critical_connections(adj):          # connected, undirected, no repeated edges
+    disc, low, out = [-1] * len(adj), [0] * len(adj), []
+    def dfs(u, parent, depth):
+        disc[u] = low[u] = depth
+        for v in adj[u]:
+            if disc[v] == -1:
+                dfs(v, u, depth + 1)
+                low[u] = min(low[u], low[v])
+                if low[v] > disc[u]: out.append([u, v])
+            elif v != parent: low[u] = min(low[u], disc[v])
+    dfs(0, -1, 0)
+    return out
+\`\`\`
+
+### Cost
+
+O(V + E) time and space for the one search, against O(E × (V + E)) for removing each edge and re-checking.
+
+### Common mistakes
+
+- Skipping the parent by node when edges repeat: two edges between u and v are never a bridge, so skip only the edge you arrived by, by its index.
+- Swapping the two conditions: \`>\` for bridges, \`>=\` for articulation points.
+- Applying \`low[v] >= disc[u]\` to the root, where it always holds; the root is an articulation point only with two or more children in the search tree.
+- Recursing 10⁵ levels deep in Python; write the search with an explicit stack.
+
+### Start with
+
+- [Critical Connections in a Network](/problems/critical-connections-in-a-network): every bridge, from one search.
+- [Minimum Number of Days to Disconnect Island](/problems/minimum-number-of-days-to-disconnect-island): a whole island needs at most 2 days, and an articulation point makes it 1.`,
 };

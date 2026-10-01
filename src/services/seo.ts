@@ -21,6 +21,7 @@ import { topicOrder } from "./aptitude-bank.js";
 import { CARD_HEIGHT, CARD_WIDTH, getShareCard } from "./share-cards.js";
 import { CONTENT_CARD_DESIGN, CONTENT_CARD_HEIGHT, CONTENT_CARD_WIDTH, contentCardPng, type ContentCard } from "../lib/content-card.js";
 import { testSamples } from "./test-samples.js";
+import { frameSvg } from "../lib/walkthroughs/svg.js";
 
 /**
  * What a search engine is told about the app's public content.
@@ -120,6 +121,12 @@ export interface PageHead {
    */
   canonical?: string;
   /**
+   * Served, linked and readable, but not to be indexed: the Worker writes
+   * `noindex, follow` and the sitemap leaves it out. A company hub with one
+   * or two problems (lib/problem-topics MIN_INDEXED_COMPANY_PROBLEMS).
+   */
+  noindex?: boolean;
+  /**
    * For an index page the build already prerendered (/challenges …): the
    * HTML of its child list, which the Worker adds below the page's guide.
    * The title and description of such a page are the SPA's; the ones here
@@ -162,8 +169,8 @@ const branded = (core: string): string => {
 
 export const titles = {
   problem: (title: string, difficulty: string) => branded(`${title} — ${difficulty} Problem & Solution`),
-  topicHub: (label: string, count: number) => branded(`${label} Coding Problems: ${count} Questions with Solutions`),
-  companyHub: (label: string, count: number) => branded(`${label} Coding Interview Questions: ${count} Tagged Problems`),
+  topicHub: (label: string, count: number) => branded(`${label} Coding Problems: ${count} ${count === 1 ? "Question" : "Questions"} with Solutions`),
+  companyHub: (label: string, count: number) => branded(`${label} Coding Interview Questions: ${count} Tagged ${count === 1 ? "Problem" : "Problems"}`),
   bugHunt: (title: string, language: string) => branded(`${title} — ${language} Bug Hunt`),
   bugHub: (label: string, count: number, kind: "language" | "category") =>
     branded(kind === "language" ? `${label} Debugging Practice: ${count} Bug Hunts on Real Code` : `${label} Bug Hunts: ${count} Debugging Challenges`),
@@ -558,7 +565,7 @@ async function shareHead(id: string): Promise<PageHead | null> {
 
 /* ── Coding problems ─────────────────────────────────────────────── */
 
-const hubPath = (hub: HubSummary) => (hub.kind === "topic" ? `/challenges/${hub.slug}` : `/challenges/company/${hub.slug}`);
+const hubPath = (hub: { kind: "topic" | "company"; slug: string }) => (hub.kind === "topic" ? `/challenges/${hub.slug}` : `/challenges/company/${hub.slug}`);
 const hubLinks = (hubs: HubSummary[]) => hubs.map((x) => link(hubPath(x), x.label)).join(", ");
 const problemRow = (p: { slug: string; title: string; difficulty: string }) => ({ href: `/problems/${p.slug}`, label: p.title, note: titleCase(p.difficulty) });
 
@@ -650,6 +657,12 @@ function sharedProblemDescriptions(): Promise<Set<string>> {
   });
 }
 
+/** "4-week study plan" for a plan in weeks, "study plan" for one in a single stage — the company hub's description. */
+const companyPlanSpan = (stages: ReadonlyArray<{ problems: unknown[] }>) => {
+  const weeks = stages.filter((s) => s.problems.length > 0).length;
+  return weeks > 1 ? `${weeks}-week study plan` : "study plan";
+};
+
 /** A topic or company hub: its introduction, its difficulty split, every problem, the other hubs. */
 async function hubHead(kind: "topic" | "company", slug: string): Promise<PageHead | null> {
   const page = await hubPage(kind, slug);
@@ -662,6 +675,38 @@ async function hubHead(kind: "topic" | "company", slug: string): Promise<PageHea
     const rows = byLevel(level);
     return rows.length ? `<h3>${h(titleCase(level))} (${rows.length})</h3>${linkList(rows.map((p) => ({ href: `/problems/${p.slug}`, label: p.title, note: p.topics.filter((t) => t !== page.tag).slice(0, 3).join(", ") })))}` : "";
   });
+  // The walkthrough as a crawler reads it: the last frame drawn (the answer,
+  // as a static SVG) and every step's sentence in order — the same words
+  // the page's figure plays (lib/walkthroughs).
+  const w = page.walkthrough;
+  const walkthrough = w
+    ? section(
+        `How ${page.label.toLowerCase()} works, step by step`,
+        `<figure>${frameSvg(w, w.frames[w.frames.length - 1], `${w.title}: the finished state`).replace("<svg ", '<svg style="max-width:100%;height:auto" ')}<figcaption>${h(w.title)}. Example: <code>${h(w.input)}</code></figcaption></figure>` +
+          `<ol>${w.frames.map((f) => `<li>${h(f.caption)}</li>`).join("")}</ol>`,
+        "walkthrough",
+      )
+    : "";
+  const plan = section(
+    kind === "topic" ? `${page.label} study plan` : `${page.label} study plan by topic`,
+    `<p>${h(page.plan.summary)}</p>` +
+      page.plan.stages
+        .map(
+          (s) =>
+            `<h3>${h(s.title)}</h3><p>${h(s.note)}</p>` +
+            (s.problems.length ? linkList(s.problems.map((p) => ({ href: `/problems/${p.slug}`, label: p.title, note: titleCase(p.difficulty) }))) : "") +
+            (s.link ? `<p>${link(s.link.href, s.link.label)}</p>` : ""),
+        )
+        .join(""),
+    "study-plan",
+  );
+  const links = page.links.length
+    ? section(
+        kind === "topic" ? `Companies that ask ${page.label.toLowerCase()} problems` : `Topics ${page.label} asks most`,
+        linkList(page.links.map((l) => ({ href: hubPath(l), label: l.label, note: `${plural(l.count, "problem")}${kind === "topic" ? ` on ${page.label.toLowerCase()}` : ""}` }))),
+        kind === "topic" ? "companies" : "topics",
+      )
+    : "";
   const content =
     factList([
       ["Problems", String(page.count)],
@@ -670,6 +715,8 @@ async function hubHead(kind: "topic" | "company", slug: string): Promise<PageHea
       ["Cost", "Free on every plan; sign in to run and submit"],
     ]) +
     `<p>${h(page.blurb)}</p>` +
+    walkthrough +
+    plan +
     // The technique on one sheet (lib/topic-essentials): when to reach for
     // it, the pattern, its cost and its traps — a hub was one paragraph over
     // a list until 2026-10-01 (19% of the page its own text).
@@ -678,18 +725,24 @@ async function hubHead(kind: "topic" | "company", slug: string): Promise<PageHea
       ? section(`${page.label} test patterns`, linkList(page.patterns.map((t) => ({ href: `/tests/${t.slug}`, label: t.name, note: "pattern guide and timed mock" }))), "patterns")
       : "") +
     section(`All ${noun}`, levels.join(""), "problems") +
-    (page.related.length ? section(kind === "topic" ? "Other topics" : "Other companies", linkList(page.related.map((r) => ({ href: hubPath(r), label: r.label, note: `${r.count} problems` }))), "related") : "");
+    links +
+    (page.related.length ? section(kind === "topic" ? "Other topics" : "Other companies", linkList(page.related.map((r) => ({ href: hubPath(r), label: r.label, note: plural(r.count, "problem") }))), "related") : "") +
+    (page.next ? `<p>Next topic: ${link(hubPath(page.next), page.next.label)}</p>` : "");
   return {
     path,
+    ...(page.indexed ? {} : { noindex: true }),
     title: kind === "topic" ? titles.topicHub(page.label, page.count) : titles.companyHub(page.label, page.count),
     // Composed descriptions go through summarise() for its 158-character
     // cap, which drops whole trailing sentences — so each puts what the
     // page is first and the lines it can lose last (2026-09-30: 90 of 91
     // hubs and every test pattern ran past 160 and were cut mid-sentence).
     description: summarise(
+      // What the page is first; the walkthrough and the plan in a second
+      // sentence the cap may drop whole for a long name (mirrored in the
+      // SPA's ChallengeHubPage).
       kind === "topic"
-        ? `${page.count} ${page.label.toLowerCase()} coding problems with editorials and reference solutions in 13 languages — ${difficultySplit(page.byDifficulty)} — judged by hidden tests. Read any problem free on ${BRAND}.`
-        : `${page.count} coding problems the ${BRAND} catalogue tags as commonly asked at ${page.label} — ${difficultySplit(page.byDifficulty)} — each with an editorial and solutions in 13 languages. Practise free.`,
+        ? `${plural(page.count, `${page.label.toLowerCase()} coding problem`)} — ${difficultySplit(page.byDifficulty)} — with solutions in 13 languages. Plus a step-by-step walkthrough and a ${page.plan.stages.length}-day plan.`
+        : `${plural(page.count, "coding problem")} tagged ${page.label} — ${difficultySplit(page.byDifficulty)} — with solutions in 13 languages. Plus a ${companyPlanSpan(page.plan.stages)} by topic.`,
     ),
     facts: {
       topic: page.label,
@@ -939,14 +992,25 @@ export function lessonFaq(seo: LessonSeo | null): { faq?: Array<{ q: string; a: 
   return faq.length ? { faq } : {};
 }
 
-/** The study plans index's child list: every track with its module count. */
+/**
+ * The study plans index's child list: every language track, then the DSA
+ * plans on the hub pages — one per topic, one per company (lib/hub-plans),
+ * the page's two "DSA study plans" lists since 2026-10-01.
+ */
 async function studyPlansIndex(): Promise<PageHead> {
-  const tracks = await trackList();
-  const content = section(
-    "The tracks",
-    linkList(tracks.map((t) => ({ href: `/study-plans/${t.key}`, label: `${t.title} study plan`, note: `${t.modules} modules · ${t.lessons} lessons · about ${Math.round(t.minutes / 60)} hours · ${t.runtime}` }))),
-    "tracks",
-  );
+  const [tracks, hubs] = await Promise.all([trackList(), hubIndex()]);
+  const content =
+    section(
+      "The tracks",
+      linkList(tracks.map((t) => ({ href: `/study-plans/${t.key}`, label: `${t.title} study plan`, note: `${t.modules} modules · ${t.lessons} lessons · about ${Math.round(t.minutes / 60)} hours · ${t.runtime}` }))),
+      "tracks",
+    ) +
+    section("DSA study plans by topic", linkList(hubs.topics.map((t) => ({ href: hubPath(t), label: t.label, note: plural(t.count, "problem") }))), "dsa-topics") +
+    section(
+      "DSA study plans by company",
+      linkList(hubs.companies.filter((c) => c.indexed).map((c) => ({ href: hubPath(c), label: c.label, note: plural(c.count, "problem") }))),
+      "dsa-companies",
+    );
   return { path: "/study-plans", title: "Study plans", description: "", content, section: "index" };
 }
 
@@ -1422,11 +1486,12 @@ export function sitemapXml(name: string): Promise<string | null> {
       case "categories": {
         // The hub pages: the catalogue's topics and companies, the bug hunts'
         // languages and layers, the aptitude sections and topics. Only the
-        // hubs that exist (a topic below MIN_HUB_PROBLEMS has no page).
+        // hubs that are indexed: a company page with fewer than three
+        // problems is served noindex (lib/problem-topics).
         const [hubs, bugs, counts] = await Promise.all([hubIndex(), bugHubIndex(), aptitudeCounts()]);
         const entries: Array<{ path: string }> = [
           ...hubs.topics.map((t) => ({ path: hubPath(t) })),
-          ...hubs.companies.map((c) => ({ path: hubPath(c) })),
+          ...hubs.companies.filter((c) => c.indexed).map((c) => ({ path: hubPath(c) })),
           ...[...bugs.languages, ...bugs.categories].filter((b) => b.count > 0).map((b) => ({ path: `/bug-hunts/${b.id}` })),
           ...APTITUDE_CATEGORIES.map((c) => ({ path: `/aptitude/${c.id}` })),
           ...APTITUDE_TOPICS.filter((t) => (counts.get(t.id)?.total ?? 0) > 0).map((t) => ({ path: `/aptitude/${t.id}` })),
