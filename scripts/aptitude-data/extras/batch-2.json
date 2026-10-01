@@ -377,7 +377,7 @@
   },
   "me3-cylinder-volume-litres": {
     "shortcut": "πr² with r = 7 is the stock 154 m² (22 × 7); multiplying by the 5 m height gives 770 m³.",
-    "trap": "\"660 m³\" — no option comes from a standard slip; 660 m³ is what a hurried 22 × 6 × 5 gives when 49 ÷ 7 is misread as 6."
+    "trap": "\"550 m³\" — squaring the height instead of the radius: (22/7) × 5² × 7 = 22 × 25 = 550. The volume is πr²h = (22/7) × 7² × 5 = 770 m³."
   },
   "me3-triangle-base-height": {
     "shortcut": "Base = 2 × area ÷ height = 168 ÷ 12 = 14 cm.",

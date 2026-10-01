@@ -6,6 +6,8 @@ import { cachedShared } from "../lib/cache.js";
 import { browserCache } from "../lib/http-cache.js";
 import { APTITUDE_CATEGORIES, APTITUDE_DIFFICULTIES, APTITUDE_TOPICS, aptitudeCanonicalSlug, aptitudeCategory, aptitudeTopic, type AptitudeDifficulty } from "../lib/aptitude-topics.js";
 import { APTITUDE_ESSENTIALS } from "../lib/aptitude-essentials.js";
+import { APTITUDE_SECTION_GUIDES } from "../lib/aptitude-section-guides.js";
+import { questionStem } from "../services/seo.js";
 
 /**
  * Aptitude preparation.
@@ -95,6 +97,8 @@ router.get("/topics", optionalAuth, browserCache(120), async (req: any, res) => 
     res.json({
       categories: APTITUDE_CATEGORIES.map((category) => ({
         ...category,
+        // What this section of a placement paper asks (lib/aptitude-section-guides), for the section's own page.
+        guide: APTITUDE_SECTION_GUIDES[category.id] ?? null,
         topics: APTITUDE_TOPICS.filter((topic) => topic.category === category.id).map((topic) => ({ ...topic, ...perTopic.get(topic.id)! })),
       })),
       totals: {
@@ -145,18 +149,21 @@ router.get("/questions", optionalAuth, browserCache(120), async (req: any, res) 
     // status marks laid over it are the candidate's. Both halves are fetched
     // together so a signed-in reader still pays one round trip.
     const [page, attempts] = await Promise.all([
-      cachedShared(`aptitude:page:v1:${topic.id}:${difficulty ?? "all"}:${offset}:${limit}`, 900, async () => {
+      cachedShared(`aptitude:page:v2:${topic.id}:${difficulty ?? "all"}:${offset}:${limit}`, 900, async () => {
         const [rows, total] = await Promise.all([
           prisma.aptitudeQuestion.findMany({
             where,
             orderBy: { orderIndex: "asc" },
             skip: offset,
             take: limit,
-            select: { id: true, slug: true, title: true, difficulty: true, tags: true, timeTargetSec: true, orderIndex: true },
+            select: { id: true, slug: true, title: true, difficulty: true, tags: true, timeTargetSec: true, orderIndex: true, prompt: true },
           }),
           prisma.aptitudeQuestion.count({ where }),
         ]);
-        return { rows, total };
+        // The stem, not the prompt: a row shows what the question asks
+        // (services/seo questionStem — the edge lists the same words), and
+        // a whole prompt with its tables would bloat the cached slice.
+        return { rows: rows.map(({ prompt, ...row }) => ({ ...row, stem: questionStem(prompt) })), total };
       }),
       // Scoped to this topic and level, so paging never widens the query.
       userId
@@ -185,6 +192,7 @@ router.get("/questions", optionalAuth, browserCache(120), async (req: any, res) 
         return {
           slug: row.slug,
           title: row.title,
+          stem: row.stem,
           difficulty: row.difficulty,
           tags: row.tags,
           timeTargetSec: row.timeTargetSec,
@@ -246,6 +254,8 @@ router.get("/questions/:slug", optionalAuth, browserCache(120), async (req: any,
         categoryLabel: aptitudeCategory(question.category)?.label ?? question.category,
         title: question.title,
         prompt: question.prompt,
+        // Plain text, for the page's structured data (the edge names the same).
+        stem: questionStem(question.prompt, 500),
         options: question.options,
         difficulty: question.difficulty,
         hints: question.hints,

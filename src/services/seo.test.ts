@@ -52,8 +52,10 @@ test("every content page kind has a title with its intent first and the brand wh
   // A lesson with an authored search title is titled by it alone.
   assert.equal(titles.studyLesson("JDK, JRE and JVM — the three layers", "Java", false, "What Is the JVM? JDK vs JRE vs JVM Explained"), "What Is the JVM? JDK vs JRE vs JVM Explained — CodeKairo");
   assert.equal(titles.studyLesson("Records", "Java", false, null), "Records — Java lesson — CodeKairo");
-  assert.equal(titles.test("TCS NQT — Foundation", "TCS"), "TCS NQT — Foundation Mock Test — CodeKairo");
-  assert.equal(titles.test("Foundation", "Infosys"), "Foundation Mock Test — Infosys Pattern — CodeKairo");
+  // A pattern is titled as its guide and its mock; a CodeKairo paper follows no company.
+  assert.equal(titles.test("TCS NQT — Foundation", "TCS"), "TCS NQT — Foundation: Pattern, Syllabus & Mock Test");
+  assert.equal(titles.test("Foundation", "Infosys"), "Foundation (Infosys): Pattern, Syllabus & Mock Test");
+  assert.equal(titles.test("Thirty-Minute Sprint", "CodeKairo"), "Thirty-Minute Sprint — Free Mock Test — CodeKairo");
   assert.equal(titles.skillTest("Java", "Basic"), "Java Certification Test (Basic) — CodeKairo");
   // The longest skill still fits the 60-character budget, without the brand.
   assert.equal(titles.skillTest("Problem Solving (DSA)", "Intermediate"), "Problem Solving (DSA) Certification Test (Intermediate)");
@@ -91,16 +93,21 @@ test("a content page's preview card says what its head says, and hubs keep the s
   assert.equal(card?.eyebrow, "Easy · Array · Hash Table");
   const lesson = { path: "/study-plans/java/if-else", title: titles.studyLesson("if, else", "Java", false, "Java If-Else Statements"), description: "", crumb: "if, else", facts: { language: "Java", minutes: 12 } } as Head;
   assert.equal(contentCardFor("/study-plans/java/if-else", lesson)?.title, "Java If-Else Statements");
-  const hub = { path: "/challenges/arrays", title: "Arrays", description: "" } as Head;
-  assert.equal(contentCardFor("/challenges/arrays", hub), null);
-  assert.equal(contentCardFor("/bug-hunts/javascript", { ...hub, path: "/bug-hunts/javascript" }), null);
-  assert.match(contentCardUrl("/problems/two-sum"), /\/api\/seo\/card\.png\?path=%2Fproblems%2Ftwo-sum&d=1$/);
+  // Hubs have cards too since 2026-10-01; the index pages still do not.
+  const hub = { path: "/challenges/arrays", title: "Arrays", description: "", crumb: "Arrays", facts: { count: 120 } } as Head;
+  assert.equal(contentCardFor("/challenges/arrays", hub)?.facts[0]?.value, "120");
+  assert.equal(contentCardFor("/bug-hunts/javascript", { ...hub, path: "/bug-hunts/javascript" })?.label, "Bug hunts");
+  assert.equal(contentCardFor("/roadmap", { ...hub, path: "/roadmap" }), null);
+  // The title is in the address, so a retitled page gets a new picture; the brand suffix does not count.
+  assert.match(contentCardUrl("/problems/two-sum", "Two Sum"), /\/api\/seo\/card\.png\?path=%2Fproblems%2Ftwo-sum&d=1&v=[0-9a-z]+$/);
+  assert.equal(contentCardUrl("/problems/two-sum", "Two Sum — CodeKairo"), contentCardUrl("/problems/two-sum", "Two Sum"));
+  assert.notEqual(contentCardUrl("/problems/two-sum", "Two Sum II"), contentCardUrl("/problems/two-sum", "Two Sum"));
 });
 
 test("the brand is added only where the whole title fits in 60 characters", () => {
   const long = titles.problem("Find First and Last Position of Element in Sorted Array", "Medium");
   assert.equal(long, "Find First and Last Position of Element in Sorted Array — Medium Problem & Solution");
-  for (const t of [titles.problem("Two Sum", "Easy"), titles.test("Foundation", "Infosys"), titles.aptitudeTopic("Percentages")]) {
+  for (const t of [titles.problem("Two Sum", "Easy"), titles.test("Sprint", "CodeKairo"), titles.aptitudeTopic("Percentages")]) {
     assert.ok(t.endsWith(" — CodeKairo") && t.length <= 60, t);
   }
 });

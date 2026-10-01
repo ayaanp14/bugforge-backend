@@ -11,6 +11,7 @@ import { isSkillLevel, LEVEL_LABEL, SKILLS, skillDef } from "../lib/skill-catalo
 import { credentialPath, normalizeCredentialCode } from "../lib/skill-tests.js";
 import { poolTopics, verifyCredential } from "./skill-credentials.js";
 import { APTITUDE_ESSENTIALS } from "../lib/aptitude-essentials.js";
+import { APTITUDE_SECTION_GUIDES } from "../lib/aptitude-section-guides.js";
 import { trackDefinition, trackList, type LessonSeo } from "./study-plans.js";
 import { roadDefinition } from "./roadmap.js";
 import { hubIndex, hubPage, hubsForTags, relatedProblems, type HubSummary } from "./problem-hubs.js";
@@ -19,6 +20,7 @@ import { bugHubIndex, bugHubPage, bugPath } from "./bug-hunts.js";
 import { topicOrder } from "./aptitude-bank.js";
 import { CARD_HEIGHT, CARD_WIDTH, getShareCard } from "./share-cards.js";
 import { CONTENT_CARD_DESIGN, CONTENT_CARD_HEIGHT, CONTENT_CARD_WIDTH, contentCardPng, type ContentCard } from "../lib/content-card.js";
+import { testSamples } from "./test-samples.js";
 
 /**
  * What a search engine is told about the app's public content.
@@ -77,6 +79,10 @@ export interface PageFacts {
   /** An aptitude question's options, and the index of the correct one. */
   options?: string[];
   answer?: number;
+  /** An aptitude question's stem as plain text — its Question node's `text`. */
+  question?: string;
+  /** A hub's first entries in page order (at most twenty) — its ItemList's elements. */
+  items?: Array<{ name: string; path: string }>;
   /**
    * The questions a page prints with their answers, in page order — a
    * lesson's direct answer, then its common questions. Inline Markdown as
@@ -173,7 +179,12 @@ export const titles = {
   // otherwise, which is written for a reader already on the page.
   studyLesson: (lesson: string, language: string, checkpoint: boolean, searchTitle?: string | null) =>
     branded(searchTitle ? searchTitle : `${lesson} — ${language} ${checkpoint ? "checkpoint" : "lesson"}`),
-  test: (name: string, company: string) => branded(name.includes(company) ? `${name} Mock Test` : `${name} Mock Test — ${company} Pattern`),
+  // "tcs nqt pattern", "… syllabus": what the results for a company's test
+  // are titled with; the page is the pattern guide and the mock (2026-10-01
+  // SXO audit — it said "Mock Test" only). The CodeKairo papers follow no
+  // company's pattern, so they keep the plain name.
+  test: (name: string, company: string) =>
+    branded(company === BRAND ? `${name} — Free Mock Test` : name.includes(company) ? `${name}: Pattern, Syllabus & Mock Test` : `${name} (${company}): Pattern, Syllabus & Mock Test`),
   // "java certification test": the phrase searched; "skill test" is in the H1 and description. Fits 60 characters for every skill.
   skillTest: (skill: string, level: string) => branded(`${skill} Certification Test (${level})`),
 };
@@ -219,6 +230,23 @@ export function summarise(markdown: string, fallback = "", max = DESCRIPTION_MAX
   const cut = text.slice(0, max - 1);
   return `${cut.slice(0, Math.max(cut.lastIndexOf(" "), 40))}…`;
 }
+
+/**
+ * A question's stem as plain text, for a list row and its Question node:
+ * the prompt without its tables and code (a data-interpretation question
+ * opens with one), cut on a sentence where it can be.
+ */
+export function questionStem(prompt: string, max = 160): string {
+  const text = prompt
+    .replace(/```[\s\S]*?```/g, " ")
+    .split("\n")
+    .filter((line) => !/^\s*\|/.test(line))
+    .join("\n");
+  return summarise(text, "", max);
+}
+
+/** The first twenty entries of a list, as a hub's facts name them. */
+const firstItems = (rows: Array<{ name: string; path: string }>) => rows.slice(0, 20);
 
 /* ── HTML pieces ─────────────────────────────────────────────────── */
 
@@ -346,6 +374,58 @@ export function contentCardFor(path: string, head: PageHead): ContentCard | null
       ],
     };
   }
+  if ((m = /^\/challenges\/(company\/)?[a-z0-9-]+$/.exec(path))) {
+    return {
+      kind: "problem",
+      label: m[1] ? "Company questions" : "Topic",
+      eyebrow: "Coding problems",
+      title: name,
+      facts: [
+        { value: f.count ? String(f.count) : "Many", unit: "problems" },
+        { value: "13", unit: "languages" },
+        { value: "Editorials", unit: "and solutions" },
+      ],
+    };
+  }
+  if ((m = /^\/bug-hunts\/([a-z0-9-]+)$/.exec(path)) && bugHub(m[1])) {
+    return {
+      kind: "bug",
+      label: "Bug hunts",
+      eyebrow: "Debugging practice",
+      title: name,
+      facts: [
+        { value: f.count ? String(f.count) : "Many", unit: "hunts" },
+        { value: "Real", unit: "codebases" },
+        { value: "Hidden", unit: "tests" },
+      ],
+    };
+  }
+  if (/^\/aptitude\/[a-z0-9-]+$/.test(path)) {
+    return {
+      kind: "aptitude",
+      label: "Aptitude",
+      eyebrow: "Placement aptitude",
+      title: name,
+      facts: [
+        { value: f.count ? String(f.count) : "Many", unit: "questions" },
+        { value: "Worked", unit: "solutions" },
+        { value: "Free", unit: "practice" },
+      ],
+    };
+  }
+  if (/^\/skill-tests\/[a-z0-9-]+$/.test(path)) {
+    return {
+      kind: "test",
+      label: "Skill test",
+      eyebrow: "Certification",
+      title: name,
+      facts: [
+        { value: f.minutes ? `${f.minutes} min` : "Timed", unit: "test" },
+        { value: f.questions ? String(f.questions) : "Mixed", unit: "questions" },
+        { value: "Verifiable", unit: "credential" },
+      ],
+    };
+  }
   if (/^\/tests\/[a-z0-9-]+$/.test(path)) {
     return {
       kind: "test",
@@ -363,16 +443,27 @@ export function contentCardFor(path: string, head: PageHead): ContentCard | null
 }
 
 /**
- * The card's address. No content hash in it, unlike the Battles card: the
- * SPA's runtime head names the same picture (src/lib/content-card.ts) and
- * can build this from the page's path alone. A retitled page's old picture
- * lingers only as long as the platforms' own caches of the URL.
+ * The card's address: the path, the design, and a hash of the page's title.
+ * Without the hash a retitled page kept its old picture on every platform
+ * that had cached the URL (2026-10-01 audit); the title is what the card
+ * draws, so a new title is a new address. The SPA's runtime head builds the
+ * same string (src/lib/content-card.ts `titleKey` is this function).
  */
-export const contentCardUrl = (path: string): string => `${API_ORIGIN}/api/seo/card.png?path=${encodeURIComponent(path)}&d=${CONTENT_CARD_DESIGN}`;
+export const cardTitleKey = (title: string): string => {
+  let h = 0x811c9dc5;
+  const t = title.replace(/\s+—\s+CodeKairo$/, "");
+  for (let i = 0; i < t.length; i++) {
+    h ^= t.charCodeAt(i);
+    h = Math.imul(h, 0x01000193);
+  }
+  return (h >>> 0).toString(36);
+};
+export const contentCardUrl = (path: string, title: string): string =>
+  `${API_ORIGIN}/api/seo/card.png?path=${encodeURIComponent(path)}&d=${CONTENT_CARD_DESIGN}&v=${cardTitleKey(title)}`;
 
 /** The alt is the page's title with the brand once — what the SPA's lib/content-card writes too. */
 function contentCardImage(path: string, title: string): NonNullable<PageHead["image"]> {
-  return { url: contentCardUrl(path), width: CONTENT_CARD_WIDTH, height: CONTENT_CARD_HEIGHT, alt: `${title.replace(/\s+—\s+CodeKairo$/, "")} — ${BRAND}` };
+  return { url: contentCardUrl(path, title), width: CONTENT_CARD_WIDTH, height: CONTENT_CARD_HEIGHT, alt: `${title.replace(/\s+—\s+CodeKairo$/, "")} — ${BRAND}` };
 }
 
 /** The PNG for GET /api/seo/card.png, or null when the path has no card. */
@@ -482,7 +573,7 @@ const SOLUTION_NAMES: Record<string, string> = {
 };
 
 function problemHead(slug: string): Promise<PageHead | null> {
-  return cached(`seo:head:problem:v2:${slug}`, HEAD_TTL_MS, async () => {
+  return cached(`seo:head:problem:v3:${slug}`, HEAD_TTL_MS, async () => {
     const p = await prisma.problem.findFirst({
       where: { slug, isPublished: true },
       select: { title: true, difficulty: true, description: true, tags: true, editorial: true, solutions: true, timeLimitMs: true, memoryLimitMb: true },
@@ -520,21 +611,42 @@ function problemHead(slug: string): Promise<PageHead | null> {
         ["Memory limit", `${p.memoryLimitMb} MB`],
         ["Languages", LANGUAGE_LIST],
       ]) +
-      section("Problem statement", markdownToHtml(p.description), "statement") +
-      (p.editorial ? section(`How to solve ${p.title}`, markdownToHtml(p.editorial, 12_000), "editorial") : "") +
+      section("Problem statement", markdownToHtml(p.description, 24_000, { under: 2 }), "statement") +
+      (p.editorial ? section(`How to solve ${p.title}`, markdownToHtml(p.editorial, 12_000, { under: 2 }), "editorial") : "") +
       (solutionHtml ? section("Reference solution", solutionHtml, "solution") : "") +
       (related.length ? section(primary ? `More ${primary.label.toLowerCase()} problems` : "Related problems", linkList(related.map(problemRow)), "related") : "") +
       (primary ? `<p>${link(hubPath(primary), `All ${primary.count} ${primary.label.toLowerCase()} problems`)} · ${link("/challenges", "the whole catalogue")}</p>` : "");
     const canonical = problemCanonicalSlug(slug);
+    // Look-alike problems open with the same sentence (the stock-trading
+    // series, three sentence-counting ones): such a description is led by
+    // the title, as an aptitude question's is (2026-10-01: 7 groups shared one).
+    const plain = summarise(p.description, `${p.title}: a ${difficulty.toLowerCase()} coding problem on ${BRAND}, judged by hidden tests in 13 languages.`);
+    const shared = (await sharedProblemDescriptions()).has(plain);
     return {
       path: `/problems/${slug}`,
       title: titles.problem(p.title, difficulty),
-      description: summarise(p.description, `${p.title}: a ${difficulty.toLowerCase()} coding problem on ${BRAND}, judged by hidden tests in 13 languages.`),
+      description: shared ? `${p.title}: ${summarise(p.description, "", Math.max(60, DESCRIPTION_MAX - p.title.length - 2))}` : plain,
       facts: { difficulty, keywords: topics, trail },
       content,
       crumb: p.title,
       ...(canonical !== slug ? { canonical: `/problems/${canonical}` } : {}),
     };
+  });
+}
+
+/**
+ * The descriptions two or more published problems would share — the first
+ * sentence of a series' statements — computed once over the catalogue.
+ */
+function sharedProblemDescriptions(): Promise<Set<string>> {
+  return cached("seo:problem-descriptions:v1", HEAD_TTL_MS, async () => {
+    const rows = await prisma.problem.findMany({ where: { isPublished: true }, select: { description: true } });
+    const seen = new Map<string, number>();
+    for (const r of rows) {
+      const d = summarise(r.description);
+      seen.set(d, (seen.get(d) ?? 0) + 1);
+    }
+    return new Set([...seen].filter(([, n]) => n > 1).map(([d]) => d));
   });
 }
 
@@ -558,6 +670,13 @@ async function hubHead(kind: "topic" | "company", slug: string): Promise<PageHea
       ["Cost", "Free on every plan; sign in to run and submit"],
     ]) +
     `<p>${h(page.blurb)}</p>` +
+    // The technique on one sheet (lib/topic-essentials): when to reach for
+    // it, the pattern, its cost and its traps — a hub was one paragraph over
+    // a list until 2026-10-01 (19% of the page its own text).
+    (page.essentials ? section(`${page.label}: the essentials`, markdownToHtml(page.essentials, 8_000, { under: 2 }), "essentials") : "") +
+    (page.patterns.length
+      ? section(`${page.label} test patterns`, linkList(page.patterns.map((t) => ({ href: `/tests/${t.slug}`, label: t.name, note: "pattern guide and timed mock" }))), "patterns")
+      : "") +
     section(`All ${noun}`, levels.join(""), "problems") +
     (page.related.length ? section(kind === "topic" ? "Other topics" : "Other companies", linkList(page.related.map((r) => ({ href: hubPath(r), label: r.label, note: `${r.count} problems` }))), "related") : "");
   return {
@@ -572,7 +691,15 @@ async function hubHead(kind: "topic" | "company", slug: string): Promise<PageHea
         ? `${page.count} ${page.label.toLowerCase()} coding problems with editorials and reference solutions in 13 languages — ${difficultySplit(page.byDifficulty)} — judged by hidden tests. Read any problem free on ${BRAND}.`
         : `${page.count} coding problems the ${BRAND} catalogue tags as commonly asked at ${page.label} — ${difficultySplit(page.byDifficulty)} — each with an editorial and solutions in 13 languages. Practise free.`,
     ),
-    facts: { topic: page.label, count: page.count, keywords: kind === "topic" ? [page.label] : undefined, company: kind === "company" ? page.label : undefined, trail },
+    facts: {
+      topic: page.label,
+      count: page.count,
+      keywords: kind === "topic" ? [page.label] : undefined,
+      company: kind === "company" ? page.label : undefined,
+      // In the page's order: easy, then medium, then hard.
+      items: firstItems((["EASY", "MEDIUM", "HARD"] as const).flatMap((level) => byLevel(level)).map((p) => ({ name: p.title, path: `/problems/${p.slug}` }))),
+      trail,
+    },
     content,
     crumb: page.label,
   };
@@ -673,7 +800,13 @@ async function bugHubHead(id: string): Promise<PageHead | null> {
     path,
     title: titles.bugHub(page.label, page.count, page.kind),
     description: summarise(`${page.count} ${page.noun} — ${difficultySplit(page.byDifficulty)} — each a small project with a planted bug, a bug report and hidden tests that decide whether the fix is complete. Read any hunt free on ${BRAND}.`),
-    facts: { language: page.kind === "language" ? page.label : undefined, topic: page.kind === "category" ? page.label : undefined, count: page.count, trail },
+    facts: {
+      language: page.kind === "language" ? page.label : undefined,
+      topic: page.kind === "category" ? page.label : undefined,
+      count: page.count,
+      items: firstItems(page.hunts.map((x) => ({ name: x.title, path: bugPath(x) }))),
+      trail,
+    },
     content,
     crumb: page.label,
   };
@@ -849,6 +982,10 @@ async function aptitudeCategoryHead(id: string): Promise<PageHead | null> {
       ["Cost", "Free, unlimited on every plan"],
     ]) +
     `<p>${h(category.blurb)}</p>` +
+    // What this section of a placement paper asks and how to practise it
+    // (lib/aptitude-section-guides) — a section hub was 62–116 words of its
+    // own until 2026-10-01.
+    (APTITUDE_SECTION_GUIDES[id] ? section(`${category.label} in placement papers`, markdownToHtml(APTITUDE_SECTION_GUIDES[id], 8_000, { under: 2 }), "guide") : "") +
     section(
       `${category.label} topics`,
       `<ul>${topics.map((t) => `<li>${link(`/aptitude/${t.id}`, t.label)} <span class="note">${counts.get(t.id)?.total ?? 0} questions</span> — ${h(t.blurb)}</li>`).join("")}</ul>`,
@@ -859,7 +996,7 @@ async function aptitudeCategoryHead(id: string): Promise<PageHead | null> {
     path,
     title: titles.aptitudeCategory(category.label, questions),
     description: summarise(`${questions} ${category.label.toLowerCase()} questions across ${topics.length} topics, each with a time target, hints, a worked solution and an approach note. ${category.blurb} Free on ${BRAND}.`),
-    facts: { topic: category.label, count: questions, trail },
+    facts: { topic: category.label, count: questions, items: firstItems(topics.map((t) => ({ name: t.label, path: `/aptitude/${t.id}` }))), trail },
     content,
     crumb: category.label,
   };
@@ -868,9 +1005,9 @@ async function aptitudeCategoryHead(id: string): Promise<PageHead | null> {
 function aptitudeTopicHead(topicId: string): Promise<PageHead | null> {
   const topic = aptitudeTopic(topicId);
   if (!topic) return Promise.resolve(null);
-  return cached(`seo:head:aptitude-topic:v2:${topicId}`, HEAD_TTL_MS, async () => {
+  return cached(`seo:head:aptitude-topic:v3:${topicId}`, HEAD_TTL_MS, async () => {
     // Every question of the topic as a link — the crawl path into the bank.
-    const rows = await prisma.aptitudeQuestion.findMany({ where: { topic: topicId }, select: { slug: true, title: true, difficulty: true }, orderBy: { orderIndex: "asc" }, take: 500 });
+    const rows = await prisma.aptitudeQuestion.findMany({ where: { topic: topicId }, select: { slug: true, title: true, difficulty: true, prompt: true }, orderBy: { orderIndex: "asc" }, take: 500 });
     const category = aptitudeCategory(topic.category);
     const categoryLabel = category?.label ?? topic.category;
     const path = `/aptitude/${topicId}`;
@@ -889,14 +1026,21 @@ function aptitudeTopicHead(topicId: string): Promise<PageHead | null> {
       // The formulas, rules and method (lib/aptitude-essentials): what a search
       // for "<topic> formulas" wants, and until 2026-10-01 the page had only
       // the one-sentence blurb before its question list.
-      (APTITUDE_ESSENTIALS[topicId] ? section(`${topic.label}: the essentials`, markdownToHtml(APTITUDE_ESSENTIALS[topicId], 8_000), "essentials") : "") +
-      section("Questions", linkList(rows.map((r) => ({ href: `/aptitude/q/${r.slug}`, label: r.title, note: titleCase(r.difficulty) }))), "questions") +
+      (APTITUDE_ESSENTIALS[topicId] ? section(`${topic.label}: the essentials`, markdownToHtml(APTITUDE_ESSENTIALS[topicId], 8_000, { under: 2 }), "essentials") : "") +
+      // Each question by its nickname and its stem — what a search for
+      // "<topic> aptitude questions" expects a list of (2026-10-01 SXO audit:
+      // the rows were nicknames alone). The answer stays on the question's page.
+      section(
+        "Questions",
+        `<ol>${rows.map((r) => `<li>${link(`/aptitude/q/${r.slug}`, r.title)} <span class="note">${h(titleCase(r.difficulty))}</span><br>${h(questionStem(r.prompt))}</li>`).join("")}</ol>`,
+        "questions",
+      ) +
       (siblings.length ? section(`More ${categoryLabel.toLowerCase()} topics`, linkList(siblings.map((t) => ({ href: `/aptitude/${t.id}`, label: t.label }))), "related") : "");
     return {
       path,
       title: titles.aptitudeTopic(topic.label),
       description: summarise(`${rows.length} ${topic.label} questions with hints, worked solutions and time targets — ${difficultySplit(byDifficulty)}. ${topic.blurb} Free on ${BRAND}.`),
-      facts: { topic: `${topic.label} (${categoryLabel})`, count: rows.length, trail },
+      facts: { topic: `${topic.label} (${categoryLabel})`, count: rows.length, items: firstItems(rows.map((r) => ({ name: r.title, path: `/aptitude/q/${r.slug}` }))), trail },
       content,
       crumb: topic.label,
     };
@@ -904,7 +1048,7 @@ function aptitudeTopicHead(topicId: string): Promise<PageHead | null> {
 }
 
 function aptitudeQuestionHead(slug: string): Promise<PageHead | null> {
-  return cached(`seo:head:aptitude:v2:${slug}`, HEAD_TTL_MS, async () => {
+  return cached(`seo:head:aptitude:v3:${slug}`, HEAD_TTL_MS, async () => {
     const q = await prisma.aptitudeQuestion.findUnique({
       where: { slug },
       select: { prompt: true, topic: true, category: true, title: true, options: true, answer: true, solution: true, approach: true, difficulty: true, timeTargetSec: true },
@@ -959,7 +1103,7 @@ function aptitudeQuestionHead(slug: string): Promise<PageHead | null> {
       // sentence", and only the title tells their pages apart.
       // The prompt gets what the title and the closing line leave of 158.
       description: `${q.title}: ${summarise(q.prompt, `a ${label} aptitude question with a worked solution.`, Math.max(60, 115 - q.title.length))} Answer and worked solution on ${BRAND}.`,
-      facts: { difficulty, topic: label, minutes: q.timeTargetSec / 60, options, answer: q.answer, trail },
+      facts: { difficulty, topic: label, minutes: q.timeTargetSec / 60, options, answer: q.answer, question: questionStem(q.prompt, 500), trail },
       content,
       crumb: q.title,
       ...(canonical !== slug ? { canonical: `/aptitude/q/${canonical}` } : {}),
@@ -983,7 +1127,7 @@ async function aptitudeIndex(): Promise<PageHead> {
 /* ── Placement tests ─────────────────────────────────────────────── */
 
 function testHead(slug: string): Promise<PageHead | null> {
-  return cached(`seo:head:test:v2:${slug}`, HEAD_TTL_MS, async () => {
+  return cached(`seo:head:test:v3:${slug}`, HEAD_TTL_MS, async () => {
     const t = await prisma.mockTest.findFirst({
       where: { slug, published: true },
       select: {
@@ -995,7 +1139,19 @@ function testHead(slug: string): Promise<PageHead | null> {
     const path = `/tests/${slug}`;
     const minutes = Math.round(t.durationSec / 60);
     const trail: Crumb[] = [HOME, SECTION.tests, { name: t.name, path }];
-    const others = await prisma.mockTest.findMany({ where: { published: true, family: t.family, NOT: { slug } }, select: { slug: true, name: true, company: true }, orderBy: { orderIndex: "asc" }, take: 8 });
+    const [others, samples] = await Promise.all([
+      prisma.mockTest.findMany({ where: { published: true, family: t.family, NOT: { slug } }, select: { slug: true, name: true, company: true }, orderBy: { orderIndex: "asc" }, take: 8 }),
+      testSamples(slug),
+    ]);
+    const letter = (i: number) => String.fromCharCode(65 + i);
+    // A dozen questions of the paper's kind, each with its answer behind a
+    // disclosure (services/test-samples) — the page draws the same list.
+    const samplesHtml = samples
+      .map(
+        (q) =>
+          `<section><h3>${link(`/aptitude/q/${q.slug}`, q.title)}</h3>${markdownToHtml(q.prompt, 3_000, { under: 3 })}<ol type="A">${q.options.map((o) => `<li>${inlineMd(o)}</li>`).join("")}</ol><details><summary>Show the answer</summary><p><strong>${letter(q.answer)}.</strong> ${q.options[q.answer] ? inlineMd(q.options[q.answer]) : ""} ${link(`/aptitude/q/${q.slug}`, "Worked solution")}</p></details></section>`,
+      )
+      .join("");
     const rows = t.sections
       .map((s) => `<tr><td>${h(s.name)}</td><td>${s.questionCount}</td><td>${Math.round(s.durationSec / 60)} min</td><td>${s.kind === "coding" ? "Coding" : "Multiple choice"}</td><td>${s.marksPerQuestion}</td></tr>`)
       .join("");
@@ -1014,7 +1170,8 @@ function testHead(slug: string): Promise<PageHead | null> {
       // The written preparation guide (lib/test-guides): what a search for
       // "<company> test pattern" is answered by — the results are guides, and
       // this page was a mock-test lobby of ~240 own words (2026-10-01).
-      (TEST_GUIDES[slug] ? section("How to prepare for this pattern", markdownToHtml(TEST_GUIDES[slug], 12_000), "guide") : "") +
+      (TEST_GUIDES[slug] ? section("How to prepare for this pattern", markdownToHtml(TEST_GUIDES[slug], 12_000, { under: 2 }), "guide") : "") +
+      (samplesHtml ? section("Sample questions", samplesHtml, "samples") : "") +
       (t.sourceNote ? section("About this pattern", `<p>${h(t.sourceNote)}</p>`, "source") : "") +
       `<p>Modelled on the published pattern; not affiliated with ${h(t.company)}. Every sitting draws a fresh paper from ${link("/aptitude", "the aptitude bank")}${t.sections.some((s) => s.kind === "coding") ? ` and ${link("/challenges", "the problem catalogue")}` : ""}.</p>` +
       (others.length ? section("Similar patterns", linkList(others.map((o) => ({ href: `/tests/${o.slug}`, label: o.name, note: o.company }))), "related") : "");
@@ -1022,7 +1179,12 @@ function testHead(slug: string): Promise<PageHead | null> {
       path,
       title: titles.test(t.name, t.company),
       // What the page is first; the pattern's blurb (its rules) where it fits.
-      description: summarise(`A full-length timed mock modelled on the ${t.company} pattern, with a fresh paper every sitting and a full review with solutions. ${t.blurb}`),
+      // The test's name and its sections lead: the shared opening ("A
+      // full-length timed mock modelled on the … pattern") made two or three
+      // tests' descriptions identical once cut (2026-10-01 audit).
+      description: summarise(
+        `${t.name} pattern: ${t.totalQuestions} questions in ${minutes} minutes across ${t.sections.length} ${t.sections.length === 1 ? "section" : "sections"}${t.negativeMark > 0 ? ", with negative marking" : ""}. Sample questions, a preparation guide and a free timed mock.`,
+      ),
       facts: { company: t.company, minutes, questions: t.totalQuestions, trail },
       content,
       crumb: t.name,
@@ -1047,7 +1209,7 @@ async function testsIndex(): Promise<PageHead> {
 /* ── Skill tests ─────────────────────────────────────────────────── */
 
 function skillTestHead(slug: string): Promise<PageHead | null> {
-  return cached(`seo:head:skill-test:v1:${slug}`, HEAD_TTL_MS, async () => {
+  return cached(`seo:head:skill-test:v2:${slug}`, HEAD_TTL_MS, async () => {
     const t = await prisma.skillTest.findFirst({
       where: { slug, published: true },
       select: {
@@ -1080,7 +1242,16 @@ function skillTestHead(slug: string): Promise<PageHead | null> {
       ]) +
       `<p>${h(t.blurb)}</p>` +
       section("Sections", `<table><thead><tr><th>Section</th><th>Questions</th><th>Time</th><th>Kind</th><th>Marks each</th></tr></thead><tbody>${rows}</tbody></table>`, "sections") +
-      (def && covered.length ? section("What it covers", `<ul>${def.topics.filter((x) => covered.includes(x.id)).map((x) => `<li>${h(x.label)}</li>`).join("")}</ul>`, "topics") : "") +
+      (def && covered.length
+        ? section(
+            "What it covers",
+            `<ul>${def.topics
+              .filter((x) => covered.includes(x.id))
+              .map((x) => `<li>${h(x.label)}${x.practice ? ` — practise with ${link(x.practice.href, x.practice.label)}` : ""}</li>`)
+              .join("")}</ul>`,
+            "topics",
+          )
+        : "") +
       section("Rules", markdownToHtml(t.instructions, 6_000), "rules") +
       (others.length ? section("Other skill tests", linkList(others.map((o) => ({ href: `/skill-tests/${o.slug}`, label: o.title }))), "related") : "");
     return {
@@ -1148,7 +1319,31 @@ async function roadmapIndex(): Promise<PageHead> {
         .join("")}</section>`;
     })
     .join("");
-  return { path: "/roadmap", title: "DSA roadmap", description: "", content: section("The road, stage by stage", tiers, "stages"), section: "index" };
+  const plan = roadmapPlan(road);
+  const planHtml =
+    `<p>At about ${PLAN_PACE} problems a day, five days a week, the road takes ${plan.weeks} weeks — about ${Math.ceil(plan.weeks / 4.3)} months — counting only the solves each stage needs to clear. Most placement seasons start in the final year, so starting in the pre-final year's second half leaves room to revise.</p>` +
+    `<table><thead><tr><th>Weeks</th><th>Stage</th><th>Solves to clear</th></tr></thead><tbody>${plan.rows.map((r) => `<tr><td>${h(r.weeks)}</td><td>${h(r.stage)}</td><td>${r.required}</td></tr>`).join("")}</tbody></table>`;
+  return { path: "/roadmap", title: "DSA roadmap", description: "", content: section("A week-by-week plan", planHtml, "plan") + section("The road, stage by stage", tiers, "stages"), section: "index" };
+}
+
+/** Problems a day in the plan; the SPA's roadmap page (lib/roadmap-plan.ts) uses the same pace. */
+export const PLAN_PACE = 2;
+
+/**
+ * The road as weeks: each stage takes the solves it needs to clear
+ * (`required`) at PLAN_PACE a day over five days a week, rounded up to whole
+ * weeks and laid end to end. The SPA's roadmap page computes the same table
+ * from the same payload (frontend lib/roadmap-plan.ts — keep the two equal).
+ */
+export function roadmapPlan(road: { stages: Array<{ title: string; required: number }> }): { weeks: number; rows: Array<{ weeks: string; stage: string; required: number }> } {
+  let week = 1;
+  const rows = road.stages.map((s, i) => {
+    const span = Math.max(1, Math.ceil(s.required / (PLAN_PACE * 5)));
+    const from = week;
+    week += span;
+    return { weeks: span === 1 ? `Week ${from}` : `Weeks ${from}–${from + span - 1}`, stage: `${i + 1}. ${s.title}`, required: s.required };
+  });
+  return { weeks: week - 1, rows };
 }
 
 /* ── Sitemaps ─────────────────────────────────────────────────── */
@@ -1181,7 +1376,7 @@ function urlset(entries: Array<{ path: string; lastmod?: Date | null }>): string
  */
 export function sitemapXml(name: string): Promise<string | null> {
   if (!(SITEMAP_NAMES as readonly string[]).includes(name)) return Promise.resolve(null);
-  return cached(`seo:sitemap:v2:${name}`, SITEMAP_TTL_MS, async () => {
+  return cached(`seo:sitemap:v3:${name}`, SITEMAP_TTL_MS, async () => {
     switch (name as SitemapName) {
       case "problems": {
         // No updatedAt on the problem table; a creation date would only say
@@ -1208,17 +1403,21 @@ export function sitemapXml(name: string): Promise<string | null> {
       case "aptitude": {
         // A restated question (APTITUDE_CANONICAL) is left out: its page
         // names the original as canonical, and a sitemap lists canonicals.
-        const rows = await prisma.aptitudeQuestion.findMany({ select: { slug: true, updatedAt: true }, orderBy: { slug: "asc" } });
-        return urlset(rows.filter((r) => !(r.slug in APTITUDE_CANONICAL)).map((r) => ({ path: `/aptitude/q/${r.slug}`, lastmod: r.updatedAt })));
+        // No lastmod: every seed rewrites every row, so updatedAt was one
+        // date for all 1,164 that moved with each seed — a lastmod that
+        // changes when nothing did teaches a crawler to ignore it (2026-10-01).
+        const rows = await prisma.aptitudeQuestion.findMany({ select: { slug: true }, orderBy: { slug: "asc" } });
+        return urlset(rows.filter((r) => !(r.slug in APTITUDE_CANONICAL)).map((r) => ({ path: `/aptitude/q/${r.slug}` })));
       }
       case "tests": {
         // The placement patterns and the skill tests: both are tests a
         // visitor reads the rules of before sitting one.
+        // No lastmod, as with aptitude: both are re-seeded in bulk.
         const [rows, skill] = await Promise.all([
-          prisma.mockTest.findMany({ where: { published: true }, select: { slug: true, updatedAt: true }, orderBy: { slug: "asc" } }),
-          prisma.skillTest.findMany({ where: { published: true }, select: { slug: true, updatedAt: true }, orderBy: { slug: "asc" } }),
+          prisma.mockTest.findMany({ where: { published: true }, select: { slug: true }, orderBy: { slug: "asc" } }),
+          prisma.skillTest.findMany({ where: { published: true }, select: { slug: true }, orderBy: { slug: "asc" } }),
         ]);
-        return urlset([...rows.map((r) => ({ path: `/tests/${r.slug}`, lastmod: r.updatedAt })), ...skill.map((r) => ({ path: `/skill-tests/${r.slug}`, lastmod: r.updatedAt }))]);
+        return urlset([...rows.map((r) => ({ path: `/tests/${r.slug}` })), ...skill.map((r) => ({ path: `/skill-tests/${r.slug}` }))]);
       }
       case "categories": {
         // The hub pages: the catalogue's topics and companies, the bug hunts'

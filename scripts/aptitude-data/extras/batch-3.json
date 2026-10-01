@@ -197,7 +197,7 @@
   },
   "tsd2-train-crosses-bridge": {
     "shortcut": "72 km/h is the stock 20 m/s (36 km/h = 10 m/s, doubled), so the 400 m of train plus bridge take 400 ÷ 20 = 20 s.",
-    "trap": "18 s — tempting because 18 sits in the 18/5 factor; no wrong option comes from a one-step slip (the bridge alone gives 12.5 s, not offered), and 400 m at 20 m/s is 20 s."
+    "trap": "Using only the bridge's 250 m gives 250 ÷ 20 = 12.5 s, and 15 s is the nearest option; the train has crossed only when its tail leaves the bridge, so it covers 150 + 250 = 400 m at 20 m/s."
   },
   "tsd2-platform-length": {
     "shortcut": "In one line: 54 × 5/18 × 20 = 300 m of train plus platform; strip off the 120 m train to leave 180 m.",
@@ -205,7 +205,7 @@
   },
   "tsd2-two-trains-opposite": {
     "shortcut": "108 km/h is 3 × 36 km/h, and 36 km/h = 10 m/s, so the relative speed is 30 m/s and 300 m clears in 10 s.",
-    "trap": "12 s — the tidy answer for a relative speed of 25 m/s (300 ÷ 25), which is 90 km/h; no wrong option comes from a natural slip, and 108 km/h is 30 m/s."
+    "trap": "Subtracting the speeds as if the trains ran the same way — 60 − 48 = 12 km/h, or 10/3 m/s — gives 300 ÷ 10/3 = 90 s; trains running towards each other close at the sum, 108 km/h = 30 m/s, over the 300 m of both trains."
   },
   "tsd2-two-trains-same-direction": {
     "shortcut": "The gap in speeds, 18 km/h, is exactly 5 m/s, so the 250 m of both trains takes 250 ÷ 5 = 50 s with no fractions.",
@@ -253,11 +253,11 @@
   },
   "tsd2-time-from-distance-speed": {
     "shortcut": "Back-substitute: 55 × 6 = 330 (55 × 2 = 110, tripled), so 6 h.",
-    "trap": "5 h — no wrong option comes from a standard slip; 5 h tempts after rounding 55 up to 60 (330 ÷ 60 = 5.5), but 55 × 5 is only 275."
+    "trap": "6.5 h is where estimating with a round 50 km/h leads: 330 ÷ 50 = 6.6 h. Check by multiplying instead — 55 × 6 = 330 exactly, so the time is 6 h."
   },
   "tsd2-increase-speed-save-time": {
     "shortcut": "The 2 hours saved at 40 km/h are 80 km that must be spread over the 4 new hours: + 20 km/h, so 40 + 20 = 60 km/h.",
-    "trap": "50 km/h — a modest rise that feels enough; the classic slip (direct proportion, 40 × 4/6 ≈ 26.7) is not offered, and 50 km/h would still take 240 ÷ 50 = 4.8 h."
+    "trap": "55 km/h comes from reading a third less time as a third more speed: 40 × 4/3 ≈ 53.3 km/h, nearest option 55. Cutting the time to 2/3 needs the speed × 3/2, so 40 × 3/2 = 60 km/h."
   },
   "tsd2-two-thirds-distance": {
     "shortcut": "Weight each speed by its time: 2 h at 30 and 1 h at 60 give (60 + 60) ÷ 3 = 40 km/h.",
@@ -269,7 +269,7 @@
   },
   "tsd2-two-trains-meet": {
     "shortcut": "330 = 3 × 110, the combined speed, so they meet after 3 h; check: 180 km + 150 km = 330 km.",
-    "trap": "5 h — close to the time the faster train alone would need (330 ÷ 60 = 5.5 h), forgetting the other train closes the gap too; subtracting the speeds (33 h) is not offered."
+    "trap": "5 h comes from timing the faster train alone over the whole gap — 330 ÷ 60 = 5.5 h, nearest option 5 h. Both trains close the gap, at 60 + 50 = 110 km/h, so they meet in 330 ÷ 110 = 3 h."
   },
   "tsd2-meeting-point-distance": {
     "shortcut": "The gap splits in the ratio of the speeds, 40 : 60 = 2 : 3, so the first train covers 2/5 × 300 = 120 km.",
@@ -277,7 +277,7 @@
   },
   "tsd2-race-head-start": {
     "shortcut": "In the same time the distances are in the ratio of the speeds, 100 : 90, so B runs at 0.9 × 10 = 9 m/s.",
-    "trap": "9.5 m/s — no wrong option comes from a natural slip; 9.5 m/s looks like a safe 'slightly slower', but it would leave B only 5 m behind, not 10."
+    "trap": "10 m/s comes from dividing the full 100 m by A's 10 s, which is A's own speed; when A finishes, B has covered only 90 m, so B's speed is 90 ÷ 10 = 9 m/s."
   },
   "tsd2-race-beats-by-time": {
     "shortcut": "The last 20 m is a tenth of the race and takes B 5 s, so B's full time is 10 × 5 = 50 s and A's is 5 s less: 45 s.",
@@ -285,7 +285,7 @@
   },
   "tsd2-circular-track-same-direction": {
     "shortcut": "Back-check: in 200 s the runners cover 1,000 m and 600 m, exactly one 400 m lap apart.",
-    "trap": "100 s — the time for the faster to gain half a lap (200 m at 2 m/s); they meet only when the full 400 m is gained. Adding the speeds (50 s) is not offered."
+    "trap": "Adding the speeds, the rule for runners going opposite ways, gives 400 ÷ 8 = 50 s; running the same way, the faster gains only 5 − 3 = 2 m/s and must gain a whole 400 m lap before they meet."
   },
   "tsd2-circular-track-opposite": {
     "shortcut": "Together they cover 10 m of track a second, so the 600 m lap closes in 60 s; check: 240 m + 360 m = 600 m.",
@@ -293,7 +293,7 @@
   },
   "tsd2-speed-reduced-time-increase": {
     "shortcut": "Distance = (product of speeds ÷ difference of speeds) × delay = (3,000 ÷ 10) × 1/3 h = 100 km.",
-    "trap": "120 km — no wrong option comes from a single slip; 120 km tempts because it is a whole 2 h at 60 km/h, but at 50 km/h it takes 2.4 h, a delay of 24 minutes, not 20."
+    "trap": "Writing 20 minutes as 0.2 h gives d/300 = 0.2 and d = 60 km; 20 minutes is 1/3 h, so the equation is d/50 − d/60 = d/300 = 1/3."
   },
   "tsd2-walk-and-ride": {
     "shortcut": "Walk both ways = 2 × (walk + ride) − (ride both) = 11 h 30 min − 4 h = 7 h 30 min.",
@@ -305,11 +305,11 @@
   },
   "tsd2-man-covers-half-at": {
     "shortcut": "Back-substitute: 240 km means 120 km at 30 km/h (4 h) plus 120 km at 20 km/h (6 h) — exactly 10 h.",
-    "trap": "260 km — tempting after the arithmetic-mean slip (25 km/h × 10 h = 250 km, not offered); 260 km would take 4 h 20 min + 6 h 30 min = 10 h 50 min."
+    "trap": "Averaging the speeds to 25 km/h gives 25 × 10 = 250 km; with equal distances the average speed is the harmonic mean, 2 × 30 × 20 ÷ 50 = 24 km/h, and that is the speed to multiply by the 10 hours."
   },
   "tsd2-train-speed-from-two-poles": {
     "shortcut": "The platform adds 10 s to the pole's 15 s, so train : platform = 15 : 10 and the train is 1.5 × 100 = 150 m.",
-    "trap": "200 m — no wrong option comes from a single slip (train plus platform, 250 m, is not offered); at 10 m/s a 200 m train would pass the pole in 20 s, not 15."
+    "trap": "Stopping at 25v = 25 × 10 = 250 m gives the train plus the platform; the train alone is what passes the pole, so its length is the 15 seconds' run at 10 m/s."
   },
   "tsd2-speed-ratio-time-ratio": {
     "shortcut": "For a fixed distance time ∝ 1/speed, so just flip the ratio; squared ratios such as 16 : 25 belong to areas, never to this inverse law.",
@@ -317,7 +317,7 @@
   },
   "tsd2-two-cars-different-times": {
     "shortcut": "Distance = (product of speeds ÷ difference of speeds) × time gap = (2,700 ÷ 15) × 1 h = 180 km.",
-    "trap": "120 km — no wrong option comes from a single slip; 120 km tempts because it is a whole 2 h at 60 km/h, but at 45 km/h it takes 2 h 40 min, only 40 minutes longer."
+    "trap": "Subtracting the denominators — taking 1/45 − 1/60 as 1/15 — gives d = 15 km; the true difference is 4/180 − 3/180 = 1/180, so the one-hour gap is d/180."
   },
   "tsd2-cyclist-and-walker": {
     "shortcut": "Catch-up time = head start × slower speed ÷ (faster − slower) = 2 h × 5 ÷ 10 = 1 h after 8 a.m., so 9:00 a.m.",
@@ -333,7 +333,7 @@
   },
   "tsd2-distance-covered-in-minutes": {
     "shortcut": "18 km/h is 0.3 km a minute, so 40 minutes give 40 × 0.3 = 12 km.",
-    "trap": "9 km — half the hourly speed, a rough 'about half an hour' guess; 40 minutes is two-thirds of an hour. Reading 40 min as 0.4 h (7.2 km) is the other slip, but it is not offered."
+    "trap": "9 km is where writing 40 minutes as 0.4 h leads: 18 × 0.4 = 7.2 km, and 9 km is the nearest option. 40 minutes is 2/3 h, so the distance is 18 × 2/3 = 12 km."
   },
   "tsd2-two-thirds-time-remaining": {
     "shortcut": "80 km at 20 km/h uses 4 of the 5 hours, and with one hour left the speed equals the remaining distance: 40 km/h.",
@@ -345,15 +345,15 @@
   },
   "tsd2-sound-and-distance": {
     "shortcut": "The round-trip average is 2 × 12 × 8 ÷ 20 = 9.6 km/h, so 10 h cover 96 km and one way is 48 km.",
-    "trap": "36 km — no wrong option comes from a natural slip; 36 km tempts because it divides neatly by 12 (3 h), but the return then takes 4.5 h, 7.5 h in all."
+    "trap": "Averaging the speeds to 10 km/h gives a 100 km round trip in 10 hours, so 50 km each way; the times add, not the speeds, so the equation is d/12 + d/8 = 5d/24 = 10."
   },
   "tsd2-fraction-of-speed-late": {
     "shortcut": "Back-substitute: 60 min at 3/4 speed becomes 60 × 4/3 = 80 min — exactly 20 minutes late.",
-    "trap": "75 min — the usual slip (the delay as a quarter of the usual time, giving 80 min) is not offered, and 75 min looks close; but 75 × 4/3 = 100 min, 25 minutes late."
+    "trap": "75 min comes from taking the delay as a quarter of the usual time because the speed fell by a quarter: 20 × 4 = 80 min, nearest option 75. At 3/4 speed the time is 4/3 of usual, so the delay is a third of it: 20 × 3 = 60 min."
   },
   "tsd2-man-and-train-bridge": {
     "shortcut": "A quarter of an hour at 5 km/h is a quarter of 5,000 m: 1,250 m.",
-    "trap": "1,000 m — a round kilometre that looks about right; at 5 km/h it takes only 12 minutes. Writing 15 min as 0.15 h (750 m) is the other slip, but it is not offered."
+    "trap": "1,000 m is where writing 15 minutes as 0.15 h leads: 5 × 0.15 = 0.75 km, or 750 m, and 1,000 m is the nearest option. 15 minutes is 0.25 h, so the bridge is 5 × 0.25 = 1.25 km = 1,250 m."
   },
   "tsd2-two-trains-crossing-time-ratio": {
     "shortcut": "12 km/h is 12,000 m in 60 minutes, i.e. 200 m a minute, so the 240 m take 1.2 min = 72 s.",
@@ -409,7 +409,7 @@
   },
   "in-simple-interest-basic": {
     "shortcut": "10% of 8,000 is 800, so 7.5% is 600 a year, and four years give 4 × 600 = ₹2,400.",
-    "trap": "₹2,000 — no wrong option comes from a natural slip; ₹2,000 tempts as a round quarter of the principal, but 7.5% × 4 years is 30%, not 25%."
+    "trap": "₹2,600 is where compounding leads: 8,000 × 1.075⁴ − 8,000 ≈ ₹2,684, and ₹2,600 is the nearest option. Simple interest is charged on the ₹8,000 alone, ₹600 a year for 4 years."
   },
   "in-compound-two-years": {
     "shortcut": "Year 1 earns ₹1,000; year 2 earns 10% of 11,000 = ₹1,100; together ₹2,100.",
@@ -421,7 +421,7 @@
   },
   "in-doubling-rate": {
     "shortcut": "12.5% is exactly 1/8, so eight years of one-eighth each add one whole principal — the sum doubles.",
-    "trap": "10% — a round rate that feels right; at 10% simple interest money doubles in 10 years, not 8. The tripling slip (RT = 200) gives 25%, which is not offered."
+    "trap": "10% comes from borrowing the compound-interest rule of 72 — 72 ÷ 8 = 9%, nearest option 10%. Under simple interest a sum doubles when R × T = 100, so R = 100 ÷ 8 = 12.5%."
   },
   "in-principal-from-amount": {
     "shortcut": "Back-substitute: ₹5,000 → 5,500 → 6,050 in two 10% steps.",

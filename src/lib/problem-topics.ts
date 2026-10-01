@@ -301,10 +301,37 @@ export function renamedCompanyHubSlug(slug: string): string | undefined {
  * did, word for word but the name, until 2026-09-30. Nothing about how the
  * company interviews is claimed — the site has no source for that.
  */
-export function companyBlurb(label: string, count: number, topTopics: ReadonlyArray<{ label: string; count: number }> = []): string {
+export function companyBlurb(
+  label: string,
+  count: number,
+  topTopics: ReadonlyArray<{ label: string; count: number }> = [],
+  more: {
+    /** The hub's difficulty split. */
+    byDifficulty?: { EASY: number; MEDIUM: number; HARD: number };
+    /** The catalogue's size, to say when a tag covers most of it. */
+    catalogue?: number;
+    /** A few problems tagged for this company and no other, in list order. */
+    ownProblems?: readonly string[];
+    /** The company's placement patterns on /tests: name, and its guide's opening line when it has one. */
+    patterns?: ReadonlyArray<{ name: string; lead?: string }>;
+  } = {},
+): string {
+  const and = (xs: readonly string[]) => (xs.length > 1 ? `${xs.slice(0, -1).join(", ")} and ${xs[xs.length - 1]}` : (xs[0] ?? ""));
   const topics = topTopics.map((t) => `${t.label} (${t.count})`);
-  const common = topics.length
-    ? ` The most common topics among them are ${topics.length > 1 ? `${topics.slice(0, -1).join(", ")} and ${topics[topics.length - 1]}` : topics[0]}.`
-    : "";
-  return `${count} problems the CodeKairo catalogue tags as commonly asked in ${label}'s coding rounds, from easy warm-ups to the harder questions, each judged by hidden tests in 13 languages.${common} The tag is the catalogue's own annotation of where a problem tends to come up — not a list published by ${label}, which CodeKairo is not affiliated with.`;
+  const common = topics.length ? ` The most common topics among them are ${and(topics)}.` : "";
+  // Counted, not assumed: "from easy warm-ups to the harder questions" was
+  // every hub's line, and TCS and Zoho have no hard problem at all (2026-10-01).
+  const d = more.byDifficulty;
+  const split = d ? and((["EASY", "MEDIUM", "HARD"] as const).filter((k) => d[k] > 0).map((k) => `${d[k]} ${k.toLowerCase()}`)) : "";
+  const levels = split ? ` — ${split}${d && d.HARD === 0 ? ", no hard ones" : ""} —` : ",";
+  const share = more.catalogue ? Math.round((count / more.catalogue) * 100) : 0;
+  const broad = share >= 50 ? ` At ${share}% of the catalogue the tag is a broad net rather than a shortlist${more.patterns?.length ? "; the pattern below is the narrower place to start" : ""}.` : "";
+  const own = more.ownProblems?.length ? ` Tagged for ${label} and no other company: ${and(more.ownProblems)}.` : "";
+  // The pattern's guide (lib/test-guides) opens with one sourced sentence on
+  // the test itself — the one company-specific fact the site can back.
+  // `lead` is that sentence without its "A guide to": "the Google online
+  // assessment pattern for university candidates: two coding problems, …".
+  const pattern = more.patterns?.find((p) => p.lead);
+  const format = pattern?.lead ? ` CodeKairo's ${pattern.name} mock covers ${pattern.lead}` : "";
+  return `${count} problems the CodeKairo catalogue tags as commonly asked in ${label}'s coding rounds${levels} each judged by hidden tests in 13 languages.${common}${own}${broad}${format} The tag is the catalogue's own annotation of where a problem tends to come up — not a list published by ${label}, which CodeKairo is not affiliated with.`;
 }

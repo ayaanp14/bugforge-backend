@@ -12,6 +12,7 @@ import { cached, cachedShared } from "../lib/cache.js";
 import { browserCache } from "../lib/http-cache.js";
 import { codingPool, questionIndex } from "../services/aptitude-bank.js";
 import { TEST_GUIDES } from "../lib/test-guides.js";
+import { testSamples } from "../services/test-samples.js";
 
 /**
  * Full-length placement tests.
@@ -329,6 +330,7 @@ router.get("/:slug", optionalAuth, cacheWhenAnonymous, async (req: any, res) => 
   try {
     const test = await testPattern(req.params.slug);
     if (!test) return res.status(404).json({ error: "Test not found" });
+    const samples = await testSamples(String(req.params.slug));
 
     const userId: string | null = req.user?.userId ?? null;
     const attempts = userId
@@ -348,6 +350,10 @@ router.get("/:slug", optionalAuth, cacheWhenAnonymous, async (req: any, res) => 
         // The pattern's preparation guide (lib/test-guides), shown under the
         // instructions; null for a pattern that has none yet.
         guide: TEST_GUIDES[String(req.params.slug)] ?? null,
+        // A dozen questions of the paper's kind from the public aptitude
+        // bank (services/test-samples), each with its answer — the edge
+        // writes the same ones into the page's HTML.
+        samples,
         sections: test.sections.map((section) => {
           const rules = (section.blueprint ?? []) as unknown as DrawRule[];
           const coding = section.kind === "coding";

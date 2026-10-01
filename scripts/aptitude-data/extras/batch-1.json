@@ -109,7 +109,7 @@
   },
   "ps-sum-of-digits-trace": {
     "shortcut": "Casting out nines: 9407 leaves remainder 2 on division by 9, so its digit sum must too, and 20 is the only option that does.",
-    "trap": "18 tempts as the nearest multiple of 9 for a number beginning with 9, but no slip in the loop produces it; the digits 7, 0, 4, 9 sum to 20."
+    "trap": "Stopping the trace when n reaches the single digit 9, as if the loop ran while n > 9, leaves s at 7 + 0 + 4 = 11; n = 9 still passes n > 0, so the leading 9 is added as well."
   },
   "ps-nested-loop-with-continue": {
     "shortcut": "The counter moves once for each ordered pair of different values from {1, 2, 3}: 3 × 2 = 6.",

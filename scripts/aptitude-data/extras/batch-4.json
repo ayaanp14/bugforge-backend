@@ -105,7 +105,7 @@
   },
   "ns2-sum-odd-numbers-100-200": {
     "shortcut": "The first n odd numbers sum to n². Odd numbers up to 199 are the first 100 (sum 10,000) and up to 99 the first 50 (sum 2,500), so 10,000 − 2,500 = 7500.",
-    "trap": "No natural slip lands exactly on another option; 7250 is the most tempting, only 250 below the answer, so a rough count × average does not rule it out — the exact count is 50 and the average 150."
+    "trap": "Counting the terms as (199 − 101) ÷ 2 = 49, without the + 1 for the first term, gives 49 × 150 = 7350, and the nearest option to that is 7250; the run 101, 103, …, 199 has 50 terms, so the sum is 50 × 150 = 7500."
   },
   "ns2-telescoping-series": {
     "shortcut": "The first term alone is 1/2 and the endless series sums to 1, so the answer lies strictly between 1/2 and 1 — only 9/10 does.",
@@ -245,7 +245,7 @@
   },
   "tw2-waste-pipe-capacity": {
     "shortcut": "Call the cistern 120 units: the taps give 7 a minute and the net is 2, so the waste pipe removes 5 units = 3 gallons a minute, and 120 units = 120 × 3/5 = 72 gallons.",
-    "trap": "No slip gives another option exactly; 60 gallons is the most tempting because it reuses the 60 minutes in the question, but the volume comes from the waste pipe's 24-minute emptying time × 3 gallons."
+    "trap": "Multiplying the waste pipe's 3 gallons a minute by the 60-minute fill gives 180 gallons — what the pipe drains while the cistern fills, not what it holds; the pipe alone would empty the cistern in 24 minutes, so the capacity is 24 × 3 gallons."
   },
   "tw2-men-and-women-equivalence": {
     "shortcut": "Count in men: 4 women = 2 men, so the team is 6 men, twice the 3 who need 20 days — 10 days.",
@@ -297,7 +297,7 @@
   },
   "tw2-payment-share-c": {
     "shortcut": "In the 3 days A does 3/6 = 1/2 and B does 3/8, so C's part is 1 − 1/2 − 3/8 = 1/8, and 600 ÷ 8 = ₹75.",
-    "trap": "No slip lands exactly on another option; ₹150 is the most tempting, since a quarter of the pay feels right for a helper, but C's rate of 1/24 a day covers only 1/8 of the work."
+    "trap": "Paying C his one-day fraction — 1/24 of ₹600 = ₹25 — forgets that he works all 3 days; his part of the job is 3 × 1/24 = 1/8, so he earns an eighth of the ₹600."
   },
   "tw2-abc-help-c-alone": {
     "shortcut": "In the 4 days A does 4/8 = 1/2 and B 4/12 = 1/3, leaving C 1/6 of the job in 4 days — so C alone needs 24.",
@@ -437,7 +437,7 @@
   },
   "ag-father-thrice-son": {
     "shortcut": "When the father is twice the son, the age gap equals the son's age. The gap is 2s now, so 2s = s + 12 and s = 12.",
-    "trap": "No slip gives another option exactly; 14 is the closest miss — father 42, then 54 against 26, just over twice — so a rough check by eye can pass it."
+    "trap": "Expanding 2(s + 12) as 2s + 12 — doubling the son's age but not the years added to it — gives s = 0, and a solver who then checks the options by eye can accept 14: father 42, then 54 against 26, which looks like twice but is 2 more than 2 × 26."
   },
   "ag-ratio-now-and-later": {
     "shortcut": "Back-substitute: A = 30 makes B = 42, and six years on 36 : 48 = 3 : 4.",
@@ -449,7 +449,7 @@
   },
   "ag-ten-years-ago-half": {
     "shortcut": "The sum is 3k + 4k = 7k, and 35 is the only option divisible by 7.",
-    "trap": "No slip gives another option exactly; 30 is the most tempting because it is 3 × 10 and seems to fit both the 3 : 4 ratio and the 10 years, but it is not a multiple of 7."
+    "trap": "Taking the ten years off Ram's age but not Shyam's — 2(3k − 10) = 4k — gives k = 10 and ages of 30 and 40, both of which sit among the options; Shyam was ten years younger too, so 2(3k − 10) = 4k − 10, k = 5 and the sum is 35."
   },
   "ag-product-and-difference": {
     "shortcut": "With a gap of 2, the mean age m satisfies (m − 1)(m + 1) = m² − 1 = 48, so m = 7 and the sum is 14.",

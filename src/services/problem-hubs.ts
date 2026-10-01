@@ -1,6 +1,10 @@
 import { getCatalogue, type CatalogueRow } from "./dashboard.js";
 import { isCompanyTag } from "../lib/companies.js";
 import { MIN_COMPANY_PROBLEMS, MIN_HUB_PROBLEMS, TOPIC_HUBS, companyBlurb, companyHub, topicHubBySlug, topicHubByTag, type TopicHub } from "../lib/problem-topics.js";
+import { TEST_GUIDES } from "../lib/test-guides.js";
+import { TOPIC_ESSENTIALS } from "../lib/topic-essentials.js";
+import { prisma } from "../lib/prisma.js";
+import { cached } from "../lib/cache.js";
 
 /**
  * The catalogue's hub pages, computed from the cached catalogue.
@@ -37,6 +41,10 @@ export interface HubProblem {
 export interface HubPage extends HubSummary {
   blurb: string;
   problems: HubProblem[];
+  /** A topic hub: its essentials sheet (lib/topic-essentials), Markdown; null for a company. */
+  essentials: string | null;
+  /** A company hub: its placement patterns on /tests (none for a topic, or a company without one). */
+  patterns: Array<{ slug: string; name: string }>;
   /** Other hubs of the same kind, most populous first. */
   related: HubSummary[];
 }
@@ -128,6 +136,24 @@ function commonTopics(rows: CatalogueRow[]): Array<{ label: string; count: numbe
     .map(([tag, count]) => ({ label: topicHubByTag(tag)!.label, count }));
 }
 
+/**
+ * The placement patterns (/tests) per company, from the published tests —
+ * a company hub links its own, and its intro quotes the pattern guide's
+ * opening line (lib/test-guides). A tag and a test name the company the
+ * same way except HCL, whose tests say "HCLTech": matched by prefix.
+ */
+function patternsByCompany(): Promise<Array<{ slug: string; name: string; company: string }>> {
+  return cached("hubs:patterns:v1", 60 * 60 * 1000, () =>
+    prisma.mockTest.findMany({ where: { published: true }, select: { slug: true, name: true, company: true }, orderBy: { orderIndex: "asc" } }).catch(() => []),
+  );
+}
+
+/** A guide's first sentence without its "A guide to": the noun phrase the company intro quotes. */
+function guideLead(slug: string): string | undefined {
+  const first = TEST_GUIDES[slug]?.split("\n")[0]?.trim();
+  return first ? first.replace(/^A guide to /, "") : undefined;
+}
+
 const toHubProblem = (row: CatalogueRow): HubProblem => ({
   slug: row.slug,
   title: row.title,
@@ -145,11 +171,21 @@ export async function hubPage(kind: "topic" | "company", slug: string): Promise<
   const pool = kind === "topic" ? index.topics : index.companies;
   const summary = pool.find((h) => h.slug === slug);
   if (!summary) return null;
-  const groups = groupByTag(await getCatalogue());
+  const catalogue = await getCatalogue();
+  const groups = groupByTag(catalogue);
   const rows = groups.get(summary.tag) ?? [];
-  const blurb = kind === "topic" ? (topicHubBySlug(slug)?.blurb ?? "") : companyBlurb(summary.label, summary.count, commonTopics(rows));
   const related = pool.filter((h) => h.slug !== slug).slice(0, 12);
-  return { ...summary, blurb, problems: rows.map(toHubProblem), related };
+  if (kind === "topic") return { ...summary, blurb: topicHubBySlug(slug)?.blurb ?? "", essentials: TOPIC_ESSENTIALS[slug] ?? null, problems: rows.map(toHubProblem), patterns: [], related };
+  const patterns = (await patternsByCompany()).filter((t) => t.company === summary.label || t.company.startsWith(summary.label));
+  // Problems no other company is tagged on: the part of the list that is this company's alone.
+  const ownProblems = rows.filter((r) => tagsOf(r).filter(isCompanyTag).length === 1).slice(0, 3).map((r) => r.title);
+  const blurb = companyBlurb(summary.label, summary.count, commonTopics(rows), {
+    byDifficulty: summary.byDifficulty,
+    catalogue: catalogue.length,
+    ownProblems,
+    patterns: patterns.map((p) => ({ name: p.name, lead: guideLead(p.slug) })),
+  });
+  return { ...summary, blurb, essentials: null, problems: rows.map(toHubProblem), patterns: patterns.map(({ slug: s, name }) => ({ slug: s, name })), related };
 }
 
 /** The hubs a problem's tags link to: its topics first, then its companies. */

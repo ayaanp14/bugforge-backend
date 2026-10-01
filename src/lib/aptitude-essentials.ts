@@ -41,7 +41,7 @@ export const APTITUDE_ESSENTIALS: Readonly<Record<string, string>> = {
     "### Unit digits and remainders\n\n" +
     "- Unit digits of powers repeat every 4: 2 → 2, 4, 8, 6; 3 → 3, 9, 7, 1; 7 → 7, 9, 3, 1; 8 → 8, 4, 2, 6. A last digit of 4 or 9 alternates; 0, 1, 5 and 6 never change. Use the exponent mod 4, reading 0 as 4.\n" +
     "- Reduce the base modulo the divisor first, then find the cycle of its powers. A base one less than the divisor acts as −1: even powers leave 1, odd powers the divisor minus 1.\n\n" +
-    "Example: 7¹⁰⁰ ÷ 5. 7 leaves 2, and 2⁴ = 16 leaves 1, so 7¹⁰⁰, like (2⁴)²⁵, leaves **1**.",
+    "Example: 13⁴³ ÷ 5. 13 leaves 3, and 3⁴ = 81 leaves 1; 43 = 4 × 10 + 3, so 13⁴³ leaves the same as 3³ = 27, which is **2**.",
   "percentages":
     "- Percentage change = (new − old) ÷ old × 100. The base is always the starting value.\n" +
     "- **Successive changes** of a% and b%: net a + b + ab/100 per cent, entering falls as negatives. An equal rise and fall of x% is always a net loss of x²/100 per cent.\n" +
@@ -53,7 +53,7 @@ export const APTITUDE_ESSENTIALS: Readonly<Record<string, string>> = {
     "- Two overlapping groups: A or B = A + B − both, and neither = 100% − (A or B).\n\n" +
     "### Fractions worth knowing\n\n" +
     "1/3 = 33⅓%, 1/6 = 16⅔%, 1/7 ≈ 14.29%, 1/8 = 12.5%, 1/9 ≈ 11.11%, 1/11 ≈ 9.09%, 1/12 = 8⅓%.\n\n" +
-    "Example: up 20% and then down 20% is 1.2 × 0.8 = 0.96, a **4% loss**, not zero.",
+    "Example: up 25% and then down 25% is 1.25 × 0.75 = 0.9375, a **6.25% loss**, not zero.",
   "profit-and-loss":
     "- Profit or loss is a percentage of the **cost price** unless the question says otherwise.\n" +
     "- SP = CP × (100 + profit%)/100, and CP = SP × 100/(100 + profit%). For a loss, use 100 − loss%.\n" +
@@ -66,7 +66,7 @@ export const APTITUDE_ESSENTIALS: Readonly<Record<string, string>> = {
     "- Buy x, get y free: discount = y/(x + y) × 100, so buy 3, get 1 free is 25%.\n" +
     "- A profit of p% on the selling price is 100p/(100 − p) per cent on the cost.\n" +
     "- If the loss at one price equals the gain at another, the cost price is their average.\n\n" +
-    "Example: goods marked 30% above cost, target profit 4%. Set CP = 100: MP = 130 and SP = 104, so the discount is 26/130 = **20%**.",
+    "Example: goods marked 25% above cost, target profit 10%. Set CP = 100: MP = 125 and SP = 110, so the discount is 15/125 = **12%**.",
   "ratio-and-proportion":
     "- A share = its part ÷ the sum of the parts × the total. Find one part once, then multiply.\n" +
     "- **Joining ratios:** scale so the shared term matches. A : B = 2 : 3 and B : C = 4 : 5 give A : B : C = 8 : 12 : 15.\n" +
@@ -78,7 +78,7 @@ export const APTITUDE_ESSENTIALS: Readonly<Record<string, string>> = {
     "- **Partnership:** profit is shared in the ratio of capital × time.\n" +
     "- Lengths in the ratio a : b give areas a² : b² and volumes a³ : b³.\n" +
     "- **Coins** counted in a ratio: price one set of the ratio, then count the sets.\n\n" +
-    "Example: ₹5,400 in the ratio 2 : 3 : 4. There are 9 parts, one part is ₹600, so C gets **₹2,400**.",
+    "Example: ₹7,200 in the ratio 3 : 4 : 5. There are 12 parts, one part is ₹600, so C gets **₹3,000**.",
   "averages":
     "- Average = sum ÷ count, so sum = average × count. Work in totals and divide once, at the end.\n" +
     "- An evenly spaced list averages (first + last)/2, the middle of the list. The average of 1 to n is (n + 1)/2; of the first n even numbers, n + 1; of the first n odd numbers, n.\n" +
@@ -90,7 +90,7 @@ export const APTITUDE_ESSENTIALS: Readonly<Record<string, string>> = {
     "- **Overlapping groups**, such as the first six and last six of eleven results: the shared value = sum of the group totals − overall total.\n" +
     "- Multiplying every value by k multiplies the average by k; adding k to every value adds k.\n" +
     "- Average speed over equal distances is 2ab/(a + b), not (a + b)/2.\n\n" +
-    "Example: a batsman averaging 40 over 16 innings scores 91 in the 17th. The average rises by (91 − 40)/17 = 3, to **43**.",
+    "Example: a batsman averaging 32 over 11 innings scores 68 in the 12th. The average rises by (68 − 32)/12 = 3, to **35**.",
   "ages":
     "- The **difference** between two people's ages never changes, which makes it the fastest check on any answer.\n" +
     "- Give the present ages one variable. 'n years ago' subtracts n from every age; 'n years hence' adds n.\n" +
@@ -102,7 +102,7 @@ export const APTITUDE_ESSENTIALS: Readonly<Record<string, string>> = {
     "- Given a product and a difference: (a + b)² = (a − b)² + 4ab.\n" +
     "- Turn awkward percentages into fractions: 125% = 5/4, 150% = 3/2, 83⅓% = 5/6.\n" +
     "- Apply a ratio to present ages only; bring a past or future age back to the present first.\n\n" +
-    "Example: a father is three times his son's age and in 12 years will be twice it. 3x + 12 = 2(x + 12) gives x = 12, so the son is **12** and the father 36.",
+    "Example: a father is four times his son's age and in 16 years will be twice it. 4x + 16 = 2(x + 16) gives x = 8, so the son is **8** and the father 32.",
   "time-and-work":
     "- Work in **rates**, not times: a job done in a days is 1/a of the job per day. Rates add; times do not.\n" +
     "- A in a days and B in b days, working together: ab/(a + b) days.\n" +
@@ -113,7 +113,7 @@ export const APTITUDE_ESSENTIALS: Readonly<Record<string, string>> = {
     "- **Pipes and cisterns:** inlets add rate, outlets and leaks subtract it. A pipe that fills in a hours but takes b hours with a leak means the leak alone empties it in ab/(b − a) hours.\n" +
     "- **Alternate days:** find the work per cycle, count the whole cycles, then finish the remainder day by day, in order.\n" +
     "- When someone leaves early, write one equation in the total time; the leaver works fewer days.\n\n" +
-    "Example: A takes 12 days and B 18. Take the job as 36 units: A does 3 a day and B 2, so together they need 36/5 = **7.2 days**.",
+    "Example: A takes 24 days and B 40. Take the job as 120 units: A does 5 a day and B 3, so together they need 120/8 = **15 days**.",
   "time-speed-distance":
     "- Distance = speed × time. From km/h to m/s, multiply by 5/18; from m/s to km/h, by 18/5.\n" +
     "- A train passing a pole or a person covers its own length; a platform, a bridge or another train adds that length.\n" +
@@ -125,7 +125,7 @@ export const APTITUDE_ESSENTIALS: Readonly<Record<string, string>> = {
     "- **Stoppages:** minutes stopped per hour = (speed without − speed with)/speed without × 60.\n" +
     "- **Races:** 'A beats B by x metres' means B is x metres short when A finishes.\n" +
     "- **Circular track:** first meeting after L/(a − b) in the same direction, L/(a + b) in opposite directions.\n\n" +
-    "Example: a 150 m train at 72 km/h, or 20 m/s, crosses a 250 m bridge in 400/20 = **20 seconds**.",
+    "Example: a 160 m train at 90 km/h, or 25 m/s, crosses a 290 m bridge in 450/25 = **18 seconds**.",
   "interest":
     "- **Simple interest:** SI = P × R × T/100, and the amount A = P(1 + RT/100). Every year earns the same interest.\n" +
     "- Under SI a sum becomes n times itself when R × T = 100(n − 1): doubling needs RT = 100, tripling RT = 200.\n" +
@@ -139,7 +139,7 @@ export const APTITUDE_ESSENTIALS: Readonly<Record<string, string>> = {
     "- SI and CI are equal for the first year of annual compounding.\n\n" +
     "### Multipliers worth memorising\n\n" +
     "1.1² = 1.21, 1.1³ = 1.331, 1.05² = 1.1025, 1.05³ = 1.157625, 1.2² = 1.44, 1.04² = 1.0816.\n\n" +
-    "Example: on ₹8,000 at 10% for 2 years, CI − SI = 8,000 × (0.1)² = **₹80**.",
+    "Example: on ₹4,000 at 15% for 2 years, CI − SI = 4,000 × (0.15)² = **₹90**.",
   "permutations-combinations":
     "- **Counting principle:** independent stages multiply ('and'); separate cases add ('or').\n" +
     "- n distinct objects arrange in n! ways. P(n, r) = n!/(n − r)! counts ordered selections and C(n, r) = n!/(r!(n − r)!) unordered ones, so P(n, r) = C(n, r) × r!.\n" +
@@ -151,7 +151,7 @@ export const APTITUDE_ESSENTIALS: Readonly<Record<string, string>> = {
     "- **At least one** = total − none. A set of n items has 2ⁿ subsets, 2ⁿ − 1 of them non-empty.\n" +
     "- Handshakes, round-robin matches and lines through n points (no three in a line) are all C(n, 2) = n(n − 1)/2. An n-sided polygon has n(n − 3)/2 diagonals.\n" +
     "- If order matters (signals, ranks, seats, numbers), use a permutation; if it does not (committees, teams), a combination.\n\n" +
-    "Example: committees of 3 from 5 men and 4 women with at least one woman: C(9, 3) − C(5, 3) = 84 − 10 = **74**.",
+    "Example: committees of 3 from 6 men and 3 women with at least one woman: C(9, 3) − C(6, 3) = 84 − 20 = **64**.",
   "probability":
     "- P(E) = favourable outcomes ÷ total outcomes, always between 0 and 1, and P(not E) = 1 − P(E).\n" +
     "- **Or:** P(A or B) = P(A) + P(B) − P(A and B). Drop the last term only for mutually exclusive events.\n" +
@@ -163,7 +163,7 @@ export const APTITUDE_ESSENTIALS: Readonly<Record<string, string>> = {
     "- **Cards:** 52 cards, 4 suits of 13, 26 red and 26 black, 12 face cards (jack, queen, king) and 4 aces.\n" +
     "- **Calendars:** a leap year has 53 of a given weekday with probability 2/7, an ordinary year 1/7.\n" +
     "- Numbers from 1 to n divisible by d: ⌊n/d⌋. For '3 or 5', subtract the multiples of 15.\n\n" +
-    "Example: a king or a heart is 4/52 + 13/52 − 1/52 = 16/52 = **4/13**.",
+    "Example: a red card or a king is 26/52 + 4/52 − 2/52 = 28/52 = **7/13**.",
   "mixtures-alligation":
     "- **Alligation:** quantity of cheaper : quantity of dearer = (dearer − mean) : (mean − cheaper). It works for prices, concentrations, wages and marks — any weighted average of two groups.\n" +
     "- The mean sits nearer the ingredient there is more of; exactly midway means 1 : 1.\n" +
@@ -175,7 +175,7 @@ export const APTITUDE_ESSENTIALS: Readonly<Record<string, string>> = {
     "- For a profit target, turn the selling price into the cost the mixture must have, then apply alligation to that cost.\n" +
     "- Mixing two mixtures: convert each to actual quantities first. For equal volumes, use the LCM of the ratio sums.\n" +
     "- Anything drawn off a mixture removes both components in proportion.\n\n" +
-    "Example: rice at ₹40 and ₹60 per kg mixed to ₹52: (60 − 52) : (52 − 40) = 8 : 12 = **2 : 3**.",
+    "Example: tea at ₹120 and ₹180 per kg mixed to ₹160: (180 − 160) : (160 − 120) = 20 : 40 = **1 : 2**.",
   "mensuration":
     "Use π = 22/7 unless told otherwise, and convert every length to one unit before multiplying.\n\n" +
     "### Plane figures\n\n" +
@@ -206,7 +206,7 @@ export const APTITUDE_ESSENTIALS: Readonly<Record<string, string>> = {
     "- Convert letters to positions, A = 1 to Z = 26, and back at the end. Landmarks: E 5, J 10, O 15, T 20, Y 25. The opposite of the nth letter is the (27 − n)th.\n" +
     "- In pairs such as AZ, BY, CX, treat each position as its own series.\n" +
     "- For an odd one out, test squares, cubes and primes first; exactly one term should break the rule.\n\n" +
-    "Example: 2, 5, 10, 17, 26 has differences 3, 5, 7, 9, so the next term is 26 + 11 = **37** (n² + 1).",
+    "Example: 5, 8, 13, 20, 29 has differences 3, 5, 7, 9, so the next term is 29 + 11 = **40** (n² + 4).",
   "coding-decoding":
     "- **Positions:** A = 1 to Z = 26, with landmarks E 5, J 10, O 15, T 20, Y 25. The opposite of position n is 27 − n: A and Z, M and N.\n" +
     "- **Write the shift under each letter** of the example before guessing. A constant shift (+1, +2, −1) is the commonest code; Z + 1 wraps to A.\n" +
@@ -218,7 +218,7 @@ export const APTITUDE_ESSENTIALS: Readonly<Record<string, string>> = {
     "- **Swapped symbols:** rewrite the whole expression first, then apply BODMAS — × and ÷ before + and −, left to right.\n" +
     "- **Decoding:** apply the shift in reverse, then re-encode to check.\n" +
     "- **Positions in the alphabet:** the kth letter to the left of the nth is at n − k; the kth from the right is the (27 − k)th.\n\n" +
-    "Example: CAT → DBU is a shift of +1 on every letter, so DOG → **EPH**.",
+    "Example: MAP → OCR is a shift of +2 on every letter, so SUN → **UWP**.",
   "blood-relations":
     "Never hold a family in your head: draw it.\n\n" +
     "### Drawing the tree\n\n" +
@@ -231,7 +231,7 @@ export const APTITUDE_ESSENTIALS: Readonly<Record<string, string>> = {
     "- A parent's brother or sister is an uncle or aunt: maternal on the mother's side, paternal on the father's.\n" +
     "- A sibling's child is a nephew or niece; a parent's sibling's child is a cousin, and the relation holds both ways.\n" +
     "- A spouse's parent is a father- or mother-in-law; a spouse's sibling, or a sibling's spouse, is a brother- or sister-in-law.\n\n" +
-    "Example: a man says, 'He is the son of the only son of my father.' His father's only son is the man himself, so the person is **his son**.",
+    "Example: a man says, 'She is the daughter of the only son of my mother.' His mother's only son is the man himself, so she is **his daughter**.",
   "direction-sense":
     "- **Compass:** north up, east right, south down, west left, with NE, SE, SW and NW between them. As bearings: N 0°, NE 45°, E 90°, SE 135°, S 180°, SW 225°, W 270°, NW 315°.\n" +
     "- **Turns:** a right turn is 90° clockwise, N → E → S → W → N; a left turn runs the list backwards; 180° gives the opposite direction. Name the new direction after every turn.\n" +
@@ -242,7 +242,7 @@ export const APTITUDE_ESSENTIALS: Readonly<Record<string, string>> = {
     "- **Shadows:** the sun rises in the east, so morning shadows fall to the west and evening shadows to the east. A morning shadow on your right means you face south.\n" +
     "- **Rotated compass:** find the angle the mapping turns through, check it on the second pair given, then apply it.\n" +
     "- The direction of A from C is the opposite of C from A.\n\n" +
-    "Example: 10 m north, right 15 m, right 10 m. The north and south legs cancel, leaving the walker **15 m east** of the start.",
+    "Example: 8 m south, left 12 m, left 8 m. The south and north legs cancel, leaving the walker **12 m east** of the start.",
   "syllogisms":
     "Treat each statement as a picture, and judge only what the statements say, never what you know of the world.\n\n" +
     "### Drawing the statements\n\n" +
@@ -269,7 +269,7 @@ export const APTITUDE_ESSENTIALS: Readonly<Record<string, string>> = {
     "- **Floors:** an ordering puzzle drawn vertically, ground floor at the bottom.\n" +
     "- **Days or slots:** place the fixed days first, then use 'before' and 'immediately after'.\n" +
     "- Check the finished arrangement against every clue before answering.\n\n" +
-    "Example: Ravi is 12th from the left and 18th from the right, so the row holds 12 + 18 − 1 = **29** students.",
+    "Example: Meera is 9th from the left and 14th from the right, so the row holds 9 + 14 − 1 = **22** students.",
   "analogies-classification":
     "Both question types reward naming the rule before you look at the options.\n\n" +
     "### Analogies\n\n" +
@@ -379,7 +379,7 @@ export const APTITUDE_ESSENTIALS: Readonly<Record<string, string>> = {
     "- When one percentage applies to every part, apply it once to the total; when it applies to part of a bill, split the bill first.\n" +
     "- **Ratio splits:** find the value of one part once, then treat later changes as ordinary arithmetic.\n" +
     "- Divide by the number of periods actually listed, and check that the parts add back to the stated total.\n\n" +
-    "Example: of 800 delegates, 45% attended the morning session, 60% the afternoon and 25% both. At least one: 45 + 60 − 25 = 80%, which is **640**.",
+    "Example: of 600 members, 55% use the gym, 40% the pool and 20% both. At least one: 55 + 40 − 20 = 75%, which is **450**.",
   // ── Programming MCQs ──
   "pseudocode":
     "Read the question's own conventions before tracing a single line.\n\n" +

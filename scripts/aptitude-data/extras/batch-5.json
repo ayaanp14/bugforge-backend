@@ -241,7 +241,7 @@
   },
   "cd2-symbol-arithmetic-two": {
     "shortcut": "Simplify the division first: 12 ÷ 4 = 3, so 18 × 3 = 54, and the tail + 5 − 6 is a net −1, giving 53.",
-    "trap": "No option comes from a single natural slip. 57 is the likeliest wrong pick: a candidate who reaches 54 and misreads the tail 'R 5 S 6' as a small gain grabs the nearest larger option, but + 5 − 6 is a net loss of 1."
+    "trap": "Swapping R and S — reading 'R 5 S 6' as − 5 + 6 — gives 54 − 5 + 6 = 55; R is + and S is −, so the tail takes a net 1 off the 54."
   },
   "cd2-symbol-arithmetic-three": {
     "shortcut": "Only the middle block needs care: 4 ÷ 2 × 3 runs left to right to 6 (not 4 ÷ 6). The outer 6 and − 5 net to +1, so the answer is 6 + 1 = 7.",
@@ -345,7 +345,7 @@
   },
   "pnc2-select-balls": {
     "shortcut": "Three balls of different colours with only three colours means one of each, so no C(15,3) is needed: 4 × 5 = 20, then 20 × 6 = 120.",
-    "trap": "No option comes from a clean slip; 60 is the most tempting, as halving 120 feels natural to a candidate used to removing order, but one ball from each colour group has no order to remove."
+    "trap": "Dividing 6 × 4 × 5 by 3! to 'remove the order' gives 20; the colours already label the three picks — one red, one white, one blue — so no selection is counted twice and the product needs no division."
   },
   "pnc2-ncr-value": {
     "shortcut": "Cancel before multiplying: 9 ÷ 3 = 3 and 8 ÷ 2 = 4, leaving 10 × 3 × 4 = 120.",

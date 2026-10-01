@@ -5,7 +5,7 @@
   },
   "ag2-man-three-times-fifteen-hence": {
     "shortcut": "When one person is twice another, the gap equals the younger's age at that moment. The gap is 2s now and always, so in fifteen years 2s = s + 15 → s = 15, and the man is 45.",
-    "trap": "No natural slip lands on a wrong option; 36 is the likeliest guess because, like 45, it is a clean multiple of 3. But a son of 12 gives 51 and 27 in fifteen years — not twice."
+    "trap": "Solving for the son and stopping — s = 15, the same figure as the fifteen years — answers for the wrong person; the man is three times that. Expanding 2(s + 15) as 2s + 15 is the other slip, and it leaves s = 0."
   },
   "ag2-twice-ten-years-ago-thrice": {
     "shortcut": "Since A = 2B, the gap equals B's present age b. Ten years ago A was three times B, so the gap was then 2(b − 10). Equate the two: b = 2b − 20 → b = 20.",
@@ -45,7 +45,7 @@
   },
   "ag2-product-756-ratio-7-3": {
     "shortcut": "756 ÷ 21 = 36, so the multiplier is 6 and the ages are 42 and 18. Six years on they are 48 and 24, and the unchanged gap of 24 equals the son's age: exactly 2 : 1.",
-    "trap": "No natural slip lands on a wrong option; 5 : 3 is the likeliest guess because it looks like a gentle narrowing of 7 : 3. It would need the 24-year gap to be two parts, i.e. ages 60 and 36, not 48 and 24."
+    "trap": "Adding the 6 years to the ratio terms — (7 + 6) : (3 + 6) = 13 : 9 — treats 7 and 3 as ages and points to 3 : 2, the nearest option; they are parts of x = 6, so the ages are 42 and 18, and 48 and 24 after six years."
   },
   "ag2-product-48-difference-2": {
     "shortcut": "Two numbers 2 apart multiply to one less than the square of their mean: 48 + 1 = 49 = 7², so the ages are 6 and 8 and the sum is 2 × 7 = 14.",
