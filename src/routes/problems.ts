@@ -432,10 +432,11 @@ router.get("/hubs/:kind/:slug", browserCache(300, { shared: true }), async (req,
       res.status(404).json({ error: "No such hub" });
       return;
     }
-    // Still whole for the SPA build before 2026-10-02, which reads it; the
-    // table now takes it 100 at a time from /problems below, and this goes
-    // once that build is out.
-    res.json(page);
+    // The list is not sent: the page's table takes it 100 at a time from
+    // /problems below (2026-10-02 — it was 667 rows for Arrays, ~80 KB).
+    // Only the edge HTML (services/seo.ts) reads it whole.
+    const { problems: _whole, ...payload } = page;
+    res.json(payload);
   } catch (err) {
     console.error("GET /api/problems/hubs/:kind/:slug error:", err);
     res.status(500).json({ error: "Internal server error" });
