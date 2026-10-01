@@ -25,6 +25,14 @@
 innodb_buffer_pool_size = 512M
 innodb_buffer_pool_instances = 1
 
+# The Performance Schema's instrumentation, off. On 2026-10-01 it held 251 MB of
+# the 1,017 MB mysqld had allocated, while mysqld sat 1 GB deep in swap on this
+# 1.8 GB box -- a quarter of MySQL's memory spent on monitoring tables nothing
+# here reads. The slow log (below) does not need it, and
+# deploy/track-resources.sh reads its counters through SHOW GLOBAL STATUS.
+# Turn it back on for a profiling session, not as a default.
+performance_schema = OFF
+
 # Redo log. The default flushes constantly under a seed run
 # (scripts/seed-catalog.ts writes millions of TestCase rows); 256 MB rides it out.
 innodb_redo_log_capacity = 256M

@@ -292,9 +292,16 @@ if [ -n "$ok" ]; then
   echo "  DEPLOYED: $(git -C "$REPO_DIR" log --oneline -1)"
   echo "  image:    $TARGET"
   docker compose ps --format 'table {{.Service}}\t{{.Status}}'
-  # Keep the last few images for a rollback that does not need the network;
-  # drop the rest so /var/lib/docker does not grow on a 20 GB disk.
-  docker image prune -f --filter 'until=168h' >/dev/null 2>&1
+  # Keep the last few images for a rollback that does not need the network —
+  # the one now running, the one it replaced (the rollback below) and the
+  # newest besides — and drop the rest, which GHCR still holds by tag.
+  # `docker image prune --filter until=168h` alone never did this: it removes
+  # only untagged images, and every deploy is tagged sha-…, so by 2026-10-01
+  # 38 of them (12 GB in /var/lib/containerd) had filled the disk to 86%.
+  docker images "$REGISTRY_IMAGE" --format '{{.Repository}}:{{.Tag}}' | tail -n +4 \
+    | grep -vxF -e "$TARGET" -e "${OLD_IMAGE:-none}" \
+    | xargs -r docker rmi >/dev/null 2>&1 || true
+  docker image prune -f >/dev/null 2>&1
   exit 0
 fi
 

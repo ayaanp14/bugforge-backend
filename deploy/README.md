@@ -270,8 +270,9 @@ Set up once, in the AWS console (ap-south-1):
    on this one instance and nothing else.
 
 Rolling back later is one line: set `API_IMAGE` in `deploy/.env` to an older
-`sha-…` tag and `docker compose up -d api`. Every deployed image is kept
-locally for a week.
+`sha-…` tag and `docker compose up -d api`. The newest three images are kept
+locally (deploy.sh drops older ones after a healthy deploy); `up -d` pulls an older
+tag back from GHCR.
 
 **Logs**
 

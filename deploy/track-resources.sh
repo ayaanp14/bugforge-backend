@@ -68,8 +68,10 @@ DB_MB="$(q "SELECT ROUND(SUM(DATA_LENGTH+INDEX_LENGTH)/1024/1024) FROM informati
 # Cumulative counters. The useful figure is the delta between two rows of this
 # CSV, not the absolute value: a widening gap between them is the buffer pool
 # missing more often, which is the thing to catch before anyone reports it.
-POOL_READS="$(q "SELECT VARIABLE_VALUE FROM performance_schema.global_status WHERE VARIABLE_NAME='Innodb_buffer_pool_reads';")"
-POOL_REQS="$(q "SELECT VARIABLE_VALUE FROM performance_schema.global_status WHERE VARIABLE_NAME='Innodb_buffer_pool_read_requests';")"
+# SHOW GLOBAL STATUS, not performance_schema.global_status: the Performance
+# Schema is off on this box (deploy/mysql.cnf), and SHOW STATUS needs none of it.
+POOL_READS="$(q "SHOW GLOBAL STATUS LIKE 'Innodb_buffer_pool_reads';" | cut -f2)"
+POOL_REQS="$(q "SHOW GLOBAL STATUS LIKE 'Innodb_buffer_pool_read_requests';" | cut -f2)"
 [ -z "$POOL_READS" ] && POOL_READS=0
 [ -z "$POOL_REQS" ] && POOL_REQS=0
 

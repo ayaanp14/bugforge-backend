@@ -59,7 +59,7 @@ fi
 disk=$(df --output=pcent / | tail -1 | tr -dc '0-9')
 # Images are pulled now, not built, so they accumulate one per deploy instead
 # of being rebuilt over the same layers. `docker image prune -a` is the first
-# thing to reach for; deploy.sh already drops anything older than a week.
+# thing to reach for; deploy.sh already keeps only the newest three.
 [ "$disk" -ge "$DISK_WARN_PCT" ] && say "DISK at ${disk}% — docker image prune -a, or grow the volume"
 
 mem=$(free -m | awk '/^Mem:/{print $7}')
