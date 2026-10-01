@@ -1155,6 +1155,9 @@ model DailyContest {
   problemId  String
   difficulty String
   createdAt  DateTime            @default(now())
+  /// When the day's XP was paid to its solvers (services/daily-contest-rewards.ts).
+  /// Null on today's contest and on a closed day the payout has not reached yet.
+  settledAt  DateTime?
   problem    Problem             @relation(fields: [problemId], references: [id], onDelete: Cascade)
   entries    DailyContestEntry[]
 
@@ -1180,6 +1183,12 @@ model DailyContestEntry {
   penaltySec    Int?
   /// 3 / 4 / 5 for easy / medium / hard, awarded on solve; the season key.
   points        Int          @default(0)
+  /// The XP this sitting was paid when its day closed — the solve's 20, plus
+  /// 15 / 10 for the day's fastest and second fastest. Null until then, and
+  /// for ever on a sitting that was never solved. Written in the same
+  /// transaction as the User increment and only over a null: this column is
+  /// what makes the payout once-only.
+  rewardXp      Int?
   contest       DailyContest @relation(fields: [contestId], references: [id], onDelete: Cascade)
   user          User         @relation(fields: [userId], references: [id], onDelete: Cascade)
 

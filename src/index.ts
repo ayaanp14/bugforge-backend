@@ -60,6 +60,7 @@ import { isSessionRevoked, revokedSessionsSweep } from "./lib/session-revocation
 import { describeError, errorTelemetry, noteRequestError, reportError } from "./lib/telemetry.js";
 import { registerJob, startScheduler } from "./lib/scheduler.js";
 import { registerReminderJobs } from "./services/reminders.js";
+import { contestPayoutJob } from "./services/daily-contest-rewards.js";
 import { pushUnreadCount } from "./services/notifications.js";
 
 const app = express();
@@ -1111,6 +1112,8 @@ httpServer.listen(PORT, () => {
   // The reminder jobs (streak at risk, today's problem, the weekly digest).
   registerReminderJobs();
   registerJob(revokedSessionsSweep);
+  // Yesterday's contest XP, paid as the new day's problem is assigned.
+  registerJob(contestPayoutJob);
   startScheduler();
   // No socket survived the restart, and none said goodbye (lib/duels).
   void markActiveDuelsAbsent();

@@ -9,8 +9,10 @@
  * 3 / 4 / 5 points by difficulty, and the month's standings sum those.
  * Streaks count consecutive days solved, which is what the calendar draws.
  *
- * None of this touches XP or the leaderboard: the contest is its own
- * ladder, on purpose.
+ * Points are the contest's own ladder and never touch the XP leaderboard.
+ * XP is paid beside them, once a day closes — 20 a solve, +15 / +10 to the
+ * day's two fastest — by services/daily-contest-rewards.ts, never here at the
+ * submit: first place is not known until nobody else can enter.
  */
 import { prisma } from "../lib/prisma.js";
 import { cached, invalidate } from "../lib/cache.js";

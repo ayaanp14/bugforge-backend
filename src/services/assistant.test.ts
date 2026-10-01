@@ -93,6 +93,8 @@ const QUESTIONS: Array<[string, RegExp, string?]> = [
   ["which java version runs the study plan exercises", /OpenJDK 18/],
   ["when does the daily contest problem change", /05:30 IST/],
   ["how is time penalty counted in the daily contest", /5 minutes per wrong submission/],
+  ["do I get xp for solving the daily contest", /Every solver of the day gets \*\*20 XP\*\*/],
+  ["what do the fastest solvers of the daily contest win", /\*\*fastest\*\* on the day's board gets \*\*\+15\*\*/],
   ["how does the bug hunt daily limit work", /distinct hunts submitted per IST day/],
   ["how much xp for fixing a bug", /\*\*50 XP\*\*/],
   ["can I practice with a friend live", /2 to 4 people/],
