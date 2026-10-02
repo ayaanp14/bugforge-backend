@@ -1,6 +1,7 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { lessonFigureProblems } from "./lesson-figures/index.js";
+import { markdownHeadings } from "./markdown-html.js";
 
 /**
  * The DSA roadmap's lessons: the tutorial text behind each stage.
@@ -271,6 +272,69 @@ export const WALKTHROUGH_MARKER = "@walkthrough";
 
 /** The figures a body places, in order. */
 export const figureNamesIn = (body: string): string[] => lessonBlocks(body).flatMap((b) => (b.kind === "figure" ? [b.name] : []));
+
+/* ── Parts ───────────────────────────────────────────────────────── */
+
+/**
+ * How big a part grows, in characters of Markdown with each figure counted
+ * as FIGURE_WEIGHT (a figure is a few kilobytes of frames): sections join
+ * the part until it reaches PART_WEIGHT — about two screens — so the short
+ * sections at a lesson's end (complexity, mistakes, practice) travel
+ * together rather than as half-kilobyte requests of their own. The first
+ * part is the opening and the first section only, so the request that
+ * paints the page stays small.
+ */
+export const PART_WEIGHT = 7000;
+export const FIGURE_WEIGHT = 2500;
+
+export interface LessonPart {
+  index: number;
+  /** Whole `##` sections of the body (the first part: the opening and the first section), lines as they were. */
+  body: string;
+  /** Each heading's id as [line within this part (1-based), id] — numbered over the whole body, so a second "### The code" keeps its "-2". */
+  anchors: Array<[number, string]>;
+}
+
+/**
+ * A lesson body cut into parts at `##` sections, for the page that loads
+ * a lesson as it is read (user, 2026-10-03: "fetch the page in sections as
+ * we scroll, like pagination"): the first part comes with the page's head,
+ * each later one is its own request when the reader nears it. Parts join
+ * back into the body exactly (`parts.map(p => p.body).join("\n")`), and a
+ * heading's anchor is the one the whole body gives it — the edge HTML, a
+ * shared #link and the page's contents list all name the same ids.
+ * `outline` is the contents list with the part each section is in, and
+ * `anchorParts` every heading's part, for a link into a part not loaded yet.
+ */
+export function lessonParts(body: string): { parts: LessonPart[]; outline: Array<{ id: string; text: string; part: number }>; anchorParts: Record<string, number> } {
+  const lines = body.split("\n");
+  const headings = markdownHeadings(body);
+  const sections = headings.filter((h) => h.level === 2).map((h) => h.line);
+  const weight = (from: number, to: number) =>
+    lines.slice(from - 1, to - 1).reduce((n, l) => n + l.length + 1 + (FIGURE_LINE.test(l.trim()) || l.trim() === WALKTHROUGH_MARKER ? FIGURE_WEIGHT : 0), 0);
+  // The first part ends where the second section begins; later parts close once they reach PART_WEIGHT.
+  const starts = [1];
+  if (sections.length > 1) {
+    starts.push(sections[1]);
+    for (let i = 2; i < sections.length; i++) if (weight(starts[starts.length - 1], sections[i]) >= PART_WEIGHT) starts.push(sections[i]);
+  }
+  // A last part much lighter than the rest joins the one before it.
+  if (starts.length > 2 && weight(starts[starts.length - 1], lines.length + 1) < PART_WEIGHT / 3) starts.pop();
+  const parts: LessonPart[] = starts.map((from, index) => {
+    const to = starts[index + 1] ?? lines.length + 1;
+    return {
+      index,
+      body: lines.slice(from - 1, to - 1).join("\n"),
+      anchors: headings.filter((h) => h.line >= from && h.line < to).map((h) => [h.line - from + 1, h.id] as [number, string]),
+    };
+  });
+  const partOf = (line: number) => starts.filter((s) => s <= line).length - 1;
+  return {
+    parts,
+    outline: headings.filter((h) => h.level === 2).map((h) => ({ id: h.id, text: h.text, part: partOf(h.line) })),
+    anchorParts: Object.fromEntries(headings.map((h) => [h.id, partOf(h.line)])),
+  };
+}
 
 /* ── Validation ──────────────────────────────────────────────────── */
 

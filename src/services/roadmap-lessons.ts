@@ -1,5 +1,5 @@
 import { cached, invalidate } from "../lib/cache.js";
-import { WALKTHROUGH_MARKER, allLessons, figureNamesIn, lessonBySlug, lessonForHub, lessonsForStage, summaryOf, type LessonFaq, type LessonLevel, type LessonSummary, type RoadmapLesson } from "../lib/roadmap-lessons.js";
+import { WALKTHROUGH_MARKER, allLessons, figureNamesIn, lessonBySlug, lessonForHub, lessonParts, lessonsForStage, summaryOf, type LessonFaq, type LessonLevel, type LessonPart, type LessonSummary, type RoadmapLesson } from "../lib/roadmap-lessons.js";
 import { lessonFigure } from "../lib/lesson-figures/index.js";
 import { walkthroughFor, type Walkthrough } from "../lib/walkthroughs/index.js";
 import { getCatalogue } from "./dashboard.js";
@@ -162,6 +162,65 @@ function figuresOf(lesson: RoadmapLesson): Record<string, Walkthrough> {
     if (w) out[name] = w;
   }
   return out;
+}
+
+/* ── The page in parts ───────────────────────────────────────────── */
+
+/** One part of a lesson as the page draws it: its text, its headings' ids and exactly the figures it places. */
+export interface LessonPartPayload extends LessonPart {
+  figures: Record<string, Walkthrough>;
+  walkthrough: Walkthrough | null;
+}
+
+/**
+ * What a lesson page asks for first: everything above and around the
+ * article — the title, the quick answer, the stage, the contents list with
+ * each section's part, the practice problems, prev/next — and the article's
+ * first part. The rest comes a part at a time (lessonPart) as the reader
+ * scrolls towards it (user, 2026-10-03: one response held the whole page,
+ * every figure included). The syllabus is not here: the sidebar reads it
+ * once from GET /api/roadmap/lessons and keeps it across lessons.
+ */
+export interface LessonHead extends Omit<LessonPage, "lesson" | "walkthrough" | "figures" | "syllabus"> {
+  lesson: Omit<LessonPage["lesson"], "body">;
+  parts: number;
+  outline: Array<{ id: string; text: string; part: number }>;
+  anchorParts: Record<string, number>;
+  first: LessonPartPayload;
+}
+
+function partPayload(page: LessonPage, part: LessonPart): LessonPartPayload {
+  const figures: Record<string, Walkthrough> = {};
+  for (const name of figureNamesIn(part.body)) if (page.figures[name]) figures[name] = page.figures[name];
+  return { ...part, figures, walkthrough: placesWalkthrough(part.body) ? page.walkthrough : null };
+}
+
+/** The parts of a page, cut once per cached page (the cut is pure over the body). */
+const partsCache = new WeakMap<LessonPage, ReturnType<typeof lessonParts>>();
+function partsOf(page: LessonPage): ReturnType<typeof lessonParts> {
+  let parts = partsCache.get(page);
+  if (!parts) {
+    parts = lessonParts(page.lesson.body);
+    partsCache.set(page, parts);
+  }
+  return parts;
+}
+
+export async function lessonHead(slug: string): Promise<LessonHead | null> {
+  const page = await lessonPage(slug);
+  if (!page) return null;
+  const { parts, outline, anchorParts } = partsOf(page);
+  const { body: _body, ...lesson } = page.lesson;
+  const { walkthrough: _w, figures: _f, syllabus: _s, lesson: _l, ...rest } = page;
+  return { ...rest, lesson, parts: parts.length, outline, anchorParts, first: partPayload(page, parts[0]) };
+}
+
+/** Part `index` of a lesson's article; null past the last part or for no lesson. */
+export async function lessonPart(slug: string, index: number): Promise<LessonPartPayload | null> {
+  const page = await lessonPage(slug);
+  if (!page) return null;
+  const part = partsOf(page).parts[index];
+  return part ? partPayload(page, part) : null;
 }
 
 /** The sitemap's entries: every lesson whose stage is on the road, with the date it was last revised. */

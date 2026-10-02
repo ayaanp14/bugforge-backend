@@ -1,7 +1,8 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readdirSync, readFileSync } from "node:fs";
-import { LESSONS_DIR, lessonBlocks, parseLesson, validateLesson, validateLessons } from "./roadmap-lessons.js";
+import { LESSONS_DIR, lessonBlocks, lessonParts, parseLesson, validateLesson, validateLessons } from "./roadmap-lessons.js";
+import { markdownHeadings } from "./markdown-html.js";
 import { TOPIC_HUBS } from "./problem-topics.js";
 import { walkthroughFor } from "./walkthroughs/index.js";
 
@@ -142,4 +143,27 @@ test("a figure line is a block of its own, and the bar checks it is placed prope
   assert.match(problems, /no figure "no-such-figure"/);
   const bare = { ...ref, body: ref.body.replace(/^@(figure [a-z-]+|walkthrough)$/gm, "") };
   assert.match(validateLesson(bare).join("\n"), /0 figures; a lesson needs at least 4/);
+});
+
+test("a lesson cut into parts rejoins exactly, keeps the whole body's anchors and never cuts a block", () => {
+  for (const l of lessons) {
+    const { parts, outline, anchorParts } = lessonParts(l.body);
+    assert.equal(parts.map((p) => p.body).join("\n"), l.body, `${l.slug}: parts do not rejoin`);
+    assert.ok(parts.length >= 2, `${l.slug}: one part only`);
+    // Each part's anchors, shifted back to body lines, are the whole body's.
+    const whole = markdownHeadings(l.body).map((h) => `${h.line}:${h.id}`);
+    let offset = 0;
+    const fromParts = parts.flatMap((p) => {
+      const out = p.anchors.map(([line, id]) => `${line + offset}:${id}`);
+      offset += p.body.split("\n").length;
+      return out;
+    });
+    assert.deepEqual(fromParts, whole, `${l.slug}: anchors moved`);
+    // The blocks of the parts are the blocks of the body: no code group, figure or walkthrough is cut.
+    const kinds = (body: string) => lessonBlocks(body).filter((b) => b.kind !== "text").map((b) => (b.kind === "figure" ? `figure:${b.name}` : b.kind === "code" ? `code:${b.samples.length}:${b.output}` : b.kind));
+    assert.deepEqual(parts.flatMap((p) => kinds(p.body)), kinds(l.body), `${l.slug}: a block was cut`);
+    assert.ok(outline.every((o) => anchorParts[o.id] === o.part), `${l.slug}: outline and anchorParts disagree`);
+    // Every part after the first starts on a "##" section.
+    for (const p of parts.slice(1)) assert.match(p.body, /^## /, `${l.slug}: part ${p.index} does not start on a section`);
+  }
 });
