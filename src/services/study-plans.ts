@@ -951,57 +951,7 @@ export async function submitExercise(userId: string, trackKey: string, lessonSlu
       SET exercisesPassed = CASE
         WHEN exercisesPassed IS NULL OR JSON_TYPE(exercisesPassed) <> 'ARRAY' THEN JSON_ARRAY(${exerciseIndex})
         WHEN JSON_CONTAINS(exercisesPassed, CAST(${exerciseIndex} AS JSON)) THEN exercisesPassed
-        ELSE JSON_ARRAY_APPEND(exercisesPassed, '
-  }
-  const settled = await outcome(userId, track, module, lesson);
-  return { ...settled, result, exerciseIndex };
-}
-
-/** The learner's last submission for an exercise, to reopen the editor where they left it. */
-export async function lastSubmission(userId: string, trackKey: string, lessonSlug: string, exerciseIndex: number): Promise<{ code: string; verdict: string; submittedAt: Date } | null> {
-  const { lesson } = await requireLesson(trackKey, lessonSlug);
-  return prisma.studyExerciseSubmission.findFirst({
-    where: { userId, lessonKey: lesson.key, exercise: exerciseIndex },
-    orderBy: { submittedAt: "desc" },
-    select: { code: true, verdict: true, submittedAt: true },
-  });
-}
-
-/* ── For the dashboard and the reminders ───────────────────────────── */
-
-export interface StudyBand {
-  track: string;
-  title: string;
-  percent: number;
-  done: number;
-  lessons: number;
-  behind: number;
-  streak: number;
-  next: { slug: string; title: string; module: string } | null;
-  completedAt: Date | null;
-}
-
-/** The "continue learning" band: the reader's most recently touched plan, or null. */
-export async function studyBandFor(userId: string): Promise<StudyBand | null> {
-  const enrollments = await prisma.studyEnrollment.findMany({ where: { userId }, select: { trackKey: true, completedAt: true, startedAt: true } });
-  if (enrollments.length === 0) return null;
-  // An unfinished plan first; then the most recently started.
-  const pick = [...enrollments].sort((a, b) => Number(Boolean(a.completedAt)) - Number(Boolean(b.completedAt)) || b.startedAt.getTime() - a.startedAt.getTime())[0]!;
-  const payload = await trackFor(pick.trackKey, userId);
-  if (!payload) return null;
-  return {
-    track: payload.track.key,
-    title: payload.track.title,
-    percent: payload.summary.percent,
-    done: payload.summary.done,
-    lessons: payload.summary.lessons,
-    behind: payload.enrollment?.behind ?? 0,
-    streak: payload.summary.streak,
-    next: payload.summary.next ? { slug: payload.summary.next.slug, title: payload.summary.next.title, module: payload.summary.next.module } : null,
-    completedAt: pick.completedAt,
-  };
-}
-, ${exerciseIndex})
+        ELSE JSON_ARRAY_APPEND(exercisesPassed, '$', ${exerciseIndex})
       END
       WHERE userId = ${userId} AND lessonKey = ${lesson.key}`;
   }
