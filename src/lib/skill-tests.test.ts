@@ -11,6 +11,7 @@ import {
   flagsFor,
   improvesCredential,
   isCorrectSelection,
+  isMobileClient,
   nextSittingAt,
   normalizeCredentialCode,
   parseSelection,
@@ -137,9 +138,37 @@ test("one departure is one breach, whatever it fired, and the limit ends the sit
   assert.equal(recordBreach(last.signals, []).ended, true);
 });
 
-test("breach causes are the departure signals only, once each", () => {
-  assert.deepEqual(breachCausesOf(["tabHidden", "tabHidden", "paste", "nonsense", 3, "focusLost"]), ["tabHidden", "focusLost"]);
+test("breach causes are departures and webcam findings only, once each", () => {
+  assert.deepEqual(breachCausesOf(["tabHidden", "tabHidden", "paste", "nonsense", 3, "focusLost", "phone"]), ["tabHidden", "focusLost", "phone"]);
   assert.deepEqual(breachCausesOf("tabHidden"), []);
+});
+
+test("webcam findings share the departures' limit and are each named for a reviewer", () => {
+  let state: Signals = {};
+  const causes = [["tabHidden"], ["phone"], ["multipleFaces"]] as const;
+  let last = recordBreach(state, causes[0]);
+  for (const cause of causes.slice(1)) {
+    state = last.signals;
+    last = recordBreach(state, cause);
+  }
+  assert.equal(last.ended, true);
+  const flags = flagsFor(last.signals, []);
+  assert.ok(flags.includes("A phone was seen on camera once"));
+  assert.ok(flags.includes("Another person was seen on camera once"));
+  assert.match(flags[0]!, /^Ended automatically after 3 warnings/);
+});
+
+test("a phone or tablet is refused; a laptop, an unknown agent and an iPad-as-Mac are not", () => {
+  const ANDROID = "Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0 Mobile Safari/537.36";
+  const IPHONE = "Mozilla/5.0 (iPhone; CPU iPhone OS 17_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.6 Mobile/15E148 Safari/604.1";
+  const WINDOWS = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0 Safari/537.36";
+  const MAC = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.6 Safari/605.1.15";
+  assert.equal(isMobileClient({ "user-agent": ANDROID }), true);
+  assert.equal(isMobileClient({ "user-agent": IPHONE }), true);
+  assert.equal(isMobileClient({ "user-agent": WINDOWS, "sec-ch-ua-mobile": "?1" }), true);
+  assert.equal(isMobileClient({ "user-agent": WINDOWS, "sec-ch-ua-mobile": "?0" }), false);
+  assert.equal(isMobileClient({ "user-agent": MAC }), false);
+  assert.equal(isMobileClient({}), false);
 });
 
 const EDITORIAL = `

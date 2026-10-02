@@ -18,6 +18,7 @@ import {
   credentialStatus,
   flagsFor,
   isCorrectSelection,
+  isMobileClient,
   isSignalKind,
   nextSittingAt,
   normalizeCredentialCode,
@@ -458,6 +459,10 @@ router.post("/:slug/start", requireAuth, async (req, res) => {
   const userId = req.user!.userId;
   const test = await testBySlug(String(req.params["slug"]));
   if (!test) return res.status(404).json({ error: "Test not found" });
+  // Laptop or desktop only: the webcam proctor and full screen need one.
+  if (isMobileClient(req.headers)) {
+    return res.status(403).json({ error: "Skill tests can only be taken on a laptop or desktop computer.", reason: "device" });
+  }
 
   const recent = await prisma.skillAttempt.findMany({
     where: { userId, testId: test.id },

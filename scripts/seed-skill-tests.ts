@@ -91,7 +91,7 @@ function instructionsFor(test: SkillTestSeed): string {
       : null,
     `- You may sit this test again ${test.cooldownDays} days after a sitting ends. Your best result stands.`,
     "",
-    `**Integrity.** Work alone and from what you know. The test runs full screen and must stay in front the whole time: leaving full screen, switching to another tab or window, or minimising blurs the paper and counts against you — the first ${BREACH_LIMIT - 1 === 1 ? "time is a warning" : `${BREACH_LIMIT - 1} times are warnings`}, and the ${BREACH_LIMIT === 3 ? "third" : `${BREACH_LIMIT}th`} ends the sitting, graded as not passed. Pasting into the editor is switched off. A sitting that looks assisted can be reviewed, and a credential earned that way is revoked.`,
+    `**Integrity.** Work alone and from what you know, on a laptop or desktop with a webcam — phones and tablets cannot sit a skill test. The test runs full screen and must stay in front the whole time, and the webcam must see you, alone: leaving full screen, switching to another tab or window, minimising, or the camera seeing no one, someone else, a phone or you looking away blurs the paper and counts against you — the first ${BREACH_LIMIT - 1 === 1 ? "is a warning" : `${BREACH_LIMIT - 1} are warnings`}, and the ${BREACH_LIMIT === 3 ? "third" : `${BREACH_LIMIT}th`} ends the sitting, graded as not passed. The camera check runs in your browser; nothing is recorded or uploaded. Pasting into the editor is switched off. A sitting that looks assisted can be reviewed, and a credential earned that way is revoked.`,
     "",
     "The answers are never shown — not during the test and not after it. Your result breaks the score down by topic and points you to what to practise.",
   ];

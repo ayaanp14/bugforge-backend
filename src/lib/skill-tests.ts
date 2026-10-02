@@ -166,8 +166,8 @@ export const WORN_CREDENTIAL_SELECT = {
 /** What the runner may report. Anything else is ignored. */
 export const SIGNAL_KINDS = ["tabHidden", "paste", "fullscreenExit", "focusLost"] as const;
 export type SignalKind = (typeof SIGNAL_KINDS)[number];
-/** The counters, plus `breaches`: how many times the sitting left the screen (see recordBreach). */
-export type Signals = Partial<Record<SignalKind | "breaches", number>>;
+/** The counters — signals and breach causes — plus `breaches`, the warnings spent (see recordBreach). */
+export type Signals = Partial<Record<SignalKind | BreachCause | "breaches", number>>;
 
 export const isSignalKind = (value: unknown): value is SignalKind =>
   typeof value === "string" && (SIGNAL_KINDS as readonly string[]).includes(value);
@@ -187,11 +187,16 @@ export const SIGNAL_CAP = 500;
  * Three, not one: Esc is held off by Keyboard Lock only in Chromium, a
  * system dialog can take focus, and a candidate who slipped once should get
  * a warning before a seven-day cooldown.
+ *
+ * The webcam is mandatory too (same day): what the in-browser check holds
+ * against the frame — no face, a second face, the head turned away, a phone
+ * in view, the camera switched off — is a breach on the same count, not a
+ * limit of its own. The frames never leave the browser; only the cause does.
  */
 export const BREACH_LIMIT = 3;
 
-/** The signals a departure is made of. A blocked paste is not a departure. */
-export const BREACH_CAUSES = ["tabHidden", "fullscreenExit", "focusLost"] as const;
+/** What a breach is made of: a departure's signals, or a webcam finding. A blocked paste is neither. */
+export const BREACH_CAUSES = ["tabHidden", "fullscreenExit", "focusLost", "noFace", "multipleFaces", "lookingAway", "phone", "cameraOff"] as const;
 export type BreachCause = (typeof BREACH_CAUSES)[number];
 
 export const breachCausesOf = (value: unknown): BreachCause[] =>
@@ -224,6 +229,27 @@ export const FLAG_THRESHOLDS = {
   similarity: 0.85,
 } as const;
 
+const CAMERA_FLAG_TEXT: ReadonlyArray<[BreachCause, string]> = [
+  ["phone", "A phone was seen on camera"],
+  ["multipleFaces", "Another person was seen on camera"],
+  ["noFace", "Out of the camera's view"],
+  ["lookingAway", "Looked away from the screen"],
+  ["cameraOff", "The camera was switched off"],
+];
+
+/**
+ * Is the request from a phone or a tablet? Skill tests are sat on a laptop
+ * or desktop only; the runner says so before the click, this refuses the
+ * click that got past it. Chromium's `Sec-CH-UA-Mobile` first, then the user
+ * agent. An iPad presents itself as a Mac here — only the browser can tell
+ * (frontend lib/proctor/device.ts).
+ */
+export function isMobileClient(headers: { [name: string]: string | string[] | undefined }): boolean {
+  const one = (value: string | string[] | undefined) => (Array.isArray(value) ? value[0] : value) ?? "";
+  if (one(headers["sec-ch-ua-mobile"]).trim() === "?1") return true;
+  return /Android|iPhone|iPad|iPod|Mobile|Silk|Kindle|BlackBerry|Opera Mini|IEMobile/i.test(one(headers["user-agent"]));
+}
+
 export function flagsFor(signals: Signals, similarities: ReadonlyArray<{ title: string; similarity: number }>): string[] {
   const flags: string[] = [];
   const tab = signals.tabHidden ?? 0;
@@ -231,11 +257,17 @@ export function flagsFor(signals: Signals, similarities: ReadonlyArray<{ title: 
   const fullscreen = signals.fullscreenExit ?? 0;
   const focus = signals.focusLost ?? 0;
   const breaches = signals.breaches ?? 0;
-  if (breaches >= BREACH_LIMIT) flags.push(`Ended automatically: left the test ${breaches} times`);
+  if (breaches >= BREACH_LIMIT) flags.push(`Ended automatically after ${breaches} warnings`);
   if (tab >= FLAG_THRESHOLDS.tabHidden) flags.push(`Left the test tab ${tab} times`);
   if (paste >= FLAG_THRESHOLDS.paste) flags.push(`Tried to paste into the editor ${paste} times`);
   if (fullscreen >= FLAG_THRESHOLDS.fullscreenExit) flags.push(`Left full screen ${fullscreen} times`);
   if (focus >= FLAG_THRESHOLDS.focusLost) flags.push(`Switched to another window ${focus} times`);
+  // Every webcam finding is named: each was already a warning, and a
+  // reviewer reading a sitting wants to know a phone was seen even once.
+  for (const [cause, what] of CAMERA_FLAG_TEXT) {
+    const n = signals[cause] ?? 0;
+    if (n > 0) flags.push(`${what} ${n === 1 ? "once" : `${n} times`}`);
+  }
   for (const answer of similarities) {
     if (answer.similarity >= FLAG_THRESHOLDS.similarity) {
       flags.push(`"${answer.title}" matches the published editorial solution (${Math.round(answer.similarity * 100)}%)`);
