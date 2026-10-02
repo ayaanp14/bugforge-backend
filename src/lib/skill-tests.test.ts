@@ -3,6 +3,8 @@ import assert from "node:assert/strict";
 import {
   addMonths,
   bandFor,
+  BREACH_LIMIT,
+  breachCausesOf,
   credentialCode,
   credentialPath,
   credentialStatus,
@@ -13,6 +15,8 @@ import {
   normalizeCredentialCode,
   parseSelection,
   percentOf,
+  recordBreach,
+  type Signals,
 } from "./skill-tests.js";
 import { similarity, tokenize } from "./code-similarity.js";
 import { SKILLS, credentialName, skillTopic } from "./skill-catalog.js";
@@ -108,11 +112,34 @@ test("a sitting raises or renews a credential, never un-revokes one", () => {
 });
 
 test("flags name what crossed a bar and stay quiet below it", () => {
-  assert.deepEqual(flagsFor({ tabHidden: 2, paste: 1 }, [{ title: "Two Sum", similarity: 0.4 }]), []);
+  assert.deepEqual(flagsFor({ tabHidden: 2, paste: 1, breaches: BREACH_LIMIT - 1 }, [{ title: "Two Sum", similarity: 0.4 }]), []);
   const flags = flagsFor({ tabHidden: 9, paste: 5, fullscreenExit: 4 }, [{ title: "Two Sum", similarity: 0.93 }]);
   assert.equal(flags.length, 4);
   assert.match(flags[0]!, /9 times/);
   assert.match(flags[3]!, /Two Sum.*93%/);
+  assert.match(flagsFor({ breaches: BREACH_LIMIT }, [])[0]!, /^Ended automatically/);
+});
+
+test("one departure is one breach, whatever it fired, and the limit ends the sitting", () => {
+  // Alt+Tab out of full screen fires blur, then fullscreenchange: one breach.
+  const first = recordBreach({ paste: 2 }, ["focusLost", "fullscreenExit"]);
+  assert.deepEqual(first, { signals: { paste: 2, focusLost: 1, fullscreenExit: 1, breaches: 1 }, breaches: 1, ended: false });
+  let state: Signals = first.signals;
+  for (let i = 2; i < BREACH_LIMIT; i++) {
+    const step = recordBreach(state, ["tabHidden"]);
+    assert.equal(step.ended, false);
+    state = step.signals;
+  }
+  const last = recordBreach(state, ["tabHidden"]);
+  assert.equal(last.breaches, BREACH_LIMIT);
+  assert.equal(last.ended, true);
+  // Past the limit (a request that raced the close) still reads as ended.
+  assert.equal(recordBreach(last.signals, []).ended, true);
+});
+
+test("breach causes are the departure signals only, once each", () => {
+  assert.deepEqual(breachCausesOf(["tabHidden", "tabHidden", "paste", "nonsense", 3, "focusLost"]), ["tabHidden", "focusLost"]);
+  assert.deepEqual(breachCausesOf("tabHidden"), []);
 });
 
 const EDITORIAL = `

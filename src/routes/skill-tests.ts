@@ -13,6 +13,8 @@ import { similarity } from "../lib/code-similarity.js";
 import { credentialName, isSkillLevel, LEVEL_LABEL, skillDef, skillTopic, SKILLS } from "../lib/skill-catalog.js";
 import {
   bandFor,
+  BREACH_LIMIT,
+  breachCausesOf,
   credentialStatus,
   flagsFor,
   isCorrectSelection,
@@ -21,6 +23,7 @@ import {
   normalizeCredentialCode,
   parseSelection,
   percentOf,
+  recordBreach,
   SIGNAL_CAP,
   type Signals,
 } from "../lib/skill-tests.js";
@@ -46,6 +49,8 @@ import { issueCredential, poolTopics, setRevoked, setWornCredential, verifyCrede
  *  - A language test's coding section accepts only that language.
  *  - The runner reports integrity signals; grading turns them, and how
  *    closely the code matches the published editorial, into flags.
+ *  - The sitting is proctored: leaving the screen is a breach, and the
+ *    BREACH_LIMIT-th ends it as "terminated" — graded, never passed.
  *  - A passing sitting issues (or raises) a SkillCredential.
  *  - A closed sitting starts a cooldown before the next.
  */
@@ -131,8 +136,13 @@ const questionKey = (id: string) =>
  * Idempotent like the placement grader: an already-closed sitting comes
  * back untouched, and the close is a guarded update so a submit racing an
  * expiry grades once.
+ *
+ * "terminated" is a sitting the proctoring ended (recordBreach): it is
+ * graded, so the candidate sees where they stood, but its band is a fail
+ * whatever the score — what was answered after looking elsewhere is not a
+ * result — and it issues nothing. Its cooldown runs like any other's.
  */
-async function finishAttempt(attemptId: string, reason: "submitted" | "expired") {
+async function finishAttempt(attemptId: string, reason: "submitted" | "expired" | "terminated") {
   const attempt = await prisma.skillAttempt.findUnique({
     where: { id: attemptId },
     include: { test: { select: ATTEMPT_TEST_SELECT }, answers: true, codeAnswers: true },
@@ -230,7 +240,7 @@ async function finishAttempt(attemptId: string, reason: "submitted" | "expired")
   const finalScore = Math.round(score * 100) / 100;
   const roundedMax = Math.round(maxScore * 100) / 100;
   const percent = percentOf(finalScore, roundedMax);
-  const band = bandFor(percent, attempt.test.passPercent, attempt.test.distinctionPercent);
+  const band = reason === "terminated" ? "fail" : bandFor(percent, attempt.test.passPercent, attempt.test.distinctionPercent);
   const flags = flagsFor((attempt.signals ?? {}) as Signals, similarities);
   const topicScores = [...perTopic.entries()].map(([topic, row]) => ({ topic, ...row }));
   // An expired paper closed when its time ran out, not when someone next
@@ -425,6 +435,8 @@ router.get("/:slug", optionalAuth, cacheWhenAnonymous, async (req, res) => {
         instructions: s.instructions,
       })),
       topics: topics.map((id) => ({ id, label: skillTopic(test.skill, id)?.label ?? id })),
+      // The proctoring rule the page states before the clock starts.
+      breachLimit: BREACH_LIMIT,
     },
     mine: userId
       ? {
@@ -596,6 +608,8 @@ router.get("/attempts/:id", requireAuth, async (req, res) => {
     },
     answers: answers.map((row) => ({ questionId: row.questionId, selected: Array.isArray(row.selected) ? row.selected : [], marked: row.marked })),
     clock: { paperRemainingSec: clock.paperRemainingSec, sectionRemainingSec: clock.sectionRemainingSec, serverTime: Date.now() },
+    // The server's count, so a reload cannot hand back fresh warnings.
+    integrity: { breaches: ((attempt.signals ?? {}) as Signals).breaches ?? 0, limit: BREACH_LIMIT },
   });
 });
 
@@ -787,6 +801,30 @@ router.post("/attempts/:id/signal", requireAuth, async (req, res) => {
   res.status(204).end();
 });
 
+/**
+ * POST /api/skill-tests/attempts/:id/breach — Body: { causes: BreachCause[] }.
+ * The sitting left the screen: one departure, whichever signals it fired
+ * (the runner gathers them into one report). Counts it and, at the limit,
+ * ends the sitting. Answers { breaches, limit, ended }; a sitting already
+ * closed answers ended so the runner leaves for the result.
+ *
+ * A read-modify-write like /signal: departures are seconds apart (each needs
+ * the candidate to come back first), so two never race in practice.
+ */
+router.post("/attempts/:id/breach", requireAuth, async (req, res) => {
+  const causes = breachCausesOf((req.body ?? {})["causes"]);
+  if (causes.length === 0) return res.status(400).json({ error: "Unknown breach" });
+  const attempt = await loadOwnAttempt(String(req.params["id"]), req.user!.userId);
+  if (!attempt) return res.status(404).json({ error: "Attempt not found" });
+  if (attempt.status !== "in-progress") {
+    return res.json({ breaches: ((attempt.signals ?? {}) as Signals).breaches ?? 0, limit: BREACH_LIMIT, ended: true });
+  }
+  const { signals, breaches, ended } = recordBreach((attempt.signals ?? {}) as Signals, causes);
+  await prisma.skillAttempt.update({ where: { id: attempt.id }, data: { signals }, select: { id: true } });
+  if (ended) await finishAttempt(attempt.id, "terminated");
+  res.json({ breaches, limit: BREACH_LIMIT, ended });
+});
+
 /** POST /api/skill-tests/attempts/:id/submit — ends and grades the sitting. */
 router.post("/attempts/:id/submit", requireAuth, async (req, res) => {
   const attempt = await prisma.skillAttempt.findFirst({ where: { id: String(req.params["id"]), userId: req.user!.userId }, select: { id: true, status: true } });
@@ -860,6 +898,8 @@ router.get("/attempts/:id/result", requireAuth, async (req, res) => {
       wrongCount: attempt.wrongCount,
       skippedCount: attempt.skippedCount,
       sectionScores: attempt.sectionScores,
+      // How many times it left the screen — what a "terminated" result explains.
+      breaches: ((attempt.signals ?? {}) as Signals).breaches ?? 0,
     },
     test: {
       slug: test.slug,

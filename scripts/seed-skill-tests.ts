@@ -23,6 +23,7 @@
 import { prisma } from "../src/lib/prisma.js";
 import { normalizeOutput, runProgram } from "../src/lib/program-judge.js";
 import { skillDef } from "../src/lib/skill-catalog.js";
+import { BREACH_LIMIT } from "../src/lib/skill-tests.js";
 import { expectedOutput, loadBank, programOf, validateBank, type BankQuestion } from "./skill-test-data/bank.js";
 import { SKILL_TESTS, testDuration, testMaxMarks, testQuestions, type SkillSectionSeed, type SkillTestSeed } from "./skill-test-data/tests.js";
 
@@ -90,7 +91,7 @@ function instructionsFor(test: SkillTestSeed): string {
       : null,
     `- You may sit this test again ${test.cooldownDays} days after a sitting ends. Your best result stands.`,
     "",
-    "**Integrity.** Work alone and from what you know. Pasting into the editor is switched off during the test, and leaving the test tab is recorded. A sitting that looks assisted can be reviewed, and a credential earned that way is revoked.",
+    `**Integrity.** Work alone and from what you know. The test runs full screen and must stay in front the whole time: leaving full screen, switching to another tab or window, or minimising blurs the paper and counts against you — the first ${BREACH_LIMIT - 1 === 1 ? "time is a warning" : `${BREACH_LIMIT - 1} times are warnings`}, and the ${BREACH_LIMIT === 3 ? "third" : `${BREACH_LIMIT}th`} ends the sitting, graded as not passed. Pasting into the editor is switched off. A sitting that looks assisted can be reviewed, and a credential earned that way is revoked.`,
     "",
     "The answers are never shown — not during the test and not after it. Your result breaks the score down by topic and points you to what to practise.",
   ];
