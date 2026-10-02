@@ -1,6 +1,6 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "../lib/prisma.js";
-import { cached, cachedShared } from "../lib/cache.js";
+import { cached, cachedShared, invalidate } from "../lib/cache.js";
 import { BUG_HUBS, bugHub, type BugHub } from "../lib/bug-hubs.js";
 
 /**
@@ -10,7 +10,7 @@ import { BUG_HUBS, bugHub, type BugHub } from "../lib/bug-hubs.js";
  * catalogue is small (hundreds of rows, each a handful of short columns) and
  * seeded, so it is read once per TTL into a shared cache and every view —
  * filtering, per-category slicing, the sidebar totals — is cut from that copy
- * in JS. Only the user's own solved set is asked for live.
+ * in JS. Only the user's own solved set is read per user (solvedIdsFor).
  *
  * Before this the index ran a groupBy, then a second groupBy, then one query
  * per category, then the sidebar's four aggregates: four dependent tiers at
@@ -97,14 +97,32 @@ function matches(row: Row, filters: BugHuntFilters): boolean {
 /**
  * Ids the user has already fixed, so rows can render their solved state. One
  * row per challenge rather than one per accepted submission.
+ *
+ * Kept per user for a short while (memory only — a Set does not cross
+ * Redis, and the read is one indexed groupBy): every filter change and
+ * "Load more" on the hunts page asked again. The only thing that changes
+ * it, an accepted fix, drops it (forgetBugSolved, routes/bug-challenges),
+ * so a hunt shows as solved the moment its verdict lands. Not under
+ * "bug:", which is the seeded catalogue's family (scripts/content-caches).
  */
+const SOLVED_TTL_MS = 30_000;
+const solvedKey = (userId: string) => `bug-solved:v1:${userId}`;
+
 async function solvedIdsFor(userId: string | undefined): Promise<Set<string>> {
   if (!userId) return new Set();
-  const rows = await prisma.bugSubmission.groupBy({
-    by: ["challengeId"],
-    where: { userId, verdict: "ACCEPTED" },
+  // The Set is shared by every request in the window; nothing here writes to it.
+  return cached(solvedKey(userId), SOLVED_TTL_MS, async () => {
+    const rows = await prisma.bugSubmission.groupBy({
+      by: ["challengeId"],
+      where: { userId, verdict: "ACCEPTED" },
+    });
+    return new Set(rows.map((r) => r.challengeId));
   });
-  return new Set(rows.map((r) => r.challengeId));
+}
+
+/** Drop a user's solved set after an accepted fix. */
+export function forgetBugSolved(userId: string): void {
+  invalidate(solvedKey(userId));
 }
 
 const orderRank = (category: string) => {

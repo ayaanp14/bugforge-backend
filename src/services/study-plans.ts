@@ -770,6 +770,49 @@ async function ensureEnrolled(userId: string, trackKey: string): Promise<void> {
 }
 
 /**
+ * True the first time `key` is seen on the UTC day of `now` — the calendar
+ * streakDays counts in — and records it; false for the rest of that day.
+ * Bounded like enrolledSeen: a full clear at the cap, which at worst repeats
+ * one day's first answer.
+ */
+export function firstToday(memo: Map<string, number>, key: string, now: Date = new Date(), max = 20_000): boolean {
+  const day = Math.floor(now.getTime() / DAY_MS);
+  if (memo.get(key) === day) return false;
+  if (memo.size >= max) memo.clear();
+  memo.set(key, day);
+  return true;
+}
+
+/**
+ * (user, track) pairs that have already dropped the dashboard today.
+ *
+ * The dashboard's study band (studyBandFor, cached with the rest for five
+ * minutes) shows a streak read off StudyLessonProgress.updatedAt, but only a
+ * lesson *completing* dropped the cache — a read, a quiz short of done or an
+ * exercise pass left the band a day behind for up to the TTL, usually on the
+ * very visit that followed the work. Only the day's first write can move the
+ * streak (later ones land on a day it already counts), so that one drops
+ * it, not every action. Per track as well as per user: the first write to a
+ * track enrols it implicitly (ensureEnrolled), and an unfinished track just
+ * started is the one the band shows.
+ *
+ * "A write" means one that put today on the row's updatedAt, which is what
+ * the streak reads — the callers pass that in, from the row the write hands
+ * back. Not every write does: a re-read and an exercise pass on an existing
+ * row may stamp nothing (`update: {}`, and the raw JSON append never does),
+ * and a failed run writes no row at all. Counting those as the day's first
+ * would spend the memo on a write that left the streak where it was and skip
+ * the one that moved it.
+ */
+const studiedToday = new Map<string, number>();
+
+const isToday = (at: Date, now: Date = new Date()) => Math.floor(at.getTime() / DAY_MS) === Math.floor(now.getTime() / DAY_MS);
+
+function noteStudyActivity(userId: string, trackKey: string, touchedToday: boolean): void {
+  if (touchedToday && firstToday(studiedToday, `${userId}:${trackKey}`)) invalidateDashboard(userId);
+}
+
+/**
  * After any part of a lesson is written: if the lesson is now complete and
  * was not marked, mark it and pay its XP. The conditional update is the
  * one-shot — two tabs finishing the last exercise together both get here,
@@ -852,14 +895,15 @@ async function outcome(userId: string, track: TrackDefinition, module: ModuleDef
 export async function markRead(userId: string, trackKey: string, lessonSlug: string): Promise<WriteOutcome> {
   const { track, module, lesson } = await requireLesson(trackKey, lessonSlug);
   await ensureEnrolled(userId, trackKey);
-  await prisma.studyLessonProgress.upsert({
+  const row = await prisma.studyLessonProgress.upsert({
     where: { userId_lessonKey: { userId, lessonKey: lesson.key } },
     create: { userId, lessonKey: lesson.key, readAt: new Date() },
     // A re-read keeps the first date: "read on" is when it was first read.
     update: {},
-    select: { id: true },
+    select: { updatedAt: true },
   });
-  await prisma.studyLessonProgress.updateMany({ where: { userId, lessonKey: lesson.key, readAt: null }, data: { readAt: new Date() } });
+  const firstRead = await prisma.studyLessonProgress.updateMany({ where: { userId, lessonKey: lesson.key, readAt: null }, data: { readAt: new Date() } });
+  noteStudyActivity(userId, trackKey, firstRead.count > 0 || isToday(row.updatedAt));
   return outcome(userId, track, module, lesson);
 }
 
@@ -890,12 +934,13 @@ export async function gradeQuiz(userId: string, trackKey: string, lessonSlug: st
   await ensureEnrolled(userId, trackKey);
   const existing = await prisma.studyLessonProgress.findUnique({ where: { userId_lessonKey: { userId, lessonKey: lesson.key } }, select: { quizCorrect: true, quizTotal: true } });
   const best = existing?.quizCorrect !== null && existing?.quizCorrect !== undefined && existing.quizTotal === total && existing.quizCorrect > correct;
-  await prisma.studyLessonProgress.upsert({
+  const row = await prisma.studyLessonProgress.upsert({
     where: { userId_lessonKey: { userId, lessonKey: lesson.key } },
     create: { userId, lessonKey: lesson.key, quizCorrect: correct, quizTotal: total, quizAt: new Date() },
     update: best ? { quizAt: new Date() } : { quizCorrect: correct, quizTotal: total, quizAt: new Date() },
-    select: { id: true },
+    select: { updatedAt: true },
   });
+  noteStudyActivity(userId, trackKey, isToday(row.updatedAt));
   const settled = await outcome(userId, track, module, lesson);
   return { ...settled, correct, total, percent, passed, questions };
 }
@@ -926,6 +971,8 @@ export async function submitExercise(userId: string, trackKey: string, lessonSlu
     data: { userId, lessonKey: lesson.key, exercise: exerciseIndex, code, language: track.language, verdict: result.verdict, passed: result.passed, total: result.total },
     select: { id: true },
   });
+  // A failed run writes no progress row, so it leaves the streak alone.
+  let touchedToday = false;
   if (result.verdict === "ACCEPTED") {
     // Make sure the row exists, then add this exercise to it atomically.
     //
@@ -940,12 +987,13 @@ export async function submitExercise(userId: string, trackKey: string, lessonSlu
     // The stored order is now append order rather than sorted. Nothing reads
     // it as ordered — `lessonComplete` and the progress summary only ask
     // which indexes are present, and how many.
-    await prisma.studyLessonProgress.upsert({
+    const row = await prisma.studyLessonProgress.upsert({
       where: { userId_lessonKey: { userId, lessonKey: lesson.key } },
       create: { userId, lessonKey: lesson.key, exercisesPassed: [exerciseIndex] },
       update: {},
-      select: { id: true },
+      select: { updatedAt: true },
     });
+    touchedToday = isToday(row.updatedAt);
     await prisma.$executeRaw`
       UPDATE StudyLessonProgress
       SET exercisesPassed = CASE
@@ -955,6 +1003,7 @@ export async function submitExercise(userId: string, trackKey: string, lessonSlu
       END
       WHERE userId = ${userId} AND lessonKey = ${lesson.key}`;
   }
+  noteStudyActivity(userId, trackKey, touchedToday);
   const settled = await outcome(userId, track, module, lesson);
   return { ...settled, result, exerciseIndex };
 }

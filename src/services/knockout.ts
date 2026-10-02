@@ -51,19 +51,27 @@ const playerOut = (u: { id: string; username: string | null; name: string | null
 /**
  * Draw the bracket if the start has passed, and decide every match whose
  * clock ran out. Cheap when there is nothing to do; throttled per tournament.
+ *
+ * Answers whether it drew or decided anything — what a reader that read its
+ * rows before calling needs to know to read them again (matchRoom). The
+ * bracket's shared copy is dropped in the same case, so the next poll sees it.
  */
-export async function advanceKnockout(tournamentId: string, force = false): Promise<void> {
+export async function advanceKnockout(tournamentId: string, force = false): Promise<boolean> {
   const now = Date.now();
-  if (!force && now - (lastAdvance.get(tournamentId) ?? 0) < ADVANCE_EVERY_MS) return;
+  if (!force && now - (lastAdvance.get(tournamentId) ?? 0) < ADVANCE_EVERY_MS) return false;
   lastAdvance.set(tournamentId, now);
   const t = await prisma.tournament.findUnique({
     where: { id: tournamentId },
     select: { id: true, format: true, status: true, startsAt: true, bracketAt: true, finishedAt: true, durationMinutes: true },
   });
-  if (!t || t.format !== "knockout" || t.status !== "published" || t.finishedAt) return;
+  if (!t || t.format !== "knockout" || t.status !== "published" || t.finishedAt) return false;
+  let changed = false;
   if (!t.bracketAt) {
-    if (t.startsAt.getTime() > now) return;
+    if (t.startsAt.getTime() > now) return false;
     await drawBracket(t.id, t.durationMinutes);
+    // Counted as a change even when a racing request won the draw: either
+    // way the rows are not what a read before this call saw.
+    changed = true;
   }
   const expired = await prisma.tournamentMatch.findMany({
     where: { tournamentId, status: "live", endsAt: { lte: new Date() } },
@@ -71,8 +79,10 @@ export async function advanceKnockout(tournamentId: string, force = false): Prom
   });
   for (const m of expired) {
     const side = timeoutWinner({ seed: m.seedA ?? 999, passed: m.aPassed, bestAt: m.aBestAt }, { seed: m.seedB ?? 999, passed: m.bPassed, bestAt: m.bBestAt });
-    await decide(m.id, side, "timeout");
+    if (await decide(m.id, side, "timeout")) changed = true;
   }
+  if (changed) forgetBracket(tournamentId);
+  return changed;
 }
 
 /**
@@ -223,6 +233,8 @@ export async function recordKnockoutSubmission(
   const won = verdict === "ACCEPTED" ? await decide(m.id, side, "solve") : false;
   // The spectators' copy of the room is out of date: the next poll rebuilds it with this attempt.
   spectatorRooms.delete(m.id);
+  // So is the bracket's: it shows each side's tests passed, and the winner.
+  forgetBracket(m.tournamentId);
   return { matchId: m.id, tournamentId: m.tournamentId, won };
 }
 
@@ -240,7 +252,14 @@ export async function checkIn(userId: string, tournamentId: string) {
   const opens = entry.tournament.startsAt.getTime() - CHECK_IN_MINUTES * 60_000;
   if (now < opens) throw new BattlesError(409, `Check-in opens ${CHECK_IN_MINUTES} minutes before the start.`);
   if (now >= entry.tournament.startsAt.getTime()) throw new BattlesError(409, "Check-in has closed: the bracket has been drawn.");
-  if (!entry.checkedInAt) await prisma.tournamentEntry.update({ where: { id: entry.id }, data: { checkedInAt: new Date() } });
+  if (!entry.checkedInAt) {
+    await prisma.tournamentEntry.update({ where: { id: entry.id }, data: { checkedInAt: new Date() } });
+    // The bracket page counts who has checked in. The dashboard's
+    // Tournaments slice is not told: until the start it says "upcoming"
+    // whether or not the player checked in (tournament-record.ts), and
+    // check-in closes at the start.
+    forgetBracket(tournamentId);
+  }
   return { checkedIn: true };
 }
 
@@ -248,13 +267,51 @@ export async function checkIn(userId: string, tournamentId: string) {
 const STANDING_ORDER: Record<RosterStanding["state"], number> = { champion: 0, "runner-up": 1, playing: 2, through: 3, out: 4 };
 
 /**
- * The bracket: every round, every match, the champion, every player and
- * how far they got, and the reader's own live match. Public once the
- * tournament is, to anyone signed in or not; its organizers and
- * CodeKairo's admins any time (battles-view-rules mayRead).
+ * Short-lived shared copies: one build per key per window, handed to every
+ * caller inside it and never served past it — not lib/cache's `cached`, whose
+ * stale-while-revalidate would hand the first reader after a quiet spell a
+ * copy minutes old (a decided match still live). The promise is what is
+ * kept, so a burst of pollers shares one build. A build that fails, or finds
+ * nothing (null — an unknown id, which anyone can type), is not kept.
  */
-export async function bracketView(tournamentId: string, viewer: BattlesViewer) {
-  await advanceKnockout(tournamentId);
+type Shared<T> = { at: number; value: Promise<T> };
+
+function sharedBriefly<T>(store: Map<string, Shared<T>>, key: string, ttlMs: number, max: number, build: () => Promise<T>): Promise<T> {
+  const now = Date.now();
+  const hit = store.get(key);
+  if (hit && now - hit.at < ttlMs) return hit.value;
+  const entry = { at: now, value: build() };
+  store.set(key, entry);
+  const drop = () => {
+    if (store.get(key) === entry) store.delete(key);
+  };
+  entry.value.then((v) => {
+    if (v === null) drop();
+  }, drop);
+  if (store.size > max) for (const [k, e] of store) if (now - e.at >= ttlMs) store.delete(k);
+  return entry.value;
+}
+
+/**
+ * A bracket is the same for every reader but for three things: whether they
+ * may read it, whether they are staff, and their own live match. Everything
+ * else is built once per tournament per window, as a spectator's room is
+ * (spectatorRoom) — every spectator polls it every few seconds, and a build
+ * is four reads. Dropped by whatever changes it: a draw or a decision
+ * (advanceKnockout), an attempt (recordKnockoutSubmission), a check-in, a
+ * registration and the tournament's own edits (services/battles.ts).
+ */
+const BRACKET_TTL_MS = 2_000;
+const MAX_BRACKETS = 500;
+const brackets = new Map<string, Shared<Bracket | null>>();
+type Bracket = NonNullable<Awaited<ReturnType<typeof buildBracket>>>;
+
+/** Drop a tournament's shared bracket, so the next read rebuilds it. */
+export function forgetBracket(tournamentId: string): void {
+  brackets.delete(tournamentId);
+}
+
+async function buildBracket(tournamentId: string) {
   const t = await prisma.tournament.findUnique({
     where: { id: tournamentId },
     select: {
@@ -262,15 +319,15 @@ export async function bracketView(tournamentId: string, viewer: BattlesViewer) {
       slug: true,
       title: true,
       bracketAt: true,
+      // Read with the rest: the champion used to be a second read of this row.
+      championId: true,
       org: { select: { name: true, verifiedAt: true } },
       _count: { select: { entries: { where: { status: "approved", checkedInAt: { not: null } } } } },
     },
   });
-  if (!t || t.format !== "knockout") throw new BattlesError(404, "No such knockout.");
-  const role = await roleOf(viewer, t.orgId, false);
-  if (!mayRead(viewedTournament(t), role)) throw new BattlesError(404, "No such knockout.");
+  if (!t || t.format !== "knockout") return null;
 
-  const [matches, champion, seeded, registered] = await Promise.all([
+  const [matches, seeded, registered] = await Promise.all([
     prisma.tournamentMatch.findMany({
       where: { tournamentId: t.id },
       orderBy: [{ round: "asc" }, { position: "asc" }],
@@ -292,45 +349,72 @@ export async function bracketView(tournamentId: string, viewer: BattlesViewer) {
         playerB: { select: PLAYER_SELECT },
       },
     }),
-    t.finishedAt ? prisma.tournament.findUnique({ where: { id: t.id }, select: { championId: true } }) : Promise.resolve(null),
     // The players the draw seeded — the bracket's field. Before the draw
     // there is none, and the page shows the counts alone.
     t.bracketAt ? prisma.tournamentEntry.findMany({ where: { tournamentId: t.id, seed: { not: null } }, select: { seed: true, user: { select: PLAYER_SELECT } } }) : Promise.resolve([]),
     prisma.tournamentEntry.count({ where: { tournamentId: t.id, status: "approved" } }),
   ]);
   const rounds = matches.length ? Math.max(...matches.map((m) => m.round)) : 0;
-  const championUser = champion?.championId ? await prisma.user.findUnique({ where: { id: champion.championId }, select: PLAYER_SELECT }) : null;
-  const viewerId = viewer?.userId ?? null;
-  const mine = viewerId
-    ? matches.filter((m) => (m.playerA?.id === viewerId || m.playerB?.id === viewerId) && m.status !== "done").sort((a, b) => b.round - a.round)[0]
-    : undefined;
+  // The champion is a seeded player — except when fewer than two checked in
+  // and the draw named the lone one champion without seeding anybody
+  // (drawBracket); only then is the account read on its own.
+  const championId = t.finishedAt ? t.championId : null;
+  const championUser = championId
+    ? (seeded.find((e) => e.user.id === championId)?.user ?? (await prisma.user.findUnique({ where: { id: championId }, select: PLAYER_SELECT })))
+    : null;
   const roster = matches.map((m) => ({ round: m.round, status: m.status, winnerId: m.winnerId, a: m.playerA?.id ?? null, b: m.playerB?.id ?? null }));
   const players = seeded
     .map((e) => ({ ...playerOut(e.user)!, seed: e.seed!, ...rosterStanding(e.user.id, roster, rounds) }))
     .sort((x, y) => y.reached - x.reached || STANDING_ORDER[x.state] - STANDING_ORDER[y.state] || x.seed - y.seed);
 
   return {
-    tournament: {
-      id: t.id,
-      slug: t.slug,
-      title: t.title,
-      orgName: t.org.name,
-      startsAt: t.startsAt,
-      drawn: t.bracketAt !== null,
-      finished: t.finishedAt !== null,
-      registered,
-      checkedIn: t._count.entries,
-      durationMinutes: t.durationMinutes,
+    orgId: t.orgId,
+    viewed: viewedTournament(t),
+    /** The matches not yet decided, for the reader's own (myMatchId). */
+    open: matches.filter((m) => m.status !== "done").map((m) => ({ id: m.id, round: m.round, a: m.playerA?.id ?? null, b: m.playerB?.id ?? null })),
+    payload: {
+      tournament: {
+        id: t.id,
+        slug: t.slug,
+        title: t.title,
+        orgName: t.org.name,
+        startsAt: t.startsAt,
+        drawn: t.bracketAt !== null,
+        finished: t.finishedAt !== null,
+        registered,
+        checkedIn: t._count.entries,
+        durationMinutes: t.durationMinutes,
+      },
+      champion: playerOut(championUser),
+      rounds: Array.from({ length: rounds }, (_, i) => ({
+        round: i + 1,
+        name: roundName(i + 1, rounds),
+        matches: matches
+          .filter((m) => m.round === i + 1)
+          .map(({ playerA, playerB, ...m }) => ({ ...m, a: playerOut(playerA), b: playerOut(playerB) })),
+      })),
+      players,
     },
-    champion: playerOut(championUser),
-    rounds: Array.from({ length: rounds }, (_, i) => ({
-      round: i + 1,
-      name: roundName(i + 1, rounds),
-      matches: matches
-        .filter((m) => m.round === i + 1)
-        .map(({ playerA, playerB, ...m }) => ({ ...m, a: playerOut(playerA), b: playerOut(playerB) })),
-    })),
-    players,
+  };
+}
+
+/**
+ * The bracket: every round, every match, the champion, every player and
+ * how far they got, and the reader's own live match. Public once the
+ * tournament is, to anyone signed in or not; its organizers and
+ * CodeKairo's admins any time (battles-view-rules mayRead).
+ */
+export async function bracketView(tournamentId: string, viewer: BattlesViewer) {
+  await advanceKnockout(tournamentId);
+  const b = await sharedBriefly(brackets, tournamentId, BRACKET_TTL_MS, MAX_BRACKETS, () => buildBracket(tournamentId));
+  if (!b) throw new BattlesError(404, "No such knockout.");
+  const role = await roleOf(viewer, b.orgId, false);
+  if (!mayRead(b.viewed, role)) throw new BattlesError(404, "No such knockout.");
+
+  const viewerId = viewer?.userId ?? null;
+  const mine = viewerId ? b.open.filter((m) => m.a === viewerId || m.b === viewerId).sort((x, y) => y.round - x.round)[0] : undefined;
+  return {
+    ...b.payload,
     myMatchId: mine?.id ?? null,
     // Staff watch the players' code live in a match room; everyone else follows the attempts.
     viewer: { staff: isStaff(role) },
@@ -352,19 +436,10 @@ type Room = Awaited<ReturnType<typeof buildRoom>>;
  * match's copy (recordKnockoutSubmission), so its verdict shows on the next
  * poll.
  */
-const spectatorRooms = new Map<string, { at: number; room: Promise<Room> }>();
+const spectatorRooms = new Map<string, Shared<Room>>();
 
 function spectatorRoom(matchId: string, build: () => Promise<Room>): Promise<Room> {
-  const now = Date.now();
-  const hit = spectatorRooms.get(matchId);
-  if (hit && now - hit.at < SPECTATOR_ROOM_TTL_MS) return hit.room;
-  const entry = { at: now, room: build() };
-  spectatorRooms.set(matchId, entry);
-  entry.room.catch(() => {
-    if (spectatorRooms.get(matchId) === entry) spectatorRooms.delete(matchId);
-  });
-  if (spectatorRooms.size > MAX_SPECTATOR_ROOMS) for (const [id, e] of spectatorRooms) if (now - e.at >= SPECTATOR_ROOM_TTL_MS) spectatorRooms.delete(id);
-  return entry.room;
+  return sharedBriefly(spectatorRooms, matchId, SPECTATOR_ROOM_TTL_MS, MAX_SPECTATOR_ROOMS, build);
 }
 /** More attempts than a match of any length sees; a cap, not a page. */
 const MAX_MATCH_ATTEMPTS = 200;
@@ -400,11 +475,16 @@ type MatchRow = Prisma.TournamentMatchGetPayload<{ select: typeof MATCH_ROOM_SEL
  * staff always, everyone once the tournament is over.
  */
 export async function matchRoom(viewer: BattlesViewer, matchId: string) {
-  const first = await prisma.tournamentMatch.findUnique({ where: { id: matchId }, select: { tournamentId: true } });
-  if (!first) throw new BattlesError(404, "No such match.");
-  await advanceKnockout(first.tournamentId);
-  const m = await prisma.tournamentMatch.findUnique({ where: { id: matchId }, select: MATCH_ROOM_SELECT });
+  // Read once, then settle: the row needs reading again only when settling
+  // drew or decided something — rarely, since settling is throttled per
+  // tournament. It used to be a read for the tournament's id, the settle,
+  // and then the whole row, on every poll of every reader.
+  let m = await prisma.tournamentMatch.findUnique({ where: { id: matchId }, select: MATCH_ROOM_SELECT });
   if (!m) throw new BattlesError(404, "No such match.");
+  if (await advanceKnockout(m.tournament.id)) {
+    m = await prisma.tournamentMatch.findUnique({ where: { id: matchId }, select: MATCH_ROOM_SELECT });
+    if (!m) throw new BattlesError(404, "No such match.");
+  }
   const viewerId = viewer?.userId ?? null;
   const side = viewerId && m.playerA?.id === viewerId ? "a" : viewerId && m.playerB?.id === viewerId ? "b" : null;
   const role = await roleOf(viewer, m.tournament.orgId, side !== null);
@@ -416,19 +496,42 @@ export async function matchRoom(viewer: BattlesViewer, matchId: string) {
   return { ...room, serverNow: new Date() };
 }
 
+/**
+ * How many rounds each drawn bracket has, for a room's round names. Fixed
+ * once there is a match to open: the draw creates every match of every
+ * round in one transaction (drawBracket), nothing adds or removes one after
+ * it, and a drawn tournament cannot be deleted (battles-rules
+ * deleteBlocker) — so a room asks once per tournament, not once per poll.
+ * Bounded; the oldest is dropped first.
+ */
+const MAX_ROUND_COUNTS = 1000;
+const roundCounts = new Map<string, number>();
+
+async function roundsOf(tournamentId: string): Promise<number | null> {
+  const known = roundCounts.get(tournamentId);
+  if (known !== undefined) return known;
+  const agg = await prisma.tournamentMatch.aggregate({ where: { tournamentId }, _max: { round: true } });
+  const rounds = agg._max.round;
+  if (rounds !== null) {
+    roundCounts.set(tournamentId, rounds);
+    if (roundCounts.size > MAX_ROUND_COUNTS) roundCounts.delete(roundCounts.keys().next().value!);
+  }
+  return rounds;
+}
+
 async function buildRoom(m: MatchRow, role: ViewerRole, viewerId: string | null, now: Date) {
   const t = viewedTournament(m.tournament);
   const side = role === "player" ? (m.playerA?.id === viewerId ? "a" : "b") : null;
   const started = m.status !== "waiting" && m.startedAt !== null && m.startedAt <= now;
   const codePublic = codeIsPublic(t, now);
-  const [problem, agg, next, attempts] = await Promise.all([
+  const [problem, maxRound, next, attempts] = await Promise.all([
     started && m.problemId ? prisma.problem.findUnique({ where: { id: m.problemId }, select: { id: true, slug: true, title: true, difficulty: true } }) : Promise.resolve(null),
-    prisma.tournamentMatch.aggregate({ where: { tournamentId: m.tournament.id }, _max: { round: true } }),
+    roundsOf(m.tournament.id),
     // The winner's next match, for the "on to the next round" link.
     viewerId && m.winnerId === viewerId ? prisma.tournamentMatch.findFirst({ where: { tournamentId: m.tournament.id, round: m.round + 1, position: Math.floor(m.position / 2) }, select: { id: true } }) : Promise.resolve(null),
     started ? matchAttempts(m) : Promise.resolve([]),
   ]);
-  const rounds = agg._max.round ?? m.round;
+  const rounds = maxRound ?? m.round;
   const { playerA, playerB, tournament, problemId: _problemId, ...rest } = m;
   return {
     match: { ...rest, roundName: roundName(m.round, rounds), a: playerOut(playerA), b: playerOut(playerB) },

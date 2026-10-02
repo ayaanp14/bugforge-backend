@@ -17,7 +17,7 @@ import problemsRouter from "./routes/problems.js";
 import executionRouter from "./routes/execution.js";
 import leaderboardRouter from "./routes/leaderboard.js";
 import bugChallengesRouter from "./routes/bug-challenges.js";
-import pairRoomsRouter from "./routes/pair-rooms.js";
+import pairRoomsRouter, { afterRoomClosed } from "./routes/pair-rooms.js";
 import interviewsRouter from "./routes/interviews.js";
 import communityRouter from "./routes/community.js";
 import duelsRouter from "./routes/duels.js";
@@ -327,11 +327,14 @@ async function softDeleteRoom(roomId: string, slug: string) {
     socketDebug(`🧹 Soft-deleting room ${roomId} (status -> closed)`);
     // updateMany: a row that is gone, or already closed, is a no-op rather
     // than an error, and a closed room keeps its original endedAt.
-    await prisma.pairRoom.updateMany({
+    const { count } = await prisma.pairRoom.updateMany({
       where: { id: roomId, status: { not: "closed" } },
       data: { status: "closed", endedAt: new Date() },
     });
     io.to(roomId).emit("room-ended", { slug });
+    // Only when this call closed it: the lobby and the participants'
+    // pairing history (routes/pair-rooms afterRoomClosed).
+    if (count > 0) await afterRoomClosed(roomId);
   } catch (err) {
     console.error("Soft delete room error:", err);
   }

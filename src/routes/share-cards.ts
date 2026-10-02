@@ -59,8 +59,12 @@ router.get("/:id", async (req, res) => {
     res.status(404).json({ error: "That share has gone" });
     return;
   }
-  // The same for everyone and never edited.
-  res.setHeader("Cache-Control", "public, max-age=300");
+  // The same for everyone and never edited — but `private`: unlike the
+  // picture below, this route sits behind the platform guard, and a `public`
+  // answer to a signed request is one a shared cache (Cloudflare in front of
+  // the API) may store and hand out without the guard ever seeing the next
+  // caller (lib/http-cache.ts, `cdn`).
+  res.setHeader("Cache-Control", "private, max-age=300");
   res.json({ card: { ...card, author: card.user, user: undefined } });
 });
 

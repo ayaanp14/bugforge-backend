@@ -32,6 +32,7 @@ import { javaTrack } from "./study-plans/java/track.js";
 import { javascriptTrack } from "./study-plans/javascript/track.js";
 import { cppTrack } from "./study-plans/cpp/track.js";
 import { pythonTrack } from "./study-plans/python/track.js";
+import { flushContentCaches } from "./content-caches.js";
 
 const ALL_TRACKS: TrackSeed[] = [javaTrack, javascriptTrack, cppTrack, pythonTrack];
 
@@ -196,6 +197,7 @@ async function main() {
     await seedTrack(track, position);
   }
   console.log("\nDone.");
+  await flushContentCaches("study-plans");
 }
 
 main()

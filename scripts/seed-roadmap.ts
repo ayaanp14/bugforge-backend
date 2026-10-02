@@ -18,6 +18,7 @@
  */
 import { prisma } from "../src/lib/prisma.js";
 import { ROADMAP, ROADMAP_TIERS, validateRoadmap } from "./roadmap-data.js";
+import { flushContentCaches } from "./content-caches.js";
 
 const mode = process.argv.includes("--seed") ? "seed" : "validate";
 const prune = process.argv.includes("--prune");
@@ -81,6 +82,7 @@ async function main() {
     const tiers = await prisma.roadmapTier.deleteMany({ where: { key: { notIn: ROADMAP_TIERS.map((t) => t.key) } } });
     console.log(`Pruned ${stages.count} stage(s) and ${tiers.count} tier(s) the file no longer names.`);
   }
+  await flushContentCaches("roadmap");
 }
 
 main()

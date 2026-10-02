@@ -5,7 +5,8 @@ import { prisma } from "../lib/prisma.js";
 import { verifyAchievement } from "../services/achievements.js";
 import { optionalAuth, requireAuth } from "../middleware/auth.js";
 import { communityWriteLimiter } from "../middleware/rate-limit.js";
-import { cached, cachedShared, invalidate } from "../lib/cache.js";
+import { cached, cachedShared, invalidate, invalidatePrefix } from "../lib/cache.js";
+import { browserCache } from "../lib/http-cache.js";
 import { WORN_CREDENTIAL_SELECT } from "../lib/skill-tests.js";
 import { invalidateUnread } from "../services/notifications.js";
 import { invalidateDashboard, querySocialCounts } from "../services/dashboard.js";
@@ -52,6 +53,33 @@ function extractTags(text: string, extra: string[] = []): string[] {
     if (clean.length >= 2) set.add(clean);
   }
   return [...set].slice(0, MAX_TAGS);
+}
+
+/**
+ * Every tag extractTags can store: a hashtag is [a-z0-9_]{2,30} lowercased,
+ * an automatic tag is cut to [a-z0-9_-] and 2–30 characters — and that has
+ * been the rule since tags were added, so no stored tag falls outside it.
+ */
+const FEED_TAG = /^[a-z0-9_-]{2,30}$/;
+
+/**
+ * The feed's `?tag=`: null for no filter, `false` for a tag no post can carry.
+ *
+ * It used to be taken as sent, at any length, into the keys of the public
+ * window (L1 *and* a Redis SET) and the viewer's private slice, so a loop of
+ * random strings minted entries until lib/cache.ts's 2,000-entry L1 cap
+ * evicted the dashboards it is there for (publicCandidates below now mints
+ * none per tag in the usual case). A tag outside the grammar matched nothing
+ * anyway, so the route answers
+ * it the way it always answered an unknown tag — an empty feed — without
+ * touching the database or the cache. A missing, blank or repeated (array)
+ * parameter is still "no filter", as before.
+ */
+export function feedTagOf(raw: unknown): string | null | false {
+  if (typeof raw !== "string") return null;
+  const tag = raw.trim().toLowerCase();
+  if (!tag) return null;
+  return FEED_TAG.test(tag) ? tag : false;
 }
 
 // ── Mentions ────────────────────────────────────────────────────────
@@ -308,18 +336,34 @@ function visibleTo(userId: string | null, followingIds: string[]) {
  * can see (their own, and followers-only ones from people they follow) are
  * asked for live, and those are few.
  *
- * Keyed by tag as well, since a tag filter narrows the window.
+ * Keyed by tag as well, since a tag filter narrows the window — though only
+ * a full window needs its own tagged copy (publicCandidates). Every key of the
+ * family shares the prefix, which is what a post write drops (forgetFeedsWith).
  */
+const PUBLIC_CANDIDATES_PREFIX = "feed:candidates:public:v1";
 const publicCandidatesKey = (tag: string | null) =>
-  tag ? `feed:candidates:public:v1:tag:${tag}` : "feed:candidates:public:v1";
+  tag ? `${PUBLIC_CANDIDATES_PREFIX}:tag:${tag}` : PUBLIC_CANDIDATES_PREFIX;
 
 /** A row that crossed Redis carries its dates as strings; the ranking calls getTime() on them. */
 function reviveDates(p: Candidate): Candidate {
   return { ...p, createdAt: new Date(p.createdAt), editedAt: p.editedAt ? new Date(p.editedAt) : p.editedAt ?? null };
 }
 
+const hasTag = (tag: string) => (p: Candidate) => p.tags.some((t) => t.tag === tag);
+
 async function publicCandidates(tag: string | null): Promise<Candidate[]> {
-  const rows = await cachedShared(publicCandidatesKey(tag), 30, async () => {
+  const all = await publicWindow(null);
+  if (!tag) return all.map(reviveDates);
+  // A window short of the cap holds every public post of the fortnight, so
+  // a tag's window is that one filtered — same rows, same order — with no
+  // key per tag. Only a fortnight busier than the cap still needs the tagged
+  // query (and mints a key for the tag; feedTagOf bounds what it can be).
+  if (all.length < RANK.candidateCap) return all.filter(hasTag(tag)).map(reviveDates);
+  return (await publicWindow(tag)).map(reviveDates);
+}
+
+function publicWindow(tag: string | null): Promise<Candidate[]> {
+  return cachedShared(publicCandidatesKey(tag), 30, async () => {
     const since = new Date(Date.now() - RANK.candidateDays * 86400000);
     return (await prisma.post.findMany({
       where: { visibility: "public", createdAt: { gte: since }, ...(tag ? { tags: { some: { tag } } } : {}) },
@@ -328,16 +372,20 @@ async function publicCandidates(tag: string | null): Promise<Candidate[]> {
       include: POST_INCLUDE,
     })) as unknown as Candidate[];
   });
-  return rows.map(reviveDates);
 }
 
 /**
  * The viewer's own slice of the window: their non-public posts, and
  * followers-only posts by people they follow. Expressed through the relation
  * so it needs nothing loaded first and can share a tier with everything else.
+ *
+ * The untagged slice is `…:all` and a tag's is `…:tag:<tag>`: the tag used to
+ * stand in the key bare, so a filter on #all was served the unfiltered slice.
  */
+const PRIVATE_CANDIDATES_PREFIX = "feed:private:v1:";
+const privateFeedPrefix = (userId: string) => `${PRIVATE_CANDIDATES_PREFIX}${userId}:`;
 const privateCandidatesKey = (userId: string, tag: string | null) =>
-  `feed:private:v1:${userId}:${tag ?? "all"}`;
+  `${privateFeedPrefix(userId)}${tag ? `tag:${tag}` : "all"}`;
 
 /**
  * The viewer's own posts and the followers-only ones they may see.
@@ -349,8 +397,14 @@ const privateCandidatesKey = (userId: string, tag: string | null) =>
  * never mixed across a boundary, and L1 rather than Redis because a per-user
  * key is not worth a ~300ms round trip to fetch.
  */
-function privateCandidates(userId: string, tag: string | null): Promise<Candidate[]> {
-  return cached(privateCandidatesKey(userId, tag), 30_000, () => queryPrivateCandidates(userId, tag));
+async function privateCandidates(userId: string, tag: string | null): Promise<Candidate[]> {
+  const load = (t: string | null) => cached(privateCandidatesKey(userId, t), 30_000, () => queryPrivateCandidates(userId, t));
+  const all = await load(null);
+  if (!tag) return all;
+  // Same reasoning as the public half: a slice short of the cap is complete,
+  // so a tag's slice is a filter of it rather than a key per (viewer, tag).
+  if (all.length < RANK.candidateCap) return all.filter(hasTag(tag));
+  return load(tag);
 }
 
 function queryPrivateCandidates(userId: string, tag: string | null): Promise<Candidate[]> {
@@ -440,6 +494,73 @@ async function decoratePosts(userId: string | null, page: Candidate[], following
   });
 }
 
+type FeedRow = Awaited<ReturnType<typeof decoratePosts>>[number];
+
+/**
+ * A visitor's "For you", ranked and decorated: the same rows for every
+ * visitor, so it is built once per window rather than re-ranked (two hundred
+ * scores, a sort and the diversity pass) and re-decorated per request.
+ *
+ * One entry per tag holding the whole ranked window, not one per page: the
+ * page is a slice of it, so `skip`/`take` cannot multiply entries, and a tag
+ * with no recent public post mints none (it would rank an empty list). L1
+ * only — the candidate window under it is already shared in Redis. Poll
+ * tallies ride along and can trail a vote by the window; a visitor cannot
+ * vote, and a member's feed reads them live.
+ */
+const VISITOR_FEED_PREFIX = "feed:visitor:v1";
+const visitorFeedKey = (tag: string | null) => (tag ? `${VISITOR_FEED_PREFIX}:tag:${tag}` : VISITOR_FEED_PREFIX);
+
+async function visitorFeedWindow(tag: string | null): Promise<FeedRow[]> {
+  if (tag && (await publicCandidates(tag)).length === 0) return [];
+  return cached(visitorFeedKey(tag), 30_000, async () => {
+    const candidates = (await publicCandidates(tag)).slice(0, RANK.candidateCap);
+    // Ranked on the post alone — recency, engagement, the win boost.
+    const viewer = { affinity: new Map<string, number>(), following: new Set<string>(), mutuals: new Set<string>(), followerCounts: new Map<string, number>() };
+    const ranked = diversify(
+      candidates
+        .map((p) => ({ p, s: scorePost(p, viewer) }))
+        .sort((a, b) => b.s - a.s)
+        .map((x) => x.p)
+    );
+    return decoratePosts(null, ranked, new Set());
+  });
+}
+
+/**
+ * Drop every cached feed a post can appear in, after a write that changes
+ * what its row shows — created, edited (text and tags), deleted, its accepted
+ * answer set or cleared. Which families depends on who could see it:
+ *
+ *   public     the shared window (every tag) and the visitor windows built
+ *              on it. No one's private slice holds a public post.
+ *   followers  every viewer's private slice — the author's and any
+ *              follower's. Listing the followers would be a query and a key
+ *              per follower on every write; the slices are L1-only and one
+ *              indexed read each to rebuild, so the family goes whole.
+ *   private    the author's own slice, every tag.
+ *
+ * Each used to expire on its own 30 s clock: a new post was missing from the
+ * public feed, a deleted one stayed in it and an edit kept its old text for
+ * that long, and only the author's untagged slice was ever dropped.
+ *
+ * Likes and comments move the counts on a row and deliberately do not come
+ * here: they are the frequent writes, each would rebuild the two-hundred-post
+ * window for every reader, and the writer's own cards are patched from the
+ * write's answer (frontend store/api/communityApi.ts). Other readers' counts
+ * trail by the window, the trade the window was made for.
+ */
+function forgetFeedsWith(post: { userId: string; visibility: string }): void {
+  if (post.visibility === "public") {
+    invalidatePrefix(PUBLIC_CANDIDATES_PREFIX);
+    invalidatePrefix(VISITOR_FEED_PREFIX);
+  } else if (post.visibility === "followers") {
+    invalidatePrefix(PRIVATE_CANDIDATES_PREFIX);
+  } else {
+    invalidatePrefix(privateFeedPrefix(post.userId));
+  }
+}
+
 // GET /api/community/feed?scope=all|following&tag=react&skip=0&take=20
 //
 // Readable without a session (the community page is public — see the
@@ -455,7 +576,11 @@ router.get("/feed", optionalAuth, async (req, res) => {
       res.status(401).json({ error: "Sign in to see this feed." });
       return;
     }
-    const tagFilter = typeof req.query.tag === "string" && req.query.tag.trim() ? req.query.tag.trim().toLowerCase() : null;
+    const tagFilter = feedTagOf(req.query.tag);
+    if (tagFilter === false) {
+      res.json([]);
+      return;
+    }
     const skip = Math.max(0, parseInt(String(req.query.skip ?? "0"), 10) || 0);
     const take = Math.min(MAX_TAKE, Math.max(1, parseInt(String(req.query.take ?? "20"), 10) || 20));
 
@@ -471,29 +596,24 @@ router.get("/feed", optionalAuth, async (req, res) => {
     let followingIds: string[];
 
     if (userId === null) {
-      // A visitor: the shared public window, ranked on the post alone —
-      // recency, engagement, the win boost — and backfilled the same way.
-      followingIds = [];
-      const candidates = (await publicCandidates(tagFilter)).slice(0, RANK.candidateCap);
-      const viewer = { affinity: new Map<string, number>(), following: new Set<string>(), mutuals: new Set<string>(), followerCounts: new Map<string, number>() };
-      const ranked = diversify(
-        candidates
-          .map((p) => ({ p, s: scorePost(p, viewer) }))
-          .sort((a, b) => b.s - a.s)
-          .map((x) => x.p)
-      );
-      page = ranked.slice(skip, skip + take);
-      if (page.length < take) {
-        const since = new Date(Date.now() - RANK.candidateDays * 86400000);
-        const older = (await prisma.post.findMany({
-          where: { AND: [...baseAndFor(followingIds), { createdAt: { lt: since } }] },
-          orderBy: { createdAt: "desc" },
-          skip: Math.max(0, skip - ranked.length),
-          take: take - page.length,
-          include: POST_INCLUDE,
-        })) as unknown as Candidate[];
-        page = [...page, ...older];
+      // A visitor: the shared public window, ranked and decorated once per
+      // window (visitorFeedWindow), and backfilled the same way as a member's.
+      const ranked = await visitorFeedWindow(tagFilter);
+      const head = ranked.slice(skip, skip + take);
+      if (head.length >= take) {
+        res.json(head);
+        return;
       }
+      const since = new Date(Date.now() - RANK.candidateDays * 86400000);
+      const older = (await prisma.post.findMany({
+        where: { AND: [...baseAndFor([]), { createdAt: { lt: since } }] },
+        orderBy: { createdAt: "desc" },
+        skip: Math.max(0, skip - ranked.length),
+        take: take - head.length,
+        include: POST_INCLUDE,
+      })) as unknown as Candidate[];
+      res.json([...head, ...(await decoratePosts(null, older, new Set()))]);
+      return;
     } else if (scope === "following" || scope === "saved") {
       // Following and saved stay strictly chronological — people expect it.
       followingIds = await followingIdsOf(userId as string);
@@ -668,6 +788,7 @@ router.post("/posts", requireAuth, communityWriteLimiter, async (req, res) => {
     // The dashboard hero counts posts.
     invalidateDashboard(userId);
     forgetPostCounters(userId);
+    forgetFeedsWith(post);
 
     res.json({
       id: post.id,
@@ -699,7 +820,7 @@ router.delete("/posts/:id", requireAuth, async (req, res) => {
   try {
     const userId = req.user!.userId;
     const id = String(req.params.id);
-    const post = await prisma.post.findUnique({ where: { id }, select: { userId: true } });
+    const post = await prisma.post.findUnique({ where: { id }, select: { userId: true, visibility: true } });
     if (!post) {
       res.status(404).json({ error: "Post not found" });
       return;
@@ -711,6 +832,7 @@ router.delete("/posts/:id", requireAuth, async (req, res) => {
     await prisma.post.delete({ where: { id } });
     invalidateDashboard(userId);
     forgetPostCounters(userId);
+    forgetFeedsWith(post);
     res.json({ success: true });
   } catch (err) {
     console.error("DELETE /api/community/posts/:id error:", err);
@@ -732,7 +854,7 @@ router.patch("/posts/:id", requireAuth, async (req, res) => {
       res.status(400).json({ error: "Posts are limited to 2000 characters" });
       return;
     }
-    const post = await prisma.post.findUnique({ where: { id }, select: { userId: true, type: true, meta: true } });
+    const post = await prisma.post.findUnique({ where: { id }, select: { userId: true, visibility: true, type: true, meta: true } });
     if (!post) {
       res.status(404).json({ error: "Post not found" });
       return;
@@ -765,6 +887,7 @@ router.patch("/posts/:id", requireAuth, async (req, res) => {
     // Both values are the ones just written; re-reading the Text column to
     // learn what we sent is a round trip for nothing.
     const updated = { content: text, editedAt };
+    forgetFeedsWith(post);
     notifyMentions(userId, text, postHref(id), "a post");
 
     res.json({ content: updated.content, editedAt: updated.editedAt, tags });
@@ -977,7 +1100,7 @@ router.post("/posts/:id/resolve", requireAuth, async (req, res) => {
     // they are one wave rather than two — the comment read used to queue
     // behind an ownership check it does not depend on.
     const [post, comment] = await Promise.all([
-      prisma.post.findUnique({ where: { id: postId }, select: { userId: true } }),
+      prisma.post.findUnique({ where: { id: postId }, select: { userId: true, visibility: true } }),
       commentId
         ? prisma.postComment.findUnique({ where: { id: String(commentId) }, select: { postId: true, userId: true } })
         : Promise.resolve(null),
@@ -1013,6 +1136,8 @@ router.post("/posts/:id/resolve", requireAuth, async (req, res) => {
       }
     }
     await prisma.post.update({ where: { id: postId }, data: { resolvedCommentId: commentId ? String(commentId) : null } });
+    // The feed row carries the accepted answer (the "Solved" mark).
+    forgetFeedsWith(post);
     res.json({ resolvedCommentId: commentId ?? null });
   } catch (err) {
     console.error("POST /api/community/posts/:id/resolve error:", err);
@@ -1245,7 +1370,7 @@ router.delete("/comments/:id", requireAuth, async (req, res) => {
     const id = String(req.params.id);
     const comment = await prisma.postComment.findUnique({
       where: { id },
-      select: { userId: true, postId: true, post: { select: { userId: true } } },
+      select: { userId: true, postId: true, post: { select: { userId: true, visibility: true } } },
     });
     if (!comment) {
       res.status(404).json({ error: "Comment not found" });
@@ -1259,10 +1384,13 @@ router.delete("/comments/:id", requireAuth, async (req, res) => {
     // two writes touch different tables and neither reads the other, so they
     // go in one batched request instead of two serial ones — and the thread
     // can no longer be left pointing at an accepted answer that is gone.
-    await prisma.$transaction([
+    const [, unresolved] = await prisma.$transaction([
       prisma.postComment.deleteMany({ where: { OR: [{ id }, { parentId: id }] } }),
       prisma.post.updateMany({ where: { id: comment.postId, resolvedCommentId: id }, data: { resolvedCommentId: null } }),
     ]);
+    // Deleting the accepted answer un-solves the question on its feed row;
+    // any other comment only moves the count (see forgetFeedsWith).
+    if (unresolved.count > 0) forgetFeedsWith(comment.post);
     res.json({ success: true });
   } catch (err) {
     console.error("DELETE /api/community/comments/:id error:", err);
@@ -1329,8 +1457,11 @@ router.post("/follow/:userId", requireAuth, async (req, res) => {
     }
 
     // A follow moves both users' hero counts, and this viewer's cached
-    // following list — which the feed and the suggestions rail read.
+    // following list — which the feed and the suggestions rail read — and
+    // their private slice of the feed, which is where the followee's
+    // followers-only posts appear (or stop appearing).
     invalidate(followsKey(followerId));
+    invalidatePrefix(privateFeedPrefix(followerId));
     invalidate(suggestionsKey(followerId));
     invalidate(socialKey(followerId));
     invalidate(socialKey(followingId));
@@ -1371,13 +1502,9 @@ const socialCardFor = (userId: string) => cached(socialKey(userId), 60_000, () =
  * new post until they do (QA-031); the two writes drop them.
  */
 function forgetPostCounters(authorId?: string): void {
-  // The author's own two per-viewer caches move with their post count: the
-  // sidebar card, and the private half of their feed (a post they just wrote
-  // is a candidate in it).
-  if (authorId) {
-    invalidate(socialKey(authorId));
-    invalidate(privateCandidatesKey(authorId, null));
-  }
+  // The author's sidebar card moves with their post count. The feeds the
+  // post sits in (their private slice among them) are forgetFeedsWith's.
+  if (authorId) invalidate(socialKey(authorId));
   invalidate("community:pulse");
   invalidate("community:bulletin");
 }
@@ -1641,8 +1768,13 @@ router.get("/me", requireAuth, async (req, res) => {
   }
 });
 
+// The three shared rails read nothing off the caller (optionalAuth only lets
+// a visitor in), so their answer is the same bytes for everyone and a member's
+// browser may keep it too — for no longer than the server holds it, and pulse
+// for half that, since a post drops it server-side (QA-031). /rails carries
+// the member's own card and suggestions, so it takes no header.
 // GET /api/community/pulse — lightweight activity stats for the sidebar
-router.get("/pulse", optionalAuth, async (_req, res) => {
+router.get("/pulse", optionalAuth, browserCache(30, { shared: true }), async (_req, res) => {
   try {
     res.json(await getPulse());
   } catch (err) {
@@ -1652,7 +1784,7 @@ router.get("/pulse", optionalAuth, async (_req, res) => {
 });
 
 // GET /api/community/tags/trending — top tags of the last 7 days
-router.get("/tags/trending", optionalAuth, async (_req, res) => {
+router.get("/tags/trending", optionalAuth, browserCache(120, { shared: true }), async (_req, res) => {
   try {
     res.json(await getTrending());
   } catch (err) {
@@ -1672,7 +1804,7 @@ router.get("/suggestions", requireAuth, async (req, res) => {
 });
 
 // GET /api/community/bulletin — the platform's week in one card, plus today's hunts
-router.get("/bulletin", optionalAuth, async (_req, res) => {
+router.get("/bulletin", optionalAuth, browserCache(120, { shared: true }), async (_req, res) => {
   try {
     res.json(await getBulletin());
   } catch (err) {

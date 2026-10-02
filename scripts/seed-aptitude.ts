@@ -12,6 +12,7 @@ import { prisma } from "../src/lib/prisma.js";
 import { APTITUDE_TOPICS, aptitudeTopic } from "../src/lib/aptitude-topics.js";
 import { APTITUDE_QUESTIONS } from "./aptitude-data/index.js";
 import { storedApproach, uncoveredTopics, validateAptitudeSeed } from "./aptitude-data/types.js";
+import { flushContentCaches } from "./content-caches.js";
 
 const args = process.argv.slice(2);
 const wants = (flag: string) => args.includes(flag);
@@ -76,7 +77,10 @@ async function seed() {
     console.error("fix the problems above before seeding");
     process.exit(1);
   }
-  if (wants("--seed")) await seed();
+  if (wants("--seed")) {
+    await seed();
+    await flushContentCaches("aptitude");
+  }
   await prisma.$disconnect();
 })().catch((error) => {
   console.error(error);

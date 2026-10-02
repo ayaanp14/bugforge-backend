@@ -96,6 +96,31 @@ async function loadContest(tournamentId: string) {
   return t;
 }
 
+/**
+ * The contest's row for the polled reads — the scoreboard and the team
+ * panel — kept a few seconds. Every spectator polls the board, and the
+ * board itself was already one cached computation; the row read in front
+ * of it was the per-poll cost, and a signed-in reader's role lookup, which
+ * needs the row's org, waited on it. Nothing in the row moves with the
+ * clock — the contest's state is computed from `now` on every read
+ * (contestHeader) — and every write to it calls forgetContest: the
+ * settings, publish, cancel, delete and approval, the organizer's edits
+ * and verification (services/battles.ts forgetTournaments), the reveal
+ * (below). An unknown or non-ICPC id throws, and a throw is never kept, so
+ * made-up ids cannot fill the cache.
+ */
+const CONTEST_ROW_TTL_MS = 3_000;
+const contestKey = (tournamentId: string) => `battles:contest:${tournamentId}`;
+
+function contestRow(tournamentId: string) {
+  return cached(contestKey(tournamentId), CONTEST_ROW_TTL_MS, () => loadContest(tournamentId));
+}
+
+/** Drop a contest's cached row (contestRow) after a write to the tournament or its organizer. */
+export function forgetContest(tournamentId: string): void {
+  invalidate(contestKey(tournamentId));
+}
+
 async function isManager(userId: string | null, orgId: string): Promise<boolean> {
   if (!userId) return false;
   const m = await prisma.battleOrgMember.findUnique({ where: { orgId_userId: { orgId, userId } }, select: { role: true } });
@@ -187,7 +212,7 @@ const memberOut = (u: { username: string | null; name: string | null; avatar_url
  * says whether this reader may open a team's attempts (teamAttempts).
  */
 export async function contestStandings(tournamentId: string, viewer: BattlesViewer) {
-  const t = await loadContest(tournamentId);
+  const t = await contestRow(tournamentId);
   const role = await roleOf(viewer, t.orgId, false);
   const viewed = viewedTournament(t);
   if (!mayRead(viewed, role)) throw new BattlesError(404, "No such contest.");
@@ -244,7 +269,7 @@ export async function contestStandings(tournamentId: string, viewer: BattlesView
  * contest is the frozen board's answer, and its timing a hint to the rest.
  */
 export async function teamAttempts(viewer: BattlesViewer, tournamentId: string, teamId: string) {
-  const t = await loadContest(tournamentId);
+  const t = await contestRow(tournamentId);
   const team = await prisma.tournamentTeam.findFirst({
     where: { id: teamId, tournamentId: t.id },
     select: { id: true, name: true, entries: { where: { status: "approved" }, orderBy: { createdAt: "asc" }, select: { userId: true, user: { select: MEMBER_SELECT } } } },
@@ -303,6 +328,9 @@ export async function revealResults(userId: string, tournamentId: string) {
   if (!(await isManager(userId, t.orgId))) throw new BattlesError(404, "No such contest.");
   if (contestState(windowOf(t), new Date()) !== "ended") throw new BattlesError(409, "Results can be revealed once the contest has ended.");
   if (!t.resultsRevealedAt) await prisma.tournament.update({ where: { id: t.id }, data: { resultsRevealedAt: new Date() } });
+  // The row first: the board is rebuilt from the row's `resultsRevealedAt`,
+  // and a board rebuilt from a cached unrevealed row would stay frozen.
+  forgetContest(t.id);
   invalidate(standingsKey(t.id));
   return { ok: true };
 }

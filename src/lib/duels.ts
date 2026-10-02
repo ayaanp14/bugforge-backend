@@ -152,6 +152,11 @@ setInterval(() => {
     for (const [key, until] of misses) if (until <= now) misses.delete(key);
     if (misses.size === 0) notInDuel.delete(userId);
   }
+  // The two-second duel rows were only ever overwritten, never dropped: every
+  // duel anyone opened — and every invented id sent to GET /api/duels/:id,
+  // which caches its null like any row — stayed in the map for the life of
+  // the process.
+  for (const [id, hit] of duelCache) if (hit.expiresAt <= now) duelCache.delete(id);
 }, 60_000).unref();
 
 const targetKey = (target: DuelTarget): string | null =>

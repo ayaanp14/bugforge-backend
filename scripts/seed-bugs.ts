@@ -17,6 +17,7 @@ import { BUG_HUB_IDS } from "../src/lib/bug-hubs.js";
 import { type BugSpec } from "./bugs-data.js";
 import { ALL_BUGS, WAVES } from "./bugs-catalog.js";
 import { ORIGINS } from "./bugs-origins.js";
+import { flushContentCaches } from "./content-caches.js";
 
 const args = process.argv.slice(2);
 const flag = (n: string) => args.includes(`--${n}`);
@@ -142,7 +143,10 @@ async function validate() {
     if (seen.has(b.title)) throw new Error(`duplicate bug title: ${b.title}`);
     seen.add(b.title);
   }
-  if (flag("seed")) await seed();
+  if (flag("seed")) {
+    await seed();
+    await flushContentCaches("bugs");
+  }
   if (flag("validate")) await validate();
   if (!flag("seed") && !flag("validate")) {
     console.log('usage: tsx scripts/seed-bugs.ts --seed | --validate [--only "<title>"] [--wave N]');

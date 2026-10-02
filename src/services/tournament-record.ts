@@ -96,6 +96,27 @@ export async function tournamentsFor(userId: string): Promise<TournamentRecordRo
   });
   const now = new Date();
 
+  // Every knockout's matches of this player, and each drawn bracket's
+  // number of rounds, in two reads for the whole list. They were two reads
+  // per knockout, the second waiting on the first — up to forty for a full
+  // list, on every dashboard build.
+  const knockouts = entries.filter((e) => e.tournament.format !== "icpc" && e.tournament.startsAt <= now && !(!e.checkedInAt && e.tournament.bracketAt));
+  const drawn = knockouts.filter((e) => e.tournament.bracketAt).map((e) => e.tournament.id);
+  const [matchRows, roundRows] = knockouts.length
+    ? await Promise.all([
+        prisma.tournamentMatch.findMany({
+          where: { tournamentId: { in: knockouts.map((e) => e.tournament.id) }, OR: [{ playerAId: userId }, { playerBId: userId }] },
+          orderBy: { round: "desc" },
+          select: { tournamentId: true, round: true, status: true, winnerId: true },
+        }),
+        drawn.length
+          ? prisma.tournamentMatch.groupBy({ by: ["tournamentId"], where: { tournamentId: { in: drawn } }, _max: { round: true } })
+          : Promise.resolve([]),
+      ])
+    : [[], []];
+  const matchesOf = matchesByTournament(matchRows);
+  const roundsOf = new Map(roundRows.map((r) => [r.tournamentId, r._max.round ?? 0]));
+
   return Promise.all(
     entries.map(async (e): Promise<TournamentRecordRow> => {
       const t = e.tournament;
@@ -116,19 +137,47 @@ export async function tournamentsFor(userId: string): Promise<TournamentRecordRo
 
       // Knockout: how far this player got.
       if (!e.checkedInAt && t.bracketAt) return { ...base, state: t.finishedAt ? "finished" : "live", placement: "Did not check in", podium: false };
-      const matches = await prisma.tournamentMatch.findMany({
-        where: { tournamentId: t.id, OR: [{ playerAId: userId }, { playerBId: userId }] },
-        orderBy: { round: "desc" },
-        select: { round: true, status: true, winnerId: true },
-      });
-      const rounds = t.bracketAt ? ((await prisma.tournamentMatch.aggregate({ where: { tournamentId: t.id }, _max: { round: true } }))._max.round ?? 0) : 0;
-      const last = matches[0];
-      if (t.championId === userId) return { ...base, state: "finished", placement: "Champion", podium: true };
-      if (!last || rounds === 0) return { ...base, state: t.finishedAt ? "finished" : "live", placement: null, podium: false };
-      const out = last.status === "done" && last.winnerId !== userId;
-      if (!out) return { ...base, state: "live", placement: `In the ${roundName(last.round, rounds)}`, podium: false };
-      const label = placementLabel(last.round, false, rounds);
-      return { ...base, state: t.finishedAt ? "finished" : "live", placement: label, podium: last.round >= rounds - 1 };
+      const rounds = t.bracketAt ? (roundsOf.get(t.id) ?? 0) : 0;
+      return { ...base, ...knockoutPlacement(t, userId, matchesOf.get(t.id) ?? [], rounds) };
     }),
   );
+}
+
+export interface PlayerMatch {
+  tournamentId: string;
+  round: number;
+  status: string;
+  winnerId: string | null;
+}
+
+/** One read's matches, by tournament, each list latest round first — what the per-tournament read gave. */
+export function matchesByTournament(rows: readonly PlayerMatch[]): Map<string, PlayerMatch[]> {
+  const out = new Map<string, PlayerMatch[]>();
+  for (const r of rows) {
+    const list = out.get(r.tournamentId);
+    if (list) list.push(r);
+    else out.set(r.tournamentId, [r]);
+  }
+  // The read is already ordered; sorted again so the rule never rests on how it was asked.
+  for (const list of out.values()) list.sort((a, b) => b.round - a.round);
+  return out;
+}
+
+/**
+ * Where a player who took part in a knockout stands, from their matches
+ * (latest round first) and the bracket's number of rounds (0 before the draw).
+ */
+export function knockoutPlacement(
+  t: { championId: string | null; finishedAt: Date | null },
+  userId: string,
+  matches: readonly Pick<PlayerMatch, "round" | "status" | "winnerId">[],
+  rounds: number,
+): Pick<TournamentRecordRow, "state" | "placement" | "podium"> {
+  const last = matches[0];
+  if (t.championId === userId) return { state: "finished", placement: "Champion", podium: true };
+  if (!last || rounds === 0) return { state: t.finishedAt ? "finished" : "live", placement: null, podium: false };
+  const out = last.status === "done" && last.winnerId !== userId;
+  if (!out) return { state: "live", placement: `In the ${roundName(last.round, rounds)}`, podium: false };
+  const label = placementLabel(last.round, false, rounds);
+  return { state: t.finishedAt ? "finished" : "live", placement: label, podium: last.round >= rounds - 1 };
 }

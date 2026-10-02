@@ -1,4 +1,5 @@
 import { prisma } from "./prisma.js";
+import { broadcastSignal, onSignal } from "./cache.js";
 
 /**
  * The judge's view of a problem, kept in memory.
@@ -72,8 +73,12 @@ class BoundedLru<V> {
     const pending = this.inFlight.get(key);
     if (pending) return pending;
 
-    const promise = load()
+    // Store only while this load still owns the slot: forget() during the
+    // load (an admin edit, an unpublish) clears the slot, and the suite read
+    // before that edit must not be written back for another 15 minutes.
+    const promise: Promise<V> = load()
       .then((value) => {
+        if (this.inFlight.get(key) !== promise) return value;
         this.entries.delete(key);
         this.entries.set(key, { value, expiresAt: Date.now() + this.ttlMs });
         while (this.entries.size > this.max) {
@@ -83,7 +88,9 @@ class BoundedLru<V> {
         }
         return value;
       })
-      .finally(() => this.inFlight.delete(key));
+      .finally(() => {
+        if (this.inFlight.get(key) === promise) this.inFlight.delete(key);
+      });
     this.inFlight.set(key, promise);
     return promise;
   }
@@ -97,6 +104,11 @@ class BoundedLru<V> {
   forget(key: string): void {
     this.entries.delete(key);
     this.inFlight.delete(key);
+  }
+
+  clear(): void {
+    this.entries.clear();
+    this.inFlight.clear();
   }
 }
 
@@ -157,9 +169,30 @@ export function getJudgeProblem(problemId: string): Promise<JudgeProblem | null>
   );
 }
 
-/** Drop a problem's cached suite and row — for a reseed that cannot wait out the TTL. */
+/**
+ * Drop a problem's cached suite and row, here and on every instance. Every
+ * admin write to a problem or its cases calls this (via `invalidateProblem`),
+ * so an unpublish takes effect at once rather than leaving the problem
+ * runnable — and paying XP — for up to the TTL; a catalogue reseed sends
+ * `EVERY_JUDGE_SUITE` (scripts/content-caches.ts).
+ */
 export function forgetJudgeSuite(problemId: string): void {
-  suites.forget(problemId);
-  visibleSuites.forget(problemId);
-  problems.forget(problemId);
+  forgetLocally(problemId);
+  // Every other instance holds its own LRU, and so does a seed script's
+  // process — which is why the API cannot learn of a reseed any other way.
+  broadcastSignal(JUDGE_SIGNAL, problemId);
 }
+
+/** The id a reseed sends: every problem's copy goes. */
+export const EVERY_JUDGE_SUITE = "*";
+const JUDGE_SIGNAL = "judge-suite";
+
+function forgetLocally(problemId: string): void {
+  for (const lru of [suites, visibleSuites, problems] as BoundedLru<unknown>[]) {
+    if (problemId === EVERY_JUDGE_SUITE) lru.clear();
+    else lru.forget(problemId);
+  }
+}
+
+// The sender receives its own signal too; forgetting twice is harmless.
+onSignal(JUDGE_SIGNAL, forgetLocally);

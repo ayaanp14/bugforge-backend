@@ -84,7 +84,9 @@ router.get("/:track/lessons/:lesson/last/:exercise", requireAuth, async (req: Au
   }
 });
 
-router.get("/:track/modules/:module/print", optionalAuth, browserCache(300), async (req, res) => {
+// The print page reads nothing off the caller (modulePrintFor takes no
+// account), so a member's browser may keep it as a visitor's does.
+router.get("/:track/modules/:module/print", optionalAuth, browserCache(300, { shared: true }), async (req, res) => {
   const payload = await modulePrintFor(String(req.params["track"]), String(req.params["module"]));
   if (!payload) {
     res.status(404).json({ error: "No such module" });

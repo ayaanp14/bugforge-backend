@@ -226,9 +226,13 @@ function commonTopics(links: HubLink[]): Array<{ label: string; count: number }>
  * same way except HCL, whose tests say "HCLTech": matched by prefix.
  */
 function patternsByCompany(): Promise<Array<{ slug: string; name: string; company: string }>> {
+  // A failed read degrades the page to "no patterns" for this request only.
+  // The catch used to sit inside the loader, so one database hiccup was
+  // cached as an empty list and every company hub lost its /tests links for
+  // the hour.
   return cached("hubs:patterns:v1", 60 * 60 * 1000, () =>
-    prisma.mockTest.findMany({ where: { published: true }, select: { slug: true, name: true, company: true }, orderBy: { orderIndex: "asc" } }).catch(() => []),
-  );
+    prisma.mockTest.findMany({ where: { published: true }, select: { slug: true, name: true, company: true }, orderBy: { orderIndex: "asc" } }),
+  ).catch(() => []);
 }
 
 /** A guide's first sentence without its "A guide to": the noun phrase the company intro quotes. */

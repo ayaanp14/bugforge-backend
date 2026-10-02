@@ -42,6 +42,7 @@ import { fileURLToPath } from "node:url";
 const LESSONS_DIR = fileURLToPath(new URL("../content/roadmap/", import.meta.url));
 import { readdirSync } from "node:fs";
 import { SKILL_TESTS, testDuration, testMaxMarks, testQuestions, type SkillSectionSeed, type SkillTestSeed } from "./skill-test-data/tests.js";
+import { flushContentCaches } from "./content-caches.js";
 
 const args = process.argv.slice(2);
 const mode = args.includes("--seed") ? "seed" : args.includes("--run") ? "run" : "validate";
@@ -334,6 +335,7 @@ async function main() {
       process.exit(2);
     }
     await seed(questions);
+    await flushContentCaches("skill-tests");
   }
   await prisma.$disconnect();
 }

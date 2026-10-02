@@ -48,12 +48,51 @@ import {
 } from "./battles-rules.js";
 
 import { BattlesError } from "./battles-error.js";
-import { knockoutViewer } from "./knockout.js";
+import { forgetBracket, knockoutViewer } from "./knockout.js";
+import { forgetContest } from "./contest.js";
 import { CHECK_IN_MINUTES } from "./knockout-rules.js";
 import { forgetBattlesHeads, orgSeo, seoOf, tournamentSeo } from "./battles-seo.js";
 import { offersReminder } from "./tournament-reminders.js";
+import { cached, invalidate } from "../lib/cache.js";
+import { invalidateDashboard } from "./dashboard.js";
 
 export { BattlesError };
+
+// ── What a write makes stale ───────────────────────────────────────────
+
+/** The public list (listTournaments). */
+const LIST_KEY = "battles:list:v1";
+
+/**
+ * Every cached read that a write to these tournaments' rows — settings,
+ * status, visibility, their organizer's name or verification — makes stale:
+ * the Worker's heads (battles-seo), the public list, an ICPC contest's row
+ * (contest.ts) and a knockout's shared bracket (knockout.ts). One call at
+ * every such write, drafts included: a draft is in no list, but its
+ * organizers read its contest and bracket like anyone reads a public one.
+ */
+function forgetTournaments(tournaments: readonly { id: string; slug: string }[], org?: string): void {
+  forgetBattlesHeads({ tournaments: tournaments.map((t) => t.slug), org });
+  invalidate(LIST_KEY);
+  for (const t of tournaments) {
+    forgetContest(t.id);
+    forgetBracket(t.id);
+  }
+}
+
+/**
+ * After entries change — a registration, a withdrawal, an organizer's
+ * decision, a team list uploaded or a team removed: the entry counts on the
+ * public list and the bracket, and each entrant's dashboard, whose
+ * Tournaments slice lists their approved entries (tournament-record.ts) and
+ * otherwise kept the old answer for the dashboard's five-minute TTL — a
+ * player approved for a tournament did not see it on their profile.
+ */
+function forgetEntries(tournamentId: string, userIds: readonly string[]): void {
+  invalidate(LIST_KEY);
+  forgetBracket(tournamentId);
+  for (const userId of userIds) invalidateDashboard(userId);
+}
 
 /** Unverified orgs one account may hold at once — a brake on throwaway orgs. */
 const UNVERIFIED_ORGS_PER_USER = 3;
@@ -130,7 +169,12 @@ export async function updateOrg(userId: string, orgId: string, body: Body) {
   if (!orgChanged(before, orgSnapshot({ ...before, ...fields }))) {
     return prisma.battleOrg.findUniqueOrThrow({ where: { id: orgId }, select: ORG_PUBLIC });
   }
-  if (!current.verifiedAt) return prisma.battleOrg.update({ where: { id: orgId }, data: fields, select: ORG_PUBLIC });
+  if (!current.verifiedAt) {
+    const org = await prisma.battleOrg.update({ where: { id: orgId }, data: fields, select: ORG_PUBLIC });
+    // Public nowhere yet, but its managers read its contests and brackets, which carry its name.
+    forgetTournaments(await prisma.tournament.findMany({ where: { orgId }, select: { id: true, slug: true } }), current.slug);
+    return org;
+  }
 
   const now = new Date();
   const started = await prisma.tournament.findMany({
@@ -147,8 +191,7 @@ export async function updateOrg(userId: string, orgId: string, body: Body) {
     data: { ...fields, verifiedAt: null, verifiedSnapshot: (snapshotOf<OrgSnapshot>(current.verifiedSnapshot) ?? before) as unknown as Prisma.InputJsonValue },
     select: ORG_PUBLIC,
   });
-  const slugs = await prisma.tournament.findMany({ where: { orgId }, select: { slug: true } });
-  forgetBattlesHeads({ tournaments: slugs.map((t) => t.slug), org: current.slug });
+  forgetTournaments(await prisma.tournament.findMany({ where: { orgId }, select: { id: true, slug: true } }), current.slug);
   return org;
 }
 
@@ -156,17 +199,26 @@ export async function updateOrg(userId: string, orgId: string, body: Body) {
 export async function orgPage(slug: string, viewerId: string | null) {
   const org = await prisma.battleOrg.findUnique({ where: { slug }, select: ORG_PUBLIC });
   if (!org) throw new BattlesError(404, "No such organization.");
-  const role = viewerId
-    ? ((await prisma.battleOrgMember.findUnique({ where: { orgId_userId: { orgId: org.id, userId: viewerId } }, select: { role: true } }))?.role ?? null)
-    : null;
+  const listOf = (all: boolean) =>
+    prisma.tournament.findMany({
+      where: { orgId: org.id, ...(all ? {} : { status: "published" }) },
+      orderBy: { startsAt: "desc" },
+      take: 100,
+      select: TOURNAMENT_CARD,
+    });
+  // The reader's role and a verified org's public list do not wait on each
+  // other. Only a manager — the rare reader — also sees drafts, and reads
+  // the list again for them; an unverified org shows nothing but to its
+  // managers, so nothing is read for it on the chance.
+  const [role, publicList] = await Promise.all([
+    viewerId
+      ? prisma.battleOrgMember.findUnique({ where: { orgId_userId: { orgId: org.id, userId: viewerId } }, select: { role: true } }).then((m) => m?.role ?? null)
+      : Promise.resolve(null),
+    org.verifiedAt ? listOf(false) : Promise.resolve(null),
+  ]);
   const manages = role !== null && MANAGER_ROLES.includes(role);
   if (!org.verifiedAt && !manages) throw new BattlesError(404, "No such organization.");
-  const tournaments = await prisma.tournament.findMany({
-    where: { orgId: org.id, ...(manages ? {} : { status: "published" }) },
-    orderBy: { startsAt: "desc" },
-    take: 100,
-    select: TOURNAMENT_CARD,
-  });
+  const tournaments = manages || !publicList ? await listOf(true) : publicList;
   const now = new Date();
   // The page's head, from the published tournaments only (a manager also
   // sees drafts here, which are nobody else's business). services/battles-seo.
@@ -299,10 +351,10 @@ export async function updateTournament(userId: string, tournamentId: string, bod
       },
     });
     if (count === 0) throw new BattlesError(409, "The tournament changed while you were editing it. Reload the page and try again.");
-    forgetBattlesHeads({ tournaments: [t.slug] });
   } else {
     await prisma.tournament.update({ where: { id: t.id }, data: read.fields });
   }
+  forgetTournaments([t]);
   return manageView(userId, t.id);
 }
 
@@ -339,7 +391,7 @@ export async function publishTournament(userId: string, tournamentId: string) {
     where: { id: t.id, status: "draft" },
     data: { status: "published", publishedAt: new Date(), approvedSnapshot: tournamentSnapshot(fieldsOf(t as TournamentFields & { allowedDomains: unknown })) as unknown as Prisma.InputJsonValue },
   });
-  forgetBattlesHeads({ tournaments: [t.slug] });
+  forgetTournaments([t]);
   return manageView(userId, t.id);
 }
 
@@ -356,7 +408,7 @@ export async function cancelTournament(userId: string, tournamentId: string) {
   }
   if (tournamentPhase(t, new Date()) === "finished") throw new BattlesError(409, "A finished tournament cannot be cancelled.");
   await prisma.tournament.update({ where: { id: t.id }, data: { status: "cancelled" } });
-  forgetBattlesHeads({ tournaments: [t.slug] });
+  forgetTournaments([t]);
   return manageView(userId, t.id);
 }
 
@@ -380,7 +432,7 @@ export async function deleteTournament(userId: string, tournamentId: string) {
   if (blocker) throw new BattlesError(409, blocker);
   const org = await prisma.battleOrg.findUnique({ where: { id: t.orgId }, select: { slug: true } });
   await prisma.tournament.delete({ where: { id: t.id } });
-  forgetBattlesHeads({ tournaments: [t.slug], org: org?.slug });
+  forgetTournaments([t], org?.slug);
   return { ok: true };
 }
 
@@ -427,28 +479,46 @@ export async function manageView(userId: string, tournamentId: string) {
   };
 }
 
+/**
+ * How long the public list's rows are kept. It is the same for every
+ * caller — the route reads no session — and every visitor to the site's
+ * home and /tournaments asks for it, two joined reads with a filtered count
+ * each time. What changes it calls forgetTournaments or forgetEntries;
+ * what moves with the clock (each card's phase) is worked out from the
+ * rows on every read, so a tournament opening or starting shows at once.
+ * Only a knockout's final (`finishedAt`, knockout.ts) reaches the list by
+ * the TTL alone.
+ */
+const LIST_TTL_MS = 30_000;
+
 /** The public list: published tournaments of verified orgs that have not finished. */
 export async function listTournaments() {
+  // Memory only (lib/cache `cached`): the rows keep their Dates, which the
+  // phase rules read, and one instance's copy costs nothing to keep.
+  const { rows, past } = await cached(LIST_KEY, LIST_TTL_MS, async () => {
+    const at = Date.now();
+    const verified = { status: "published", org: { verifiedAt: { not: null } } } as const;
+    const [rows, past] = await Promise.all([
+      prisma.tournament.findMany({
+        where: { ...verified, startsAt: { gte: new Date(at - 2 * 24 * 3600_000) } },
+        orderBy: { startsAt: "asc" },
+        take: 60,
+        select: TOURNAMENT_CARD,
+      }),
+      // Recently finished, newest first: where a visitor finds a tournament's
+      // results, players and published code once it is over (the list above
+      // drops it the moment it finishes). A knockout's end is its final, so
+      // a few more rows than shown are read and the unfinished dropped.
+      prisma.tournament.findMany({
+        where: { ...verified, startsAt: { gte: new Date(at - RECENT_DAYS * 24 * 3600_000), lte: new Date(at) } },
+        orderBy: { startsAt: "desc" },
+        take: RECENT_SHOWN * 2,
+        select: TOURNAMENT_CARD,
+      }),
+    ]);
+    return { rows, past };
+  });
   const now = new Date();
-  const verified = { status: "published", org: { verifiedAt: { not: null } } } as const;
-  const [rows, past] = await Promise.all([
-    prisma.tournament.findMany({
-      where: { ...verified, startsAt: { gte: new Date(now.getTime() - 2 * 24 * 3600_000) } },
-      orderBy: { startsAt: "asc" },
-      take: 60,
-      select: TOURNAMENT_CARD,
-    }),
-    // Recently finished, newest first: where a visitor finds a tournament's
-    // results, players and published code once it is over (the list above
-    // drops it the moment it finishes). A knockout's end is its final, so
-    // a few more rows than shown are read and the unfinished dropped.
-    prisma.tournament.findMany({
-      where: { ...verified, startsAt: { gte: new Date(now.getTime() - RECENT_DAYS * 24 * 3600_000), lte: now } },
-      orderBy: { startsAt: "desc" },
-      take: RECENT_SHOWN * 2,
-      select: TOURNAMENT_CARD,
-    }),
-  ]);
   return {
     tournaments: rows.map((t) => cardOf(t, now)).filter((t) => t.phase !== "finished"),
     recent: past
@@ -481,18 +551,20 @@ export async function tournamentPage(slug: string, viewer: { userId: string; isA
     },
   });
   if (!t) throw new BattlesError(404, "No such tournament.");
-  const role = viewer
-    ? ((await prisma.battleOrgMember.findUnique({ where: { orgId_userId: { orgId: t.orgId, userId: viewer.userId } }, select: { role: true } }))?.role ?? null)
-    : null;
+  // The reader's role and their entry both hang off the row alone, so they
+  // travel together; an entry read for a tournament the reader may not see
+  // is dropped with the 404 below, unsent.
+  const [role, entry] = viewer
+    ? await Promise.all([
+        prisma.battleOrgMember.findUnique({ where: { orgId_userId: { orgId: t.orgId, userId: viewer.userId } }, select: { role: true } }).then((m) => m?.role ?? null),
+        prisma.tournamentEntry.findUnique({
+          where: { tournamentId_userId: { tournamentId: t.id, userId: viewer.userId } },
+          select: { status: true, team: { select: { name: true } } },
+        }),
+      ])
+    : [null, null];
   const canManage = role !== null && MANAGER_ROLES.includes(role);
   if (!canManage && (isHiddenStatus(t.status) || !t.org.verifiedAt)) throw new BattlesError(404, "No such tournament.");
-
-  const entry = viewer
-    ? await prisma.tournamentEntry.findUnique({
-        where: { tournamentId_userId: { tournamentId: t.id, userId: viewer.userId } },
-        select: { status: true, team: { select: { name: true } } },
-      })
-    : null;
   const { orgId: _orgId, inviteCode, _count, allowedDomains, ...rest } = t;
   return {
     tournament: {
@@ -562,6 +634,7 @@ export async function register(viewer: { userId: string; email: string }, tourna
     }
   });
   if (inserted === 0) throw new BattlesError(409, "Registration just closed, or the last place was taken.");
+  forgetEntries(t.id, [viewer.userId]);
   return { status };
 }
 
@@ -575,18 +648,21 @@ export async function withdraw(userId: string, tournamentId: string) {
   if (entry.teamId) throw new BattlesError(409, "Your team was entered by the organizer; ask them to change it.");
   if (entry.tournament.startsAt <= new Date()) throw new BattlesError(409, "The tournament has started.");
   await prisma.tournamentEntry.delete({ where: { id: entry.id } });
+  forgetEntries(tournamentId, [userId]);
   return { ok: true };
 }
 
 /** Approve or decline a pending registration (or change a decision before the start). */
 export async function decideEntry(userId: string, entryId: string, status: unknown) {
   if (status !== "approved" && status !== "rejected") throw new BattlesError(400, "status must be approved or rejected.");
-  const entry = await prisma.tournamentEntry.findUnique({ where: { id: entryId }, select: { id: true, tournamentId: true, teamId: true } });
+  const entry = await prisma.tournamentEntry.findUnique({ where: { id: entryId }, select: { id: true, tournamentId: true, teamId: true, userId: true } });
   if (!entry) throw new BattlesError(404, "No such registration.");
   const t = await managedTournament(userId, entry.tournamentId);
   if (entry.teamId) throw new BattlesError(409, "Team members are managed through the team list.");
   if (t.startsAt <= new Date()) throw new BattlesError(409, "The tournament has started.");
   await prisma.tournamentEntry.update({ where: { id: entry.id }, data: { status, decidedAt: new Date() } });
+  // The entrant's dashboard, not the organizer's: it is their entry that appeared or went.
+  forgetEntries(entry.tournamentId, [entry.userId]);
   return { ok: true };
 }
 
@@ -661,16 +737,19 @@ export async function uploadTeams(userId: string, tournamentId: string, list: un
       }),
     ),
   );
+  forgetEntries(t.id, [...seenUsers.keys()]);
   return manageView(userId, t.id);
 }
 
 export async function deleteTeam(userId: string, teamId: string) {
-  const team = await prisma.tournamentTeam.findUnique({ where: { id: teamId }, select: { id: true, tournamentId: true } });
+  // The members are read with the team: their entries go with it, and so does the tournament from their dashboards.
+  const team = await prisma.tournamentTeam.findUnique({ where: { id: teamId }, select: { id: true, tournamentId: true, entries: { select: { userId: true } } } });
   if (!team) throw new BattlesError(404, "No such team.");
   const t = await managedTournament(userId, team.tournamentId);
   if (t.startsAt <= new Date()) throw new BattlesError(409, "Teams are fixed once the contest starts.");
   // The team's entries go with it (onDelete: Cascade).
   await prisma.tournamentTeam.delete({ where: { id: team.id } });
+  forgetEntries(t.id, team.entries.map((e) => e.userId));
   return manageView(userId, t.id);
 }
 
@@ -734,7 +813,7 @@ export async function setOrgVerified(orgId: string, verified: unknown, version?:
   if (typeof verified !== "boolean") throw new BattlesError(400, "verified must be true or false.");
   const org = await prisma.battleOrg.findUnique({
     where: { id: orgId },
-    select: { slug: true, name: true, kind: true, website: true, city: true, about: true, updatedAt: true, tournaments: { select: { slug: true } } },
+    select: { slug: true, name: true, kind: true, website: true, city: true, about: true, updatedAt: true, tournaments: { select: { id: true, slug: true } } },
   });
   if (!org) throw new BattlesError(404, "No such organization.");
   if (verified && typeof version === "string" && version !== org.updatedAt.toISOString()) {
@@ -744,7 +823,7 @@ export async function setOrgVerified(orgId: string, verified: unknown, version?:
     where: { id: orgId },
     data: verified ? { verifiedAt: new Date(), verifiedSnapshot: orgSnapshot(org) as unknown as Prisma.InputJsonValue } : { verifiedAt: null },
   });
-  forgetBattlesHeads({ tournaments: org.tournaments.map((t) => t.slug), org: org.slug });
+  forgetTournaments(org.tournaments, org.slug);
   return { ok: true };
 }
 
@@ -800,6 +879,6 @@ export async function approveTournament(tournamentId: string, version?: unknown)
     data: { status: "published", reviewRequestedAt: null, approvedSnapshot: tournamentSnapshot(fieldsOf(t as TournamentFields & { allowedDomains: unknown })) as unknown as Prisma.InputJsonValue },
   });
   if (count === 0) throw new BattlesError(409, "The organizer changed it again just now. Reload the queue to read the latest before approving.");
-  forgetBattlesHeads({ tournaments: [t.slug] });
+  forgetTournaments([t]);
   return { ok: true };
 }

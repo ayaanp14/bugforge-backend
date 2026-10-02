@@ -1,4 +1,5 @@
 import { prisma } from "../lib/prisma.js";
+import { broadcastSignal, onSignal } from "../lib/cache.js";
 import { getDashboard, getSubmissionHistory } from "./dashboard.js";
 import { getGitHubCard } from "./github-connection.js";
 
@@ -15,7 +16,9 @@ import { getGitHubCard } from "./github-connection.js";
  *
  * The numbers come from the owner's own dashboard aggregate (cached, and
  * invalidated on every submission), so the two views of an account always
- * agree; the identity is read fresh, so a profile edit shows at once.
+ * agree; the identity is held for a minute at most and dropped by the writes
+ * that change it (PATCH /api/me, a social sign-in), so a profile edit still
+ * shows at once.
  */
 
 const PUBLIC_USER_SELECT = {
@@ -36,9 +39,71 @@ const PUBLIC_USER_SELECT = {
 /** Usernames are 3–20 of [a-z0-9_] today; older generated ones are looser, so this only screens out what could never be one. */
 const PLAUSIBLE_USERNAME = /^[A-Za-z0-9_.-]{1,40}$/;
 
-async function findUser(username: string) {
+function queryUser(handle: string) {
+  return prisma.user.findUnique({ where: { username: handle }, select: PUBLIC_USER_SELECT });
+}
+
+type PublicUserRow = NonNullable<Awaited<ReturnType<typeof queryUser>>>;
+
+/**
+ * The identity row behind each username read lately, for a minute.
+ *
+ * A profile page is three requests (the profile, its GitHub card, a page of
+ * submissions), each of which looked the name up again, and a crawler walking
+ * /u/<name> links asks for the same few names over and over. A plain Map
+ * rather than lib/cache.ts, for two reasons. Only hits are kept: a name that
+ * does not exist is one indexed read to refuse, and keeping misses would let
+ * any string in the URL mint an entry in the L1 tier the dashboards live in
+ * (and make a just-claimed name 404 for the window). And the expiry is hard:
+ * cached()'s stale-while-revalidate serves an expired entry while it
+ * refreshes, so a name its owner had just renamed away from would keep
+ * answering with their profile. Bounded the cheap way: a full clear at the cap.
+ */
+const PUBLIC_USER_TTL_MS = 60_000;
+const PUBLIC_USER_MAX = 5_000;
+const publicUsers = new Map<string, { row: PublicUserRow; until: number }>();
+
+/**
+ * Bumped by every drop. A read that was already in flight when an edit
+ * landed carries the pre-edit row, and storing it would undo the drop for the
+ * full minute — the race lib/cache.ts guards with its load tokens. Drops are
+ * rare (a profile save), so one counter for all names is enough.
+ */
+let generation = 0;
+
+async function findUser(username: string): Promise<PublicUserRow | null> {
   if (!PLAUSIBLE_USERNAME.test(username)) return null;
-  return prisma.user.findUnique({ where: { username: username.toLowerCase() }, select: PUBLIC_USER_SELECT });
+  const handle = username.toLowerCase();
+  const hit = publicUsers.get(handle);
+  if (hit && hit.until > Date.now()) return hit.row;
+  const startedAt = generation;
+  const row = await queryUser(handle);
+  if (!row) {
+    publicUsers.delete(handle);
+    return null;
+  }
+  if (startedAt === generation) {
+    if (publicUsers.size >= PUBLIC_USER_MAX) publicUsers.clear();
+    publicUsers.set(handle, { row, until: Date.now() + PUBLIC_USER_TTL_MS });
+  }
+  return row;
+}
+
+const PUBLIC_USER_SIGNAL = "public-user";
+
+/** By account rather than by name, so a rename drops the old name's entry without the caller having to know it. */
+function dropPublicUser(userId: string): void {
+  generation += 1;
+  for (const [handle, entry] of publicUsers) if (entry.row.id === userId) publicUsers.delete(handle);
+}
+
+// The sender receives its own signal too; dropping twice is harmless.
+onSignal(PUBLIC_USER_SIGNAL, dropPublicUser);
+
+/** After a write to an account's public identity (name, avatar, username, links, readme): here and on every instance. */
+export function forgetPublicUser(userId: string): void {
+  dropPublicUser(userId);
+  broadcastSignal(PUBLIC_USER_SIGNAL, userId);
 }
 
 export async function getPublicProfile(username: string, viewerId: string | null) {
@@ -48,7 +113,6 @@ export async function getPublicProfile(username: string, viewerId: string | null
 }
 
 type Dashboard = Awaited<ReturnType<typeof getDashboard>>;
-type PublicUserRow = NonNullable<Awaited<ReturnType<typeof findUser>>>;
 
 /**
  * The allow-list itself, pure so public-profile.test.ts can hand it a

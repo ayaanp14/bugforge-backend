@@ -263,6 +263,22 @@ const baselined = new Set<string>();
 const MAX_BASELINED = 50_000;
 
 /**
+ * Accounts holding "welcome" with nothing yet to solve, and until when.
+ *
+ * The set above only takes an account once it holds both rows, so one that
+ * has never solved anything — most new accounts, the ones opening the bell
+ * most — re-ran the backfill's two reads before every bell list, to learn
+ * again that first_solve was not due. It is not due until a first solve, and
+ * that write lands it itself (routes/execution.ts, createNotificationOnce),
+ * so the backfill has nothing to add meanwhile. Remembered for an hour
+ * rather than for good: a solve that reaches UserStats some other way (the
+ * counter reconciliation in services/me.ts) is then still backfilled, an
+ * hour late at most.
+ */
+const awaitingFirstSolve = new Map<string, number>();
+const AWAITING_FIRST_SOLVE_MS = 60 * 60_000;
+
+/**
  * Backfill for accounts that predate the notification system.
  *
  * This sits in front of `GET /api/me/notifications`, so its cost is paid
@@ -278,6 +294,8 @@ const MAX_BASELINED = 50_000;
  */
 export async function ensureBaseline(userId: string) {
   if (baselined.has(userId)) return;
+  const until = awaitingFirstSolve.get(userId);
+  if (until !== undefined && until > Date.now()) return;
   try {
     const [existing, stats] = await Promise.all([
       prisma.notification.findMany({
@@ -330,6 +348,10 @@ export async function ensureBaseline(userId: string) {
     if (has.has(WELCOME.type) && has.has(FIRST_SOLVE.type)) {
       if (baselined.size >= MAX_BASELINED) baselined.clear();
       baselined.add(userId);
+      awaitingFirstSolve.delete(userId);
+    } else if (has.has(WELCOME.type) && !(stats && stats.problemsSolved > 0)) {
+      if (awaitingFirstSolve.size >= MAX_BASELINED) awaitingFirstSolve.clear();
+      awaitingFirstSolve.set(userId, Date.now() + AWAITING_FIRST_SOLVE_MS);
     }
   } catch (err) {
     console.error("ensureBaseline error:", err);

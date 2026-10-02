@@ -2,7 +2,8 @@ import { Router } from "express";
 import { isAdminEmail, requireAuth } from "../middleware/auth.js";
 import { prisma } from "../lib/prisma.js";
 import { isOwnerEmail } from "../lib/plans.js";
-import { getHeatmap, getSubmissionHistory, getPairingHistory, getDifficultyStats, getRank, getDashboard, invalidateDashboard } from "../services/dashboard.js";
+import { getCachedHeatmap, getSubmissionHistory, getPairingHistory, getDifficultyStats, getCachedRank, getDashboard, invalidateDashboard } from "../services/dashboard.js";
+import { forgetPublicUser } from "../services/public-profile.js";
 import { ensureBaseline, listNotifications, getUnreadCount, markAllRead } from "../services/notifications.js";
 import { ME_SELECT, getMePayload, invalidateMe } from "../services/me.js";
 import { hashPassword, passwordProblem, verifyPassword } from "../lib/passwords.js";
@@ -29,7 +30,7 @@ function pageArgs(query: Record<string, unknown>, defaultLimit: number): { page:
 // GET /api/me/heatmap — Contribution data for the last 365 days
 router.get("/heatmap", requireAuth, async (req, res) => {
   try {
-    res.json(await getHeatmap(req.user!.userId));
+    res.json(await getCachedHeatmap(req.user!.userId));
   } catch (err) {
     console.error("GET /api/me/heatmap error:", err);
     res.status(500).json({ error: "Internal server error" });
@@ -231,6 +232,10 @@ router.patch("/", requireAuth, async (req, res) => {
     // so the hero kept the old identity for up to five minutes.
     invalidateMe(req.user!.userId);
     invalidateDashboard(req.user!.userId);
+    // …and /u/<username> holds the identity for a minute, under the old name
+    // too when this was a rename (dropped by account, so the old name is not
+    // needed here).
+    forgetPublicUser(req.user!.userId);
 
     res.json(updatedUser);
   } catch (err: any) {
@@ -372,11 +377,11 @@ router.get("/difficulty-stats", requireAuth, async (req, res) => {
   }
 });
 
-// GET /api/me/rank?type=combined|questions|bugs
+// GET /api/me/rank?type=combined|questions|bugs — cached per (user, board), see getCachedRank
 router.get("/rank", requireAuth, async (req, res) => {
   try {
     const { type = "combined" } = req.query;
-    res.json(await getRank(req.user!.userId, String(type)));
+    res.json(await getCachedRank(req.user!.userId, String(type)));
   } catch (err) {
     console.error("GET /api/me/rank error:", err);
     res.status(500).json({ error: "Internal server error" });

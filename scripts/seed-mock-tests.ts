@@ -16,6 +16,7 @@ import { prisma } from "../src/lib/prisma.js";
 import { MOCK_TESTS, totalDuration, totalQuestions, validateMockTests, type MockTestSeed } from "./mock-test-data/index.js";
 import { aptitudeCategory, aptitudeTopic } from "../src/lib/aptitude-topics.js";
 import { drawPaper, formatDuration, type DrawableQuestion } from "../src/lib/mock-tests.js";
+import { flushContentCaches } from "./content-caches.js";
 
 const mode = process.argv.includes("--seed") ? "seed" : "validate";
 
@@ -131,6 +132,7 @@ async function main() {
   }
 
   console.log(`\nseeded ${MOCK_TESTS.length} patterns`);
+  await flushContentCaches("mock-tests");
   await prisma.$disconnect();
 }
 

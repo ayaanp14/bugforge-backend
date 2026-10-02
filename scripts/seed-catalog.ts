@@ -21,6 +21,7 @@ import { runBatch } from "../src/lib/batch-judge.js";
 import { ALL_LANGUAGES, applyDriver, renderStub, type Language } from "../src/lib/driver-codegen.js";
 import { CATALOG } from "./catalog/index.js";
 import { makeRng, solutionsJson, type CatalogProblem } from "./catalog/types.js";
+import { flushContentCaches } from "./content-caches.js";
 
 const args = process.argv.slice(2);
 const flag = (n: string) => args.includes(`--${n}`);
@@ -213,6 +214,7 @@ async function validate() {
   console.log(`Catalog size: ${CATALOG.length} problems.`);
   if (flag("seed")) await seed();
   if (flag("editorials")) await editorials();
+  if (flag("seed") || flag("editorials")) await flushContentCaches("catalog");
   if (flag("validate")) await validate();
   if (!flag("seed") && !flag("editorials") && !flag("validate")) {
     console.log("usage: tsx scripts/seed-catalog.ts --seed [--count N] [--only slug] | --editorials [--only slug] | --validate [--only slug]");

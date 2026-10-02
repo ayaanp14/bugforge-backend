@@ -131,6 +131,30 @@ export async function redisDel(...keys: string[]): Promise<void> {
   await guard(r.del(...keys.map(prefixed)));
 }
 
+/**
+ * Delete every key under a prefix — for families keyed by a free parameter
+ * (the community feed per tag), where the writer cannot name each key.
+ *
+ * SCAN, never KEYS: the instance is capped at 128 MB and shared with the
+ * socket and session state, and KEYS blocks the server for the whole walk.
+ * Each SCAN step and each DEL batch is guarded like any other command, so an
+ * outage leaves the keys to their TTL rather than stalling the caller.
+ */
+export async function redisDelPrefix(prefix: string): Promise<void> {
+  const r = connect();
+  if (!r || !prefix) return;
+  const match = `${prefixed(prefix).replace(/[*?[\]\\]/g, "\\$&")}*`;
+  let cursor = "0";
+  for (let step = 0; step < 1000; step++) {
+    const page = await guard(r.scan(cursor, "MATCH", match, "COUNT", 500));
+    if (!page) return;
+    const [next, keys] = page;
+    if (keys.length > 0) await guard(r.del(...keys));
+    cursor = next;
+    if (cursor === "0") return;
+  }
+}
+
 // Namespaced like the keys: an invalidation from a process on another
 // database must not reach this one's L1.
 const INVALIDATION_CHANNEL = prefixed("cache:invalidate");

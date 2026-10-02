@@ -15,6 +15,8 @@ import { issueHandoff } from "../lib/handoff-store.js";
 import { welcomeNewAccount } from "../lib/auth-mail.js";
 import { forgetSessions } from "../lib/session-revocation.js";
 import { isLinkState, linkResult, readLinkState } from "../lib/github.js";
+import { invalidateDashboard } from "../services/dashboard.js";
+import { forgetPublicUser } from "../services/public-profile.js";
 
 /**
  * Social sign-in, ported off NextAuth.
@@ -538,10 +540,25 @@ async function upsertSocialUser(args: UpsertArgs): Promise<SocialUserResult> {
       updateData.password_hash = null;
       updateData.sessionsValidFrom = new Date(Math.floor(Date.now() / 1000) * 1000);
     }
+    const before = dbUser;
     dbUser = await prisma.user.update({ where: { email: args.email }, data: updateData, select: SOCIAL_USER_SELECT });
     if (firstProof) {
       forgetSessions(dbUser.id);
       welcomeNewAccount(dbUser, args.provider);
+    }
+    // Every sign-in rewrites the name and avatar from the provider. When that
+    // changed what the account shows — a new picture, a new name, a first
+    // username — the cached /api/me and dashboard (which carry both) and the
+    // public profile's identity would otherwise keep the old ones for their
+    // TTL. An unchanged sign-in, the usual case, drops nothing.
+    if (
+      firstProof ||
+      before.name !== dbUser.name ||
+      before.avatar_url !== dbUser.avatar_url ||
+      before.username !== dbUser.username
+    ) {
+      invalidateDashboard(dbUser.id);
+      forgetPublicUser(dbUser.id);
     }
   }
 

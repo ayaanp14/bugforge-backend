@@ -6,6 +6,8 @@ import { encodeCode, decodeCode } from "../lib/obfuscation.js";
 import { generateInviteCode } from "../lib/room-codes.js";
 import { requireAuth } from "../middleware/auth.js";
 import { emitToRoom, socketsInRoom } from "../lib/realtime.js";
+import { cached, invalidate } from "../lib/cache.js";
+import { invalidateDashboard } from "../services/dashboard.js";
 
 const router = Router();
 
@@ -62,11 +64,45 @@ async function closeIfAbandoned<T extends { id: string; status: string; startedA
   if (Date.now() - since < EMPTY_ROOM_TTL_MS) return room;
   if ((await socketsInRoom(room.id)) > 0) return room;
   const endedAt = new Date();
-  await prisma.pairRoom.updateMany({
+  const { count } = await prisma.pairRoom.updateMany({
     where: { id: room.id, status: { not: "closed" } },
     data: { status: "closed", endedAt },
   });
+  if (count > 0) await afterRoomClosed(room.id);
   return { ...room, status: "closed", endedAt };
+}
+
+/**
+ * The lobby is the same list for every caller (the route reads no session)
+ * and every open of the pairing page asks for it, so one copy is shared for
+ * a few seconds. What changes it drops it: a room opened, joined (it leaves
+ * the lobby as it goes active), closed or deleted — so the copy is never
+ * staler than the window, and the only thing that reaches it by the clock
+ * is a waiting room ageing out of LOBBY_WINDOW_MS.
+ */
+const LOBBY_KEY = "pair:lobby:v1";
+const LOBBY_TTL_MS = 3_000;
+
+function forgetLobby(): void {
+  invalidate(LOBBY_KEY);
+}
+
+/**
+ * After a room closes, by whichever path (the socket layer's grace timer in
+ * index.ts, or a read finding it abandoned here): it leaves the lobby, and
+ * it joins each participant's pairing history — the dashboard's `pairing`
+ * slice, otherwise stale for the dashboard's five-minute TTL. Never throws:
+ * the room is closed either way, and a cache left to its TTL is no reason to
+ * fail the request that closed it.
+ */
+export async function afterRoomClosed(roomId: string): Promise<void> {
+  forgetLobby();
+  try {
+    const people = await prisma.roomParticipant.findMany({ where: { roomId }, select: { userId: true } });
+    for (const p of people) invalidateDashboard(p.userId);
+  } catch (err) {
+    console.error("pair room close: could not refresh participants' dashboards:", err);
+  }
 }
 
 // GET /api/pair-rooms — List active pair programming rooms
@@ -81,29 +117,32 @@ router.get("/", requireAuth, async (_req, res) => {
     // `recoveryCode` to anyone who asked (and the route was open to anyone),
     // and the "obfuscation" on them is a base64 prefix — so every private
     // room's passcode was one lobby request away.
-    const rooms = await prisma.pairRoom.findMany({
-      where: { status: "waiting", startedAt: { gte: new Date(Date.now() - LOBBY_WINDOW_MS) } },
-      select: {
-        id: true,
-        mode: true,
-        status: true,
-        maxParticipants: true,
-        startedAt: true,
-        createdBy: true,
-        problemId: true,
-        creator: {
-          select: { id: true, name: true, avatar_url: true }
+    const rooms = await cached(LOBBY_KEY, LOBBY_TTL_MS, async () => {
+      const rows = await prisma.pairRoom.findMany({
+        where: { status: "waiting", startedAt: { gte: new Date(Date.now() - LOBBY_WINDOW_MS) } },
+        select: {
+          id: true,
+          mode: true,
+          status: true,
+          maxParticipants: true,
+          startedAt: true,
+          createdBy: true,
+          problemId: true,
+          creator: {
+            select: { id: true, name: true, avatar_url: true }
+          },
+          problem: {
+            select: { title: true, difficulty: true }
+          },
+          _count: { select: { participants: true } },
         },
-        problem: {
-          select: { title: true, difficulty: true }
-        },
-        _count: { select: { participants: true } },
-      },
-      orderBy: { startedAt: "desc" },
-      take: LOBBY_TAKE,
+        orderBy: { startedAt: "desc" },
+        take: LOBBY_TAKE,
+      });
+      return rows.map(({ _count, ...room }) => ({ ...room, participantCount: _count.participants }));
     });
 
-    res.json(rooms.map(({ _count, ...room }) => ({ ...room, participantCount: _count.participants })));
+    res.json(rooms);
   } catch (err) {
     console.error("GET /api/pair-rooms error:", err);
     res.status(500).json({ error: "Internal server error" });
@@ -167,6 +206,7 @@ router.post("/", requireAuth, async (req, res) => {
         problem: { select: ROOM_PROBLEM_SELECT }
       }
     });
+    forgetLobby();
 
     res.status(201).json(room);
   } catch (err) {
@@ -302,10 +342,12 @@ router.post("/:id/join", requireAuth, async (req, res) => {
        // status rather than on the participant count we read earlier: two
        // joiners arriving together both saw "one participant" and both wrote,
        // which restamped startedAt and moved the abandonment clock backwards.
-       await prisma.pairRoom.updateMany({
+       const { count: started } = await prisma.pairRoom.updateMany({
          where: { id, status: "waiting" },
          data: { status: "active", startedAt: new Date() }
        });
+       // Active rooms are not in the lobby.
+       if (started > 0) forgetLobby();
     }
 
     res.json({ message: "Joined successfully" });
@@ -339,6 +381,7 @@ router.delete("/:id", requireAuth, async (req, res) => {
     // Anyone still sitting in it is told, the same way a soft close tells
     // them; the row is gone, so their next request would only 404.
     emitToRoom(id, "room-ended", { slug: null });
+    forgetLobby();
 
     res.status(204).send();
   } catch (err) {

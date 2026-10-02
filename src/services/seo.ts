@@ -1,5 +1,5 @@
 import { prisma } from "../lib/prisma.js";
-import { cached } from "../lib/cache.js";
+import { cached, invalidate } from "../lib/cache.js";
 import { APTITUDE_CANONICAL, APTITUDE_CATEGORIES, APTITUDE_TOPICS, aptitudeCanonicalSlug, aptitudeTopic, aptitudeCategory } from "../lib/aptitude-topics.js";
 import { escapeHtml, markdownOutline, markdownToHtml } from "../lib/markdown-html.js";
 import { BUG_HUBS, bugHub } from "../lib/bug-hubs.js";
@@ -637,8 +637,22 @@ const SOLUTION_NAMES: Record<string, string> = {
   python: "Python", ruby: "Ruby", rust: "Rust", swift: "Swift", typescript: "TypeScript",
 };
 
+const problemHeadKey = (slug: string) => `seo:head:problem:v3:${slug}`;
+
+/**
+ * What an admin edit to one problem makes stale here: its page head (an
+ * hour, then the Worker's own hour on top), the shared-description set and
+ * the problems sitemap. Called by `invalidateProblem` in routes/problems.ts;
+ * before it was, an edited or retired problem kept its old head for the TTL.
+ */
+export function forgetProblemSeo(slug: string): void {
+  invalidate(problemHeadKey(slug));
+  invalidate("seo:problem-descriptions:v1");
+  invalidate("seo:sitemap:v3:problems");
+}
+
 function problemHead(slug: string): Promise<PageHead | null> {
-  return cached(`seo:head:problem:v3:${slug}`, HEAD_TTL_MS, async () => {
+  return cached(problemHeadKey(slug), HEAD_TTL_MS, async () => {
     const p = await prisma.problem.findFirst({
       where: { slug, isPublished: true },
       select: { title: true, difficulty: true, description: true, tags: true, editorial: true, solutions: true, timeLimitMs: true, memoryLimitMb: true },

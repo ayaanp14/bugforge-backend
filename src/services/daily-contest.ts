@@ -252,6 +252,8 @@ export async function recordContestSubmission(
     data: { solvedAt: at, timeTakenSec, penaltySec, points },
   });
   invalidate(boardKey(contest.id));
+  invalidate(seasonKey("month", contest.date.slice(0, 7)));
+  invalidate(seasonKey("all"));
   invalidate(standingsKey("month", contest.date.slice(0, 7)));
   invalidate(standingsKey("all"));
   invalidate(calendarKey(contest.date.slice(0, 7), todayUtc()));
@@ -351,7 +353,38 @@ export async function myDayStanding(contestId: string, userId: string) {
   return { ...entry, rank };
 }
 
-const standingsKey = (period: "month" | "all", month?: string) => `contest:standings:${period}:${month ?? ""}`;
+/**
+ * One key per table. The all-time table used to be cached per `month` (the
+ * parameter always has a default) while a solve cleared `…:all:` — a key
+ * nothing ever read — so the all-time standings were never invalidated and
+ * were held once for every month a caller passed.
+ */
+const standingsKey = (period: "month" | "all", month?: string) => `contest:standings:${period}:${period === "month" ? (month ?? "") : ""}`;
+const seasonKey = (period: "month" | "all", month?: string) => `contest:season:${period}:${period === "month" ? (month ?? "") : ""}`;
+
+type SeasonLine = { userId: string; points: number; penaltySec: number; solved: number };
+
+/**
+ * Every solver's line for a season, best first — the one GROUP BY both the
+ * table and the reader's own standing read. `myStanding` used to run that
+ * GROUP BY again on every request (all time: a scan of every solved entry
+ * ever), uncached, to count who was ahead of one reader. Cleared with the
+ * standings on every solve, so a solver sees their new place at once.
+ */
+function seasonLines(period: "month" | "all", month: string): Promise<SeasonLine[]> {
+  return cached(seasonKey(period, month), 30_000, async () => {
+    const where = period === "month" ? { date: { startsWith: month }, solvedAt: { not: null } } : { solvedAt: { not: null } };
+    const grouped = await prisma.dailyContestEntry.groupBy({
+      by: ["userId"],
+      where,
+      _sum: { points: true, penaltySec: true },
+      _count: { _all: true },
+    });
+    return grouped
+      .map((g) => ({ userId: g.userId, points: g._sum.points ?? 0, penaltySec: g._sum.penaltySec ?? 0, solved: g._count._all }))
+      .sort((a, b) => b.points - a.points || a.penaltySec - b.penaltySec);
+  });
+}
 
 export interface StandingRow {
   rank: number;
@@ -368,43 +401,32 @@ export interface StandingRow {
  */
 export async function standings(period: "month" | "all", month = todayUtc().slice(0, 7), limit = 50) {
   return cached(standingsKey(period, month), 30_000, async () => {
-    const where = period === "month" ? { date: { startsWith: month }, solvedAt: { not: null } } : { solvedAt: { not: null } };
-    const grouped = await prisma.dailyContestEntry.groupBy({
-      by: ["userId"],
-      where,
-      _sum: { points: true, penaltySec: true },
-      _count: { _all: true },
-    });
-    grouped.sort((a, b) => (b._sum.points ?? 0) - (a._sum.points ?? 0) || (a._sum.penaltySec ?? 0) - (b._sum.penaltySec ?? 0));
-    const top = grouped.slice(0, limit);
+    const lines = await seasonLines(period, month);
+    const top = lines.slice(0, limit);
     const users = await prisma.user.findMany({ where: { id: { in: top.map((g) => g.userId) } }, select: RANKED_USER_SELECT });
     const byId = new Map(users.map((u) => [u.id, u]));
     const rows: StandingRow[] = [];
     for (const g of top) {
       const user = byId.get(g.userId);
       if (!user) continue;
-      rows.push({ rank: rows.length + 1, user, points: g._sum.points ?? 0, solved: g._count._all, penaltySec: g._sum.penaltySec ?? 0 });
+      rows.push({ rank: rows.length + 1, user, points: g.points, solved: g.solved, penaltySec: g.penaltySec });
     }
-    return { rows, total: grouped.length };
+    return { rows, total: lines.length };
   });
 }
 
 /** The reader's standing in a season, computed from the same ordering as the table. */
 export async function myStanding(userId: string, period: "month" | "all", month = todayUtc().slice(0, 7)) {
-  const where = period === "month" ? { date: { startsWith: month }, solvedAt: { not: null } } : { solvedAt: { not: null } };
-  const mine = await prisma.dailyContestEntry.aggregate({ where: { ...where, userId }, _sum: { points: true, penaltySec: true }, _count: { _all: true } });
-  const points = mine._sum.points ?? 0;
-  if (mine._count._all === 0) return null;
-  const penaltySec = mine._sum.penaltySec ?? 0;
+  const lines = await seasonLines(period, month);
+  const mine = lines.find((g) => g.userId === userId);
+  if (!mine) return null;
   // Everyone with more points, or the same points and less penalty, is ahead.
-  const grouped = await prisma.dailyContestEntry.groupBy({ by: ["userId"], where, _sum: { points: true, penaltySec: true } });
   let ahead = 0;
-  for (const g of grouped) {
+  for (const g of lines) {
     if (g.userId === userId) continue;
-    const p = g._sum.points ?? 0;
-    if (p > points || (p === points && (g._sum.penaltySec ?? 0) < penaltySec)) ahead += 1;
+    if (g.points > mine.points || (g.points === mine.points && g.penaltySec < mine.penaltySec)) ahead += 1;
   }
-  return { rank: ahead + 1, points, solved: mine._count._all, penaltySec };
+  return { rank: ahead + 1, points: mine.points, solved: mine.solved, penaltySec: mine.penaltySec };
 }
 
 /* ── the calendar ──────────────────────────────────────────────────── */

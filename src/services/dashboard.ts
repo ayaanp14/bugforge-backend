@@ -372,12 +372,45 @@ export async function getHeatmap(userId: string, opts: { compact?: boolean } = {
   return { ...totals, heatmapData: dates.map((date) => ({ date, count: dailyCounts[date] || 0 })) };
 }
 
+/**
+ * GET /api/me/heatmap's copy (the expanded form — the mobile app reads it).
+ * It ran the year's GROUP BY on every call while the dashboard next door had
+ * the same numbers cached; a minute in L1 here, dropped by invalidateDashboard
+ * with everything else a submission moves, so a solve still lights its square
+ * at once. The window's day turns over within the minute.
+ */
+const heatmapKey = (userId: string) => `heatmap:v1:${userId}`;
+
+export function getCachedHeatmap(userId: string) {
+  return cached(heatmapKey(userId), 60_000, () => getHeatmap(userId));
+}
+
 // ── Rank ────────────────────────────────────────────────────────
 /** The XP column each leaderboard ranks by — whitelisted before it is spliced into SQL. */
 const RANK_COLUMN = { combined: "xp", questions: "questionsXp", bugs: "bugsXp" } as const;
+type RankKind = keyof typeof RANK_COLUMN;
+const RANK_KINDS = Object.keys(RANK_COLUMN) as RankKind[];
+
+/** Anything unrecognised ranks by the combined column, as it always has. */
+const rankKindOf = (type: string): RankKind => (type === "questions" ? "questions" : type === "bugs" ? "bugs" : "combined");
+
+/**
+ * GET /api/me/rank's copy, per (user, board). A COUNT over every account
+ * scoring above this one, asked on every leaderboard visit and tab switch.
+ * Other people's solves move it too, and nothing tells this key about those,
+ * so half a minute rather than the dashboard's five; the caller's own solves
+ * drop it through invalidateDashboard. The kind is normalised before it is a
+ * key, so a free-form `?type=` cannot mint entries.
+ */
+const rankKey = (userId: string, kind: RankKind) => `rank:v1:${userId}:${kind}`;
+
+export function getCachedRank(userId: string, type = "combined") {
+  const kind = rankKindOf(type);
+  return cached(rankKey(userId, kind), 30_000, () => getRank(userId, kind));
+}
 
 export async function getRank(userId: string, type = "combined") {
-  const column = RANK_COLUMN[type === "questions" ? "questions" : type === "bugs" ? "bugs" : "combined"];
+  const column = RANK_COLUMN[rankKindOf(type)];
   const col = Prisma.raw("`" + column + "`");
 
   // The user's score and the number of users above it, in one statement. This
@@ -684,6 +717,9 @@ const dashboardKey = (userId: string) => `dash:v3:${userId}`;
 export function invalidateDashboard(userId: string): void {
   invalidate(dashboardKey(userId));
   invalidate(problemStateKey(userId));
+  // The standalone reads of two of the dashboard's own slices.
+  invalidate(heatmapKey(userId));
+  for (const kind of RANK_KINDS) invalidate(rankKey(userId, kind));
   invalidateMe(userId);
 }
 

@@ -15,6 +15,7 @@ import "dotenv/config";
 import { prisma } from "../src/lib/prisma.js";
 import { uniqueSlug } from "../src/lib/slug.js";
 import { BUG_HUB_IDS } from "../src/lib/bug-hubs.js";
+import { flushContentCaches } from "./content-caches.js";
 
 const apply = process.argv.includes("--apply");
 
@@ -29,6 +30,7 @@ async function main() {
     if (apply) await prisma.bugChallenge.update({ where: { id: row.id }, data: { slug } });
   }
   if (!apply && rows.length) console.log("\nDry run. Add --apply to write.");
+  if (apply && rows.length) await flushContentCaches("bugs");
 }
 
 main()

@@ -169,6 +169,10 @@ router.patch("/:id", requireAuth, async (req: any, res) => {
         focusAreaIds: focusAreaIds || [],
       },
     });
+    // The history's analytics and its role filter are read through this
+    // setup (savedInterview.roleId …) and cached until a session opens,
+    // closes or goes; a changed role re-files every past round under it.
+    invalidateInterviewHistory(req.user.userId);
 
     res.json({
       success: true,

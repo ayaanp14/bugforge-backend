@@ -1,5 +1,6 @@
 import { Router, type NextFunction, type Request, type Response } from "express";
 import { adminOnly, isAdminEmail, optionalAuth, requireAuth } from "../middleware/auth.js";
+import { browserCache } from "../lib/http-cache.js";
 import {
   BattlesError,
   approveTournament,
@@ -108,7 +109,11 @@ const remindingViewer = (req: Authed) => ({ userId: req.user.userId, isAdmin: is
 const router = Router();
 
 // ── Public ────────────────────────────────────────────────────────────
-router.get("/tournaments", wrap(async (_req, res) => { res.json(await listTournaments()); }));
+// The same list for everyone — no session is read — and cached in the service
+// for 30 s; a visitor's browser keeps it as long (http-cache: signed-in
+// callers get no header, so a member never waits on a copy from before their
+// own registration).
+router.get("/tournaments", browserCache(30), wrap(async (_req, res) => { res.json(await listTournaments()); }));
 router.get("/tournaments/:slug", optionalAuth, wrap(async (req, res) => {
   res.json(await tournamentPage(param(req, "slug"), (req as Partial<Authed>).user ? remindingViewer(req) : null));
 }));

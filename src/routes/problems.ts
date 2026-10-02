@@ -6,12 +6,15 @@ import { prisma } from "../lib/prisma.js";
 import { requireAuth, optionalAuth, adminOnly } from "../middleware/auth.js";
 import { cachedShared, invalidate } from "../lib/cache.js";
 import { browserCache } from "../lib/http-cache.js";
-import { catalogueNeighbours, getCatalogue, listProblemsWithStatus, loadProblemState, problemIdBySlug, publishedProblemExists, type ProblemState } from "../services/dashboard.js";
+import { catalogueNeighbours, getCatalogue, invalidateDashboard, listProblemsWithStatus, loadProblemState, problemIdBySlug, publishedProblemExists, type ProblemState } from "../services/dashboard.js";
 import { isCompanyTag } from "../lib/companies.js";
 import { problemCanonicalSlug } from "../lib/problem-canonical.js";
 import { isJudgeLanguage } from "../lib/judge0.js";
 import { HUB_PAGE_SIZE, hubIndex, hubPage, hubProblems, hubProgress, hubsForTags, relatedProblems } from "../services/problem-hubs.js";
 import { lessonsForTopics } from "../services/roadmap-lessons.js";
+import { forgetProblemSeo } from "../services/seo.js";
+import { forgetJudgeSuite } from "../lib/test-suite-cache.js";
+import { filterCatalogue, seededShuffle, sortCatalogue } from "../lib/catalogue-filter.js";
 
 const router = Router();
 
@@ -39,8 +42,12 @@ const hintsKey = (slug: string) => `problem:hints:v1:${slug}`;
 /** The duel room's slice of a problem (routes/duels GET /:id/problem). */
 export const duelProblemKey = (slug: string) => `duel-problem:v1:${slug}`;
 
-/** After any admin write, so the next reader sees the edit rather than the TTL. */
-export function invalidateProblem(slug: string): void {
+/**
+ * After any admin write, so the next reader sees the edit rather than the TTL.
+ * Pass `problemId` when the caller has it; otherwise it is looked up so the
+ * judge's copy still goes.
+ */
+export function invalidateProblem(slug: string, problemId?: string): void {
   invalidate(problemKey(slug));
   invalidate(editorialKey(slug));
   invalidate(starterKey(slug));
@@ -49,6 +56,24 @@ export function invalidateProblem(slug: string): void {
   // The catalogue carries titles, tags and difficulty, all of which an edit can
   // move, and publishing or retiring a problem changes its membership outright.
   invalidate("catalogue:published");
+  // So do the other lists of published problems: the duel arena pool
+  // (routes/duels publishedIds) and the placement tests' draw pool
+  // (services/aptitude-bank), both five or ten minutes otherwise.
+  invalidate("duels:published:problem");
+  invalidate("problems:draw-pool:v1");
+  forgetProblemSeo(slug);
+  // The judge's copy of the row and the cases. Nothing cleared it before, so
+  // for 15 minutes after an unpublish the problem stayed runnable — and paid
+  // XP — from a tab already open on it, and an edited test case or time limit
+  // was judged on the old values.
+  if (problemId) forgetJudgeSuite(problemId);
+  else
+    void prisma.problem
+      .findUnique({ where: { slug }, select: { id: true } })
+      .then((p) => p && forgetJudgeSuite(p.id))
+      .catch(() => {
+        /* the TTL still bounds it */
+      });
 }
 
 /** Rows per list page, and the most a caller may ask for at once. */
@@ -225,6 +250,46 @@ router.get("/", optionalAuth, browserCache(60), async (req, res) => {
     // Previously this was a third round trip that fetched every submission row
     // for the page's problems.
     const statePromise: Promise<ProblemState | null> = userId ? loadProblemState(userId) : Promise.resolve(null);
+    // The client sends one `seed` for a whole browsing session, so every page
+    // slices the SAME order — without it, each request reshuffles and infinite
+    // scroll returns duplicate/missing rows.
+    const seedStr = first(req.query["seed"]) ?? "";
+
+    // Everything but the text search answers from memory (lib/catalogue-filter
+    // says why, and which SQL each rule stands in for): no round trip for a
+    // visitor, the reader's cached solve state for a member. Every chip click
+    // and every scroll page of the default shuffled view lands here.
+    if (!search) {
+      const [catalogue, loaded] = await Promise.all([getCatalogue(), statePromise]);
+      const matches = filterCatalogue(catalogue, {
+        difficulty,
+        tags,
+        company,
+        maxTime,
+        status: statusFilter && loaded ? { want: statusFilter, solved: loaded.solved } : null,
+      });
+      let page: typeof matches;
+      if (sortBy === "shuffled") {
+        const byId = new Map(matches.map((p) => [p.id, p]));
+        page = seededShuffle(matches.map((p) => p.id), seedStr)
+          .slice(skipNum, skipNum + takeNum)
+          .map((id) => byId.get(id)!);
+      } else {
+        page = sortCatalogue(matches, sortBy).slice(skipNum, skipNum + takeNum);
+      }
+      await send(
+        page.map((p) => ({
+          id: p.id,
+          title: p.title,
+          slug: p.slug,
+          difficulty: p.difficulty,
+          tags: p.tags,
+          status: statusOf(loaded, p.id),
+          tournament: loaded?.tournamentSolved.has(p.id) ?? false,
+        })),
+      );
+      return;
+    }
 
     let problems;
     let state: ProblemState | null;
@@ -240,32 +305,9 @@ router.get("/", optionalAuth, browserCache(60), async (req, res) => {
       ]);
       state = loaded;
 
-      // 2. Shuffle IDs deterministically. The client sends one `seed` for a
-      //    whole browsing session, so every page slices the SAME order —
-      //    without this, each request reshuffles and infinite scroll returns
-      //    duplicate/missing rows. Falls back to a random seed when absent.
-      const seedStr = String(req.query.seed ?? "");
-      let h = 2166136261 >>> 0;
-      for (let i = 0; i < seedStr.length; i++) {
-        h = Math.imul(h ^ seedStr.charCodeAt(i), 16777619);
-      }
-      if (!seedStr) h = (Math.random() * 4294967296) >>> 0;
-      const rand = () => {
-        h = (h + 0x6d2b79f5) | 0;
-        let t = Math.imul(h ^ (h >>> 15), 1 | h);
-        t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-        return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-      };
-      const shuffledIds = matchingProblems.map(p => p.id);
-      for (let i = shuffledIds.length - 1; i > 0; i--) {
-        const j = Math.floor(rand() * (i + 1));
-        const tmp = shuffledIds[i];
-        shuffledIds[i] = shuffledIds[j];
-        shuffledIds[j] = tmp;
-      }
-
-      // 3. Take the subset for current page
-      const pageIds = shuffledIds.slice(skipNum, skipNum + takeNum);
+      // 2. Shuffle IDs deterministically (the same order the in-memory path
+      //    gives the same ids), then 3. take the current page.
+      const pageIds = seededShuffle(matchingProblems.map((p) => p.id), seedStr).slice(skipNum, skipNum + takeNum);
 
       // 4. Fetch full data for these IDs (maintain shuffled order)
       const data = await prisma.problem.findMany({
@@ -677,6 +719,8 @@ router.post("/", requireAuth, adminOnly, async (req, res) => {
       },
     });
 
+    // A new published problem joins the catalogue, the pools and the sitemap.
+    invalidateProblem(problem.slug, problem.id);
     res.status(201).json(problem);
   } catch (err) {
     console.error("POST /api/problems error:", err);
@@ -698,8 +742,8 @@ router.put("/:slug", requireAuth, adminOnly, async (req, res) => {
       data: updateData,
     });
 
-    invalidateProblem(String(slug));
-    if (problem.slug !== String(slug)) invalidateProblem(problem.slug);
+    invalidateProblem(String(slug), problem.id);
+    if (problem.slug !== String(slug)) invalidateProblem(problem.slug, problem.id);
 
     res.json(problem);
   } catch (err) {
@@ -712,11 +756,12 @@ router.put("/:slug", requireAuth, adminOnly, async (req, res) => {
 router.delete("/:slug", requireAuth, adminOnly, async (req, res) => {
   try {
     const { slug } = req.params;
-    await prisma.problem.update({
+    const retired = await prisma.problem.update({
       where: { slug: String(slug) },
       data: { isPublished: false },
+      select: { id: true },
     });
-    invalidateProblem(String(slug));
+    invalidateProblem(String(slug), retired.id);
     res.json({ success: true });
   } catch (err) {
     console.error("DELETE /api/problems/:slug error:", err);
@@ -746,7 +791,7 @@ router.post("/:slug/test-cases", requireAuth, adminOnly, async (req, res) => {
       },
     });
 
-    invalidateProblem(String(slug));
+    invalidateProblem(String(slug), problem.id);
     res.status(201).json(testCase);
   } catch (err) {
     console.error("POST /api/problems/:slug/test-cases error:", err);
@@ -758,8 +803,8 @@ router.post("/:slug/test-cases", requireAuth, adminOnly, async (req, res) => {
 router.delete("/:slug/test-cases/:testCaseId", requireAuth, adminOnly, async (req, res) => {
   try {
     const { slug, testCaseId } = req.params;
-    await prisma.testCase.delete({ where: { id: testCaseId as string } });
-    invalidateProblem(String(slug));
+    const removed = await prisma.testCase.delete({ where: { id: testCaseId as string }, select: { problemId: true } });
+    invalidateProblem(String(slug), removed.problemId);
     res.json({ success: true });
   } catch (err) {
     console.error("DELETE test case error:", err);
@@ -893,6 +938,12 @@ router.post("/:problemId/draft", requireAuth, async (req, res) => {
       select: { id: true, updatedAt: true },
     });
     rememberDraft(draftKey, draft.id);
+    // The dashboard's "continue solving" card is the newest draft. Only this
+    // path can change which problem that is — the first save on a problem this
+    // session; the autosaves that follow every few seconds take the update
+    // above and leave the card where it is — so the 300 s aggregate is
+    // dropped here rather than on every keystroke batch.
+    invalidateDashboard(userId);
 
     res.json(draft);
   } catch (err) {

@@ -2,6 +2,7 @@ import { Router } from "express";
 import { prisma } from "../lib/prisma.js";
 import { optionalAuth, requireAuth } from "../middleware/auth.js";
 import { browserCache } from "../lib/http-cache.js";
+import { cachedShared } from "../lib/cache.js";
 import { executionLimiter } from "../middleware/rate-limit.js";
 import { judgeBugProject, type BugFile, type BugLanguage } from "../lib/bug-judge.js";
 import { containsReservedMarker } from "../lib/batch.js";
@@ -14,6 +15,7 @@ import {
   bugHubIndex,
   bugHubPage,
   bugIdFor,
+  forgetBugSolved,
   getBugHuntIndex,
   getBugHuntPage,
   getNeighbours,
@@ -197,15 +199,80 @@ router.get("/stats/me", requireAuth, async (req, res) => {
   }
 });
 
+/**
+ * A hunt as every reader gets it: the prose (three MediumText columns), every
+ * file's content, the visible tests' names and how many are hidden — the
+ * heaviest read on the hunt page, and the same bytes for everyone. Shared for
+ * ten minutes (L1 + Redis). Nothing in the API writes a hunt, its files or its
+ * tests — scripts/seed-bugs.ts does, and its flush (scripts/content-caches,
+ * family "bug:") drops these keys with the rest of the catalogue's.
+ *
+ * Exactly the fields the route always sent, nothing more: hidden tests are a
+ * count, never their commands or expected output. Null for a hunt that is
+ * gone or unpublished — reached only in the moment between that change and
+ * the catalogue order's refresh (bugIdFor), and never kept long: a null
+ * reads as a miss from Redis, so it lives only in the memory tier — 30 s,
+ * and one read past that while it refreshes.
+ */
+const BUG_DETAIL_TTL_SECONDS = 600;
+const bugDetailKey = (challengeId: string) => `bug:detail:v1:${challengeId}`;
+
+async function loadBugDetail(challengeId: string) {
+  const [challenge, hiddenTestCount] = await Promise.all([
+    prisma.bugChallenge.findUnique({
+      where: { id: challengeId },
+      select: {
+        id: true,
+        slug: true,
+        title: true,
+        difficulty: true,
+        category: true,
+        language: true,
+        tags: true,
+        origin: true,
+        description: true,
+        bugReport: true,
+        logs: true,
+        isPublished: true,
+        files: { select: { id: true, filePath: true, content: true, isEditable: true, language: true } },
+        tests: { where: { isHidden: false }, select: { id: true, name: true } },
+      },
+    }),
+    prisma.challengeTest.count({
+      where: { challengeId, isHidden: true },
+    }),
+  ]);
+  if (!challenge || !challenge.isPublished) return null;
+  return {
+    id: challenge.id,
+    slug: challenge.slug,
+    title: challenge.title,
+    difficulty: challenge.difficulty,
+    category: challenge.category,
+    language: challenge.language,
+    tags: challenge.tags,
+    origin: challenge.origin,
+    description: challenge.description,
+    bugReport: challenge.bugReport,
+    logs: challenge.logs,
+    files: challenge.files,
+    visibleTests: challenge.tests,
+    hiddenTestCount,
+    xp: BUG_XP,
+  };
+}
+
 // GET /api/bug-challenges/:id — Full challenge: files, report, visible tests
 //
 // Not browser-cached: `solved`, `submissions` and `activeDuelId` are the
 // caller's own, and a stale copy of any of them is worse than the round trip.
+// The rest is the same for everyone and comes from loadBugDetail's cache.
 router.get("/:id", optionalAuth, async (req, res) => {
   try {
     // The address is the slug (/bug-hunts/the-checkout-meltdown) or, on a
     // link minted before slugs existed, the id; the cached order resolves
-    // either without a round trip. Unknown or unpublished is a 404 either way.
+    // either without a round trip. Unknown or unpublished is a 404 either way
+    // — and only a published hunt's id ever becomes a cache key below.
     const challengeId = await bugIdFor(String(req.params.id));
     if (!challengeId) {
       res.status(404).json({ error: "Challenge not found" });
@@ -213,17 +280,8 @@ router.get("/:id", optionalAuth, async (req, res) => {
     }
 
     // One parallel batch instead of four sequential round-trips
-    const [challenge, hiddenCount, submissions, liveDuel] = await Promise.all([
-      prisma.bugChallenge.findUnique({
-        where: { id: challengeId },
-        include: {
-          files: { select: { id: true, filePath: true, content: true, isEditable: true, language: true } },
-          tests: { where: { isHidden: false }, select: { id: true, name: true } },
-        },
-      }),
-      prisma.challengeTest.count({
-        where: { challengeId, isHidden: true },
-      }),
+    const [challenge, submissions, liveDuel] = await Promise.all([
+      cachedShared(bugDetailKey(challengeId), BUG_DETAIL_TTL_SECONDS, () => loadBugDetail(challengeId)),
       // Personal history + solved marker for the signed-in hunter
       req.user
         ? prisma.bugSubmission.findMany({
@@ -240,7 +298,7 @@ router.get("/:id", optionalAuth, async (req, res) => {
       req.user ? findLiveDuelFor(req.user.userId, { challengeId }) : Promise.resolve(null),
     ]);
 
-    if (!challenge || !challenge.isPublished) {
+    if (!challenge) {
       res.status(404).json({ error: "Challenge not found" });
       return;
     }
@@ -253,21 +311,7 @@ router.get("/:id", optionalAuth, async (req, res) => {
       // Contract with the workspace: the caller's live duel on this very
       // hunt, or null (also null when signed out).
       activeDuelId: liveDuel?.id ?? null,
-      id: challenge.id,
-      slug: challenge.slug,
-      title: challenge.title,
-      difficulty: challenge.difficulty,
-      category: challenge.category,
-      language: challenge.language,
-      tags: challenge.tags,
-      origin: challenge.origin,
-      description: challenge.description,
-      bugReport: challenge.bugReport,
-      logs: challenge.logs,
-      files: challenge.files,
-      visibleTests: challenge.tests,
-      hiddenTestCount: hiddenCount,
-      xp: BUG_XP,
+      ...challenge,
     });
   } catch (err) {
     console.error("GET /api/bug-challenges/:id error:", err);
@@ -489,6 +533,10 @@ router.post("/:id/submit", requireAuth, executionLimiter, async (req, res) => {
     // ── After the response ──────────────────────────────────────────
     // The dashboard aggregate is cached; this submission just changed it.
     invalidateDashboard(userId);
+    // So is the hunts list's solved set, which only an accepted fix moves.
+    // Still before the client can ask again: this runs in the same tick as
+    // the response's write.
+    if (result.verdict === "ACCEPTED") forgetBugSolved(userId);
 
     // If this fix landed inside a duel, the duel is decided right here — the
     // Duels never wait for the client to tell it what the judge already knows.
