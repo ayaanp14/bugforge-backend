@@ -205,11 +205,22 @@ export function trackDescription(language: string, modules: number, lessons: num
   return `Learn ${language} free: ${lessons} lessons in ${modules} modules, from first programs to interview questions, with exercises judged on ${runtime} and a certificate.`;
 }
 
+/** Placeholders for inline code while summarise() strips markup (private-use, never in a statement). */
+const CODE_OPEN = String.fromCharCode(0xe000);
+const CODE_CLOSE = String.fromCharCode(0xe001);
+const CODE_SLOT = new RegExp(`${CODE_OPEN}(\\d+)${CODE_CLOSE}`, "g");
+
 /** A meta description from Markdown — the SPA's lib/seo/summary, mirrored. */
 export function summarise(markdown: string, fallback = "", max = DESCRIPTION_MAX): string {
+  // Inline code is set aside before the markup is stripped and put back after:
+  // inside backticks "<" is literal, and unwrapping the spans first let the
+  // tag pattern swallow `0 < p < n - 1` up to the next ">" — Valid Mountain
+  // Array's description lost half a sentence (2026-10-02). The placeholders
+  // are private-use characters, which no statement contains.
+  const code: string[] = [];
   const text = markdown
     .replace(/```[\s\S]*?```/g, " ")
-    .replace(/`([^`]*)`/g, "$1")
+    .replace(/`([^`]*)`/g, (_m, c: string) => `${CODE_OPEN}${code.push(c) - 1}${CODE_CLOSE}`)
     .replace(/!\[[^\]]*\]\([^)]*\)/g, " ")
     .replace(/\[([^\]]*)\]\([^)]*\)/g, "$1")
     .replace(/^\s{0,3}#{1,6}\s+/gm, "")
@@ -217,7 +228,9 @@ export function summarise(markdown: string, fallback = "", max = DESCRIPTION_MAX
     .replace(/^\s*\d+\.\s+/gm, "")
     .replace(/^\s*>\s?/gm, "")
     .replace(/[*_~]{1,3}([^*_~]+)[*_~]{1,3}/g, "$1")
-    .replace(/<[^>]+>/g, " ")
+    // Only something shaped like a tag: "<" then a letter or "/".
+    .replace(/<\/?[A-Za-z][^<>]*>/g, " ")
+    .replace(CODE_SLOT, (_m, i: string) => code[Number(i)] ?? "")
     .replace(/\s+/g, " ")
     .trim();
   if (!text) return fallback;

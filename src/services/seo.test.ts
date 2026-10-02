@@ -8,6 +8,12 @@ import { contentCardFor, contentCardUrl, lessonFaq, summarise, titles, trackDesc
 
 test("a short text is returned whole, markup stripped", () => {
   assert.equal(summarise("Given `nums`, return **indices**."), "Given nums, return indices.");
+  // "<" inside inline code is literal, not the start of a tag to strip.
+  assert.equal(
+    summarise("A peak index `p` with `0 < p < n - 1` and `arr[p] > arr[p + 1]`."),
+    "A peak index p with 0 < p < n - 1 and arr[p] > arr[p + 1].",
+  );
+  assert.equal(summarise("Code like `a * b` stays; <b>tags</b> go."), "Code like a * b stays; tags go.");
   assert.equal(summarise("", "fallback"), "fallback");
 });
 
