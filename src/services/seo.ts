@@ -7,7 +7,8 @@ import { isCompanyTag } from "../lib/companies.js";
 import { PROBLEM_CANONICAL, problemCanonicalSlug } from "../lib/problem-canonical.js";
 import { renamedCompanyHubSlug } from "../lib/problem-topics.js";
 import { TEST_GUIDES } from "../lib/test-guides.js";
-import { isSkillLevel, LEVEL_LABEL, SKILLS, skillDef } from "../lib/skill-catalog.js";
+import { isSkillLevel, LEVEL_LABEL, SKILL_GROUPS, SKILLS, skillDef, skillTopic } from "../lib/skill-catalog.js";
+import { guideFor } from "../lib/skill-test-guides.js";
 import { credentialPath, normalizeCredentialCode } from "../lib/skill-tests.js";
 import { poolTopics, verifyCredential } from "./skill-credentials.js";
 import { APTITUDE_ESSENTIALS } from "../lib/aptitude-essentials.js";
@@ -1315,8 +1316,16 @@ async function testsIndex(): Promise<PageHead> {
 
 /* ── Skill tests ─────────────────────────────────────────────────── */
 
+/**
+ * A skill test's page as a crawler reads it, in the SPA's order: the facts,
+ * the direct answer, the paper, what it covers (each topic with where to
+ * practise it), the written guide (lib/skill-test-guides), the sample
+ * question with its answer folded away, the common questions, the rules and
+ * the other tests. The guide's questions are the FAQPage (facts.faq), as on
+ * a roadmap lesson.
+ */
 function skillTestHead(slug: string): Promise<PageHead | null> {
-  return cached(`seo:head:skill-test:v2:${slug}`, HEAD_TTL_MS, async () => {
+  return cached(`seo:head:skill-test:v3:${slug}`, HEAD_TTL_MS, async () => {
     const t = await prisma.skillTest.findFirst({
       where: { slug, published: true },
       select: {
@@ -1338,6 +1347,19 @@ function skillTestHead(slug: string): Promise<PageHead | null> {
     const rows = t.sections
       .map((s) => `<tr><td>${h(s.name)}</td><td>${s.questionCount}</td><td>${Math.round(s.durationSec / 60)} min</td><td>${s.kind === "coding" ? "Coding" : "Multiple choice"}</td><td>${s.marksPerQuestion}</td></tr>`)
       .join("");
+    const guide = guideFor(slug);
+    const sample = guide?.sample;
+    const letter = (i: number) => "ABCDEF"[i] ?? "?";
+    const sampleHtml = sample
+      ? section(
+          "Sample question",
+          `<p>Topic: ${h(skillTopic(t.skill, sample.topic)?.label ?? sample.topic)}</p>` +
+            markdownToHtml(sample.prompt, 6_000, { under: 3 }) +
+            `<ol type="A">${sample.options.map((o) => `<li>${inlineMd(o)}</li>`).join("")}</ol>` +
+            `<details><summary>Show the answer</summary><p><strong>${sample.answer.map(letter).join(", ")}.</strong> ${sample.answer.map((i) => inlineMd(sample.options[i] ?? "")).join("; ")}</p>${markdownToHtml(sample.explanation, 4_000)}</details>`,
+          "sample",
+        )
+      : "";
     const content =
       factList([
         ["Skill", skillLabel],
@@ -1348,6 +1370,7 @@ function skillTestHead(slug: string): Promise<PageHead | null> {
         ["Credential", `Verifiable, valid for ${t.validityMonths / 12} years`],
       ]) +
       `<p>${h(t.blurb)}</p>` +
+      (guide ? `<section id="answer"><h2>${inlineMd(guide.question)}</h2><p>${inlineMd(guide.answer)}</p></section>` : "") +
       section("Sections", `<table><thead><tr><th>Section</th><th>Questions</th><th>Time</th><th>Kind</th><th>Marks each</th></tr></thead><tbody>${rows}</tbody></table>`, "sections") +
       (def && covered.length
         ? section(
@@ -1359,13 +1382,24 @@ function skillTestHead(slug: string): Promise<PageHead | null> {
             "topics",
           )
         : "") +
+      (guide ? `<article id="guide">${markdownToHtml(guide.body, 60_000, { anchors: true, under: 1 })}</article>` : "") +
+      sampleHtml +
+      (guide?.faq.length ? `<section id="questions"><h2>Common questions</h2>${guide.faq.map((f) => `<h3>${inlineMd(f.q)}</h3><p>${inlineMd(f.a)}</p>`).join("")}</section>` : "") +
       section("Rules", markdownToHtml(t.instructions, 6_000), "rules") +
       (others.length ? section("Other skill tests", linkList(others.map((o) => ({ href: `/skill-tests/${o.slug}`, label: o.title }))), "related") : "");
     return {
       path,
       title: titles.skillTest(skillLabel, levelLabel),
       description: summarise(`A free ${minutes}-minute ${skillLabel} skill test at ${levelLabel.toLowerCase()} level. Pass with ${t.passPercent}% to earn a verifiable CodeKairo credential and a profile frame. ${t.blurb}`),
-      facts: { minutes, questions: t.totalQuestions, trail },
+      facts: {
+        minutes,
+        questions: t.totalQuestions,
+        level: levelLabel,
+        topic: skillLabel,
+        ...(def && covered.length ? { keywords: def.topics.filter((x) => covered.includes(x.id)).map((x) => x.label) } : {}),
+        ...(guide ? { updated: guide.updated, faq: [{ q: guide.question, a: guide.answer }, ...guide.faq] } : {}),
+        trail,
+      },
       content,
       crumb: t.title,
     };
@@ -1375,11 +1409,16 @@ function skillTestHead(slug: string): Promise<PageHead | null> {
 /** The skill tests index's child list: every test, by skill. */
 async function skillTestsIndex(): Promise<PageHead> {
   const rows = await prisma.skillTest.findMany({ where: { published: true }, select: { slug: true, title: true, skill: true, durationSec: true, totalQuestions: true }, orderBy: { orderIndex: "asc" } });
+  // Grouped as the page groups them: languages, problem solving, CS fundamentals.
   const content = section(
     "Every skill test",
-    SKILLS.filter((skill) => rows.some((r) => r.skill === skill.id))
-      .map((skill) => `<h3>${h(skill.label)}</h3><p>${h(skill.blurb)}</p>${linkList(rows.filter((r) => r.skill === skill.id).map((t) => ({ href: `/skill-tests/${t.slug}`, label: t.title, note: `${Math.round(t.durationSec / 60)} min · ${t.totalQuestions} questions` })))}`)
-      .join(""),
+    SKILL_GROUPS.map((group) => {
+      const skills = SKILLS.filter((skill) => skill.group === group.id && rows.some((r) => r.skill === skill.id));
+      if (!skills.length) return "";
+      return `<h3>${h(group.label)}</h3>${skills
+        .map((skill) => `<h4>${h(skill.label)}</h4><p>${h(skill.blurb)}</p>${linkList(rows.filter((r) => r.skill === skill.id).map((t) => ({ href: `/skill-tests/${t.slug}`, label: t.title, note: `${Math.round(t.durationSec / 60)} min · ${t.totalQuestions} questions` })))}`)
+        .join("")}`;
+    }).join(""),
     "tests",
   );
   return { path: "/skill-tests", title: "Skill tests", description: "", content, section: "index" };
@@ -1581,12 +1620,18 @@ export function sitemapXml(name: string): Promise<string | null> {
       case "tests": {
         // The placement patterns and the skill tests: both are tests a
         // visitor reads the rules of before sitting one.
-        // No lastmod, as with aptitude: both are re-seeded in bulk.
+        // No lastmod for a pattern, as with aptitude: they are re-seeded in
+        // bulk. A skill test's page is its written guide, which carries the
+        // date it was last revised (lib/skill-test-guides `updated`).
         const [rows, skill] = await Promise.all([
           prisma.mockTest.findMany({ where: { published: true }, select: { slug: true }, orderBy: { slug: "asc" } }),
           prisma.skillTest.findMany({ where: { published: true }, select: { slug: true }, orderBy: { slug: "asc" } }),
         ]);
-        return urlset([...rows.map((r) => ({ path: `/tests/${r.slug}` })), ...skill.map((r) => ({ path: `/skill-tests/${r.slug}` }))]);
+        const revised = (slug: string) => {
+          const updated = guideFor(slug)?.updated;
+          return updated ? new Date(`${updated}T00:00:00Z`) : null;
+        };
+        return urlset([...rows.map((r) => ({ path: `/tests/${r.slug}` })), ...skill.map((r) => ({ path: `/skill-tests/${r.slug}`, lastmod: revised(r.slug) }))]);
       }
       case "categories": {
         // The hub pages: the catalogue's topics and companies, the bug hunts'

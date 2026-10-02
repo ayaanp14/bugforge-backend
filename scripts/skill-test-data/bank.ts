@@ -59,7 +59,7 @@ export interface BankQuestion {
 }
 
 /** Languages a `run:` program may be written in — the study judge's. */
-export const RUN_LANGUAGES = ["java", "python", "javascript", "cpp"] as const;
+export const RUN_LANGUAGES = ["java", "python", "javascript", "cpp", "c", "go", "typescript"] as const;
 
 const LETTERS = "ABCDEF";
 const FENCE = /^\s*(```|~~~)/;
@@ -242,6 +242,13 @@ export function validateBank(questions: BankQuestion[]): string[] {
       if (expectedOutput(q) == null) problems.push(`${at}: a run: question's keyed option must be one inline code span, e.g. \`3 4\``);
       if (q.run === "java" && !/public\s+class\s+Main\b/.test(programOf(q) ?? "")) {
         problems.push(`${at}: a Java program must be "public class Main"`);
+      }
+      const program = programOf(q) ?? "";
+      if (q.run === "go" && !(/^package main\b/m.test(program) && /^func main\(\)/m.test(program))) {
+        problems.push(`${at}: a Go program must be "package main" with "func main()"`);
+      }
+      if ((q.run === "c" || q.run === "cpp") && !/\bint\s+main\s*\(/.test(program)) {
+        problems.push(`${at}: a C or C++ program needs "int main("`);
       }
     }
 

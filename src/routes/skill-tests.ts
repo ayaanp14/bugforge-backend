@@ -10,7 +10,8 @@ import { ENGINE_DOWN_MESSAGE, isEngineDown } from "../lib/engine-error.js";
 import { cached, cachedShared } from "../lib/cache.js";
 import { browserCache } from "../lib/http-cache.js";
 import { similarity } from "../lib/code-similarity.js";
-import { credentialName, isSkillLevel, LEVEL_LABEL, skillDef, skillTopic, SKILLS } from "../lib/skill-catalog.js";
+import { credentialName, isSkillLevel, LEVEL_LABEL, SKILL_GROUPS, skillDef, skillTopic, SKILLS } from "../lib/skill-catalog.js";
+import { guideFor, type SkillTestGuide } from "../lib/skill-test-guides.js";
 import {
   bandFor,
   BREACH_LIMIT,
@@ -399,6 +400,7 @@ router.get("/", optionalAuth, cacheWhenAnonymous, async (req, res) => {
   const standing = await standingFor(userId, tests.map((t) => t.id));
   const skills = SKILLS.map((skill) => ({
     id: skill.id,
+    group: skill.group,
     label: skill.label,
     short: skill.short,
     blurb: skill.blurb,
@@ -406,8 +408,23 @@ router.get("/", optionalAuth, cacheWhenAnonymous, async (req, res) => {
       .filter((t) => t.skill === skill.id)
       .map((t) => ({ ...testSummary(t), mine: userId ? mineOf(standing.get(t.id), t.cooldownDays) : null })),
   })).filter((skill) => skill.tests.length > 0);
-  res.json({ skills });
+  res.json({ groups: SKILL_GROUPS.filter((g) => skills.some((s) => s.group === g.id)), skills });
 });
+
+/**
+ * A test's written guide for its page (lib/skill-test-guides): the direct
+ * answer, the sections, the common questions and the sample — whose key is
+ * public, since the page shows it once the reader has answered.
+ */
+const guidePayload = (guide: SkillTestGuide | null) =>
+  guide && {
+    updated: guide.updated,
+    question: guide.question,
+    answer: guide.answer,
+    faq: guide.faq,
+    body: guide.body,
+    sample: { ...guide.sample, topicLabel: skillTopic(guide.skill, guide.sample.topic)?.label ?? guide.sample.topic },
+  };
 
 /**
  * GET /api/skill-tests/:slug
@@ -419,12 +436,27 @@ router.get("/:slug", optionalAuth, cacheWhenAnonymous, async (req, res) => {
   const test = await testBySlug(slug);
   if (!test) return res.status(404).json({ error: "Test not found" });
   const userId = req.user?.userId ?? null;
-  const [topics, standing] = await Promise.all([poolTopics(test.skill, test.level), standingFor(userId, [test.id])]);
+  const [topics, standing, catalogue] = await Promise.all([poolTopics(test.skill, test.level), standingFor(userId, [test.id]), testCatalogue()]);
   const def = skillDef(test.skill);
+  // Where to go next: the skill's other level first, then the rest of its group.
+  const related = catalogue
+    .filter((t) => t.slug !== test.slug && (t.skill === test.skill || skillDef(t.skill)?.group === def?.group))
+    .sort((a, b) => Number(b.skill === test.skill) - Number(a.skill === test.skill) || a.orderIndex - b.orderIndex)
+    .slice(0, 6)
+    .map((t) => ({
+      slug: t.slug,
+      title: t.title,
+      skill: t.skill,
+      level: t.level,
+      levelLabel: isSkillLevel(t.level) ? LEVEL_LABEL[t.level] : t.level,
+      durationSec: t.durationSec,
+      totalQuestions: t.totalQuestions,
+    }));
   res.json({
     test: {
       ...testSummary(test),
       skillLabel: def?.label ?? test.skill,
+      group: def?.group ?? "language",
       instructions: test.instructions,
       sections: test.sections.map((s) => ({
         key: s.key,
@@ -435,10 +467,15 @@ router.get("/:slug", optionalAuth, cacheWhenAnonymous, async (req, res) => {
         marksPerQuestion: s.marksPerQuestion,
         instructions: s.instructions,
       })),
-      topics: topics.map((id) => ({ id, label: skillTopic(test.skill, id)?.label ?? id })),
+      topics: topics.map((id) => {
+        const topic = skillTopic(test.skill, id);
+        return { id, label: topic?.label ?? id, practice: topic?.practice ?? null };
+      }),
       // The proctoring rule the page states before the clock starts.
       breachLimit: BREACH_LIMIT,
     },
+    guide: guidePayload(guideFor(test.slug)),
+    related,
     mine: userId
       ? {
           ...mineOf(standing.get(test.id), test.cooldownDays),

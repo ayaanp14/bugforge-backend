@@ -16,6 +16,12 @@
  * judge (STUDY_EXECUTOR, Paiza by default — ~1 s a question) and fails on any
  * whose program does not print its keyed option. It is the gate for a pool.
  *
+ * Both also take each test's written guide (content/skill-tests/<slug>.md,
+ * lib/skill-test-guides.ts): --validate holds it to its rules, checks its
+ * links resolve and that its public sample question is not one of the
+ * bank's; --run runs a `run:` sample on the judge like a bank question.
+ * The guides ship with the API image, so --seed does not touch them.
+ *
  * --seed upserts the tests (sections replaced wholesale, as content) and the
  * questions by key. A question that has left the files is deactivated with
  * --prune, never deleted: a sitting in progress may still hold its id.
@@ -25,6 +31,16 @@ import { normalizeOutput, runProgram } from "../src/lib/program-judge.js";
 import { skillDef } from "../src/lib/skill-catalog.js";
 import { BREACH_LIMIT } from "../src/lib/skill-tests.js";
 import { expectedOutput, loadBank, programOf, validateBank, type BankQuestion } from "./skill-test-data/bank.js";
+import { readGuides, siteLinkChecker, validateGuide, type SkillTestGuide } from "../src/lib/skill-test-guides.js";
+import { TOPIC_HUBS } from "../src/lib/problem-topics.js";
+import { APTITUDE_CATEGORIES, APTITUDE_TOPICS } from "../src/lib/aptitude-topics.js";
+import { fileURLToPath } from "node:url";
+
+// The roadmap lessons a guide may link to, by file name. Read here rather
+// than imported from lib/roadmap-lessons, which pulls in every lesson
+// figure: the bank's gate should not depend on the road's code compiling.
+const LESSONS_DIR = fileURLToPath(new URL("../content/roadmap/", import.meta.url));
+import { readdirSync } from "node:fs";
 import { SKILL_TESTS, testDuration, testMaxMarks, testQuestions, type SkillSectionSeed, type SkillTestSeed } from "./skill-test-data/tests.js";
 
 const args = process.argv.slice(2);
@@ -34,6 +50,26 @@ const onlyArg = args[args.indexOf("--only") + 1];
 const only = args.includes("--only") && onlyArg ? new Set(onlyArg.split(",").map((s) => s.trim())) : null;
 
 const poolKey = (skill: string, level: string) => `${skill}-${level}`;
+const fingerprint = (text: string) => text.toLowerCase().replace(/\s+/g, " ").trim();
+
+const guideRead = readGuides();
+const GUIDES = new Map(guideRead.guides.map((g) => [g.slug, g]));
+
+/** The sample as a bank question, so --run treats both alike. */
+const sampleQuestion = (g: SkillTestGuide): BankQuestion => ({
+  key: `${g.slug} sample`,
+  skill: g.skill,
+  level: g.level,
+  topic: g.sample.topic,
+  kind: g.sample.multi ? "multi" : "single",
+  prompt: g.sample.prompt,
+  options: g.sample.options,
+  answer: g.sample.answer,
+  explanation: g.sample.explanation,
+  run: g.sample.run,
+  file: `content/skill-tests/${g.slug}.md`,
+  line: 0,
+});
 
 /**
  * An MCQ section's draw rules: the section's length shared across every
@@ -109,8 +145,16 @@ async function codingSupply(): Promise<Map<string, number> | null> {
 }
 
 async function validate(questions: BankQuestion[], parseProblems: string[]): Promise<{ problems: string[]; warnings: string[] }> {
-  const problems = [...parseProblems, ...validateBank(questions)];
+  const problems = [...parseProblems, ...validateBank(questions), ...guideRead.problems];
   const warnings: string[] = [];
+  const lessons = readdirSync(LESSONS_DIR).filter((f) => f.endsWith(".md") && !f.startsWith("_")).map((f) => f.replace(/\.md$/, ""));
+  const knownPath = siteLinkChecker(
+    SKILL_TESTS.map((t) => t.slug),
+    TOPIC_HUBS.map((h) => h.slug),
+    [...APTITUDE_CATEGORIES.map((c) => c.id), ...APTITUDE_TOPICS.map((t) => t.id)],
+    lessons,
+  );
+  for (const slug of GUIDES.keys()) if (!SKILL_TESTS.some((t) => t.slug === slug)) problems.push(`content/skill-tests/${slug}.md names no skill test`);
   // A pool still being written is short by design; --run must still check
   // what is there, so under --run a shortfall is a warning, not a stop.
   const shortfall = (message: string) => (mode === "run" ? warnings : problems).push(message);
@@ -130,6 +174,17 @@ async function validate(questions: BankQuestion[], parseProblems: string[]): Pro
     if (mcqLength > 0) {
       if (pool.length < mcqLength * 2) shortfall(`${test.slug}: the pool holds ${pool.length} questions; a ${mcqLength}-question section needs at least ${mcqLength * 2}`);
       else if (pool.length < mcqLength * 3) warnings.push(`${test.slug}: the pool holds ${pool.length}; ${mcqLength * 3} (3×) is the target`);
+    }
+
+    // The written guide: its rules, and a sample that is nobody's bank question.
+    const guide = GUIDES.get(test.slug);
+    if (!guide) warnings.push(`${test.slug}: no written guide (content/skill-tests/${test.slug}.md)`);
+    else {
+      problems.push(...validateGuide(guide, knownPath));
+      const sample = fingerprint(guide.sample.prompt);
+      const program = programOf(sampleQuestion(guide));
+      const twin = questions.find((q) => fingerprint(q.prompt) === sample || (program && programOf(q) === program));
+      if (twin) problems.push(`content/skill-tests/${test.slug}.md: the sample question is the bank's ${twin.key} — a sample must be written for the page`);
     }
 
     const def = skillDef(test.skill)!;
@@ -165,7 +220,8 @@ async function runChecks(questions: BankQuestion[]): Promise<number> {
   // `--file java-basic-2.md` re-runs one part file: the judge is a shared,
   // paced queue, and an author fixing one file should not re-run the pool.
   const fileArg = args.includes("--file") ? args[args.indexOf("--file") + 1] : null;
-  const runnable = questions.filter((q) => q.run && (!fileArg || q.file.endsWith(fileArg)));
+  const samples = [...GUIDES.values()].filter((g) => !only || only.has(g.slug)).map(sampleQuestion);
+  const runnable = [...questions, ...samples].filter((q) => q.run && (!fileArg || q.file.endsWith(fileArg)));
   console.log(`\nrunning ${runnable.length} output-prediction programs on the judge…`);
   let failures = 0;
   for (const q of runnable) {
