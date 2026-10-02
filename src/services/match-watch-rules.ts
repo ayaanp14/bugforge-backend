@@ -1,9 +1,16 @@
 /**
  * Watching a knockout match live: each player's editor, relayed to the
- * tournament's organizers as it is typed — the match room's watch view
- * (frontend battles/src/components/contest/WatchPane). An organizer in a
- * match room has no editor, no Run and no Submit of their own; what they
- * get instead is both sides' code, side by side, as it changes.
+ * tournament's organizers — and CodeKairo's admins — as it is typed: the
+ * match room's watch view (frontend battles/src/components/contest/
+ * WatchPane). Staff in a match room have no editor, no Run and no Submit
+ * of their own; what they get instead is both sides' code, side by side,
+ * as it changes.
+ *
+ * Everyone else may spectate a public match (since 2026-10-02, signed in
+ * or not): they get each side's *activity* — the language, how many lines,
+ * when it last changed, so the room can say who is typing — and never the
+ * code, which is published only when the tournament is over (battles-view-
+ * rules.ts says why: every match of a round is on the same problem).
  *
  * No database in this file, so match-watch-rules.test.ts drives the whole
  * protocol with fakes; match-watch.ts binds the real seat lookup
@@ -20,15 +27,23 @@
  *                               the player's buffer (the client throttles
  *                               it); dropped from a socket play-match did
  *                               not admit, and outside the match's clock.
- *   watch-match (matchId, ack)  an organizer who is not a player of the
- *                               match joins its watch room; the ack carries
- *                               both sides' latest buffers.
+ *   watch-match (matchId, ack)  an organizer or CodeKairo admin who is not
+ *                               a player of the match joins its watch room;
+ *                               the ack carries both sides' latest buffers.
  *   unwatch-match (matchId)
+ *   spectate-match (matchId, ack)
+ *                               anyone, anonymous sockets included, joins a
+ *                               public match's spectate room; the ack
+ *                               carries each side's latest activity.
+ *   unspectate-match (matchId)
  *
  * and out: `match-code` {matchId, side, code, language, at} to the watch
- * room, at most one per side per RELAY_GAP_MS, and `match-code-resend` to
- * the players when a watcher arrives to a side the server holds nothing for
- * (the API restarted, or the player has not typed since reconnecting).
+ * room, at most one per side per RELAY_GAP_MS; `match-activity` {matchId,
+ * side, language, lines, at} to the spectate room, at most one per side per
+ * ACTIVITY_GAP_MS (a hall of spectators needs "typing", not every
+ * keystroke); and `match-code-resend` to the players when a watcher arrives
+ * to a side the server holds nothing for (the API restarted, or the player
+ * has not typed since reconnecting).
  *
  * Nothing is written to the database. The latest buffer of each side is
  * kept in memory for LIVE_DRAFT_TTL_MS after its last change, so an
@@ -38,12 +53,14 @@
  * a second one a watcher there would still get every change through the
  * socket.io adapter, only not the snapshot on joining.
  *
- * Players are told in the room that the organizers can follow their code,
- * and the Battles privacy policy says so (frontend
- * battles/src/content/battles-policies.ts, "What an organizer sees").
+ * Players are told in the room that the organizers and CodeKairo's admins
+ * can follow their code, and the Battles privacy policy says so, as it says
+ * what spectators see (frontend battles/src/content/battles-policies.ts,
+ * "What an organizer sees" and "What is public").
  */
 export const matchWatchRoom = (matchId: string) => `match-watch:${matchId}`;
 export const matchPlayRoom = (matchId: string) => `match-play:${matchId}`;
+export const matchSpectateRoom = (matchId: string) => `match-spectate:${matchId}`;
 
 /** The editor's languages (frontend components/problems/CodeEditor LANGUAGE_OPTIONS). */
 const LANGUAGES = new Set(["javascript", "typescript", "python", "java", "cpp", "c", "csharp", "go", "kotlin", "swift", "rust", "php", "ruby"]);
@@ -55,6 +72,8 @@ export const LIVE_DRAFT_TTL_MS = 30 * 60_000;
 const MAX_MATCHES = 2_000;
 /** The fastest one side's code reaches the watchers, whatever a client sends. */
 export const RELAY_GAP_MS = 150;
+/** The fastest one side's activity reaches the spectators: enough for "typing" (the client's window is 2.5 s). */
+export const ACTIVITY_GAP_MS = 1_000;
 /** How long a socket's seat is trusted before the match row is read again (a match ends, a waiting one starts). */
 const SEAT_TTL_MS = 5_000;
 
@@ -64,6 +83,15 @@ export interface LiveDraft {
   language: string;
   at: number;
 }
+
+/** What a spectator learns of a side's buffer: never the code. */
+export interface LiveActivity {
+  language: string;
+  lines: number;
+  at: number;
+}
+
+export const activityOf = (d: LiveDraft | null): LiveActivity | null => (d ? { language: d.language, lines: d.code === "" ? 0 : d.code.split("\n").length, at: d.at } : null);
 
 /** A player's relayed buffer, or null for anything that is not one. */
 export function sanitizeDraft(payload: unknown): { matchId: string; code: string; language: string } | null {
@@ -75,8 +103,12 @@ export function sanitizeDraft(payload: unknown): { matchId: string; code: string
   return { matchId, code, language };
 }
 
-/** Who an account is to one match (knockout.ts matchSeat); null when the match is not a published knockout's. */
-export type Seat = { side: Side | null; manager: boolean; status: string; startedAt: Date | null; endsAt: Date | null } | null;
+/**
+ * Who an account is to one match (knockout.ts matchSeat): one of its
+ * players, an organizer of the tournament, a CodeKairo admin — or none of
+ * these; null when the match is not a published knockout's.
+ */
+export type Seat = { side: Side | null; manager: boolean; admin?: boolean; status: string; startedAt: Date | null; endsAt: Date | null } | null;
 
 /** A player may open the relay for a match they sit that is not over — during the break too, so it is ready at the start. */
 export const playAllowed = (seat: Seat): boolean => !!seat && seat.side !== null && seat.status !== "done";
@@ -87,8 +119,8 @@ export function relayAllowed(seat: Seat, now: number): boolean {
   return seat.startedAt.getTime() <= now && (!seat.endsAt || now < seat.endsAt.getTime());
 }
 
-/** Only an organizer watches, and never one who plays in the match. */
-export const watchAllowed = (seat: Seat): boolean => !!seat && seat.side === null && seat.manager;
+/** Only staff watch the code — the tournament's organizers and CodeKairo's admins — and never one who plays in the match. */
+export const watchAllowed = (seat: Seat): boolean => !!seat && seat.side === null && (seat.manager || seat.admin === true);
 
 /** The latest buffer of each side of each match, forgotten LIVE_DRAFT_TTL_MS after its last change. */
 export class LiveDrafts {
@@ -133,11 +165,20 @@ export interface WatchSocket {
   on(event: string, listener: (...args: any[]) => void): unknown;
 }
 
+/** What one relay sends for a side's latest buffer, and where. */
+type Send = (io: WatchIo, matchId: string, side: Side, draft: LiveDraft) => void;
+
+/** The code itself, to the staff watching. */
+export const sendCode: Send = (io, matchId, side, draft) => io.to(matchWatchRoom(matchId)).emit("match-code", { matchId, side, ...draft });
+/** The activity alone, to the spectators. */
+export const sendActivity: Send = (io, matchId, side, draft) => io.to(matchSpectateRoom(matchId)).emit("match-activity", { matchId, side, ...activityOf(draft) });
+
 /**
- * One side's code reaches the watchers at most once per RELAY_GAP_MS: a
- * change inside the gap is held and the latest buffer goes out when it
- * closes, so the last keystroke is never lost and a client sending on
- * every keypress cannot flood the organizers' rooms.
+ * One side's buffer reaches a room at most once per gap — RELAY_GAP_MS for
+ * the code to the watchers, ACTIVITY_GAP_MS for the activity to the
+ * spectators: a change inside the gap is held and the latest buffer goes
+ * out when it closes, so the last keystroke is never lost and a client
+ * sending on every keypress cannot flood the rooms.
  */
 export class Relay {
   private last = new Map<string, number>();
@@ -146,6 +187,7 @@ export class Relay {
   constructor(
     private readonly drafts: LiveDrafts,
     private readonly gapMs = RELAY_GAP_MS,
+    private readonly send: Send = sendCode,
   ) {}
 
   push(io: WatchIo, matchId: string, side: Side): void {
@@ -156,15 +198,26 @@ export class Relay {
       this.held.delete(key);
       this.last.set(key, Date.now());
       const draft = this.drafts.get(matchId)[side];
-      if (draft) io.to(matchWatchRoom(matchId)).emit("match-code", { matchId, side, ...draft });
+      if (draft) this.send(io, matchId, side, draft);
     };
     if (wait <= 0) send();
     else this.held.set(key, setTimeout(send, wait));
   }
 }
 
+/** What registerMatchWatch is handed: the store, the two relays and the lookups match-watch.ts binds to the database. */
+export interface WatchDeps {
+  drafts: LiveDrafts;
+  relay: Relay;
+  /** The spectators' relay (sendActivity); without one, nobody spectates. */
+  activity?: Relay;
+  seatOf: (userId: string, matchId: string) => Promise<Seat>;
+  /** Whether anyone may spectate the match: a published knockout's, of a verified organizer. */
+  isPublicMatch?: (matchId: string) => Promise<boolean>;
+}
+
 /** Wire one socket's watch events; match-watch.ts binds the real seat lookup and the process's store. */
-export function registerMatchWatch(io: WatchIo, socket: WatchSocket, deps: { drafts: LiveDrafts; relay: Relay; seatOf: (userId: string, matchId: string) => Promise<Seat> }): void {
+export function registerMatchWatch(io: WatchIo, socket: WatchSocket, deps: WatchDeps): void {
   const seats = new Map<string, { seat: Seat; at: number }>();
   const seatFor = async (matchId: string, maxAgeMs: number): Promise<Seat> => {
     const userId = socket.data.userId;
@@ -203,6 +256,7 @@ export function registerMatchWatch(io: WatchIo, socket: WatchSocket, deps: { dra
       if (!seat?.side || !relayAllowed(seat, now)) return;
       deps.drafts.set(draft.matchId, seat.side, { code: draft.code, language: draft.language, at: now });
       deps.relay.push(io, draft.matchId, seat.side);
+      deps.activity?.push(io, draft.matchId, seat.side);
     } catch (err) {
       console.error("match-code error:", err);
     }
@@ -225,5 +279,30 @@ export function registerMatchWatch(io: WatchIo, socket: WatchSocket, deps: { dra
 
   socket.on("unwatch-match", (matchId: unknown) => {
     if (typeof matchId === "string" && matchId) socket.leave(matchWatchRoom(matchId));
+  });
+
+  // Spectators: no seat is needed or looked up — an anonymous socket has no
+  // account to seat. What decides is whether the match is public, read
+  // once per match per socket (a published match stays published).
+  const publicMatches = new Set<string>();
+  socket.on("spectate-match", async (matchId: unknown, ack?: unknown) => {
+    try {
+      if (typeof matchId !== "string" || !matchId || matchId.length > 64 || !deps.activity || !deps.isPublicMatch) return reply(ack, { ok: false });
+      if (!publicMatches.has(matchId)) {
+        if (!(await deps.isPublicMatch(matchId))) return reply(ack, { ok: false });
+        publicMatches.add(matchId);
+        if (publicMatches.size > 16) publicMatches.delete(publicMatches.values().next().value!);
+      }
+      socket.join(matchSpectateRoom(matchId));
+      const snapshot = deps.drafts.get(matchId);
+      reply(ack, { ok: true, a: activityOf(snapshot.a), b: activityOf(snapshot.b) });
+    } catch (err) {
+      console.error("spectate-match error:", err);
+      reply(ack, { ok: false });
+    }
+  });
+
+  socket.on("unspectate-match", (matchId: unknown) => {
+    if (typeof matchId === "string" && matchId) socket.leave(matchSpectateRoom(matchId));
   });
 }

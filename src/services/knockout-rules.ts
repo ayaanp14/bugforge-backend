@@ -93,6 +93,44 @@ export function timeoutWinner(a: Side, b: Side): "a" | "b" {
   return a.seed <= b.seed ? "a" : "b";
 }
 
+/** What the roster reads of a match: its round, its two players, how it stands. */
+export interface RosterMatch {
+  round: number;
+  status: string;
+  winnerId: string | null;
+  a: string | null;
+  b: string | null;
+}
+
+/**
+ * Where one seeded player stands in the bracket, for the public roster
+ * (knockout.ts bracketView): champion, runner-up, out in a round, playing
+ * one, or through to the next and waiting for its other player. `reached`
+ * is the deepest round they got to — the roster's order, best first.
+ */
+export interface RosterStanding {
+  state: "champion" | "runner-up" | "out" | "playing" | "through";
+  reached: number;
+  label: string;
+}
+
+export function rosterStanding(playerId: string, matches: readonly RosterMatch[], totalRounds: number): RosterStanding {
+  const own = matches.filter((m) => m.a === playerId || m.b === playerId).sort((x, y) => y.round - x.round);
+  const last = own[0];
+  // Seeded but in no match: a field of one, decided without a game.
+  if (!last) return { state: "champion", reached: totalRounds, label: "Champion" };
+  const name = (round: number) => roundName(round, totalRounds);
+  if (last.status === "live") return { state: "playing", reached: last.round, label: `Playing the ${name(last.round)}` };
+  // A winner is written into the next match at once (knockout.ts placeWinner), which waits there for its other player.
+  if (last.status !== "done") return { state: "through", reached: last.round, label: `Through to the ${name(last.round)}` };
+  if (last.winnerId === playerId) {
+    if (last.round >= totalRounds) return { state: "champion", reached: totalRounds + 1, label: "Champion" };
+    return { state: "through", reached: last.round + 1, label: `Through to the ${name(last.round + 1)}` };
+  }
+  if (last.round >= totalRounds) return { state: "runner-up", reached: totalRounds, label: "Runner-up" };
+  return { state: "out", reached: last.round, label: `Out in the ${name(last.round)}` };
+}
+
 /**
  * How far a player got, for their profile: "Champion", "Runner-up",
  * "Semifinalist", "Quarterfinalist", "Round of 16".

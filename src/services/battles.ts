@@ -430,14 +430,37 @@ export async function manageView(userId: string, tournamentId: string) {
 /** The public list: published tournaments of verified orgs that have not finished. */
 export async function listTournaments() {
   const now = new Date();
-  const rows = await prisma.tournament.findMany({
-    where: { status: "published", org: { verifiedAt: { not: null } }, startsAt: { gte: new Date(now.getTime() - 2 * 24 * 3600_000) } },
-    orderBy: { startsAt: "asc" },
-    take: 60,
-    select: TOURNAMENT_CARD,
-  });
-  return { tournaments: rows.map((t) => cardOf(t, now)).filter((t) => t.phase !== "finished") };
+  const verified = { status: "published", org: { verifiedAt: { not: null } } } as const;
+  const [rows, past] = await Promise.all([
+    prisma.tournament.findMany({
+      where: { ...verified, startsAt: { gte: new Date(now.getTime() - 2 * 24 * 3600_000) } },
+      orderBy: { startsAt: "asc" },
+      take: 60,
+      select: TOURNAMENT_CARD,
+    }),
+    // Recently finished, newest first: where a visitor finds a tournament's
+    // results, players and published code once it is over (the list above
+    // drops it the moment it finishes). A knockout's end is its final, so
+    // a few more rows than shown are read and the unfinished dropped.
+    prisma.tournament.findMany({
+      where: { ...verified, startsAt: { gte: new Date(now.getTime() - RECENT_DAYS * 24 * 3600_000), lte: now } },
+      orderBy: { startsAt: "desc" },
+      take: RECENT_SHOWN * 2,
+      select: TOURNAMENT_CARD,
+    }),
+  ]);
+  return {
+    tournaments: rows.map((t) => cardOf(t, now)).filter((t) => t.phase !== "finished"),
+    recent: past
+      .map((t) => cardOf(t, now))
+      .filter((t) => t.phase === "finished")
+      .slice(0, RECENT_SHOWN),
+  };
 }
+
+/** The "Recently finished" section of /tournaments: how far back, and how many. */
+const RECENT_DAYS = 60;
+const RECENT_SHOWN = 12;
 
 /**
  * A tournament's public page. The problem set is not on it — only how many

@@ -14,7 +14,9 @@ import { prisma } from "../lib/prisma.js";
 import { cached, invalidate } from "../lib/cache.js";
 import { BattlesError } from "./battles-error.js";
 import { isHiddenStatus } from "./battles-rules.js";
-import { computeStandings, contestState, endsAt, freezeAt, problemLetter, type ContestVerdict, type ContestWindow } from "./contest-rules.js";
+import { codeHiddenReason, codeIsPublic, isStaff, mayRead, mayReadCode, resultsFinal } from "./battles-view-rules.js";
+import { roleOf, viewedTournament, type BattlesViewer } from "./battles-viewer.js";
+import { computeStandings, contestMinute, contestState, endsAt, freezeAt, problemLetter, type ContestVerdict, type ContestWindow } from "./contest-rules.js";
 
 /** The judge's verdicts in contest terms. Anything unlisted (an engine failure never gets this far) is not recorded. */
 export const VERDICTS: Record<string, ContestVerdict> = {
@@ -86,6 +88,7 @@ async function loadContest(tournamentId: string) {
       durationMinutes: true,
       freezeMinutes: true,
       resultsRevealedAt: true,
+      finishedAt: true,
       org: { select: { name: true, verifiedAt: true } },
     },
   });
@@ -171,23 +174,33 @@ export async function contestRoom(userId: string, tournamentId: string) {
   };
 }
 
+const MEMBER_SELECT = { username: true, name: true, avatar_url: true } as const;
+const memberOut = (u: { username: string | null; name: string | null; avatar_url: string | null }) => ({ name: u.username || u.name || "Member", avatar: u.avatar_url });
+
 /**
  * The scoreboard, from the start on, to anyone who may read the tournament
- * (organizers before it is public too). Computed from every attempt and
- * cached for a few seconds — the same board for every reader, so a room of
- * pollers costs one computation per interval.
+ * — signed in or not; its organizers and CodeKairo's admins before it is
+ * public too. Computed from every attempt and cached for a few seconds —
+ * the same board for every reader, so a room of pollers costs one
+ * computation per interval. Each row names the team's members (since
+ * 2026-10-02: who took part is what a spectator asks first), and `viewer`
+ * says whether this reader may open a team's attempts (teamAttempts).
  */
-export async function contestStandings(tournamentId: string, viewerId: string | null) {
+export async function contestStandings(tournamentId: string, viewer: BattlesViewer) {
   const t = await loadContest(tournamentId);
-  const manager = await isManager(viewerId, t.orgId);
-  if (!manager && (isHiddenStatus(t.status) || !t.org.verifiedAt)) throw new BattlesError(404, "No such contest.");
+  const role = await roleOf(viewer, t.orgId, false);
+  const viewed = viewedTournament(t);
+  if (!mayRead(viewed, role)) throw new BattlesError(404, "No such contest.");
   const now = new Date();
   const header = contestHeader(t, now);
   if (header.state === "before") throw new BattlesError(409, "The scoreboard opens when the contest starts.");
 
   const board = await cached(standingsKey(t.id), STANDINGS_TTL_MS, async () => {
     const [teams, problems, submissions] = await Promise.all([
-      prisma.tournamentTeam.findMany({ where: { tournamentId: t.id }, select: { id: true, name: true } }),
+      prisma.tournamentTeam.findMany({
+        where: { tournamentId: t.id },
+        select: { id: true, name: true, entries: { where: { status: "approved" }, orderBy: { createdAt: "asc" }, select: { user: { select: MEMBER_SELECT } } } },
+      }),
       prisma.tournamentProblem.findMany({
         where: { tournamentId: t.id },
         orderBy: { position: "asc" },
@@ -200,14 +213,88 @@ export async function contestStandings(tournamentId: string, viewerId: string | 
     ]);
     const rows = computeStandings({
       window: windowOf(t),
-      teams,
+      teams: teams.map((tm) => ({ id: tm.id, name: tm.name })),
       problemIds: problems.map((p) => p.problem.id),
       submissions: submissions.map((s) => ({ teamId: s.teamId!, problemId: s.problemId, verdict: s.verdict as ContestVerdict, at: s.submittedAt })),
       revealed: t.resultsRevealedAt !== null,
     });
-    return { problems: problems.map((p) => ({ id: p.problem.id, letter: problemLetter(p.position), title: p.problem.title })), rows, computedAt: new Date() };
+    const members = new Map(teams.map((tm) => [tm.id, tm.entries.map((e) => memberOut(e.user))]));
+    return {
+      problems: problems.map((p) => ({ id: p.problem.id, letter: problemLetter(p.position), title: p.problem.title })),
+      rows: rows.map((r) => ({ ...r, members: members.get(r.teamId) ?? [] })),
+      computedAt: new Date(),
+    };
   });
-  return { contest: header, ...board };
+  const staff = isStaff(role);
+  const codePublic = codeIsPublic(viewed, now);
+  return {
+    contest: header,
+    ...board,
+    viewer: { staff, teamsOpen: staff || resultsFinal(viewed, now) },
+    code: { public: codePublic, hiddenReason: codePublic ? null : codeHiddenReason(viewed, now) },
+  };
+}
+
+/**
+ * One team's attempts, oldest first, for the scoreboard's team panel:
+ * each problem letter, verdict, minute, author, language and tests passed,
+ * and whether this reader may open its code (battles-attempts.ts serves
+ * it). The team's own members and the staff read it any time; everyone
+ * else once the results are final — a team's attempt list during the
+ * contest is the frozen board's answer, and its timing a hint to the rest.
+ */
+export async function teamAttempts(viewer: BattlesViewer, tournamentId: string, teamId: string) {
+  const t = await loadContest(tournamentId);
+  const team = await prisma.tournamentTeam.findFirst({
+    where: { id: teamId, tournamentId: t.id },
+    select: { id: true, name: true, entries: { where: { status: "approved" }, orderBy: { createdAt: "asc" }, select: { userId: true, user: { select: MEMBER_SELECT } } } },
+  });
+  if (!team) throw new BattlesError(404, "No such team.");
+  const viewerId = viewer?.userId ?? null;
+  const onTeam = !!viewerId && team.entries.some((e) => e.userId === viewerId);
+  const role = await roleOf(viewer, t.orgId, onTeam);
+  const viewed = viewedTournament(t);
+  if (!onTeam && !mayRead(viewed, role)) throw new BattlesError(404, "No such contest.");
+  const now = new Date();
+  if (!onTeam && !isStaff(role) && !resultsFinal(viewed, now)) throw new BattlesError(403, "A team's attempts are shown once the final standings are out.");
+
+  const [problems, rows] = await Promise.all([
+    prisma.tournamentProblem.findMany({ where: { tournamentId: t.id }, orderBy: { position: "asc" }, select: { position: true, problem: { select: { id: true, title: true } } } }),
+    prisma.tournamentSubmission.findMany({
+      where: { teamId: team.id },
+      orderBy: { submittedAt: "asc" },
+      take: 500,
+      select: {
+        id: true,
+        userId: true,
+        problemId: true,
+        verdict: true,
+        submittedAt: true,
+        user: { select: MEMBER_SELECT },
+        submission: { select: { language: true, passedCases: true, totalCases: true, runtimeMs: true } },
+      },
+    }),
+  ]);
+  const byProblem = new Map(problems.map((p) => [p.problem.id, { letter: problemLetter(p.position), title: p.problem.title }]));
+  const codePublic = codeIsPublic(viewed, now);
+  return {
+    team: { id: team.id, name: team.name, members: team.entries.map((e) => memberOut(e.user)) },
+    attempts: rows.map((r) => ({
+      id: r.id,
+      letter: byProblem.get(r.problemId)?.letter ?? "?",
+      problemTitle: byProblem.get(r.problemId)?.title ?? "",
+      verdict: r.verdict,
+      at: r.submittedAt,
+      minute: contestMinute(windowOf(t), r.submittedAt),
+      by: memberOut(r.user).name,
+      language: r.submission.language,
+      passed: r.submission.passedCases,
+      total: r.submission.totalCases,
+      runtimeMs: r.submission.runtimeMs,
+      readable: mayReadCode(role, r.userId === viewerId, codePublic),
+    })),
+    code: { public: codePublic, hiddenReason: codePublic ? null : codeHiddenReason(viewed, now) },
+  };
 }
 
 /** Lift the freeze and publish the final standings. Organizers only, once the contest has ended. */

@@ -1,6 +1,6 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { bracketSize, firstRound, nextSlot, placementLabel, problemForRound, roundName, roundsFor, seedOrder, timeoutWinner } from "./knockout-rules.js";
+import { bracketSize, firstRound, nextSlot, placementLabel, problemForRound, rosterStanding, roundName, roundsFor, seedOrder, timeoutWinner, type RosterMatch } from "./knockout-rules.js";
 
 /** The knockout's pure rules (knockout-rules.ts), without a database. Run with: npm test */
 
@@ -58,5 +58,40 @@ describe("timeoutWinner", () => {
   it("beats a no-show with any attempt, and falls back to the better seed", () => {
     assert.equal(timeoutWinner({ seed: 1, passed: 0, bestAt: null }, { seed: 8, passed: 0, bestAt: at(3) }), "b");
     assert.equal(timeoutWinner({ seed: 5, passed: 0, bestAt: null }, { seed: 4, passed: 0, bestAt: null }), "b");
+  });
+});
+
+describe("rosterStanding", () => {
+  // Four players, two rounds: p1 beat p4, p2 and p3 still at it; the final waits.
+  const semis: RosterMatch[] = [
+    { round: 1, status: "done", winnerId: "p1", a: "p1", b: "p4" },
+    { round: 1, status: "live", winnerId: null, a: "p2", b: "p3" },
+    { round: 2, status: "waiting", winnerId: null, a: "p1", b: null },
+  ];
+  it("tells who is out, who is playing and who is through", () => {
+    assert.deepEqual(rosterStanding("p4", semis, 2), { state: "out", reached: 1, label: "Out in the Semifinal" });
+    assert.deepEqual(rosterStanding("p2", semis, 2), { state: "playing", reached: 1, label: "Playing the Semifinal" });
+    assert.deepEqual(rosterStanding("p1", semis, 2), { state: "through", reached: 2, label: "Through to the Final" });
+  });
+
+  it("crowns the champion above the runner-up", () => {
+    const done: RosterMatch[] = [
+      { round: 1, status: "done", winnerId: "p1", a: "p1", b: "p4" },
+      { round: 1, status: "done", winnerId: "p3", a: "p2", b: "p3" },
+      { round: 2, status: "done", winnerId: "p3", a: "p1", b: "p3" },
+    ];
+    const champ = rosterStanding("p3", done, 2);
+    const second = rosterStanding("p1", done, 2);
+    assert.equal(champ.label, "Champion");
+    assert.equal(second.label, "Runner-up");
+    assert.ok(champ.reached > second.reached && second.reached > rosterStanding("p2", done, 2).reached);
+  });
+
+  it("carries a bye's player on to the round they play next", () => {
+    const withBye: RosterMatch[] = [
+      { round: 1, status: "done", winnerId: "p1", a: "p1", b: null },
+      { round: 2, status: "live", winnerId: null, a: "p1", b: "p2" },
+    ];
+    assert.equal(rosterStanding("p1", withBye, 2).label, "Playing the Final");
   });
 });
