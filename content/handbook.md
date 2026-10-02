@@ -86,7 +86,7 @@ One request builds it; it refreshes itself after a submission, a chest, a follow
 
 ### The catalogue — `/challenges`
 
-- More than 1,000 published DSA problems: roughly 430 easy, 520 medium and 150 hard. Every problem is authored with test cases, a typed function signature and reference solutions, and most carry an editorial.
+- More than 1,500 published DSA problems: roughly 490 easy, 800 medium and 300 hard. Every problem is authored with test cases, a typed function signature and reference solutions, and most carry an editorial.
 - Masthead counts: total problems, how many you have solved, how many you have attempted (a submission but no accepted one yet).
 - Filters: search (matches title and description), difficulty (Easy/Medium/Hard), status (All / Solved / Unsolved), **Topics** chips (several can be selected — a problem must carry every selected topic), **Companies** chips (one at a time: Amazon, Google, Microsoft, Meta, Apple, Adobe, TCS, Infosys, Wipro, Capgemini, Cognizant, Accenture, Zoho, HCL, Tech Mahindra and more — companies are simply tags on the problem), time limit (< 1 s / < 2 s / < 5 s), and sort (**Shuffled** is the default and stays the same order for the whole visit; Newest; Oldest; A–Z). Lists load 100 at a time as you scroll.
 - Row markers: green tick = solved, amber = attempted, plain = untouched.

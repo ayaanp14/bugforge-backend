@@ -127,7 +127,7 @@ const QUESTIONS: Array<[string, RegExp, string?]> = [
   ["does aptitude practice give xp", /Aptitude practice pays no XP/],
   ["where can I see my old interviews", /mock-interview\/history/],
   ["where is the list of array problems", /challenges\/arrays/],
-  ["how many problems are there", /More than 1,000 published/],
+  ["how many problems are there", /More than 1,500 published/],
   ["how many hints does an aptitude question have", /up to four/],
   // Follow-ups: the answer is only reachable through the previous question.
   ["how long does it last?", /expires after \*\*2 hours\*\*/, "how do private duel rooms work"],

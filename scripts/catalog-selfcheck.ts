@@ -157,7 +157,7 @@ function checkOne(spec: CatalogProblem, failures: Failure[]): boolean {
   // The seeder's RNG is seeded from the slug, so these are the very cases the
   // database will hold — a pass here is a pass on the real suite's prefix.
   const rng = makeRng(spec.slug);
-  for (let i = 0; i < COUNT; i++) {
+  for (let i = 0; i < Math.min(COUNT, spec.hiddenCount ?? COUNT); i++) {
     const c = spec.gen(rng);
     if (!run(c.input, c.expectedOutput, `hidden ${i + 1}`)) return false;
   }

@@ -1348,7 +1348,10 @@ function phpFile(sig: Signature, fn: string): string {
     ...parse,
     `        $result = ${call};`,
     '        if (is_bool($result)) $out[] = $result ? "true" : "false";',
-    "        elseif (is_array($result)) $out[] = json_encode($result);",
+    // JSON_UNESCAPED_SLASHES: PHP alone escapes "/" as "\/" (every other driver
+    // prints it as is), so a correct ["1/2"] read as a wrong answer — found by
+    // Simplified Fractions, the first catalog problem with "/" in a string[].
+    "        elseif (is_array($result)) $out[] = json_encode($result, JSON_UNESCAPED_SLASHES);",
     "        else $out[] = strval($result);",
     "    } catch (\Throwable $e) {",
     `        $out[] = "${ERR} " . $e->getMessage();`,

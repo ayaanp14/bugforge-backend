@@ -39,6 +39,15 @@ export interface CatalogProblem {
   examples: Case[];
   /** One deterministic hidden case per call. */
   gen: (rng: Rng) => Case;
+  /**
+   * Caps the seeder's `--count` for this problem. For the few classics whose
+   * input space is a handful of values (N-Queens II has nine) or whose honest
+   * solution is a search: the judge gives a whole suite at most 15 CPU
+   * seconds, and 5,000 backtracking runs in Python or Ruby do not fit, while
+   * 5,000 copies of nine inputs prove nothing more than a few hundred do.
+   * Leave it unset everywhere else.
+   */
+  hiddenCount?: number;
   /** Validated solutions; python doubles as the referenceSolution. */
   solutions: Solutions;
 }
@@ -119,3 +128,28 @@ export function solutionsJson(s: Solutions): Record<string, string> {
 
 /** Format an int matrix in expectedOutput style: [[1,2],[3,4]] (no spaces). */
 export const fmtIntMat = (m: number[][]) => JSON.stringify(m);
+
+/**
+ * Tag for a solution written as an indented multi-line block:
+ *
+ *   python: code`
+ *     def f(x):
+ *         return x
+ *   `,
+ *
+ * The text is taken raw (String.raw), so a backslash in the solution stays a
+ * backslash — `'\n'` in C is written as is, not as `'\\n'` the way the
+ * single-line `\n`-joined literals of waves 1–5 had to spell it, which is where
+ * hand-escaping went wrong. The first and last lines (the ones beside the
+ * backticks) are dropped and the common indentation removed, so Python keeps
+ * its significant whitespace. The block cannot hold a backtick or `${` — no
+ * solution needs one (wave 6 onwards).
+ */
+export function code(strings: TemplateStringsArray, ...values: unknown[]): string {
+  if (values.length) throw new Error("code`…` blocks take no ${} substitutions");
+  const lines = String.raw(strings).replace(/\r\n/g, "\n").split("\n");
+  if (lines.length && lines[0].trim() === "") lines.shift();
+  if (lines.length && lines[lines.length - 1].trim() === "") lines.pop();
+  const indent = Math.min(...lines.filter((l) => l.trim() !== "").map((l) => l.match(/^ */)![0].length));
+  return lines.map((l) => l.slice(Number.isFinite(indent) ? indent : 0).replace(/\s+$/, "")).join("\n");
+}

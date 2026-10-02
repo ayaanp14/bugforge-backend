@@ -32,6 +32,8 @@ const HIDDEN = parseInt(opt("count") ?? "5000", 10);
 // --only takes a comma-separated list, so one run can cover a whole authoring
 // wave without touching the problems already seeded at full case count.
 const ONLY = opt("only")?.split(",").map((x) => x.trim()).filter(Boolean) ?? null;
+/** `--count`, lowered for the few problems that cap their own suite (CatalogProblem.hiddenCount). */
+const hiddenFor = (spec: CatalogProblem) => Math.min(HIDDEN, spec.hiddenCount ?? HIDDEN);
 
 function specs(): CatalogProblem[] {
   const seen = new Set<string>();
@@ -70,7 +72,7 @@ async function seedOne(spec: CatalogProblem) {
   spec.examples.forEach((ex, i) =>
     rows.push({ problemId: problem.id, input: ex.input, expectedOutput: ex.expectedOutput, isHidden: false, orderIndex: i }));
   const rng = makeRng(spec.slug);
-  for (let i = 0; i < HIDDEN; i++) {
+  for (let i = 0; i < hiddenFor(spec); i++) {
     const c = spec.gen(rng);
     rows.push({ problemId: problem.id, input: c.input, expectedOutput: c.expectedOutput, isHidden: true, orderIndex: spec.examples.length + i });
   }
@@ -92,7 +94,7 @@ async function seed() {
         where: { slug: spec.slug },
         select: { _count: { select: { testCases: true } } },
       });
-      if (existing && existing._count.testCases === spec.examples.length + HIDDEN) {
+      if (existing && existing._count.testCases === spec.examples.length + hiddenFor(spec)) {
         done++;
         if (done % 10 === 0 || done === list.length) console.log(`  ${done}/${list.length} (skip: ${spec.slug})`);
         continue;

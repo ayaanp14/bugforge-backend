@@ -54,6 +54,28 @@ import { STRINGS5_PROBLEMS } from "./strings5.js";
 import { DP5_PROBLEMS } from "./dp5.js";
 import { MISC4_PROBLEMS } from "./misc4.js";
 
+// ── Wave 6 — 500 LeetCode classics (+ a few GFG/InterviewBit staples), all 13 languages ──
+import { ARRAYS6_PROBLEMS } from "./arrays6.js";
+import { ARRAYS7_PROBLEMS } from "./arrays7.js";
+import { ARRAYS8_PROBLEMS } from "./arrays8.js";
+import { STRINGS6_PROBLEMS } from "./strings6.js";
+import { STRINGS7_PROBLEMS } from "./strings7.js";
+import { STRINGS8_PROBLEMS } from "./strings8.js";
+import { STRINGS9_PROBLEMS } from "./strings9.js";
+import { MATH6_PROBLEMS } from "./math6.js";
+import { MATH7_PROBLEMS } from "./math7.js";
+import { BITS6_PROBLEMS } from "./bits6.js";
+import { SLIDING6_PROBLEMS } from "./sliding6.js";
+import { BINARYSEARCH6_PROBLEMS } from "./binarysearch6.js";
+import { STACKS6_PROBLEMS } from "./stacks6.js";
+import { HEAPS6_PROBLEMS } from "./heaps6.js";
+import { GREEDY6_PROBLEMS } from "./greedy6.js";
+import { DP6_PROBLEMS } from "./dp6.js";
+import { DP7_PROBLEMS } from "./dp7.js";
+import { GRAPHS6_PROBLEMS } from "./graphs6.js";
+import { MATRICES6_PROBLEMS } from "./matrices6.js";
+import { BACKTRACKING6_PROBLEMS } from "./backtracking6.js";
+
 export const CATALOG: CatalogProblem[] = [
   ...ARRAY_PROBLEMS,
   ...STRING_PROBLEMS,
@@ -99,4 +121,24 @@ export const CATALOG: CatalogProblem[] = [
   ...STRINGS5_PROBLEMS,
   ...DP5_PROBLEMS,
   ...MISC4_PROBLEMS,
+  ...ARRAYS6_PROBLEMS,
+  ...ARRAYS7_PROBLEMS,
+  ...ARRAYS8_PROBLEMS,
+  ...STRINGS6_PROBLEMS,
+  ...STRINGS7_PROBLEMS,
+  ...STRINGS8_PROBLEMS,
+  ...STRINGS9_PROBLEMS,
+  ...MATH6_PROBLEMS,
+  ...MATH7_PROBLEMS,
+  ...BITS6_PROBLEMS,
+  ...SLIDING6_PROBLEMS,
+  ...BINARYSEARCH6_PROBLEMS,
+  ...STACKS6_PROBLEMS,
+  ...HEAPS6_PROBLEMS,
+  ...GREEDY6_PROBLEMS,
+  ...DP6_PROBLEMS,
+  ...DP7_PROBLEMS,
+  ...GRAPHS6_PROBLEMS,
+  ...MATRICES6_PROBLEMS,
+  ...BACKTRACKING6_PROBLEMS,
 ];
