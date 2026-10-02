@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { tournamentSolveFor } from "../services/tournament-record.js";
+import { ensureContest, todayUtc } from "../services/daily-contest.js";
 import slugify from "slugify";
 import { prisma } from "../lib/prisma.js";
 import { requireAuth, optionalAuth, adminOnly } from "../middleware/auth.js";
@@ -911,8 +912,12 @@ router.get("/:slug/timer", requireAuth, async (req, res) => {
 
     // The timer is the one per-user read the workspace makes for every
     // problem on load, so the header's "solved in a tournament" chip rides on
-    // it instead of costing a request of its own.
-    const [timer, tournamentSolve] = await Promise.all([
+    // it instead of costing a request of its own — and so does whether this is
+    // today's contest problem: the workspace used to ask `/api/contests/daily`
+    // (board, standing, streak — four queries) on every problem just to compare
+    // ids, and now asks only when this says yes. `ensureContest` is an L1 hit.
+    // A failed lookup leaves the key out, and the client then asks as before.
+    const [timer, tournamentSolve, contest] = await Promise.all([
       prisma.problemTimer.findUnique({
         where: {
           userId_problemId: {
@@ -922,10 +927,12 @@ router.get("/:slug/timer", requireAuth, async (req, res) => {
         },
       }),
       tournamentSolveFor(userId, problemId),
+      ensureContest(todayUtc()).catch(() => undefined),
     ]);
+    const dailyContest = contest === undefined ? undefined : contest?.problemId === problemId;
 
     if (!timer) {
-      res.json({ elapsedSeconds: 0, isRunning: false, tournamentSolve });
+      res.json({ elapsedSeconds: 0, isRunning: false, tournamentSolve, dailyContest });
       return;
     }
 
@@ -934,6 +941,7 @@ router.get("/:slug/timer", requireAuth, async (req, res) => {
       isRunning: timer.isRunning,
       lastStartedAt: timer.lastStartedAt,
       tournamentSolve,
+      dailyContest,
     });
   } catch (err) {
     console.error("GET timer error:", err);
