@@ -12,13 +12,14 @@ import { boundsOf, type Walkthrough } from "./core.js";
  * short enough to watch; a caption is read under the figure while it
  * plays, so it is plain text of one or two sentences.
  */
-export function walkthroughProblems(slug: string, w: Walkthrough): string[] {
+export function walkthroughProblems(slug: string, w: Walkthrough, limits: { minFrames?: number; maxWidth?: number; inputOptional?: boolean } = {}): string[] {
+  const { minFrames = 5, maxWidth = 640, inputOptional = false } = limits;
   const out: string[] = [];
   const say = (m: string) => out.push(`${slug}: ${m}`);
   if (!w.title || w.title.length > 90) say(`title must be 1–90 characters (${w.title.length})`);
-  if (!w.input || w.input.length > 140) say(`input must be 1–140 characters (${w.input.length})`);
-  if (w.frames.length < 5 || w.frames.length > 16) say(`needs 5–16 frames, has ${w.frames.length}`);
-  if (w.width > 640) say(`too wide: ${w.width} > 640`);
+  if ((!w.input && !inputOptional) || w.input.length > 140) say(`input must be ${inputOptional ? 0 : 1}–140 characters (${w.input.length})`);
+  if (w.frames.length < minFrames || w.frames.length > 16) say(`needs ${minFrames}–16 frames, has ${w.frames.length}`);
+  if (w.width > maxWidth) say(`too wide: ${w.width} > ${maxWidth}`);
   if (w.height > 440) say(`too tall: ${w.height} > 440`);
   if (w.width < 120 || w.height < 60) say(`suspiciously small: ${w.width}×${w.height}`);
   const captions = new Set<string>();
@@ -42,6 +43,7 @@ export function walkthroughProblems(slug: string, w: Walkthrough): string[] {
       if (![b.x1, b.y1, b.x2, b.y2].every(Number.isFinite)) say(`${at} item "${it.id}" has a non-finite coordinate`);
       if (b.x1 < -0.5 || b.y1 < -0.5 || b.x2 > w.width + 0.5 || b.y2 > w.height + 0.5) say(`${at} item "${it.id}" falls outside the viewBox`);
       if ((it.k === "text" || it.k === "cell" || it.k === "node") && /undefined|NaN/.test(it.text)) say(`${at} item "${it.id}" shows "${it.text}"`);
+      if (it.k === "path" && it.pts.length < 2) say(`${at} path "${it.id}" needs two points`);
       if (it.k === "text" && it.text.length > 70) say(`${at} text "${it.id}" is over 70 characters — put prose in the caption`);
     }
   });

@@ -2,7 +2,7 @@
 title: Union-Find (Disjoint Set Union)
 stage: graphs-advanced
 order: 2
-minutes: 20
+minutes: 13
 level: Intermediate
 hub: union-find
 practice: find-if-path-exists-in-graph, number-of-provinces, number-of-connected-components-in-an-undirected-graph, redundant-connection, graph-valid-tree, number-of-operations-to-make-network-connected, the-earliest-moment-when-everyone-become-friends, min-cost-to-connect-all-points, checking-existence-of-edge-length-limited-paths
@@ -22,75 +22,47 @@ a: No. Union-find ignores direction and only knows whether two vertices are conn
 q: Can union-find delete an edge or split a set?
 a: Not efficiently. Once two sets are merged, and especially once path compression has re-pointed nodes, there is no cheap way to separate them again. When all the operations are known in advance, a common trick is to process them in reverse, so that deletions become additions.
 ---
-Some problems are about groups that only ever **merge**: friends of friends become one circle, cables join computers into one network, adjacent land cells form one island. Between the merges, you are asked the same question again and again — *are these two in the same group?* **Union-find**, also called **disjoint set union (DSU)**, is the data structure built for exactly that. It answers each question and performs each merge in what is, for every practical input, constant time.
+Some problems are about groups that only ever **merge**: friends of friends become one circle, cables join computers into one network, adjacent land cells form one island. Between the merges you are asked the same question again and again — *are these two in the same group?* **Union-find**, also called **disjoint set union (DSU)**, is the data structure built for exactly that: it keeps every group as a small tree in one array, and answers each question and performs each merge in effectively constant time.
 
-This lesson shows how union-find stores its groups, the two tricks that keep it fast and why they work, how it counts connected components and finds the edge that closes a cycle, and when a plain [breadth-first](/roadmap/breadth-first-search) or [depth-first search](/roadmap/depth-first-search) is the simpler choice. Every program is shown in C++, Java, Python and JavaScript.
+@figure forest
 
 ## Why searching the graph each time is too slow
 
-Picture n computers and a stream of operations: "connect a and b", "can a reach b?". The obvious answer to each question is a fresh BFS or DFS over the cables added so far, which costs O(V + E). With 10⁵ computers, 10⁵ cables and 10⁵ questions interleaved, that is up to 10⁵ searches of 2 × 10⁵ steps each: 2 × 10¹⁰ steps, far beyond the hundred million or so a judge allows in a second.
-
-The next idea is to store a group label per element, so that a question is one comparison, `label[a] == label[b]`. Questions are now O(1), but a merge must relabel every member of one group — O(n) per merge, O(n²) for n merges. Union-find sits between these: it never relabels anyone, and it never searches the graph.
+Picture n computers and a stream of operations: "connect a and b", "can a reach b?". A fresh [breadth-first](/roadmap/breadth-first-search) or [depth-first search](/roadmap/depth-first-search) per question costs O(V + E): with 10⁵ computers, cables and questions, up to 2 × 10¹⁰ steps, far beyond the hundred million or so a judge allows in a second. A group label per element makes each question one comparison, but then a merge must relabel a whole group, O(n²) for n merges. Union-find never relabels anyone, and never searches the graph.
 
 ## The idea: every set is a tree
 
-Union-find stores each group as a tree in a single array. `parent[x]` points one step towards the **root** of x's tree, and a root points at itself. The root is the group's name: two elements are in the same group exactly when their trees have the same root.
+`parent[x]` points one step towards the **root** of x's tree, and a root points at itself. The root is the group's name: two elements are in the same group exactly when they reach the same root. At the start every element is its own one-node tree, `parent[i] = i`. Three operations work on those trees:
 
-```text
- groups:   {0, 1, 2, 3}              {4, 5}
-
- trees:         0                       4
-              /   \                     |
-             1     2                    5
-                   |
-                   3
-
- index:    0  1  2  3  4  5
- parent:   0  0  0  2  4  4          a root is its own parent
-```
-
-Three operations work on those trees:
-
-- **find(x)** follows parent pointers from x until it reaches a root, and returns that root. Above, find(3) walks 3 → 2 → 0 and returns 0.
-- **union(a, b)** finds both roots. If they differ, it points one root at the other, which merges the two trees — and with them every element in both groups — in a single assignment. If they are the same, a and b were already together and nothing changes.
+- **find(x)** follows parent pointers from x to the root and returns it.
+- **union(a, b)** finds both roots. If they differ, it points one root at the other: one assignment merges two whole groups. If they are the same, nothing changes.
 - **connected(a, b)** is `find(a) == find(b)`.
-
-At the start every element is its own one-node tree: `parent[i] = i` for every i.
 
 @walkthrough
 
 ## Keeping the trees short
 
-Everything costs as much as a find, and a find costs the depth of the tree. Left to chance, trees can grow into long chains — union(1, 0), union(2, 1), union(3, 2), … each putting the old tree under a lone new node — and then a find is O(n), no better than the label array. Two tricks prevent that, one in each operation.
+Every operation costs as much as a find, and a find costs the depth of the tree. Left to the order of the calls, trees grow into chains. Two tricks prevent that, one in each operation.
 
-**Union by size.** When merging, always attach the root of the *smaller* tree under the root of the larger one, and keep a `size` per root. The reason this keeps trees short is a doubling argument. An element's depth increases by one only when the root of its tree goes under another root, and with union by size that happens only when its tree was the smaller (or equal) one. The merged tree is then at least twice the size of the element's old tree. A tree can double at most log₂ n times before it holds all n elements, so no element is ever deeper than log₂ n — 20 levels for a million elements. **Union by rank** is the same idea using an upper bound on height, called the rank, instead of the size. It gives the same bound; size is usually more useful, because problems often ask how big a group is.
+**Union by size** always hangs the root of the smaller tree under the root of the larger one, keeping a `size` for every root. The same four unions, with and without it:
 
-**Path compression.** During a find, once the root is known, point every node on the walked path directly at it. This is allowed because a node's group is decided by the root it reaches, not by the route it takes: re-pointing a node at another node higher up in the same tree changes nothing about which group it is in, but every later find through that node takes one hop. A slow find therefore pays for itself by making the next ones fast.
+@figure chain-vs-size
 
-Each trick alone gives O(log n) per operation. Together they give something much better. In 1975 Robert Tarjan proved that any sequence of m operations on n elements then takes O(m α(n)) time, where α is the **inverse Ackermann function**. The Ackermann function grows so explosively that its inverse is at most 4 for any n that could fit in a computer. You do not need the proof for an interview. You do need to know that the two tricks together earn the bound, and that it means "effectively constant time per operation".
+Why it works is a doubling argument: a node sinks a level only when its tree goes under one at least as big, so its set at least doubles, and a set can double only log₂ n times before it holds everything. No node is ever deeper than log₂ n — 20 levels for a million elements.
 
-### Dry run
+@figure doubling
 
-The first program below runs union by size and path compression on 8 elements. Ties in size go the same way every time: the second root goes under the first.
+**Union by rank** compares an upper bound on height instead of the size and gives the same bound; size is handier, because problems often ask how big a group is.
 
-| Operation | Roots found | What happens | parent after (elements 0–7) | Sets |
-| --- | --- | --- | --- | --- |
-| start | none | every element is a root | 0 1 2 3 4 5 6 7 | 8 |
-| union(0, 1) | 0 and 1 | sizes 1 and 1: 1 goes under 0 | 0 0 2 3 4 5 6 7 | 7 |
-| union(2, 3) | 2 and 3 | 3 goes under 2 | 0 0 2 2 4 5 6 7 | 6 |
-| union(1, 3) | 0 and 2 | sizes 2 and 2: 2 goes under 0 | 0 0 0 2 4 5 6 7 | 5 |
-| union(4, 5) | 4 and 5 | 5 goes under 4 | 0 0 0 2 4 4 6 7 | 4 |
-| union(6, 7) | 6 and 7 | 7 goes under 6 | 0 0 0 2 4 4 6 6 | 3 |
-| union(5, 7) | 4 and 6 | sizes 2 and 2: 6 goes under 4 | 0 0 0 2 4 4 4 6 | 2 |
-| union(3, 0) | 0 and 0 | find(3) walks 3 → 2 → 0 and re-points 3 at 0; same root, no merge | 0 0 0 0 4 4 4 6 | 2 |
-| connected(7, 4) | 4 and 4 | find(7) walks 7 → 6 → 4 and re-points 7 at 4: true | 0 0 0 0 4 4 4 4 | 2 |
-| connected(1, 6) | 0 and 4 | different roots: false | 0 0 0 0 4 4 4 4 | 2 |
+**Path compression** works inside find. Once the root is known, every node on the walked path is pointed straight at it. That is safe because a node's group is decided by the root it reaches, not by the route it takes — and it means a slow find pays for itself by making the next ones fast.
 
-Two things to notice. The union of 3 and 0 changed nothing about the groups, but its find still flattened the path from 3. And at the end every element points straight at its root, so every later find is a single hop.
+@figure compression
+
+Each trick alone gives O(log n) per operation. Together, as Robert Tarjan proved in 1975, m operations take O(m α(n)), where α is the **inverse Ackermann function** — at most 4 for any n that fits in a computer: effectively constant time.
 
 ### The code
 
-The class keeps the parent and size arrays and a count of sets, which falls by one on every union that really merges. That count is the number of **connected components**, the answer to [Number of Connected Components in an Undirected Graph](/problems/number-of-connected-components-in-an-undirected-graph) and [Number of Provinces](/problems/number-of-provinces).
+The class also counts the sets: every union that really merges lowers the count, and what is left is the number of **connected components** — the answer to [Number of Provinces](/problems/number-of-provinces).
 
 ```cpp
 #include <iostream>
@@ -291,28 +263,17 @@ connected(1, 6) = false
 parent after compression: 0 0 0 0 4 4 4 4
 ```
 
+Step through the program and match each frame to the line it prints:
+
+@figure dry-run
+
 ## Finding the edge that closes a cycle
 
-The failed union is as useful as the successful ones. Read the edges of an undirected graph one at a time and union their endpoints. If an edge's two endpoints already have the same root, there was already a path between them, so this edge closes a **cycle**.
+A failed union is as useful as a successful one. Union the ends of each edge of an undirected graph in turn; if they already share a root, a path already joined them, so this edge closes a **cycle**. In [Redundant Connection](/problems/redundant-connection) — a tree on nodes 1 to n plus one extra edge, where you return the removable edge that comes last in the input — the first failing edge is the answer: every cycle edge before it was accepted, and it is the one that completes the cycle.
 
-That is the whole of [Redundant Connection](/problems/redundant-connection). A tree on n nodes, labelled 1 to n, has had one extra edge added, and you must return an edge whose removal leaves a tree — the one that occurs last in the input if several would do. The first edge whose union fails is that answer. The graph has exactly one cycle, and every edge on it could be removed. All the cycle's edges before the failing one were accepted, because without the failing edge they form no cycle; the failing edge is the one that completes it, so it is the cycle edge that comes last in the input. Edges after it are never needed.
+@figure cycle
 
-### Dry run
-
-On the edges [1, 2], [2, 3], [3, 4], [1, 4], [1, 5]:
-
-| Edge | find(a) | find(b) | Result |
-| --- | --- | --- | --- |
-| [1, 2] | 1 | 2 | different roots: union, 2 goes under 1 |
-| [2, 3] | 1 | 3 | different roots: union, 3 goes under 1 |
-| [3, 4] | 1 | 4 | different roots: union, 4 goes under 1 |
-| [1, 4] | 1 | 1 | same root: 1 and 4 were already connected, so return [1, 4] |
-
-The cycle is 1–2–3–4–1, and [1, 4] is the last of its edges in the input.
-
-### The code
-
-This version uses a compact iterative find with **path halving**: on the way up, each node is re-pointed at its grandparent. It needs no recursion, so a long chain cannot overflow the stack, and it gives the same O(α(n)) bound as full path compression when combined with union by size.
+This version finds the root with **path halving**: on the way up, each node is re-pointed at its grandparent. It needs no recursion, so a long chain cannot overflow the stack, and the bound is the same.
 
 ```cpp
 #include <iostream>
@@ -477,26 +438,15 @@ Redundant edge: [2, 3]
 Redundant edge: [1, 4]
 ```
 
-The same test answers [Graph Valid Tree](/problems/graph-valid-tree): a graph on n vertices is a tree exactly when it has n − 1 edges and no union fails. No failed union means no cycle, and an acyclic graph with n − 1 edges on n vertices has exactly one component, so it is connected.
-
-This works only because the edges are undirected. Union-find ignores direction: the edges 0 → 1, 0 → 2 and 1 → 2 contain no directed cycle, yet the third union fails. For directed graphs use [Topological Sort](/roadmap/topological-sort) or a DFS with three colours.
+The same test answers [Graph Valid Tree](/problems/graph-valid-tree): n − 1 edges and no failed union. It needs undirected edges — 0 → 1, 0 → 2 and 1 → 2 hold no directed cycle, yet the third union fails — so for directed graphs use [Topological Sort](/roadmap/topological-sort) or a DFS with three colours.
 
 ## Where union-find shows up
 
-- **Counting groups.** Start with n sets and let each successful union lower the count. [Number of Operations to Make Network Connected](/problems/number-of-operations-to-make-network-connected) adds one twist: with c components you need c − 1 cables, and every failed union is a spare cable you can move.
-- **Connections that arrive over time.** In [The Earliest Moment When Everyone Become Friends](/problems/the-earliest-moment-when-everyone-become-friends), sort the logs by time and union as you go; the answer is the timestamp at which the set count reaches 1. Rerunning a search after each log would cost O(V + E) a time; union-find costs almost nothing per log. This is **dynamic connectivity** for a graph that only gains edges.
-- **Kruskal's algorithm.** The [Minimum Spanning Tree](/roadmap/minimum-spanning-tree) lesson sorts edges by weight and keeps an edge only if its union succeeds — the same cycle test as above. [Min Cost to Connect All Points](/problems/min-cost-to-connect-all-points) is the standard exercise.
-- **Offline queries sorted by a limit.** In [Checking Existence of Edge Length Limited Paths](/problems/checking-existence-of-edge-length-limited-paths), sort the queries by their limit and the edges by length. Before answering each query, union every edge shorter than its limit; then the answer is `connected(p, q)`. Each edge is added once in all.
-- **Grids and other implicit graphs.** Give cell (r, c) the number r × cols + c and union neighbouring cells; islands become sets. The elements need not be places at all: in [Smallest String With Swaps](/problems/smallest-string-with-swaps) the indices that can be swapped form sets, and each set's characters can be sorted independently.
-
-## Union-find or BFS and DFS?
-
-Union-find is not always the right tool, and an interviewer will notice if you reach for it out of habit.
-
-- **A fixed graph and one question** — count the components, is there a path from a to b — is answered by a single BFS or DFS in O(V + E), with no extra structure. Union-find is just as fast here, so use whichever you write more reliably.
-- **Edges that arrive one at a time, with questions in between,** favour union-find: a search would have to start again after every new edge.
-- **The actual path, a distance or a direction** needs a search. Union-find only ever knows "same set" or "different sets".
-- **Deleting edges** suits neither cheaply, and union-find cannot split a set at all. If every operation is known in advance, process them in reverse so deletions become additions.
+- **Counting groups**: c components need c − 1 extra cables, and every failed union is a spare one you can move.
+- **Connections over time**: sort the logs by time and union until one set is left — **dynamic connectivity** for a graph that only gains edges.
+- **Kruskal's algorithm**: the [Minimum Spanning Tree](/roadmap/minimum-spanning-tree) keeps an edge only if its union succeeds, the cycle test above.
+- **Offline queries**: sort the queries by their limit and union every edge below it before answering `connected(p, q)`.
+- **Grids**: number cell (r, c) as r × cols + c and union neighbours; islands become sets. In [Smallest String With Swaps](/problems/smallest-string-with-swaps) the sets are indices that can swap.
 
 ## Time and space complexity
 
@@ -508,32 +458,27 @@ Union-find is not always the right tool, and an interviewer will notice if you r
 | Path compression only | O(log n) amortised | O(log n) amortised | O(m log n) |
 | Both tricks | O(α(n)) amortised | O(α(n)) amortised | O(m α(n)) |
 
-**Amortised** means the bound holds for the average over a sequence of operations: a single find can still walk a few levels, but it flattens what it walked, so the total stays small. Space is O(n) for the parent and size arrays. A problem that builds the structure from E edges and answers Q questions costs O((E + Q) α(n)), which beats a BFS per question as soon as there is more than a handful of questions.
+**Amortised** means on average over a sequence: one find can walk a few levels, but it flattens what it walked. Space is O(n). For one question on a fixed graph, a BFS or DFS is just as fast; union-find wins when edges arrive between questions.
 
 ## How to recognise a union-find problem
 
-Read the statement for these signals:
-
-- Things join **groups** through a relation that is symmetric and transitive: friends of friends, accounts that share an email, equations such as a == b, stones that share a row.
+- Things join **groups** through a symmetric, transitive relation: friends of friends, accounts that share an email.
 - The question is **"are these two connected?"** or **"how many groups are there?"**, asked after merges.
 - Edges or merges **arrive over time**, and you want the moment something becomes connected.
 - You must find **the edge that creates a cycle**, or decide whether an undirected graph is a tree.
 - Edges are **added in sorted order** of weight or time, as in Kruskal's algorithm and offline queries.
 
-If the question needs a shortest path, a direction or the route itself, use a search instead. If the graph is directed and the question is about cycles or ordering, use topological sort.
+If it needs a shortest path, a direction or the route itself, use a search: union-find only knows "same set" or not, and cannot split a set once merged.
 
 ## Common mistakes
 
-- **Linking elements instead of roots.** `parent[a] = b` moves a alone and leaves the rest of a's tree behind. Always link `find(a)` to `find(b)`.
-- **Comparing parents instead of roots.** `parent[a] == parent[b]` is true only when both sit directly under the same node. Compare `find(a) == find(b)`.
-- **Counting every union call.** Only a union that merges two different sets lowers the number of components. Decrement inside the branch that merges.
+- **Linking elements instead of roots.** `parent[a] = b` moves a alone and leaves the rest of its tree behind. Always link `find(a)` to `find(b)`.
+- **Comparing parents instead of roots.** `parent[a] == parent[b]` misses elements at different depths. Compare `find(a) == find(b)`.
+- **Counting every union call.** Only a union that merges lowers the component count.
 - **Off-by-one labels.** When nodes are labelled 1 to n, allocate n + 1 slots, as the second program does.
-- **Using it on a directed graph.** Union-find has no notion of direction, so it reports cycles that do not exist.
-- **Deep recursion in find.** Without union by size, a chain of 10⁵ elements makes the recursive find recurse 10⁵ deep before compression helps — fine in C++, a crash in Python. Keep union by size, or use the iterative path halving shown above.
+- **Deep recursion in find.** Without union by size, a recursive find on a chain of 10⁵ elements crashes Python. Keep union by size, or use path halving.
 
 ## Practice in this order
-
-Start with problems where union-find is the whole solution, then move to ones where it is one part of a bigger idea:
 
 1. [Find if Path Exists in Graph](/problems/find-if-path-exists-in-graph): union every edge, then ask one question.
 2. [Number of Provinces](/problems/number-of-provinces): count the sets, from an adjacency matrix.

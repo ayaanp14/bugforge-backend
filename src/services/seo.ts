@@ -315,8 +315,18 @@ const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? o
  * page's figure plays (lib/walkthroughs).
  */
 const walkthroughHtml = (w: Walkthrough) =>
-  `<figure>${frameSvg(w, w.frames[w.frames.length - 1], `${w.title}: the finished state`).replace("<svg ", '<svg style="max-width:100%;height:auto" ')}<figcaption>${h(w.title)}. Example: <code>${h(w.input)}</code></figcaption></figure>` +
+  `<figure>${frameSvg(w, w.frames[w.frames.length - 1], `${w.title}: the finished state`).replace("<svg ", '<svg style="max-width:100%;height:auto" ')}<figcaption>${h(w.title)}.${w.input ? ` Example: <code>${h(w.input)}</code>` : ""}</figcaption></figure>` +
   `<ol>${w.frames.map((f) => `<li>${h(f.caption)}</li>`).join("")}</ol>`;
+
+/**
+ * A lesson figure (lib/lesson-figures) as a crawler reads it: an animation
+ * like a walkthrough — the last frame and every step's sentence — and a
+ * one-frame diagram as the drawing with its sentence as the caption.
+ */
+const lessonFigureHtml = (w: Walkthrough) =>
+  w.frames.length > 1
+    ? walkthroughHtml(w)
+    : `<figure>${frameSvg(w, w.frames[0]).replace("<svg ", '<svg style="max-width:100%;height:auto" ')}<figcaption><strong>${h(w.title)}.</strong> ${h(w.frames[0].caption)}</figcaption></figure>`;
 
 const HOME: Crumb = { name: "Home", path: "/" };
 const SECTION = {
@@ -1495,7 +1505,9 @@ async function roadmapLessonHead(slug: string): Promise<PageHead | null> {
   const trail: Crumb[] = [HOME, SECTION.roadmap, { name: l.title, path }];
   const outline = markdownOutline(l.body);
   // The article's own "##" stay h2 — it is the page, not a section under one.
-  const article = markdownToHtml(l.body, 120_000, { anchors: true, under: 1 }).replace(`<p>${WALKTHROUGH_MARKER}</p>`, () => (page.walkthrough ? walkthroughHtml(page.walkthrough) : ""));
+  const article = markdownToHtml(l.body, 120_000, { anchors: true, under: 1 })
+    .replace(`<p>${WALKTHROUGH_MARKER}</p>`, () => (page.walkthrough ? walkthroughHtml(page.walkthrough) : ""))
+    .replace(/<p>@figure ([a-z0-9][a-z0-9-]*)<\/p>/g, (_, name: string) => (page.figures[name] ? lessonFigureHtml(page.figures[name]) : ""));
   const siblings = page.syllabus.tiers.flatMap((t) => t.stages).find((s) => s.id === stage.id)?.lessons ?? [];
   const content =
     factList([

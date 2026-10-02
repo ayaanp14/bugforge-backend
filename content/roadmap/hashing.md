@@ -2,7 +2,7 @@
 title: Hashing: Hash Maps and Hash Sets
 stage: hashing
 order: 1
-minutes: 22
+minutes: 13
 level: Beginner
 hub: hash-table
 practice: jewels-and-stones, two-sum, first-unique-character-in-a-string, majority-element, isomorphic-strings, find-all-numbers-disappeared, groups-of-special-equivalent-strings, longest-consecutive-sequence, top-k-frequent-elements
@@ -24,47 +24,24 @@ a: Use an array when the keys are small integers in a known range, such as the 2
 q: Should I use unordered_map or map in C++?
 a: Use unordered_map (HashMap in Java) when you only need lookups: O(1) on average. Use map (TreeMap in Java), a balanced search tree, when you need the keys in sorted order or the nearest key above or below a value: every operation is O(log n). Python and JavaScript have no built-in sorted map, so you sort the keys when you need order.
 ---
-Many problems come down to one question asked over and over: *have I seen this value before, and where?* Scanning the array to answer it costs O(n) every time, and asking it once per element makes the whole solution O(n²). **Hashing** answers the same question in O(1) time on average by spending memory: a **hash map** remembers each value with something about it, such as its index or how often it appeared, and a **hash set** remembers just the values.
+Many problems come down to one question asked over and over: *have I seen this value before, and where?* Scanning the array to answer it costs O(n) each time, so asking it for every element makes the whole solution O(n²). **Hashing** answers in O(1) on average by spending memory: a **hash map** remembers each value with something about it, such as its index or a count, and a **hash set** remembers just the values.
 
-This lesson starts with the problem hashing was made for, Two Sum, then opens the box: how a hash table turns a key into a position, what happens when two keys collide, why lookups are O(1) on average but not always, and how each language spells it. Then come the patterns that make hashing the most used tool in interviews: counting, complement lookups, grouping by a key and sets of values seen, and the case where a plain array does the job better. Every program is shown in C++, Java, Python and JavaScript.
+@figure scan-vs-lookup
 
 ## Why scanning is too slow
 
-[Two Sum](/problems/two-sum) gives you an array and a target and asks for the indices of two numbers that add up to it. The brute force tries every pair:
-
-```text
-for i in 0 .. n-1:
-    for j in i+1 .. n-1:
-        if nums[i] + nums[j] == target: return (i, j)
-```
-
-That is n(n − 1)/2 pair checks, about 5 × 10⁹ when n = 10⁵, while a judge allows roughly 10⁸ simple steps a second. Sorting and then using [two pointers](/roadmap/two-pointers) brings it to O(n log n), but sorting moves the elements and the problem wants their original indices. What you really want is to stand at `nums[i]`, know that its partner must be `target − nums[i]`, and ask "is that value somewhere earlier?" without looking at every earlier element.
+[Two Sum](/problems/two-sum) gives you an array and a target and asks for the indices of two numbers that add up to it. Trying every pair is n(n − 1)/2 checks, about 5 × 10⁹ when n = 10⁵, against the roughly 10⁸ simple steps a judge allows in a second. Sorting and [two pointers](/roadmap/two-pointers) give O(n log n), but sorting moves the elements and the problem wants their original indices.
 
 ## The idea: remember what you have seen
 
-Walk the array once, and keep a hash map from each value already seen to its index. At each number, work out the value that would complete the pair, the **complement**, and look it up:
+Walk the array once with a map from each value seen to its index. At each number, work out the **complement** — the value that would complete the pair — and look it up:
 
-- **The complement is in the map.** The pair is the stored index and the current one. Done.
-- **It is not.** No earlier number pairs with this one. Store this number and its index, because a later number might need it.
+- **It is in the map**: the pair is the stored index and the current one.
+- **It is not**: store this number and its index, because a later number might need it.
 
-The order of those two steps matters. Looking up *before* storing means the map only ever holds earlier numbers, so a number can never pair with itself: with target 14, a single 7 must not count as 7 + 7. Each step is one lookup and one insert, both O(1) on average, so the whole search is O(n) time with O(n) extra memory for the map.
+Looking up *before* storing means the map only holds earlier numbers, so a number never pairs with itself: with target 14, a lone 7 must not count as 7 + 7. One lookup and one insert per element, both O(1) on average, make the search O(n) time with O(n) memory.
 
 @walkthrough
-
-### Dry run
-
-Here is the search for target 14 in `[7, 3, 9, 4, 12, 2]`:
-
-| i | nums[i] | Complement 14 − nums[i] | In the map? | Map afterwards |
-| --- | --- | --- | --- | --- |
-| 0 | 7 | 7 | no, the map is empty | 7→0 |
-| 1 | 3 | 11 | no | 7→0, 3→1 |
-| 2 | 9 | 5 | no | 7→0, 3→1, 9→2 |
-| 3 | 4 | 10 | no | adds 4→3 |
-| 4 | 12 | 2 | no | adds 12→4 |
-| 5 | 2 | 12 | yes, at index 4 | pair found: (4, 5) |
-
-Six lookups instead of up to fifteen pair checks, and the gap widens with n: for 10⁵ numbers it is 10⁵ lookups against 5 × 10⁹ checks.
 
 ### The code
 
@@ -187,41 +164,25 @@ Target 100: no pair
 
 ## How a hash table is stored
 
-Underneath every hash map and hash set is a **hash table**: an ordinary array of slots, called **buckets**, plus a **hash function** that turns any key into a whole number. The table reduces that number to a bucket index, typically the hash modulo the number of buckets, and keeps the key there. Finding the key later repeats the same calculation and goes straight to the same bucket. That is the trick: the key's own value tells you where to look, so you never search the whole table.
+Underneath every hash map and set is a **hash table**: an ordinary array of **buckets** plus a **hash function** that turns any key into a whole number, reduced to a bucket index — typically the hash modulo the number of buckets. Finding a key repeats the same calculation, so the key's own value says where to look:
 
-A hash function has to meet two demands. It must be **deterministic**, giving equal keys equal hashes every time, or a key could never be found again. And it should **spread** different keys evenly over the buckets. For integers a language can use the value itself; for strings it mixes every character, as Java's `String.hashCode` does with s[0] × 31ⁿ⁻¹ + s[1] × 31ⁿ⁻² + … + s[n − 1]. Hashing a string therefore costs O(k) for a string of length k, which matters when the keys are long.
+@figure chaining
 
-Here are five keys placed in a table of 8 buckets, using key mod 8 as the bucket:
-
-```text
- keys: 12, 7, 20, 33, 15             bucket = key mod 8
-
- bucket 0: -
- bucket 1: 33
- bucket 2: -
- bucket 3: -
- bucket 4: 12 -> 20                  12 and 20 both leave remainder 4: a collision
- bucket 5: -
- bucket 6: -
- bucket 7: 7 -> 15                   7 and 15 collide too
-```
+A hash function must be **deterministic** and should **spread** keys evenly. Strings mix every character (Java's `String.hashCode` uses powers of 31), so hashing a string of length k costs O(k).
 
 ## Collisions: chaining and open addressing
 
-There are far more possible keys than buckets, so two different keys will sometimes land in the same bucket. That is a **collision**, and every hash table needs a policy for it. There are two classic ones.
+There are far more possible keys than buckets, so **collisions** are certain. **Separate chaining**, drawn above, keeps a list per bucket; C++'s `unordered_map` and Java's `HashMap` work this way (Java turns a bucket of more than eight entries into a small tree). **Open addressing** keeps every key in the array and probes for a free slot; Python's `dict` and `set` do this, with a more scattered probe order than the linear one here:
 
-- **Separate chaining.** Each bucket holds a small list of the keys that landed there, as drawn above. A lookup goes to the bucket and compares the key with each entry in its list. C++'s `unordered_map` and Java's `HashMap` work this way; since Java 8, a bucket that grows past eight entries is turned into a small balanced tree, so even a crowded bucket costs O(log n).
-- **Open addressing.** Every key lives in the array itself. If its bucket is taken, the table probes other slots in a fixed order until it finds a free one; a lookup follows the same order until it finds the key or an empty slot. With **linear probing**, the simplest order, 20 would go to bucket 5 because 4 is taken, and 15 would wrap around from the full bucket 7 to bucket 0. Python's `dict` and `set` use open addressing with a more scattered probe order.
-
-Either way, a lookup compares the key against only the few keys that share its bucket or probe path. The design question is how to keep that number small.
+@figure open-addressing
 
 ## Why lookups are O(1) on average
 
-The **load factor** is the number of stored keys divided by the number of buckets. With a hash function that spreads keys well and a load factor below a constant, the expected number of keys a lookup examines is a constant too, which is where O(1) comes from. To keep it there, a table **resizes** when the load factor passes a threshold, 0.75 for Java's `HashMap`, 1.0 by default for C++'s `unordered_map` and about two-thirds for Python's `dict`. Resizing allocates roughly twice as many buckets and reinserts every key, since each key's bucket depends on the bucket count. One resize costs O(n), but like a growing dynamic array it happens so rarely that n inserts still cost O(n) in total: amortised O(1) each. The [Big-O lesson](/roadmap/big-o-notation) shows the same argument for arrays.
+Either way, a lookup only compares the key with the few keys sharing its bucket or probe path. The design question is how to keep that number small, and the answer is the **load factor**:
 
-The guarantee is about the **average**, though, and it rests on the hash function spreading the keys. If every key landed in one bucket, a lookup would check all n of them, and n inserts would cost O(n²). That does not happen by accident with the built-in hashes, but it can happen on purpose: competitive-programming judges have tests built to collide with the default integer hash of C++'s `unordered_map`, which is why experienced contestants pass it a randomised hash. In an interview, say "O(1) on average" and you are giving the expected answer.
+@figure resize
 
-Ordered alternatives exist when you need them. C++'s `map` and `set` and Java's `TreeMap` and `TreeSet` are balanced search trees: O(log n) per operation instead of O(1), but they keep the keys sorted and can find the nearest key above or below any value.
+In an interview, say "O(1) on average". When you need the keys in order, C++'s `map` and Java's `TreeMap` are balanced search trees: O(log n) per operation, but sorted, with the nearest key above or below any value.
 
 ## Hash maps and hash sets in each language
 
@@ -231,33 +192,21 @@ Ordered alternatives exist when you need them. C++'s `map` and `set` and Java's 
 | Insert or update | `m[k] = v` | `m.put(k, v)` | `m[k] = v` | `m.set(k, v)` |
 | Is the key there? | `m.count(k)` | `m.containsKey(k)` | `k in m` | `m.has(k)` |
 | Value or a default | `m.count(k) ? m[k] : 0` | `m.getOrDefault(k, 0)` | `m.get(k, 0)` | `m.get(k) ?? 0` |
-| Count one more | `cnt[x]++` | `cnt.merge(x, 1, Integer::sum)` | `cnt[x] = cnt.get(x, 0) + 1` | `cnt.set(x, (cnt.get(x) ?? 0) + 1)` |
 | Remove | `m.erase(k)` | `m.remove(k)` | `del m[k]` | `m.delete(k)` |
-| Add to a set | `s.insert(x)` | `s.add(x)` | `s.add(x)` | `s.add(x)` |
-| Size | `m.size()` | `m.size()` | `len(m)` | `m.size` |
 
-Each language has a trap worth knowing before an interview. In C++, reading `m[k]` for a missing key **inserts** it with a default value, so use `find` or `count` to test for a key without creating it. In Java, `m.get(k)` returns `null` for a missing key, and unboxing that `null` into an `int` throws `NullPointerException`; a custom key class needs `equals` and `hashCode` overridden together. In Python, `m[k]` raises `KeyError` for a missing key, and lists cannot be keys because they can change, so use a tuple or a string. In JavaScript, prefer `Map` to a plain object: an object turns every key into a string, so `1` and `"1"` are the same key, and it inherits keys such as `constructor`. A `Map` compares arrays and objects by identity, not contents, so to key on contents build a string such as the sorted letters.
-
-**Iteration order** is the last trap. C++'s `unordered_map`, Java's `HashMap` and `HashSet` and Python's `set` promise no order at all, and Python even randomises string hashes in every run of a program. Python's `dict` and JavaScript's `Map` and `Set` do keep insertion order, but code that has to print the same thing in every language should sort before printing, as the grouping program below does.
+The traps: in C++, reading `m[k]` for a missing key **inserts** it; in Java, unboxing the `null` that `get` returns throws; Python lists cannot be keys; a plain JavaScript object turns every key into a string, so prefer `Map`. And never rely on **iteration order** — sort before printing, as the grouping program below does.
 
 ## Pattern: counting how often each value appears
 
-The most common use of a hash map is a **frequency count**: one pass with `count[x] += 1` for every element, then answer questions from the counts. [Majority Element](/problems/majority-element) looks for the count above n/2. [First Unique Character in a String](/problems/first-unique-character-in-a-string) counts every character in one pass, then walks the string again and returns the first character with count 1; the second pass is what preserves the original order. [Top K Frequent Elements](/problems/top-k-frequent-elements) counts first and then picks the k largest counts, with a heap or with buckets indexed by count. Checking whether two strings are anagrams is comparing their two counts.
+The most common use of a hash map is a **frequency count**: one pass of `count[x] += 1`, then answer from the counts. [Majority Element](/problems/majority-element) wants a count above n/2; [First Unique Character in a String](/problems/first-unique-character-in-a-string) counts, then walks the string again so the original order decides.
 
 ## Pattern: grouping by a key
 
-To put items into groups, decide on a **canonical key**: something every member of a group shares and no outsider has. Then keep a map from key to the list of members. For anagrams, words made of the same letters, the key can be the word's letters in sorted order: "eat", "tea" and "ate" all become "aet".
+To put items into groups, choose a **canonical key** that every member of a group shares and no outsider has, and keep a map from key to members:
 
-| Word | Key (sorted letters) | The group for that key afterwards |
-| --- | --- | --- |
-| eat | aet | eat |
-| tea | aet | eat, tea |
-| tan | ant | tan |
-| ate | aet | eat, tea, ate |
-| nat | ant | tan, nat |
-| bat | abt | bat |
+@figure group-anagrams
 
-Sorting each word costs O(k log k) for words of length k. A key built from the 26 letter counts, such as "1,0,0,…", costs O(k) instead, which helps when words are long. The same idea groups strings that are equal after some allowed change, as in [Groups of Special-Equivalent Strings](/problems/groups-of-special-equivalent-strings).
+The same idea groups strings that are equal after some allowed change, as in [Groups of Special-Equivalent Strings](/problems/groups-of-special-equivalent-strings).
 
 ### The code
 
@@ -377,64 +326,57 @@ nat tan
 
 ## Pattern: a set of values seen
 
-When you need presence and nothing else, use a hash set. Removing duplicates is putting everything in a set. [Contains Duplicate](/problems/contains-duplicate) adds each value and stops the moment one is already there. [Jewels and Stones](/problems/jewels-and-stones) puts the jewel types in a set so that checking each stone is O(1) rather than a scan of the jewels.
+When you need presence and nothing else, use a hash set. [Contains Duplicate](/problems/contains-duplicate) stops the moment a value is already in the set; [Jewels and Stones](/problems/jewels-and-stones) makes checking each stone O(1). The cleverest use in this stage is [Longest Consecutive Sequence](/problems/longest-consecutive-sequence), in O(n) despite a loop inside a loop:
 
-The cleverest use in this stage is [Longest Consecutive Sequence](/problems/longest-consecutive-sequence): the length of the longest run of consecutive integers, in any order, in O(n). Put every value in a set. Then start counting only from values x where x − 1 is **not** in the set, because only those can begin a run, and walk x + 1, x + 2, … while they are present. Every value is touched at most twice, once by the outer loop and once by the walk of the run that contains it, so the total is O(n) even though there is a loop inside a loop. Without the "only from a start" rule, the same code is O(n²).
+@figure consecutive
 
-A map with two directions solves mapping problems. [Isomorphic Strings](/problems/isomorphic-strings) needs every character of one string to map to exactly one character of the other, *and* no two characters to map to the same one, so it keeps a map each way and fails on the first contradiction.
+A map in each direction solves mapping problems: [Isomorphic Strings](/problems/isomorphic-strings) needs every character to map to exactly one other *and* no two to map to the same one, so it keeps both maps and fails on the first contradiction.
 
 ## When an array beats a hash map
 
-If the keys are **small integers in a known range**, you do not need hashing at all: the key itself is the index. Counting lowercase letters needs 26 slots, `count[c - 'a']++`; ASCII characters need 128; values known to be between 0 and 10⁶ need an array of 10⁶ + 1. An array has no hash to compute, no collisions, no boxed integers and a fixed order, so it is faster by a constant factor and simpler to print. [Find All Numbers Disappeared in an Array](/problems/find-all-numbers-disappeared) goes one step further and uses the input array itself as the table, marking value v as seen by negating the entry at index v − 1, which brings the extra space down to O(1).
-
-The array wins only while the range is small and dense. Values up to 10⁹, negative values, strings and pairs all call for a hash map. The [Strings](/roadmap/strings) lesson uses the 26-slot count throughout.
+If the keys are **small integers in a known range**, the key itself is the index — 26 slots for lowercase letters, `count[c - 'a']++` — with no hash, no collisions and a fixed order. [Find All Numbers Disappeared in an Array](/problems/find-all-numbers-disappeared) even uses the input as its own table, negating index v − 1 to mark v as seen. Large, negative or non-numeric keys still need a hash map; the [Strings](/roadmap/strings) lesson uses the 26-slot count throughout.
 
 ## Time and space complexity
 
 | Operation or approach | Time | Extra space |
 | --- | --- | --- |
-| Hash map or set: insert, find, delete | O(1) average, O(n) worst | O(n) for n keys |
-| Tree map or set (`map`, `TreeMap`): insert, find, delete | O(log n) | O(n) |
-| Two Sum by checking every pair | O(n²) | O(1) |
-| Two Sum by sorting and two pointers | O(n log n) | O(n) to keep the indices |
-| Two Sum with a hash map | O(n) | O(n) |
-| Group anagrams of n words of length k, sorted-letter keys | O(n × k log k) | O(n × k) |
-| Counting letters in a 26-slot array | O(n) | O(1) |
+| Hash map or set: insert, find, delete | O(1) average, O(n) worst | O(n) |
+| Tree map or set: insert, find, delete | O(log n) | O(n) |
+| Two Sum, every pair | O(n²) | O(1) |
+| Two Sum, sort and two pointers | O(n log n) | O(n) for the indices |
+| Two Sum, hash map | O(n) | O(n) |
+| Group anagrams, sorted-letter keys | O(n × k log k) | O(n × k) |
 
-Hashing almost always trades O(n) memory for removing a factor of n from the time. That is a good trade when n is 10⁵ and memory is measured in megabytes, which is nearly always.
+Hashing nearly always trades O(n) memory for a factor of n in time — a good trade when memory is measured in megabytes.
 
 ## How to recognise a hashing problem
 
-Read the statement for these signals:
-
-- **"Find two elements that…"** in an unsorted array, especially when the answer is their indices: a complement lookup.
-- **"How many times", "most frequent", "unique", "first non-repeating"**: a frequency count.
+- **"Find two elements that…"** in an unsorted array, especially by index: a complement lookup.
+- **"How many times", "most frequent", "first non-repeating"**: a frequency count.
 - **"Group", "anagram", "same pattern"**: a canonical key and a map of lists.
-- **"Contains", "duplicate", "already seen", "missing"**: a hash set, or an array if the values are small.
-- **The brute force asks "is X somewhere in the array?" inside a loop.** Replace the inner search with a lookup.
-- **A subarray sum equals k.** Prefix sums stored in a hash map, which the [prefix sums](/roadmap/prefix-sum) lesson builds up to.
+- **"Contains", "duplicate", "missing"**: a hash set, or an array for small values.
+- **A brute force asking "is X in the array?" inside a loop**: replace the search with a lookup.
+- **A subarray sum equals k**: prefix sums in a hash map, built up in [prefix sums](/roadmap/prefix-sum).
 
 ## Common mistakes
 
-- **Storing before looking.** In Two Sum, inserting `nums[i]` before checking its complement lets a number pair with itself.
-- **Relying on iteration order.** A `HashMap` or `unordered_map` can return keys in any order, and the order can change between runs and versions. Sort when the output must be ordered.
-- **Creating keys by reading them.** In C++, `if (m[k] > 0)` inserts k. Test with `count` or `find`.
-- **Using a mutable or identity-compared key.** Python lists cannot be keys; Java arrays and JavaScript arrays are compared by identity, so two arrays with the same contents are different keys. Convert to a string or tuple.
-- **Forgetting the cost of hashing long keys.** Hashing a string of length k is O(k), so a map keyed on substrings of length up to n is not O(1) per operation.
-- **Reaching for a map when an array would do.** For 26 letters or values up to 10⁶, an array is simpler and faster.
+- **Storing before looking.** In Two Sum, inserting first lets a number pair with itself.
+- **Relying on iteration order.** Sort when the output must be ordered.
+- **Creating keys by reading them.** In C++, `if (m[k] > 0)` inserts k; use `count` or `find`.
+- **Identity-compared keys.** Java and JavaScript arrays with equal contents are different keys; convert to a string.
+- **Long keys.** Hashing a string of length k is O(k), so a map keyed on long substrings is not O(1) per operation.
+- **A map where an array would do.** For 26 letters, an array is simpler and faster.
 
 ## Practice in this order
 
-Start with plain lookups and counts, then move to the problems where the key or the rule has to be designed:
+1. [Jewels and Stones](/problems/jewels-and-stones): a set instead of a scan.
+2. [Two Sum](/problems/two-sum): the complement lookup.
+3. [First Unique Character in a String](/problems/first-unique-character-in-a-string): count, then a second pass.
+4. [Majority Element](/problems/majority-element): a frequency count.
+5. [Isomorphic Strings](/problems/isomorphic-strings): a map each way.
+6. [Find All Numbers Disappeared in an Array](/problems/find-all-numbers-disappeared): the input as its own table.
+7. [Groups of Special-Equivalent Strings](/problems/groups-of-special-equivalent-strings): a canonical key.
+8. [Longest Consecutive Sequence](/problems/longest-consecutive-sequence): the start-of-a-run rule.
+9. [Top K Frequent Elements](/problems/top-k-frequent-elements): counts, then buckets.
 
-1. [Jewels and Stones](/problems/jewels-and-stones): a set turns a scan into a lookup.
-2. [Two Sum](/problems/two-sum): the complement lookup from this lesson.
-3. [First Unique Character in a String](/problems/first-unique-character-in-a-string): count, then a second pass in order.
-4. [Majority Element](/problems/majority-element): a frequency count, then a constant-space follow-up.
-5. [Isomorphic Strings](/problems/isomorphic-strings): a map in each direction.
-6. [Find All Numbers Disappeared in an Array](/problems/find-all-numbers-disappeared): a set, then the input as its own table.
-7. [Groups of Special-Equivalent Strings](/problems/groups-of-special-equivalent-strings): designing a canonical key.
-8. [Longest Consecutive Sequence](/problems/longest-consecutive-sequence): a set and the "only start at a start" rule.
-9. [Top K Frequent Elements](/problems/top-k-frequent-elements): counts, then buckets by count.
-
-The [hash table problem list](/challenges/hash-table) has every hashing problem in the catalogue, from easy to hard. When the first six feel routine, move on to the next stage of the roadmap: [Strings](/roadmap/strings).
+Every hashing problem in the catalogue is on the [hash table problem list](/challenges/hash-table). When the first six feel routine, move on to [Strings](/roadmap/strings).

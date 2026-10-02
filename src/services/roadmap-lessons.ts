@@ -1,5 +1,6 @@
 import { cached, invalidate } from "../lib/cache.js";
-import { allLessons, lessonBySlug, lessonForHub, lessonsForStage, summaryOf, type LessonFaq, type LessonLevel, type LessonSummary, type RoadmapLesson } from "../lib/roadmap-lessons.js";
+import { WALKTHROUGH_MARKER, allLessons, figureNamesIn, lessonBySlug, lessonForHub, lessonsForStage, summaryOf, type LessonFaq, type LessonLevel, type LessonSummary, type RoadmapLesson } from "../lib/roadmap-lessons.js";
+import { lessonFigure } from "../lib/lesson-figures/index.js";
 import { walkthroughFor, type Walkthrough } from "../lib/walkthroughs/index.js";
 import { getCatalogue } from "./dashboard.js";
 import { hubIndex } from "./problem-hubs.js";
@@ -60,7 +61,10 @@ export interface LessonPage {
   practice: Array<{ slug: string; title: string; difficulty: string }>;
   /** The /challenges topic the lesson practises on, with its size. */
   hub: { slug: string; label: string; count: number } | null;
+  /** The hub's walkthrough — only when the body places it (`@walkthrough`). */
   walkthrough: Walkthrough | null;
+  /** The lesson's own figures by name, exactly the ones its body places (`@figure <name>`, lib/lesson-figures). */
+  figures: Record<string, Walkthrough>;
   syllabus: Syllabus;
 }
 
@@ -142,9 +146,22 @@ async function buildPage(lesson: RoadmapLesson): Promise<LessonPage | null> {
       return p ? [{ slug: p.slug, title: p.title, difficulty: p.difficulty }] : [];
     }),
     hub: hub ? { slug: hub.slug, label: hub.label, count: hub.count } : null,
-    walkthrough: lesson.hub ? walkthroughFor(lesson.hub) : null,
+    walkthrough: lesson.hub && placesWalkthrough(lesson.body) ? walkthroughFor(lesson.hub) : null,
+    figures: figuresOf(lesson),
     syllabus: syllabusOf(road),
   };
+}
+
+const placesWalkthrough = (body: string) => body.split("\n").some((l) => l.trim() === WALKTHROUGH_MARKER);
+
+/** The figures a lesson's body places; a name its module lacks is left out (the validator reports it). */
+function figuresOf(lesson: RoadmapLesson): Record<string, Walkthrough> {
+  const out: Record<string, Walkthrough> = {};
+  for (const name of figureNamesIn(lesson.body)) {
+    const w = lessonFigure(lesson.slug, name);
+    if (w) out[name] = w;
+  }
+  return out;
 }
 
 /** The sitemap's entries: every lesson whose stage is on the road, with the date it was last revised. */

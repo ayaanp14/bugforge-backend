@@ -2,7 +2,7 @@
 title: Trie (Prefix Tree)
 stage: heaps
 order: 4
-minutes: 19
+minutes: 12
 level: Intermediate
 hub: trie
 practice: longest-common-prefix, longest-word-in-dictionary, replace-words, short-encoding-of-words, maximum-xor-of-two-numbers-in-an-array, extra-characters-in-a-string, sum-of-prefix-scores-of-strings, word-search-ii
@@ -22,15 +22,15 @@ a: Because one word can be a prefix of another. After inserting "cart", the node
 q: How much memory does a trie use?
 a: At most one node per character inserted, fewer when words share prefixes. With an array of 26 children per node, a C++ node on a 64-bit machine spends 208 bytes on pointers, most of them empty, so a million nodes can need hundreds of megabytes. A hash map of children uses memory only for the letters present, at some cost in speed.
 ---
-Type "ca" into a search box and it suggests "car", "cart" and "cat" before you finish. A spell checker suggests words that share your misspelling's beginning. A router picks the longest address prefix it has a rule for. All of these ask the same thing of a collection of strings: **which stored words start with this?**
-
-A hash set cannot answer that without checking every word. A **trie** — from re*trie*val, usually said "try" — arranges the words letter by letter in a tree, so that all words with the same beginning share one path and sit together in one subtree. This lesson shows how a trie is stored, the operations and their cost, counting and autocomplete, the memory it costs and when a simpler structure will do, and the binary trie behind the maximum-XOR problem. Every example is shown in C++, Java, Python and JavaScript.
+Type "ca" into a search box and it suggests "car", "cart" and "cat" before you finish. A spell checker suggests words that share your misspelling's beginning; a router picks the longest address prefix it has a rule for. All of these ask the same thing of a collection of strings: **which stored words start with this?** A **trie** — from re*trie*val, usually said "try" — arranges the words letter by letter in a tree, so that all words with the same beginning share one path and sit together in one subtree.
 
 ## Why a hash set is not enough
 
-A [hash set](/roadmap/hashing) of words answers "is *car* a word?" in O(L) on average, which is ideal. But "does any word start with *ca*?" has no shortcut: you compare the prefix against every stored word, O(N × L) for N words. With 100,000 words and 100,000 prefix queries of ten letters, that is up to 10¹¹ character comparisons.
+A [hash set](/roadmap/hashing) answers "is *car* a word?" in O(L) on average. But "does any word start with *ca*?" has no shortcut: the prefix must be compared with every stored word.
 
-Two workarounds exist, and both are worth knowing. You can put **every prefix** of every word into a hash set — that answers "does any word start with p?" but not "which ones?", and storing each prefix as its own string costs memory that grows with the square of the word length. Or you can keep the words in a **sorted list**: the words starting with p form one contiguous block, found with two [binary searches](/roadmap/binary-search). That is a fair answer when the words never change. The trie does all of it, and its cost does not depend on N at all.
+@figure prefix-cost
+
+Putting **every prefix** into the set answers "does any word start with p?" but not "which ones?", at a memory cost that grows with the square of the word length. A **sorted list** keeps the words starting with p in one block, found with two [binary searches](/roadmap/binary-search) — fair when the words never change. The trie does all of it:
 
 | Question | Hash set of words | Sorted list | Trie |
 | --- | --- | --- | --- |
@@ -42,70 +42,25 @@ Two workarounds exist, and both are worth knowing. You can put **every prefix** 
 
 ## How a trie is stored
 
-A trie is a tree in which **each node stands for a prefix**: the letters on the edges from the root down to it. The root stands for the empty prefix. Each node holds three things:
+Each node **stands for a prefix**, the letters on its path from the root, and holds its **children** (one slot per next letter), an **end flag** where a stored word ends, and a **pass count** of the words with this prefix. The node never stores its string; its position spells it.
 
-- **children**: one slot per possible next letter, leading to the node for the prefix one letter longer;
-- **an end flag**: whether a stored word ends exactly here;
-- **a pass count**: how many stored words pass through this node — that is, how many words have this prefix.
+@figure stored
 
-Here is the trie for car, cat, cart and dog:
-
-```text
-                 (root)
-                /      \
-              c 3       d 1
-              |         |
-              a 3       o 1
-            /    \      |
-         r* 2    t* 1   g* 1
-          |
-         t* 1
-
-   letter = the edge into the node, number = pass count, * = a word ends here
-```
-
-The node never stores its string; its position spells it. car, cat and cart share the nodes for c and a, which is where a trie's speed and its memory savings both come from.
-
-The **end flag** is essential because words can be prefixes of other words. Insert only "cart" and the nodes c, a, r all exist, yet "car" was never inserted. Without the flag, a search for "car" would succeed wrongly. The flag on r says that a word ends there; a node without it is only a passage to longer words.
-
-There are two common ways to hold the children:
-
-- **An array of 26**, indexed by `letter − 'a'`. Finding a child is one array access, and visiting the children in index order visits them alphabetically. The price is 26 slots per node, most of them empty.
-- **A hash map** from letter to child, or a Python `dict`. It stores only the letters present and works for any alphabet — capitals, digits, Unicode — at the cost of a hash per step.
+The **end flag** matters because a word can be the prefix of another: insert only "cart" and the nodes c, a, r exist, yet "car" was never inserted. The children can be an **array of 26**, indexed by `letter − 'a'` — one access per step, alphabetical order for free, most slots empty — or a **hash map** holding only the letters present, for any alphabet, at the cost of a hash per step.
 
 ## The operations and their cost
 
-- **insert(word)**: start at the root. For each letter, create the child if it is missing, move to it and add one to its pass count. At the last letter, set the end flag.
-- **search(word)**: walk the word's letters from the root. If a child is missing, the word is not stored. If the walk completes, the answer is the end flag of the node reached — the path existing is not enough.
-- **startsWith(prefix)**: the same walk, but if it completes the answer is yes, flag or not, because some word continues through that node.
-- **countPrefix(prefix)**: the same walk, returning the pass count of the node reached, or 0 if the walk fails. Updating the counts during insert is what makes this O(L); counting the words below the node on every query would cost the size of the subtree.
-- **autocomplete(prefix)**: walk to the prefix's node, then visit its whole subtree with a [depth-first search](/roadmap/depth-first-search), writing out every word whose end flag you pass. Visiting the children from a to z produces the words in alphabetical order.
-
-Each step of a walk is one child lookup, constant time with an array, so every operation costs O(L) for a word or prefix of length L — independent of how many words are stored. That independence is the trie's whole promise. Autocomplete adds the size of the subtree it lists, which is unavoidable: the matches have to be written out.
-
-The figure builds the trie for car, cat, cart and dog one word at a time, then answers a prefix query for "ca".
+**Insert** walks the word's letters from the root, creating any missing child and adding one to each pass count, then sets the end flag on the last node. Every other operation is the same walk without creating anything. Each step is one child lookup, so every operation costs O(L) for a word of length L — **however many words are stored**. That independence is the trie's whole promise:
 
 @walkthrough
 
-### Dry run
+**search**, **startsWith** and **countPrefix** are one walk with three different questions at the end:
 
-Inserting the four words:
+@figure queries
 
-| Word | Nodes already there | Nodes created | Pass counts afterwards | End flag set on |
-| --- | --- | --- | --- | --- |
-| car | none | c, ca, car | c 1, ca 1, car 1 | car |
-| cat | c, ca | cat | c 2, ca 2, cat 1 | cat |
-| cart | c, ca, car | cart | c 3, ca 3, car 2, cart 1 | cart |
-| dog | none | d, do, dog | d 1, do 1, dog 1 | dog |
+Keeping the pass count during insert is what makes countPrefix O(L); counting on every query would cost the subtree. **Autocomplete** walks to the prefix, then lists its subtree with a [depth-first search](/roadmap/depth-first-search):
 
-Then the queries:
-
-| Query | Walk | search | startsWith | countPrefix |
-| --- | --- | --- | --- | --- |
-| "car" | c, a, r | true: r is flagged | true | 2 (car, cart) |
-| "ca" | c, a | false: a is not flagged | true | 3 |
-| "cab" | c, a, then no b | false | false | 0 |
-| "d" | d | false | true | 1 |
+@figure autocomplete
 
 ### The code
 
@@ -409,40 +364,26 @@ autocomplete(ca): car cart cat
 
 ## Walking the trie along a text
 
-The trie's most useful trick in problems is not a single lookup but a **walk alongside another string**. Stand at position i of a text and walk the trie with the text's letters, i, i + 1, i + 2 and so on. Every node with an end flag that you pass is a dictionary word starting at position i, and the moment a child is missing you can stop, because no stored word continues that way. One walk finds every dictionary word that starts at i, in time bounded by the longest word, instead of one hash lookup per possible length.
+The trie's most useful trick in problems is not a single lookup but a **walk alongside another string**. Stand at position i of a text and walk the trie with the text's letters: every end flag passed is a dictionary word starting at i, and a missing child means no stored word continues, so you stop. One walk finds every word starting at i, in time bounded by the longest word.
 
-- [Replace Words](/problems/replace-words) walks each word of a sentence and stops at the **first** end flag: the shortest root.
-- [Extra Characters in a String](/problems/extra-characters-in-a-string) and Word Break run [dynamic programming](/roadmap/dynamic-programming) over positions, and from each position one trie walk lists every word that could be placed there.
-- [Word Search II](/problems/word-search-ii) runs a [backtracking](/roadmap/backtracking) search over a grid of letters and moves down the trie in step with it, abandoning a path the moment the trie has no child for the next letter. That pruning is the difference between checking each dictionary word separately and checking them all at once.
-- [Sum of Prefix Scores of Strings](/problems/sum-of-prefix-scores-of-strings) is the pass count again: walk each word and add up the counts along its path.
+@figure text-walk
+
+- [Replace Words](/problems/replace-words) stops at the **first** end flag: the shortest root.
+- [Extra Characters in a String](/problems/extra-characters-in-a-string) and Word Break run [dynamic programming](/roadmap/dynamic-programming) over positions, with one trie walk from each.
+- [Word Search II](/problems/word-search-ii) moves down the trie in step with a [backtracking](/roadmap/backtracking) search of a grid, abandoning a path the moment the trie has no child for the next letter.
+- [Sum of Prefix Scores of Strings](/problems/sum-of-prefix-scores-of-strings) adds up the pass counts along each word.
 
 ## Memory, and when a set is simpler
 
-A trie has at most one node per character inserted, plus the root; shared prefixes make it fewer. But with a children array, every node carries 26 references whether it uses them or not: 26 pointers of 8 bytes, 208 bytes per node in C++ on a 64-bit machine, before anything else. A dictionary of 100,000 ten-letter words with little sharing can need close to a million nodes, around 200 MB — more than many judges allow. Three ways out:
-
-- **Children in a hash map** (a `dict` in Python, `HashMap` in Java, `unordered_map` or a small sorted vector in C++): memory only for the letters present, at the cost of a hash per step.
-- **One big array of nodes** (`next[node][letter]` holding node indices), the usual contest style: no per-object overhead, and ints instead of references.
-- **No trie at all**, when the question allows it. [Longest Word in Dictionary](/problems/longest-word-in-dictionary) can be solved by sorting the words and keeping a word whenever the word without its last letter is already kept — a hash set does the job. If you only ever ask whether a whole word is present, a hash set is simpler and smaller. Reach for the trie when you have many prefix questions, need counts or listings, or walk alongside a text.
+A trie has at most one node per character inserted. But with a children array every node carries 26 references, 208 bytes in C++ on a 64-bit machine, so 100,000 ten-letter words with little sharing can need around 200 MB. The ways out: children in a **hash map**; **one flat array** of node indices, `next[node][letter]`, the contest style; or **no trie at all** — if you only ask whether whole words are present, a hash set is simpler and smaller. Reach for the trie for prefix questions, counts, listings or a walk along a text.
 
 ## The XOR trie: maximum XOR of two numbers
 
-The same structure works on any alphabet, and with the alphabet {0, 1} it solves a famous problem: given an array, find the largest value of a XOR b over all pairs. Checking every pair is O(n²). Instead, insert every number into a **binary trie**, one bit per level, from the **highest bit** down. Then, for each number x, walk from the root trying to make each bit of the XOR a 1: at every level, take the child holding the **opposite** of x's bit if it exists, and the same bit only if it does not.
+With the alphabet {0, 1}, a trie finds the largest a XOR b over all pairs of an array without checking every pair. Insert every number into a **binary trie**, one bit per level from the **highest** bit down; then, for each number, walk down taking the **opposite** bit whenever that child exists.
 
-Why is that greedy choice right? A 1 in bit b is worth 2ᵇ, which is more than all the lower bits put together (2ᵇ − 1). So getting a 1 in the highest possible bit beats any combination of lower bits, and deciding the bits from the top down, each time taking the opposite bit when available, can never be improved by a different choice lower down. That is also why the bits must be inserted highest first.
+@figure xor-trie
 
-### Dry run
-
-With the numbers 3, 10, 5, 25, 2 and 8, five bits are enough (25 = 11001₂). Searching for the best partner of 5 = 00101₂:
-
-| Bit | Bit of 5 | Wanted | Numbers still on the path | Taken | XOR bit |
-| --- | --- | --- | --- | --- | --- |
-| 4 | 0 | 1 | 25, the only one with bit 4 set | 1 | 1 |
-| 3 | 0 | 1 | 25 | 1 | 1 |
-| 2 | 1 | 0 | 25 | 0 | 1 |
-| 1 | 0 | 1 | 25 has a 0 here, no choice | 0 | 0 |
-| 0 | 1 | 0 | 25 has a 1 here, no choice | 1 | 0 |
-
-The XOR is 11100₂ = 28, and no pair does better. Each number costs one walk of 31 levels for 32-bit non-negative integers, so the whole search is O(31 × n) instead of O(n²). [Maximum XOR of Two Numbers in an Array](/problems/maximum-xor-of-two-numbers-in-an-array) is exactly this; more on the bit tricks themselves in [bit manipulation](/roadmap/bit-manipulation).
+Why is the greedy choice right? A 1 in bit b is worth 2ᵇ, more than all the lower bits together (2ᵇ − 1), so a 1 in the highest possible bit beats any combination below it — which is also why the bits must go in highest first. [Maximum XOR of Two Numbers in an Array](/problems/maximum-xor-of-two-numbers-in-an-array) is exactly this; more bit tricks are in [bit manipulation](/roadmap/bit-manipulation).
 
 ```cpp
 #include <iostream>
@@ -634,7 +575,7 @@ Numbers: 3 10 5 25 2 8
 Maximum XOR: 5 XOR 25 = 28
 ```
 
-Because every number is inserted before any search, each search always finds at least the number itself, so it never walks into a missing child. Problems that add a condition — the partner must be at most some limit, or close in value — sort the queries and insert numbers as the limit allows, or keep counts in the nodes so numbers can be removed again.
+Every number is inserted before any search, so a walk never meets a dead end.
 
 ## Time and space complexity
 
@@ -644,35 +585,32 @@ Because every number is inserted before any search, each search always finds at 
 | Build from words with S characters in all | O(S) | O(S) nodes |
 | Autocomplete a prefix | O(L) plus the size of the subtree listed | O(longest word) for the recursion |
 | Maximum XOR pair of n numbers, B bits each | O(n × B) | O(n × B) nodes |
-| Memory per node | | 26 references with an array; only the letters present with a map |
-
-Compare the first row with a hash set: the same O(L), but the trie also answers every prefix question in that time, and the cost never depends on how many words are stored.
 
 ## How to recognise a trie problem
 
-- The statement is about **prefixes**: "starts with", "is a prefix of", "shortest root", search suggestions or autocomplete.
-- A **dictionary of words** must be matched against **every position** of a text, or against paths in a grid.
-- You must **count** how many words share a prefix, or sum something over all prefixes.
-- The words must come out in **alphabetical order** while you build or search.
-- The question asks for the **maximum or minimum XOR** of a pair, or of a value with an element below a limit — a binary trie over the bits.
+- The statement is about **prefixes**: "starts with", "is a prefix of", "shortest root", autocomplete.
+- A **dictionary** must be matched against **every position** of a text, or against paths in a grid.
+- You must **count** the words sharing a prefix, or sum something over all prefixes.
+- The words must come out in **alphabetical order** as you build or search.
+- The **maximum or minimum XOR** of a pair: a binary trie over the bits.
 
 ## Common mistakes
 
-- **Forgetting the end flag.** Without it, "car" is found after inserting only "cart". `search` must check the flag; `startsWith` must not.
-- **Counting on every query.** Counting the words below a node by walking its subtree costs the subtree's size each time. Keep a pass count and update it during insert.
-- **Assuming lower-case letters.** `c − 'a'` with an array of 26 breaks on a capital letter, a digit or a space. Check the alphabet in the constraints and size the array, or use a map.
-- **Inserting bits lowest first.** The XOR greedy only works when the highest bit is decided first. Insert and search from the top bit down, and use enough bits for the largest value.
-- **Creating nodes in a lookup.** A search that creates missing children "on the way" fills the trie with junk and breaks the counts. Only insert creates nodes.
-- **Running out of memory.** A node object with 26 references per character can exhaust the limit on large dictionaries. Use a map, or one flat array of indices.
+- **Forgetting the end flag**: without it, "car" is found after inserting only "cart". `search` checks the flag; `startsWith` does not.
+- **Counting on every query** instead of keeping a pass count.
+- **Assuming lower-case letters**: `c − 'a'` breaks on capitals, digits or spaces. Check the alphabet, or use a map.
+- **Inserting bits lowest first**: the XOR greedy needs the highest bit decided first.
+- **Creating nodes in a lookup**: only insert creates nodes; a search that does fills the trie with junk.
+- **Running out of memory** with 26 references per node on a large dictionary.
 
 ## Practice in this order
 
-1. [Longest Common Prefix](/problems/longest-common-prefix): insert every word, then walk down while there is exactly one child and no word ends.
-2. [Longest Word in Dictionary](/problems/longest-word-in-dictionary): only paths whose every node is flagged count; compare with the sorted hash-set solution.
-3. [Replace Words](/problems/replace-words): walk each word and stop at the first end flag.
-4. [Short Encoding of Words](/problems/short-encoding-of-words): insert the words reversed, so shared suffixes share nodes, and count the leaves.
+1. [Longest Common Prefix](/problems/longest-common-prefix): walk down while there is exactly one child and no word ends.
+2. [Longest Word in Dictionary](/problems/longest-word-in-dictionary): only paths flagged at every node count.
+3. [Replace Words](/problems/replace-words): stop at the first end flag.
+4. [Short Encoding of Words](/problems/short-encoding-of-words): insert the words reversed, so shared suffixes share nodes.
 5. [Maximum XOR of Two Numbers in an Array](/problems/maximum-xor-of-two-numbers-in-an-array): the binary trie and its greedy walk.
-6. [Extra Characters in a String](/problems/extra-characters-in-a-string): dynamic programming over positions with a trie walk from each one.
+6. [Extra Characters in a String](/problems/extra-characters-in-a-string): dynamic programming with a trie walk from each position.
 7. [Sum of Prefix Scores of Strings](/problems/sum-of-prefix-scores-of-strings): pass counts summed along each word.
 8. [Word Search II](/problems/word-search-ii): a trie steering a backtracking search through a grid.
 

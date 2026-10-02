@@ -2,7 +2,7 @@
 title: Minimum Spanning Tree: Kruskal's and Prim's Algorithms
 stage: graphs-advanced
 order: 4
-minutes: 25
+minutes: 13
 level: Advanced
 hub: minimum-spanning-tree
 practice: graph-valid-tree, number-of-operations-to-make-network-connected, min-cost-to-connect-all-points, the-earliest-moment-when-everyone-become-friends, path-with-minimum-effort, checking-existence-of-edge-length-limited-paths, remove-max-number-of-edges-to-keep-graph-fully-traversable, find-critical-and-pseudo-critical-edges-in-minimum-spanning-tree
@@ -22,90 +22,33 @@ a: Yes. Kruskal's and Prim's algorithms only compare weights, they never add the
 q: What happens if the graph is not connected?
 a: Then no spanning tree exists. Kruskal's algorithm still produces a minimum spanning forest, one tree per component, and you can detect the situation because it keeps fewer than V − 1 edges. Prim's algorithm from one vertex only ever reaches that vertex's component, so it adds fewer than V − 1 edges too.
 ---
-Suppose you must lay cable between six offices so that every office can reach every other, and each possible link has its own cost. You want the cheapest network that does the job. One observation shapes the whole problem: you would never pay for a link that closes a loop, because removing it leaves everything still connected and saves its cost. So the cheapest network has no cycles — it is a **tree** that touches every vertex, a **spanning tree**, and you want the one of least total weight: the **minimum spanning tree (MST)**.
+Suppose you must lay cable between six offices so that every office can reach every other, and each possible link has its own cost. You would never pay for a link that closes a loop: removing it leaves everything connected and saves its cost. So the cheapest network is a **tree** that touches every vertex — a **spanning tree** — and you want the one of least total weight, the **minimum spanning tree (MST)**. **Kruskal's algorithm** takes the cheapest edges first and skips any that would close a cycle; **Prim's algorithm** grows one tree outwards from a vertex. Both build on [Union-Find](/roadmap/union-find) and the [Heap](/roadmap/heap).
 
-Two classic algorithms find it. **Kruskal's algorithm** (1956) takes the cheapest edges first and skips any that would close a cycle. **Prim's algorithm** (1957, found earlier by Vojtěch Jarník in 1930) grows a single tree outwards from one vertex. Both are greedy, and greedy choices are usually wrong for graph problems — this lesson proves why they are right here, then traces both algorithms, compares them and shows the problems that use them. It builds on [Union-Find](/roadmap/union-find) and the [Heap](/roadmap/heap). Every program is shown in C++, Java, Python and JavaScript.
-
-## What a spanning tree is
-
-Take a connected, undirected graph whose edges have weights. A **spanning tree** is a set of its edges that connects all V vertices and contains no cycle. Three facts about spanning trees come up again and again:
-
-- **It has exactly V − 1 edges.** Start with V separate vertices. An edge that closes no cycle always joins two separate pieces, lowering the number of pieces by one, and you need to get from V pieces down to 1.
-- **Adding any other edge creates exactly one cycle**, made of the new edge and the tree path between its ends.
-- **Removing any tree edge splits the tree into two pieces.**
-
-The example graph has six vertices and nine edges:
-
-```text
- A–B 4    B–C 1    C–D 4    D–E 7    E–F 8
- A–C 3    B–D 2    C–E 5    D–F 6
-```
-
-Its minimum spanning tree uses five edges and weighs 17:
-
-```text
-   A ─3─ C ─1─ B ─2─ D ─6─ F
-         │
-         5
-         │
-         E
-```
+@figure spanning-trees
 
 ## Why trying every tree is too slow
 
-A brute force would list every spanning tree and keep the cheapest, but there are far too many. A complete graph on n vertices has n raised to the power n − 2 spanning trees (Cayley's formula): 10⁸ for 10 vertices and about 2.6 × 10²³ for 20. Even sparse graphs usually have exponentially many. Something must let you commit to edges one at a time without ever reconsidering, and that something is the cut property.
+A complete graph on n vertices has n raised to the power n − 2 spanning trees (Cayley's formula): 10⁸ for 10 vertices and about 2.6 × 10²³ for 20. Even sparse graphs usually have exponentially many. Something must let you commit to edges one at a time without ever reconsidering, and greedy choices are usually wrong for graph problems. Here they are right, and the cut property is why.
 
 ## The cut property: why greedy works here
 
-A **cut** splits the vertices into two non-empty groups. An edge **crosses** the cut when its two ends lie in different groups. Every spanning tree contains at least one crossing edge for every cut; otherwise the two groups would not be connected to each other.
+A **cut** splits the vertices into two non-empty groups, and an edge **crosses** it when its ends lie on different sides. **The cut property**: for any cut, a lightest crossing edge belongs to some minimum spanning tree — and to every one, if it is strictly lighter than the other crossing edges. The proof is an **exchange argument**: any spanning tree without that edge can swap it in for a heavier crossing edge and get no heavier.
 
-**The cut property.** For any cut, a lightest edge crossing it belongs to some minimum spanning tree. If it is strictly lighter than every other crossing edge, it belongs to every minimum spanning tree.
+@figure cut-property
 
-The proof is an **exchange argument**. Let e be a lightest edge crossing the cut, and suppose T is a minimum spanning tree that does not contain e.
-
-- Add e to T. That creates exactly one cycle.
-- The cycle crosses from one side of the cut to the other through e, and to close the loop it must cross back somewhere else. So the cycle contains a second crossing edge f, and f weighs at least as much as e, because e is a lightest crossing edge.
-- Remove f. Removing an edge of the cycle keeps everything connected, and the count is back to V − 1 edges, so T + e − f is a spanning tree. Its weight is weight(T) + w(e) − w(f), which is no more than weight(T).
-
-So T + e − f is a minimum spanning tree that contains e. If e is strictly lighter than f, T + e − f would be strictly lighter than T, which is impossible for a minimum — so then every MST contains e. The argument also works when some edges have already been chosen, as long as none of them crosses the cut: f crosses it, so f is not one of them, and swapping it out keeps every chosen edge.
-
-The mirror image is the **cycle property**: on any cycle, an edge strictly heavier than all the others on it is in no minimum spanning tree. That is why an algorithm may throw away an edge that would close a cycle when every other edge on that cycle is lighter or equal.
-
-Kruskal's and Prim's algorithms are both the cut property applied V − 1 times. They differ only in which cut they look at.
+The swap never removes an edge chosen earlier, as long as none of those crosses the cut, so the argument holds step after step. The mirror image is the **cycle property**: an edge strictly heavier than every other edge on some cycle is in no MST. Kruskal's and Prim's algorithms both apply the cut property V − 1 times; they differ only in which cut they look at.
 
 ## Kruskal's algorithm
 
-Kruskal's algorithm treats the edges like a shopping list sorted by price:
-
 - **Sort** the edges by weight, cheapest first.
-- **Scan** them in order. For an edge u–v, if u and v are in different components, keep the edge and merge the two components. If they are already in one component, skip it: it would close a cycle.
-- **Stop** once V − 1 edges have been kept.
+- **Scan** them in order. If an edge's ends are in different components, keep it and merge the components; if they are already in one, skip it — it would close a cycle.
+- **Stop** once V − 1 edges are kept.
 
-"Are u and v in the same component?" is exactly what [union-find](/roadmap/union-find) answers, in near-constant time: `find(u) == find(v)` tests it and `union(u, v)` merges.
-
-Why each kept edge is safe: when Kruskal keeps e = u–v, look at the cut between u's current component and all the other vertices. Every lighter edge has already been scanned, and whether it was kept or skipped, its two ends now lie in one component — so no lighter edge crosses this cut. The edge e does cross it, because v is in another component. So e is a lightest crossing edge, none of the edges kept so far crosses the cut, and the cut property says the kept edges plus e still fit inside a minimum spanning tree.
+"Are u and v in the same component?" is what union-find answers in near-constant time. Each kept edge is safe: cut u's component from everything else. Every lighter edge was already scanned and lies inside one component, so u–v is a lightest crossing edge.
 
 @walkthrough
 
-### Dry run
-
-The edges sorted by weight, with ties in input order, scanned until five are kept:
-
-| Edge | Weight | Already in one component? | Decision | Total |
-| --- | --- | --- | --- | --- |
-| B–C | 1 | no | take | 1 |
-| B–D | 2 | no | take | 3 |
-| A–C | 3 | no | take | 6 |
-| A–B | 4 | yes, through A–C–B | skip | 6 |
-| C–D | 4 | yes, through C–B–D | skip | 6 |
-| C–E | 5 | no | take | 11 |
-| D–F | 6 | no | take: five edges, stop | 17 |
-
-The last two edges, D–E (7) and E–F (8), are never even looked at: a spanning tree of six vertices is complete at five edges. The two skipped edges weigh 4, and each was the heaviest edge on the cycle it would have closed, as the cycle property says.
-
-### The code
-
-The program sorts the edges, prints each decision, and returns the total — or −1 if fewer than V − 1 edges were kept, which means the graph is not connected. The sort is stable, so equal weights keep their input order and all four languages print the same lines.
+The program prints each decision, and returns −1 if fewer than V − 1 edges were kept: the graph is not connected.
 
 ```cpp
 #include <algorithm>
@@ -314,37 +257,16 @@ Total weight: 17
 
 ## Prim's algorithm
 
-Prim's algorithm grows one tree instead of a forest:
-
 - **Start** from any vertex; on its own it is the tree.
-- **Collect** the edges that leave the tree in a min-heap, keyed by weight.
-- **Pop** the cheapest. If its far end is already in the tree, the entry is stale — skip it. Otherwise add that vertex and the edge, and push the new vertex's edges to vertices still outside.
-- **Stop** when all V vertices are in the tree.
+- **Collect** the edges leaving the tree in a min-heap, keyed by weight.
+- **Pop** the cheapest. If its far end is already in the tree, the entry is stale; skip it. Otherwise add the vertex and the edge, and push the new vertex's edges to vertices still outside.
+- **Stop** when all V vertices are in.
 
-Why each added edge is safe: the cut is now the tree against everything else. The heap holds every edge crossing that cut (plus stale entries, which are skipped), so the first valid edge popped is a lightest crossing edge, and the cut property applies directly.
+Here the cut is the tree against everything else, and the first valid edge popped is a lightest edge crossing it.
 
-If this looks like [Dijkstra's Algorithm](/roadmap/dijkstras-algorithm), it is the same loop with one difference in the key. Dijkstra orders vertices by their total distance from the start, dist[u] + w; Prim orders them by the weight w of the single edge that would connect them. That small change is why Prim's algorithm does not care about negative weights and Dijkstra's does.
+@figure prim
 
-### Dry run
-
-Prim's algorithm from A, with heap entries written as (weight, vertex, reached from):
-
-| Step | Pop | Action | Pushed | Total |
-| --- | --- | --- | --- | --- |
-| start | none | A is the tree | (3, C, A), (4, B, A) | 0 |
-| 1 | (3, C, A) | add C by A–C | (1, B, C), (4, D, C), (5, E, C) | 3 |
-| 2 | (1, B, C) | add B by C–B | (2, D, B) | 4 |
-| 3 | (2, D, B) | add D by B–D | (6, F, D), (7, E, D) | 6 |
-| 4 | (4, B, A) | stale: B is in the tree | none | 6 |
-| 5 | (4, D, C) | stale: D is in the tree | none | 6 |
-| 6 | (5, E, C) | add E by C–E | (8, F, E) | 11 |
-| 7 | (6, F, D) | add F by D–F: all six in, stop | none | 17 |
-
-Prim's algorithm adds the edges in a different order from Kruskal's — A–C first, because it must start at A — but it ends with the same five edges and the same total.
-
-### The code
-
-The program builds an adjacency list with every edge in both directions, runs Prim's algorithm from A, and prints the edges in the order they joined. JavaScript again carries its own small binary heap.
+The program stores every edge in both directions and prints the edges in the order they joined; JavaScript carries its own small heap.
 
 ```cpp
 #include <functional>
@@ -567,26 +489,28 @@ Prim from A adds A-C (3), C-B (1), B-D (2), C-E (5), D-F (6)
 Total weight: 17
 ```
 
+Prim is [Dijkstra's Algorithm](/roadmap/dijkstras-algorithm) with a different key: Dijkstra orders vertices by their whole distance, dist[u] + w; Prim by the weight w of the one edge that would connect them. That is why Prim does not mind negative weights, and why the two build different trees:
+
+@figure prim-vs-dijkstra
+
 ## Kruskal or Prim?
 
-Both are correct on every connected graph, so the choice is about the input's shape and size:
-
-- **An edge list, or a sparse graph:** Kruskal. It works straight from the list, and its cost is the sort, O(E log E). Since E is less than V², log E is less than 2 log V, so that is O(E log V).
-- **An adjacency list:** Prim with a heap, O(E log V), is just as good, and it needs no global sort.
-- **A dense graph, especially a complete one whose edges are implied rather than listed:** Prim with a plain array instead of a heap. It keeps, for every vertex outside the tree, the cheapest known edge into the tree, and scans that array for the minimum: O(V²) time and O(V) memory, with no edge list at all. When E is close to V², that beats both heap-based versions.
-- **When edges must be processed in sorted order anyway**, or the graph may be disconnected, Kruskal is the natural fit: it handles a forest without any change.
+- **An edge list, or a sparse graph:** Kruskal. Its cost is the sort, O(E log E), which is O(E log V) because E is less than V².
+- **An adjacency list:** Prim with a heap, O(E log V), with no global sort.
+- **A dense or complete graph, whose edges are implied rather than listed:** Prim with a plain array, O(V²) time and O(V) memory, with no edge list at all.
+- **Edges that must be processed in sorted order anyway, or a graph that may be disconnected:** Kruskal, which handles a forest without change.
 
 ## When the minimum spanning tree is unique
 
-**If every edge weight is different, the MST is unique.** Suppose two different minimum spanning trees T₁ and T₂ existed. Among the edges that belong to exactly one of them, let e be the lightest, and say it is in T₁. Adding e to T₂ creates a cycle, and that cycle must contain an edge f that is not in T₁ — otherwise T₁ would contain the whole cycle. So f belongs to exactly one tree, and since e is the lightest such edge and weights are distinct, f is heavier than e. Then T₂ + e − f is a spanning tree lighter than T₂, which contradicts T₂ being minimum.
+**If every edge weight is different, the MST is unique**: if two existed, the lightest edge in only one of them could be swapped into the other for a heavier edge, making it lighter — impossible. With repeated weights there can be several, always with the same total:
 
-When weights repeat, there can be several minimum spanning trees, but they always have the same total weight. A square whose four sides all weigh 1 has four, one for each side you leave out. Repeated weights do not *force* several trees, though: the example graph has two edges of weight 4, both on cycles with lighter edges, and its MST is still unique. Distinct weights are enough for uniqueness, not necessary.
+@figure square
+
+Repeated weights do not *force* several trees, though: the six-office graph has two edges of weight 4, both on cycles with lighter edges, and its MST is unique.
 
 ## Connecting points: a dense graph
 
-[Min Cost to Connect All Points](/problems/min-cost-to-connect-all-points) gives points on a plane, where joining two points costs their Manhattan distance, |x₁ − x₂| + |y₁ − y₂|. Every pair can be joined, so the graph is complete: n points mean n(n − 1)/2 possible edges, about 500,000 for 1,000 points.
-
-Kruskal's algorithm works — generate every pair, sort, scan — but it stores and sorts all those edges. Prim's array version never builds them:
+[Min Cost to Connect All Points](/problems/min-cost-to-connect-all-points) gives points on a plane, where joining two costs their Manhattan distance. Every pair can be joined, so 1,000 points mean about 500,000 possible edges. Kruskal works, but it stores and sorts them all; Prim's array version never builds them:
 
 ```text
 best[v] = cheapest known edge from the tree to v   (0 for the start, ∞ for the rest)
@@ -597,17 +521,15 @@ repeat n times:
         best[v] = min(best[v], distance(u, v))
 ```
 
-That is n scans of n entries — 10⁶ steps for 1,000 points, with O(n) memory. For the example points (0,0), (2,2), (3,10), (5,2) and (7,0), the answer is 20.
+@figure points
 
 ## Other shapes of the same idea
 
-- **Is it already a spanning tree?** [Graph Valid Tree](/problems/graph-valid-tree) checks the definition directly: n − 1 edges and no cycle. [Number of Operations to Make Network Connected](/problems/number-of-operations-to-make-network-connected) counts how far a graph is from one: with c components you need c − 1 extra cables, and every edge that closes a cycle is a spare.
-- **Kruskal in time order.** In [The Earliest Moment When Everyone Become Friends](/problems/the-earliest-moment-when-everyone-become-friends) the timestamps play the part of weights: process the logs in time order with union-find, and the answer is the time of the union that leaves one component.
-- **Minimax paths.** The path between two vertices inside a minimum spanning tree has the smallest possible *largest* edge of any path between them. So "the least effort, where effort is the worst single step" is Kruskal's algorithm stopped as soon as the start and the end are connected — the edge that connected them is the answer. [Path With Minimum Effort](/problems/path-with-minimum-effort) can be solved this way, and Dijkstra-style too.
-- **Offline thresholds.** In [Checking Existence of Edge Length Limited Paths](/problems/checking-existence-of-edge-length-limited-paths), sort the queries by limit and grow Kruskal's forest edge by edge: every query is answered by the forest built from the edges below its limit.
-- **Two forests at once.** [Remove Max Number of Edges to Keep Graph Fully Traversable](/problems/remove-max-number-of-edges-to-keep-graph-fully-traversable) runs Kruskal's greedy for two people with two union-finds, adding the edges both can use first, because one shared edge does the work of two.
-- **Which edges matter.** In [Find Critical and Pseudo-Critical Edges in Minimum Spanning Tree](/problems/find-critical-and-pseudo-critical-edges-in-minimum-spanning-tree), an edge is critical if leaving it out makes the MST heavier, and pseudo-critical if forcing it in keeps the minimum weight. Rerunning Kruskal's algorithm per edge decides both.
-- **Clustering.** Stop Kruskal's algorithm when k components remain, and you have split the points into k clusters that are as far apart from each other as possible.
+- **Kruskal in time order.** Timestamps play the weights; the answer is the union that leaves one component.
+- **Minimax paths.** The path between two vertices inside an MST has the smallest possible *largest* edge, so Kruskal stopped once the start and end connect answers [Path With Minimum Effort](/problems/path-with-minimum-effort).
+- **Offline thresholds.** Grow Kruskal's forest edge by edge and answer each query from the edges below its limit.
+- **Which edges matter.** Rerun Kruskal with each edge left out or forced in.
+- **Clustering.** Stop Kruskal when k components remain: k clusters as far apart as possible.
 
 ## Time and space complexity
 
@@ -618,32 +540,26 @@ That is n scans of n entries — 10⁶ steps for 1,000 points, with O(n) memory.
 | Prim with a binary heap | O(E log V) | O(V + E) | adjacency lists |
 | Prim with an array | O(V²) | O(V) | dense and complete graphs |
 
-In Kruskal's algorithm the sort dominates: the union-find work for E edges is O(E α(V)), nearly linear. In Prim's heap version every edge can push one entry and every push or pop costs O(log V). The array version replaces the heap with V scans of V entries each.
+In Kruskal the sort dominates; the union-find work is O(E α(V)), nearly linear.
 
 ## How to recognise a minimum spanning tree problem
 
-Read the statement for these signals:
+- **Connect everything at the lowest total cost**: cables, roads, pipes, points on a plane.
+- The links are **undirected**, and you pay the **sum of the links you choose**, not the length of a route.
+- The answer must have **exactly one path between every pair**, or no redundant connections.
+- The question minimises the **largest edge** on a route or in a network: a bottleneck.
 
-- **Connect everything at the lowest total cost**: cables, roads, pipes, points on a plane, cities.
-- The links are **undirected** and each has a cost, and the cost you pay is the **sum of the links you choose**, not the length of a route.
-- The answer must have **exactly one path between every pair**, or "no redundant connections" — that is a tree.
-- The question asks to minimise the **largest edge** on a route or in a network: a bottleneck, which is an MST property.
-- Edges are added **in increasing order** of weight or time until something becomes connected.
-
-If the question is the cheapest route from one place to another, it is a shortest path problem instead; see Dijkstra's algorithm.
+If the question is the cheapest route from one place to another, it is a shortest path problem instead.
 
 ## Common mistakes
 
-- **Using an MST for a shortest path.** The tree minimises the total, not each route. In the example, the tree's route from D to E is D–B–C–E, weight 8, while the direct edge D–E weighs 7.
-- **Applying it to a directed graph.** Kruskal's and Prim's algorithms assume undirected edges. The directed version, a minimum spanning arborescence, needs a different algorithm (Chu–Liu/Edmonds).
-- **Not checking connectivity.** If fewer than V − 1 edges are kept, there is no spanning tree. Return −1 or whatever the problem asks for, rather than the weight of a forest.
-- **Marking a vertex as in the tree when it is pushed.** In Prim's algorithm a vertex joins only when its entry is popped; marking it at push time locks in whichever edge reached it first, not the cheapest.
-- **A comparator that subtracts.** In Java, `(a, b) -> a[2] - b[2]` overflows when weights are large or negative. Use `Integer.compare`.
-- **Building every edge of a huge complete graph.** For thousands of points, the n(n − 1)/2 edges may not fit in memory. Prim's array version needs none of them.
+- **Using an MST for a shortest path.** In the example, the tree's route from D to E weighs 8, while the direct edge weighs 7.
+- **Applying it to a directed graph.** The directed version needs a different algorithm (Chu–Liu/Edmonds).
+- **Not checking connectivity.** Fewer than V − 1 kept edges means there is no spanning tree.
+- **Marking a vertex as in the tree when it is pushed.** In Prim a vertex joins only when its entry is popped.
+- **A comparator that subtracts.** In Java, `(a, b) -> a[2] - b[2]` overflows; use `Integer.compare`.
 
 ## Practice in this order
-
-Start with the structure of a spanning tree, then the algorithms themselves, then the problems that use their properties:
 
 1. [Graph Valid Tree](/problems/graph-valid-tree): what makes a set of edges a spanning tree.
 2. [Number of Operations to Make Network Connected](/problems/number-of-operations-to-make-network-connected): V − 1 edges and spare cables.

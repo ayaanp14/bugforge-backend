@@ -125,3 +125,21 @@ test("the bar names what is missing", () => {
     assert.match(problems, want);
   }
 });
+
+test("a figure line is a block of its own, and the bar checks it is placed properly", () => {
+  const blocks = lessonBlocks(["Intro.", "", "@figure two-shapes", "", "More.", "@figure Bad Name"].join("\n"));
+  assert.deepEqual(
+    blocks.map((b) => (b.kind === "figure" ? `figure:${b.name}@${b.line}` : b.kind)),
+    ["text", "figure:two-shapes@3", "text"],
+  );
+  // A real lesson's figures (two-pointers.md is the reference set), then the same body with its markers broken.
+  const ref = lessons.find((l) => l.slug === "two-pointers");
+  assert.ok(ref, "two-pointers.md is the reference lesson");
+  assert.deepEqual(validateLesson(ref), []);
+  const broken = { ...ref, body: ref.body.replace("\n\n@figure growth", "\n@figure growth").replace("@figure fast-slow", "@figure no-such-figure") };
+  const problems = validateLesson(broken).join("\n");
+  assert.match(problems, /"@figure growth" needs a blank line before and after it/);
+  assert.match(problems, /no figure "no-such-figure"/);
+  const bare = { ...ref, body: ref.body.replace(/^@(figure [a-z-]+|walkthrough)$/gm, "") };
+  assert.match(validateLesson(bare).join("\n"), /0 figures; a lesson needs at least 4/);
+});

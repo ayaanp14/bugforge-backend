@@ -2,7 +2,7 @@
 title: Dynamic Programming
 stage: dp-1d
 order: 1
-minutes: 21
+minutes: 12
 level: Intermediate
 hub: dynamic-programming
 practice: fibonacci-number, climbing-stairs, min-cost-climbing-stairs, house-robber, house-robber-ii, coin-change, decode-ways, word-break
@@ -22,55 +22,37 @@ a: Greedy takes the largest coin that fits and never reconsiders. With coins 1, 
 q: What is the time complexity of a dynamic programming solution?
 a: Multiply the number of distinct states by the work done for each state. Climbing stairs has n states with constant work each, so it is O(n). Coin change has amount + 1 states and tries every coin at each, so it is O(amount × number of coins). Space is the number of states, or less if only recent rows are kept.
 ---
-Some problems ask you to make a sequence of choices and want either the best possible result or the number of ways to reach it: the fewest coins that make an amount, the most money you can take from a row of houses without robbing two neighbours, the number of ways to climb a staircase taking one or two steps at a time. Trying every sequence of choices is correct, but the number of sequences grows exponentially with the input. **Dynamic programming** (DP) is the technique that makes these problems fast. It notices that the brute force keeps asking the same smaller question, answers each smaller question once, and stores the answer.
-
-This lesson builds the idea from one tiny example, the Fibonacci numbers, then turns it into a five-step recipe and uses the recipe on three classic problems with their tables filled in by hand. It finishes with how to recognise a DP problem in an interview and the mistakes that cost the most marks. Every program is shown in C++, Java, Python and JavaScript.
+Some problems ask for the best result of a sequence of choices, or the number of ways to reach one: the fewest coins that make an amount, the most money from a row of houses without robbing two neighbours, the ways up a staircase one or two steps at a time. Trying every sequence of choices is correct but exponential. **Dynamic programming** (DP) makes it fast by answering each smaller question once and storing the answer.
 
 ## Why plain recursion is too slow
 
-The Fibonacci numbers are defined by F(0) = 0, F(1) = 1 and F(n) = F(n − 1) + F(n − 2). The definition translates straight into a recursive function, and that function is a good picture of what goes wrong. Here is every call it makes to compute fib(5):
+The Fibonacci numbers are F(0) = 0, F(1) = 1 and F(n) = F(n − 1) + F(n − 2), and the definition turns straight into a recursive function. Watch what it does for fib(5).
 
-```text
-                           fib(5)
-                 /                       \
-            fib(4)                        fib(3)
-          /        \                    /        \
-     fib(3)        fib(2)          fib(2)        fib(1)
-     /    \        /    \          /    \
- fib(2)  fib(1) fib(1) fib(0)  fib(1) fib(0)
- /    \
-fib(1) fib(0)
-```
+@figure fib-tree
 
-Fifteen calls, but only six different questions: fib(0) to fib(5). fib(3) is solved twice from scratch, fib(2) three times, fib(1) five times. Each call spawns two more, so the number of calls grows by a factor of about 1.6 every time n goes up by one. The exact count is 2 × F(n + 1) − 1 calls: fib(40) makes 331,160,281 of them, and fib(50) makes over 40 billion, minutes of work for a number with eleven digits. Yet there are only 51 different questions between fib(0) and fib(50). Nearly all of that work is repetition.
+The waste grows fast: over 331 million calls for fib(40), yet there are only 41 different questions.
 
-Two properties of the problem make the repetition avoidable, and they are the two properties every DP problem has:
+@figure call-growth
 
-- **Overlapping subproblems.** The same smaller question is asked many times. fib(3) turns up in several branches of the tree.
-- **Optimal substructure.** The answer to the big question is built from the answers to smaller questions of the same kind. For Fibonacci that is just the definition; for an optimisation problem it means the best overall solution is made of best solutions to its parts.
+Two properties make the repetition avoidable, and every DP problem has both:
 
-Both matter. Merge sort splits a problem into smaller ones too, but its two halves never overlap, so there is nothing to reuse; that is plain divide and conquer, covered in [Recursion](/roadmap/recursion). DP is what you reach for when the pieces repeat.
+- **Overlapping subproblems.** The same smaller question is asked many times.
+- **Optimal substructure.** The best answer is built from best answers to smaller questions of the same kind.
+
+Merge sort also splits a problem, but its halves never overlap, so there is nothing to reuse: that is divide and conquer, covered in [Recursion](/roadmap/recursion).
 
 ## The idea: answer each subproblem once
 
-There are two ways to make sure each subproblem is solved only once.
+- **Memoisation (top-down)** keeps the recursion and adds a cache: look an answer up before working it out, store it after. The tree's last frame is this version.
+- **Tabulation (bottom-up)** drops the recursion: one cell per subproblem, base cases first, then an order that has every input ready before it is read.
 
-**Memoisation (top-down).** Keep the recursion exactly as it is and add a cache. Before computing fib(k), check whether its answer is already stored; if so, return it. Otherwise compute it, store it, then return it. Each of the n + 1 subproblems is computed once, and every repeated call becomes a lookup. The tree above collapses into a single path down the left side, and the number of calls falls from exponential to 2n − 1.
+@figure fib-table
 
-**Tabulation (bottom-up).** Drop the recursion. Make a table `dp` with one cell per subproblem, fill in the base cases, then fill the rest in an order that guarantees every cell's inputs are already there. For Fibonacci that order is simply left to right:
-
-```text
- i:       0   1   2   3   4   5   6   7
- dp[i]:   0   1   1   2   3   5   8  13
-                      ^   ^   ^
-          dp[5] = dp[4] + dp[3], and both were filled earlier
-```
-
-**Keeping only what the transition reads.** Look at what each step actually needs: dp[i] reads dp[i − 1] and dp[i − 2], nothing older. Once dp[i] is computed, every cell before i − 1 will never be read again. So two variables are enough, and the space drops from O(n) to O(1). This is worth looking for in every DP: when a cell depends on a fixed number of previous cells or rows, keep only those. It is how two-dimensional tables in [the 0/1 knapsack](/roadmap/knapsack-problem) and [longest common subsequence](/roadmap/longest-common-subsequence) shrink to one or two rows.
+The animation's last frame is worth making a habit: when a cell reads a fixed number of earlier cells or rows, keep only those. That is how the tables of the [0/1 knapsack](/roadmap/knapsack-problem) and the [longest common subsequence](/roadmap/longest-common-subsequence) shrink to one or two rows.
 
 ### The code
 
-The program computes the same numbers four ways and counts the calls the two recursive versions make, so you can see the repeated work disappear.
+The program computes the same numbers four ways and counts the calls each recursive version makes.
 
 ```cpp
 #include <iostream>
@@ -304,108 +286,45 @@ Table:           fib(50) = 12586269025
 Two variables:   fib(70) = 190392490709135
 ```
 
-The same answer, 242,785 calls against 49. The memo uses −1 for "not computed yet" because −1 can never be a Fibonacci number; a marker that is also a valid answer would make the cache lie. The values are 64-bit because F(47) = 2,971,215,073 no longer fits in a 32-bit `int`. JavaScript numbers are exact only up to 2⁵³, and F(78) is the last Fibonacci number below that, which is why the last line stops at fib(70).
+The memo uses −1 for "not computed yet" because −1 is never a Fibonacci number; a marker that is also a real answer would make the cache lie. The values are 64-bit because F(47) overflows a 32-bit `int`, and JavaScript stops at fib(70) because its numbers are exact only up to 2⁵³.
 
 ## The recipe: five questions
 
-Fibonacci hands you its recurrence. Real problems do not, so you need a way to find one. Every DP solution answers the same five questions, in this order:
+Real problems do not hand you their recurrence. Every DP solution answers five questions, in this order:
 
-1. **The state.** What does one cell mean? Write it as a full sentence: "dp[a] is the fewest coins that make amount a exactly." The state must hold everything the rest of the problem needs to know about the choices made so far.
-2. **The transition.** How is a cell built from smaller cells? The reliable trick is to think about the **last choice**: the last coin used, whether the last house was robbed, whether the last step was one stair or two. Each possible last choice leaves a smaller problem you have already solved.
-3. **The base cases.** Which cells are answered without the transition? Usually the empty or smallest input: amount 0 needs zero coins.
-4. **The order.** Fill cells so that every cell a transition reads is already filled. If dp[i] reads smaller indices, go from small to large.
-5. **The answer.** Which cell holds it? Often the last one, dp[n]; sometimes the best over all cells, as in the [longest increasing subsequence](/roadmap/longest-increasing-subsequence).
+1. **The state.** One cell's meaning, as a full sentence: "dp[a] is the fewest coins that make amount a exactly."
+2. **The transition.** Think about the **last choice** (the last coin, the last house, the last move); each one leaves a smaller problem already solved.
+3. **The base cases.** The cells that need no transition, usually the empty or smallest input.
+4. **The order.** Every cell a transition reads must already be filled.
+5. **The answer.** Usually the last cell; sometimes the best of all cells, as in the [longest increasing subsequence](/roadmap/longest-increasing-subsequence).
 
-The first question is the one people skip and the one that decides everything. "dp[i] is the answer for i" is not a state; "dp[i] is the most money from houses 0 to i" is. Once the sentence is precise, the transition usually follows from asking what the last choice could have been.
-
-The figure below runs the recipe on House Robber, which is worked through in full later in this lesson: one cell per house, filled left to right, each cell choosing between skipping the house and robbing it.
+The first question decides everything: "dp[i] is the answer for i" is not a state, "dp[i] is the most money from houses 0 to i" is. Here is the recipe on [House Robber](/problems/house-robber).
 
 @walkthrough
 
 ## Why it works
 
-A DP table is correct by **induction**. The base cases are right because they are answered directly. Now suppose every cell before cell i is right. The transition for cell i considers every possible last choice, and for each one it adds that choice to the best answer for what remains, which is a cell already known to be right. The best of those options is therefore the best answer for cell i. Filling the table in order extends "every cell so far is right" one cell at a time, all the way to the answer.
+A DP table is correct by **induction**. The base cases are answered directly. If every cell before i is right, the transition tries every possible last choice, each added to a smaller cell already known to be right, so the best of them is right for cell i too.
 
-That argument leans on two facts, and both should be checked when you design a state.
+That needs the transition to cover **every** option. Grouping the solutions by their last choice guarantees it: each solution falls into exactly one group, and each group is a smaller question. [Climbing Stairs](/problems/climbing-stairs) shows it plainly.
 
-- **The transition covers every option.** If the best solution ends with a choice the transition does not consider, the table can never find it. Listing the possible last choices explicitly is how you make sure none is missed.
-- **Optimal substructure.** The remainder of a best solution must itself be a best solution of its smaller problem. This is proved by a **cut-and-paste** argument. Suppose the best plan for houses 0 to 4 robs house 4. The rest of that plan is a plan for houses 0 to 2. If it were not the best plan for houses 0 to 2, you could cut it out, paste the better one in, and get a better plan for houses 0 to 4, which contradicts the plan being best.
+@figure last-move
 
-Optimal substructure is not automatic. The longest simple path between two cities in a road network does not have it: the longest path from A to C through B is not built from the longest path from A to B and the longest path from B to C, because those two may visit the same city twice. When the parts of a solution can interfere with each other like that, the state is missing information, and either a richer state fixes it or the problem is not a DP problem at all.
+Its base case, ways[0] = 1, counts the one way to stand at the bottom: doing nothing.
 
-## Three classic problems, table by table
+For a minimum or maximum, the induction also needs **optimal substructure**, proved by **cut and paste**: if the best plan for houses 0 to 4 robs house 4, the rest must be the best plan for houses 0 to 2, or pasting a better one in would beat the best. The longest simple path between two cities lacks it, because two longest halves may share a city; when parts of a solution interfere like that, the state is missing information.
 
-### Climbing stairs
+## Coin change: a minimum over many last choices
 
-You climb a staircase of n steps, one or two steps at a time. In how many distinct ways can you reach the top? This is [Climbing Stairs](/problems/climbing-stairs).
+What is the fewest coins that make an amount exactly, with unlimited coins of each value? This is [Coin Change](/problems/coin-change). The last coin is some c no larger than a, so dp[a] = 1 + the smallest dp[a − c], with dp[0] = 0.
 
-- **State:** ways[i] is the number of distinct ways to stand on step i.
-- **Transition:** the last move onto step i was either one step from i − 1 or two steps from i − 2. Those two groups of routes do not overlap, because their last moves differ, so the counts add: ways[i] = ways[i − 1] + ways[i − 2].
-- **Base cases:** ways[0] = 1 (there is exactly one way to be at the bottom: do nothing) and ways[1] = 1.
-- **Order and answer:** fill upwards; the answer is ways[n].
+@figure coin-table
 
-| i | ways[i − 1] | ways[i − 2] | ways[i] | Routes |
-| --- | --- | --- | --- | --- |
-| 0 | — | — | 1 | (stay) |
-| 1 | — | — | 1 | 1 |
-| 2 | 1 | 1 | 2 | 1+1, 2 |
-| 3 | 2 | 1 | 3 | 1+1+1, 1+2, 2+1 |
-| 4 | 3 | 2 | 5 | |
-| 5 | 5 | 3 | 8 | |
-
-It is Fibonacci again, shifted by one place: ways[n] = F(n + 1). The base case ways[0] = 1 often looks wrong at first, but setting it to 0 would make ways[2] equal 1 and miss the single two-step route.
-
-### House robber
-
-A row of houses holds `nums[i]` money each, and you may not rob two neighbouring houses. What is the most you can take? This is [House Robber](/problems/house-robber), the figure above.
-
-- **State:** dp[i] is the most money from houses 0 to i with no two neighbours robbed.
-- **Transition:** either house i is skipped, and the best is dp[i − 1], or it is robbed, so house i − 1 must be left alone and the best is dp[i − 2] + nums[i]. Take the larger: dp[i] = max(dp[i − 1], dp[i − 2] + nums[i]).
-- **Base cases:** dp[0] = nums[0] and dp[1] = max(nums[0], nums[1]).
-- **Order and answer:** left to right; the answer is the last cell.
-
-For `nums = [2, 7, 9, 3, 1]`:
-
-| i | nums[i] | Skip: dp[i − 1] | Rob: dp[i − 2] + nums[i] | dp[i] |
-| --- | --- | --- | --- | --- |
-| 0 | 2 | — | 2 | 2 |
-| 1 | 7 | 2 | 7 | 7 |
-| 2 | 9 | 7 | 2 + 9 = 11 | 11 |
-| 3 | 3 | 11 | 7 + 3 = 10 | 11 |
-| 4 | 1 | 11 | 11 + 1 = 12 | 12 |
-
-The answer is 12, from houses 0, 2 and 4. A tempting shortcut is to take either every even house or every odd house, whichever sums higher; on `[2, 1, 1, 2]` that gives 3, while robbing the first and last houses gives 4. The table never guesses a pattern, so it is never fooled. Like Fibonacci, each cell reads only the two before it, so two variables are enough.
-
-### Minimum coins
-
-Given coin values and an amount, what is the fewest coins that make the amount exactly, with as many of each coin as you like? Return −1 if it cannot be made. This is [Coin Change](/problems/coin-change).
-
-- **State:** dp[a] is the fewest coins that make amount a exactly, or infinity if a cannot be made.
-- **Transition:** the last coin used was some coin c no larger than a, and the rest of the coins make a − c as cheaply as possible. Try every coin: dp[a] = 1 + min(dp[a − c]) over the coins c ≤ a.
-- **Base case:** dp[0] = 0.
-- **Order and answer:** amounts from 1 upwards, since a − c is always smaller than a; the answer is dp[amount], or −1 if it is still infinity.
-
-Notice how the transition's combining step follows the question. Counting ways adds the options, as in climbing stairs. A minimum or maximum takes the best option. "Is it possible?" would take a logical OR. The shape of the table stays the same.
-
-### Dry run
-
-Coins 1, 3 and 4, amount 6. Each column is one choice of last coin; a dash means the coin is too big.
-
-| a | Last coin 1: dp[a − 1] + 1 | Last coin 3: dp[a − 3] + 1 | Last coin 4: dp[a − 4] + 1 | dp[a] |
-| --- | --- | --- | --- | --- |
-| 0 | — | — | — | 0 |
-| 1 | 0 + 1 = 1 | — | — | 1 |
-| 2 | 1 + 1 = 2 | — | — | 2 |
-| 3 | 2 + 1 = 3 | 0 + 1 = 1 | — | 1 |
-| 4 | 1 + 1 = 2 | 1 + 1 = 2 | 0 + 1 = 1 | 1 |
-| 5 | 1 + 1 = 2 | 2 + 1 = 3 | 1 + 1 = 2 | 2 |
-| 6 | 2 + 1 = 3 | 1 + 1 = 2 | 2 + 1 = 3 | 2 |
-
-The answer is 2. To find *which* coins, walk backwards: at amount 6, a coin c with dp[6 − c] = dp[6] − 1 is a valid last coin. Coin 3 works (dp[3] = 1), leaving amount 3, where coin 3 works again (dp[0] = 0). So 6 = 3 + 3.
+Greedy commits to the largest coin and never looks back; DP commits to nothing, comparing every last coin against exact answers. Greedy is right for canonical coin systems such as 1, 2, 5, 10, 20, 50 and 100, which an exchange argument proves (see [greedy algorithms](/roadmap/greedy-algorithms)). Without such a proof, DP is the safe choice. The combining step follows the question: counting adds the options, a minimum takes the best one, "is it possible?" takes a logical OR.
 
 ### The code
 
-The program fills the table, rebuilds the coins by walking back, compares the answer with the "largest coin first" greedy rule, and shows the impossible case.
+The program fills the table, rebuilds the coins by walking back, compares the result with greedy and tries an amount that cannot be made.
 
 ```cpp
 #include <iostream>
@@ -605,79 +524,53 @@ Largest coin first: 3 = 4 + 1 + 1
 Amount 7 with coins 2 and 4: -1
 ```
 
-"Impossible" is stored as amount + 1 rather than the largest integer. No real answer can need more than `amount` coins (that would be all ones), so amount + 1 is safely larger than any real answer, and adding 1 to it cannot overflow the way `INT_MAX + 1` would. The walk back only works if it starts from a reachable amount; check for −1 before reconstructing.
+"Impossible" is stored as amount + 1: no real answer needs more than `amount` coins, and adding 1 to it cannot overflow the way `INT_MAX + 1` would. Check for −1 before walking back.
 
 ## Top-down or bottom-up?
 
-Both versions do the same work in the same big-O time. They differ in what is easy:
-
-| | Top-down (memoisation) | Bottom-up (tabulation) |
-| --- | --- | --- |
-| How it is written | The brute-force recursion plus a cache | Loops that fill a table |
-| Order of subproblems | Found by the recursion for you | You must choose an order that has every input ready |
-| Which subproblems are solved | Only those the question actually reaches | All of them, even ones never needed |
-| Overhead | A function call per state, and recursion depth | None beyond the loops |
-| Deep inputs | Can overflow the stack; Python stops at 1,000 frames by default | No limit beyond memory |
-| Saving space | Hard: the cache must hold everything | Easy: keep only the rows the transition reads |
-
-A practical route in an interview: write the recursion that tries every last choice, add a memo, and check it on the example. If the interviewer asks for better space, or the input is deep enough to break the stack, convert it to a table. The table fills cells in the order in which the recursion finishes them: the smallest subproblems first.
-
-## Why greedy fails where DP works
-
-Return to coins 1, 3 and 4 and amount 6. The greedy rule "take the largest coin that fits" takes 4, then 1, then 1: three coins. The program above prints that line. The best answer is 3 + 3, two coins. Greedy went wrong at its first step, taking the 4, and greedy never revisits a choice, so it could not recover.
-
-DP does not commit to anything. At amount 6 it compares all three possible last coins, and each comparison uses the *exact* best answer for what remains, already in the table. The 4 is considered and loses, 3 coins against 2. That is the general difference: greedy makes one locally attractive choice and needs a proof that it is safe, while DP tries every choice and needs only that the subproblems are small enough to tabulate.
-
-Greedy is not wrong in general. For coin systems like 1, 2, 5, 10, 20, 50, 100, the largest coin first is always optimal; such systems are called canonical, and an exchange argument proves it. The lesson on [greedy algorithms](/roadmap/greedy-algorithms) shows how to make that kind of proof. When you cannot find one, and the number of states is small enough to fill a table, DP is the safe choice.
+Both do the same work in the same big-O time. Top-down solves only the subproblems the question reaches and finds the order for you, but deep inputs overflow the stack (Python stops at 1,000 frames). Bottom-up has no depth limit and makes it easy to keep only the rows the transition reads. In an interview, write the memoised recursion first, then convert it to a table if depth or space matters.
 
 ## Time and space complexity
 
-The rule for any DP: **time = number of states × work per state**, and **space = the number of states kept**.
+**Time = number of states × work per state**; space is the number of states kept.
 
-| Problem and approach | States | Work per state | Time | Space |
-| --- | --- | --- | --- | --- |
-| Fibonacci, plain recursion | — | — | O(1.618ⁿ) | O(n) call stack |
-| Fibonacci, memoised | n + 1 | O(1) | O(n) | O(n) |
-| Fibonacci, table | n + 1 | O(1) | O(n) | O(n) |
-| Fibonacci, two variables | n + 1 | O(1) | O(n) | O(1) |
-| Climbing stairs | n + 1 | O(1) | O(n) | O(1) |
-| House robber | n | O(1) | O(n) | O(1) |
-| Coin change, k coin values | amount + 1 | O(k) | O(amount × k) | O(amount) |
+| Problem and approach | Time | Space |
+| --- | --- | --- |
+| Fibonacci, plain recursion | O(1.618ⁿ) | O(n) call stack |
+| Fibonacci, memoised or table | O(n) | O(n) |
+| Fibonacci, two variables | O(n) | O(1) |
+| Climbing stairs, house robber | O(n) | O(1) |
+| Coin change, k coin values | O(amount × k) | O(amount) |
 
-Coin change's cost depends on the numeric value of the amount, not on how many digits it has; that is called **pseudo-polynomial** time, and it is why a coin-change problem with an amount of 10⁹ needs a different idea. The [0/1 knapsack lesson](/roadmap/knapsack-problem) looks at this more closely. For a refresher on reading these bounds, see [Big O notation](/roadmap/big-o-notation).
+Coin change grows with the numeric value of the amount, not its number of digits: **pseudo-polynomial** time, which the [0/1 knapsack lesson](/roadmap/knapsack-problem) looks at closely. For reading these bounds, see [Big O notation](/roadmap/big-o-notation).
 
 ## How to recognise a DP problem
 
-Read the statement for these signals:
+- It asks to **count the ways**, find a **minimum** or **maximum**, or decide whether something is **possible**.
+- Each step offers a **choice** (take or skip, which coin), and earlier choices limit later ones.
+- The brute-force recursion asks the **same smaller question** from different branches.
+- The question makes sense for every **prefix** or smaller value: the first i houses, every amount up to the target.
 
-- It asks you to **count the ways**, find the **minimum** or **maximum**, or decide whether something is **possible**. Words like "number of ways", "fewest", "longest", "maximum profit" and "can you reach" are the usual giveaways.
-- Each step offers a **choice** (take or skip, one step or two, which coin), and earlier choices limit later ones.
-- A brute-force recursion is easy to write, and you can see it asking the **same smaller question** from different branches.
-- The input is a sequence or a number and the question makes sense for every **prefix** or every smaller value: the best for the first i houses, the fewest coins for every amount up to the target.
-- The limits fit a table: n up to a few thousand suggests O(n²) states and transitions; n up to 10⁵ suggests O(n) states with constant work each.
-
-If the question wants every solution listed (all subsets, all permutations), DP does not help, because the output itself is exponential; that is [backtracking](/roadmap/backtracking). If a single local rule provably works, greedy is simpler.
+If every solution must be listed, the output itself is exponential: that is [backtracking](/roadmap/backtracking).
 
 ## Common mistakes
 
-- **A vague state.** "dp[i] = the answer for i" does not say whether house i must be robbed, may be robbed, or is the last house considered. Write the sentence in full before writing any code.
-- **The wrong base case.** ways[0] = 1 in climbing stairs and dp[0] = 0 in coin change are both easy to get wrong, and an off-by-one base case shifts every cell after it.
-- **Filling in the wrong order.** A cell read before it is filled silently contributes its initial value. If dp[i] reads dp[i + 1], the loop must run downwards.
-- **An infinity that overflows.** `INT_MAX + 1` wraps to a negative number in C++ and Java and then wins every `min`. Use a sentinel just larger than any real answer, such as amount + 1, or check before adding.
-- **A memo marker that is also an answer.** If 0 means "not computed" but 0 is a legal answer, those states are recomputed every time and the memo saves nothing. Use −1, `null` or a separate visited array.
-- **Recursion that is too deep.** A memoised solution on n = 10⁵ recurses 10⁵ levels deep, which overflows the stack in most languages and fails at 1,000 frames in Python. Convert to a table.
+- **A vague state.** "dp[i] = the answer for i" hides whether house i must be robbed or may be.
+- **The wrong base case.** An off-by-one base shifts every cell after it.
+- **Filling in the wrong order.** A cell read before it is filled contributes its initial value.
+- **An infinity that overflows.** `INT_MAX + 1` wraps negative in C++ and Java and wins every `min`.
+- **A memo marker that is also an answer.** If 0 means "not computed" but is a legal answer, the memo saves nothing.
+- **Recursion that is too deep.** A memo on n = 10⁵ overflows most stacks; use a table.
 
 ## Practice in this order
 
-Start with problems whose recurrence is almost given, then move to ones where you have to design the state yourself:
-
-1. [Fibonacci Number](/problems/fibonacci-number): write the memoised, tabulated and two-variable versions from this lesson.
+1. [Fibonacci Number](/problems/fibonacci-number): the memoised, tabulated and two-variable versions.
 2. [Climbing Stairs](/problems/climbing-stairs): counting ways, and why ways[0] is 1.
-3. [Min Cost Climbing Stairs](/problems/min-cost-climbing-stairs): the same shape, taking a minimum of costs instead of adding counts.
-4. [House Robber](/problems/house-robber): the take-or-skip transition from the figure.
-5. [House Robber II](/problems/house-robber-ii): houses in a circle; run house robber twice, once without the first house and once without the last.
-6. [Coin Change](/problems/coin-change): a minimum over many last choices, with an impossible state.
-7. [Decode Ways](/problems/decode-ways): counting where the last choice is one digit or two, each with conditions.
-8. [Word Break](/problems/word-break): an "is it possible" table over prefixes of a string.
+3. [Min Cost Climbing Stairs](/problems/min-cost-climbing-stairs): the same shape with a minimum.
+4. [House Robber](/problems/house-robber): take or skip, from the walkthrough.
+5. [House Robber II](/problems/house-robber-ii): a circle; run house robber without the first house, then without the last.
+6. [Coin Change](/problems/coin-change): a minimum over many last choices.
+7. [Decode Ways](/problems/decode-ways): the last choice is one digit or two, each with conditions.
+8. [Word Break](/problems/word-break): an "is it possible" table over prefixes.
 
-The [dynamic programming problem list](/challenges/dynamic-programming) has every DP problem in the catalogue, from easy to hard. Next on the road is the [longest increasing subsequence](/roadmap/longest-increasing-subsequence), the first DP whose answer is not in the last cell.
+The [dynamic programming problem list](/challenges/dynamic-programming) has every DP problem in the catalogue. Next on the road is the [longest increasing subsequence](/roadmap/longest-increasing-subsequence), the first DP whose answer is not in the last cell.

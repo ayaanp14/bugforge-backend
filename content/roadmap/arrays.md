@@ -2,7 +2,7 @@
 title: Arrays
 stage: arrays
 order: 2
-minutes: 22
+minutes: 13
 level: Beginner
 hub: arrays
 practice: running-sum-of-1d-array, concatenation-of-array, build-array-from-permutation, richest-customer-wealth, contains-duplicate, best-time-to-buy-and-sell-stock, maximum-subarray, product-of-array-except-self
@@ -22,111 +22,61 @@ a: Python's list is a dynamic array of references to objects: indexing is O(1), 
 q: How do I get better at array problems for interviews?
 a: Learn a handful of patterns rather than individual problems: a single pass that carries state such as a running minimum, left and right passes, prefix sums, two pointers and a hash map of values seen. For each new problem, first write the brute force and its cost, then ask which of those patterns removes the repeated work.
 ---
-An **array** is the first data structure in every course and the one almost every coding problem hands you its input in. It looks too simple to need a lesson, but knowing exactly what an array makes cheap and what it makes expensive is what lets you reject a slow idea before you write it, and a few patterns built on a single pass over an array solve a surprising share of interview questions.
-
-This lesson covers how an array sits in memory and why that makes indexing O(1), the real cost of inserting and deleting, how dynamic arrays grow, and three patterns you will use in every later stage: a single pass that carries state, left and right passes, and editing in place. It ends with two-dimensional arrays. If Big-O is new to you, read [Time and Space Complexity](/roadmap/big-o-notation) first. Every program is shown in C++, Java, Python and JavaScript.
+An **array** is the data structure almost every coding problem hands you its input in. Knowing exactly what it makes cheap and what it makes expensive lets you reject a slow idea before you write it, and a few one-pass patterns over an array solve a surprising share of interview questions. If Big-O is new to you, read [Time and Space Complexity](/roadmap/big-o-notation) first.
 
 ## How an array is stored
 
-An array keeps its elements **contiguously**: in one unbroken block of memory, in index order, each element taking the same number of bytes. Five 4-byte integers starting at address 1000 occupy addresses 1000 to 1019.
+An array keeps its elements **contiguously**: one unbroken block of memory, in index order, every element the same size. Everything else in this lesson follows from that one fact.
 
-```text
- index:        0       1       2       3       4
- value:     [  7   |   1   |   5   |   3   |   6   ]
- address:    1000    1004    1008    1012    1016      (4-byte ints, block starts at 1000)
+@figure memory-layout
 
- address of arr[i] = 1000 + i × 4
-```
-
-That formula is the whole reason arrays are fast. To read `arr[3]` the machine does not look at elements 0, 1 and 2; it computes 1000 + 3 × 4 = 1012 and reads there. One multiplication and one addition, whatever the index and however long the array: **O(1) random access**. It is also why indexes start at 0 in C++, Java, Python and JavaScript. An index is an offset from the start, and the first element is zero steps away.
-
-Contiguity has a second, less visible benefit. Memory reaches the processor in chunks called cache lines, usually 64 bytes, so reading one integer brings its fifteen neighbours along for free. A loop that walks an array in order is therefore much faster in practice than one that jumps around memory, even when both are O(n). Big-O does not show this, but it is why arrays are the default container in every language.
-
-The price is that a plain array has a **fixed length**. The block was sized when the array was created, and the memory just after it may belong to something else, so the array cannot simply grow in place. Languages also differ on what happens if you step outside it: C++ does not check, and reading `arr[n]` is undefined behaviour that may print rubbish or crash; Java throws `ArrayIndexOutOfBoundsException`; Python raises `IndexError` (while a negative index counts from the end); JavaScript quietly returns `undefined`.
+The address formula is why indexing is **O(1)** and why indexes start at 0. Contiguity has a second benefit: memory reaches the processor in 64-byte cache lines, so a loop that walks an array in order beats one that jumps around memory, even when both are O(n). Step outside the block and C++ gives undefined behaviour, Java and Python throw, and JavaScript quietly returns `undefined`.
 
 ## The operations and their cost
 
 | Operation | Cost | Why |
 | --- | --- | --- |
-| Read or write `arr[i]` | O(1) | the address is computed directly |
-| Search for a value in an unsorted array | O(n) | any element might be the one |
-| Search in a sorted array | O(log n) | [binary search](/roadmap/binary-search) halves the range each step |
-| Append at the end of a dynamic array | O(1) amortised | spare capacity, with an occasional resize |
+| Read or write `arr[i]` | O(1) | the address is computed |
+| Search an unsorted array | O(n) | any element might be the one |
+| Search a sorted array | O(log n) | [binary search](/roadmap/binary-search) halves the range |
+| Append (dynamic array) | O(1) amortised | spare capacity, an occasional resize |
 | Remove the last element | O(1) | nothing else moves |
-| Insert at index i | O(n − i) | everything from i onwards shifts right |
-| Delete at index i | O(n − i) | everything after i shifts left |
+| Insert or delete at index i | O(n − i) | everything after i shifts |
 | Insert or delete at the front | O(n) | every element shifts |
 
-Inserting is expensive because the block must stay contiguous and in order. To put 9 at index 1, every element from index 1 onwards moves one place right, starting from the back so that nothing is overwritten before it has been copied:
+Inserting is the expensive one, because the block must stay unbroken and in order:
 
-```text
- insert 9 at index 1
- before:   [ 7, 1, 5, 3, 6, _ ]
- shift:          1→  5→  3→  6→        move 6, then 3, then 5, then 1 one place right
- after:    [ 7, 9, 1, 5, 3, 6 ]
-```
+@figure insert-shift
 
-Deleting is the mirror image: everything after the gap moves one place left. When the order of the elements does not matter, there is a well-known shortcut: copy the last element into the slot you are deleting and remove the last element, which is O(1).
+When order does not matter, deleting has a shortcut: copy the last element into the gap and drop the last slot, O(1).
 
 ## Dynamic arrays in each language
 
-Most of the time you will not use fixed arrays but **dynamic arrays**, which hide the fixed length. A dynamic array keeps a size (how many elements are in use) and a capacity (how many fit in the current block). When an append finds the block full, it allocates a block about one and a half to two times bigger, copies everything across and carries on. A single resize costs O(n), but because the capacity grows by a factor the resizes are rare, and n appends cost O(n) in total: **amortised O(1)** per append. The [Big-O lesson](/roadmap/big-o-notation) counts the copies to show why.
+Most of the time you use a **dynamic array** — `vector<int>` in C++, `ArrayList` in Java, Python's `list`, a JavaScript `Array` — which hides the fixed length. When an append finds the block full, it moves everything to a block about twice as big:
 
-| Task | C++ | Java | Python | JavaScript |
-| --- | --- | --- | --- | --- |
-| Type | `vector<int>` | `int[]` (fixed) or `ArrayList<Integer>` | `list` | `Array` |
-| Create n zeroes | `vector<int> a(n, 0)` | `new int[n]` | `[0] * n` | `new Array(n).fill(0)` |
-| Append | `a.push_back(x)` | `list.add(x)` | `a.append(x)` | `a.push(x)` |
-| Remove last | `a.pop_back()` | `list.remove(list.size() - 1)` | `a.pop()` | `a.pop()` |
-| Insert at i | `a.insert(a.begin() + i, x)` | `list.add(i, x)` | `a.insert(i, x)` | `a.splice(i, 0, x)` |
-| Delete at i | `a.erase(a.begin() + i)` | `list.remove(i)` | `del a[i]` | `a.splice(i, 1)` |
-| Length | `a.size()` | `arr.length`, `list.size()` | `len(a)` | `a.length` |
+@figure dynamic-growth
 
-A few details catch people out. Java's `ArrayList<Integer>` stores boxed `Integer` objects, which use several times the memory of an `int[]` and are slower to read, so prefer `int[]` when you know the size. On an `ArrayList<Integer>`, `list.remove(2)` removes the element at index 2, while `list.remove(Integer.valueOf(2))` removes the value 2. In C++, `a.reserve(n)` sets the capacity up front so no resize ever happens, and any pointer or iterator into a vector becomes invalid when it resizes. A Python list stores references to objects rather than the numbers themselves. JavaScript's `shift` and `unshift` work at the front, so treat them as O(n).
+Because the capacity grows by a factor, not a fixed amount, n appends cost O(n) in total: **amortised O(1)** each. The [Big-O lesson](/roadmap/big-o-notation) proves it in general. Two traps: Java's `ArrayList<Integer>` stores boxed objects, several times the memory of an `int[]`, and JavaScript's `shift` and `unshift` work at the front, so they are O(n).
 
 ## The single pass with state
 
-Most array problems that look like they need every pair of elements can be solved in one pass if you carry the right **state**: a few variables that summarise everything to the left of the current index. The classic example is [Best Time to Buy and Sell Stock](/problems/best-time-to-buy-and-sell-stock): `prices[i]` is a share's price on day i, and you may buy once and sell once on a later day. What is the largest profit, or 0 if no trade makes money?
+Many problems that seem to need every pair of elements fall to one pass that carries the right **state**: a few variables summarising everything left of the current index. The classic is [Best Time to Buy and Sell Stock](/problems/best-time-to-buy-and-sell-stock): buy on one day, sell on a later one, and find the largest profit, or 0. Trying every pair of days is about 5 × 10⁹ checks when n = 10⁵. The pattern's rules:
 
-The brute force tries every pair of buy day and later sell day: n(n − 1)/2 pairs, about 5 × 10⁹ when n = 10⁵. Far too slow. Now fix the sell day and ask which buy day is best. It is simply the **cheapest day before it**. So a single left-to-right pass only has to remember two numbers:
-
-```text
- prices:            7    1    5    3    6    4
- cheapest so far:   7    1    1    1    1    1
- sell today:        -   -6    4    2    5    3      (price − cheapest before today)
- best so far:       0    0    4    4    5    5
-```
-
-The rules of the pattern are:
-
-- **Decide what you need to know about the prefix** to answer for the current element. Here it is the minimum price so far.
-- **Keep exactly that in variables** and update it in O(1) per element. The minimum of the first i + 1 prices is the smaller of the minimum of the first i and `prices[i]`.
-- **Use the state before you add the current element to it**, when the element must not pair with itself. (For this problem either order works, since selling on the day you buy earns 0.)
+- **Decide what you need to know about the prefix** — here, the cheapest price so far.
+- **Keep exactly that in variables**, updated in O(1) per element.
+- **Use the state before adding the current element to it**, when an element must not pair with itself.
 
 @walkthrough
 
 ## Why the running minimum is enough
 
-The worry with any shortcut is that it might skip the best answer, so it is worth seeing why this one never does. Take the best possible trade, buying on day b and selling on day s. The price on day b must be the cheapest price among days 0 to s − 1: if some earlier day were cheaper, buying then and selling on day s would earn more, contradicting the choice of best trade. So for every sell day only one buy day needs considering, the cheapest one before it, and that is exactly the `minPrice` the pass holds when it reaches day s.
+A shortcut is only safe if it never skips the best answer. Fix the sell day: every trade selling that day subtracts its buy price from the same sell price, so the cheapest earlier day beats all the others.
 
-Put as an **invariant**: after processing day i, `minPrice` is the cheapest price among days 0 to i, and `best` is the largest profit of any trade that sells on or before day i. Both are true after day 0, each step keeps them true, and after the last day `best` is the answer. Checking n candidates instead of n²/2 pairs loses nothing.
+@figure cheapest-buy
 
-The same shape, one pass with a small summary of the past, solves a whole family of problems: a running total in [Running Sum of 1d Array](/problems/running-sum-of-1d-array), a running maximum, a count of elements seen so far, the last index where something happened. [Maximum Subarray](/problems/maximum-subarray) uses it with a cleverer piece of state, the best sum of a subarray ending at the current index; that is [Kadane's algorithm](/roadmap/kadanes-algorithm).
+As an **invariant**: after day i, `minPrice` is the cheapest price of days 0 to i and `best` the largest profit of any trade selling by day i. Both hold after day 0 and each step keeps them. It also shows why "highest minus lowest" is wrong: the highest price may come first.
 
-### Dry run
-
-The search for `prices = [7, 1, 5, 3, 6, 4]`:
-
-| Day | Price | Cheapest before today | Profit if sold today | Best so far | Cheapest after today |
-| --- | --- | --- | --- | --- | --- |
-| 0 | 7 | none | none | 0 | 7 |
-| 1 | 1 | 7 | 1 − 7 = −6 | 0 | 1 |
-| 2 | 5 | 1 | 5 − 1 = 4 | 4 | 1 |
-| 3 | 3 | 1 | 3 − 1 = 2 | 4 | 1 |
-| 4 | 6 | 1 | 6 − 1 = 5 | 5 | 1 |
-| 5 | 4 | 1 | 4 − 1 = 3 | 5 | 1 |
-
-The answer is 5: buy on day 1 at 1 and sell on day 4 at 6. Notice the trap the pass avoids: the highest price, 7, comes first and cannot be sold after anything, which is why "highest minus lowest" is wrong.
+The same shape gives a running total in [Running Sum of 1d Array](/problems/running-sum-of-1d-array) or a running maximum. [Maximum Subarray](/problems/maximum-subarray) carries a cleverer state, the best sum ending here: [Kadane's algorithm](/roadmap/kadanes-algorithm).
 
 ### The code
 
@@ -230,33 +180,11 @@ Prices 7 6 4 3 1: best profit 0
 
 ## Left and right passes
 
-Some questions ask, for every index, about everything on **both** sides of it. [Product of Array Except Self](/problems/product-of-array-except-self) is the standard one: return an array where `answer[i]` is the product of every element except `nums[i]`, in O(n) time and without division.
+Some questions ask, for every index, about everything on **both** sides of it. [Product of Array Except Self](/problems/product-of-array-except-self) wants the product of every element except `nums[i]`, in O(n) and without division (which breaks on zeros anyway). Multiplying the other n − 1 values per index is O(n²); splitting the question in two is O(n):
 
-Division would be the obvious trick, total product divided by `nums[i]`, but it breaks on zeros, and the problem forbids it anyway. Multiplying the other n − 1 values for each index is O(n²). The way out is to split the question in two. The product of everything except index i is the product of everything **left** of i multiplied by the product of everything **right** of i, and each of those is a running product that one pass can build:
+@figure left-right
 
-```text
- nums:              1     2     3     4
- left product:      1     1     2     6      product of everything before i
- right product:    24    12     4     1      product of everything after i
- answer:           24    12     8     6      left × right
-```
-
-A left-to-right pass fills in the left products, each one the previous left product times the previous element. A right-to-left pass does the same from the other end. You do not even need a second array: store the left products in the answer array itself, then walk from the right with a single variable `right` that holds the product of everything after i, multiplying it in as you go. That uses O(1) extra space, because by convention the output array the problem asks for does not count.
-
-Prefix and suffix passes appear far beyond products: the largest value to the left and right of each bar in [Trapping Rain Water](/problems/trapping-rain-water), sums on either side in [Find Pivot Index](/problems/find-pivot-index), and every range question in the [prefix sums](/roadmap/prefix-sum) stage.
-
-### Dry run
-
-The right-to-left pass for `nums = [1, 2, 3, 4]`, after the left pass has stored `[1, 1, 2, 6]` in `answer`:
-
-| i | answer[i] before (left product) | right (product after i) | answer[i] after | right after |
-| --- | --- | --- | --- | --- |
-| 3 | 6 | 1 | 6 | 1 × 4 = 4 |
-| 2 | 2 | 4 | 8 | 4 × 3 = 12 |
-| 1 | 1 | 12 | 12 | 12 × 2 = 24 |
-| 0 | 1 | 24 | 24 | 24 × 1 = 24 |
-
-The result is `[24, 12, 8, 6]`: two passes of n steps each, no division, and a zero in the input needs no special case.
+The output array does not count as extra space by convention, so this is O(1) extra. The same left and right passes find the tallest bar on each side in [Trapping Rain Water](/problems/trapping-rain-water) and the sums on either side in [Find Pivot Index](/problems/find-pivot-index).
 
 ### The code
 
@@ -375,65 +303,58 @@ Input: -1 1 0 -3 3 -> output: 0 0 9 0 0
 
 ## Editing in place
 
-"In place" means changing the input array instead of building a new one, which brings the extra space down to O(1). Three tools cover most cases:
+"In place" means changing the input instead of building a new array, so the extra space is O(1). The tools are **swaps** (reverse; rotate with three reversals, as in [Rotate Array](/problems/rotate-array)), a **write index** (the read-and-write [two pointers](/roadmap/two-pointers) behind [Move Zeroes](/problems/move-zeroes)) and **running updates** such as `nums[i] += nums[i - 1]`. The danger in all of them is **overwriting a value you still need to read**:
 
-- **Swapping.** Reversing an array swaps the two ends and moves inwards. Rotating by k is three reversals: the whole array, then the first k elements, then the rest, as in [Rotate Array](/problems/rotate-array).
-- **A write index.** Keep one index reading every element and another marking where the next element worth keeping goes. This is the read-and-write form of [two pointers](/roadmap/two-pointers), behind [Move Zeroes](/problems/move-zeroes) and removing duplicates.
-- **Running updates.** [Running Sum of 1d Array](/problems/running-sum-of-1d-array) can be done with `nums[i] += nums[i - 1]` from left to right. It is safe because when you reach i, `nums[i - 1]` already holds the sum up to i − 1, which is exactly what you need.
+@figure overwrite-trap
 
-The danger in every in-place edit is **overwriting a value you still need to read**. [Build Array from Permutation](/problems/build-array-from-permutation) asks for `ans[i] = nums[nums[i]]`. Writing the answers straight into `nums` destroys values that later indexes look up. The simple fix is a second array. The in-place fix stores two numbers in one slot: since every value is below n, `nums[i] += n * (nums[nums[i]] % n)` keeps the old value as the remainder modulo n and the new one as the quotient, and a final pass divides everything by n. The same caution applies to deleting from a list while looping over it forwards: each deletion shifts the next element into the current index and the loop skips it. Loop backwards, or use a write index.
+The encoding works because every value is below n, so one slot holds the old value as the remainder and the new one as the quotient. Deleting while looping forwards fails the same way — the next element shifts into the current index and is skipped — so loop backwards, or use a write index.
 
 ## Two-dimensional arrays
 
-A grid with m rows and n columns is an array of arrays: `grid[r][c]` is row r, column c. Java, Python and JavaScript store each row as its own array, so rows can even differ in length. A C++ `vector<vector<int>>` does the same, while a fixed C-style `int grid[m][n]` is one contiguous block in **row-major order**, row 0 then row 1 and so on, where cell (r, c) sits at position r × n + c. You can flatten any grid that way yourself.
+A grid with m rows and n columns is an array of arrays, `grid[r][c]`. Java, Python and JavaScript store each row as its own array; a fixed C-style `int grid[m][n]` is one block:
 
-Walking a grid row by row, the outer loop over rows and the inner over columns, visits memory in order and costs O(m × n). [Richest Customer Wealth](/problems/richest-customer-wealth) is exactly that: sum each row and keep the largest sum. For neighbours, keep two small direction arrays, row steps `{-1, 1, 0, 0}` and column steps `{0, 0, -1, 1}`, and check that each neighbour is inside the grid before touching it. In Python, never create a grid as `[[0] * n] * m`: that repeats one row object m times, so writing to one row writes to all of them. Use `[[0] * n for _ in range(m)]`. Spiral order, rotation and in-place marking each have their own tricks, covered in the [matrix](/roadmap/matrix) lesson.
+@figure row-major
+
+Rows outside, columns inside visits memory in order, O(m × n) — [Richest Customer Wealth](/problems/richest-customer-wealth) is one sum per row. In Python, never write `[[0] * n] * m`: it repeats one row object, so writing to one row writes to all; use `[[0] * n for _ in range(m)]`. Spirals and rotation are in the [matrix](/roadmap/matrix) lesson.
 
 ## Time and space complexity
 
 | Problem | Approach | Time | Extra space |
 | --- | --- | --- | --- |
-| Best Time to Buy and Sell Stock | every pair of days | O(n²) | O(1) |
-| Best Time to Buy and Sell Stock | one pass with a running minimum | O(n) | O(1) |
-| Product of Array Except Self | multiply the others for each index | O(n²) | O(1) |
-| Product of Array Except Self | separate left and right product arrays | O(n) | O(n) |
-| Product of Array Except Self | left products in the answer, right as one variable | O(n) | O(1) besides the output |
-| Build Array from Permutation | a second array | O(n) | O(n) |
-| Build Array from Permutation | two values encoded in each slot | O(n) | O(1) |
+| Buy and Sell Stock | every pair of days | O(n²) | O(1) |
+| Buy and Sell Stock | running minimum | O(n) | O(1) |
+| Product Except Self | multiply the others per index | O(n²) | O(1) |
+| Product Except Self | left products, right in one variable | O(n) | O(1) besides the output |
+| Build Array from Permutation | two values in each slot | O(n) | O(1) |
 
-The pattern in the table is the point of this stage: the brute force recomputes something for every index, and the fast version computes it once and carries it along.
+The brute force recomputes something for every index; the fast version computes it once and carries it along. That is the point of this stage.
 
 ## How to recognise the pattern
 
-Read the statement for these signals:
-
-- **"Before" and "after" in a pair**, such as buy before sell or i < j with the best difference: one pass carrying the running minimum or maximum.
-- **"For each element, everything else"**, or everything to its left and right: left and right passes.
-- **A sum over a range**, asked many times: [prefix sums](/roadmap/prefix-sum).
+- **"Before" and "after" in a pair**, such as buy before sell: a running minimum or maximum.
+- **"For each element, everything else"**: left and right passes.
+- **A range sum asked many times**: [prefix sums](/roadmap/prefix-sum).
 - **"In place" or "O(1) extra space"**: a write index or swaps.
 - **A contiguous subarray** with a best sum or a condition: Kadane's algorithm or a [sliding window](/roadmap/sliding-window).
-- **"Have I seen this value before?"** or a count per value: a hash map, the next stage, [Hashing](/roadmap/hashing).
+- **"Have I seen this value before?"**: a hash map — [Hashing](/roadmap/hashing).
 
 ## Common mistakes
 
-- **Off by one at the ends.** The last index is n − 1, so loops run while `i < n`. A pass that looks back at `i - 1` must start at 1.
-- **Not handling an empty or single-element array.** `prices[0]` on an empty input crashes. Check the constraints, and guard when they allow n = 0.
-- **Inserting or deleting at the front inside a loop.** Each one is O(n), so the loop becomes O(n²). Build the result in order, or work from the back.
-- **Overwriting values still needed.** In place, decide the loop direction from which values are read later, as in the running sum, or keep a copy.
-- **Overflow.** A sum of 10⁵ values up to 10⁹ needs 64 bits: `long long` in C++, `long` in Java. Python's integers do not overflow, and JavaScript numbers are exact only up to about 9 × 10¹⁵.
-- **Aliasing instead of copying.** In Java, Python and JavaScript, `b = a` makes two names for one array; copy with `a.clone()`, `a[:]` or `a.slice()`. In C++ the opposite trap: passing a `vector` by value copies it on every call, so pass `const vector<int>&`.
+- **Off by one at the ends.** The last index is n − 1; a pass that reads `i - 1` starts at 1.
+- **Empty input.** `prices[0]` on an empty array crashes; guard when n = 0 is allowed.
+- **Front inserts inside a loop.** Each is O(n), so the loop becomes O(n²).
+- **Overflow.** 10⁵ values up to 10⁹ need 64 bits: `long long` in C++, `long` in Java.
+- **Aliasing.** `b = a` names one array twice in Java, Python and JavaScript; copy with `a.clone()`, `a[:]` or `a.slice()`.
 
 ## Practice in this order
 
-These are the stage's own problems, from plain indexing to the two patterns above:
-
 1. [Running Sum of 1d Array](/problems/running-sum-of-1d-array): a running total, in place.
-2. [Concatenation of Array](/problems/concatenation-of-array): indexing with an offset, `ans[i + n] = nums[i]`.
-3. [Build Array from Permutation](/problems/build-array-from-permutation): indexing through values, and the in-place encoding.
-4. [Richest Customer Wealth](/problems/richest-customer-wealth): a two-dimensional pass, one sum per row.
-5. [Contains Duplicate](/problems/contains-duplicate): sort and compare neighbours, or a set of values seen.
-6. [Best Time to Buy and Sell Stock](/problems/best-time-to-buy-and-sell-stock): the running minimum above.
+2. [Concatenation of Array](/problems/concatenation-of-array): indexing with an offset.
+3. [Build Array from Permutation](/problems/build-array-from-permutation): the overwrite trap and its encoding.
+4. [Richest Customer Wealth](/problems/richest-customer-wealth): one sum per row of a grid.
+5. [Contains Duplicate](/problems/contains-duplicate): sort and compare neighbours, or a set.
+6. [Best Time to Buy and Sell Stock](/problems/best-time-to-buy-and-sell-stock): the running minimum.
 7. [Maximum Subarray](/problems/maximum-subarray): one pass with smarter state.
 8. [Product of Array Except Self](/problems/product-of-array-except-self): left and right passes.
 
-The [array problem list](/challenges/arrays) has every array problem in the catalogue, easiest first. When the first six feel routine, move on to the next stage of the roadmap: [Hashing](/roadmap/hashing).
+Every array problem in the catalogue is on the [array problem list](/challenges/arrays), easiest first. When the first six feel routine, move on to [Hashing](/roadmap/hashing).

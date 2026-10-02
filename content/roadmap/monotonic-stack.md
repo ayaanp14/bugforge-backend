@@ -2,7 +2,7 @@
 title: Monotonic Stack
 stage: stacks
 order: 4
-minutes: 19
+minutes: 12
 level: Intermediate
 hub: monotonic-stack
 practice: final-prices-with-a-special-discount-in-a-shop, nearest-smaller-element, next-greater-element-i, daily-temperatures, stock-span-problem, next-greater-element-ii, remove-k-digits, largest-rectangle-in-histogram, sliding-window-maximum
@@ -22,74 +22,41 @@ a: Keep it decreasing from bottom to top to find greater elements, and increasin
 q: What is a monotonic deque?
 a: A monotonic deque is the same idea with removal at both ends. For sliding window maximum, it keeps indices whose values decrease from front to back: new indices pop smaller values at the back, and indices that fall out of the window leave from the front. The front is always the window's maximum, giving O(n) for the whole array.
 ---
-Some questions ask the same thing about every element of an array: *what is the first larger number to its right?* *How many days until a warmer one?* *What is the nearest smaller value to its left?* Answering each separately with a scan costs O(n) per element, O(n²) in all. A **monotonic stack** answers all of them in a single pass, and the same idea, pushed a little further, solves one of the classic hard problems: the largest rectangle in a histogram.
+Some questions ask the same thing about every element of an array: *what is the first larger number to its right?* *How many days until a warmer one?* *What is the nearest smaller value to its left?* Answering each separately costs O(n²) in all. A **monotonic stack** answers all of them in one pass, and pushed a little further it solves a classic hard problem: the largest rectangle in a histogram.
 
-A monotonic stack is an ordinary [stack](/roadmap/stack) with one rule: its values are always sorted — **increasing** or **decreasing** from bottom to top. This lesson shows why that rule makes the answers fall out as you pop, why the double loop is still O(n), which order answers which question, and the monotonic deque that extends it to sliding windows. Every program is in C++, Java, Python and JavaScript.
+A monotonic stack is an ordinary [stack](/roadmap/stack) with one rule: its values are always sorted, **increasing** or **decreasing** from bottom to top.
 
 ## Why checking every pair is too slow
 
-Take the **next greater element**: for each position, the first value to its right that is larger, or −1 if there is none. The brute force looks right from each position until it finds something larger:
-
-```text
-for i in 0 .. n-1:
-    answer[i] = -1
-    for j in i+1 .. n-1:
-        if nums[j] > nums[i]: answer[i] = nums[j]; break
-```
-
-On a decreasing array such as 100,000, 99,999, …, 1, no element ever finds an answer, so every inner loop runs to the end: about n² / 2, or 5 × 10⁹ comparisons for n = 100,000. The waste is that the inner loops keep re-reading the same elements. When the scan for 3 passes over a 1 and a 2 to reach a 7, it has learnt that 7 is also the answer for that 1 and that 2 — and then throws the knowledge away.
+Take the **next greater element**: for each position, the first value to its right that is larger, or −1. The brute force scans right from every position until something larger appears. On a decreasing array no scan ever succeeds, so the inner loops run about n²/2 times — 5 × 10⁹ comparisons for n = 100,000. The waste is re-reading: when the scan for 3 passes a 1 and a 2 to reach a 7, it has learnt that 7 answers the 1 and the 2 as well, and throws that knowledge away.
 
 ## The idea: a stack that stays sorted
 
-Turn the question round. Instead of each element searching right for its answer, scan left to right once and let each new element **answer** the earlier ones that are still waiting.
+Turn the question round: scan left to right once and let each new element **answer** the earlier ones still waiting, kept on a stack of indices. When a new value arrives:
 
-Keep a stack of the indices that have not found their next greater element yet. When a new value arrives:
-
-- **Pop** every waiting index whose value is smaller than the new one. The new value is the first greater value to the right of each of them, so record it as their answer.
-- **Push** the new index. It now waits for something larger than itself.
-- When the scan ends, whatever is still on the stack never met a larger value: its answer is −1.
-
-```text
- nums = [2, 1, 5, 6, 2, 3]           scanning i = 2, value 5
-
- waiting (bottom -> top):  2  1       5 > 1: pop, answer for index 1 is 5
-                           2          5 > 2: pop, answer for index 0 is 5
-                           (empty)    push 5
-```
-
-Look at the waiting values at any moment: they **decrease** from bottom to top. That is not a rule you enforce separately; it is a consequence. A value is only pushed after everything smaller than it above it has been popped, so it always lands on something at least as large. A stack kept sorted this way is called **monotonic**, and this one is a monotonic decreasing stack.
+- **Pop** every waiting index whose value is smaller, and record the new value as its answer.
+- **Push** the new index; it now waits for something larger.
+- At the end, whatever is still on the stack never met a larger value: its answer is −1.
 
 @walkthrough
 
+The waiting values always **decrease** from bottom to top. Nobody enforces that separately: a value is only pushed after everything smaller has been popped, so it always lands on something at least as large. That is a monotonic decreasing stack.
+
 ## Why it works
 
-Two things need checking: that each recorded answer is right, and that the loop is fast.
+**Each answer is right.** When index i pops index j, `nums[i]` is greater and to the right. It is the *first* such value because every index between them arrived while j was waiting and did not pop it, so none of them was greater.
 
-**The answers are right.** Suppose index i pops index j. Then `nums[i] > nums[j]`, so `nums[i]` is a greater value to the right of j. Is it the *first* one? Every index between j and i arrived while j was waiting on the stack, and none of them popped j — so none of them was greater than `nums[j]`. So i is the first greater element after j. And an index left on the stack at the end was never popped, so nothing after it was greater: −1 is right.
+@figure why-first
 
-**Popped elements are never needed again.** Popping looks like throwing information away, so it is worth seeing why it is safe. A waiting index j leaves the stack only when it has its answer, and an answered index is never asked about again. The general principle, which every monotonic-stack problem relies on, is **domination**: an element is discarded the moment a newer element makes it useless for every question still to come.
+Popping looks like throwing information away, and the general reason it is safe is **domination**: an element leaves the stack the moment a newer element makes it useless for every question still to come — here, because it has its answer.
 
-**It is O(n), despite the loop inside a loop.** The inner `while` loop only pops. Each index is pushed exactly once, so it can be popped at most once. Over the whole scan there are at most n pushes and at most n pops — 2n stack operations however they are spread out. One step may pop many items, but those pops are then used up and no later step can make them. That is **amortised** O(n): the expensive steps are paid for by the cheap ones. Extra space is O(n), for the stack.
+**It is O(n), despite the loop inside a loop.** The inner loop only pops, and each index is pushed exactly once, so it can be popped at most once.
 
-### Dry run
-
-`nums = [2, 1, 5, 6, 2, 3]`, the example in the figure above:
-
-| i | Value | Pops (index: value → answer) | Stack after, as values | answers so far |
-| --- | --- | --- | --- | --- |
-| 0 | 2 | none, stack empty | 2 | _ _ _ _ _ _ |
-| 1 | 1 | none, 1 is not greater than 2 | 2 1 | _ _ _ _ _ _ |
-| 2 | 5 | 1: 1 → 5, then 0: 2 → 5 | 5 | 5 5 _ _ _ _ |
-| 3 | 6 | 2: 5 → 6 | 6 | 5 5 6 _ _ _ |
-| 4 | 2 | none, 2 is not greater than 6 | 6 2 | 5 5 6 _ _ _ |
-| 5 | 3 | 4: 2 → 3; stops at 6 | 6 3 | 5 5 6 _ 3 _ |
-| end | — | 3 and 5 never answered | — | 5 5 6 −1 3 −1 |
-
-Six pushes, four pops during the scan, two left over: no index is touched more than twice.
+@figure work
 
 ### The code
 
-The stack stores **indices**, not values. An index gives you the value (`nums[j]`) and the distance (`i − j`), so one function answers both "what is the next greater value?" and "how many days until a warmer one?", which is [Daily Temperatures](/problems/daily-temperatures).
+The stack stores **indices**, not values: an index gives the value and the distance, so one function answers both the next greater value and "how many days until a warmer one?", which is [Daily Temperatures](/problems/daily-temperatures).
 
 ```cpp
 #include <iostream>
@@ -244,33 +211,13 @@ days to wait: 1 1 4 2 1 1 0 0
 
 ## Previous smaller element
 
-The mirror question looks **left**: for each element, the nearest value before it that is smaller, or −1. You still scan left to right, but now the answer for the *current* element is read from the stack rather than given to the popped ones.
+The mirror question looks **left**: for each element, the nearest value before it that is smaller. You still scan left to right, but the answer for the *current* element is read from the top after popping, rather than handed to the popped ones.
 
-```text
-for i in 0 .. n-1:
-    while stack is not empty and arr[top] >= arr[i]:
-        pop                          # top is no smaller than arr[i], and further away
-    answer[i] = arr[top] if the stack is not empty, else -1
-    push i
-```
+@figure prev-smaller
 
-Why can the popped elements go? Take j < i with `arr[j] >= arr[i]`. For any later position k, index i is nearer to k than j is, and `arr[i]` is no larger than `arr[j]`. So whenever `arr[j]` would be smaller than `arr[k]`, `arr[i]` is too, and it is found first. j is dominated: it can never be anyone's nearest smaller element again. What survives is increasing from bottom to top, and the top is always the nearest smaller candidate.
-
-For `arr = [4, 5, 2, 10, 8]`:
-
-| i | Value | Popped | Answer (top after popping) | Stack after, as values |
-| --- | --- | --- | --- | --- |
-| 0 | 4 | — | −1 | 4 |
-| 1 | 5 | — | 4 | 4 5 |
-| 2 | 2 | 5, 4 | −1 | 2 |
-| 3 | 10 | — | 2 | 2 10 |
-| 4 | 8 | 10 | 2 | 2 8 |
-
-The answers are −1, 4, −1, 2, 2, as in [Nearest Smaller Element](/problems/nearest-smaller-element). The [Stock Span Problem](/problems/stock-span-problem) is the same scan with "previous greater": a day's span reaches back to the previous strictly higher price.
+An element j can go once a later element i is no larger: i is nearer to everything still to come and at least as small, so j can never again be anyone's nearest smaller value. The same scan answers [Nearest Smaller Element](/problems/nearest-smaller-element), and the [Stock Span Problem](/problems/stock-span-problem) is "previous greater" turned into a count of days.
 
 ## Which order answers which question
-
-There are four questions, and two choices decide each: whether the stack is increasing or decreasing, and whether the answer is handed to the popped element or read from the top.
 
 | Question | Stack order, bottom → top | Pop while the top is… | Where the answer comes from |
 | --- | --- | --- | --- |
@@ -279,38 +226,17 @@ There are four questions, and two choices decide each: whether the stack is incr
 | Previous greater element | decreasing | smaller than or equal to the current value | the top after popping |
 | Previous smaller element | increasing | greater than or equal to the current value | the top after popping |
 
-The memory aid: **to find greater elements keep the stack decreasing; to find smaller ones keep it increasing.** The stack holds the elements still waiting for an answer (or still able to be one), and an element stops waiting at the moment a value that beats it arrives.
-
-Strictness matters when values repeat. "Next greater" pops on a strict `<`, so equal values do not answer each other; [Final Prices With a Special Discount in a Shop](/problems/final-prices-with-a-special-discount-in-a-shop) wants the next value that is smaller *or equal*, so it pops on `>=`. Decide what an equal value should do before choosing the comparison.
+The memory aid: **to find greater elements keep the stack decreasing; to find smaller ones keep it increasing.** With repeated values, decide whether an equal value counts before choosing between `<` and `<=`: [Final Prices With a Special Discount in a Shop](/problems/final-prices-with-a-special-discount-in-a-shop) wants smaller *or equal*.
 
 ## Largest rectangle in a histogram
 
-[Largest Rectangle in Histogram](/problems/largest-rectangle-in-histogram) gives bar heights of width 1 and asks for the largest rectangle that fits under them. With heights `[2, 1, 5, 6, 2, 3]` the answer is 10: height 5 across the bars of height 5 and 6.
+[Largest Rectangle in Histogram](/problems/largest-rectangle-in-histogram) asks for the largest rectangle under bars of width 1. Trying every pair of edges is O(n²). The key observation: the best rectangle's height is its **shortest bar**, so for each bar find the widest rectangle in which it is the shortest — from just after the **previous smaller** bar to just before the **next smaller** one.
 
-Trying every pair of left and right edges is O(n²) even with a running minimum. The key observation is that the best rectangle's height equals the height of its **shortest bar**. So ask, for each bar i: what is the widest rectangle in which bar i is the shortest? It stretches left until the **previous smaller** bar and right until the **next smaller** bar, and stops just inside both.
+One increasing stack gives both boundaries at once: the bar that pops bar j is its right boundary, and the bar left on top is its left one. A height-0 sentinel at the end pops everything left.
 
-```text
- area with bar i as the shortest = heights[i] × (nextSmaller[i] - prevSmaller[i] - 1)
-```
+@figure histogram
 
-Both boundaries come from one increasing stack. When bar i pops bar j because `heights[i]` is smaller or equal, bar i is j's right boundary, and the bar left on top after the pop is j's left boundary — the stack is increasing, so it is the nearest shorter bar before j (or −1 if the stack is empty). A bar of height 0 added after the last one pops everything left, so every bar gets measured.
-
-With equal heights, the first of two equal bars is popped by the second and measured too narrow, but the second one is popped later with the full width, so the maximum is unaffected.
-
-### Dry run
-
-`heights = [2, 1, 5, 6, 2, 3]`, then the height-0 bar at i = 6:
-
-| i | Height | Popped bar (height) | Left boundary | Width | Area |
-| --- | --- | --- | --- | --- | --- |
-| 1 | 1 | 0 (2) | −1 | 1 − (−1) − 1 = 1 | 2 |
-| 4 | 2 | 3 (6) | 2 | 4 − 2 − 1 = 1 | 6 |
-| 4 | 2 | 2 (5) | 1 | 4 − 1 − 1 = 2 | **10** |
-| 6 | 0 | 5 (3) | 4 | 6 − 4 − 1 = 1 | 3 |
-| 6 | 0 | 4 (2) | 1 | 6 − 1 − 1 = 4 | 8 |
-| 6 | 0 | 1 (1) | −1 | 6 − (−1) − 1 = 6 | 6 |
-
-Bars 2, 3 and 5 were pushed at i = 2, 3 and 5 without popping anything. Every bar is measured exactly once, when it is popped, and the largest area is 10.
+With equal heights, the first of two equal bars is popped by the second and measured too narrow, but the second is popped later with the full width, so the maximum is unaffected.
 
 ### The code
 
@@ -434,34 +360,22 @@ heights 2 4 -> largest rectangle 4
 heights 6 2 5 4 5 1 6 -> largest rectangle 12
 ```
 
-The same "how far does this element reach as the minimum?" question drives [Sum of Subarray Minimums](/problems/sum-of-subarray-minimums): element i is the minimum of (i − prevSmaller) × (nextSmaller − i) subarrays, so its contribution is its value times that count (with equal values counted as smaller on one side only, so no subarray is counted twice). [Maximal Rectangle](/problems/maximal-rectangle) runs the histogram algorithm once per row of a binary matrix.
+The same "how far does this element reach as the minimum?" question drives [Sum of Subarray Minimums](/problems/sum-of-subarray-minimums): element i is the minimum of (i − prevSmaller) × (nextSmaller − i) subarrays. [Maximal Rectangle](/problems/maximal-rectangle) runs the histogram algorithm once per row of a binary matrix.
 
 ## The monotonic deque: sliding window maximum
 
-[Sliding Window Maximum](/problems/sliding-window-maximum) asks for the maximum of every window of k consecutive elements. Recomputing each window is O(n × k); a heap that discards stale entries lazily brings it to O(n log n). A monotonic **deque** — a [queue](/roadmap/queue) that can also pop at the back — does it in O(n).
+[Sliding Window Maximum](/problems/sliding-window-maximum) asks for the maximum of every window of k elements. Rescanning each window is O(n × k) and a heap is O(n log n); a monotonic **deque** — a [queue](/roadmap/queue) that can also pop at the back — does it in O(n).
 
-Keep a deque of indices whose values **decrease from front to back**. For each new index i:
+@figure window-max
 
-```text
-while deque not empty and nums[back] <= nums[i]:
-    pop back                   # an older, smaller value can never be a window maximum again
-push i at the back
-if front <= i - k:
-    pop front                  # the front has slid out of the window
-if i >= k - 1:
-    window maximum = nums[front]
-```
-
-The back is pruned by domination, exactly as before: an older value that is not larger than `nums[i]` will leave the window before i does, and while both are inside, `nums[i]` is at least as large. So it can never be a maximum again. The front is pruned by age. What remains is the window's candidates in decreasing order, so the front is the maximum. Each index enters and leaves once: O(n) time and O(k) space.
-
-For `nums = [1, 3, -1, -3, 5, 3, 6, 7]` and k = 3, the deque's values after each step are `1`, `3`, `3 -1`, `3 -1 -3`, `5`, `5 3`, `6`, `7`, giving window maxima 3, 3, 5, 5, 6, 7. The window-maintenance half of this is the [sliding window](/roadmap/sliding-window) technique; the ordering half is the monotonic stack.
+The back is pruned by domination: an older value no larger than the newcomer leaves the window first and is never bigger while both are inside. The front is pruned by age. Each index enters and leaves once: O(n) time, O(k) space — the [sliding window](/roadmap/sliding-window) and the monotonic stack together.
 
 ## Other shapes of the idea
 
-- **Circular arrays.** In [Next Greater Element II](/problems/next-greater-element-ii) the search wraps round, so scan the indices twice (i from 0 to 2n − 1, reading `nums[i % n]`) and push only during the first pass.
-- **Lookups for a subset.** [Next Greater Element I](/problems/next-greater-element-i) runs the scan over one array and stores the answers in a hash map for the queries.
-- **Greedy removal.** In [Remove K Digits](/problems/remove-k-digits), keep the digits in an increasing stack and, while removals are left, pop a larger digit when a smaller one arrives: a smaller digit earlier always makes a smaller number.
-- **Contribution counting.** [Sum of Subarray Minimums](/problems/sum-of-subarray-minimums) and [Sum of Subarray Ranges](/problems/sum-of-subarray-ranges) count how many subarrays each element is the minimum or maximum of, using both boundaries.
+- **Circular arrays**: in [Next Greater Element II](/problems/next-greater-element-ii), scan the indices twice, reading `nums[i % n]`, and push only during the first pass.
+- **Lookups for a subset**: [Next Greater Element I](/problems/next-greater-element-i) runs the scan once and keeps the answers in a hash map.
+- **Greedy removal**: in [Remove K Digits](/problems/remove-k-digits), keep digits in an increasing stack and pop a larger digit when a smaller one arrives, while removals are left.
+- **Contribution counting**: [Sum of Subarray Ranges](/problems/sum-of-subarray-ranges) counts how many subarrays each element is the minimum or maximum of.
 
 ## Time and space complexity
 
@@ -469,39 +383,35 @@ For `nums = [1, 3, -1, -3, 5, 3, 6, 7]` and k = 3, the deque's values after each
 | --- | --- | --- | --- |
 | Next greater element | Scan right from every index | O(n²) | O(1) |
 | Next greater element | Monotonic stack | O(n) | O(n) |
-| Largest rectangle in a histogram | Every pair of edges, running minimum | O(n²) | O(1) |
+| Largest rectangle in a histogram | Every pair of edges | O(n²) | O(1) |
 | Largest rectangle in a histogram | Increasing stack with a sentinel | O(n) | O(n) |
 | Sliding window maximum | Rescan each window | O(n × k) | O(1) |
-| Sliding window maximum | Heap with lazy deletion | O(n log n) | O(n) |
 | Sliding window maximum | Monotonic deque | O(n) | O(k) |
 
 ## How to recognise a monotonic stack problem
 
-- The question asks, for **every** element, about the **nearest** element to its left or right that is **greater or smaller**.
-- Words like "next warmer", "next higher price", "how many days until", "span", "can see over", "visible".
-- A quantity limited by the **smallest** (or largest) element in a range: rectangles under bars, the minimum of every subarray.
-- **"Smallest number after removing k digits"** or "lexicographically smallest subsequence": greedy removal with an increasing stack.
+- For **every** element, the **nearest** element to its left or right that is **greater or smaller**: "next warmer", "how many days until", "span".
+- A quantity limited by the **smallest** element in a range: rectangles under bars, subarray minimums.
+- "**Smallest number after removing k digits**": greedy removal with an increasing stack.
 - The **maximum or minimum of every window**: the monotonic deque.
-
-If the brute force is "for each i, scan outwards until something bigger or smaller appears", a monotonic stack almost certainly brings it to O(n).
+- A brute force that reads "for each i, scan outwards until something bigger or smaller appears".
 
 ## Common mistakes
 
-- **Storing values instead of indices.** Values lose the position, so you cannot compute distances or widths, and you cannot tell which equal value is which. Push indices and look the values up.
-- **The wrong comparison for duplicates.** `<` and `<=` give different answers when values repeat. Decide whether an equal value counts as "greater" for this problem before writing the loop.
-- **Forgetting what is left on the stack.** Indices never popped still need an answer: −1, 0 or the array's end. In the histogram, the height-0 sentinel does this flushing for you.
-- **Choosing the wrong order.** Finding greater elements needs a decreasing stack, smaller elements an increasing one. If your answers come out as the farthest rather than the nearest, the order is backwards.
-- **Assuming the double loop is O(n²).** It is O(n) because each index is pushed and popped at most once; do not "optimise" it into something more complicated.
-- **Expiring the deque's front too late.** In sliding window maximum, remove the front once its index is `i - k` or less, before reading the maximum.
+- **Storing values instead of indices**: you lose distances, widths and which equal value is which.
+- **The wrong comparison for duplicates**: `<` and `<=` give different answers when values repeat.
+- **Forgetting what is left on the stack**: those indices still need an answer — or a sentinel to flush them.
+- **Choosing the wrong order**: if the answers come out farthest rather than nearest, the order is backwards.
+- **Expiring the deque's front too late**: remove it once its index is `i - k` or less, before reading the maximum.
 
 ## Practice in this order
 
-1. [Final Prices With a Special Discount in a Shop](/problems/final-prices-with-a-special-discount-in-a-shop): next smaller-or-equal element, on a tiny array.
-2. [Nearest Smaller Element](/problems/nearest-smaller-element): previous smaller element, read from the top.
-3. [Next Greater Element I](/problems/next-greater-element-i): the core scan plus a hash map for the queries.
-4. [Daily Temperatures](/problems/daily-temperatures): the first example, answering with distances.
-5. [Stock Span Problem](/problems/stock-span-problem): previous greater element, turned into a count of days.
-6. [Next Greater Element II](/problems/next-greater-element-ii): the same scan over a circular array.
+1. [Final Prices With a Special Discount in a Shop](/problems/final-prices-with-a-special-discount-in-a-shop): next smaller-or-equal, on a tiny array.
+2. [Nearest Smaller Element](/problems/nearest-smaller-element): previous smaller, read from the top.
+3. [Next Greater Element I](/problems/next-greater-element-i): the core scan plus a hash map.
+4. [Daily Temperatures](/problems/daily-temperatures): the first program, answering with distances.
+5. [Stock Span Problem](/problems/stock-span-problem): previous greater, turned into a count.
+6. [Next Greater Element II](/problems/next-greater-element-ii): the same scan, circular.
 7. [Remove K Digits](/problems/remove-k-digits): an increasing stack used greedily.
 8. [Largest Rectangle in Histogram](/problems/largest-rectangle-in-histogram): both boundaries from one stack.
 9. [Sliding Window Maximum](/problems/sliding-window-maximum): the monotonic deque.

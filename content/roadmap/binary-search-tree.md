@@ -2,7 +2,7 @@
 title: Binary Search Tree (BST)
 stage: heaps
 order: 2
-minutes: 22
+minutes: 13
 level: Intermediate
 hub: trees
 practice: unique-binary-search-trees, minimum-absolute-difference-between-elements-with-constraint, the-number-of-the-smallest-unoccupied-chair, longest-continuous-subarray-with-absolute-diff-less-than-or-equal-to-limit, continuous-subarrays, odd-even-jump, number-of-ways-to-reorder-array-to-get-same-bst, max-sum-of-rectangle-no-larger-than-k
@@ -24,114 +24,46 @@ a: A BST orders every left subtree below its node and every right subtree above 
 q: Does Python have a built-in balanced BST?
 a: No. Python's standard library has no balanced search tree. The usual substitutes are a sorted list kept with the bisect module, whose insert is O(n) but fast in practice, heapq when only the smallest item matters, or the third-party sortedcontainers package where a judge provides it.
 ---
-A plain [binary tree](/roadmap/binary-tree) lets a value sit anywhere, so finding one means visiting every node. Add one rule about where values may sit and a search never needs more than a single path from the root: at every node you know which side the value must be on, and you can ignore the other side completely. That rule makes a **binary search tree**.
+A plain [binary tree](/roadmap/binary-tree) lets a value sit anywhere, so finding one means visiting every node. Add one rule about where values may sit and a search needs only one path from the root, because at every node you know which side the value must be on. That rule makes a **binary search tree**, the structure behind the ordered sets and maps of C++ and Java.
 
-It is the structure behind the ordered sets and maps of C++ and Java, and behind every question of the form "what is the smallest value above x that I have seen so far?". This lesson covers the rule, search and insert, the three cases of delete, why inorder traversal comes out sorted, how to validate a tree properly, the lowest common ancestor, and why balance decides whether all of this is fast. Every example is shown in C++, Java, Python and JavaScript.
+@figure property
 
 ## Why a sorted array or a hash set is not enough
 
-Suppose values arrive one at a time and you must keep them searchable and in order. A **sorted array** finds a value in O(log n) with [binary search](/roadmap/binary-search), but inserting a value means shifting everything after it one place to the right: O(n) per insert. Insert 100,000 values in random order and the shifts add up to about n² / 4, some 2.5 × 10⁹ element moves.
-
-A **hash set** inserts, finds and deletes in O(1) on average (see [hashing](/roadmap/hashing)), but it keeps no order at all. It cannot tell you the smallest value, the value just above x, or everything between 10 and 20, without looking at every element.
-
-A **balanced binary search tree** does both jobs in O(log n):
+Values arrive one at a time and must stay searchable and in order. A **sorted array** finds one with [binary search](/roadmap/binary-search), but every insert shifts what follows: 100,000 random inserts make some 2.5 × 10⁹ moves. A **hash set** (see [hashing](/roadmap/hashing)) keeps no order, so "the value just above x" means looking at everything.
 
 | Operation | Sorted array | Hash set | Balanced BST |
 | --- | --- | --- | --- |
 | Find a value | O(log n) | O(1) average | O(log n) |
 | Insert or delete | O(n) | O(1) average | O(log n) |
-| Smallest or largest | O(1) | O(n) | O(log n) |
 | Smallest value above x | O(log n) | O(n) | O(log n) |
-| Every value in order | O(n) | O(n log n), sorting first | O(n) |
+| Every value in order | O(n) | O(n log n) | O(n) |
 
-When a problem needs order *and* changes, the tree is the only row without an O(n) in it.
+When a problem needs order *and* change, the tree is the only column without an O(n) in it.
 
-## The BST property
+## What the rule gives you
 
-A binary tree is a binary search tree when, for **every** node, every value in its left subtree is smaller than the node's value and every value in its right subtree is larger. Here is the tree you get by inserting 8, 3, 10, 1, 6, 14, 4, 7, 13 in that order; every example below uses it:
-
-```text
-             8
-          /     \
-         3       10
-        / \        \
-       1   6        14
-          / \       /
-         4   7    13
-```
-
-Check the rule at 8: its left subtree holds 1, 3, 4, 6 and 7, all smaller; its right subtree holds 10, 13 and 14, all larger. At 3: 1 on the left, and 4, 6, 7 on the right. At 14: 13 on the left. It holds everywhere.
-
-Note the word **every**. The rule is about whole subtrees, not just about a node and its two children, and confusing the two is the most common bug in BST code (the validation section shows it failing). Three consequences follow straight from the rule:
-
-- The **smallest** value is the leftmost node: keep going left until you cannot. The largest is the rightmost.
-- The tree is the decision structure of binary search: the root plays the middle element, each subtree a half.
-- The shape depends on the **insertion order**. The same nine values inserted in sorted order would make a chain.
-
-Duplicates need a decision. This lesson keeps values distinct and ignores a repeated insert. If a problem needs duplicates, store a count in the node, or send equal values consistently to one side and make search and delete follow the same rule.
+The rule is about **whole subtrees**, not just a node and its two children; confusing the two is the most common bug in BST code. Three consequences follow. The **smallest** value is the leftmost node. The tree is binary search made solid: the root plays the middle element, each subtree a half. And the **shape depends on the insertion order** — sorted input makes a chain. This lesson keeps values distinct; for duplicates, store a count in the node.
 
 ## Search and insert
 
-**Search** starts at the root. If the value equals the node's, it is found. If it is smaller, go left; if larger, go right. If you step off the tree, the value is not there.
+**Search** starts at the root: equal means found, smaller goes left, larger goes right, and stepping off the tree means the value is not there. **Insert** is a search that does not expect to succeed: the empty spot where it falls off is exactly where the new value belongs.
 
-Why is it safe to ignore the other side? If the value you want is smaller than the node's value, then every value in the right subtree is larger than the node's value, and so larger than the one you want. It cannot be there. Each comparison throws away a whole subtree, which is exactly how binary search throws away half of an array.
+@figure search
 
-**Insert** is a search that does not expect to succeed. Search for the new value; the empty spot where the search falls off the tree is precisely where the value belongs, so attach it there as a new leaf. Every comparison on the way down put the new value on the correct side of that ancestor, so the property still holds everywhere, and no existing node moves.
-
-The code writes insert so that it **returns the root of the subtree** it was given: `node.left = insert(node.left, v)`. Every call hands back the same node it received, except the call that reaches the empty spot, which hands back the new leaf, and its caller stores it in the right link. This avoids keeping track of the parent and is the same trick delete uses below.
-
-### Dry run
-
-Searching for 7, then inserting 5:
-
-| Step | Search 7: node | Decision | Insert 5: node | Decision |
-| --- | --- | --- | --- | --- |
-| 1 | 8 | 7 < 8, go left | 8 | 5 < 8, go left |
-| 2 | 3 | 7 > 3, go right | 3 | 5 > 3, go right |
-| 3 | 6 | 7 > 6, go right | 6 | 5 < 6, go left |
-| 4 | 7 | equal: found | 4 | 5 > 4, go right: empty, so 5 becomes the right child of 4 |
-
-Four comparisons each, out of nine or ten values. A search for 5 before the insert would follow exactly the insert's path and fall off at the same empty spot, reporting "not found".
+The code's insert **returns the root of the subtree** it was given — `node.left = insert(node.left, v)` — so the call that reaches the empty spot hands back the new leaf for its caller to link in. No parent pointer is needed; delete uses the same trick.
 
 ## Delete: the three cases
 
-Deleting must leave a tree that still obeys the rule. Find the node with a search, then look at how many children it has.
+Find the node, then count its children. A **leaf** is simply removed. With **one child**, the child takes its place: its subtree lay on the same side of every ancestor as the deleted node, so it still does. With **two children**, copy in the **inorder successor** — the smallest value in the right subtree — and delete that instead.
 
-- **A leaf.** Remove it: its parent's link becomes empty. Nothing hangs below it, so nothing else changes.
-- **One child.** Splice the node out: its only child takes its place. This is safe because the child's whole subtree lay on the same side of every ancestor as the deleted node did, so it still lies on the correct side of all of them.
-- **Two children.** Two subtrees cannot both hang from the parent's single link. Instead, replace the node's value with its **inorder successor** — the smallest value in its right subtree, found by going right once and then left as far as possible — and then delete the successor from the right subtree.
+@figure delete
 
-Why the successor? It is larger than the deleted value, so it is larger than everything in the left subtree. It is the smallest value in the right subtree, so it is smaller than everything left there. It fits the vacated position exactly. And the successor has **no left child** — a left child would be smaller still — so deleting it is a leaf or one-child case, and the recursion stops one step later. The **inorder predecessor**, the largest value in the left subtree, works the same way from the other side.
-
-### Dry run
-
-After inserting 5, delete 3, which has two children:
-
-```text
-   before deleting 3            after deleting 3
-           8                           8
-         /   \                       /   \
-        3     10                    4     10
-       / \      \                  / \      \
-      1   6      14               1   6      14
-         / \     /                   / \     /
-        4   7  13                   5   7  13
-         \
-          5
-```
-
-| Step | What happens |
-| --- | --- |
-| 1 | Search reaches 3: it has two children, 1 and 6. |
-| 2 | The successor: go right to 6, then left to 4. 4 has no left child, so it is the smallest value on the right. |
-| 3 | Copy 4 into the node that held 3. |
-| 4 | Delete 4 from the right subtree: 4 has one child, 5, so 5 takes its place as the left child of 6. |
-
-Deleting 1 next is the leaf case, and deleting 10 is the one-child case: 14 moves up to become the right child of 8.
+Why the successor? It is larger than everything on the left and smaller than everything else on the right, so it fits exactly; and it has **no left child**, which would be smaller still, so removing it is an easy case. The largest value on the left, the **predecessor**, works too.
 
 ### The code
 
-The program builds the example tree, searches, inserts 5, and then deletes one node of each kind, printing the inorder traversal after every change so you can see the values stay sorted.
+The program builds the example tree, searches, inserts 5 and deletes one node of each kind, printing the inorder traversal after every change.
 
 ```cpp
 #include <iostream>
@@ -437,59 +369,29 @@ Root 8, children 4 and 14
 
 ## Inorder traversal gives sorted order
 
-Inorder visits a node's left subtree, then the node, then its right subtree. In a BST that is: everything smaller, then the node, then everything larger. Since the same holds inside each subtree, the whole traversal comes out in increasing order — which is why every line of the output above is sorted. This one fact powers several standard questions:
+Inorder visits the left subtree, the node, then the right subtree — in a BST, everything smaller, the node, everything larger — so it comes out sorted:
 
-- **Sorted output.** Inserting n values and reading them back in inorder sorts them: O(n log n) on a balanced tree, the idea behind tree sort.
-- **The kth smallest value.** It is the kth node an inorder traversal visits. Use the iterative inorder from the [binary tree](/roadmap/binary-tree) lesson and stop at the kth visit: O(h + k) instead of listing all n values. If each node also stores the size of its subtree, you can go straight to the kth value in O(h): when the left subtree holds L values, the node is the (L + 1)th, so go left if k ≤ L, stop if k = L + 1, otherwise go right looking for the (k − L − 1)th.
-- **Range queries.** To list every value between lo and hi, run inorder but skip a left subtree when the node is already below lo, and a right subtree when it is above hi.
-- **Successor and predecessor.** The next larger value after a node is the leftmost node of its right subtree, or, if it has no right subtree, the nearest ancestor whose left subtree contains it.
+@walkthrough
 
-```text
-kthSmallest(root, k):
-    stack = empty, cur = root
-    while cur is not empty or stack is not empty:
-        while cur is not empty: push cur, cur = cur.left
-        cur = pop()
-        k = k - 1
-        if k == 0: return cur.value       # the kth visit in sorted order
-        cur = cur.right
-```
+So the **kth smallest** is the kth node inorder visits, O(h + k) — or O(h) if each node stores its subtree's size: with L values on the left, go left when k ≤ L, stop at k = L + 1, else go right for the (k − L − 1)th. A **range** query is inorder that skips subtrees wholly below lo or above hi.
 
 ## Validating a BST
 
-The tempting check compares each node with its two children: the left child must be smaller, the right child larger. It is wrong, because the rule is about whole subtrees. This tree passes the tempting check at every node:
+Comparing each node with its two children is not enough: a node deep on the right can be smaller than an ancestor while every parent–child pair looks fine. The correct check hands each node the **open range** its value must lie in, so the limit of every ancestor travels down.
 
-```text
-        5
-      /   \
-     3     8
-          / \
-         4   9
-```
+@figure validate
 
-3 < 5, 8 > 5, 4 < 8 and 9 > 8 — yet 4 sits in the right subtree of 5 while being smaller than 5. The damage is real: a search for 4 goes left at 5 (4 < 5), then right at 3, falls off the tree and reports that 4 is missing, although it is right there.
-
-The correct check passes each node the **open range** its value must lie in. The root may hold anything: (−∞, +∞). Going left from a node with value v narrows the top of the range to v; going right narrows the bottom to v. Each child inherits its parent's range and tightens one end, so the range carries the constraint of **every** ancestor, not just the parent.
-
-| Node | Allowed range | Inside? |
-| --- | --- | --- |
-| 5 | (−∞, +∞) | yes |
-| 3 | (−∞, 5) | yes |
-| 8 | (5, +∞) | yes |
-| 4 | (5, 8) | no: 4 is not above 5, so the tree is invalid |
-| 9 | (8, +∞) | not reached; the answer is already known |
-
-An equivalent check runs an inorder traversal and confirms every value is larger than the one before: this tree gives 3 5 4 8 9, and 4 after 5 gives it away. Both take O(n). In C++ and Java, use 64-bit sentinels (or "no bound yet" markers) for the infinities: a node may legitimately hold the smallest or largest 32-bit integer, and an `int` sentinel equal to it would reject a valid tree.
+An inorder traversal that must strictly increase is an equivalent check; both are O(n).
 
 ## Lowest common ancestor in a BST
 
-The **lowest common ancestor** (LCA) of two nodes is the deepest node that has both of them in its subtree — where their paths from the root part ways. In a plain binary tree, finding it means searching both subtrees. In a BST the values say where to go. If both values are smaller than the current node, both lie in its left subtree, so the LCA is there too; if both are larger, go right. The first node whose value lies **between** them, or equals one of them, is where the paths split, and it is the answer — no deeper node can contain both, because they are on different sides of it.
+The **lowest common ancestor** (LCA) of two nodes is the deepest node with both in its subtree, where their paths from the root part. In a BST the values steer: while both lie on one side, go that way; the first node **between** them, or equal to one, is the answer.
 
-In our tree, LCA(4, 7): at 8 both are smaller, go left; at 3 both are larger, go right; at 6, 4 < 6 < 7, so 6 is the answer. LCA(4, 14) is 8 straight away, since 4 < 8 < 14. One walk down: O(h).
+@figure lca
 
 ### The code
 
-The program checks two trees with both validation methods, then finds the 3rd smallest value and two lowest common ancestors in the example tree. Tree B is built by hand, because inserting values can never produce an invalid tree.
+The program checks two trees both ways, then finds the 3rd smallest value and two LCAs. Tree B is built by hand: inserting can never produce an invalid tree.
 
 ```cpp
 #include <climits>
@@ -816,21 +718,15 @@ LCA of 4 and 14: 8
 
 ## Balanced and skewed trees
 
-Every operation so far walks one path, so it costs O(h), and everything depends on the height. Insert 1, 2, 3, 4, 5 in that order and each value is larger than all before it, so each becomes the right child of the last: a chain of height n − 1. The BST has become a linked list, and search, insert and delete are all O(n). Sorted input is common — timestamps, ids, a list that was already sorted — so this is not a rare case to dismiss.
+Every operation here walks one path, so it costs O(h). Sorted input — timestamps, ids — is common, and it is the worst case:
 
-Inserting values in random order does much better: the average depth of a node is about 1.39 log₂ n. But "on average" is no guarantee against an unlucky or adversarial order. **Self-balancing** trees give the guarantee by repairing the shape after every insert and delete with **rotations**, which move a node up or down while keeping the inorder order intact:
+@figure skewed
 
-```text
-          y                          x
-         / \     rotate right       / \
-        x   C    ----------->      A   y
-       / \                            / \
-      A   B                          B   C
+**Self-balancing** trees guarantee O(log n) height by repairing the shape after every update with **rotations**, which move nodes up and down without disturbing the order:
 
-   inorder before and after: A, x, B, y, C
-```
+@figure rotation
 
-A rotation changes three links, so it is O(1). An **AVL tree** keeps the two subtree heights of every node within 1 of each other, which bounds its height by about 1.44 log₂ n. A **red-black tree** follows looser colouring rules, which bound its height by 2 log₂(n + 1) and need fewer rotations per update. Interviews rarely ask you to write either; they expect you to know they exist and to use the library:
+An **AVL tree** keeps every node's two subtree heights within 1; a **red-black tree** follows looser colour rules with fewer rotations. You will rarely write either — use the library:
 
 | Language | Ordered set and map | Smallest ≥ x | Smallest > x | Largest ≤ x |
 | --- | --- | --- | --- | --- |
@@ -839,7 +735,7 @@ A rotation changes three links, so it is O(1). An **AVL tree** keeps the two sub
 | Python | none built in | `bisect_left` on a sorted list | `bisect_right` | index `bisect_right − 1` |
 | JavaScript | none built in | binary search on a sorted array | | |
 
-The C++ standard only demands logarithmic operations, but every major library implements `std::set` and `std::map` as red-black trees; Java documents `TreeMap` as one, and `TreeSet` is built on it. Python has no balanced tree in its standard library: a sorted list maintained with `bisect.insort` is the usual stand-in, with an O(n) insert that is a fast memory move and fine for 10⁵ values; `heapq` serves when you only need the minimum (see [heaps](/roadmap/heap)). JavaScript has nothing either, so the same sorted-array approach applies.
+C++'s `std::set` and Java's `TreeMap` are red-black trees. Python and JavaScript have none: keep a sorted list (`bisect.insort`), whose O(n) insert is a fast memory move, or a [heap](/roadmap/heap) when only the minimum matters.
 
 ## Time and space complexity
 
@@ -851,36 +747,36 @@ The C++ standard only demands logarithmic operations, but every major library im
 | Lowest common ancestor | O(log n) | O(n) |
 | Validate, list in sorted order | O(n) | O(n) |
 
-The tree itself takes O(n) space. The recursive insert and delete also use O(h) of call stack, the kth-smallest loop O(h) for its explicit stack, and the loops for search and the LCA only O(1). The whole table rests on the height, which is why the library's balanced trees, not hand-written plain ones, are what you reach for in real code.
+The tree takes O(n) space, and recursion adds O(h).
 
 ## How to recognise a BST problem
 
-- The statement says **binary search tree**: validate it, find the kth smallest, find the LCA, build a balanced tree from a sorted array (make the middle element the root, recursively).
-- Values **arrive over time** and you need the nearest one: "the smallest earlier value above x", "the closest value seen so far", floor and ceiling. That is an ordered set.
-- A sliding window must report its **minimum and maximum** while arbitrary elements leave it: an ordered multiset does it in O(log n) per step (monotonic deques can do it in O(1)).
-- You need the **kth smallest** or the median of a set that keeps changing: a BST with subtree sizes, or the two-heap trick from the [heap](/roadmap/heap) lesson.
-- The question **counts trees**: how many BSTs hold 1 to n, or how many insertion orders build the same tree. Choosing the root splits the values into a left and a right group, which turns into [dynamic programming](/roadmap/dynamic-programming) or combinatorics.
+- The statement says **binary search tree**: validate it, find the kth smallest or the LCA, build one from a sorted array.
+- Values **arrive over time** and you need the nearest: floor, ceiling, "the smallest earlier value above x".
+- A sliding window must report its **minimum and maximum** as arbitrary elements leave.
+- The **kth smallest or median** of a changing set.
+- The question **counts trees** or insertion orders: choosing the root splits the values, which becomes [dynamic programming](/roadmap/dynamic-programming).
 
 ## Common mistakes
 
-- **Validating against the parent only.** The rule covers whole subtrees; pass a range down, or check that the inorder sequence is strictly increasing.
-- **32-bit sentinels.** Using the smallest and largest `int` as "no bound" rejects a valid tree that contains those values. Use 64-bit bounds or nullable ones.
-- **Dropping the returned subtree.** With the return-the-root style, `insert(node.left, v)` without `node.left =` in front does nothing for an empty child. Always store the result.
-- **Mishandling the two-children delete.** After copying the successor's value, delete the successor from the **right subtree**, not from the whole tree, which would find and delete the node you just overwrote.
-- **Assuming O(log n) from a hand-written tree.** A plain BST fed sorted data is O(n) per operation. Use the library's balanced tree, or shuffle the input when you control it.
-- **Using the free `std::lower_bound` on a `std::set`.** Set iterators are not random-access, so the generic algorithm walks linearly: O(n). Call the member, `s.lower_bound(x)`, which is O(log n).
+- **Validating against the parent only**: pass a range down, or check that inorder strictly increases.
+- **32-bit sentinels** that reject a valid tree holding `INT_MIN` or `INT_MAX`.
+- **Dropping the returned subtree**: write `node.left = insert(node.left, v)`, not just the call.
+- **Deleting the successor from the whole tree** instead of the right subtree, which finds the value you just copied.
+- **Expecting O(log n) from a hand-written tree** fed sorted data; use the library's balanced tree.
+- **The free `std::lower_bound` on a `std::set`**: it walks linearly. Call the member `s.lower_bound(x)`.
 
 ## Practice in this order
 
-The catalogue states its problems with arrays rather than linked nodes, so these practise the BST property itself and the library's balanced trees:
+The catalogue states its problems with arrays, not linked nodes, so these practise the property and the library's trees:
 
-1. [Unique Binary Search Trees](/problems/unique-binary-search-trees): choosing the root splits 1..n into a left and a right group — the BST property as a counting rule.
-2. [Minimum Absolute Difference Between Elements With Constraint](/problems/minimum-absolute-difference-between-elements-with-constraint): an ordered set and its floor and ceiling queries as you sweep.
-3. [The Number of the Smallest Unoccupied Chair](/problems/the-number-of-the-smallest-unoccupied-chair): the smallest free chair from an ordered set of free ones.
-4. [Longest Continuous Subarray With Absolute Diff Less Than or Equal to Limit](/problems/longest-continuous-subarray-with-absolute-diff-less-than-or-equal-to-limit): an ordered multiset holds a window's minimum and maximum.
-5. [Continuous Subarrays](/problems/continuous-subarrays): the same window, now counting every valid subarray.
+1. [Unique Binary Search Trees](/problems/unique-binary-search-trees): choosing the root splits 1..n into two groups.
+2. [Minimum Absolute Difference Between Elements With Constraint](/problems/minimum-absolute-difference-between-elements-with-constraint): floor and ceiling in an ordered set.
+3. [The Number of the Smallest Unoccupied Chair](/problems/the-number-of-the-smallest-unoccupied-chair): the smallest free chair from an ordered set.
+4. [Longest Continuous Subarray With Absolute Diff Less Than or Equal to Limit](/problems/longest-continuous-subarray-with-absolute-diff-less-than-or-equal-to-limit): a window's minimum and maximum in a multiset.
+5. [Continuous Subarrays](/problems/continuous-subarrays): the same window, counting every valid subarray.
 6. [Odd Even Jump](/problems/odd-even-jump): ceiling and floor lookups in a tree map, filled from the right.
-7. [Number of Ways to Reorder Array to Get Same BST](/problems/number-of-ways-to-reorder-array-to-get-same-bst): insertion order decides the shape; the left and right groups interleave.
-8. [Max Sum of Rectangle No Larger Than K](/problems/max-sum-of-rectangle-no-larger-than-k): prefix sums and a ceiling query in an ordered set.
+7. [Number of Ways to Reorder Array to Get Same BST](/problems/number-of-ways-to-reorder-array-to-get-same-bst): insertion order decides the shape.
+8. [Max Sum of Rectangle No Larger Than K](/problems/max-sum-of-rectangle-no-larger-than-k): prefix sums and a ceiling query.
 
-The [trees problem list](/challenges/trees) and the [ordered set list](/challenges/ordered-set) hold the rest. Next on the road is the [heap](/roadmap/heap): a different ordering rule on the same kind of tree, weaker than a BST's but enough to hand back the smallest value in O(log n), with no balancing needed.
+The [trees problem list](/challenges/trees) and the [ordered set list](/challenges/ordered-set) hold the rest. Next on the road is the [heap](/roadmap/heap): a weaker ordering rule on the same kind of tree, enough to hand back the smallest value in O(log n) with no balancing needed.

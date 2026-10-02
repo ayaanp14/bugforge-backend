@@ -2,7 +2,7 @@
 title: Heaps and Priority Queues
 stage: heaps
 order: 3
-minutes: 22
+minutes: 12
 level: Intermediate
 hub: heap
 practice: last-stone-weight, relative-ranks, kth-largest-element-in-an-array, k-closest-points-to-origin, sort-characters-by-frequency, ugly-number-ii, kth-smallest-element-in-a-sorted-matrix, furthest-building-you-can-reach, sliding-window-maximum
@@ -22,15 +22,11 @@ a: Bottom-up heapify sifts down every parent, from the last one back to the root
 q: When should I use a heap instead of sorting?
 a: Use a heap when items keep arriving, when the best item changes after each step, or when you need only the top k. Sorting answers once in O(n log n); a heap hands over the next smallest item at any moment in O(log n), and keeping the top k in a heap of size k costs O(n log k) time and O(k) memory, so it works on a stream too large to hold.
 ---
-Many problems keep asking the same question: **which item is the smallest right now?** The next task by deadline, the closest of the points seen so far, the cheapest road out of the cities reached, the two heaviest stones left. New items keep arriving between the questions, so sorting once at the start does not help.
-
-A **heap** answers that question in O(1) and absorbs each new item in O(log n). It manages this by keeping far less order than a sorted list — just enough to know the minimum — and it is the structure inside every priority queue. This lesson shows how a heap is stored, the two operations that keep it valid, why building one takes only linear time, heap sort, each language's library heap, and the four patterns that cover most heap problems. Every example is shown in C++, Java, Python and JavaScript.
+Many problems keep asking **which item is the smallest right now?** — the next task by deadline, the closest point so far, the two heaviest stones left — while new items keep arriving, so sorting once does not help. A **heap** answers in O(1) and absorbs each new item in O(log n) by keeping far less order than a sorted list: just enough to know the minimum. It is the structure inside every priority queue.
 
 ## Why a sorted array or a plain array is too slow
 
-Consider the two obvious ways to keep a collection from which you repeatedly remove the minimum. An **unsorted array** adds an item in O(1), but finding the minimum means scanning everything: O(n). A **sorted array** has the minimum at one end, but each new item must be shifted into place: O(n).
-
-Either way, one of the two operations is linear. With 100,000 additions and 100,000 removals, that is around 5 × 10⁹ steps — far beyond the hundred million or so a judge allows in a second. A heap makes **both** operations O(log n): about 17 steps each when n = 10⁵, so the same workload takes a few million steps.
+An **unsorted array** adds in O(1) but scans everything for the minimum; a **sorted array** has the minimum at one end but shifts every new item into place. Either way one operation is linear, and 10⁵ additions plus 10⁵ removals cost around 5 × 10⁹ steps. A heap makes **both** O(log n), about 17 steps each.
 
 | Operation | Unsorted array | Sorted array | Binary heap |
 | --- | --- | --- | --- |
@@ -41,61 +37,25 @@ Either way, one of the two operations is linear. With 100,000 additions and 100,
 
 ## How a heap is stored
 
-A **min-heap** is a binary tree with two properties:
+A **min-heap** is a binary tree with two properties. The **heap property**: every parent is no larger than its children, so the root holds the minimum (a **max-heap** flips the rule). The **shape property**: the tree is **complete**, every level full except the last, which fills from the left. With no gaps, the tree fits exactly into an array:
 
-- **The heap property**: every parent is less than or equal to each of its children. Following any path down from the root, values never decrease, so the root holds the minimum. A **max-heap** flips the rule, and its root holds the maximum.
-- **The shape property**: the tree is **complete** — every level is full except possibly the last, which is filled from the left with no gaps.
+@figure storage
 
-The shape property is what makes a heap cheap to store. Number the nodes level by level, left to right, starting from 0. Because there are no gaps, those numbers run from 0 to n − 1 with nothing missing, so the tree fits exactly into an array — no pointers at all. The links are arithmetic:
-
-- the children of index i are at **2i + 1** and **2i + 2**;
-- the parent of index i is at **(i − 1) / 2**, rounded down.
-
-```text
-                2                    index:  0  1  2  3  4  5  6
-             /     \                 array: [2, 5, 3, 7, 9, 6, 8]
-            5       3
-           / \     / \               children of 1 (value 5): 3 and 4 (values 7, 9)
-          7   9   6   8              parent of 5 (value 6):   (5 - 1) / 2 = 2 (value 3)
-```
-
-A complete tree with n nodes has height ⌊log₂ n⌋, so a million items stand only 19 levels below the root. Note what a heap is **not**: it is not sorted. The rule only orders parents against their children, so siblings and cousins may be in any order — above, 5 sits before 3 in the array. That missing order is exactly what makes a heap cheaper to maintain than a sorted list. (It is also a different rule from a [binary search tree](/roadmap/binary-search-tree)'s, which orders left against right and so can find any value, not just the minimum.)
+A complete tree of n nodes has height ⌊log₂ n⌋: a million items stand 19 levels below the root. The rule is weaker than a [binary search tree](/roadmap/binary-search-tree)'s, which can find any value, and that missing order is what makes a heap cheap to maintain.
 
 ## The operations and their cost
 
-**Push.** Put the new value in the next free slot — the end of the array — which keeps the tree complete. Now only one place can break the heap property: between the new value and its parent. If the parent is larger, swap them, and repeat one level up. This is **sift-up**. It stops when the parent is smaller or the value reaches the root.
-
-**Pop.** The minimum is at the root, so remove it — but that leaves a hole at the top. Move the **last** value of the array into the root, which keeps the tree complete, and the only possible violation is now between the root and its children. If the value is larger than a child, swap it with the **smaller** of its two children and repeat one level down. This is **sift-down**.
-
-Why the smaller child? After the swap, that child becomes the parent of its former sibling. It is the smaller of the two, so it is no larger than the sibling, and the heap property holds at that node. Swapping with the larger child would put a larger value above a smaller one and break it.
-
-Each operation walks one path between the root and a leaf, doing a constant amount of work per level, so push and pop are both O(log n). Reading the minimum is O(1): it is `data[0]`. The figure below pushes 4 into the heap above and then pops the minimum, showing the tree and the array together.
+**Push** puts the new value in the next free slot, keeping the tree complete, then swaps it upwards while its parent is larger: **sift-up**. **Pop** removes the root, moves the **last** value into its place and swaps it downwards while a child is smaller: **sift-down**. Each walks one root-to-leaf path, so both are O(log n); reading the minimum is `data[0]`, O(1).
 
 @walkthrough
 
-### Dry run
+Why must sift-down pick the **smaller** child?
 
-Push 4 into `[2, 5, 3, 7, 9, 6, 8]`: it lands at index 7, then climbs.
-
-| Step | Index of 4 | Parent index | Parent value | Action | Array afterwards |
-| --- | --- | --- | --- | --- | --- |
-| 1 | 7 | 3 | 7 | 4 < 7, swap | [2, 5, 3, 4, 9, 6, 8, 7] |
-| 2 | 3 | 1 | 5 | 4 < 5, swap | [2, 4, 3, 5, 9, 6, 8, 7] |
-| 3 | 1 | 0 | 2 | 4 > 2, stop | [2, 4, 3, 5, 9, 6, 8, 7] |
-
-Now pop: the minimum 2 leaves, and the last value, 7, moves into the root of `[7, 4, 3, 5, 9, 6, 8]`.
-
-| Step | Index of 7 | Children's values | Smaller child | Action | Array afterwards |
-| --- | --- | --- | --- | --- | --- |
-| 1 | 0 | 4, 3 | 3 at index 2 | 7 > 3, swap | [3, 4, 7, 5, 9, 6, 8] |
-| 2 | 2 | 6, 8 | 6 at index 5 | 7 > 6, swap | [3, 4, 6, 5, 9, 7, 8] |
-| 3 | 5 | none | | a leaf, stop | [3, 4, 6, 5, 9, 7, 8] |
-
-The new minimum, 3, is at the root after two swaps.
+@figure smaller-child
 
 ### The code
 
-The same hand-written `MinHeap` in all four languages, so the programs stay parallel: `push`, `pop`, `peek` and `size`, with the array exposed as `data`. The program pushes six values, prints the array (not sorted), pops everything (sorted), and then uses the heap for the most common heap pattern, the k largest values, explained below.
+The same hand-written `MinHeap` in all four languages, with the array exposed as `data`. The program pushes six values, prints the array, pops everything, then finds the k largest values (explained below).
 
 ```cpp
 #include <iostream>
@@ -376,25 +336,17 @@ Popped in order: 1 2 4 7 8 9
 3 largest of 3 1 9 4 7 2 8 6: 7 8 9
 ```
 
-The heap array `1 2 8 7 4 9` is not sorted, yet every pop returns the smallest remaining value. That contrast is the whole idea of a heap.
+The heap array `1 2 8 7 4 9` is not sorted, yet every pop returns the smallest value left. That contrast is the whole idea of a heap.
 
 ## Building a heap in O(n), and heap sort
 
-To turn an unsorted array of n values into a heap, you could push them one by one: n pushes at O(log n) each, O(n log n). There is a faster way, **heapify**: leave the values where they are and sift down every node that has children, starting from the last one, index n / 2 − 1, and working back to the root. When a node is sifted down, both of its subtrees are already heaps, so one sift-down makes its own subtree a heap; by the time the root is done, the whole array is.
+Pushing n values one by one costs O(n log n). **Heapify** is faster: sift down every node that has children, from index n / 2 − 1 back to the root. Each node's subtrees are already heaps when it is sifted, so one sift-down fixes its subtree. It is linear because most nodes are near the bottom, where a sift-down is short:
 
-Why is that O(n) and not O(n log n)? A sift-down costs at most the node's height above the leaves, and most nodes are low:
+@figure heapify-cost
 
-| Height above the leaves | Nodes, about | Swaps each, at most | Swaps in total, at most |
-| --- | --- | --- | --- |
-| 0 (the leaves) | n / 2 | 0 | 0 |
-| 1 | n / 4 | 1 | n / 4 |
-| 2 | n / 8 | 2 | n / 4 |
-| 3 | n / 16 | 3 | 3n / 16 |
-| h | n / 2ʰ⁺¹ | h | hn / 2ʰ⁺¹ |
+Python's `heapq.heapify` and C++'s `std::make_heap` build in linear time. **Heap sort** follows: heapify as a **max-heap**, swap the maximum to its final place at the end, sift the new root down within what is left, repeat.
 
-The last column adds up to n × (1/4 + 2/8 + 3/16 + …), and that series sums to exactly 1, so heapify does at most about n swaps. Pushing one at a time is slower for the opposite reason: the many nodes at the **bottom** are the ones that may have to climb the whole height. Python's `heapq.heapify` and C++'s `std::make_heap` both build in linear time.
-
-**Heap sort** follows directly. Heapify the array as a **max-heap**. The maximum is at index 0, so swap it with the last element — its final position — and sift the new root down within the remaining n − 1 elements. Repeat, shrinking the heap by one each time.
+@figure heap-sort
 
 ```text
 heapSort(a):                                  # ascending order, in place
@@ -406,11 +358,11 @@ heapSort(a):                                  # ascending order, in place
         siftDown(a, 0, end)                   # repair the heap in a[0 .. end-1]
 ```
 
-It runs in O(n log n) in every case, with O(1) extra memory, which neither quicksort (O(n²) worst case) nor merge sort (O(n) extra) can both claim. It is not stable, and its jumps around the array are unkind to the cache, which is why library sorts prefer other methods; see [sorting algorithms](/roadmap/sorting-algorithms). In interviews, heap sort matters mostly as the proof that you understand sift-down.
+It is O(n log n) in every case with O(1) extra memory, but it is not stable and is unkind to the cache, so library sorts prefer other methods (see [sorting algorithms](/roadmap/sorting-algorithms)).
 
 ## Heaps in each language's library
 
-You will write a heap by hand rarely; you will use the library's constantly. The traps are the default order and the method names:
+You will mostly use the library's heap. The traps are the default order and the method names:
 
 | Language | What to use | Default | For the other order |
 | --- | --- | --- | --- |
@@ -419,11 +371,7 @@ You will write a heap by hand rarely; you will use the library's constantly. The
 | Python | `heapq` functions on a plain list | min-heap: `h[0]` is the smallest | push `-x`, negate again on the way out |
 | JavaScript | nothing built in | | a small class like the one above, with a comparator |
 
-- **C++**: `push(x)`, `top()`, `pop()`, `size()`, `empty()`. `pop()` returns nothing, so read `top()` first. For pairs, the comparison is by the first element, then the second.
-- **Java**: `add(x)` or `offer(x)`, `peek()`, `poll()` (both return `null` on an empty queue), `size()`. Pass a comparator for objects: `(a, b) -> Integer.compare(a[0], b[0])`.
-- **Python**: `heapq.heappush(h, x)`, `heapq.heappop(h)`, `h[0]` to look, `heapq.heapify(h)` in O(n), and `heapq.nlargest(k, items)` for a one-off top k. Push tuples `(priority, tiebreak, item)` to order records.
-
-Iterating over any of them — printing a Java `PriorityQueue`, looping over a `heapq` list — gives the internal array order, not sorted order.
+C++'s `pop()` returns nothing, so read `top()` first.
 
 ## The patterns
 
@@ -431,41 +379,23 @@ Almost every heap problem is one of four shapes.
 
 ### The top k: a heap of size k
 
-To find the k largest of n values, keep a **min-heap** holding at most k of them. Push each value; whenever the heap grows to k + 1, pop. The root is always the smallest of the values kept — the weakest member of the current top k — so it is exactly the one a better value should push out. That is why the k **largest** use a **min**-heap. Here is the `topK` call from the program above:
+To find the k largest values, keep a **min-heap** of at most k and pop whenever it grows to k + 1. Its root is the weakest of the current top k, exactly the one a better value should push out — which is why the k **largest** use a **min**-heap:
 
-| Value | After pushing | Evicted | Kept |
-| --- | --- | --- | --- |
-| 3, 1, 9 | 1, 3, 9 | | 1, 3, 9 |
-| 4 | 1, 3, 4, 9 | 1 | 3, 4, 9 |
-| 7 | 3, 4, 7, 9 | 3 | 4, 7, 9 |
-| 2 | 2, 4, 7, 9 | 2 | 4, 7, 9 |
-| 8 | 4, 7, 8, 9 | 4 | 7, 8, 9 |
-| 6 | 6, 7, 8, 9 | 6 | 7, 8, 9 |
+@figure top-k
 
-Cost: O(n log k) time and O(k) memory, better than sorting when k is small, and possible on a stream you cannot store. The k smallest, or the [k closest points](/problems/k-closest-points-to-origin), use a **max**-heap of size k by the same argument. [Kth Largest Element in an Array](/problems/kth-largest-element-in-an-array) is the root at the end; [quickselect](/challenges/quickselect) solves it in O(n) on average.
+It costs O(n log k) time and O(k) memory, and works on a stream too large to store. The k smallest, or the [k closest points](/problems/k-closest-points-to-origin), use a **max**-heap of size k.
 
 ### Merging k sorted lists
 
-To merge k sorted lists, put the **first** item of each list into a min-heap, tagged with the list it came from. Pop the smallest, write it out, and push the next item from the same list. The heap never holds more than k items, so merging N items in total costs O(N log k). [Kth Smallest Element in a Sorted Matrix](/problems/kth-smallest-element-in-a-sorted-matrix) treats each row as a sorted list and pops k times. [Ugly Number II](/problems/ugly-number-ii) is the same idea generating its own lists: pop the smallest ugly number, push it times 2, 3 and 5, and skip duplicates.
+Put each list's first item in a min-heap, tagged with its list; pop the smallest, write it out, push the next item from its list. The heap holds at most k items, so N items cost O(N log k). [Kth Smallest Element in a Sorted Matrix](/problems/kth-smallest-element-in-a-sorted-matrix) merges the rows.
 
 ### Two heaps: the running median
 
-To report the median of a stream after every new number, split the numbers seen so far into two halves: a **max-heap** `low` holding the smaller half and a **min-heap** `high` holding the larger half. Keep two promises: every value in `low` is at most every value in `high`, and `low` holds the same number of values as `high` or one more. Then the median is the top of `low` when the count is odd, and the average of the two tops when it is even — O(1) to read.
+Split the numbers so far into a **max-heap** `low` for the smaller half and a **min-heap** `high` for the larger, with `low` the same size or one bigger; the median is then read from the tops in O(1).
 
-To add x: push it into `low`, then move `low`'s largest value to `high`. Whatever moves is the largest of `low` together with x, so it is at least everything that stays, and the first promise holds. If `high` is now bigger than `low`, move `high`'s smallest value back, which restores the second. Each step is a constant number of heap operations: O(log n).
+@figure two-heaps
 
-| Add | low (smaller half) | high (larger half) | Median |
-| --- | --- | --- | --- |
-| 5 | 5 | | 5.0 |
-| 15 | 5 | 15 | 10.0 |
-| 1 | 1, 5 | 15 | 5.0 |
-| 3 | 1, 3 | 5, 15 | 4.0 |
-| 8 | 1, 3, 5 | 8, 15 | 5.0 |
-| 7 | 1, 3, 5 | 7, 8, 15 | 6.0 |
-| 9 | 1, 3, 5, 7 | 8, 9, 15 | 7.0 |
-| 10 | 1, 3, 5, 7 | 8, 9, 10, 15 | 7.5 |
-
-This version uses the library heaps where they exist — a max-heap and a min-heap in C++ and Java, negated values for the max-heap in Python — and a small comparator heap in JavaScript.
+Why does it stay right? Whatever moves from `low` to `high` is the largest of `low` and the new value, so it is at least everything left behind, and the halves stay ordered. This program uses the library heaps, with negated values for Python's max-heap:
 
 ```cpp
 #include <iomanip>
@@ -625,57 +555,48 @@ After 9: median 7.0
 After 10: median 7.5
 ```
 
-### Scheduling: always take the best option available now
+### Scheduling: the best option available now
 
-The fourth shape uses a heap as a to-do list ordered by urgency. Sort the events by time, and as time moves forward, push what becomes available and pop the best of it. To count meeting rooms, sort the meetings by start time and keep a min-heap of the end times of rooms in use (see [Meeting Rooms II](/problems/meeting-rooms-ii)): if the earliest-ending room is free when a meeting starts, pop it and reuse it; the heap's largest size is the number of rooms needed. [Furthest Building You Can Reach](/problems/furthest-building-you-can-reach) keeps the climbs covered by ladders in a min-heap, and when there are more climbs than ladders, the smallest one is paid for with bricks instead. [Last Stone Weight](/problems/last-stone-weight) is the plainest version: a max-heap, pop the two heaviest, push back the difference. The same "cheapest next step" loop runs [Dijkstra's algorithm](/roadmap/dijkstras-algorithm) and Prim's [minimum spanning tree](/roadmap/minimum-spanning-tree).
-
-One limitation shapes these solutions: a heap cannot remove an arbitrary item cheaply, because finding it is O(n). The standard workaround is **lazy deletion** — leave a stale entry in the heap and throw it away when it reaches the top. [Sliding Window Maximum](/problems/sliding-window-maximum) can store (value, index) pairs in a max-heap and pop the top while its index has left the window; a [monotonic deque](/roadmap/monotonic-stack) does the same job in O(n).
+Sort events by time; as time moves on, push what becomes available and pop the best of it — rooms by end time in [Meeting Rooms II](/problems/meeting-rooms-ii), ladders in [Furthest Building You Can Reach](/problems/furthest-building-you-can-reach). The same loop runs [Dijkstra's algorithm](/roadmap/dijkstras-algorithm) and Prim's [minimum spanning tree](/roadmap/minimum-spanning-tree). A heap cannot delete an arbitrary item cheaply, so [Sliding Window Maximum](/problems/sliding-window-maximum) uses **lazy deletion**: discard a stale entry when it reaches the top.
 
 ## Time and space complexity
 
 | Operation or pattern | Time | Extra space |
 | --- | --- | --- |
-| Peek at the minimum | O(1) | O(1) |
 | Push, pop | O(log n) | O(1) beyond the heap |
 | Heapify n values | O(n) | O(1), in place |
-| Heap sort | O(n log n) in every case | O(1) |
 | Top k of n values | O(n log k) | O(k) |
 | Merge k sorted lists of N items in total | O(N log k) | O(k) |
 | Running median, per new value | O(log n), median read in O(1) | O(n) |
 | Find or delete an arbitrary value | O(n) | O(1) |
 
-The heap itself takes O(n) space for n items, in a plain array with no pointers.
-
 ## How to recognise a heap problem
 
-- The statement asks for the **k largest, smallest, closest or most frequent**, or the kth of them.
-- You repeatedly **take the smallest or largest, change it, and put it back**: stones smashed, sticks joined, gifts taken from the richest pile.
-- Items **arrive over time** and you must always serve the best one available: tasks for a CPU, meetings for rooms, orders in a backlog.
-- Several **sorted sequences** must be merged, or numbers must be produced in increasing order from rules.
-- The question wants the **median** or another order statistic of a stream that keeps growing.
-- A graph problem asks for the **cheapest** path or connection with weights on the edges.
+- The **k largest, smallest, closest or most frequent**, or the kth of them.
+- Repeatedly **take the smallest or largest, change it, put it back**: stones, sticks, piles.
+- Items **arrive over time** and the best available must be served: tasks, meetings, orders.
+- Several **sorted sequences** to merge, or numbers generated in increasing order.
+- The **median** of a growing stream.
 
 ## Common mistakes
 
-- **Assuming the default order.** `std::priority_queue` is a max-heap; Java's `PriorityQueue` and Python's `heapq` are min-heaps. Decide which end you need before writing the declaration.
-- **Overflowing comparators.** In Java, `(a, b) -> b - a` overflows when the values are large or of opposite signs and then orders them wrongly. Use `Integer.compare(b, a)` or `Collections.reverseOrder()`.
-- **Using the wrong heap for the top k.** The k largest need a min-heap of size k, not a max-heap of everything. A max-heap of all n values works but costs O(n) memory and O(n log n) time.
-- **Expecting sorted iteration.** Printing or looping over a heap shows its internal array. Pop repeatedly to get sorted order.
-- **Uncomparable ties in Python.** Pushing `(priority, item)` compares the items when two priorities are equal, which fails for dictionaries or custom objects. Put a counter in the middle: `(priority, count, item)`.
-- **Popping an empty heap.** C++ `top()` and `pop()` on an empty queue are undefined behaviour, Java's `poll()` returns `null`, and Python raises `IndexError`. Check the size first.
+- **Assuming the default order**: `std::priority_queue` is a max-heap; Java's `PriorityQueue` and Python's `heapq` are min-heaps.
+- **Overflowing comparators**: `(a, b) -> b - a` overflows in Java; use `Integer.compare(b, a)`.
+- **The wrong heap for the top k**: the k largest need a min-heap of size k, not a max-heap of everything.
+- **Expecting sorted iteration**: a heap prints its internal array; pop to get order.
+- **Uncomparable ties in Python**: `(priority, item)` compares items on a tie; put a counter in the middle.
+- **Popping an empty heap**: undefined in C++, `null` in Java, `IndexError` in Python.
 
 ## Practice in this order
 
-Start with problems where the heap is the whole solution, then move to ones where you have to choose the key and the pattern:
-
-1. [Last Stone Weight](/problems/last-stone-weight): a max-heap simulation — pop two, push the difference.
-2. [Relative Ranks](/problems/relative-ranks): pop the scores in order to hand out the places.
-3. [Kth Largest Element in an Array](/problems/kth-largest-element-in-an-array): a min-heap of size k; its root is the answer.
-4. [K Closest Points to Origin](/problems/k-closest-points-to-origin): the same pattern with a max-heap keyed on distance.
-5. [Sort Characters By Frequency](/problems/sort-characters-by-frequency): count first, then pop characters by count.
-6. [Ugly Number II](/problems/ugly-number-ii): generate numbers in increasing order from a heap, skipping duplicates.
+1. [Last Stone Weight](/problems/last-stone-weight): a max-heap simulation.
+2. [Relative Ranks](/problems/relative-ranks): pop the scores in order to hand out places.
+3. [Kth Largest Element in an Array](/problems/kth-largest-element-in-an-array): a min-heap of size k.
+4. [K Closest Points to Origin](/problems/k-closest-points-to-origin): a max-heap keyed on distance.
+5. [Sort Characters By Frequency](/problems/sort-characters-by-frequency): count, then pop by count.
+6. [Ugly Number II](/problems/ugly-number-ii): numbers in increasing order, skipping duplicates.
 7. [Kth Smallest Element in a Sorted Matrix](/problems/kth-smallest-element-in-a-sorted-matrix): a k-way merge of the rows.
-8. [Furthest Building You Can Reach](/problems/furthest-building-you-can-reach): a heap that decides greedily where the ladders go.
-9. [Sliding Window Maximum](/problems/sliding-window-maximum): a heap with lazy deletion, then the faster monotonic deque.
+8. [Furthest Building You Can Reach](/problems/furthest-building-you-can-reach): a heap decides where the ladders go.
+9. [Sliding Window Maximum](/problems/sliding-window-maximum): lazy deletion, then the faster monotonic deque.
 
-The [heap problem list](/challenges/heap) has every heap problem in the catalogue, from easy to hard. The last lesson of this stage is the [trie](/roadmap/trie), a tree with up to 26 children per node that answers questions about prefixes.
+The [heap problem list](/challenges/heap) has every heap problem in the catalogue. The last lesson of this stage is the [trie](/roadmap/trie), a tree with up to 26 children per node that answers questions about prefixes.

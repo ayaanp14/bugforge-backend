@@ -5,6 +5,11 @@
  * (the frontend's Playwright, nothing downloaded).
  *
  *   npx tsx scripts/preview-walkthroughs.ts [--group <file>] [--only slug,slug] [--out dir] [--png] [--dark]
+ *   npx tsx scripts/preview-walkthroughs.ts --lesson <lesson slug> [--only name,name] [--png] [--dark]
+ *
+ * --lesson previews a roadmap lesson's own figures (src/lib/lesson-figures/
+ * <slug>.ts) under the lesson limits (one frame allowed, 600 wide), into
+ * scratch/lesson-figures/<slug>/ unless --out says otherwise.
  *
  * --group loads src/lib/walkthroughs/<file>.ts's own WALKTHROUGHS record as
  * well as the registry (a group not registered yet can be previewed).
@@ -18,6 +23,8 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import { WALKTHROUGHS } from "../src/lib/walkthroughs/index.js";
 import { frameSvg } from "../src/lib/walkthroughs/svg.js";
 import { walkthroughProblems } from "../src/lib/walkthroughs/validate.js";
+import { FIGURE_LIMITS } from "../src/lib/lesson-figures/index.js";
+import { LESSON_FIGURES } from "../src/lib/lesson-figures/registry.js";
 import type { Walkthrough } from "../src/lib/walkthroughs/core.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -31,10 +38,13 @@ const value = (name: string) => {
 const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 
 async function main() {
-  const registry: Record<string, () => Walkthrough> = { ...WALKTHROUGHS };
+  const lesson = value("lesson");
+  if (lesson && !LESSON_FIGURES[lesson]) throw new Error(`no figure module for lesson "${lesson}"`);
+  const registry: Record<string, () => Walkthrough> = lesson ? { ...LESSON_FIGURES[lesson] } : { ...WALKTHROUGHS };
+  const limits = lesson ? FIGURE_LIMITS : {};
   const group = value("group");
   let groupSlugs: string[] | undefined;
-  if (group) {
+  if (group && !lesson) {
     const mod = (await import(pathToFileURL(resolve(here, "../src/lib/walkthroughs", `${group}.ts`)).href)) as { WALKTHROUGHS?: Record<string, () => Walkthrough> };
     if (!mod.WALKTHROUGHS) throw new Error(`${group}.ts exports no WALKTHROUGHS`);
     Object.assign(registry, mod.WALKTHROUGHS);
@@ -43,7 +53,7 @@ async function main() {
   const only = value("only")?.split(",").map((s) => s.trim()).filter(Boolean);
   // A group alone previews its own; --only narrows to the named ones.
   const slugs = (only ?? groupSlugs ?? Object.keys(registry)).filter((s) => s in registry);
-  const out = resolve(value("out") ?? resolve(here, "../scratch/walkthroughs"));
+  const out = resolve(value("out") ?? resolve(here, lesson ? `../scratch/lesson-figures/${lesson}` : "../scratch/walkthroughs"));
   mkdirSync(out, { recursive: true });
 
   let failures = 0;
@@ -58,7 +68,7 @@ async function main() {
       sections.push(`<section id="${slug}"><h2>${slug}</h2><p class="bad">threw: ${esc(String(err))}</p></section>`);
       continue;
     }
-    const problems = walkthroughProblems(slug, w);
+    const problems = walkthroughProblems(slug, w, limits);
     failures += problems.length;
     for (const p of problems) console.error(p);
     console.log(`${slug}: ${w.frames.length} frames, ${w.width}×${w.height}, ${JSON.stringify(w).length} bytes${problems.length ? `, ${problems.length} problem(s)` : ""}`);

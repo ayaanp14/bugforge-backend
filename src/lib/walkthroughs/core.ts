@@ -44,7 +44,14 @@ export type Item =
   /** A line of text anchored at (x, y) — a variable's value, a row label, a running answer. */
   | { k: "text"; id: string; x: number; y: number; text: string; tone?: TextTone; anchor?: "start" | "middle" | "end"; size?: number; mono?: boolean; weight?: number }
   /** A translucent rectangle behind other items — the window, a range, a component. Draw it before what it covers. */
-  | { k: "band"; id: string; x: number; y: number; w: number; h: number; tone?: Tone };
+  | { k: "band"; id: string; x: number; y: number; w: number; h: number; tone?: Tone }
+  /**
+   * A polyline through `pts` — a growth curve, an axis, an outline. `closed`
+   * joins the last point to the first and `fill` shades the inside with a
+   * band's tone (the area under a curve, a region). It fades in; it does not
+   * glide between frames.
+   */
+  | { k: "path"; id: string; pts: Array<[number, number]>; tone?: LineTone; dashed?: boolean; width?: number; closed?: boolean; fill?: Tone };
 
 export interface Frame {
   /** What this step did and why, in one or two plain sentences (no Markdown) — read aloud, printed under the figure and written into the HTML. */
@@ -221,6 +228,12 @@ export function boundsOf(it: Item): { x1: number; y1: number; x2: number; y2: nu
         ? { x1: Math.min(it.x1, mx - lw), y1: it.y - 6, x2: Math.max(it.x2, mx + lw), y2: it.y + (it.label ? 16 : 6) }
         : { x1: Math.min(it.x1, mx - lw), y1: it.y - (it.label ? 16 : 1), x2: Math.max(it.x2, mx + lw), y2: it.y + 6 };
     }
+    case "path": {
+      const xs = it.pts.map((p) => p[0]);
+      const ys = it.pts.map((p) => p[1]);
+      const half = (it.width ?? 1.6) / 2;
+      return { x1: Math.min(...xs) - half, y1: Math.min(...ys) - half, x2: Math.max(...xs) + half, y2: Math.max(...ys) + half };
+    }
     case "text": {
       const size = it.size ?? 13;
       const w = textWidth(it.text, size, it.mono ?? true);
@@ -262,6 +275,8 @@ function shift(it: Item, dx: number, dy: number): Item {
       return { ...it, x1: round(it.x1 + dx), y1: round(it.y1 + dy), x2: round(it.x2 + dx), y2: round(it.y2 + dy) };
     case "span":
       return { ...it, x1: round(it.x1 + dx), x2: round(it.x2 + dx), y: round(it.y + dy) };
+    case "path":
+      return { ...it, pts: it.pts.map(([x, y]) => [round(x + dx), round(y + dy)] as [number, number]) };
     default:
       return { ...it, x: round(it.x + dx), y: round(it.y + dy) };
   }

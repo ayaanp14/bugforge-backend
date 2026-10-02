@@ -2,7 +2,7 @@
 title: Dijkstra's Algorithm
 stage: graphs-advanced
 order: 3
-minutes: 25
+minutes: 13
 level: Advanced
 hub: shortest-path
 practice: network-delay-time, path-with-minimum-effort, the-maze-ii, cheapest-flights-within-k-stops, find-the-city-with-the-smallest-number-of-neighbors-at-a-threshold-distance, number-of-ways-to-arrive-at-destination, minimum-obstacle-removal-to-reach-corner, swim-in-rising-water, minimum-cost-to-make-at-least-one-valid-path-in-a-grid
@@ -22,96 +22,45 @@ a: Yes. Store each undirected edge as two directed edges, one in each direction,
 q: What is 0-1 BFS?
 a: 0-1 BFS is Dijkstra's algorithm for graphs whose weights are only 0 or 1. A double-ended queue replaces the heap: a vertex reached by a 0-edge goes to the front, one reached by a 1-edge goes to the back. The deque stays sorted by distance, so the whole search runs in O(V + E).
 ---
-A map app working out the fastest route, a router deciding where to forward a packet, a game character finding its way round obstacles: each is a **shortest path** question on a **weighted graph**, where every edge has a cost — a distance, a time, a price — and a path's length is the sum of its edge weights. **Dijkstra's algorithm**, published by Edsger Dijkstra in 1959, finds the shortest path from one source to every other vertex, as long as no weight is negative. After BFS and DFS it is the graph algorithm interviews ask about most.
+A map app finding the fastest route, a router choosing where to forward a packet, a game character walking round obstacles: each is a **shortest path** question on a **weighted graph**, where every edge has a cost and a path's length is the sum of its weights. **Dijkstra's algorithm** (1959) finds the shortest path from one source to every other vertex, as long as no weight is negative. After BFS and DFS it is the graph algorithm interviews ask about most.
 
-This lesson shows why BFS is not enough, how Dijkstra's algorithm works with a priority queue, the proof that its greedy choice is safe and the exact line of that proof a negative edge breaks, how to rebuild the path itself, and the variations: Bellman–Ford for negative weights, 0-1 BFS and the shapes the catalogue's problems take. It assumes [Breadth-First Search](/roadmap/breadth-first-search) and the [Heap](/roadmap/heap). Every program is shown in C++, Java, Python and JavaScript.
+@figure weights
 
 ## Why BFS is not enough
 
-BFS finds shortest paths when every edge costs the same. It explores vertices in order of how many edges away they are, so the first time it reaches a vertex, it has used the fewest edges. With weights, fewest edges is no longer cheapest:
-
-```text
-     A ───── 10 ─────► C
-     │                 ▲
-     2                 3
-     ▼                 │
-     B ────────────────┘
-```
-
-BFS reaches C straight from A: one edge, cost 10. The path A → B → C uses two edges and costs 5.
-
-The brute force tries every simple path and keeps the cheapest, but the number of paths explodes: between two vertices of a complete graph on 20 vertices there are about 1.7 × 10¹⁶ of them. A cleverer method, Bellman–Ford (later in this lesson), relaxes every edge V − 1 times for O(V × E); with V = 10⁵ and E = 2 × 10⁵ that is 2 × 10¹⁰ steps. Dijkstra's algorithm needs about (V + E) log V, around 5 × 10⁶ steps for the same graph, because it never looks at a vertex's edges more than once.
+[Breadth-First Search](/roadmap/breadth-first-search) finds shortest paths only when every edge costs the same: it counts edges, not weight. Trying every route is hopeless: about 1.7 × 10¹⁶ simple paths join two vertices of a complete graph on 20. Bellman–Ford, later in this lesson, costs O(V × E): 2 × 10¹⁰ steps for V = 10⁵ and E = 2 × 10⁵. Dijkstra's algorithm needs about (V + E) log V, around 5 × 10⁶ steps, because it looks at each vertex's edges once.
 
 ## The idea: settle the closest vertex first
 
-Every vertex carries a **tentative distance**: the length of the best path to it found so far. The source starts at 0 and every other vertex at ∞. Then:
+Every vertex carries a **tentative distance**, the best route to it found so far: 0 for the source, ∞ for the rest. Then:
 
-- **Pick.** Among the vertices not yet settled, take the one with the smallest tentative distance. Its distance is now final; the vertex is **settled**.
-- **Relax.** For each edge u → v with weight w, if dist[u] + w < dist[v], going through u is a shorter route to v: set dist[v] = dist[u] + w and remember prev[v] = u.
+- **Pick** the unsettled vertex with the smallest tentative distance. Its distance is now final; the vertex is **settled**.
+- **Relax** each of its edges u → v with weight w: if dist[u] + w < dist[v], going through u is shorter, so set dist[v] = dist[u] + w and remember prev[v] = u.
 - **Repeat** until every reachable vertex is settled.
 
-Picking the smallest distance quickly is a job for a priority queue — a min-heap. The simplest correct way to use one is **lazy deletion**. Whenever dist[v] improves, push the pair (dist[v], v), and leave v's older, larger entry where it is. When an entry is popped, compare its distance with dist[v]: if it is larger, the entry is **stale** — v was already settled with a smaller distance — and it is skipped. This avoids a "decrease key" operation, which the standard heaps in C++, Java and Python do not offer.
-
-The example graph has six vertices and nine directed edges:
-
-```text
- A → B  4        B → D  5        D → E  2
- A → C  2        C → D  8        D → F  3
- C → B  1        C → E 10        E → F  2
-```
+Picking the smallest distance quickly is a job for a min-heap — see the [Heap](/roadmap/heap) lesson.
 
 @walkthrough
 
 ## Why it works
 
-The algorithm is greedy: it commits to a vertex's distance the moment that vertex is the closest unsettled one, and never revisits it. The proof shows that commitment is safe.
+The algorithm is greedy: it commits to a vertex's distance the moment that vertex is the closest unsettled one, and never revisits it. That is safe because any route it has not seen must leave the settled region somewhere, already at least as far as the vertex being settled, and the rest of the route can only add weight:
 
-**Claim.** When u is picked with tentative distance d, no path from the source to u is shorter than d.
+@figure why-final
 
-Assume every vertex settled before u has its correct distance (true for the source, at distance 0; the argument below carries it forward). Take any path P from the source to u. It starts at a settled vertex and ends at u, which is not settled yet, so somewhere it steps for the first time from a settled vertex x to an unsettled vertex y. (y may be u itself.) Three facts follow:
-
-- When x was settled, its edges were relaxed, so dist[y] ≤ dist[x] + w(x, y). Since dist[x] is the true distance to x, this is at most the length of P up to y.
-- The algorithm picked u rather than y, so d = dist[u] ≤ dist[y].
-- The rest of P, from y to u, has length at least 0, because **every weight is non-negative**.
-
-Chaining them: length of P = (P up to y) + (rest of P) ≥ dist[y] + 0 ≥ d. No path beats d, so u's distance is final, and the assumption holds for the next vertex too. When the queue empties, every reachable vertex holds its true distance.
+Induction carries the argument from each settled vertex to the next, starting from the source at 0, so when the heap empties every reachable vertex holds its true distance.
 
 ### Why a negative edge breaks it
 
-The proof used non-negative weights exactly once — "the rest of the path cannot make it shorter". Take that away and the commitment fails:
+The proof used non-negative weights exactly once. Take them away and a vertex can be settled before a cheaper route through a farther vertex is found:
 
-```text
-     A ── 2 ──► B
-     │          ▲        Settling A gives B = 2 and C = 3.
-     3          │ −2     B is the smaller, so B is settled at 2.
-     ▼          │        Then C is settled at 3, and C → B costs 3 − 2 = 1.
-     C ─────────┘        The true distance to B is 1, but B was already final.
-```
+@figure negative
 
-The textbook algorithm, which never reopens a settled vertex, answers 2 for B, and anything computed from B's distance afterwards is wrong as well. The lazy-heap code in this lesson would notice the improvement, push B again and repair this small case, but the guarantee has gone: on bad graphs a vertex can be reopened an exponential number of times. And with a **negative cycle** — a loop whose weights add up to less than zero — distances fall for ever and the loop never ends. For negative weights, use Bellman–Ford.
-
-### Dry run
-
-The heap on the six-vertex graph, with each entry written as (distance, vertex) and the heap's contents listed smallest first:
-
-| Step | Pop | Action | Distances changed | Heap after |
-| --- | --- | --- | --- | --- |
-| start | none | dist[A] = 0 | A 0 | (0, A) |
-| 1 | (0, A) | settle A | B 4, C 2 | (2, C) (4, B) |
-| 2 | (2, C) | settle C | B 3, D 10, E 12 | (3, B) (4, B) (10, D) (12, E) |
-| 3 | (3, B) | settle B | D 8 | (4, B) (8, D) (10, D) (12, E) |
-| 4 | (4, B) | stale: dist[B] is 3, skip | none | (8, D) (10, D) (12, E) |
-| 5 | (8, D) | settle D | E 10, F 11 | (10, D) (10, E) (11, F) (12, E) |
-| 6 | (10, D) | stale: dist[D] is 8, skip | none | (10, E) (11, F) (12, E) |
-| 7 | (10, E) | settle E; E → F would give 12, not better than 11 | none | (11, F) (12, E) |
-| 8 | (11, F) | settle F | none | (12, E) |
-| 9 | (12, E) | stale: dist[E] is 10, skip | none | empty |
-
-Look at step 2: B's distance drops from 4 to 3, because the two-edge path A → C → B is shorter than the direct edge. The vertices are settled in the order A, C, B, D, E, F — by distance, not by name — and three of the nine heap entries turn out stale.
+The lazy-heap code below would push B again and repair this small case, but the guarantee is gone: on bad graphs a vertex is reopened exponentially often, and a **negative cycle** — a loop of negative total weight — makes distances fall for ever. Use Bellman–Ford instead.
 
 ### The code
 
-The function returns the distances, the `prev` array and the order in which vertices were settled; the program then rebuilds the path to F. C++, Java and Python have a heap in the standard library. JavaScript does not, so its program carries a small binary min-heap of its own.
+The standard heaps have no "decrease key", so the code uses **lazy deletion**: when dist[v] improves it pushes a new entry and leaves the old one in place; a popped entry larger than dist[v] is **stale** and skipped. JavaScript has no heap in its standard library, so its program carries a small one.
 
 ```cpp
 #include <algorithm>
@@ -376,39 +325,25 @@ Distances from A: A=0 B=3 C=2 D=8 E=10 F=11
 Path to F: A -> C -> B -> D -> F (cost 11)
 ```
 
-[Network Delay Time](/problems/network-delay-time) is this program almost unchanged: run it from the given node and answer with the largest distance, or −1 if any distance is still ∞.
+The program's heap, entry by entry — stale entries are greyed out while they wait:
+
+@figure heap-run
+
+[Network Delay Time](/problems/network-delay-time) is this program almost unchanged: run it from the given node and answer with the largest distance, or −1 if any is still ∞.
 
 ## Rebuilding the path
 
-Each time a distance improves, the code records `prev[v] = u`, the vertex just before v on the best path found so far. `prev[v]` changes only when `dist[v]` improves, so when the algorithm ends it names the vertex whose relaxation set v's final distance — and that vertex's own distance was already final when it was settled. Following `prev` from any vertex therefore walks back to the source along a shortest path. Together, the `prev` pointers form a **shortest-path tree** rooted at the source.
+`prev[v]` changes only when `dist[v]` improves, so at the end it names the vertex whose relaxation set v's final distance — and that vertex was itself final by then. Following `prev` from any vertex therefore walks back to the source along a shortest path, and together the pointers form a **shortest-path tree**.
 
-To print a path, start at the target, follow `prev` until it reaches −1 (the source has no predecessor), and reverse what you collected: F ← D ← B ← C ← A becomes A → C → B → D → F. Check the target first. An unreachable vertex keeps distance ∞ and `prev` −1, and walking from it would print a one-vertex "path" that does not exist.
+@figure prev-tree
 
 ## Negative weights: Bellman–Ford
 
-When some weights are negative, use **Bellman–Ford**. It gives up the greedy choice altogether: it relaxes *every* edge, in any order, and repeats that V − 1 times.
+**Bellman–Ford** gives up the greedy choice: it relaxes *every* edge, in any order, and repeats that V − 1 times. That is enough because, without a negative cycle, a shortest path never repeats a vertex, so it has at most V − 1 edges — and after round k, every vertex whose shortest path has at most k edges holds its correct distance. It also gives the **negative-cycle test**: one more pass over the edges. If anything still improves, a negative cycle is reachable from the source and "shortest path" has no meaning.
 
-Why V − 1 rounds are enough: if there is no negative cycle, a shortest path never needs to repeat a vertex, so it has at most V − 1 edges. After round k, every vertex whose shortest path has at most k edges holds its correct distance. (By induction: the last edge of such a path is relaxed during round k, and by then the vertex before it already had its correct distance from round k − 1.) So after V − 1 rounds every distance is correct.
+@figure bellman-ford
 
-That also gives the **negative-cycle test**. Run one extra pass over the edges. Without a negative cycle every distance is already final, so nothing can improve. If something still improves, a negative cycle is reachable from the source, and "shortest path" has no meaning for the vertices it reaches — you can loop round the cycle as often as you like.
-
-### Dry run
-
-Five vertices S, A, B, C, D, where B → A weighs −3, with the edges listed in the worst possible order: C → D 2, A → C 3, B → C 4, B → A −3, S → A 4, S → B 5.
-
-| Round | Changes, in edge order | S | A | B | C | D |
-| --- | --- | --- | --- | --- | --- | --- |
-| start | none | 0 | ∞ | ∞ | ∞ | ∞ |
-| 1 | S → A gives 4; S → B gives 5 | 0 | 4 | 5 | ∞ | ∞ |
-| 2 | A → C gives 7; B → A gives 2 | 0 | 2 | 5 | 7 | ∞ |
-| 3 | C → D gives 9; A → C gives 5 | 0 | 2 | 5 | 5 | 9 |
-| 4 | C → D gives 7 | 0 | 2 | 5 | 5 | 7 |
-
-The shortest path to D, S → B → A → C → D, has four edges, and in this edge order each round fixes exactly one more of them — so all V − 1 = 4 rounds are needed. In the lucky order S → B, B → A, A → C, C → D, one round would have done. Bellman–Ford always pays for the worst order. Dijkstra's algorithm would get this graph wrong: it settles A at 4 before B, because 4 is less than 5, and never learns about the cheaper route through B.
-
-### The code
-
-The function runs V − 1 rounds, optionally printing the distances after each, then makes the extra pass. The program then adds an edge C → B weighing −8, which creates the cycle B → A → C → B with total weight −3 + 3 − 8 = −8.
+The program prints the distances after each round, then repeats the run with the extra edge C → B weighing −8.
 
 ```cpp
 #include <algorithm>
@@ -609,17 +544,16 @@ Path to D: S -> B -> A -> C -> D (cost 7)
 With C -> B weighing -8: negative cycle reachable from S
 ```
 
-The `dist[u] != INF` test matters in C++ and Java: adding a weight to `INT_MAX` overflows into a large negative number, which would then look like a wonderful shortcut. A common optimisation is to stop early when a whole round changes nothing; the answer is the same and sparse inputs finish much sooner.
+The `dist[u] != INF` test matters in C++ and Java: adding a weight to `INT_MAX` overflows into a large negative number, which would look like a wonderful shortcut. Stopping early when a whole round changes nothing gives the same answer and finishes sparse inputs much sooner.
 
 ## Other shapes of the same idea
 
-- **0-1 BFS.** When every weight is 0 or 1, a double-ended queue replaces the heap. Pop from the front; push a vertex reached by a 0-edge onto the front and one reached by a 1-edge onto the back. The deque only ever holds distances d and d + 1, in order, so it behaves as a perfectly sorted priority queue in O(V + E). [Minimum Obstacle Removal to Reach Corner](/problems/minimum-obstacle-removal-to-reach-corner) (an empty cell costs 0, an obstacle 1) and [Minimum Cost to Make at Least One Valid Path in a Grid](/problems/minimum-cost-to-make-at-least-one-valid-path-in-a-grid) (following a sign costs 0, changing it 1) are both 0-1 BFS.
-- **Grids and implicit graphs.** Each cell is a vertex and the moves are its edges; nothing needs building. In [The Maze II](/problems/the-maze-ii) a ball rolls until it hits a wall, so each roll is one edge whose weight is the number of cells travelled.
-- **Minimax paths.** In [Path With Minimum Effort](/problems/path-with-minimum-effort) a route costs its *largest* step, not the sum of its steps. Dijkstra's algorithm still works with the relaxation `max(dist[u], w)`, because a route's cost can never fall as it gets longer — the property the proof really needs. [Swim in Rising Water](/problems/swim-in-rising-water) is the same idea with cell heights.
-- **Counting shortest paths.** [Number of Ways to Arrive at Destination](/problems/number-of-ways-to-arrive-at-destination) keeps `ways[v]` beside `dist[v]`: a strictly shorter distance copies `ways[u]`, an equal one adds it.
-- **A limit on the number of edges.** [Cheapest Flights Within K Stops](/problems/cheapest-flights-within-k-stops) allows at most k + 1 flights, so plain Dijkstra may find a cheaper route that uses too many. Run k + 1 Bellman–Ford rounds, each relaxing from a *copy* of the previous round's distances so that one round adds at most one edge to any path.
-- **All pairs.** [Find the City With the Smallest Number of Neighbors at a Threshold Distance](/problems/find-the-city-with-the-smallest-number-of-neighbors-at-a-threshold-distance) needs the distance between every pair of cities: run Dijkstra from every vertex, or use Floyd–Warshall, three nested loops in O(V³), which is fine for a few hundred vertices.
-- **Dense graphs.** Without a heap, scan an array for the closest unsettled vertex each time: O(V²) in all, which beats the heap when E is close to V².
+- **0-1 BFS**: with weights of only 0 and 1, a deque replaces the heap — 0-edges to the front, 1-edges to the back — and stays sorted in O(V + E), as in [Minimum Obstacle Removal to Reach Corner](/problems/minimum-obstacle-removal-to-reach-corner).
+- **Grids**: each cell is a vertex; in [The Maze II](/problems/the-maze-ii) each roll is one edge weighted by the cells it crosses.
+- **Minimax paths**: when a route costs its *largest* step, as in [Path With Minimum Effort](/problems/path-with-minimum-effort), relax with `max(dist[u], w)`. A route's cost still never falls as it grows, the property the proof really needs.
+- **Counting shortest paths**: keep `ways[v]` beside `dist[v]`; a strictly shorter distance copies `ways[u]`, an equal one adds it.
+- **At most k edges**: [Cheapest Flights Within K Stops](/problems/cheapest-flights-within-k-stops) runs k + 1 Bellman–Ford rounds, each relaxing from a *copy* of the previous round.
+- **All pairs**: Dijkstra from every vertex, or Floyd–Warshall in O(V³).
 
 ## Time and space complexity
 
@@ -632,32 +566,26 @@ The `dist[u] != INF` test matters in C++ and Java: adding a weight to `INT_MAX` 
 | Bellman–Ford | any; detects negative cycles | O(V × E) | O(V) |
 | Floyd–Warshall, all pairs | any, without negative cycles | O(V³) | O(V²) |
 
-The heap version settles each vertex once and relaxes each edge once. A relaxation can push one entry, so the heap holds at most E + 1 entries, and each push or pop costs O(log E). Since a simple graph has fewer than V² edges, log E is less than 2 log V, which is why the bound is written O((V + E) log V). The adjacency list itself takes O(V + E) memory.
+Each edge pushes at most one heap entry, and each push or pop costs O(log E), under 2 log V. Scanning an array instead of a heap costs O(V²), better when E is close to V².
 
 ## How to recognise a shortest-path problem
 
-Read the statement for these signals:
-
 - It asks for the **minimum time, cost, distance or effort** to get from one place to another, and moves have **different costs**.
-- It asks how long until something **reaches every node** — a signal, an infection, a rumour. That is the largest of the shortest distances.
-- The costs decide the algorithm: all equal means BFS, only 0 and 1 means 0-1 BFS, non-negative means Dijkstra, possibly negative means Bellman–Ford.
+- It asks how long until something **reaches every node**: the largest shortest distance.
+- The costs pick the algorithm: all equal means BFS, only 0 and 1 means 0-1 BFS, non-negative means Dijkstra, possibly negative means Bellman–Ford.
 - There is an **extra limit**, such as at most k stops: count rounds with Bellman–Ford or put the count in the state.
-- A route's cost is its **worst single step** rather than its total: minimax Dijkstra, or the union-find approach from the [Minimum Spanning Tree](/roadmap/minimum-spanning-tree) lesson.
 
-Do not confuse this with connecting *everything* at the lowest total cost. That is a minimum spanning tree, and the two usually pick different edges.
+Connecting *everything* at the lowest total cost is a different problem, the minimum spanning tree.
 
 ## Common mistakes
 
-- **Negative weights.** Dijkstra's algorithm silently gives wrong answers, or never stops if there is a negative cycle. Check the constraints before you choose it.
-- **Marking vertices when pushed instead of when popped.** A vertex pushed early with a large distance would then be locked out of later improvements. A vertex is final only when it comes off the heap.
-- **A max-heap by accident.** `std::priority_queue` in C++ is a max-heap by default; use `greater<>` as above, or push negated distances. Java's `PriorityQueue` and Python's `heapq` are min-heaps.
-- **Skipping the stale check.** The answers stay correct, but every stale entry rescans all of its vertex's edges, and on dense graphs that multiplies the work.
-- **Overflow.** In C++ and Java, `INT_MAX + w` wraps round to a negative number. Only relax from finite distances, or use a smaller infinity such as 10⁹ with `long` arithmetic.
+- **Negative weights.** Dijkstra's algorithm silently gives wrong answers, or never stops on a negative cycle. Check the constraints first.
+- **Marking vertices when pushed instead of when popped.** A vertex is final only when it comes off the heap.
+- **A max-heap by accident.** `std::priority_queue` is a max-heap; use `greater<>` or push negated distances. Java's `PriorityQueue` and Python's `heapq` are min-heaps.
+- **Overflow.** `INT_MAX + w` wraps round to a negative number; relax only from finite distances.
 - **Forgetting the reverse edge.** In an undirected graph, add every edge in both directions.
 
 ## Practice in this order
-
-Start with the algorithm as written, then the variations that change what a distance means:
 
 1. [Network Delay Time](/problems/network-delay-time): the algorithm unchanged; answer with the largest distance.
 2. [Path With Minimum Effort](/problems/path-with-minimum-effort): the minimax relaxation on a grid.

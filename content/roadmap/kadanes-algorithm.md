@@ -2,7 +2,7 @@
 title: Kadane's Algorithm (Maximum Subarray Sum)
 stage: prefix-sums
 order: 2
-minutes: 18
+minutes: 12
 level: Intermediate
 hub: arrays
 practice: best-time-to-buy-and-sell-stock, maximum-subarray, maximum-absolute-sum-of-any-subarray, best-sightseeing-pair, maximum-sum-circular-subarray, maximum-product-subarray, maximum-subarray-sum-with-one-deletion, k-concatenation-maximum-sum
@@ -22,85 +22,40 @@ a: A best subarray in a circular array either does not wrap, which ordinary Kada
 q: What is the time complexity of Kadane's algorithm?
 a: O(n) time, with constant work per element, and O(1) extra space. Checking every subarray is O(n²) with running sums and O(n³) without them, and the divide-and-conquer solution is O(n log n), so Kadane's single pass is the best possible: any algorithm must at least read every element.
 ---
-Given an array of numbers, some positive and some negative, which contiguous stretch has the largest sum? This is the **maximum subarray problem**. It is asked directly in interviews as [Maximum Subarray](/problems/maximum-subarray), and it hides inside many other questions: the best time to buy and sell a stock, the most profitable run of days for a shop, the strongest stretch of a signal. **Kadane's algorithm** solves it in a single pass with two variables, and the reasoning behind it is the gentlest possible introduction to [dynamic programming](/roadmap/dynamic-programming).
-
-This lesson states the problem, shows why the brute force is too slow, builds the algorithm from one question — *what is the best sum of a subarray that ends here?* — and proves that the answer is right. It then covers the all-negative case that trips up the popular version, how to return the subarray itself, how the algorithm is really a [prefix sum](/roadmap/prefix-sum) argument in disguise, and two variations interviewers love: the circular array and the maximum product. Every example is in C++, Java, Python and JavaScript.
+Given an array of numbers, some positive and some negative, which contiguous stretch has the largest sum? This is the **maximum subarray problem**. It is asked directly as [Maximum Subarray](/problems/maximum-subarray), and it hides inside many other questions: the best time to buy and sell a stock, the most profitable run of days. **Kadane's algorithm** solves it in one pass with two variables, and the reasoning behind it is the gentlest possible introduction to [dynamic programming](/roadmap/dynamic-programming).
 
 ## The maximum subarray problem
 
-A **subarray** is a contiguous, non-empty part of an array: you may cut elements off either end, but not out of the middle. For
+A **subarray** is a contiguous, non-empty part of an array: you may cut elements off either end, but not out of the middle. What makes the problem interesting is that the best stretch can contain negative numbers, and must stop before others.
 
-```text
- index:    0   1   2   3   4   5   6   7   8
- nums:  [ -2,  1, -3,  4, -1,  2,  1, -5,  4 ]
-                       |-------------|
-                       4 - 1 + 2 + 1 = 6
-```
+@figure problem
 
-the answer is 6, from index 3 to index 6. Notice what makes the problem interesting. The best subarray contains a negative number, −1, because the elements on either side of it more than pay for it. And it stops before −5, because nothing after −5 earns enough to make up for it. A rule such as "take the positive numbers" fails, because the result must be contiguous; and the [sliding window](/roadmap/sliding-window) fails, because with negative numbers there is no rule for when shrinking the window is safe.
+"Take the positive numbers" fails because the result must be contiguous, and a [sliding window](/roadmap/sliding-window) fails because, with negative numbers, there is no rule for when shrinking is safe.
 
 ## Why checking every subarray is too slow
 
-The brute force tries every start and every end. Keeping a running sum as the end moves avoids re-adding, but there are still about n²/2 pairs of ends:
-
-```text
-best = nums[0]
-for start in 0 .. n-1:
-    sum = 0
-    for end in start .. n-1:
-        sum = sum + nums[end]
-        best = max(best, sum)
-```
-
-With n = 100,000 that is about 5 × 10⁹ additions, roughly fifty times what a judge allows in a second. Without the running sum, re-adding each subarray from scratch, it is O(n³). A divide-and-conquer solution — best in the left half, best in the right half, best crossing the middle — brings it to O(n log n). Kadane's algorithm does it in O(n), which cannot be beaten: any algorithm has to look at every element at least once.
+The brute force tries every start and every end. Even with a running sum that is about n²/2 pairs: 5 × 10⁹ additions for n = 100,000, fifty times what a judge allows in a second. Divide and conquer brings it to O(n log n). Kadane's algorithm is O(n), which cannot be beaten: any algorithm must read every element.
 
 ## The idea: the best sum ending here
 
-Instead of asking "what is the best subarray?", ask a narrower question at every index i: *what is the best sum of a subarray that ends exactly at i?* Call that value `cur`. A subarray that ends at i has only two possible shapes:
+Instead of asking "what is the best subarray?", ask a narrower question at every index i: *what is the best sum of a subarray that ends exactly at i?* Call it `cur`. A subarray ending at i has only two possible shapes:
 
-- **Restart:** it is `nums[i]` on its own.
-- **Extend:** it is some subarray ending at i − 1, with `nums[i]` added on the end. The best of these is the best sum ending at i − 1, plus `nums[i]`.
+- **Restart:** `nums[i]` on its own.
+- **Extend:** the best subarray ending at i − 1, with `nums[i]` added on the end.
 
-So the new `cur` is whichever is larger:
-
-```text
-cur  = max(nums[i], cur + nums[i])      best sum of a subarray ending at i
-best = max(best, cur)                   best sum of any subarray seen so far
-```
-
-Start both at `nums[0]` and walk once from left to right. The comparison has a plain reading: `cur + nums[i]` is smaller than `nums[i]` exactly when `cur` is negative. **A run with a negative sum is a debt**: anything you attach to it would be better off without it. So the rule becomes "extend the current run while its sum is not negative; when it goes negative, start again at the next element".
+So `cur = max(nums[i], cur + nums[i])`, and `best = max(best, cur)`. Start both at `nums[0]` and walk once from left to right. The comparison has a plain reading: extending loses exactly when `cur` is negative. **A run with a negative sum is a debt** — anything attached to it would be better off without it — so extend while the run's sum is not negative, and start again when it is.
 
 ## Why it works
 
-Two claims make the algorithm correct, and both are short.
+Every subarray ending at i is either `nums[i]` alone or a subarray ending at i − 1 with `nums[i]` added. Adding the same number to every candidate does not change which one is largest, so the best of them is the best sum ending at i − 1 plus `nums[i]`. That is the update — and since every subarray ends somewhere, the largest of these values is the answer.
 
-First, the update really does compute the best sum ending at i. Every subarray ending at i is either `nums[i]` alone or a subarray ending at i − 1 with `nums[i]` added. Adding the same `nums[i]` to every candidate of the second kind does not change which candidate is largest, so the best of them is the best sum ending at i − 1 plus `nums[i]`. Comparing that with `nums[i]` alone covers every subarray that ends at i, and nothing else.
+@figure columns
 
-Second, the best of those values is the answer. Every subarray ends at some index, so the best subarray overall is the best subarray ending at the right index, and `best` takes the maximum over all of them.
-
-That is dynamic programming in its smallest form: a **state** (the best sum ending at i), a **recurrence** built from the previous state, and an answer read off the states. A general DP keeps a table of states; here each state needs only the one before it, so the table collapses into the single variable `cur`. The restart rule is the recurrence spelled out: when the best sum ending at i − 1 is negative, no subarray ending at i should include it, and the best one starts afresh at i.
-
-### Dry run
-
-The example array, with `start` marking where the current run began:
-
-| i | nums[i] | cur before | Decision | cur | start | best (range) |
-| --- | --- | --- | --- | --- | --- | --- |
-| 0 | −2 | — | first element | −2 | 0 | −2 (0 to 0) |
-| 1 | 1 | −2 | negative: restart | 1 | 1 | 1 (1 to 1) |
-| 2 | −3 | 1 | extend | −2 | 1 | 1 (1 to 1) |
-| 3 | 4 | −2 | negative: restart | 4 | 3 | 4 (3 to 3) |
-| 4 | −1 | 4 | extend | 3 | 3 | 4 (3 to 3) |
-| 5 | 2 | 3 | extend | 5 | 3 | 5 (3 to 5) |
-| 6 | 1 | 5 | extend | 6 | 3 | 6 (3 to 6) |
-| 7 | −5 | 6 | extend | 1 | 3 | 6 (3 to 6) |
-| 8 | 4 | 1 | extend | 5 | 3 | 6 (3 to 6) |
-
-Row 4 shows the run paying for a negative element: 4 − 1 = 3 is still worth carrying. Row 8 shows a run that has shrunk but stayed positive: 1 + 4 = 5 beats 4 alone, so the run continues, but it never catches the best.
+That is dynamic programming in its smallest form: a **state** (the best sum ending at i), a **recurrence** built from the previous state, and an answer read off the states. Each state needs only the one before it, so the table collapses into the single variable `cur`.
 
 ### The code
 
-To return the subarray as well as its sum, keep `start`, the index where the current run began. Each restart moves `start` to i; each new best copies `start` and i as the answer's bounds. The test `cur < 0` is the same as `nums[i] > cur + nums[i]`; when `cur` is exactly 0 both choices give the same sum, and the code extends.
+To return the subarray as well as its sum, keep `start`, the index where the current run began: each restart moves it to i, and each new best copies `start` and i. The test `cur < 0` is the same as `nums[i] > cur + nums[i]`; when `cur` is exactly 0 both choices give the same sum, and the code extends.
 
 ```cpp
 #include <iostream>
@@ -222,59 +177,29 @@ Maximum sum -1 from index 1 to 1: -1
 
 ## The all-negative case
 
-The second test above is the one that catches people out. Many tutorials teach a shorter version:
+The second test is the one that catches people out. A popular shorter version starts `cur` and `best` at 0 and never lets the run fall below zero. On an array of negative numbers it returns 0 — the sum of the **empty** subarray, which the problem does not allow.
 
-```text
-cur = 0, best = 0
-for x in nums:
-    cur  = max(0, cur + x)      # never let the run go below zero
-    best = max(best, cur)
-```
+@figure all-negative
 
-On `[-3, -1, -2]` it returns 0. That 0 is the sum of the **empty** subarray, which the problem does not allow: a subarray must contain at least one element, so the right answer is −1, the least negative number. The shortcut is correct only when an empty choice is genuinely allowed — "buy and sell at most once, or not at all" in [Best Time to Buy and Sell Stock](/problems/best-time-to-buy-and-sell-stock), or the empty subarray that [K-Concatenation Maximum Sum](/problems/k-concatenation-maximum-sum) permits.
-
-The fix is to start both values at `nums[0]`, as the code above does. Starting `best` at the smallest integer instead also works for `best`, but starting `cur` there is dangerous: `cur + nums[i]` can overflow before the comparison throws it away.
+The shortcut is right only when an empty choice is allowed, as in [Best Time to Buy and Sell Stock](/problems/best-time-to-buy-and-sell-stock) ("or not at all") and [K-Concatenation Maximum Sum](/problems/k-concatenation-maximum-sum). Otherwise start from `nums[0]`, as the code does.
 
 ## The prefix-sum view
 
-Kadane's algorithm sits in the prefix-sums stage for a reason. With the prefix array `P`, where `P[k]` is the sum of the first k numbers, the sum of `nums[i..j]` is `P[j + 1] - P[i]`. For a fixed end j that is largest when `P[i]` is as small as possible, so
+Kadane's algorithm sits in the [prefix sum](/roadmap/prefix-sum) stage for a reason. With `P[k]` the sum of the first k numbers, the sum of `nums[i..j]` is `P[j + 1] - P[i]`. For a fixed end j that is largest when `P[i]` is as small as possible — so the best sum ending at j is `P[j + 1]` minus the smallest earlier prefix.
 
-```text
-best sum ending at j = P[j + 1] - (smallest of P[0], P[1], ..., P[j])
-```
+@figure prefix-view
 
-Keep a running minimum of the prefixes and the problem becomes "the largest rise from an earlier low point" — which is exactly [Best Time to Buy and Sell Stock](/problems/best-time-to-buy-and-sell-stock), with prices in place of prefix sums. For the example array the numbers match Kadane's `cur` column one for one:
-
-| j | nums[j] | P[j + 1] | smallest P so far | P[j + 1] − smallest | Kadane's cur |
-| --- | --- | --- | --- | --- | --- |
-| 0 | −2 | −2 | 0 | −2 | −2 |
-| 1 | 1 | −1 | −2 | 1 | 1 |
-| 2 | −3 | −4 | −2 | −2 | −2 |
-| 3 | 4 | 0 | −4 | 4 | 4 |
-| 4 | −1 | −1 | −4 | 3 | 3 |
-| 5 | 2 | 1 | −4 | 5 | 5 |
-| 6 | 1 | 2 | −4 | 6 | 6 |
-| 7 | −5 | −3 | −4 | 1 | 1 |
-| 8 | 4 | 1 | −4 | 5 | 5 |
-
-The two views are the same algorithm. Kadane restarts exactly when `cur` goes negative, and `cur` is negative exactly when the current prefix has dropped below every earlier one — when the "smallest prefix so far" changes. The restart index is the new low point. Seeing both helps: Kadane is easier to extend to products and deletions, while the prefix view is the one that generalises to "best sum ending at j with some constraint on the start".
+The two views are one algorithm: `cur` goes negative exactly when the prefix line sets a new low, and the restart index is that low. Kadane is easier to extend to products and deletions; the prefix view generalises to "best sum ending at j with a constraint on the start".
 
 ## Variations: the circular array and the maximum product
 
-### Maximum circular subarray
+In [Maximum Sum Circular Subarray](/problems/maximum-sum-circular-subarray) a subarray may run off the end and continue from the start. A wrapping subarray keeps both ends and leaves out a contiguous middle, so its sum is the total minus that middle — and the best one leaves out the middle with the **smallest** sum, which Kadane with `min` finds in the same pass.
 
-In [Maximum Sum Circular Subarray](/problems/maximum-sum-circular-subarray) the array wraps around: a subarray may run off the end and continue from the start. Split the possibilities in two:
+@figure circular
 
-```text
- not wrapping:   [ .  .  #  #  #  .  . ]     ordinary Kadane finds it
- wrapping:       [ #  #  .  .  .  #  # ]     the part left out is an ordinary subarray
-```
+[Maximum Product Subarray](/problems/maximum-product-subarray) asks for the largest product. Extend-or-restart survives, but one number is no longer enough to carry: a negative factor turns the most negative product into the largest. So keep `hi`, the largest product ending here, and `lo`, the smallest, and swap them before multiplying by a negative. A zero sets both to 0, and the next element restarts through `max(x, …)`.
 
-A wrapping subarray keeps both ends and leaves out a contiguous middle. Its sum is the total minus that middle, so the best wrapping subarray leaves out the middle with the **smallest** sum — which Kadane with `min` in place of `max` finds in the same pass. The answer is the larger of the two cases, with one exception: when every number is negative, the smallest "middle" is the whole array and "total minus everything" describes an empty subarray. That case is detected by the ordinary maximum being negative, and the answer is then the ordinary maximum.
-
-### Maximum product subarray
-
-[Maximum Product Subarray](/problems/maximum-product-subarray) asks for the largest product instead of the largest sum. The extend-or-restart idea survives, but one number is no longer enough to carry, because a negative factor turns the most negative product into the largest one. So keep two values: `hi`, the largest product of a subarray ending here, and `lo`, the smallest. When the new element is negative, swap them before extending. A zero sets both to 0, and the next element restarts naturally through the `max(x, …)` comparison.
+@figure product
 
 ```cpp
 #include <algorithm>
@@ -459,14 +384,12 @@ product [-2, 3, -4]: 24
 product [-2, 0, -1]: 0
 ```
 
-In `[5, -3, 5]` the wrap pays: leaving out the −3 keeps 5 + 5 = 10, more than the 7 of the whole array read straight. In `[-2, 3, -4]` the two negatives cancel, and only the swap lets `hi` see 24.
-
 Other problems bend the same recurrence:
 
-- [Maximum Absolute Sum of Any Subarray](/problems/maximum-absolute-sum-of-any-subarray) runs Kadane for the maximum and for the minimum and returns the larger of the maximum and minus the minimum.
-- [Best Sightseeing Pair](/problems/best-sightseeing-pair) keeps the best "start" seen so far, `values[i] + i`, the same running-best idea as the prefix view.
-- [Maximum Subarray Sum with One Deletion](/problems/maximum-subarray-sum-with-one-deletion) carries two states per index: the best sum ending here with no deletion, and with one deletion already used.
-- The **maximum-sum rectangle** in a grid fixes a pair of rows, adds each column between them into one array, and runs Kadane on that array: O(rows² × columns).
+- [Maximum Absolute Sum of Any Subarray](/problems/maximum-absolute-sum-of-any-subarray) runs Kadane for the maximum and the minimum and returns the larger in size.
+- [Best Sightseeing Pair](/problems/best-sightseeing-pair) carries the best "start" seen so far, `values[i] + i`, like the running low of the prefix view.
+- [Maximum Subarray Sum with One Deletion](/problems/maximum-subarray-sum-with-one-deletion) carries two states per index: no deletion yet, and one deletion used.
+- The **maximum-sum rectangle** in a grid runs Kadane on the column sums between each pair of rows.
 
 ## Time and space complexity
 
@@ -474,39 +397,38 @@ Other problems bend the same recurrence:
 | --- | --- | --- |
 | Every subarray, summed from scratch | O(n³) | O(1) |
 | Every subarray, with a running sum | O(n²) | O(1) |
-| Divide and conquer | O(n log n) | O(log n) for the recursion |
+| Divide and conquer | O(n log n) | O(log n) |
 | Prefix sums with a running minimum | O(n) | O(1) |
 | Kadane's algorithm | O(n) | O(1) |
 
-The circular and product variants keep the same bounds: each carries a fixed number of extra values through the one pass.
+The circular and product variants keep these bounds.
 
 ## How to recognise a Kadane problem
 
-- The question asks for the **largest or smallest sum** — or product — of a **contiguous** subarray, and the numbers can be negative.
-- It asks for the **best stretch** of something over time: profit across days, gain across a route, score across a sequence.
-- A decision at each element is "**carry on or start again**": the best answer ending here is built from the best answer ending one step earlier.
-- It asks for the **largest difference** `a[j] - a[i]` with i before j: that is the prefix view, a running minimum.
+- It asks for the **largest or smallest sum** — or product — of a **contiguous** subarray, with negative numbers allowed.
+- It asks for the **best stretch** of something over time: profit across days, gain across a route.
+- The decision at each element is "**carry on or start again**".
+- It asks for the **largest difference** `a[j] - a[i]` with i before j: the prefix view, a running minimum.
 
-If the question says **subsequence** rather than subarray, Kadane is the wrong tool: the best-sum subsequence is simply the sum of the positive numbers (or the largest number, if none is positive). If the numbers are all positive and the question bounds the sum ("the longest subarray with sum at most k"), it is a sliding window question.
+If it says **subsequence**, the answer is the sum of the positive numbers, or the largest number if none is positive. If every number is positive and the sum is bounded, use a sliding window.
 
 ## Common mistakes
 
-- **Starting `best` at 0.** It returns 0 for an all-negative array, the sum of an empty subarray the problem does not allow. Start from `nums[0]`.
-- **Starting `cur` at the smallest integer.** `cur + nums[i]` then overflows in C++ and Java before `max` can discard it. Start from `nums[0]` and loop from index 1.
-- **Updating `best` before `cur`.** `best` must see the new `cur`, or the last element's run is never counted.
-- **Forgetting the all-negative case in the circular variant.** Total minus minimum is 0 there, which describes an empty subarray; return the ordinary maximum instead.
-- **Overwriting `hi` before computing `lo`.** In the product variant `lo` must use the old `hi`, which is why the code swaps first and computes each from values that are not yet updated. Use 64-bit integers if the products can grow large.
-- **Mixing up subarray and subsequence.** Kadane is for contiguous stretches only.
+- **Starting `best` at 0**, which returns the empty subarray on an all-negative array.
+- **Starting `cur` at the smallest integer**, which overflows `cur + nums[i]` in C++ and Java.
+- **Updating `best` before `cur`**, so the last element's run is never counted.
+- **Forgetting the all-negative case in the circular variant**: total minus minimum is then an empty subarray.
+- **Overwriting `hi` before computing `lo`** in the product variant; swap first, and use 64-bit integers.
 
 ## Practice in this order
 
 1. [Best Time to Buy and Sell Stock](/problems/best-time-to-buy-and-sell-stock): the prefix view, with a running minimum price.
 2. [Maximum Subarray](/problems/maximum-subarray): the algorithm exactly as above.
-3. [Maximum Absolute Sum of Any Subarray](/problems/maximum-absolute-sum-of-any-subarray): Kadane for the maximum and the minimum in one pass.
+3. [Maximum Absolute Sum of Any Subarray](/problems/maximum-absolute-sum-of-any-subarray): the maximum and the minimum in one pass.
 4. [Best Sightseeing Pair](/problems/best-sightseeing-pair): carry the best start so far.
-5. [Maximum Sum Circular Subarray](/problems/maximum-sum-circular-subarray): total minus the minimum subarray, with its exception.
+5. [Maximum Sum Circular Subarray](/problems/maximum-sum-circular-subarray): total minus the smallest middle, with its exception.
 6. [Maximum Product Subarray](/problems/maximum-product-subarray): two running values and a swap.
 7. [Maximum Subarray Sum with One Deletion](/problems/maximum-subarray-sum-with-one-deletion): two states per index.
-8. [K-Concatenation Maximum Sum](/problems/k-concatenation-maximum-sum): Kadane over two copies, plus k − 2 more copies of the total when the total is positive.
+8. [K-Concatenation Maximum Sum](/problems/k-concatenation-maximum-sum): Kadane over two copies, plus k − 2 totals when the total is positive.
 
-The [arrays problem list](/challenges/arrays) and the [prefix sum problem list](/challenges/prefix-sum) have more single-pass array problems. When the extend-or-restart idea feels natural, it is worth reading the [dynamic programming](/roadmap/dynamic-programming) lesson, which builds the same kind of recurrence for harder problems.
+The [arrays problem list](/challenges/arrays) and the [prefix sum problem list](/challenges/prefix-sum) have more single-pass array problems. When extend-or-restart feels natural, read the [dynamic programming](/roadmap/dynamic-programming) lesson, which builds the same kind of recurrence for harder problems.

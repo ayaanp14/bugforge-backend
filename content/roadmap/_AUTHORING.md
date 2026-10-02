@@ -50,27 +50,61 @@ inside a value:
 
 ## Body
 
-Markdown after the frontmatter. At least **1,200 words of prose** (code does
-not count; aim for 1,600–2,400) and at least **six `##` sections**. Never a
-`# ` heading — the page has its own H1. The reference lesson's shape works for
-almost every topic:
+**Figures first** (since 2026-10-03, the owner's call: "show less content and
+describe more through graphics"). A lesson explains with diagrams and
+animations and uses prose only to join them — to set a figure up in a
+sentence or two, and to say what no picture can: why it works, when to use
+it. Never write a paragraph that narrates what a figure already shows; the
+figure's own sentences carry its steps.
 
-1. An opening paragraph or two (no heading): the problem the technique solves, in plain words.
-2. `## Why …` — the naive approach and its cost, with a number (n = 10⁵ → 5 × 10⁹ steps).
-3. `## The idea …` — the technique in one picture (a `text` fence diagram) and a short list of its rules.
-4. `@walkthrough` on its own line — the hub's animated step-by-step figure. Put it right after the idea section. Only if the lesson has a `hub`.
-5. `## Why it works` — the invariant or exchange argument, in plain words. This is what tutorial sites skip; do not.
-6. `### Dry run` — a table tracing the example step by step.
-7. `### The code` — a code group (below).
-8. Variations / other shapes of the idea, each with a link to a catalogue problem that uses it.
-9. `## Time and space complexity` — a table comparing approaches.
-10. `## How to recognise …` — the signals in a problem statement.
-11. `## Common mistakes` — four to six real pitfalls.
-12. `## Practice in this order` — a numbered list of the practice problems with one line each on what it teaches, then a link to the hub (`/challenges/<hub>`).
+Markdown after the frontmatter: **700–1,800 words of prose** (aim for
+900–1,400; code, figures and frontmatter do not count), at least **five `##`
+sections**, and at least **four figures** (aim for five to eight; the hub's
+`@walkthrough` counts). Never a `# ` heading — the page has its own H1. The
+reference lesson's shape works for almost every topic:
+
+1. An opening paragraph (no heading): the problem the technique solves, in plain words — then a diagram of the idea's shape.
+2. `## Why …` — the naive approach and its cost, with a number (n = 10⁵ → 5 × 10⁹ steps); a cost chart if it helps.
+3. `## The idea …` — the rules as a short list, then `@walkthrough` or an animation of the technique on a small example.
+4. `## Why it works` — the invariant or exchange argument in a short paragraph, *and a figure that shows it* (two-pointers' triangle of pairs losing a row or a column per step). This is what tutorial sites skip; do not.
+5. `### The code` — a code group (below). The dry run is an animation, not a table.
+6. Variations, each a sentence with a link to a catalogue problem — an animation for the main one.
+7. `## Time and space complexity` — a small table comparing approaches.
+8. `## How to recognise …` — three to five signals in a problem statement.
+9. `## Common mistakes` — four or five pitfalls, one line each.
+10. `## Practice in this order` — a numbered list of the practice problems with one line each on what it teaches, then a link to the hub (`/challenges/<hub>`).
 
 Topics that are data structures (linked list, stack, heap, trie, graph) swap
-"why it works" for "how it is stored" and "the operations and their cost";
-keep the rest.
+"why it works" for "how it is stored" (a diagram of the layout) and "the
+operations and their cost" (an animation per operation); keep the rest.
+
+### Figures
+
+A line holding only `@figure <name>`, with a blank line before and after,
+places one of the lesson's own figures; `@walkthrough` places the hub's. A
+figure is written in TypeScript in `src/lib/lesson-figures/<slug>.ts`, which
+exports `FIGURES: Record<name, () => Walkthrough>` — see
+`src/lib/lesson-figures/two-pointers.ts`, the reference set, and `index.ts`
+for the model. Each generator returns `finish({ title, input, frames })`
+(`src/lib/walkthroughs/core.ts`):
+
+- **A diagram is one frame**: drawn still, its `caption` printed under it. Use it for a shape or a layout — how memory holds an array, a hash table's buckets, a tree's vocabulary, a cost chart.
+- **An animation is 2–16 frames** with play/step controls: every dry run, every invariant holding step by step, every operation on a structure.
+- `title` ≤ 90 characters says what the figure shows; `input` is the example as code (`nums = [2, 7, 11]`) or `""` for a diagram.
+- A `caption` is 30–340 characters of plain text (no Markdown), one or two sentences, never repeated within the figure.
+- **Every value drawn is computed by running the thing shown** — the generator runs the algorithm and records frames; nothing is typed in by hand that the code could get wrong. A mark on an answer is checked against the data.
+- An item keeps its `id` between frames to glide to its new place and colour (a value moving to its sorted slot, a queue draining); a new id fades in.
+- At most **600 wide** (aim for 360–520 so 13 px labels stay readable on a phone) and **440 tall**. Text items ≤ 70 characters.
+- Tones carry meaning: `accent` (teal) is what the step is about, `strong` (solid teal) the answer or the settled part, `muted` what is out of play, `error` (red) only a rejected candidate. No other colours.
+- Layout helpers beyond core's `row`/`under`/`over`/`bandOver`/`spanOver`/`link`/`treeLayout`/`ring` are in `src/lib/lesson-figures/kit.ts`: `box`, `label`, `arrow`, `region`, `column` (a stack), `bars` (heights), `chain` (a linked list), `binaryTree` (from level order), `graph`, `grid`/`gridCell` (a matrix, a DP table), `chart` (axes + `curve`); `path` items draw polylines.
+
+Preview every figure while writing it, and look at the pictures:
+
+```
+npx tsx scripts/preview-walkthroughs.ts --lesson <slug> --png    # scratch/lesson-figures/<slug>/*.png + complaints
+```
+
+`--validate` runs every placed figure through the same checks.
 
 ### Code groups
 
@@ -105,7 +139,7 @@ exactly what every one of the four programs prints
 - At most 90 lines each; aim for 25–60. Name things as the prose names them, comment the line that carries the idea, and keep the four programs line-for-line parallel so a reader can switch tabs and compare.
 - Deterministic output: no hash-set iteration order, no floating point printed without fixed formatting, no randomness.
 - Two or three groups per lesson is right: the core technique, then the main variation.
-- Pseudocode, diagrams and traces go in `text` fences, which are never run.
+- Pseudocode goes in a `text` fence, which is never run. Diagrams and traces are figures, never `text` fences.
 
 ## Style
 

@@ -2,7 +2,7 @@
 title: Topological Sort
 stage: graphs-advanced
 order: 1
-minutes: 22
+minutes: 12
 level: Intermediate
 hub: topological-sort
 practice: course-schedule, course-schedule-ii, parallel-courses, find-eventual-safe-states, all-ancestors-of-a-node-in-a-directed-acyclic-graph, course-schedule-iv, minimum-height-trees, parallel-courses-iii, largest-color-value-in-a-directed-graph
@@ -22,86 +22,53 @@ a: Kahn's algorithm is the safer default in interviews: it is iterative, so deep
 q: Where is topological sort used in real life?
 a: Anywhere one job must wait for others. Build tools compile a module after the modules it imports, package managers install dependencies before the packages that need them, spreadsheets recalculate a cell after the cells it refers to, and university timetables place a course after its prerequisites.
 ---
-Many problems hand you a list of jobs and a list of rules of the form **"this must happen before that"**: take Data Structures before Algorithms, compile a library before the program that uses it, pour the foundations before building the walls. A **topological sort** puts the jobs in an order that obeys every rule. It is the standard tool for scheduling with dependencies, and it doubles as the standard test of whether the rules contradict each other.
+Many problems hand you a list of jobs and rules of the form **"this must happen before that"**: take Data Structures before Algorithms, compile a library before the program that uses it, pour the foundations before the walls. A **topological sort** puts the jobs in an order that obeys every rule. Draw each job as a vertex and each rule as a directed edge u → v, meaning *u must come before v*; a **topological order** lists every vertex so that all the edges point forwards.
 
-This lesson explains what a topological order is and when one exists, walks through Kahn's algorithm step by step, proves it correct, shows how it detects a cycle, and then covers the depth-first version and the problems that use each. It builds on [Graphs](/roadmap/graphs), [Breadth-First Search](/roadmap/breadth-first-search) and [Depth-First Search](/roadmap/depth-first-search). Every program is shown in C++, Java, Python and JavaScript.
+@figure forwards
 
-## What a topological order is
+It schedules dependencies and tests whether the rules contradict each other. It builds on [Graphs](/roadmap/graphs), [Breadth-First Search](/roadmap/breadth-first-search) and [Depth-First Search](/roadmap/depth-first-search).
 
-Draw each job as a vertex and each rule as a directed edge: an edge **u → v** means *u must come before v*. A **topological order** is a list of all the vertices in which every edge points forwards — for every edge u → v, u appears earlier in the list than v.
+## When an order exists
 
-Here are six courses, numbered 0 to 5, with six prerequisite rules:
+**A cycle makes an order impossible.** If 1 must come before 2, 2 before 3 and 3 before 1, no list can satisfy all three, whichever way you try.
 
-```text
-   5 ────► 2 ────► 3
-   │               │
-   ▼               ▼
-   0 ◄──── 4 ────► 1
+@figure cycle-blocks
 
- edges: 5→2, 5→0, 4→0, 4→1, 2→3, 3→1
-```
+**Without a cycle, an order always exists.** A directed graph with no cycle is a **DAG** (directed acyclic graph), and every DAG has a vertex with nothing coming in, which can safely go first. Remove it, and what is left is still a DAG, so repeat.
 
-The list 4, 5, 2, 0, 3, 1 is a topological order: pick any edge, say 2 → 3, and its first vertex comes first. So is 5, 4, 2, 3, 1, 0. The list 5, 2, 3, 1, 4, 0 is not, because the edge 4 → 1 points backwards: course 1 would be taken before its prerequisite, course 4.
-
-Two facts decide when an order exists:
-
-- **A cycle makes an order impossible.** If 1 → 2 → 3 → 1, then 1 must come before 2, 2 before 3 and 3 before 1 — so 1 must come before itself. No list can manage that.
-- **Without a cycle, an order always exists.** A directed graph with no cycle is a **DAG** (directed acyclic graph), and every DAG has a vertex with no incoming edge. To find one, start anywhere and keep walking backwards along incoming edges. With no cycle you never meet a vertex twice, and the graph is finite, so the walk must stop — at a vertex with nothing coming in. That vertex can safely go first. Remove it, and what is left is still a DAG, so repeat.
-
-That second argument is already the whole algorithm. The rest of the lesson is about doing it fast.
+@figure backwards-walk
 
 ## Why trying orders is too slow
 
-The most naive approach tries every ordering of the vertices and checks each one against the edges. There are V! orderings: 3.6 million for V = 10 and about 2.4 × 10¹⁸ for V = 20. That is hopeless beyond toy sizes.
-
-A smarter but still slow approach follows the argument above literally: scan all the vertices for one whose prerequisites are all placed, place it, then scan again. Each scan rechecks every edge, so it costs O(V + E), and there are V scans: O(V × (V + E)) in all. With 10⁵ courses and 10⁵ rules that is about 2 × 10¹⁰ steps — minutes of work, for a judge that allows about a second. The waste is in the rescanning. Placing one vertex changes the situation of only the vertices it points to, so keep a running count per vertex and update just those counts.
+Trying every ordering means V! of them: 2.4 × 10¹⁸ for V = 20. Following the argument literally, rescanning for a vertex whose prerequisites are all placed, costs O(V + E) per scan and V scans: about 2 × 10¹⁰ steps for 10⁵ courses and 10⁵ rules. But placing a vertex changes only the vertices it points to, so keep a running count per vertex and update just those.
 
 ## The idea: Kahn's algorithm
 
-The count is the vertex's **in-degree**: the number of edges coming into it, which starts as the number of its prerequisites and falls as they are placed. Kahn's algorithm (published by Arthur Kahn in 1962) keeps those counts and a queue of vertices that are ready to go:
+The count is the vertex's **in-degree**: the number of edges coming into it, its prerequisites not yet placed. Kahn's algorithm (Arthur Kahn, 1962) keeps those counts and a queue of vertices that are ready:
 
-```text
- vertex:     0  1  2  3  4  5
- in-degree:  2  2  1  1  0  0        ready queue: [4, 5]
-```
-
-- **Count.** Compute every vertex's in-degree from the edge list.
-- **Seed.** Put every vertex with in-degree 0 in a queue. They have no prerequisites, so any of them may go first.
-- **Take.** Remove a vertex u from the front of the queue and append it to the order.
-- **Release.** For every edge u → v, lower v's in-degree by one, because one of v's prerequisites has now been placed. If the count reaches 0, u was v's last unplaced prerequisite, so v joins the queue.
-- **Check.** When the queue is empty, the order holds every vertex if and only if the graph has no cycle.
+- **Count** every vertex's in-degree from the edge list.
+- **Seed** a queue with every vertex of in-degree 0.
+- **Take** a vertex u from the front and append it to the order.
+- **Release**: for every edge u → v, lower v's count by one; if it reaches 0, u was v's last prerequisite, so v joins the queue.
+- **Check**: when the queue is empty, the order holds every vertex if and only if there is no cycle.
 
 @walkthrough
 
 ## Why it works
 
-Two things need showing: every edge points forwards in the order Kahn's algorithm produces, and the order contains every vertex whenever the graph is a DAG.
+**Every edge points forwards.** A vertex joins the queue only when its count reaches 0, which happens only once every vertex with an edge into it is in the order.
 
-**Every edge points forwards.** A vertex v joins the queue only when its count reaches 0, and the count falls by one exactly when one of v's predecessors is appended to the order. So by the time v itself is appended, *every* vertex with an edge into v is already in the order. That is precisely the definition of a topological order.
+**Nothing gets stuck in a DAG.** If the queue ran empty with vertices unplaced, the unplaced ones would form a smaller DAG, which has a vertex with nothing coming in from the others. All its prerequisites are placed, so its count reached 0 and it joined the queue and was placed: a contradiction.
 
-**Nothing gets stuck in a DAG.** Suppose the queue runs empty while some vertices are still unplaced. The unplaced vertices and the edges between them form a smaller graph. If the original graph has no cycle, neither does this one, so by the backwards-walk argument some unplaced vertex has no incoming edge from another unplaced vertex. All of its prerequisites are placed, so its count is 0, so it was put in the queue — which contradicts the queue being empty. Hence, in a DAG, all V vertices come out.
+**A cycle is caught for free.** On a cycle each vertex waits for the one before it, so none of them reaches 0, and nor does anything downstream.
 
-**A cycle is caught for free.** On a cycle, each vertex waits for the one before it, so none of them ever reaches a count of 0 and none is ever placed. Neither is anything downstream of the cycle. So if fewer than V vertices come out, the graph has a cycle, and the vertices left over are exactly those on a cycle or reachable from one. That is the whole of [Course Schedule](/problems/course-schedule): "can you finish every course?" means "does Kahn's algorithm place all of them?"
+@figure kahn-stuck
 
-### Dry run
-
-Kahn's algorithm on the six courses, taking vertices from the front of the queue and each vertex's edges in the order they were listed:
-
-| Step | Take | Order so far | Counts lowered | Joins the queue | Queue after |
-| --- | --- | --- | --- | --- | --- |
-| start | — | — | — | 4, 5 | 4, 5 |
-| 1 | 4 | 4 | course 0 from 2 to 1, course 1 from 2 to 1 | none | 5 |
-| 2 | 5 | 4 5 | course 2 from 1 to 0, course 0 from 1 to 0 | 2, 0 | 2, 0 |
-| 3 | 2 | 4 5 2 | course 3 from 1 to 0 | 3 | 0, 3 |
-| 4 | 0 | 4 5 2 0 | none | none | 3 |
-| 5 | 3 | 4 5 2 0 3 | course 1 from 1 to 0 | 1 | 1 |
-| 6 | 1 | 4 5 2 0 3 1 | none | none | empty |
-
-All six vertices came out, so there is no cycle. Notice course 0 in step 2: it had two prerequisites, 4 and 5, and it joined the queue only when the second of them was placed.
+That is the whole of [Course Schedule](/problems/course-schedule): "can you finish every course?" means "does Kahn's algorithm place all of them?"
 
 ### The code
 
-The function builds an adjacency list and the in-degree counts from the edge list, runs the queue, and returns the order; the caller compares its length with V. The program runs it on the six courses and then on a second graph, 0 → 1 → 2 → 3 → 1, whose last edge closes a cycle.
+The function builds the adjacency list and the counts, runs the queue and returns the order; the caller compares its length with V. The program runs it on the six courses and on the cycle above.
 
 ```cpp
 #include <iostream>
@@ -293,41 +260,21 @@ Order: 4 5 2 0 3 1
 Cycle: only 1 of 4 vertices placed; stuck: 1 2 3
 ```
 
-In the second graph only vertex 0 starts with in-degree 0. Placing it lowers vertex 1 from 2 to 1 — the edge 3 → 1 still holds it — and the queue is empty. Vertices 1, 2 and 3 each wait for another of the three, for ever.
-
-One warning before you use this on [Course Schedule II](/problems/course-schedule-ii): there, the pair [a, b] means *b* comes before *a*, so the edge is b → a. Reading it the other way round is the most common slip in these problems.
+In [Course Schedule II](/problems/course-schedule-ii) the pair [a, b] means *b* comes before *a*, so the edge is b → a: the most common slip in these problems.
 
 ## The DFS version: reverse post-order
 
-[Depth-first search](/roadmap/depth-first-search) gives a second topological sort that is just as fast. Run a DFS from every unvisited vertex, and append each vertex to a list at the moment it **finishes** — after everything it points to has been explored. That list is the **post-order**, and reversed it is a topological order.
+Run a [depth-first search](/roadmap/depth-first-search) from every unvisited vertex and append each vertex to a list when it **finishes**, after everything it points to. That list is the **post-order**; reversed, it is a topological order. Take any edge u → v at the moment the search, inside u's call, looks along it:
 
-To see why, take any edge u → v and look at the moment the DFS, exploring u, looks along it. The vertex v is in one of three states:
+- **v is white** (unvisited): DFS visits it now, so v finishes before u.
+- **v is black** (finished): v is already in the post-order, before u.
+- **v is grey** (on the stack): the search reached u from v, so there is a path v to u, and with u → v that is a cycle.
 
-- **Unvisited (white).** The DFS visits v now, from inside u's call, so v finishes before u does.
-- **Finished (black).** v has already finished, so it is earlier in the post-order than u will be.
-- **In progress (grey).** v is still on the recursion stack, which means the DFS reached u from v. So there is a path from v to u, and together with the edge u → v that is a cycle.
+In a DAG the third case never happens, so v finishes before u for every edge, and reversing puts u first.
 
-In a DAG the third case cannot happen, so for every edge u → v, v finishes before u. Reverse the finishing order and u comes before v: every edge points forwards. The third case is also the cycle test. Meeting a grey vertex means a cycle, and the edge that met it is the **back edge** that closes it.
+@figure dfs-postorder
 
-This is why the DFS needs three colours rather than a visited flag. Reaching a finished vertex again is harmless: in the six courses, vertex 0 is reached from 4 and again from 5, two separate routes and no cycle. Reaching a vertex that is still in progress is a cycle. One visited flag cannot tell the two apart, so it either reports the harmless diamond as a cycle or misses real ones. (Undirected graphs are different: there, any visited neighbour other than the parent closes a cycle — and [Union-Find](/roadmap/union-find) often does the job more simply.)
-
-### Dry run
-
-The DFS tries start vertices 0, 1, 2, … in index order and follows each vertex's edges in input order:
-
-| Event | Grey (on the stack) | Post-order so far |
-| --- | --- | --- |
-| visit 0: no edges, finish 0 | none | 0 |
-| visit 1: no edges, finish 1 | none | 0 1 |
-| visit 2, follow 2 → 3, visit 3 | 2, 3 | 0 1 |
-| 3 → 1: 1 is finished; finish 3 | 2 | 0 1 3 |
-| finish 2 | none | 0 1 3 2 |
-| visit 4: 0 and 1 are finished; finish 4 | none | 0 1 3 2 4 |
-| visit 5: 2 and 0 are finished; finish 5 | none | 0 1 3 2 4 5 |
-
-Reversed, that is 5 4 2 3 1 0. It differs from Kahn's 4 5 2 0 3 1, and both are valid: a DAG usually has many topological orders.
-
-### The code
+The third case is also the cycle test, which is why the DFS needs three colours rather than a visited flag: reaching a black vertex by a second route is harmless (0 is reached from both 4 and 5), and only a grey one means a cycle.
 
 ```cpp
 #include <algorithm>
@@ -514,24 +461,20 @@ Reverse post-order: 5 4 2 3 1 0
 Cycle: the edge 3 -> 1 leads back to a vertex still on the stack
 ```
 
-On the second graph the DFS goes 0 → 1 → 2 → 3 with all four vertices grey, then finds the edge 3 → 1 pointing at a grey vertex. Kahn's algorithm told you *which* vertices were stuck; the DFS tells you *which edge* closes a cycle. Use whichever answer the problem asks for.
-
 ## When the order is unique
 
-Kahn's algorithm makes a choice whenever the queue holds two or more vertices: any of them could go next, and each choice leads to a different valid order. So the topological order is **unique exactly when the queue never holds more than one vertex**.
-
-There is an equivalent test you can read off the order itself: it is unique exactly when every two neighbours in the order are joined by an edge, so the order is a single path through every vertex. If the queue only ever holds one vertex, each vertex entered it at the moment the previous one was placed, which needs an edge from the previous one. Conversely, if consecutive vertices are joined by edges, those edges pin every vertex to its position.
-
-The six courses fail the test at once: the queue starts with both 4 and 5, so 5, 4, 2, 0, 3, 1 is as valid as Kahn's answer. Course Schedule II removes the ambiguity a different way — it asks for the **lexicographically smallest** order. Replace the queue with a min-[heap](/roadmap/heap) so that the smallest ready vertex always goes next. On the six courses this gives 4, 5, 0, 2, 3, 1 instead of 4, 5, 2, 0, 3, 1. The greedy choice is right because two orders are compared at the first position where they differ: no valid order can put anything smaller than the smallest *ready* vertex in that position, and placing a vertex only ever makes more vertices ready, never fewer. The heap costs O(log V) per operation, so the total becomes O(V log V + E).
+Whenever Kahn's queue holds two or more vertices, either could go next, so the order is **unique exactly when the queue never holds more than one**. For the **lexicographically smallest** order, replace the queue with a min-[heap](/roadmap/heap): 4, 5, 0, 2, 3, 1 on the six courses, in O(V log V + E). The greedy choice is safe because placing a vertex only ever makes more vertices ready, never fewer.
 
 ## Other shapes of the same idea
 
-- **Levels, or semesters.** In [Parallel Courses](/problems/parallel-courses) you may take any number of courses at once. Run Kahn's algorithm one level at a time — everything in the queue now is one semester — and count the levels. On the six courses the levels are {4, 5}, {2, 0}, {3} and {1}: four semesters, which is the number of vertices on the longest path, 5 → 2 → 3 → 1.
-- **Dynamic programming on a DAG.** In a topological order every vertex comes after all its predecessors, so any value built from predecessors — a longest path, an earliest finishing time, a count of paths — can be filled in with one pass. [Parallel Courses III](/problems/parallel-courses-iii) computes each course's earliest finishing time this way, and [Largest Color Value in a Directed Graph](/problems/largest-color-value-in-a-directed-graph) carries a count per colour along the order while Kahn's count doubles as its cycle check. See [Dynamic Programming](/roadmap/dynamic-programming).
-- **Reachability.** [All Ancestors of a Node in a DAG](/problems/all-ancestors-of-a-node-in-a-directed-acyclic-graph) and [Course Schedule IV](/problems/course-schedule-iv) pass each vertex's set of ancestors forward along its edges, in topological order, so every set is complete before it is copied on.
-- **Reversed edges.** In [Find Eventual Safe States](/problems/find-eventual-safe-states) a node is safe when every path from it ends at a terminal node. Reverse every edge and run Kahn's algorithm starting from the terminal nodes; the nodes that come out are the safe ones, and the nodes left behind are on a cycle or lead into one.
-- **Peeling leaves.** [Minimum Height Trees](/problems/minimum-height-trees) uses the same idea on an undirected tree: remove every leaf (degree 1) at once, layer by layer, like a queue of in-degree-0 vertices. The last one or two vertices standing are the centres.
-- **Shortest paths in a DAG.** Relaxing edges in topological order finds shortest paths from a source in O(V + E), even with negative weights — something [Dijkstra's Algorithm](/roadmap/dijkstras-algorithm) cannot handle.
+Run Kahn's algorithm one level at a time, taking everything in the queue at once, and the levels are rounds in which independent jobs run together:
+
+@figure levels
+
+- **Semesters.** [Parallel Courses](/problems/parallel-courses) counts those levels.
+- **Dynamic programming on a DAG.** A longest path, earliest finishing time or count of paths fills in one pass along the order: [Parallel Courses III](/problems/parallel-courses-iii), and [Dynamic Programming](/roadmap/dynamic-programming).
+- **Reversed edges.** In [Find Eventual Safe States](/problems/find-eventual-safe-states), reverse every edge and run Kahn's algorithm from the terminal nodes; whatever comes out is safe.
+- **Peeling leaves.** [Minimum Height Trees](/problems/minimum-height-trees) strips an undirected tree's leaves layer by layer.
 
 ## Time and space complexity
 
@@ -543,41 +486,34 @@ The six courses fail the test at once: the queue starts with both 4 and 5, so 5,
 | DFS, reverse post-order | O(V + E) | O(V + E), plus the recursion stack |
 | Kahn's algorithm with a min-heap | O(V log V + E) | O(V + E) |
 
-Kahn's algorithm is O(V + E) because each vertex enters and leaves the queue at most once and each edge is looked at exactly once, when its starting vertex leaves the queue. The adjacency list accounts for the O(V + E) memory. The DFS visits each vertex and edge once too, but its recursion can go V calls deep: on a chain of 10⁵ vertices Python's default recursion limit of 1,000 is hit long before the end, and Java's default stack may overflow as well. For large inputs, prefer Kahn's algorithm or a DFS with an explicit stack.
+Each vertex enters Kahn's queue once and each edge is looked at once. The DFS is as fast, but its recursion can go V calls deep, so for large inputs prefer Kahn's algorithm.
 
 ## How to recognise a topological sort problem
 
-Read the statement for these signals:
-
-- It describes **dependencies**: prerequisites, "must be done before", "depends on", a build order, an install order, tasks that wait for other tasks.
-- It asks whether every task **can be finished**, or for **any valid order** — both are cycle detection in a directed graph.
-- It asks for the **minimum number of rounds**, semesters or stages when independent tasks can run in parallel. That is Kahn's algorithm level by level.
-- It asks for a **longest path**, an earliest finishing time or a number of paths in a graph that is guaranteed to have no cycle. That is dynamic programming in topological order.
-- An ordering of letters or items must be **inferred from comparisons**, as in the "alien dictionary" family: each comparison contributes one edge.
-
-If the edges have no direction (friendships, cables) and the question is who is connected to whom, you want [Union-Find](/roadmap/union-find) or a plain search instead. If the edges carry weights and the question is the cheapest route, look at Dijkstra's algorithm.
+- **Dependencies**: prerequisites, "must be done before", "depends on", a build or install order.
+- Whether every task **can be finished**, or **any valid order**: cycle detection in a directed graph.
+- The **fewest rounds** or semesters when independent tasks run in parallel: Kahn's algorithm by levels.
+- A **longest path** or earliest finishing time in a graph with no cycle: dynamic programming in topological order.
+- An order **inferred from comparisons**, as in the "alien dictionary" family: each comparison is one edge.
 
 ## Common mistakes
 
-- **Reading a pair the wrong way round.** In Course Schedule, [a, b] means b before a, so the edge is b → a. Reverse it and you get a reversed order — a valid answer to a different question.
-- **Forgetting the cycle check.** Kahn's loop ends quietly when the queue empties. If you return the order without comparing its length with V, a graph with a cycle produces a confident partial answer.
-- **Seeding the queue with one vertex.** Every vertex with in-degree 0 must start in the queue, including isolated vertices that appear in no edge at all. Size the in-degree array by V, not by the vertices named in the edges.
-- **One visited flag in the DFS.** Directed graphs need three states. A finished vertex reached by a second route is not a cycle; only a vertex still on the stack is.
-- **Appending on entry instead of on finish.** The order in which a DFS *enters* vertices is not a topological order: starting from 0 it lists 0 before 4, although 4 → 0. Only the reversed finishing order works.
-- **Using `shift()` as a queue in JavaScript.** It moves every remaining element, so the loop quietly becomes O(V²). Read from a head index instead, as the code above does.
+- **Reading a pair the wrong way round.** In Course Schedule, [a, b] means b before a.
+- **Forgetting the cycle check.** Kahn's loop ends quietly; compare the order's length with V.
+- **Seeding the queue with one vertex.** Every vertex of in-degree 0 must start in it, including isolated ones; size the counts by V.
+- **One visited flag in the DFS.** Only a grey vertex means a cycle.
+- **Appending on entry instead of on finish.** Entry order is not a topological order: from 0 it lists 0 before 4, although 4 → 0.
 
 ## Practice in this order
 
-Start with the problems where the plain algorithm is the answer, then move to the ones that build something on top of the order:
-
 1. [Course Schedule](/problems/course-schedule): Kahn's count as a cycle test.
-2. [Course Schedule II](/problems/course-schedule-ii): return the order itself — the smallest one, with a min-heap.
+2. [Course Schedule II](/problems/course-schedule-ii): return the order itself, the smallest one with a min-heap.
 3. [Parallel Courses](/problems/parallel-courses): Kahn's algorithm one level at a time.
-4. [Find Eventual Safe States](/problems/find-eventual-safe-states): reverse the edges and start from the terminal nodes.
+4. [Find Eventual Safe States](/problems/find-eventual-safe-states): reverse the edges, start from the terminal nodes.
 5. [All Ancestors of a Node in a DAG](/problems/all-ancestors-of-a-node-in-a-directed-acyclic-graph): carry sets forward along the order.
-6. [Course Schedule IV](/problems/course-schedule-iv): answer many "is a a prerequisite of b?" queries.
+6. [Course Schedule IV](/problems/course-schedule-iv): many "is a a prerequisite of b?" queries.
 7. [Minimum Height Trees](/problems/minimum-height-trees): peel the leaves of an undirected tree.
-8. [Parallel Courses III](/problems/parallel-courses-iii): earliest finishing times, dynamic programming in topological order.
-9. [Largest Color Value in a Directed Graph](/problems/largest-color-value-in-a-directed-graph): a count per colour and a cycle check in the same pass.
+8. [Parallel Courses III](/problems/parallel-courses-iii): earliest finishing times in topological order.
+9. [Largest Color Value in a Directed Graph](/problems/largest-color-value-in-a-directed-graph): a count per colour and a cycle check in one pass.
 
 The [topological sort problem list](/challenges/topological-sort) has every problem in the catalogue that uses it. Next on the road is [Union-Find](/roadmap/union-find), for the undirected question of who is connected to whom.

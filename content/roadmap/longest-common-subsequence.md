@@ -2,7 +2,7 @@
 title: Longest Common Subsequence and Edit Distance
 stage: dp-2d
 order: 2
-minutes: 20
+minutes: 13
 level: Intermediate
 hub: dynamic-programming
 practice: is-subsequence, longest-common-subsequence, delete-operation-for-two-strings, uncrossed-lines, maximum-length-of-repeated-subarray, longest-palindromic-subsequence, edit-distance, minimum-ascii-delete-sum-for-two-strings, minimum-insertion-steps-to-make-a-string-palindrome
@@ -22,85 +22,42 @@ a: Each row reads only itself and the row above, so two rows of length n + 1 are
 q: How is the longest palindromic subsequence related to LCS?
 a: A palindrome reads the same forwards and backwards, so a palindromic subsequence of s is also a common subsequence of s and its reverse. The length of the longest palindromic subsequence equals the LCS length of s and reverse(s). The fewest insertions that make s a palindrome is then its length minus that number.
 ---
-Version control shows what changed between two files. A spell checker suggests the word closest to what you typed. Biologists line up two DNA strands to see how related they are. All three need the same thing: a way to compare two sequences and say what they have in common and how far apart they are. The **longest common subsequence** (LCS) measures what two strings share, and **edit distance** measures how many single-character changes separate them. Both are solved by the same kind of table, and together they are the most common two-string questions in interviews.
-
-This lesson fills the LCS table by hand, proves its rule correct, walks back through the table to recover the subsequence, then builds edit distance on the same frame and recovers the actual edits. It covers the longest common *substring*, the two-row space saving and the family of problems that are LCS in disguise. Every program is in C++, Java, Python and JavaScript.
+Version control shows what changed between two files, a spell checker suggests the closest word, and biologists line up DNA strands: all three compare two sequences. The **longest common subsequence** (LCS) measures what two strings share, and **edit distance** measures how many single-character changes separate them. Both are solved by the same kind of table, and together they are the most common two-string questions in interviews.
 
 ## Why comparing all subsequences is too slow
 
-A **subsequence** keeps the characters in their original order but may skip any of them: "BCBA" is a subsequence of "ABCBDAB" (positions 1, 2, 3 and 5). A **common subsequence** is a subsequence of both strings. The LCS of "ABCBDAB" and "BDCABA" has length 4; "BCBA" is one of them, "BDAB" another.
+A **subsequence** keeps the characters in their original order but may skip any of them, and a **common subsequence** is a subsequence of both strings. Drawn as lines between equal letters, the idea is easy to see:
 
-The brute force lists every subsequence of the first string and checks each against the second. A string of length m has 2ᵐ subsequences, and checking one takes O(n) with two pointers. For m = 1,000, the usual interview limit, 2ᵐ is a number with 302 digits. The work has to come from somewhere smarter: the same small questions, "what is the LCS of these two prefixes?", are what the brute force keeps re-asking.
+@figure lines
+
+The brute force lists every subsequence of the first string and checks each against the second. A string of length m has 2ᵐ subsequences: for m = 1,000, the usual interview limit, that is a number with 302 digits. A plain recursion over the last letters is no better, because it asks the same small questions again and again:
+
+@figure repeats
 
 ## The idea: a table over two prefixes
 
-Work on **prefixes**: the first i characters of string a and the first j characters of string b. There are only (m + 1) × (n + 1) pairs of prefixes, and each pair's answer can be built from smaller pairs by looking at their **last characters**.
+Work on **prefixes**, the first i characters of a and the first j of b: only (m + 1) × (n + 1) pairs, each built from smaller pairs by looking at their **last characters**.
 
-- **State:** dp[i][j] is the length of the LCS of a[0..i) and b[0..j), the first i characters of a and the first j of b.
-- **Transition:**
-  - If a[i − 1] == b[j − 1], the last characters match: dp[i][j] = dp[i − 1][j − 1] + 1.
-  - Otherwise at least one of them is not in the LCS: dp[i][j] = max(dp[i − 1][j], dp[i][j − 1]).
-- **Base cases:** row 0 and column 0 are 0, since an empty prefix has nothing in common with anything.
-- **Order:** row by row, left to right; each cell reads the cell above, the cell to its left and the diagonal, all filled earlier.
+- **State:** dp[i][j] is the LCS length of a[0..i) and b[0..j).
+- **Transition:** if a[i − 1] == b[j − 1], dp[i][j] = dp[i − 1][j − 1] + 1; otherwise dp[i][j] = max(dp[i − 1][j], dp[i][j − 1]).
+- **Base cases:** row 0 and column 0 are 0: an empty prefix shares nothing.
 - **Answer:** dp[m][n], the bottom-right cell.
 
-```text
-                 j − 1            j
- i − 1   [ diagonal: match +1 ] [ up: drop a[i−1] ]
- i       [ left: drop b[j−1]  ] [ dp[i][j]          ]
-```
+The indices are shifted by one on purpose: dp[i][j] is about prefixes of *length* i and j, so it compares a[i − 1] and b[j − 1].
 
-The indices are shifted by one on purpose: dp[i][j] talks about prefixes of *length* i and j, so the characters it compares are a[i − 1] and b[j − 1]. That extra row and column of zeros means the transition never needs a special case for the first character.
+@figure lcs-table
 
 ## Why the recurrence is correct
 
-There are two cases, and each needs a short argument.
+There are two cases, and each needs a short argument. When the last letters are equal, matching them never hurts. When they differ, they cannot both be in the LCS, so one can be dropped:
 
-**The last characters are equal.** Call the shared character c. Matching these two c's never hurts. Take any common subsequence Z of the two prefixes. If Z does not end by using both of these c's, drop Z's last character (if it has one) and append the pair of c's instead. Z's other characters were matched at earlier positions in both strings, so the result is still a common subsequence, and it is no shorter. So some LCS ends with this match, and the rest of it is a common subsequence of the two shorter prefixes, at best dp[i − 1][j − 1] long. Hence dp[i][j] = dp[i − 1][j − 1] + 1.
+@figure why-last
 
-**The last characters differ.** An LCS cannot match a[i − 1] with b[j − 1], since they differ. So at least one of them is not the final match of the LCS, and dropping that character from its string loses nothing. The LCS is therefore the LCS of (a without its last character, b), or of (a, b without its last character), whichever is longer: max(dp[i − 1][j], dp[i][j − 1]).
-
-Every case is covered and every option considered is real, so by induction over the table every cell is right.
-
-### Dry run
-
-a = "ABCBDAB" down the side, b = "BDCABA" across the top. Each row adds one character of a:
-
-| i (a[i − 1]) | ∅ | B | D | C | A | B | A |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| 0 (∅) | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
-| 1 (A) | 0 | 0 | 0 | 0 | 1 | 1 | 1 |
-| 2 (B) | 0 | 1 | 1 | 1 | 1 | 2 | 2 |
-| 3 (C) | 0 | 1 | 1 | 2 | 2 | 2 | 2 |
-| 4 (B) | 0 | 1 | 1 | 2 | 2 | 3 | 3 |
-| 5 (D) | 0 | 1 | 2 | 2 | 2 | 3 | 3 |
-| 6 (A) | 0 | 1 | 2 | 2 | 3 | 3 | 4 |
-| 7 (B) | 0 | 1 | 2 | 2 | 3 | 4 | 4 |
-
-Two cells worked out. Row 4, column 5 compares B with B: a match, so it is the diagonal 2 plus one, 3 ("BCB"). Row 5, column 4 compares D with A: no match, so it is the larger of the cell above (2) and the cell to the left (2), which is 2. The answer, bottom right, is 4.
-
-### Rebuilding one LCS
-
-The table holds lengths. To get the characters, walk back from the bottom-right cell, retracing the decision that produced each cell:
-
-- If the characters match, that character is in the LCS: record it and move diagonally up-left.
-- If not, move to whichever neighbour, up or left, holds the larger value (the one the cell copied). On a tie either is correct; this lesson moves up.
-- Stop when either index reaches 0. The characters come out last first, so reverse them.
-
-| Cell (i, j) | Compare | Move | LCS so far (backwards) |
-| --- | --- | --- | --- |
-| (7, 6) | B, A | up: 4 ≥ 4 | |
-| (6, 6) | A, A | match | A |
-| (5, 5) | D, B | up: 3 ≥ 2 | A |
-| (4, 5) | B, B | match | AB |
-| (3, 4) | C, A | left: 1 < 2 | AB |
-| (3, 3) | C, C | match | ABC |
-| (2, 2) | B, D | left: 0 < 1 | ABC |
-| (2, 1) | B, B | match | ABCB |
-
-Reversed: "BCBA". Breaking ties to the left would give "BDAB" instead, another LCS of the same length; an LCS is not unique, only its length is.
+Every case is covered and every option the transition considers is a real common subsequence, so by induction over the table every cell is right. Note that a match extends the **diagonal** only: max(up, left) + 1 would count a letter twice.
 
 ### The code
+
+The function returns one LCS, rebuilt by the walk back in the animation.
 
 ```cpp
 #include <algorithm>
@@ -282,51 +239,25 @@ AGGTAB and GXTXAYB: length 4, one LCS GTAB
 
 ## Edit distance
 
-**Edit distance**, or **Levenshtein distance**, is the fewest single-character operations that turn string a into string b, where an operation is one of:
-
-- **insert** a character,
-- **delete** a character,
-- **replace** a character with another.
-
-"horse" becomes "ros" in three: replace h with r (rorse), delete r (rose), delete e (ros). No two operations can do it, so the distance is 3. The table has the same shape as the LCS table:
+**Edit distance**, or **Levenshtein distance**, is the fewest single-character operations that turn string a into string b, where an operation is to **insert**, **delete** or **replace** one character. "horse" becomes "ros" in three: replace h with r, delete r, delete e. The table has the same shape as the LCS table:
 
 - **State:** dp[i][j] is the fewest operations that turn a[0..i) into b[0..j).
-- **Base cases:** dp[i][0] = i, since turning i characters into nothing takes i deletions, and dp[0][j] = j, since building j characters from nothing takes j insertions. Unlike the LCS table, row 0 and column 0 are not zeros.
-- **Transition:** if a[i − 1] == b[j − 1], the last characters already agree and cost nothing: dp[i][j] = dp[i − 1][j − 1]. Otherwise dp[i][j] = 1 + the smallest of:
-  - dp[i − 1][j − 1]: **replace** a[i − 1] with b[j − 1], then fix the shorter prefixes;
-  - dp[i − 1][j]: **delete** a[i − 1], then turn the rest of a into all of b;
-  - dp[i][j − 1]: turn all of a into b without its last character, then **insert** b[j − 1].
-- **Answer:** dp[m][n].
+- **Base cases:** dp[i][0] = i deletions and dp[0][j] = j insertions. Unlike the LCS table, the borders are not zeros.
+- **Transition:** if a[i − 1] == b[j − 1], the cell copies the diagonal for free; otherwise it is 1 + the smallest of the diagonal (replace), the cell above (delete a[i − 1]) and the cell to the left (insert b[j − 1]).
+
+@figure edit-table
 
 ### Why those three cases are all of them
 
-Write the two strings one above the other, with gaps, so that every operation is one column: a character over the same character is a match, over a different character a replacement, over a gap a deletion, and a gap over a character an insertion. The cost of an edit sequence is the number of columns that are not matches. Now look at the **last column** of the cheapest alignment. It is either a[i − 1] over b[j − 1] (a match or a replacement), a[i − 1] over a gap (a deletion), or a gap over b[j − 1] (an insertion). The columns before it are an alignment of the shorter prefixes, and they must be the cheapest one, or the whole would not be cheapest. Those three possibilities are exactly the three neighbours the transition reads.
+Write the strings one above the other with gaps, so that every operation is one column. The cheapest alignment's last column can only be one of three kinds, and each kind is one neighbour:
 
-Taking the free diagonal whenever the characters match is safe for a similar reason: neighbouring cells of this table never differ by more than 1, so dp[i − 1][j − 1] is never worse than 1 + dp[i − 1][j] or 1 + dp[i][j − 1].
+@figure alignment
 
-### Dry run
-
-a = "horse" down the side, b = "ros" across the top:
-
-| i (a[i − 1]) | ∅ | r | o | s |
-| --- | --- | --- | --- | --- |
-| 0 (∅) | 0 | 1 | 2 | 3 |
-| 1 (h) | 1 | 1 | 2 | 3 |
-| 2 (o) | 2 | 2 | 1 | 2 |
-| 3 (r) | 3 | 2 | 2 | 2 |
-| 4 (s) | 4 | 3 | 3 | 2 |
-| 5 (e) | 5 | 4 | 4 | 3 |
-
-- Row 1, column 1: h against r differ, so 1 + min(replace 0, delete 1, insert 1) = 1.
-- Row 2, column 2: o against o match, so copy the diagonal: 1.
-- Row 3, column 2: r against o differ, so 1 + min(replace 2, delete 1, insert 2) = 2. The best move is deleting the r.
-- Row 5, column 3: e against s differ, so 1 + min(replace 3, delete 2, insert 4) = 3.
-
-The answer is 3. Walking back exactly as for the LCS, choosing at each cell an option that produced its value, recovers the edits: at (5, 3) a deletion of e, at (4, 3) a free match of s, at (3, 2) a deletion of r, at (2, 2) a free match of o, at (1, 1) a replacement of h with r. Read forwards, that is the three-step answer above.
+Taking the free diagonal whenever the letters match is safe too: neighbouring cells of this table never differ by more than 1, so dp[i − 1][j − 1] is never worse than 1 + dp[i − 1][j] or 1 + dp[i][j − 1].
 
 ### The code
 
-The program prints the distance and then each edit with the string it produces. After walking back to cell (i, j), the text is the first j characters of b followed by the unprocessed tail of a, which is how each intermediate string is printed without simulating anything.
+The program prints the distance and each edit with the string it produces: after walking back to cell (i, j), the text is the first j letters of b followed by the unprocessed tail of a.
 
 ```cpp
 #include <algorithm>
@@ -541,26 +472,15 @@ kitten -> sitting: 3 edits
 
 ## Longest common substring: one line changes
 
-A **substring** is contiguous: no gaps. The longest common substring of "XABCY" and "ZABCW" is "ABC". The table looks almost the same, but the state changes in a way that matters:
+A **substring** is contiguous: no gaps. Its table changes one rule and the place of the answer:
 
-- **State:** dp[i][j] is the length of the longest common substring that **ends exactly** at a[i − 1] and b[j − 1]; in other words, the longest common suffix of the two prefixes.
-- **Transition:** if the characters match, dp[i][j] = dp[i − 1][j − 1] + 1. If they differ, dp[i][j] = **0**.
-- **Answer:** the **largest cell anywhere** in the table, not the bottom-right one.
+@figure substring
 
-```text
-         Z  A  B  C  W
-     X   0  0  0  0  0
-     A   0  1  0  0  0
-     B   0  0  2  0  0
-     C   0  0  0  3  0          longest common substring: 3, "ABC"
-     Y   0  0  0  0  0
-```
-
-The reason for the reset is the definition. A substring that ends at these two positions must include both of these characters, so a mismatch means no common substring ends here at all. The LCS table is allowed to inherit max(up, left) because a subsequence may skip a character; a substring may not. Matches show up as runs along diagonals. [Maximum Length of Repeated Subarray](/problems/maximum-length-of-repeated-subarray) is exactly this problem on two integer arrays.
+A substring ending at these two positions must include both letters, so a mismatch means no common substring ends there at all; a subsequence may skip a letter, which is why the LCS table may inherit max(up, left). [Maximum Length of Repeated Subarray](/problems/maximum-length-of-repeated-subarray) is exactly this problem on two integer arrays.
 
 ## Two rows are enough
 
-Every cell of the LCS and edit distance tables reads only the row above and the cell to its left. So the table can be replaced by two rows, `prev` and `cur`, swapped after each row:
+Every cell reads only the row above and the cell to its left, so two rows, `prev` and `cur`, can replace the table:
 
 ```text
 prev = [0] * (n + 1)                  # row i − 1
@@ -573,19 +493,18 @@ for i in 1..m:
 answer = prev[n]
 ```
 
-That is O(n) space, and if you make the shorter string the one along the row, O(min(m, n)). A single row also works if you save the diagonal value in a variable before overwriting it. The price is that the walk back needs the full table, so this saving is for when only the length or the distance is wanted. When the subsequence itself is needed in linear space, Hirschberg's algorithm combines this two-row pass with divide and conquer. The same row-saving idea is what shrinks the [0/1 knapsack](/roadmap/knapsack-problem) table to one row.
+With the shorter string along the row that is O(min(m, n)) space. The price is the walk back, which needs the full table; Hirschberg's algorithm recovers the subsequence in linear space with divide and conquer. The same idea shrinks the [0/1 knapsack](/roadmap/knapsack-problem) table to one row.
 
 ## Problems that are LCS in disguise
 
-- **Fewest deletions to make two strings equal.** Keep the LCS and delete everything else from both: m + n − 2 × LCS. This is [Delete Operation for Two Strings](/problems/delete-operation-for-two-strings), and it is also edit distance without the replace operation. [Minimum ASCII Delete Sum for Two Strings](/problems/minimum-ascii-delete-sum-for-two-strings) weights each deleted character by its character code, so the table minimises a cost instead of maximising a length.
-- **Shortest common supersequence.** The shortest string that has both a and b as subsequences writes each LCS character once and every other character of both strings once: length m + n − LCS. For "ABCBDAB" and "BDCABA" that is 7 + 6 − 4 = 9.
-- **Longest palindromic subsequence.** A palindromic subsequence of s reads the same backwards, so it is a common subsequence of s and reverse(s), and the LPS length equals that LCS length. See [Longest Palindromic Subsequence](/problems/longest-palindromic-subsequence). The fewest insertions that make s a palindrome is then n minus the LPS length: [Minimum Insertion Steps to Make a String Palindrome](/problems/minimum-insertion-steps-to-make-a-string-palindrome).
-- **LCS on numbers.** [Uncrossed Lines](/problems/uncrossed-lines) draws lines between equal numbers of two arrays without crossings; lines that do not cross are a common subsequence, so it is the LCS table unchanged.
-- **Counting instead of maximising.** [Distinct Subsequences](/problems/distinct-subsequences) counts the ways b appears as a subsequence of a, adding the diagonal on a match instead of taking a maximum.
+- **Fewest deletions to make two strings equal.** Keep the LCS and delete the rest: m + n − 2 × LCS, as in [Delete Operation for Two Strings](/problems/delete-operation-for-two-strings); [Minimum ASCII Delete Sum for Two Strings](/problems/minimum-ascii-delete-sum-for-two-strings) weights each letter by its code.
+- **Shortest common supersequence.** Write each LCS letter once and every other letter of both strings once: m + n − LCS.
+- **Longest palindromic subsequence.** The LCS of s and reverse(s): [Longest Palindromic Subsequence](/problems/longest-palindromic-subsequence). n minus it is the fewest insertions that make s a palindrome.
+- **LCS on numbers.** [Uncrossed Lines](/problems/uncrossed-lines) is the first figure of this lesson, literally: the LCS table unchanged.
+- **Counting instead of maximising.** [Distinct Subsequences](/problems/distinct-subsequences) adds the diagonal on a match instead of taking a maximum.
 - **Is one string inside the other?** [Is Subsequence](/problems/is-subsequence) is LCS(s, t) = len(s), but [two pointers](/roadmap/two-pointers) answer it in O(m + n) without a table.
-- **Prefix tables with other rules.** Interleaving two strings, wildcard matching and [Regular Expression Matching](/problems/regular-expression-matching) all fill a table over prefixes of two strings; only the transition changes.
 
-The [longest increasing subsequence](/roadmap/longest-increasing-subsequence) is related too: the strictly increasing LIS of an array equals the LCS of that array with its sorted, de-duplicated copy.
+[Regular Expression Matching](/problems/regular-expression-matching) and wildcard matching fill the same prefix table with other rules, and the [longest increasing subsequence](/roadmap/longest-increasing-subsequence) is the LCS of an array with its sorted, de-duplicated copy.
 
 ## Time and space complexity
 
@@ -595,36 +514,31 @@ The [longest increasing subsequence](/roadmap/longest-increasing-subsequence) is
 | Longest common subsequence | O(m × n) | O(m × n) | O(min(m, n)) |
 | Edit distance | O(m × n) | O(m × n) | O(min(m, n)) |
 | Longest common substring | O(m × n) | O(m × n) | O(min(m, n)) |
-| Rebuilding the LCS or the edits | O(m + n) extra | needs the full table | — |
 
-Each cell does constant work, so the tables cost m × n steps. With two strings of 1,000 characters that is a million cells, fast in any language. With 10⁵ characters each it is 10¹⁰ cells, too slow, and the full table of 4-byte integers would need 40 GB, which is why big inputs need either the two-row version or a different algorithm.
+Two strings of 1,000 characters make a million cells, fast in any language; two of 10⁵ make 10¹⁰, too slow, and a full table of 4-byte integers would need 40 GB.
 
 ## How to recognise a two-string DP
 
-- The input is **two strings or two arrays**, and the question is about what they share or how to turn one into the other.
-- The words **subsequence**, **common**, **convert**, **transform**, **minimum operations**, **insert, delete or replace**, **align**.
+- The input is **two strings or two arrays**, and the question is what they share or how to turn one into the other.
+- The words **subsequence**, **common**, **convert**, **minimum operations**, **insert, delete or replace**, **align**.
 - A single string compared with its own **reverse**: palindromic subsequences.
-- The answer for two strings can be built from the answers for the same strings with **the last character removed** from one or both.
-- Lengths up to a few thousand each, small enough that m × n cells fit in time and memory.
-
-If the question is about a **contiguous** match, it is the substring version, with the reset to 0. If only one string is involved and the question is about its own pieces, an interval DP over i and j within that string may fit better.
+- Lengths up to a few thousand each, small enough for m × n cells.
 
 ## Common mistakes
 
-- **Mixing up the indices.** dp[i][j] describes prefixes of length i and j, so it compares a[i − 1] and b[j − 1]. Comparing a[i] and b[j] skips the first characters and reads past the end.
-- **Zero borders in edit distance.** The first row and column are 0, 1, 2, 3, …, not zeros: an empty string is that many edits away from a prefix.
-- **Using max(up, left) + 1 on a match.** It looks harmless but counts a character twice: for "AA" and "A" it gives 2. A match extends the **diagonal** only.
-- **Using the subsequence rule for a substring.** Inheriting max(up, left) after a mismatch lets gaps in; the substring table must reset to 0, and its answer is the largest cell anywhere.
-- **Walking back through a two-row table.** The rows needed for the walk back have been overwritten; keep the full table when the subsequence or the edits are wanted.
-- **Expecting a unique answer.** Several subsequences can share the longest length, and different tie-breaks in the walk back return different ones. Judges that accept any valid answer are fine; be careful when comparing outputs by hand.
+- **Mixing up the indices.** dp[i][j] compares a[i − 1] and b[j − 1]; comparing a[i] and b[j] skips the first letters and reads past the end.
+- **Zero borders in edit distance.** The first row and column are 0, 1, 2, 3, …
+- **max(up, left) + 1 on a match.** It counts a letter twice: for "AA" and "A" it gives 2.
+- **The subsequence rule for a substring.** The substring table must reset to 0, and its answer is the largest cell anywhere.
+- **Walking back through a two-row table.** The rows it needs are gone; keep the full table when the letters or the edits are wanted.
 
 ## Practice in this order
 
-1. [Is Subsequence](/problems/is-subsequence): the one-string check, with two pointers or with the table.
+1. [Is Subsequence](/problems/is-subsequence): one string inside another, with two pointers or the table.
 2. [Longest Common Subsequence](/problems/longest-common-subsequence): the table from this lesson.
 3. [Delete Operation for Two Strings](/problems/delete-operation-for-two-strings): m + n − 2 × LCS.
 4. [Uncrossed Lines](/problems/uncrossed-lines): the same table on integer arrays.
-5. [Maximum Length of Repeated Subarray](/problems/maximum-length-of-repeated-subarray): the substring version with the reset to 0.
+5. [Maximum Length of Repeated Subarray](/problems/maximum-length-of-repeated-subarray): the substring version.
 6. [Longest Palindromic Subsequence](/problems/longest-palindromic-subsequence): LCS with the reversed string.
 7. [Edit Distance](/problems/edit-distance): three operations, borders of 0, 1, 2, …
 8. [Minimum ASCII Delete Sum for Two Strings](/problems/minimum-ascii-delete-sum-for-two-strings): a weighted cost in the same table.

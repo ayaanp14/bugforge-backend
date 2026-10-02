@@ -113,6 +113,13 @@ export function itemSvg(it: Item): string {
     }
     case "text":
       return text(it.x, it.y, it.text, { fill: INK[it.tone ?? "ink"], size: it.size ?? 13, mono: it.mono ?? true, weight: it.weight, anchor: it.anchor ?? "start" });
+    case "path": {
+      const pts = it.pts.map(([x, y]) => `${x},${y}`).join(" ");
+      const stroke = `stroke:${STROKE[it.tone ?? "line"]};stroke-width:${it.width ?? 1.6};stroke-linejoin:round;stroke-linecap:round${it.dashed ? ";stroke-dasharray:4 3" : ""}`;
+      return it.closed || it.fill
+        ? `<polygon points="${pts}" style="${it.fill ? BAND[it.fill] : "fill:none"};${stroke}"/>`
+        : `<polyline points="${pts}" style="fill:none;${stroke}"/>`;
+    }
   }
 }
 

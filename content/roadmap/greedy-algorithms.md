@@ -2,7 +2,7 @@
 title: Greedy Algorithms
 stage: greedy
 order: 2
-minutes: 22
+minutes: 13
 level: Intermediate
 hub: greedy
 practice: assign-cookies, lemonade-change, maximum-units-on-a-truck, jump-game, jump-game-ii, non-overlapping-intervals, gas-station, partition-labels, candy
@@ -24,35 +24,21 @@ a: Usually, because greedy makes one decision per element — O(n log n) for a s
 ---
 A cashier giving ₹80 in change hands over a ₹50 note, then a ₹20, then a ₹10: at each step, the largest note that still fits. Nobody plans the whole answer in advance, and nobody takes a note back. That is a **greedy algorithm**: build the solution one step at a time, take the choice that looks best at that moment, and never revisit it.
 
-Greedy solutions are short and fast — often a sort and a single loop — and they answer a large share of interview questions about scheduling, assigning and reaching. The difficulty is that they are just as short when they are wrong. The same cashier's rule fails for a currency with coins of 1, 3 and 4. So this lesson is about both halves of the skill: finding the right greedy rule, and proving it correct with an exchange argument before you trust it. Every example is shown in C++, Java, Python and JavaScript.
+Greedy solutions are short and fast, often a sort and one loop. The difficulty is that they are just as short when they are wrong — the cashier's rule fails for coins of 1, 3 and 4 — so the skill has two halves: finding the right rule, and proving it before you trust it.
 
 ## Why trying every choice is too slow
 
-Take the classic **activity selection** problem: you have one meeting room and a list of meetings, each with a start and an end time. What is the largest number of meetings the room can hold without any two overlapping?
-
-The safe approach tries every subset of meetings, keeps those with no overlap, and reports the largest. With n meetings there are 2ⁿ subsets. For 20 meetings that is about a million, already slow; for 50 it is about 10¹⁵, which no computer will finish. A smarter search with [dynamic programming](/roadmap/dynamic-programming) gets this down to O(n log n) or O(n²) with a table, but greedy does better still: sort the meetings by end time, sweep once, and keep every meeting that fits. That is O(n log n) for the sort and O(n) for the sweep, and it is provably optimal.
+Take **activity selection**: one meeting room and a list of meetings, each with a start and an end time. What is the largest number of meetings the room can hold without overlaps? The safe approach tries every subset — 2ⁿ of them, about a million for 20 meetings and 10¹⁵ for 50. [Dynamic programming](/roadmap/dynamic-programming) does better, but greedy does better still: sort by end time and sweep once, O(n log n), provably optimal.
 
 ## The idea: take the best step now, never look back
 
 A greedy algorithm has three parts:
 
-- **A rule for the next choice** — the meeting that ends first, the largest coin that fits, the jump that reaches farthest.
-- **A commitment.** Once a choice is made it is final. There is no backtracking, which is what makes greedy fast.
-- **A smaller problem left over.** After the choice, what remains is the same kind of problem on less input, and the same rule applies to it.
+- **A rule for the next choice**: the meeting that ends first, the largest coin that fits, the jump that reaches farthest.
+- **A commitment**: once made, a choice is final. No backtracking is what makes greedy fast.
+- **A smaller problem left over**, to which the same rule applies.
 
-The simplest example is [Jump Game](/problems/jump-game). Each `nums[i]` is the longest jump you can make from index `i`; can you reach the last index from index 0? You never need to decide *which* jumps to take. Walk left to right and keep one number, `reach`: the farthest index any jump seen so far can land on.
-
-```text
- index:   0  1  2  3  4
- nums:  [ 3, 2, 1, 0, 4 ]
- i = 0: reach = max(0, 0 + 3) = 3
- i = 1: reach = max(3, 1 + 2) = 3
- i = 2: reach = max(3, 2 + 1) = 3
- i = 3: reach = max(3, 3 + 0) = 3
- i = 4: 4 > reach              stuck: index 4 cannot be reached
-```
-
-Every index up to `reach` can be reached, because some earlier index jumps past it and you can always jump shorter than the maximum. If the walk ever stands on an index beyond `reach`, nothing before it gets there, and the answer is no. The greedy choice is "remember only the farthest reach"; nothing else about the past matters.
+The simplest example is [Jump Game](/problems/jump-game): each `nums[i]` is the longest jump from index i — can you reach the last index? Walk left to right keeping one number, `reach`, the farthest index any jump so far can land on. Every index up to it is reachable, since a shorter jump is always allowed; nothing else about the past matters.
 
 @walkthrough
 
@@ -60,39 +46,28 @@ Every index up to `reach` can be reached, because some earlier index jumps past 
 
 A greedy algorithm is correct when the problem has two properties:
 
-- **The greedy-choice property.** There is an optimal solution that makes the greedy first choice. You never lose by taking the locally best option.
-- **Optimal substructure.** After the greedy choice, an optimal solution of the remaining smaller problem, combined with that choice, is optimal for the whole problem.
+- **The greedy-choice property**: some optimal solution makes the greedy first choice, so the locally best option never loses.
+- **Optimal substructure**: after that choice, an optimal solution of the smaller problem completes an optimal whole.
 
-The second property is shared with [dynamic programming](/roadmap/dynamic-programming). The first is what greedy adds, and it is the one to prove. Two proof patterns cover almost every interview problem:
-
-- **Exchange argument.** Take any optimal solution. If it does not make the greedy choice, swap its choice for the greedy one, and show the result is still valid and no worse. Then an optimal solution with the greedy choice exists.
-- **Greedy stays ahead.** Show that after every step, the greedy solution is at least as good as any other solution after the same number of steps — it has reached at least as far, finished at least as early, shipped at least as much. If it is never behind, it cannot lose at the end.
-
-When you cannot find either proof, do not guess. Write a brute force for tiny inputs and compare it with your greedy on a few hundred random cases. Greedy bugs are not off-by-ones; they are wrong ideas, and only a counterexample shows them.
+The first is the one to prove, and two patterns cover almost every interview problem. An **exchange argument** swaps any optimal solution's choice for the greedy one without making it worse. **Greedy stays ahead** shows that after every step greedy is at least as far along as any other solution. If you can find neither, compare your greedy with a brute force on small random inputs: greedy bugs are wrong ideas, and only a counterexample shows them.
 
 ## Activity selection: earliest finish first
 
-Back to the meeting room. Three rules look plausible: take the meeting that starts first, the shortest meeting, or the meeting that ends first. Only the last is correct, and counterexamples dispose of the other two quickly:
+Three rules look plausible: take the meeting that starts first, the shortest, or the one that ends first. Two small counterexamples settle it.
 
-- **Earliest start fails.** Meetings `(0,10)`, `(1,2)`, `(3,4)`: starting first picks `(0,10)`, which blocks both others. The answer is 2.
-- **Shortest first fails.** Meetings `(1,5)`, `(4,7)`, `(6,10)`: the shortest, `(4,7)`, overlaps both others. The answer is 2, from `(1,5)` and `(6,10)`.
+@figure rules
 
-**Earliest finish works**, and the exchange argument shows why. Let `g` be the meeting that ends first of all. Take any optimal schedule and let `f` be its first meeting. Since `g` ends no later than any meeting, `end(g) ≤ end(f)`. Every other meeting in the schedule starts at or after the time `f` ends, so also at or after the time `g` ends. Replace `f` with `g`: no new overlap appears, and the schedule has the same number of meetings. So some optimal schedule starts with `g` — the greedy-choice property. What is left is the same problem on the meetings that start after `g` ends, and the same argument applies to it. By repeating it, greedy's whole schedule is optimal.
+So sort by end time, and keep every meeting that starts once the room is free. A meeting may start the moment the previous one ends; if a problem says otherwise, change `>=` to `>`.
 
-The intuition is worth keeping: the meeting that finishes first leaves the room free the longest for everything else.
+@figure activity
 
-### Dry run
+### Why earliest finish is optimal
 
-Meetings `(5,9)`, `(1,2)`, `(5,7)`, `(0,6)`, `(8,9)`, `(3,4)`, sorted by end time (ties by start). A meeting may start at the moment the previous one ends; if a problem says otherwise, change `>=` to `>`.
+Let g be the meeting that ends first, and take any optimal schedule whose first meeting f is not g. Since g ends no later than f, everything after f also starts after g ends, so replacing f with g creates no overlap and keeps the count. Some optimal schedule therefore begins with g, and the same argument applies to what is left. Repeated, it turns any optimal schedule into greedy's:
 
-| Meeting | Room free at | Starts at or after it? | Decision | Taken so far |
-| --- | --- | --- | --- | --- |
-| (1,2) | 0 | yes | take | 1 |
-| (3,4) | 2 | yes | take | 2 |
-| (0,6) | 4 | no | skip | 2 |
-| (5,7) | 4 | yes | take | 3 |
-| (5,9) | 7 | no | skip | 3 |
-| (8,9) | 7 | yes | take | 4 |
+@figure exchange
+
+The intuition worth keeping: the meeting that finishes first leaves the room free the longest for everything else.
 
 ### The code
 
@@ -241,31 +216,15 @@ take (8,9)
 most meetings: 4
 ```
 
-The same rule, turned round, solves [Non-overlapping Intervals](/problems/non-overlapping-intervals): the fewest intervals to remove is n minus the most you can keep. Shooting balloons with the fewest arrows is the same sweep again. The whole family is the subject of the [intervals](/roadmap/intervals) lesson.
+The same rule, turned round, solves [Non-overlapping Intervals](/problems/non-overlapping-intervals): the fewest intervals to remove is n minus the most you can keep. The whole family is the subject of the [intervals](/roadmap/intervals) lesson.
 
 ## Jump Game II: the fewest jumps
 
-[Jump Game II](/problems/jump-game-ii) keeps the same input but asks for the **fewest** jumps to the last index. Now the choice of jump matters, and the obvious greedy rule — always jump as far as possible — is wrong: from `[2, 3, 1, 1, 4]` the longest first jump lands on index 2, whose value 1 is a poor springboard, while the shorter jump to index 1 reaches the end in one more step.
+[Jump Game II](/problems/jump-game-ii) asks for the **fewest** jumps to the last index. Now the choice matters, and the obvious greedy — always jump as far as possible — is wrong. The right greedy thinks in **levels**: the indices reachable with exactly k jumps form one contiguous range, and the next range ends at the farthest landing from it.
 
-The right greedy thinks in **levels**. With zero jumps you are at index 0. With one jump you can be anywhere in `1..nums[0]`. With two jumps you can be anywhere up to the farthest landing point of any index in that first range — and so on. Each level is a contiguous range, because you can always jump shorter than the maximum. So scan left to right, keeping:
+@figure jump-levels
 
-- `end`, the last index reachable with the current number of jumps;
-- `farthest`, the farthest index reachable with one more jump from anything seen so far.
-
-When the scan reaches `end`, the current level is used up: take one more jump and extend `end` to `farthest`. This is a breadth-first search over levels — see [breadth-first search](/roadmap/breadth-first-search) — compressed into two numbers. Its proof is "greedy stays ahead": after k jumps, no strategy can be beyond index `end`, because `end` is by construction the farthest point any k-jump path reaches. So the first level containing the last index gives the fewest jumps. If `farthest` cannot pass the current index when a level ends, the walk is stuck and the end is unreachable.
-
-### Dry run
-
-`nums = [2, 3, 1, 1, 4]`; the loop stops before the last index, since there is no need to jump from it.
-
-| i | nums[i] | i + nums[i] | farthest | i == end? | jumps | end afterwards |
-| --- | --- | --- | --- | --- | --- | --- |
-| 0 | 2 | 2 | 2 | yes, jump | 1 | 2 |
-| 1 | 3 | 4 | 4 | no | 1 | 2 |
-| 2 | 1 | 3 | 4 | yes, jump | 2 | 4 |
-| 3 | 1 | 4 | 4 | no | 2 | 4 |
-
-Two jumps: index 0 to 1, then 1 to 4. Note that the algorithm never decides *which* index to jump from; it only counts levels, which is why it never makes the "longest first jump" mistake.
+The scan keeps `end`, the last index of the current level, and `farthest`, the farthest landing from it; when `i` reaches `end`, it counts a jump and sets `end = farthest`. It is a [breadth-first search](/roadmap/breadth-first-search) over levels in two numbers, and its proof is "greedy stays ahead". If `farthest` cannot pass `i` when a level ends, the end is unreachable.
 
 ### The code
 
@@ -393,35 +352,32 @@ nums 1 3 0 0 2 0 1: fewest jumps 3
 nums 3 2 1 0 4: the end cannot be reached
 ```
 
-The second test is the array from the animation above: 0 to 1, 1 to 4, 4 to 6.
+The second test is the array from the walkthrough: 0 to 1, 1 to 4, 4 to 6.
 
 ## Assign cookies: match smallest with smallest
 
-[Assign Cookies](/problems/assign-cookies) gives each child a greed factor and each cookie a size; a child is content with a cookie at least as big as their greed, and each child gets at most one cookie. Maximise the number of content children.
-
-Sort both lists. Walk the cookies from smallest to largest, and give each cookie to the least greedy child still waiting if it satisfies them; otherwise the cookie is too small for everyone left, so discard it. The exchange argument: suppose an optimal assignment gives the least greedy child a cookie `c` larger than the smallest cookie `s` that would satisfy them. Swap: give the child `s`, and give `c` to whoever had `s` (if anyone). That person is still content, since `c` is bigger than `s`. The number of content children is unchanged, so matching smallest with smallest is never worse. Sorting is what makes the rule a two-pointer sweep — see [sorting algorithms](/roadmap/sorting-algorithms) for why that first step is so often the whole trick.
+In [Assign Cookies](/problems/assign-cookies) a child is content with a cookie at least their greed factor. Sort both lists and give each cookie, smallest first, to the least greedy child still waiting if it is big enough. The exchange argument: if an optimal assignment gives that child a bigger cookie than needed, swap it with the smallest that would do — whoever held that one is still content. Sorting first is what makes it a two-pointer sweep; see [sorting algorithms](/roadmap/sorting-algorithms).
 
 ## When greedy fails
 
-Greedy has no safety net, so it pays to know the classic failures.
+Greedy has no safety net, so know the classic failures. **Coin change**: largest-first is optimal for coin systems like the rupee's, but not for arbitrary coins — [Coin Change](/problems/coin-change) needs [dynamic programming](/roadmap/dynamic-programming).
 
-**Coin change.** Make 6 from coins of 1, 3 and 4 with as few coins as possible. Greedy takes the largest coin that fits: 4, then 1, then 1 — three coins. But 3 + 3 is two. Taking the 4 felt best and was not, and greedy never reconsiders. For a coin system like 1, 2, 5, 10, 20, 50 the largest-first rule happens to be optimal (such systems are called *canonical*), which is why it feels natural at a till. For arbitrary coins, [Coin Change](/problems/coin-change) needs [dynamic programming](/roadmap/dynamic-programming): the best answer for every amount from 1 up, built from the best answers for smaller amounts.
+@figure coins
 
-**Fractional versus 0/1 knapsack.** A bag holds 50 kg; the items are worth 60, 100 and 120 and weigh 10, 20 and 30 kg, so their value per kilogram is 6, 5 and 4.
+**Fractional versus 0/1 knapsack**: when you may take part of an item, best value per kilogram first is optimal; when items are whole, the same rule loses, because the exchange argument needs to swap part of an item. That is the [knapsack problem](/roadmap/knapsack-problem).
 
-- If you may take **fractions** of an item (gold dust, not gold bars), greedy by value per kilogram is optimal: all of the first two items (30 kg, worth 160), then 20 kg of the third, worth 80 — 240 in all. An exchange argument proves it: any kilogram of a lower-ratio item could be swapped for a kilogram of a higher-ratio one without losing value.
-- If each item must be taken **whole or not at all**, the same rule takes the first two items for 160 and cannot fit the third. The best answer is the second and third items: 50 kg worth 220. The exchange argument breaks because you cannot swap part of an item. This is the [knapsack problem](/roadmap/knapsack-problem), a dynamic programming problem.
+@figure knapsack
 
-The lesson: a greedy rule that sounds right is a hypothesis. Look for a counterexample with three or four items before you code it.
+A greedy rule that sounds right is a hypothesis. Look for a counterexample with three or four items before you code it.
 
 ## More greedy shapes
 
-- **[Lemonade Change](/problems/lemonade-change).** When a customer pays with a $20 bill, give a $10 and a $5 as change rather than three $5s, because the $5s can serve more future customers. Keep the most flexible bills for later.
-- **[Maximum Units on a Truck](/problems/maximum-units-on-a-truck).** Load the boxes with the most units first: the fractional knapsack with whole boxes of identical size, where greedy is safe.
-- **[Gas Station](/problems/gas-station).** If the tank goes negative between stations i and j, no station in between can be the start either, so jump the start past j. One pass, O(n).
-- **[Partition Labels](/problems/partition-labels).** Extend the current piece to the last occurrence of every letter in it; cut when the scan reaches the piece's end. The same "extend to the farthest reach" idea as the jump games.
-- **[Minimum Number of Platforms](/problems/minimum-number-of-platforms).** Sort arrivals and departures separately and sweep them with two pointers, counting trains in the station.
-- **[Candy](/problems/candy).** Two greedy passes, left to right and right to left, each fixing one direction of the rule; take the larger value at each child.
+- **[Lemonade Change](/problems/lemonade-change)**: for a $20, give $10 + $5 rather than three $5s, keeping the most flexible bills.
+- **[Maximum Units on a Truck](/problems/maximum-units-on-a-truck)**: most units per box first.
+- **[Gas Station](/problems/gas-station)**: if the tank goes negative between stations i and j, no station in between can be the start.
+- **[Partition Labels](/problems/partition-labels)**: extend each piece to the last occurrence of every letter in it.
+- **[Minimum Number of Platforms](/problems/minimum-number-of-platforms)**: sort arrivals and departures separately and sweep them.
+- **[Candy](/problems/candy)**: two greedy passes, one per direction.
 
 ## Time and space complexity
 
@@ -430,41 +386,37 @@ The lesson: a greedy rule that sounds right is a hypothesis. Look for a countere
 | Activity selection | O(2ⁿ × n) over all subsets | O(n log n): sort, then one sweep | O(1) beyond the sort |
 | Jump Game | exponential over all paths | O(n): track the farthest reach | O(1) |
 | Jump Game II | O(n²) dynamic programming | O(n): levels as two numbers | O(1) |
-| Assign cookies | try all matchings | O(n log n + m log m): sort both | O(1) beyond the sorts |
 | Fractional knapsack | — | O(n log n): sort by value per weight | O(1) beyond the sort |
-| Coin change, any coins | greedy is wrong | use dynamic programming, O(amount × coins) | O(amount) |
+| Coin change, any coins | greedy is wrong | dynamic programming, O(amount × coins) | O(amount) |
 
-Most greedy solutions cost what their sort costs, O(n log n), because the rule needs the input in some order — by end time, by size, by ratio. The sweep afterwards is linear. When no sort is needed, as in the jump games, greedy is O(n).
+Most greedy solutions cost what their sort costs, because the rule needs the input in some order; the sweep afterwards is linear.
 
 ## How to recognise a greedy problem
 
-- The question asks for a **maximum or minimum count** — the most meetings, the fewest jumps, the fewest arrows, the most children — and choices do not interact much beyond an obvious order.
-- There is a natural **order** to process things in: by end time, by size, by deadline, by ratio. Sorting by it makes the decision at each step obvious.
-- You can phrase the rule as "**always take the ... that leaves the most room**" — the meeting ending first, the smallest cookie that fits.
-- A small **counterexample** to the rule is hard to find. (If you find one easily, think [dynamic programming](/roadmap/dynamic-programming).)
-- The constraints are large (n up to 10⁵) and the answer is a single number, which rules out searching over subsets.
+- A **maximum or minimum count** — the most meetings, the fewest jumps, the most children — where choices do not interact much beyond an obvious order.
+- A natural **order** to process things in: by end time, size, deadline or ratio.
+- A rule you can phrase as "**always take the … that leaves the most room**".
+- A small **counterexample** is hard to find. (If you find one easily, think [dynamic programming](/roadmap/dynamic-programming).)
+- Large constraints (n up to 10⁵) and a single number as the answer.
 
 ## Common mistakes
 
-- **Trusting a rule without a proof or a test.** Earliest start, shortest first and largest coin first all sound right. Check a three-item counterexample, or compare with a brute force on small random inputs.
-- **Sorting by the wrong key.** Activity selection sorts by **end** time, not start time; merging intervals sorts by **start**. Know which one your proof uses.
-- **Getting touching endpoints wrong.** Does a meeting ending at 4 conflict with one starting at 4? Read the statement, and use `>=` or `>` to match.
-- **Being greedy on the wrong quantity.** In Jump Game II the longest single jump is the wrong choice; the farthest reach of the whole level is the right one.
-- **Forgetting the impossible case.** A jump array with a zero you cannot pass, a gas circuit with less fuel than cost in total — check for it and return the agreed value.
-- **Using greedy where only fractions make it work.** The fractional knapsack is greedy; the 0/1 knapsack is not.
+- **Trusting a rule without a proof or a test**: earliest start and largest coin first both sound right.
+- **Sorting by the wrong key**: activity selection sorts by **end**; merging intervals by **start**.
+- **Touching endpoints**: does a meeting ending at 4 clash with one starting at 4? Match `>=` or `>` to the statement.
+- **Being greedy on the wrong quantity**: the longest single jump, not the level's farthest reach.
+- **Forgetting the impossible case**: a zero you cannot pass, less fuel than cost.
 
 ## Practice in this order
 
-Start with rules you can prove in one sentence, then move to ones that need an argument:
-
 1. [Assign Cookies](/problems/assign-cookies): sort both, match smallest with smallest.
-2. [Lemonade Change](/problems/lemonade-change): keep the most useful bills for later customers.
-3. [Maximum Units on a Truck](/problems/maximum-units-on-a-truck): best ratio first, the fractional idea with whole boxes.
+2. [Lemonade Change](/problems/lemonade-change): keep the most useful bills.
+3. [Maximum Units on a Truck](/problems/maximum-units-on-a-truck): best ratio first.
 4. [Jump Game](/problems/jump-game): keep only the farthest reach.
-5. [Jump Game II](/problems/jump-game-ii): count levels, the second program above.
+5. [Jump Game II](/problems/jump-game-ii): count levels, the second program.
 6. [Non-overlapping Intervals](/problems/non-overlapping-intervals): activity selection, counted the other way.
 7. [Gas Station](/problems/gas-station): a one-pass greedy with a proof you must find.
 8. [Partition Labels](/problems/partition-labels): extend to the farthest last occurrence.
-9. [Candy](/problems/candy): two greedy passes that together satisfy both neighbours.
+9. [Candy](/problems/candy): two passes that together satisfy both neighbours.
 
-The [greedy problem list](/challenges/greedy) has every problem in the catalogue tagged greedy. When these feel routine, the next stage of the road is [intervals](/roadmap/intervals), where sorting and greedy sweeps meet.
+The [greedy problem list](/challenges/greedy) has every greedy problem in the catalogue. Next on the road is [intervals](/roadmap/intervals), where sorting and greedy sweeps meet.

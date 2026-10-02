@@ -2,7 +2,7 @@
 title: Sliding Window Technique
 stage: sliding-window
 order: 1
-minutes: 22
+minutes: 14
 level: Beginner
 hub: sliding-window
 practice: maximum-sum-subarray-of-size-k, contains-duplicate-ii, longest-substring-without-repeating-characters, minimum-size-subarray-sum, max-consecutive-ones-iii, permutation-in-string, longest-repeating-character-replacement, minimum-window-substring, subarrays-with-k-different-integers
@@ -22,67 +22,31 @@ a: Not for conditions on a sum. Shrinking is safe only when removing an element 
 q: How do you count subarrays with exactly K distinct elements?
 a: Count the subarrays with at most K distinct elements and subtract those with at most K − 1. "At most K" can be counted with a sliding window, adding right − left + 1 for every position of the right pointer; "exactly K" cannot, because shrinking such a window can break it, but it is the difference of two counts that can.
 ---
-Many array and string questions ask about a **contiguous** stretch of the input: the largest sum of k consecutive numbers, the longest substring with no repeated letter, the shortest run of numbers whose total reaches a target. The obvious solution examines every stretch separately and recomputes each one from scratch. The sliding window technique notices that neighbouring stretches share almost all of their elements. It keeps one stretch, the **window**, and updates what it knows about it as the edges move — one element in, one element out — so each step costs O(1) instead of O(k).
+Many questions ask about a **contiguous** stretch of the input: the largest sum of k consecutive numbers, the longest substring with no repeated letter. Neighbouring stretches share almost all their elements, so the sliding window technique keeps one stretch, the **window**, and updates it as the edges move — O(1) a step instead of O(k). It is [two pointers](/roadmap/two-pointers) moving the same way, in two kinds:
 
-This lesson covers the two kinds of window, fixed and variable, the property that makes shrinking a window safe, why the technique is O(n) despite its loop inside a loop, the counting trick for "exactly K" questions, and the one situation — negative numbers — where it quietly gives wrong answers. It builds on [Two Pointers](/roadmap/two-pointers): a window is two pointers moving in the same direction with something tracked between them. Every example is shown in C++, Java, Python and JavaScript.
+@figure two-kinds
 
 ## Why recomputing every window is too slow
 
-Start with the simplest question: *given an array and a number k, what is the largest sum of k consecutive elements?* The brute force tries every starting point and adds up the k elements from there.
-
-```text
-best = -infinity
-for start in 0 .. n-k:
-    sum = 0
-    for i in start .. start+k-1:
-        sum = sum + arr[i]
-    best = max(best, sum)
-```
-
-There are n − k + 1 windows and each costs k additions. With n = 100,000 and k = 50,000 that is about 50,000 × 50,000 = 2.5 × 10⁹ additions, far beyond the hundred million or so simple operations a judge allows in a second. Questions without a fixed length are worse: the longest substring with no repeated character has about n²/2 substrings to try, and checking each one for repeats costs up to another n.
-
-The waste is easy to see. The window starting at index 0 and the window starting at index 1 share k − 1 elements, and the brute force adds those k − 1 elements up again from nothing. The sliding window adds each element once.
+Summing every window of k from scratch is n − k + 1 windows of k additions: about 2.5 × 10⁹ for n = 100,000 and k = 50,000, against roughly 10⁸ simple steps a second. Without a fixed length it is worse — about n²/2 substrings, each checked for repeats. Yet neighbouring windows share k − 1 elements, added up again every time.
 
 ## The idea: slide the window instead of rebuilding it
 
-Keep a running sum of the current window. To move the window one step to the right, one element enters on the right and one leaves on the left, so the new sum is the old sum plus the newcomer minus the leaver.
+A **fixed-size window** keeps a running sum: old sum + newcomer − leaver. Given a rule instead of a length, a **variable-size window** from `left` to `right` follows three rules:
 
-```text
- index:    0   1   2   3   4   5
- arr:    [ 2,  1,  5,  1,  3,  2 ]          k = 3
+- **Grow.** Move `right` one step and add the new element to the window's state.
+- **Shrink.** While the window breaks the rule, remove the element at `left` and move `left` on.
+- **Record.** Once the window obeys the rule again, compare it with the best so far.
 
-          [ 2   1   5 ]                     sum = 2 + 1 + 5  = 8
-              [ 1   5   1 ]                 sum = 8 - 2 + 1  = 7
-                  [ 5   1   3 ]             sum = 7 - 1 + 3  = 9   best
-                      [ 1   3   2 ]         sum = 9 - 5 + 2  = 6
-```
-
-That is a **fixed-size window**. Many questions do not give the length. They give a rule the window must obey ("no repeated character", "sum at least 7") and ask for the longest or shortest window that obeys it. A **variable-size window** handles those with two pointers, `left` and `right`, where the window is everything from `left` to `right` inclusive:
-
-- **Grow.** Move `right` one step and add the new element to the window's state: a sum, a count of characters, a number of zeroes.
-- **Shrink.** While the window breaks the rule, remove the element at `left` from the state and move `left` one step.
-- **Record.** Once the window obeys the rule again, it is a candidate answer: compare its length with the best so far.
-
-The state is whatever lets you check the rule in O(1): a running sum for a rule about sums, or a **count map** — each value mapped to how many times it is in the window — for rules about the window's contents. The figure below runs a variable window over "pwwkew" to find the longest substring without a repeated character. It uses a small refinement of the shrink step: a map of where each character was last seen lets `left` jump straight past the repeat instead of stepping one index at a time.
+The state is whatever checks the rule in O(1): a running sum, or a **count map** of how often each value is inside. Below, the longest substring without a repeat in "pwwkew" — where a map of last-seen positions lets `left` jump straight past a repeat.
 
 @walkthrough
 
 ## A fixed-size window
 
-The fixed window is the easiest place to start because there is nothing to decide: build the first window once, then slide it to the end. The only subtlety is the indices. When `right` is the index entering, the element leaving is `arr[right - k]`, and the window now starts at `right - k + 1`.
+There is nothing to decide: build the first window once, then slide it to the end. When `right` enters, the element leaving is `arr[right - k]` and the window starts at `right - k + 1`.
 
-### Dry run
-
-The array `[2, 1, 5, 1, 3, 2]` with k = 3:
-
-| right | enters | leaves | sum | window | best |
-| --- | --- | --- | --- | --- | --- |
-| 0 to 2 | 2, 1, 5 | — | 8 | 0 to 2 | 8 |
-| 3 | 1 | 2 | 7 | 1 to 3 | 8 |
-| 4 | 3 | 1 | 9 | 2 to 4 | 9 |
-| 5 | 2 | 5 | 6 | 3 to 5 | 9 |
-
-Every window after the first costs one addition and one subtraction, whatever the value of k.
+@figure fixed-slide
 
 ### The code
 
@@ -196,42 +160,21 @@ k = 3: best sum 9 (indices 2 to 4)
 k = 2: best sum 6 (indices 1 to 2)
 ```
 
-The same slide answers [Maximum Sum Subarray of Size K](/problems/maximum-sum-subarray-of-size-k) directly. [Permutation in String](/problems/permutation-in-string) is a fixed window too: slide a window as long as the pattern across the text, keep a count of each letter inside it, and compare those counts with the pattern's.
+The same slide answers [Maximum Sum Subarray of Size K](/problems/maximum-sum-subarray-of-size-k). [Permutation in String](/problems/permutation-in-string) is a fixed window too: slide a pattern-length window across the text and compare its letter counts with the pattern's.
 
 ## A variable-size window: grow, then shrink
 
-Now the classic: *the length of the longest substring of s with no repeated character*, which is [Longest Substring Without Repeating Characters](/problems/longest-substring-without-repeating-characters). The rule is "no character appears twice", and the state is a count map from character to how many times it is in the window.
+The classic is [Longest Substring Without Repeating Characters](/problems/longest-substring-without-repeating-characters), with a count map as the state. The window was valid before `s[right]` arrived, so a count of 2 can only be the newcomer's: shrink until it is 1 again. This is the program's loop, without the last-seen jump:
 
-Every iteration of the outer loop moves `right` one step and adds `s[right]` to the map. If that makes its count 2, the window is broken — and only `s[right]` can have broken it. The window was valid a moment ago, so the one character that can now appear twice is the one that just arrived. The inner loop therefore removes characters from the left until that one count is back to 1. Then the window is valid again, and its length `right - left + 1` is a candidate.
+@figure grow-shrink
 
 ## Why shrinking is safe
 
-The loop never moves `left` backwards. That looks like a gamble: once `left` has passed an index, no later window can start there. Why can it not miss the answer?
+`left` never moves back, so once it passes an index no later window starts there. That cannot miss the answer because the rule is **monotone**: a repeat-free window stays so when shrunk, and a window with a repeat keeps it when grown:
 
-The reason is a property of the rule, not of the code. "No repeated character" is **monotone**: if a window has no repeats, every smaller window inside it has none either; and if a window has a repeat, every larger window around it has that repeat too. Now fix a value of `right` and ask for the longest valid window that ends there. It starts at the smallest start that makes the window valid; call that start L(right).
+@figure valid-starts
 
-When `right` moves one step on, L can only stay where it is or move forward. Suppose the best window ending at `right + 1` started before L(right). Drop its last character and you have a window ending at `right`, starting before L(right) — and that window is valid, because it sits inside a valid one. That contradicts L(right) being the smallest valid start. So the best starts never move backwards, and the code may carry `left` forward from one `right` to the next instead of searching again from index 0.
-
-That gives the loop its **invariant**: *after the shrink loop, the window from `left` to `right` is the longest valid window that ends at `right`.* Every substring ends somewhere, so the best over all values of `right` is the best over all substrings. Shrinking only ever discards starts that cannot pair with this `right` or with any later one.
-
-Ask the monotone question before you write any window: *does making a valid window smaller keep it valid?* If the answer is no — as with sums over arrays that hold negative numbers, below — the window is the wrong tool, however natural it looks.
-
-### Dry run
-
-The search on "abcabcbb", one row per step of `right`:
-
-| right | char | shrink | window | length | best |
-| --- | --- | --- | --- | --- | --- |
-| 0 | a | — | a | 1 | 1 |
-| 1 | b | — | ab | 2 | 2 |
-| 2 | c | — | abc | 3 | 3 |
-| 3 | a | drop a | bca | 3 | 3 |
-| 4 | b | drop b | cab | 3 | 3 |
-| 5 | c | drop c | abc | 3 | 3 |
-| 6 | b | drop a, b | cb | 2 | 3 |
-| 7 | b | drop c, b | b | 1 | 3 |
-
-At steps 6 and 7 the repeated letter is not at the left edge, so the window drops two characters to get past it. That is the work the last-seen jump in the figure saves. It changes the constant, not the O(n).
+That is the loop's **invariant**: *after the shrink loop, the window from `left` to `right` is the longest valid window ending at `right`.* Every substring ends somewhere, so the best over all `right` is the best overall. Before writing any window, ask: *does shrinking a valid window keep it valid?* If not, the window is the wrong tool.
 
 ### The code
 
@@ -360,28 +303,15 @@ for (const s of ["abcabcbb", "bbbbb", "pwwkew"]) {
 "pwwkew" -> 3 ("wke")
 ```
 
-When the alphabet is small and known, an array of counts indexed by character code (26 for lowercase letters, 128 for ASCII) does the same job as the map and is faster.
+For a small known alphabet, an array of counts indexed by character code (26 or 128 slots) does the map's job faster.
 
 ## The shortest window: shrink while it is still valid
 
-Longest-window questions shrink while the window is **invalid** and record afterwards. Shortest-window questions turn this around: they shrink while the window is still **valid**, recording at every step, because each step makes a valid window shorter.
+Longest-window loops shrink while the window is **invalid**, then record. Shortest-window loops shrink while it is still **valid**, recording each step. [Minimum Size Subarray Sum](/problems/minimum-size-subarray-sum) wants the shortest run of positive numbers summing to at least a target:
 
-Take [Minimum Size Subarray Sum](/problems/minimum-size-subarray-sum): *given an array of positive integers and a target, find the length of the shortest contiguous subarray whose sum is at least the target.* Grow until the sum reaches the target. The window is then a candidate, so record it and drop the leftmost element to see whether a shorter window still works. Keep dropping until the sum falls below the target, then grow again.
+@figure shortest-window
 
-Why is that enough? Before every grow step the sum is below the target, because the shrink loop ran until it was. With **positive** numbers, every window inside a window whose sum is too small has a sum that is too small as well. So when the sum first reaches the target at `right`, no window that starts at `left` or later and ends before `right` reaches it. The window from `left` to `right` is the shortest valid window starting at `left`, and the code records it before dropping `left`. Every start that has any valid window gets its shortest one recorded, so the minimum of those records is the answer.
-
-### Dry run
-
-nums = `[2, 3, 1, 2, 4, 3]`, target = 7:
-
-| right | enters | sum after growing | shrinking | best length |
-| --- | --- | --- | --- | --- |
-| 0 | 2 | 2 | — | none |
-| 1 | 3 | 5 | — | none |
-| 2 | 1 | 6 | — | none |
-| 3 | 2 | 8 | record 0 to 3, drop 2, sum 6 | 4 |
-| 4 | 4 | 10 | record 1 to 4, drop 3, sum 7; record 2 to 4, drop 1, sum 6 | 3 |
-| 5 | 3 | 9 | record 3 to 5, drop 2, sum 7; record 4 to 5, drop 4, sum 3 | 2 |
+That is enough because before every grow the sum is below the target, and with **positive** numbers every window inside a too-small one is too small too — so each start's shortest valid window is recorded before `left` moves past it.
 
 ### The code
 
@@ -525,49 +455,37 @@ Shortest subarray with sum >= 7: length 2 (indices 4 to 5)
 No subarray reaches 100
 ```
 
-The same shrink-while-valid loop, with a count map in place of the sum, is the heart of [Minimum Window Substring](/problems/minimum-window-substring): grow until the window holds every character of the pattern, then shrink while it still does.
+With a count map instead of a sum, the same loop is the heart of [Minimum Window Substring](/problems/minimum-window-substring): grow until the window holds every pattern character, then shrink while it still does.
 
 ## Why it is O(n), not O(n²)
 
-A loop inside a loop usually means O(n²), so count pointer moves instead of loop iterations. `right` moves n times. `left` moves only forwards and never passes `right + 1`, so across the **whole run** it moves at most n times, however those moves are spread over the outer iterations. Each move does O(1) work on the state, so the total is at most 2n steps: O(n). Put another way, every element **enters** the window once and **leaves** it at most once. One step of `right` can trigger many removals, but they add up to at most n over the run; spreading the cost of an occasional long inner loop over the cheap iterations around it is called **amortised** analysis.
+Count pointer moves, not loop iterations. `right` moves n times; `left` only moves forwards, so across the **whole run** it moves at most n times. Every element enters once and leaves at most once: at most 2n steps, **amortised** over the run.
 
 ## Counting windows: exactly K = at most K − at most (K − 1)
 
-Some questions ask *how many* subarrays satisfy a rule. When the rule is monotone, the window counts them as easily as it finds the longest. After the shrink loop, the window from `left` to `right` is valid, so every window that ends at `right` and starts anywhere from `left` to `right` is valid too, because each sits inside it. That is `right - left + 1` windows, added once for every value of `right`.
+To count subarrays under a monotone rule, add `right - left + 1` after each shrink: every start from `left` to `right` is valid. "Exactly K distinct" is not monotone, so count two things that are, and subtract:
 
-"Exactly K distinct values" is not monotone. Shrinking a window with exactly K distinct values can drop it to K − 1, and growing it can push it to K + 1, so there is no single `left` that separates the good starts from the bad ones. The trick is to count something that is monotone, twice, and subtract:
+@figure exactly-k
 
-```text
-exactly(K) = atMost(K) - atMost(K - 1)
-
-atMost(K):
-    count = 0, left = 0, an empty count map
-    for right in 0 .. n-1:
-        add nums[right] to the map
-        while the map holds more than K distinct values:
-            remove nums[left] from the map, left = left + 1
-        count = count + (right - left + 1)     # every start from left to right is valid
-    return count
-```
-
-For nums = [1, 2, 1, 2, 3] and K = 2, atMost(2) adds 1 + 2 + 3 + 4 + 2 = 12 and atMost(1) adds 1 + 1 + 1 + 1 + 1 = 5, so exactly 12 − 5 = 7 subarrays hold two distinct values. The subtraction works because a subarray with at most K distinct values has either exactly K or at most K − 1, never both. That is [Subarrays with K Different Integers](/problems/subarrays-with-k-different-integers), and the same subtraction solves [Count Number of Nice Subarrays](/problems/count-number-of-nice-subarrays) and [Binary Subarrays With Sum](/problems/binary-subarrays-with-sum).
+That is [Subarrays with K Different Integers](/problems/subarrays-with-k-different-integers), and the same subtraction solves [Count Number of Nice Subarrays](/problems/count-number-of-nice-subarrays) and [Binary Subarrays With Sum](/problems/binary-subarrays-with-sum).
 
 ## When the window does not work: negative numbers
 
-Every argument above leaned on monotonicity, and for sums that needs the numbers to be non-negative. Without it the window fails silently. Take nums = [−1, 4] and target 4. The window grows to the whole array, its sum is 3, and since the shrink loop only runs once the sum is big enough, it never runs: the code reports that no subarray reaches 4. Yet [4] alone does. Dropping the −1 would have *raised* the sum, and that is precisely the move the shrink rule never makes.
+Every argument above leaned on monotonicity, and for sums that needs non-negative numbers. Without it the window fails silently:
 
-When an array can hold negative numbers, switch tools:
+@figure negative-fail
 
-- **"How many subarrays sum to k?"** Use prefix sums with a hash map of how often each prefix sum has been seen; see [Prefix Sum](/roadmap/prefix-sum) and [Subarray Sum Equals K](/problems/subarray-sum-equals-k).
-- **"The shortest subarray with sum at least k?"** Use prefix sums with a monotonic deque, as in [Shortest Subarray with Sum at Least K](/problems/shortest-subarray-with-sum-at-least-k).
-- **"The largest sum of any subarray?"** That is not a window question at all; it is [Kadane's algorithm](/roadmap/kadanes-algorithm).
+When an array can hold negatives, switch tools:
+
+- **"How many subarrays sum to k?"** Prefix sums with a hash map — see [Prefix Sum](/roadmap/prefix-sum) and [Subarray Sum Equals K](/problems/subarray-sum-equals-k).
+- **"The shortest subarray with sum at least k?"** Prefix sums with a monotonic deque, as in [Shortest Subarray with Sum at Least K](/problems/shortest-subarray-with-sum-at-least-k).
+- **"The largest sum of any subarray?"** Not a window question: [Kadane's algorithm](/roadmap/kadanes-algorithm).
 
 ## Other shapes of the same idea
 
-- **At most k bad elements.** [Max Consecutive Ones III](/problems/max-consecutive-ones-iii) asks for the longest run of 1s if you may flip k zeroes. Read it as "the longest window with at most k zeroes" and it is the grow-then-shrink loop with a zero counter.
-- **The window's most common element.** [Longest Repeating Character Replacement](/problems/longest-repeating-character-replacement) keeps a window valid while its length minus the count of its most frequent letter is at most k: those are the letters you would have to replace.
-- **A window of distance k.** [Contains Duplicate II](/problems/contains-duplicate-ii) keeps a set of the last k values; a value already in the set is a duplicate within distance k.
-- **The window's maximum.** A running sum cannot tell you the largest value in the window, because when the maximum leaves you no longer know the next largest. [Sliding Window Maximum](/problems/sliding-window-maximum) keeps a deque of indices whose values decrease from front to back, which yields every window's maximum in O(1) amortised — the [monotonic stack](/roadmap/monotonic-stack) idea applied to a queue.
+- **At most k bad elements**: [Max Consecutive Ones III](/problems/max-consecutive-ones-iii), the longest window with at most k zeroes.
+- **A window of distance k**: [Contains Duplicate II](/problems/contains-duplicate-ii), a set of the last k values.
+- **The window's maximum**: [Sliding Window Maximum](/problems/sliding-window-maximum), a deque of decreasing values — the [monotonic stack](/roadmap/monotonic-stack) idea on a queue.
 
 ## Time and space complexity
 
@@ -579,38 +497,33 @@ When an array can hold negative numbers, switch tools:
 | Variable-size window with a running sum | O(n) | O(1) |
 | Variable-size window with a count map | O(n) | O(distinct values in the window) |
 
-The space column is the window's state: two indices and a sum, or a map with one entry per distinct value inside the window. For lowercase letters that is at most 26 entries, which is O(1).
-
 ## How to recognise a sliding window problem
 
-- The answer is a **contiguous** subarray or substring: "consecutive", "substring", "subarray", "window", "in a row".
-- The question asks for the **longest**, the **shortest**, the **largest sum** or the **number** of such stretches.
-- A length k is given: a fixed window. A rule is given instead ("at most k distinct", "sum at least target", "no repeats"): a variable window.
-- The rule is **monotone**: a valid window stays valid when shrunk. For sums, check that the numbers cannot be negative.
-- The window's state can be updated in O(1) when one element enters or leaves.
+- The answer is a **contiguous** subarray or substring: "consecutive", "substring", "subarray", "in a row".
+- It asks for the **longest**, **shortest**, **largest sum** or **number** of such stretches.
+- A length k is given: a fixed window. A rule is given: a variable window.
+- The rule is **monotone**; for sums, the numbers cannot be negative.
 
-"Subsequence" is a warning sign. A subsequence may skip elements, so it is not a window; questions about subsequences usually want [dynamic programming](/roadmap/dynamic-programming) or two pointers walking two strings.
+"Subsequence" is a warning sign: it may skip elements, so it is not a window — think [dynamic programming](/roadmap/dynamic-programming).
 
 ## Common mistakes
 
-- **Using a window on negative numbers.** The shrink rule assumes that removing an element moves the sum one way. Check the constraints for negative values before reaching for a window.
-- **Recording at the wrong moment.** Longest-window loops record *after* the shrink loop, when the window is valid again; shortest-window loops record *inside* it, before each removal. Swap them and you record invalid windows or miss the best one.
-- **Off-by-one in the length.** The window from `left` to `right` inclusive holds `right - left + 1` elements, and in a fixed window the element leaving is `arr[right - k]`, not `arr[right - k + 1]`.
-- **Not undoing the state exactly.** Every step of `left` must reverse what adding that element did: decrement its count, subtract it from the sum. A zero count left in the map is harmless, unless the code counts distinct values with the map's size — then delete the key.
-- **Restarting `left` for every `right`.** That turns the O(n) window back into the O(n²) brute force. The monotone property is your licence to carry `left` forward.
+- **A window on negative numbers.** Check the constraints first.
+- **Recording at the wrong moment.** Longest: after the shrink loop. Shortest: inside it, before each removal.
+- **Off by one.** The window holds `right - left + 1` elements; in a fixed window the leaver is `arr[right - k]`.
+- **Not undoing the state exactly.** Each step of `left` must reverse what adding that element did; delete zero counts if you use the map's size.
+- **Restarting `left` for every `right`.** That is the O(n²) brute force again.
 
 ## Practice in this order
 
-Start with the fixed window, then the two kinds of variable window, then the counting trick:
-
-1. [Maximum Sum Subarray of Size K](/problems/maximum-sum-subarray-of-size-k): the fixed window, exactly as above.
+1. [Maximum Sum Subarray of Size K](/problems/maximum-sum-subarray-of-size-k): the fixed window.
 2. [Contains Duplicate II](/problems/contains-duplicate-ii): a fixed window whose state is a set.
-3. [Longest Substring Without Repeating Characters](/problems/longest-substring-without-repeating-characters): grow, then shrink, with a count map.
-4. [Minimum Size Subarray Sum](/problems/minimum-size-subarray-sum): the shortest window, shrinking while it stays valid.
-5. [Max Consecutive Ones III](/problems/max-consecutive-ones-iii): rephrase the question as "at most k zeroes".
-6. [Permutation in String](/problems/permutation-in-string): a fixed window compared by letter counts.
-7. [Longest Repeating Character Replacement](/problems/longest-repeating-character-replacement): a validity rule built from the window's most common letter.
-8. [Minimum Window Substring](/problems/minimum-window-substring): the shortest window with a count map, the classic hard one.
-9. [Subarrays with K Different Integers](/problems/subarrays-with-k-different-integers): exactly K as at most K minus at most K − 1.
+3. [Longest Substring Without Repeating Characters](/problems/longest-substring-without-repeating-characters): grow, then shrink.
+4. [Minimum Size Subarray Sum](/problems/minimum-size-subarray-sum): shrink while valid.
+5. [Max Consecutive Ones III](/problems/max-consecutive-ones-iii): "at most k zeroes".
+6. [Permutation in String](/problems/permutation-in-string): a fixed window of letter counts.
+7. [Longest Repeating Character Replacement](/problems/longest-repeating-character-replacement): a rule built from the top letter.
+8. [Minimum Window Substring](/problems/minimum-window-substring): the classic hard one.
+9. [Subarrays with K Different Integers](/problems/subarrays-with-k-different-integers): exactly K by subtraction.
 
-The [sliding window problem list](/challenges/sliding-window) has every problem in the catalogue that uses the technique, from easy to hard. Next on the road is [Prefix Sum](/roadmap/prefix-sum), the tool for the subarray questions a window cannot handle.
+Every window problem is on the [sliding window problem list](/challenges/sliding-window). Next on the road: [Prefix Sum](/roadmap/prefix-sum), for the subarray questions a window cannot handle.

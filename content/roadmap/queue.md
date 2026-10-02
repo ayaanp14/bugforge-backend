@@ -2,7 +2,7 @@
 title: Queues and Deques
 stage: stacks
 order: 3
-minutes: 18
+minutes: 12
 level: Beginner
 hub: queue
 practice: time-needed-to-buy-tickets, number-of-students-unable-to-eat-lunch, first-unique-character-in-a-string, find-the-winner-of-the-circular-game, reveal-cards-in-increasing-order, dota2-senate, number-of-people-aware-of-a-secret
@@ -22,73 +22,33 @@ a: Push new items onto an inbox stack. To dequeue, take from an outbox stack; wh
 q: What is a circular queue?
 a: A circular queue stores its items in a fixed array and treats the end of the array as joined to the start. It keeps the index of the front item and a count; the back is (front + count) mod capacity. Neither enqueue nor dequeue shifts anything, so both are O(1), and slots freed at the front are reused.
 ---
-A **queue** is a line at a counter. People join at the back and are served from the front, so whoever arrived first leaves first. That rule is called **first in, first out**, or FIFO, and it is the mirror image of the [stack](/roadmap/stack)'s last in, first out. Whenever work must be handled in the order it arrived — print jobs, network packets, requests to a server, the nodes of a graph discovered one layer at a time — a queue is the structure doing it.
-
-This lesson covers how a queue is stored so that both ends are O(1) (the circular buffer), the **deque** that works at both ends, how each language spells them and the traps in each, building a queue from two stacks, and where queues appear in interview problems. Every example is a whole program in C++, Java, Python and JavaScript.
+A **queue** is a line at a counter: people join at the back and are served from the front, so whoever arrived first leaves first. That rule is **first in, first out**, or FIFO, the mirror image of the [stack](/roadmap/stack)'s last in, first out. Whenever work must be handled in the order it arrived — print jobs, network packets, requests to a server, the nodes of a graph discovered one layer at a time — a queue is doing it.
 
 ## Why a plain array is the wrong queue
 
-The obvious queue is an array: append at the end, remove from index 0. Appending is cheap, but removing from the front of an array shifts every remaining element one place left. A queue that holds n items and serves them all does n + (n − 1) + … + 1 moves, about n² / 2. For a breadth-first search over 100,000 nodes that is around 5 × 10⁹ element moves — a program that should finish in milliseconds runs for many seconds, and the only cause is the choice of container.
+The obvious queue is an array: append at the back, remove from index 0. But removing index 0 shifts every remaining element one place left, so serving n items costs about n²/2 moves — around 5 × 10⁹ for a breadth-first search over 100,000 nodes. Python's `list.pop(0)` and JavaScript's `array.shift()` look innocent and do exactly this. The fix is not to move the elements at all, but to move the **front**.
 
-This is not a theoretical trap. Python's `list.pop(0)` and JavaScript's `array.shift()` both look like innocent one-liners and both do this shifting. The fix is not to move the elements at all: leave them where they are and move the **front** instead.
+@figure shift-cost
 
 ## The idea: first in, first out
 
-A queue offers two main operations:
+A queue offers **enqueue** (put an item at the back), **dequeue** (remove and return the front), **peek** (read the front) and a size check. Because nobody can jump the line, items come out in exactly the order they went in.
 
-- **Enqueue** puts an item at the back.
-- **Dequeue** removes and returns the item at the front.
-
-Plus **peek** (read the front without removing it) and a size or empty check. Because nobody can jump the line, the order things come out is exactly the order they went in.
-
-Round-robin scheduling shows why that order is useful. An operating system has several tasks to run and gives each a short slice of time, a **quantum**, in turn. The task at the front runs for one quantum; if it is not finished, it rejoins at the back. Every task waits at most one round before running again, so none is starved. With tasks A, B, C and D needing 3, 5, 2 and 4 units and a quantum of 2, C finishes first at time 6, then A at 9, D at 13 and B at 14.
+Round-robin scheduling shows why that order is useful. Each task runs for a short slice of time, a **quantum**; if it is not finished, it rejoins at the back. Every task waits at most one round before running again, so none is starved.
 
 @walkthrough
 
 ## How a queue is stored: the circular buffer
 
-The fast array-based queue keeps the elements still, and keeps two numbers: `head`, the index of the front element, and `size`, how many elements there are. Dequeue reads `slots[head]` and moves `head` one place on. Enqueue writes into the first free slot after the last element.
+The fast array-based queue keeps its elements still and stores two numbers: `head`, the index of the front, and `size`. Taking every index **modulo the capacity** turns the array into a ring, so the slots `head` leaves behind are reused.
 
-The problem is that `head` creeps to the right, and the slots it leaves behind are wasted. The fix is to treat the array as a **ring**: after the last slot comes slot 0 again. Taking every index **modulo the capacity** does exactly that.
+@figure ring
 
-```text
- capacity 5, after enqueue 1..5, dequeue twice, enqueue 6:
+Why it is correct: the queue is always the `size` slots starting at `head`, wrapping past the end. Enqueue adds a slot at the end of that run and dequeue removes one from its start, so the run stays contiguous and never overlaps itself while `size` is within the capacity. Nothing shifts: both are O(1). Keeping `size` rather than a `tail` index is deliberate.
 
- index:   0   1   2   3   4
- slots: [ 6,  _,  3,  4,  5 ]        head = 2, size = 4
-          ^       ^
-         back    front               order: 3, 4, 5, 6
+@figure full-empty
 
- back = (head + size - 1) mod capacity = (2 + 4 - 1) mod 5 = 0
- next free slot = (head + size) mod capacity = 1
-```
-
-The rules are short:
-
-- **Enqueue x:** if `size == capacity` the queue is full. Otherwise write `slots[(head + size) mod capacity] = x` and add one to `size`.
-- **Dequeue:** read `slots[head]`, set `head = (head + 1) mod capacity`, subtract one from `size`.
-- **Peek:** read `slots[head]`.
-
-Why it is correct: the queue's elements are always the `size` slots starting at `head` and wrapping round the end of the array, in queue order. Enqueue adds a slot at the end of that run and dequeue removes one from its start, so the run stays contiguous on the ring and never overlaps itself as long as `size` stays within the capacity. Nothing is ever shifted, so both operations are O(1).
-
-Keeping `size` rather than a separate `tail` index is a deliberate choice. With only `head` and `tail`, an empty queue and a full one both have `head == tail`, and you would have to leave one slot permanently unused to tell them apart. A count settles it directly. A queue that must grow copies its elements into a larger array in queue order — starting at `head`, not at index 0 — which keeps enqueue O(1) amortised, as with a growing [stack](/roadmap/stack).
-
-A queue can also be a singly [linked list](/roadmap/linked-list) with pointers to both ends: enqueue links a node after the tail, dequeue removes the head. Both are O(1), at the cost of one allocation per item.
-
-### Dry run
-
-A queue with capacity 3, running the program below:
-
-| Operation | Slot used | head after | size after | slots |
-| --- | --- | --- | --- | --- |
-| enqueue 1 | write (0 + 0) mod 3 = 0 | 0 | 1 | 1 _ _ |
-| enqueue 2 | write (0 + 1) mod 3 = 1 | 0 | 2 | 1 2 _ |
-| enqueue 3 | write (0 + 2) mod 3 = 2 | 0 | 3 | 1 2 3 |
-| enqueue 4 | full, refused | 0 | 3 | 1 2 3 |
-| dequeue | read slot 0, returns 1 | 1 | 2 | _ 2 3 |
-| enqueue 4 | write (1 + 2) mod 3 = 0 | 1 | 3 | 4 2 3 |
-
-The last enqueue wrapped round into slot 0, freed by the dequeue. The slots now read 4 2 3, but the queue order, starting from `head`, is 2 3 4.
+A queue that must grow copies its elements into a larger array in queue order, starting at `head`, which keeps enqueue O(1) amortised. A [linked list](/roadmap/linked-list) with pointers to both ends also works, at one allocation per item.
 
 ### The code
 
@@ -295,19 +255,19 @@ dequeue: 4
 | Dequeue from the front | O(1) | O(1) | O(n) |
 | Peek at the front | O(1) | O(1) | O(1) |
 | Read the i-th item | O(1) | O(n) | O(1) |
-| Memory per item | one slot | one node with a pointer | one slot |
 
-The last column is the trap from the start of the lesson: everything looks fine except the one operation a queue does all the time.
+The last column is the trap: everything looks fine except the one operation a queue does all the time.
 
 ## Deques: both ends at once
 
-A **deque** (double-ended queue, pronounced "deck") lets you add and remove at both the front and the back in O(1). A circular buffer gives you one almost for free: adding at the front steps `head` back one place, `head = (head − 1 + capacity) mod capacity`, writes there and adds one to `size`; removing from the back only subtracts one from `size`. The `+ capacity` keeps the index from going negative, since `%` on a negative number is negative in C++, Java and JavaScript.
+A **deque** (double-ended queue, pronounced "deck") adds and removes at both the front and the back in O(1). A circular buffer gives you one almost for free: adding at the front steps `head` back one place.
+
+@figure deque
 
 Because it works at both ends, a deque is a stack and a queue at once, and some problems need exactly that:
 
-- **Sliding window maximum.** Keep a deque of indices whose values decrease from front to back. New indices enter at the back after popping smaller values there; indices that fall out of the window leave from the front. The front is always the window's maximum. This **monotonic deque** is covered in the [Monotonic Stack](/roadmap/monotonic-stack) lesson and solves [Sliding Window Maximum](/problems/sliding-window-maximum) in O(n) — see also [Sliding Window](/roadmap/sliding-window).
-- **0-1 BFS.** On a graph whose edges weigh 0 or 1, push a node reached by a 0-edge to the front and one reached by a 1-edge to the back, and the deque yields nodes in order of distance without a heap.
-- **Palindrome checks and rotations,** where you take from either end as you go.
+- **Sliding window maximum**: the **monotonic deque** of the [Monotonic Stack](/roadmap/monotonic-stack) lesson solves [Sliding Window Maximum](/problems/sliding-window-maximum) in O(n) — see also [Sliding Window](/roadmap/sliding-window).
+- **0-1 BFS**: on edges weighing 0 or 1, push a node reached by a 0-edge to the front and by a 1-edge to the back, and nodes come out in order of distance without a heap.
 
 ## Queues and deques in each language
 
@@ -318,12 +278,7 @@ Because it works at both ends, a deque is a stack and a queue at once, and some 
 | Python | `collections.deque` | `append(x)` | `popleft()` | `q[0]` | the same `deque` |
 | JavaScript | an array and a head index | `push(x)` | `q[head++]` | `q[head]` | none built in |
 
-Each has a detail worth knowing:
-
-- **C++.** `std::queue` is an adapter over `std::deque` by default. As with `std::stack`, `pop()` returns nothing, so read `front()` first, and both are undefined behaviour on an empty queue. `std::deque` itself offers `push_front`, `push_back`, `pop_front` and `pop_back`, all O(1), plus O(1) indexing.
-- **Java.** Prefer `ArrayDeque` for both queues and deques. `offer`, `poll` and `peek` return `false` or `null` when they cannot proceed; `add`, `remove` and `element` throw instead. `LinkedList` also implements `Queue`, but allocates a node per item and is slower. `PriorityQueue` is not FIFO at all — it is a [heap](/roadmap/heap).
-- **Python.** Use `collections.deque`: `append` and `popleft` are O(1), as are `appendleft` and `pop`. Never use `list.pop(0)` as a dequeue — it is O(n). `deque(maxlen=k)` keeps only the last k items, dropping from the other end automatically. `queue.Queue` is a thread-safe queue with locks, meant for passing work between threads, not for algorithms.
-- **JavaScript.** There is no queue type, and `array.shift()` re-indexes every remaining element, which is O(n) in general (engines optimise some small cases, but you cannot rely on it). Keep a head index instead:
+In C++, read `front()` before `pop()`, and check `empty()` first. In Java, prefer `ArrayDeque`; `PriorityQueue` is not FIFO at all but a [heap](/roadmap/heap). In Python, `deque` makes both ends O(1), while `queue.Queue` is a locked queue for threads, not for algorithms. JavaScript has no queue type, and `shift()` is O(n), so keep a head index:
 
 ```text
 let queue = [];
@@ -333,34 +288,13 @@ const front = queue[head++];     // dequeue: read and move the front on, nothing
 const size = queue.length - head;
 ```
 
-The slots before `head` are never reused, so a long-running queue can free them now and then with `queue = queue.slice(head); head = 0` once `head` passes half the length. For a short-lived queue such as one BFS, the simple version is fine. A circular buffer like the one above is the other choice.
-
 ## A queue from two stacks
 
-A favourite interview question asks for a FIFO queue built only from LIFO stacks. One stack reverses order; two reversals restore it. Keep an **inbox** that receives every new item and an **outbox** that serves dequeues:
+A favourite interview question builds a FIFO queue from LIFO stacks. One stack reverses order; two reversals restore it. An **inbox** receives every new item and an **outbox** serves dequeues, refilled from the inbox only when it is empty.
 
-- **Enqueue:** push onto the inbox.
-- **Dequeue:** if the outbox is empty, pop every item from the inbox and push it onto the outbox. Then pop the outbox.
+@figure two-stacks
 
-Moving the inbox into the outbox reverses it, so the oldest item ends on top of the outbox, ready to leave first. The rule that you refill **only when the outbox is empty** is what keeps the order right: if you poured new items on top of an outbox that still held older ones, the newcomers would be served first and jump the line.
-
-### Why it is O(1) amortised
-
-A single dequeue can be expensive: if the inbox holds k items, that dequeue moves all k. But follow one item through its life instead of one operation: it is pushed onto the inbox once, popped from the inbox once, pushed onto the outbox once and popped from the outbox once. Four O(1) steps per item, never more, because an item in the outbox is never moved back. So any sequence of n operations costs O(n) in total — **O(1) amortised** per operation, even though an individual dequeue is occasionally O(n).
-
-### Dry run
-
-| Operation | inbox (bottom → top) | outbox (bottom → top) | Returns |
-| --- | --- | --- | --- |
-| enqueue 1, 2, 3 | 1 2 3 | empty | — |
-| dequeue | empty | 3 2 | 1 (outbox was empty: 3 items moved, then pop) |
-| enqueue 4, 5 | 4 5 | 3 2 | — |
-| dequeue | 4 5 | 3 | 2 |
-| dequeue | 4 5 | empty | 3 |
-| dequeue | empty | 5 | 4 (outbox was empty: 2 items moved, then pop) |
-| dequeue | empty | empty | 5 |
-
-Five items, five moves in total, and they came out in the order they went in.
+The refill rule is what keeps the order right: pouring new items on top of older ones still in the outbox would let the newcomers jump the line. And although one dequeue can move k items, follow a single item instead: it is pushed and popped once on each stack and never moved back. Four O(1) steps per item, so n operations cost O(n) in total — **O(1) amortised** each.
 
 ### The code
 
@@ -522,14 +456,14 @@ dequeue: 5
 items moved from inbox to outbox: 5
 ```
 
-The reverse question, a stack from queues, also has an answer — after each push, rotate the queue so the new item is at the front — but the simple versions make either push or pop O(n).
+The reverse question, a stack from queues, also has an answer — after each push, rotate the queue so the new item is at the front — but it makes one of the operations O(n).
 
 ## Where queues appear
 
-- **Breadth-first search.** BFS explores a graph or grid in layers: every node at distance d before any node at distance d + 1. A queue gives that order for free, because nodes are processed in the order they were discovered, and the nodes discovered from layer d all join behind the rest of layer d. This is why BFS finds shortest paths in unweighted graphs. See [Breadth-First Search](/roadmap/breadth-first-search).
-- **Scheduling.** Round robin as in the figure, a printer's job list, requests waiting for a worker. FIFO is the simplest fair order.
-- **Streams and buffers.** Data arriving faster than it is used waits in a queue, often a fixed-size circular buffer, between the producer and the consumer. "Calls in the last 3,000 milliseconds" is a queue of timestamps: new ones join at the back, expired ones leave from the front.
-- **Simulations.** People in line, cards moved to the bottom of a deck, players in a circle. When the statement says "goes to the back of the line", simulate it with a queue.
+- **Breadth-first search**: nodes are processed in the order they were discovered, so every node at distance d comes before any at d + 1. That is why BFS finds shortest paths in unweighted graphs — see [Breadth-First Search](/roadmap/breadth-first-search).
+- **Scheduling**: round robin, a printer's job list, requests waiting for a worker.
+- **Streams and buffers**: data arriving faster than it is used waits in a queue; "calls in the last 3,000 milliseconds" is a queue of timestamps that expire from the front.
+- **Simulations**: when the statement says "goes to the back of the line", simulate it with a queue.
 
 ## Time and space complexity
 
@@ -538,34 +472,32 @@ The reverse question, a stack from queues, also has an answer — after each pus
 | n enqueues and n dequeues | Array, removing from index 0 | O(n²) | O(n) |
 | n enqueues and n dequeues | Circular buffer or deque | O(n) | O(n) |
 | n enqueues and n dequeues | Two stacks | O(n) total, O(1) amortised each | O(n) |
-| Push or pop at either end | Deque | O(1) each | O(n) |
 | Breadth-first search | Queue of discovered nodes | O(V + E) | O(V) |
 
 ## How to recognise a queue problem
 
 - The statement describes a **line**: "goes to the back", "the person at the front", "in the order they arrived".
 - Things happen in **rounds or turns**, and whoever acted rejoins at the end.
-- You need the **shortest number of steps** in an unweighted grid or graph: BFS with a queue.
-- Data arrives as a **stream**, and old items expire after a time or a count.
-- You need the **maximum or minimum of a moving window**, or to add and remove at both ends: a deque.
+- You need the **fewest steps** in an unweighted grid or graph: BFS.
+- Data arrives as a **stream**, and old items expire.
+- You need the **maximum or minimum of a moving window**: a deque.
 
 ## Common mistakes
 
-- **Dequeuing with `list.pop(0)` or `array.shift()`.** Each call is O(n), and the program becomes O(n²). Use `collections.deque` in Python and a head index or circular buffer in JavaScript.
-- **Telling full from empty with only head and tail.** Both look like `head == tail`. Keep a count, or leave one slot unused on purpose.
-- **A negative index when stepping back.** In C++, Java and JavaScript, `(head - 1) % capacity` is −1 when `head` is 0. Add the capacity first: `(head - 1 + capacity) % capacity`.
-- **Refilling the outbox too early.** In the two-stack queue, move items only when the outbox is empty, or newer items overtake older ones.
-- **Mistaking a priority queue for a queue.** Java's `PriorityQueue` and Python's `heapq` hand out the smallest item, not the oldest.
-- **Ignoring the C++ `pop()` signature.** `std::queue::pop()` returns nothing; read `front()` first, and check `empty()` before either.
+- **Dequeuing with `list.pop(0)` or `array.shift()`**: O(n) each, O(n²) in all.
+- **Telling full from empty with only head and tail**: keep a count.
+- **A negative index when stepping back**: `(head - 1) % capacity` is −1 in C++, Java and JavaScript; add the capacity first.
+- **Refilling the outbox too early** in the two-stack queue.
+- **Mistaking a priority queue for a queue**: it hands out the smallest item, not the oldest.
 
 ## Practice in this order
 
-1. [Time Needed to Buy Tickets](/problems/time-needed-to-buy-tickets): people rejoin the back of the line after each ticket — round robin.
-2. [Number of Students Unable to Eat Lunch](/problems/number-of-students-unable-to-eat-lunch): a queue of students against a stack of sandwiches.
-3. [First Unique Character in a String](/problems/first-unique-character-in-a-string): keep candidates in arrival order and drop from the front any that repeat.
-4. [Find the Winner of the Circular Game](/problems/find-the-winner-of-the-circular-game): a circle as a queue — move k − 1 people to the back, remove the next.
-5. [Reveal Cards In Increasing Order](/problems/reveal-cards-in-increasing-order): replay the reveal process on a queue of positions.
-6. [Dota2 Senate](/problems/dota2-senate): two queues of turn numbers; the earlier senator bans the other and rejoins for the next round.
-7. [Number of People Aware of a Secret](/problems/number-of-people-aware-of-a-secret): people grouped by the day they learned, leaving from the front when they forget.
+1. [Time Needed to Buy Tickets](/problems/time-needed-to-buy-tickets): round robin at a ticket counter.
+2. [Number of Students Unable to Eat Lunch](/problems/number-of-students-unable-to-eat-lunch): a queue against a stack.
+3. [First Unique Character in a String](/problems/first-unique-character-in-a-string): candidates in arrival order.
+4. [Find the Winner of the Circular Game](/problems/find-the-winner-of-the-circular-game): a circle as a queue.
+5. [Reveal Cards In Increasing Order](/problems/reveal-cards-in-increasing-order): replay the reveal on a queue of positions.
+6. [Dota2 Senate](/problems/dota2-senate): two queues of turn numbers.
+7. [Number of People Aware of a Secret](/problems/number-of-people-aware-of-a-secret): people leave the front when they forget.
 
 The [queue problem list](/challenges/queue) has every queue problem in the catalogue. Next in this stage is the [monotonic stack](/roadmap/monotonic-stack), which also introduces the monotonic deque.

@@ -2,7 +2,7 @@
 title: Linked Lists
 stage: stacks
 order: 1
-minutes: 22
+minutes: 13
 level: Beginner
 practice: reverse-string, remove-element, merge-sorted-array, happy-number, rotate-array, find-the-winner-of-the-circular-game, find-the-duplicate-number
 updated: 2026-10-03
@@ -21,157 +21,65 @@ a: Move a slow pointer one node at a time and a fast pointer two nodes at a time
 q: Should I use std::list or java.util.LinkedList in coding interviews?
 a: Not for linked-list questions. Those give you a node class and the head, and expect you to rewire the next pointers yourself, usually in O(1) extra space. The library classes are doubly linked lists that are useful in real code, but copying a list into one, or into an array, avoids the very skill the question is testing.
 ---
-An array keeps its elements side by side in one block of memory. That is why `arr[i]` is instant, and also why putting a new element at the front means shifting every other element along by one. A **linked list** makes the opposite trade. Each element lives in its own small object, a **node**, which holds the value and a pointer to the next node. The nodes can sit anywhere in memory; the pointers are what put them in order.
+An array keeps its elements side by side in one block of memory, so `arr[i]` is instant but a new first element shifts every other one along. A **linked list** makes the opposite trade: each element lives in its own small object, a **node**, holding the value and a pointer to the next node. The nodes sit anywhere; the pointers put them in order.
 
-That one change makes inserting and deleting cheap once you are at the right place, and makes reaching the i-th element slow. Linked lists are also where interviewers check that you can rewire pointers without losing half the list, so a few techniques come up again and again: the dummy head, three-pointer reversal, and fast and slow pointers. This lesson covers each one with a dry run, the reason it is correct, and code in C++, Java, Python and JavaScript.
+@figure layout
+
+Inserting and deleting become cheap and reaching the i-th element slow, and interviews test whether you can rewire pointers safely: the dummy head, reversal, and fast and slow pointers.
 
 ## Why not just use an array
 
-Arrays are the right default for most problems, but take a program that keeps a history of events and always puts the newest one first. In an array, inserting at index 0 means moving each of the n existing elements one place to the right before writing the new one. Do that 100,000 times and the moves add up to 1 + 2 + … + 100,000, about 5 × 10⁹ — far beyond the hundred million or so simple steps a judge allows in a second. Deleting from the front of an array costs the same.
+Keep a history with the newest event first. Each insert at index 0 of an array moves every element one place right, so 100,000 inserts cost about 5 × 10⁹ moves, far over a one-second limit. A list needs two pointer writes, however long it is.
 
-With a linked list, putting a node at the front is two pointer writes: point the new node at the old first node, then make the new node the head. Nothing else moves, however long the list is, so 100,000 insertions take 100,000 steps.
+@figure front-insert
 
-The price is paid elsewhere. A list has no index arithmetic: to reach the 50,000th node you start at the head and follow 49,999 pointers. So the rule of thumb is simple. Use an array when you read by position; use a linked list when you insert and delete a lot at places you already have a pointer to — the front, the back, or next to a node you have just visited.
+The price: no index arithmetic, so reaching the 50,000th node means following 49,999 pointers. Use an array to read by position, and a list to insert and delete where you already hold a pointer.
 
 ## How a linked list is stored
 
-A node is a tiny object with two fields: `val`, the value, and `next`, a pointer to the following node. The list itself is nothing more than a pointer to the first node, called the **head**. The last node's `next` is null, which is how a walk knows where to stop.
+A node has two fields, `val` and `next`; the list is just a pointer to the first node, the **head**, and the last node's `next` is null, which is where a walk stops. A **singly linked** list, as in the figure, walks forwards only. A **doubly linked** list adds a `prev` pointer per node, so it can walk backwards and delete a node it holds. A **circular** list's last node points back to the first, like the players in [Find the Winner of the Circular Game](/problems/find-the-winner-of-the-circular-game).
 
-```text
- head
-  |
-  v
-+---+---+    +---+---+    +---+---+    +---+------+
-| 1 | o-+--->| 2 | o-+--->| 3 | o-+--->| 4 | null |
-+---+---+    +---+---+    +---+---+    +---+------+
- val next
-```
-
-Every operation on a list is built from one loop, the walk:
-
-```text
-cur = head
-while cur is not null:
-    visit cur.val
-    cur = cur.next
-```
-
-There are three common shapes:
-
-- **Singly linked list.** Each node points to the next one only, as above. You can walk forwards and nowhere else.
-- **Doubly linked list.** Each node also has a `prev` pointer to the node before it. That costs one more pointer per node and twice the rewiring per change, but you can walk backwards, and you can delete a node when you hold only that node, because it knows its own predecessor.
-- **Circular linked list.** The last node points back to the first instead of to null. It models anything that goes round in turns: a round-robin scheduler, or players standing in a circle as in [Find the Winner of the Circular Game](/problems/find-the-winner-of-the-circular-game).
-
-One more fact matters in practice. Each node is allocated on its own, so neighbouring nodes are usually far apart in memory. A processor fetches memory in cache lines of 64 bytes: walking an array uses every byte fetched, while walking a list jumps to a fresh line for almost every node. Both walks are O(n), but the list is often several times slower, which is why real code reaches for a dynamic array first.
+Nodes allocated one by one usually sit far apart, so a walk jumps to a fresh cache line almost every node. Both walks are O(n), but the list's is often several times slower — why real code reaches for an array first.
 
 ## The operations and their cost
 
 | Operation | Dynamic array | Singly linked list | Doubly linked list |
 | --- | --- | --- | --- |
 | Read the i-th element | O(1) | O(n) | O(n) |
-| Search for a value | O(n) | O(n) | O(n) |
 | Insert or delete at the front | O(n) | O(1) | O(1) |
-| Insert at the back | O(1) amortised | O(1) with a tail pointer | O(1) with a tail pointer |
 | Delete at the back | O(1) | O(n) | O(1) with a tail pointer |
 | Insert after a node you hold | O(n) | O(1) | O(1) |
-| Delete a node you hold | O(n) | O(n), to find the node before it | O(1) |
-| Extra memory per element | none | one pointer | two pointers |
+| Delete a node you hold | O(n) | O(n), to find the one before it | O(1) |
 
-Read the O(1) entries carefully: they are O(1) *once you hold the node*. Inserting at position 5,000 is still O(n) overall, because you walk 5,000 nodes to get there. Linked lists win when the walk is already happening — you are visiting each node anyway and decide to insert or delete as you go.
+The O(1) entries hold *once you have the node*: inserting at position 5,000 still walks 5,000 nodes first. Two rules keep rewiring safe: link the new node to what follows **first**, and delete "the node after `prev`", since a node does not know who points at it.
 
-Deleting the last node of a singly linked list is O(n) even with a tail pointer, because the node before the tail must become the new tail, and only a walk from the head finds it.
+@figure insert-delete
 
-### Inserting and deleting
+### The dummy head
 
-To insert a new node after a node `node`, the order of the two assignments matters:
+Deleting the first node changes `head` itself, and code that special-cases it is where most list bugs live. A **dummy head** is an extra node in front whose value is never read: every real node now has a predecessor, one deletion rule works everywhere, and the answer is `dummy.next`.
 
-```text
-insert after node:            delete the node after prev:
-    fresh.next = node.next        prev.next = prev.next.next
-    node.next = fresh
-
-insert at the front:          delete at the front:
-    fresh.next = head             head = head.next
-    head = fresh
-```
-
-If you set `node.next = fresh` first, the only pointer to the rest of the list is gone, and `fresh.next = node.next` would point the new node at itself. Always connect the new node to what follows before you connect what comes before to it.
-
-Deletion has its own twist. To remove a node, the node *before* it must be pointed past it, and in a singly linked list a node does not know who points at it. So you never "delete this node"; you "delete the node after `prev`", carrying a `prev` pointer as you walk. In C++ you also `delete` the unlinked node; the other three languages free it once nothing refers to it.
-
-### The dummy head trick
-
-The two "front" cases above are special cases: deleting the first node changes `head` itself, and inserting into an empty list must set `head`. Code that handles them separately is where most linked-list bugs live.
-
-A **dummy head** (also called a sentinel) removes the special case. It is an extra node placed before the real first node, whose value is never read. Now every real node has a predecessor, including the first, so "delete the node after `prev`" works everywhere. When you are done, the answer is `dummy.next`. Here it is removing every node with a given value:
-
-```text
-dummy = new Node(0)
-dummy.next = head
-prev = dummy
-while prev.next is not null:
-    if prev.next.val == target:
-        prev.next = prev.next.next   # unlink it; prev stays where it is
-    else:
-        prev = prev.next
-return dummy.next
-```
-
-Notice that `prev` does not move after a deletion: the node that slid into `prev.next` has not been checked yet, and it might hold the target too. The `build` function in the code below uses the same trick to create a list from an array without treating the first node differently.
+@figure dummy-head
 
 ## Reversing a linked list
 
-Reversal is the most asked linked-list question, and the one that shows whether you can rewire pointers safely. The task: turn `1 → 2 → 3 → 4 → 5` into `5 → 4 → 3 → 2 → 1` without creating new nodes. Every node's arrow has to point the other way.
+Reversal is the most asked list question: turn every arrow round without making new nodes. Pointing `cur.next` backwards destroys the only pointer to the rest, so it is saved first — hence three pointers.
 
-The difficulty is that the moment you point `cur.next` backwards, you have lost the only pointer to the rest of the list. So you save it first, and that is why the method needs three pointers:
+@figure reverse
 
-- `prev` — the head of the part already reversed. It starts as null, because the first node becomes the last and must point to null.
-- `cur` — the node being turned round.
-- `next` — the rest of the list, saved before `cur.next` is overwritten.
-
-```text
- after two steps:
-
- null <- 1 <- 2      3 -> 4 -> 5 -> null
-              ^      ^
-            prev    cur
-```
-
-Why it is correct: at every step the nodes form two separate lists. `prev` heads a correctly reversed list of everything visited so far, and `cur` heads the untouched remainder. Each step moves one node from the front of the remainder to the front of the reversed part. When `cur` is null the remainder is empty, so `prev` heads the whole list, reversed. The loop does one step per node: O(n) time and O(1) extra space.
-
-### Dry run
-
-Reversing `1 → 2 → 3 → 4 → 5`:
-
-| Step | cur | next (saved) | cur.next becomes | prev after | cur after |
-| --- | --- | --- | --- | --- | --- |
-| 1 | 1 | 2 | null | 1 | 2 |
-| 2 | 2 | 3 | 1 | 2 | 3 |
-| 3 | 3 | 4 | 2 | 3 | 4 |
-| 4 | 4 | 5 | 3 | 4 | 5 |
-| 5 | 5 | null | 4 | 5 | null |
-
-`cur` is null, so the loop stops and returns `prev`, the node holding 5.
+Why it is correct: at every step `prev` heads a correctly reversed list of everything visited and `cur` heads the untouched rest. Each step moves one node across, so when `cur` is null, `prev` heads the whole list reversed: O(n) time, O(1) space.
 
 ## Finding the middle with fast and slow pointers
 
-The obvious way to find the middle node is two passes: count the nodes, then walk half that many. **Fast and slow pointers** do it in one pass. Both start at the head; on every step `slow` moves one node and `fast` moves two. When `fast` cannot move any further, it has covered the whole list and `slow` has covered half of it, so `slow` is at the middle.
+Counting nodes and then walking half way takes two passes. **Fast and slow pointers** take one: `slow` moves one node per step and `fast` two, so when `fast` runs out, `slow` is half way.
 
-For `1 → 2 → 3 → 4 → 5`:
+@figure middle
 
-| Step | slow | fast | Can fast move two more? |
-| --- | --- | --- | --- |
-| start | 1 | 1 | yes |
-| 1 | 2 | 3 | yes |
-| 2 | 3 | 5 | no, 5 is the last node |
-
-The loop condition is `fast != null && fast.next != null`. The first half stops on an even-length list, where `fast` steps off the end; the second stops on an odd-length one, where `fast` lands on the last node. Check `fast` before `fast.next`, or the test itself dereferences null.
-
-On an even-length list there are two middle nodes, and this loop returns the **second** one: for six nodes it stops at node 4. If you need the first middle instead — splitting a list into two halves for merge sort is the usual reason — start `fast` at `head.next`.
+Test `fast != null` before `fast.next != null`, or the test itself dereferences null. On an even-length list the loop returns the **second** middle; start `fast` at `head.next` for the first, as when splitting a list for merge sort.
 
 ### The code
 
-The program builds a list from an array, prints it, finds its middle, reverses it and prints it again, then finds the middle of a six-node list to show the even case.
+The program builds a list with a dummy head, finds its middle, reverses it, and finds the middle of a six-node list.
 
 ```cpp
 #include <iostream>
@@ -436,44 +344,13 @@ Middle of 6 nodes: 4
 
 ## Detecting a cycle with Floyd's algorithm
 
-A list has a **cycle** when some node's `next` points back to an earlier node. A walk then never reaches null; it goes round the loop forever. The first idea most people have is to remember every node visited in a hash set and stop at the first repeat. That works in O(n) time, but it costs O(n) memory.
+A list has a **cycle** when some node points back to an earlier one, so a walk never ends. A hash set of visited nodes finds it with O(n) memory; **Floyd's cycle detection** needs only `slow` and `fast`. If `fast` reaches null there is no cycle; otherwise they meet, and a second phase finds where the loop starts.
 
-**Floyd's cycle detection**, also called the tortoise and the hare, needs no memory at all. Run the same two pointers as for the middle: `slow` one step at a time, `fast` two. If `fast` reaches null, the list ends and there is no cycle. If there is a cycle, the two pointers are certain to land on the same node.
+@figure floyd
 
-```text
- 1 -> 2 -> 3 -> 4
-           ^    |
-           |    v
-           6 <- 5        tail: 1, 2      loop: 3, 4, 5, 6
-```
+They must meet because, once both are in the loop, the gap from `fast` round to `slow` shrinks by exactly one per step, and a whole number falling by one cannot skip zero. With speeds 1 and 3 the gap would fall by two and could jump over it.
 
-### Why the pointers must meet
-
-`fast` reaches the loop first and then goes round it. Once `slow` enters the loop too, measure the gap: how many steps forwards `fast` would need to reach `slow`. On every step `slow` moves one node further on and `fast` moves two, so the gap shrinks by exactly one. A whole number that drops by exactly one per step cannot jump over zero; it reaches zero, and at that moment both pointers are on the same node. The gap starts below the loop's length, so they meet before `slow` completes one lap. `slow` needs at most n steps to enter the loop and less than one lap after that, so the whole search is O(n) time with two pointers of memory.
-
-The speeds matter. With speeds 1 and 3 the gap would shrink by two each step, and on a loop of even length an odd gap would skip over zero forever. A difference of one is what makes the meeting certain.
-
-### Finding where the cycle starts
-
-Often the question is not only whether there is a cycle but which node starts it. Floyd's algorithm has a second phase for that: put one pointer back at the head, leave the other at the meeting point, and move both **one** step at a time. They meet exactly at the first node of the loop.
-
-Here is why. Say the tail before the loop has μ nodes and the loop has L nodes, and the pointers first met after `slow` had made k moves. `fast` had made 2k. Both were on the same node, so the extra k moves `fast` made were whole laps of the loop: k is a multiple of L. `slow` entered the loop after μ moves, so the meeting point is k − μ steps past the loop's entrance. Walk μ more steps from there and you have gone k steps past the entrance — a whole number of laps, so you are back at the entrance. Meanwhile the pointer from the head also walks μ steps and arrives at the entrance. They meet there, and nowhere earlier, because the head pointer is not in the loop before that.
-
-### Dry run
-
-The list above: values 1 to 6, with 6 pointing back to 3. So μ = 2 and L = 4.
-
-| Step | slow | fast | Same node? |
-| --- | --- | --- | --- |
-| start | 1 | 1 | — |
-| 1 | 2 | 3 | no |
-| 2 | 3 | 5 | no |
-| 3 | 4 | 3 | no, fast went 5 → 6 → 3 |
-| 4 | 5 | 5 | yes: they meet at 5 after k = 4 moves |
-
-k = 4 is a multiple of L = 4, as promised. Phase two: one pointer at 1, one at 5. After one step they are at 2 and 6; after two steps both are at 3, the start of the loop.
-
-Comparing node identities, not values, matters here: two different nodes can hold the same value, and only the same node proves a loop.
+Phase two works by arithmetic: if the tail has μ nodes and `slow` made k moves, `fast` made 2k, and the extra k were whole laps. The meeting point is k − μ steps past the entrance, so μ more steps make k — whole laps — and reach the entrance, just as a pointer walking μ steps from the head does. Compare nodes, never values.
 
 ### The code
 
@@ -673,41 +550,19 @@ Straight list: no cycle
 Tail linked back to 3: pointers meet at 5, cycle starts at 3
 ```
 
-Floyd's algorithm works on anything where each item decides the next one, not only on nodes. In [Happy Number](/problems/happy-number), replacing a number by the sum of the squares of its digits either reaches 1 and stays there or loops for ever among other numbers; fast and slow pointers find the loop, and the number is happy if they meet at 1, all without storing the numbers seen. In [Find the Duplicate Number](/problems/find-the-duplicate-number), read each index i as a node whose `next` is `nums[i]` and start at index 0, which no value points to: the duplicated value has two arrows pointing into it, which makes it exactly the first node of a loop, and phase two finds it in O(1) extra space.
+Floyd's algorithm works wherever each item decides the next one. [Happy Number](/problems/happy-number) detects the loop of digit-square sums without storing them, and [Find the Duplicate Number](/problems/find-the-duplicate-number) reads index i as a node whose `next` is `nums[i]`: the duplicate has two arrows into it, so it is where the loop starts.
 
 ## Merging two sorted lists
 
-Given two sorted lists, produce one sorted list containing every node. Keep a pointer into each list and a `tail` for the result, starting at a dummy head. Repeatedly compare the two front nodes, link the smaller one after `tail`, and advance in the list it came from.
+Keep a pointer into each sorted list and a `tail` for the result, starting at a dummy head, and repeatedly link the smaller front node after `tail`.
 
-```text
-dummy = new Node(0)
-tail = dummy
-while a is not null and b is not null:
-    if a.val <= b.val:
-        tail.next = a; a = a.next
-    else:
-        tail.next = b; b = b.next
-    tail = tail.next
-tail.next = a if a is not null else b    # the rest is already sorted and linked
-return dummy.next
-```
+@figure merge
 
-The dummy head again saves the special case of choosing the first node. The last line is where lists beat arrays: when one list runs out, the rest of the other is attached with one pointer write instead of being copied. The merge takes O(n + m) time and O(1) extra space, because it re-links existing nodes rather than creating new ones, and taking from the first list on a tie (`<=`) keeps equal values in their original order.
-
-This is the merge step of merge sort, the usual way to sort a linked list because it never jumps to an index — see [Sorting Algorithms](/roadmap/sorting-algorithms). [Merge Sorted Array](/problems/merge-sorted-array) is the same idea on arrays.
+The leftover run is attached with one write instead of being copied: O(n + m) time, O(1) extra space. It is the merge step of merge sort, the usual way to sort a list — see [Sorting Algorithms](/roadmap/sorting-algorithms).
 
 ## Linked lists in each language
 
-Every language in this lesson either ships a linked list or has an obvious stand-in:
-
-- **C++** has `std::list`, a doubly linked list, and `std::forward_list`, a singly linked one. Both splice in O(1), and an iterator to an element stays valid while other elements are inserted or erased.
-- **Java** has `java.util.LinkedList`, a doubly linked list that implements both `List` and `Deque`. Its `get(i)` walks from whichever end is nearer, so it is O(n).
-- **Python** has no linked-list type. `collections.deque`, built from linked blocks of elements, gives O(1) work at both ends; for node-by-node work you write a small class, as above.
-- **JavaScript** has none built in either: write a class, or use plain objects shaped `{ val, next }`.
-
-In an interview the library classes are almost never what is wanted. A linked-list question hands you a node class and the head, and asks you to rewire the `next` pointers yourself, usually in O(1) extra space. Copying the values into an array, solving it there and building a new list gives the right answer with O(n) memory, and skips the skill being tested.
-
-Outside interviews, linked lists earn their place as building blocks: hash tables that chain colliding keys, and the classic LRU cache, which pairs a hash map with a doubly linked list so it can move any entry to the front in O(1).
+C++ has `std::list` and `std::forward_list`, Java has `java.util.LinkedList`, and Python and JavaScript have none, so you write a small node class. Interviews hand you the node class and the head and expect you to rewire the pointers yourself; copying the values into an array skips the skill being tested.
 
 ## Time and space complexity
 
@@ -715,46 +570,40 @@ Outside interviews, linked lists earn their place as building blocks: hash table
 | --- | --- | --- | --- |
 | Reverse a list | Copy into an array and rebuild | O(n) | O(n) |
 | Reverse a list | Three pointers in place | O(n) | O(1) |
-| Find the middle | Count, then walk half | O(n), two passes | O(1) |
 | Find the middle | Fast and slow pointers | O(n), one pass | O(1) |
 | Detect a cycle | Hash set of nodes seen | O(n) | O(n) |
 | Detect a cycle and its start | Floyd's two phases | O(n) | O(1) |
 | Merge two sorted lists | Re-link with a dummy head | O(n + m) | O(1) |
 
-Every in-place technique here uses a constant number of pointers: a linked list lets you restructure a sequence without allocating a second one.
-
 ## How to recognise a linked-list problem
 
-The obvious signal is a statement that gives you a `ListNode` and a head. Beyond that, these phrases point at a particular technique:
+- A `ListNode` and a head, **in place**: rewire pointers, with a dummy head.
+- **Reverse** all or part of a list: the three-pointer loop.
+- **Middle**, **split in half** or **palindrome**: fast and slow pointers, then often reverse the second half.
+- **Cycle**, **loop**, or a sequence where each value decides the next: Floyd's algorithm.
+- **The k-th node from the end**: two pointers k nodes apart, moving together.
 
-- **"In place"** or **"O(1) extra space"** on a list: rewire pointers, usually with a dummy head and a `prev` pointer.
-- **"Reverse"**, all of a list or a part of it: the three-pointer loop, applied to the part.
-- **"Middle"**, **"split in half"** or **"is it a palindrome"**: fast and slow pointers to find the middle, then often reverse the second half.
-- **"Cycle"**, **"loop"**, or a sequence where each value determines the next: Floyd's algorithm.
-- **"Remove the k-th node from the end"**: two pointers that start k nodes apart and move together.
-- **Two sorted lists** to combine: the merge loop.
-
-If the operations you need are only at the ends — add at the back, take from the front, or add and take at the top — you are really using a list as a [stack](/roadmap/stack) or a [queue](/roadmap/queue), the next two lessons in this stage.
+If you only ever work at the ends, you are really using a [stack](/roadmap/stack) or a [queue](/roadmap/queue).
 
 ## Common mistakes
 
-- **Losing the rest of the list.** Writing `cur.next = prev` before saving `cur.next` cuts the list in two with no way back. Save first, then overwrite.
-- **Dereferencing null.** `fast.next.next` crashes when `fast` or `fast.next` is null. Test `fast` first, then `fast.next`, in that order.
-- **Special-casing the head, and getting it wrong.** Deleting the first node or inserting into an empty list are the cases that break. Put a dummy head in front and return `dummy.next`.
-- **Comparing values instead of nodes.** In cycle detection, two different nodes may hold the same value. Compare the pointers or references themselves.
-- **Creating a cycle by accident.** When you move nodes around, the new last node must point to null. A forgotten `tail.next = null` turns the next walk into an infinite loop.
-- **Indexing a library list in a loop.** In Java, calling `list.get(i)` on a `LinkedList` inside a loop over i walks the list each time, turning an O(n) pass into O(n²). Use an iterator or a for-each loop.
+- **Losing the rest of the list**: overwriting `cur.next` before saving it.
+- **Dereferencing null**: `fast.next.next` when `fast` or `fast.next` is null.
+- **Special-casing the head, and getting it wrong**: use a dummy head.
+- **Comparing values instead of nodes** in cycle detection.
+- **Creating a cycle by accident**: the new last node must point to null.
+- **Indexing a library list in a loop**: Java's `LinkedList.get(i)` makes an O(n) pass O(n²).
 
 ## Practice in this order
 
-The catalogue's judge passes arrays, strings and numbers, so it has no problems that hand you a list node. These problems practise the same ideas on arrays and number sequences, from easiest to hardest:
+The judge passes arrays and numbers, not nodes, so these practise the same ideas on arrays:
 
-1. [Reverse String](/problems/reverse-string): reversal in place — the array cousin of the three-pointer loop.
-2. [Remove Element](/problems/remove-element): deleting as you walk, keeping a pointer to where the kept part ends.
-3. [Merge Sorted Array](/problems/merge-sorted-array): the merge loop, with one pointer per input.
-4. [Happy Number](/problems/happy-number): Floyd's cycle detection on a number sequence.
-5. [Rotate Array](/problems/rotate-array): rotation by k, which on a linked list is a re-link: join the tail to the head, then cut the circle k nodes from the end.
-6. [Find the Winner of the Circular Game](/problems/find-the-winner-of-the-circular-game): a circular list, where each removal re-links two neighbours.
-7. [Find the Duplicate Number](/problems/find-the-duplicate-number): both phases of Floyd's algorithm, with indices as nodes.
+1. [Reverse String](/problems/reverse-string): reversal in place.
+2. [Remove Element](/problems/remove-element): deleting as you walk.
+3. [Merge Sorted Array](/problems/merge-sorted-array): the merge loop, one pointer per input.
+4. [Happy Number](/problems/happy-number): Floyd's cycle detection on numbers.
+5. [Rotate Array](/problems/rotate-array): on a list, join the tail to the head and cut k nodes from the end.
+6. [Find the Winner of the Circular Game](/problems/find-the-winner-of-the-circular-game): a circular list, re-linked at each removal.
+7. [Find the Duplicate Number](/problems/find-the-duplicate-number): both phases of Floyd's algorithm.
 
-Fast and slow pointers are a member of the larger family in [Two Pointers](/roadmap/two-pointers), and the [two pointers problem list](/challenges/two-pointers) has more to practise them on. When the pointer work above feels routine, move on to the [stack](/roadmap/stack), the first data structure built on top of these ideas.
+Fast and slow pointers belong to the [two pointers](/roadmap/two-pointers) family; the [two pointers problem list](/challenges/two-pointers) has more. Next is the [stack](/roadmap/stack).

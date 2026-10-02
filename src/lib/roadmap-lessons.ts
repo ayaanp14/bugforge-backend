@@ -1,5 +1,6 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
+import { lessonFigureProblems } from "./lesson-figures/index.js";
 
 /**
  * The DSA roadmap's lessons: the tutorial text behind each stage.
@@ -42,6 +43,11 @@ import { fileURLToPath } from "node:url";
  *  - A line holding only `@walkthrough` places the hub's step-by-step
  *    figure (lib/walkthroughs) — animated on the page, its last frame and
  *    captions in the HTML.
+ *  - A line holding only `@figure <name>` places one of the lesson's own
+ *    figures (lib/lesson-figures/<slug>.ts): a diagram or an animation, the
+ *    picture that carries the explanation. Since 2026-10-03 a lesson is
+ *    figures first — short prose between them, never a paragraph that only
+ *    narrates what a figure already shows.
  */
 
 export const LESSON_LEVELS = ["Beginner", "Intermediate", "Advanced"] as const;
@@ -163,7 +169,11 @@ export function parseLesson(text: string, file: string): RoadmapLesson {
 export type LessonBlock =
   | { kind: "text"; markdown: string; line: number }
   | { kind: "code"; samples: Array<{ language: string; code: string }>; output: string | null; line: number }
-  | { kind: "walkthrough"; line: number };
+  | { kind: "walkthrough"; line: number }
+  | { kind: "figure"; name: string; line: number };
+
+/** A line placing one of the lesson's figures: `@figure two-shapes`. */
+export const FIGURE_LINE = /^@figure\s+([a-z0-9][a-z0-9-]*)$/;
 
 const FENCE_OPEN = /^\s*(```|~~~)\s*([\w+#.-]*)\s*$/;
 const CODE_LANGS = new Set<string>(LESSON_LANGUAGES);
@@ -199,6 +209,14 @@ export function lessonBlocks(body: string): LessonBlock[] {
     if (line.trim() === "@walkthrough") {
       flush();
       blocks.push({ kind: "walkthrough", line: i + 1 });
+      i++;
+      textStart = i + 1;
+      continue;
+    }
+    const figure = FIGURE_LINE.exec(line.trim());
+    if (figure) {
+      flush();
+      blocks.push({ kind: "figure", name: figure[1], line: i + 1 });
       i++;
       textStart = i + 1;
       continue;
@@ -251,14 +269,29 @@ export function lessonBlocks(body: string): LessonBlock[] {
 /** The body as one Markdown document for the edge: the walkthrough marker left as its own paragraph for the caller to replace. */
 export const WALKTHROUGH_MARKER = "@walkthrough";
 
+/** The figures a body places, in order. */
+export const figureNamesIn = (body: string): string[] => lessonBlocks(body).flatMap((b) => (b.kind === "figure" ? [b.name] : []));
+
 /* ── Validation ──────────────────────────────────────────────────── */
 
 const words = (s: string) => s.split(/\s+/).filter(Boolean).length;
+
+/**
+ * A lesson's prose in words (code, figures and frontmatter not counted):
+ * figures carry the lesson and the prose joins them (2026-10-03) — enough
+ * words for what no picture can say, why it works and when to use it, and
+ * no more. The floor keeps a page worth indexing.
+ */
+export const PROSE_WORDS = { min: 700, max: 1800 } as const;
+/** Figures a lesson places at the least, the hub's walkthrough included. */
+export const FIGURES_MIN = 4;
 /** Prose only: code, tables' pipes and markup do not count as words read. */
 export function proseWords(body: string): number {
   return words(
     body
       .replace(/```[\s\S]*?```/g, " ")
+      // A link reads as its text; its target (/problems/two-sum-ii-…) is no words at all.
+      .replace(/\]\([^)\s]*\)/g, "]")
       .replace(/`[^`]*`/g, " x ")
       .replace(/[#*|>_-]/g, " "),
   );
@@ -286,9 +319,10 @@ export function validateLesson(l: RoadmapLesson): string[] {
   if (/^#\s/m.test(l.body.replace(/```[\s\S]*?```/g, ""))) out.push(`${at}: the body has a "# " heading — the page owns the H1; start at "##"`);
   if (/__CODEXA_/.test(l.body)) out.push(`${at}: the body names a judge sentinel`);
   const prose = proseWords(l.body);
-  if (prose < 1200) out.push(`${at}: ${prose} words of prose; a lesson needs at least 1,200`);
+  if (prose < PROSE_WORDS.min) out.push(`${at}: ${prose} words of prose; a lesson needs at least ${PROSE_WORDS.min}`);
+  if (prose > PROSE_WORDS.max) out.push(`${at}: ${prose} words of prose; keep it to ${PROSE_WORDS.max} and let the figures explain`);
   const sections = (l.body.replace(/```[\s\S]*?```/g, "").match(/^##\s/gm) ?? []).length;
-  if (sections < 6) out.push(`${at}: ${sections} "##" sections; a lesson needs at least six`);
+  if (sections < 5) out.push(`${at}: ${sections} "##" sections; a lesson needs at least five`);
   const blocks = lessonBlocks(l.body);
   const groups = blocks.filter((b): b is Extract<LessonBlock, { kind: "code" }> => b.kind === "code");
   if (!groups.length) out.push(`${at}: no code group — every lesson shows the technique in all four languages`);
@@ -304,6 +338,23 @@ export function validateLesson(l: RoadmapLesson): string[] {
   const walks = blocks.filter((b) => b.kind === "walkthrough").length;
   if (walks > 1) out.push(`${at}: "@walkthrough" appears ${walks} times`);
   if (walks && !l.hub) out.push(`${at}: "@walkthrough" needs a hub`);
+  const figures = blocks.flatMap((b) => (b.kind === "figure" ? [b.name] : []));
+  if (figures.length + walks < FIGURES_MIN) out.push(`${at}: ${figures.length + walks} figures; a lesson needs at least ${FIGURES_MIN} — draw it rather than describe it`);
+  const placed = new Set<string>();
+  for (const name of figures) {
+    if (placed.has(name)) out.push(`${at}: figure "${name}" is placed twice`);
+    else out.push(...lessonFigureProblems(l.slug, name));
+    placed.add(name);
+  }
+  // A marker must be a paragraph of its own, or the edge's Markdown folds it
+  // into the text around it and the figure never replaces it.
+  const lines = l.body.split("\n");
+  lines.forEach((line, i) => {
+    const t = line.trim();
+    if (/^@figure\b/.test(t) && !FIGURE_LINE.test(t)) out.push(`${at}:${i + 1}: write "@figure <name>" with a lower-case name (found "${t}")`);
+    if (t !== WALKTHROUGH_MARKER && !FIGURE_LINE.test(t)) return;
+    if ((i > 0 && lines[i - 1].trim()) || (i < lines.length - 1 && lines[i + 1].trim())) out.push(`${at}:${i + 1}: "${t}" needs a blank line before and after it`);
+  });
   return out;
 }
 

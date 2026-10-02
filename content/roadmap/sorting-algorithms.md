@@ -2,7 +2,7 @@
 title: Sorting Algorithms
 stage: greedy
 order: 1
-minutes: 26
+minutes: 14
 level: Beginner
 hub: sorting
 practice: height-checker, relative-sort-array, sort-array-by-increasing-frequency, largest-perimeter-triangle, sort-colors, sort-an-array, kth-largest-element-in-an-array, largest-number, count-inversions
@@ -24,84 +24,39 @@ a: On small arrays, up to a few dozen elements, and on arrays that are nearly so
 q: How do I sort by two keys?
 a: Use one comparator that compares the first key and falls back to the second on a tie, or sort by the secondary key first and then stably by the primary key. In Python a tuple key such as (-score, name) does it in one call; in C++, Java and JavaScript write the comparator.
 ---
-Sorting is the most common first step in algorithm problems. Once the data is in order, duplicates sit next to each other, the closest pair of values is a pair of neighbours, two pointers can walk in from both ends, and binary search becomes possible. Many "hard" problems turn into a sort followed by one simple pass.
-
-Every language has a sort built in, so why learn the algorithms? Three reasons. Interviews ask you to write merge sort or quicksort, or to explain their costs. The ideas inside them — merging two sorted runs, partitioning around a pivot, counting instead of comparing — are the solutions to other problems, from counting inversions to finding the k-th largest element. And you need to know what your library actually does: whether it is stable, what it costs in the worst case, and how to give it a comparator. This lesson covers all three, with every program shown in C++, Java, Python and JavaScript.
+Sorting is the most common first step in algorithm problems: once the data is in order, duplicates sit together, the closest values are neighbours, and two pointers and binary search become possible. Every language has a sort built in, but interviews ask you to write merge sort or quicksort, their inner ideas — merging, partitioning, counting — solve other problems, and you need to know whether your library's sort is stable and what it costs.
 
 ## Why sorting comes first
 
-Take a simple question: *in an array of numbers, what is the smallest difference between any two of them?* The direct answer compares every pair.
-
-```text
-best = infinity
-for i in 0 .. n-1:
-    for j in i+1 .. n-1:
-        best = min(best, |a[i] - a[j]|)
-```
-
-That is n × (n − 1) / 2 pairs: about five billion for n = 100,000, far beyond the hundred million or so simple steps a judge allows in a second. Sorting first changes the question. In sorted order, the closest value to any element is one of its two neighbours, so only the n − 1 neighbouring pairs need checking. Sorting costs O(n log n) — about 1.7 million comparisons for n = 100,000 — and the scan costs O(n). The whole solution runs in a fraction of a second.
+*What is the smallest difference between any two numbers in an array?* Comparing every pair costs n(n − 1)/2 checks, about five billion for n = 100,000. Sorting first costs about 1.7 million comparisons, and then only the n − 1 neighbouring pairs need checking.
 
 ## The idea: order puts related values side by side
 
-```text
- input:    [ 19,  4, 27, 11,  8, 33 ]     15 pairs to compare
- sorted:   [  4,  8, 11, 19, 27, 33 ]
- gaps:         4   3   8   8   6          5 neighbouring gaps; the smallest is 3
-```
-
-Why only neighbours? If `a ≤ b ≤ c` in sorted order, then `c − a = (c − b) + (b − a)`, which is at least either gap on its own. A pair that skips over an element can never be closer than the pair of neighbours inside it. Sorting is what made that argument available. The same thing happens over and over:
-
-- **Equal values become adjacent**, so finding or removing duplicates is one pass.
-- **Pairs and sums become monotone**, so [two pointers](/roadmap/two-pointers) and [binary search](/roadmap/binary-search) apply.
-- **Intervals sorted by start** can be merged in one sweep — see [intervals](/roadmap/intervals).
-- **A greedy choice** often needs the data in some order first: the smallest cookie, the earliest finish, the heaviest item. That is why this lesson comes before [greedy algorithms](/roadmap/greedy-algorithms) on the road.
+Why only neighbours? If `a ≤ b ≤ c`, then `c − a = (c − b) + (b − a)`, which is at least either gap on its own: a pair that skips over a value can never be closer than the neighbours inside it. Sorting is what made that argument available.
 
 @walkthrough
 
+The same happens again and again: equal values become adjacent, sums become monotone for [two pointers](/roadmap/two-pointers) and [binary search](/roadmap/binary-search), [intervals](/roadmap/intervals) sorted by start merge in one sweep, and [greedy algorithms](/roadmap/greedy-algorithms) usually need the data in order first.
+
 ## The simple sorts: bubble, selection and insertion
 
-These three are O(n²). You will rarely use the first two, but each is asked in interviews, and insertion sort is genuinely used inside the fast library sorts.
+These three are O(n²), and each is asked in interviews:
 
-- **Bubble sort** walks the array repeatedly, swapping neighbours that are out of order. Each pass carries the largest remaining value to the end, like a bubble rising. If a pass makes no swap, the array is sorted and you can stop, so an already sorted array costs one pass, O(n). It swaps only when the left value is strictly larger, so equal values never pass each other: it is stable.
-- **Selection sort** finds the smallest value in the unsorted part and swaps it to the front, n − 1 times. It always makes n × (n − 1) / 2 comparisons, even on sorted input, but at most n − 1 swaps — its one virtue when writing to memory is expensive. The long-distance swap makes it unstable: in `[4a, 4b, 1]` the first swap moves `4a` behind `4b`.
-- **Insertion sort** grows a sorted prefix one element at a time. It takes the next element, shifts every larger value in the prefix one place right, and drops the element into the gap — the way most people sort a hand of cards.
+- **Bubble sort** swaps out-of-order neighbours pass after pass, carrying the largest value to the end; a pass with no swap ends it early. Stable.
+- **Selection sort** swaps the smallest remaining value to the front, n − 1 times: always n(n − 1)/2 comparisons, at most n − 1 swaps. Unstable.
+- **Insertion sort** grows a sorted prefix, shifting larger values right to make a gap.
 
-Insertion sort's cost depends on the input. Each shift fixes exactly one pair of elements that were out of order (an **inversion**), so the total work is O(n + d), where d is the number of inversions. A reversed array has n × (n − 1) / 2 inversions and costs O(n²); a nearly sorted array has few and costs close to O(n). Insertion sort also has tiny constant factors. That is why C++'s introsort and Python's TimSort switch to insertion sort for pieces shorter than a few dozen elements: on small or nearly sorted inputs, it beats the clever algorithms.
+@figure insertion
 
-### Dry run
-
-Insertion sort on `[5, 2, 4, 6, 1, 3]`:
-
-| Step | Element taken | Larger values shifted right | Array afterwards |
-| --- | --- | --- | --- |
-| 1 | 2 | 5 | 2 5 4 6 1 3 |
-| 2 | 4 | 5 | 2 4 5 6 1 3 |
-| 3 | 6 | none | 2 4 5 6 1 3 |
-| 4 | 1 | 6, 5, 4, 2 | 1 2 4 5 6 3 |
-| 5 | 3 | 6, 5, 4 | 1 2 3 4 5 6 |
-
-Nine shifts in all, and the input has exactly nine inversions: the cost tracks how unsorted the data is.
+Each shift fixes one **inversion**, so insertion sort costs O(n + d) for d inversions. That, and its tiny constant factors, is why introsort and TimSort hand short pieces to it.
 
 ## Merge sort: divide, sort, merge
 
-**Merge sort** splits the array into two halves, sorts each half recursively, and then **merges** the two sorted halves into one. An array of one element is already sorted, which is where the recursion stops.
+**Merge sort** sorts each half recursively and **merges** the two sorted halves. The merge is two pointers on two arrays: the smallest value not yet placed is at one of the two fronts, so take the smaller front.
 
-The merge is the part that does the work, and it is the two pointers idea on two arrays. Keep one pointer at the front of each sorted half. The smallest value not yet placed must be at one of the two fronts, because each half is sorted, so take the smaller front, place it, and advance that pointer. When one half runs out, copy the rest of the other. Each value is placed once, so merging two halves of total length m costs O(m).
+@figure merge
 
-```text
- [38 27 43 3 9 82 10]
- [38 27 43 3]          [9 82 10]           split until pieces have one element
- [38 27] [43 3]        [9 82] [10]
- [27 38] [3 43]        [9 82] [10]         merge pairs of sorted pieces
- [3 27 38 43]          [9 10 82]
- [3 9 10 27 38 43 82]                      the last merge
-```
-
-**Why it is O(n log n).** Each level of splitting halves the pieces, so there are about log₂ n levels. At every level, the merges together touch each of the n elements once. That is n work per level times log n levels — and it is the same for every input, sorted or not, so merge sort's worst case is O(n log n) too.
-
-**Why it is stable.** When the two fronts are equal, the merge takes the one from the left half first (`<=`, not `<`). Equal values therefore keep their original order.
-
-**Its cost** is memory: merging needs a buffer of n elements, so merge sort uses O(n) extra space, against quicksort's O(log n). That is the trade-off between the two.
+It is O(n log n) on every input — about log₂ n levels, each touching every element once — and stable, because on equal fronts the merge takes the left one (`<=`, not `<`). Its cost is an O(n) buffer.
 
 ### The code
 
@@ -281,33 +236,19 @@ merge [3 27 38 43] + [9 10 82] -> [3 9 10 27 38 43 82]
 after:  3 9 10 27 38 43 82
 ```
 
-The merge step is useful on its own. While merging, every time a value from the right half is placed before values still waiting in the left half, it was out of order with all of them — adding `mid − i + 1` at that moment counts every inversion in O(n log n). That is [Count Inversions](/problems/count-inversions).
+A value from the right half placed before `mid − i + 1` values still waiting on the left was out of order with all of them; summing those counts every inversion in O(n log n): [Count Inversions](/problems/count-inversions).
 
 ## Quicksort: partition around a pivot
 
-**Quicksort** turns merge sort inside out. Instead of sorting halves and then combining them, it first **partitions**: it picks a value called the **pivot** and rearranges the range so that everything smaller than the pivot comes before it and everything else after it. The pivot is then in its final place, and the two sides are sorted recursively. No merge is needed — and no buffer.
+**Quicksort** turns merge sort inside out: it **partitions** around a **pivot** first, so the pivot lands in its final place, then sorts the two sides — no merge, no buffer. **Lomuto's** partition is the read-and-write pointer pattern from two pointers.
 
-The partition used here is **Lomuto's**. Park the pivot at the end of the range. Keep an index `store`: everything before `store` is known to be smaller than the pivot. Walk `i` across the range; whenever `a[i]` is smaller than the pivot, swap it to `store` and advance `store`. Finally swap the pivot into `store`. At every step the range reads "smaller than pivot | not smaller | not yet seen", which is the invariant that makes it correct. This is the read-and-write pointer pattern from the two pointers lesson.
+@figure partition
 
-**Choosing the pivot** decides the speed. If every pivot lands near the middle of its range, there are about log₂ n levels of O(n) partitioning: O(n log n). If every pivot is the smallest or largest value, one side is empty each time, there are n levels, and the work is about n²/2 — O(n²). Taking the first or last element as the pivot hits that worst case on an array that is already sorted, which is common in real data. Production quicksorts therefore pick a **random** element, the middle element, or the median of three, and swap it to the end before partitioning; with a random pivot the expected cost is O(n log n) for every input. The code below uses the middle element, which handles sorted input well and keeps the output easy to follow.
+**The pivot decides the speed.** Pivots near the middle give about log₂ n levels; a pivot that is always the smallest or largest leaves one side empty and costs about n²/2. The first or last element does exactly that on sorted input, so real quicksorts pick a random element, the middle one or the median of three.
 
-Two more facts worth knowing: quicksort is **not stable** (the long swaps jump equal values past each other), and its recursion uses O(log n) stack space on average. Many equal values slow Lomuto's partition down, because equal values all land on one side; a three-way partition into smaller, equal and larger — the Dutch national flag partition of [Sort Colors](/problems/sort-colors) — fixes that.
+@figure pivot-depth
 
-### Dry run
-
-Partitioning `[7, 2, 9, 4, 1, 8, 3]`. The middle element, 4, is swapped to the end, giving `[7, 2, 9, 3, 1, 8, 4]`:
-
-| i | a[i] | Smaller than 4? | Action | Array afterwards | store |
-| --- | --- | --- | --- | --- | --- |
-| 0 | 7 | no | none | 7 2 9 3 1 8 4 | 0 |
-| 1 | 2 | yes | swap a[1] with a[0] | 2 7 9 3 1 8 4 | 1 |
-| 2 | 9 | no | none | 2 7 9 3 1 8 4 | 1 |
-| 3 | 3 | yes | swap a[3] with a[1] | 2 3 9 7 1 8 4 | 2 |
-| 4 | 1 | yes | swap a[4] with a[2] | 2 3 1 7 9 8 4 | 3 |
-| 5 | 8 | no | none | 2 3 1 7 9 8 4 | 3 |
-| end | | | swap pivot into a[3] | 2 3 1 4 9 8 7 | 3 |
-
-The 4 is now exactly where it belongs in the sorted array, with the three smaller values on its left.
+Quicksort is **not stable**, and many equal values slow Lomuto's partition; a three-way partition, as in [Sort Colors](/problems/sort-colors), fixes that.
 
 ### The code
 
@@ -496,32 +437,21 @@ pivot 8: [7] 8 [9]
 after:  1 2 3 4 7 8 9
 ```
 
-Partitioning alone is enough when you need only one position of the sorted order. To find the k-th largest value, partition once and recurse into the *one* side that contains position k; on average that costs O(n), not O(n log n). The algorithm is called **quickselect**, and it solves [Kth Largest Element in an Array](/problems/kth-largest-element-in-an-array) (a [heap](/roadmap/heap) is the other standard answer).
+To find only the k-th largest value, partition and recurse into the *one* side that holds position k: O(n) on average. That is **quickselect**, for [Kth Largest Element in an Array](/problems/kth-largest-element-in-an-array) (a [heap](/roadmap/heap) is the other answer).
 
 ## Counting sort: no comparisons at all
 
-When the values are small integers — exam marks from 0 to 100, ages, letters — you do not need to compare them. **Counting sort** counts how many times each value occurs, then writes the values out in order:
+When the values are small integers — marks, ages, letters — **counting sort** counts each value instead of comparing: O(n + k) for keys 0 to k − 1.
 
-```text
-values in 0 .. k-1
-count[v] += 1 for every value v              O(n)
-for v in 0 .. k-1: write v, count[v] times   O(n + k)
-```
+@figure counting
 
-That is O(n + k) time and O(k) extra space, which beats O(n log n) whenever k is not much larger than n. To sort records by a small integer key rather than bare numbers, turn the counts into starting positions (a running total: the slot for key v starts after all smaller keys) and place each record at its key's next free slot while walking the input from left to right. Records with equal keys come out in input order, so this version is stable — the property that lets **radix sort** sort numbers digit by digit with a counting sort per digit. [Height Checker](/problems/height-checker) and [Relative Sort Array](/problems/relative-sort-array) are counting sorts in disguise. When k is huge (values up to 10⁹), counting sort's array is too big, and a comparison sort is the right tool.
+Being stable is what lets **radix sort** sort digit by digit. [Height Checker](/problems/height-checker) and [Relative Sort Array](/problems/relative-sort-array) are counting sorts in disguise; with keys up to 10⁹, use a comparison sort.
 
 ## Stability and sorting by several keys
 
-A sort is **stable** if elements that compare as equal keep the order they had in the input. For bare numbers this cannot be observed — one 7 looks like another. For records it is visible and often essential.
+A sort is **stable** if equal elements keep their input order — invisible for numbers, essential for records. To list students by score and alphabetically within a score, write **one comparator that breaks ties**, or **sort twice**: by name, then *stably* by score.
 
-Suppose students must be listed by score, highest first, and alphabetically among equal scores. There are two correct ways:
-
-- **One comparator that breaks ties.** Compare the scores; only when they are equal, compare the names. Any sort, stable or not, gives the right answer, because no two students compare as equal.
-- **Two passes with a stable sort.** Sort by name, then *stably* by score. The second sort keeps the alphabetical order within each score, because a stable sort never reorders equal elements. This is how spreadsheets sort by several columns: the last sort is the main key.
-
-With an unstable sort the second method breaks: the students on 82 could come out in any order. The program shows a stable sort by score alone (ties stay in input order), then both methods giving the same, correct list.
-
-### The code
+@figure stability
 
 ```cpp
 #include <algorithm>
@@ -656,74 +586,69 @@ one comparator:     Asha 91, Dev 91, Anil 82, Meena 82, Ravi 82, Kiran 75
 two stable sorts:   Asha 91, Dev 91, Anil 82, Meena 82, Ravi 82, Kiran 75
 ```
 
-A comparator returns a negative number when the first argument should come first, a positive one when the second should, and zero for a tie (C++ instead wants a "less than" that returns `true` or `false`). Two rules keep comparators correct. They must be consistent — if a comes before b and b before c, then a comes before c — or the sort may crash or loop. And `b - a` for descending order can overflow in Java when values are near the integer limits; `Integer.compare(b, a)` cannot. Custom orders are whole problems in their own right: [Sort Array by Increasing Frequency](/problems/sort-array-by-increasing-frequency) sorts by two keys, and [Largest Number](/problems/largest-number) compares two numbers by which concatenation is bigger.
+A comparator returns a negative number when the first argument comes first, positive when the second does, zero for a tie; C++ wants a strict "less than" instead. Prefer `Integer.compare(b, a)` to `b - a`, which can overflow. [Largest Number](/problems/largest-number) compares two numbers by which concatenation is bigger.
 
 ## What your language's sort actually does
 
 | Call | Algorithm | Stable? |
 | --- | --- | --- |
-| C++ `std::sort` | introsort (in GCC's library): quicksort that switches to heap sort if recursion gets too deep, and insertion sort for small pieces; O(n log n) worst case | no |
+| C++ `std::sort` | introsort | no |
 | C++ `std::stable_sort` | merge sort | yes |
-| Java `Arrays.sort(int[])` and other primitives | dual-pivot quicksort | no (equal numbers are indistinguishable) |
-| Java `Arrays.sort(Object[])`, `Collections.sort`, `List.sort` | TimSort | yes |
+| Java `Arrays.sort` on primitives | dual-pivot quicksort | no |
+| Java `Arrays.sort` on objects, `Collections.sort` | TimSort | yes |
 | Python `sorted`, `list.sort` | TimSort | yes |
-| JavaScript `Array.prototype.sort` | TimSort in V8 (Node, Chrome) | yes, required since ES2019 |
+| JavaScript `Array.prototype.sort` | TimSort in V8 | yes, since ES2019 |
 
-**TimSort** is a merge sort designed for real data, which is often partly ordered already. It finds the runs that are already sorted (reversing descending ones), extends short runs with insertion sort, and merges runs cleverly, so an already sorted input costs O(n) and the worst case is O(n log n). **Introsort** starts as quicksort for speed and falls back to heap sort if the recursion grows deeper than about 2 log n, which caps the worst case at O(n log n).
-
-One JavaScript trap deserves its own line: `[10, 9, 1, 100].sort()` gives `[1, 10, 100, 9]`, because without a comparator JavaScript converts the values to strings and compares those. Always pass `(a, b) => a - b` to sort numbers.
+**TimSort** merges runs that are already sorted, so sorted input costs O(n). **Introsort** is quicksort that falls back to heap sort when recursion gets too deep, and to insertion sort for small pieces. One JavaScript trap: `[10, 9, 1, 100].sort()` compares strings and gives `[1, 10, 100, 9]`; pass `(a, b) => a - b`.
 
 ## Why no comparison sort beats n log n
 
-Every algorithm in this lesson except counting sort learns about the data only by comparing two elements. Picture its run as a tree of questions: each comparison is a node with two outcomes, and each leaf is one final order. The input could be any of the n! orderings of n distinct values, and each must end at a different leaf, or two different inputs would be "sorted" by the same rearrangement. A binary tree with n! leaves has height at least log₂(n!), and log₂(n!) is about n log₂ n − 1.44 n. So every comparison sort needs on the order of n log n comparisons in the worst case. For n = 10, that is at least 22 comparisons, since 2²¹ is less than 10! = 3,628,800. Merge sort and heap sort meet this bound; nothing that only compares can beat it. Counting sort escapes only because it reads values as array indices instead of comparing them.
+Every sort here except counting sort learns about the data only by comparing two elements.
+
+@figure decision-tree
+
+log₂(n!) is about n log₂ n − 1.44 n, so merge sort and heap sort are as good as comparing gets; counting sort escapes only by using values as indices.
 
 ## Time and space complexity
 
-| Algorithm | Best | Average | Worst | Extra space | Stable |
-| --- | --- | --- | --- | --- | --- |
-| Bubble sort (stops when a pass makes no swap) | O(n) | O(n²) | O(n²) | O(1) | yes |
-| Selection sort | O(n²) | O(n²) | O(n²) | O(1) | no |
-| Insertion sort | O(n) | O(n²) | O(n²) | O(1) | yes |
-| Merge sort | O(n log n) | O(n log n) | O(n log n) | O(n) | yes |
-| Quicksort | O(n log n) | O(n log n) | O(n²) | O(log n) average | no |
-| Heap sort | O(n log n) | O(n log n) | O(n log n) | O(1) | no |
-| Counting sort (keys 0..k−1) | O(n + k) | O(n + k) | O(n + k) | O(n + k) | yes |
-| TimSort | O(n) | O(n log n) | O(n log n) | O(n) | yes |
-| Introsort | O(n log n) | O(n log n) | O(n log n) | O(log n) | no |
+| Algorithm | Best | Worst | Extra space | Stable |
+| --- | --- | --- | --- | --- |
+| Bubble sort | O(n) | O(n²) | O(1) | yes |
+| Selection sort | O(n²) | O(n²) | O(1) | no |
+| Insertion sort | O(n) | O(n²) | O(1) | yes |
+| Merge sort | O(n log n) | O(n log n) | O(n) | yes |
+| Quicksort | O(n log n) | O(n²) | O(log n) | no |
+| Heap sort | O(n log n) | O(n log n) | O(1) | no |
+| Counting sort | O(n + k) | O(n + k) | O(n + k) | yes |
+| TimSort | O(n) | O(n log n) | O(n) | yes |
 
-In practice: use the library sort; know that it is O(n log n); and reach for counting sort when the keys are small integers. The O(n²) sorts belong to interviews and to tiny inputs — at n = 10⁵ they take billions of steps.
+Quicksort's average is O(n log n). In practice, use the library sort, and count instead of comparing when the keys are small integers.
 
 ## How to recognise a sorting problem
 
-- The answer depends on **order**, not on original positions: the closest pair, the largest perimeter, the k-th largest, "return the result in any order".
-- You want to **pair things up** — the smallest with the smallest, the largest with the smallest — as in assigning cookies or boats.
-- **Duplicates or groups** must be found, counted or removed.
-- **Intervals or events** must be processed in time order.
-- A greedy rule needs "the next smallest" or "the earliest finishing" item again and again.
+- The answer depends on **order**, not original positions: the closest pair, the largest perimeter, the k-th largest.
+- You want to **pair things up** — smallest with smallest, largest with smallest.
+- A greedy rule keeps needing "the next smallest" or "the earliest finishing" item.
 - The values are **small integers** in a known range: count instead of compare.
-- The statement says "return the indices": sort pairs of value and index, so the indices travel with their values.
 
 ## Common mistakes
 
-- **Sorting numbers in JavaScript without a comparator.** The default sort compares strings, so 100 lands before 9. Pass `(a, b) => a - b`.
-- **Overflowing comparators.** `a - b` in Java or C++ overflows for values near the integer limits and returns the wrong sign. Use `Integer.compare(a, b)` or plain comparisons.
-- **Relying on stability you do not have.** `std::sort` and Java's primitive sort are not stable. If ties must keep their order, use `std::stable_sort`, a tie-breaking comparator, or Java's object sort.
-- **An inconsistent comparator.** A C++ comparator must be a strict "less than": returning `true` for equal elements (`<=`) is undefined behaviour and can crash `std::sort`.
-- **Choosing the first element as quicksort's pivot.** Sorted input then costs O(n²). Use the middle, a random element or the median of three.
-- **Losing the original indices.** Sorting values alone forgets where they came from; sort (value, index) pairs instead.
+- **Sorting numbers in JavaScript without a comparator**, so 100 lands before 9.
+- **Overflowing comparators**: `a - b` near the integer limits returns the wrong sign.
+- **Relying on stability you do not have**: `std::sort` and Java's primitive sort are not stable.
+- **The first element as quicksort's pivot**, which makes sorted input O(n²).
+- **Losing the original indices**: sort (value, index) pairs instead of values.
 
 ## Practice in this order
 
-Start with problems that only need the right sort call, then move to the ones that need a custom order or a sorting algorithm's inner idea:
-
-1. [Height Checker](/problems/height-checker): sort, compare with the original — or count, since heights are small.
-2. [Relative Sort Array](/problems/relative-sort-array): a custom order, solved neatly by counting sort.
+1. [Height Checker](/problems/height-checker): sort and compare — or count, since heights are small.
+2. [Relative Sort Array](/problems/relative-sort-array): a custom order, neatly a counting sort.
 3. [Sort Array by Increasing Frequency](/problems/sort-array-by-increasing-frequency): two keys, one ascending and one descending.
 4. [Largest Perimeter Triangle](/problems/largest-perimeter-triangle): sort, then a greedy check on neighbours.
-5. [Sort Colors](/problems/sort-colors): three-way partitioning, quicksort's partition in one pass.
-6. [Sort an Array](/problems/sort-an-array): write merge sort or quicksort yourself, without the library.
-7. [Kth Largest Element in an Array](/problems/kth-largest-element-in-an-array): quickselect, the partition without the full sort.
-8. [Largest Number](/problems/largest-number): a comparator that compares concatenations.
+5. [Sort Colors](/problems/sort-colors): three-way partitioning in one pass.
+6. [Sort an Array](/problems/sort-an-array): write merge sort or quicksort yourself.
+7. [Kth Largest Element in an Array](/problems/kth-largest-element-in-an-array): quickselect.
+8. [Largest Number](/problems/largest-number): a comparator on concatenations.
 9. [Count Inversions](/problems/count-inversions): merge sort that counts while it merges.
 
-The [sorting problem list](/challenges/sorting) has every problem in the catalogue that leans on sorting. Sorting is also where most greedy solutions begin, which is the next lesson of this stage: [greedy algorithms](/roadmap/greedy-algorithms).
+The [sorting problem list](/challenges/sorting) has every problem in the catalogue that leans on sorting. Most greedy solutions begin with a sort, which is the next lesson of this stage: [greedy algorithms](/roadmap/greedy-algorithms).
