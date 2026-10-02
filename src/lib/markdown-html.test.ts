@@ -22,6 +22,11 @@ test("lists, ordered and not, with continuation lines", () => {
   assert.equal(html, "<ul><li>one</li><li>two continued</li></ul>\n<ol><li>first</li><li>second</li></ol>");
 });
 
+test("an escaped pipe stays inside its table cell", () => {
+  const html = markdownToHtml("| Op | Meaning |\n| --- | --- |\n| `a \\| b` | bitwise OR |");
+  assert.equal(html, "<table><thead><tr><th>Op</th><th>Meaning</th></tr></thead><tbody><tr><td><code>a | b</code></td><td>bitwise OR</td></tr></tbody></table>");
+});
+
 test("GFM tables and blockquotes", () => {
   const html = markdownToHtml("| a | b |\n|---|---|\n| 1 | 2 |\n\n> note\n> more");
   assert.equal(html, "<table><thead><tr><th>a</th><th>b</th></tr></thead><tbody><tr><td>1</td><td>2</td></tr></tbody></table>\n<blockquote><p>note more</p></blockquote>");

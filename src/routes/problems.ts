@@ -11,6 +11,7 @@ import { isCompanyTag } from "../lib/companies.js";
 import { problemCanonicalSlug } from "../lib/problem-canonical.js";
 import { isJudgeLanguage } from "../lib/judge0.js";
 import { HUB_PAGE_SIZE, hubIndex, hubPage, hubProblems, hubProgress, hubsForTags, relatedProblems } from "../services/problem-hubs.js";
+import { lessonsForTopics } from "../services/roadmap-lessons.js";
 
 const router = Router();
 
@@ -544,6 +545,8 @@ router.get("/:slug", optionalAuth, browserCache(120, { shared: true }), async (r
         topics: tags.filter((t) => !isCompanyTag(t)),
         related,
         hubs,
+        // The roadmap tutorials for its topics ("Learn the technique").
+        lessons: await lessonsForTopics(hubs.topics.map((t) => t.slug)),
         // The address the page's canonical names: its own, or the first copy
         // of a problem the catalogue carries twice (lib/problem-canonical).
         canonicalSlug: problemCanonicalSlug(problem.slug),

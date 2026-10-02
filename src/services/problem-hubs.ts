@@ -18,6 +18,7 @@ import { companyPlan, topicPlan, type CompanyPlanProblem, type StudyPlan } from 
 import { TEST_GUIDES } from "../lib/test-guides.js";
 import { TOPIC_ESSENTIALS } from "../lib/topic-essentials.js";
 import { walkthroughFor, type Walkthrough } from "../lib/walkthroughs/index.js";
+import { lessonForHub } from "../lib/roadmap-lessons.js";
 import { prisma } from "../lib/prisma.js";
 import { cached } from "../lib/cache.js";
 
@@ -88,6 +89,13 @@ export interface HubPage extends HubSummary {
   next: HubSummary | null;
   /** A company hub: its placement patterns on /tests (none for a topic, or a company without one). */
   patterns: Array<{ slug: string; name: string }>;
+  /**
+   * A topic: the roadmap lesson that teaches it (lib/roadmap-lessons, a
+   * lesson naming this hub), linked from the top of the page — the hub is
+   * where a technique is practised, the lesson where it is learnt. Null for
+   * a company or a topic no lesson teaches yet.
+   */
+  lesson: { slug: string; title: string } | null;
   /** Other hubs of the same kind, most populous first. */
   related: HubSummary[];
 }
@@ -304,6 +312,8 @@ export async function hubPage(kind: "topic" | "company", slug: string): Promise<
     const nextSlug = TOPIC_ORDER.slice(TOPIC_ORDER.indexOf(slug) + 1).find((s) => topicsBySlug.has(s));
     const next = nextSlug ? topicsBySlug.get(nextSlug)! : null;
     const ordered = prioritise(rows, road, startWith(slug));
+    const stageOrder = (await roadDefinition().catch(() => ({ stages: [] as Array<{ id: string }> }))).stages.map((st) => st.id);
+    const lesson = lessonForHub(slug, stageOrder);
     return {
       ...summary,
       blurb: hub.blurb,
@@ -314,6 +324,7 @@ export async function hubPage(kind: "topic" | "company", slug: string): Promise<
       next,
       problems: rows.map(toHubProblem),
       patterns: [],
+      lesson: lesson ? { slug: lesson.slug, title: lesson.title } : null,
       related,
     };
   }
@@ -360,6 +371,7 @@ export async function hubPage(kind: "topic" | "company", slug: string): Promise<
     next: null,
     problems: rows.map(toHubProblem),
     patterns: companyPatterns,
+    lesson: null,
     related,
   };
 }

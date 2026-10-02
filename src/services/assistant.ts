@@ -6,6 +6,7 @@ import { getDashboard } from "./dashboard.js";
 import { entitlementFor } from "./entitlements.js";
 import { providerConfig } from "./interview-ai.js";
 import { roadDefinition, roadmapFor, type RoadDefinition } from "./roadmap.js";
+import { lessonsForStage } from "../lib/roadmap-lessons.js";
 import { buildIndex, chunkBriefing, pickChunks, renderChunks, type BriefingIndex } from "../lib/assistant-index.js";
 
 /**
@@ -98,7 +99,10 @@ export function roadSection(road: RoadDefinition): string {
       .filter((s) => s.tier === t.id)
       .map((s) => {
         const number = road.stages.indexOf(s) + 1;
-        return `- Stage ${number}: **${s.title}** — ${s.blurb} Clear ${Math.min(s.required, s.problems.length)} of ${s.problems.length}: ${s.problems.map((p) => p.title).join(", ")}.`;
+        // The stage's lessons by path, so "where can I learn X?" gets a link.
+        const lessons = lessonsForStage(s.id);
+        const learn = lessons.length ? ` Lessons: ${lessons.map((l) => `${l.title} (/roadmap/${l.slug})`).join(", ")}.` : "";
+        return `- Stage ${number}: **${s.title}** — ${s.blurb} Clear ${Math.min(s.required, s.problems.length)} of ${s.problems.length}: ${s.problems.map((p) => p.title).join(", ")}.${learn}`;
       })
       .join("\n");
     return `## DSA roadmap as seeded — tier ${i + 1}: ${t.title}\n\n${t.blurb} Chest: ${chest(t)}.\n\n${list}`;

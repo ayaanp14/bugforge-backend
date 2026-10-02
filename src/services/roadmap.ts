@@ -3,6 +3,7 @@ import { prisma } from "../lib/prisma.js";
 import { cached, invalidate } from "../lib/cache.js";
 import { createNotificationOnce } from "./notifications.js";
 import { invalidateDashboard } from "./dashboard.js";
+import { lessonsForStage, summaryOf, type LessonSummary } from "../lib/roadmap-lessons.js";
 
 /**
  * The roadmap, for one account.
@@ -76,6 +77,11 @@ export interface RoadmapStage {
   status: StageStatus;
   /** Only sent for a stage the reader may see into (open or cleared). */
   problems: RoadmapProblem[] | null;
+  /**
+   * The stage's lessons (lib/roadmap-lessons), sent for every stage, locked
+   * or not: the lock guides the problems, never the reading.
+   */
+  lessons: LessonSummary[];
 }
 
 /** A tier as the reader sees it: the definition plus whether its chest is open. */
@@ -202,6 +208,7 @@ export function walk(road: RoadDefinition, solved: Set<string>): RoadmapStage[] 
       total: def.problems.length,
       status,
       problems: status === "locked" ? null : def.problems.map((p) => ({ slug: p.slug, title: p.title, difficulty: p.difficulty, solved: solved.has(p.id) })),
+      lessons: lessonsForStage(def.id).map(summaryOf),
     };
   });
 }

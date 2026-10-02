@@ -22,6 +22,9 @@ import { CARD_HEIGHT, CARD_WIDTH, getShareCard } from "./share-cards.js";
 import { CONTENT_CARD_DESIGN, CONTENT_CARD_HEIGHT, CONTENT_CARD_WIDTH, contentCardPng, type ContentCard } from "../lib/content-card.js";
 import { testSamples } from "./test-samples.js";
 import { frameSvg } from "../lib/walkthroughs/svg.js";
+import type { Walkthrough } from "../lib/walkthroughs/index.js";
+import { LESSON_LANGUAGES, RESERVED_LESSON_SLUGS, WALKTHROUGH_MARKER } from "../lib/roadmap-lessons.js";
+import { lessonPage, lessonSitemapEntries, lessonSyllabus, lessonsForTopics } from "./roadmap-lessons.js";
 
 /**
  * What a search engine is told about the app's public content.
@@ -90,6 +93,9 @@ export interface PageFacts {
    * authored; the SPA's structured data renders them as plain text.
    */
   faq?: Array<{ q: string; a: string }>;
+  /** A roadmap lesson's level ("Beginner" …) and the date it was last revised (YYYY-MM-DD). */
+  level?: string;
+  updated?: string;
   /** Home → section → … → this page. The last item is the page itself. */
   trail?: Crumb[];
 }
@@ -194,6 +200,10 @@ export const titles = {
     branded(company === BRAND ? `${name} — Free Mock Test` : name.includes(company) ? `${name}: Pattern, Syllabus & Mock Test` : `${name} (${company}): Pattern, Syllabus & Mock Test`),
   // "java certification test": the phrase searched; "skill test" is in the H1 and description. Fits 60 characters for every skill.
   skillTest: (skill: string, level: string) => branded(`${skill} Certification Test (${level})`),
+  // A roadmap lesson's authored search title ("Two Pointers Technique:
+  // Explained with Examples & Code") — the tutorial's words, never the
+  // hub's "… Coding Problems", so the two pages never compete for a query.
+  roadmapLesson: (searchTitle: string) => branded(searchTitle),
 };
 
 /**
@@ -298,6 +308,15 @@ const difficultySplit = (counts: Record<string, number>) =>
     .join(" · ");
 const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
 
+/**
+ * A walkthrough as a crawler reads it: the last frame drawn (the answer, as
+ * a static SVG) and every step's sentence in order — the same words the
+ * page's figure plays (lib/walkthroughs).
+ */
+const walkthroughHtml = (w: Walkthrough) =>
+  `<figure>${frameSvg(w, w.frames[w.frames.length - 1], `${w.title}: the finished state`).replace("<svg ", '<svg style="max-width:100%;height:auto" ')}<figcaption>${h(w.title)}. Example: <code>${h(w.input)}</code></figcaption></figure>` +
+  `<ol>${w.frames.map((f) => `<li>${h(f.caption)}</li>`).join("")}</ol>`;
+
 const HOME: Crumb = { name: "Home", path: "/" };
 const SECTION = {
   challenges: { name: "Coding problems", path: "/challenges" },
@@ -378,6 +397,20 @@ export function contentCardFor(path: string, head: PageHead): ContentCard | null
         { value: f.minutes ? `${f.minutes} min` : "Short", unit: "read" },
         { value: f.checkpoint ? "Graded" : "Exercises", unit: f.checkpoint ? "checkpoint" : "judged" },
         { value: "Free", unit: "course" },
+      ],
+    };
+  }
+  if (/^\/roadmap\/(?!certificate$)[a-z0-9-]+$/.test(path)) {
+    return {
+      kind: "lesson",
+      label: "DSA tutorial",
+      eyebrow: "DSA roadmap",
+      // The lesson's search title, as its <title> leads with it.
+      title: head.title.replace(/\s+—\s+CodeKairo$/, ""),
+      facts: [
+        { value: f.minutes ? `${f.minutes} min` : "Short", unit: "read" },
+        { value: "4", unit: "languages" },
+        { value: f.level ?? "Free", unit: f.level ? "level" : "tutorial" },
       ],
     };
   }
@@ -527,6 +560,7 @@ async function pageHead(path: string): Promise<PageHead | PageRedirect | null> {
   }
   if ((m = /^\/verify\/([a-z0-9-]{8,12})$/.exec(path))) return credentialHead(m[1]);
   if (path === "/roadmap") return roadmapIndex();
+  if ((m = /^\/roadmap\/([a-z0-9][a-z0-9-]*)$/.exec(path))) return RESERVED_LESSON_SLUGS.has(m[1]) ? null : roadmapLessonHead(m[1]);
   if ((m = /^\/share\/([a-z0-9]{10,40})$/.exec(path))) return shareHead(m[1]);
   return null;
 }
@@ -603,6 +637,7 @@ function problemHead(slug: string): Promise<PageHead | null> {
     const tags = asStrings(p.tags);
     const topics = tags.filter((t) => !isCompanyTag(t));
     const [hubs, related] = await Promise.all([hubsForTags(tags), relatedProblems(slug, tags, p.difficulty)]);
+    const lessons = await lessonsForTopics(hubs.topics.map((t) => t.slug));
     const primary = hubs.topics[0];
     const trail: Crumb[] = [HOME, SECTION.challenges, ...(primary ? [{ name: primary.label, path: hubPath(primary) }] : []), { name: p.title, path: `/problems/${slug}` }];
 
@@ -635,7 +670,8 @@ function problemHead(slug: string): Promise<PageHead | null> {
       (p.editorial ? section(`How to solve ${p.title}`, markdownToHtml(p.editorial, 12_000, { under: 2 }), "editorial") : "") +
       (solutionHtml ? section("Reference solution", solutionHtml, "solution") : "") +
       (related.length ? section(primary ? `More ${primary.label.toLowerCase()} problems` : "Related problems", linkList(related.map(problemRow)), "related") : "") +
-      (primary ? `<p>${link(hubPath(primary), `All ${primary.count} ${primary.label.toLowerCase()} problems`)} · ${link("/challenges", "the whole catalogue")}</p>` : "");
+      (primary ? `<p>${link(hubPath(primary), `All ${primary.count} ${primary.label.toLowerCase()} problems`)} · ${link("/challenges", "the whole catalogue")}</p>` : "") +
+      (lessons.length ? `<p>Learn the technique: ${lessons.map((l) => link(`/roadmap/${l.slug}`, l.title)).join(" · ")}</p>` : "");
     const canonical = problemCanonicalSlug(slug);
     // Look-alike problems open with the same sentence (the stock-trading
     // series, three sentence-counting ones): such a description is led by
@@ -688,18 +724,11 @@ async function hubHead(kind: "topic" | "company", slug: string): Promise<PageHea
     const rows = byLevel(level);
     return rows.length ? `<h3>${h(titleCase(level))} (${rows.length})</h3>${linkList(rows.map((p) => ({ href: `/problems/${p.slug}`, label: p.title, note: p.topics.filter((t) => t !== page.tag).slice(0, 3).join(", ") })))}` : "";
   });
-  // The walkthrough as a crawler reads it: the last frame drawn (the answer,
-  // as a static SVG) and every step's sentence in order — the same words
-  // the page's figure plays (lib/walkthroughs).
   const w = page.walkthrough;
-  const walkthrough = w
-    ? section(
-        `How ${page.label.toLowerCase()} works, step by step`,
-        `<figure>${frameSvg(w, w.frames[w.frames.length - 1], `${w.title}: the finished state`).replace("<svg ", '<svg style="max-width:100%;height:auto" ')}<figcaption>${h(w.title)}. Example: <code>${h(w.input)}</code></figcaption></figure>` +
-          `<ol>${w.frames.map((f) => `<li>${h(f.caption)}</li>`).join("")}</ol>`,
-        "walkthrough",
-      )
-    : "";
+  const walkthrough = w ? section(`How ${page.label.toLowerCase()} works, step by step`, walkthroughHtml(w), "walkthrough") : "";
+  // The tutorial that teaches this topic on the road (lib/roadmap-lessons),
+  // linked first: the hub is where it is practised, the lesson where it is learnt.
+  const lesson = page.lesson ? `<p>New to ${h(page.label.toLowerCase())}? ${link(`/roadmap/${page.lesson.slug}`, `Read the ${page.lesson.title} tutorial`)} first.</p>` : "";
   const plan = section(
     kind === "topic" ? `${page.label} study plan` : `${page.label} study plan by topic`,
     `<p>${h(page.plan.summary)}</p>` +
@@ -728,6 +757,7 @@ async function hubHead(kind: "topic" | "company", slug: string): Promise<PageHea
       ["Cost", "Free on every plan; sign in to run and submit"],
     ]) +
     `<p>${h(page.blurb)}</p>` +
+    lesson +
     walkthrough +
     plan +
     // The technique on one sheet (lib/topic-essentials): when to reach for
@@ -1387,12 +1417,18 @@ async function credentialHead(raw: string): Promise<PageHead | null> {
 
 /** The roadmap index's child list: every tier, its stages, their problems. */
 async function roadmapIndex(): Promise<PageHead> {
-  const road = await roadDefinition();
+  const [road, syllabus] = await Promise.all([roadDefinition(), lessonSyllabus()]);
+  const lessonsOf = new Map(syllabus.tiers.flatMap((t) => t.stages.map((s) => [s.id, s.lessons] as const)));
   const tiers = road.tiers
     .map((tier) => {
       const stages = road.stages.filter((s) => s.tier === tier.id);
       return `<section><h3>${h(tier.title)}</h3><p>${h(tier.blurb)} The chest at the end pays ${tier.rewardXp} XP${tier.interviewCredits ? ` and ${plural(tier.interviewCredits, "bonus mock interview")}` : ""}.</p>${stages
-        .map((s) => `<h4>Stage ${road.stages.indexOf(s) + 1}: ${h(s.title)}</h4><p>${h(s.blurb)} Cleared at ${s.required} of ${s.problems.length} solved.</p>${linkList(s.problems.map(problemRow))}`)
+        .map((s) => {
+          // The stage's lessons first: what to read, then what to solve.
+          const lessons = lessonsOf.get(s.id) ?? [];
+          const learn = lessons.length ? `<p>Learn: ${lessons.map((l) => link(`/roadmap/${l.slug}`, l.title)).join(" · ")}</p>` : "";
+          return `<h4>Stage ${road.stages.indexOf(s) + 1}: ${h(s.title)}</h4><p>${h(s.blurb)} Cleared at ${s.required} of ${s.problems.length} solved.</p>${learn}${linkList(s.problems.map(problemRow))}`;
+        })
         .join("")}</section>`;
     })
     .join("");
@@ -1401,6 +1437,62 @@ async function roadmapIndex(): Promise<PageHead> {
     `<p>At about ${PLAN_PACE} problems a day, five days a week, the road takes ${plan.weeks} weeks — about ${Math.ceil(plan.weeks / 4.3)} months — counting only the solves each stage needs to clear. Most placement seasons start in the final year, so starting in the pre-final year's second half leaves room to revise.</p>` +
     `<table><thead><tr><th>Weeks</th><th>Stage</th><th>Solves to clear</th></tr></thead><tbody>${plan.rows.map((r) => `<tr><td>${h(r.weeks)}</td><td>${h(r.stage)}</td><td>${r.required}</td></tr>`).join("")}</tbody></table>`;
   return { path: "/roadmap", title: "DSA roadmap", description: "", content: section("A week-by-week plan", planHtml, "plan") + section("The road, stage by stage", tiers, "stages"), section: "index" };
+}
+
+/**
+ * A roadmap lesson (/roadmap/<slug>, services/roadmap-lessons): the
+ * tutorial behind a stage. The page's order — the direct answer under the
+ * heading, the contents, the article with an anchor on every heading and
+ * its walkthrough where the text places it, the common questions, the
+ * practice problems, the stage's other lessons and the way on — the same
+ * blocks the SPA's RoadmapLessonPage draws. Code groups print as their four
+ * programs in turn, then the output.
+ */
+async function roadmapLessonHead(slug: string): Promise<PageHead | null> {
+  const page = await lessonPage(slug);
+  if (!page) return null;
+  const { lesson: l, stage } = page;
+  const path = `/roadmap/${l.slug}`;
+  const trail: Crumb[] = [HOME, SECTION.roadmap, { name: l.title, path }];
+  const outline = markdownOutline(l.body);
+  // The article's own "##" stay h2 — it is the page, not a section under one.
+  const article = markdownToHtml(l.body, 120_000, { anchors: true, under: 1 }).replace(`<p>${WALKTHROUGH_MARKER}</p>`, () => (page.walkthrough ? walkthroughHtml(page.walkthrough) : ""));
+  const siblings = page.syllabus.tiers.flatMap((t) => t.stages).find((s) => s.id === stage.id)?.lessons ?? [];
+  const content =
+    factList([
+      ["Roadmap stage", link("/roadmap", `Stage ${stage.number}: ${stage.title}`), { html: true }],
+      ["Level", l.level],
+      ["Reading time", `${l.minutes} min`],
+      ["Code", LESSON_LANGUAGES.map((x) => ({ cpp: "C++", java: "Java", python: "Python", javascript: "JavaScript" })[x]).join(", ")],
+      ["Updated", l.updated],
+    ]) +
+    `<section id="answer"><h2>${inlineMd(l.seo.question)}</h2><p>${inlineMd(l.seo.answer)}</p></section>` +
+    (outline.length > 1 ? `<nav id="contents" aria-label="On this page"><h2>On this page</h2>${linkList(outline.map((o) => ({ href: `#${o.id}`, label: o.text })))}</nav>` : "") +
+    `<article id="lesson">${article}</article>` +
+    section(
+      "Practice problems",
+      linkList(page.practice.map(problemRow)) + (page.hub ? `<p>${link(`/challenges/${page.hub.slug}`, `All ${plural(page.hub.count, `${page.hub.label.toLowerCase()} problem`)}`)}</p>` : ""),
+      "practice",
+    ) +
+    (l.seo.faq.length ? `<section id="questions"><h2>Common questions</h2>${l.seo.faq.map((f) => `<h3>${inlineMd(f.q)}</h3><p>${inlineMd(f.a)}</p>`).join("")}</section>` : "") +
+    section(`Stage ${stage.number}: ${stage.title}`, `<p>${h(stage.blurb)} The stage clears at ${stage.required} of its ${stage.total} problems solved.</p>${linkList(siblings.map((s) => ({ href: `/roadmap/${s.slug}`, label: `${s.title}${s.slug === l.slug ? " (this lesson)" : ""}`, note: `${s.minutes} min` })))}`, "stage") +
+    `<p>${page.prev ? link(`/roadmap/${page.prev.slug}`, `← ${page.prev.title}`) : link("/roadmap", "← The DSA roadmap")}${page.next ? ` · ${link(`/roadmap/${page.next.slug}`, `${page.next.title} →`)}` : ""}</p>`;
+  return {
+    path,
+    title: titles.roadmapLesson(l.seo.title),
+    description: l.seo.description,
+    facts: {
+      minutes: l.minutes,
+      level: l.level,
+      updated: l.updated,
+      topic: page.hub?.label ?? stage.title,
+      track: { title: "DSA roadmap", path: "/roadmap" },
+      faq: [{ q: l.seo.question, a: l.seo.answer }, ...l.seo.faq],
+      trail,
+    },
+    content,
+    crumb: l.title,
+  };
 }
 
 /** Problems a day in the plan; the SPA's roadmap page (lib/roadmap-plan.ts) uses the same pace. */
@@ -1425,7 +1517,7 @@ export function roadmapPlan(road: { stages: Array<{ title: string; required: num
 
 /* ── Sitemaps ─────────────────────────────────────────────────── */
 
-export const SITEMAP_NAMES = ["problems", "bug-hunts", "study-plans", "aptitude", "tests", "categories"] as const;
+export const SITEMAP_NAMES = ["problems", "bug-hunts", "study-plans", "aptitude", "tests", "categories", "roadmap"] as const;
 export type SitemapName = (typeof SITEMAP_NAMES)[number];
 
 const SITEMAP_TTL_MS = 60 * 60 * 1000;
@@ -1510,6 +1602,12 @@ export function sitemapXml(name: string): Promise<string | null> {
           ...APTITUDE_TOPICS.filter((t) => (counts.get(t.id)?.total ?? 0) > 0).map((t) => ({ path: `/aptitude/${t.id}` })),
         ];
         return urlset(entries);
+      }
+      case "roadmap": {
+        // The roadmap's lessons, each with the date it was last revised —
+        // authored in the file (`updated`), so a lastmod moves only when
+        // the text did.
+        return urlset(await lessonSitemapEntries());
       }
     }
   });

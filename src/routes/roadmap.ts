@@ -2,6 +2,7 @@ import { Router } from "express";
 import { optionalAuth } from "../middleware/auth.js";
 import { browserCache } from "../lib/http-cache.js";
 import { roadmapFor, roadmapForVisitor } from "../services/roadmap.js";
+import { lessonPage, lessonSyllabus } from "../services/roadmap-lessons.js";
 
 /**
  * The DSA roadmap. One read: the fixed stages with the reader's standing on
@@ -19,6 +20,24 @@ const router = Router();
 // (and Varies on Authorization), so a member's standing is never cached.
 router.get("/", optionalAuth, browserCache(60), async (req: any, res) => {
   res.json(req.user ? await roadmapFor(req.user.userId) : await roadmapForVisitor());
+});
+
+// The lessons behind the stages (services/roadmap-lessons): the syllabus
+// and one lesson's page. Nothing in either reads the caller — a reader's
+// standing is the road's own read above — so both are the same bytes for
+// everyone and may sit in any browser for five minutes.
+router.get("/lessons", browserCache(300, { shared: true }), async (_req, res) => {
+  res.json(await lessonSyllabus());
+});
+
+router.get("/lessons/:slug", browserCache(300, { shared: true }), async (req, res) => {
+  const slug = String(req.params["slug"] ?? "");
+  const page = /^[a-z0-9][a-z0-9-]{0,80}$/.test(slug) ? await lessonPage(slug) : null;
+  if (!page) {
+    res.status(404).json({ error: "There is no lesson at this address." });
+    return;
+  }
+  res.json(page);
 });
 
 export default router;
