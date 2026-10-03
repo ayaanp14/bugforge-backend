@@ -9,6 +9,7 @@ import { solvedBy } from "../services/admin-solved.js";
 import { bugSubmissionDetail, problemSubmissionDetail } from "../services/admin-submissions.js";
 import { interviewDetail, interviewList, interviewSummary, interviewsOf } from "../services/admin-interviews.js";
 import { userDepth } from "../services/admin-user-depth.js";
+import { cameFromOf, trafficReport, userTraffic } from "../services/admin-traffic.js";
 import { invalidateProblem } from "./problems.js";
 import { emailEnabled } from "../lib/email.js";
 
@@ -217,7 +218,7 @@ router.get("/analytics", async (req, res) => {
   const days = intArg(req.query["days"], 14, 2, 90);
   const since = new Date(Date.now() - days * DAY_MS);
 
-  const [activeUsers, visitors, pageViews, signups, submissions, accepted, errors, topEvents, topPaths] = await Promise.all([
+  const [activeUsers, visitors, pageViews, signups, submissions, accepted, errors, topEvents, topPaths, traffic] = await Promise.all([
     perDay("AppEvent", "createdAt", since, Prisma.sql`AND userId IS NOT NULL`, "userId"),
     perDay("AppEvent", "createdAt", since, Prisma.sql`AND name = 'page_view'`, "COALESCE(userId, sessionId)"),
     perDay("AppEvent", "createdAt", since, Prisma.sql`AND name = 'page_view'`),
@@ -239,6 +240,8 @@ router.get("/analytics", async (req, res) => {
       orderBy: { _count: { path: "desc" } },
       take: 30,
     }),
+    // Where the visits came from (services/admin-traffic.ts).
+    trafficReport(since),
   ]);
 
   res.json({
@@ -246,6 +249,7 @@ router.get("/analytics", async (req, res) => {
     series: { activeUsers, visitors, pageViews, signups, submissions, accepted, errors },
     topEvents: topEvents.map((e) => ({ name: e.name, count: e._count._all })),
     topPaths: topPaths.map((p) => ({ path: p.path, count: p._count._all })),
+    traffic,
   });
 });
 
@@ -304,7 +308,8 @@ router.get("/users", async (req, res) => {
       select: USER_ROW,
     }),
   ]);
-  res.json({ q, sort, page, pageSize: take, total, users });
+  const cameFrom = await cameFromOf(users);
+  res.json({ q, sort, page, pageSize: take, total, users: users.map((u) => ({ ...u, cameFrom: cameFrom.get(u.id) ?? null })) });
 });
 
 // GET /api/admin/users/:id — one account in full
@@ -349,7 +354,7 @@ router.get("/users/:id", async (req, res) => {
     res.status(404).json({ error: "No such user" });
     return;
   }
-  const [plan, recentErrors, solved, interviews, depth] = await Promise.all([
+  const [plan, recentErrors, solved, interviews, depth, traffic] = await Promise.all([
     activePlan(user.id, user.email),
     prisma.errorReport.findMany({
       where: { userId: id },
@@ -360,8 +365,9 @@ router.get("/users/:id", async (req, res) => {
     solvedBy(user.id),
     interviewsOf(user.id),
     userDepth(user.id),
+    userTraffic(user.id, user.createdAt),
   ]);
-  res.json({ user, plan: { id: plan.plan.id, name: plan.plan.name, currentPeriodEnd: plan.currentPeriodEnd }, recentErrors, solved, interviews, depth });
+  res.json({ user, plan: { id: plan.plan.id, name: plan.plan.name, currentPeriodEnd: plan.currentPeriodEnd }, recentErrors, solved, interviews, depth, traffic });
 });
 
 // GET /api/admin/submissions/:id — one problem submission with its code
