@@ -6,7 +6,9 @@ import { prisma } from "../lib/prisma.js";
 import { requireAuth, optionalAuth, adminOnly } from "../middleware/auth.js";
 import { cachedShared, invalidate } from "../lib/cache.js";
 import { browserCache } from "../lib/http-cache.js";
-import { catalogueNeighbours, getCatalogue, invalidateDashboard, listProblemsWithStatus, loadProblemState, problemIdBySlug, publishedProblemExists, type ProblemState } from "../services/dashboard.js";
+import { catalogueNeighbours, getCatalogue, invalidateDashboard, listProblemsWithStatus, loadProblemState, problemIdBySlug, publishedProblemExists, type CatalogueRow, type ProblemState } from "../services/dashboard.js";
+import { normalizeSearch } from "../lib/problem-search.js";
+import { searchCatalogue } from "../services/problem-search.js";
 import { isCompanyTag } from "../lib/companies.js";
 import { problemCanonicalSlug } from "../lib/problem-canonical.js";
 import { isJudgeLanguage } from "../lib/judge0.js";
@@ -14,7 +16,7 @@ import { HUB_PAGE_SIZE, hubIndex, hubPage, hubProblems, hubProgress, hubsForTags
 import { lessonsForTopics } from "../services/roadmap-lessons.js";
 import { forgetProblemSeo } from "../services/seo.js";
 import { forgetJudgeSuite } from "../lib/test-suite-cache.js";
-import { filterCatalogue, seededShuffle, sortCatalogue } from "../lib/catalogue-filter.js";
+import { filterCatalogue, seededShuffle, sortCatalogue, type CatalogueFilter } from "../lib/catalogue-filter.js";
 
 const router = Router();
 
@@ -80,24 +82,28 @@ export function invalidateProblem(slug: string, problemId?: string): void {
 const MAX_TAKE = 100;
 
 /**
- * The columns a list row carries — the same slice `listProblemsWithStatus`
- * projects the cached catalogue down to, so both paths below answer with one
+ * The fields a list row carries — the same slice `listProblemsWithStatus`
+ * projects the cached catalogue down to, so every path below answers with one
  * shape.
  *
  * Deliberately absent: `createdAt` and `timeLimitMs`. Both rode on every row
  * of every list page and no consumer has ever read them — not the catalogue
  * table, not the pickers, not the mobile list (which renders id, slug, title,
- * difficulty, tags and status). `maxTime` filters on timeLimitMs in SQL and
- * `sortBy` orders on createdAt in SQL; neither needs the column on the wire.
- * At the 100-row cap that was ~5.6 KB of a 26 KB answer.
+ * difficulty, tags and status). `maxTime` filters on timeLimitMs and `sortBy`
+ * orders on createdAt server-side; neither needs the field on the wire.
+ * At the 100-row cap that was ~5.6 KB of a 26 KB answer. A search's relevance
+ * score is not sent either: the order is the answer.
  */
-const LIST_SELECT = {
-  id: true,
-  title: true,
-  slug: true,
-  difficulty: true,
-  tags: true,
-} as const;
+const listRow = (p: CatalogueRow, state: ProblemState | null) => ({
+  id: p.id,
+  title: p.title,
+  slug: p.slug,
+  difficulty: p.difficulty,
+  tags: p.tags,
+  status: statusOf(state, p.id),
+  // Solved in a Battles tournament: the row's trophy mark.
+  tournament: state?.tournamentSolved.has(p.id) ?? false,
+});
 
 /**
  * Everything the workspace reads off a problem, and nothing it does not.
@@ -152,7 +158,10 @@ router.get("/", optionalAuth, browserCache(60), async (req, res) => {
     const tags = all(req.query["tag"]);
     const difficulty = first(req.query["difficulty"]);
     const company = first(req.query["company"]);
-    const search = first(req.query["search"]);
+    // Normalized once (lib/problem-search): case, accents, punctuation and
+    // runs of spaces fold away, anything past 100 characters is cut, and
+    // what is left empty — "", "   ", "!!!" — is no search at all.
+    const search = normalizeSearch(first(req.query["search"]));
     const status = first(req.query["status"]);
     const sortBy = first(req.query["sortBy"]);
     const skip = first(req.query["skip"]);
@@ -189,7 +198,9 @@ router.get("/", optionalAuth, browserCache(60), async (req, res) => {
     // catalogue for everyone, and that catalogue is already held in memory for
     // the dashboard. Serve it from there: one parallel tier (the two solve-state
     // GROUP BYs) for a signed-in reader, no round trip at all for a visitor.
-    const isDefaultSort = !sortBy || sortBy === "newest";
+    // "relevance" is what a search is ordered by; without one it means the
+    // catalogue's own order, like no sortBy at all.
+    const isDefaultSort = !sortBy || sortBy === "newest" || sortBy === "relevance";
     const isPlainFirstPage =
       isDefaultSort && skipNum === 0 && !difficulty && tags.length === 0 && !company && !search && !maxTime && !statusFilter;
     if (isPlainFirstPage) {
@@ -199,76 +210,49 @@ router.get("/", optionalAuth, browserCache(60), async (req, res) => {
             .slice(0, takeNum)
             // Same projection as listProblemsWithStatus: the visitor's copy of
             // the head must be the same shape as a member's.
-            .map((p) => ({ id: p.id, title: p.title, slug: p.slug, difficulty: p.difficulty, tags: p.tags, status: "UNSOLVED", tournament: false }));
+            .map((p) => listRow(p, null));
       await send(result);
       return;
     }
 
-    const where: any = {
-      isPublished: true,
-    };
-
-    if (difficulty) where.difficulty = { equals: difficulty }; // MySQL CI collation handles case
-    if (tags.length > 0) {
-      // tags is a Json array on MySQL — require every selected tag
-      // (replaces the Postgres-only scalar-list hasEvery filter).
-      where.AND = [
-        ...(where.AND ?? []),
-        ...tags.map((t) => ({ tags: { array_contains: [t] } })),
-      ];
-    }
-    // A company is just another entry in the same tags array; it gets its own
-    // parameter so the catalogue page's company chips read as what they are.
-    if (company) {
-      where.AND = [...(where.AND ?? []), { tags: { array_contains: [company] } }];
-    }
-    if (maxTime) where.timeLimitMs = { lte: maxTime };
-    if (search) {
-      where.OR = [
-        { title: { contains: search } },
-        { description: { contains: search } },
-      ];
-    }
-
-    // Solved / unsolved as a relation filter inside the same query, rather than
-    // loading every accepted submission the user ever made to build an id list.
-    if (statusFilter === "solved") {
-      where.submissions = { some: { userId, verdict: "ACCEPTED" } };
-    } else if (statusFilter === "unsolved") {
-      where.submissions = { none: { userId, verdict: "ACCEPTED" } };
-    }
-
-    // Determine Sort Order
-    let orderBy: any = { createdAt: "desc" };
-    if (sortBy === "oldest") orderBy = { createdAt: "asc" };
-    else if (sortBy === "title-asc") orderBy = { title: "asc" };
-    else if (sortBy === "title-desc") orderBy = { title: "desc" };
-
     // The reader's solve state is two GROUP BYs over their own submissions —
     // one row per problem touched, index-only — and it does not depend on which
-    // page comes back, so it overlaps the page query instead of following it.
-    // Previously this was a third round trip that fetched every submission row
-    // for the page's problems.
+    // page comes back, so it overlaps the page's own read instead of following
+    // it. Previously this was a third round trip that fetched every submission
+    // row for the page's problems.
     const statePromise: Promise<ProblemState | null> = userId ? loadProblemState(userId) : Promise.resolve(null);
     // The client sends one `seed` for a whole browsing session, so every page
     // slices the SAME order — without it, each request reshuffles and infinite
     // scroll returns duplicate/missing rows.
     const seedStr = first(req.query["seed"]) ?? "";
 
-    // Everything but the text search answers from memory (lib/catalogue-filter
-    // says why, and which SQL each rule stands in for): no round trip for a
-    // visitor, the reader's cached solve state for a member. Every chip click
-    // and every scroll page of the default shuffled view lands here.
-    if (!search) {
-      const [catalogue, loaded] = await Promise.all([getCatalogue(), statePromise]);
-      const matches = filterCatalogue(catalogue, {
-        difficulty,
-        tags,
-        company,
-        maxTime,
-        status: statusFilter && loaded ? { want: statusFilter, solved: loaded.solved } : null,
-      });
-      let page: typeof matches;
+    // Every view answers from memory (lib/catalogue-filter says why, and
+    // which SQL each rule stands in for): no round trip for a visitor, the
+    // reader's cached solve state for a member. Every chip click and every
+    // scroll page of the default shuffled view lands here. A search adds one
+    // full-text statement at most (services/problem-search), cached by its
+    // terms and overlapped with the solve state; it used to be a `LIKE
+    // '%q%'` over every statement, in newest-first order.
+    const [catalogue, ranked, loaded] = await Promise.all([getCatalogue(), search ? searchCatalogue(search) : null, statePromise]);
+    const filter: CatalogueFilter = {
+      difficulty,
+      tags,
+      company,
+      maxTime,
+      status: statusFilter && loaded ? { want: statusFilter, solved: loaded.solved } : null,
+    };
+    let page: CatalogueRow[];
+    if (ranked && (!sortBy || sortBy === "relevance" || sortBy === "shuffled")) {
+      // A search's own order is its relevance — asked for by name, or by not
+      // asking (Ctrl+K, the pickers), or under the catalogue page's default
+      // shuffle, which would bury the best match somewhere in the list.
+      // filterCatalogue keeps the order it is given.
+      page = filterCatalogue(ranked, filter).slice(skipNum, skipNum + takeNum);
+    } else {
+      // Any other sort reorders the matches the way it orders the catalogue,
+      // so it is applied to them in catalogue order (newest first).
+      const ids = ranked ? new Set(ranked.map((p) => p.id)) : null;
+      const matches = filterCatalogue(ids ? catalogue.filter((p) => ids.has(p.id)) : catalogue, filter);
       if (sortBy === "shuffled") {
         const byId = new Map(matches.map((p) => [p.id, p]));
         page = seededShuffle(matches.map((p) => p.id), seedStr)
@@ -277,67 +261,8 @@ router.get("/", optionalAuth, browserCache(60), async (req, res) => {
       } else {
         page = sortCatalogue(matches, sortBy).slice(skipNum, skipNum + takeNum);
       }
-      await send(
-        page.map((p) => ({
-          id: p.id,
-          title: p.title,
-          slug: p.slug,
-          difficulty: p.difficulty,
-          tags: p.tags,
-          status: statusOf(loaded, p.id),
-          tournament: loaded?.tournamentSolved.has(p.id) ?? false,
-        })),
-      );
-      return;
     }
-
-    let problems;
-    let state: ProblemState | null;
-
-    if (sortBy === "shuffled") {
-      // 1. Fetch all published IDs matching filters
-      const [matchingProblems, loaded] = await Promise.all([
-        prisma.problem.findMany({
-          where,
-          select: { id: true },
-        }),
-        statePromise,
-      ]);
-      state = loaded;
-
-      // 2. Shuffle IDs deterministically (the same order the in-memory path
-      //    gives the same ids), then 3. take the current page.
-      const pageIds = seededShuffle(matchingProblems.map((p) => p.id), seedStr).slice(skipNum, skipNum + takeNum);
-
-      // 4. Fetch full data for these IDs (maintain shuffled order)
-      const data = await prisma.problem.findMany({
-        where: { id: { in: pageIds } },
-        select: LIST_SELECT,
-      });
-
-      // Mapping objects back to shuffled order
-      problems = pageIds.map(id => data.find(p => p.id === id)).filter((p): p is NonNullable<typeof p> => !!p);
-    } else {
-      [problems, state] = await Promise.all([
-        prisma.problem.findMany({
-          where,
-          select: LIST_SELECT,
-          orderBy,
-          skip: skipNum,
-          take: takeNum,
-        }),
-        statePromise,
-      ]);
-    }
-
-    const result = problems.map((p) => ({
-      ...p,
-      status: statusOf(state, p.id),
-      // Solved in a Battles tournament: the row's trophy mark.
-      tournament: state?.tournamentSolved.has(p.id) ?? false,
-    }));
-
-    await send(result);
+    await send(page.map((p) => listRow(p, loaded)));
   } catch (err) {
     console.error("GET /api/problems error:", err);
     res.status(500).json({ error: "Internal server error" });

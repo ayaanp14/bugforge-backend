@@ -557,9 +557,9 @@ export async function getContinueSolving(userId: string) {
  *
  * Projected rather than spread: the cached catalogue carries `createdAt` and
  * `timeLimitMs` because ordering and the maxTime filter are expressed in terms
- * of them, but no client reads either, and the DB path's LIST_SELECT does not
+ * of them, but no client reads either, and the route's own `listRow` does not
  * send them. Both paths must answer with the same shape, so the projection is
- * the shape — see LIST_SELECT in routes/problems.ts.
+ * the shape — see listRow in routes/problems.ts.
  */
 export async function listProblemsWithStatus(userId: string, take = 100) {
   const state = await loadProblemState(userId);

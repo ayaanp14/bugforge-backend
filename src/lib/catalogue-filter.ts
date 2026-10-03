@@ -10,7 +10,9 @@
  * already cached for the dashboard, and a solve state per reader beside it,
  * so the same answers are a filter over ~1,600 objects. Only the text search
  * still goes to MySQL: it reads `description`, which the cached rows leave
- * out on purpose (MediumText, ~1,600 of them).
+ * out on purpose (MediumText, ~1,600 of them) — one full-text statement whose
+ * matches are ranked against these same rows (services/problem-search.ts)
+ * and then filtered here like any other view.
  *
  * Equivalences with the SQL these replace, so the answers do not move:
  * - difficulty: MySQL's _ci collation compared case-insensitively → lowercase both.

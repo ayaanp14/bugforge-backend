@@ -195,6 +195,11 @@ model Problem {
   duels Duel[]
 
   @@index([isPublished, createdAt])
+  // Problem search's text half (services/problem-search.ts): MATCH … AGAINST
+  // over the statement. The title, tags and companies are matched against
+  // the catalogue already in memory; only `description` is not held there,
+  // and `LIKE '%q%'` on it read every MediumText row on every search.
+  @@fulltext([title, description])
 }
 
 model CodeDraft {
