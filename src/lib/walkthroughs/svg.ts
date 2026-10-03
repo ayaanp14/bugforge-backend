@@ -18,7 +18,7 @@ const V = {
   hair: "var(--color-border, #E5E5E5)",
   surface: "var(--color-surface, #FFFFFF)",
   well: "var(--color-bg-subtle, #F4F4F4)",
-  accent: "var(--color-accent, #018790)",
+  accent: "var(--color-accent, #0164FD)",
   error: "var(--color-error, #C22D32)",
   onAccent: "var(--color-on-primary, #FFFFFF)",
   edge: "var(--color-text-disabled, #AFAFAF)",

@@ -421,7 +421,7 @@ a{text-decoration:none}
 .ck-ink{color:#F5F5F5 !important}
 .ck-secondary{color:#A3A3A3 !important}
 .ck-muted,.ck-muted a{color:#8C8C8C !important}
-.ck-eyebrow,.ck-link{color:#00B7B5 !important}
+.ck-eyebrow,.ck-link{color:#23A5FD !important}
 .ck-rule{border-color:#262626 !important}
 .ck-well{background:#0D0D0D !important;border-color:#262626 !important}
 .ck-btn{background:#F5F5F5 !important}

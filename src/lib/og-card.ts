@@ -21,8 +21,8 @@ export const INK = "#111111";
 export const SECONDARY = "#5F5F5F";
 export const HAIRLINE = "#E5E5E5";
 export const MIST = "#F1F1F1";
-export const TEAL = "#018790";
-export const TEAL_DEEP = "#005461";
+export const TEAL = "#0164FD";
+export const TEAL_DEEP = "#074099";
 
 export type Style = Record<string, string | number>;
 export interface Node {

@@ -81,7 +81,7 @@ async function main() {
   const dark = flag("dark");
   const html = `<!doctype html><html${dark ? ' data-theme="dark"' : ""}><head><meta charset="utf-8"><title>Walkthroughs</title><style>
 :root{--font-sans:system-ui;--font-mono:'JetBrains Mono',Consolas,monospace}
-${dark ? ":root{--color-text:#F5F5F5;--color-text-secondary:#A3A3A3;--color-text-tertiary:#8C8C8C;--color-text-disabled:#595959;--color-border:#262626;--color-border-strong:#383838;--color-surface:#111111;--color-bg-subtle:#1C1C1C;--color-accent:#00B7B5;--color-error:#FF7A7E;--color-on-primary:#111111} body{background:#0A0A0A;color:#F5F5F5}" : "body{background:#fff;color:#111}"}
+${dark ? ":root{--color-text:#F5F5F5;--color-text-secondary:#A3A3A3;--color-text-tertiary:#8C8C8C;--color-text-disabled:#595959;--color-border:#262626;--color-border-strong:#383838;--color-surface:#111111;--color-bg-subtle:#1C1C1C;--color-accent:#23A5FD;--color-error:#FF7A7E;--color-on-primary:#111111} body{background:#0A0A0A;color:#F5F5F5}" : "body{background:#fff;color:#111}"}
 body{font-family:system-ui;margin:24px}section{margin-bottom:48px}h2{font-size:18px}small{font-weight:400;color:#888;font-size:12px}
 ol{display:grid;grid-template-columns:repeat(auto-fill,minmax(420px,1fr));gap:20px;padding-left:20px}li p{font-size:13px;line-height:1.5;max-width:60ch}
 .fig svg{max-width:100%;height:auto;border:1px solid #8883;border-radius:6px}.bad{color:#c22d32}.input{font-family:monospace;font-size:13px;color:#666}
