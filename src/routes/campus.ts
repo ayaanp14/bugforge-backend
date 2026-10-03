@@ -2,6 +2,7 @@ import { Router } from "express";
 import { prisma } from "../lib/prisma.js";
 import { optionalAuth } from "../middleware/auth.js";
 import { publicFormLimiter } from "../middleware/rate-limit.js";
+import { BOT_SIGNAL_ERROR, botSignal } from "../lib/bot-check.js";
 import { CAMPUS_APPLIED, createNotificationOnce } from "../services/notifications.js";
 
 /**
@@ -48,6 +49,13 @@ function email(raw: unknown): string | null {
 // table with invented addresses.
 router.post("/apply", publicFormLimiter, optionalAuth, async (req: any, res) => {
   try {
+    // The honeypot and the fill time (lib/bot-check); the form is long, so
+    // the default minimum is far below what a person takes.
+    const bot = botSignal(req.body && typeof req.body === "object" ? req.body : {});
+    if (bot) {
+      console.warn(`[bot-check] campus application refused: ${bot}`);
+      return res.status(400).json({ error: BOT_SIGNAL_ERROR[bot] });
+    }
     const name = text(req.body?.name, 120);
     const address = email(req.body?.email);
     const college = text(req.body?.college, 200);

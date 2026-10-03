@@ -11,6 +11,7 @@ import { burnCompare, hashPassword, needsRehash, passwordProblem, verifyPassword
 import { emailVerificationRequired, sendAuthCode, welcomeNewAccount } from "../lib/auth-mail.js";
 import { redeemHandoff } from "../lib/handoff-store.js";
 import { readEmail, readUsername } from "../lib/identity.js";
+import { BOT_SIGNAL_ERROR, botSignal } from "../lib/bot-check.js";
 
 const router = Router();
 
@@ -77,6 +78,14 @@ const UNVERIFIED_MESSAGE = "Confirm your email address to sign in. We have sent 
 // POST /api/auth/register
 router.post("/register", async (req, res) => {
   const body = bodyOf(req);
+  // The honeypot and the fill time (lib/bot-check), before any work: a
+  // registration costs a bcrypt hash, a row and a verification mail.
+  const bot = botSignal(body);
+  if (bot) {
+    console.warn(`[bot-check] register refused: ${bot}`);
+    res.status(400).json({ error: BOT_SIGNAL_ERROR[bot] });
+    return;
+  }
   const email = readEmail(body["email"]);
   const password = body["password"];
   const handle = readUsername(body["username"]);
@@ -397,7 +406,14 @@ router.get("/time", (_req, res) => {
 
 // POST /api/auth/forgot-password
 router.post("/forgot-password", async (req, res) => {
-  const email = readEmail(bodyOf(req)["email"]);
+  const body = bodyOf(req);
+  const email = readEmail(body["email"]);
+  // Only the honeypot here (lib/bot-check): an autofilled address sent at
+  // once is a person. A filled trap is answered exactly as an address with
+  // no account is — a code minted for nobody, no mail — so the response
+  // says nothing about the check either.
+  const bot = botSignal(body, { minFillMs: 0 });
+  if (bot) console.warn(`[bot-check] forgot-password ignored: ${bot}`);
 
   if (!email) {
     res.status(400).json({ error: "Enter a valid email address." });
@@ -405,7 +421,7 @@ router.post("/forgot-password", async (req, res) => {
   }
 
   try {
-    const user = await prisma.user.findUnique({ where: { email }, select: { id: true } });
+    const user = bot ? null : await prisma.user.findUnique({ where: { email }, select: { id: true } });
 
     // A code is minted either way. The handle below carries no information, so
     // an address with no account produces an identical response and this
