@@ -5,7 +5,8 @@
 # the US (~500 ms a round trip) and Redis in us-east-1 (~300 ms). Both are now
 # a loopback hop away, which is worth more than any query tuning in this repo.
 #
-# Only Caddy is published. MySQL and Redis have no host port at all — they are
+# Only Caddy faces the internet (on the host network, see below; the API's
+# port is bound to loopback for it). MySQL and Redis have no host port at all — they are
 # reachable on the compose network and nowhere else, so the instance firewall
 # is not the only thing standing between them and the internet.
 
@@ -15,10 +16,17 @@ services:
   caddy:
     image: caddy:2-alpine
     restart: unless-stopped
-    ports:
-      # 80 answers Let's Encrypt's HTTP-01 challenge and redirects to 443.
-      - "80:80"
-      - "443:443"
+    # The host's network, not the compose one, since the API got an IPv6
+    # address (2026-10-03). The compose bridge is IPv4-only, so a published
+    # port took IPv6 connections through docker-proxy, which re-originates them
+    # from the bridge gateway: every IPv6 visitor would have reached Caddy --
+    # and the rate limiters behind it -- as 172.18.0.1, one shared allowance.
+    # On the host network Caddy accepts both families itself and sees each
+    # peer as it is. (IPv6 on the compose network would preserve them too, but
+    # recreating that network restarts MySQL.) Caddy binds 80 -- Let's
+    # Encrypt's HTTP-01 challenge and the redirect to 443 -- and 443 directly,
+    # and reaches the API on the loopback port the api service publishes.
+    network_mode: host
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       # The old Cloudflare Origin Certificate. Unused since the API went
@@ -60,6 +68,10 @@ services:
     # never committed. See .env.example for every variable.
     env_file:
       - .env.production
+    # For Caddy, which runs on the host network. Loopback only: from outside,
+    # the API is still reachable through Caddy and nothing else.
+    ports:
+      - "127.0.0.1:3001:3001"
     environment:
       NODE_ENV: production
       PORT: "3001"

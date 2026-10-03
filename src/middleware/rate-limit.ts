@@ -1,5 +1,6 @@
 import type { Request, Response, NextFunction, RequestHandler } from "express";
 import { createHash } from "node:crypto";
+import { isIP } from "node:net";
 
 /**
  * Request rate limiting.
@@ -40,14 +41,38 @@ export interface RateLimitOptions {
 }
 
 /**
- * The caller's address.
+ * An address as a rate-limit key: an IPv4 address as itself, an IPv6 one by
+ * its /64.
+ *
+ * The API answers on IPv6 since 2026-10-03, and a /64 is what one home or one
+ * phone is handed: its owner may use any of 2^64 addresses inside it (privacy
+ * addresses rotate on their own), so keying the whole address would give a
+ * script a fresh allowance per request. An IPv4-mapped address (::ffff:1.2.3.4)
+ * is its IPv4 address. Anything that is not an address comes back unchanged.
+ */
+export function addressKey(ip: string): string {
+  const bare = ip.split("%")[0] ?? ip;
+  const mapped = /^::ffff:(\d{1,3}(?:\.\d{1,3}){3})$/i.exec(bare);
+  if (mapped?.[1]) return mapped[1];
+  if (isIP(bare) !== 6) return ip;
+  const split = (s: string | undefined) => (s ? s.split(":") : []);
+  const [head, tail] = bare.split("::");
+  const front = split(head);
+  // An embedded IPv4 tail (…:1.2.3.4) is two groups' worth.
+  const width = (groups: string[]) => groups.reduce((n, g) => n + (g.includes(".") ? 2 : 1), 0);
+  const groups = tail === undefined ? front : [...front, ...Array<string>(8 - width(front) - width(split(tail))).fill("0"), ...split(tail)];
+  return `${groups.slice(0, 4).map((g) => parseInt(g, 16).toString(16)).join(":")}::/64`;
+}
+
+/**
+ * The caller's address, as a rate-limit key (`addressKey`).
  *
  * `req.ip` is only trustworthy once Express is told how many proxies sit in
  * front of it; see `trust proxy` in index.ts. Without that every request behind
  * a load balancer looks like it comes from the balancer, and one person could
  * exhaust everyone's allowance.
  */
-const addressOf = (req: Request): string => req.ip ?? req.socket.remoteAddress ?? "unknown";
+export const addressOf = (req: Request): string => addressKey(req.ip ?? req.socket.remoteAddress ?? "unknown");
 
 /** Bounded so a flood of distinct keys cannot grow the map without limit. */
 const MAX_KEYS = 20_000;

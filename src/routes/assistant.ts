@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { optionalAuth, requireAuth } from "../middleware/auth.js";
-import { rateLimit } from "../middleware/rate-limit.js";
+import { addressOf, rateLimit } from "../middleware/rate-limit.js";
 import { AssistantError, clearHistory, history, reply, type AssistantTurn } from "../services/assistant.js";
 import { checkAssistantQuota } from "../services/entitlements.js";
 
@@ -28,7 +28,7 @@ const burstLimiter = rateLimit({
   windowMs: 60 * 1000,
   max: 30,
   message: "You are asking very quickly. Give it a moment.",
-  keyOf: (req) => (req as typeof req & { user?: { userId: string } }).user?.userId ?? req.ip ?? "unknown",
+  keyOf: (req) => (req as typeof req & { user?: { userId: string } }).user?.userId ?? addressOf(req),
 });
 
 /**

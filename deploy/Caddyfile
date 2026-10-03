@@ -46,7 +46,9 @@
 }
 
 api.codekairo.com {
-	reverse_proxy api:3001 {
+	# Caddy runs on the host network (docker-compose.yml says why), so the API
+	# is its loopback port rather than the `api` service name.
+	reverse_proxy 127.0.0.1:3001 {
 		# Replaces the X-Forwarded-For that reverse_proxy would build (which,
 		# from a trusted peer, keeps the incoming list and appends the edge,
 		# and Express would then read the edge as the visitor).
