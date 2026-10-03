@@ -630,20 +630,48 @@ export interface LessonPayload {
     /** The head the page sets and the answer and questions it prints — the same the API gives the edge (services/seo.ts). */
     seo: LessonSeo | null;
   };
-  progress: (LessonProgress & { status: LessonStatus; mastery: number }) | null;
+  progress: ReaderProgress | null;
   prev: { slug: string; title: string } | null;
   next: { slug: string; title: string; module: string } | null;
 }
 
-/** One lesson, with the solutions, hidden cases and quiz answers withheld. */
+/** One reader's standing on one lesson: the stored row, or the empty one, and what it reads as. */
+export type ReaderProgress = LessonProgress & { status: LessonStatus; mastery: number };
+
+async function readerProgress(lesson: LessonDefinition, userId: string): Promise<ReaderProgress> {
+  const p = (await progressMap(userId, [lesson.key])).get(lesson.key) ?? EMPTY_PROGRESS;
+  return { ...p, status: lessonStatus(lesson, p), mastery: mastery(lesson, p) };
+}
+
+/**
+ * One lesson, with the solutions, hidden cases and quiz answers withheld, and
+ * the reader's progress laid over it (null for a visitor).
+ *
+ * The SPA reads the two halves apart — lessonContentFor and lessonProgressFor
+ * — because they are cached differently: the content is seeded and the same
+ * bytes for everyone, so every browser may keep it, while the progress moves
+ * with each read, quiz and submit. This whole form stays for older clients.
+ */
 export async function lessonFor(trackKey: string, lessonSlug: string, userId: string | null): Promise<LessonPayload | null> {
+  const content = await lessonContentFor(trackKey, lessonSlug);
+  if (!content || !userId) return content;
+  return { ...content, progress: await lessonProgressFor(trackKey, lessonSlug, userId) };
+}
+
+/** A reader's progress on one lesson, or null when there is no such lesson. */
+export async function lessonProgressFor(trackKey: string, lessonSlug: string, userId: string): Promise<ReaderProgress | null> {
+  const track = await trackDefinition(trackKey);
+  const found = track ? locate(track, lessonSlug) : null;
+  return found ? readerProgress(found.lesson, userId) : null;
+}
+
+/** One lesson as anyone reads it: `progress` is always null. */
+export async function lessonContentFor(trackKey: string, lessonSlug: string): Promise<LessonPayload | null> {
   const track = await trackDefinition(trackKey);
   if (!track) return null;
   const found = locate(track, lessonSlug);
   if (!found) return null;
   const { module, moduleIndex, lesson, lessonIndex } = found;
-
-  const p = userId ? (await progressMap(userId, [lesson.key])).get(lesson.key) ?? EMPTY_PROGRESS : null;
 
   const flat = track.modules.flatMap((m) => m.lessons.map((l) => ({ slug: l.slug, title: l.title, module: m.title })));
   const at = flat.findIndex((l) => l.slug === lesson.slug);
@@ -673,7 +701,7 @@ export async function lessonFor(trackKey: string, lessonSlug: string, userId: st
       quiz: lesson.quiz.map((q) => ({ prompt: q.prompt, options: q.options })),
       seo: lesson.seo,
     },
-    progress: p ? { ...p, status: lessonStatus(lesson, p), mastery: mastery(lesson, p) } : null,
+    progress: null,
     prev: prev ? { slug: prev.slug, title: prev.title } : null,
     next: next ? { slug: next.slug, title: next.title, module: next.module } : null,
   };
@@ -878,7 +906,7 @@ async function settleLesson(userId: string, track: TrackDefinition, module: Modu
 }
 
 export interface WriteOutcome {
-  progress: LessonProgress & { status: LessonStatus; mastery: number };
+  progress: ReaderProgress;
   completed: boolean;
   xp: number;
   moduleDone: boolean;
@@ -887,8 +915,7 @@ export interface WriteOutcome {
 
 async function outcome(userId: string, track: TrackDefinition, module: ModuleDefinition, lesson: LessonDefinition): Promise<WriteOutcome> {
   const settled = await settleLesson(userId, track, module, lesson);
-  const p = (await progressMap(userId, [lesson.key])).get(lesson.key) ?? EMPTY_PROGRESS;
-  return { progress: { ...p, status: lessonStatus(lesson, p), mastery: mastery(lesson, p) }, ...settled };
+  return { progress: await readerProgress(lesson, userId), ...settled };
 }
 
 /** The reader reached the end of the text. */

@@ -26,6 +26,22 @@ import type { RequestHandler } from "express";
  * requires before a shared cache may store the answer to a request carrying
  * `Authorization` — which every request from the SPA does.
  */
+/**
+ * How long a browser keeps seeded content: a problem's statement, starters,
+ * hints and editorial, the hub pages and the catalogue's counts, the bug-hunt
+ * hubs, the roadmap's lessons. None of it moves with anyone's activity — only
+ * a seed, a publish toggle or a deploy changes it — so it was held for five
+ * minutes for no reason, and a problem reopened later in the day waited on a
+ * round trip to be told nothing had changed. An hour (and, with
+ * stale-while-revalidate, one stale view in the five after it) is how late a
+ * content fix reaches a browser that already holds the old copy. A new build
+ * can read a payload that old, which is one more reason new API fields stay
+ * optional in the SPA's types. Answers that move with activity — the
+ * leaderboard, the community pulse, the tournament list — keep short ages of
+ * their own.
+ */
+export const SEEDED_CONTENT_MAX_AGE = 3600;
+
 export function browserCache(
   maxAgeSeconds: number,
   { shared = false, cdn = false }: { shared?: boolean; cdn?: boolean } = {},

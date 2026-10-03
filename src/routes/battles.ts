@@ -110,10 +110,13 @@ const router = Router();
 
 // ── Public ────────────────────────────────────────────────────────────
 // The same list for everyone — no session is read — and cached in the service
-// for 30 s; a visitor's browser keeps it as long (http-cache: signed-in
-// callers get no header, so a member never waits on a copy from before their
-// own registration).
-router.get("/tournaments", browserCache(30), wrap(async (_req, res) => { res.json(await listTournaments()); }));
+// for 30 s; every browser keeps it as long. It used to go to visitors only, so
+// that a member never got back a copy from before their own registration: the
+// refetch a registration triggers is a forced query, which the SPA's base
+// query sends past the browser cache (store/api/apiSlice), and the answer it
+// gets replaces the stored copy for codekairo.com and battles. alike — one
+// site, one cache.
+router.get("/tournaments", browserCache(30, { shared: true }), wrap(async (_req, res) => { res.json(await listTournaments()); }));
 router.get("/tournaments/:slug", optionalAuth, wrap(async (req, res) => {
   res.json(await tournamentPage(param(req, "slug"), (req as Partial<Authed>).user ? remindingViewer(req) : null));
 }));

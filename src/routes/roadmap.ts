@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { optionalAuth } from "../middleware/auth.js";
-import { browserCache } from "../lib/http-cache.js";
+import { browserCache, SEEDED_CONTENT_MAX_AGE } from "../lib/http-cache.js";
 import { roadmapFor, roadmapForVisitor } from "../services/roadmap.js";
 import { lessonHead, lessonPage, lessonPart, lessonSyllabus } from "../services/roadmap-lessons.js";
 
@@ -25,8 +25,9 @@ router.get("/", optionalAuth, browserCache(60), async (req: any, res) => {
 // The lessons behind the stages (services/roadmap-lessons): the syllabus
 // and one lesson's page. Nothing in either reads the caller — a reader's
 // standing is the road's own read above — so both are the same bytes for
-// everyone and may sit in any browser for five minutes.
-router.get("/lessons", browserCache(300, { shared: true }), async (_req, res) => {
+// everyone and may sit in any browser for an hour (SEEDED_CONTENT_MAX_AGE:
+// a lesson changes only with a deploy).
+router.get("/lessons", browserCache(SEEDED_CONTENT_MAX_AGE, { shared: true }), async (_req, res) => {
   res.json(await lessonSyllabus());
 });
 
@@ -34,7 +35,7 @@ const LESSON_SLUG = /^[a-z0-9][a-z0-9-]{0,80}$/;
 
 // A lesson page in parts (2026-10-03): the head with the article's first
 // part, then each later part as the reader scrolls to it.
-router.get("/lessons/:slug/head", browserCache(300, { shared: true }), async (req, res) => {
+router.get("/lessons/:slug/head", browserCache(SEEDED_CONTENT_MAX_AGE, { shared: true }), async (req, res) => {
   const slug = String(req.params["slug"] ?? "");
   const head = LESSON_SLUG.test(slug) ? await lessonHead(slug) : null;
   if (!head) {
@@ -44,7 +45,7 @@ router.get("/lessons/:slug/head", browserCache(300, { shared: true }), async (re
   res.json(head);
 });
 
-router.get("/lessons/:slug/parts/:part", browserCache(300, { shared: true }), async (req, res) => {
+router.get("/lessons/:slug/parts/:part", browserCache(SEEDED_CONTENT_MAX_AGE, { shared: true }), async (req, res) => {
   const slug = String(req.params["slug"] ?? "");
   const index = Number(req.params["part"]);
   const part = LESSON_SLUG.test(slug) && Number.isInteger(index) && index >= 0 && index < 100 ? await lessonPart(slug, index) : null;
@@ -57,7 +58,7 @@ router.get("/lessons/:slug/parts/:part", browserCache(300, { shared: true }), as
 
 // The whole lesson in one response: what the SPA read before it loaded
 // lessons in parts, kept so a tab opened on that build keeps working.
-router.get("/lessons/:slug", browserCache(300, { shared: true }), async (req, res) => {
+router.get("/lessons/:slug", browserCache(SEEDED_CONTENT_MAX_AGE, { shared: true }), async (req, res) => {
   const slug = String(req.params["slug"] ?? "");
   const page = LESSON_SLUG.test(slug) ? await lessonPage(slug) : null;
   if (!page) {

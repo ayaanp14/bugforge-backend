@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { prisma } from "../lib/prisma.js";
 import { optionalAuth, requireAuth } from "../middleware/auth.js";
-import { browserCache } from "../lib/http-cache.js";
+import { browserCache, SEEDED_CONTENT_MAX_AGE } from "../lib/http-cache.js";
 import { cachedShared } from "../lib/cache.js";
 import { executionLimiter } from "../middleware/rate-limit.js";
 import { judgeBugProject, type BugFile, type BugLanguage } from "../lib/bug-judge.js";
@@ -85,7 +85,7 @@ router.get("/", optionalAuth, browserCache(60), async (req, res) => {
  */
 // Seeded content with no reader in it — `bugHubIndex` takes no user — so one
 // copy is every caller's, the way the problem hubs are cached.
-router.get("/hubs", browserCache(300, { shared: true }), async (_req, res) => {
+router.get("/hubs", browserCache(SEEDED_CONTENT_MAX_AGE, { shared: true }), async (_req, res) => {
   try {
     res.json(await bugHubIndex());
   } catch (err) {
@@ -94,7 +94,7 @@ router.get("/hubs", browserCache(300, { shared: true }), async (_req, res) => {
   }
 });
 
-router.get("/hubs/:id", browserCache(300, { shared: true }), async (req, res) => {
+router.get("/hubs/:id", browserCache(SEEDED_CONTENT_MAX_AGE, { shared: true }), async (req, res) => {
   try {
     const page = await bugHubPage(String(req.params.id).toLowerCase());
     if (!page) {
@@ -111,7 +111,7 @@ router.get("/hubs/:id", browserCache(300, { shared: true }), async (req, res) =>
 // GET /api/bug-challenges/:id/neighbours — prev/next for the workspace nav.
 // Declared before /:id so the extra segment isn't swallowed by it.
 // Position in the catalogue: the same two ids for everyone who asks.
-router.get("/:id/neighbours", optionalAuth, browserCache(300, { shared: true }), async (req, res) => {
+router.get("/:id/neighbours", optionalAuth, browserCache(SEEDED_CONTENT_MAX_AGE, { shared: true }), async (req, res) => {
   try {
     res.json(await getNeighbours(String(req.params.id)));
   } catch (err) {
@@ -262,57 +262,103 @@ async function loadBugDetail(challengeId: string) {
   };
 }
 
-// GET /api/bug-challenges/:id — Full challenge: files, report, visible tests
+const huntDetail = (challengeId: string) =>
+  cachedShared(bugDetailKey(challengeId), BUG_DETAIL_TTL_SECONDS, () => loadBugDetail(challengeId));
+
+/**
+ * The hunter's own side of a hunt: their last 20 submissions, whether one was
+ * accepted, and the live duel this hunt is the arena of — so the workspace can
+ * send them to the room without asking the duel API separately on every
+ * open. Gated by the in-process tracker, so for everyone not duelling the duel
+ * lookup costs nothing.
+ */
+async function hunterStanding(userId: string, challengeId: string) {
+  const [submissions, liveDuel] = await Promise.all([
+    prisma.bugSubmission.findMany({
+      where: { userId, challengeId },
+      select: { id: true, verdict: true, passedTests: true, totalTests: true, timeTakenSecs: true, submittedAt: true },
+      orderBy: { submittedAt: "desc" },
+      take: 20,
+    }),
+    findLiveDuelFor(userId, { challengeId }),
+  ]);
+  return {
+    solved: submissions.some((s) => s.verdict === "ACCEPTED"),
+    submissions,
+    // Contract with the workspace: the caller's live duel on this very
+    // hunt, or null.
+    activeDuelId: liveDuel?.id ?? null,
+  };
+}
+
+const SIGNED_OUT_STANDING = { solved: false, submissions: [], activeDuelId: null };
+const HUNT_NOT_FOUND = { error: "Challenge not found" };
+
+// The address is the slug (/bug-hunts/the-checkout-meltdown) or, on a link
+// minted before slugs existed, the id; the cached order resolves either
+// without a round trip (bugIdFor). Unknown or unpublished is a 404 either way
+// — and only a published hunt's id ever becomes a cache key.
 //
-// Not browser-cached: `solved`, `submissions` and `activeDuelId` are the
-// caller's own, and a stale copy of any of them is worse than the round trip.
-// The rest is the same for everyone and comes from loadBugDetail's cache.
-router.get("/:id", optionalAuth, async (req, res) => {
+// The SPA reads a hunt in two halves, the way the problem page reads a
+// problem (/api/problems/:slug + /:slug/submissions), because they are cached
+// differently:
+//
+//   GET /:id/content   the hunt — files, report, visible tests. Seeded and the
+//                      same for everyone, so any browser keeps it for
+//                      SEEDED_CONTENT_MAX_AGE and a hunt opened again draws
+//                      from disk.
+//   GET /:id/standing  hunterStanding — never kept: a stale `solved` or duel
+//                      is worse than the round trip.
+//   GET /:id           both at once, as the mobile app (and any SPA tab older
+//                      than the split) reads it.
+router.get("/:id/content", browserCache(SEEDED_CONTENT_MAX_AGE, { shared: true }), async (req, res) => {
   try {
-    // The address is the slug (/bug-hunts/the-checkout-meltdown) or, on a
-    // link minted before slugs existed, the id; the cached order resolves
-    // either without a round trip. Unknown or unpublished is a 404 either way
-    // — and only a published hunt's id ever becomes a cache key below.
+    const challengeId = await bugIdFor(String(req.params.id));
+    const challenge = challengeId ? await huntDetail(challengeId) : null;
+    if (!challenge) {
+      // A hunt published later must not be a 404 in somebody's disk cache.
+      res.removeHeader("Cache-Control");
+      res.status(404).json(HUNT_NOT_FOUND);
+      return;
+    }
+    res.json(challenge);
+  } catch (err) {
+    console.error("GET /api/bug-challenges/:id/content error:", err);
+    res.removeHeader("Cache-Control");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.get("/:id/standing", requireAuth, async (req, res) => {
+  try {
     const challengeId = await bugIdFor(String(req.params.id));
     if (!challengeId) {
-      res.status(404).json({ error: "Challenge not found" });
+      res.status(404).json(HUNT_NOT_FOUND);
       return;
     }
+    res.json(await hunterStanding(req.user!.userId, challengeId));
+  } catch (err) {
+    console.error("GET /api/bug-challenges/:id/standing error:", err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
 
-    // One parallel batch instead of four sequential round-trips
-    const [challenge, submissions, liveDuel] = await Promise.all([
-      cachedShared(bugDetailKey(challengeId), BUG_DETAIL_TTL_SECONDS, () => loadBugDetail(challengeId)),
-      // Personal history + solved marker for the signed-in hunter
-      req.user
-        ? prisma.bugSubmission.findMany({
-            where: { userId: req.user.userId, challengeId },
-            select: { id: true, verdict: true, passedTests: true, totalTests: true, timeTakenSecs: true, submittedAt: true },
-            orderBy: { submittedAt: "desc" },
-            take: 20,
-          })
-        : Promise.resolve([]),
-      // The duel this hunt is the arena of, if the caller is fighting one —
-      // so the workspace can send them to the room without asking the duel
-      // API separately on every open. Gated by the in-process tracker, so for
-      // everyone not duelling it costs nothing.
-      req.user ? findLiveDuelFor(req.user.userId, { challengeId }) : Promise.resolve(null),
+router.get("/:id", optionalAuth, async (req, res) => {
+  try {
+    const challengeId = await bugIdFor(String(req.params.id));
+    if (!challengeId) {
+      res.status(404).json(HUNT_NOT_FOUND);
+      return;
+    }
+    const [challenge, standing] = await Promise.all([
+      huntDetail(challengeId),
+      req.user ? hunterStanding(req.user.userId, challengeId) : Promise.resolve(SIGNED_OUT_STANDING),
     ]);
-
     if (!challenge) {
-      res.status(404).json({ error: "Challenge not found" });
+      res.status(404).json(HUNT_NOT_FOUND);
       return;
     }
-
-    const solved = submissions.some((s) => s.verdict === "ACCEPTED");
-
-    res.json({
-      solved,
-      submissions,
-      // Contract with the workspace: the caller's live duel on this very
-      // hunt, or null (also null when signed out).
-      activeDuelId: liveDuel?.id ?? null,
-      ...challenge,
-    });
+    res.json({ ...standing, ...challenge });
   } catch (err) {
     console.error("GET /api/bug-challenges/:id error:", err);
     res.status(500).json({ error: "Internal server error" });

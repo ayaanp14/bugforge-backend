@@ -1,14 +1,16 @@
 import { Router, type Request, type Response, type NextFunction } from "express";
 import { optionalAuth, requireAuth } from "../middleware/auth.js";
 import { executionLimiter } from "../middleware/rate-limit.js";
-import { browserCache } from "../lib/http-cache.js";
+import { browserCache, SEEDED_CONTENT_MAX_AGE } from "../lib/http-cache.js";
 import { MAX_SOURCE_BYTES, MAX_STDIN_BYTES } from "../lib/program-judge.js";
 import {
   StudyError,
   enroll,
   gradeQuiz,
   lastSubmission,
+  lessonContentFor,
   lessonFor,
+  lessonProgressFor,
   markRead,
   modulePrintFor,
   runExercise,
@@ -22,7 +24,9 @@ import {
  *
  *   GET  /                                   every track, with the reader's standing when signed in
  *   GET  /:track                             the syllabus with every lesson's status, pace, streak
- *   GET  /:track/lessons/:lesson             one lesson (solutions, hidden cases and answers withheld)
+ *   GET  /:track/lessons/:lesson             one lesson (solutions, hidden cases and answers withheld) + the reader's progress
+ *   GET  /:track/lessons/:lesson/content     the same lesson as anyone reads it — what the SPA asks for
+ *   GET  /:track/lessons/:lesson/progress    { progress } — the reader's half, read beside the content
  *   GET  /:track/lessons/:lesson/last/:i     the reader's last submission for an exercise
  *   GET  /:track/modules/:module/print       the whole module with the answer key — the print page behind the PDFs
  *   POST /:track/enroll        {paceDays}    enrol, or change the pace
@@ -72,6 +76,31 @@ router.get("/:track/lessons/:lesson", optionalAuth, browserCache(120), async (re
     return;
   }
   res.json(payload);
+});
+
+// The lesson in two halves, because they are cached differently. The text,
+// exercises and quiz are seeded and the same for every reader, so any
+// browser keeps them for SEEDED_CONTENT_MAX_AGE and a lesson opened again
+// draws from disk. The progress moves with every read, quiz and submit (each
+// write answers with the new copy, which the SPA patches in), so it is never
+// kept. The route above answers both at once for older clients.
+router.get("/:track/lessons/:lesson/content", browserCache(SEEDED_CONTENT_MAX_AGE, { shared: true }), async (req, res) => {
+  const payload = await lessonContentFor(String(req.params["track"]), String(req.params["lesson"]));
+  if (!payload) {
+    res.removeHeader("Cache-Control");
+    res.status(404).json({ error: "No such lesson" });
+    return;
+  }
+  res.json(payload);
+});
+
+router.get("/:track/lessons/:lesson/progress", requireAuth, async (req: Authed, res) => {
+  const progress = await lessonProgressFor(String(req.params["track"]), String(req.params["lesson"]), req.user!.userId);
+  if (!progress) {
+    res.status(404).json({ error: "No such lesson" });
+    return;
+  }
+  res.json({ progress });
 });
 
 router.get("/:track/lessons/:lesson/last/:exercise", requireAuth, async (req: Authed, res, next) => {

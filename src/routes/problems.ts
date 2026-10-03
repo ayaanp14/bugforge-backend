@@ -5,7 +5,7 @@ import slugify from "slugify";
 import { prisma } from "../lib/prisma.js";
 import { requireAuth, optionalAuth, adminOnly } from "../middleware/auth.js";
 import { cachedShared, invalidate, invalidatePrefix } from "../lib/cache.js";
-import { browserCache } from "../lib/http-cache.js";
+import { browserCache, SEEDED_CONTENT_MAX_AGE } from "../lib/http-cache.js";
 import { catalogueNeighbours, getCatalogue, invalidateDashboard, listProblemsWithStatus, loadProblemState, problemIdBySlug, publishedProblemExists, type CatalogueRow, type ProblemState } from "../services/dashboard.js";
 import { normalizeSearch } from "../lib/problem-search.js";
 import { searchCatalogue } from "../services/problem-search.js";
@@ -351,7 +351,7 @@ router.get("/summary", optionalAuth, browserCache(60), async (req, res) => {
 // The two chip strips on the catalogue page. Both are declared before /:slug
 // so the paths are not read as problem slugs. Tags split cleanly in two: a
 // tag is a hiring company or it is a topic ("Array", "Bit Manipulation").
-router.get("/topics", browserCache(300, { shared: true }), async (_req, res) => {
+router.get("/topics", browserCache(SEEDED_CONTENT_MAX_AGE, { shared: true }), async (_req, res) => {
   try {
     res.json(await countTags((t) => !isCompanyTag(t)));
   } catch (err) {
@@ -360,7 +360,7 @@ router.get("/topics", browserCache(300, { shared: true }), async (_req, res) => 
   }
 });
 
-router.get("/companies", browserCache(300, { shared: true }), async (_req, res) => {
+router.get("/companies", browserCache(SEEDED_CONTENT_MAX_AGE, { shared: true }), async (_req, res) => {
   try {
     res.json(await countTags(isCompanyTag));
   } catch (err) {
@@ -383,7 +383,7 @@ router.get("/companies", browserCache(300, { shared: true }), async (_req, res) 
  * what lets Cloudflare answer it from the reader's own PoP instead of routing
  * every copy to Mumbai — which on the free plan is a trip through Europe.
  */
-router.get("/facets", browserCache(300, { cdn: true }), async (_req, res) => {
+router.get("/facets", browserCache(SEEDED_CONTENT_MAX_AGE, { cdn: true }), async (_req, res) => {
   try {
     const [topics, companies, hubs] = await Promise.all([
       countTags((t) => !isCompanyTag(t)),
@@ -407,7 +407,7 @@ router.get("/facets", browserCache(300, { cdn: true }), async (_req, res) => {
  *   GET /api/problems/hubs/topic/arrays    → the hub page, or 404
  *   GET /api/problems/hubs/company/amazon
  */
-router.get("/hubs", browserCache(300, { shared: true }), async (_req, res) => {
+router.get("/hubs", browserCache(SEEDED_CONTENT_MAX_AGE, { shared: true }), async (_req, res) => {
   try {
     res.json(await hubIndex());
   } catch (err) {
@@ -416,7 +416,7 @@ router.get("/hubs", browserCache(300, { shared: true }), async (_req, res) => {
   }
 });
 
-router.get("/hubs/:kind/:slug", browserCache(300, { shared: true }), async (req, res) => {
+router.get("/hubs/:kind/:slug", browserCache(SEEDED_CONTENT_MAX_AGE, { shared: true }), async (req, res) => {
   try {
     const kind = req.params["kind"];
     if (kind !== "topic" && kind !== "company") {
@@ -449,7 +449,7 @@ router.get("/hubs/:kind/:slug", browserCache(300, { shared: true }), async (req,
  *   GET /api/problems/hubs/topic/arrays/problems?offset=100&limit=100&difficulty=hard&q=window
  *     → { problems, total, next }   (next: the following offset, or null)
  */
-router.get("/hubs/:kind/:slug/problems", browserCache(300, { shared: true }), async (req, res) => {
+router.get("/hubs/:kind/:slug/problems", browserCache(SEEDED_CONTENT_MAX_AGE, { shared: true }), async (req, res) => {
   const kind = req.params["kind"];
   const slug = String(req.params["slug"]).toLowerCase();
   const offset = Number(req.query["offset"] ?? 0);
@@ -498,7 +498,7 @@ router.get("/hubs/:kind/:slug/progress", requireAuth, async (req, res) => {
 });
 
 // 2. GET /api/problems/[slug] — Problem detail
-router.get("/:slug", optionalAuth, browserCache(120, { shared: true }), async (req, res) => {
+router.get("/:slug", optionalAuth, browserCache(SEEDED_CONTENT_MAX_AGE, { shared: true }), async (req, res) => {
   try {
     const { slug } = req.params;
     // Nothing below depends on who is asking — the draft, the timer and the
@@ -585,7 +585,7 @@ router.get("/:slug", optionalAuth, browserCache(120, { shared: true }), async (r
 //     The lean payload carries JavaScript's alone; the editor asks for the
 //     rest when a language is picked. All thirteen are cached as one entry
 //     (a few KB); each language is its own browser-cacheable URL.
-router.get("/:slug/starter/:lang", browserCache(300, { shared: true }), async (req, res) => {
+router.get("/:slug/starter/:lang", browserCache(SEEDED_CONTENT_MAX_AGE, { shared: true }), async (req, res) => {
   try {
     const slug = String(req.params.slug);
     const lang = String(req.params.lang);
@@ -608,7 +608,7 @@ router.get("/:slug/starter/:lang", browserCache(300, { shared: true }), async (r
 });
 
 // 2a. GET /api/problems/[slug]/hints — The hints, when their tab opens
-router.get("/:slug/hints", optionalAuth, browserCache(300, { shared: true }), async (req, res) => {
+router.get("/:slug/hints", optionalAuth, browserCache(SEEDED_CONTENT_MAX_AGE, { shared: true }), async (req, res) => {
   try {
     const slug = String(req.params.slug);
     const hints = await cachedShared(hintsKey(slug), 600, async () => {
@@ -628,7 +628,7 @@ router.get("/:slug/hints", optionalAuth, browserCache(300, { shared: true }), as
 
 // 2b. GET /api/problems/[slug]/editorial — The walkthrough and reference solutions
 //     Loaded by the workspace when the Editorial tab opens, not with the statement.
-router.get("/:slug/editorial", optionalAuth, browserCache(300, { shared: true }), async (req, res) => {
+router.get("/:slug/editorial", optionalAuth, browserCache(SEEDED_CONTENT_MAX_AGE, { shared: true }), async (req, res) => {
   try {
     const { slug } = req.params;
     const payload = await cachedShared(editorialKey(String(slug)), 600, async () => {

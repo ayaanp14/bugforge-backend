@@ -8,12 +8,15 @@ import { getPublicGitHub, getPublicProfile, getPublicSubmissions } from "../serv
  * not — may read about an account at /u/<username>. Every route here is a
  * read. A session is optional and only answers "is this my own profile?".
  *
- * browserCache(60) without `shared` sends its header to anonymous callers
- * only (and Varies on Authorization). For them all three answers are the
- * same bytes — `isSelf` is false for anyone without a session — so a visitor
- * or a crawler following a profile's links reuses them for a minute; a
- * member, who may be looking at their own profile right after a solve, is
- * never handed a browser copy.
+ * The profile itself carries `isSelf`, so browserCache(60) without `shared`
+ * sends its header to anonymous callers only (and Varies on Authorization):
+ * a visitor or a crawler following a profile's links reuses it for a minute,
+ * a member never gets a browser copy. The history pages and the GitHub card
+ * read nothing off the caller, so every browser keeps them for a minute. The
+ * owner looking at their own history right after a solve still sees it: the
+ * solve invalidates `Submission` in every tab, and that refetch is forced
+ * past the browser cache (store/api/apiSlice). Only a page no tab holds can
+ * reopen on the minute-old copy.
  */
 
 const router = Router();
@@ -41,7 +44,7 @@ router.get("/:username", optionalAuth, browserCache(60), async (req, res) => {
 });
 
 // GET /api/users/:username/submissions?page=&limit= — paging past the first five rows
-router.get("/:username/submissions", browserCache(60), async (req, res) => {
+router.get("/:username/submissions", browserCache(60, { shared: true }), async (req, res) => {
   // Bounded as /api/me/submissions is: no whole-history pulls, no negative skip.
   const page = Math.max(1, parseInt(String(req.query["page"] ?? ""), 10) || 1);
   const limit = Math.min(25, Math.max(1, parseInt(String(req.query["limit"] ?? ""), 10) || 5));
@@ -54,7 +57,7 @@ router.get("/:username/submissions", browserCache(60), async (req, res) => {
 });
 
 // GET /api/users/:username/github — { card } when a GitHub account is connected and readable, else { card: null }
-router.get("/:username/github", browserCache(60), async (req, res) => {
+router.get("/:username/github", browserCache(60, { shared: true }), async (req, res) => {
   const github = await getPublicGitHub(String(req.params["username"]));
   if (!github) {
     notFound(res);
