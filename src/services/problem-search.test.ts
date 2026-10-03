@@ -20,6 +20,7 @@ const CATALOGUE: CatalogueRow[] = [
   row("a", "Two Sum", ["Array", "Amazon"]),
   row("b", "Climbing Stairs", ["Dynamic Programming", "Google"]),
   row("c", "Word Ladder", ["String", "Amazon"]),
+  row("t", "Beautiful Towers", ["Array", "Stack"]),
 ];
 
 let run = 0;
@@ -93,5 +94,27 @@ describe("fulltextStatement", () => {
     const sql = fulltextStatement(["two", "sum"]);
     assert.equal((sql.sql.match(/AGAINST/g) ?? []).length, 4, "relevance, filter, and a bit for each of two terms");
     assert.ok(sql.values.includes(1) && sql.values.includes(2));
+  });
+});
+
+describe("typo correction in the service", () => {
+  it("prefers the correction when the query as typed is only matched loosely", async () => {
+    // "tow" starts a word of "Beautiful Towers", whose statement says "sum":
+    // complete as typed, but no title holds both words — "two sum" does.
+    const { search } = harness(async (terms) => {
+      const sum = terms.indexOf("sum");
+      return sum >= 0 ? [["t", 1.2, 1 << sum]] : [];
+    });
+    assert.equal((await search("tow sum"))[0]!.title, "Two Sum");
+    assert.equal((await search("towers"))[0]!.title, "Beautiful Towers", "a real word is never corrected");
+  });
+
+  it("answers a misspelt query with the corrected one's matches, only when that one matches fully", async () => {
+    const { search, calls } = harness(async () => []);
+    assert.deepEqual((await search("tow sum")).map((r) => r.title), ["Two Sum"]);
+    assert.deepEqual(calls, [["tow", "sum"], ["two", "sum"]], "the corrected terms get their own full-text read");
+    assert.deepEqual((await search("wrod ladder")).map((r) => r.title), ["Word Ladder"]);
+    // Nothing to correct towards: the partial match as typed.
+    assert.deepEqual((await search("amazon blockchain")).map((r) => r.id), ["a", "c"]);
   });
 });

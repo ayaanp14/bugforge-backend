@@ -27,6 +27,8 @@ export type CatalogueRow = {
   tags: unknown;
   createdAt: Date;
   timeLimitMs: number;
+  /** "1. Two Sum" (lib/problem-numbers); null only until the next numbering pass. */
+  number?: number | null;
 };
 
 /** Which published problems this user has solved, and which they have only tried. */
@@ -48,13 +50,14 @@ const tagsOf = (row: { tags: unknown }): string[] => (Array.isArray(row.tags) ? 
  * Shared with GET /api/problems, whose plain first page is this list's head.
  */
 export function getCatalogue(): Promise<CatalogueRow[]> {
-  return cached("catalogue:published", 120_000, () =>
-    prisma.problem.findMany({
+  return cached("catalogue:published", 120_000, async () => {
+    const rows = await prisma.problem.findMany({
       where: { isPublished: true },
-      select: { id: true, title: true, slug: true, difficulty: true, tags: true, createdAt: true, timeLimitMs: true },
+      select: { id: true, title: true, slug: true, difficulty: true, tags: true, createdAt: true, timeLimitMs: true, numbering: { select: { number: true } } },
       orderBy: { createdAt: "desc" },
-    }),
-  );
+    });
+    return rows.map(({ numbering, ...row }) => ({ ...row, number: numbering?.number ?? null }));
+  });
 }
 
 /**
@@ -565,6 +568,7 @@ export async function listProblemsWithStatus(userId: string, take = 100) {
   const state = await loadProblemState(userId);
   return state.catalogue.slice(0, take).map((p) => ({
     id: p.id,
+    number: p.number ?? null,
     title: p.title,
     slug: p.slug,
     difficulty: p.difficulty,

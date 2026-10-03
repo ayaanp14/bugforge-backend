@@ -20,9 +20,12 @@ import { topicHubByTag } from "./problem-topics.js";
  * usual case, so "amazon array" is Amazon's array problems; the best partial
  * match when none does, so one unknown word never empties the list.
  *
- * Within that set the order is a score — title signals first, then tags,
- * then text relevance (the RANK table) — with fixed tie-breaks, so the same
- * query over the same catalogue always pages the same way.
+ * Within that set the order is a score — the problem's number, then title
+ * signals, then tags, then text relevance (the RANK table) — with fixed
+ * tie-breaks, so the same query over the same catalogue always pages the
+ * same way. When no problem satisfies every part, the query is tried again
+ * with its typos corrected against the words titles and tags use
+ * (correctSearch), and the correction is kept only if that one does.
  *
  * Tags and companies are matched against the catalogue already held in
  * memory (services/dashboard getCatalogue), never in SQL: `tags` is a JSON
@@ -44,6 +47,8 @@ export const SEARCH_MAX_PARTS = 8;
  * tagged Array for "array", and both outrank a statement that mentions arrays.
  */
 export const RANK = {
+  /** The query names the problem's number ("1", "#1", "1. two sum"). */
+  numberExact: 150,
   titleExact: 100,
   titlePrefix: 80,
   companyExact: 75,
@@ -286,6 +291,8 @@ export interface SearchableRow {
   id: string;
   title: string;
   tags: unknown;
+  /** "1. Two Sum" — a query that is this number finds the problem first. */
+  number?: number | null;
 }
 
 interface RowIndex {
@@ -345,7 +352,24 @@ interface Scored<T> {
  * still answer). Every row appears at most once, whichever signals found it.
  */
 export function rankCatalogue<T extends SearchableRow>(rows: readonly T[], query: ParsedSearch, hits: ReadonlyMap<string, TextHit> | null): T[] {
+  return rankSearch(rows, query, hits).rows;
+}
+
+/**
+ * `rankCatalogue`, saying how good the answer is:
+ * - `complete`: some problem satisfies every part (or, for a query with no
+ *   parts, some title matched). Otherwise it is the best partial match.
+ * - `firm`: some problem satisfies every part through its title, its number
+ *   or a tag it carries by that name — not only through its statement or a
+ *   word of a longer tag. "tow sum" is complete (Beautiful Towers II starts
+ *   a word with "tow", and its statement says "sum") but not firm; "two sum"
+ *   is both.
+ * Anything short of firm is the cue to try the query with its typos
+ * corrected (correctSearch).
+ */
+export function rankSearch<T extends SearchableRow>(rows: readonly T[], query: ParsedSearch, hits: ReadonlyMap<string, TextHit> | null): { rows: T[]; complete: boolean; firm: boolean } {
   const index = indexRows(rows);
+  let firmBest = 0;
   let maxRelevance = 0;
   if (hits) for (const hit of hits.values()) if (hit.relevance > maxRelevance) maxRelevance = hit.relevance;
 
@@ -360,7 +384,16 @@ export function rankCatalogue<T extends SearchableRow>(rows: readonly T[], query
     let score = tier;
     let coverage = 0;
     let titleParts = 0;
+    let firm = 0;
+    const number = row.number == null ? null : String(row.number);
     for (const part of query.parts) {
+      if (part.phrase === number) {
+        // Parts are distinct, so at most one can be the number.
+        score += RANK.numberExact;
+        coverage += 1;
+        firm += 1;
+        continue;
+      }
       const titled = inTitle(title, part.phrase);
       if (titled) titleParts += 1;
       let tagged = 0;
@@ -375,7 +408,9 @@ export function rankCatalogue<T extends SearchableRow>(rows: readonly T[], query
       score += tagged;
       const texted = part.termMask !== 0 && hit !== undefined && (hit.mask & part.termMask) === part.termMask;
       if (titled || tagged || texted) coverage += 1;
+      if (titled || tagged === RANK.companyExact || tagged === RANK.tagExact) firm += 1;
     }
+    if (firm > firmBest) firmBest = firm;
     if (tier === 0 && titleParts > 0) {
       // The query as a whole is not in the title; its parts may be ("sum
       // two" → "Two Sum", or "the array" → "Rotate Array" once "the" is dropped).
@@ -400,8 +435,91 @@ export function rankCatalogue<T extends SearchableRow>(rows: readonly T[], query
   // score) keep the catalogue's order, the order the company chip lists them
   // in. Numbers only — a localeCompare tie-break built a collator per call
   // and cost ~30 ms on "amazon".
-  return scored
+  const ranked = scored
     .filter((s) => s.coverage === best)
     .sort((a, b) => b.score - a.score || (a.titleLength === b.titleLength ? 0 : a.titleLength < b.titleLength ? -1 : 1) || a.at - b.at)
     .map((s) => s.row);
+  const complete = ranked.length > 0 && best === query.parts.length;
+  return { rows: ranked, complete, firm: complete && firmBest === query.parts.length };
+}
+
+// ── Typos ────────────────────────────────────────────────────────────
+
+/** Every word of every title and tag, folded, with how many titles and tags use it. */
+const wordCounts = new WeakMap<readonly SearchableRow[], ReadonlyMap<string, number>>();
+function wordsOf(rows: readonly SearchableRow[]): ReadonlyMap<string, number> {
+  let words = wordCounts.get(rows);
+  if (!words) {
+    const counts = new Map<string, number>();
+    for (const { title, tagPhrases } of indexRows(rows)) {
+      for (const text of [title, ...tagPhrases]) for (const w of text.split(" ")) if (w) counts.set(w, (counts.get(w) ?? 0) + 1);
+    }
+    wordCounts.set(rows, (words = counts));
+  }
+  return words;
+}
+
+/**
+ * Optimal string alignment distance — edits, with a swap of two neighbours
+ * as one ("tow" → "two") — or `max + 1` as soon as it must exceed `max`.
+ */
+function editDistance(a: string, b: string, max: number): number {
+  if (Math.abs(a.length - b.length) > max) return max + 1;
+  let prev2: number[] = [];
+  let prev = Array.from({ length: b.length + 1 }, (_, j) => j);
+  for (let i = 1; i <= a.length; i++) {
+    const cur = [i];
+    let rowMin = i;
+    for (let j = 1; j <= b.length; j++) {
+      const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+      let d = Math.min(prev[j]! + 1, cur[j - 1]! + 1, prev[j - 1]! + cost);
+      if (i > 1 && j > 1 && a[i - 1] === b[j - 2] && a[i - 2] === b[j - 1]) d = Math.min(d, prev2[j - 2]! + 1);
+      cur.push(d);
+      if (d < rowMin) rowMin = d;
+    }
+    if (rowMin > max) return max + 1;
+    prev2 = prev;
+    prev = cur;
+  }
+  return prev[b.length]!;
+}
+
+/**
+ * The query with each word that no title or tag uses replaced by the
+ * closest word that one does ("tow sum" → "two sum", "slidng window" →
+ * "sliding window", "palidrome" → "palindrome"), or null when there is
+ * nothing to correct. One edit is allowed in a word of up to five letters,
+ * two in a longer one; ties go to the more common word. Numbers, stopwords
+ * and words under three letters are left alone.
+ *
+ * The service only asks when the query as typed matched incompletely, and
+ * only keeps the correction when it matches completely, so a word that is
+ * merely rare — or only in statements, which this vocabulary does not hold —
+ * is never traded for a worse answer.
+ */
+export function correctSearch(text: string, rows: readonly SearchableRow[]): string | null {
+  if (!text) return null;
+  const vocabulary = wordsOf(rows);
+  let changed = false;
+  const words = text.split(" ").map((raw) => {
+    const word = foldWord(raw);
+    if (raw.length < 3 || /\d/.test(raw) || STOPWORDS.has(raw) || vocabulary.has(word)) return raw;
+    const max = word.length <= 5 ? 1 : 2;
+    let best: string | null = null;
+    let bestDistance = max + 1;
+    let bestCount = 0;
+    for (const [candidate, count] of vocabulary) {
+      if (candidate.length < 3 || Math.abs(candidate.length - word.length) > max) continue;
+      const d = editDistance(word, candidate, max);
+      if (d < bestDistance || (d === bestDistance && d <= max && (count > bestCount || (count === bestCount && best !== null && candidate < best)))) {
+        best = candidate;
+        bestDistance = d;
+        bestCount = count;
+      }
+    }
+    if (best === null || bestDistance > max) return raw;
+    changed = true;
+    return best;
+  });
+  return changed ? words.join(" ") : null;
 }

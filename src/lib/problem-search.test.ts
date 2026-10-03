@@ -1,6 +1,6 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { foldWord, normalizeSearch, parseSearch, rankCatalogue, RANK, searchVocabulary, SEARCH_MAX_CHARS, SEARCH_MAX_PARTS, type TextHit } from "./problem-search.js";
+import { correctSearch, foldWord, normalizeSearch, parseSearch, rankCatalogue, rankSearch, RANK, searchVocabulary, SEARCH_MAX_CHARS, SEARCH_MAX_PARTS, type TextHit } from "./problem-search.js";
 
 /*
  * Problem search (2026-10-03): what a query means and the order matches come
@@ -275,5 +275,75 @@ describe("rankCatalogue", () => {
     }
     assert.equal(search(`"two sum"`)[0], "Two Sum");
     assert.deepEqual(search("+amazon -google*"), search("amazon google"));
+  });
+});
+
+describe("problem numbers", () => {
+  // The fixture numbered in order: Two Sum is #1, Binary Search #11, Kth Largest #13.
+  const NUMBERED = ROWS.map((r, i) => ({ ...r, number: i + 1 }));
+  const find = (raw: string) => rankCatalogue(NUMBERED, parseSearch(normalizeSearch(raw), VOCAB), new Map()).map((r) => r.title);
+
+  it("a query that is a problem's number finds it first, however it is written", () => {
+    assert.equal(find("1")[0], "Two Sum");
+    assert.equal(find("#13")[0], "Kth Largest Element in an Array");
+    assert.equal(find("11.")[0], "Binary Search");
+    assert.equal(find("1. two sum")[0], "Two Sum");
+  });
+
+  it("matches the whole number, not a prefix of it", () => {
+    assert.deepEqual(find("11"), ["Binary Search"]);
+    assert.deepEqual(find("99"), []);
+  });
+});
+
+describe("typos", () => {
+  it("corrects each word no title or tag uses to the closest one that is", () => {
+    assert.equal(correctSearch("tow sum", ROWS), "two sum");
+    assert.equal(correctSearch("slidng window", ROWS), "sliding window");
+    assert.equal(correctSearch("climbng stairs", ROWS), "climbing stairs");
+    assert.equal(correctSearch("amazn", ROWS), "amazon");
+    assert.equal(correctSearch("binary serch", ROWS), "binary search");
+  });
+
+  it("leaves known words, numbers, stopwords and short words alone", () => {
+    assert.equal(correctSearch("two sum", ROWS), null);
+    assert.equal(correctSearch("of k 3sum", ROWS), null);
+    assert.equal(correctSearch("zzqqxxyy", ROWS), null, "nothing within reach");
+    assert.equal(correctSearch("", ROWS), null);
+  });
+
+  it("says when an answer is only a partial match — the cue to correct", () => {
+    const run = (raw: string) => rankSearch(ROWS, parseSearch(normalizeSearch(raw), VOCAB), new Map());
+    assert.equal(run("two sum").complete, true);
+    assert.equal(run("amazon blockchain").complete, false);
+    assert.equal(run("tow sum").complete, false);
+    assert.equal(run("zzqqxx").complete, false);
+    assert.equal(run("two sum").rows[0]!.title, "Two Sum");
+  });
+});
+
+describe("firm matches", () => {
+  const run = (raw: string, text: Record<string, string[]> = {}) => {
+    const parsed = parseSearch(normalizeSearch(raw), VOCAB);
+    const hits = new Map<string, TextHit>();
+    for (const [id, terms] of Object.entries(text)) {
+      let mask = 0;
+      for (const t of terms) if (parsed.terms.includes(t)) mask |= 1 << parsed.terms.indexOf(t);
+      if (mask) hits.set(id, { relevance: 1, mask });
+    }
+    return rankSearch(ROWS, parsed, hits);
+  };
+
+  it("is firm when a title, a number or a tag of that name answers every part", () => {
+    assert.equal(run("two sum").firm, true);
+    assert.equal(run("amazon").firm, true, "the company tag");
+    assert.equal(run("amazon array").firm, true);
+  });
+
+  it("is complete but not firm when a part is answered only by a statement or a longer tag's word", () => {
+    const viaText = run("ladder staircase", { p17: ["ladder", "staircase"] });
+    assert.equal(viaText.complete, true);
+    assert.equal(viaText.firm, false);
+    assert.equal(run("pointer").firm, false, "only a word of Two Pointers");
   });
 });

@@ -31,6 +31,7 @@ export interface FilterableRow {
   difficulty: string;
   tags: unknown;
   timeLimitMs: number;
+  number?: number | null;
 }
 
 export interface CatalogueFilter {
@@ -62,13 +63,40 @@ export function filterCatalogue<T extends FilterableRow>(rows: readonly T[], f: 
   });
 }
 
-/** `rows` arrive newest first (the catalogue's own order); the other sorts derive from it. */
-export function sortCatalogue<T extends FilterableRow>(rows: readonly T[], sortBy: string | undefined): T[] {
+const LEVEL: Readonly<Record<string, number>> = { easy: 0, medium: 1, hard: 2 };
+const levelOf = (row: FilterableRow) => LEVEL[row.difficulty.toLowerCase()] ?? 3;
+/** By problem number, a problem not yet numbered last. */
+const byNumber = (a: FilterableRow, b: FilterableRow) => (a.number ?? Infinity) - (b.number ?? Infinity) || 0;
+
+/**
+ * `rows` arrive newest first (the catalogue's own order); the other sorts
+ * derive from it. The LeetCode-style sorts (number, difficulty, acceptance)
+ * break their ties by number, and Array#sort is stable, so every order is the
+ * same on every request — what paging needs. A problem without an acceptance
+ * rate (too few submissions) goes last in both directions: "—" is not 0%.
+ */
+export function sortCatalogue<T extends FilterableRow>(rows: readonly T[], sortBy: string | undefined, acceptance?: ReadonlyMap<string, number>): T[] {
   if (sortBy === "oldest") return [...rows].reverse();
   if (sortBy === "title-asc" || sortBy === "title-desc") {
     const dir = sortBy === "title-asc" ? 1 : -1;
     // Base sensitivity: MySQL's _ci collation ignores case and accents.
-    return [...rows].sort((a, b) => dir * a.title.localeCompare(b.title, "en", { sensitivity: "base" }));
+    const collator = new Intl.Collator("en", { sensitivity: "base" });
+    return [...rows].sort((a, b) => dir * collator.compare(a.title, b.title));
+  }
+  if (sortBy === "number") return [...rows].sort(byNumber);
+  if (sortBy === "difficulty-asc" || sortBy === "difficulty-desc") {
+    const dir = sortBy === "difficulty-asc" ? 1 : -1;
+    return [...rows].sort((a, b) => dir * (levelOf(a) - levelOf(b)) || byNumber(a, b));
+  }
+  if (sortBy === "acceptance-desc" || sortBy === "acceptance-asc") {
+    const dir = sortBy === "acceptance-asc" ? 1 : -1;
+    const rate = (row: FilterableRow) => acceptance?.get(row.id);
+    return [...rows].sort((a, b) => {
+      const ra = rate(a);
+      const rb = rate(b);
+      if (ra === undefined || rb === undefined) return (ra === undefined ? 1 : 0) - (rb === undefined ? 1 : 0) || byNumber(a, b);
+      return dir * (ra - rb) || byNumber(a, b);
+    });
   }
   return [...rows];
 }

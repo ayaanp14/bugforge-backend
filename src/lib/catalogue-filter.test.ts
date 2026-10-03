@@ -43,6 +43,31 @@ describe("catalogue filter", () => {
     assert.deepEqual(ids(sortCatalogue(ROWS, "title-asc")), ["b", "a", "d", "c"]);
     assert.deepEqual(ids(sortCatalogue(ROWS, "title-desc")), ["c", "d", "a", "b"]);
   });
+
+  // The LeetCode-style sorts (2026-10-03): number, difficulty, acceptance —
+  // ties by number, a row without a number or a rate last.
+  const NUMBERED = [
+    { ...ROWS[0]!, number: 1 },
+    { ...ROWS[1]!, number: 4 },
+    { ...ROWS[2]!, number: null },
+    { ...ROWS[3]!, number: 2 },
+  ];
+
+  it("sorts by problem number, an unnumbered problem last", () => {
+    assert.deepEqual(ids(sortCatalogue(NUMBERED, "number")), ["c", "b", "a", "d"]);
+  });
+
+  it("sorts by difficulty either way, ties by number", () => {
+    assert.deepEqual(ids(sortCatalogue(NUMBERED, "difficulty-asc")), ["c", "b", "a", "d"]);
+    assert.deepEqual(ids(sortCatalogue(NUMBERED, "difficulty-desc")), ["d", "b", "a", "c"]);
+  });
+
+  it("sorts by acceptance either way, a problem with no rate last in both", () => {
+    const rates = new Map([["c", 48.2], ["a", 61.5], ["b", 48.2]]);
+    assert.deepEqual(ids(sortCatalogue(NUMBERED, "acceptance-desc", rates)), ["a", "c", "b", "d"]);
+    assert.deepEqual(ids(sortCatalogue(NUMBERED, "acceptance-asc", rates)), ["c", "b", "a", "d"]);
+    assert.deepEqual(ids(sortCatalogue(NUMBERED, "acceptance-desc")), ["c", "b", "a", "d"], "no rates at all: by number");
+  });
 });
 
 describe("seeded shuffle", () => {

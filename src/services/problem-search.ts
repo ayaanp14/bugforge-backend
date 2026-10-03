@@ -1,7 +1,7 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "../lib/prisma.js";
 import { cachedShared } from "../lib/cache.js";
-import { parseSearch, rankCatalogue, searchVocabulary, type ParsedSearch, type SearchVocabulary, type TextHit } from "../lib/problem-search.js";
+import { correctSearch, parseSearch, rankSearch, searchVocabulary, type ParsedSearch, type SearchVocabulary, type TextHit } from "../lib/problem-search.js";
 import { getCatalogue, type CatalogueRow } from "./dashboard.js";
 
 /**
@@ -124,8 +124,22 @@ export function createProblemSearch(deps: ProblemSearchDeps) {
    */
   return async function searchCatalogue(query: string): Promise<CatalogueRow[]> {
     const catalogue = await deps.catalogue();
-    const parsed = parseSearch(query, vocabularyOf(catalogue));
-    return rankCatalogue(catalogue, parsed, await textHits(parsed));
+    const vocab = vocabularyOf(catalogue);
+    const parsed = parseSearch(query, vocab);
+    const asTyped = rankSearch(catalogue, parsed, await textHits(parsed));
+    if (asTyped.firm) return asTyped.rows;
+    // No problem has every word in its title or tags: try again with the
+    // typos corrected ("tow sum"). The correction wins when it is firm, or
+    // when it is merely complete where the query as typed was not — so
+    // "tow sum" finds Two Sum rather than Beautiful Towers II, and a word
+    // that only statements use is kept. In memory but for the corrected
+    // terms' own (cached) full-text read; correctSearch returns null at once
+    // when every word is one titles or tags use, which is the common case.
+    const corrected = correctSearch(query, catalogue);
+    if (!corrected) return asTyped.rows;
+    const reparsed = parseSearch(corrected, vocab);
+    const fixed = rankSearch(catalogue, reparsed, await textHits(reparsed));
+    return fixed.firm || (fixed.complete && !asTyped.complete) ? fixed.rows : asTyped.rows;
   };
 }
 

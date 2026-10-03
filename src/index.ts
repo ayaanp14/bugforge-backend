@@ -13,7 +13,8 @@ import billingRouter from "./routes/billing.js";
 import campusRouter from "./routes/campus.js";
 import meRouter from "./routes/me.js";
 import usersRouter from "./routes/users.js";
-import problemsRouter from "./routes/problems.js";
+import problemsRouter, { forgetProblemNumbers } from "./routes/problems.js";
+import { assignProblemNumbers } from "./lib/problem-numbers.js";
 import executionRouter from "./routes/execution.js";
 import leaderboardRouter from "./routes/leaderboard.js";
 import bugChallengesRouter from "./routes/bug-challenges.js";
@@ -1115,6 +1116,18 @@ httpServer.listen(PORT, () => {
   // said once here, at boot, rather than as an empty page later.
   void checkRoadmapSeeded().catch((err) => console.error("roadmap check:", err));
   void checkStudyPlansSeeded().catch((err) => console.error("study plans check:", err));
+  // Problem numbers ("1. Two Sum", lib/problem-numbers): any problem without
+  // one gets the next. This is how a database gets its numbers at all — the
+  // deploy that creates ProblemNumber restarts the API into this — and how a
+  // problem added outside the API (a seed on the box) gets one. One indexed
+  // read when there is nothing to number.
+  void assignProblemNumbers()
+    .then((given) => {
+      if (given === 0) return;
+      console.log(`[problems] numbered ${given} problem(s)`);
+      forgetProblemNumbers();
+    })
+    .catch((err) => console.error("problem numbers:", err));
   // The reminder jobs (streak at risk, today's problem, the weekly digest).
   registerReminderJobs();
   registerJob(revokedSessionsSweep);

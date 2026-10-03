@@ -22,6 +22,7 @@ import { ALL_LANGUAGES, applyDriver, renderStub, type Language } from "../src/li
 import { CATALOG } from "./catalog/index.js";
 import { makeRng, solutionsJson, type CatalogProblem } from "./catalog/types.js";
 import { flushContentCaches } from "./content-caches.js";
+import { assignProblemNumbers } from "../src/lib/problem-numbers.js";
 
 const args = process.argv.slice(2);
 const flag = (n: string) => args.includes(`--${n}`);
@@ -117,6 +118,10 @@ async function seed() {
     if (done % 10 === 0 || done === list.length) console.log(`  ${done}/${list.length} (latest: ${spec.slug})`);
   }
   console.log(`Done: ${done} problems.`);
+  // New problems take the next numbers now rather than at the next API boot
+  // (src/lib/problem-numbers.ts); re-seeded ones keep theirs.
+  const numbered = await assignProblemNumbers();
+  if (numbered > 0) console.log(`Numbered ${numbered} new problem(s).`);
 }
 
 /**

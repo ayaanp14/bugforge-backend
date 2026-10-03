@@ -4,11 +4,13 @@ import { ensureContest, todayUtc } from "../services/daily-contest.js";
 import slugify from "slugify";
 import { prisma } from "../lib/prisma.js";
 import { requireAuth, optionalAuth, adminOnly } from "../middleware/auth.js";
-import { cachedShared, invalidate } from "../lib/cache.js";
+import { cachedShared, invalidate, invalidatePrefix } from "../lib/cache.js";
 import { browserCache } from "../lib/http-cache.js";
 import { catalogueNeighbours, getCatalogue, invalidateDashboard, listProblemsWithStatus, loadProblemState, problemIdBySlug, publishedProblemExists, type CatalogueRow, type ProblemState } from "../services/dashboard.js";
 import { normalizeSearch } from "../lib/problem-search.js";
 import { searchCatalogue } from "../services/problem-search.js";
+import { acceptanceRates } from "../services/problem-acceptance.js";
+import { assignProblemNumbers } from "../lib/problem-numbers.js";
 import { isCompanyTag } from "../lib/companies.js";
 import { problemCanonicalSlug } from "../lib/problem-canonical.js";
 import { isJudgeLanguage } from "../lib/judge0.js";
@@ -27,7 +29,9 @@ const router = Router();
  * round trip instead of three (the problem with its visible cases, then the
  * neighbour on either side).
  */
-const problemKey = (slug: string) => `problem:v2:${slug}`;
+// v3: the payload carries the problem's `number` (2026-10-03).
+export const PROBLEM_KEY_PREFIX = "problem:v3:";
+const problemKey = (slug: string) => `${PROBLEM_KEY_PREFIX}${slug}`;
 
 /**
  * The editorial and its per-language solutions live under their own key. They
@@ -78,6 +82,17 @@ export function invalidateProblem(slug: string, problemId?: string): void {
       });
 }
 
+/**
+ * After a numbering pass gave numbers out (lib/problem-numbers): the cached
+ * catalogue and every cached statement predate them. Once per database in
+ * practice — the boot that follows the deploy creating the table — and then
+ * only when a problem was added outside the API.
+ */
+export function forgetProblemNumbers(): void {
+  invalidate("catalogue:published");
+  invalidatePrefix(PROBLEM_KEY_PREFIX);
+}
+
 /** Rows per list page, and the most a caller may ask for at once. */
 const MAX_TAKE = 100;
 
@@ -94,8 +109,9 @@ const MAX_TAKE = 100;
  * At the 100-row cap that was ~5.6 KB of a 26 KB answer. A search's relevance
  * score is not sent either: the order is the answer.
  */
-const listRow = (p: CatalogueRow, state: ProblemState | null) => ({
+const listRow = (p: CatalogueRow, state: ProblemState | null, rates: ReadonlyMap<string, number>) => ({
   id: p.id,
+  number: p.number ?? null,
   title: p.title,
   slug: p.slug,
   difficulty: p.difficulty,
@@ -103,6 +119,9 @@ const listRow = (p: CatalogueRow, state: ProblemState | null) => ({
   status: statusOf(state, p.id),
   // Solved in a Battles tournament: the row's trophy mark.
   tournament: state?.tournamentSolved.has(p.id) ?? false,
+  // Percent of submissions accepted, or null below
+  // ACCEPTANCE_MIN_SUBMISSIONS (services/problem-acceptance).
+  acceptance: rates.get(p.id) ?? null,
 });
 
 /**
@@ -124,6 +143,7 @@ const PROBLEM_DETAIL_SELECT = {
   memoryLimitMb: true,
   isPublished: true,
   createdAt: true,
+  numbering: { select: { number: true } },
   starterCode: true,
   signature: true,
   hints: true,
@@ -203,15 +223,19 @@ router.get("/", optionalAuth, browserCache(60), async (req, res) => {
     const isDefaultSort = !sortBy || sortBy === "newest" || sortBy === "relevance";
     const isPlainFirstPage =
       isDefaultSort && skipNum === 0 && !difficulty && tags.length === 0 && !company && !search && !maxTime && !statusFilter;
+    // The Acceptance column: one cached aggregate shared by every reader,
+    // overlapped with whatever else the answer waits on. It never throws.
+    const ratesPromise = acceptanceRates();
     if (isPlainFirstPage) {
-      const result = userId
-        ? await listProblemsWithStatus(userId, takeNum)
-        : (await getCatalogue())
-            .slice(0, takeNum)
-            // Same projection as listProblemsWithStatus: the visitor's copy of
+      const [head, rates] = await Promise.all([
+        userId
+          ? listProblemsWithStatus(userId, takeNum)
+          : // Same projection as listProblemsWithStatus: the visitor's copy of
             // the head must be the same shape as a member's.
-            .map((p) => listRow(p, null));
-      await send(result);
+            getCatalogue().then((catalogue) => catalogue.slice(0, takeNum).map((p) => listRow(p, null, new Map()))),
+        ratesPromise,
+      ]);
+      await send(head.map((row) => ({ ...row, acceptance: rates.get(row.id) ?? null })));
       return;
     }
 
@@ -233,7 +257,7 @@ router.get("/", optionalAuth, browserCache(60), async (req, res) => {
     // full-text statement at most (services/problem-search), cached by its
     // terms and overlapped with the solve state; it used to be a `LIKE
     // '%q%'` over every statement, in newest-first order.
-    const [catalogue, ranked, loaded] = await Promise.all([getCatalogue(), search ? searchCatalogue(search) : null, statePromise]);
+    const [catalogue, ranked, loaded, rates] = await Promise.all([getCatalogue(), search ? searchCatalogue(search) : null, statePromise, ratesPromise]);
     const filter: CatalogueFilter = {
       difficulty,
       tags,
@@ -253,16 +277,19 @@ router.get("/", optionalAuth, browserCache(60), async (req, res) => {
       // so it is applied to them in catalogue order (newest first).
       const ids = ranked ? new Set(ranked.map((p) => p.id)) : null;
       const matches = filterCatalogue(ids ? catalogue.filter((p) => ids.has(p.id)) : catalogue, filter);
-      if (sortBy === "shuffled") {
+      // "random" is the catalogue page's Pick one (take=1, no seed): the
+      // shuffle, but random under a search as well, where "shuffled" means
+      // best match.
+      if (sortBy === "shuffled" || sortBy === "random") {
         const byId = new Map(matches.map((p) => [p.id, p]));
         page = seededShuffle(matches.map((p) => p.id), seedStr)
           .slice(skipNum, skipNum + takeNum)
           .map((id) => byId.get(id)!);
       } else {
-        page = sortCatalogue(matches, sortBy).slice(skipNum, skipNum + takeNum);
+        page = sortCatalogue(matches, sortBy, rates).slice(skipNum, skipNum + takeNum);
       }
     }
-    await send(page.map((p) => listRow(p, loaded)));
+    await send(page.map((p) => listRow(p, loaded, rates)));
   } catch (err) {
     console.error("GET /api/problems error:", err);
     res.status(500).json({ error: "Internal server error" });
@@ -503,8 +530,11 @@ router.get("/:slug", optionalAuth, browserCache(120, { shared: true }), async (r
         catalogueNeighbours(problem.slug),
       ]);
 
+      const { numbering, ...statement } = problem;
       return {
-        ...problem,
+        ...statement,
+        // "1. Two Sum" (lib/problem-numbers); null only until the next numbering pass.
+        number: numbering?.number ?? null,
         prevSlug: neighbours.prevSlug,
         nextSlug: neighbours.nextSlug,
         // The topic tags alone: what the page's structured data lists as
@@ -644,6 +674,9 @@ router.post("/", requireAuth, adminOnly, async (req, res) => {
       },
     });
 
+    // Its number, before the caches drop, so the catalogue the next reader
+    // builds already has it. A failure leaves it for the next API boot.
+    await assignProblemNumbers().catch((err) => console.error("[problems] numbering after create failed:", err));
     // A new published problem joins the catalogue, the pools and the sitemap.
     invalidateProblem(problem.slug, problem.id);
     res.status(201).json(problem);

@@ -191,6 +191,7 @@ model Problem {
   tournamentProblems    TournamentProblem[]
   tournamentSubmissions TournamentSubmission[]
   roadmapStages         RoadmapStageProblem[]
+  numbering             ProblemNumber?
 
   duels Duel[]
 
@@ -200,6 +201,23 @@ model Problem {
   // the catalogue already in memory; only `description` is not held there,
   // and `LIKE '%q%'` on it read every MediumText row on every search.
   @@fulltext([title, description])
+}
+
+/// A problem's public number ("1. Two Sum"): searchable, sortable, and never
+/// changed or reused once given. Oldest problem first, then each new problem
+/// in turn, by lib/problem-numbers.ts — at API boot and after a create.
+///
+/// Its own table rather than a `number` column on Problem, for the same reason
+/// as ProblemSolve: the claim is the invariant. The primary key is what stops
+/// two assignments running at once from handing out one number twice, and
+/// `problemId @unique` stops a problem getting two. A unique index added to
+/// the existing Problem table is a change `db push` reads as possible data
+/// loss and the deploy will not make unattended (measured 2026-10-03); a new
+/// table is purely additive.
+model ProblemNumber {
+  number    Int     @id
+  problemId String  @unique
+  problem   Problem @relation(fields: [problemId], references: [id], onDelete: Cascade)
 }
 
 model CodeDraft {
@@ -306,6 +324,11 @@ model Submission {
   // serves the community bulletin group-bys, which were a full table scan.
   @@index([userId, problemId, submittedAt])
   @@index([verdict, submittedAt])
+  // Acceptance rate per problem (services/problem-acceptance.ts): a GROUP BY
+  // problemId, verdict over the whole table every ten minutes. Without this
+  // it walks the clustered index — every row's `code` included — through a
+  // 512 MB buffer pool; with it, the read never leaves this index.
+  @@index([problemId, verdict])
 }
 
 model BugChallenge {
