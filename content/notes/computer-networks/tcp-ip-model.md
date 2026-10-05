@@ -47,31 +47,11 @@ IP gives every interface an address and moves packets hop by hop towards the des
 
 The link (or network access) layer moves a frame across one physical network to the next hop, using hardware addresses (MAC addresses on Ethernet and Wi-Fi). TCP/IP deliberately says little about it: IP runs over whatever link exists. ARP, which finds the MAC address for an IP address on the local network, is usually placed here.
 
-## The five-layer version
-
-Many Indian university syllabi and popular textbooks teach a five-layer hybrid, because it keeps the useful split between framing and signalling:
-
-| Five-layer model | Four-layer model (RFC 1122) |
-| --- | --- |
-| Application | Application |
-| Transport | Transport |
-| Network | Internet |
-| Data link | Link |
-| Physical | Link |
-
-If an interviewer asks "how many layers?", answer "four in the RFC, five in the textbook hybrid" and name them.
-
 ## How TCP/IP maps to OSI
 
-| OSI layer | TCP/IP layer |
-| --- | --- |
-| 7 Application | Application |
-| 6 Presentation | Application |
-| 5 Session | Application |
-| 4 Transport | Transport |
-| 3 Network | Internet |
-| 2 Data link | Link (network access) |
-| 1 Physical | Link (network access) |
+Many Indian university syllabi and popular textbooks teach a five-layer hybrid, because it keeps the useful split between framing and signalling. If an interviewer asks "how many layers?", answer "four in the RFC, five in the textbook hybrid" and name them.
+
+@figure mapping
 
 ## Worked example: how each layer knows what is inside
 
@@ -85,14 +65,19 @@ A receiving host has to hand each unit to the right protocol above it. Every hea
 | IPv4 | Protocol | 6 | The payload is a TCP segment |
 | IPv4 | Protocol | 17 | The payload is a UDP datagram |
 | IPv4 | Protocol | 1 | The payload is an ICMP message |
+| TCP | Destination port | 80 | Deliver to the HTTP server process |
 | TCP | Destination port | 443 | Deliver to the HTTPS server process |
 | UDP | Destination port | 53 | Deliver to the DNS server process |
 
-So a frame with EtherType 0x0800, IP protocol 6 and destination port 443 is an HTTPS request: the link layer passes it to IPv4, IPv4 passes it to TCP, and TCP passes the bytes to the process listening on port 443. (In IPv6 the same job is done by the Next Header field.)
+@figure headers
+
+In IPv6 the Protocol field's job is done by the Next Header field.
 
 ## Where the tricky protocols sit
 
 Some protocols do a lower layer's job but are carried as application data. Interviewers use them to check that you know the difference between a protocol's purpose and its position.
+
+@figure hourglass
 
 | Protocol | Purpose | Carried in | TCP/IP layer |
 | --- | --- | --- | --- |

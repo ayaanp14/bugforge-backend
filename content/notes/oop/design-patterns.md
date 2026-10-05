@@ -168,6 +168,8 @@ log level seen through b: DEBUG
 instances created: 1
 ```
 
+@figure singleton
+
 ## Factory
 
 **Intent.** Separate *deciding which class to create* from *using the object*, so callers depend only on an interface.
@@ -228,6 +230,8 @@ Large pizza, cheese=true, olives=false, extras=2
 Small pizza, cheese=false, olives=true, extras=0
 ```
 
+@figure builder
+
 ## Adapter
 
 **Intent.** Convert the interface of an existing class into the interface the client expects, so classes with incompatible interfaces can work together.
@@ -239,6 +243,8 @@ Small pizza, cheese=false, olives=true, extras=0
 **Intent.** Attach extra responsibilities to an object at run time by wrapping it in another object with the same interface.
 
 **When to use.** When features combine freely and a subclass per combination would explode — milk, sugar and caramel in any mix would need a class for every subset. Each decorator implements the same interface, holds the object it wraps, and adds its bit before or after delegating. Java's I/O streams are the textbook case: `new BufferedReader(new InputStreamReader(stream))`. Python's `@decorator` syntax is a related idea applied to functions at definition time, not this pattern on objects.
+
+@figure decorator-classes
 
 ```cpp
 #include <iostream>
@@ -367,6 +373,8 @@ print(f"{order.describe()} = Rs {order.cost()}")
 espresso = Rs 100
 espresso + milk + milk + caramel = Rs 205
 ```
+
+@figure decorator-calls
 
 ## Observer
 
@@ -551,6 +559,8 @@ alert: ACME above 1550 (now 1580)
 alert: ACME above 1550 (now 1610)
 ```
 
+@figure observer
+
 ## Strategy
 
 **Intent.** Define a family of algorithms, put each behind a common interface, and make them interchangeable at run time.
@@ -720,6 +730,8 @@ express: 450 + 100 = 550
 pickup: 450 + 0 = 450
 standard: 800 + 0 = 800
 ```
+
+@figure strategy
 
 ## The patterns at a glance
 

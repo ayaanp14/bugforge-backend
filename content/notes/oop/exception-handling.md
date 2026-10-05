@@ -58,15 +58,13 @@ A `finally` block runs whether the `try` completed, threw, or executed `return`.
 
 Define your own exception classes when callers need to tell your errors apart from others, or when an error should carry data. Group them under one base class for your module, so a caller can catch the specific case it can fix and the whole family otherwise:
 
-```text
-BankError                     base class for every banking failure
-├── InsufficientFundsError    carries the amount needed and the balance
-└── AccountFrozenError
-```
+@figure bank-errors
 
 Inherit from the right root: `std::runtime_error` (or another `std::exception` subclass) in C++; `Exception` for a checked or `RuntimeException` for an unchecked exception in Java; `Exception` in Python, never `BaseException`. End the name in `Exception` or `Error` as the language's library does.
 
-The program below uses that hierarchy. The first handler catches only `InsufficientFundsError` and reads its fields; the second catches any other `BankError`. The audit line is clean-up that must happen after every attempt: `finally` in Java, Python and JavaScript, and in C++ a destructor at the end of the loop body — RAII standing in for `finally`. Python's `else` holds the success message, so the `try` block contains only the call that can fail.
+The program below uses that hierarchy, most specific handler first. The audit line is clean-up that must happen after every attempt: `finally` in Java, Python and JavaScript, and in C++ a destructor at the end of the loop body — RAII standing in for `finally`. Python's `else` holds the success message, so the `try` block contains only the call that can fail:
+
+@figure try-paths
 
 ```cpp
 #include <iostream>
@@ -274,16 +272,13 @@ withdraw 100: bank error: account ACC-7 is frozen
 audit: attempt 3 logged
 ```
 
+@figure unwinding
+
 When you catch one exception and throw another, keep the original as the **cause**: `new BankError("transfer failed", e)` in Java (with a matching constructor), `raise BankError("transfer failed") from e` in Python, `std::throw_with_nested` in C++. The stack trace then shows both.
 
 ## Checked and unchecked exceptions in Java
 
-```text
-Throwable
-├── Error                    serious runtime problems: OutOfMemoryError, StackOverflowError
-└── Exception                checked: IOException, SQLException, ...
-    └── RuntimeException     unchecked: NullPointerException, IllegalArgumentException, ...
-```
+@figure java-hierarchy
 
 - **Checked exceptions** — `Exception` and its subclasses, except `RuntimeException`'s branch. A method that can throw one must either catch it or declare it with `throws`, and the compiler enforces this. Use them for conditions a caller can reasonably recover from: a file that does not exist, a network timeout.
 - **Unchecked exceptions** — `RuntimeException`, `Error` and their subclasses. No declaration is needed. They usually signal programming mistakes (a `null` dereference, an invalid argument), which the fix is to correct, not to catch.
@@ -409,6 +404,8 @@ close file
 close db
 caught: disk full
 ```
+
+@figure resources-close
 
 If `close()` itself throws while another exception is already propagating, Java keeps the original as the main exception and attaches the second with `addSuppressed`; you can read it back with `getSuppressed()`.
 

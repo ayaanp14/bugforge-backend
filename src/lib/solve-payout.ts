@@ -1,5 +1,8 @@
 import { prisma } from "./prisma.js";
 import { isDuplicateKey, withLockRetry } from "./seat-claim.js";
+import type { SolveStreak } from "./activity.js";
+
+export type { SolveStreak } from "./activity.js";
 
 /**
  * Paying a solver for a problem, exactly once.
@@ -35,38 +38,54 @@ import { isDuplicateKey, withLockRetry } from "./seat-claim.js";
  * taken and is not paid. The retry is bounded and only covers genuinely
  * transient lock failures — never a duplicate key, never an application error.
  *
+ * SQL problems (routes/sql.ts) are paid through the same transaction since
+ * 2026-10-05, claiming `SqlSolve` (unique userId, slug) instead: before, they
+ * paid XP in a copy of it that only stamped `lastActive`, which also made the
+ * day read as already counted to a coding solve later that day. Both now move
+ * the solving streak the same way — only in the transaction that won its
+ * claim, so a second accept of the same problem never touches it, and as the
+ * absolute values `nextStreak` (lib/activity.ts) computed, so two solves of
+ * different problems on one day write the same number rather than adding
+ * twice. Only a coding solve moves `problemsSolved`; the SQL count is derived
+ * from `SqlSolve` (lib/activity.ts sqlSolveTally).
+ *
  * Returns true when this call is the one that paid.
  */
-export interface SolveStreak {
-  currentStreak: number;
-  longestStreak: number;
-}
+export type SolveClaim = { problemId: string } | { sqlSlug: string };
 
 export async function claimFirstSolve(
   userId: string,
-  problemId: string,
+  claim: SolveClaim,
   submittedAt: Date,
   prize: number,
   streak: SolveStreak,
 ): Promise<boolean> {
-  return withLockRetry("claimFirstSolve", async () => {
+  const coding = "problemId" in claim;
+  return withLockRetry(coding ? "claimFirstSolve" : "claimSqlSolve", async () => {
     try {
       await prisma.$transaction(async (tx) => {
-        await tx.problemSolve.create({
-          data: { userId, problemId, submittedAt },
-          select: { id: true },
-        });
+        if ("problemId" in claim) {
+          await tx.problemSolve.create({
+            data: { userId, problemId: claim.problemId, submittedAt },
+            select: { id: true },
+          });
+        } else {
+          await tx.sqlSolve.create({
+            data: { userId, slug: claim.sqlSlug, submittedAt },
+            select: { id: true },
+          });
+        }
         await tx.userStats.upsert({
           where: { userId },
           update: {
-            problemsSolved: { increment: 1 },
+            ...(coding ? { problemsSolved: { increment: 1 } } : {}),
             currentStreak: streak.currentStreak,
             longestStreak: streak.longestStreak,
             lastActive: new Date(),
           },
           create: {
             userId,
-            problemsSolved: 1,
+            problemsSolved: coding ? 1 : 0,
             currentStreak: 1,
             longestStreak: 1,
             lastActive: new Date(),

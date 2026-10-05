@@ -39,9 +39,11 @@ The previous notes describe this model: [keys](/notes/dbms/keys-in-dbms), [norma
 | Wide-column | Rows grouped into partitions; each row's columns may differ | Apache Cassandra, HBase, ScyllaDB | Huge write volumes, time series, many data centres | Ad hoc queries; tables are designed per query |
 | Graph | Nodes and edges, both with properties | Neo4j, Amazon Neptune | Relationships many hops deep | Bulk aggregation over the whole data set |
 
-Here is the same idea, a customer and her orders, in each model.
+Here is the same idea, a customer and her orders, in each model:
 
-**Document** (MongoDB): the orders are embedded in the customer, so one read returns everything a profile page needs.
+@figure four-models
+
+**Document** (MongoDB), as stored:
 
 ```json
 {
@@ -55,7 +57,7 @@ Here is the same idea, a customer and her orders, in each model.
 }
 ```
 
-In a relational schema this is three tables (customers, orders, order_items) and two joins. Embedding is fast to read but duplicates data that other documents also need, which is denormalization with the usual update anomalies.
+Embedding is fast to read but duplicates data that other documents also need, which is denormalization with the usual update anomalies.
 
 **Key-value** (Redis): the database knows only keys. Values can be strings, or in Redis's case lists, hashes and sorted sets, and keys can expire.
 
@@ -124,7 +126,7 @@ Eric Brewer conjectured it in 2000, and Seth Gilbert and Nancy Lynch proved it i
 
 **The theorem: if a network partition occurs, a distributed system must choose between consistency and availability.** It cannot guarantee both while nodes cannot talk to each other.
 
-Picture two replicas, in Mumbai and Singapore, whose link fails. A write arrives in Mumbai. A **CP** choice makes Singapore refuse requests (or return errors) until it can confirm it has the latest data. An **AP** choice lets Singapore keep answering with what it has, and the replicas reconcile later.
+@figure partition
 
 The popular "pick any two of three" is misleading. Partitions are not optional in a distributed system, so you cannot "choose CA" by giving up P; a CA system is simply one that is not distributed, such as a single database server. When there is no partition, a system can be both consistent and available. The PACELC refinement (Daniel Abadi, 2012) adds the everyday trade-off: if there is a **P**artition, choose **A** or **C**; **E**lse, choose lower **L**atency or **C**onsistency.
 
@@ -136,9 +138,15 @@ Many databases are tunable, so classify a configuration rather than a product. C
 
 - **Leader-follower** (primary-replica): all writes go to the leader, which streams changes to followers; reads may go to any. MySQL replication, PostgreSQL streaming replication and MongoDB replica sets work this way.
 - **Synchronous or asynchronous**: a synchronous leader waits for a follower to confirm each write, so failover loses nothing but writes are slower; an asynchronous one does not wait, so followers lag and a failover can lose the latest writes.
-- **Replication lag** breaks read-your-writes: a user edits a profile, the next page reads from a lagging follower and shows the old value. A common fix is to read a user's own recent changes from the leader.
+- **Replication lag** can break read-your-writes: a user's next read, served by a follower that is behind, may not show her own change.
 - **Multi-leader** accepts writes in several places (for example one leader per data centre) and must resolve conflicting writes.
-- **Leaderless** (Dynamo-style, as in Cassandra): a client writes to W of the N replicas and reads from R of them. If R + W > N, every read set overlaps every write set. With N = 3, W = 2 and R = 2, any read touches at least one replica holding the latest write.
+- **Leaderless** (Dynamo-style, as in Cassandra): a client writes to W of the N replicas and reads from R of them. If R + W > N, every read set overlaps every write set.
+
+@figure replication
+
+The quorum rule of leaderless stores, checked over every possible read:
+
+@figure quorum
 
 ## Sharding
 
@@ -149,6 +157,8 @@ Many databases are tunable, so classify a configuration rather than a product. C
 | Range | Contiguous key ranges per shard (A–F, G–M, …) | Range queries stay on one shard | Hot spots: new time-ordered keys all hit the last shard |
 | Hash | hash(key) decides the shard; consistent hashing limits movement when nodes change | Even spread | Range queries visit every shard |
 | Directory | A lookup table maps keys to shards | Full control over placement | The lookup service is one more dependency |
+
+@figure sharding
 
 A good shard key has many distinct values, spreads reads and writes evenly, and keeps data that is queried together on one shard. The costs are real: joins and transactions across shards are slow or unsupported, and rebalancing moves data while the system runs. Relational databases can be sharded too, with tools such as Vitess for MySQL and Citus for PostgreSQL. **Vertical scaling** (a bigger machine) is simpler and should usually come first; **horizontal scaling** (more machines) is what sharding enables.
 

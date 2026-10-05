@@ -2,7 +2,9 @@ import { Prisma } from "@prisma/client";
 import { tournamentsFor } from "./tournament-record.js";
 import { prisma } from "../lib/prisma.js";
 import { cached, cachedShared, invalidate } from "../lib/cache.js";
-import { CALENDAR_UTC_OFFSET_MINUTES, dayKey, dayStart } from "../lib/clock.js";
+import { CALENDAR_UTC_OFFSET_MINUTES } from "../lib/clock.js";
+import { heatmapWindow, mergeHistory, sqlHistoryRow, sqlSolveTally, tallyHeatmap, type DayCountRow, type HistoryRow } from "../lib/activity.js";
+import { SQL_PROBLEMS } from "../lib/sql-problems/index.js";
 import { getDashboardUser, invalidateMe } from "./me.js";
 // daily-contest imports getCatalogue from here; both sides only call the other
 // at request time (function declarations, live bindings), so the cycle is inert.
@@ -227,12 +229,12 @@ export async function getDifficultyStats(userId: string) {
   return computeDifficultyStats(await loadProblemState(userId));
 }
 
-// ── Submission history (problems + bug hunts, newest first) ─────
+// ── Submission history (problems + bug hunts + SQL, newest first) ─
 /**
  * How deep offset paging over the merged history may reach.
  *
- * This endpoint merges two tables that are each sorted independently, so
- * serving items [skip, skip+limit) needs skip+limit rows from both — the
+ * This endpoint merges three tables that are each sorted independently, so
+ * serving items [skip, skip+limit) needs skip+limit rows from each — the
  * window grows with the page number. `limit` was bounded but `page` was
  * not, so `?page=5000&limit=100` asked each table for 500,000 rows. Five
  * thousand combined items is fifty pages at the maximum page size and five
@@ -246,8 +248,10 @@ export async function getSubmissionHistory(userId: string, page = 1, limit = 10)
   const window = Math.min(skip + limit, MAX_HISTORY_WINDOW);
 
   // Slim rows only — no code/editedFiles (fetched on demand via
-  // GET /api/me/submissions/:id) and only the page's window from each table.
-  const [problemSubmissions, bugSubmissions, problemTotal, bugTotal] = await Promise.all([
+  // GET /api/me/submissions/:id), no SQL query text (a SQL row links to its
+  // problem, whose Submissions tab is the owner's) — and only the page's
+  // window from each table. These rows reach public profiles.
+  const [problemSubmissions, bugSubmissions, sqlSubmissions, problemTotal, bugTotal, sqlTotal] = await Promise.all([
     prisma.submission.findMany({
       where: { userId },
       select: {
@@ -274,40 +278,50 @@ export async function getSubmissionHistory(userId: string, page = 1, limit = 10)
       orderBy: { submittedAt: "desc" },
       take: window,
     }),
+    prisma.sqlSubmission.findMany({
+      where: { userId },
+      select: { id: true, slug: true, verdict: true, runtimeMs: true, submittedAt: true },
+      orderBy: { submittedAt: "desc" },
+      take: window,
+    }),
     prisma.submission.count({ where: { userId } }),
     prisma.bugSubmission.count({ where: { userId } }),
+    prisma.sqlSubmission.count({ where: { userId } }),
   ]);
 
-  const history = [
-    ...problemSubmissions.map((s) => ({
-      id: s.id,
-      type: "problem" as const,
-      title: s.problem.title,
-      problemSlug: s.problem.slug,
-      difficulty: s.problem.difficulty,
-      verdict: s.verdict,
-      language: s.language,
-      runtime: s.runtimeMs ? `${s.runtimeMs}ms` : "N/A",
-      memory: s.memoryKb ? `${(s.memoryKb / 1024).toFixed(2)}MB` : "N/A",
-      submittedAt: s.submittedAt,
-    })),
-    ...bugSubmissions.map((s) => ({
-      id: s.id,
-      type: "bug" as const,
-      title: s.challenge.title,
-      problemSlug: undefined as string | undefined,
-      difficulty: s.challenge.difficulty,
-      verdict: s.verdict,
-      language: "JS/JSON",
-      runtime: s.timeTakenSecs ? `${s.timeTakenSecs}s` : "N/A",
-      memory: "N/A",
-      submittedAt: s.submittedAt,
-    })),
-  ]
-    .sort((a, b) => new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime())
-    .slice(skip, skip + limit);
+  const history = mergeHistory<HistoryRow>(
+    [
+      problemSubmissions.map((s) => ({
+        id: s.id,
+        type: "problem" as const,
+        title: s.problem.title,
+        problemSlug: s.problem.slug,
+        difficulty: s.problem.difficulty,
+        verdict: s.verdict,
+        language: s.language,
+        runtime: s.runtimeMs ? `${s.runtimeMs}ms` : "N/A",
+        memory: s.memoryKb ? `${(s.memoryKb / 1024).toFixed(2)}MB` : "N/A",
+        submittedAt: s.submittedAt,
+      })),
+      bugSubmissions.map((s) => ({
+        id: s.id,
+        type: "bug" as const,
+        title: s.challenge.title,
+        problemSlug: undefined,
+        difficulty: s.challenge.difficulty,
+        verdict: s.verdict,
+        language: "JS/JSON",
+        runtime: s.timeTakenSecs ? `${s.timeTakenSecs}s` : "N/A",
+        memory: "N/A",
+        submittedAt: s.submittedAt,
+      })),
+      sqlSubmissions.map(sqlHistoryRow),
+    ],
+    skip,
+    limit,
+  );
 
-  return { history, total: problemTotal + bugTotal, page, limit };
+  return { history, total: problemTotal + bugTotal + sqlTotal, page, limit };
 }
 
 // ── 365-day accepted-solution heatmap ───────────────────────────
@@ -327,49 +341,34 @@ export async function getHeatmap(userId: string, opts: { compact?: boolean } = {
   // be UTC on both sides — Prisma stores UTC and DATE_FORMAT read it as such
   // — so a solve at 1 am IST lit the previous day's square and the streak the
   // squares add up to disagreed with the one on the profile.
-  const todayStart = dayStart(new Date());
-  const oneYearAgo = new Date(todayStart.getTime() - 364 * 86_400_000);
-  const today = new Date(todayStart.getTime() + 86_400_000 - 1);
+  const { from, to } = heatmapWindow();
 
-  // One row per active day, counted by the database, instead of every accepted
-  // submission of the year shipped over and bucketed here. Uses the (userId,
-  // verdict, submittedAt) index; COUNT arrives as a BigInt.
-  const rows = await prisma.$queryRaw<Array<{ d: string; n: bigint | number }>>(Prisma.sql`
-    SELECT DATE_FORMAT(DATE_ADD(\`submittedAt\`, INTERVAL ${CALENDAR_UTC_OFFSET_MINUTES} MINUTE), '%Y-%m-%d') AS d, COUNT(*) AS n
+  // One row per active day and arena, counted by the database, instead of
+  // every accepted submission of the year shipped over and bucketed here.
+  // Coding problems and SQL problems (since 2026-10-05) are one UNION ALL, so
+  // still one round trip; each arm reads its table's (userId, verdict,
+  // submittedAt) index. A day both arms name is summed by tallyHeatmap
+  // (lib/activity.ts), which also derives the streaks. COUNT arrives as a BigInt.
+  const day = Prisma.sql`DATE_FORMAT(DATE_ADD(\`submittedAt\`, INTERVAL ${CALENDAR_UTC_OFFSET_MINUTES} MINUTE), '%Y-%m-%d')`;
+  const rows = await prisma.$queryRaw<DayCountRow[]>(Prisma.sql`
+    SELECT ${day} AS d, COUNT(*) AS n
     FROM \`Submission\`
     WHERE \`userId\` = ${userId}
       AND \`verdict\` = 'ACCEPTED'
-      AND \`submittedAt\` >= ${oneYearAgo}
-      AND \`submittedAt\` <= ${today}
+      AND \`submittedAt\` >= ${from}
+      AND \`submittedAt\` <= ${to}
+    GROUP BY d
+    UNION ALL
+    SELECT ${day} AS d, COUNT(*) AS n
+    FROM \`SqlSubmission\`
+    WHERE \`userId\` = ${userId}
+      AND \`verdict\` = 'ACCEPTED'
+      AND \`submittedAt\` >= ${from}
+      AND \`submittedAt\` <= ${to}
     GROUP BY d
   `);
 
-  const dailyCounts: Record<string, number> = {};
-  let totalSubmissions = 0;
-  for (const row of rows) {
-    const n = Number(row.n);
-    dailyCounts[row.d] = n;
-    totalSubmissions += n;
-  }
-
-  const dates: string[] = [];
-  for (let i = 0; i < 365; i++) {
-    dates.push(dayKey(new Date(oneYearAgo.getTime() + i * 86_400_000)));
-  }
-
-  let maxStreak = 0;
-  let currentStreak = 0;
-  let activeDays = 0;
-  dates.forEach((date) => {
-    if (dailyCounts[date]) {
-      activeDays++;
-      currentStreak++;
-      if (currentStreak > maxStreak) maxStreak = currentStreak;
-    } else {
-      currentStreak = 0;
-    }
-  });
-
+  const { dates, dailyCounts, totalSubmissions, activeDays, maxStreak, currentStreak } = tallyHeatmap(rows, from);
   const totals = { totalSubmissions, activeDays, maxStreak, currentStreak };
   if (opts.compact) return { ...totals, start: dates[0]!, counts: dates.map((date) => dailyCounts[date] || 0) };
   return { ...totals, heatmapData: dates.map((date) => ({ date, count: dailyCounts[date] || 0 })) };
@@ -464,6 +463,9 @@ async function queryLeaderboard(type: "combined" | "questions" | "bugs") {
         questionsXp: true,
         bugsXp: true,
         stats: { select: { problemsSolved: true, bugsFixed: true } },
+        // Ten accounts' SQL solves, one slug per problem — counted below
+        // against the problems the module still ships.
+        sqlSolves: { select: { slug: true, submittedAt: true } },
       },
     }),
     prisma.user.count(),
@@ -484,6 +486,7 @@ async function queryLeaderboard(type: "combined" | "questions" | "bugs") {
       bugsXp: u.bugsXp,
       problemsSolved: u.stats?.problemsSolved || 0,
       bugsFixed: u.stats?.bugsFixed || 0,
+      sqlSolved: sqlSolveTally(u.sqlSolves).solved,
       hasValue,
     };
   });
@@ -793,6 +796,9 @@ async function buildDashboard(userId: string) {
   const difficultyStats = computeDifficultyStats(problemState);
   const problemInsights = computeProblemInsights(problemState);
   const { social, savedInterviews } = counters;
+  // The SQL problems are code (lib/sql-problems), so their count needs no
+  // query; the account's own count is `me.stats.sqlSolved`.
+  const sqlInsights = { total: SQL_PROBLEMS.length };
 
-  return { me, social, difficultyStats, submissions, heatmap, rank, leaderboard, pairing, continueSolving, problemInsights, bugInsights, savedInterviews, dailyContest, roadmap, study, tournaments, credentials };
+  return { me, social, difficultyStats, submissions, heatmap, rank, leaderboard, pairing, continueSolving, problemInsights, bugInsights, sqlInsights, savedInterviews, dailyContest, roadmap, study, tournaments, credentials };
 }

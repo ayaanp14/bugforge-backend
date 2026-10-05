@@ -34,6 +34,8 @@ An IP address identifies a host; a **port number** (16 bits, 0 to 65,535) identi
 | 1024 to 49151 | Registered ports | 3306, 5432, 8080 |
 | 49152 to 65535 | Dynamic or private (ephemeral) ports | Client source ports, as IANA defines them; Linux uses 32768 to 60999 by default |
 
+@figure port-ranges
+
 ### The ports worth memorising
 
 | Port | Protocol | Transport | Used for |
@@ -78,7 +80,9 @@ listen(fd, 16);                                      /* queue up to 16 pending c
 int conn = accept(fd, NULL, NULL);                   /* a new socket for this client */
 ```
 
-The client calls `socket` and then `connect` with the server's address and port; its operating system picks the ephemeral source port. `accept` returns a **new socket** for each client, all sharing the server's port 8080 but each with its own 4-tuple, while the listening socket keeps waiting for more.
+The client calls `socket` and then `connect` with the server's address and port; its operating system picks the ephemeral source port. `accept` returns a **new socket** for each client:
+
+@figure sockets
 
 ## NAT: network address translation
 
@@ -100,9 +104,11 @@ A home network uses 192.168.1.0/24 and the router's public address is 203.0.113.
 | 192.168.1.11:51000 | 203.0.113.5:40002 | 198.51.100.20:443 |
 | 192.168.1.10:51001 | 203.0.113.5:40003 | 198.51.100.30:80 |
 
-Two laptops happened to pick the same source port, 51000, for the same server; the router gives them different public ports (40001 and 40002), so their replies cannot be confused. How the public port is chosen varies by router: many keep the original port when it is free.
+Two laptops happened to pick the same source port, 51000, for the same server; the router gives them different public ports, so their replies cannot be confused. A reply for 203.0.113.5:40002 goes back to **192.168.1.11:51000**, and a packet that matches no entry is **dropped**:
 
-Now a reply arrives from 198.51.100.20:443 addressed to 203.0.113.5:40002. The router finds 40002 in its table, rewrites the destination to **192.168.1.11:51000** and forwards it. A packet that arrives for 203.0.113.5:50000, which matches no entry, is **dropped**. Every rewrite also means updating the IP header checksum and the TCP or UDP checksum, because both cover the addresses.
+@figure pat-translation
+
+How the public port is chosen varies by router: many keep the original port when it is free. Every rewrite also means updating the IP header checksum and the TCP or UDP checksum, because both cover the addresses.
 
 **Port forwarding** is a static entry added by hand so that inbound traffic works: "send anything arriving on public port 8443 to 192.168.1.50:443" lets a server inside be reached from outside.
 
@@ -121,12 +127,11 @@ DHCP gives a device everything it needs to join an IP network: an **IP address**
 
 ### The DORA exchange
 
-A laptop with no address joins a network whose DHCP server is 192.168.1.1:
+A laptop with no address joins a network. Here two servers answer, which shows why the third message is a **broadcast** even though the client already knows which server it wants:
 
-1. **Discover.** The client broadcasts from 0.0.0.0:68 to 255.255.255.255:67, including its MAC address: "Is there a DHCP server?"
-2. **Offer.** Each server that hears it offers an address, say 192.168.1.23 with mask 255.255.255.0, gateway 192.168.1.1, DNS servers and a 24-hour lease. The server reserves the address meanwhile.
-3. **Request.** The client **broadcasts** a request for the offer it chose, naming that server. It broadcasts rather than unicasts so that any other server that made an offer learns it was declined and can release its reserved address.
-4. **Acknowledge.** The chosen server confirms with a DHCPACK. The client often probes the address with ARP first; if another host answers, it sends DHCPDECLINE and starts again. Otherwise it configures the address.
+@figure dhcp-dora
+
+Server A's offer carried the address 192.168.1.23 with mask 255.255.255.0, gateway 192.168.1.1, DNS servers and a 24-hour lease. If the client's ARP probe of the offered address gets an answer, the address is already in use: it sends DHCPDECLINE and starts again.
 
 | Message | From and to | Purpose |
 | --- | --- | --- |
@@ -139,6 +144,8 @@ A laptop with no address joins a network whose DHCP server is 192.168.1.1:
 | DHCPDECLINE | Client to server | The offered address is already in use |
 
 **Leases and renewal.** At T1, by default half the lease, the client sends a unicast DHCPREQUEST to its server to renew. If that fails, at T2, by default 87.5 per cent, it broadcasts the request to any server (rebinding). If the lease expires, it must stop using the address. For a 24-hour lease, T1 falls at 12 hours and T2 at 21 hours.
+
+@figure lease-timeline
 
 **Relay agents.** Broadcasts do not cross routers, so a network with one central DHCP server needs a **relay agent** on each subnet's router (on Cisco, the `ip helper-address` command). The relay forwards the client's broadcasts to the server as unicast and records its own interface address, which tells the server which subnet's pool to allocate from.
 

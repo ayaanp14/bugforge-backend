@@ -24,7 +24,7 @@ A **deadlock** is a standstill: a set of processes in which every process is wai
 
 ## The system model
 
-Resources come in **types** (CPU cycles, memory space, files, locks, printers), and each type has one or more identical **instances**. A process uses a resource in three steps: **request** it (waiting if it is not available), **use** it, and **release** it. A set of processes is deadlocked when every process in it is waiting for an event, usually a release, that only another process in the set can cause.
+Resources come in **types** (CPU cycles, memory space, files, locks, printers), and each type has one or more identical **instances**. A process uses a resource in three steps: **request** it (waiting if it is not available), **use** it, and **release** it. Deadlock is a circle of processes stuck at the request step.
 
 ## The four necessary conditions
 
@@ -45,17 +45,15 @@ A **resource allocation graph (RAG)** shows the state at one moment. Processes a
 - **A cycle, and every resource in it has one instance**: deadlock.
 - **A cycle with multi-instance resources**: possibly a deadlock, possibly not.
 
-```text
-Single instances:   P1 → R1 → P2 → R2 → P1        a cycle: P1 and P2 are deadlocked
-```
-
-For the multi-instance case, suppose R1 and R2 each have two instances. R1 is held by P2 and P3, R2 by P1 and P4, P1 requests R1 and P3 requests R2. The graph has the cycle P1 → R1 → P3 → R2 → P1, yet there is no deadlock: P4 needs nothing more, finishes and releases its R2, P3 takes it and finishes, and its R1 goes to P1.
-
 When every resource has a single instance, the graph can be collapsed into a **wait-for graph** with only processes: an edge Pi → Pj means Pi waits for a resource Pj holds. Then a deadlock exists if and only if the wait-for graph has a cycle.
 
-## Handling deadlocks
+@figure rag-cycle
 
-There are four strategies:
+With several instances per resource, a process outside the cycle can finish and free an instance, which breaks the cycle:
+
+@figure rag-multi
+
+## Handling deadlocks
 
 | Strategy | Idea | Cost |
 | --- | --- | --- |
@@ -77,15 +75,17 @@ Prevention attacks the conditions one at a time:
 | No preemption | If a request cannot be granted, release what you hold, or let the OS take resources from a waiting process | Works only for resources whose state can be saved, such as CPU registers and memory |
 | Circular wait | Number the resource types and always request them in increasing order | Every programmer must follow the order |
 
-Ordering is the method used most in practice: if every thread locks account A before account B whenever A's number is smaller, no cycle can ever form. A cycle would need some process to hold a higher-numbered resource while requesting a lower one, which the rule forbids.
+Ordering is the method used most in practice, and it is provably enough: a cycle would need some process to hold a higher-numbered resource while requesting a lower one, which the rule forbids.
+
+@figure lock-order
 
 ## Deadlock avoidance
 
 Avoidance needs extra information: each process declares in advance the **maximum** number of instances of each resource type it may ever need. The OS then grants a request only if the resulting state is **safe**.
 
-A state is **safe** if there is a **safe sequence**: an order of all processes such that each one's remaining need can be met by the currently available resources plus everything released by the processes before it. If such an order exists, the OS can always run the processes to completion in that order, so no deadlock can happen.
+A state is **safe** if there is a **safe sequence**: an order of all processes such that each one's remaining need can be met by the currently available resources plus everything released by the processes before it. Then the OS can always finish every process in that order, so no deadlock can happen.
 
-An **unsafe** state is not a deadlock. It only means the OS can no longer guarantee to avoid one if processes request their maximums. Avoidance stays out of unsafe states altogether.
+An **unsafe** state is not a deadlock; it only means the OS can no longer guarantee to avoid one. Avoidance stays out of unsafe states altogether.
 
 For single-instance resources, avoidance can use the RAG with **claim edges** (dashed P → R edges for future requests): a request is granted only if turning its claim edge into an assignment edge creates no cycle. For multiple instances, it uses the Banker's algorithm.
 
@@ -130,19 +130,15 @@ Available = total − allocated = (8 6 7) − (6 4 4) = **(2 2 3)**.
 
 **Is the state safe?** Each step picks the lowest-numbered unfinished process whose Need fits in Work:
 
-| Step | Work before | Chosen | Need | Allocation released | Work after |
-| --- | --- | --- | --- | --- | --- |
-| 1 | 2 2 3 | P1 (P0 needs 3 A) | 1 2 1 | 2 0 1 | 4 2 4 |
-| 2 | 4 2 4 | P0 | 3 2 2 | 1 1 0 | 5 3 4 |
-| 3 | 5 3 4 | P2 | 2 2 2 | 1 2 1 | 6 5 5 |
-| 4 | 6 5 5 | P3 | 1 2 2 | 0 1 2 | 6 6 7 |
-| 5 | 6 6 7 | P4 | 3 2 3 | 2 0 0 | 8 6 7 |
+@figure bankers
 
 Every process finishes, so the state is **safe** with the sequence P1, P0, P2, P3, P4. The final Work equals the total (8 6 7), a useful check. Other safe sequences exist too, such as P1, P3, P0, P2, P4; any one proves safety.
 
-**Request 1: P4 asks for (1 0 1).** It is within P4's Need (3 2 3) and within Available (2 2 3). Pretend to grant it: Available becomes (1 2 2), P4's Allocation (3 0 1) and its Need (2 2 2). Safety check: P1's need (1 2 1) fits (1 2 2), so Work becomes (3 2 3); then P0 → (4 3 3), P2 → (5 5 4), P3 → (5 6 6) and P4 → (8 6 7). The new state is safe, so the request is **granted**.
+**Request 1: P4 asks for (1 0 1).** It is within P4's Need (3 2 3) and Available (2 2 3), and after pretending to grant it the state is still safe, so it is **granted**.
 
-**Request 2: P0 asks for (1 2 0),** starting again from the original state. It is within P0's Need (3 2 2) and within Available (2 2 3), so the resources are physically free. Pretend to grant it: Available becomes (1 0 3), P0's Need becomes (2 0 2). Now no process fits: P0 needs 2 of A but only 1 is free, and P1, P2, P3 and P4 each need 2 of B while none is free. The state would be **unsafe**, so the request is **denied** and P0 waits, even though the resources were there.
+**Request 2: P0 asks for (1 2 0),** starting again from the original state. The resources are physically free, but after pretending to grant it Available would be (1 0 3) and no process's Need fits. The state would be **unsafe**, so the request is **denied** and P0 waits, even though the resources were there.
+
+@figure bankers-requests
 
 Two more requests show the first two checks: P4 asking for (3 0 0) must wait, because only 2 of A are available; P1 asking for (2 0 0) is an error, because its Need for A is only 1.
 
@@ -405,7 +401,7 @@ P4 requests 3 0 0: must wait, not enough available
 P1 requests 2 0 0: error, more than its declared maximum
 ```
 
-The Banker's algorithm is rarely used as is in real systems: processes seldom know their maximum needs, the number of processes changes all the time, and checking every request is expensive. It is the standard way to explain what "safe" means.
+Real systems rarely run it as is, since processes seldom know their maximum needs; it is the standard way to explain what "safe" means.
 
 ## Deadlock detection and recovery
 
@@ -421,7 +417,7 @@ A tiny example with two resource types and nothing available, (0 0):
 
 P2 requests nothing, so it can finish and release (1 1); then P0's request fits, then P1's. No deadlock. If P2 instead requested (1 0), no process's request would fit (0 0), and all three would be deadlocked.
 
-Running detection on every request is expensive, so systems run it periodically or when CPU utilization drops, a typical symptom of many blocked processes.
+Detection on every request is expensive, so systems run it periodically, or when CPU utilization drops because many processes are blocked.
 
 **Recovery** has two options:
 
@@ -439,7 +435,7 @@ Running detection on every request is expensive, so systems run it periodically 
 | Resolves on its own | Never | Possibly, if the load drops | Possibly, with random delays |
 | Fix | Prevention, avoidance or detection | Aging, fair queues | Randomized back-off, ordering |
 
-A livelock looks like two people in a corridor who both step aside the same way, again and again. In code, two threads that each release their first lock and retry whenever they cannot get the second one can keep doing so in step forever.
+A livelock is two people in a corridor who both step aside the same way, again and again: two threads that release and retry in step.
 
 ## Common mistakes
 

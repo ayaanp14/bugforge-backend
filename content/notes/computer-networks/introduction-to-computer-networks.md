@@ -56,6 +56,8 @@ A LAN is usually owned by one organisation and runs at high speed with low delay
 
 Topology is the layout of the links: who is connected to whom.
 
+@figure topologies
+
 | Topology | Layout | Advantages | Disadvantages |
 | --- | --- | --- | --- |
 | Bus | Every device taps one shared cable (backbone) with terminators at both ends | Cheap, little cable | A break in the backbone stops everything; collisions grow with devices; hard to troubleshoot |
@@ -65,7 +67,7 @@ Topology is the layout of the links: who is connected to whom.
 | Tree | A hierarchy of stars connected to a root | Scales well, easy to segment | A failure near the root cuts off whole branches |
 | Hybrid | Any mix of the above | Fits real buildings | Design and management are more complex |
 
-**Full mesh arithmetic.** In a full mesh of n devices every pair has its own link, so the number of links is n(n − 1)/2 and each device needs n − 1 ports. For 5 devices that is 5 × 4 / 2 = 10 links and 4 ports per device; for 10 devices it is already 45 links. This is why full mesh is used only where reliability justifies the cost, such as between core routers.
+**Full mesh arithmetic.** Every pair has its own link, so n devices need n(n − 1)/2 links and n − 1 ports each. Ten devices already need 45 links, which is why full mesh is kept for places where reliability justifies the cost, such as between core routers.
 
 ## Network devices and the layer they work at
 
@@ -96,9 +98,13 @@ A **collision domain** is the part of a network where two simultaneous transmiss
 
 So switches break up collision domains and routers break up broadcast domains.
 
+@figure domains
+
 ## Circuit switching vs packet switching
 
 **Circuit switching** sets up a dedicated path with reserved capacity before any data flows, keeps it for the whole conversation and then tears it down. The classic telephone network works this way. **Packet switching** splits data into packets, each carrying the destination address; every router stores a packet, looks at the address and forwards it (store and forward). Packets from many users share every link. The internet works this way. (A third, older scheme, **message switching**, stores and forwards whole messages.)
+
+@figure switching
 
 | Aspect | Circuit switching | Packet switching |
 | --- | --- | --- |
@@ -139,11 +145,13 @@ A host sends one 1,000-byte packet over a single 10 Mbps link that is 2,000 km l
 | Total one-way delay | 0.8 ms + 10 ms | 10.8 ms |
 | Bandwidth-delay product | 10^7 bps × 0.01 s | 100,000 bits = 12,500 bytes |
 
+@figure delay
+
 The bandwidth-delay product is how many bits are "on the wire" at once: 12.5 packets of this size fit in the link before the first one arrives. Protocols that wait for an acknowledgement after every packet waste most of such a link, which is why TCP keeps a window of many packets in flight.
 
 Now send a 1 MB file (8 × 10^6 bits) over the same link. Transmission delay becomes 8 × 10^6 ÷ 10^7 = 0.8 s, while propagation stays 10 ms, so the total is 0.81 s. Small messages are dominated by latency; big transfers are dominated by bandwidth. Doubling the bandwidth would halve the file's time but would not change the 10 ms propagation delay at all.
 
-If the path had a router in the middle (two links, each 10 Mbps and 1,000 km), store and forward means the router must receive the whole packet before sending it on, so the transmission delay is paid twice: 2 × 0.8 ms + 2 × 5 ms = 11.6 ms.
+With a router halfway (two 10 Mbps links of 1,000 km), store and forward pays the transmission delay twice: 2 × 0.8 ms + 2 × 5 ms = 11.6 ms.
 
 ## Common mistakes
 

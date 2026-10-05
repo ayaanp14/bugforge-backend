@@ -52,9 +52,7 @@ Always check a question's conventions: which way the head is moving, whether SCA
 
 Serve requests in the order they arrived. It is fair and never starves anyone, but the head swings wildly across the disk.
 
-```text
-70 → 120 → 35 → 180 → 10 → 95 → 160 → 50 → 130
-```
+@figure fcfs
 
 Movement: 50 + 85 + 145 + 170 + 85 + 65 + 110 + 80 = **790 cylinders**.
 
@@ -62,11 +60,7 @@ Movement: 50 + 85 + 145 + 170 + 85 + 65 + 110 + 80 = **790 cylinders**.
 
 Always serve the pending request **closest** to the current head position, whatever direction it lies in.
 
-From 70, the nearest request is 50 (20 away, against 95 at 25). From 50 the nearest is 35, then 10. Only then does the head turn and go up through 95, 120, 130, 160 and 180.
-
-```text
-70 → 50 → 35 → 10 → 95 → 120 → 130 → 160 → 180
-```
+@figure sstf
 
 Movement: 20 + 15 + 25 + 85 + 25 + 10 + 30 + 20 = **230 cylinders**.
 
@@ -76,9 +70,7 @@ SSTF is the SJF of disks: it greatly reduces movement, but a request far from th
 
 The head moves in one direction serving every request it passes, goes on **to the end of the disk**, then reverses and serves the requests on the way back, like a lift that goes to the top floor before coming down.
 
-```text
-70 → 95 → 120 → 130 → 160 → 180 → 199 → 50 → 35 → 10
-```
+@figure scan
 
 Movement: up from 70 to 199 is 129, then down from 199 to 10 is 189, so **318 cylinders**.
 
@@ -88,9 +80,7 @@ SCAN cannot starve a request: every cylinder is passed within two sweeps. Its we
 
 Serve requests in **one direction only**. On reaching the end of the disk, the head returns to cylinder 0 **without serving anything** and sweeps upward again, treating the cylinders as a circle.
 
-```text
-70 → 95 → 120 → 130 → 160 → 180 → 199 → (return to 0) → 10 → 35 → 50
-```
+@figure c-scan
 
 Movement: 70 to 199 is 129, the return from 199 to 0 is 199, and 0 to 50 is 50, so **378 cylinders** counting the return, or **179** if the return jump is not counted. Textbooks differ on this; say which you use.
 
@@ -100,21 +90,11 @@ C-SCAN moves more than SCAN but gives **more uniform waiting times**, because ev
 
 LOOK and C-LOOK are SCAN and C-SCAN with one change: the head goes only **as far as the last request** in its direction, never to the physical end of the disk.
 
-**LOOK**: up to the highest request, then reverse.
+@figure look
 
-```text
-70 → 95 → 120 → 130 → 160 → 180 → 50 → 35 → 10
-```
+**LOOK** goes up to the highest request, then reverses. Movement: 70 to 180 is 110, then 180 down to 10 is 170, so **280 cylinders**.
 
-Movement: 70 to 180 is 110, then 180 down to 10 is 170, so **280 cylinders**.
-
-**C-LOOK**: up to the highest request, then jump to the **lowest pending request** and sweep up again.
-
-```text
-70 → 95 → 120 → 130 → 160 → 180 → (jump to 10) → 10 → 35 → 50
-```
-
-Movement: 70 to 180 is 110, the jump from 180 to 10 is 170, and 10 to 50 is 40, so **320 cylinders** counting the jump, or **150** without it.
+**C-LOOK** goes up to the highest request, then jumps to the **lowest pending request** and sweeps up again. Movement: 70 to 180 is 110, the jump from 180 to 10 is 170, and 10 to 50 is 40, so **320 cylinders** counting the jump, or **150** without it.
 
 ## Comparing the algorithms
 

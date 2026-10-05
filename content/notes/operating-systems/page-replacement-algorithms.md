@@ -31,26 +31,13 @@ Throughout this note:
 - Reference string: **2 3 2 1 5 2 4 5 3 2 5 2** (12 references, 5 distinct pages)
 - Frames: **3**, initially empty
 
-The tables show the frame contents after each reference, in fixed slots: a new page takes the slot of the page it evicts.
+The figures draw what you would write on paper: one column per reference, the frame contents after it in fixed slots (a new page takes the slot of the page it evicts), an F under every fault and the evicted page under that.
 
 ## FIFO (First-In, First-Out)
 
 Evict the page that has been in memory the **longest**, regardless of how often it is used. It needs only a queue of pages in load order.
 
-| Step | Ref | Frames | Result |
-| --- | --- | --- | --- |
-| 1 | 2 | 2 - - | Fault |
-| 2 | 3 | 2 3 - | Fault |
-| 3 | 2 | 2 3 - | Hit |
-| 4 | 1 | 2 3 1 | Fault |
-| 5 | 5 | 5 3 1 | Fault, evict 2 (oldest) |
-| 6 | 2 | 5 2 1 | Fault, evict 3 |
-| 7 | 4 | 5 2 4 | Fault, evict 1 |
-| 8 | 5 | 5 2 4 | Hit |
-| 9 | 3 | 3 2 4 | Fault, evict 5 |
-| 10 | 2 | 3 2 4 | Hit |
-| 11 | 5 | 3 5 4 | Fault, evict 2 |
-| 12 | 2 | 3 5 2 | Fault, evict 4 |
+@figure fifo
 
 **FIFO: 9 faults, 3 hits.** Step 5 shows the weakness: page 2 is evicted because it was loaded first, even though it was used two steps earlier and is needed again at once.
 
@@ -58,20 +45,7 @@ Evict the page that has been in memory the **longest**, regardless of how often 
 
 Evict the page that will **not be used for the longest time** in the future. It gives the lowest possible number of faults for any reference string and number of frames, but it needs the future, so no operating system can run it. It is the yardstick other algorithms are measured against.
 
-| Step | Ref | Frames | Result |
-| --- | --- | --- | --- |
-| 1 | 2 | 2 - - | Fault |
-| 2 | 3 | 2 3 - | Fault |
-| 3 | 2 | 2 3 - | Hit |
-| 4 | 1 | 2 3 1 | Fault |
-| 5 | 5 | 2 3 5 | Fault, evict 1 (never used again) |
-| 6 | 2 | 2 3 5 | Hit |
-| 7 | 4 | 4 3 5 | Fault, evict 2 (next used at step 10, the farthest) |
-| 8 | 5 | 4 3 5 | Hit |
-| 9 | 3 | 4 3 5 | Hit |
-| 10 | 2 | 2 3 5 | Fault, evict 4 (never used again) |
-| 11 | 5 | 2 3 5 | Hit |
-| 12 | 2 | 2 3 5 | Hit |
+@figure optimal
 
 **Optimal: 6 faults, 6 hits.** At step 7 the next uses are page 2 at step 10, page 3 at step 9 and page 5 at step 8, so 2 goes. At step 10 neither 4 nor 3 is used again; either may go, and the count is the same.
 
@@ -79,20 +53,7 @@ Evict the page that will **not be used for the longest time** in the future. It 
 
 Evict the page that has **not been used for the longest time** in the past. It uses the recent past as a prediction of the near future, which is what locality of reference suggests.
 
-| Step | Ref | Frames | Result |
-| --- | --- | --- | --- |
-| 1 | 2 | 2 - - | Fault |
-| 2 | 3 | 2 3 - | Fault |
-| 3 | 2 | 2 3 - | Hit |
-| 4 | 1 | 2 3 1 | Fault |
-| 5 | 5 | 2 5 1 | Fault, evict 3 (last used at step 2) |
-| 6 | 2 | 2 5 1 | Hit |
-| 7 | 4 | 2 5 4 | Fault, evict 1 (last used at step 4) |
-| 8 | 5 | 2 5 4 | Hit |
-| 9 | 3 | 3 5 4 | Fault, evict 2 (last used at step 6) |
-| 10 | 2 | 3 5 2 | Fault, evict 4 (last used at step 7) |
-| 11 | 5 | 3 5 2 | Hit |
-| 12 | 2 | 3 5 2 | Hit |
+@figure lru
 
 **LRU: 7 faults, 5 hits.** At step 5, LRU keeps page 2 because it was just used, which FIFO did not.
 
@@ -106,22 +67,9 @@ Most hardware sets a **reference bit** in a page's entry whenever the page is ac
 - **Second chance.** FIFO, but when the oldest page's reference bit is 1, clear it and move on instead of evicting it. A page used since the last pass survives one more round.
 - **Clock.** Second chance with the pages in a circular list and a **hand** pointing at the next candidate. On a fault, the hand clears 1 bits and advances until it finds a 0 bit, evicts that page, loads the new one with its bit set to 1, and moves one step on. On a hit, the page's bit is set to 1.
 
-The clock algorithm on the same string and three frames, with each page's reference bit in brackets and the hand's position after the step:
+The clock algorithm on the same string and three frames, with each page's reference bit beside it and the hand where it points after the step:
 
-| Step | Ref | Frames (bit) | Hand at | Result |
-| --- | --- | --- | --- | --- |
-| 1 | 2 | 2(1) - - | slot 2 | Fault |
-| 2 | 3 | 2(1) 3(1) - | slot 3 | Fault |
-| 3 | 2 | 2(1) 3(1) - | slot 3 | Hit |
-| 4 | 1 | 2(1) 3(1) 1(1) | slot 1 | Fault |
-| 5 | 5 | 5(1) 3(0) 1(0) | slot 2 | Fault: all bits 1, a full sweep clears them, evict 2 |
-| 6 | 2 | 5(1) 2(1) 1(0) | slot 3 | Fault, evict 3 (bit 0) |
-| 7 | 4 | 5(1) 2(1) 4(1) | slot 1 | Fault, evict 1 (bit 0) |
-| 8 | 5 | 5(1) 2(1) 4(1) | slot 1 | Hit |
-| 9 | 3 | 3(1) 2(0) 4(0) | slot 2 | Fault: full sweep again, evict 5 |
-| 10 | 2 | 3(1) 2(1) 4(0) | slot 2 | Hit |
-| 11 | 5 | 3(1) 2(0) 5(1) | slot 1 | Fault: 2's bit cleared, evict 4 |
-| 12 | 2 | 3(1) 2(1) 5(1) | slot 1 | Hit |
+@figure clock
 
 **Clock: 8 faults**, between FIFO's 9 and LRU's 7. When every bit is 1, as at steps 5 and 9, the clock sweeps the whole circle and degenerates into FIFO for that fault.
 
@@ -133,29 +81,15 @@ Two counting policies also appear in textbooks: **LFU** (evict the least frequen
 
 You would expect more frames to mean fewer faults. With FIFO that is not guaranteed. The classic string is **1 2 3 4 1 2 5 1 2 3 4 5**:
 
-| Step | Ref | FIFO, 3 frames | FIFO, 4 frames |
-| --- | --- | --- | --- |
-| 1 | 1 | 1 - - (fault) | 1 - - - (fault) |
-| 2 | 2 | 1 2 - (fault) | 1 2 - - (fault) |
-| 3 | 3 | 1 2 3 (fault) | 1 2 3 - (fault) |
-| 4 | 4 | 4 2 3 (fault) | 1 2 3 4 (fault) |
-| 5 | 1 | 4 1 3 (fault) | 1 2 3 4 (hit) |
-| 6 | 2 | 4 1 2 (fault) | 1 2 3 4 (hit) |
-| 7 | 5 | 5 1 2 (fault) | 5 2 3 4 (fault) |
-| 8 | 1 | 5 1 2 (hit) | 5 1 3 4 (fault) |
-| 9 | 2 | 5 1 2 (hit) | 5 1 2 4 (fault) |
-| 10 | 3 | 5 3 2 (fault) | 5 1 2 3 (fault) |
-| 11 | 4 | 5 3 4 (fault) | 4 1 2 3 (fault) |
-| 12 | 5 | 5 3 4 (hit) | 4 5 2 3 (fault) |
-| Faults | | **9** | **10** |
+@figure belady
 
-Four frames give **10 faults, one more than three frames**. Look at step 7: with three frames memory holds {5, 1, 2}; with four it holds {5, 2, 3, 4}. Page 1 is in the smaller memory but not the larger one, so the next references to 1 and 2 hit with three frames and fault with four.
+Four frames give **10 faults, one more than three frames**. At step 7 the smaller memory holds page 1 and the larger one does not, so the next references to 1 and 2 hit with three frames and fault with four.
 
 **Stack algorithms** cannot show the anomaly. An algorithm is a stack algorithm if the pages in memory with n frames are always a subset of the pages it would hold with n + 1 frames. LRU qualifies (memory always holds the n most recently used pages) and so does Optimal; FIFO does not, as step 7 shows. On this same string LRU gives 10 faults with three frames and 8 with four.
 
 ## Simulating the algorithms
 
-This program counts the faults for each policy and frame count used above; its numbers match the tables.
+This program counts the faults for each policy and frame count used above; its numbers match the figures.
 
 ```cpp
 #include <algorithm>

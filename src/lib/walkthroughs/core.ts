@@ -35,7 +35,7 @@ export type Item =
   | { k: "cell"; id: string; x: number; y: number; w: number; h: number; text: string; tone?: Tone; size?: number }
   /** A circle with centred text — a graph or tree node. (x, y) is its centre. */
   | { k: "node"; id: string; x: number; y: number; r: number; text: string; tone?: Tone; size?: number }
-  /** A line between two points, with an arrowhead at (x2, y2) when `arrow`; `bow` curves it (px off the chord, to its left). */
+  /** A line between two points, with an arrowhead at (x2, y2) when `arrow`; `bow` curves it (px off the chord, to the right of travel on screen: a left-to-right edge with a positive bow sags down, so an arc over a row needs a negative one). */
   | { k: "edge"; id: string; x1: number; y1: number; x2: number; y2: number; tone?: LineTone; arrow?: boolean; dashed?: boolean; bow?: number; label?: string }
   /** A caret whose tip is at (x, y) with a name under it (or over it when `up` is false): L, R, mid, i. */
   | { k: "ptr"; id: string; x: number; y: number; label: string; tone?: "accent" | "ink" | "error"; up?: boolean }
@@ -48,10 +48,12 @@ export type Item =
   /**
    * A polyline through `pts` — a growth curve, an axis, an outline. `closed`
    * joins the last point to the first and `fill` shades the inside with a
-   * band's tone (the area under a curve, a region). It fades in; it does not
-   * glide between frames.
+   * band's tone (the area under a curve, a region); `solid` fills it with
+   * its own stroke colour instead — a marker that must read as filled, like
+   * UML's composition diamond (lib/note-figures/kit.ts). It fades in; it
+   * does not glide between frames.
    */
-  | { k: "path"; id: string; pts: Array<[number, number]>; tone?: LineTone; dashed?: boolean; width?: number; closed?: boolean; fill?: Tone };
+  | { k: "path"; id: string; pts: Array<[number, number]>; tone?: LineTone; dashed?: boolean; width?: number; closed?: boolean; fill?: Tone; solid?: boolean };
 
 export interface Frame {
   /** What this step did and why, in one or two plain sentences (no Markdown) — read aloud, printed under the figure and written into the HTML. */

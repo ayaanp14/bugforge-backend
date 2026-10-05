@@ -48,23 +48,7 @@ An attribute can also be **null** when the value is unknown or does not apply, s
 
 ### Chen notation
 
-With no picture on this page, here is what each shape in a classic (Chen) ER diagram means:
-
-| Symbol | Meaning |
-| --- | --- |
-| Rectangle | Entity set |
-| Double rectangle | Weak entity set |
-| Ellipse | Attribute |
-| Underlined attribute name | Key attribute |
-| Dashed underline | Partial key (discriminator) of a weak entity |
-| Double ellipse | Multi-valued attribute |
-| Dashed ellipse | Derived attribute |
-| Ellipse with smaller ellipses attached | Composite attribute |
-| Diamond | Relationship set |
-| Double diamond | Identifying relationship of a weak entity |
-| Single line | Partial participation |
-| Double line | Total participation |
-| 1, N, M beside the lines | Cardinality |
+@figure chen-symbols
 
 Many tools use **crow's foot** notation instead, where the line ends show cardinality (a single bar for one, a three-pronged "crow's foot" for many) and a circle or bar shows optional or mandatory participation. The meaning is the same.
 
@@ -95,6 +79,8 @@ A ternary relationship is not the same as three binary ones. Knowing that a supp
 
 **Participation** says whether every entity must take part. **Total** participation (double line) means every entity takes part at least once; it is also called an existence dependency. **Partial** participation (single line) means some may not. Cardinality is the maximum; participation is the minimum. Some books write both as a pair (min, max), so "a book has (1, 1) publisher" means total participation and at most one.
 
+@figure cardinality
+
 ## Weak entities
 
 A **weak entity set** has no attribute set that identifies its entities on its own. A library owns several copies of each book, numbered 1, 2, 3 within that book; "copy 2" is ambiguous until you say which book. So:
@@ -103,6 +89,8 @@ A **weak entity set** has no attribute set that identifies its entities on its o
 - Its own distinguishing attribute is a **partial key** or discriminator (`copy_no`).
 - Its full key is the owner's key plus the partial key: (`isbn`, `copy_no`).
 - It always has total participation in the identifying relationship, which is one-to-many from owner to weak entity.
+
+@figure weak-entity
 
 If a book is removed, its copies have no meaning left, so the copies' table usually declares `ON DELETE CASCADE` on its foreign key to the owner.
 
@@ -121,7 +109,7 @@ The extended ER (EER) model adds three ideas for larger designs.
 
 Requirements: publishers publish books, and every book has exactly one publisher. Each book has one or more authors, and an author may write many books. The library holds numbered copies of each book. A member may have several copies on loan at once, and a copy is with at most one member at a time. For members we store a name in two parts, phone numbers (any number of them) and a date of birth; age is shown but never stored.
 
-The ER diagram, described as tables:
+The entity sets and their attributes:
 
 | Entity set | Kind | Attributes |
 | --- | --- | --- |
@@ -131,22 +119,19 @@ The ER diagram, described as tables:
 | Copy | Weak, owner Book | `copy_no` (partial key), shelf |
 | Member | Strong | `member_id` (key), name (composite: first, last), phone (multi-valued), date_of_birth, age (derived) |
 
-| Relationship | Between | Cardinality | Participation | Own attributes |
-| --- | --- | --- | --- | --- |
-| *publishes* | Publisher, Book | 1 : N | Book total, Publisher partial | none |
-| *writes* | Author, Book | M : N | Book total, Author partial | none |
-| *has* (identifying) | Book, Copy | 1 : N | Copy total | none |
-| *borrows* | Member, Copy | 1 : N | Both partial | issue_date, due_date |
+@figure library-er
 
 Applying the mapping rules gives seven tables:
+
+@figure er-to-tables
 
 | Table | Columns (PK first) | Rule applied |
 | --- | --- | --- |
 | publisher | `publisher_id`, name, city | Strong entity |
-| book | `isbn`, title, year, `publisher_id` (FK, NOT NULL) | Strong entity; 1:N puts the FK on the N side; total participation makes it NOT NULL |
+| book | `isbn`, title, year, `publisher_id` (FK, NOT NULL) | 1:N: FK on the N side, NOT NULL by total participation |
 | author | `author_id`, name | Strong entity |
 | writes | (`isbn`, `author_id`), both FKs | M:N becomes its own table |
-| copy | (`isbn`, `copy_no`), shelf, `member_id` (FK, nullable), issue_date, due_date | Weak entity keyed by owner key + partial key; *borrows* is 1:N so its FK and attributes go on the copy side |
+| copy | (`isbn`, `copy_no`), shelf, `member_id` (FK, nullable), issue_date, due_date | Weak entity: owner key + partial key; *borrows* (1:N) adds its FK and attributes |
 | member | `member_id`, first_name, last_name, date_of_birth | Composite name flattened; derived age left out |
 | member_phone | (`member_id`, phone) | Multi-valued attribute becomes its own table |
 

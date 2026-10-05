@@ -45,12 +45,7 @@ Each entry says: for destinations in this prefix, send to this next hop through 
 | 10.1.2.0/24 | 192.168.3.2 | eth3 |
 | 0.0.0.0/0 (default route) | 203.0.113.1 | eth0 |
 
-| Packet to | Entries that match | Longest match | Sent to |
-| --- | --- | --- | --- |
-| 10.1.2.5 | /8, /16, /24, /0 | 10.1.2.0/24 | 192.168.3.2 on eth3 |
-| 10.1.9.9 | /8, /16, /0 | 10.1.0.0/16 | 192.168.2.2 on eth2 |
-| 10.9.9.9 | /8, /0 | 10.0.0.0/8 | 192.168.1.2 on eth1 |
-| 8.8.8.8 | /0 only | 0.0.0.0/0 | 203.0.113.1 on eth0 |
+@figure longest-prefix
 
 The **default route** (0.0.0.0/0) matches everything with a prefix length of zero, so it is used only when nothing more specific matches. A home router's table is little more than its LAN plus a default route to the ISP. The prefixes themselves come from [IP addressing and subnetting](/notes/computer-networks/ip-addressing-and-subnetting).
 
@@ -76,21 +71,11 @@ This is the Bellman-Ford equation, run in a distributed way: no router ever sees
 
 ### Worked example
 
-Four routers with these link costs: A–B 2, A–C 5, B–C 1, C–D 2.
+Four routers with these link costs: A–B 2, A–C 5, B–C 1, C–D 2. In each round, every router recomputes its vector from its neighbours' vectors of the round before.
 
-```text
-A ---(2)--- B
-|           |
-(5)        (1)
-|           |
-C ----------+
-|
-(2)
-|
-D
-```
+@figure distance-vector
 
-Round 0: every router knows only its own links. B's vector is (A 2, B 0, C 1, D ∞) and C's is (A 5, B 1, C 0, D 2). In round 1, B learns D through C: 1 + 2 = 3. Here is A's vector as the rounds go by, using its neighbours' vectors from the previous round:
+A's vector as the rounds go by, the numbers to write on paper:
 
 | A's route to | Round 0 | Round 1 | Round 2 |
 | --- | --- | --- | --- |
@@ -98,21 +83,15 @@ Round 0: every router knows only its own links. B's vector is (A 2, B 0, C 1, D 
 | C | 5 via C | min(2 + 1, 5 + 0) = 3 via B | 3 via B |
 | D | ∞ | min(2 + ∞, 5 + 2) = 7 via C | min(2 + 3, 5 + 2) = 5 via B |
 
-A discovers that C is cheaper through B (3) than over its own direct link (5), and in round 2, once B's news about D has arrived, it switches its route to D from 7 via C to 5 via B. A third round changes nothing: the network has **converged**.
+A third round changes nothing: the network has **converged**. Notice that A's best route to D needed two rounds, because B had to learn D before it could tell A.
 
 ### The count-to-infinity problem
 
-Good news travels fast in distance vector routing; bad news travels slowly. Take a line A–B–C with every link cost 1. B reaches C directly (cost 1) and A reaches C through B (cost 2). Now the B–C link fails.
+Good news travels fast in distance vector routing; bad news travels slowly. Take a line A–B–C with every link cost 1, and let the B–C link fail.
 
-| Exchange | B's cost to C | A's cost to C |
-| --- | --- | --- |
-| Before the failure | 1, direct | 2 via B |
-| B notices the failure, then hears A advertise 2 | 1 + 2 = 3 via A | 2 via B |
-| A hears B's 3 | 3 via A | 1 + 3 = 4 via B |
-| B hears A's 4 | 5 via A | 4 via B |
-| … the costs keep climbing | … | … until they reach the protocol's infinity |
+@figure count-to-infinity
 
-B believes A's advertisement, not knowing that A's route goes through B itself. The two count upwards until the cost reaches "infinity", which RIP defines as **16**. The fixes:
+B believes A's advertisement, not knowing that A's route goes through B itself, and the two count upwards until the cost reaches "infinity", which RIP defines as **16**. The fixes:
 
 - **Split horizon**: never advertise a route back to the neighbour you learned it from. A would not tell B about C at all.
 - **Poison reverse**: advertise it back, but with cost ∞, so B knows at once that A has no independent path.
@@ -131,17 +110,11 @@ In link state routing each router:
 
 ### Worked example
 
-Five routers with these link costs: A–B 4, A–C 2, B–C 1, B–D 5, C–D 8, C–E 10, D–E 2. Router A runs Dijkstra. At each step it settles the unsettled node with the smallest tentative distance and relaxes that node's links.
+Five routers with these link costs: A–B 4, A–C 2, B–C 1, B–D 5, C–D 8, C–E 10, D–E 2. Router A runs Dijkstra: at each step it settles the unsettled node with the smallest tentative distance and relaxes that node's links. On paper, write one row per step: the node settled, then every other node's current distance and predecessor.
 
-| Step | Node settled | B | C | D | E |
-| --- | --- | --- | --- | --- | --- |
-| 1 | A (0) | 4 via A | 2 via A | ∞ | ∞ |
-| 2 | C (2) | 3 via C | settled | 10 via C | 12 via C |
-| 3 | B (3) | settled | settled | 8 via B | 12 via C |
-| 4 | D (8) | settled | settled | settled | 10 via D |
-| 5 | E (10) | settled | settled | settled | settled |
+@figure dijkstra
 
-In step 2, going through C improves B from 4 to 2 + 1 = 3. In step 3, D improves from 10 to 3 + 5 = 8, and in step 4, E improves from 12 to 8 + 2 = 10. A's routing table:
+A's routing table:
 
 | Destination | Cost | Shortest path | Next hop |
 | --- | --- | --- | --- |

@@ -41,7 +41,7 @@ const dash = {
     createdAt: new Date("2026-01-02T00:00:00Z"),
     roadmapRewards: [{ tierKey: "foundations" }],
     wornCredential: { code: "CK-7H3K-9QXM", skill: "java", level: "basic", band: "pass", expiresAt: new Date("2028-10-01T00:00:00Z") },
-    stats: { problemsSolved: 12, bugsFixed: 3, currentStreak: 2, longestStreak: 9, lastActive: new Date("2026-09-30T08:00:00Z") },
+    stats: { problemsSolved: 12, bugsFixed: 3, sqlSolved: 4, currentStreak: 2, longestStreak: 9, lastActive: new Date("2026-09-30T08:00:00Z") },
     tierTitle: "Apprentice",
     trends: { xpThisWeek: 40, solvedToday: 1, bugsFixedThisWeek: 0 },
     globalRank: 7,
@@ -61,7 +61,17 @@ const dash = {
     { code: "CK-7H3K-9QXM", skill: "java", level: "basic", name: "Java · Basic", testSlug: "java-basic", band: "pass", percent: 73, issuedAt: new Date("2026-10-01T00:00:00Z"), expiresAt: new Date("2028-10-01T00:00:00Z"), status: "valid", worn: true },
     { code: "CK-AAAA-BBBB", skill: "sql", level: "basic", name: "SQL · Basic", testSlug: "sql-basic", band: "pass", percent: 61, issuedAt: new Date("2023-01-01T00:00:00Z"), expiresAt: new Date("2025-01-01T00:00:00Z"), status: "expired", worn: false },
   ],
-  submissions: { history: [{ id: "s1", title: "Two Sum", verdict: "ACCEPTED", language: "python" }], total: 1, page: 1, limit: 5 },
+  // Slim rows — plus what a row must never carry, should a select ever let
+  // it through: a coding submission's code and a SQL submission's query.
+  submissions: {
+    history: [
+      { id: "s1", type: "problem", title: "Two Sum", problemSlug: "two-sum", difficulty: "EASY", verdict: "ACCEPTED", language: "python", runtime: "12ms", memory: "N/A", submittedAt: new Date("2026-10-05T08:00:00Z"), code: "def leaked_solution(): pass" },
+      { id: "q1", type: "sql", title: "Big Countries", problemSlug: undefined, sqlSlug: "big-countries", difficulty: "EASY", verdict: "ACCEPTED", language: "MySQL", runtime: "3ms", memory: "N/A", submittedAt: new Date("2026-10-05T07:00:00Z"), query: "SELECT leaked_query FROM t" },
+    ],
+    total: 2,
+    page: 1,
+    limit: 5,
+  },
   // The owner's private slices of the same payload.
   pairing: { history: [{ roomId: "r1" }], total: 1 },
   savedInterviews: 4,
@@ -77,7 +87,8 @@ describe("publicProfileOf", () => {
       "avatar_url", "createdAt", "github", "globalRank", "instituteName", "linkedin", "location", "name", "rating", "readme",
       "roadmapRewards", "stats", "tierTitle", "twitter", "username", "website", "wornCredential", "xp",
     ]);
-    assert.deepEqual(Object.keys(profile.user.stats!).sort(), ["bugsFixed", "currentStreak", "longestStreak", "problemsSolved"]);
+    assert.deepEqual(Object.keys(profile.user.stats!).sort(), ["bugsFixed", "currentStreak", "longestStreak", "problemsSolved", "sqlSolved"]);
+    assert.equal(profile.user.stats!.sqlSolved, 4);
   });
 
   it("shows standing credentials without their scores", () => {
@@ -89,9 +100,19 @@ describe("publicProfileOf", () => {
 
   it("lets no private value through, however it got onto the dashboard", () => {
     const text = JSON.stringify(publicProfileOf(user, dash, null));
-    for (const secret of ["ayaan@example.com", "2000-01-01", "Male", "$2b$12$secret", "lastActive", "secret-draft", "savedInterviews", "pairing", "trends", "user_1"]) {
+    for (const secret of ["ayaan@example.com", "2000-01-01", "Male", "$2b$12$secret", "lastActive", "secret-draft", "savedInterviews", "pairing", "trends", "user_1", "leaked_solution", "leaked_query"]) {
       assert.ok(!text.includes(secret), `leaked ${secret}`);
     }
+  });
+
+  it("lists SQL submissions in the history, linked by their slug, without the query", () => {
+    const rows = publicProfileOf(user, dash, null)!.submissions.history;
+    assert.deepEqual(rows.map((r) => r.id), ["s1", "q1"]);
+    const sql = rows[1]!;
+    assert.equal(sql.type, "sql");
+    assert.equal(sql.sqlSlug, "big-countries");
+    assert.deepEqual(Object.keys(sql).sort(), ["difficulty", "id", "language", "memory", "problemSlug", "runtime", "sqlSlug", "submittedAt", "title", "type", "verdict"]);
+    assert.ok(!("sqlSlug" in rows[0]!), "a coding row has no SQL slug");
   });
 
   it("knows the owner from anyone else", () => {

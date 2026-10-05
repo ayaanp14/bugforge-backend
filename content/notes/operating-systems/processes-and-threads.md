@@ -28,14 +28,9 @@ A **process** is a program in execution: the code plus everything that changes w
 
 A program is a passive file on disk; a process is that program loaded into memory and running. One program can be several processes at the same time, each with its own state.
 
-Each process gets its own **address space**, laid out in four parts:
+Each process gets its own **address space** in four parts: **text** (the machine code, read-only), **data** (global and static variables), the **heap** (memory allocated at run time with `malloc` or `new`, growing upward) and the **stack** (one frame per active function call, growing downward).
 
-| Region | Holds | Grows |
-| --- | --- | --- |
-| Text | The machine code (read-only) | Fixed |
-| Data | Global and static variables | Fixed |
-| Heap | Memory allocated at run time (`malloc`, `new`) | Upward |
-| Stack | Function frames: locals, arguments, return addresses | Downward |
+@figure address-space
 
 Besides memory, a process owns resources the kernel tracks for it: open files, network connections, a current directory, a user identity and signal handlers.
 
@@ -64,16 +59,7 @@ A process moves through states as it runs. The standard five-state model:
 - **Waiting** (Blocked): cannot continue until something happens, such as an I/O completion, a lock or a child exiting.
 - **Terminated**: finished; the kernel is cleaning up.
 
-The diagram is just the legal transitions:
-
-| From | To | What causes it |
-| --- | --- | --- |
-| New | Ready | The OS admits the process |
-| Ready | Running | The scheduler dispatches it |
-| Running | Ready | Interrupt: time slice expired or a higher-priority process became ready (preemption) |
-| Running | Waiting | It requests I/O or waits for an event |
-| Waiting | Ready | The I/O completes or the event occurs |
-| Running | Terminated | It calls `exit` or is killed |
+@figure states
 
 Two transitions do **not** exist: Waiting never goes straight to Running (it must queue in Ready first), and Ready never goes to Waiting (only a running process can ask for I/O).
 
@@ -81,15 +67,11 @@ Systems that swap processes out of memory add two **suspended** states, *ready-s
 
 ## Context switch
 
-A **context switch** moves the CPU from one process (or thread) to another:
+A **context switch** moves the CPU from one process (or thread) to another. Something enters the kernel (a timer interrupt, an I/O request, a blocking system call), and the kernel saves the running process's state into its PCB and loads the next one's:
 
-1. Something enters the kernel: a timer interrupt, an I/O request, a blocking system call.
-2. The kernel saves the running process's program counter, registers and stack pointer into its PCB, and marks it Ready or Waiting.
-3. The scheduler picks the next process from the ready queue.
-4. The kernel switches the address space by loading the new process's page table base, so the TLB's old translations no longer apply.
-5. It restores the new process's registers from its PCB and returns to user mode at its saved program counter.
+@figure context-switch
 
-A context switch is pure **overhead**: the CPU does no useful work for either process during it. The direct cost is small, typically microseconds, but the indirect cost is larger: the new process finds the caches and the TLB filled with the old process's data. Switching between two threads of the *same* process skips step 4, which is one reason threads are cheaper.
+A context switch is pure **overhead**: the CPU does no useful work for either process during it. The direct cost is small, typically microseconds, but the indirect cost is larger: the new process finds the caches and the TLB filled with the old process's data. Switching between two threads of the *same* process skips the address-space switch, which is one reason threads are cheaper.
 
 ## Creating processes: fork() and exec()
 
@@ -122,6 +104,8 @@ Copying a whole address space would be wasteful when the child calls `exec` at o
 
 Counting is a favourite question. Each `fork()` doubles the number of processes running past it, so three `fork()` calls in a row give 2³ = 8 processes (7 new ones), and a `printf` after them prints 8 times.
 
+@figure fork-tree
+
 Two special cases:
 
 - A **zombie** is a child that has exited but whose parent has not yet called `wait()`. Its memory is freed, but its PCB entry stays so the parent can read the exit status.
@@ -131,13 +115,7 @@ Two special cases:
 
 A **thread** is the unit the CPU actually schedules: a program counter, a set of registers and a stack. A process with several threads runs several paths through the same program at once.
 
-| Shared by all threads of a process | Private to each thread |
-| --- | --- |
-| Code (text) | Thread ID |
-| Global and static data | Program counter |
-| Heap | Registers |
-| Open files, sockets | Stack |
-| Signal handlers, current directory | Thread-local storage |
+@figure threads
 
 Why use threads: **responsiveness** (a UI thread stays live while a worker computes), **resource sharing** (threads share memory without any IPC), **economy** (creating a thread is far cheaper than a process) and **scalability** (threads run in parallel on multiple cores). The price is that shared memory needs synchronization, covered in [Process Synchronization](/notes/operating-systems/process-synchronization).
 
@@ -155,9 +133,11 @@ Why use threads: **responsiveness** (a UI thread stays live while a worker compu
 
 User threads must eventually run on kernel threads. The mapping is the **multithreading model**:
 
-- **Many-to-one**: all user threads of a process map to one kernel thread. Switching is cheap, but one blocking call stops them all and there is no parallelism. Early Java "green threads" worked this way.
-- **One-to-one**: each user thread is its own kernel thread. True parallelism and independent blocking, at the cost of a kernel thread per user thread. Linux (NPTL pthreads) and Windows use this model.
-- **Many-to-many**: many user threads are multiplexed onto a smaller or equal number of kernel threads. It combines cheap threads with parallelism, but the runtime is harder to build. Go's goroutines and Java's virtual threads are runtime-level versions of it.
+@figure threading-models
+
+- **Many-to-one**: switching is cheap, but one blocking call stops every thread and there is no parallelism. Early Java "green threads" worked this way.
+- **One-to-one**: true parallelism and independent blocking, at the cost of a kernel thread per user thread. Linux (NPTL pthreads) and Windows use this model.
+- **Many-to-many**: cheap threads with parallelism, but the runtime is harder to build. Go's goroutines and Java's virtual threads are runtime-level versions of it.
 - **Two-level**: many-to-many, but a chosen user thread can also be bound to its own kernel thread.
 
 ## Process vs thread

@@ -72,6 +72,8 @@ So the candidate keys are {roll_no} and {email}. We choose **roll_no as the prim
 
 How many super keys are there? A set is a super key exactly when it contains roll_no or email. Of the 2^5 = 32 subsets of the five attributes, 2^3 = 8 contain neither (they are subsets of {name, dept_id, batch}), so there are 32 − 8 = **24 super keys**. With a single one-attribute candidate key the count would be 2^4 = 16.
 
+@figure key-lattice
+
 ## Primary, alternate and unique keys
 
 The **primary key** is the candidate key the designer picks to identify rows. The DBMS enforces two things on it: uniqueness and NOT NULL (entity integrity). A table has at most one primary key, though it may span several columns. Good primary keys are short, stable and meaningless outside the database; this is why many teams use surrogate keys.
@@ -96,7 +98,11 @@ A **foreign key** is a set of columns in one table (the child, or referencing ta
 - It may refer to its own table: `employee.manager_id` references `employee.emp_id`.
 - The column names need not match, but the types must be compatible.
 
+@figure foreign-key
+
 A **composite key** is any key with more than one column. In an enrolment table neither roll_no nor course_id is unique alone, but each pair appears once, so (roll_no, course_id) is the primary key, and each part is also a foreign key. If a student may repeat a course in a later semester, the key widens to (roll_no, course_id, semester).
+
+@figure composite-key
 
 ```sql
 CREATE TABLE department (
@@ -152,18 +158,13 @@ MySQL parsed but ignored CHECK constraints before version 8.0.16; from 8.0.16 it
 
 ### What happens on delete
 
-Referential integrity can be broken from the child side (inserting a student with dept_id 'CIV' when no such department exists, which is simply rejected) or from the parent side (deleting a department that students still reference). For the parent side, the foreign key's **referential action** decides. Suppose department ECE is deleted while students 103 and 104 reference it:
+Referential integrity can be broken from the child side (the rejected insert above) or from the parent side (deleting a department that students still reference). For the parent side, the foreign key's **referential action** decides: RESTRICT or NO ACTION, CASCADE, SET NULL, or SET DEFAULT (standard SQL sets the column default; MySQL's InnoDB rejects this action). Suppose department ECE is deleted while students 103 and 104 reference it:
 
-| Action | Result |
-| --- | --- |
-| RESTRICT or NO ACTION | The delete fails with an error; nothing changes |
-| CASCADE | ECE is deleted, and so are students 103 and 104 |
-| SET NULL | ECE is deleted; 103 and 104 keep their rows with dept_id NULL (the column must be nullable) |
-| SET DEFAULT | ECE is deleted; their dept_id becomes the column default (standard SQL; MySQL's InnoDB rejects this action) |
+@figure on-delete
 
 `ON UPDATE` takes the same actions when the parent key value changes; `ON UPDATE CASCADE` copies a renamed key into every child. With no action written, MySQL uses NO ACTION, which in MySQL is the same as RESTRICT. In standard SQL the two differ slightly: RESTRICT checks at once, while NO ACTION checks at the end of the statement (PostgreSQL can defer it to commit).
 
-Choose by meaning. Enrolments are meaningless without their student, so CASCADE fits. Students should survive a department being merged away, so SET NULL fits. Financial records referencing a customer usually use RESTRICT, because deleting history by accident is worse than an error.
+Choose by meaning: CASCADE for enrolments, which are meaningless without their student; SET NULL for students, who survive a department being merged away; RESTRICT for financial records, where deleting history by accident is worse than an error.
 
 ## Common mistakes
 

@@ -39,30 +39,11 @@ HTTP is a **client-server, request-response** protocol at the application layer.
 
 ## The request and the response
 
-A request has a **request line** (method, path, version), **headers**, a blank line and an optional **body**:
+A request has a **request line** (method, path, version), **headers**, a blank line and an optional **body**. A response has the same shape with a **status line** (version, status code, reason phrase) in front.
 
-```http
-POST /api/users HTTP/1.1
-Host: api.example.com
-Content-Type: application/json
-Content-Length: 42
-Cookie: session=4f2a9c
+@figure message-anatomy
 
-{"name":"Asha","email":"asha@example.com"}
-```
-
-A response has a **status line** (version, status code, reason phrase), headers, a blank line and the body:
-
-```http
-HTTP/1.1 201 Created
-Location: /api/users/43
-Content-Type: application/json
-Content-Length: 50
-
-{"id":43,"name":"Asha","email":"asha@example.com"}
-```
-
-`Content-Length` is the body's size in bytes: the request body above is exactly 42 bytes and the response body 50. In HTTP/2 and HTTP/3 the same fields travel as binary frames, but the meaning is identical.
+`Content-Length` is the body's size in bytes, which is how the reader knows where the body ends. In HTTP/2 and HTTP/3 the same fields travel as binary frames, but the meaning is identical.
 
 ## HTTP methods
 
@@ -114,7 +95,11 @@ The pairs interviewers ask about:
 
 ## Statelessness, cookies and sessions
 
-HTTP itself remembers nothing between requests. To keep a user logged in, the server sends a cookie, and the browser returns it on every later request to that site:
+HTTP itself remembers nothing between requests. To keep a user logged in, the server sends a cookie, and the browser returns it on every later request to that site.
+
+@figure cookie-session
+
+A real `Set-Cookie` header also carries attributes that limit where and how the cookie travels:
 
 ```http
 Set-Cookie: session=4f2a9c; Path=/; Max-Age=86400; HttpOnly; Secure; SameSite=Lax
@@ -128,7 +113,7 @@ Set-Cookie: session=4f2a9c; Path=/; Max-Age=86400; HttpOnly; Secure; SameSite=La
 | HttpOnly | Hidden from JavaScript, which limits theft through cross-site scripting |
 | SameSite | Strict, Lax or None: whether it is sent on cross-site requests, a defence against cross-site request forgery |
 
-With a **server-side session**, the cookie holds only a random session ID and the server keeps the user's data in memory, a database or a cache such as Redis. With **token-based** authentication, the client holds a signed token (such as a JWT) carrying the user's identity, and the server only verifies the signature. Sessions are easy to revoke; tokens need no lookup but are harder to cancel before they expire.
+With a **server-side session**, as in the figure, the cookie holds only a random ID and the server keeps the user's data in memory, a database or a cache such as Redis. With **token-based** authentication, the client holds a signed token (such as a JWT) carrying the user's identity, and the server only verifies the signature. Sessions are easy to revoke; tokens need no lookup but are harder to cancel before they expire.
 
 ## HTTP/1.1 vs HTTP/2 vs HTTP/3
 
@@ -141,17 +126,17 @@ With a **server-side session**, the cookie holds only a random session ID and th
 | Head-of-line blocking | At the HTTP level | Fixed at the HTTP level, but one lost TCP packet stalls all streams | Removed: a loss stalls only its own stream |
 | Connection setup | TCP, then TLS | TCP, then TLS | QUIC and TLS 1.3 together in one round trip |
 
+@figure multiplexing
+
 HTTP/1.0 (1996) opened a new connection for every request. HTTP/1.1 made **persistent connections** the default and added the mandatory Host header (so many sites can share one IP address) and chunked transfer. Its pipelining feature allowed several requests in a row, but responses had to come back in order and browsers left it switched off. HTTP/2's server push was later dropped by browsers. HTTP/3 also survives a change of network, such as Wi-Fi to mobile data, because QUIC identifies a connection by an ID rather than by IP addresses and ports.
 
 ## HTTPS and the TLS handshake
 
-HTTPS gives three guarantees: **confidentiality** (nobody on the path can read the data), **integrity** (any change is detected) and **authentication** (a certificate proves the server owns the domain). The TLS 1.3 handshake, simplified:
+HTTPS gives three guarantees: **confidentiality** (nobody on the path can read the data), **integrity** (any change is detected) and **authentication** (a certificate proves the server owns the domain). TLS 1.3 sets all three up in one round trip after TCP's:
 
-1. **ClientHello.** The client sends the TLS versions and cipher suites it supports, a random number, its half of an ephemeral Diffie-Hellman key exchange (a **key share**) and the server name it wants (SNI).
-2. **ServerHello.** The server picks the version and cipher suite and sends its random number and its own key share. Each side combines its private value with the other's key share to compute the **same shared secret**, and both derive the session keys from it. From here on, everything is encrypted.
-3. **Certificate, CertificateVerify, Finished.** The server sends its certificate chain, a signature over the handshake made with the certificate's private key (proving it holds that key), and a Finished message that authenticates the whole handshake.
-4. **The client checks the certificate**: it chains to a certificate authority the client trusts, it is within its validity dates, its names cover the requested host, and it has not been revoked. It then verifies the signature and sends its own Finished.
-5. **Application data.** HTTP requests and responses flow encrypted with a fast symmetric cipher such as AES-GCM or ChaCha20-Poly1305.
+@figure tls13-handshake
+
+The two **key shares** are the halves of an ephemeral Diffie-Hellman exchange: each side combines its own private value with the other's share and arrives at the **same shared secret**, from which both derive the session keys, without the secret ever crossing the network. The **certificate check** is what stops an impostor: the chain must lead to a certificate authority the client trusts, the dates must be valid, the names must cover the requested host and it must not be revoked, and the CertificateVerify signature proves the server holds the matching private key. Application data then flows under a fast symmetric cipher such as AES-GCM or ChaCha20-Poly1305.
 
 TLS 1.2 needed two round trips and also allowed **RSA key exchange**, where the client encrypts a secret with the server's public key. That lacks **forward secrecy**: anyone who later steals the server's private key can decrypt recorded traffic. TLS 1.3 removed it; every key exchange is ephemeral. Asymmetric cryptography is used only to agree keys and prove identity, because it is far slower than symmetric encryption; see [network security basics](/notes/computer-networks/network-security-basics).
 

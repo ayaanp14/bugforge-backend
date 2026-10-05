@@ -196,6 +196,8 @@ console.log(`Students created: ${Student.created()}`);
 Students created: 3
 ```
 
+@figure student-objects
+
 Two details worth saying in an interview. Java's `this("Unknown", 0)` and C++'s delegating constructors (`Student() : Student("Unknown", 0) {}`, since C++11) let one constructor reuse another, so the validation lives in one place. And Python splits creation in two: `__new__` allocates and returns the new object, then `__init__` initialises it. You almost never override `__new__`; it matters for immutable types and singletons.
 
 ## this and self
@@ -217,7 +219,11 @@ A **static field** has one copy for the whole class instead of one per object �
 - **Java**: `static` fields and methods; a `static { ... }` block runs once when the class is initialised. Static methods are not overridden — a subclass's static method with the same signature *hides* the parent's.
 - **Python**: a variable in the class body is a class attribute. `@staticmethod` receives neither object nor class; `@classmethod` receives the class as `cls`, so it works correctly for subclasses and is the usual way to write alternative constructors.
 
-The classic Python trap is `self.count += 1`. It reads the class attribute but then *assigns* a new instance attribute on that one object, so the shared counter never changes. Write `Student.count += 1` (or `type(self).count += 1`).
+The classic Python trap is `self.count += 1`:
+
+@figure count-trap
+
+Write `Student.count += 1` (or `type(self).count += 1`).
 
 ## Object lifecycle
 
@@ -290,7 +296,9 @@ destroy a
 destroy global
 ```
 
-Had the program forgotten `delete raw`, "destroy heap" would never print: a raw heap object is a memory leak until someone deletes it. That is why modern C++ wraps heap objects in `unique_ptr` or `shared_ptr`, whose destructors do the `delete`. Java and Python cannot show this trace reliably, which is exactly the point — their clean-up is not tied to a line of code. The Java and Python answers for deterministic clean-up are covered in [Exception Handling in OOP](/notes/oop/exception-handling).
+@figure object-lifetimes
+
+A raw heap object leaks until someone deletes it. That is why modern C++ wraps heap objects in `unique_ptr` or `shared_ptr`, whose destructors do the `delete`. Java and Python cannot show this trace reliably, which is exactly the point — their clean-up is not tied to a line of code. The Java and Python answers for deterministic clean-up are covered in [Exception Handling in OOP](/notes/oop/exception-handling).
 
 ## Stack vs heap: what a variable holds
 
@@ -303,7 +311,11 @@ The most useful mental model for interviews is not "stack or heap" but **what do
 | What `b = a` does | Copies the whole object | Copies the reference | Binds a second name to the same object |
 | Who frees memory | Scope exit for locals; `delete` or a smart pointer for heap objects | Garbage collector | Reference counting plus a cycle collector |
 
-So `b = a` means two very different things. In Java and Python it gives you two names for one object; in C++ it gives you two objects. The C++ program below uses a reference (`Point&`) to get Java-style sharing, then a plain variable to get a copy:
+So `b = a` means two very different things:
+
+@figure aliasing
+
+The C++ program below uses a reference (`Point&`) to get Java-style sharing, then a plain variable to get a copy:
 
 ```cpp
 #include <iostream>

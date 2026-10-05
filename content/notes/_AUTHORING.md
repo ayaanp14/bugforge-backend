@@ -57,10 +57,19 @@ inside a value:
 
 ## Body
 
-Markdown after the frontmatter: **900–2,600 words of prose** (aim for
-1,300–2,000; code, tables' pipes and frontmatter do not count), at least
-**five `##` sections**, one of which is exactly `## Interview questions`.
-Never a `# ` heading — the page has its own H1. No raw HTML.
+**Figures carry what a picture says better** (since 2026-10-05, the owner's
+standing call for teaching pages: "show less content and describe more
+through graphics"). A Gantt chart, a handshake, a stack of layers, a class
+diagram, a B+ tree splitting — draw it, and let the prose say what no
+picture can: the definition to say out loud, why it works, when it fails,
+the comparison. Never write a paragraph that narrates what a figure already
+shows; the figure's own sentences carry its steps.
+
+Markdown after the frontmatter: **800–2,200 words of prose** (aim for
+1,100–1,800; code, figures, tables' pipes and frontmatter do not count), at
+least **three figures** (aim for three to six), at least **five `##`
+sections**, one of which is exactly `## Interview questions`. Never a `# `
+heading — the page has its own H1. No raw HTML.
 
 A shape that works for almost every topic:
 
@@ -73,12 +82,38 @@ A shape that works for almost every topic:
 7. `## Interview questions` — six to ten questions an interviewer actually asks on this topic, each as a bold question followed by a two-to-four-sentence answer. (These are different from the frontmatter `q`/`a` pairs, which are the search-result FAQ; overlap a little at most.)
 8. A last line linking onward: the next note in the subject, and the subject's skill test.
 
-**Tables** are the main visual tool: GFM tables (`| a | b |` with a `| --- |`
-row) for comparisons, worked examples (Gantt rows, page-frame states,
-subnet ranges, dependency closures) and summaries. Keep cells short.
+**Tables** are for what a reader copies onto paper: comparisons (rows =
+aspects), a worked example's results (each process's waiting time, the
+fault count per algorithm, a subnet's ranges, a closure) and summaries.
+Keep cells short. A trace that changes step by step — frames filling, a
+Gantt chart growing, a tree splitting — is an animation, not a table.
 
-**Figures** (diagrams drawn as SVG) come in a second pass: leave them out
-for now — no `@figure` lines yet.
+### Figures
+
+A line holding only `@figure <name>`, with a blank line before and after,
+places one of the note's own figures. They are written in TypeScript in
+`src/lib/note-figures/<slug>.ts`, which exports `FIGURES: Record<name, () =>
+Walkthrough>` (registered in `registry.ts`) — the roadmap lessons' figure
+model, limits and renderer, so `content/roadmap/_AUTHORING.md` (Figures)
+holds for notes too:
+
+- **A diagram is one frame** (a layout, a shape: the OSI stack, a class diagram, an ER diagram); **an animation is 2–16 frames** with the player's controls (every dry run: a scheduler, page frames over a reference string, a B+ tree insertion, a handshake step by step).
+- `title` ≤ 90 characters; `input` is the example as text or `""`; each `caption` is 30–340 characters of plain text, one or two sentences, never repeated.
+- **Every value drawn is computed by running the thing it shows** — the generator runs the scheduler, the replacement policy, the subnet arithmetic, the closure, the CRC division, and records frames; nothing the code could get wrong is typed in. A mark on an answer is checked against the data (throw if it is wrong).
+- At most **600 wide** (aim for 360–520 so labels stay readable on a phone) and **440 tall**; text items ≤ 70 characters. Tones carry meaning: `accent` what the step is about, `strong` the answer or the settled part, `muted` what is out of play, `error` only a rejected candidate or a failure. No other colours.
+- Helpers: the walkthrough core (`row`, `under`, `over`, `bandOver`, `spanOver`, `link`, `treeLayout`, `ring`), the lessons' kit (`src/lib/lesson-figures/kit.ts`: `box`, `label`, `arrow`, `region`, `column`, `bars`, `chain`, `binaryTree`, `graph`, `grid`, `chart`), and the notes' kit (`src/lib/note-figures/kit.ts`): `gantt` (a scheduler's timeline), `lifelines` + `message` (a sequence diagram: a handshake, a lookup, two transactions), `classBox` + `umlLink` (UML classes; inherits/implements/composes/aggregates/associates/depends), `entity`/`relation`/`attribute` with `boxRim`/`diamondRim`/`ovalRim` (ER diagrams), `oval`, `diamond`, `lines` (left-aligned text: code, a header's fields).
+- An ASCII sketch in a `text` fence (a Gantt row, a layer stack, a timeline, a tree) is a figure now; `text` stays for pseudocode and the odd literal layout.
+
+Preview every figure while writing it, and look at the pictures:
+
+```
+npx tsx scripts/preview-walkthroughs.ts --note <slug> --png           # scratch/note-figures/<slug>/*.png + complaints
+npx tsx scripts/preview-walkthroughs.ts --note <slug> --png --dark    # the dark theme
+```
+
+`--validate` runs every placed figure through the same checks, and
+`npm test` (`note-figures.test.ts`) holds every figure placed, deterministic
+and small: ≤ 6 KB gzipped each, ≤ 24 KB a note.
 
 ### Code
 
@@ -100,7 +135,7 @@ Two kinds of code block:
   simulation, Banker's safety check).
 - **Display-only fences** — not run, shown with a label: ` ```c ` (system
   calls the judge cannot run: `fork()`, `pthread`, sockets), ` ```sql `,
-  ` ```text ` (packet layouts, ASCII sketches), ` ```bash `, ` ```http `,
+  ` ```text ` (pseudocode, a literal layout — a diagram is a figure), ` ```bash `, ` ```http `,
   ` ```json `. Keep them short and correct.
 
 ### Links

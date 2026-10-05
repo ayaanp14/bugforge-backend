@@ -25,7 +25,9 @@ import { ENGINE_DOWN_MESSAGE, isEngineDown } from "../lib/engine-error.js";
 // cases) out of the database on every Run and Submit.
 import { getJudgeProblem, getJudgeSuite, getJudgeVisibleCases, type JudgeProblem } from "../lib/test-suite-cache.js";
 import { claimFirstSolve } from "../lib/solve-payout.js";
-import { daysBetween } from "../lib/clock.js";
+// Streak bookkeeping from the stats row as it stood before this solve; SQL
+// problems use the same rule (routes/sql.ts).
+import { nextStreak } from "../lib/activity.js";
 
 const router = Router();
 
@@ -210,24 +212,6 @@ router.post("/run", requireAuth, executionLimiter, async (req, res) => {
   }
 });
 
-/**
- * Streak bookkeeping from the stats row as it stood before this solve.
- *
- * Day boundaries come from the product calendar (lib/clock.ts, IST), not the
- * server's zone: on Railway that was UTC, so a solve at 1 am IST counted
- * toward the previous day and a candidate who solved every evening and once
- * after midnight watched their streak reset.
- */
-function nextStreak(stats: { lastActive: Date; currentStreak: number; longestStreak: number } | null) {
-  if (!stats) return { currentStreak: 1, longestStreak: 1 };
-
-  const diffDays = daysBetween(new Date(stats.lastActive), new Date());
-
-  // Already active today keeps the streak; active yesterday extends it; a gap resets it.
-  const currentStreak = diffDays === 0 ? stats.currentStreak : diffDays === 1 ? stats.currentStreak + 1 : 1;
-  return { currentStreak, longestStreak: Math.max(currentStreak, stats.longestStreak) };
-}
-
 // 10. POST /api/submit — Submit code against all test cases
 //
 // Shape of the request: every read the verdict will need is fetched before
@@ -403,7 +387,7 @@ router.post("/submit", requireAuth, executionLimiter, async (req, res) => {
     // the rule and the reasoning live in lib/solve-payout.ts.
     const firstSolve =
       verdict === "ACCEPTED" && !alreadyClaimed
-        ? await claimFirstSolve(userId, problemId, submission.submittedAt, prize, streak)
+        ? await claimFirstSolve(userId, { problemId }, submission.submittedAt, prize, streak)
         : false;
     const awardedXp = firstSolve ? prize : 0;
 

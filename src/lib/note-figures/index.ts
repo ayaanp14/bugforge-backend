@@ -37,3 +37,6 @@ export function noteFigureProblems(note: string, name: string): string[] {
   if (!w) return [`${note}.md: no figure "${name}" in src/lib/note-figures/${note}.ts`];
   return walkthroughProblems(`${note}.md figure "${name}"`, w, FIGURE_LIMITS);
 }
+
+/** The names a note's module defines. */
+export const noteFigureNames = (note: string): string[] => Object.keys(NOTE_FIGURES[note] ?? {});

@@ -55,9 +55,7 @@ The total burst is 16, and the CPU is never idle, so every schedule below ends a
 
 The ready queue is a FIFO queue: whoever arrived first runs first, to completion. It is non-preemptive, simple and fair in the sense of order, but one long process makes everyone behind it wait.
 
-```text
-| P1 0-7 | P2 7-11 | P3 11-12 | P4 12-16 |
-```
+@figure fcfs
 
 | Process | Completion | Turnaround | Waiting |
 | --- | --- | --- | --- |
@@ -67,17 +65,13 @@ The ready queue is a FIFO queue: whoever arrived first runs first, to completion
 | P4 | 16 | 11 | 7 |
 | Average | | 35/4 = 8.75 | 19/4 = 4.75 |
 
-P3 needs one millisecond but waits seven. That is the **convoy effect**: short processes queue behind a long one, and the I/O devices sit idle because the I/O-bound processes cannot run to issue their next request.
+P3 needs one millisecond but waits seven: the **convoy effect**, where short processes queue behind a long one, and the I/O devices sit idle because the I/O-bound processes cannot run to issue their next request.
 
 ## Shortest Job First (SJF)
 
 When the CPU is free, run the ready process with the **shortest next CPU burst**. Non-preemptive SJF is provably optimal for average waiting time when all processes are available at once, because moving a short job ahead of a long one reduces the short job's wait more than it increases the long one's.
 
-At time 0 only P1 has arrived, so it runs to 7. At 7, P2 (4), P3 (1) and P4 (4) are ready: P3 is shortest, then P2 and P4 tie at 4 and P2 arrived first.
-
-```text
-| P1 0-7 | P3 7-8 | P2 8-12 | P4 12-16 |
-```
+@figure sjf
 
 | Process | Completion | Turnaround | Waiting |
 | --- | --- | --- | --- |
@@ -93,15 +87,7 @@ The catch is that the OS does not know the next burst. It predicts it with an **
 
 SRTF is preemptive SJF: whenever a process arrives, compare its burst with the **remaining** time of the running process and switch if the newcomer is shorter.
 
-- 0 to 2: P1 runs (remaining 5 at time 2).
-- 2: P2 arrives with 4 < 5, so it preempts P1.
-- 4: P3 arrives with 1 < P2's remaining 2, so P3 runs and finishes at 5.
-- 5: P4 arrives with 4. Remaining times are P1 5, P2 2, P4 4, so P2 runs to 7.
-- 7: P4 (4) beats P1 (5), so P4 runs to 11, then P1 runs to 16.
-
-```text
-| P1 0-2 | P2 2-4 | P3 4-5 | P2 5-7 | P4 7-11 | P1 11-16 |
-```
+@figure srtf
 
 | Process | Completion | Turnaround | Waiting | Response |
 | --- | --- | --- | --- | --- |
@@ -117,17 +103,7 @@ SRTF gives the lowest average waiting time of any algorithm here, which is what 
 
 Each process has a priority and the CPU goes to the highest-priority ready process. SJF is the special case where priority is the predicted burst.
 
-**Non-preemptive.** P1 runs 0 to 7. At 7, P2 (1), P4 (2) and P3 (4) are ready, in that priority order.
-
-```text
-| P1 0-7 | P2 7-11 | P4 11-15 | P3 15-16 |
-```
-
-**Preemptive.** P1 runs 0 to 2. P2 (priority 1) preempts it and runs 2 to 6; P3 and P4 arrive meanwhile but are lower. At 6, P4 (2) beats P1 (3) and P3 (4), runs 6 to 10, then P1 finishes at 15 and P3 at 16.
-
-```text
-| P1 0-2 | P2 2-6 | P4 6-10 | P1 10-15 | P3 15-16 |
-```
+@figure priority
 
 | Process | Non-preemptive TAT | Non-preemptive WT | Preemptive TAT | Preemptive WT |
 | --- | --- | --- | --- | --- |
@@ -137,7 +113,7 @@ Each process has a priority and the CPU goes to the highest-priority ready proce
 | P4 | 10 | 6 | 5 | 1 |
 | Average | 9.5 | 5.5 | 9 | 5 |
 
-P3, the lowest priority, waits 11 ms in both versions. Under a steady stream of higher-priority work it could wait forever: that is **starvation** (indefinite blocking). The fix is **aging**: raise a process's priority the longer it waits, so it is eventually served.
+P3, the lowest priority, waits 11 ms in both versions, and under a steady stream of higher-priority work it could wait forever: that is **starvation** (indefinite blocking). The fix is **aging**: raise a process's priority the longer it waits, so it is eventually served.
 
 ## Round Robin (RR)
 
@@ -145,17 +121,7 @@ Round Robin is FCFS with preemption by a timer. Each process runs for at most on
 
 With q = 2, and the usual convention that a process arriving at the instant a quantum expires joins the queue **before** the preempted process:
 
-| Time | Runs | Queue afterwards |
-| --- | --- | --- |
-| 0-2 | P1 | P2, P1 |
-| 2-4 | P2 | P1, P3, P2 |
-| 4-6 | P1 | P3, P2, P4, P1 |
-| 6-7 | P3 (done) | P2, P4, P1 |
-| 7-9 | P2 (done) | P4, P1 |
-| 9-11 | P4 | P1, P4 |
-| 11-13 | P1 | P4, P1 |
-| 13-15 | P4 (done) | P1 |
-| 15-16 | P1 (done) | empty |
+@figure round-robin
 
 | Process | Completion | Turnaround | Waiting | Response |
 | --- | --- | --- | --- | --- |
@@ -165,7 +131,9 @@ With q = 2, and the usual convention that a process arriving at the instant a qu
 | P4 | 15 | 10 | 6 | 4 |
 | Average | | 36/4 = 9 | 20/4 = 5 | 6/4 = 1.5 |
 
-**Choosing the quantum.** If q is larger than every burst, RR becomes FCFS. If q is tiny, most CPU time goes into context switches. A common textbook rule of thumb is that most CPU bursts (around 80%) should be shorter than q, while q stays much longer than a context switch. Average waiting time does not change smoothly with q either: on this example q = 2 gives 5, q = 3 gives 7 and q = 4 gives 4.5.
+**Choosing the quantum.** If q is larger than every burst, RR becomes FCFS. If q is tiny, most CPU time goes into context switches. A common textbook rule of thumb is that most CPU bursts (around 80%) should be shorter than q, while q stays much longer than a context switch. Average waiting time does not change smoothly with q either:
+
+@figure quantum
 
 ## Multilevel queue and multilevel feedback queue
 

@@ -28,24 +28,11 @@ A **functional dependency** (FD) is a rule of the form "if you know this, you kn
 
 For attribute sets X and Y of a relation R, **X → Y** ("X functionally determines Y", or "Y is functionally dependent on X") holds if any two rows that have the same values for X also have the same values for Y. X is the determinant (left-hand side) and Y the dependent (right-hand side).
 
-An FD is a rule about every state the table is allowed to be in, which comes from the meaning of the data. An instance can only disprove one. Look at these rows:
+An FD is a rule about every state the table is allowed to be in, which comes from the meaning of the data. An instance can only disprove one:
 
-| roll_no | name | course_id | grade |
-| --- | --- | --- | --- |
-| 101 | Asha | CS301 | A |
-| 101 | Asha | CS302 | B |
-| 102 | Vikram | CS301 | A |
-| 103 | Asha | CS302 | B |
+@figure fd-rows
 
-| Candidate FD | In these rows | Conclusion |
-| --- | --- | --- |
-| roll_no → name | 101 maps to Asha both times | Consistent; a real rule of the college |
-| name → roll_no | Asha maps to 101 and 103 | Violated, so it is not an FD |
-| roll_no → grade | 101 has A and B | Violated |
-| {roll_no, course_id} → grade | Every pair appears once | Consistent; a real rule |
-| course_id → grade | CS301 gives A twice, CS302 gives B twice | Consistent by coincidence; not a rule, and the next row may break it |
-
-The last row is the trap: the data satisfies course_id → grade, but nothing in the college's rules says every student in a course gets the same grade.
+The last test is the trap: the data satisfies course_id → grade, but nothing in the college's rules says every student in a course gets the same grade.
 
 FDs generalize keys. K is a super key of R exactly when K → R, that is, K determines every attribute.
 
@@ -80,6 +67,8 @@ They are **sound** (they derive only FDs that really hold) and **complete** (eve
 
 Decomposition works on the right side only. From AB → C you **cannot** conclude A → C or B → C.
 
+@figure armstrong
+
 ## Attribute closure
 
 Computing F+ directly is exponential, so in practice you compute the **closure of an attribute set**, X+: everything X determines.
@@ -88,16 +77,9 @@ Computing F+ directly is exponential, so in practice you compute the **closure o
 2. For each FD Y → Z in F: if Y is entirely inside result, add Z to result.
 3. Repeat step 2 until a full pass adds nothing.
 
-Take R(A, B, C, G, H, I) with F = {A → B, A → C, CG → H, CG → I, B → H}. Compute (AG)+:
+Take R(A, B, C, G, H, I) with F = {A → B, A → C, CG → H, CG → I, B → H}, and compute (AG)+:
 
-| Step | FD used | Why it applies | Closure so far |
-| --- | --- | --- | --- |
-| Start | none | the set itself | A, G |
-| 1 | A → B | A is inside | A, B, G |
-| 2 | A → C | A is inside | A, B, C, G |
-| 3 | CG → H | C and G are inside | A, B, C, G, H |
-| 4 | CG → I | C and G are inside | A, B, C, G, H, I |
-| 5 | B → H | adds nothing new | A, B, C, G, H, I |
+@figure closure
 
 (AG)+ = ABCGHI, every attribute, so AG is a super key. Closure answers three questions:
 
@@ -130,6 +112,8 @@ A method that never misses a key:
 
 Pairs containing A or E are not minimal, so only BC, BD and CD needed testing. The only triple without A or E is BCD, which contains BC. The candidate keys are **A, E, BC and CD**, so every attribute here is prime. That fact matters in the next note: this relation is in 3NF, but B → D has a determinant that is not a super key, so it is not in BCNF.
 
+@figure candidate-keys
+
 ## Canonical cover
 
 Two FD sets F and G are **equivalent** when F+ = G+: each FD of one follows from the other (check with closures). A **canonical cover** Fc is the simplest set equivalent to F, which makes integrity checks cheap. Removing from a dependency an attribute that does not change F+ is called removing an **extraneous** attribute.
@@ -141,16 +125,7 @@ Two FD sets F and G are **equivalent** when F+ = G+: each FD of one follows from
 
 The set after step 3 is a **minimal cover**; step 4 makes it the canonical cover. Work F = {A → B, AB → C, C → D, A → D} on R(A, B, C, D):
 
-| Step | Test | Result |
-| --- | --- | --- |
-| 1. Split right sides | already single | A → B, AB → C, C → D, A → D |
-| 2. Left side of AB → C | Is B extraneous? A+ with all of F: A → B gives AB, AB → C gives ABC, C → D gives ABCD. C is inside, so yes | Replace with A → C |
-| 2. Same FD | Is A extraneous? B+ = B, no C | Keep A |
-| 3. A → D | A+ without it: A → B, A → C, C → D give ABCD; D is inside | Redundant, delete |
-| 3. A → B | A+ without it: A → C, C → D give ACD; no B | Keep |
-| 3. A → C | A+ without it: A → B gives AB; no C | Keep |
-| 3. C → D | C+ without it: C; no D | Keep |
-| 4. Combine | A → B and A → C share a left side | A → BC |
+@figure canonical-cover
 
 Minimal cover: {A → B, A → C, C → D}. Canonical cover: **{A → BC, C → D}**. To confirm equivalence, check each original FD under the cover: A+ = ABCD, so A → B, A → D and AB → C all follow, and C → D is in it.
 

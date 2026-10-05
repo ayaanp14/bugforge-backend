@@ -59,19 +59,17 @@ Schedule S1, with commits omitted:
 | 6 | R(B) | | |
 | 7 | | | W(B) |
 
-Check every pair of operations on the same item from different transactions:
+Check every pair of operations on the same item from different transactions, in schedule order:
 
-| Earlier operation | Later operation | Item | Edge |
-| --- | --- | --- | --- |
-| W1(A), step 3 | R3(A), step 4 | A | T1 → T3 |
-| R2(B), step 2 | W3(B), step 7 | B | T2 → T3 |
-| W2(B), step 5 | R1(B), step 6 | B | T2 → T1 |
-| W2(B), step 5 | W3(B), step 7 | B | T2 → T3 |
-| R1(B), step 6 | W3(B), step 7 | B | T1 → T3 |
+@figure precedence-graph
 
-R1(A) with R3(A) and R2(B) with R1(B) are pairs of reads, so they add nothing. The graph has edges T2 → T1, T1 → T3 and T2 → T3, and no cycle. S1 is conflict serializable, equivalent to the serial order **T2, T1, T3**, the only topological order here.
+Five pairs conflict, giving the edges T2 → T1, T1 → T3 and T2 → T3. R1(A) with R3(A) and R2(B) with R1(B) are pairs of reads, so they add nothing. There is no cycle, so S1 is conflict serializable, equivalent to the serial order **T2, T1, T3**.
 
-Now the schedule S2: R1(A), R2(A), W1(A), W2(A). R1(A) before W2(A) gives T1 → T2; R2(A) before W1(A) gives T2 → T1. That is a **cycle**, so S2 is not conflict serializable. It is the lost update: both read the same balance, and T2's write wipes out T1's.
+Now the schedule S2: R1(A), R2(A), W1(A), W2(A), where T1 debits ₹1,000 and T2 credits ₹500:
+
+@figure lost-update
+
+S2 is not conflict serializable. It is the lost update: both read the same balance, and T2's write wipes out T1's.
 
 ## View serializability
 
@@ -93,14 +91,16 @@ Example of a non-recoverable schedule: W1(A), R2(A), commit T2, then T1 aborts. 
 
 ## Concurrency anomalies
 
+| Anomaly | What happens |
+| --- | --- |
+| Dirty read | Reading data another transaction has not committed, and may roll back |
+| Lost update | One transaction's write overwrites another's, as in S2 above |
+| Non-repeatable read | The same row read twice gives two different committed values |
+| Phantom read | The same query run twice returns new or missing rows |
+
 Take account A with ₹5,000:
 
-| Anomaly | What happens | Example |
-| --- | --- | --- |
-| Dirty read | Reading uncommitted data | T1 sets A = 4000; T2 reads 4000; T1 rolls back. T2 acted on a value that never existed |
-| Lost update | One write overwrites another | T1 and T2 both read 5000; T1 writes 4000 (debit); T2 writes 5500 (credit). The debit is lost; A should be 4500 |
-| Non-repeatable read | The same row read twice gives different values | T1 reads 5000; T2 sets A = 4000 and commits; T1 reads 4000 |
-| Phantom read | The same query returns new or missing rows | T1 counts accounts above ₹1,000 and gets 2; T2 inserts one and commits; T1 counts 3 |
+@figure anomalies
 
 ## Isolation levels
 
@@ -134,6 +134,8 @@ Locking alone does not give serializability: a transaction that unlocks A, then 
 
 Under **two-phase locking (2PL)**, each transaction has a **growing phase**, in which it may acquire locks but release none, then a **shrinking phase**, in which it may release locks but acquire none. The moment it acquires its last lock is its **lock point**. Every schedule 2PL allows is conflict serializable, in the order of the transactions' lock points.
 
+@figure two-phase-locking
+
 | Variant | Rule | Result |
 | --- | --- | --- |
 | Basic 2PL | No lock acquired after any lock is released | Conflict serializable; deadlocks and cascading rollbacks possible |
@@ -141,7 +143,9 @@ Under **two-phase locking (2PL)**, each transaction has a **growing phase**, in 
 | Strict 2PL | Hold all exclusive locks until commit or abort | Strict, cascadeless schedules; the common choice |
 | Rigorous 2PL | Hold all locks, shared and exclusive, until commit or abort | Serializable in commit order |
 
-2PL fixes the lost update, but can deadlock. If T1 and T2 both take S(A) to read the balance, then both ask to upgrade to X(A) to write it, each waits for the other forever. Taking X(A) at the first read, which is what `SELECT … FOR UPDATE` does, avoids this particular deadlock.
+2PL fixes the lost update, but it can deadlock, as when two transactions both read a balance under a shared lock and then both try to upgrade it to write:
+
+@figure deadlock
 
 ## Timestamp ordering
 

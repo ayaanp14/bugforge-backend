@@ -38,7 +38,9 @@ A **socket** is one endpoint: an IP address plus a port. A TCP connection is ide
 
 ## The UDP datagram
 
-UDP's header is a fixed **8 bytes**:
+UDP's header is a fixed **8 bytes**; TCP's is 20 bytes before options. Side by side:
+
+@figure headers
 
 | Field | Bits | Purpose |
 | --- | --- | --- |
@@ -69,53 +71,38 @@ The flags that matter most: **SYN** opens a connection, **ACK** says the acknowl
 
 Suppose the client picks an initial sequence number (ISN) of 100 and the server picks 300. Real ISNs are unpredictable 32-bit values, chosen so old or forged segments are unlikely to fit.
 
-1. **Client to server: SYN**, seq = 100. The client enters SYN_SENT.
-2. **Server to client: SYN-ACK**, seq = 300, ack = 101. The SYN consumed number 100, so the server expects byte 101 next. The server enters SYN_RECEIVED.
-3. **Client to server: ACK**, seq = 101, ack = 301. Both sides are now ESTABLISHED. This segment may already carry data, starting at byte 101.
+@figure handshake
+
+In short: SYN (seq = 100), SYN-ACK (seq = 300, ack = 101), ACK (seq = 101, ack = 301).
 
 Three messages are the minimum because **each side must announce its own ISN and hear it acknowledged**. With only two, the server could never be sure the client received its ISN, and an old duplicate SYN arriving late could open a connection nobody asked for.
 
 ## Closing a connection: the four-way termination
 
-TCP is full-duplex, so each direction is closed separately with its own FIN. Suppose the client's next sequence number is 500, the server's is 800, and the server has no more data to send.
+TCP is full-duplex, so each direction is closed separately with its own FIN. Between the two FINs one direction is closed while the other may still carry data: a **half-close**. Suppose the client's next sequence number is 500, the server's is 800, and the server has no more data to send.
 
-1. **Client: FIN**, seq = 500, ack = 800. The client enters FIN_WAIT_1.
-2. **Server: ACK**, seq = 800, ack = 501. The server enters CLOSE_WAIT and the client FIN_WAIT_2. The client-to-server direction is closed; the server could still send data (a **half-close**).
-3. **Server: FIN**, seq = 800, ack = 501. The server enters LAST_ACK.
-4. **Client: ACK**, seq = 501, ack = 801. The client enters **TIME_WAIT**; the server closes when this ACK arrives.
+@figure teardown
 
-Steps 2 and 3 are often combined into one FIN-ACK segment, giving three segments in total. The client waits in TIME_WAIT for twice the maximum segment lifetime (2 × MSL; Linux uses a fixed 60 seconds) for two reasons: if the last ACK is lost, the server will resend its FIN and the client must still be there to answer, and any delayed segments of this connection must die out before the same four values are reused.
+The side that closes first waits in **TIME_WAIT** for twice the maximum segment lifetime (2 × MSL; Linux uses a fixed 60 seconds): if its last ACK is lost, the server will resend its FIN and the client must still be there to answer, and delayed segments of this connection must die out before the same four values are reused.
 
 ## Reliability: sequence numbers, ACKs and retransmission
 
 TCP's acknowledgements are **cumulative**: "ack = 1,101" means "I have every byte before 1,101". Take the connection above, where the client's data starts at byte 101, and send five segments of 1,000 bytes. Segment 2 is lost.
 
-| Segment | Seq | Bytes carried | What happens | Receiver's ACK |
-| --- | --- | --- | --- | --- |
-| 1 | 101 | 101 to 1,100 | Arrives | 1,101 |
-| 2 | 1,101 | 1,101 to 2,100 | Lost | none |
-| 3 | 2,101 | 2,101 to 3,100 | Arrives out of order, buffered | 1,101 (duplicate 1) |
-| 4 | 3,101 | 3,101 to 4,100 | Arrives, buffered | 1,101 (duplicate 2) |
-| 5 | 4,101 | 4,101 to 5,100 | Arrives, buffered | 1,101 (duplicate 3) |
-| 2 again | 1,101 | 1,101 to 2,100 | Retransmitted, arrives | 5,101 |
+@figure retransmit
 
 The sender learns of the loss in one of two ways:
 
 - **Timeout.** Each unacknowledged segment has a retransmission timer (RTO), computed from a smoothed RTT estimate plus a margin for its variation. When it expires, the segment is resent and the RTO doubles.
-- **Fast retransmit.** Three duplicate ACKs strongly suggest one segment was lost while later ones arrived, so the sender resends it at once without waiting for the timer, as in the last row.
+- **Fast retransmit.** Three duplicate ACKs strongly suggest one segment was lost while later ones arrived, so the sender resends it at once without waiting for the timer, as above.
 
 Once the gap is filled the receiver acknowledges 5,101 in one go, because bytes 2,101 to 5,100 were already buffered. With the **SACK** option, the receiver can also say exactly which blocks it holds, so only missing data is resent.
 
 ## Flow control: the sliding window
 
-The receiver has a finite buffer. In every segment it advertises **rwnd**, the free space left, and the sender keeps the bytes sent-but-unacknowledged at or below it. Number the bytes from 1 for simplicity and take a 4,000-byte buffer with a 1,000-byte maximum segment size (MSS):
+The receiver has a finite buffer. In every segment it advertises **rwnd**, the free space left, and the sender keeps the bytes sent-but-unacknowledged at or below it. When rwnd is 0 the sender stops and probes with small segments on the **persist timer**. Number the bytes from 1 for simplicity and take a 4,000-byte buffer with a 1,000-byte maximum segment size (MSS):
 
-| Moment | Receiver's state | Advertised rwnd | Sender may |
-| --- | --- | --- | --- |
-| Start | Buffer empty | 4,000 | Send bytes 1 to 4,000 (four segments), then stop |
-| ACK 4,001 arrives | 4,000 bytes received, application has read 1,000 | 1,000 | Send bytes 4,001 to 5,000 |
-| Application stops reading | Buffer full | 0 | Send nothing; probe with small segments on the persist timer |
-| Application reads 2,000 bytes | 2,000 bytes free | 2,000 | Send 2,000 more bytes |
+@figure flow
 
 The window "slides" forward as acknowledgements arrive. The 16-bit field caps rwnd at 65,535 bytes, so fast long links use the **window scale** option to multiply it.
 
@@ -136,7 +123,11 @@ Initial ssthresh = 16 MSS, cwnd starts at 1 MSS, and a timeout happens in round 
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | cwnd (MSS) | 1 | 2 | 4 | 8 | 16 | 17 | 18 | 19 | 20 | 1 | 2 | 4 | 8 | 10 | 11 | 12 |
 
-Rounds 1 to 5 are slow start; cwnd reaches ssthresh = 16 and switches to linear growth. The timeout at cwnd = 20 sets ssthresh = 10 and cwnd = 1. Slow start then runs again, but **stops at the new threshold**: in round 14 cwnd becomes 10, not 16. Had the loss in round 9 been signalled by three duplicate ACKs instead, Reno would have set ssthresh = 10 and continued from cwnd = 10 in round 10. This sawtooth is called **AIMD** (additive increase, multiplicative decrease). Linux's default algorithm today is CUBIC, which grows cwnd as a cubic function of time since the last loss, but interview questions use the Reno model above.
+The timeout at cwnd = 20 sets ssthresh = 10 and cwnd = 1, and the second slow start **stops at the new threshold**: 10 in round 14, not 16. Three duplicate ACKs instead would have let Reno continue from cwnd = 10 in round 10.
+
+@figure cwnd
+
+This sawtooth is called **AIMD** (additive increase, multiplicative decrease). Linux's default algorithm today is CUBIC, which grows cwnd as a cubic function of time since the last loss, but interview questions use the Reno model above.
 
 ## TCP vs UDP
 

@@ -33,12 +33,7 @@ Inheritance is not the only way for classes to work together, and usually not th
 
 Read the middle three as a scale. Every composition is an aggregation, and every aggregation is an association; each step adds a stronger claim about ownership.
 
-```text
-  Teacher ----------- Student        association: each knows the other
-  Team    <>--------- Player         aggregation: hollow diamond on the whole
-  House   <#>-------- Room           composition: filled diamond on the whole
-  Car     ----------|> Vehicle       inheritance: hollow triangle on the parent
-```
+@figure notation
 
 ## Association
 
@@ -79,7 +74,9 @@ Whether a relationship is aggregation or composition depends on the **system you
 
 C++ makes ownership visible in the types: `unique_ptr` means "I am the only owner", `shared_ptr` means "we share ownership", and a raw pointer or reference means "I use this but do not own it". In Java and Python the garbage collector frees an object only when it becomes unreachable, so composition there is a design promise: if a `Car` leaks a reference to its `Engine`, the engine can outlive the car.
 
-The program below models a car that **composes** its engine — it builds the engine in its own constructor — and **aggregates** a driver who is created separately, drives two different cars and outlives the first one. The car's `start()` **delegates** to its engine: it forwards the work to the part it holds.
+The program below models a car that **composes** its engine — it builds the engine in its own constructor — and **aggregates** a driver created outside it. The car's `start()` **delegates** to its engine: it forwards the work to the part it holds.
+
+@figure car-classes
 
 ```cpp
 #include <iostream>
@@ -221,7 +218,9 @@ KA-05-9876: 1462cc engine started, driven by Asha
 Asha has driven 2 cars
 ```
 
-C++ can show the lifetimes directly, because destructors run at a known moment. Rooms are members of the house, so they die with it — in reverse order of declaration. The department holds pointers to professors it does not own, so closing it leaves them untouched:
+@figure car-lifetime
+
+C++ can show the lifetimes directly, because destructors run at a known moment. The house holds its rooms as members; the department holds only pointers to professors created outside it:
 
 ```cpp
 #include <iostream>
@@ -285,6 +284,8 @@ main ends:
 professor Iyer destroyed
 professor Rao destroyed
 ```
+
+@figure destruction-order
 
 ## Composition over inheritance
 
@@ -428,6 +429,8 @@ peek: 20
 size: 2
 error: pop from empty stack
 ```
+
+@figure stack-reuse
 
 Inheritance is still the right tool when the is-a relationship is real and a child can stand in for its parent everywhere — the Liskov Substitution Principle in [SOLID Principles](/notes/oop/solid-principles). Composition is the default for reuse.
 

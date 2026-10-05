@@ -28,6 +28,8 @@ There are two moments at which a program can decide which code a call runs:
 - **Compile time (static or early binding)** — the compiler picks the function from the declared types of the arguments. This is **overloading**: several functions share a name but have different parameter lists, and operator overloading.
 - **Run time (dynamic or late binding)** — the program picks the method while it runs, from the actual class of the object. This is **overriding** with **dynamic dispatch**.
 
+@figure binding-time
+
 Type theory names a third kind, **parametric polymorphism**: one generic piece of code that works for any type, such as `List<T>` in Java or `vector<T>` in C++. C++ templates are compiled into a separate version per type; Java generics are compiled once and the type parameters are erased.
 
 ## Compile-time polymorphism
@@ -324,26 +326,17 @@ Notice `describe()` in the base class: it calls `role()` and `pay()`, and those 
 
 ### How a virtual call works: the vtable
 
-C++ compilers implement virtual functions with a **virtual table (vtable)**. The standard does not require it, but GCC, Clang and MSVC all work this way:
+C++ compilers implement virtual functions with a **virtual table (vtable)**: one array of function pointers per class, one slot per virtual function, which every object reaches through a hidden pointer, the **vptr**, set by its constructor. The standard does not require it, but GCC, Clang and MSVC all work this way:
 
-1. Every class with at least one virtual function gets **one vtable** — an array of function pointers, one slot per virtual function, pointing at that class's version.
-2. Every **object** of such a class carries a hidden pointer, the **vptr**, to its class's vtable. The constructor sets it.
-3. A call `e->pay()` compiles to: read the object's vptr, read the slot for `pay`, call the function found there.
-
-```text
- Manager object            Manager's vtable                Intern object        Intern's vtable
-+----------------+        +----------------------------+  +----------------+   +---------------------------+
-| vptr ----------+------> | ~Manager                   |  | vptr ----------+-> | ~Intern                   |
-| name           |        | role  -> Manager::role     |  | name           |   | role  -> Intern::role     |
-| salary, bonus  |        | pay   -> Manager::pay      |  | stipend        |   | pay   -> Intern::pay      |
-+----------------+        +----------------------------+  +----------------+   +---------------------------+
-```
+@figure vtable
 
 The cost is one pointer per object, one table per class and an indirect call that the compiler usually cannot inline — negligible in most code, noticeable in very tight loops. Java's JVM uses the same idea (method tables), and its JIT compiler often removes the indirection when it can prove only one class is ever seen at a call site. Python looks the method name up on the object's class at each call, through the MRO.
 
 ### Upcasting and downcasting
 
 **Upcasting** is treating a child object as its parent type: putting a `Manager` into a list of `Employee`. It is always safe and implicit, because every manager is an employee. **Downcasting** goes the other way — treating an `Employee` reference as a `Manager` — and is safe only if the object really is a manager, so it must be checked.
+
+@figure casts
 
 | | C++ | Java | Python |
 | --- | --- | --- | --- |
@@ -392,6 +385,8 @@ by value: Employee
 by reference: Manager
 assigned copy: Employee
 ```
+
+@figure slicing
 
 Java and Python cannot slice, because their variables only ever hold references.
 

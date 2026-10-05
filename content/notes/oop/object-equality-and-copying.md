@@ -37,6 +37,8 @@ Two of the most common bugs in object-oriented code look identical on the surfac
 
 Two Java traps follow from `==` meaning identity. String literals are **interned** — one shared object per distinct literal — so `"hi" == "hi"` is true, while `new String("hi") == "hi"` is false; always compare strings with `equals`. And boxed integers from -128 to 127 come from a cache, so `Integer a = 127, b = 127; a == b` is true but the same with 128 is false. Python has a similar implementation detail — CPython caches small integers — which is why `is` should be used only for `None` and genuine identity checks.
 
+@figure identity
+
 ## Defining equality
 
 A class that represents a **value** (a point, a money amount, a date) should define equality on its significant fields. Java's `equals` contract requires the relation to be:
@@ -56,6 +58,8 @@ Hash tables — `HashMap`, `HashSet`, Python's `dict` and `set`, C++'s `unordere
 1. **Equal objects must have equal hash codes.** Break this, and an equal object is looked for in the wrong bucket and never found.
 2. A hash code must stay the same while the object's fields are unchanged.
 3. Unequal objects **may** share a hash code — a collision. It is legal but slows lookups. `"Aa"` and `"BB"` have the same `String.hashCode()`, 2112.
+
+@figure hash-lookup
 
 Build the hash from exactly the fields that `equals` compares — `Objects.hash(x, y)` in Java, `hash((self.x, self.y))` in Python. The program below defines both and shows that a hash set treats two separate but equal points as one element:
 
@@ -180,14 +184,6 @@ One more rule follows: **do not mutate an object while it is a key** in a hash m
 ## Shallow vs deep copy
 
 A **shallow copy** is a new object whose fields are copied as they are. A field holding a number or an immutable string is effectively independent; a field holding a *reference* to a mutable object — a list, an array, another object — still points at the same object as the original. A **deep copy** also copies those referenced objects, recursively, so nothing mutable is shared.
-
-```text
-original --> Team { name: "Blue", players --+--> [Asha, Ravi] }
-shallow  --> Team { name: "Blue", players --+        (one shared list)
-
-original --> Team { name: "Blue", players ----> [Asha, Ravi] }
-deep     --> Team { name: "Blue", players ----> [Asha, Ravi] }   (its own list)
-```
 
 | Language | Shallow copy | Deep copy |
 | --- | --- | --- |
@@ -316,6 +312,8 @@ original after deep.players gains Meera: Asha, Ravi, Kiran
 deep copy: Asha, Ravi, Kiran, Meera
 ```
 
+@figure shallow-deep
+
 `copy.deepcopy` keeps a memo of objects already copied, so two fields pointing at one object still point at one (new) object in the copy, and cyclic structures do not recurse forever.
 
 ## Copy constructors and assignment in C++
@@ -372,6 +370,8 @@ copy constructor
 copy assignment
 a[0] = 7, b[0] = 99, c[0] = 7
 ```
+
+@figure copy-and-swap
 
 ## Immutability makes copying unnecessary
 

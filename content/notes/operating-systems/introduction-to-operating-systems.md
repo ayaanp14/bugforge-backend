@@ -24,6 +24,8 @@ a: Multiprogramming keeps several programs in memory and switches the CPU to ano
 
 An operating system (OS) is the layer of software between the hardware and the programs you run. A program wants to say "open this file" or "give me more memory"; the hardware only understands disk sectors, page tables and device registers. The OS bridges that gap, and it also decides who gets the hardware when many programs want it at once. Every later topic in these notes, from scheduling to file systems, is one part of that job.
 
+@figure layers
+
 ## What an operating system does
 
 There are two classic ways to describe the OS, and an interviewer is happy with either.
@@ -60,18 +62,11 @@ If a user program tries a privileged instruction, the CPU raises an exception an
 
 The **timer interrupt** matters most. The kernel programs a hardware timer before handing the CPU to a process; when it fires, control returns to the kernel even if the program is stuck in an infinite loop. That is what makes preemptive multitasking possible.
 
+@figure mode-switches
+
 ## System calls
 
 A **system call** is the interface through which a program asks the kernel for a service. Programmers rarely issue one directly; they call a library function (`printf`, `fopen`, `malloc`) that makes the call when it needs one.
-
-What happens on Linux for a `read()`:
-
-1. The C library wrapper puts the system call number for `read` and its arguments in CPU registers.
-2. It executes the trap instruction (`syscall` on x86-64). The CPU switches to kernel mode and jumps to a fixed kernel entry point.
-3. The kernel looks the number up in its **system call table**, checks the arguments (a pointer from user space must point into the caller's own memory) and runs the handler.
-4. The result goes back in a register, the CPU returns to user mode, and the wrapper returns it to the program (or sets `errno` on failure).
-
-Arguments travel in registers, in a block of memory whose address is passed in a register, or on the stack. A system call costs a **mode switch**, which is much cheaper than a full context switch to another process.
 
 ```c
 #include <unistd.h>
@@ -82,6 +77,12 @@ int main(void) {
     return 0;
 }
 ```
+
+Here is that `write` on x86-64 Linux, step by step: the wrapper, the trap, the kernel's **system call table**, the handler's checks and the return.
+
+@figure system-call
+
+Arguments travel in registers, in a block of memory whose address is passed in a register, or on the stack. A system call costs a **mode switch**, which is much cheaper than a full context switch to another process.
 
 System calls are grouped into six categories:
 
@@ -105,6 +106,10 @@ Operating systems grew in stages, and each stage fixed a weakness of the one bef
 - **Distributed OS.** Several networked computers are managed so that users see one system: resources, files and computation are shared across machines. Research systems such as Amoeba explored it; today the idea mostly lives in cluster software rather than in an OS you install.
 - **Multiprocessor OS.** One machine with several CPUs or cores sharing memory. In **symmetric multiprocessing (SMP)**, which every modern desktop OS uses, every core runs the kernel and schedules its own work.
 
+The first three stages, run on the same two jobs:
+
+@figure os-types
+
 | Type | Key idea | Main goal |
 | --- | --- | --- |
 | Batch | Run grouped jobs one by one | Throughput, no operator delays |
@@ -120,6 +125,8 @@ How much code runs in kernel mode is a design choice.
 A **monolithic kernel** puts the scheduler, memory manager, file systems, network stack and device drivers in one program running in kernel mode, in one address space. Components call each other as ordinary functions, so it is fast. The cost is that a bug in any driver can crash or compromise the whole system. Linux and the BSDs are monolithic; Linux softens the rigidity with **loadable kernel modules**, so a driver can be added at run time.
 
 A **microkernel** keeps only the minimum in kernel mode: address spaces, thread scheduling and **inter-process communication (IPC)**. File systems, drivers and the network stack run as separate user-mode server processes that talk by messages. A crashed driver can be restarted without a reboot, and the small kernel is easier to verify (seL4 has a formal proof of correctness). The cost is the extra message passing and mode switches on every service request. MINIX 3, QNX and seL4 are microkernels.
+
+@figure kernel-designs
 
 Most mainstream systems sit between: Windows NT and macOS (XNU, built from the Mach microkernel and BSD code) are usually called **hybrid** kernels, with a microkernel-like structure but most services still in kernel mode for speed.
 

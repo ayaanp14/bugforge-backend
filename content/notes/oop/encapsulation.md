@@ -61,7 +61,9 @@ Java has four levels, one of them without a keyword:
 | `protected` | Yes | Yes | Yes, through inheritance | No |
 | `public` | Yes | Yes | Yes | Yes |
 
-Two details trip people up. `protected` in Java is *wider* than in C++: it includes the whole package. And a subclass in another package can use an inherited `protected` member only through references of its own type, not through an arbitrary parent-class object. A top-level class can only be `public` or package-private.
+@figure access-levels
+
+One detail trips people up: a subclass in another package can use an inherited `protected` member only through references of its own type, not through an arbitrary parent-class object. A top-level class can only be `public` or package-private.
 
 ### Python
 
@@ -283,7 +285,7 @@ rejected: only 70 in stock
 Pen: Rs 25, stock 70
 ```
 
-Two things to notice. The constructors call the same validation as the setters, so an invalid object can never be created in the first place. And after a rejected call the object is unchanged — each method checks before it writes, so a failure leaves the invariant intact.
+@figure invariant-guard
 
 ## Immutable classes
 
@@ -417,7 +419,11 @@ total: INR 549.75
 roster size: 2
 ```
 
-Without the defensive copy, the roster would have reported 3: the caller still held a reference to the same list and changed it after construction. That is the most common way an "immutable" class turns out not to be.
+@figure money-plus
+
+@figure defensive-copy
+
+A missing defensive copy is the most common way an "immutable" class turns out not to be.
 
 ## Encapsulation vs abstraction vs data hiding
 

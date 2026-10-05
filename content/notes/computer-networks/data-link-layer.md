@@ -45,9 +45,9 @@ The receiver sees a stream of bits and must find frame boundaries. Four methods:
 | Bit stuffing | The flag is 01111110; after five consecutive 1s in the data, the sender inserts a 0 | A little overhead |
 | Physical-layer coding violations | Uses signal patterns that never occur in data | Needs suitable line coding |
 
-**Byte stuffing example.** The data A FLAG B ESC C is sent as A ESC FLAG B ESC ESC C. The receiver drops each ESC and keeps the byte after it as data. PPP works this way.
+@figure framing
 
-**Bit stuffing example.** The data 011111110 (seven 1s in a row) is sent as 0111110110: after the first five 1s a 0 is stuffed in, then the remaining 1s and the final 0 follow. The receiver deletes the 0 after any five 1s, and the data can never contain the flag.
+PPP uses byte stuffing; HDLC uses bit stuffing. Either way the receiver undoes the rule, so the data can never be mistaken for a boundary.
 
 ## Error detection
 
@@ -78,36 +78,9 @@ CRC treats bits as polynomial coefficients (1011 is x^3 + x + 1) and uses **modu
 3. Replace the appended zeros with the remainder and send this **codeword**.
 4. The receiver divides the codeword by the same generator; a remainder of zero means no error was detected.
 
-**Worked example.** Data 11010110, generator 1011 (degree 3), so three zeros are appended. At each step, if the leading bit is 1, XOR the divisor; if it is 0, XOR zeros; then drop the leading bit and bring down the next one.
+**Worked example.** Data 11010110, generator 1011 (degree 3), so three zeros are appended.
 
-```text
-       11110101           quotient (not needed)
-1011 ) 11010110000
-       1011               leading 1: XOR 1011
-       ----
-        1100              drop the first bit, bring down 0
-        1011
-        ----
-         1111
-         1011
-         ----
-          1001
-          1011
-          ----
-           0100
-           0000           leading 0: XOR 0000
-           ----
-            1000
-            1011
-            ----
-             0110
-             0000
-             ----
-              1100
-              1011
-              ----
-               111        remainder
-```
+@figure crc-division
 
 The remainder is **111**, so the codeword is **11010110111**. Dividing 11010110111 by 1011 leaves 000, so the receiver accepts it. If the fourth bit flips in transit (11000110111), the remainder is 001, not zero, and the error is detected. The program below runs the same division.
 
@@ -237,16 +210,16 @@ A generator of degree r with a non-zero constant term detects every burst error 
 
 To correct one bit among m data bits, r check bits are needed with **2^r ≥ m + r + 1**. For m = 4 that gives r = 3, the Hamming(7,4) code. Check bits sit at the positions that are powers of 2 (1, 2, 4); check bit p covers every position whose binary number has that bit set.
 
-**Encode 1011 with even parity.**
+**Encode 1011 with even parity, then correct an error.**
+
+@figure hamming
 
 | Position | 1 | 2 | 3 | 4 | 5 | 6 | 7 |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | Role | p1 | p2 | d1 | p4 | d2 | d3 | d4 |
 | Bit | 0 | 1 | 1 | 0 | 0 | 1 | 1 |
 
-p1 covers positions 3, 5, 7 (bits 1, 0, 1: two 1s, so p1 = 0); p2 covers 3, 6, 7 (1, 1, 1: three 1s, so p2 = 1); p4 covers 5, 6, 7 (0, 1, 1: two 1s, so p4 = 0). The codeword is **0110011**.
-
-**Correct an error.** Suppose 0110001 arrives (position 6 flipped). Recheck each group: positions 1, 3, 5, 7 hold 0, 1, 0, 1, which is even, so c1 = 0; positions 2, 3, 6, 7 hold 1, 1, 0, 1, which is odd, so c2 = 1; positions 4, 5, 6, 7 hold 0, 0, 0, 1, which is odd, so c4 = 1. Reading c4 c2 c1 = 110 gives **6**, the position to flip back. Hamming(7,4) has a minimum distance of 3, so it corrects one error or detects two (detecting d errors needs distance d + 1; correcting t needs 2t + 1).
+The codeword is **0110011**. If 0110001 arrives instead, the rechecks give c1 = 0, c2 = 1 and c4 = 1, and c4 c2 c1 = 110 = **6** is the position to flip back. Hamming(7,4) has a minimum distance of 3, so it corrects one error or detects two (detecting d errors needs distance d + 1; correcting t needs 2t + 1).
 
 ## Flow control: stop-and-wait and sliding windows
 
@@ -264,7 +237,9 @@ With **stop-and-wait**, the sender sends one frame and waits for its acknowledge
 | Efficiency | Low on long links | High, but errors waste bandwidth | Highest |
 | Complexity | Lowest | Moderate | Highest (buffering and reordering) |
 
-For example, with frames 0 to 6 sent and frame 2 lost, Go-Back-N resends 2, 3, 4, 5 and 6, while Selective Repeat resends only 2. Stop-and-wait needs just 1-bit sequence numbers (0 and 1), so it is also called the alternating bit protocol.
+@figure arq-loss
+
+Stop-and-wait needs just 1-bit sequence numbers (0 and 1), so it is also called the alternating bit protocol.
 
 ## MAC addresses and ARP
 
@@ -280,18 +255,17 @@ If the destination is on another network (say 8.8.8.8), the host never ARPs for 
 
 ## The Ethernet frame
 
-```text
-+----------+-----+----------+----------+-----------+--------------+-----+
-| Preamble | SFD | Dest MAC | Src MAC  | EtherType | Payload      | FCS |
-| 7 bytes  | 1   | 6 bytes  | 6 bytes  | 2 bytes   | 46-1500 bytes| 4   |
-+----------+-----+----------+----------+-----------+--------------+-----+
-```
+@figure ethernet-frame
 
-The preamble and start frame delimiter (SFD) synchronise the receiver and are not counted in the frame size. EtherType names the payload (0x0800 IPv4, 0x86DD IPv6, 0x0806 ARP), and the FCS is the CRC-32. So a frame is between 6 + 6 + 2 + 46 + 4 = **64 bytes** and 6 + 6 + 2 + 1,500 + 4 = **1,518 bytes**; a shorter payload is padded to 46 bytes.
+The preamble and start frame delimiter (SFD) only synchronise the receiver. EtherType names the payload (0x0800 IPv4, 0x86DD IPv6, 0x0806 ARP), and a frame runs from **64 to 1,518 bytes**; a payload shorter than 46 bytes is padded.
 
 ## Medium access: CSMA/CD vs CSMA/CA
 
-**CSMA/CD** (carrier sense multiple access with collision detection) was classic half-duplex Ethernet's method: listen until the cable is idle, transmit while listening, and on a collision stop, send a jam signal and back off. After the n-th collision, a station waits K slot times (512 bit times), with K picked at random from 0 to 2^min(n, 10) − 1, and it gives up after 16 attempts. A sender must still be transmitting when news of a collision returns, so Tt ≥ 2Tp and the minimum frame is L = 2 × Tp × R: with Tp = 25.6 µs at 10 Mbps, L = 512 bits = 64 bytes. Full-duplex switched Ethernet has no collisions, so CSMA/CD is unused there.
+**CSMA/CD** (carrier sense multiple access with collision detection) was classic half-duplex Ethernet's method: listen until the cable is idle, transmit while listening, and on a collision stop, send a jam signal and back off. After the n-th collision, a station waits K slot times (512 bit times), with K picked at random from 0 to 2^min(n, 10) − 1, and it gives up after 16 attempts. A sender must still be transmitting when news of a collision returns, so Tt ≥ 2Tp and the minimum frame is L = 2 × Tp × R: with Tp = 25.6 µs at 10 Mbps, L = 512 bits = 64 bytes.
+
+@figure collision-window
+
+Full-duplex switched Ethernet has no collisions, so CSMA/CD is unused there.
 
 **CSMA/CA** (collision avoidance) is Wi-Fi's method. A radio cannot hear others while transmitting, and two stations may each hear the access point but not each other (the hidden terminal problem), so collisions cannot be detected. A station waits for the medium to be idle for a gap called DIFS plus a random backoff, then sends; the receiver acknowledges after a shorter gap (SIFS). No acknowledgement means a collision, so the station doubles its backoff range and retries. An optional RTS/CTS exchange reserves the medium first.
 

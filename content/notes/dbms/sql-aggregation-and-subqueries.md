@@ -71,6 +71,8 @@ GROUP BY dept
 ORDER BY dept;
 ```
 
+@figure group-by
+
 | dept | staff | paid | total | avg_salary |
 | --- | --- | --- | --- | --- |
 | Engineering | 3 | 3 | 255000 | 85000.0000 |
@@ -100,7 +102,9 @@ GROUP BY dept
 HAVING COUNT(*) >= 2;
 ```
 
-`WHERE` first keeps the rows with salary over 60000 (Asha, Vikram, Meera and Priya; Rohan's 60000 is not greater, and Neha's NULL is UNKNOWN). Grouping gives Engineering 3 and Sales 1, and `HAVING` keeps only **Engineering, 3**.
+@figure where-having
+
+The result is one row, **Engineering, 3**.
 
 | Aspect | WHERE | HAVING |
 | --- | --- | --- |
@@ -142,13 +146,15 @@ FROM employees e
 WHERE e.salary > (SELECT AVG(x.salary) FROM employees x WHERE x.dept = e.dept);
 ```
 
+@figure correlated
+
 | name | dept | salary |
 | --- | --- | --- |
 | Asha | Engineering | 90000 |
 | Meera | Engineering | 90000 |
 | Priya | Sales | 65000 |
 
-Engineering's average is 85000, Sales's 62500 and HR's 50000 (NULL ignored). Kabir's 50000 is not greater than 50000, and Neha's NULL compares as UNKNOWN. Changing `>` to `=` and `AVG` to `MAX` gives the top earners per department: Asha and Meera (tied), Priya and Kabir.
+Changing `>` to `=` and `AVG` to `MAX` gives the top earners per department: Asha and Meera (tied), Priya and Kabir.
 
 ## Window functions
 
@@ -212,6 +218,8 @@ FROM (SELECT salary, DENSE_RANK() OVER (ORDER BY salary DESC) AS rnk
 WHERE rnk = 2;
 ```
 
+@figure second-highest
+
 All three return 75000. How they generalize to the Nth highest:
 
 | Method | Nth highest | Ties | When no Nth value exists |
@@ -220,24 +228,15 @@ All three return 75000. How they generalize to the Nth highest:
 | `LIMIT 1 OFFSET N−1` | Easy | Handled only with DISTINCT; without it this query returns 90000 | Returns no rows |
 | `DENSE_RANK` with `rnk = N` | Easy; also works per department with PARTITION BY | Handled | Returns no rows |
 
-`RANK` would be wrong in method 3: after the tie at 90000 it jumps to rank 3, and no row has rank 2. A fourth classic uses a correlated count: keep the salary that exactly N−1 distinct salaries exceed, `WHERE N - 1 = (SELECT COUNT(DISTINCT x.salary) FROM employees x WHERE x.salary > e.salary)`. MySQL does not accept an expression such as `N - 1` directly after `OFFSET`, so for a variable N use a prepared statement or the `DENSE_RANK` form.
+A fourth classic uses a correlated count: keep the salary that exactly N−1 distinct salaries exceed, `WHERE N - 1 = (SELECT COUNT(DISTINCT x.salary) FROM employees x WHERE x.salary > e.salary)`. MySQL does not accept an expression such as `N - 1` directly after `OFFSET`, so for a variable N use a prepared statement or the `DENSE_RANK` form.
 
 ## Logical order of SQL clauses
 
 You write `SELECT … FROM … WHERE … GROUP BY … HAVING … ORDER BY … LIMIT`, but the DBMS evaluates the clauses in a different logical order:
 
-| Step | Clause | What happens |
-| --- | --- | --- |
-| 1 | FROM and JOIN … ON | Build the working set of rows |
-| 2 | WHERE | Keep rows whose condition is TRUE |
-| 3 | GROUP BY | Form groups |
-| 4 | HAVING | Keep groups whose condition is TRUE |
-| 5 | SELECT | Compute expressions, aggregates, window functions and aliases |
-| 6 | DISTINCT | Remove duplicate rows |
-| 7 | ORDER BY | Sort |
-| 8 | LIMIT and OFFSET | Cut the result |
+@figure clause-order
 
-This order explains the rules: `WHERE` cannot use aggregates (groups do not exist yet) or SELECT aliases (they do not exist yet); window functions see only rows that survived `WHERE` and `HAVING`; `ORDER BY` can use aliases because it runs after `SELECT`. The optimizer may physically reorder work, but never in a way that changes this result.
+Window functions are computed in the SELECT step, so they see only the rows that survived `WHERE` and `HAVING`, and they cannot be used in `WHERE` either. The optimizer may physically reorder work, but never in a way that changes this result.
 
 ## Common mistakes
 

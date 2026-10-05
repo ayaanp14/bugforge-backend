@@ -116,8 +116,8 @@ export function itemSvg(it: Item): string {
     case "path": {
       const pts = it.pts.map(([x, y]) => `${x},${y}`).join(" ");
       const stroke = `stroke:${STROKE[it.tone ?? "line"]};stroke-width:${it.width ?? 1.6};stroke-linejoin:round;stroke-linecap:round${it.dashed ? ";stroke-dasharray:4 3" : ""}`;
-      return it.closed || it.fill
-        ? `<polygon points="${pts}" style="${it.fill ? BAND[it.fill] : "fill:none"};${stroke}"/>`
+      return it.closed || it.fill || it.solid
+        ? `<polygon points="${pts}" style="${it.solid ? `fill:${STROKE[it.tone ?? "line"]}` : it.fill ? BAND[it.fill] : "fill:none"};${stroke}"/>`
         : `<polyline points="${pts}" style="fill:none;${stroke}"/>`;
     }
   }

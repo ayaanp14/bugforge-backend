@@ -37,7 +37,9 @@ Robert C. Martin later sharpened "reason to change" to **actor**: a class should
 
 **Violation.** An `Invoice` class that computes the total with taxes, formats the invoice as a PDF, and saves it to the database. Three different people ask for changes to it: the finance team (tax rules), the design team (layout) and the database administrator (schema). A layout change risks breaking tax calculation, because both live in one class and share its fields.
 
-**Fix.** Split by actor: `InvoiceCalculator` for totals, `InvoicePdfRenderer` for layout, `InvoiceRepository` for storage. `Invoice` itself becomes the data the three work on.
+**Fix.** Split by actor: `InvoiceCalculator` for totals, `InvoicePdfRenderer` for layout, `InvoiceRepository` for storage, with `Invoice` left as the data the three work on.
+
+@figure srp-split
 
 SRP does **not** mean "one method per class". A `Stack` with `push`, `pop` and `peek` has one responsibility. The smell to look for is a class whose methods fall into groups that use different fields and change for different reasons.
 
@@ -47,16 +49,11 @@ SRP does **not** mean "one method per class". A `Stack` with `push`, `pop` and `
 
 Bertrand Meyer stated it in 1988 with inheritance in mind; today it is usually read through polymorphism: depend on an abstraction, and add behaviour by adding a new implementation of it.
 
-**Violation.** A checkout function that switches on the customer type:
+**Violation.** A checkout function that switches on the customer type, so every new offer means editing, re-testing and re-deploying it. **Fix.** Make the discount an abstraction; each offer is its own class, and `checkout` is never edited again:
 
-```text
-checkout(amount, type):
-    if type == "regular": return amount
-    if type == "student": return amount * 90 / 100
-    // every new offer means editing, re-testing and re-deploying this function
-```
+@figure ocp-checkout
 
-**Fix.** Make the discount an abstraction. Each offer is its own class, and `checkout` is never edited again. The `FestiveDiscount` below was "added later" without touching `checkout`:
+In the program, `FestiveDiscount` was "added later" without touching `checkout`:
 
 ```cpp
 #include <algorithm>
@@ -317,6 +314,8 @@ Rectangle: expected 20, got 20
 Square: expected 20, got 16
 ```
 
+@figure lsp-square
+
 **Fix.** Do not model the relationship with mutable inheritance. Make shapes immutable (a `Square` that cannot be resized never breaks a promise about resizing), or make `Rectangle` and `Square` siblings under a `Shape` abstraction that only promises `area()`. The same shape of bug appears with `Bird.fly()` and a `Penguin` that throws: split out a `FlyingBird` type so only birds that fly promise to.
 
 The practical test: if a subclass needs to throw "not supported", do nothing, or check its own type to honour an inherited method, it is probably not a true subtype.
@@ -326,6 +325,8 @@ The practical test: if a subclass needs to throw "not supported", do nothing, or
 > Clients should not be forced to depend on methods they do not use.
 
 **Violation.** One fat `Machine` interface with `print`, `scan` and `fax`. A basic printer must implement `scan` and `fax` by throwing exceptions — an LSP problem waiting to happen — and every client that only prints is recompiled and retested whenever the fax method changes.
+
+@figure isp-split
 
 **Fix.** Split the interface by what clients need. A device implements as many small interfaces as it supports, and each function asks for only the capability it uses:
 
@@ -372,7 +373,9 @@ ISP is SRP seen from the caller's side: an interface should have one reason to c
 
 **Violation.** An `OrderNotifier` (business policy) that creates an `EmailSender` (a detail) inside itself. Switching to SMS means editing the notifier, and testing it sends real email.
 
-**Fix.** The high-level module defines the abstraction it needs — a `MessageSender` interface — and receives an implementation from outside, through its constructor. The arrow of dependency now points from the email code *to* the abstraction the policy owns; that reversal is the "inversion". A fake implementation makes the notifier testable without any network:
+@figure dip-inversion
+
+**Fix.** The high-level module defines the abstraction it needs — a `MessageSender` interface — and receives an implementation from outside, through its constructor. The arrows of dependency now point from the senders *to* the abstraction the policy owns; that reversal is the "inversion". A fake implementation makes the notifier testable without any network:
 
 ```cpp
 #include <iostream>

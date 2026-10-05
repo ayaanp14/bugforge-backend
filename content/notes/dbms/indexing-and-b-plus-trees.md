@@ -26,7 +26,11 @@ Finding one student among a million by reading every row is like finding a topic
 
 Databases read and write data in **pages** (blocks) of a fixed size: 16 KB in InnoDB, 8 KB in PostgreSQL. The cost of a query is roughly the number of pages it reads. Suppose a table of 1,000,000 students fits 100 rows to a page: that is 10,000 pages, and a query by roll number without an index reads all of them.
 
-A B+ tree with a **fan-out** (children per node) of 100 and 100 keys per leaf reaches 100 × 100 × 100 = 1,000,000 keys in three levels. A lookup then reads three index pages and one data page: 4 reads instead of 10,000. Real fan-outs are larger, often several hundred keys per 16 KB page for small keys, so three or four levels cover very large tables.
+A B+ tree with a **fan-out** (children per node) of 100 and 100 keys per leaf needs only three levels for that table:
+
+@figure fan-out
+
+Real fan-outs are larger, often several hundred keys per 16 KB page for small keys, so three or four levels cover very large tables.
 
 The terms: the **search key** is the column (or columns) an index is built on, which need not be a primary or candidate key. An **index entry** is a search-key value with a pointer to the row or the block holding it. **Ordered indexes** keep entries sorted (B+ trees); **hash indexes** spread them across buckets with a hash function.
 
@@ -42,12 +46,9 @@ In everyday database language the two words are **clustered** and **non-clustere
 
 ## Dense and sparse indexes
 
-Take a data file sorted on roll_no, three records to a block: block 1 holds 101–103, block 2 holds 104–106, block 3 holds 107–109.
+Take a data file sorted on roll_no, three records to a block, and look for 105 both ways:
 
-| Index | Entries | Finding 105 |
-| --- | --- | --- |
-| Dense | 101, 102, 103, …, 109: nine entries, each pointing to its record | Find entry 105, follow its pointer |
-| Sparse | 101 (block 1), 104 (block 2), 107 (block 3): three entries | Find the largest entry not greater than 105, which is 104; read block 2 and scan to 105 |
+@figure dense-sparse
 
 A sparse index is smaller, but it needs the file sorted on the search key, which is why only a primary or clustering index can be sparse. A secondary index must be dense, because the rows are not in its order.
 
@@ -84,36 +85,17 @@ This note uses a B+ tree of **order 4**: a node has at most 4 children and there
 
 Insert 10, 20, 30, 40, 50, 15, 25, 35, 45, 55 into an empty order-4 B+ tree:
 
-| Insert | Leaf it goes to | What happens | Tree afterwards (root; leaves) |
-| --- | --- | --- | --- |
-| 10, 20, 30 | The root, which is a leaf | Fits | [10 20 30] |
-| 40 | [10 20 30] | 4 keys: split into [10 20] and [30 40]; copy 30 up into a new root | [30]; [10 20] [30 40] |
-| 50 | [30 40] (50 ≥ 30) | Fits | [30]; [10 20] [30 40 50] |
-| 15 | [10 20] | Fits | [30]; [10 15 20] [30 40 50] |
-| 25 | [10 15 20] | 4 keys: split into [10 15] and [20 25]; copy 20 up | [20 30]; [10 15] [20 25] [30 40 50] |
-| 35 | [30 40 50] | 4 keys: split into [30 35] and [40 50]; copy 40 up | [20 30 40]; [10 15] [20 25] [30 35] [40 50] |
-| 45 | [40 50] | Fits | [20 30 40]; … [40 45 50] |
-| 55 | [40 45 50] | 4 keys: split into [40 45] and [50 55]; copy 50 up. The root becomes [20 30 40 50], 4 keys: split into [20 30] and [50], move 40 up into a new root | See below |
+@figure bplus-insert
 
-The final tree has three levels:
-
-```text
-                     [40]
-                 /          \
-          [20  30]            [50]
-         /   |    \          /    \
-  [10 15] [20 25] [30 35] [40 45] [50 55]
-
-  leaves linked: [10 15] -> [20 25] -> [30 35] -> [40 45] -> [50 55]
-```
-
-Check it against the rules: every leaf is at depth 3 and holds 2 or 3 keys, every internal node has 2 to 4 children (the root may have as few as 2), and 40 and 50 appear both as signposts and in leaves, because leaf splits copy keys up while the internal split moved 40 out of its node. The tree grew taller only when the root split, which is why a B+ tree is always balanced.
+The final tree has three levels: root [40]; internal nodes [20 30] and [50]; leaves [10 15] [20 25] [30 35] [40 45] [50 55], linked left to right. Check it against the rules: every leaf is at depth 3 and holds 2 or 3 keys, every internal node has 2 to 4 children (the root may have as few as 2), and 40 and 50 appear both as signposts and in leaves, because leaf splits copy keys up while the internal split moved 40 out of its node.
 
 ## Searching
 
-**Point lookup for 35**: at the root [40], 35 < 40, so go to the first child. At [20 30], 35 ≥ 30, so go to the third child. Leaf [30 35] contains 35: found in 3 page reads. A search for 22 follows root, then the second child of [20 30], reaching leaf [20 25] and finding 22 absent.
+A **point lookup** follows one pointer per level; a **range query** finds its first key the same way and then follows the leaf links:
 
-**Range query, keys from 22 to 42**: descend as for 22 to leaf [20 25], output 25, then follow the leaf links: [30 35] gives 30 and 35, [40 45] gives 40, and 45 is above 42, so stop. Result: 25, 30, 35, 40. The links are what make B+ trees good at `BETWEEN`, `>` and `ORDER BY`.
+@figure bplus-search
+
+The links are what make B+ trees good at `BETWEEN`, `>` and `ORDER BY`.
 
 **Deletion** mirrors insertion: remove the key from its leaf; if the leaf falls below half full, borrow a key from a sibling or merge with it, and fix the parent's signposts. Merges can cascade up and shrink the tree by one level. Search, insertion and deletion each cost O(log n) page reads, where the base of the logarithm is the fan-out.
 
@@ -143,6 +125,8 @@ Index the columns that appear in frequent `WHERE`, `JOIN` and `ORDER BY` clauses
 ## Composite indexes and the leftmost-prefix rule
 
 A **composite index** covers several columns, for example `CREATE INDEX idx ON employees (dept, city, salary)`. Its entries are sorted by dept, then by city within each dept, then by salary within each (dept, city), like names in a phone book sorted by surname then first name. So it can only seek on a **leftmost prefix** of its columns:
+
+@figure composite-prefix
 
 | Condition | How the index is used |
 | --- | --- |

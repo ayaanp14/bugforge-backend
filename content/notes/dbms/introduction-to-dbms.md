@@ -36,11 +36,15 @@ The definition to say in an interview: **a DBMS is a collection of programs that
 - **Recovery**: logs and backups restore the database after a power failure or a lost disk.
 - **Security and integrity**: users get only the access they are granted, and constraints reject invalid data.
 
+@figure components
+
 Keep three terms apart. The **database** is the data. The **DBMS** is the software. The **database system** is both together with the applications that use them. The DBMS also keeps **metadata**, data about the data (table definitions, column types, constraints, users and privileges), in a system catalog or data dictionary; in MySQL you can read it through `INFORMATION_SCHEMA`.
 
 ## DBMS vs file system
 
-Before databases, every program kept its records in files of its own format. Picture a college where the accounts office and the exam cell each keep their own file of students. That arrangement fails in predictable ways, and each failure became a feature of the DBMS.
+Before databases, every program kept its records in files of its own format. That arrangement fails in predictable ways, and each failure became a feature of the DBMS.
+
+@figure file-vs-dbms
 
 | Aspect | File system | DBMS |
 | --- | --- | --- |
@@ -69,6 +73,8 @@ A **data model** is the set of concepts used to describe a database's structure:
 | Object-relational | Tables extended with user-defined types and inheritance | PostgreSQL |
 | NoSQL models | Documents, key-value pairs, wide columns, graphs | MongoDB, Redis, Cassandra, Neo4j |
 
+@figure data-models
+
 Models are also grouped by how close they sit to the user. **Conceptual** models (the ER model) describe data the way people think about it. **Representational** or logical models (the relational model) describe what the DBMS implements. **Physical** models describe files, pages and record layouts. The relational model, proposed by E. F. Codd in 1970, became the standard for business data because tables are simple, its query languages are declarative, and its theory of keys, dependencies and normal forms is exact.
 
 ## The three-schema architecture
@@ -81,14 +87,16 @@ A **schema** is the description of a database, its design. An **instance** (or s
 | Conceptual | Logical level | The whole database: entities, attributes, relationships, constraints | Tables `student`, `course`, `enrollment` with their keys |
 | Internal | Physical level | How data is stored: files, pages, record layout, indexes | Rows in 16 KB pages; a B+ tree index on `roll_no` |
 
-The DBMS keeps two **mappings**: external/conceptual (how a view is computed from the tables) and conceptual/internal (how each table is stored). A query on a view is translated through both mappings down to page reads. There can be many external schemas, but there is exactly one conceptual schema and one internal schema.
+The DBMS keeps two **mappings**: external/conceptual (how a view is computed from the tables) and conceptual/internal (how each table is stored). There can be many external schemas, but there is exactly one conceptual schema and one internal schema.
 
 ## Data independence
 
 Data independence is the payoff of the three levels: the schema at one level can change without changing the schema at the level above, because only the mapping between them changes.
 
-- **Physical data independence**: change the internal schema without changing the conceptual schema. Adding an index, moving a table to a faster disk, compressing pages or changing the file organization leaves every table definition and every query untouched.
-- **Logical data independence**: change the conceptual schema without changing the external schemas or the programs written against them. Adding a column, or splitting `student` into two tables and redefining the old view as their join, leaves applications that read through the view working.
+- **Physical data independence**: change the internal schema without changing the conceptual schema. Adding an index, moving a table to a faster disk, compressing pages or changing the file organization leaves every table and every query untouched.
+- **Logical data independence**: change the conceptual schema without changing the external schemas or the programs written against them. Adding a column or splitting a table leaves applications that read through views working.
+
+@figure three-schema
 
 Logical data independence is harder to achieve. Applications depend on the logical structure (table and column names, which table holds what), while almost nothing depends on how pages are laid out. Every relational DBMS gives you physical independence; logical independence holds only as far as views can hide a change.
 
@@ -120,7 +128,9 @@ The **DBA**'s duties are a standard interview list: defining the schema and stor
 
 The labels overlap: PostgreSQL is relational, centralized by default and mostly used for OLTP, while a warehouse is relational but tuned for OLAP.
 
-Applications reach a database in one of three arrangements. In a **one-tier** setup the user works on the database directly, as a DBA does at a console or an app does with an embedded SQLite file. In a **two-tier** (client-server) setup the client program talks straight to the database server. In a **three-tier** setup the client talks to an application server, which alone talks to the database; this is how web applications work, and it keeps database credentials and business rules off the user's device.
+Applications reach a database in a **one-tier**, **two-tier** (client-server) or **three-tier** arrangement. Web applications are three-tier, which keeps database credentials and business rules off the user's device.
+
+@figure tiers
 
 ## Common mistakes
 

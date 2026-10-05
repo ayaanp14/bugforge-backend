@@ -30,7 +30,9 @@ Sending a web page involves dozens of concerns: turning text into bytes, finding
 - a layer can change without the others noticing (Wi-Fi replaced Ethernet cables without changing HTTP);
 - each layer on the sender talks logically to the **same layer** on the receiver (its peer) by adding a header the peer reads.
 
-The rule to remember: layers 1 to 3 are present in every device along the path (hosts, switches, routers), while layers 4 to 7 are handled only by the two **end hosts**.
+The rule to remember: layers 1 to 3 run in every device along the path, while layers 4 to 7 are handled only by the two **end hosts**.
+
+@figure path
 
 ## The seven layers at a glance
 
@@ -86,13 +88,7 @@ Transmits raw bits over the medium. It defines connectors and cables, voltage le
 
 On the way down, each layer takes the unit from the layer above as its **payload** and adds its own **header** (the data link layer also adds a **trailer**, the frame check sequence). This is **encapsulation**. On the way up at the receiver, each layer reads and removes its own header and passes the payload up. This is **decapsulation**.
 
-```text
-Layer 7-5  data      [ HTTP request ]
-Layer 4    segment   [ TCP header | HTTP request ]
-Layer 3    packet    [ IP header | TCP header | HTTP request ]
-Layer 2    frame     [ Eth header | IP header | TCP header | HTTP request | FCS ]
-Layer 1    bits      1011000101101110...
-```
+@figure encapsulation
 
 ### Worked example: one full-size Ethernet frame
 
@@ -109,7 +105,9 @@ So 1,460 of 1,518 bytes, about 96.2 per cent, is the user's data. This is also w
 
 ### What changes at each hop
 
-When this frame reaches a router, the router decapsulates up to layer 3, reads the destination IP address, picks the next hop and encapsulates the packet in a **new frame** with new source and destination MAC addresses for the next link. It also decrements the IP **TTL** field and updates the header checksum. So the **MAC addresses change at every hop, while the source and destination IP addresses stay the same end to end** (unless a NAT device rewrites them, as covered in [NAT, DHCP and ports](/notes/computer-networks/nat-dhcp-and-ports)).
+A router decapsulates up to layer 3, picks the next hop from the destination IP address and wraps the packet in a **new frame** for the next link, decrementing the **TTL** and updating the IP header checksum on the way. So the **MAC addresses change at every hop, while the source and destination IP addresses stay the same end to end** (unless a NAT device rewrites them, as covered in [NAT, DHCP and ports](/notes/computer-networks/nat-dhcp-and-ports)).
+
+@figure hops
 
 ## A mnemonic for the order
 

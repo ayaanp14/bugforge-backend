@@ -2,6 +2,7 @@ import { prisma } from "../lib/prisma.js";
 import { cachedShared, invalidate } from "../lib/cache.js";
 import { daysBetween } from "../lib/clock.js";
 import { WORN_CREDENTIAL_SELECT } from "../lib/skill-tests.js";
+import { sqlSolveTally } from "../lib/activity.js";
 import { countSolved, getRank, loadProblemState, type ProblemState } from "./dashboard.js";
 
 // Zero-based rank ladder: rating ≡ lifetime XP, so the bar moves from solve #1
@@ -13,9 +14,23 @@ export function getTierTitle(rating: number) {
   return "Master";
 }
 
-export type UserTrends = { xpThisWeek: number; solvedToday: number; bugsFixedThisWeek: number };
+export type UserTrends = { xpThisWeek: number; solvedToday: number; bugsFixedThisWeek: number; sqlSolvedThisWeek: number; sqlSolvedToday: number };
 
 const XP_BY_DIFFICULTY: Record<string, number> = { easy: 10, medium: 20, hard: 30 };
+
+type SqlTally = ReturnType<typeof sqlSolveTally>;
+
+/**
+ * An account's SQL problems solved, and this week's share — from its
+ * `SqlSolve` rows (one per problem, on the unique (userId, slug) index). The
+ * user slice's `stats.sqlSolved` and the trends both read it, so a payload
+ * build starts it once and hands it to both.
+ */
+function loadSqlTally(userId: string): Promise<SqlTally> {
+  return prisma.sqlSolve
+    .findMany({ where: { userId }, select: { slug: true, submittedAt: true } })
+    .then((rows) => sqlSolveTally(rows));
+}
 
 /**
  * Week/day activity trends, counting only FIRST-TIME solves.
@@ -31,10 +46,13 @@ const XP_BY_DIFFICULTY: Record<string, number> = { easy: 10, medium: 20, hard: 3
  * which is a MIN over one grouped query for every problem at once. A problem
  * counts as new this week exactly when that minimum falls inside the window.
  */
-export async function getUserTrends(userId: string): Promise<UserTrends> {
+export async function getUserTrends(userId: string, sql: Promise<SqlTally> = loadSqlTally(userId)): Promise<UserTrends> {
   const now = Date.now();
   const last7Days = new Date(now - 7 * 24 * 3600 * 1000);
   const last24Hours = new Date(now - 24 * 3600 * 1000);
+  // Awaited after the groupBy below; marked handled for the same reason as
+  // the bug count.
+  sql.catch(() => undefined);
 
   // The bug count shares no data with the solve history, so it goes out now
   // rather than in the wave below — it was costing a full round trip to wait
@@ -80,7 +98,14 @@ export async function getUserTrends(userId: string): Promise<UserTrends> {
     if (f._min.submittedAt! >= last24Hours) solvedToday++;
   }
 
-  return { xpThisWeek, solvedToday, bugsFixedThisWeek };
+  // A SQL problem's first accept pays into the same buckets (xp,
+  // questionsXp), so the week's XP carries it; `solvedToday` stays the
+  // coding count the Solved tile's delta is; the hero's "today's solve is in"
+  // reads both (SQL keeps the streak since 2026-10-05).
+  const sqlTally = await sql;
+  xpThisWeek += sqlTally.xpThisWeek;
+
+  return { xpThisWeek, solvedToday, bugsFixedThisWeek, sqlSolvedThisWeek: sqlTally.solvedThisWeek, sqlSolvedToday: sqlTally.solvedToday };
 }
 
 // ── GET /api/me, minus the parts that must stay live ────────────
@@ -167,10 +192,12 @@ async function standingOf(
 
 async function buildMePayload(userId: string) {
   // The JWT already carries the id, so trends need not wait for the user row.
-  const [fetched, trends, standing] = await Promise.all([
+  const sql = loadSqlTally(userId);
+  const [fetched, trends, standing, sqlTally] = await Promise.all([
     prisma.user.findUnique({ where: { id: userId }, select: ME_SELECT }),
-    getUserTrends(userId),
+    getUserTrends(userId, sql),
     standingOf(userId),
+    sql,
   ]);
   if (!fetched) return null;
 
@@ -182,6 +209,13 @@ async function buildMePayload(userId: string) {
   // here they are one. A streak that has lapsed is both displayed as zero and
   // persisted — running that only on a cache miss is fine, because the write
   // is idempotent and the cached copy already carries the corrected value.
+  //
+  // The write is made only over the row as it was read. A first solve (coding
+  // or SQL) landing between the read and the write has already set the
+  // streak and stamped `lastActive`, and a reset written over it erased the
+  // day it had just counted. Matching on `lastActive` skips the write then;
+  // the solve dropped this cache, so the next read makes the fixes again
+  // against the new row.
   if (user.stats) {
     const fixes: { problemsSolved?: number; currentStreak?: number } = {};
 
@@ -197,7 +231,7 @@ async function buildMePayload(userId: string) {
     }
 
     if (Object.keys(fixes).length > 0) {
-      await prisma.userStats.update({ where: { userId: user.id }, data: fixes });
+      await prisma.userStats.updateMany({ where: { userId: user.id, lastActive: user.stats.lastActive }, data: fixes });
       if (fixes.problemsSolved !== undefined) user.stats.problemsSolved = fixes.problemsSolved;
       if (fixes.currentStreak !== undefined) user.stats.currentStreak = fixes.currentStreak;
     }
@@ -219,7 +253,14 @@ async function buildMePayload(userId: string) {
     });
   }
 
-  return { ...user, tierTitle: getTierTitle(user.rating), trends, globalRank: standing.globalRank };
+  return {
+    ...user,
+    // Beside the coding and bug counts, derived like `problemsSolved` is shown.
+    stats: user.stats ? { ...user.stats, sqlSolved: sqlTally.solved } : null,
+    tierTitle: getTierTitle(user.rating),
+    trends,
+    globalRank: standing.globalRank,
+  };
 }
 
 /**
@@ -232,7 +273,8 @@ export async function getDashboardUser(
   loads?: { problemState?: Promise<ProblemState>; rank?: Promise<{ rank: number | null }> },
 ) {
   // The trends are independent of the user row, so they overlap rather than queue.
-  const [user, trends, standing] = await Promise.all([
+  const sql = loadSqlTally(userId);
+  const [user, trends, standing, sqlTally] = await Promise.all([
     prisma.user.findUnique({
       where: { id: userId },
       select: {
@@ -258,8 +300,9 @@ export async function getDashboardUser(
         },
       },
     }),
-    getUserTrends(userId),
+    getUserTrends(userId, sql),
     standingOf(userId, loads),
+    sql,
   ]);
   if (!user) return null;
 
@@ -275,6 +318,7 @@ export async function getDashboardUser(
 
   return {
     ...user,
+    stats: user.stats ? { ...user.stats, sqlSolved: sqlTally.solved } : null,
     tierTitle: getTierTitle(user.rating),
     trends,
     globalRank: standing.globalRank,

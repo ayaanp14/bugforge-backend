@@ -34,6 +34,8 @@ In **shared memory**, the processes ask the kernel to map one region of physical
 
 In **message passing**, the processes call `send(message)` and `receive(message)`, and the kernel copies the message from the sender to the receiver. It costs a system call and a copy per message, but there is nothing to corrupt, it is easier to get right, and the same model works between machines.
 
+@figure two-models
+
 | Aspect | Shared memory | Message passing |
 | --- | --- | --- |
 | How data moves | Read and write a common region | The kernel copies each message |
@@ -78,12 +80,16 @@ int main(void) {
 }
 ```
 
+@figure pipe
+
 Rules worth knowing:
 
 - Each process should **close the end it does not use**. A reader sees end of file only when every write end is closed; a forgotten write end in the reader itself means it waits forever.
 - Writing to a pipe whose read ends are all closed raises the signal **SIGPIPE** in the writer.
 - The pipe has a fixed kernel buffer (64 KB by default on Linux). A writer blocks when it is full and a reader blocks when it is empty, which is the bounded buffer of [Classic Synchronization Problems](/notes/operating-systems/classic-synchronization-problems), done by the kernel.
-- A shell pipeline such as `ls | wc -l` is two processes joined by an ordinary pipe: the shell creates the pipe, forks twice and connects one process's standard output to the other's standard input.
+- A shell pipeline such as `ls | wc -l` is two processes joined by an ordinary pipe: the shell creates the pipe, forks twice and connects one process's standard output to the other's standard input:
+
+@figure shell-pipeline
 
 For two-way communication, use two pipes, one in each direction.
 
@@ -100,6 +106,8 @@ echo "build" > /tmp/jobs  # a writer in another process; the reader prints build
 ## Message queues
 
 A **message queue** is a linked list of messages kept by the kernel. Unlike a pipe's byte stream, it preserves **message boundaries**: each receive returns one whole message. System V queues (`msgget`, `msgsnd`, `msgrcv`) give each message a **type**, so a receiver can ask for messages of one type; POSIX queues (`mq_open`, `mq_send`, `mq_receive`) give each a **priority**, and the highest-priority message is received first. A queue exists until it is explicitly removed, even if no process has it open, so a sender and a receiver need not run at the same time.
+
+@figure boundaries
 
 ## Shared memory segments
 
@@ -132,7 +140,9 @@ A **socket** is an endpoint for two-way communication, identified on a network b
 - **Datagram sockets** (UDP) send independent messages that may be lost or reordered.
 - **Unix domain sockets** use a file-system path instead of an address and work only on one machine, faster than TCP over the loopback interface; many local services, such as database servers, offer one.
 
-A server calls `socket`, `bind`, `listen` and `accept`; a client calls `socket` and `connect`; both then `send` and `recv`.
+A server calls `socket`, `bind`, `listen` and `accept`; a client calls `socket` and `connect`; both then `send` and `recv`:
+
+@figure socket
 
 ## Signals
 

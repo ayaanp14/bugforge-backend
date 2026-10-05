@@ -51,9 +51,9 @@ On a miss, the operating system's stub resolver asks the configured **recursive 
 
 ## Step 4: getting the first packet out
 
-The host compares 203.0.113.10 with its own address and subnet mask and sees that it is on another network, so the packet must go to the **default gateway**. The host needs the gateway's MAC address; if it is not in the ARP cache, it broadcasts an ARP request and the router answers ([data link layer](/notes/computer-networks/data-link-layer)). The frame therefore carries the **router's MAC address** but the **web server's IP address**. On Wi-Fi the frame first goes to the access point, under CSMA/CA.
+The host compares 203.0.113.10 with its own address and subnet mask and sees that it is on another network, so the packet must go to the **default gateway**. The host needs the gateway's MAC address; if it is not in the ARP cache, it broadcasts an ARP request and the router answers ([data link layer](/notes/computer-networks/data-link-layer)). On Wi-Fi the frame first goes to the access point, under CSMA/CA. The home router then performs **NAT**, recording each rewrite so the replies can find their way back ([NAT, DHCP and ports](/notes/computer-networks/nat-dhcp-and-ports)):
 
-The home router then performs **NAT**: it rewrites the private source address and port, say 192.168.1.10:51000, to its public address and a port of its own, and records the mapping so the replies can find their way back ([NAT, DHCP and ports](/notes/computer-networks/nat-dhcp-and-ports)).
+@figure hop-by-hop
 
 ## Step 5: the TCP handshake
 
@@ -78,24 +78,23 @@ Over HTTP/2 or HTTP/3 the same fields travel as compressed binary frames on a st
 
 ## Step 8: across the internet
 
-The request is split into IP packets. Every router on the way decrements the packet's TTL, looks up the destination with **longest prefix match** and forwards it to the next hop; between ISPs, the routes were chosen by **BGP** ([routing](/notes/computer-networks/routing-algorithms)). At each hop the frame is rebuilt with new MAC addresses while the source and destination IP addresses stay fixed, apart from the NAT rewrite at the edge. `traceroute` shows these hops.
+The request is split into IP packets. Every router on the way decrements the packet's TTL, looks up the destination with **longest prefix match** and forwards it to the next hop, rebuilding the frame for the next link as in the figure above; between ISPs, the routes were chosen by **BGP** ([routing](/notes/computer-networks/routing-algorithms)). `traceroute` shows these hops.
 
 ## Step 9: on the server side
 
-- DNS may have pointed the browser at a **CDN edge** near you rather than the origin; the edge answers from its cache or fetches from the origin.
-- A **load balancer** picks one of many servers; TLS is often terminated there, so the traffic behind it may be plain HTTP inside the data centre.
-- A **reverse proxy or web server** (such as Nginx) serves static files and passes dynamic requests to the **application server**.
-- The application runs the code for `/products`, reads from a **cache** or **database**, and builds the HTML or JSON.
+DNS may have pointed the browser at a **CDN edge** near you rather than the origin. Behind it, a **load balancer** picks one of many servers and often terminates TLS; a **reverse proxy or web server** (such as Nginx) serves static files and passes dynamic requests to the **application server**, which reads from a **cache** or a **database** and builds the HTML or JSON.
+
+@figure server-side
 
 The response comes back with a status line (200 OK, or a 301 redirect that starts another request), headers such as `Content-Type`, `Cache-Control` and `Set-Cookie`, and a body, usually compressed with gzip or Brotli.
 
 ## Step 10: rendering the page
 
-1. The browser parses the HTML into the **DOM**, starting before the whole document has arrived.
-2. On finding stylesheets, scripts and images, it requests them, reusing the connection.
-3. CSS is parsed into the **CSSOM**; DOM plus CSSOM gives the **render tree** of visible elements.
-4. **Layout** computes each element's size and position; **paint** fills in pixels; **compositing** assembles the layers on screen.
-5. Ordinary scripts pause HTML parsing while they download and run, which is why pages mark them `defer` or `async`. JavaScript may then call APIs for more data and change the page.
+The browser parses the HTML into the **DOM** and the CSS into the **CSSOM**; together they give the **render tree** of what is visible, which is laid out, painted and composited:
+
+@figure rendering
+
+On finding stylesheets, scripts and images, the parser requests them, reusing the connection. Ordinary scripts pause HTML parsing while they download and run, which is why pages mark them `defer` or `async`. JavaScript may then call APIs for more data and change the page.
 
 ## Keep-alive and closing
 
@@ -104,6 +103,8 @@ The connection is not closed after the page: HTTP/1.1 keeps it alive by default 
 ## Worked example: the timeline of a first visit
 
 Assume the recursive resolver already has the name cached and is 10 ms away (round trip), the server is 40 ms away (round trip), the server needs 50 ms to build the page, TLS 1.3 is used and transmission time is negligible.
+
+@figure first-visit
 
 | Step | Cost | Running total |
 | --- | --- | --- |

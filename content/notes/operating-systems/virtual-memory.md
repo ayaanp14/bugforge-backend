@@ -42,15 +42,11 @@ With **demand paging**, a page is loaded only when it is first referenced. Each 
 
 ### Handling a page fault
 
-When a process touches a page marked invalid, the MMU raises a **page fault** trap and the OS:
+When a process touches a page marked invalid, the MMU raises a **page fault** trap and the OS brings the page in:
 
-1. Checks an internal table, usually kept with the PCB, to decide whether the reference was legal. If not, the process is terminated (a segmentation fault).
-2. Finds a free frame. If none is free, a **page replacement** algorithm picks a victim frame, and the victim is written to disk first if it has been modified (its **dirty bit** is set).
-3. Schedules a disk read of the wanted page into the frame. The faulting process waits, and the CPU is given to another process meanwhile.
-4. When the read completes, updates the page table with the frame number and sets the valid bit.
-5. Restarts the instruction that caused the fault, which now finds its page in memory.
+@figure page-fault
 
-A fault that needs a disk read is a **major** fault; one resolved without I/O, for example a page already in memory for another process, is a **minor** fault. Choosing the victim in step 2 is the subject of [Page Replacement Algorithms](/notes/operating-systems/page-replacement-algorithms).
+If no frame is free, a replacement policy picks a victim frame first, and the victim is written back to disk only if it has been modified (its **dirty bit** is set). A fault that needs a disk read is a **major** fault; one resolved without I/O, for example a page already in memory for another process, is a **minor** fault. Choosing the victim is the subject of [Page Replacement Algorithms](/notes/operating-systems/page-replacement-algorithms).
 
 ### Cost of a page fault
 
@@ -74,6 +70,8 @@ With TLB lookup time t, memory access time m and hit ratio h, for a single-level
 
 **EAT = h × (t + m) + (1 − h) × (t + 2m)**
 
+@figure tlb-path
+
 **Worked example**, with t = 20 ns and m = 100 ns, so a hit costs 120 ns and a miss 220 ns:
 
 | Case | Hit ratio | Calculation | EAT |
@@ -89,17 +87,11 @@ A 98% hit ratio brings the cost within 22% of a bare memory access, and the deep
 
 A 32-bit address space with 4 KB pages needs 2²⁰ page-table entries; at 4 bytes each that is **4 MB per process**, nearly all describing addresses the process never uses. The fix is to page the page table itself.
 
-In a **two-level** scheme, the 32-bit address splits into 10 + 10 + 12 bits:
+In a **two-level** scheme, the 32-bit address splits into 10 + 10 + 12 bits: the top 10 index the outer table, the next 10 an inner table, and the low 12 are the offset in the page.
 
-| Bits | Field | Indexes |
-| --- | --- | --- |
-| 31–22 (10 bits) | p1 | The outer page table (1,024 entries) |
-| 21–12 (10 bits) | p2 | One inner page table (1,024 entries) |
-| 11–0 (12 bits) | d | The byte within the 4 KB page |
+@figure two-level
 
 The outer table is 1,024 × 4 B = 4 KB, and each inner table is also 4 KB and maps 4 MB of address space. Inner tables are allocated only for regions in use. A process with 8 MB of code and data at the bottom of its space and a 4 MB stack at the top needs one outer table and 2 + 1 = 3 inner tables: 4 × 4 KB = **16 KB** instead of 4 MB.
-
-For example, address 0x00403ABC splits into p1 = 1, p2 = 3 and d = 0xABC (2,748): entry 1 of the outer table points to an inner table, whose entry 3 gives the frame.
 
 The price is one memory access per level on a TLB miss. x86-64 uses **four levels** of 9 bits each over 48-bit virtual addresses (4 × 9 + 12 = 48), and newer processors support five levels for 57-bit addresses, which is only practical because TLB hit ratios are high. Alternatives for very large address spaces are **hashed page tables** and **inverted page tables**, which keep one entry per physical frame instead of per virtual page.
 
@@ -125,6 +117,8 @@ Worked example with Δ = 4 and this reference string:
 | Time | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | Page | 1 | 2 | 3 | 1 | 2 | 4 | 4 | 4 | 5 | 5 | 4 | 5 |
+
+@figure working-set
 
 | At time | Last 4 references | Working set | Size |
 | --- | --- | --- | --- |

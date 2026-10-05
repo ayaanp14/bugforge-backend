@@ -30,6 +30,8 @@ DNS does more than turn names into addresses. It also gives one server many name
 
 Names form a tree read from right to left. A fully qualified domain name (FQDN) ends with a dot for the root: `www.example.com.`
 
+@figure hierarchy
+
 | Level | Example | Who runs its servers |
 | --- | --- | --- |
 | Root | `.` (the empty label) | 12 organisations run the 13 root server identities, A to M |
@@ -47,14 +49,9 @@ TLDs are generic (gTLDs: `.com`, `.org`, `.net`, and newer ones such as `.app`) 
 
 ## Worked example: resolving www.example.com
 
-Assume every cache is empty and the website's address is 203.0.113.10.
+Assume every cache is empty and the website's address is 203.0.113.10. The browser checks its own cache, then the operating system its cache and the hosts file; all miss, so the stub resolver asks the recursive resolver. A server that does not hold the answer returns a **referral**: the NS records of the servers one level down, plus their IP addresses (called **glue**) so the resolver can reach them.
 
-1. The browser checks its own DNS cache; the operating system checks its cache and the hosts file. All miss.
-2. The stub resolver sends a **recursive** query to the recursive resolver: "What is the A record for www.example.com?"
-3. The resolver asks a **root server**. The root does not know the answer but returns a **referral**: the NS records of the `com` TLD servers, plus their IP addresses (called **glue**).
-4. The resolver asks a **`com` TLD server**, which returns a referral to `example.com`'s authoritative servers, say ns1.example.com and ns2.example.com, with glue.
-5. The resolver asks **ns1.example.com**, which answers authoritatively: www.example.com A 203.0.113.10, TTL 3600.
-6. The resolver caches the answer and the two referrals, returns the address to the stub resolver (which caches it too), and the browser opens a connection to 203.0.113.10.
+@figure resolution
 
 | Step | From | To | Reply |
 | --- | --- | --- | --- |
@@ -65,7 +62,7 @@ Assume every cache is empty and the website's address is 203.0.113.10.
 | 5 | Recursive resolver | `example.com` authoritative server | A record: 203.0.113.10, TTL 3600 |
 | 6 | Recursive resolver | Stub resolver | The answer; both cache it |
 
-If someone then looks up mail.example.com, the resolver already holds the `com` and `example.com` referrals, so it goes straight to ns1.example.com: one query instead of three. Many resolvers also send each server only the part of the name it needs (QNAME minimisation), so the root sees "com" rather than the full name.
+Many resolvers send each server only the part of the name it needs (QNAME minimisation), so the root sees "com" rather than the full name.
 
 ## Recursive vs iterative queries
 
@@ -76,6 +73,8 @@ If someone then looks up mail.example.com, the resolver already holds the `com` 
 | Typical pair | Stub resolver to recursive resolver | Recursive resolver to root, TLD and authoritative servers |
 | Load on the server asked | Higher | Lower |
 | Header flag | RD (recursion desired) set | Referral returned without recursion |
+
+@figure query-kinds
 
 Root and TLD servers never resolve recursively; they would be overwhelmed.
 
@@ -119,7 +118,11 @@ In the SOA, `admin.example.com.` is the mailbox admin@example.com. Secondary ser
 
 ## Caching and TTL
 
-Every record carries a **TTL** in seconds. The recursive resolver, the operating system and the browser may reuse an answer until its TTL runs out. With TTL 3600, a change to www's address can take up to an hour to reach users whose resolvers cached the old one. What people call "DNS propagation" is just caches expiring. Before moving a site to a new server, administrators lower the TTL (say, to 300 seconds) a day ahead, so the switch takes effect within minutes.
+Every record carries a **TTL** in seconds. The recursive resolver, the operating system and the browser may reuse an answer until its TTL runs out, and a cached referral lets the resolver skip the levels above it.
+
+@figure caching
+
+With TTL 3600, a change to www's address can take up to an hour to reach users whose resolvers cached the old one. What people call "DNS propagation" is just caches expiring. Before moving a site to a new server, administrators lower the TTL (say, to 300 seconds) a day ahead, so the switch takes effect within minutes.
 
 Failures are cached too: a "no such domain" answer (NXDOMAIN) is kept for the negative-caching time in the zone's SOA, so a typo does not hit the authoritative servers on every retry.
 

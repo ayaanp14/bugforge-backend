@@ -37,6 +37,8 @@ A running OOP program is therefore a group of objects, each responsible for its 
 
 Procedural programming — the style of C or Pascal — organises a program as functions that act on data passed to them. OOP moves the functions next to the data. Neither is "better" in general; they make different changes cheap.
 
+@figure procedural-vs-oop
+
 | Aspect | Procedural | Object-oriented |
 | --- | --- | --- |
 | Unit of organisation | Functions (procedures) | Classes and objects |
@@ -48,11 +50,17 @@ Procedural programming — the style of C or Pascal — organises a program as f
 | Adding a new operation | Add one function | May need a method in every class |
 | Typical languages | C, Pascal, Fortran | Java, C#, Smalltalk; C++ and Python do both |
 
-The last two rows are the honest trade-off: OOP makes adding new *types* cheap and adding new *operations* across all types more expensive, and procedural code is the other way round. You can also write object-style code in a procedural language — the Linux kernel's `struct file_operations` is a table of function pointers that each file system fills in, which is hand-made polymorphism in C — but the language gives you no help enforcing it.
+The last two rows are the honest trade-off, and they are easiest to see as a grid of types against operations:
+
+@figure types-vs-operations
+
+You can also write object-style code in a procedural language — the Linux kernel's `struct file_operations` is a table of function pointers that each file system fills in, which is hand-made polymorphism in C — but the language gives you no help enforcing it.
 
 ## Classes and objects
 
-Here is one class and two objects. The balance is private, so the only way to change it is through the methods, and `withdraw` refuses to let the balance go negative. Each object has its own balance; changing Asha's does nothing to Ravi's.
+Here is one class and two objects, run statement by statement:
+
+@figure class-and-objects
 
 ```cpp
 #include <iostream>
@@ -218,7 +226,9 @@ Polymorphism ("many forms") means one interface, many implementations: code writ
 
 ## The four pillars in one program
 
-The shapes below show all four at once: `Shape` is the abstraction, each class encapsulates its own dimensions, `Rectangle` and `Triangle` inherit from `Shape`, and the loop calls `area()` polymorphically without knowing which shape it holds.
+One small program shows all four at once. The figure points at each pillar in its class diagram; the code follows.
+
+@figure four-pillars
 
 ```cpp
 #include <iostream>

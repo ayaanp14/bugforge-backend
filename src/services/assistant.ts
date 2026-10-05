@@ -178,7 +178,7 @@ async function buildAccountBlock(userId: string, email: string | null): Promise<
     xp: me?.xp ?? 0,
     rating: me?.rating ?? 0,
     streak: { current: me?.stats?.currentStreak ?? 0, longest: me?.stats?.longestStreak ?? 0 },
-    solved: { problems: me?.stats?.problemsSolved ?? 0, bugs: me?.stats?.bugsFixed ?? 0, byDifficulty: dash.difficultyStats },
+    solved: { problems: me?.stats?.problemsSolved ?? 0, bugs: me?.stats?.bugsFixed ?? 0, sql: me?.stats?.sqlSolved ?? 0, byDifficulty: dash.difficultyStats },
     continueSolving: dash.continueSolving?.problem ? `[${dash.continueSolving.problem.title}](/problems/${dash.continueSolving.problem.slug})` : null,
     todaysContestProblem: dash.dailyContest?.problem ? `[${dash.dailyContest.problem.title}](/problems/${dash.dailyContest.problem.slug}), ${dash.dailyContest.streak.solvedToday ? "solved today" : "not solved today"}` : null,
     plan: {

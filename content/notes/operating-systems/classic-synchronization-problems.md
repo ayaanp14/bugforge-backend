@@ -58,20 +58,15 @@ while (true) {
 
 `empty` and `full` do the counting and make processes wait; `mutex` only protects the buffer's internal pointers. At any moment empty + full equals n, except while a process is between its two operations.
 
-A short trace with n = 2, where the producer makes three items before the consumer runs:
+A short run with n = 2, where the producer makes three items before the consumer runs, using blocking semaphores (a negative value counts the waiters):
 
-| Step | Action | empty | full | Buffer |
-| --- | --- | --- | --- | --- |
-| 0 | Start | 2 | 0 | empty |
-| 1 | Producer inserts A | 1 | 1 | A |
-| 2 | Producer inserts B | 0 | 2 | A B |
-| 3 | Producer calls wait(empty) for C and blocks | 0 | 2 | A B |
-| 4 | Consumer removes A; its signal(empty) wakes the producer | 0 | 1 | B |
-| 5 | Producer inserts C and signals full | 0 | 2 | B C |
+@figure bounded-buffer
 
-In step 4 the freed slot is handed straight to the blocked producer, so `empty` is back at 0. The table shows the busy-wait view of the counters; in the blocking implementation `empty` would read −1 at step 3, meaning one process is waiting.
+**The trap: the order of the waits.** If the producer called `wait(mutex)` before `wait(empty)`, a full buffer would leave it blocked while holding the mutex, and the consumer could never get in to free a slot: a **deadlock**.
 
-**The trap: the order of the waits.** Suppose the producer called `wait(mutex)` before `wait(empty)`. With a full buffer it would take the mutex and then block on `empty`. The consumer would then block on `wait(mutex)` and could never free a slot. Both wait forever: a **deadlock**. Always wait on the counting semaphore first. The order of the two `signal` calls, by contrast, does not affect correctness.
+@figure wrong-order
+
+Always wait on the counting semaphore first. The order of the two `signal` calls, by contrast, does not affect correctness.
 
 ## The readers-writers problem
 
@@ -125,7 +120,11 @@ writer:                         reader:
                                     (leave as in the first variant)
 ```
 
-A writer waiting in `queue` stops new readers from slipping past it, so processes are served roughly in arrival order (exactly, if the semaphore's queue is first-in, first-out). Real systems offer this as a **reader-writer lock**, such as POSIX `pthread_rwlock_t` or Java's `ReentrantReadWriteLock`, whose fairness policy varies by implementation.
+A writer waiting in `queue` stops new readers from slipping past it, so processes are served roughly in arrival order (exactly, if the semaphore's queue is first-in, first-out). The same arrivals under both solutions:
+
+@figure readers-writers
+
+Real systems offer this as a **reader-writer lock**, such as POSIX `pthread_rwlock_t` or Java's `ReentrantReadWriteLock`, whose fairness policy varies by implementation.
 
 ## The dining philosophers problem
 
@@ -148,6 +147,8 @@ while (true) {
 ```
 
 No two neighbours can eat at once, but it can **deadlock**: if all five pick up their left chopstick at the same moment, each waits for its right one, held by its neighbour. Every philosopher holds one resource and waits for another in a circle, which is exactly the circular wait described in [Deadlocks in Operating Systems](/notes/operating-systems/deadlocks).
+
+@figure dining-philosophers
 
 ### Deadlock-free fixes
 

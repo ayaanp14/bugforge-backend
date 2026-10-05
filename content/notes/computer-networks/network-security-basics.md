@@ -22,7 +22,7 @@ q: What is the difference between DoS and DDoS attacks?
 a: A denial-of-service attack tries to make a service unavailable by exhausting its bandwidth, connections or processing. A DoS comes from one source, which can be blocked. A distributed DoS comes from thousands of machines at once, often a botnet, so blocking single addresses does not work and large-scale filtering is needed.
 ---
 
-Every protocol in the earlier notes was designed for a network of trusted researchers: IP does not check source addresses, ARP believes any reply, and classic DNS and HTTP send everything in clear text. Network security adds what those protocols lack. Cryptography keeps data secret and tamper-evident, certificates prove who is on the other end, firewalls and VPNs control what may cross a boundary, and specific defences blunt specific attacks. Interviews test the vocabulary and the comparisons, so this note keeps to both.
+Every protocol in the earlier notes was designed for a network of trusted researchers: IP does not check source addresses, ARP believes any reply, and classic DNS and HTTP send everything in clear text. Network security adds what those protocols lack. Cryptography keeps data secret and tamper-evident, certificates prove who is on the other end, firewalls and VPNs control what may cross a boundary, and specific defences blunt specific attacks.
 
 ## The CIA triad
 
@@ -38,7 +38,7 @@ Three more terms are often added: **authentication** (proving who you are), **au
 
 One **shared secret key** both encrypts and decrypts. It is fast, often built into processor hardware, so it encrypts all bulk data. **AES** (block size 128 bits, keys of 128, 192 or 256 bits) is the standard; ChaCha20 is a fast alternative in software. **DES**, with its 56-bit key, can be brute-forced and is broken, and 3DES is deprecated.
 
-Its weakness is **key distribution**: the two parties must already share the key secretly. And with n people who all want private pairs, every pair needs its own key: **n(n − 1)/2 keys**.
+Its weakness is **key distribution**: the two parties must already share the key secretly, and every pair of people needs its own key, **n(n − 1)/2** of them for n people.
 
 ## Asymmetric (public-key) encryption
 
@@ -46,6 +46,8 @@ Each party has a **key pair**. The **public key** can be published; the **privat
 
 - encrypt with the recipient's **public** key, and only the recipient's **private** key can decrypt (confidentiality);
 - sign with your **private** key, and anyone can verify with your **public** key (authenticity).
+
+@figure two-kinds
 
 **RSA**, whose security rests on the difficulty of factoring a large number, and **elliptic-curve** algorithms (ECDH, ECDSA) are the common families. They are far slower than symmetric ciphers, so they are used for small jobs: agreeing keys and signing.
 
@@ -68,13 +70,15 @@ Anyone may know (3, 33), but finding d = 7 requires φ(33), which requires facto
 
 Diffie-Hellman lets two parties agree a secret over an open channel without ever sending it. Public values: prime p = 23, generator g = 5.
 
+@figure diffie-hellman
+
 | | Alice | Bob |
 | --- | --- | --- |
 | Private number | a = 6 | b = 15 |
 | Sends | A = 5^6 mod 23 = 8 | B = 5^15 mod 23 = 19 |
 | Computes | B^a = 19^6 mod 23 = 2 | A^b = 8^15 mod 23 = 2 |
 
-Both arrive at the shared secret 2; an eavesdropper sees 23, 5, 8 and 19 but not 6 or 15. TLS 1.3 uses the elliptic-curve version with fresh numbers for every connection (ephemeral keys), which gives **forward secrecy**.
+TLS 1.3 uses the elliptic-curve version with fresh numbers for every connection (ephemeral keys), which gives **forward secrecy**.
 
 ### Symmetric vs asymmetric
 
@@ -88,7 +92,9 @@ Both arrive at the shared secret 2; an eavesdropper sees 23, 5, 8 and 19 but not
 | Used for | Bulk data | Key exchange, signatures, certificates |
 | Examples | AES, ChaCha20 (DES and 3DES are legacy) | RSA, Diffie-Hellman, ECDSA, ECDH |
 
-For 100 users that is 100 × 99 / 2 = 4,950 symmetric keys against 200 asymmetric keys. Real systems are **hybrid**: TLS uses asymmetric cryptography to authenticate the server and agree a key, then encrypts the data with a symmetric cipher such as AES-GCM ([HTTP and HTTPS](/notes/computer-networks/http-and-https)).
+@figure key-count
+
+Real systems are **hybrid**: TLS uses asymmetric cryptography to authenticate the server and agree a key, then encrypts the data with a symmetric cipher such as AES-GCM ([HTTP and HTTPS](/notes/computer-networks/http-and-https)).
 
 ## Hashing
 
@@ -110,7 +116,11 @@ MD5 and SHA-1 have practical collision attacks and must not be used for security
 
 ## Digital signatures and certificates
 
-A **digital signature** is made by hashing the message and computing a signature over that hash with the sender's **private key**. The receiver hashes the message too and checks the signature with the sender's **public key**. A valid signature proves **integrity** (any change breaks it), **authenticity** (only the private key holder could make it) and **non-repudiation**. It does not hide the message.
+A **digital signature** is a value computed over the message's hash with the sender's **private key**, which anyone can check with the sender's **public key**:
+
+@figure digital-signature
+
+A valid signature proves **integrity** (any change breaks it), **authenticity** (only the private key holder could make it) and **non-repudiation**. It does not hide the message.
 
 But how do you know a public key really belongs to example.com? A **digital certificate** (X.509) binds a public key to a name, and a **certificate authority (CA)** signs it. Browsers and operating systems ship a trust store of **root CA** certificates; a site's certificate is signed by an **intermediate CA**, which is signed by a root, forming a **chain of trust**. A client checks each signature up the chain, the validity dates, that the certificate's names include the host, and that it is not revoked (through CRLs or OCSP).
 
@@ -132,13 +142,17 @@ A firewall enforces rules about what traffic may cross a boundary.
 | 2 | Allow | TCP | 10.0.0.0/8 | 203.0.113.10 | 22 |
 | 3 | Deny | Any | Any | Any | Any |
 
-So anyone may reach the web server over HTTPS, only internal addresses may use SSH, and everything else is denied by the last rule (default deny).
+@figure firewall-rules
 
 ## VPNs
 
 A **virtual private network** carries traffic through an encrypted **tunnel** across an untrusted network, so a remote laptop (**remote-access VPN**) or a whole branch office (**site-to-site VPN**) behaves as if it were on the private network. Common protocols are **IPsec** at the network layer, TLS-based VPNs, and WireGuard. IPsec's ESP protocol provides encryption and integrity (its AH protocol provides integrity only), in **transport mode**, which protects the payload of the original packet, or **tunnel mode**, which wraps the entire original packet inside a new one, as gateways do. A VPN hides traffic from the local network and the ISP, but the VPN operator can see it, and it does not stop malware or phishing.
 
 ## Common attacks and defences
+
+The attack that certificates exist to defeat is the **man in the middle**:
+
+@figure mitm
 
 | Attack | How it works | Defences |
 | --- | --- | --- |

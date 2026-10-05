@@ -28,29 +28,15 @@ Processes and threads that share data are **cooperating**: a producer fills a bu
 
 `counter++` looks like one step, but the CPU runs it as three: load the value into a register, add one, store it back. Suppose `counter` is 5, thread T1 runs `counter++` and thread T2 runs `counter--` at the same time:
 
-| Step | Thread | Instruction | Register | counter |
-| --- | --- | --- | --- | --- |
-| 1 | T1 | r1 = counter | r1 = 5 | 5 |
-| 2 | T1 | r1 = r1 + 1 | r1 = 6 | 5 |
-| 3 | T2 | r2 = counter | r2 = 5 | 5 |
-| 4 | T2 | r2 = r2 − 1 | r2 = 4 | 5 |
-| 5 | T1 | counter = r1 | | 6 |
-| 6 | T2 | counter = r2 | | 4 |
+@figure race
 
-The right answer is 5, but this interleaving gives 4, and swapping steps 5 and 6 gives 6. A **race condition** is exactly this: the outcome depends on the timing of concurrent accesses to shared data where at least one is a write. Races are hard to find because most interleavings give the right answer.
+The right answer is 5, but this interleaving gives 4, and swapping the last two stores gives 6. A **race condition** is exactly this: the outcome depends on the timing of concurrent accesses to shared data where at least one is a write. Races are hard to find because they rarely show: only 2 of the 20 possible interleavings here are right, but a thread is so seldom preempted inside those three instructions that almost every run takes one of those two.
 
 ## The critical section problem
 
-A **critical section** is the part of a program that accesses shared data. Each process is structured as:
+A **critical section** is the part of a program that accesses shared data. Each process loops through four parts: an **entry section** that asks permission, the critical section, an **exit section** that announces it has left, and the **remainder section**, everything else.
 
-```text
-while (true) {
-    entry section        // ask permission to enter
-        critical section // touch shared data
-    exit section         // announce you have left
-    remainder section    // everything else
-}
-```
+@figure critical-section
 
 A correct solution to the critical section problem must satisfy three requirements:
 
@@ -82,6 +68,10 @@ void leave(int i) {
     flag[i] = 0;             /* I am out */
 }
 ```
+
+Here it is run with both processes competing:
+
+@figure peterson
 
 Why it satisfies all three requirements:
 
@@ -160,17 +150,9 @@ There are two kinds:
 - A **binary semaphore** takes only 0 and 1 and is used like a lock: initialize it to 1, `wait` before the critical section and `signal` after it.
 - A **counting semaphore** is initialized to the number of identical resources.
 
-Worked trace: a counting semaphore for two printers starts at 2, and processes A, B, C and D each call `wait`, then A and B finish and call `signal`.
+Worked trace: a counting semaphore for two printers starts at 2, and processes A, B, C and D each call `wait`, then A and B finish and call `signal`. The value ends at 0, with C and D printing and nobody waiting.
 
-| Event | S.value | Queue | Effect |
-| --- | --- | --- | --- |
-| Start | 2 | empty | Two printers free |
-| A: wait | 1 | empty | A gets a printer |
-| B: wait | 0 | empty | B gets a printer |
-| C: wait | −1 | C | C blocks |
-| D: wait | −2 | C, D | D blocks |
-| A: signal | −1 | D | C wakes and takes A's printer |
-| B: signal | 0 | empty | D wakes and takes B's printer |
+@figure semaphore
 
 Semaphores also impose **ordering**. To make statement S2 in P2 run only after S1 in P1, share a semaphore `synch` initialized to 0: P1 runs S1 then `signal(synch)`; P2 runs `wait(synch)` then S2.
 
@@ -221,7 +203,11 @@ After `signal`, either the signaller waits and the woken process runs at once (H
 | Main use | Mutual exclusion | Counting resources, signalling, ordering |
 | Signal with nobody waiting | Not applicable | Remembered: the count goes up |
 
-A related trap is **priority inversion**: a low-priority process holds a lock a high-priority process needs, and a medium-priority process preempts the low one, so the high-priority process waits on the medium one. The fix is **priority inheritance**: the lock holder temporarily runs at the priority of the highest process waiting for it. A priority inversion famously reset the Mars Pathfinder lander's computer in 1997 until engineers enabled priority inheritance remotely.
+A related trap is **priority inversion**: a low-priority process holds a lock a high-priority process needs, and a medium-priority process preempts the low one, so the high-priority process waits on the medium one. The fix is **priority inheritance**: the lock holder temporarily runs at the priority of the highest process waiting for it.
+
+@figure priority-inversion
+
+A priority inversion famously reset the Mars Pathfinder lander's computer in 1997 until engineers enabled priority inheritance remotely.
 
 ## Common mistakes
 

@@ -32,6 +32,8 @@ SQL (Structured Query Language) is the standard language of relational databases
 | DCL (data control) | Grant and take away permissions | GRANT, REVOKE |
 | TCL (transaction control) | Group statements into transactions | START TRANSACTION, COMMIT, ROLLBACK, SAVEPOINT |
 
+@figure families
+
 Two practical points. MySQL runs in **autocommit** mode by default, so each statement is its own transaction unless you begin one explicitly. And in MySQL (and Oracle) a DDL statement causes an **implicit commit**: a `CREATE` or `TRUNCATE` in the middle of a transaction commits the work before it and cannot itself be rolled back. PostgreSQL, by contrast, can roll back most DDL.
 
 ## DDL: creating and changing tables
@@ -109,6 +111,8 @@ An `UPDATE` or `DELETE` without `WHERE` changes every row. MySQL's client offers
 | Speed on a big table | Slow: row by row, each change logged | Fast: the table is emptied as a whole | Fast |
 | Referenced by a foreign key | Allowed row by row, subject to the FK action | MySQL's InnoDB refuses | Refused until the foreign key is dropped |
 
+@figure delete-truncate-drop
+
 ## SELECT: reading rows
 
 After the inserts above (before the update and delete), `students` holds:
@@ -150,6 +154,10 @@ Rohan's NULL comes last here because MySQL sorts NULL as the smallest value: fir
 
 Other filters: `marks BETWEEN 70 AND 90` is inclusive at both ends (Vikram 78, Meera 85), and `dept IN ('ECE', 'ME')` matches any value in the list (Meera, Rohan, Priya).
 
+A query is written SELECT first but processed in a fixed logical order: FROM, WHERE, GROUP BY, HAVING, SELECT, ORDER BY, LIMIT. That order explains why a column alias works in ORDER BY but not in WHERE, and why WHERE filters rows while HAVING filters groups:
+
+@figure logical-order
+
 ## NULL and three-valued logic
 
 NULL means a value is missing or unknown. It is not zero and not an empty string, and any comparison with it gives a third truth value, **UNKNOWN**. `WHERE` keeps a row only when its condition is TRUE.
@@ -163,15 +171,9 @@ NULL means a value is missing or unknown. It is not zero and not an empty string
 | FALSE OR UNKNOWN | UNKNOWN |
 | NOT UNKNOWN | UNKNOWN |
 
-So Rohan's row slips through both of these complementary filters:
+So Rohan's row slips through both of two complementary filters, and `= NULL` matches nothing at all:
 
-| Query | Rows returned |
-| --- | --- |
-| `WHERE marks > 80` | Asha, Meera |
-| `WHERE marks <= 80` | Vikram, Priya |
-| `WHERE NOT (marks > 80)` | Vikram, Priya |
-| `WHERE marks = NULL` | none |
-| `WHERE marks IS NULL` | Rohan |
+@figure null-logic
 
 Arithmetic with NULL gives NULL (`marks + 5` is NULL for Rohan), and `COALESCE(marks, 0)` substitutes a value for NULL. MySQL's `<=>` is a null-safe equality that returns 1 for `NULL <=> NULL`; standard SQL writes `IS NOT DISTINCT FROM`. NULL also explains the classic `NOT IN` trap with subqueries, covered in the [joins note](/notes/dbms/sql-joins).
 

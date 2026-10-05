@@ -39,14 +39,7 @@ C++ also chooses an inheritance *access level*. With `public` inheritance (the u
 
 ## Types of inheritance
 
-```text
-Single     Multilevel    Hierarchical    Multiple      Hybrid (diamond)
-  A            A              A          A     B              A
-  |            |             / \          \   /              / \
-  B            B            B   C           C               B   C
-               |                                             \ /
-               C                                              D
-```
+@figure inheritance-types
 
 - **Single** — one parent, one child: `Car` extends `Vehicle`.
 - **Multilevel** — a chain: `ElectricCar` extends `Car` extends `Vehicle`. Each level inherits everything above it.
@@ -85,7 +78,7 @@ A child object contains its parent's part, so the parent's part has to be built 
 - **C++**: base classes are initialised in the member initialiser list (`Car(...) : Vehicle(4)`), before the derived class's own members and constructor body.
 - **Python**: nothing is automatic. If a subclass defines `__init__` and does not call `super().__init__(...)`, the parent's initialisation simply never runs and its attributes do not exist.
 
-The program below builds a three-level chain and calls `describe()` through a parent-type reference. Each override calls the parent's version first and then adds its own line, so the output also shows `super` walking up the chain.
+The program below builds a three-level chain and calls `describe()` through a parent-type reference; each override calls the parent's version before adding its own line.
 
 ```cpp
 #include <iostream>
@@ -246,6 +239,8 @@ Car: Nexon
 ElectricCar: 30 kWh battery
 ```
 
+@figure construction-order
+
 In the C++ version, when `ev` goes out of scope the destructors would run as `~ElectricCar`, `~Car`, `~Vehicle`. The `virtual` destructor in `Vehicle` matters whenever a child is deleted through a parent pointer: without it, only `~Vehicle` would run and the behaviour is undefined.
 
 ## The diamond problem
@@ -254,7 +249,9 @@ Suppose `Scanner` and `Printer` both inherit from `Device`, and `Copier` inherit
 
 ### C++: virtual inheritance
 
-By default a C++ `Copier` would contain two separate `Device` subobjects, and `copier.id` would be a compile-time ambiguity error. Declaring the shared base `virtual` makes all paths share one subobject. The rule that surprises people: a virtual base is constructed **first**, and by the **most derived** class — `Scanner`'s and `Printer`'s own calls to `Device(...)` are ignored when they are part of a `Copier`.
+Declaring the shared base `virtual` makes all paths share one subobject. The rule that surprises people: a virtual base is constructed **first**, and by the **most derived** class.
+
+@figure diamond
 
 ```cpp
 #include <iostream>
@@ -328,7 +325,7 @@ Scanner ready, Printer ready
 
 ### Python: the method resolution order
 
-Python builds one linear order of classes for every class — the **method resolution order (MRO)**, computed by the **C3 linearisation** algorithm — and looks attributes up along it. C3 guarantees that a class comes before its parents and that parents keep the order you listed them in; if no such order exists, the class definition fails with a `TypeError`. `super()` does not mean "my parent" — it means "the next class in the MRO of the object I was called on". That is why each class's `__init__` below runs exactly once, `Device` included.
+Python builds one linear order of classes for every class — the **method resolution order (MRO)**, computed by the **C3 linearisation** algorithm — and looks attributes up along it. C3 guarantees that a class comes before its parents and that parents keep the order you listed them in; if no such order exists, the class definition fails with a `TypeError`. `super()` does not mean "my parent" — it means "the next class in the MRO of the object I was called on".
 
 ```python
 class Device:
@@ -375,6 +372,8 @@ Printer init
 Device init
 Scanner -> Printer -> Device
 ```
+
+@figure mro
 
 This pattern is called **cooperative multiple inheritance**: it works only if every class in the chain calls `super()`. One class that calls `Device.__init__(self)` directly instead would break the chain.
 

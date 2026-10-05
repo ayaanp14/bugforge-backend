@@ -55,13 +55,9 @@ Flattened to one row per student and course, the sheet becomes one wide table, R
 
 **Candidate keys.** roll_no appears on no right-hand side, so it is in every key, but its closure is only {roll_no, name, dept, hod}. Adding course_id gives everything (FD4, FD3); adding instructor also gives everything (FD5 brings course_id). name, dept, hod, course_title and grade appear only on right-hand sides, so they are in no key. The candidate keys are **{roll_no, course_id}** and **{roll_no, instructor}**; the prime attributes are roll_no, course_id and instructor.
 
-The repetition causes three **anomalies**:
+The repetition causes three **anomalies**, each visible on these four rows:
 
-| Anomaly | In this table |
-| --- | --- |
-| Insertion | A new course CS303 cannot be recorded until some student enrols, because roll_no is part of every key and cannot be NULL |
-| Update | When CSE gets a new head, three rows must change; miss one and the table contradicts itself |
-| Deletion | If Meera leaves and her row is deleted, the fact that Dr. Iyer heads ECE disappears too |
+@figure anomalies
 
 ## The normal forms at a glance
 
@@ -74,6 +70,8 @@ The repetition causes three **anomalies**:
 | 4NF | For every non-trivial multivalued dependency X ↠ Y: X is a super key | Independent multi-valued facts in one table |
 
 Each form includes the ones above it: every BCNF relation is in 3NF, every 3NF relation in 2NF.
+
+@figure normal-forms
 
 ## First normal form (1NF)
 
@@ -91,7 +89,7 @@ R has three partial dependencies: roll_no → name, dept, hod (roll_no is part o
 | Course | course_id, course_title | course_id |
 | Enrollment | roll_no, course_id, instructor, grade | {roll_no, course_id} and {roll_no, instructor} |
 
-Student holds (101, Asha, CSE, Dr. Rao), (102, Vikram, CSE, Dr. Rao), (103, Meera, ECE, Dr. Iyer). Course holds (CS301, DBMS) and (CS302, Operating Systems), so CS303 can now be added before anyone enrols. Enrollment keeps the four rows (101, CS301, Sen, A), (101, CS302, Khan, B), (102, CS301, Gupta, A), (103, CS301, Sen, B). In Enrollment the only non-prime attribute is grade, and it depends on whole keys, so all three tables are in 2NF.
+Student keeps three rows and Course two, so CS303 can now be added before anyone enrols; Enrollment keeps all four. In Enrollment the only non-prime attribute is grade, and it depends on whole keys, so all three tables are in 2NF.
 
 ## Third normal form (3NF)
 
@@ -117,7 +115,9 @@ Enrollment breaks BCNF: instructor → course_id, and instructor alone is not a 
 | Teaches | instructor, course_id | instructor | (Sen, CS301), (Gupta, CS301), (Khan, CS302) |
 | Enrollment | roll_no, instructor, grade | {roll_no, instructor} | (101, Sen, A), (101, Khan, B), (102, Gupta, A), (103, Sen, B) |
 
-The BCNF design has five tables: Student, Department, Course, Teaches and Enrollment. Every determinant in every table is now a key.
+The BCNF design has five tables: Student, Department, Course, Teaches and Enrollment. Every determinant in every table is now a key. The whole decomposition, replayed with the dependency that forced each split:
+
+@figure decomposition
 
 A relation can be in 3NF but not BCNF only if it has two or more candidate keys that overlap, as {roll_no, course_id} and {roll_no, instructor} do here. That is the quick answer when an interviewer asks why 3NF is "usually enough".
 
@@ -125,42 +125,32 @@ A relation can be in 3NF but not BCNF only if it has two or more candidate keys 
 
 Every decomposition must be **lossless**: joining the pieces back must give exactly the original rows. For a split of R into R1 and R2 the test is that the common attributes R1 ∩ R2 are a super key of R1 or of R2.
 
-| Step | Common attributes | Why lossless |
-| --- | --- | --- |
-| R into Student + the rest (2NF) | roll_no | roll_no → name, dept, hod: key of Student |
-| The rest into Course + Enrollment (2NF) | course_id | course_id → course_title: key of Course |
-| Student into Student + Department (3NF) | dept | dept → hod: key of Department |
-| Enrollment into Teaches + Enrollment (BCNF) | instructor | instructor → course_id: key of Teaches |
+All four splits above pass it: each time the common column (roll_no, course_id, dept, then instructor) is the key of the table split off, as the decomposition's last line shows at every step.
 
-A lossy split, for contrast: break Enrollment into (roll_no, grade) and (course_id, grade). The common attribute grade determines nothing, and the join back on grade returns six rows instead of four:
+A lossy split, for contrast: break the enrolment facts (roll_no, course_id, grade) into (roll_no, grade) and (course_id, grade). The common attribute grade determines nothing, and the join back on grade returns six rows instead of four:
 
-| roll_no | course_id | grade | Real? |
-| --- | --- | --- | --- |
-| 101 | CS301 | A | Yes |
-| 102 | CS301 | A | Yes |
-| 101 | CS302 | B | Yes |
-| 101 | CS301 | B | Spurious |
-| 103 | CS302 | B | Spurious |
-| 103 | CS301 | B | Yes |
+@figure lossy-join
 
 A lossy join adds rows rather than dropping them; the information lost is which rows are true.
 
-A decomposition is **dependency preserving** if every original dependency can be checked inside a single table, without joins. The 2NF and 3NF steps preserve all five dependencies. The BCNF step does not: FD4, (roll_no, course_id) → instructor, grade, now spans Teaches and Enrollment. Nothing stops inserting (101, Gupta, C) into Enrollment, which puts student 101 in CS301 a second time under another instructor; catching it needs a join or a trigger.
+A decomposition is **dependency preserving** if every original dependency can be checked inside a single table, without joins. The 2NF and 3NF steps preserve all five dependencies. The BCNF step does not: FD4, (roll_no, course_id) → instructor, grade, now spans Teaches and Enrollment, so an insert can break it unnoticed:
+
+@figure lost-dependency
 
 This trade-off is a theorem, not a flaw of this example: a lossless BCNF decomposition always exists but may not preserve dependencies, while 3NF synthesis always gives one that is both lossless and dependency preserving. Many designers stop at 3NF when they meet it. A practical middle way is to keep the 3NF Enrollment(roll_no, course_id, instructor, grade) and add a composite foreign key (instructor, course_id) referencing Teaches, so both rules are enforced by constraints.
 
 ## Fourth normal form, briefly
 
-A **multivalued dependency** X ↠ Y says that the set of Y values for an X value is independent of the other attributes. Suppose a separate table lists each course's instructors and recommended textbooks, which have nothing to do with each other:
+A **multivalued dependency** X ↠ Y says that the set of Y values for an X value is independent of the other attributes. Suppose a separate table lists each course's recommended textbooks and its lab days, which have nothing to do with each other:
 
-| course_id | instructor | textbook |
+| course_id | textbook | lab_day |
 | --- | --- | --- |
-| CS301 | Sen | Korth |
-| CS301 | Sen | Navathe |
-| CS301 | Gupta | Korth |
-| CS301 | Gupta | Navathe |
+| CS301 | Korth | Mon |
+| CS301 | Korth | Thu |
+| CS301 | Navathe | Mon |
+| CS301 | Navathe | Thu |
 
-The only key is all three columns and there are no non-trivial functional dependencies, so the table is in BCNF. Yet adding a third textbook needs two new rows, one per instructor. course_id ↠ instructor and course_id ↠ textbook hold with course_id not a super key, so it breaks **4NF**. Split it into (course_id, instructor) and (course_id, textbook), which is lossless. Fifth normal form deals with join dependencies that are not implied by keys, and rarely comes up in practice.
+The only key is all three columns and there are no non-trivial functional dependencies, so the table is in BCNF. Yet adding a third textbook needs two new rows, one per lab day. course_id ↠ textbook and course_id ↠ lab_day hold with course_id not a super key, so it breaks **4NF**. Split it into (course_id, textbook) and (course_id, lab_day), which is lossless. Fifth normal form deals with join dependencies that are not implied by keys, and rarely comes up in practice.
 
 ## When to denormalize
 
@@ -195,7 +185,7 @@ The price is the anomalies you removed: the copy must be updated in the same tra
 
 **Is a relation with only two attributes always in BCNF?** Yes. Any non-trivial dependency between two attributes A → B makes A a super key, because A then determines both attributes.
 
-**What is a multivalued dependency? Which normal form handles it?** X ↠ Y means the set of Y values for each X is independent of the remaining attributes, as with a course's instructors and its textbooks. 4NF requires the determinant of every non-trivial multivalued dependency to be a super key.
+**What is a multivalued dependency? Which normal form handles it?** X ↠ Y means the set of Y values for each X is independent of the remaining attributes, as with a course's textbooks and its lab days. 4NF requires the determinant of every non-trivial multivalued dependency to be a super key.
 
 **When would you not normalize fully?** When read performance on a measured hot path needs fewer joins, in data warehouses, or when BCNF would lose a dependency you must enforce. The redundancy is then maintained deliberately.
 

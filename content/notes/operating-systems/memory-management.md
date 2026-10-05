@@ -31,13 +31,9 @@ Every running process needs memory for its code, data, heap and stack, and physi
 
 The **memory management unit (MMU)**, a hardware unit in the CPU, translates every logical address to a physical one on every memory access. The process only ever sees logical addresses, so the OS can place it anywhere in RAM and move it later.
 
-The simplest MMU uses two registers. The **relocation (base) register** holds where the process starts in physical memory, and the **limit register** holds the size of its logical space. Every address is checked against the limit, then added to the base:
+The simplest MMU uses two registers. The **relocation (base) register** holds where the process starts in physical memory, and the **limit register** holds the size of its logical space. Every address is checked against the limit, then added to the base; here the base is 30000 and the limit 12000:
 
-| Logical address | Check (limit 12000) | Physical address (base 30000) |
-| --- | --- | --- |
-| 4500 | 4500 < 12000, valid | 30000 + 4500 = 34500 |
-| 0 | valid | 30000 |
-| 12500 | 12500 ≥ 12000, invalid | Trap to the OS: addressing error |
+@figure base-limit
 
 Addresses can be **bound** to physical locations at compile time (fixed addresses, the program cannot move), at load time (fixed when the program is loaded), or at **execution time** (translated on every access by the MMU). Modern systems bind at execution time, which is what makes relocation, swapping and compaction possible.
 
@@ -64,36 +60,20 @@ The three classic placement strategies:
 
 Free holes, in memory order: H1 = 150 KB, H2 = 400 KB, H3 = 250 KB, H4 = 600 KB, H5 = 300 KB. Requests arrive in the order 220 KB, 380 KB, 130 KB, 560 KB. The leftover part of a hole stays where it was as a smaller hole.
 
-**First fit**
+@figure fit-strategies
 
-| Request | Hole chosen | Left over | Holes after (H1 to H5) |
+| Request | First fit | Best fit | Worst fit |
 | --- | --- | --- | --- |
-| 220 | H2 (400) | 180 | 150, 180, 250, 600, 300 |
-| 380 | H4 (600) | 220 | 150, 180, 250, 220, 300 |
-| 130 | H1 (150) | 20 | 20, 180, 250, 220, 300 |
-| 560 | none fits | | 560 KB must wait |
-
-**Best fit**
-
-| Request | Hole chosen | Left over | Holes after (H1 to H5) |
-| --- | --- | --- | --- |
-| 220 | H3 (250) | 30 | 150, 400, 30, 600, 300 |
-| 380 | H2 (400) | 20 | 150, 20, 30, 600, 300 |
-| 130 | H1 (150) | 20 | 20, 20, 30, 600, 300 |
-| 560 | H4 (600) | 40 | 20, 20, 30, 40, 300 |
-
-**Worst fit**
-
-| Request | Hole chosen | Left over | Holes after (H1 to H5) |
-| --- | --- | --- | --- |
-| 220 | H4 (600) | 380 | 150, 400, 250, 380, 300 |
-| 380 | H2 (400) | 20 | 150, 20, 250, 380, 300 |
-| 130 | H4 (380) | 250 | 150, 20, 250, 250, 300 |
-| 560 | none fits | | the largest hole is 300 KB |
+| 220 | H2, 180 left | H3, 30 left | H4, 380 left |
+| 380 | H4, 220 left | H2, 20 left | H2, 20 left |
+| 130 | H1, 20 left | H1, 20 left | H4, 250 left |
+| 560 | none fits | H4, 40 left | none fits |
 
 Best fit places all four requests here; first fit and worst fit cannot place the 560 KB one. Under first fit, 970 KB is still free when it fails (20 + 180 + 250 + 220 + 300), but no single hole holds 560 KB. That is **external fragmentation** in action. Do not over-learn this example, though: on other request sequences first fit wins, and best fit tends to leave tiny unusable slivers like the 20 KB holes above. Simulation studies generally find first fit and best fit similar in memory use, with first fit faster, and worst fit worse than both.
 
 ## Fragmentation and compaction
+
+@figure fragmentation
 
 | Aspect | Internal fragmentation | External fragmentation |
 | --- | --- | --- |
@@ -132,7 +112,7 @@ Translate logical address 13000:
 2. The page table maps page 3 to frame 6.
 3. Physical address = 6 × 4096 + 712 = 24576 + 712 = **25288**.
 
-In hexadecimal the split is just a matter of reading bits: 13000 is 0x32C8, the top digit 3 is the page and the low three hex digits 0x2C8 (= 712) are the offset. Replacing the page 3 by the frame 6 gives 0x62C8, which is 25288. Translation is a table look-up and a bit substitution, with no addition needed.
+@figure paging-translation
 
 **Page table size.** With 32-bit logical addresses and 4 KB pages, the page number has 32 − 12 = 20 bits, so the page table has 2²⁰ = 1,048,576 entries. At 4 bytes an entry that is **4 MB per process**, which is why real systems use multi-level page tables.
 
@@ -152,11 +132,7 @@ The page table lives in memory, located by the **page-table base register (PTBR)
 | 1 (stack) | 6000 | 500 |
 | 2 (data) | 4000 | 800 |
 
-| Logical address (s, d) | Check | Physical address |
-| --- | --- | --- |
-| (2, 300) | 300 < 800 | 4000 + 300 = 4300 |
-| (0, 1199) | 1199 < 1200 | 2000 + 1199 = 3199 |
-| (1, 520) | 520 ≥ 500 | Trap: segmentation fault |
+@figure segmentation
 
 Because segments are meaningful units, protection fits naturally: code read-only and executable, data read-write, and a whole segment can be shared. The cost is that segments have variable sizes, so allocating them brings back **external fragmentation**. Systems that combined the two, such as 32-bit x86, split memory into segments and then paged each segment; 64-bit x86 keeps segmentation only in vestigial form and relies on paging.
 

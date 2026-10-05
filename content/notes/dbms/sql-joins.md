@@ -43,6 +43,10 @@ Relational design deliberately spreads facts over several tables: the employee's
 | 20 | Sales |
 | 30 | HR |
 
+Every join below starts from the same matching: each employee's `dept_id` against each department's.
+
+@figure match-rows
+
 ## Inner join
 
 An **inner join** returns one row for each pair of rows that satisfy the join condition. Rows without a partner disappear from both sides.
@@ -59,7 +63,7 @@ INNER JOIN departments d ON e.dept_id = d.dept_id;
 | Vikram | Sales |
 | Meera | Engineering |
 
-Rohan is missing because NULL = 10 is not TRUE, and HR is missing because no employee points to it. `JOIN` alone means `INNER JOIN`. A join whose condition is equality is an **equi-join**; one with any other comparison (`<`, `BETWEEN`) is a **theta join** or non-equi join, used for example to match a salary to a pay band.
+Rohan is missing because NULL = 10 is UNKNOWN, not TRUE, and HR is missing because no employee points to it. `JOIN` alone means `INNER JOIN`. A join whose condition is equality is an **equi-join**; one with any other comparison (`<`, `BETWEEN`) is a **theta join** or non-equi join, used for example to match a salary to a pay band.
 
 ## Left outer join
 
@@ -136,20 +140,7 @@ FROM employees e
 CROSS JOIN departments d;
 ```
 
-| name | dept_name |
-| --- | --- |
-| Asha | Engineering |
-| Asha | Sales |
-| Asha | HR |
-| Vikram | Engineering |
-| Vikram | Sales |
-| Vikram | HR |
-| Meera | Engineering |
-| Meera | Sales |
-| Meera | HR |
-| Rohan | Engineering |
-| Rohan | Sales |
-| Rohan | HR |
+@figure cross-grid
 
 Writing `FROM employees, departments` with no `WHERE` produces the same product, which is how accidental cross joins happen. Cross joins are useful for generating combinations, such as every size with every colour.
 
@@ -170,7 +161,9 @@ LEFT JOIN employees m ON e.manager_id = m.emp_id;
 | Meera | Asha |
 | Rohan | Vikram |
 
-With an inner join, Asha (who has no manager) would drop out and three rows would remain. Another self join finds pairs of colleagues in the same department: `ON e.dept_id = m.dept_id AND e.emp_id < m.emp_id` returns the single pair (Asha, Meera); the `<` stops each pair appearing twice and a person pairing with themselves.
+@figure self-join
+
+Another self join finds pairs of colleagues in the same department: `ON e.dept_id = m.dept_id AND e.emp_id < m.emp_id` returns the single pair (Asha, Meera); the `<` stops each pair appearing twice and a person pairing with themselves.
 
 ## Natural join and USING
 
@@ -198,7 +191,9 @@ A join returns one row per matching pair. When the join column is unique on one 
 | 10 | 2000 |
 | 20 | 3000 |
 
-`employees JOIN bonuses ON e.dept_id = b.dept_id` returns 5 rows: Asha and Meera twice each (two Engineering bonuses) and Vikram once. For each value, the count is (matching left rows) × (matching right rows): 2 × 2 for dept 10 and 1 × 1 for dept 20.
+For each value of the join column, the join returns (matching left rows) × (matching right rows):
+
+@figure fan-out
 
 | name | amount |
 | --- | --- |

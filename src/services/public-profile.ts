@@ -11,8 +11,9 @@ import { getGitHubCard } from "./github-connection.js";
  * leaves: the address, birthday and gender, the reminder switches, the
  * sign-in provider, when the account was last active, the owner's saved
  * interviews, study and pairing history, and the code of any submission —
- * the history rows carry no code, and GET /api/me/submissions/:id serves it
- * to its owner only, so a profile can never become a solutions list.
+ * the history rows carry no code and no SQL query, GET /api/me/submissions/:id
+ * and GET /api/sql/:slug/submissions serve them to their owner only, so a
+ * profile can never become a solutions list.
  *
  * The numbers come from the owner's own dashboard aggregate (cached, and
  * invalidated on every submission), so the two views of an account always
@@ -153,6 +154,7 @@ export function publicProfileOf(
         ? {
             problemsSolved: me.stats.problemsSolved,
             bugsFixed: me.stats.bugsFixed,
+            sqlSolved: me.stats.sqlSolved,
             currentStreak: me.stats.currentStreak,
             longestStreak: me.stats.longestStreak,
           }
@@ -163,7 +165,7 @@ export function publicProfileOf(
     heatmap: dash.heatmap,
     roadmap: dash.roadmap,
     tournaments: dash.tournaments,
-    submissions: dash.submissions,
+    submissions: publicHistoryPage(dash.submissions),
     // Credentials that stand today, each with the code its verify page
     // resolves. Not the score — what a credential certifies is its band —
     // and not which one is worn (the frame says that).
@@ -175,11 +177,40 @@ export function publicProfileOf(
 
 export type PublicProfile = NonNullable<ReturnType<typeof publicProfileOf>>;
 
-/** A page of someone's submission history — the slim rows, never code. Null when there is no such user. */
+type HistoryPage = Awaited<ReturnType<typeof getSubmissionHistory>>;
+
+/**
+ * A page of history as anyone else sees it, row by named field. The rows are
+ * already slim (services/dashboard.ts selects no code and no SQL query), and
+ * this is the second lock: a field that reaches a row later — a query, a
+ * snippet — stays the owner's until someone names it here.
+ */
+export function publicHistoryPage(page: HistoryPage): HistoryPage {
+  return {
+    history: page.history.map((r) => ({
+      id: r.id,
+      type: r.type,
+      title: r.title,
+      problemSlug: r.problemSlug,
+      ...(r.sqlSlug ? { sqlSlug: r.sqlSlug } : {}),
+      difficulty: r.difficulty,
+      verdict: r.verdict,
+      language: r.language,
+      runtime: r.runtime,
+      memory: r.memory,
+      submittedAt: r.submittedAt,
+    })),
+    total: page.total,
+    page: page.page,
+    limit: page.limit,
+  };
+}
+
+/** A page of someone's submission history — the slim rows, never code or a query. Null when there is no such user. */
 export async function getPublicSubmissions(username: string, page: number, limit: number) {
   const user = await findUser(username);
   if (!user) return null;
-  return getSubmissionHistory(user.id, page, limit);
+  return publicHistoryPage(await getSubmissionHistory(user.id, page, limit));
 }
 
 /**

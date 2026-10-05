@@ -98,6 +98,8 @@ Square: created, area 9
 ['area']
 ```
 
+@figure abstract-check
+
 ## Interfaces
 
 An **interface** is a pure contract: a list of methods a class promises to provide, usually with no state. A class that implements an interface can be used anywhere that interface type is expected, whatever else the class is.
@@ -152,13 +154,17 @@ no discount: 1000
 cap: 50%
 ```
 
+@figure discount-interface
+
 ### C++ and Python interfaces
 
 C++ has no `interface` keyword; an interface is a class with only pure virtual functions and a virtual destructor. Because such a class has no data, inheriting several of them is the safe kind of multiple inheritance. Python writes an interface as an `ABC` whose methods are all abstract, or — since Python 3.8 — as a `typing.Protocol`, which a class satisfies simply by having the right methods (structural typing, checked by type checkers rather than at run time). And in everyday Python, duck typing means an interface often exists only in the documentation.
 
 ## Abstract class and interface together
 
-Real designs often use both: an interface names a **capability** and an abstract class shares an **implementation**. Below, every payment method follows the same `pay` steps — validate, charge, print a receipt — written once in the abstract class, with `charge` left abstract. Only some methods can be refunded, so that capability is a separate interface, and the loop at the end asks each object whether it has it.
+Real designs often use both: an interface names a **capability** and an abstract class shares an **implementation**. Every payment method below follows the same `pay` steps, written once in the abstract class; only some can be refunded, so that capability is a separate interface.
+
+@figure payment-classes
 
 ```cpp
 #include <iostream>
@@ -322,6 +328,8 @@ receipt for Ravi: Rs 499
 rejected: amount must be positive
 UPI: refunded Rs 99 to asha@bank
 ```
+
+@figure pay-steps
 
 The C++ `dynamic_cast` here is a **cross-cast**: it goes sideways from `PaymentMethod*` to `Refundable*`, which works because `UpiPayment` inherits both.
 

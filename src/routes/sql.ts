@@ -3,12 +3,14 @@ import { requireAuth } from "../middleware/auth.js";
 import { executionLimiter } from "../middleware/rate-limit.js";
 import { browserCache, SEEDED_CONTENT_MAX_AGE } from "../lib/http-cache.js";
 import { prisma } from "../lib/prisma.js";
-import { isDuplicateKey, withLockRetry } from "../lib/seat-claim.js";
+import { nextStreak, solveXp } from "../lib/activity.js";
+import { claimFirstSolve } from "../lib/solve-payout.js";
 import { sqlProblem } from "../lib/sql-problems/index.js";
 import { judgeSql } from "../lib/sql/judge.js";
 import { SqlBusyError } from "../lib/sql/engine.js";
 import { forgetSqlStanding, sqlProblemList, sqlProblemPage, sqlStanding } from "../services/sql-problems.js";
 import { invalidateDashboard } from "../services/dashboard.js";
+import { createNotificationOnce, streakMilestone } from "../services/notifications.js";
 
 /**
  * /api/sql — LeetCode-style database problems (lib/sql-problems), judged on
@@ -20,8 +22,6 @@ export const sqlRouter = Router();
 
 const SLUG = /^[a-z0-9][a-z0-9-]{0,119}$/;
 const MAX_QUERY_CHARS = 20_000;
-/** XP for a first accepted solve — the coding problems' table (routes/execution.ts). */
-const XP: Record<string, number> = { EASY: 10, MEDIUM: 20, HARD: 30 };
 
 sqlRouter.get("/", browserCache(SEEDED_CONTENT_MAX_AGE, { shared: true }), async (_req, res) => {
   res.json(await sqlProblemList());
@@ -103,6 +103,17 @@ sqlRouter.post("/:slug/submit", requireAuth, executionLimiter, async (req, res) 
   const query = queryOf(req, res);
   if (query === null) return;
   const userId = req.user!.userId;
+  // Read while the judge runs, as /api/submit does (routes/execution.ts). The
+  // claim read only ever skips work: a problem already claimed stays claimed,
+  // and "not claimed" is not trusted — the insert in claimFirstSolve still
+  // decides. The stats row is what the streak is computed from.
+  const history = Promise.all([
+    prisma.sqlSolve.findUnique({ where: { userId_slug: { userId, slug: spec.slug } }, select: { id: true } }),
+    prisma.userStats.findUnique({ where: { userId }, select: { lastActive: true, currentStreak: true, longestStreak: true } }),
+  ]);
+  // Awaited after the judge; this only stops an early failure from surfacing
+  // as an unhandled rejection in the meantime.
+  history.catch(() => {});
   let result;
   try {
     result = await judgeSql(spec, query, "submit");
@@ -114,26 +125,27 @@ sqlRouter.post("/:slug/submit", requireAuth, executionLimiter, async (req, res) 
     data: { userId, slug: spec.slug, query, verdict: result.verdict, passedCases: result.passed, totalCases: result.total, runtimeMs: result.runtimeMs },
     select: { id: true, submittedAt: true },
   });
-  let awardedXp = 0;
-  if (result.verdict === "ACCEPTED") {
-    const prize = XP[spec.difficulty] ?? 10;
-    // The unique (userId, slug) claim decides who is paid — lib/solve-payout.ts.
-    const paid = await withLockRetry("claimSqlSolve", async () => {
-      try {
-        await prisma.$transaction(async (tx) => {
-          await tx.sqlSolve.create({ data: { userId, slug: spec.slug, submittedAt: submission.submittedAt }, select: { id: true } });
-          await tx.userStats.upsert({ where: { userId }, update: { lastActive: new Date() }, create: { userId, lastActive: new Date() } });
-          await tx.user.update({ where: { id: userId }, data: { xp: { increment: prize }, questionsXp: { increment: prize }, rating: { increment: prize } }, select: { id: true } });
-        });
-        return true;
-      } catch (err) {
-        if (isDuplicateKey(err)) return false;
-        throw err;
-      }
-    });
-    if (paid) awardedXp = prize;
-  }
-  res.json({ ...result, submissionId: submission.id, awardedXp, firstSolve: awardedXp > 0 });
+  const [alreadyClaimed, stats] = await history;
+  // A first accept pays and moves the solving streak exactly as a coding
+  // problem's does: one transaction, decided by the unique (userId, slug)
+  // claim — lib/solve-payout.ts.
+  const prize = solveXp(spec.difficulty);
+  const streak = nextStreak(stats);
+  const firstSolve =
+    result.verdict === "ACCEPTED" && !alreadyClaimed
+      ? await claimFirstSolve(userId, { sqlSlug: spec.slug }, submission.submittedAt, prize, streak)
+      : false;
+  const awardedXp = firstSolve ? prize : 0;
+  res.json({ ...result, submissionId: submission.id, awardedXp, firstSolve });
+
+  // ── After the response ──────────────────────────────────────────
   forgetSqlStanding(userId);
-  if (awardedXp > 0) invalidateDashboard(userId);
+  // Every submit moves the dashboard, not only a paid one: the history lists
+  // it, and an accepted one lights today on the heatmap even when the problem
+  // was solved before. This also drops the heatmap, rank and /api/me copies.
+  invalidateDashboard(userId);
+  if (firstSolve && stats) {
+    const milestone = streakMilestone(streak.currentStreak);
+    if (milestone) createNotificationOnce(userId, milestone).catch((err) => console.error("POST /api/sql/:slug/submit — notification failed:", err));
+  }
 });

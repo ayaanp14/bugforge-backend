@@ -26,19 +26,11 @@ A database is used by many people at once, and machines crash. A **transaction**
 
 ## What a transaction is
 
-A **transaction** is a sequence of operations on the database that forms one logical unit of work. In theory courses it is written with two operations: **read(X)** copies item X from the database into a local variable, and **write(X)** copies the local variable back. The transfer T1 of ₹1,000 from account A (₹5,000) to account B (₹3,000):
+A **transaction** is a sequence of operations on the database that forms one logical unit of work. In theory courses it is written with two operations: **read(X)** copies item X from the database into a local variable, and **write(X)** copies the local variable back. The transfer T1 of ₹1,000 from account A (₹5,000) to account B (₹3,000) takes seven steps:
 
-| Step | Operation | A in database | B in database |
-| --- | --- | --- | --- |
-| 1 | read(A) | 5000 | 3000 |
-| 2 | A := A − 1000 | 5000 | 3000 |
-| 3 | write(A) | 4000 | 3000 |
-| 4 | read(B) | 4000 | 3000 |
-| 5 | B := B + 1000 | 4000 | 3000 |
-| 6 | write(B) | 4000 | 4000 |
-| 7 | commit | 4000 | 4000 |
+@figure transfer
 
-Between steps 3 and 6 the database holds A = 4000 and B = 3000: a total of ₹7,000 that is wrong. Every ACID property is about making sure nobody, including a crash, ever acts on that intermediate state.
+Every ACID property is about making sure nobody, including a crash, ever acts on the ₹7,000 state between write(A) and write(B).
 
 ## Transaction states
 
@@ -50,13 +42,15 @@ Between steps 3 and 6 the database holds A = 4000 and B = 3000: a total of ₹7,
 | Failed | An error, a constraint violation, a deadlock or a crash means it cannot proceed normally |
 | Aborted | It has been rolled back and the database restored to its state before the transaction |
 
-The paths are Active → Partially committed → Committed, and Active or Partially committed → Failed → Aborted. A partially committed transaction can still fail, for example if writing its log to disk fails. After an abort the system either **restarts** the transaction (if the failure was not its own fault, such as a deadlock) or **kills** it (if its logic was wrong). Some textbooks add a final **Terminated** state reached after commit or abort.
+@figure states
+
+After an abort the system either **restarts** the transaction (if the failure was not its own fault, such as a deadlock) or **kills** it (if its logic was wrong). Some textbooks add a final **Terminated** state reached after commit or abort.
 
 ## Atomicity
 
 **All or nothing.** Either every operation of the transaction is reflected in the database, or none is.
 
-Suppose the server crashes after step 3. Without atomicity the database would restart with A = 4000 and B = 3000, and ₹1,000 would be gone. With it, the recovery manager finds that T1 never committed and **undoes** its write, restoring A to 5000.
+Suppose the server crashes just after write(A). Without atomicity the database would restart with A = 4000 and B = 3000, and ₹1,000 would be gone. With it, the recovery manager finds that T1 never committed and **undoes** its write, restoring A to 5000.
 
 How: before changing a value, the DBMS logs the old value. Rollback and crash recovery replay these undo records backwards. MySQL's InnoDB keeps them in **undo logs** (which also serve its multi-version reads).
 
@@ -70,9 +64,11 @@ How: the DBMS enforces declared constraints (primary and foreign keys, NOT NULL,
 
 **Concurrent transactions do not see each other's partial work.** The result of running transactions concurrently must equal the result of running them one after another in some order.
 
-Suppose T2 computes the bank's total, A + B, and runs between steps 3 and 6 of T1. It reads A = 4000 and B = 3000 and reports ₹7,000, a total that never existed in any committed state.
+Suppose T2 computes the bank's total, A + B, while T1 is half done. The DBMS keeps that total right with **concurrency control**: locking, or multi-version concurrency control (MVCC), which InnoDB and PostgreSQL use:
 
-How: **concurrency control**. Locking makes T2 wait for T1's locks; multi-version concurrency control (MVCC), used by InnoDB and PostgreSQL, gives T2 a snapshot of committed data so it reads A = 5000 and B = 3000. Full isolation (serializability) costs throughput, so SQL offers weaker **isolation levels** that allow some anomalies. The [concurrency control note](/notes/dbms/concurrency-control) covers schedules, locks and isolation levels.
+@figure isolation
+
+Full isolation (serializability) costs throughput, so SQL offers weaker **isolation levels** that allow some anomalies. The [concurrency control note](/notes/dbms/concurrency-control) covers schedules, locks and isolation levels.
 
 ## Durability
 
@@ -110,14 +106,7 @@ Three MySQL behaviours worth knowing:
 
 ## Write-ahead logging and recovery
 
-The **log** is a sequential file of records describing every change. For T1:
-
-```text
-<T1 start>
-<T1, A, 5000, 4000>      transaction, item, old value, new value
-<T1, B, 3000, 4000>
-<T1 commit>
-```
+The **log** is a sequential file of records describing every change. T1 writes four: `<T1 start>`, then `<T1, A, 5000, 4000>` and `<T1, B, 3000, 4000>` (transaction, item, old value, new value), then `<T1 commit>`.
 
 **Write-ahead logging (WAL)** has two rules:
 
@@ -125,6 +114,8 @@ The **log** is a sequential file of records describing every change. For T1:
 2. A transaction is committed only when all its log records, up to and including the commit record, are on stable storage. This keeps redo possible.
 
 Writing the log is cheap because it is sequential, so the DBMS can keep data pages in memory and write them back lazily. Real systems allow uncommitted changes to reach disk (called **steal**) and do not force pages to disk at commit (**no-force**), so recovery needs both undo and redo:
+
+@figure crash-recovery
 
 | Crash after | Is T1's commit record on disk? | Recovery | Final state |
 | --- | --- | --- | --- |
@@ -138,8 +129,7 @@ Recovery redoes committed transactions and undoes uncommitted ones. To avoid sca
 
 **Shadow paging** achieves atomicity and durability without a log of changes. The database is a set of pages found through a page table. When a transaction starts, the current page table is copied; the original becomes the **shadow page table** and is never modified. Each page the transaction writes is copied to a new location, and only the new table points to it.
 
-- **Commit**: flush the modified pages and the new page table, then atomically switch the single pointer that names the current page table.
-- **Abort or crash**: discard the new pages; the shadow table still describes the old, consistent database.
+@figure shadow-paging
 
 It makes recovery trivial, but it scatters related pages across the disk, leaves old pages to garbage-collect, makes every commit write a page table, and is hard to combine with concurrent transactions. That is why mainstream relational systems use WAL; the copy-on-write idea survives in some storage engines and file systems.
 

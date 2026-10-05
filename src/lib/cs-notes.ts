@@ -209,11 +209,12 @@ export const noteBlocks = (body: string): LessonBlock[] => lessonBlocks(body);
 
 const words = (s: string) => s.split(/\s+/).filter(Boolean).length;
 
-/** Prose in words: code, tables' pipes and link targets are not words read. */
+/** Prose in words: code, tables' pipes, link targets and `@figure` lines are not words read. */
 export function noteProseWords(body: string): number {
   return words(
     body
       .replace(/```[\s\S]*?```/g, " ")
+      .replace(/^@figure\s.*$/gm, " ")
       .replace(/\]\([^)\s]*\)/g, "]")
       .replace(/`[^`]*`/g, " x ")
       .replace(/[#*|>_-]/g, " "),
@@ -224,8 +225,19 @@ export function noteProseWords(body: string): number {
  * Words of prose a note carries: enough to answer what an interviewer asks
  * about the topic — the definition, how it works, a worked example, the
  * comparisons and the traps — and not a textbook chapter.
+ *
+ * Lowered from 900–2,600 when the figures arrived (2026-10-05, the owner's
+ * standing "show less content and describe more through graphics"): a
+ * figure now carries the Gantt chart, the handshake, the class diagram, and
+ * the paragraphs that narrated them went. Less of a drop than the roadmap
+ * lessons' (lib/roadmap-lessons PROSE_WORDS, 700–1,800), because what a note
+ * is for — the definition to say out loud, the worked example to redo on
+ * paper, the comparisons and the interview answers — is text no picture
+ * replaces.
  */
-export const NOTE_WORDS = { min: 900, max: 2600 } as const;
+export const NOTE_WORDS = { min: 800, max: 2200 } as const;
+/** Figures a note places at the least (aim for three to six): where a picture explains better than prose, it explains. */
+export const NOTE_FIGURES_MIN = 3;
 /** Display-only fences a note may show (no output, not run): anything the judge cannot execute. */
 export const DISPLAY_FENCES = new Set(["c", "sql", "text", "bash", "http", "json", "plaintext"]);
 
@@ -280,6 +292,7 @@ export function validateNote(n: CsNote): string[] {
     }
   }
   const figures = blocks.flatMap((b) => (b.kind === "figure" ? [b.name] : []));
+  if (figures.length < NOTE_FIGURES_MIN) out.push(`${at}: ${figures.length} figures; a note needs at least ${NOTE_FIGURES_MIN} — draw it rather than describe it`);
   const placed = new Set<string>();
   for (const name of figures) {
     if (placed.has(name)) out.push(`${at}: figure "${name}" is placed twice`);

@@ -6,17 +6,23 @@
  *
  *   npx tsx scripts/preview-walkthroughs.ts [--group <file>] [--only slug,slug] [--out dir] [--png] [--dark]
  *   npx tsx scripts/preview-walkthroughs.ts --lesson <lesson slug> [--only name,name] [--png] [--dark]
+ *   npx tsx scripts/preview-walkthroughs.ts --note <note slug> [--only name,name] [--png] [--dark]
  *
  * --lesson previews a roadmap lesson's own figures (src/lib/lesson-figures/
  * <slug>.ts) under the lesson limits (one frame allowed, 600 wide), into
  * scratch/lesson-figures/<slug>/ unless --out says otherwise.
+ *
+ * --note does the same for a CS note's figures (src/lib/note-figures/
+ * <slug>.ts, the same limits), into scratch/note-figures/<slug>/. It
+ * imports that one module by its path rather than through the registry, so
+ * a figure can be previewed while another note's module is mid-edit.
  *
  * --group loads src/lib/walkthroughs/<file>.ts's own WALKTHROUGHS record as
  * well as the registry (a group not registered yet can be previewed).
  * Writes <out>/walkthroughs.html (default out: scratch/walkthroughs/) and,
  * with --png, one <out>/<slug>.png per walkthrough.
  */
-import { mkdirSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -39,12 +45,20 @@ const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replac
 
 async function main() {
   const lesson = value("lesson");
+  const noteSlug = value("note");
   if (lesson && !LESSON_FIGURES[lesson]) throw new Error(`no figure module for lesson "${lesson}"`);
-  const registry: Record<string, () => Walkthrough> = lesson ? { ...LESSON_FIGURES[lesson] } : { ...WALKTHROUGHS };
-  const limits = lesson ? FIGURE_LIMITS : {};
+  let noteFigures: Record<string, () => Walkthrough> | undefined;
+  if (noteSlug) {
+    const file = resolve(here, "../src/lib/note-figures", `${noteSlug}.ts`);
+    if (!existsSync(file)) throw new Error(`no figure module for note "${noteSlug}" (src/lib/note-figures/${noteSlug}.ts)`);
+    noteFigures = ((await import(pathToFileURL(file).href)) as { FIGURES?: Record<string, () => Walkthrough> }).FIGURES;
+    if (!noteFigures) throw new Error(`${noteSlug}.ts exports no FIGURES`);
+  }
+  const registry: Record<string, () => Walkthrough> = noteFigures ? { ...noteFigures } : lesson ? { ...LESSON_FIGURES[lesson] } : { ...WALKTHROUGHS };
+  const limits = lesson || noteFigures ? FIGURE_LIMITS : {};
   const group = value("group");
   let groupSlugs: string[] | undefined;
-  if (group && !lesson) {
+  if (group && !lesson && !noteSlug) {
     const mod = (await import(pathToFileURL(resolve(here, "../src/lib/walkthroughs", `${group}.ts`)).href)) as { WALKTHROUGHS?: Record<string, () => Walkthrough> };
     if (!mod.WALKTHROUGHS) throw new Error(`${group}.ts exports no WALKTHROUGHS`);
     Object.assign(registry, mod.WALKTHROUGHS);
@@ -53,7 +67,7 @@ async function main() {
   const only = value("only")?.split(",").map((s) => s.trim()).filter(Boolean);
   // A group alone previews its own; --only narrows to the named ones.
   const slugs = (only ?? groupSlugs ?? Object.keys(registry)).filter((s) => s in registry);
-  const out = resolve(value("out") ?? resolve(here, lesson ? `../scratch/lesson-figures/${lesson}` : "../scratch/walkthroughs"));
+  const out = resolve(value("out") ?? resolve(here, noteSlug ? `../scratch/note-figures/${noteSlug}` : lesson ? `../scratch/lesson-figures/${lesson}` : "../scratch/walkthroughs"));
   mkdirSync(out, { recursive: true });
 
   let failures = 0;

@@ -42,6 +42,8 @@ An address has two parts: the **network portion** (identical for every host on t
 
 Before 1993, the first bits of an address fixed its class and therefore its network/host split.
 
+@figure classes
+
 | Class | Leading bits | First octet | Default mask | Networks | Usable hosts each | Use |
 | --- | --- | --- | --- | --- | --- | --- |
 | A | 0 | 0 to 127 | 255.0.0.0 (/8) | 128 (126 usable) | 2^24 − 2 = 16,777,214 | Very large networks |
@@ -107,9 +109,15 @@ A **subnet mask** is 32 bits with 1s for the network part and 0s for the host pa
 
 Check: each broadcast is one less than the next network address, and 4 × 64 = 256 covers the whole /24.
 
+@figure split
+
 ### Which subnet does 192.168.10.150/26 belong to?
 
-AND the address with the mask; only the last octet changes.
+AND the address with the mask to get the network address; set every host bit to 1 to get the broadcast.
+
+@figure bits
+
+On paper, only the last octet changes:
 
 | | Dotted decimal | Last octet in binary |
 | --- | --- | --- |
@@ -308,9 +316,13 @@ Equal subnets waste addresses when needs differ. **Variable Length Subnet Maskin
 
 Addresses 192.168.10.228 to .255 stay free for later. With equal /26 subnets, the 100-host LAN would not have fitted at all.
 
+@figure vlsm
+
 ## Supernetting (route aggregation)
 
-Supernetting is the reverse: combining contiguous networks into one shorter prefix so a router advertises one route instead of many. The four networks 192.168.0.0/24, 192.168.1.0/24, 192.168.2.0/24 and 192.168.3.0/24 have third octets 000000**00**, 000000**01**, 000000**10** and 000000**11**: the first 22 bits are shared, so they summarise as **192.168.0.0/22**. The networks must be contiguous, their count must be a power of 2, and the first network must start on a multiple of the block (here the third octet 0 is a multiple of 4). 192.168.1.0 to 192.168.4.0 cannot form one /22, because 1 is not a multiple of 4.
+Supernetting is the reverse: combining contiguous networks into one shorter prefix so a router advertises one route instead of many. The four networks 192.168.0.0/24 to 192.168.3.0/24 share their first 22 bits, so they summarise as **192.168.0.0/22**. The networks must be contiguous, their count must be a power of 2, and the first network must start on a multiple of the block (here the third octet 0 is a multiple of 4). 192.168.1.0 to 192.168.4.0 cannot form one /22, because 1 is not a multiple of 4.
+
+@figure supernet
 
 ## IPv4 vs IPv6
 
