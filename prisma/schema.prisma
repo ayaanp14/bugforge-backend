@@ -1087,7 +1087,8 @@ model MockAttempt {
   id             String           @id @default(cuid())
   userId         String
   testId         String
-  /// "in-progress" | "submitted" | "expired"
+  /// "in-progress" | "submitted" | "expired" | "terminated" (ended by the
+  /// proctoring — see BREACH_LIMIT in lib/skill-tests.ts)
   status         String           @default("in-progress")
   /// "<userId>:<testId>" while the sitting is live, null once it is closed.
   ///
@@ -1120,6 +1121,9 @@ model MockAttempt {
   skippedCount   Int?
   /// Per-section marks, accuracy and time, computed once at submit.
   sectionScores  Json?
+  /// The proctoring's counters, as on SkillAttempt: { breaches, paste, and
+  /// one per breach cause }. Placement sittings are proctored since 2026-10-05.
+  signals        Json             @default("{}")
   test           MockTest         @relation(fields: [testId], references: [id], onDelete: Cascade)
   user           User             @relation(fields: [userId], references: [id], onDelete: Cascade)
   answers        MockAnswer[]

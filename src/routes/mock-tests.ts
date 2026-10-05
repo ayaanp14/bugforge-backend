@@ -13,6 +13,7 @@ import { browserCache } from "../lib/http-cache.js";
 import { codingPool, questionIndex } from "../services/aptitude-bank.js";
 import { TEST_GUIDES } from "../lib/test-guides.js";
 import { testSamples } from "../services/test-samples.js";
+import { BREACH_LIMIT, breachCausesOf, isMobileClient, isSignalKind, recordBreach, SIGNAL_CAP, type Signals } from "../lib/skill-tests.js";
 
 /**
  * Full-length placement tests.
@@ -22,6 +23,12 @@ import { testSamples } from "../services/test-samples.js";
  * after the attempt is closed. Everything about the clock is decided from the
  * stored deadlines, so a reload cannot buy time and a stale tab cannot keep a
  * finished section alive.
+ *
+ * Since 2026-10-05 a sitting is proctored exactly as a skill test is (the
+ * owner's ask): laptop or desktop only, full screen, webcam on, and the
+ * BREACH_LIMIT-th departure or camera finding ends it as "terminated". The
+ * rules and their reasons live in lib/skill-tests.ts and the runner's lock
+ * (frontend components/skill-tests/SittingLock.tsx); this file only counts.
  */
 const router = Router();
 
@@ -124,8 +131,14 @@ const testPattern = (slug: string) =>
 /**
  * Grades a sitting and closes it. Idempotent: an attempt already closed is
  * returned untouched, so a submit racing an expiry cannot double-count.
+ *
+ * "terminated" is a sitting the proctoring ended (POST …/breach). It is
+ * graded like any other, so the review still teaches, but it is marked
+ * disqualified on the result and never stands as the pattern's best score:
+ * what was answered after looking elsewhere is not a result. A placement
+ * test has no pass mark or cooldown, so that is all it costs.
  */
-async function finishAttempt(attemptId: string, reason: "submitted" | "expired") {
+async function finishAttempt(attemptId: string, reason: "submitted" | "expired" | "terminated") {
   const attempt = await prisma.mockAttempt.findUnique({
     where: { id: attemptId },
     include: { test: { select: ATTEMPT_TEST_SELECT }, answers: true, codeAnswers: true },
@@ -300,7 +313,8 @@ router.get("/", optionalAuth, cacheWhenAnonymous, async (req: any, res) => {
       tests: tests.map((test) => {
         const mine = byTest.get(test.id) ?? [];
         const done = mine.filter((a) => a.status !== "in-progress" && a.maxScore);
-        const best = done.reduce<number | null>((acc, a) => (a.score != null && (acc == null || a.score > acc) ? a.score : acc), null);
+        // A sitting the proctoring ended is counted as sat but is no one's best (finishAttempt).
+        const best = done.reduce<number | null>((acc, a) => (a.status !== "terminated" && a.score != null && (acc == null || a.score > acc) ? a.score : acc), null);
         return {
           ...testSummary(test),
           attempts: done.length,
@@ -354,6 +368,8 @@ router.get("/:slug", optionalAuth, cacheWhenAnonymous, async (req: any, res) => 
         // bank (services/test-samples), each with its answer — the edge
         // writes the same ones into the page's HTML.
         samples,
+        // The warning that ends a sitting, for the rules stated before Start.
+        breachLimit: BREACH_LIMIT,
         sections: test.sections.map((section) => {
           const rules = (section.blueprint ?? []) as unknown as DrawRule[];
           const coding = section.kind === "coding";
@@ -408,6 +424,11 @@ router.post("/:slug/start", requireAuth, async (req: any, res) => {
   try {
     const test = await testPattern(req.params.slug);
     if (!test) return res.status(404).json({ error: "Test not found" });
+    // Laptop or desktop only: the webcam proctor and full screen need one.
+    // The page says so before the click; this refuses a click that got past it.
+    if (isMobileClient(req.headers)) {
+      return res.status(403).json({ error: "Placement tests can only be taken on a laptop or desktop computer.", reason: "device" });
+    }
 
     // Only the id is read, and the row carries the whole drawn paper as
     // JSON — the fast path for a resume was pulling all of it to answer with
@@ -641,6 +662,8 @@ router.get("/attempts/:id", requireAuth, async (req: any, res) => {
       },
       answers: answers.map((row) => ({ questionId: row.questionId, selected: row.selected, marked: row.marked })),
       clock: { paperRemainingSec: clock.paperRemainingSec, sectionRemainingSec: clock.sectionRemainingSec, serverTime: Date.now() },
+      // Warnings spent so far, and the one that ends the sitting.
+      integrity: { breaches: ((attempt.signals ?? {}) as Signals).breaches ?? 0, limit: BREACH_LIMIT },
     });
   } catch (error: any) {
     console.error("Mock attempt state error:", error?.message);
@@ -950,6 +973,60 @@ router.post("/attempts/:id/section", requireAuth, async (req: any, res) => {
 });
 
 /**
+ * POST /api/tests/attempts/:id/signal — Body: { kind }.
+ * A blocked paste, counted for the record. Counters only, capped; a
+ * read-modify-write is fine — two landing together lose one count.
+ */
+router.post("/attempts/:id/signal", requireAuth, async (req: any, res) => {
+  try {
+    const kind = (req.body ?? {})["kind"];
+    if (!isSignalKind(kind)) return res.status(400).json({ error: "Unknown signal" });
+    const attempt = await prisma.mockAttempt.findFirst({
+      where: { id: String(req.params.id), userId: req.user.userId, status: "in-progress" },
+      select: { id: true, signals: true },
+    });
+    if (!attempt) return res.status(204).end();
+    const signals = { ...((attempt.signals ?? {}) as Signals) };
+    signals[kind] = Math.min(SIGNAL_CAP, (signals[kind] ?? 0) + 1);
+    await prisma.mockAttempt.update({ where: { id: attempt.id }, data: { signals }, select: { id: true } });
+    res.status(204).end();
+  } catch (error: any) {
+    console.error("Mock signal error:", error?.message);
+    res.status(500).json({ error: "Could not record that" });
+  }
+});
+
+/**
+ * POST /api/tests/attempts/:id/breach — Body: { causes: BreachCause[] }.
+ * One departure from the screen, or one webcam finding (the runner gathers
+ * a departure's signals into one report). Counted; the BREACH_LIMIT-th ends
+ * the sitting as "terminated". Answers { breaches, limit, ended }; a
+ * sitting already closed answers ended, so the runner leaves for the result.
+ *
+ * The skill tests' handler, over this table: departures are seconds apart
+ * (each needs the candidate to come back first), so the read-modify-write
+ * never races in practice.
+ */
+router.post("/attempts/:id/breach", requireAuth, async (req: any, res) => {
+  try {
+    const causes = breachCausesOf((req.body ?? {})["causes"]);
+    if (causes.length === 0) return res.status(400).json({ error: "Unknown breach" });
+    const attempt = await loadOwnAttempt(String(req.params.id), req.user.userId);
+    if (!attempt) return res.status(404).json({ error: "Attempt not found" });
+    if (attempt.status !== "in-progress") {
+      return res.json({ breaches: ((attempt.signals ?? {}) as Signals).breaches ?? 0, limit: BREACH_LIMIT, ended: true });
+    }
+    const { signals, breaches, ended } = recordBreach((attempt.signals ?? {}) as Signals, causes);
+    await prisma.mockAttempt.update({ where: { id: attempt.id }, data: { signals }, select: { id: true } });
+    if (ended) await finishAttempt(attempt.id, "terminated");
+    res.json({ breaches, limit: BREACH_LIMIT, ended });
+  } catch (error: any) {
+    console.error("Mock breach error:", error?.message);
+    res.status(500).json({ error: "Could not record that" });
+  }
+});
+
+/**
  * POST /api/tests/attempts/:id/submit
  * Ends the sitting and grades it.
  */
@@ -1024,6 +1101,8 @@ router.get("/attempts/:id/result", requireAuth, async (req: any, res) => {
         wrongCount: attempt.wrongCount,
         skippedCount: attempt.skippedCount,
         sectionScores: attempt.sectionScores,
+        // How many warnings it took — what a "terminated" result explains.
+        breaches: ((attempt.signals ?? {}) as Signals).breaches ?? 0,
       },
       test: { slug: test.slug, name: test.name, company: test.company, negativeMark: test.negativeMark, totalQuestions: test.totalQuestions },
       topics: [...perTopic.entries()]

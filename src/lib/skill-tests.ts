@@ -192,6 +192,10 @@ export const SIGNAL_CAP = 500;
  * against the frame — no face, a second face, the head turned away, a phone
  * in view, the camera switched off — is a breach on the same count, not a
  * limit of its own. The frames never leave the browser; only the cause does.
+ *
+ * Placement tests (routes/mock-tests.ts) are proctored by these same rules
+ * since 2026-10-05 — the limit, the causes, recordBreach, isMobileClient —
+ * so a change here changes both.
  */
 export const BREACH_LIMIT = 3;
 
@@ -238,8 +242,8 @@ const CAMERA_FLAG_TEXT: ReadonlyArray<[BreachCause, string]> = [
 ];
 
 /**
- * Is the request from a phone or a tablet? Skill tests are sat on a laptop
- * or desktop only; the runner says so before the click, this refuses the
+ * Is the request from a phone or a tablet? Skill and placement tests are sat
+ * on a laptop or desktop only; the runner says so before the click, this refuses the
  * click that got past it. Chromium's `Sec-CH-UA-Mobile` first, then the user
  * agent. An iPad presents itself as a Mac here — only the browser can tell
  * (frontend lib/proctor/device.ts).
