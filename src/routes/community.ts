@@ -332,6 +332,16 @@ function visibleTo(userId: string | null, followingIds: string[]) {
 }
 
 /**
+ * Interview experiences are posts — their permalink, likes and comments are
+ * the community's — but they are read in the Interview section
+ * (/interview-experiences, a company's page), not the feed: the owner's call,
+ * 2026-10-05, when the composer's "Experience" choice went too. Every feed
+ * query (For you, Following, the visitor window, the backfills) and the
+ * trending tags leave them out; Saved keeps one a reader bookmarked.
+ */
+const IN_FEED = { type: { not: "experience" } };
+
+/**
  * The "For you" candidate window — every public post of the last fortnight, up
  * to the cap — is the same rows for every viewer, and it was the feed's single
  * heaviest read: two hundred posts with author, counts and tags, per request.
@@ -369,7 +379,7 @@ function publicWindow(tag: string | null): Promise<Candidate[]> {
   return cachedShared(publicCandidatesKey(tag), 30, async () => {
     const since = new Date(Date.now() - RANK.candidateDays * 86400000);
     return (await prisma.post.findMany({
-      where: { visibility: "public", createdAt: { gte: since }, ...(tag ? { tags: { some: { tag } } } : {}) },
+      where: { visibility: "public", createdAt: { gte: since }, ...IN_FEED, ...(tag ? { tags: { some: { tag } } } : {}) },
       orderBy: { createdAt: "desc" },
       take: RANK.candidateCap,
       include: POST_INCLUDE,
@@ -417,6 +427,7 @@ function queryPrivateCandidates(userId: string, tag: string | null): Promise<Can
       AND: [
         { createdAt: { gte: since } },
         { visibility: { not: "public" } },
+        IN_FEED,
         { OR: [{ userId }, { visibility: "followers", user: { followers: { some: { followerId: userId } } } }] },
         ...(tag ? [{ tags: { some: { tag } } }] : []),
       ],
@@ -611,6 +622,7 @@ router.get("/feed", optionalAuth, async (req, res) => {
 
     const baseAndFor = (followingIds: string[]) => {
       const baseAnd: object[] = [visibleTo(userId, followingIds)];
+      if (scope !== "saved") baseAnd.push(IN_FEED);
       if (scope === "following") baseAnd.push({ userId: { in: [...followingIds, userId as string] } });
       if (scope === "saved") baseAnd.push({ saves: { some: { userId: userId as string } } });
       if (tagFilter) baseAnd.push({ tags: { some: { tag: tagFilter } } });
@@ -1588,7 +1600,7 @@ function getTrending() {
     const weekAgo = new Date(Date.now() - 7 * 24 * 3600 * 1000);
     const groups = await prisma.postTag.groupBy({
       by: ["tag"],
-      where: { post: { createdAt: { gte: weekAgo }, visibility: "public" } },
+      where: { post: { createdAt: { gte: weekAgo }, visibility: "public", ...IN_FEED } },
       _count: { _all: true },
       orderBy: { _count: { tag: "desc" } },
       take: 10,
@@ -1599,7 +1611,7 @@ function getTrending() {
     // One pass over the week's rows for the sparklines, bucketed by day here
     // rather than seven grouped queries per tag.
     const rows = await prisma.postTag.findMany({
-      where: { tag: { in: top }, post: { createdAt: { gte: weekAgo }, visibility: "public" } },
+      where: { tag: { in: top }, post: { createdAt: { gte: weekAgo }, visibility: "public", ...IN_FEED } },
       select: { tag: true, post: { select: { createdAt: true } } },
     });
     const startOfToday = new Date();
