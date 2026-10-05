@@ -79,12 +79,12 @@ Public pages (no account needed):
 
 One request builds it; it refreshes itself after a submission, a chest, a follow or a profile edit (otherwise within about five minutes).
 
-- **Greeting** with the date and your streak line, then two cards side by side.
-- **Continue solving** (the blue card): the newest non-empty draft on an unsolved problem with a **Resume** button (or **Browse the challenges** when there is none) and a **Random problem** button; beside it **Up next for you** — up to three recommendations, problems being attempted first, then untouched ones.
-- **Rank card**: rank title, rating and the progress bar to the next rank, your **Global rank** (by combined XP; "—" until the account has XP) and top percentage, member since, followers and following.
-- **Stat cards**: Solved, Acceptance, Streak, XP (with this week's gain and the problems/bug-hunts split), Bugs fixed, SQL solved.
-- Main column: **Activity heatmap** (365 days), **Recent submissions** (last five across problems, bug hunts and SQL problems; open one to read its code — a SQL one opens its problem), **Skills** (topic tags with solved/total, languages used).
-- Right column: CodeKairo Battles card, **Problem progress** ring by difficulty, **Explore** (daily contest with today's problem and whether it is open or done, bug hunts, **pair rooms**, **mock interviews** — the way to open a pair room or start a mock interview from home), **Leaderboard preview** (top five by XP with your rank).
+- Layout: your **profile** on the left (it stays in view while you scroll; on a phone it comes right after "Today"), and on the right the greeting and a **timeline** of sections joined by a line.
+- **Profile**: name, rank title, rating and the progress bar to the next rank, your **Global rank** (by combined XP; "—" until the account has XP) and top percentage, then Solved, Acceptance, Streak, XP, Bugs fixed and SQL solved (with today's/this week's gains), member since, followers and following, and a link to your profile.
+- **Today**: whether today's solve keeps your streak; **Continue solving** — the newest non-empty draft on an unsolved problem, with a **Resume** button (or **Browse the challenges** when there is none) and a **Random problem** button; then today's **daily contest** problem (open or solved) and, on a study plan, its next lesson.
+- **Up next**: up to three recommendations — problems being attempted first, then untouched ones.
+- Further down: CodeKairo **Battles** (the tournament live or open now, or how to host one), **Recent submissions** (last five across problems, bug hunts and SQL problems; open one to read its code — a SQL one opens its problem) beside the **Leaderboard preview** (top five by XP with your rank), the **Activity heatmap** (365 days), **Skills** (topic tags with solved/total, languages used) beside **Problem progress** (ring by difficulty).
+- **Keep practising** at the end: bug hunts, **pair rooms** and **mock interviews** — the way to open a pair room or start a mock interview from home.
 - "Solved today" counts *first-time* solves in the last 24 hours; "XP this week" counts first-time solves in the last 7 days (rolling windows, not calendar days).
 
 ## Solving problems
