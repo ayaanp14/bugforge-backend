@@ -1,6 +1,6 @@
 # CodeKairo handbook
 
-CodeKairo is a competitive-coding and interview-preparation platform built for Indian college students and early-career engineers: DSA problems judged by hidden tests, bug hunts on real code, a DSA roadmap, a daily contest, 1v1/2v2 duels, live pair rooms, AI mock interviews (written and spoken), an aptitude bank, full-length placement tests, and a community feed — plus coding tournaments hosted by colleges and clubs on a sister site, CodeKairo Battles (battles.codekairo.com), on the same account. Prices are in rupees; the product calendar is Indian time (IST). Everything below is what the site actually does, edge cases included. Pages are given as paths (for example `/roadmap`); when you point someone somewhere, link the path.
+CodeKairo is a competitive-coding and interview-preparation platform built for Indian college students and early-career engineers: DSA problems judged by hidden tests, bug hunts on real code, a DSA roadmap, a daily contest, 1v1/2v2 duels, live pair rooms, AI mock interviews (written and spoken), an aptitude bank, full-length placement tests, SQL practice problems, CS fundamentals notes (OS, networks, DBMS, OOP), interview experiences shared by members, and a community feed — plus coding tournaments hosted by colleges and clubs on a sister site, CodeKairo Battles (battles.codekairo.com), on the same account. Prices are in rupees; the product calendar is Indian time (IST). Everything below is what the site actually does, edge cases included. Pages are given as paths (for example `/roadmap`); when you point someone somewhere, link the path.
 
 ## Site map
 
@@ -11,6 +11,9 @@ Signed-in pages (the dashboard shell — top navigation, Ctrl+K search, the bell
 - **DSA roadmap**: `/roadmap` · `/roadmap/certificate`.
 - **Study plans**: `/study-plans`, `/study-plans/<track>` (a language's plan), `/study-plans/<track>/<lesson>` (a lesson), `/study-plans/<track>/certificate`.
 - **Daily contest**: `/contests`.
+- **SQL problems**: `/sql` (the list) and `/sql/<slug>` (a problem's workbench).
+- **CS notes**: `/notes`, `/notes/<subject>` (operating-systems, computer-networks, dbms, oop) and `/notes/<subject>/<slug>` (one note, e.g. `/notes/dbms/normalization`).
+- **Interview experiences**: `/interview-experiences` (filter with `?company=<company>`).
 - **Bug hunts**: `/bug-hunts`, `/bug-hunts/<language>` and `/bug-hunts/<layer>` (javascript, python, java; frontend, backend, database) and `/bug-hunts/<slug>`.
 - **Duels and pair rooms**: `/duels` and `/duels/<id>` · `/pair-mode` lobby and `/pair-room/<roomId>`.
 - **Mock interviews**: `/mock-interview` builder, `/mock-interview/session` (written room), `/mock-interview/voice` (voice room), `/mock-interview/history`, `/mock-interview/report/<sessionId>`.
@@ -19,12 +22,12 @@ Signed-in pages (the dashboard shell — top navigation, Ctrl+K search, the bell
 - **Skill tests**: `/skill-tests`, `/skill-tests/<slug>` (e.g. `java-basic`, `sql-intermediate`), `/skill-tests/attempt/<attemptId>`, `/skill-tests/result/<attemptId>` · `/verify/<code>` (a credential's public check).
 - **Resume**: `/resume` resume ATS analyzer, `/resume/<id>` (a resume's workspace), `/resume/history`.
 - **Community**: `/community` and `/community/p/<postId>`.
-- The top navigation groups them as **Problems** (Challenges, DSA Roadmap, Study Plans, Daily Contest, Bug Hunts), **Interview** (Mock Interviews, Interview History, Resume ATS, Placement Tests, Skill Tests, Aptitude), **Compete** (Duels, Pair Rooms, Leaderboard) and **Community**.
+- The top navigation groups them as **Problems** (Challenges, DSA Roadmap, Study Plans, SQL Practice, CS Notes, Daily Contest, Bug Hunts), **Interview** (Mock Interviews, Interview History, Interview Experiences, Resume ATS, Placement Tests, Skill Tests, Aptitude), **Compete** (Duels, Pair Rooms, Leaderboard) and **Community**.
 
 Public pages (no account needed):
 
 - **Visitor pages**: `/` landing page for visitors · `/login` · `/register` · `/about` · `/faq` · `/privacy` · `/rating` (how rating, XP and streaks work) · one landing page per feature under `/product/` — `challenges`, `bug-hunts`, `pair-mode`, `mock-interviews`, `study-plans`, `dsa-roadmap`, `daily-contest`, `aptitude`, `placement-tests`, `resume-ats`, `duels`, `leaderboard`, `community` · `/campus-ambassador` · `/pricing` (readable signed out; buying needs an account).
-- **Reading without an account**: the app's content pages are readable signed out too — the catalogue and every problem (its statement, editorial and reference solutions; the hints need an account), bug hunts, study plans and lessons, aptitude topics and questions, placement test patterns, skill test pages and credential verification pages, the roadmap, the daily contest, the leaderboard, the resume analyzer's front door, the interview builder and history, the duel and pair-room lobbies, the community feed and a public post's permalink — with every action (running or submitting code, starting a test, an interview or a duel, hosting or joining a room, enrolling, uploading a resume, posting, respecting, commenting, saving, following, buying) locked behind sign-in: the page shows a "Sign in to …" card where the control would be, and sign-in returns to the same page.
+- **Reading without an account**: the app's content pages are readable signed out too — the catalogue and every problem (its statement, editorial and reference solutions; the hints need an account), bug hunts, SQL problems (statement, tables, examples and editorial), the CS notes, interview experiences, study plans and lessons, aptitude topics and questions, placement test patterns, skill test pages and credential verification pages, the roadmap, the daily contest, the leaderboard, the resume analyzer's front door, the interview builder and history, the duel and pair-room lobbies, the community feed and a public post's permalink — with every action (running or submitting code, starting a test, an interview or a duel, hosting or joining a room, enrolling, uploading a resume, posting, respecting, commenting, saving, following, buying) locked behind sign-in: the page shows a "Sign in to …" card where the control would be, and sign-in returns to the same page.
 - **Pages that do not exist**: there is no terms-of-service page (the sign-up form mentions terms but no page exists) and no app-store listing linked from the site.
 - **Contact addresses**: there are two published addresses, both in the footer of every marketing page: **support@codekairo.com** for anything wrong or owed — help with a feature, a bug, a payment, an account, and the data requests on `/privacy` — and **contact@codekairo.com** for everything else, such as press, partnerships and the co-founder note on `/about`. When someone just wants help, give them the support address.
 
@@ -190,6 +193,18 @@ One request builds it; it refreshes itself after a submission, a chest, a follow
 - Edited files are limited to 200 KB each and must not contain `__CODEXA_`. Runs and submits share the same 30-per-minute execution limit as problems.
 - **Debugging streak** on the index: consecutive days (UTC) with at least one accepted fix.
 - Previous/next hunt in the header follow newest-first order. An accepted fix offers **Share win**.
+
+## SQL problems — `/sql`
+
+- **What they are**: LeetCode-style database problems written in **MySQL** — each shows its tables (columns and types), an example dataset with the expected result, and asks for one SELECT that returns the right rows. Topics: basics, joins, aggregation (GROUP BY/HAVING), subqueries, window functions, strings, dates and conditional logic; easy, medium and hard. The list at `/sql` has search, difficulty and topic filters, acceptance rates and your solved marks.
+- **How a query is judged**: it runs on the example datasets (**Run**) or on every hidden dataset too (**Submit**) — empty tables, ties, NULLs and duplicates. The result must have the same columns, **by name** (alias with AS), and the same rows; row order matters only when the statement says "ordered by". A failed submission shows the dataset it failed on, the expected result and yours. Only one SELECT (or WITH … SELECT) runs; statements that change tables are refused.
+- **The engine**: queries run on SQLite behind a MySQL compatibility layer, so MySQL functions work — IF, IFNULL, DATEDIFF, DATE_ADD(d, INTERVAL n DAY), DATE_FORMAT, YEAR/MONTH, GROUP_CONCAT … SEPARATOR, CONCAT, LEFT/RIGHT, window functions (ROW_NUMBER, RANK, DENSE_RANK, LAG, LEAD) — and `/` divides as a decimal like MySQL. Every problem's reference queries are checked against a real MySQL 8. Comparing strings is case-sensitive.
+- **What it pays**: the first accepted submission of a problem pays **10/20/30 XP** (easy/medium/hard) to XP and rating. Every problem has hints and an editorial with the reference query and other ways to write it, readable without an account; running and submitting need one.
+
+## CS notes — `/notes`
+
+- **What they are**: reading for the "fundamentals" round of placements and technical interviews — **Operating Systems** (processes and threads, CPU scheduling, synchronization, deadlocks, memory, virtual memory, page replacement, file systems, disk scheduling, IPC), **Computer Networks** (OSI and TCP/IP models, IP addressing and subnetting, TCP and UDP, DNS, HTTP/HTTPS, routing, the data link layer, NAT/DHCP/ports, what happens when you type a URL, security basics), **DBMS** (ER model, keys, functional dependencies, normalization, SQL, joins, aggregation, transactions and ACID, concurrency control, indexing and B+ trees, SQL vs NoSQL) and **OOP** (classes and objects, encapsulation, inheritance, polymorphism, abstraction, relationships, SOLID, design patterns, equality and copying, exception handling). About a dozen notes per subject, in reading order.
+- **What a note has**: the direct answer first, then how it works, worked examples you can redo on paper (Gantt charts, Banker's algorithm, subnetting, CRC, normalization, B+ tree inserts), comparison tables, common mistakes, the interview questions with answers, and common questions at the end. OOP notes carry programs in C++, Java and Python that were run before publishing. Free, no account needed. Each subject links to its skill test (os, networks, sql, oop).
 
 ## Duels — `/duels`
 
@@ -362,6 +377,11 @@ Each line: duration · questions · negative marking · sectional or free timing
 - **Layout**: the feed is in the middle, under a one-line title and the composer. The **left column** (wide screens) holds your card (followers/following/posts, progress to the next rank, and a **Write a post** button) and the feed switcher — For you, Following, Saved. On smaller screens the switcher is tabs above the feed, and a floating write button appears once you scroll. The **right column** has **This week** (solves, posts and new coders this week, the week's most-solved problem and most-hunted bug hunt, and the coder of the week), **Trending tags** (last 7 days; click one to filter the feed) and **Who to follow**. Both side columns stay pinned while the feed scrolls. A "solve" there is a problem or hunt someone accepted for the **first time** — re-submitting a solved problem does not count, the same rule as "solved" on the profile.
 - **Write limit**: 40 posts+comments per 10 minutes per account.
 - A post's permalink is `/community/p/<id>` — where shared links and notifications land.
+
+### Interview experiences — `/interview-experiences`
+
+- **What they are**: posts of a fourth kind, written by members about their own interviews: the company, the role, the year, how they applied (on campus, off campus, referral), how it ended (selected, not selected, pending, withdrew), the difficulty, every round in order with what it asked, the coding problems they were given (linked to the catalogue) and closing notes. They appear in the feed, at `/interview-experiences` (filter by company and outcome) and on the company's catalogue page (`/challenges/company/<company>`, "interview experiences" section) when the company is one the catalogue tags.
+- **Sharing one**: the composer's **Experience** button (or "Share your experience" on the experiences page or a company page) opens a form; a draft is kept in the browser until it is published or discarded. At least one round with a description and about 200 characters across the rounds and notes are required; up to 8 rounds and 6 linked problems. Experiences are always public. Edit the notes text from the post's menu; to change the rounds, delete and post again.
 
 ## Tournaments — CodeKairo Battles (battles.codekairo.com)
 

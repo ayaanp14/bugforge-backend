@@ -75,8 +75,9 @@ import { DP7_PROBLEMS } from "./dp7.js";
 import { GRAPHS6_PROBLEMS } from "./graphs6.js";
 import { MATRICES6_PROBLEMS } from "./matrices6.js";
 import { BACKTRACKING6_PROBLEMS } from "./backtracking6.js";
+import { COMPANY_COVERAGE } from "./company-coverage.js";
 
-export const CATALOG: CatalogProblem[] = [
+const AUTHORED: CatalogProblem[] = [
   ...ARRAY_PROBLEMS,
   ...STRING_PROBLEMS,
   ...TWO_POINTER_PROBLEMS,
@@ -142,3 +143,23 @@ export const CATALOG: CatalogProblem[] = [
   ...MATRICES6_PROBLEMS,
   ...BACKTRACKING6_PROBLEMS,
 ];
+
+/**
+ * Company tags added after authoring (company-coverage.ts, 2026-10-05) — a
+ * problem keeps its own tags and gains the companies that list it, in the
+ * order the coverage file names them. Seeding writes the merged tags;
+ * scripts/apply-company-coverage.ts writes only the tags to a database that
+ * already holds the problems.
+ */
+function withCompanyCoverage(problems: CatalogProblem[]): CatalogProblem[] {
+  const extra = new Map<string, string[]>();
+  for (const [company, slugs] of Object.entries(COMPANY_COVERAGE)) {
+    for (const slug of slugs) extra.set(slug, [...(extra.get(slug) ?? []), company]);
+  }
+  return problems.map((p) => {
+    const add = (extra.get(p.slug) ?? []).filter((c) => !p.tags.includes(c));
+    return add.length ? { ...p, tags: [...p.tags, ...add] } : p;
+  });
+}
+
+export const CATALOG: CatalogProblem[] = withCompanyCoverage(AUTHORED);

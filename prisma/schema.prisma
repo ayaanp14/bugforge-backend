@@ -100,6 +100,8 @@ model User {
   accounts              Account[]
   githubConnection      GitHubConnection?
   bugSubmissions        BugSubmission[]
+  sqlSubmissions        SqlSubmission[]
+  sqlSolves             SqlSolve[]
   codeDrafts            CodeDraft[]
   roomsCreated          PairRoom[]
   roomParticipations    RoomParticipant[]
@@ -401,6 +403,39 @@ model BugSubmission {
   @@index([userId, challengeId, submittedAt])
   @@index([userId, verdict, submittedAt])
   @@index([verdict, submittedAt])
+}
+
+// SQL problems (src/lib/sql-problems — specs in code, not rows; the slug is
+// the problem's identity). Every /submit is one SqlSubmission; a first
+// accepted one also claims a SqlSolve, whose unique (userId, slug) makes the
+// XP payout one-shot the way ProblemSolve does for coding problems
+// (lib/solve-payout.ts explains why the claim, not a prior read, decides).
+model SqlSubmission {
+  id          String   @id @default(cuid())
+  userId      String
+  slug        String   @db.VarChar(120)
+  query       String   @db.Text
+  verdict     String   @db.VarChar(24)
+  passedCases Int      @default(0)
+  totalCases  Int      @default(0)
+  runtimeMs   Float    @default(0)
+  submittedAt DateTime @default(now())
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, slug, submittedAt])
+  @@index([userId, verdict, submittedAt])
+  @@index([slug, verdict])
+}
+
+model SqlSolve {
+  id          String   @id @default(cuid())
+  userId      String
+  slug        String   @db.VarChar(120)
+  submittedAt DateTime @default(now())
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, slug])
+  @@index([slug])
 }
 
 model PairRoom {

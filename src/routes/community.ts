@@ -10,6 +10,9 @@ import { browserCache } from "../lib/http-cache.js";
 import { WORN_CREDENTIAL_SELECT } from "../lib/skill-tests.js";
 import { invalidateUnread } from "../services/notifications.js";
 import { invalidateDashboard, querySocialCounts } from "../services/dashboard.js";
+import { EXPERIENCE_TAG, companyFeedTag, parseExperience } from "../lib/interview-experience.js";
+import { experienceCompanies, experienceList, forgetExperiences } from "../services/interview-experiences.js";
+import type { ExperienceOutcome } from "../lib/interview-experience.js";
 
 const router = Router();
 
@@ -554,12 +557,34 @@ function forgetFeedsWith(post: { userId: string; visibility: string }): void {
   if (post.visibility === "public") {
     invalidatePrefix(PUBLIC_CANDIDATES_PREFIX);
     invalidatePrefix(VISITOR_FEED_PREFIX);
+    // The interview-experience lists are public posts too (services/interview-experiences.ts).
+    forgetExperiences();
   } else if (post.visibility === "followers") {
     invalidatePrefix(PRIVATE_CANDIDATES_PREFIX);
   } else {
     invalidatePrefix(privateFeedPrefix(post.userId));
   }
 }
+
+// GET /api/community/experiences?company=<key>&outcome=&skip=&take= — the
+// interview experiences (services/interview-experiences.ts): public posts
+// only, nothing about the reader, so one shared cache entry per page.
+router.get("/experiences", browserCache(60, { shared: true }), async (req, res) => {
+  const q = req.query as Record<string, unknown>;
+  res.json(
+    await experienceList({
+      company: typeof q.company === "string" ? q.company.toLowerCase() : null,
+      outcome: typeof q.outcome === "string" ? (q.outcome as ExperienceOutcome) : null,
+      skip: Number(q.skip) || 0,
+      take: Number(q.take) || 10,
+    }),
+  );
+});
+
+// GET /api/community/experiences/companies — every company with an experience, most first.
+router.get("/experiences/companies", browserCache(60, { shared: true }), async (_req, res) => {
+  res.json({ companies: await experienceCompanies() });
+});
 
 // GET /api/community/feed?scope=all|following&tag=react&skip=0&take=20
 //
@@ -711,8 +736,9 @@ router.post("/posts", requireAuth, communityWriteLimiter, async (req, res) => {
       : [];
     const wantsPoll = rawType === "poll" || pollChoices.length > 0;
     const wantsQuestion = rawType === "question";
+    const wantsExperience = rawType === "experience" && !hasAchievement;
 
-    if (!text && !hasAchievement) {
+    if (!text && !hasAchievement && !wantsExperience) {
       res.status(400).json({ error: "Write something first" });
       return;
     }
@@ -752,7 +778,26 @@ router.post("/posts", requireAuth, communityWriteLimiter, async (req, res) => {
         }
       : null;
 
-    const type = hasAchievement ? "achievement" : wantsPoll ? "poll" : wantsQuestion ? "question" : "status";
+    // An interview experience (lib/interview-experience.ts): the structured
+    // part normalised once; the problems it names must be published ones.
+    let experience: Record<string, unknown> | null = null;
+    if (wantsExperience) {
+      const parsed = parseExperience((meta as { experience?: unknown } | undefined)?.experience, text, new Date().getUTCFullYear());
+      if (!parsed.ok) {
+        res.status(400).json({ error: parsed.error });
+        return;
+      }
+      const named = parsed.value.problems.length
+        ? await prisma.problem.findMany({ where: { slug: { in: parsed.value.problems }, isPublished: true }, select: { slug: true, title: true } })
+        : [];
+      const titles = new Map(named.map((p) => [p.slug, p.title]));
+      experience = {
+        ...parsed.value,
+        problems: parsed.value.problems.filter((s) => titles.has(s)).map((slug) => ({ slug, title: titles.get(slug)! })),
+      };
+    }
+
+    const type = hasAchievement ? "achievement" : experience ? "experience" : wantsPoll ? "poll" : wantsQuestion ? "question" : "status";
 
     // Auto-tags for achievement shares: kind, difficulty, and the problem's topics
     const autoTags: string[] = [];
@@ -768,6 +813,7 @@ router.post("/posts", requireAuth, communityWriteLimiter, async (req, res) => {
     }
     if (type === "question") autoTags.push("help");
     if (type === "poll") autoTags.push("poll");
+    if (experience) autoTags.push(EXPERIENCE_TAG, companyFeedTag(String(experience.company)));
     if (topic) autoTags.push(topic);
     const tags = extractTags(text, autoTags);
 
@@ -775,6 +821,7 @@ router.post("/posts", requireAuth, communityWriteLimiter, async (req, res) => {
     if (topic) postMeta.topic = topic;
     if (type === "poll") postMeta.poll = { options: pollChoices };
     if (ask) postMeta.ask = ask;
+    if (experience) postMeta.experience = experience;
 
     const post = await prisma.post.create({
       data: { userId, type, visibility: vis, content: text, meta: postMeta as object },
@@ -872,6 +919,11 @@ router.patch("/posts/:id", requireAuth, async (req, res) => {
     if (post.type === "achievement") keep.push(achievementTag(meta.kind));
     if (post.type === "question") keep.push("help");
     if (post.type === "poll") keep.push("poll");
+    if (post.type === "experience") {
+      const company = (meta.experience as { company?: unknown } | undefined)?.company;
+      keep.push(EXPERIENCE_TAG);
+      if (typeof company === "string") keep.push(companyFeedTag(company));
+    }
     const tags = extractTags(text, keep);
 
     // One logical edit, so one batched request rather than three serial ones.

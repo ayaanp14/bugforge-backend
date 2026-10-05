@@ -26,6 +26,12 @@ import { frameSvg } from "../lib/walkthroughs/svg.js";
 import type { Walkthrough } from "../lib/walkthroughs/index.js";
 import { LESSON_LANGUAGES, RESERVED_LESSON_SLUGS, WALKTHROUGH_MARKER } from "../lib/roadmap-lessons.js";
 import { lessonPage, lessonSitemapEntries, lessonSyllabus, lessonsForTopics } from "./roadmap-lessons.js";
+import { SQL_PROBLEMS, SQL_TOPICS } from "../lib/sql-problems/index.js";
+import { sqlNumber, sqlProblemPage, sqlSitemapEntries } from "./sql-problems.js";
+import { NOTE_SUBJECTS, subjectByKey } from "../lib/cs-notes.js";
+import { notePage, notesSitemapEntries, notesSyllabus } from "./cs-notes.js";
+import { experienceCompanies, experienceList, type ExperienceRow } from "./interview-experiences.js";
+import { slugify } from "../lib/slug.js";
 
 /**
  * What a search engine is told about the app's public content.
@@ -205,6 +211,11 @@ export const titles = {
   // Explained with Examples & Code") — the tutorial's words, never the
   // hub's "… Coding Problems", so the two pages never compete for a query.
   roadmapLesson: (searchTitle: string) => branded(searchTitle),
+  // A SQL problem (/sql/<slug>): its title and the kind of page, like a coding problem's.
+  sqlProblem: (title: string, difficulty: string) => branded(`${title} — SQL ${difficulty} Problem`),
+  // A CS note and a notes subject: their authored search titles (lib/cs-notes).
+  note: (searchTitle: string) => branded(searchTitle),
+  noteSubject: (searchTitle: string) => branded(searchTitle),
 };
 
 /**
@@ -337,6 +348,9 @@ const SECTION = {
   tests: { name: "Placement tests", path: "/tests" },
   skillTests: { name: "Skill tests", path: "/skill-tests" },
   roadmap: { name: "DSA roadmap", path: "/roadmap" },
+  sql: { name: "SQL problems", path: "/sql" },
+  notes: { name: "CS notes", path: "/notes" },
+  experiences: { name: "Interview experiences", path: "/interview-experiences" },
 } as const;
 
 const HEAD_TTL_MS = 60 * 60 * 1000;
@@ -573,6 +587,12 @@ async function pageHead(path: string): Promise<PageHead | PageRedirect | null> {
   if (path === "/roadmap") return roadmapIndex();
   if ((m = /^\/roadmap\/([a-z0-9][a-z0-9-]*)$/.exec(path))) return RESERVED_LESSON_SLUGS.has(m[1]) ? null : roadmapLessonHead(m[1]);
   if ((m = /^\/share\/([a-z0-9]{10,40})$/.exec(path))) return shareHead(m[1]);
+  if (path === "/sql") return sqlIndex();
+  if ((m = /^\/sql\/([a-z0-9][a-z0-9-]*)$/.exec(path))) return sqlProblemHead(m[1]);
+  if (path === "/notes") return notesIndex();
+  if ((m = /^\/notes\/([a-z0-9-]+)$/.exec(path))) return noteSubjectHead(m[1]);
+  if ((m = /^\/notes\/([a-z0-9-]+)\/([a-z0-9][a-z0-9-]*)$/.exec(path))) return noteHead(m[1], m[2]);
+  if (path === "/interview-experiences") return experiencesIndex();
   return null;
 }
 
@@ -793,6 +813,7 @@ async function hubHead(kind: "topic" | "company", slug: string): Promise<PageHea
       ? section(`${page.label} test patterns`, linkList(page.patterns.map((t) => ({ href: `/tests/${t.slug}`, label: t.name, note: "pattern guide and timed mock" }))), "patterns")
       : "") +
     section(`All ${noun}`, levels.join(""), "problems") +
+    (kind === "company" ? await companyExperiencesHtml(page.label, slug) : "") +
     links +
     (page.related.length ? section(kind === "topic" ? "Other topics" : "Other companies", linkList(page.related.map((r) => ({ href: hubPath(r), label: r.label, note: plural(r.count, "problem") }))), "related") : "") +
     (page.next ? `<p>Next topic: ${link(hubPath(page.next), page.next.label)}</p>` : "");
@@ -1580,9 +1601,212 @@ export function roadmapPlan(road: { stages: Array<{ title: string; required: num
   return { weeks: week - 1, rows };
 }
 
+/* ── SQL problems ────────────────────────────────────────────────── */
+
+const htmlTable = (columns: string[], rows: Array<Array<string | number | null>>) =>
+  `<table><thead><tr>${columns.map((c) => `<th>${h(c)}</th>`).join("")}</tr></thead><tbody>${rows
+    .map((r) => `<tr>${r.map((c) => `<td>${c === null ? "NULL" : h(String(c))}</td>`).join("")}</tr>`)
+    .join("")}</tbody></table>`;
+
+/** The SQL list's child list: every problem by topic. */
+function sqlIndex(): PageHead {
+  const byTopic = SQL_TOPICS.map((t) => [t, SQL_PROBLEMS.filter((p) => p.topics[0] === t)] as const).filter(([, rows]) => rows.length);
+  const content =
+    `<p>${plural(SQL_PROBLEMS.length, "SQL problem")} written in MySQL and judged on hidden datasets. Each page draws its tables, shows an example and explains a reference solution.</p>` +
+    byTopic.map(([t, rows]) => section(t, linkList(rows.map((p) => ({ href: `/sql/${p.slug}`, label: p.title, note: titleCase(p.difficulty) }))), slugify(t))).join("") +
+    `<p>New to SQL? Read ${link("/notes/dbms", "the DBMS notes")} first, or test yourself with ${link("/skill-tests/sql-basic", "the SQL skill test")}.</p>`;
+  return { path: "/sql", title: "SQL problems", description: "", content, section: "index" };
+}
+
+/** A SQL problem: the task, its tables, the example with its output, the editorial and the reference queries. */
+async function sqlProblemHead(slug: string): Promise<PageHead | null> {
+  const page = await sqlProblemPage(slug);
+  if (!page) return null;
+  const path = `/sql/${slug}`;
+  const difficulty = titleCase(page.difficulty);
+  const trail: Crumb[] = [HOME, SECTION.sql, { name: page.title, path }];
+  const schema = page.tables
+    .map(
+      (t) =>
+        `<h3>Table: ${h(t.name)}</h3>${htmlTable(["Column", "Type"], t.columns.map((c) => [c.name, c.type === "enum" && c.values ? `enum(${c.values.join(", ")})` : c.type]))}` +
+        `${t.primaryKey?.length ? `<p>Primary key: ${h(t.primaryKey.join(", "))}.</p>` : ""}${t.note ? `<p>${inlineMd(t.note)}</p>` : ""}`,
+    )
+    .join("");
+  const examples = page.examples
+    .map(
+      (ex, i) =>
+        `<h3>Example ${i + 1}</h3>` +
+        Object.entries(ex.input)
+          .map(([name, t]) => `<p><strong>${h(name)}</strong></p>${htmlTable(t.columns, t.rows)}`)
+          .join("") +
+        `<p><strong>Output</strong></p>${htmlTable(ex.output.columns, ex.output.rows)}`,
+    )
+    .join("");
+  const queries = [page.solution, ...page.alternatives].map((q, i) => (i === 0 ? codeBlock("sql", q) : `<h3>Another way</h3>${codeBlock("sql", q)}`)).join("");
+  const near = [page.prev ? link(`/sql/${page.prev.slug}`, `← ${page.prev.title}`) : link("/sql", "← All SQL problems"), page.next ? link(`/sql/${page.next.slug}`, `${page.next.title} →`) : ""]
+    .filter(Boolean)
+    .join(" · ");
+  const content =
+    factList([
+      ["Difficulty", difficulty],
+      ["Topics", page.topics.join(", ")],
+      ["Dialect", "MySQL"],
+      ["Problem", `#${sqlNumber(slug)}`],
+    ]) +
+    section("Problem statement", markdownToHtml(page.description, 12_000, { under: 2 }), "statement") +
+    section("Tables", schema, "tables") +
+    section("Examples", examples, "examples") +
+    section(`How to solve ${page.title}`, markdownToHtml(page.editorial, 12_000, { under: 2 }), "editorial") +
+    section("Reference solution (MySQL)", queries, "solution") +
+    `<p>${near}</p>`;
+  return {
+    path,
+    title: titles.sqlProblem(page.title, difficulty),
+    description: summarise(page.description, `${page.title}: a ${difficulty.toLowerCase()} SQL problem on ${BRAND}, written in MySQL and judged on hidden datasets.`),
+    facts: { difficulty, keywords: ["SQL", ...page.topics], trail },
+    content,
+    crumb: page.title,
+  };
+}
+
+/* ── CS notes ───────────────────────────────────────────────────────── */
+
+/** The notes index's child list: each subject and its notes in reading order. */
+function notesIndex(): PageHead {
+  const { subjects } = notesSyllabus();
+  const content = subjects
+    .filter((s) => s.notes.length)
+    .map((s) =>
+      section(
+        s.title,
+        `<p>${h(s.blurb)} ${link(`/notes/${s.key}`, `All ${s.short} notes`)}.</p>` +
+          linkList(s.notes.map((n) => ({ href: `/notes/${n.subject}/${n.slug}`, label: n.title, note: `${n.minutes} min` }))) +
+          (s.tests.length ? `<p>Test yourself: ${s.tests.map((t) => link(`/skill-tests/${t.slug}`, t.title)).join(" · ")}</p>` : ""),
+        s.key,
+      ),
+    )
+    .join("");
+  return { path: "/notes", title: "CS notes", description: "", content, section: "index" };
+}
+
+/** "about 3 hours" / "about 45 minutes" */
+const readingTime = (minutes: number) => (minutes >= 90 ? `about ${Math.round(minutes / 60)} hours` : `about ${minutes} minutes`);
+
+/** A subject's page: what it covers, its notes in order, its skill tests. */
+function noteSubjectHead(key: string): PageHead | null {
+  const subject = subjectByKey(key);
+  const card = notesSyllabus().subjects.find((s) => s.key === key);
+  if (!subject || !card || !card.notes.length) return null;
+  const path = `/notes/${key}`;
+  const trail: Crumb[] = [HOME, SECTION.notes, { name: subject.title, path }];
+  const content =
+    factList([
+      ["Notes", String(card.notes.length)],
+      ["Reading time", readingTime(card.minutes)],
+      ["Cost", "Free, no sign-in needed"],
+    ]) +
+    `<p>${h(subject.blurb)}</p>` +
+    section("Read in this order", `<ol>${card.notes.map((n) => `<li>${link(`/notes/${n.subject}/${n.slug}`, n.title)} — ${h(n.description)}</li>`).join("")}</ol>`, "notes") +
+    (card.tests.length
+      ? section("Test yourself", linkList(card.tests.map((t) => ({ href: `/skill-tests/${t.slug}`, label: t.title, note: "proctored skill test with a verifiable credential" }))), "tests")
+      : "") +
+    section("Other subjects", linkList(NOTE_SUBJECTS.filter((s) => s.key !== key).map((s) => ({ href: `/notes/${s.key}`, label: s.title }))), "subjects");
+  return {
+    path,
+    title: titles.noteSubject(subject.seoTitle),
+    description: subject.description,
+    facts: { count: card.notes.length, topic: subject.title, items: firstItems(card.notes.map((n) => ({ name: n.title, path: `/notes/${n.subject}/${n.slug}` }))), trail },
+    content,
+    crumb: subject.title,
+  };
+}
+
+/** A note: the direct answer, the contents, the article with its figures, the common questions, the way on. */
+function noteHead(subjectKey: string, slug: string): PageHead | null {
+  const page = notePage(subjectKey, slug);
+  if (!page) return null;
+  const { note: n, subject } = page;
+  const path = `/notes/${subject.key}/${n.slug}`;
+  const trail: Crumb[] = [HOME, SECTION.notes, { name: subject.title, path: `/notes/${subject.key}` }, { name: n.title, path }];
+  const outline = markdownOutline(n.body);
+  const article = markdownToHtml(n.body, 160_000, { anchors: true, under: 1 }).replace(/<p>@figure ([a-z0-9][a-z0-9-]*)<\/p>/g, (_, name: string) =>
+    page.figures[name] ? lessonFigureHtml(page.figures[name]) : "",
+  );
+  const content =
+    factList([
+      ["Subject", link(`/notes/${subject.key}`, subject.title), { html: true }],
+      ["Level", titleCase(n.level)],
+      ["Reading time", `${n.minutes} min`],
+      ["Updated", n.updated],
+    ]) +
+    `<section id="answer"><h2>${inlineMd(n.seo.question)}</h2><p>${inlineMd(n.seo.answer)}</p></section>` +
+    (outline.length > 1 ? `<nav id="contents" aria-label="On this page"><h2>On this page</h2>${linkList(outline.map((o) => ({ href: `#${o.id}`, label: o.text })))}</nav>` : "") +
+    `<article id="note">${article}</article>` +
+    (n.seo.faq.length ? `<section id="questions"><h2>Common questions</h2>${n.seo.faq.map((f) => `<h3>${inlineMd(f.q)}</h3><p>${inlineMd(f.a)}</p>`).join("")}</section>` : "") +
+    (page.tests.length ? section("Test yourself", linkList(page.tests.map((t) => ({ href: `/skill-tests/${t.slug}`, label: t.title }))), "tests") : "") +
+    `<p>${page.prev ? link(`/notes/${subject.key}/${page.prev.slug}`, `← ${page.prev.title}`) : link(`/notes/${subject.key}`, `← ${subject.title} notes`)}${
+      page.next ? ` · ${link(`/notes/${subject.key}/${page.next.slug}`, `${page.next.title} →`)}` : ""
+    }</p>`;
+  return {
+    path,
+    title: titles.note(n.seo.title),
+    description: n.seo.description,
+    facts: {
+      minutes: n.minutes,
+      level: n.level,
+      updated: n.updated,
+      topic: subject.title,
+      track: { title: `${subject.title} notes`, path: `/notes/${subject.key}` },
+      faq: [{ q: n.seo.question, a: n.seo.answer }, ...n.seo.faq],
+      trail,
+    },
+    content,
+    crumb: n.title,
+  };
+}
+
+/* ── Interview experiences ─────────────────────────────────────────── */
+
+const OUTCOME_WORD: Record<string, string> = { selected: "Selected", rejected: "Not selected", pending: "Result pending", withdrew: "Withdrew" };
+
+const experienceHtml = (e: ExperienceRow) =>
+  `<article><h3>${h(e.title)}</h3><p>${h(OUTCOME_WORD[e.experience.outcome] ?? e.experience.outcome)} · ${h(titleCase(e.experience.difficulty))} · ${plural(e.experience.rounds.length, "round")}: ${h(
+    e.experience.rounds.map((r) => r.name).join(", "),
+  )}</p><p>${h(e.excerpt)}</p>${e.experience.problems.length ? `<p>Problems asked: ${e.experience.problems.map((p) => link(`/problems/${p.slug}`, p.title)).join(" · ")}</p>` : ""}</article>`;
+
+/** A company page's section of experiences — empty when there are none (or the read fails: the hub never does). */
+async function companyExperiencesHtml(label: string, slug: string): Promise<string> {
+  try {
+    const { rows, total } = await experienceList({ company: slug, take: 5 });
+    if (!rows.length) return "";
+    return section(
+      `${label} interview experiences`,
+      rows.map(experienceHtml).join("") + (total > rows.length ? `<p>${link(`/interview-experiences?company=${slug}`, `All ${total} ${label} interview experiences`)}</p>` : ""),
+      "experiences",
+    );
+  } catch {
+    return "";
+  }
+}
+
+/** The experiences index's child list: the companies, then the latest experiences. */
+async function experiencesIndex(): Promise<PageHead> {
+  const [companies, latest] = await Promise.all([experienceCompanies(), experienceList({ take: 20 })]);
+  const content =
+    (companies.length
+      ? section(
+          "By company",
+          linkList(companies.map((c) => ({ href: c.hubSlug ? `/challenges/company/${c.hubSlug}` : `/interview-experiences?company=${c.key}`, label: c.company, note: plural(c.count, "experience") }))),
+          "companies",
+        )
+      : "") +
+    (latest.rows.length ? section("Latest experiences", latest.rows.map(experienceHtml).join(""), "latest") : "");
+  return { path: "/interview-experiences", title: "Interview experiences", description: "", content, section: "index" };
+}
+
 /* ── Sitemaps ─────────────────────────────────────────────────── */
 
-export const SITEMAP_NAMES = ["problems", "bug-hunts", "study-plans", "aptitude", "tests", "categories", "roadmap"] as const;
+export const SITEMAP_NAMES = ["problems", "bug-hunts", "study-plans", "aptitude", "tests", "categories", "roadmap", "sql", "notes"] as const;
 export type SitemapName = (typeof SITEMAP_NAMES)[number];
 
 const SITEMAP_TTL_MS = 60 * 60 * 1000;
@@ -1680,6 +1904,12 @@ export function sitemapXml(name: string): Promise<string | null> {
         // the text did.
         return urlset(await lessonSitemapEntries());
       }
+      case "sql":
+        return urlset(sqlSitemapEntries());
+      case "notes":
+        // The subjects and the notes, each note with its authored `updated`
+        // date; /notes itself is a prerendered index page (sitemap-pages.xml).
+        return urlset(notesSitemapEntries().filter((e) => e.path !== "/notes"));
     }
   });
 }

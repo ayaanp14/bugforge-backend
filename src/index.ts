@@ -33,6 +33,8 @@ import studyPlansRouter from "./routes/study-plans.js";
 import assistantRouter from "./routes/assistant.js";
 import resumesRouter from "./routes/resumes.js";
 import battlesRouter from "./routes/battles.js";
+import { sqlRouter } from "./routes/sql.js";
+import { notesRouter } from "./routes/notes.js";
 import { ALLOWED_ORIGINS } from "./lib/sites.js";
 import shareCardsRouter, { shareImage } from "./routes/share-cards.js";
 import { recoverAnalyses } from "./services/resumes.js";
@@ -949,6 +951,9 @@ app.use("/api/skill-tests", skillTestsRouter);
 app.use("/api/contests", contestsRouter);
 app.use("/api/roadmap", roadmapRouter);
 app.use("/api/study-plans", studyPlansRouter);
+// SQL problems (routes/sql.ts, judged on lib/sql) and the CS notes (routes/notes.ts).
+app.use("/api/sql", sqlRouter);
+app.use("/api/notes", notesRouter);
 app.use("/api/assistant", assistantRouter);
 // The upload route reads a raw file body with its own parser (see routes/resumes.ts).
 app.use("/api/resumes", resumesRouter);
