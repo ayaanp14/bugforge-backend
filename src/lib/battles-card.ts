@@ -147,7 +147,7 @@ function tree(c: TournamentCard, mark: string): Node {
     ),
     el(
       { alignItems: "center", gap: 14, height: 68, paddingLeft: 26, paddingRight: 30, borderRadius: 34, backgroundColor: status.accent ? TEAL_DEEP : MIST, color: status.accent ? "#FFFFFF" : SECONDARY, fontSize: 32, fontWeight: 700 },
-      el({ width: 16, height: 16, borderRadius: 8, backgroundColor: status.accent ? "#23A5FD" : "#9A9A9A" }),
+      el({ width: 16, height: 16, borderRadius: 8, backgroundColor: status.accent ? "#3AA9FF" : "#9A9A9A" }),
       status.label,
     ),
   );

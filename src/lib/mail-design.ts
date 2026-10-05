@@ -20,16 +20,16 @@ export const L = {
   muted: "#737373",
   border: "#E5E5E5",
   well: "#F4F4F4",
-  accent: "#0164FD",
-  highlight: "#074099",
+  accent: "#0068CC", // blue 800
+  highlight: "#0055A8", // blue 900
 };
-export const TEAL_DEEP = "#074099";
+export const TEAL_DEEP = "#003B75"; // blue 950
 export const ON_TEAL = { secondary: "rgba(255,255,255,0.78)", muted: "rgba(255,255,255,0.64)" };
 export const CODE = {
-  text: "#0C1C34",
+  text: "#111111",
   keyword: TEAL_DEEP,
-  string: "#0357DA",
-  number: "#0A4FB8",
+  string: "#0068CC",
+  number: "#0055A8",
   comment: "#5F6B7D",
   operator: "#3D4A5E",
   gutter: "#AFAFAF",

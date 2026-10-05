@@ -213,14 +213,14 @@ a{text-decoration:none}
 .ck-ink{color:#F5F5F5 !important}
 .ck-secondary{color:#A3A3A3 !important}
 .ck-muted,.ck-muted a{color:#8C8C8C !important}
-.ck-eyebrow,.ck-link{color:#23A5FD !important}
+.ck-eyebrow,.ck-link{color:#3AA9FF !important}
 .ck-rule{border-color:#262626 !important}
 .ck-well{background:#0D0D0D !important;border-color:#262626 !important}
-.ck-code{color:#F4F4F4 !important}
+.ck-code{color:#EFF8FF !important}
 .ck-gutter{color:#595959 !important}
-.ck-kw{color:#23A5FD !important}
-.ck-str{color:#4FB7FD !important}
-.ck-num{color:#D3EDFF !important}
+.ck-kw{color:#3AA9FF !important}
+.ck-str{color:#0794F9 !important}
+.ck-num{color:#D9F0FF !important}
 .ck-op{color:#99A3B3 !important}
 .ck-cmt{color:#737C8C !important}
 .ck-btn{background:#F5F5F5 !important}

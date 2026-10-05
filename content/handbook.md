@@ -79,10 +79,12 @@ Public pages (no account needed):
 
 One request builds it; it refreshes itself after a submission, a chest, a follow or a profile edit (otherwise within about five minutes).
 
-- **Hero**: name, rank title and the progress bar to the next rank, XP (with this week's gain), followers/following/posts.
-- **Stat tiles**: Solved, Accept rate, Streak, Global rank (by combined XP; "—" until the account has XP), XP, Bugs fixed, SQL solved.
-- **Problem progress** ring by difficulty; **Skills**: topic tags with solved/total; **Next up / Suggested for you**: "Continue solving" (the newest non-empty draft on an unsolved problem) plus up to three recommendations — problems being attempted first, then untouched ones; **Random problem**, **Browse the challenges**, **Open a pair room**, **Start a mock interview** shortcuts.
-- **Activity heatmap** (365 days), **Recent submissions** (last five across problems, bug hunts and SQL problems; open one to read its code — a SQL one opens its problem), **Leaderboard preview** (top 10 by XP with your rank), **Arenas** card (daily contest, bug hunts, pair rooms, mock interviews at a glance — the contest band shows today's problem, whether it is entered/solved and the contest streak), recent pair rooms, saved interview templates count.
+- **Greeting** with the date and your streak line, then two cards side by side.
+- **Continue solving** (the blue card): the newest non-empty draft on an unsolved problem with a **Resume** button (or **Browse the challenges** when there is none) and a **Random problem** button; beside it **Up next for you** — up to three recommendations, problems being attempted first, then untouched ones.
+- **Rank card**: rank title, rating and the progress bar to the next rank, your **Global rank** (by combined XP; "—" until the account has XP) and top percentage, member since, followers and following.
+- **Stat cards**: Solved, Acceptance, Streak, XP (with this week's gain and the problems/bug-hunts split), Bugs fixed, SQL solved.
+- Main column: **Activity heatmap** (365 days), **Recent submissions** (last five across problems, bug hunts and SQL problems; open one to read its code — a SQL one opens its problem), **Skills** (topic tags with solved/total, languages used).
+- Right column: CodeKairo Battles card, **Problem progress** ring by difficulty, **Explore** (daily contest with today's problem and whether it is open or done, bug hunts, **pair rooms**, **mock interviews** — the way to open a pair room or start a mock interview from home), **Leaderboard preview** (top five by XP with your rank).
 - "Solved today" counts *first-time* solves in the last 24 hours; "XP this week" counts first-time solves in the last 7 days (rolling windows, not calendar days).
 
 ## Solving problems
@@ -166,7 +168,7 @@ One request builds it; it refreshes itself after a submission, a chest, a follow
 - **Mastery** per lesson (0–100%) = reading 30% + best quiz 40% + exercises 30% (a part the lesson lacks hands its weight to the others); a module's mastery is the average of its lessons. The plan page shows a **day streak** (consecutive days with any lesson activity).
 - **PDF**: every module has a **PDF** button on the plan page — the whole module (cover, every lesson's text, exercises with reference solutions, the quiz with an answer key) as a file to read offline. The same layout is at `/study-plans/<track>/m/<module>/print` for the browser's own Print → Save as PDF.
 - **Finishing a track** (every lesson and checkpoint complete) pays a **+100 XP** bonus once, fires a notification, and unlocks the **certificate** (`/study-plans/<track>/certificate`): an A4-landscape PNG naming the account, the plan, the completion date, the modules and a serial number.
-- **Home dashboard**: an account on a plan gets a "Continue" band under the stat tiles with the next lesson, progress and pace status.
+- **Home dashboard**: an account on a plan gets a "Continue" band at the top of the main column, under the stat cards, with the next lesson, progress and pace status.
 - **Reminder**: "Study plan due" — between 06:00 and 09:00 IST, to anyone behind pace who has not opened a lesson that day, naming the next lesson. In-app only; it shares the **Daily problem** switch on `/profile` → Reminders.
 - Study plans are **free on every plan** and have no daily cap; only the code runs share the per-minute execution limit.
 
