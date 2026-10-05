@@ -97,6 +97,12 @@ model User {
   remindStreak          Boolean                   @default(true)
   remindDailyKata       Boolean                   @default(true)
   weeklyDigest          Boolean                   @default(true)
+  /// The judge language the code editors open in (a driver-codegen
+  /// ALL_LANGUAGES id): the last one picked on a problem or in a duel, on any
+  /// device (PUT /api/me/language). Also an interview round's editor language
+  /// when the round has no stack chosen. Null until a first pick, and the
+  /// editors open in JavaScript.
+  preferredLanguage     String?                   @db.VarChar(16)
   accounts              Account[]
   githubConnection      GitHubConnection?
   bugSubmissions        BugSubmission[]
@@ -514,6 +520,12 @@ model MockInterviewSession {
 
   /// How many questions this interview runs, fixed when it starts.
   questionBudget Int       @default(7)
+  /// The editor language this round runs in, fixed at /start: the configured
+  /// stack's, else the account's preferredLanguage, else JavaScript. Fixed
+  /// rather than read live, so a language picked on a problem mid-round
+  /// cannot turn the next question's stub into another language. Null on
+  /// rounds started before 2026-10-05, which read the stack's (or JavaScript).
+  language       String?   @db.VarChar(16)
   completedAt    DateTime?
 
   // ── interaction layer ──────────────────────────────────────────────────

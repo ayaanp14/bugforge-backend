@@ -6,6 +6,7 @@ import { estimatedQuestions, voiceDurationMinutes } from "../lib/interview-durat
 import { conversationLanguage, interviewerFor } from "../lib/interviewers.js";
 import { SAT_ROUND_REFUSAL, checkInterviewQuota, checkVoiceDuration, satRoundFits } from "../services/entitlements.js";
 import { normalizeStarterCode } from "../lib/starter-code.js";
+import { ALL_LANGUAGES } from "../lib/driver-codegen.js";
 import {
   askNextQuestion,
   evaluateAnswer,
@@ -236,16 +237,23 @@ router.delete("/:id", requireAuth, async (req: any, res) => {
   }
 });
 
-/** Config the model layer needs, pulled off a saved template row. */
-function configFrom(template: {
-  roleId: string;
-  roundId: string;
-  difficulty: string | null;
-  experienceBand: string | null;
-  interviewStyle: string | null;
-  stackFocusIds: unknown;
-  focusAreaIds: unknown;
-}): InterviewConfig {
+/**
+ * Config the model layer needs, pulled off a saved template row. `language`
+ * is the session's own (MockInterviewSession.language, fixed at /start); a
+ * round started before that column existed passes null and reads the stack's.
+ */
+function configFrom(
+  template: {
+    roleId: string;
+    roundId: string;
+    difficulty: string | null;
+    experienceBand: string | null;
+    interviewStyle: string | null;
+    stackFocusIds: unknown;
+    focusAreaIds: unknown;
+  },
+  language?: string | null,
+): InterviewConfig {
   const config: InterviewConfig = {
     roleId: template.roleId,
     roundId: template.roundId,
@@ -256,7 +264,7 @@ function configFrom(template: {
     focusAreaIds: (template.focusAreaIds as string[] | null) ?? [],
   };
   // Named in the prompt so the stub arrives in the language the editor opens in.
-  config.language = languageFor(config);
+  config.language = language ?? languageFor(config);
   return config;
 }
 
@@ -303,11 +311,27 @@ const STACK_LANGUAGE: Record<string, string> = {
   "genai-llm": "python",
 };
 
-function languageFor(config: InterviewConfig) {
+/** The configured stack's editor language, or null when no stack names one. */
+function stackLanguage(config: InterviewConfig): string | null {
   for (const id of config.stackFocusIds) {
     if (STACK_LANGUAGE[id]) return STACK_LANGUAGE[id];
   }
-  return "javascript";
+  return null;
+}
+
+function languageFor(config: InterviewConfig) {
+  return stackLanguage(config) ?? "javascript";
+}
+
+/**
+ * The language a new written round runs in, fixed on its row: the stack's
+ * when one is chosen, else the language the candidate codes in everywhere
+ * else (User.preferredLanguage — the last one picked on a problem or in a
+ * duel), else JavaScript. A Java solver with no stack picked used to be
+ * handed JavaScript stubs.
+ */
+function roundLanguage(config: InterviewConfig, preferred: string | null | undefined): string {
+  return stackLanguage(config) ?? (preferred && (ALL_LANGUAGES as readonly string[]).includes(preferred) ? preferred : "javascript");
 }
 
 /**
@@ -338,9 +362,10 @@ router.post("/start", requireAuth, async (req: any, res) => {
     // The template and the quota are independent reads against a database
     // ~500 ms away, so they go out together; a refused template simply
     // wastes the quota's reads, which is cheaper than serialising every start.
-    const [template, quota] = await Promise.all([
+    const [template, quota, account] = await Promise.all([
       prisma.savedInterview.findUnique({ where: { id: savedInterviewId } }),
       checkInterviewQuota(req.user.userId, req.user.email),
+      prisma.user.findUnique({ where: { id: req.user.userId }, select: { preferredLanguage: true } }),
     ]);
 
     if (!template) {
@@ -416,8 +441,6 @@ router.post("/start", requireAuth, async (req: any, res) => {
       });
     }
 
-    const language = languageFor(config);
-
     // A round already open on this template is handed back, not duplicated.
     // The session page used to open on `?savedInterviewId=` and POST here on
     // every mount, so a refresh mid-interview created a second row (and a
@@ -433,6 +456,7 @@ router.post("/start", requireAuth, async (req: any, res) => {
     if (open) {
       const pending = open.questions.find((q) => q.status === "pending") ?? null;
       const { questions, ...session } = open;
+      const resumed = configFrom(template, open.language);
       return res.json({
         success: true,
         resumed: true,
@@ -440,11 +464,14 @@ router.post("/start", requireAuth, async (req: any, res) => {
         session,
         question: pending,
         mode: "written",
-        language,
-        setup: config,
+        language: resumed.language,
+        setup: resumed,
         progress: { asked: pending ? pending.orderIndex + 1 : questions.length, total: open.questionBudget },
       });
     }
+
+    const language = roundLanguage(config, account?.preferredLanguage);
+    config.language = language;
 
     // The opening question is written before the row exists: a model failure
     // here used to leave a "started" session with no questions behind — one
@@ -457,6 +484,7 @@ router.post("/start", requireAuth, async (req: any, res) => {
         savedInterviewId: template.id,
         status: "started",
         questionBudget: budget,
+        language,
         onCredit,
         // The opening question's cost, on the row from the start.
         promptTokens: usage.promptTokens,
@@ -567,7 +595,7 @@ function prefetchAhead(
             topic: nextQuestion.topic,
             difficulty: nextQuestion.difficulty,
             focusArea: nextQuestion.focusArea,
-            starterCode: starterCodeFor(nextQuestion.starterCode ?? "", languageFor(config)),
+            starterCode: starterCodeFor(nextQuestion.starterCode ?? "", config.language ?? languageFor(config)),
             expectedSkills: nextQuestion.expectedSkills,
             // Written, but not the candidate's to see until they submit.
             status: "prefetched",
@@ -725,9 +753,9 @@ router.post("/session/:sessionId/answer", requireAuth, async (req: any, res) => 
       return res.status(409).json({ error: "That question has not been asked yet" });
     }
 
-    const config = configFrom(session.savedInterview);
+    const config = configFrom(session.savedInterview, session.language);
     const budget = session.questionBudget;
-    const language = languageFor(config);
+    const language = config.language ?? languageFor(config);
 
     // Already submitted. The answer is written before the next question is
     // generated, so a turn whose generation failed leaves the row "answered"
@@ -966,8 +994,8 @@ function sessionPayload(session: SessionRows) {
   return {
     session: sessionRow,
     questions,
-    language: languageFor(configFrom(session.savedInterview)),
-    setup: configFrom(session.savedInterview),
+    language: configFrom(session.savedInterview, session.language).language,
+    setup: configFrom(session.savedInterview, session.language),
     status: session.status,
     completedAt: session.completedAt,
     startedAt: session.createdAt,
@@ -1007,7 +1035,7 @@ async function completeWrittenSession(sessionId: string, userId: string): Promis
   // slowest one rather than the sum.
   const unmarked = session.questions.filter((q) => q.userAnswer !== null && q.evaluationScore === null);
   if (unmarked.length > 0) {
-    const config = configFrom(session.savedInterview);
+    const config = configFrom(session.savedInterview, session.language);
     const budget = session.questionBudget;
     const ordered = session.questions;
 
@@ -1068,7 +1096,7 @@ async function completeWrittenSession(sessionId: string, userId: string): Promis
     };
   }
 
-  const completed = await finalizeInterview(session, configFrom(session.savedInterview), scored);
+  const completed = await finalizeInterview(session, configFrom(session.savedInterview, session.language), scored);
   return {
     status: 200,
     body: {

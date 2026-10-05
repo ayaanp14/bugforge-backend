@@ -13,6 +13,7 @@ import { USERNAME_RULE, readUsername } from "../lib/identity.js";
 import { oauthCallbackUri } from "../lib/sites.js";
 import { githubConnectUrl, readLinkResult } from "../lib/github.js";
 import { GitHubLinkError, getGitHubCard, linkGitHub, unlinkGitHub } from "../services/github-connection.js";
+import { ALL_LANGUAGES } from "../lib/driver-codegen.js";
 
 const router = Router();
 
@@ -246,6 +247,26 @@ router.patch("/", requireAuth, async (req, res) => {
     }
     res.status(500).json({ error: "Internal server error" });
   }
+});
+
+/**
+ * PUT /api/me/language — the judge language the editors open in, saved when
+ * one is picked on a problem or in a duel (User.preferredLanguage), so it
+ * follows the account to another device.
+ *
+ * Its own route rather than a PATCH /api/me field: a profile save drops the
+ * cached dashboard and public profile too, and a language switch changes
+ * neither — only the /api/me payload that carries it.
+ */
+router.put("/language", requireAuth, async (req, res) => {
+  const language = req.body?.language;
+  if (typeof language !== "string" || !(ALL_LANGUAGES as readonly string[]).includes(language)) {
+    res.status(400).json({ error: `language must be one of: ${ALL_LANGUAGES.join(", ")}.` });
+    return;
+  }
+  await prisma.user.update({ where: { id: req.user!.userId }, data: { preferredLanguage: language } });
+  invalidateMe(req.user!.userId);
+  res.json({ preferredLanguage: language });
 });
 
 /**

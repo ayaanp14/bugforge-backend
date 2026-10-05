@@ -136,6 +136,7 @@ export const ME_SELECT = {
   remindStreak: true,
   remindDailyKata: true,
   weeklyDigest: true,
+  preferredLanguage: true,
   xp: true,
   questionsXp: true,
   bugsXp: true,
