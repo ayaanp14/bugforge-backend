@@ -1,7 +1,9 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { brevoConfigured, sendTransactional } from "./brevo.js";
+import { brevoConfigured, isReservedAddress, sendTransactional } from "./brevo.js";
+import { resetAddressBudgets, sendAuthCode, sendWelcome } from "./auth-mail.js";
+import { sendEmail } from "./email.js";
 import { codeHtml, codeSubject, codeText } from "./auth-mail-copy.js";
 
 /**
@@ -18,7 +20,7 @@ const ENV = {
   MAIL_REPLY_TO: "support@codekairo.com",
 } as unknown as NodeJS.ProcessEnv;
 
-const MAIL = { to: "person@example.com", subject: "Subject", html: "<p>hi</p>", text: "hi", tags: ["otp"] };
+const MAIL = { to: "person@codekairo.com", subject: "Subject", html: "<p>hi</p>", text: "hi", tags: ["otp"] };
 
 /** Runs `fn` with fetch replaced, and hands back what the fake was called with. */
 async function withFetch(impl: typeof fetch, fn: () => Promise<boolean>) {
@@ -69,7 +71,7 @@ test("a send posts Brevo's documented shape to the documented endpoint", async (
 
   const body = JSON.parse(String(init.body));
   assert.deepEqual(body.sender, { email: "no-reply@codekairo.com", name: "CodeKairo" });
-  assert.deepEqual(body.to, [{ email: "person@example.com" }]);
+  assert.deepEqual(body.to, [{ email: "person@codekairo.com" }]);
   assert.deepEqual(body.replyTo, { email: "support@codekairo.com" });
   assert.equal(body.subject, "Subject");
   assert.equal(body.htmlContent, "<p>hi</p>");
@@ -118,4 +120,41 @@ test("both code bodies carry the code, and the subject names the purpose", () =>
   // The digits must survive a copy out of the HTML: spacing is CSS, not
   // characters inserted between them.
   assert.ok(!codeHtml("482193", "verify_email").includes("4 8 2 1 9 3"));
+});
+
+test("addresses on reserved domains are recognised, real ones are not", () => {
+  for (const email of ["e2e_one@codekairo.test", "a@b.example", "x@nowhere.invalid", "me@localhost", "person@example.com", "p@mail.example.org", "P@EXAMPLE.NET.", "u@sub.test"]) {
+    assert.equal(isReservedAddress(email), true, email);
+  }
+  for (const email of ["person@codekairo.com", "someone@gmail.com", "a@testing.com", "a@example.co", "a@notexample.com", "a@test.codekairo.com", "no-at-sign"]) {
+    assert.equal(isReservedAddress(email), false, email);
+  }
+});
+
+test("a reserved address never reaches Brevo", async () => {
+  const { ok, calls } = await withFetch(
+    async () => jsonResponse(201, { messageId: "x" }),
+    () => sendTransactional({ ...MAIL, to: "e2e_one@codekairo.test" }, ENV),
+  );
+  assert.equal(ok, false);
+  assert.equal(calls.length, 0, "a .test address must not cost a send");
+});
+
+test("no sender hands a reserved address to Brevo or to a hosted flow", async () => {
+  const withFlows = { ...ENV, OTP_FLOW_URL: "https://flow.invalid/otp", EMAIL_WEBHOOK_URL: "https://flow.invalid/mail" } as unknown as NodeJS.ProcessEnv;
+  resetAddressBudgets();
+  const to = "e2e_two@codekairo.test";
+  const outcomes = await withFetch(
+    async () => jsonResponse(201, { messageId: "x" }),
+    async () => {
+      // Outside production the code is printed so the account can be verified: "delivered".
+      const devCode = await sendAuthCode(to, "123456", "verify_email", { ...withFlows, NODE_ENV: "development" });
+      const prodCode = await sendAuthCode(to, "123456", "password_reset", { ...withFlows, NODE_ENV: "production" });
+      const welcome = await sendWelcome({ email: to, name: null, username: "e2e_two", via: "email" }, withFlows);
+      const reminder = await sendEmail({ to, subject: "s", text: "t", kind: "weekly_digest" }, withFlows);
+      return devCode && !prodCode && !welcome && !reminder;
+    },
+  );
+  assert.equal(outcomes.ok, true);
+  assert.equal(outcomes.calls.length, 0, "neither Brevo nor a flow may be called");
 });

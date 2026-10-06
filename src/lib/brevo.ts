@@ -47,6 +47,30 @@ export function brevoConfigured(env: NodeJS.ProcessEnv = process.env): boolean {
 }
 
 /**
+ * An address on a domain reserved never to exist (RFC 2606 / RFC 6761: the
+ * `.test`, `.example`, `.invalid` and `.localhost` TLDs, and example.com /
+ * .net / .org) — no mail to one can ever arrive, so none is sent.
+ *
+ * Local `.env` carries a real BREVO_API_KEY, and the Playwright suite (and
+ * anyone testing a sign-up by hand) registers `*@codekairo.test` accounts:
+ * each registration handed Brevo a verification mail it could only bounce,
+ * spending the free plan's 300 a day and the sender's bounce reputation on
+ * nothing (seen 2026-10-06). Every sender checks this before any provider
+ * or flow; outside production the code mail prints the code instead
+ * (auth-mail.ts), which is the only way such an account can be verified.
+ */
+const RESERVED_TLDS = new Set(["test", "example", "invalid", "localhost"]);
+const RESERVED_DOMAINS = ["example.com", "example.net", "example.org"];
+
+export function isReservedAddress(email: string): boolean {
+  const at = email.lastIndexOf("@");
+  const domain = (at >= 0 ? email.slice(at + 1) : "").trim().toLowerCase().replace(/\.+$/, "");
+  if (!domain) return false;
+  if (RESERVED_TLDS.has(domain.slice(domain.lastIndexOf(".") + 1))) return true;
+  return RESERVED_DOMAINS.some((d) => domain === d || domain.endsWith(`.${d}`));
+}
+
+/**
  * Hand one message to Brevo. Resolves true when it was accepted.
  *
  * Never throws, and never reports *why* to the caller: both callers answer
@@ -56,6 +80,8 @@ export function brevoConfigured(env: NodeJS.ProcessEnv = process.env): boolean {
 export async function sendTransactional(mail: TransactionalEmail, env: NodeJS.ProcessEnv = process.env): Promise<boolean> {
   const key = env["BREVO_API_KEY"];
   if (!key) return false;
+  // The callers check first; this is the last line, for any sender added later.
+  if (isReservedAddress(mail.to)) return false;
 
   const body = {
     sender: {

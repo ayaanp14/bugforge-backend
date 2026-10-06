@@ -10,7 +10,7 @@ import { sendWelcome } from "./auth-mail.js";
  */
 
 const ORIGIN = "https://codekairo.com";
-const PERSON: WelcomeRecipient = { email: "ayaan@example.com", name: "Ayaan Pathan", username: "ayaan_p", via: "google" };
+const PERSON: WelcomeRecipient = { email: "ayaan@codekairo.com", name: "Ayaan Pathan", username: "ayaan_p", via: "google" };
 
 test("the greeting is the first word of the name, or nobody in particular", () => {
   assert.equal(firstName("Ayaan Pathan"), "Ayaan");
@@ -43,7 +43,7 @@ test("both bodies carry the account, every first move and the footer", () => {
     }
     assert.ok(body.includes("@ayaan_p"));
     assert.ok(body.includes("Google"));
-    assert.ok(body.includes("ayaan@example.com"));
+    assert.ok(body.includes("ayaan@codekairo.com"));
     assert.ok(!/undefined|\bnull\b|\[object /.test(body), "a missing value leaked into the copy");
   }
   // The sign-in road is named for each way in; a password account has no handle line when it has no username.
@@ -88,7 +88,7 @@ test("a welcome is one Brevo message, tagged with how the account signs in", asy
   assert.equal(ok, true);
   assert.equal(calls.length, 1);
   const body = JSON.parse(String(calls[0].body));
-  assert.deepEqual(body.to, [{ email: "ayaan@example.com" }]);
+  assert.deepEqual(body.to, [{ email: "ayaan@codekairo.com" }]);
   assert.equal(body.subject, "Welcome to CodeKairo, Ayaan");
   assert.deepEqual(body.tags, ["welcome", "github"]);
   assert.match(body.htmlContent, /Welcome to CodeKairo, Ayaan\./);

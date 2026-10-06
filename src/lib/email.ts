@@ -14,7 +14,7 @@
  * over, and the caller counts the outcome instead.
  */
 
-import { brevoConfigured, sendTransactional } from "./brevo.js";
+import { brevoConfigured, isReservedAddress, sendTransactional } from "./brevo.js";
 
 export interface OutboundEmail {
   to: string;
@@ -47,6 +47,9 @@ export function emailEnabled(env: NodeJS.ProcessEnv = process.env): boolean {
  * the caller counts the outcome instead.
  */
 export async function sendEmail(mail: OutboundEmail, env: NodeJS.ProcessEnv = process.env): Promise<boolean> {
+  // A reserved test domain (lib/brevo isReservedAddress) can receive nothing —
+  // neither Brevo nor the flow is handed it; the caller counts it unsent.
+  if (isReservedAddress(mail.to)) return false;
   if (brevoConfigured(env)) {
     const sent = await sendTransactional(
       {

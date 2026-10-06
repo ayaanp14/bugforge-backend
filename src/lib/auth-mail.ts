@@ -1,5 +1,5 @@
 import type { ChallengePurpose } from "./otp-store.js";
-import { brevoConfigured, sendTransactional } from "./brevo.js";
+import { brevoConfigured, isReservedAddress, sendTransactional } from "./brevo.js";
 import { codeHtml, codeSubject, codeText } from "./auth-mail-copy.js";
 import { welcomeHtml, welcomeSubject, welcomeText, type SignInRoad, type WelcomeRecipient } from "./welcome-mail-copy.js";
 
@@ -93,6 +93,15 @@ export async function sendAuthCode(email: string, otp: string, purpose: Challeng
     return false;
   }
 
+  // A reserved test domain (lib/brevo isReservedAddress) can receive nothing:
+  // no provider or flow is tried. Outside production the code is printed, as
+  // when no delivery is configured, so a local test account can be verified.
+  if (isReservedAddress(email)) {
+    if (isProd) return false;
+    console.log(`[auth] ${purpose} code for ${email}: ${otp}  (a reserved test domain, so it is printed here and not mailed)`);
+    return true;
+  }
+
   if (brevoConfigured(env)) {
     const sent = await sendTransactional(
       {
@@ -148,6 +157,7 @@ export async function sendAuthCode(email: string, otp: string, purpose: Challeng
  * in-app welcome notification is written regardless.
  */
 export async function sendWelcome(person: WelcomeRecipient, env: NodeJS.ProcessEnv = process.env): Promise<boolean> {
+  if (isReservedAddress(person.email)) return false;
   if (!brevoConfigured(env)) {
     if (env["NODE_ENV"] !== "production") console.log(`[auth] welcome mail for ${person.email} not sent (BREVO_API_KEY is not set)`);
     return false;
