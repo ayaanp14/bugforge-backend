@@ -262,7 +262,7 @@ export function validateNote(n: CsNote): string[] {
   if (n.minutes < 3 || n.minutes > 30) out.push(`${at}: minutes ${n.minutes} — reading time is 3–30`);
   const outsideFences = n.body.replace(/```[\s\S]*?```/g, "");
   if (/^#\s/m.test(outsideFences)) out.push(`${at}: the body has a "# " heading — the page owns the H1; start at "##"`);
-  if (/__CODEXA_/.test(n.body)) out.push(`${at}: the body names a judge sentinel`);
+  if (/__CODEKAIRO_/.test(n.body)) out.push(`${at}: the body names a judge sentinel`);
   if (/<\/?[a-z][^>]*>/i.test(outsideFences.replace(/`[^`]*`/g, ""))) out.push(`${at}: the body has raw HTML — write Markdown`);
   const prose = noteProseWords(n.body);
   if (prose < NOTE_WORDS.min) out.push(`${at}: ${prose} words of prose; a note needs at least ${NOTE_WORDS.min}`);

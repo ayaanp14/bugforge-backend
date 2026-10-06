@@ -5,7 +5,7 @@
  *
  * Judge contract: a string test input must never contain `=` (parseArgs reads
  * `<ident>=` as a named argument), and no input or output may hold a
- * `__CODEXA_` sentinel. JS solutions must be Node 12-safe: no ??, ?., at(),
+ * `__CODEKAIRO_` sentinel. JS solutions must be Node 12-safe: no ??, ?., at(),
  * replaceAll, flat or flatMap. The C harness has no math.h. Several problems
  * here have their node counts tightened from the upstream limits so that every
  * answer stays inside a 32-bit int in all thirteen languages.

@@ -25,7 +25,7 @@ export const MAX_CODE_CHARS = 65_536;
 /** The refusal for code the judge will not take, or null for code it will. */
 export function codeProblem(code: unknown): string | null {
   if (typeof code !== "string" || code.length > MAX_CODE_CHARS) return "Code must be a string of at most 64 KB";
-  if (containsReservedMarker(code)) return "Code must not contain the reserved marker __CODEXA_";
+  if (containsReservedMarker(code)) return "Code must not contain the reserved marker __CODEKAIRO_";
   return null;
 }
 

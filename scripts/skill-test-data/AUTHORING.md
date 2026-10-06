@@ -141,7 +141,7 @@ the questions a machine has proved.
   avoid what they differ on).
 - SQL questions give the table(s) as a small Markdown table and ask what a
   query returns; the result options are written compactly (`` `(1, 'A'), (2, 'B')` ``).
-- Never put `__CODEXA_` anywhere. Never write a `\u` escape sequence (the
+- Never put `__CODEKAIRO_` anywhere. Never write a `\u` escape sequence (the
   authoring tools decode them); write the character or avoid it.
 
 ## Theory pools (OOP, Operating Systems, Computer Networks)

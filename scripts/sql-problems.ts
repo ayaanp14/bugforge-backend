@@ -48,7 +48,7 @@ function structure(p: SqlProblemSpec): string[] {
   for (const t of p.topics) if (!(SQL_TOPICS as readonly string[]).includes(t)) out.push(`${at}: topic "${t}" is not one of ${SQL_TOPICS.join(", ")}`);
   if (words(p.description) < 25) out.push(`${at}: the description is ${words(p.description)} words — say what to return, from which tables, and in what order`);
   if (/^#\s/m.test(p.description)) out.push(`${at}: the description has a "# " heading`);
-  if (/__CODEXA_/.test(JSON.stringify(p))) out.push(`${at}: names a judge sentinel`);
+  if (/__CODEKAIRO_/.test(JSON.stringify(p))) out.push(`${at}: names a judge sentinel`);
   if (!p.tables.length) out.push(`${at}: no tables`);
   const tableNames = new Set<string>();
   for (const t of p.tables) {

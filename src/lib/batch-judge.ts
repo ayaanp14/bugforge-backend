@@ -1,6 +1,6 @@
 import { LANGUAGE_MAP } from "./judge0.js";
 import { EXECUTOR_ENGINE, pollResult, submitCode } from "./executor.js";
-import { ERROR_MARKER, GZIP_OUTPUT_LANGS, buildBatchStdin, decodeBatchStdout, encodeBatchStdin, extractBatchStats, isolateDriverOutput, splitBatchStdout } from "./batch.js";
+import { CASE_SENTINEL, ERROR_MARKER, GZIP_OUTPUT_LANGS, buildBatchStdin, decodeBatchStdout, encodeBatchStdin, extractBatchStats, isolateDriverOutput, splitBatchStdout } from "./batch.js";
 
 /**
  * Runs user code against ALL test cases in a single engine execution
@@ -77,11 +77,14 @@ function chunkCases(cases: BatchCase[], language: string): BatchCase[][] {
   let inputBytes = 0;
   let outputBytes = 0;
   for (const c of cases) {
-    const inB = c.input.length + 20;
-    // Actual per-case output = answer + sentinel line (~17B). A degenerate
+    // The sentinel line plus slack, sized off the marker itself: these were the
+    // literals 20 and 18 against a 15-character marker, and the 85K output cap
+    // has only ~15K of headroom under Paiza's 100K — 5,000 cases × 3 more bytes.
+    const inB = c.input.length + CASE_SENTINEL.length + 5;
+    // Actual per-case output = answer + sentinel line. A degenerate
     // solution printing far more than expected overflows the chunk and is
     // reported as Output Limit Exceeded rather than mis-judged.
-    const outB = Math.max(c.expectedOutput.length, 8) + 18;
+    const outB = Math.max(c.expectedOutput.length, 8) + CASE_SENTINEL.length + 3;
     if (
       current.length > 0 &&
       (current.length >= CHUNK_MAX_CASES ||

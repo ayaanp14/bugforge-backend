@@ -47,7 +47,7 @@ for (const [slug, x] of extras) {
   for (const [field, value] of [["shortcut", x.shortcut], ["trap", x.trap]] as const) {
     if (typeof value !== "string" || !value.trim()) errors.push(`${slug}: empty ${field}`);
     else if (value.length > EXTRA_MAX_CHARS) errors.push(`${slug}: ${field} is ${value.length} characters (max ${EXTRA_MAX_CHARS})`);
-    else if (value.includes("__CODEXA_")) errors.push(`${slug}: ${field} contains a judge sentinel`);
+    else if (value.includes("__CODEKAIRO_")) errors.push(`${slug}: ${field} contains a judge sentinel`);
   }
   if (typeof x.trap !== "string") continue;
   const trap = plain(x.trap);

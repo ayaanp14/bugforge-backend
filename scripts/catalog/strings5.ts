@@ -8,7 +8,7 @@
  *
  * Judge contract: a string test input must never contain `=`, because the
  * JS/Python driver's parseArgs reads `<ident>=` as a named argument
- * (src/lib/judge0.ts), and no input or output may hold a `__CODEXA_` sentinel.
+ * (src/lib/judge0.ts), and no input or output may hold a `__CODEKAIRO_` sentinel.
  *
  * JS solutions must be Node 12-safe: no ??, ?., replaceAll, .at(), .flat() or
  * .flatMap(). The C harness has string.h but no math.h.

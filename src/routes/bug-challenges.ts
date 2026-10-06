@@ -382,7 +382,7 @@ function readEditedFiles(raw: unknown): { files: Record<string, string> } | { er
   for (const [path, content] of Object.entries(raw as Record<string, unknown>)) {
     if (typeof content !== "string") return { error: `File ${path} must be a string` };
     if (content.length > 200_000) return { error: `File ${path} is too large` };
-    if (containsReservedMarker(content)) return { error: "Files must not contain the reserved marker __CODEXA_" };
+    if (containsReservedMarker(content)) return { error: "Files must not contain the reserved marker __CODEKAIRO_" };
     files[path] = content;
   }
   return { files };

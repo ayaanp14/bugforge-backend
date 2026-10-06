@@ -5,7 +5,7 @@
  *
  * Judge contract: a string test input must never contain `=` (parseArgs reads
  * `<ident>=` as a named argument), and no input or output may hold a
- * `__CODEXA_` sentinel. JS solutions must be Node 12-safe: no ??, ?., at(),
+ * `__CODEKAIRO_` sentinel. JS solutions must be Node 12-safe: no ??, ?., at(),
  * replaceAll, flat or flatMap. The C harness has no math.h or limits.h.
  * Generated grids stay small (BFS and search problems at most ~8×8) because the
  * whole 5,000-case suite runs in one process under a 15 CPU-second cap, and

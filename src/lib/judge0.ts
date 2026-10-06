@@ -68,7 +68,7 @@ export interface Judge0Submission {
    * JavaScript and Python paths go through wrapCode, which recognises a
    * top-level function and bolts the sentinel driver onto it — the study
    * plans' program judge (lib/program-judge.ts) found its output ending in
-   * __CODEXA_BEGIN__ that way.
+   * __CODEKAIRO_BEGIN__ that way.
    */
   raw?: boolean;
 }
@@ -313,9 +313,9 @@ ${code}
 
 const fs = require('fs');
 let input = fs.readFileSync(0, 'utf8').trim();
-if (input.startsWith("__CODEXA_GZIN__")) {
+if (input.startsWith("__CODEKAIRO_GZIN__")) {
   const __zlibIn = require('zlib');
-  const __b64 = input.slice("__CODEXA_GZIN__".length).replace(/\\s+/g, "");
+  const __b64 = input.slice("__CODEKAIRO_GZIN__".length).replace(/\\s+/g, "");
   input = __zlibIn.gunzipSync(Buffer.from(__b64, "base64")).toString("utf8").trim();
 }
 
@@ -359,7 +359,7 @@ const parseArgs = (rawInput) => {
 // engine's stdout cap in a single run.
 const __t0 = Date.now();
 const __outLines = [];
-const __chunks = input.split("__CODEXA_CASE__").map((c) => c.trim()).filter((c) => c !== "");
+const __chunks = input.split("__CODEKAIRO_CASE__").map((c) => c.trim()).filter((c) => c !== "");
 for (const __chunk of __chunks) {
   try {
     const args = parseArgs(__chunk);
@@ -386,18 +386,18 @@ for (const __chunk of __chunks) {
       }
     }
     const msg = err && err.message ? err.message : String(err);
-    __outLines.push("__CODEXA_ERROR__: Execution error" + lineNote + ": " + msg);
+    __outLines.push("__CODEKAIRO_ERROR__: Execution error" + lineNote + ": " + msg);
   }
-  __outLines.push("__CODEXA_CASE__");
+  __outLines.push("__CODEKAIRO_CASE__");
 }
-__outLines.push("__CODEXA_STATS__ " + (Date.now() - __t0) + " " + Math.round(process.memoryUsage().rss / 1024));
+__outLines.push("__CODEKAIRO_STATS__ " + (Date.now() - __t0) + " " + Math.round(process.memoryUsage().rss / 1024));
 const __joined = __outLines.join("\\n") + "\\n";
 // Everything the solution printed on its own sits above this line; the judge
 // reads only what follows it (src/lib/batch.ts BEGIN_MARKER).
-process.stdout.write("__CODEXA_BEGIN__\\n");
+process.stdout.write("__CODEKAIRO_BEGIN__\\n");
 if (__joined.length > 65536) {
   const __zlib = require("zlib");
-  process.stdout.write("__CODEXA_GZ__\\n" + __zlib.gzipSync(Buffer.from(__joined)).toString("base64") + "\\n");
+  process.stdout.write("__CODEKAIRO_GZ__\\n" + __zlib.gzipSync(Buffer.from(__joined)).toString("base64") + "\\n");
 } else {
   process.stdout.write(__joined);
 }
@@ -462,10 +462,10 @@ def parse_args(input_data):
     return parsed_args
 
 input_data = sys.stdin.read().strip()
-if input_data.startswith("__CODEXA_GZIN__"):
+if input_data.startswith("__CODEKAIRO_GZIN__"):
     import gzip
     import base64
-    __b64 = "".join(input_data[len("__CODEXA_GZIN__"):].split())
+    __b64 = "".join(input_data[len("__CODEKAIRO_GZIN__"):].split())
     input_data = gzip.decompress(base64.b64decode(__b64)).decode("utf-8").strip()
 
 # Batch protocol (see src/lib/batch.ts): one sentinel-separated chunk per case.
@@ -474,7 +474,7 @@ if input_data.startswith("__CODEXA_GZIN__"):
 import time as __time_mod
 __t0 = __time_mod.time()
 __out_lines = []
-for __chunk in input_data.split("__CODEXA_CASE__"):
+for __chunk in input_data.split("__CODEKAIRO_CASE__"):
     __chunk = __chunk.strip()
     if __chunk == "":
         continue
@@ -496,22 +496,22 @@ for __chunk in input_data.split("__CODEXA_CASE__"):
             if 2 <= frame.lineno <= ${userCodeEndLine}:
                 line_note = " (line %d)" % (frame.lineno - 1)
                 break
-        __out_lines.append("__CODEXA_ERROR__: Execution error%s: %s" % (line_note, str(e)))
-    __out_lines.append("__CODEXA_CASE__")
+        __out_lines.append("__CODEKAIRO_ERROR__: Execution error%s: %s" % (line_note, str(e)))
+    __out_lines.append("__CODEKAIRO_CASE__")
 try:
     import resource as __res_mod
     __peak_kb = __res_mod.getrusage(__res_mod.RUSAGE_SELF).ru_maxrss
 except Exception:
     __peak_kb = 0
-__out_lines.append("__CODEXA_STATS__ %d %d" % (int((__time_mod.time() - __t0) * 1000), __peak_kb))
+__out_lines.append("__CODEKAIRO_STATS__ %d %d" % (int((__time_mod.time() - __t0) * 1000), __peak_kb))
 __joined = "\\n".join(__out_lines) + "\\n"
 # Everything the solution printed on its own sits above this line; the judge
 # reads only what follows it (src/lib/batch.ts BEGIN_MARKER).
-sys.stdout.write("__CODEXA_BEGIN__\\n")
+sys.stdout.write("__CODEKAIRO_BEGIN__\\n")
 if len(__joined) > 65536:
     import gzip
     import base64
-    sys.stdout.write("__CODEXA_GZ__\\n" + base64.b64encode(gzip.compress(__joined.encode("utf-8"))).decode("ascii") + "\\n")
+    sys.stdout.write("__CODEKAIRO_GZ__\\n" + base64.b64encode(gzip.compress(__joined.encode("utf-8"))).decode("ascii") + "\\n")
 else:
     sys.stdout.write(__joined)
 `;

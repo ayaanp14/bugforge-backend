@@ -75,7 +75,7 @@ export function validateAptitudeSeed(questions: AptitudeSeed[]): SeedProblem[] {
       if (value === undefined) continue;
       if (!value.trim()) bad(`empty ${field}`);
       if (value.length > EXTRA_MAX_CHARS) bad(`${field} over ${EXTRA_MAX_CHARS} characters`);
-      if (value.includes("__CODEXA_")) bad(`${field} contains a judge sentinel`);
+      if (value.includes("__CODEKAIRO_")) bad(`${field} contains a judge sentinel`);
     }
     if (q.timeTargetSec !== undefined && (!Number.isInteger(q.timeTargetSec) || q.timeTargetSec < 20 || q.timeTargetSec > 900)) bad("timeTargetSec out of range");
   }

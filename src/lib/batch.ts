@@ -12,11 +12,11 @@
 
 import { gzipSync, gunzipSync } from "zlib";
 
-export const CASE_SENTINEL = "__CODEXA_CASE__";
-export const ERROR_MARKER = "__CODEXA_ERROR__:";
-export const GZIP_MARKER = "__CODEXA_GZ__";
-export const GZIN_MARKER = "__CODEXA_GZIN__";
-export const STATS_MARKER = "__CODEXA_STATS__";
+export const CASE_SENTINEL = "__CODEKAIRO_CASE__";
+export const ERROR_MARKER = "__CODEKAIRO_ERROR__:";
+export const GZIP_MARKER = "__CODEKAIRO_GZ__";
+export const GZIN_MARKER = "__CODEKAIRO_GZIN__";
+export const STATS_MARKER = "__CODEKAIRO_STATS__";
 /**
  * Printed by a driver on its own line immediately before its result block.
  *
@@ -30,10 +30,10 @@ export const STATS_MARKER = "__CODEXA_STATS__";
  * is always the final one. Whatever came before is the user's own stdout and
  * is handed back to them as such rather than judged.
  */
-export const BEGIN_MARKER = "__CODEXA_BEGIN__";
+export const BEGIN_MARKER = "__CODEKAIRO_BEGIN__";
 
 /** Every marker shares this prefix; source that contains it is refused up front. */
-const RESERVED_PREFIX = "__CODEXA_";
+const RESERVED_PREFIX = "__CODEKAIRO_";
 
 /**
  * True when submitted source mentions the protocol's markers. Not a security

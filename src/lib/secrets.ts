@@ -57,7 +57,7 @@ export const SESSION_TTL = "30d";
  * itself. It is read without a hard requirement so that a deployment which
  * has not set it keeps working rather than failing shut over a speed bump.
  */
-const PUBLISHED_PLATFORM_DEFAULT = "codexa-super-secret-key-123";
+const PUBLISHED_PLATFORM_DEFAULT = "codekairo-super-secret-key-123";
 
 export const PLATFORM_SECRET: string = process.env["PLATFORM_SECRET"] ?? PUBLISHED_PLATFORM_DEFAULT;
 

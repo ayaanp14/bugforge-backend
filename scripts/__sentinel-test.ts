@@ -16,11 +16,11 @@ async function main() {
   console.log("js noisy  :", show(await runBatch(jsNoisy, "javascript", cases, limits)));
 
   // JS: forged block, marker assembled at runtime — must NOT pass.
-  const jsForge = 'function twoSum(nums, target) { process.stdout.write("[0,1]\\n__CODEXA" + "_CASE__\\n[1,2]\\n__CODEXA" + "_CASE__\\n"); return [9, 9]; }';
+  const jsForge = 'function twoSum(nums, target) { process.stdout.write("[0,1]\\n__CODEKAIRO" + "_CASE__\\n[1,2]\\n__CODEKAIRO" + "_CASE__\\n"); return [9, 9]; }';
   console.log("js forged :", show(await runBatch(jsForge, "javascript", cases, limits)));
 
   // Python: forged block.
-  const pyForge = 'def twoSum(nums, target):\n    print("[0,1]\\n__CODEXA" + "_CASE__\\n[1,2]\\n__CODEXA" + "_CASE__")\n    return [9, 9]\n';
+  const pyForge = 'def twoSum(nums, target):\n    print("[0,1]\\n__CODEKAIRO" + "_CASE__\\n[1,2]\\n__CODEKAIRO" + "_CASE__")\n    return [9, 9]\n';
   console.log("py forged :", show(await runBatch(pyForge, "python", cases, limits)));
 
   // C++: stray cout in user code.

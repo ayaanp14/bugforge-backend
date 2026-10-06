@@ -244,7 +244,7 @@ export function validateGuide(guide: SkillTestGuide, knownPath?: (path: string) 
   const prose = proseWords(guide.body);
   if (prose < 450) problems.push(`${at}: the guide needs at least 450 words of prose before the sample (has ${prose})`);
   if (prose > 1400) problems.push(`${at}: the guide runs to ${prose} words; keep it under 1,400`);
-  if (/__CODEXA_/.test([guide.body, guide.sample.prompt, guide.sample.options.join(""), guide.sample.explanation].join(""))) problems.push(`${at}: contains the reserved marker __CODEXA_`);
+  if (/__CODEKAIRO_/.test([guide.body, guide.sample.prompt, guide.sample.options.join(""), guide.sample.explanation].join(""))) problems.push(`${at}: contains the reserved marker __CODEKAIRO_`);
 
   for (const href of guideLinks(guide)) {
     if (!href.startsWith("/")) problems.push(`${at}: link "${href}" must be a path on this site`);

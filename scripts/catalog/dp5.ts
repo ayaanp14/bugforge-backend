@@ -7,7 +7,7 @@
  *
  * Judge contract: a string test input must never contain `=`, because the
  * JS/Python driver's parseArgs reads `<ident>=` as a named argument
- * (src/lib/judge0.ts), and no input or output may hold a `__CODEXA_` sentinel.
+ * (src/lib/judge0.ts), and no input or output may hold a `__CODEKAIRO_` sentinel.
  * Every return value is kept inside a 32-bit int - counting problems answer
  * modulo 10^9 + 7, and the constraints of the others are tightened where the
  * upstream bound would overflow.

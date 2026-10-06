@@ -10,7 +10,7 @@ import { isEngineDown } from "./engine-error.js";
  * a program": a class with a main method that reads stdin and prints. Here
  * the learner's source is the whole file, each case is a stdin and the
  * stdout it should produce, and the verdict is a plain comparison — no
- * driver, no markers, so `__CODEXA_` never has to be reserved in it.
+ * driver, no markers, so `__CODEKAIRO_` never has to be reserved in it.
  *
  * Cases run as one batch submission per case (an engine cannot re-run one
  * process on several inputs), so an exercise keeps to a handful; the case

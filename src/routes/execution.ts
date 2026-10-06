@@ -109,7 +109,7 @@ router.post("/run", requireAuth, executionLimiter, async (req, res) => {
       return;
     }
     if (containsReservedMarker(code)) {
-      res.status(400).json({ error: "Code must not contain the reserved marker __CODEXA_" });
+      res.status(400).json({ error: "Code must not contain the reserved marker __CODEKAIRO_" });
       return;
     }
     const customTestCases = readCustomCases(req.body.customTestCases);
@@ -235,7 +235,7 @@ router.post("/submit", requireAuth, executionLimiter, async (req, res) => {
       return;
     }
     if (containsReservedMarker(code)) {
-      res.status(400).json({ error: "Code must not contain the reserved marker __CODEXA_" });
+      res.status(400).json({ error: "Code must not contain the reserved marker __CODEKAIRO_" });
       return;
     }
     const customTestCases = readCustomCases(req.body.customTestCases);

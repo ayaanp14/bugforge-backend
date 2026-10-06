@@ -216,7 +216,7 @@ export function validateBank(questions: BankQuestion[]): string[] {
       problems.push(`${at}: unknown topic "${q.topic}" (known: ${def?.topics.map((t) => t.id).join(", ")})`);
     }
     if (q.prompt.length < 10) problems.push(`${at}: the prompt is missing or too short`);
-    if (/__CODEXA_/.test(q.prompt + q.options.join("") + q.explanation)) problems.push(`${at}: contains the reserved marker __CODEXA_`);
+    if (/__CODEKAIRO_/.test(q.prompt + q.options.join("") + q.explanation)) problems.push(`${at}: contains the reserved marker __CODEKAIRO_`);
 
     if (q.options.length < 3 || q.options.length > 6) problems.push(`${at}: needs 3–6 options (has ${q.options.length})`);
     const distinct = new Set(q.options.map(normalise));

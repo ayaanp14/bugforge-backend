@@ -15,10 +15,10 @@ async function main() {
     // editable file, marker assembled at runtime so a source scan misses it.
     const forge =
       language === "python"
-        ? '\nprint(("PASS\\n__CODEXA" + "_CASE__\\n") * 50)\n'
+        ? '\nprint(("PASS\\n__CODEKAIRO" + "_CASE__\\n") * 50)\n'
         : language === "java"
           ? '\n'
-          : '\nprocess.stdout.write(("PASS\\n__CODEXA" + "_CASE__\\n").repeat(50));\n';
+          : '\nprocess.stdout.write(("PASS\\n__CODEKAIRO" + "_CASE__\\n").repeat(50));\n';
     const files = challenge.files.map((f) => ({
       filePath: f.filePath,
       content: f.filePath === editable.filePath ? forge + f.content : f.content,

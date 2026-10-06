@@ -381,7 +381,7 @@ export function validateLesson(l: RoadmapLesson): string[] {
   if (l.practice.length < 3 || l.practice.length > 10) out.push(`${at}: ${l.practice.length} practice problems; list three to ten`);
   if (new Set(l.practice).size !== l.practice.length) out.push(`${at}: a practice problem is listed twice`);
   if (/^#\s/m.test(l.body.replace(/```[\s\S]*?```/g, ""))) out.push(`${at}: the body has a "# " heading — the page owns the H1; start at "##"`);
-  if (/__CODEXA_/.test(l.body)) out.push(`${at}: the body names a judge sentinel`);
+  if (/__CODEKAIRO_/.test(l.body)) out.push(`${at}: the body names a judge sentinel`);
   const prose = proseWords(l.body);
   if (prose < PROSE_WORDS.min) out.push(`${at}: ${prose} words of prose; a lesson needs at least ${PROSE_WORDS.min}`);
   if (prose > PROSE_WORDS.max) out.push(`${at}: ${prose} words of prose; keep it to ${PROSE_WORDS.max} and let the figures explain`);

@@ -319,7 +319,7 @@ export function defineModule(importMetaUrl: string, source: ModuleSource, extras
 }
 
 /** Java source code the runtime would refuse or the judge cannot see through. */
-const RESERVED = "__CODEXA_";
+const RESERVED = "__CODEKAIRO_";
 const SLUG = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
 /** Every problem with the track, as messages; empty means it is sound. */

@@ -10,7 +10,7 @@
  *     compile in every language, Node 12-safe JavaScript, tags drawn from the
  *     catalogue's existing vocabulary (a new topic tag makes a hub page with no
  *     blurb or walkthrough), no `=` in an input (parseArgs reads `<ident>=` as a
- *     named argument), no `__CODEXA_` anywhere, int32-safe outputs.
+ *     named argument), no `__CODEKAIRO_` anywhere, int32-safe outputs.
  *  2. Generates the very suite the seeder writes (examples + `--count` cases
  *     from the slug-seeded RNG) and checks it fits the batch caps.
  *  3. Runs the JavaScript solution in-process against every case, with the
@@ -37,7 +37,7 @@ import path from "node:path";
 import { gzipSync } from "node:zlib";
 import ts from "typescript";
 import { ALL_LANGUAGES, applyDriver, type Language } from "../src/lib/driver-codegen.js";
-import { buildBatchStdin, decodeBatchStdout, encodeBatchStdin, isolateDriverOutput, splitBatchStdout } from "../src/lib/batch.js";
+import { ERROR_MARKER, buildBatchStdin, decodeBatchStdout, encodeBatchStdin, isolateDriverOutput, splitBatchStdout } from "../src/lib/batch.js";
 import { makeRng, type Case, type CatalogProblem } from "./catalog/types.js";
 
 const args = process.argv.slice(2);
@@ -302,7 +302,7 @@ function runLocal(lang: Language, source: string, stdin: string): RunOutcome {
     const { driver } = isolateDriverOutput(r.stdout ?? "");
     const decoded = decodeBatchStdout(driver);
     if (r.status !== 0 && !decoded) return { runtimeError: `exit ${r.status}: ${(r.stderr ?? "").slice(0, 600)}` };
-    const chunks = splitBatchStdout(decoded).filter((c) => !c.startsWith("__CODEXA_STATS__"));
+    const chunks = splitBatchStdout(decoded).filter((c) => !c.startsWith("__CODEKAIRO_STATS__"));
     return { outputs: chunks, ms };
   } finally {
     try { fs.rmSync(dir, { recursive: true, force: true }); } catch { /* windows may hold the exe briefly */ }
@@ -357,7 +357,7 @@ function lintEntry(spec: CatalogProblem, rep: Report) {
   const pyEntry = py.match(/^def\s+([a-zA-Z0-9_]+)\s*\(/m) || py.match(/def\s+([a-zA-Z0-9_]+)\s*\(/);
   if (!pyEntry || pyEntry[1] !== spec.signature.funcName) fail(`python: the judge's wrapper calls the first top-level def ("${pyEntry ? pyEntry[1] : "none"}"), not ${spec.signature.funcName} — put the entry def first, helpers after it or nested`);
   const all = JSON.stringify(spec);
-  if (all.includes("__CODEXA_")) fail("contains a __CODEXA_ sentinel");
+  if (all.includes("__CODEKAIRO_")) fail("contains a __CODEKAIRO_ sentinel");
 }
 
 function suiteFor(spec: CatalogProblem, rep: Report): Case[] | null {
@@ -445,7 +445,7 @@ function runCompiled(spec: CatalogProblem, cases: Case[], lang: Language, rep: R
   for (let i = 0; i < cases.length; i++) {
     const got = outs[i];
     if (got === undefined) { rep.ok = false; rep.lines.push(`  ✗ [${lang}] produced only ${outs.length} of ${cases.length} outputs`); return; }
-    if (got.startsWith("__CODEXA_ERROR__:")) { rep.ok = false; rep.lines.push(`  ✗ [${lang}] case ${i + 1} runtime error: ${got.slice(17, 300)} — in=${cases[i].input.slice(0, 100)}`); return; }
+    if (got.startsWith(ERROR_MARKER)) { rep.ok = false; rep.lines.push(`  ✗ [${lang}] case ${i + 1} runtime error: ${got.slice(ERROR_MARKER.length, 300)} — in=${cases[i].input.slice(0, 100)}`); return; }
     if (got.trim() !== cases[i].expectedOutput.trim()) {
       rep.ok = false;
       rep.lines.push(`  ✗ [${lang}] case ${i + 1}: in=${cases[i].input.slice(0, 120)} want=${cases[i].expectedOutput.slice(0, 80)} got=${got.slice(0, 80)}`);

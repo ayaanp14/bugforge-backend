@@ -7,10 +7,10 @@
  * Every other language emits a self-contained file: the function stub for the
  * user plus a "driver" section implementing the batch protocol from
  * src/lib/batch.ts — ALL test cases arrive in one stdin separated by
- * __CODEXA_CASE__ lines; the driver loops cases, parses each one's lines
+ * __CODEKAIRO_CASE__ lines; the driver loops cases, parses each one's lines
  * positionally, calls the function, prints the result in the exact
  * expectedOutput format ("[0,1]", "true", '["o","l"]', 42), then prints the
- * sentinel. A case that throws prints __CODEXA_ERROR__: + message instead
+ * sentinel. A case that throws prints __CODEKAIRO_ERROR__: + message instead
  * (where the language can catch), so one bad case doesn't hide the rest.
  *
  * renderFile(lang, sig, fnCode) — fnCode null gives the starter stub; passing
@@ -33,14 +33,14 @@ export interface Signature {
 }
 
 // Kept in sync with src/lib/batch.ts
-const SENTINEL = "__CODEXA_CASE__";
-const ERR = "__CODEXA_ERROR__:";
-const GZ = "__CODEXA_GZ__";
+const SENTINEL = "__CODEKAIRO_CASE__";
+const ERR = "__CODEKAIRO_ERROR__:";
+const GZ = "__CODEKAIRO_GZ__";
 // Printed on its own line right before the driver's block. The judge reads
 // only what follows the last one, so whatever the user's code printed on its
 // own is theirs to see and not the judge's to grade (src/lib/batch.ts).
-const BEGIN = "__CODEXA_BEGIN__";
-const GZIN = "__CODEXA_GZIN__"; // length 15; large stdin arrives as marker + base64(gzip)
+const BEGIN = "__CODEKAIRO_BEGIN__";
+const GZIN = "__CODEKAIRO_GZIN__"; // large stdin arrives as marker + base64(gzip); drivers cut it by GZIN.length
 // Buffered output beyond this size is gzip+base64'd so any suite fits the
 // engine's stdout cap in one run (languages with stdlib gzip only).
 const GZ_THRESHOLD = 65536;
@@ -100,9 +100,9 @@ function tsDriver(sig: Signature): string {
     "const _Buffer: any = _g.Buffer;",
     "const _process: any = _g.process;",
     'let _raw: string = _require("fs").readFileSync(0, "utf8");',
-    `if (_raw.slice(0, 15) === "${GZIN}") {`,
+    `if (_raw.slice(0, ${GZIN.length}) === "${GZIN}") {`,
     '    const _zlibIn = _require("zlib");',
-    '    const _b64 = _raw.slice(15).replace(/\\s+/g, "");',
+    `    const _b64 = _raw.slice(${GZIN.length}).replace(/\\s+/g, "");`,
     '    _raw = _zlibIn.gunzipSync(_Buffer.from(_b64, "base64")).toString("utf8");',
     "}",
     "const _cases: string[][] = [];",
@@ -130,7 +130,7 @@ function tsDriver(sig: Signature): string {
     "    }",
     `    _out.push("${SENTINEL}");`,
     "}",
-    '_out.push("__CODEXA_STATS__ " + (Date.now() - _t0) + " " + Math.round(_process.memoryUsage().rss / 1024));',
+    '_out.push("__CODEKAIRO_STATS__ " + (Date.now() - _t0) + " " + Math.round(_process.memoryUsage().rss / 1024));',
     'const _joined = _out.join("\\n") + "\\n";',
     `_process.stdout.write("${BEGIN}\\n");`,
     `if (_joined.length > ${GZ_THRESHOLD}) {`,
@@ -238,7 +238,7 @@ function javaFile(sig: Signature, fn: string): string {
     '        Scanner scin = new Scanner(System.in).useDelimiter("\\\\A");',
     '        String raw = scin.hasNext() ? scin.next() : "";',
     `        if (raw.startsWith("${GZIN}")) {`,
-    '            String b64 = raw.substring(15).replaceAll("\\\\s", "");',
+    `            String b64 = raw.substring(${GZIN.length}).replaceAll("\\\\s", "");`,
     "            java.util.zip.GZIPInputStream gzin = new java.util.zip.GZIPInputStream(new java.io.ByteArrayInputStream(Base64.getDecoder().decode(b64)));",
     '            raw = new String(gzin.readAllBytes(), "UTF-8");',
     "        }",
@@ -265,7 +265,7 @@ function javaFile(sig: Signature, fn: string): string {
     `            OUT.append("${SENTINEL}\\n");`,
     "        }",
     "        long __mem = (Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory()) / 1024;",
-    '        OUT.append("__CODEXA_STATS__ " + (System.currentTimeMillis() - __t0) + " " + __mem + "\\n");',
+    '        OUT.append("__CODEKAIRO_STATS__ " + (System.currentTimeMillis() - __t0) + " " + __mem + "\\n");',
     "        String joined = OUT.toString();",
     `        System.out.println("${BEGIN}");`,
     `        if (joined.length() > ${GZ_THRESHOLD}) {`,
@@ -405,7 +405,7 @@ function cppFile(sig: Signature, fn: string): string {
     "    struct rusage __ru;",
     "    getrusage(RUSAGE_SELF, &__ru);",
     "    long __cpu_ms = (__ru.ru_utime.tv_sec + __ru.ru_stime.tv_sec) * 1000 + (__ru.ru_utime.tv_usec + __ru.ru_stime.tv_usec) / 1000;",
-    '    __OUT << "__CODEXA_STATS__ " << __cpu_ms << " " << __ru.ru_maxrss << "\\n";',
+    '    __OUT << "__CODEKAIRO_STATS__ " << __cpu_ms << " " << __ru.ru_maxrss << "\\n";',
     "    cout.flush();",
     "    fflush(stdout);",
     `    cout << "${BEGIN}\\n" << __OUT.str();`,
@@ -662,7 +662,7 @@ function cFile(sig: Signature, fn: string): string {
     "    struct rusage __ru;",
     "    getrusage(RUSAGE_SELF, &__ru);",
     "    long __cpu_ms = (__ru.ru_utime.tv_sec + __ru.ru_stime.tv_sec) * 1000 + (__ru.ru_utime.tv_usec + __ru.ru_stime.tv_usec) / 1000;",
-    '    __emit("__CODEXA_STATS__ %ld %ld\\n", __cpu_ms, __ru.ru_maxrss);',
+    '    __emit("__CODEKAIRO_STATS__ %ld %ld\\n", __cpu_ms, __ru.ru_maxrss);',
     "    fflush(stdout);",
     `    fputs("${BEGIN}\\n", stdout);`,
     "    if (__obuf != NULL) fwrite(__obuf, 1, __olen, stdout);",
@@ -764,7 +764,7 @@ function csFile(sig: Signature, fn: string): string {
     "        string raw = Console.In.ReadToEnd();",
     `        if (raw.StartsWith("${GZIN}"))`,
     "        {",
-    "            var b64 = raw.Substring(15);",
+    `            var b64 = raw.Substring(${GZIN.length});`,
     "            using (var msIn = new System.IO.MemoryStream(Convert.FromBase64String(b64)))",
     "            using (var gzIn = new System.IO.Compression.GZipStream(msIn, System.IO.Compression.CompressionMode.Decompress))",
     "            using (var reader = new System.IO.StreamReader(gzIn))",
@@ -802,7 +802,7 @@ function csFile(sig: Signature, fn: string): string {
     "            }",
     `            OUT.Append("${SENTINEL}\\n");`,
     "        }",
-    '        OUT.Append("__CODEXA_STATS__ " + (Environment.TickCount - __t0) + " " + (GC.GetTotalMemory(false) / 1024) + "\\n");',
+    '        OUT.Append("__CODEKAIRO_STATS__ " + (Environment.TickCount - __t0) + " " + (GC.GetTotalMemory(false) / 1024) + "\\n");',
     "        string joined = OUT.ToString();",
     `        Console.WriteLine("${BEGIN}");`,
     `        if (joined.Length > ${GZ_THRESHOLD})`,
@@ -898,7 +898,7 @@ function goFile(sig: Signature, fn: string): string {
     "\trawBytes, _ := ioutil.ReadAll(os.Stdin)",
     "\traw := string(rawBytes)",
     `\tif strings.HasPrefix(raw, "${GZIN}") {`,
-    "\t\tb64 := raw[15:]",
+    `\t\tb64 := raw[${GZIN.length}:]`,
     '\t\tb64 = strings.ReplaceAll(b64, "\\n", "")',
     '\t\tb64 = strings.ReplaceAll(b64, "\\r", "")',
     "\t\tdecoded, _ := base64.StdEncoding.DecodeString(b64)",
@@ -930,7 +930,7 @@ function goFile(sig: Signature, fn: string): string {
     "\t}",
     "\tvar __ms runtime.MemStats",
     "\truntime.ReadMemStats(&__ms)",
-    '\tout = append(out, fmt.Sprintf("__CODEXA_STATS__ %d %d", time.Since(__t0).Milliseconds(), __ms.Sys/1024))',
+    '\tout = append(out, fmt.Sprintf("__CODEKAIRO_STATS__ %d %d", time.Since(__t0).Milliseconds(), __ms.Sys/1024))',
     '\tjoined := strings.Join(out, "\\n") + "\\n"',
     `\tfmt.Println("${BEGIN}")`,
     `\tif len(joined) > ${GZ_THRESHOLD} {`,
@@ -1018,7 +1018,7 @@ function ktFile(sig: Signature, fn: string): string {
     "fun main() {",
     '    var raw = generateSequence(::readLine).joinToString("\\n")',
     `    if (raw.startsWith("${GZIN}")) {`,
-    '        val b64 = raw.substring(15).replace(Regex("\\\\s"), "")',
+    `        val b64 = raw.substring(${GZIN.length}).replace(Regex("\\\\s"), "")`,
     "        val gzin = java.util.zip.GZIPInputStream(java.io.ByteArrayInputStream(java.util.Base64.getDecoder().decode(b64)))",
     "        raw = gzin.readBytes().toString(Charsets.UTF_8)",
     "    }",
@@ -1045,7 +1045,7 @@ function ktFile(sig: Signature, fn: string): string {
     `        OUT.append("${SENTINEL}\\n")`,
     "    }",
     "    val __mem = (Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory()) / 1024",
-    '    OUT.append("__CODEXA_STATS__ " + (System.currentTimeMillis() - __t0) + " " + __mem + "\\n")',
+    '    OUT.append("__CODEKAIRO_STATS__ " + (System.currentTimeMillis() - __t0) + " " + __mem + "\\n")',
     "    val joined = OUT.toString()",
     `    println("${BEGIN}")`,
     `    if (joined.length > ${GZ_THRESHOLD}) {`,
@@ -1168,7 +1168,7 @@ function swFile(sig: Signature, fn: string): string {
     `    ${print}`,
     `    __out += "${SENTINEL}\\n"`,
     "}",
-    '__out += "__CODEXA_STATS__ \\(Int(Date().timeIntervalSince(__t0) * 1000)) 0\\n"',
+    '__out += "__CODEKAIRO_STATS__ \\(Int(Date().timeIntervalSince(__t0) * 1000)) 0\\n"',
     `print("${BEGIN}")`,
     "print(__out, terminator: \"\")",
     "fflush(stdout)",
@@ -1298,7 +1298,7 @@ function rsFile(sig: Signature, fn: string): string {
     `        __out.push_str("${SENTINEL}\\n");`,
     "    }",
     '    let __mem: i64 = std::fs::read_to_string("/proc/self/status").ok().and_then(|s| s.lines().find(|l| l.starts_with("VmHWM:")).and_then(|l| l.split_whitespace().nth(1).and_then(|v| v.parse().ok()))).unwrap_or(0);',
-    '    __out.push_str(&format!("__CODEXA_STATS__ {} {}\\n", __t0.elapsed().as_millis(), __mem));',
+    '    __out.push_str(&format!("__CODEKAIRO_STATS__ {} {}\\n", __t0.elapsed().as_millis(), __mem));',
     "    let __stdout = std::io::stdout();",
     "    let mut __lock = __stdout.lock();",
     `    let _ = __lock.write_all(b"${BEGIN}\\n");`,
@@ -1358,7 +1358,7 @@ function phpFile(sig: Signature, fn: string): string {
     "    }",
     `    $out[] = "${SENTINEL}";`,
     "}",
-    '$out[] = "__CODEXA_STATS__ " . intval((microtime(true) - $__t0) * 1000) . " " . intval(memory_get_peak_usage(true) / 1024);',
+    '$out[] = "__CODEKAIRO_STATS__ " . intval((microtime(true) - $__t0) * 1000) . " " . intval(memory_get_peak_usage(true) / 1024);',
     '$joined = implode("\\n", $out) . "\\n";',
     `echo "${BEGIN}\\n";`,
     `if (strlen($joined) > ${GZ_THRESHOLD} && function_exists("gzencode")) {`,
@@ -1388,7 +1388,7 @@ function rbFile(sig: Signature, fn: string): string {
     "# ---- driver (do not edit below) ----",
     "raw = STDIN.read",
     `if raw.start_with?("${GZIN}")`,
-    '  b64 = raw[15..].delete("\\n\\r ")',
+    `  b64 = raw[${GZIN.length}..].delete("\\n\\r ")`,
     '  raw = Zlib.gunzip(b64.unpack1("m0"))',
     "end",
     "cases = []",
@@ -1426,7 +1426,7 @@ function rbFile(sig: Signature, fn: string): string {
     "rescue",
     "  0",
     "end",
-    'out_lines << "__CODEXA_STATS__ #{((Process.clock_gettime(Process::CLOCK_MONOTONIC) - __t0) * 1000).to_i} #{__mem}"',
+    'out_lines << "__CODEKAIRO_STATS__ #{((Process.clock_gettime(Process::CLOCK_MONOTONIC) - __t0) * 1000).to_i} #{__mem}"',
     'joined = out_lines.join("\\n") + "\\n"',
     `puts "${BEGIN}"`,
     `if joined.length > ${GZ_THRESHOLD}`,

@@ -158,5 +158,5 @@ exactly what every one of the four programs prints
   dijkstras-algorithm, minimum-spanning-tree, dynamic-programming,
   longest-increasing-subsequence, knapsack-problem, longest-common-subsequence
 
-- Never write `__CODEXA_` anywhere.
+- Never write `__CODEKAIRO_` anywhere.
 - Facts must be true. If a claim is about complexity, it is the standard one; if it is about a library (`std::priority_queue` is a max-heap, Python's `heapq` is a min-heap), check it.
