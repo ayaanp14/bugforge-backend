@@ -30,6 +30,7 @@ import {
   type Signals,
 } from "../lib/skill-tests.js";
 import { codingPool } from "../services/aptitude-bank.js";
+import { invalidateDashboard } from "../services/dashboard.js";
 import { issueCredential, poolTopics, setRevoked, setWornCredential, verifyCredential, type IssueOutcome } from "../services/skill-credentials.js";
 
 /**
@@ -270,6 +271,8 @@ async function finishAttempt(attemptId: string, reason: "submitted" | "expired" 
   if (claimed.count === 0) {
     console.warn(`[skill-tests] attempt ${attemptId} was closed by a concurrent writer`);
   } else {
+    // A closed sitting ticks the plan's "Sit a CS fundamentals test" (services/onboarding-plan), pass or not.
+    invalidateDashboard(attempt.userId);
     if (similarities.length) {
       await Promise.all(
         similarities.map((s) =>

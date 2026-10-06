@@ -35,6 +35,7 @@ const PUBLIC_USER_SELECT = {
   twitter: true,
   readme: true,
   createdAt: true,
+  profileHidden: true,
 } as const;
 
 /** Usernames are 3–20 of [a-z0-9_] today; older generated ones are looser, so this only screens out what could never be one. */
@@ -107,8 +108,20 @@ export function forgetPublicUser(userId: string): void {
   broadcastSignal(PUBLIC_USER_SIGNAL, userId);
 }
 
-export async function getPublicProfile(username: string, viewerId: string | null) {
+/**
+ * The account behind a public read, or null — also for a profile its owner
+ * has hidden, to everyone but the owner. The same null as a name nobody
+ * holds, so the answer cannot be used to learn that a hidden account exists.
+ */
+async function visibleUser(username: string, viewerId: string | null): Promise<PublicUserRow | null> {
   const user = await findUser(username);
+  if (!user) return null;
+  if (user.profileHidden && user.id !== viewerId) return null;
+  return user;
+}
+
+export async function getPublicProfile(username: string, viewerId: string | null) {
+  const user = await visibleUser(username, viewerId);
   if (!user) return null;
   return publicProfileOf(user, await getDashboard(user.id), viewerId);
 }
@@ -129,8 +142,12 @@ export function publicProfileOf(
   const me = dash.me;
   if (!me) return null;
 
+  const isSelf = viewerId === user.id;
   return {
-    isSelf: viewerId === user.id,
+    isSelf,
+    // Only its owner ever reads a hidden profile, and only the owner is told
+    // whether it is (their banner says so); nobody else's payload has the key.
+    ...(isSelf ? { hidden: user.profileHidden } : {}),
     user: {
       name: user.name,
       username: user.username,
@@ -207,8 +224,8 @@ export function publicHistoryPage(page: HistoryPage): HistoryPage {
 }
 
 /** A page of someone's submission history — the slim rows, never code or a query. Null when there is no such user. */
-export async function getPublicSubmissions(username: string, page: number, limit: number) {
-  const user = await findUser(username);
+export async function getPublicSubmissions(username: string, viewerId: string | null, page: number, limit: number) {
+  const user = await visibleUser(username, viewerId);
   if (!user) return null;
   return publicHistoryPage(await getSubmissionHistory(user.id, page, limit));
 }
@@ -219,8 +236,8 @@ export async function getPublicSubmissions(username: string, page: number, limit
  * prompt or a "GitHub didn't answer". Its own request, like the owner's,
  * because a cold read waits on GitHub.
  */
-export async function getPublicGitHub(username: string) {
-  const user = await findUser(username);
+export async function getPublicGitHub(username: string, viewerId: string | null) {
+  const user = await visibleUser(username, viewerId);
   if (!user) return null;
   const card = await getGitHubCard(user.id);
   return { card: card.status === "ok" && card.connection && card.activity ? { connection: card.connection, activity: card.activity } : null };

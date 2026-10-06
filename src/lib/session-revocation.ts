@@ -35,6 +35,12 @@ const CACHE_TTL_MS = 180_000;
 const REVOKED_SIGNAL = "session-revoked";
 
 interface Revocations {
+  /**
+   * The account's row is gone — deleted by its owner (routes/me.ts). Every
+   * token it ever held is then revoked: nothing else stops a deleted
+   * account's 30-day token, since requireAuth never reads the user row.
+   */
+  missing: boolean;
   /** Epoch milliseconds, or null when the account has never revoked. */
   validFrom: number | null;
   /** Tokens signed out individually and not yet expired. */
@@ -71,6 +77,7 @@ async function load(userId: string): Promise<Revocations> {
     },
   });
   return {
+    missing: row === null,
     validFrom: row?.sessionsValidFrom ? row.sessionsValidFrom.getTime() : null,
     revokedIds: new Set(row?.revokedSessions.map((r) => r.jti) ?? []),
   };
@@ -112,7 +119,7 @@ onSignal(REVOKED_SIGNAL, forget);
 
 /**
  * True when this token has been ended: it is older than the account's last
- * revocation, or it was signed out by id.
+ * revocation, it was signed out by id, or its account no longer exists.
  *
  * `issuedAt` is the token's `iat` in seconds and `jti` its id; both are
  * mandatory claims now (lib/auth-session.ts), so a token that reaches here
@@ -138,7 +145,7 @@ export async function isSessionRevoked(userId: string, issuedAt: number, jti: st
     }
   }
 
-  if (revocations.revokedIds.has(jti)) return true;
+  if (revocations.missing || revocations.revokedIds.has(jti)) return true;
   if (revocations.validFrom === null) return false;
   // `iat` is whole seconds, so a token minted in the same second as the
   // revocation would otherwise survive it by rounding.
@@ -205,8 +212,9 @@ export function clearRevocationCache(): void {
 }
 
 /** Test seam: seed what a lookup would have returned, without a database. */
-export function primeRevocationCache(userId: string, revocations: { validFrom?: number | null; revokedIds?: string[] }): void {
+export function primeRevocationCache(userId: string, revocations: { missing?: boolean; validFrom?: number | null; revokedIds?: string[] }): void {
   cache.set(userId, {
+    missing: revocations.missing ?? false,
     validFrom: revocations.validFrom ?? null,
     revokedIds: new Set(revocations.revokedIds ?? []),
     fetchedAt: Date.now(),

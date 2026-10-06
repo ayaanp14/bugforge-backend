@@ -6,7 +6,7 @@ CodeKairo is a competitive-coding and interview-preparation platform built for I
 
 Signed-in pages (the dashboard shell — top navigation, Ctrl+K search, the bell, the assistant):
 
-- **Home and account**: `/` home dashboard · `/profile` (your own, editable) · `/u/<username>` (anyone's public profile) · `/pricing` · `/leaderboard` · `/admin` (admins only).
+- **Home and account**: `/` home dashboard · `/welcome` (the "What are you preparing for?" question) · `/profile` (your own, editable) · `/u/<username>` (anyone's public profile) · `/pricing` · `/leaderboard` · `/admin` (admins only).
 - **Problems**: `/challenges` problem catalogue, `/challenges/<topic>` (every problem of one topic — arrays, strings, dynamic-programming …) and `/challenges/company/<company>` (every problem tagged with one company) · `/problems/<slug>` workbench.
 - **DSA roadmap**: `/roadmap` · `/roadmap/certificate`.
 - **Study plans**: `/study-plans`, `/study-plans/<track>` (a language's plan), `/study-plans/<track>/<lesson>` (a lesson), `/study-plans/<track>/certificate`.
@@ -44,8 +44,15 @@ Public pages (no account needed):
 - **Sign out** ends only the device it was pressed on. Password change/reset ends all sessions.
 - **Sign-in limits**: 20 attempts per 15 minutes per network address and 10 per account; a correct sign-in does not count. Hitting the limit means waiting out the window — there is no 12-hour lock, whatever an old form message says.
 - **Username backfill**: accounts from before usernames existed get one generated from their name on the next load. Change it from `/profile` if the new one is free (a live availability check runs as you type).
-- **Deleting an account or getting a copy of data**: no self-serve button. Write to **support@codekairo.com** (the address `/privacy` gives) or use the in-app feedback prompt; identity is confirmed before anything is acted on.
+- **Deleting an account or getting a copy of data**: yourself, on `/profile` → **Edit profile** → **Privacy and your data**. **Download my data** saves one JSON file with everything held about the account (profile, code, SQL queries, interviews and transcripts, test scores and credentials, resumes, posts, activity) — test papers, answer keys and proctoring checks are left out. **Delete account** asks you to type your username (or email, if you have no username) and, for an account with a password, the password; it then removes the account and everything attached at once — it cannot be undone, and any plan ends with it. Writing to **support@codekairo.com** still works too.
 - **Admins**: `/admin` opens only for the site's admin accounts; anyone else is sent home. Users never need it.
+
+## Getting started: what you are preparing for — `/welcome`
+
+- **The question**: right after a new account first signs in, `/welcome` asks one question — **What are you preparing for?** — with four answers: **Campus placements** (aptitude, company tests and the coding round), **Product-company interviews** (DSA, CS fundamentals and mock interviews), **Learning a language** (Java, Python, C++ or JavaScript, start to finish) and **Just practising** (daily problems, contests and duels). Then how comfortable you are with coding problems — **New to coding problems**, **Solved a few** or **Fine with Mediums** — and up to five target companies for placements or product interviews, or the language for a language goal. An answer may already be selected — a guess from the page you first arrived on (a placement test suggests placements, a company's problem list product interviews); you confirm or change it. **Skip** is always there and locks nothing. Accounts made before the question existed are not sent to `/welcome`; their home page shows a line asking it instead, and **Not now** there counts as skipping.
+- **Your plan** (home page): an answer gives the home dashboard a **Your plan** list — three to five steps for that goal, level and companies or language, in the order they are meant to be done, each linking to the page where it is done. Steps tick themselves from what you actually do (a solve, an attempt, a lesson finished) — there is nothing to mark by hand. Skipping the question shows no plan.
+- **What else the answer changes**: the top-bar group that fits it is marked — **Interview** for placements, **Problems** for product interviews or a language, **Compete** for just practising — and that menu lists the pages for you first, under "For you". The Monday weekly digest adds one suggestion for the goal, and this assistant knows the answer and the next step of your plan. Choosing a language also sets the language the code editors open in.
+- **Changing the answer**: it is not fixed. On your profile (`/profile`), **What you're preparing for** shows it with a **Change** button (**Tell us** if you skipped), and **Change goal** on Your plan does the same: both open the question again with your answer filled in. The plan, the marked menu and the suggestions follow at once, and nothing you have done is lost.
 
 ## Profile — `/profile`
 
@@ -54,15 +61,16 @@ Public pages (no account needed):
 - **GitHub section**: **Connect GitHub** sends you to GitHub to approve (no permissions are asked — public data only — and CodeKairo keeps no GitHub token), then the profile shows that account's contribution graph for the past year with GitHub's own counts (commits, pull requests, issues, reviews, new repositories), active days, longest and current streak, and the ten latest public contributions, each linking to GitHub. It refreshes about hourly. Private work appears only as a count, and only if you turned on private contributions in GitHub's profile settings. One GitHub account can be on one CodeKairo profile; **Disconnect** removes it. The GitHub link typed in Edit profile is separate and is not checked.
 - **Accuracy** on the profile and **Accept rate** on the home page are per *problem*, not per submission: solved problems ÷ (solved + problems attempted but never solved).
 - **Edit profile** (dialog): name (≤80 chars), username, institute (≤120), gender (≤32), birthday, location (≤120), website / GitHub / LinkedIn / X links (each must be an `http(s)://` URL, ≤300 chars), bio (≤20,000). **Avatar**: pick one of the preset illustrated avatars, or keep the picture that came from GitHub/Google; there is no photo upload.
+- **What you're preparing for**: your answer to the `/welcome` question, with **Change** (or **Tell us**) to answer it again any time (see *Getting started*).
 - **Reminders** section: three switches — streak at risk, daily problem, weekly digest (see *Notifications and reminders*).
 - **Password** section: change it (see above).
-- **Public profile — `/u/<username>`**: yes, other people can see your profile. Anyone, signed in or not, can open anyone's profile read-only at `/u/<username>`: name, username, avatar, bio, institute, location, links, rank, rating, XP, global rank, solved counts, badges, roadmap chests, tournaments, the activity heatmap, the connected GitHub section, and the submission history (problem, verdict, language, runtime, memory, time). Names and avatars in the community feed, comments and on the leaderboard open the person's profile; your own `/profile` has **View public profile**, and your public page has **Copy link**. There is no way to hide a profile yet, and profiles are not listed in search engines. The rank word beside a name in the community is read from rating, like everywhere else.
+- **Public profile — `/u/<username>`**: yes, other people can see your profile. Anyone, signed in or not, can open anyone's profile read-only at `/u/<username>`: name, username, avatar, bio, institute, location, links, rank, rating, XP, global rank, solved counts, badges, roadmap chests, tournaments, the activity heatmap, the connected GitHub section, and the submission history (problem, verdict, language, runtime, memory, time). Names and avatars in the community feed, comments and on the leaderboard open the person's profile; your own `/profile` has **View public profile**, and your public page has **Copy link**. To hide it, switch on **Hide my public profile** (`/profile` → **Edit profile** → **Privacy and your data**): the page then opens only for you (with a note saying it is hidden), everyone else gets "No profile here", and your name stays on the leaderboard and on your posts without a link. Profiles are never listed in search engines. The rank word beside a name in the community is read from rating, like everywhere else.
 - **What other people never see on your profile**: your email, birthday, gender and reminder settings, and the **code** of any submission. Someone else can see which problems you submitted and each verdict, language and time, but never the code you submitted — only you can open that, from your own `/profile`.
 
 ### Badges
 
 - **19 achievement badges** on four tracks, shown on the profile ("N of 19 badges earned"), earned in colour and locked in grey with the rule on hover and "N more to <next badge>" per track. Nothing to claim: a badge appears as soon as its number is reached.
-- **Solver** (problems solved): First Solve 1, Warmed Up 10, Problem Solver 25, Algorithm Adept 50, Centurion 100, Code Machine 250, Legend 500.
+- **Solver** (problems solved — coding and SQL problems both count): First Solve 1, Warmed Up 10, Problem Solver 25, Algorithm Adept 50, Centurion 100, Code Machine 250, Legend 500.
 - **Bug hunter** (bugs fixed): Bug Spotter 1, Exterminator 10, Debugger 25, Bug Slayer 50.
 - **Streak** (best streak in days): On a Roll 3, Week Warrior 7, Monthly Grind 30, Unstoppable 100.
 - **Roadmap** (chests opened): Road Opener 1, Core Climber 2, Advanced Ascent 3, Road Walker 4.
@@ -407,10 +415,11 @@ Each line: duration · questions · negative marking · sectional or free timing
 - **Reminders** (each has its own switch on `/profile` → Reminders; all on by default):
   - **Streak at risk** — between 18:00 and 20:00 IST, to anyone whose live streak has not been extended today. In-app **and email**.
   - **Daily problem** — between 06:00 and 09:00 IST, today's contest problem, to anyone active in the last 14 days. In-app only. The same switch covers the **study plan due** nudge (see *Study plans*).
-  - **Weekly digest** — Monday 08:00–11:00 IST: problems solved, bugs fixed, contest points, streak and XP for the week. In-app **and email**.
+  - **Weekly digest** — Monday 08:00–11:00 IST: problems solved, SQL problems solved (when there were any), bugs fixed, contest points, streak and XP for the week, plus one suggestion for what you said you are preparing for. In-app **and email**.
   - **Tournament reminders** (Battles) — 24 hours and 1 hour before a tournament you are entered in, in-app and email; see *Tournaments*. Not covered by these switches.
   - Verification and password-reset emails, and the one-time welcome email, cannot be switched off.
 - Each reminder is sent at most once per period, and only if the switch is on.
+- **Notifications on this device** (push): a switch at the end of the Reminders section, per browser, applied at once (not with Save profile). On, these also arrive as system notifications even with CodeKairo closed: streak at risk, today's problem, study plan due, tournament reminders, and replies, comments, mentions, an accepted answer and new followers. Not while you have CodeKairo open in a tab — the bell has them then. Clicking one opens the page it is about. Signing out turns it off on that browser. If the switch is greyed out, notifications are blocked for the site in the browser's site settings. On iPhone and iPad it works only after adding CodeKairo to the Home Screen and opening it from there. Duel matches are not pushed.
 
 ## Plans, billing and allowances
 
@@ -428,7 +437,7 @@ Every price, limit and inclusion is in *Plans* later in this briefing — treat 
 
 ## The assistant (this chat)
 
-- Available to signed-in users on every dashboard page and to visitors on the public pages, as the floating "Ask about CodeKairo" button. Answers questions about the product and, for a signed-in account, about that account's own standing (progress, plan, allowances, streak, roadmap).
+- Available to signed-in users on every dashboard page and to visitors on the public pages, as the floating "Ask about CodeKairo" button. Answers questions about the product and, for a signed-in account, about that account's own standing (progress, plan, allowances, streak, roadmap, what they said they are preparing for and the next step of Your plan).
 - Unlimited on every plan; the only brake is a burst guard of 30 messages a minute. Messages are limited to 2,000 characters; the assistant carries the last 10 messages of the conversation as context, and answers from the parts of this handbook that match the question. A signed-in account's conversation is stored and can be picked up later; "Clear conversation" hides it. Visitors' conversations live only in that browser tab.
 - It does not write, debug or explain code or algorithms — hints and editorials are the place for that — and it does not cover anything outside CodeKairo.
 

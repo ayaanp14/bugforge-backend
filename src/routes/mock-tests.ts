@@ -13,6 +13,7 @@ import { browserCache } from "../lib/http-cache.js";
 import { codingPool, questionIndex } from "../services/aptitude-bank.js";
 import { TEST_GUIDES } from "../lib/test-guides.js";
 import { testSamples } from "../services/test-samples.js";
+import { invalidateDashboard } from "../services/dashboard.js";
 import { BREACH_LIMIT, breachCausesOf, isMobileClient, isSignalKind, recordBreach, SIGNAL_CAP, type Signals } from "../lib/skill-tests.js";
 
 /**
@@ -241,6 +242,8 @@ async function finishAttempt(attemptId: string, reason: "submitted" | "expired" 
     },
   });
   if (claimed.count === 0) console.warn(`[mock-tests] attempt ${attemptId} was closed by a concurrent writer`);
+  // The dashboard's plan ticks "Sit the … mock" from a closed sitting (services/onboarding-plan).
+  else invalidateDashboard(attempt.userId);
   return prisma.mockAttempt.findUnique({
     where: { id: attemptId },
     include: { test: { select: ATTEMPT_TEST_SELECT }, answers: true },

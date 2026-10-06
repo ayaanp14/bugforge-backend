@@ -8,6 +8,7 @@ import { providerConfig } from "./interview-ai.js";
 import { roadDefinition, roadmapFor, type RoadDefinition } from "./roadmap.js";
 import { lessonsForStage } from "../lib/roadmap-lessons.js";
 import { buildIndex, chunkBriefing, pickChunks, renderChunks, type BriefingIndex } from "../lib/assistant-index.js";
+import { ONBOARDING_SELECT, onboardingStateOf, type DashboardPlan, type Goal, type GoalLanguage, type Level, type OnboardingState } from "../lib/onboarding.js";
 
 /**
  * The site assistant: a chat that knows the product and the account asking.
@@ -164,9 +165,67 @@ async function accountBlock(userId: string, email: string | null): Promise<strin
   return cached(`assistant:account:${userId}`, 30_000, () => buildAccountBlock(userId, email));
 }
 
+/** The goals and levels as the /welcome page words them (frontend lib/onboarding.ts GOAL_OPTIONS / LEVEL_OPTIONS). */
+const GOAL_WORDS: Record<Goal, string> = {
+  placements: "campus placements",
+  product: "product-company interviews",
+  language: "learning a language",
+  practice: "just practising",
+};
+const LEVEL_WORDS: Record<Level, string> = {
+  new: "new to coding problems",
+  some: "has solved a few (comfortable with Easy)",
+  comfortable: "fine with Mediums",
+};
+const LANGUAGE_WORDS: Record<GoalLanguage, string> = { java: "Java", python: "Python", cpp: "C++", javascript: "JavaScript" };
+
+/**
+ * What the account said it is preparing for, and the next undone step of the
+ * plan the home page builds from it — so "where should I start?" is answered
+ * from the member's own answer rather than from the road alone. Two short
+ * lines at most: the block rides on every message.
+ *
+ * The state is read from the User row (fresh — an answer changed a minute ago
+ * is what the model sees), the plan from the dashboard payload; a plan built
+ * for an older goal (the dashboard is cached for minutes) is not quoted.
+ * Exported for the test.
+ */
+export function goalLines(state: OnboardingState, plan: DashboardPlan | null): { preparingFor: string; nextStepOfTheirPlan?: string } {
+  if (!state.goal) {
+    return {
+      preparingFor:
+        "not said yet — they can answer \"What are you preparing for?\" at [/welcome](/welcome) (or later on [their profile](/profile)), and the home page then builds a short plan for it",
+    };
+  }
+  const extra = state.details.companies?.length
+    ? `, target companies ${state.details.companies.join(", ")}`
+    : state.details.language
+      ? ` (${LANGUAGE_WORDS[state.details.language]})`
+      : "";
+  const preparingFor = `${GOAL_WORDS[state.goal]}${extra}${state.level ? `; ${LEVEL_WORDS[state.level]}` : ""}; changeable on [their profile](/profile)`;
+  if (!plan || plan.goal !== state.goal || !plan.steps.length) return { preparingFor };
+  const done = plan.steps.filter((s) => s.done).length;
+  const next = plan.steps.find((s) => !s.done);
+  return {
+    preparingFor,
+    nextStepOfTheirPlan: next
+      ? `[${next.title}](${next.href}) — ${next.detail} (${done} of ${plan.steps.length} steps of "Your plan" on the home page done)`
+      : `all ${plan.steps.length} steps of "Your plan" are done; suggest the next thing from the road or the pages for their goal`,
+  };
+}
+
 async function buildAccountBlock(userId: string, email: string | null): Promise<string> {
-  const [dash, ent, road] = await Promise.all([getDashboard(userId), entitlementFor(userId, email), roadmapFor(userId)]);
+  const [dash, ent, road, onboardingRow] = await Promise.all([
+    getDashboard(userId),
+    entitlementFor(userId, email),
+    roadmapFor(userId),
+    prisma.user.findUnique({ where: { id: userId }, select: ONBOARDING_SELECT }),
+  ]);
   const me = dash.me;
+  // `plan` is the dashboard's "Your plan" (services/onboarding-plan.ts). A
+  // payload cached before it existed simply has none.
+  const plan = "plan" in dash ? ((dash.plan as DashboardPlan | null | undefined) ?? null) : null;
+  const goal = onboardingRow ? goalLines(onboardingStateOf(onboardingRow), plan) : null;
   const current = road.stages.find((s) => s.id === road.summary.currentId) ?? null;
   const nextLocked = current ? road.stages.find((s) => s.number === current.number + 1) : null;
   const unsolved = current?.problems?.filter((p) => !p.solved).slice(0, 6).map((p) => `[${p.title}](/problems/${p.slug})`) ?? [];
@@ -174,6 +233,7 @@ async function buildAccountBlock(userId: string, email: string | null): Promise<
   const e = ent.plan.entitlements;
   const account = {
     name: me?.username ?? me?.name ?? null,
+    ...goal,
     rank: me?.tierTitle ?? null,
     xp: me?.xp ?? 0,
     rating: me?.rating ?? 0,

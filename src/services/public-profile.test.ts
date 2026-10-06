@@ -26,6 +26,7 @@ const user = {
   twitter: null,
   readme: "Building things.",
   createdAt: new Date("2026-01-02T00:00:00Z"),
+  profileHidden: false,
 };
 
 const dash = {
@@ -119,6 +120,12 @@ describe("publicProfileOf", () => {
     assert.equal(publicProfileOf(user, dash, "user_1")!.isSelf, true);
     assert.equal(publicProfileOf(user, dash, "user_2")!.isSelf, false);
     assert.equal(publicProfileOf(user, dash, null)!.isSelf, false);
+  });
+
+  it("tells only its owner that a profile is hidden, and never names the flag to anyone else", () => {
+    const hidden = { ...user, profileHidden: true };
+    assert.equal(publicProfileOf(hidden, dash, "user_1")!.hidden, true);
+    assert.ok(!JSON.stringify(publicProfileOf(hidden, dash, "user_2")).includes("idden"));
   });
 
   it("is nothing when the account vanished between the two reads", () => {

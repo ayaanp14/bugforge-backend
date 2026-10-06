@@ -44,11 +44,12 @@ router.get("/:username", optionalAuth, browserCache(60), async (req, res) => {
 });
 
 // GET /api/users/:username/submissions?page=&limit= — paging past the first five rows
-router.get("/:username/submissions", browserCache(60, { shared: true }), async (req, res) => {
+// optionalAuth on both sub-reads only so an owner previewing a hidden profile gets them.
+router.get("/:username/submissions", optionalAuth, browserCache(60, { shared: true }), async (req, res) => {
   // Bounded as /api/me/submissions is: no whole-history pulls, no negative skip.
   const page = Math.max(1, parseInt(String(req.query["page"] ?? ""), 10) || 1);
   const limit = Math.min(25, Math.max(1, parseInt(String(req.query["limit"] ?? ""), 10) || 5));
-  const history = await getPublicSubmissions(String(req.params["username"]), page, limit);
+  const history = await getPublicSubmissions(String(req.params["username"]), req.user?.userId ?? null, page, limit);
   if (!history) {
     notFound(res);
     return;
@@ -57,8 +58,8 @@ router.get("/:username/submissions", browserCache(60, { shared: true }), async (
 });
 
 // GET /api/users/:username/github — { card } when a GitHub account is connected and readable, else { card: null }
-router.get("/:username/github", browserCache(60, { shared: true }), async (req, res) => {
-  const github = await getPublicGitHub(String(req.params["username"]));
+router.get("/:username/github", optionalAuth, browserCache(60, { shared: true }), async (req, res) => {
+  const github = await getPublicGitHub(String(req.params["username"]), req.user?.userId ?? null);
   if (!github) {
     notFound(res);
     return;

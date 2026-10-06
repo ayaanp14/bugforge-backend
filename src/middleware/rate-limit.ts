@@ -309,3 +309,31 @@ export const shareCardLimiter = rateLimit({
   message: "You have made a lot of share cards in the last hour. Give it a little while.",
   keyOf: (req) => (req as Request & { user?: { userId: string } }).user?.userId ?? addressOf(req),
 });
+
+/**
+ * The account's own data: a full export (some forty reads over every table
+ * the account touches) and deletion, whose confirmation checks a password.
+ * Nobody needs more than a few of either in an hour; the ceiling stops a
+ * stolen session from hammering the export or guessing the password through
+ * the delete form. Keyed by account, mounted after `requireAuth`.
+ */
+export const accountDataLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 10,
+  message: "That is a lot of account requests in one hour. Give it a little while.",
+  keyOf: (req) => (req as Request & { user?: { userId: string } }).user?.userId ?? addressOf(req),
+});
+
+/**
+ * "Email me this link" from a phone (POST /api/me/send-link). It mails the
+ * account's own address only, so the worst a script does is fill its own
+ * inbox — but every send spends the Brevo free plan's 300 a day, shared
+ * with the sign-in codes. Five a day per account is plenty for a person
+ * saving a few problems for later. Keyed by account.
+ */
+export const sendLinkLimiter = rateLimit({
+  windowMs: 24 * 60 * 60 * 1000,
+  max: 5,
+  message: "That is five links today — open the rest from your laptop's history, or try again tomorrow.",
+  keyOf: (req) => (req as Request & { user?: { userId: string } }).user?.userId ?? addressOf(req),
+});

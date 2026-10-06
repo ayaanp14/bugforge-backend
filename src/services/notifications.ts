@@ -1,3 +1,4 @@
+import { pushNotifications } from "../lib/push.js";
 import { prisma } from "../lib/prisma.js";
 import { broadcastSignal, onSignal } from "../lib/cache.js";
 import { emitToUser, userIsConnected } from "../lib/realtime.js";
@@ -150,6 +151,8 @@ export async function createNotification(userId: string, input: NotificationInpu
       data: { userId, type: input.type, title: input.title, body: input.body, href: input.href ?? null },
     });
     invalidateUnread(userId);
+    // And on the account's devices, for the types that are pushed (lib/push.ts).
+    void pushNotifications([{ userId, ...input }]);
     return created;
   } catch (err) {
     console.error(`createNotification(${input.type}) error:`, err);
@@ -223,6 +226,7 @@ export async function createNotificationsOnce(
     data: fresh.map((r) => ({ userId: r.userId, type, title: r.title, body: r.body, href: r.href ?? null })),
   });
   for (const r of fresh) invalidateUnread(r.userId);
+  void pushNotifications(fresh.map((r) => ({ ...r, type })));
   return fresh.map((r) => r.userId);
 }
 

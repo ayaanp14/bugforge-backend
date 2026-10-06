@@ -11,6 +11,7 @@ import { WORN_CREDENTIAL_SELECT } from "../lib/skill-tests.js";
 import { invalidateUnread } from "../services/notifications.js";
 import { invalidateDashboard, querySocialCounts } from "../services/dashboard.js";
 import { EXPERIENCE_TAG, companyFeedTag, parseExperience } from "../lib/interview-experience.js";
+import { pushNotifications } from "../lib/push.js";
 import { experienceCompanies, experienceList, forgetExperiences } from "../services/interview-experiences.js";
 import type { ExperienceOutcome } from "../lib/interview-experience.js";
 
@@ -26,7 +27,8 @@ const router = Router();
 // `wornCredential` is the skill-test credential whose frame the author
 // chose to wear (lib/skill-tests.ts WORN_CREDENTIAL_SELECT), drawn in place
 // of the chest ring.
-const AUTHOR_SELECT = { id: true, name: true, username: true, avatar_url: true, xp: true, rating: true, roadmapRewards: { select: { tierKey: true } }, ...WORN_CREDENTIAL_SELECT } as const;
+// profileHidden: a name whose profile is hidden is drawn without a link (frontend ProfileLink).
+const AUTHOR_SELECT = { id: true, name: true, username: true, avatar_url: true, xp: true, rating: true, profileHidden: true, roadmapRewards: { select: { tierKey: true } }, ...WORN_CREDENTIAL_SELECT } as const;
 
 /** Feed page size cap. */
 const MAX_TAKE = 30;
@@ -131,6 +133,8 @@ async function notifyOnce(input: { userId: string; type: string; title: string; 
     }
     await prisma.notification.create({ data: { ...input } });
     invalidateUnread(input.userId);
+    // A new row only: a refreshed one ("and 3 others liked…") is not news worth a second ping.
+    void pushNotifications([input]);
   };
 
   // Registered before it is awaited, and released only if it is still the
@@ -1507,16 +1511,16 @@ router.post("/follow/:userId", requireAuth, async (req, res) => {
       // told, or it would keep serving the old count.
       void (async () => {
         const me = await prisma.user.findUnique({ where: { id: followerId }, select: { username: true, name: true } });
-        await prisma.notification.create({
-          data: {
-            userId: followingId,
-            type: "new_follower",
-            title: "You have a new follower",
-            body: `${me?.username || me?.name || "Someone"} started following you.`,
-            href: "/community",
-          },
-        });
+        const notice = {
+          userId: followingId,
+          type: "new_follower",
+          title: "You have a new follower",
+          body: `${me?.username || me?.name || "Someone"} started following you.`,
+          href: "/community",
+        };
+        await prisma.notification.create({ data: notice });
         invalidateUnread(followingId);
+        void pushNotifications([notice]);
       })().catch(() => {});
     }
 

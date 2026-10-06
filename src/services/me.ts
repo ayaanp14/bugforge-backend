@@ -4,6 +4,7 @@ import { daysBetween } from "../lib/clock.js";
 import { WORN_CREDENTIAL_SELECT } from "../lib/skill-tests.js";
 import { sqlSolveTally } from "../lib/activity.js";
 import { countSolved, getRank, loadProblemState, type ProblemState } from "./dashboard.js";
+import { onboardingStateOf, type OnboardingState } from "../lib/onboarding.js";
 
 // Zero-based rank ladder: rating ≡ lifetime XP, so the bar moves from solve #1
 export function getTierTitle(rating: number) {
@@ -14,7 +15,15 @@ export function getTierTitle(rating: number) {
   return "Master";
 }
 
-export type UserTrends = { xpThisWeek: number; solvedToday: number; bugsFixedThisWeek: number; sqlSolvedThisWeek: number; sqlSolvedToday: number };
+export type UserTrends = {
+  xpThisWeek: number;
+  solvedToday: number;
+  /** First solves of coding problems in the last seven days — what the practice plan's weekly step counts (lib/onboarding-plan). */
+  solvedThisWeek: number;
+  bugsFixedThisWeek: number;
+  sqlSolvedThisWeek: number;
+  sqlSolvedToday: number;
+};
 
 const XP_BY_DIFFICULTY: Record<string, number> = { easy: 10, medium: 20, hard: 30 };
 
@@ -105,19 +114,33 @@ export async function getUserTrends(userId: string, sql: Promise<SqlTally> = loa
   const sqlTally = await sql;
   xpThisWeek += sqlTally.xpThisWeek;
 
-  return { xpThisWeek, solvedToday, bugsFixedThisWeek, sqlSolvedThisWeek: sqlTally.solvedThisWeek, sqlSolvedToday: sqlTally.solvedToday };
+  return {
+    xpThisWeek,
+    solvedToday,
+    solvedThisWeek: newThisWeek.length,
+    bugsFixedThisWeek,
+    sqlSolvedThisWeek: sqlTally.solvedThisWeek,
+    sqlSolvedToday: sqlTally.solvedToday,
+  };
 }
 
 // ── GET /api/me, minus the parts that must stay live ────────────
 
-const meKey = (userId: string) => `me:v1:${userId}`;
+// v2 (2026-10-06): the payload carries `onboarding` and `trends.solvedThisWeek`
+// — a v1 copy left in Redis must not be served in the new shape's place.
+const meKey = (userId: string) => `me:v2:${userId}`;
 
 /** Drop a user's cached /api/me payload after anything that changes it. */
 export function invalidateMe(userId: string): void {
   invalidate(meKey(userId));
 }
 
-/** The profile columns a client may see. Every route that answers with a user row selects these — never the row itself, which carries the password hash. */
+/**
+ * The profile columns a client may see. Every route that answers with a user
+ * row selects these — never the row itself, which carries the password hash —
+ * and sends the row through `meUserOf`, which folds the onboarding columns
+ * into the one `onboarding` field the SPA reads.
+ */
 export const ME_SELECT = {
   id: true,
   name: true,
@@ -136,6 +159,7 @@ export const ME_SELECT = {
   remindStreak: true,
   remindDailyKata: true,
   weeklyDigest: true,
+  profileHidden: true,
   preferredLanguage: true,
   xp: true,
   questionsXp: true,
@@ -143,6 +167,11 @@ export const ME_SELECT = {
   rating: true,
   provider: true,
   createdAt: true,
+  /** What the account is preparing for (lib/onboarding ONBOARDING_SELECT, with createdAt above) — sent shaped, as `onboarding`, never as columns. */
+  goal: true,
+  level: true,
+  goalDetails: true,
+  onboardedAt: true,
   /** The roadmap chests opened — the frame and the flair the account wears. */
   roadmapRewards: { select: { tierKey: true } },
   /** The skill-test credential worn round the avatar, if any. */
@@ -157,6 +186,21 @@ export const ME_SELECT = {
     },
   },
 } as const;
+
+type OnboardingColumns = { goal: string | null; level: string | null; goalDetails: unknown; onboardedAt: Date | null; createdAt: Date };
+
+/**
+ * A user row as a client receives it: the four onboarding columns replaced by
+ * `onboarding` (lib/onboarding onboardingStateOf — the goal, level, details
+ * read defensively from Json, and whether to ask). GET /api/me and PATCH
+ * /api/me both answer through this, because the SPA's profile save replaces
+ * the session user with the PATCH answer: a shape without `onboarding`
+ * there would have sent a member who answered back to /welcome.
+ */
+export function meUserOf<T extends OnboardingColumns>(row: T): Omit<T, "goal" | "level" | "goalDetails" | "onboardedAt"> & { onboarding: OnboardingState } {
+  const { goal, level, goalDetails, onboardedAt, ...rest } = row;
+  return { ...rest, onboarding: onboardingStateOf({ goal, level, goalDetails, onboardedAt, createdAt: row.createdAt }) };
+}
 
 /**
  * The cacheable half of GET /api/me: the profile row plus activity trends.
@@ -255,7 +299,7 @@ async function buildMePayload(userId: string) {
   }
 
   return {
-    ...user,
+    ...meUserOf(user),
     // Beside the coding and bug counts, derived like `problemsSolved` is shown.
     stats: user.stats ? { ...user.stats, sqlSolved: sqlTally.solved } : null,
     tierTitle: getTierTitle(user.rating),
@@ -265,47 +309,68 @@ async function buildMePayload(userId: string) {
 }
 
 /**
+ * The dashboard's user row. Its own load because two parts of the dashboard
+ * read it: the user slice below, and the plan and "Up next" (the onboarding
+ * columns — goal, level, details), which start their goal's checks the
+ * moment this row lands instead of after a second read of the same columns.
+ */
+export function loadDashboardUserRow(userId: string) {
+  return prisma.user.findUnique({
+    where: { id: userId },
+    select: {
+      id: true,
+      name: true,
+      username: true,
+      avatar_url: true,
+      xp: true,
+      questionsXp: true,
+      bugsXp: true,
+      rating: true,
+      createdAt: true,
+      goal: true,
+      level: true,
+      goalDetails: true,
+      roadmapRewards: { select: { tierKey: true } },
+      ...WORN_CREDENTIAL_SELECT,
+      stats: {
+        select: {
+          problemsSolved: true,
+          bugsFixed: true,
+          currentStreak: true,
+          longestStreak: true,
+          lastActive: true,
+        },
+      },
+    },
+  });
+}
+
+/**
  * The user slice the dashboard needs (XP, stats, trends, tier) — folded into
  * GET /api/me/dashboard so the page renders from ONE request. Mirrors the
  * trend logic of GET /api/me (display-only: no streak writes here).
  */
 export async function getDashboardUser(
   userId: string,
-  loads?: { problemState?: Promise<ProblemState>; rank?: Promise<{ rank: number | null }> },
+  loads?: {
+    problemState?: Promise<ProblemState>;
+    rank?: Promise<{ rank: number | null }>;
+    /** The row, when the caller has started it (buildDashboard shares it with the plan). */
+    row?: ReturnType<typeof loadDashboardUserRow>;
+  },
 ) {
   // The trends are independent of the user row, so they overlap rather than queue.
   const sql = loadSqlTally(userId);
-  const [user, trends, standing, sqlTally] = await Promise.all([
-    prisma.user.findUnique({
-      where: { id: userId },
-      select: {
-        id: true,
-        name: true,
-        username: true,
-        avatar_url: true,
-        xp: true,
-        questionsXp: true,
-        bugsXp: true,
-        rating: true,
-        createdAt: true,
-        roadmapRewards: { select: { tierKey: true } },
-        ...WORN_CREDENTIAL_SELECT,
-        stats: {
-          select: {
-            problemsSolved: true,
-            bugsFixed: true,
-            currentStreak: true,
-            longestStreak: true,
-            lastActive: true,
-          },
-        },
-      },
-    }),
+  const [row, trends, standing, sqlTally] = await Promise.all([
+    loads?.row ?? loadDashboardUserRow(userId),
     getUserTrends(userId, sql),
     standingOf(userId, loads),
     sql,
   ]);
-  if (!user) return null;
+  if (!row) return null;
+  // The onboarding columns are the plan's (`plan` on the dashboard), not the
+  // slice's: the slice keeps the shape it always had.
+  const { goal: _goal, level: _level, goalDetails: _details, ...user } = row;
 
   // Display-adjust a stale streak (the /api/me route persists the reset)
   if (user.stats) {

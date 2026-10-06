@@ -10,6 +10,7 @@ import { bugSubmissionDetail, problemSubmissionDetail } from "../services/admin-
 import { interviewDetail, interviewList, interviewSummary, interviewsOf } from "../services/admin-interviews.js";
 import { userDepth } from "../services/admin-user-depth.js";
 import { cameFromOf, trafficReport, userTraffic } from "../services/admin-traffic.js";
+import { goalFilterWhere, isGoalFilter, onboardingDetail, onboardingReport, onboardingRow } from "../services/admin-onboarding.js";
 import { invalidateProblem } from "./problems.js";
 import { emailEnabled } from "../lib/email.js";
 
@@ -218,7 +219,7 @@ router.get("/analytics", async (req, res) => {
   const days = intArg(req.query["days"], 14, 2, 90);
   const since = new Date(Date.now() - days * DAY_MS);
 
-  const [activeUsers, visitors, pageViews, signups, submissions, accepted, errors, topEvents, topPaths, traffic] = await Promise.all([
+  const [activeUsers, visitors, pageViews, signups, submissions, accepted, errors, topEvents, topPaths, traffic, onboarding] = await Promise.all([
     perDay("AppEvent", "createdAt", since, Prisma.sql`AND userId IS NOT NULL`, "userId"),
     perDay("AppEvent", "createdAt", since, Prisma.sql`AND name = 'page_view'`, "COALESCE(userId, sessionId)"),
     perDay("AppEvent", "createdAt", since, Prisma.sql`AND name = 'page_view'`),
@@ -242,6 +243,8 @@ router.get("/analytics", async (req, res) => {
     }),
     // Where the visits came from (services/admin-traffic.ts).
     trafficReport(since),
+    // What the window's signups said they are preparing for, and who got going (services/admin-onboarding.ts).
+    onboardingReport(since),
   ]);
 
   res.json({
@@ -250,6 +253,7 @@ router.get("/analytics", async (req, res) => {
     topEvents: topEvents.map((e) => ({ name: e.name, count: e._count._all })),
     topPaths: topPaths.map((p) => ({ path: p.path, count: p._count._all })),
     traffic,
+    onboarding,
   });
 });
 
@@ -264,6 +268,10 @@ const USER_ROW = {
   instituteName: true,
   xp: true,
   createdAt: true,
+  // The onboarding answer (lib/onboarding.ts); onboardingRow() turns it into the list's column.
+  goal: true,
+  level: true,
+  onboardedAt: true,
   stats: { select: { problemsSolved: true, bugsFixed: true, currentStreak: true, lastActive: true } },
   subscriptions: {
     where: { status: "active" },
@@ -290,13 +298,20 @@ const USER_SORTS = {
 type UserSort = keyof typeof USER_SORTS;
 const isUserSort = (v: unknown): v is UserSort => typeof v === "string" && v in USER_SORTS;
 
-// GET /api/admin/users?q=<email|username|name>&sort=newest|active|xp|interviews|submissions&page=1
+// GET /api/admin/users?q=<email|username|name>&sort=newest|active|xp|interviews|submissions&goal=<goal>|skipped|unasked&page=1
 router.get("/users", async (req, res) => {
   const q = termArg(req.query["q"]);
   const sort: UserSort = isUserSort(req.query["sort"]) ? req.query["sort"] : "newest";
+  const goal = isGoalFilter(req.query["goal"]) ? req.query["goal"] : null;
   const page = intArg(req.query["page"], 1, 1, 1000);
   const take = 25;
-  const where: Prisma.UserWhereInput = q ? { OR: [{ email: { contains: q } }, { username: { contains: q } }, { name: { contains: q } }] } : {};
+  // The goal filter rides on User @@index([goal]); "unasked" and "skipped" also read onboardedAt.
+  const where: Prisma.UserWhereInput = {
+    AND: [
+      q ? { OR: [{ email: { contains: q } }, { username: { contains: q } }, { name: { contains: q } }] } : {},
+      goal ? goalFilterWhere(goal) : {},
+    ],
+  };
   const [total, users] = await Promise.all([
     prisma.user.count({ where }),
     prisma.user.findMany({
@@ -309,7 +324,7 @@ router.get("/users", async (req, res) => {
     }),
   ]);
   const cameFrom = await cameFromOf(users);
-  res.json({ q, sort, page, pageSize: take, total, users: users.map((u) => ({ ...u, cameFrom: cameFrom.get(u.id) ?? null })) });
+  res.json({ q, sort, goal, page, pageSize: take, total, users: users.map((u) => ({ ...u, cameFrom: cameFrom.get(u.id) ?? null, onboarding: onboardingRow(u) })) });
 });
 
 // GET /api/admin/users/:id — one account in full
@@ -334,6 +349,7 @@ router.get("/users/:id", async (req, res) => {
       remindStreak: true,
       remindDailyKata: true,
       weeklyDigest: true,
+      goalDetails: true,
       subscriptions: { orderBy: { createdAt: "desc" }, take: 10 },
       paymentOrders: { orderBy: { createdAt: "desc" }, take: 10, select: { id: true, planId: true, period: true, amount: true, status: true, createdAt: true, providerPaymentId: true } },
       submissions: {
@@ -367,7 +383,16 @@ router.get("/users/:id", async (req, res) => {
     userDepth(user.id),
     userTraffic(user.id, user.createdAt),
   ]);
-  res.json({ user, plan: { id: plan.plan.id, name: plan.plan.name, currentPeriodEnd: plan.currentPeriodEnd }, recentErrors, solved, interviews, depth, traffic });
+  res.json({
+    user,
+    plan: { id: plan.plan.id, name: plan.plan.name, currentPeriodEnd: plan.currentPeriodEnd },
+    onboarding: onboardingDetail(user),
+    recentErrors,
+    solved,
+    interviews,
+    depth,
+    traffic,
+  });
 });
 
 // GET /api/admin/submissions/:id — one problem submission with its code

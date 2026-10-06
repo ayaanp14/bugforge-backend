@@ -77,3 +77,23 @@ export function userIsConnected(userId: string): boolean {
     return false;
   }
 }
+
+/**
+ * Closes every socket this instance holds for an account — the bell's on
+ * `/rt` and any room's (pair, duel) on `/` — for an account that was just
+ * deleted. Its token is already refused (lib/session-revocation), but a
+ * socket authenticated once at its handshake and would otherwise stay open,
+ * relaying edits and chat as someone who no longer exists. Local sockets
+ * only, like userIsConnected; another instance's drop on their next request.
+ */
+export async function disconnectUser(userId: string): Promise<void> {
+  if (!io) return;
+  try {
+    io.of(USER_NAMESPACE).in(userRoom(userId)).disconnectSockets(true);
+    for (const socket of io.of("/").sockets.values()) {
+      if (socket.data?.userId === userId) socket.disconnect(true);
+    }
+  } catch (err) {
+    console.error(`disconnectUser(${userId}) failed:`, err);
+  }
+}

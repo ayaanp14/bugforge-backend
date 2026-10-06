@@ -8,6 +8,7 @@ import { APTITUDE_CATEGORIES, APTITUDE_DIFFICULTIES, APTITUDE_TOPICS, aptitudeCa
 import { APTITUDE_ESSENTIALS } from "../lib/aptitude-essentials.js";
 import { APTITUDE_SECTION_GUIDES } from "../lib/aptitude-section-guides.js";
 import { questionStem } from "../services/seo.js";
+import { notePlanActivity } from "../services/onboarding-plan.js";
 
 /**
  * Aptitude preparation.
@@ -321,6 +322,8 @@ router.post("/questions/:slug/attempt", requireAuth, async (req: any, res) => {
       await prisma.aptitudeAttempt.create({
         data: { userId, questionId: question.id, selected, correct, timeSec, usedHints },
       });
+      // Ticks the plan's "Try an aptitude section"; drops the dashboard once, not per answer.
+      notePlanActivity(userId, "aptitude");
     }
 
     res.status(201).json({

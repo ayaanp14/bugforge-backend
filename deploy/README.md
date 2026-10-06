@@ -125,6 +125,19 @@ $EDITOR deploy/.env.production     # never commit this
 chmod 600 deploy/.env.production
 ```
 
+**Push notifications.** The VAPID pair is made on the box by the running API
+image (which carries `web-push`) and appended straight to the file, so the
+private key is never on screen. Once only — it refuses if a pair is there:
+
+```bash
+cd ~/codekairo-backend/deploy
+grep -q '^VAPID_PRIVATE_KEY="..*"' .env.production && echo "already set, keeping it" || {
+  sed -i '/^VAPID_PUBLIC_KEY=/d;/^VAPID_PRIVATE_KEY=/d' .env.production
+  docker compose exec -T api node -e 'const k=require("web-push").generateVAPIDKeys();console.log(`VAPID_PUBLIC_KEY="${k.publicKey}"\nVAPID_PRIVATE_KEY="${k.privateKey}"`)' >> .env.production
+  docker compose up -d --force-recreate api
+}
+```
+
 `DATABASE_URL` points at the `mysql` compose service, not localhost.
 `connection_limit` can be generous now — the old shared host capped the whole
 account at 25 connections; this MySQL is ours and allows 60.

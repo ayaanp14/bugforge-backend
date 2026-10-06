@@ -18,6 +18,7 @@ import { conversationLanguage, interviewerFor } from "../lib/interviewers.js";
 import { voiceDurationMinutes } from "../lib/interview-duration.js";
 import { finalizeInterview, invalidateInterviewHistory } from "../services/interview-completion.js";
 import { SAT_ROUND_REFUSAL, checkInterviewQuota, satRoundFits } from "../services/entitlements.js";
+import { invalidateDashboard } from "../services/dashboard.js";
 import {
   buildContext,
   realtimeProvider,
@@ -288,6 +289,8 @@ router.post("/session/:sessionId/voice/session", requireAuth, async (req: any, r
         await prisma.mockInterviewSession.updateMany({ where: { id: session.id }, data: { startedAt: null } });
         return res.status(402).json(SAT_ROUND_REFUSAL);
       }
+      // Now sat: the dashboard's plan ticks "Do a mock interview" from it (services/onboarding-plan).
+      if (claimedStart) invalidateDashboard(req.user.userId);
     }
 
     const config = configFrom(session.savedInterview);

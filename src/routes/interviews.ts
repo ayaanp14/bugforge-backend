@@ -832,6 +832,8 @@ router.post("/session/:sessionId/answer", requireAuth, async (req: any, res) => 
       });
       return res.status(402).json(SAT_ROUND_REFUSAL);
     }
+    // Now sat: the dashboard's plan ticks "Do a mock interview" from it (services/onboarding-plan).
+    if (firstAnswer) invalidateDashboard(req.user.userId);
     const recorded = alreadyAnswered ? (current.userAnswer ?? answer) : answer;
 
     let nextQuestion = null;

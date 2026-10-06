@@ -1,6 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { briefingIndex } from "./assistant.js";
+import { briefingIndex, goalLines } from "./assistant.js";
+import type { DashboardPlan, OnboardingState } from "../lib/onboarding.js";
 import { freeForAll } from "../lib/plans.js";
 import type { RoadDefinition } from "./roadmap.js";
 import { isFollowUp, pickChunks, PICK_CHARS, renderChunks } from "../lib/assistant-index.js";
@@ -129,6 +130,10 @@ const QUESTIONS: Array<[string, RegExp, string?]> = [
   ["where is the list of array problems", /challenges\/arrays/],
   ["how many problems are there", /More than 1,500 published/],
   ["how many hints does an aptitude question have", /up to four/],
+  ["how do I change what I am preparing for", /shows it with a \*\*Change\*\* button/],
+  ["I skipped the welcome question, can I answer it later", /\*\*Tell us\*\* if you skipped/],
+  ["do the plan steps tick automatically", /Steps tick themselves/],
+  ["what does the weekly digest contain", /one suggestion for what you said you are preparing for/],
   // Follow-ups: the answer is only reachable through the previous question.
   ["how long does it last?", /expires after \*\*2 hours\*\*/, "how do private duel rooms work"],
   ["and elite?", /\*\*Elite\*\* — /, "how much does the pro plan cost"],
@@ -186,4 +191,37 @@ test("\"is everything free right now\" is handed the free-for-all paragraph whil
   for (const q of ["is everything free right now", "why is the pro plan free", "can I buy a plan", "when does the free period end"]) {
     assert.match(briefingFor(q), /Free for everyone until 1 January 2027/, q);
   }
+});
+
+// The account block's goal lines (services/assistant.ts goalLines): what the
+// member said they are preparing for, and the next undone step of the plan.
+const state = (over: Partial<OnboardingState>): OnboardingState => ({ goal: null, level: null, details: {}, answeredAt: null, ask: "welcome", ...over });
+const steps = (done: boolean[]): DashboardPlan["steps"] =>
+  done.map((d, i) => ({ key: `k${i}`, title: `Step ${i + 1}`, detail: `Why ${i + 1}.`, href: `/s${i + 1}`, done: d }));
+
+test("an account that has not answered is pointed at /welcome and the profile", () => {
+  for (const s of [state({}), state({ answeredAt: "2026-10-06T00:00:00.000Z", ask: null })]) {
+    const lines = goalLines(s, null);
+    assert.match(lines.preparingFor, /^not said yet/);
+    assert.match(lines.preparingFor, /\(\/welcome\)/);
+    assert.match(lines.preparingFor, /\(\/profile\)/);
+    assert.equal(lines.nextStepOfTheirPlan, undefined);
+  }
+});
+
+test("an answer names the goal, companies or language and level, then the plan's next undone step", () => {
+  const placements = state({ goal: "placements", level: "some", details: { companies: ["TCS", "Infosys"] }, answeredAt: "x", ask: null });
+  const lines = goalLines(placements, { goal: "placements", level: "some", details: {}, steps: steps([true, false, false]) });
+  assert.match(lines.preparingFor, /^campus placements, target companies TCS, Infosys; has solved a few/);
+  assert.equal(lines.nextStepOfTheirPlan, '[Step 2](/s2) — Why 2. (1 of 3 steps of "Your plan" on the home page done)');
+
+  const language = goalLines(state({ goal: "language", details: { language: "cpp" }, answeredAt: "x", ask: null }), null);
+  assert.match(language.preparingFor, /^learning a language \(C\+\+\); changeable/);
+  assert.equal(language.nextStepOfTheirPlan, undefined);
+});
+
+test("a plan built for another goal is not quoted, and a finished one says so", () => {
+  const product = state({ goal: "product", answeredAt: "x", ask: null });
+  assert.equal(goalLines(product, { goal: "placements", level: null, details: {}, steps: steps([false]) }).nextStepOfTheirPlan, undefined);
+  assert.match(goalLines(product, { goal: "product", level: null, details: {}, steps: steps([true, true]) }).nextStepOfTheirPlan ?? "", /^all 2 steps/);
 });

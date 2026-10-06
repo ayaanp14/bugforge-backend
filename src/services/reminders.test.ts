@@ -60,18 +60,26 @@ describe("reminder copy", () => {
   });
 
   it("summarises a week and picks the right nudge", () => {
-    const quiet = weeklyDigestContent("Ayaan Pathan", { solved: 0, bugs: 0, contestPoints: 0, streak: 0, xp: 120 });
+    const quiet = weeklyDigestContent("Ayaan Pathan", { solved: 0, sql: 0, bugs: 0, contestPoints: 0, streak: 0, xp: 120 });
     assert.equal(quiet.subject, "A quiet week on CodeKairo");
     assert.match(quiet.body, /^0 problems, 0 bugs this week\. A quiet week/);
     assert.match(quiet.text, /^Ayaan, here is your week/);
 
-    const busy = weeklyDigestContent(null, { solved: 1, bugs: 2, contestPoints: 9, streak: 4, xp: 500 });
+    const busy = weeklyDigestContent(null, { solved: 1, sql: 0, bugs: 2, contestPoints: 9, streak: 4, xp: 500 });
     assert.equal(busy.subject, "This week: 1 problem, 2 bugs, 9 contest points");
     assert.match(busy.body, /· 4-day streak\. Your 4-day streak is alive/);
     assert.match(busy.text, /^Here is your week/);
 
-    const noStreak = weeklyDigestContent("X", { solved: 3, bugs: 0, contestPoints: 0, streak: 0, xp: 1 });
+    const noStreak = weeklyDigestContent("X", { solved: 3, sql: 0, bugs: 0, contestPoints: 0, streak: 0, xp: 1 });
     assert.match(noStreak.body, /Keep the streak going/);
     assert.doesNotMatch(noStreak.body, /contest point/);
+    assert.doesNotMatch(noStreak.text, /SQL/);
+  });
+
+  it("counts the week's SQL solves, and a SQL-only week is not a quiet one", () => {
+    const sqlOnly = weeklyDigestContent("X", { solved: 0, sql: 2, bugs: 0, contestPoints: 0, streak: 1, xp: 40 });
+    assert.equal(sqlOnly.subject, "This week: 0 problems, 2 SQL problems, 0 bugs");
+    assert.match(sqlOnly.text, /SQL solved: {6}2\n/);
+    assert.doesNotMatch(sqlOnly.body, /quiet week/i);
   });
 });

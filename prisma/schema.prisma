@@ -97,12 +97,34 @@ model User {
   remindStreak          Boolean                   @default(true)
   remindDailyKata       Boolean                   @default(true)
   weeklyDigest          Boolean                   @default(true)
+  /// The public profile (/u/<username>) switched off by its owner: the
+  /// public reads answer 404 to everyone else, exactly as for a username
+  /// nobody holds, so a hidden profile cannot be told from a missing one.
+  /// The account stays on the leaderboard and its public posts keep its
+  /// name — without a link (author payloads carry the flag).
+  profileHidden         Boolean                   @default(false)
   /// The judge language the code editors open in (a driver-codegen
   /// ALL_LANGUAGES id): the last one picked on a problem or in a duel, on any
   /// device (PUT /api/me/language). Also an interview round's editor language
   /// when the round has no stack chosen. Null until a first pick, and the
   /// editors open in JavaScript.
   preferredLanguage     String?                   @db.VarChar(16)
+  /// What the account is preparing for, answered on /welcome (lib/onboarding.ts
+  /// GOALS: placements | product | language | practice); null until answered.
+  /// A column rather than a key in `goalDetails` for the reason the reminder
+  /// flags are: the digest and the admin breakdown ask "every placement
+  /// student" as one indexed query.
+  goal                  String?                   @db.VarChar(16)
+  /// How comfortable the account is with coding problems (LEVELS: new | some |
+  /// comfortable) — moves where the plan and "Up next" start.
+  level                 String?                   @db.VarChar(16)
+  /// The goal's follow-up answer: `{ companies?: string[], language?: string }`
+  /// (parseOnboarding normalises it). Json because it is only ever read whole.
+  goalDetails           Json?
+  /// When the onboarding question was answered *or skipped*; null means never
+  /// asked, which is what decides whether /welcome or the dashboard prompt is
+  /// shown (onboardingStateOf).
+  onboardedAt           DateTime?
   accounts              Account[]
   githubConnection      GitHubConnection?
   bugSubmissions        BugSubmission[]
@@ -151,6 +173,7 @@ model User {
   wornCredential        SkillCredential?          @relation("wornCredential", fields: [wornCredentialId], references: [id], onDelete: SetNull)
   dailyContests         DailyContestEntry[]
   revokedSessions       RevokedSession[]
+  pushSubscriptions     PushSubscription[]
   resumes               Resume[]
   shareCards            ShareCard[]
   battleOrgs            BattleOrgMember[]
@@ -164,6 +187,7 @@ model User {
   @@index([xp])
   @@index([questionsXp])
   @@index([bugsXp])
+  @@index([goal])
 }
 
 model Problem {
@@ -1591,6 +1615,28 @@ model RevokedSession {
 
   @@index([userId])
   @@index([expiresAt])
+}
+
+/// One browser that agreed to system notifications for an account (Web
+/// Push, lib/push.ts): what the browser's push service handed it — the
+/// endpoint to POST to and the two keys a payload is encrypted with. A row
+/// per browser, so the switch on the profile is per device. The endpoint is
+/// the identity (a browser re-subscribing gets the same one back, and the
+/// row moves to whichever account turned it on last). A push service that
+/// answers 404/410 has dropped the subscription and the row goes with it.
+model PushSubscription {
+  id         String   @id @default(cuid())
+  userId     String
+  /// ≤ 700 characters keeps the unique index under InnoDB's 3,072-byte key at utf8mb4.
+  endpoint   String   @unique @db.VarChar(700)
+  p256dh     String   @db.VarChar(200)
+  auth       String   @db.VarChar(64)
+  createdAt  DateTime @default(now())
+  /// The last push the service accepted for it.
+  lastPushAt DateTime?
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }
 
 /// One execution of a scheduled job (lib/scheduler.ts).

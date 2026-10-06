@@ -38,9 +38,20 @@ interface GroupRow {
   refParam: string | null;
   click: string | null;
   app: string | null;
+  device: string | null;
   landing: string | null;
   n: bigint | number;
 }
+
+/**
+ * The device classes a visit names (frontend lib/traffic-source.ts
+ * deviceClass), in the order the panel lists them. "unknown" is a visit
+ * recorded before 2026-10-06, when the class was added, or by a client
+ * that did not send it.
+ */
+const DEVICES = ["phone", "tablet", "desktop", "unknown"] as const;
+type Device = (typeof DEVICES)[number];
+const deviceOf = (value: string | null): Device => (value === "phone" || value === "tablet" || value === "desktop" ? value : "unknown");
 
 export async function trafficReport(since: Date) {
   const [groups, recentRows, signupRows, signupsTotal] = await Promise.all([
@@ -54,11 +65,12 @@ export async function trafficReport(since: Date) {
         JSON_UNQUOTE(JSON_EXTRACT(props, '$.refParam')) AS refParam,
         JSON_UNQUOTE(JSON_EXTRACT(props, '$.click')) AS click,
         JSON_UNQUOTE(JSON_EXTRACT(props, '$.app')) AS app,
+        JSON_UNQUOTE(JSON_EXTRACT(props, '$.device')) AS device,
         path AS landing,
         COUNT(*) AS n
       FROM AppEvent
       WHERE name = 'visit' AND createdAt >= ${since}
-      GROUP BY ref, utmSource, utmMedium, utmCampaign, refParam, click, app, landing`,
+      GROUP BY ref, utmSource, utmMedium, utmCampaign, refParam, click, app, device, landing`,
     prisma.appEvent.findMany({
       where: { name: "visit", createdAt: { gte: since } },
       orderBy: { createdAt: "desc" },
@@ -85,11 +97,14 @@ export async function trafficReport(since: Date) {
     return row;
   };
 
+  const deviceVisits = new Map<Device, number>();
   let visits = 0;
   for (const g of groups) {
     const n = Number(g.n);
     const c = classifyTouch(parseTouch(g) ?? {});
     visits += n;
+    const device = deviceOf(g.device);
+    deviceVisits.set(device, (deviceVisits.get(device) ?? 0) + n);
     channelVisits.set(c.channel, (channelVisits.get(c.channel) ?? 0) + n);
     const row = sourceRow(c.source, c.channel);
     row.visits += n;
@@ -125,6 +140,8 @@ export async function trafficReport(since: Date) {
     visits,
     signups: { total: signupsTotal, attributed },
     channels: CHANNELS.map((c) => ({ channel: c.id, label: c.label, visits: channelVisits.get(c.id) ?? 0, signups: channelSignups.get(c.id) ?? 0 })),
+    // Phones vs laptops — which pages to make phone-first is decided from this.
+    devices: DEVICES.map((device) => ({ device, visits: deviceVisits.get(device) ?? 0 })),
     sources: [...sources.values()]
       .sort((a, b) => b.visits - a.visits || b.signups - a.signups)
       .slice(0, SOURCE_ROWS)

@@ -35,6 +35,11 @@ describe("session revocation", () => {
     assert.equal(await mod.isSessionRevoked("u1", at(stamp + 5_000), "jti-new"), false);
   });
 
+  it("refuses every token of an account that no longer exists", async () => {
+    mod.primeRevocationCache("gone", { missing: true });
+    assert.equal(await mod.isSessionRevoked("gone", at(Date.now() + 5_000), "jti-fresh"), true);
+  });
+
   it("keeps accounts apart", async () => {
     mod.primeRevocationCache("u1", { revokedIds: ["jti-a"] });
     mod.primeRevocationCache("u2", {});

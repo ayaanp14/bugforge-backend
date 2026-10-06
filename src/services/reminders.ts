@@ -14,8 +14,9 @@
  *  - daily_kata      — morning, IST, once the UTC contest day has rolled:
  *                      today's problem for everyone active this fortnight. In-app
  *                      only — a daily email is how a product gets marked spam.
- *  - weekly_digest   — Monday morning, IST: the week's numbers and one nudge.
- *                      In-app and email.
+ *  - weekly_digest   — Monday morning, IST: the week's numbers and one nudge,
+ *                      plus a line for what the member said they are
+ *                      preparing for (digestGoalLine). In-app and email.
  *  - study_plan_due  — morning, IST, in the daily-kata window: an account on a
  *                      study plan that is behind its pace and has not opened a
  *                      lesson today is told what is next. In-app only, under
@@ -31,6 +32,9 @@ import { registerJob, type Job } from "../lib/scheduler.js";
 import { createNotificationsOnce } from "./notifications.js";
 import { dayOf, ensureContest } from "./daily-contest.js";
 import { pace, trackDefinition } from "./study-plans.js";
+import { detailsFor, isGoal, type GoalDetails, type GoalLanguage, type Goal } from "../lib/onboarding.js";
+import { companyHub } from "../lib/problem-topics.js";
+import { mockTestFor } from "../lib/onboarding-plan.js";
 
 const FRONTEND_URL = (process.env["FRONTEND_URL"] ?? "http://localhost:3000").replace(/\/+$/, "");
 const DAY_MS = 86_400_000;
@@ -106,6 +110,8 @@ export function dailyKataContent(contest: { title: string; difficulty: string })
 export interface WeekStats {
   /** Distinct problems accepted this week. */
   solved: number;
+  /** SQL problems solved for the first time this week (SqlSolve rows). */
+  sql: number;
   /** Bug hunts accepted this week. */
   bugs: number;
   /** Daily-contest points earned this week. */
@@ -118,11 +124,73 @@ export interface WeekStats {
 
 const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
 
-export function weeklyDigestContent(name: string | null, s: WeekStats): ReminderContent {
-  const parts = [plural(s.solved, "problem", "problems"), plural(s.bugs, "bug", "bugs")];
+/** One suggestion for what the recipient said they are preparing for (lib/onboarding.ts). */
+export interface DigestGoalLine {
+  text: string;
+  href: string;
+}
+
+const LANGUAGE_NAMES: Record<GoalLanguage, string> = { java: "Java", python: "Python", cpp: "C++", javascript: "JavaScript" };
+
+/** A published placement test, in catalogue order (MockTest.orderIndex). */
+export interface DigestTest {
+  slug: string;
+  name: string;
+  company: string;
+}
+
+/**
+ * The digest's goal line, from the goal and its details alone — what the
+ * recipients query already selects — so a batch of 200 costs no more reads
+ * than before. The home page's "Your plan" (services/onboarding-plan.ts)
+ * knows more (which steps are done), but deriving it per recipient is a
+ * composed read per account in a job that mails everyone at once; the digest
+ * only needs a direction, and the plan is one click away on the dashboard.
+ * The placements line points at the same paper as the plan's mock step
+ * (lib/onboarding-plan mockTestFor: the first chosen company with a test).
+ * Null for an account that skipped the question or never saw it.
+ */
+export function digestGoalLine(goal: Goal | null, details: GoalDetails, tests: readonly DigestTest[] = []): DigestGoalLine | null {
+  const company = details.companies?.[0] ?? null;
+  switch (goal) {
+    case "placements": {
+      const test = mockTestFor(details.companies ?? [], tests);
+      if (test) return { text: `Preparing for ${test.company}: sit the ${test.name} placement test under the clock this week.`, href: `/tests/${test.slug}` };
+      return { text: `Preparing for ${company ?? "placements"}: an aptitude section a day keeps the first round easy.`, href: "/aptitude" };
+    }
+    case "product": {
+      const hub = company ? companyHub(company) : undefined;
+      if (company && hub) return { text: `Preparing for ${company}: work through its study list, the problems tagged ${company}.`, href: `/challenges/company/${hub.slug}` };
+      return { text: "Preparing for product interviews: the DSA roadmap takes the patterns in order.", href: "/roadmap" };
+    }
+    case "language": {
+      const language = details.language ?? null;
+      if (language) return { text: `Learning ${LANGUAGE_NAMES[language]}: a lesson a day keeps your study plan moving.`, href: `/study-plans/${language}` };
+      return { text: "Learning a language: pick a study plan — Java, Python, C++ or JavaScript.", href: "/study-plans" };
+    }
+    case "practice":
+      // Not the daily problem: every digest nudge already points there.
+      return { text: "Just practising: a duel is a live race on one problem against someone near your rating.", href: "/duels" };
+    default:
+      return null;
+  }
+}
+
+/** The goal line from the stored columns, re-checked the way lib/onboarding reads them (the details are Json). */
+export function goalLineOf(rawGoal: string | null, rawDetails: unknown, tests?: readonly DigestTest[]): DigestGoalLine | null {
+  const goal = isGoal(rawGoal) ? rawGoal : null;
+  return goal ? digestGoalLine(goal, detailsFor(goal, rawDetails), tests) : null;
+}
+
+export function weeklyDigestContent(name: string | null, s: WeekStats, goal: DigestGoalLine | null = null): ReminderContent {
+  const parts = [plural(s.solved, "problem", "problems")];
+  // Only when there were some: most readers never open the SQL module, and a
+  // standing "0 SQL problems" would read as a nudge nobody asked for.
+  if (s.sql > 0) parts.push(plural(s.sql, "SQL problem", "SQL problems"));
+  parts.push(plural(s.bugs, "bug", "bugs"));
   if (s.contestPoints > 0) parts.push(`${s.contestPoints} contest ${s.contestPoints === 1 ? "point" : "points"}`);
   const line = parts.join(", ");
-  const quiet = s.solved === 0 && s.bugs === 0;
+  const quiet = s.solved === 0 && s.sql === 0 && s.bugs === 0;
   const nudge = quiet
     ? "A quiet week. Today's problem takes ten minutes and starts a new streak."
     : s.streak > 0
@@ -131,17 +199,21 @@ export function weeklyDigestContent(name: string | null, s: WeekStats): Reminder
   const greeting = name ? `${name.split(" ")[0]}, here` : "Here";
   return {
     title: "Your week on CodeKairo",
-    body: `${line} this week${s.streak > 0 ? ` · ${s.streak}-day streak` : ""}. ${nudge}`,
+    // The goal line goes last in both: the week's numbers are what the digest
+    // is for, the suggestion is what to do about them.
+    body: `${line} this week${s.streak > 0 ? ` · ${s.streak}-day streak` : ""}. ${nudge}${goal ? ` ${goal.text}` : ""}`,
     href: "/",
     subject: quiet ? "A quiet week on CodeKairo" : `This week: ${line}`,
     text:
       `${greeting} is your week on CodeKairo:\n\n` +
       `  Problems solved: ${s.solved}\n` +
+      (s.sql > 0 ? `  SQL solved:      ${s.sql}\n` : "") +
       `  Bugs fixed:      ${s.bugs}\n` +
       `  Contest points:  ${s.contestPoints}\n` +
       `  Streak:          ${s.streak} ${s.streak === 1 ? "day" : "days"}\n` +
       `  Total XP:        ${s.xp}\n\n` +
       `${nudge}\n${FRONTEND_URL}/contests\n\n` +
+      (goal ? `${goal.text}\n${FRONTEND_URL}${goal.href}\n\n` : "") +
       UNSUBSCRIBE_LINE,
   };
 }
@@ -275,10 +347,17 @@ const dailyKata: Job = {
 
 /** The week's numbers for a batch of users, in three grouped queries rather than three per user. */
 async function weekStatsFor(userIds: string[], since: Date, sinceDay: string, now: Date): Promise<Map<string, WeekStats>> {
-  const [solves, bugs, contest, users] = await Promise.all([
+  const [solves, sqlSolves, bugs, contest, users] = await Promise.all([
     prisma.submission.groupBy({
       by: ["userId", "problemId"],
       where: { userId: { in: userIds }, verdict: "ACCEPTED", submittedAt: { gte: since } },
+    }),
+    // A SqlSolve row is the first accept of one SQL problem, stamped then;
+    // its (userId, slug) unique index leads with userId.
+    prisma.sqlSolve.groupBy({
+      by: ["userId"],
+      where: { userId: { in: userIds }, submittedAt: { gte: since } },
+      _count: { _all: true },
     }),
     prisma.bugSubmission.groupBy({
       by: ["userId"],
@@ -299,9 +378,10 @@ async function weekStatsFor(userIds: string[], since: Date, sinceDay: string, no
   for (const u of users) {
     // A streak that lapsed is shown as zero, the way /api/me shows it.
     const lapsed = !u.stats || daysBetween(u.stats.lastActive, now) > 1;
-    out.set(u.id, { solved: 0, bugs: 0, contestPoints: 0, streak: lapsed ? 0 : u.stats!.currentStreak, xp: u.xp });
+    out.set(u.id, { solved: 0, sql: 0, bugs: 0, contestPoints: 0, streak: lapsed ? 0 : u.stats!.currentStreak, xp: u.xp });
   }
   for (const s of solves) out.get(s.userId)!.solved++;
+  for (const s of sqlSolves) out.get(s.userId)!.sql = s._count._all;
   for (const b of bugs) out.get(b.userId)!.bugs = b._count._all;
   for (const c of contest) out.get(c.userId)!.contestPoints = c._sum.points ?? 0;
   return out;
@@ -310,7 +390,7 @@ async function weekStatsFor(userIds: string[], since: Date, sinceDay: string, no
 /** Monday's digest to everyone active this month. In-app + email. */
 const weeklyDigest: Job = {
   name: "weekly_digest",
-  description: "Monday morning (IST) summary of the week — problems, bugs, contest points, streak — to everyone active in the last 30 days. In-app + email.",
+  description: "Monday morning (IST) summary of the week — problems, SQL, bugs, contest points, streak — to everyone active in the last 30 days. In-app + email.",
   periodOf: weeklyDigestPeriod,
   async run(now) {
     const weekBegan = weekStart(now);
@@ -318,13 +398,20 @@ const weeklyDigest: Job = {
     const sinceDay = dayKey(since);
     const activeSince = new Date(now.getTime() - 30 * DAY_MS);
     const type = `weekly_digest_${dayKey(weekBegan)}`;
+    // One read per run, not per recipient: the placements line names the
+    // company's own test when the catalogue has one. A failure only costs
+    // that line its test — the digest goes out regardless.
+    const tests: DigestTest[] = await prisma.mockTest
+      .findMany({ where: { published: true }, select: { slug: true, name: true, company: true }, orderBy: { orderIndex: "asc" } })
+      .catch(() => []);
     let notified = 0;
     let mailed = 0;
     let cursor: string | undefined;
     for (;;) {
       const rows = await prisma.userStats.findMany({
         where: { lastActive: { gte: activeSince }, user: { weeklyDigest: true } },
-        select: { id: true, userId: true, user: { select: USER_SELECT } },
+        // The onboarding answer rides on the same row: the goal line costs no query.
+        select: { id: true, userId: true, user: { select: { ...USER_SELECT, goal: true, goalDetails: true } } },
         orderBy: { id: "asc" },
         take: BATCH,
         ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
@@ -337,7 +424,11 @@ const weeklyDigest: Job = {
           userId: r.userId,
           email: r.user.email,
           name: r.user.name,
-          content: weeklyDigestContent(r.user.name, stats.get(r.userId) ?? { solved: 0, bugs: 0, contestPoints: 0, streak: 0, xp: 0 }),
+          content: weeklyDigestContent(
+            r.user.name,
+            stats.get(r.userId) ?? { solved: 0, sql: 0, bugs: 0, contestPoints: 0, streak: 0, xp: 0 },
+            goalLineOf(r.user.goal, r.user.goalDetails, tests),
+          ),
         })),
         true,
       );

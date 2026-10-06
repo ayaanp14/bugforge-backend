@@ -1,6 +1,7 @@
 import type { Prisma } from "@prisma/client";
 import { prisma } from "../lib/prisma.js";
 import { trackServerEvent } from "../lib/telemetry.js";
+import { invalidateDashboard } from "./dashboard.js";
 import { ResumeFileError, resumeFileStore, safeFilename, sha256Hex, storageKeyFor, titleFromFilename, validateResumeUpload, RESUME_MIME } from "../lib/resume-files.js";
 import { extractResume, type LayoutSignals } from "../lib/resume-extract.js";
 import { ResumeContentSchema, normalizeContent, parseResumeText, readPath, type ResumeContent } from "../lib/resume-parse.js";
@@ -634,6 +635,8 @@ async function runAnalysis(id: string): Promise<void> {
       }),
       prisma.resume.update({ where: { id: resume.id }, data: { latestAnalysisId: id, latestScore: result.overallScore } }),
     ]);
+    // The dashboard's plan ticks "Check your resume" from a finished analysis (services/onboarding-plan).
+    invalidateDashboard(resume.userId);
     trackServerEvent("resume_analysis_completed", { resumeId: resume.id, score: result.overallScore, ai: result.ai.status, ms: Date.now() - startedAt, source: requirements.source }, resume.userId);
   } catch (err) {
     const message = err instanceof ResumeError || err instanceof ResumeFileError ? err.message : "The analysis failed unexpectedly. Run it again; if it keeps failing, the resume may be in a shape the analyzer cannot read.";

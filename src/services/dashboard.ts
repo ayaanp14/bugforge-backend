@@ -5,7 +5,7 @@ import { cached, cachedShared, invalidate } from "../lib/cache.js";
 import { CALENDAR_UTC_OFFSET_MINUTES } from "../lib/clock.js";
 import { heatmapWindow, mergeHistory, sqlHistoryRow, sqlSolveTally, tallyHeatmap, type DayCountRow, type HistoryRow } from "../lib/activity.js";
 import { SQL_PROBLEMS } from "../lib/sql-problems/index.js";
-import { getDashboardUser, invalidateMe } from "./me.js";
+import { getDashboardUser, invalidateMe, loadDashboardUserRow } from "./me.js";
 // daily-contest imports getCatalogue from here; both sides only call the other
 // at request time (function declarations, live bindings), so the cycle is inert.
 import { contestSnapshot } from "./daily-contest.js";
@@ -15,6 +15,10 @@ import { roadmapBadgesFor } from "./roadmap.js";
 import { studyBandFor } from "./study-plans.js";
 // The same shape of cycle again: skill-credentials imports invalidateDashboard.
 import { credentialsFor } from "./skill-credentials.js";
+// And again: onboarding-plan imports invalidateDashboard for notePlanActivity.
+import { onboardingPlanFor } from "./onboarding-plan.js";
+import { isLevel, type Level } from "../lib/onboarding.js";
+import { upNext, type Difficulty } from "../lib/onboarding-plan.js";
 
 /**
  * Query functions shared by the per-widget /api/me routes and the aggregated
@@ -462,6 +466,7 @@ async function queryLeaderboard(type: "combined" | "questions" | "bugs") {
         xp: true,
         questionsXp: true,
         bugsXp: true,
+        profileHidden: true,
         stats: { select: { problemsSolved: true, bugsFixed: true } },
         // Ten accounts' SQL solves, one slug per problem — counted below
         // against the problems the module still ships.
@@ -487,6 +492,8 @@ async function queryLeaderboard(type: "combined" | "questions" | "bugs") {
       problemsSolved: u.stats?.problemsSolved || 0,
       bugsFixed: u.stats?.bugsFixed || 0,
       sqlSolved: sqlSolveTally(u.sqlSolves).solved,
+      // Still ranked; the row just does not link to a profile its owner hid.
+      profileHidden: u.profileHidden,
       hasValue,
     };
   });
@@ -660,13 +667,21 @@ const SKILLS_SHOWN = 6;
  * `tags` column, and with ~900 problems each they topped the panel as the
  * reader's biggest "skill". `isCompanyTag` is the same split the catalogue's
  * hub pages make (services/problem-hubs.ts).
+ *
+ * "Up next" (`recommended`) is what the member already tried, then
+ * untouched problems — which, since onboarding asks for a level, are picked
+ * by difficulty for it (lib/onboarding-plan UP_NEXT_SLOTS): someone new to
+ * coding problems was being offered the catalogue's newest, as likely a Hard
+ * as anything. No level keeps the catalogue's own order.
  */
-export function computeProblemInsights(state: ProblemState) {
+export function computeProblemInsights(state: ProblemState, level: Level | null = null) {
   const { catalogue, solved, attempted } = state;
 
   const topicMap = new Map<string, { tag: string; total: number; solved: number }>();
   const attempting: CatalogueRow[] = [];
   const untouched: CatalogueRow[] = [];
+  // The first few untouched of each difficulty, for a level's picks.
+  const untouchedBy: Record<Difficulty, CatalogueRow[]> = { easy: [], medium: [], hard: [] };
   let unsolvedCount = 0;
 
   // One pass: the previous version walked the list five separate times.
@@ -686,13 +701,16 @@ export function computeProblemInsights(state: ProblemState) {
     if (!isSolved) {
       unsolvedCount++;
       if (isAttempting) attempting.push(p);
-      else if (untouched.length < 3) untouched.push(p);
+      else {
+        if (untouched.length < 3) untouched.push(p);
+        const bucket = untouchedBy[p.difficulty.toLowerCase() as Difficulty];
+        if (bucket && bucket.length < 3) bucket.push(p);
+      }
     }
   }
 
   const topics = [...topicMap.values()].sort((a, b) => b.total - a.total);
-  const recommended = [...attempting, ...untouched]
-    .slice(0, 3)
+  const recommended = upNext(level, attempting, untouchedBy, untouched)
     .map((p) => ({ id: p.id, slug: p.slug, title: p.title, difficulty: p.difficulty, tags: tagsOf(p).slice(0, 2) }));
 
   return {
@@ -708,8 +726,9 @@ export function computeProblemInsights(state: ProblemState) {
 
 // v2: compact heatmap and a trimmed skills list (2026-09-25) — a v1 payload
 // left in Redis must not be served in the new shape's place. v3: the
-// profile's Battles tournaments (2026-09-25).
-const dashboardKey = (userId: string) => `dash:v3:${userId}`;
+// profile's Battles tournaments (2026-09-25). v4: `plan` and the level's
+// "Up next" (2026-10-06).
+const dashboardKey = (userId: string) => `dash:v4:${userId}`;
 
 /**
  * Drop everything cached about a user — the dashboard aggregate and /api/me.
@@ -755,6 +774,23 @@ async function buildDashboard(userId: string) {
   // and handed in, not queried twice.
   const problemStatePromise = loadProblemState(userId);
   const rankPromise = getRank(userId, "combined");
+  // "Your plan" (services/onboarding-plan.ts) reads the user row's onboarding
+  // columns and loads this payload makes anyway (the user slice, today's
+  // problem, the study band, the credentials), so those are started here and
+  // handed to both rather than asked twice; the plan's own checks go out the
+  // moment the row lands, alongside everything else.
+  const userRowPromise = loadDashboardUserRow(userId);
+  const mePromise = getDashboardUser(userId, { problemState: problemStatePromise, rank: rankPromise, row: userRowPromise });
+  const contestPromise = contestSnapshot(userId);
+  const studyPromise = studyBandFor(userId);
+  const credentialsPromise = credentialsFor(userId);
+  const planPromise = onboardingPlanFor(userId, userRowPromise, {
+    problemState: problemStatePromise,
+    dailyContest: contestPromise,
+    credentials: credentialsPromise,
+    study: studyPromise,
+    me: mePromise,
+  });
   const [
     me,
     counters,
@@ -771,8 +807,10 @@ async function buildDashboard(userId: string) {
     study,
     tournaments,
     credentials,
+    plan,
+    userRow,
   ] = await Promise.all([
-    getDashboardUser(userId, { problemState: problemStatePromise, rank: rankPromise }),
+    mePromise,
     queryUserCounters(userId),
     problemStatePromise,
     getSubmissionHistory(userId, 1, 5),
@@ -782,23 +820,27 @@ async function buildDashboard(userId: string) {
     getPairingHistory(userId, 1, 3, false),
     getContinueSolving(userId),
     getBugInsights(),
-    contestSnapshot(userId),
+    contestPromise,
     // The profile's badge row: the road's chests, opened or not.
     roadmapBadgesFor(userId),
     // The "continue learning" band: the study plan most recently walked, or null.
-    studyBandFor(userId),
+    studyPromise,
     // The profile's Tournaments section: Battles events played and placings.
     tournamentsFor(userId),
     // The profile's Certifications section: skill-test credentials that stand.
-    credentialsFor(userId),
+    credentialsPromise,
+    // The onboarding checklist, null when no goal is set (never fails the page).
+    planPromise,
+    userRowPromise,
   ]);
 
   const difficultyStats = computeDifficultyStats(problemState);
-  const problemInsights = computeProblemInsights(problemState);
+  const level = userRow?.level;
+  const problemInsights = computeProblemInsights(problemState, isLevel(level) ? level : null);
   const { social, savedInterviews } = counters;
   // The SQL problems are code (lib/sql-problems), so their count needs no
   // query; the account's own count is `me.stats.sqlSolved`.
   const sqlInsights = { total: SQL_PROBLEMS.length };
 
-  return { me, social, difficultyStats, submissions, heatmap, rank, leaderboard, pairing, continueSolving, problemInsights, bugInsights, sqlInsights, savedInterviews, dailyContest, roadmap, study, tournaments, credentials };
+  return { me, social, difficultyStats, submissions, heatmap, rank, leaderboard, pairing, continueSolving, problemInsights, bugInsights, sqlInsights, savedInterviews, dailyContest, roadmap, study, tournaments, credentials, plan };
 }

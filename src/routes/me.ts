@@ -5,7 +5,8 @@ import { isOwnerEmail } from "../lib/plans.js";
 import { getCachedHeatmap, getSubmissionHistory, getPairingHistory, getDifficultyStats, getCachedRank, getDashboard, invalidateDashboard } from "../services/dashboard.js";
 import { forgetPublicUser } from "../services/public-profile.js";
 import { ensureBaseline, listNotifications, getUnreadCount, markAllRead } from "../services/notifications.js";
-import { ME_SELECT, getMePayload, invalidateMe } from "../services/me.js";
+import { ME_SELECT, getMePayload, invalidateMe, meUserOf } from "../services/me.js";
+import { ONBOARDING_SELECT, onboardingStateOf, parseOnboarding } from "../lib/onboarding.js";
 import { hashPassword, passwordProblem, verifyPassword } from "../lib/passwords.js";
 import { forgetSessions } from "../lib/session-revocation.js";
 import { establishSession } from "../lib/auth-session.js";
@@ -238,7 +239,9 @@ router.patch("/", requireAuth, async (req, res) => {
     // needed here).
     forgetPublicUser(req.user!.userId);
 
-    res.json(updatedUser);
+    // Shaped like GET /api/me's user (`onboarding`, not the four columns):
+    // the profile page replaces the session user with this answer.
+    res.json(meUserOf(updatedUser));
   } catch (err: any) {
     console.error("PATCH /api/me error:", err);
     if (err.code === "P2002") {
@@ -267,6 +270,59 @@ router.put("/language", requireAuth, async (req, res) => {
   await prisma.user.update({ where: { id: req.user!.userId }, data: { preferredLanguage: language } });
   invalidateMe(req.user!.userId);
   res.json({ preferredLanguage: language });
+});
+
+/**
+ * PUT /api/me/onboarding — what the account is preparing for (lib/onboarding):
+ * `{ skip: true }`, or `{ goal, level?, details? }`. Asked by /welcome after
+ * sign-up, by the dashboard's prompt line for older accounts, and from the
+ * profile's goal setting — all three through this one write.
+ *
+ * A skip stamps `onboardedAt` and nothing else, so the question is not asked
+ * again and a goal set earlier (a member dismissing the prompt after
+ * answering on another device) survives. An answer writes goal, level,
+ * details and the stamp in one update — four columns of one row, so there is
+ * no half-saved answer to reason about. Details are `parseOnboarding`'s,
+ * already reduced to what the goal uses (a language goal keeps no companies).
+ *
+ * A language goal that names a language also makes it the editors' language
+ * (`preferredLanguage`, what PUT /language sets): someone learning Java should
+ * not open their first problem in JavaScript. GOAL_LANGUAGES are judge ids,
+ * so the value is one the editors know. It is echoed only when it was set, so
+ * the client leaves the session copy alone otherwise.
+ *
+ * Then the dashboard and /api/me are dropped together (invalidateDashboard):
+ * the plan, "Up next" and the `onboarding` field all moved.
+ */
+router.put("/onboarding", requireAuth, async (req, res) => {
+  const parsed = parseOnboarding(req.body);
+  if (!parsed.ok) {
+    res.status(400).json({ error: parsed.error });
+    return;
+  }
+  const userId = req.user!.userId;
+  const input = parsed.value;
+  const language = !input.skip && input.goal === "language" ? input.details.language : undefined;
+
+  const row = await prisma.user.update({
+    where: { id: userId },
+    data: input.skip
+      ? { onboardedAt: new Date() }
+      : {
+          goal: input.goal,
+          level: input.level,
+          goalDetails: { ...input.details },
+          onboardedAt: new Date(),
+          ...(language ? { preferredLanguage: language } : {}),
+        },
+    select: { ...ONBOARDING_SELECT, preferredLanguage: true },
+  });
+  invalidateDashboard(userId);
+
+  res.json({
+    onboarding: onboardingStateOf(row),
+    ...(language ? { preferredLanguage: row.preferredLanguage } : {}),
+  });
 });
 
 /**
