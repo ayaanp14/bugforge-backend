@@ -4,6 +4,9 @@ import { cached, invalidate } from "../lib/cache.js";
 import { createNotificationOnce } from "./notifications.js";
 import { invalidateDashboard } from "./dashboard.js";
 import { lessonsForStage, summaryOf, type LessonSummary } from "../lib/roadmap-lessons.js";
+import { frontOf, isStrongStage, isWeakClearedStage, recommendedIn, routeOf, stageMastery, stageSkillsOf, type RouteStep, type StageForRoute, type StageSkill } from "../lib/roadmap-route.js";
+// The usual call-time-only cycle: skill-profile reaches this file through dashboard.
+import { skillCatalogues, skillProfileFor } from "./skill-profile.js";
 
 /**
  * The roadmap, for one account.
@@ -61,6 +64,19 @@ export interface RoadmapProblem {
   title: string;
   difficulty: string;
   solved: boolean;
+  /** The one to do next in this stage, by the profile (lib/roadmap-route recommendedIn). */
+  recommended?: boolean;
+}
+
+/** A stage read against the skill profile. */
+export interface StageProfile {
+  /** Its weakest skill's mastery, 0–100. */
+  mastery: number;
+  skills: Array<{ key: string; label: string; mastery: number; due: boolean }>;
+  strong: boolean;
+  due: boolean;
+  /** Cleared, but a skill has slipped below WEAK_STAGE. */
+  weak: boolean;
 }
 
 export interface RoadmapStage {
@@ -75,8 +91,15 @@ export interface RoadmapStage {
   solved: number;
   total: number;
   status: StageStatus;
+  /**
+   * Open because the skill profile rates every uncleared stage before it
+   * strong, not because the one before is cleared (lib/roadmap-route).
+   */
+  fastTrack: boolean;
   /** Only sent for a stage the reader may see into (open or cleared). */
   problems: RoadmapProblem[] | null;
+  /** What the skill profile says about the stage's skills; null for a visitor or when the profile could not be read. */
+  profile?: StageProfile | null;
   /**
    * The stage's lessons (lib/roadmap-lessons), sent for every stage, locked
    * or not: the lock guides the problems, never the reading.
@@ -98,8 +121,14 @@ export interface RoadmapPayload {
     cleared: number;
     problems: number;
     solved: number;
-    /** The first stage that is open and not yet cleared; null once the road is done. */
+    /**
+     * The front of the road: the first open, uncleared stage — for a member,
+     * the first one the skill profile does not already rate strong
+     * (lib/roadmap-route frontOf). Null once the road is done.
+     */
     currentId: string | null;
+    /** For a member: the order to work in, with why (lib/roadmap-route routeOf). Absent for a visitor. */
+    route?: RouteStep[];
   };
 }
 
@@ -188,15 +217,28 @@ async function solvedIds(userId: string, problemIds: string[]): Promise<Set<stri
   return new Set(rows.map((r) => r.problemId));
 }
 
-/** The stages with their standing, given which problems are solved. Pure, so it is testable. */
-export function walk(road: RoadDefinition, solved: Set<string>): RoadmapStage[] {
+/**
+ * The stages with their standing, given which problems are solved. Pure, so
+ * it is testable.
+ *
+ * `strong` is the skill profile's say (lib/roadmap-route): a stage it rates
+ * strong lets the road past it while still uncleared, so the stage after it
+ * opens too. Only the opening changes — "cleared" is the stage's own solves,
+ * and the chests (clearedTiers) read nothing else. The plan's road facts and
+ * the chest payouts call this without a profile.
+ */
+export function walk(road: RoadDefinition, solved: Set<string>, strong: ReadonlySet<string> = new Set()): RoadmapStage[] {
   let previousCleared = true;
+  let passable = true;
   return road.stages.map((def, index) => {
     const solvedCount = def.problems.filter((p) => solved.has(p.id)).length;
     const cleared = def.problems.length > 0 && solvedCount >= Math.min(def.required, def.problems.length);
-    const status: StageStatus = cleared ? "cleared" : previousCleared ? "open" : "locked";
+    const status: StageStatus = cleared ? "cleared" : passable ? "open" : "locked";
+    const fastTrack = status === "open" && !previousCleared;
     previousCleared = cleared;
+    passable = cleared || (status === "open" && strong.has(def.id));
     return {
+      fastTrack,
       id: def.id,
       title: def.title,
       blurb: def.blurb,
@@ -331,17 +373,77 @@ export async function roadmapForVisitor(): Promise<RoadmapPayload> {
   };
 }
 
+/**
+ * Each stage's skills as the profile scores them: the skills its problems
+ * are about (lib/roadmap-route stageSkillsOf, from the problems' tags) with
+ * their mastery, confidence and review state. Null when the profile cannot
+ * be read — the road then stands exactly as it did before the profile.
+ */
+async function stageSkillsFor(userId: string, road: RoadDefinition): Promise<Map<string, StageSkill[]> | null> {
+  try {
+    const [profile, cats] = await Promise.all([skillProfileFor(userId), skillCatalogues()]);
+    const out = new Map<string, StageSkill[]>();
+    for (const stage of road.stages) {
+      const keys = stageSkillsOf(stage.problems.map((p) => cats.problemById.get(p.id)?.skills ?? []));
+      out.set(
+        stage.id,
+        keys.flatMap((key) => {
+          const s = profile.scored.get(key);
+          return s ? [{ key, label: s.node.label, mastery: s.score.mastery, confidence: s.score.confidence, due: Boolean(s.score.review?.due), status: s.score.status }] : [];
+        }),
+      );
+    }
+    return out;
+  } catch (err) {
+    console.error("roadmap: skill profile unavailable:", (err as Error).message);
+    return null;
+  }
+}
+
 export async function roadmapFor(userId: string): Promise<RoadmapPayload> {
   const road = await roadDefinition();
-  // The solves and the chests already opened are independent reads, so they
-  // go out together; the claim below reuses the second rather than asking
-  // again, and only a chest opened on this very read costs a re-read.
-  const [solved, before] = await Promise.all([
+  // The solves, the chests already opened and the profile's view of each
+  // stage are independent reads, so they go out together; the claim below
+  // reuses the second rather than asking again, and only a chest opened on
+  // this very read costs a re-read.
+  const [solved, before, skills] = await Promise.all([
     solvedIds(userId, road.stages.flatMap((s) => s.problems.map((p) => p.id))),
     rewardRows(userId),
+    stageSkillsFor(userId, road),
   ]);
-  const stages = walk(road, solved);
+  const strong = new Set(road.stages.filter((s) => skills && isStrongStage(skills.get(s.id) ?? [])).map((s) => s.id));
+  const stages = walk(road, solved, strong);
   const cleared = stages.filter((s) => s.status === "cleared").length;
+
+  // The profile's reading of each stage, the problem to do next in it, the
+  // front of the road for this reader and the order to work in.
+  const tierTitle = (id: string) => road.tiers.find((t) => t.id === id)?.title ?? "";
+  const forRoute: StageForRoute[] = stages.map((s) => ({
+    id: s.id,
+    title: s.title,
+    tierTitle: tierTitle(s.tier),
+    status: s.status,
+    solved: s.solved,
+    required: s.required,
+    fastTrack: s.fastTrack,
+    skills: skills?.get(s.id) ?? [],
+  }));
+  if (skills) {
+    for (const s of stages) {
+      const own = skills.get(s.id) ?? [];
+      const mastery = stageMastery(own);
+      s.profile = {
+        mastery,
+        skills: own.map(({ key, label, mastery: m, due }) => ({ key, label, mastery: m, due })),
+        strong: isStrongStage(own),
+        due: own.some((k) => k.due),
+        weak: isWeakClearedStage({ status: s.status, skills: own }),
+      };
+      const next = s.problems ? recommendedIn(s.problems, mastery) : null;
+      if (next && s.problems) for (const p of s.problems) p.recommended = p.slug === next;
+    }
+  }
+  const front = skills ? frontOf(forRoute) : (stages.find((s) => s.status === "open")?.id ?? null);
 
   // A read that pays: a chest earned before chests existed, or whose
   // post-solve hook failed, opens on the next look at the road. Idempotent
@@ -357,7 +459,8 @@ export async function roadmapFor(userId: string): Promise<RoadmapPayload> {
       cleared,
       problems: stages.reduce((n, s) => n + s.total, 0),
       solved: stages.reduce((n, s) => n + s.solved, 0),
-      currentId: stages.find((s) => s.status === "open")?.id ?? null,
+      currentId: front,
+      ...(skills ? { route: routeOf(forRoute, front) } : {}),
     },
   };
 }

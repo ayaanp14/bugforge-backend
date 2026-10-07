@@ -85,7 +85,7 @@ router.patch("/", requireAuth, async (req, res) => {
     username, instituteName, avatar_url, name, 
     gender, location, birthday, website, 
     github, linkedin, twitter, readme,
-    remindStreak, remindDailyKata, weeklyDigest,
+    remindStreak, remindDailyKata, weeklyDigest, remindReviews,
   } = req.body;
 
   // Reminder switches: a boolean or absent. Anything else is a bad request
@@ -99,6 +99,7 @@ router.patch("/", requireAuth, async (req, res) => {
     remindStreak: flag(remindStreak, "remindStreak"),
     remindDailyKata: flag(remindDailyKata, "remindDailyKata"),
     weeklyDigest: flag(weeklyDigest, "weeklyDigest"),
+    remindReviews: flag(remindReviews, "remindReviews"),
   };
   for (const value of Object.values(flags)) {
     if (value && typeof value === "object") {
@@ -221,6 +222,7 @@ router.patch("/", requireAuth, async (req, res) => {
         remindStreak: prefs.remindStreak,
         remindDailyKata: prefs.remindDailyKata,
         weeklyDigest: prefs.weeklyDigest,
+        remindReviews: prefs.remindReviews,
       },
       // The response used to be the row as Prisma returned it, which put the
       // password hash and the session-revocation stamp in the browser's

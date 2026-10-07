@@ -59,6 +59,7 @@ const PUSHED: RegExp[] = [
   /^streak_at_risk_/,
   /^daily_kata_/,
   /^study_plan_due_/,
+  /^review_due_/,
   /^battles_reminder:/,
   /^(mention|comment_reply|post_comment|answer_accepted|new_follower)$/,
 ];

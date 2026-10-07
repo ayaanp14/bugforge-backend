@@ -141,6 +141,9 @@ const QUESTIONS: Array<[string, RegExp, string?]> = [
   ["how is my daily mission chosen", /in this order of priority: a problem you left a draft on/],
   ["can I change how much time I have today", /sets the time you have — 15 minutes to 4 hours/],
   ["how do I mark a tutorial done in my mission", /\*\*Mark done\*\*, because reading leaves no record/],
+  ["can I skip roadmap stages I already know", /already rates every uncleared stage before one \*strong\*/],
+  ["what is my route on the roadmap", /signed-in members see the order to work in/],
+  ["why did I get a skill review notification", /when a skill on your skill profile is \*\*due for review\*\*/],
   // Follow-ups: the answer is only reachable through the previous question.
   ["how long does it last?", /expires after \*\*2 hours\*\*/, "how do private duel rooms work"],
   ["and elite?", /\*\*Elite\*\* — /, "how much does the pro plan cost"],

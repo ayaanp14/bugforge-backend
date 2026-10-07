@@ -177,8 +177,13 @@ Surfaces: /skills, the home dashboard, the workbench verdict, reminders, the car
   - `User.dailyMinutes`, the default time for each new day, also sent on `/api/me`.
 - **Up next:** no longer repeats a problem the mission already lists.
 - **Verified:** `e2e/dashboard-loading.spec.ts` passes 36 of 36 (every home band holds its height through all three loading moments at 390, 1024 and 1440 px), with the plan band folded into Today and the account's time pinned to 60 minutes.
+- **Review reminders (added the same day):** the `review_due` job (16:00–18:00 IST, in-app and push, at most every three days) reads `ReviewDue`, an index the skill profile writes whenever it is computed. A review date moves only when an attempt lands, so the job recomputes only accounts with an attempt newer than their row. That makes "who has a skill due" one indexed query plus four grouped MAX queries per batch, not a profile per account.
+- **The roadmap, read against the profile (added the same day):** `lib/roadmap-route.ts`.
+  - **Open ahead:** a stage whose every skill is strong lets the road open past it while uncleared. Clearing and the chests are unchanged.
+  - **Front of the road:** the map starts at the first open stage the reader is not strong in.
+  - **Route:** the order to work in, under *Where you are* (reviews, the front, slipped stages, a skipped stage still to clear).
+  - **Recommended next:** each stage marks the problem to do next.
 - **Still to do in Phase 2:**
-  - Spaced-review reminders through the scheduler. A batch job would compute skill profiles for every active account, so it needs a cheaper incremental "due" index first.
-  - Ordering roadmap stages by the profile.
   - A swap action for one item (today the only options are skip or undo).
   - Using the target date, once Phase 5 collects it, to shape the day.
+  - Covering reviews of aptitude, SQL and debugging skills in the mission. Today it lines up coding reviews only, and the reminder links other kinds to the skill profile.

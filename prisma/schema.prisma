@@ -97,6 +97,11 @@ model User {
   remindStreak          Boolean                   @default(true)
   remindDailyKata       Boolean                   @default(true)
   weeklyDigest          Boolean                   @default(true)
+  /// The review_due reminder (services/review-reminders.ts): a skill due on
+  /// its spaced-review ladder. A column like the three above, for the same
+  /// reason — the job filters on it in SQL.
+  remindReviews         Boolean                   @default(true)
+  reviewDue             ReviewDue?
   /// The public profile (/u/<username>) switched off by its owner: the
   /// public reads answer 404 to everyone else, exactly as for a username
   /// nobody holds, so a hidden profile cannot be told from a missing one.
@@ -314,6 +319,31 @@ model ProblemEngagement {
 
   @@id([userId, problemId])
   @@index([problemId])
+}
+
+/// When an account's next skill review falls due — an index, not a record:
+/// a copy of what its skill profile (lib/skill-score reviewSchedule) last
+/// said, written whenever the profile is computed (services/skill-profile.ts).
+///
+/// The review reminder needs "who has a skill due today" across every
+/// account, and the profile that knows is seven reads and a scoring pass per
+/// account — fine for one page, not for a nightly sweep of all of them. A
+/// review date only moves when new attempts arrive (the ladder is walked over
+/// attempt days), so this copy stays exact until the next attempt; the job
+/// reads due rows by `dueAt` on its index and recomputes only the accounts
+/// with an attempt newer than `computedAt` (services/review-reminders.ts).
+/// An account whose profile has not been computed since it was last here has
+/// no row and is not reminded — the job reaches people who have used this.
+model ReviewDue {
+  userId     String   @id
+  /// The earliest next review among the account's started skills.
+  dueAt      DateTime
+  /// [{ key, label, dueAt }] for the earliest few, soonest first.
+  skills     Json
+  computedAt DateTime
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([dueAt])
 }
 
 /// One account's mission for one day (lib/mission.ts): the items chosen and

@@ -281,8 +281,55 @@ export function skillProfileFor(userId: string, asOf?: number): Promise<SkillPro
     const { items, assessments } = await loadEvidence(userId, cat);
     return buildSkillProfile({ items, assessments, catalogue: cat.catalogue, problems: cat.problems, asOf: asOf ?? Date.now() });
   };
-  // A historical read (tests, a script) is never cached under the live key.
-  return asOf != null ? build() : cached(profileKey(userId), 60_000, build);
+  // A historical read (tests, a script) is never cached under the live key,
+  // and never written to the review index.
+  if (asOf != null) return build();
+  return cached(profileKey(userId), 60_000, async () => {
+    const profile = await build();
+    noteReviewDue(userId, profile).catch((err) => console.error("review index write failed:", (err as Error).message));
+    return profile;
+  });
+}
+
+// ── The review index ──────────────────────────────────────────────
+
+/** Skills kept on an index row — the reminder names two or three. */
+const INDEX_SKILLS = 8;
+/** Rewritten at least this often even unchanged, so `computedAt` stays a fair "checked since". */
+const INDEX_REFRESH_MS = 6 * 60 * 60_000;
+/** What each account's row last said, and when — so a profile computed every minute writes only when it changes. */
+const written = new Map<string, { sig: string; at: number }>();
+const WRITTEN_CAP = 50_000;
+
+/** A row's content from a profile: the started skills' next reviews, soonest first. Pure. */
+export function reviewIndexOf(profile: SkillProfile): Array<{ key: string; label: string; dueAt: string }> {
+  return [...profile.scored.values()]
+    .filter((s) => s.score.review)
+    .map((s) => ({ key: s.node.key, label: s.node.label, dueAt: new Date(s.score.review!.nextReviewAt).toISOString() }))
+    .sort((a, b) => a.dueAt.localeCompare(b.dueAt) || a.key.localeCompare(b.key))
+    .slice(0, INDEX_SKILLS);
+}
+
+/**
+ * Keep ReviewDue in step with the profile just computed: the earliest next
+ * review and the few after it, or no row when nothing has been solved yet.
+ * The review reminder reads this instead of computing every profile
+ * (services/review-reminders.ts).
+ */
+async function noteReviewDue(userId: string, profile: SkillProfile): Promise<void> {
+  const skills = reviewIndexOf(profile);
+  const sig = JSON.stringify(skills);
+  const last = written.get(userId);
+  if (last && last.sig === sig && Date.now() - last.at < INDEX_REFRESH_MS) return;
+  if (!skills.length) {
+    await prisma.reviewDue.deleteMany({ where: { userId } });
+  } else {
+    const row = { dueAt: new Date(skills[0]!.dueAt), skills, computedAt: new Date(profile.view.asOf) };
+    await prisma.reviewDue.upsert({ where: { userId }, create: { userId, ...row }, update: row });
+  }
+  // Noted only once written: a failed write is tried again on the next profile.
+  if (written.size >= WRITTEN_CAP) written.clear();
+  written.set(userId, { sig, at: Date.now() });
 }
 
 /** Called by invalidateDashboard: a verdict, a hunt, a query or a sitting just changed the evidence. */

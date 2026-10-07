@@ -21,6 +21,9 @@
  *                      study plan that is behind its pace and has not opened a
  *                      lesson today is told what is next. In-app only, under
  *                      the same opt-out as the kata (Profile → Reminders).
+ *  - review_due      — afternoon, IST: a skill due on its spaced-review ladder,
+ *                      from the review index, at most every three days. In-app
+ *                      only, its own opt-out (services/review-reminders.ts).
  *
  * Every user-facing string is built by a pure function here so the tests can
  * pin the copy and the windows without a database.
@@ -35,6 +38,7 @@ import { pace, trackDefinition } from "./study-plans.js";
 import { detailsFor, isGoal, type GoalDetails, type GoalLanguage, type Goal } from "../lib/onboarding.js";
 import { companyHub } from "../lib/problem-topics.js";
 import { mockTestFor } from "../lib/onboarding-plan.js";
+import { reviewDue } from "./review-reminders.js";
 
 const FRONTEND_URL = (process.env["FRONTEND_URL"] ?? "http://localhost:3000").replace(/\/+$/, "");
 const DAY_MS = 86_400_000;
@@ -521,9 +525,9 @@ const studyPlanDue: Job = {
   },
 };
 
-export const REMINDER_JOBS: Job[] = [streakAtRisk, dailyKata, weeklyDigest, studyPlanDue];
+export const REMINDER_JOBS: Job[] = [streakAtRisk, dailyKata, weeklyDigest, studyPlanDue, reviewDue];
 
-/** Register the four with the scheduler. Called once at boot. */
+/** Register the five with the scheduler. Called once at boot. */
 export function registerReminderJobs(): void {
   for (const job of REMINDER_JOBS) registerJob(job);
 }

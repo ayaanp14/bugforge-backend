@@ -159,6 +159,7 @@ export const ME_SELECT = {
   readme: true,
   remindStreak: true,
   remindDailyKata: true,
+  remindReviews: true,
   weeklyDigest: true,
   profileHidden: true,
   preferredLanguage: true,
