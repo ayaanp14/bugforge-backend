@@ -147,6 +147,10 @@ const QUESTIONS: Array<[string, RegExp, string?]> = [
   ["why did my submission fail", /gets an explanation in a \*\*Code Review\*\* tab/],
   ["does the AI see the hidden test cases when it reviews my code", /It never sees the hidden test cases/],
   ["why is there no code review on the daily contest problem", /the AI part is held back/],
+  ["how does the tutor work", /answers at one of seven rungs and never above it/],
+  ["does using the tutor lower my skill score", /Approach, Complexity and Hint count like opening the problem.s hints/],
+  ["why is the tutor off on the daily contest problem", /When the tutor is off/],
+  ["can the tutor just give me the code", /does not climb, and code is held back below Pseudocode/],
   ["what does Likely mean in the failure explanation", /\*\*Likely\*\* \(a reading of it\)/],
   // Follow-ups: the answer is only reachable through the previous question.
   ["how long does it last?", /expires after \*\*2 hours\*\*/, "how do private duel rooms work"],

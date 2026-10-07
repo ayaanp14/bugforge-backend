@@ -146,7 +146,10 @@ async function loadEvidence(userId: string, cat: Catalogues): Promise<{ items: I
       ...newest,
       select: { problemId: true, verdict: true, submittedAt: true, roomId: true, passedCases: true, totalCases: true },
     }),
-    prisma.problemEngagement.findMany({ where: { userId }, select: { problemId: true, openedAt: true, hintsAt: true, editorialAt: true } }),
+    prisma.problemEngagement.findMany({
+      where: { userId },
+      select: { problemId: true, openedAt: true, hintsAt: true, editorialAt: true, tutorHintAt: true, tutorSolutionAt: true },
+    }),
     prisma.bugSubmission.findMany({
       where: { userId },
       orderBy: { submittedAt: "desc" },
@@ -181,6 +184,8 @@ async function loadEvidence(userId: string, cat: Catalogues): Promise<{ items: I
 
   const items: ItemHistory[] = [];
   const engagementOf = new Map(engagements.map((e) => [e.problemId, e]));
+  const earliest = (a: Date | null | undefined, b: Date | null | undefined): number | null =>
+    a && b ? Math.min(a.getTime(), b.getTime()) : (a ?? b)?.getTime() ?? null;
 
   for (const [problemId, rows] of group(submissions, (r) => r.problemId)) {
     const p = cat.problemById.get(problemId);
@@ -197,8 +202,11 @@ async function loadEvidence(userId: string, cat: Catalogues): Promise<{ items: I
         (r): Attempt => ({ at: r.submittedAt.getTime(), outcome: outcomeOf(r.verdict), passRatio: ratio(r.passedCases, r.totalCases), paired: r.roomId != null }),
       ),
       openedAt: e?.openedAt.getTime() ?? null,
-      hintsAt: e?.hintsAt?.getTime() ?? null,
-      solutionAt: e?.editorialAt?.getTime() ?? null,
+      // The tutor counts as the help it gave (lib/tutor.ts RUNGS help): its
+      // hint rungs as the hints, its pseudocode-and-up rungs as the editorial,
+      // whichever came first — the scorer's before-the-solve rule does the rest.
+      hintsAt: earliest(e?.hintsAt, e?.tutorHintAt),
+      solutionAt: earliest(e?.editorialAt, e?.tutorSolutionAt),
     });
   }
 

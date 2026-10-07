@@ -137,6 +137,7 @@ model User {
   dailyMinutes          Int?
   missionDays           MissionDay[]
   submissionAnalyses    SubmissionAnalysis[]
+  tutorTurns            TutorTurn[]
   accounts              Account[]
   githubConnection      GitHubConnection?
   bugSubmissions        BugSubmission[]
@@ -231,6 +232,7 @@ model Problem {
   testCases             TestCase[]
   problemTimers         ProblemTimer[]
   engagements           ProblemEngagement[]
+  tutorTurns            TutorTurn[]
   dailyContests         DailyContest[]
   mockCodeAnswers       MockCodeAnswer[]
   skillCodeAnswers      SkillCodeAnswer[]
@@ -315,10 +317,42 @@ model ProblemEngagement {
   openedAt    DateTime  @default(now())
   hintsAt     DateTime?
   editorialAt DateTime?
+  /// The tutor's highest rung reached on this problem (lib/tutor.ts RUNGS, 0–6).
+  /// The rung never goes down: what was shown cannot be unseen.
+  tutorRung       Int?
+  /// First time the tutor gave hint-level help (rungs 1–3) / solution-level
+  /// help (rungs 4–6). Folded into hintsAt / editorialAt by the skill profile,
+  /// so the tutor counts as the help it gave, by the same before-the-solve rule.
+  tutorHintAt     DateTime?
+  tutorSolutionAt DateTime?
   user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   problem     Problem   @relation(fields: [problemId], references: [id], onDelete: Cascade)
 
   @@id([userId, problemId])
+  @@index([problemId])
+}
+
+/// One line of the Socratic tutor's conversation on a problem
+/// (services/tutor.ts): the student's message or the tutor's answer, with
+/// the rung it was asked and answered at. Kept so the thread survives a
+/// reload and the next answer reads what was said; "Clear" deletes the rows
+/// (the rung and the help it counted stay on ProblemEngagement).
+model TutorTurn {
+  id            String   @id @default(cuid())
+  userId        String
+  problemId     String
+  /// "student" | "tutor"
+  role          String   @db.VarChar(8)
+  rung          Int
+  content       String   @db.Text
+  model         String?  @db.VarChar(120)
+  promptVersion Int?
+  createdAt     DateTime @default(now())
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  problem       Problem  @relation(fields: [problemId], references: [id], onDelete: Cascade)
+
+  /// The thread on one problem, in order.
+  @@index([userId, problemId, createdAt])
   @@index([problemId])
 }
 

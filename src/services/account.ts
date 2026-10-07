@@ -59,7 +59,7 @@ export async function buildAccountExport(userId: string): Promise<Record<string,
     contests, duels, rooms, posts, comments, likes, commentLikes, saved, votes, reports,
     following, followers, affinities, feedback, assistant, roadmap,
     enrollments, lessons, exercises, resumes, subscriptions, orders,
-    notifications, shareCards, orgs, entries, tournamentSubmissions, campus, events, pushDevices, missionDays, analyses,
+    notifications, shareCards, orgs, entries, tournamentSubmissions, campus, events, pushDevices, missionDays, analyses, tutorTurns,
   ] = await Promise.all([
     prisma.submission.findMany({
       where, ...newest, orderBy: { submittedAt: "desc" },
@@ -68,7 +68,10 @@ export async function buildAccountExport(userId: string): Promise<Record<string,
     prisma.codeDraft.findMany({ where, ...newest, select: { problem: { select: { slug: true } }, language: true, code: true, updatedAt: true } }),
     prisma.problemTimer.findMany({ where, ...newest, select: { problem: { select: { slug: true } }, elapsedSeconds: true, updatedAt: true } }),
     // When each problem, its hints and its editorial were first opened (the skill profile's evidence of help).
-    prisma.problemEngagement.findMany({ where, ...newest, select: { problem: { select: { slug: true } }, openedAt: true, hintsAt: true, editorialAt: true } }),
+    prisma.problemEngagement.findMany({
+      where, ...newest,
+      select: { problem: { select: { slug: true } }, openedAt: true, hintsAt: true, editorialAt: true, tutorRung: true, tutorHintAt: true, tutorSolutionAt: true },
+    }),
     prisma.bugSubmission.findMany({
       where, ...newest, orderBy: { submittedAt: "desc" },
       select: { challenge: { select: { slug: true, title: true } }, editedFiles: true, verdict: true, passedTests: true, totalTests: true, timeTakenSecs: true, submittedAt: true },
@@ -161,6 +164,11 @@ export async function buildAccountExport(userId: string): Promise<Record<string,
       where, ...newest, orderBy: { createdAt: "desc" },
       select: { submissionId: true, problemId: true, status: true, category: true, deterministic: true, ai: true, recommendation: true, createdAt: true },
     }),
+    // The tutor: what was asked and answered on each problem, at which rung.
+    prisma.tutorTurn.findMany({
+      where, ...newest, orderBy: { createdAt: "desc" },
+      select: { problem: { select: { slug: true } }, role: true, rung: true, content: true, createdAt: true },
+    }),
   ]);
 
   return {
@@ -170,7 +178,7 @@ export async function buildAccountExport(userId: string): Promise<Record<string,
       "checks are not included; your answers, code and scores are.",
     exportedAt: new Date().toISOString(),
     profile,
-    coding: { submissions, drafts, timers, engagement, failureAnalyses: analyses },
+    coding: { submissions, drafts, timers, engagement, failureAnalyses: analyses, tutor: tutorTurns },
     bugHunts: { submissions: bugSubmissions },
     sql: { submissions: sqlSubmissions },
     interviews: { sessions: interviews, saved: savedInterviews },

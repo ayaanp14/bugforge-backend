@@ -104,7 +104,7 @@ Surfaces: /skills, the home dashboard, the workbench verdict, reminders, the car
 | **1. Skill intelligence** (shipped 2026-10-07) | Skill graph, scoring engine, evidence including hints and editorial, reviews, weak spots, mistake mix, focus lists, `/skills` | Attempt tables, topic hubs | `ProblemEngagement` |
 | **2. Adaptive learning** (mission shipped 2026-10-07) | Daily mission (time budget 30/60/90/120/custom) from focus + reviews + goal; spaced-review reminders via the scheduler; the home dashboard leads with the mission; roadmap stages ordered by the profile | Phase 1, "Your plan", reminders | `MissionDay` |
 | **3. Submission intelligence** (built 2026-10-07) | "Why did I fail" on the workbench verdict: the judge's facts read deterministically + a model review behind the provider seam, written on every failure in the background, stored per submission | Judge results, Phase 1 classes | `SubmissionAnalysis` |
-| **4. Socratic tutor** | Tutor in the workbench with the hint ladder (ask → brute force → complexity → hint → pseudocode → structure → solution), context = statement, constraints, visible cases, code, verdict, prior hints; fact / inference / suggestion labelled; never hidden cases | Assistant streaming, `ProblemEngagement` (tutor reveals count as help) | `TutorTurn` |
+| **4. Socratic tutor** (built 2026-10-07) | Tutor in the workbench with the hint ladder (ask → brute force → complexity → hint → pseudocode → structure → solution), context = statement, constraints, visible cases, code, verdict, prior hints; fact / inference / suggestion labelled; never hidden cases | Assistant streaming, `ProblemEngagement` (tutor reveals count as help) | `TutorTurn` |
 | **5. Placement OS** | Target role, date and daily minutes; company/role requirement profiles (admin-seeded); readiness estimate per area; plan regeneration on target change | Phase 1–2, onboarding, tests, interviews, resume | Company profile tables, `User` target columns |
 | **6. Debugging** | Timed production-bug format (logs, stack, diff), diagnosis time, explanation scored; debugging skills already measured in Phase 1 | Bug hunts | Columns on `BugSubmission` |
 | **7. Interviews** | Interview skills (communication, clarifying questions, complexity) from existing per-question scores into the graph; multi-round company simulations from admin templates | Mock interviews | Simulation template + run tables |
@@ -215,3 +215,28 @@ Surfaces: /skills, the home dashboard, the workbench verdict, reminders, the car
   - A "was this useful?" signal.
   - Calibrating the categories against what the student changed next.
   - Admin visibility of review volume and cost.
+
+## 10. Phase 4 as shipped (the tutor)
+
+- **Where:** a Tutor tab in the workbench's reading panels, and a floating graduation-cap button that opens the same conversation in a window (the owner's ask: "like the AI assistant", its icon animated like the daily contest's flame). Signed-in members, every plan, unlimited (20 a minute burst).
+- **The ladder** (`lib/tutor.ts`, pure, `tutor.test.ts`): Questions, Approach, Complexity, Hint, Pseudocode, Structure, Solution.
+  - The tutor answers at the rung reached and never above it.
+  - Only "More help" climbs, one rung at a time; a rung never goes down (`ProblemEngagement.tutorRung`).
+  - What the model is *given* grows with the rung: the problem's hints from Hint, the editorial from Pseudocode, a reference solution from Structure. A model that holds the trick leaks it; one that was never given it cannot.
+  - `codeGate` holds fenced code back while the answer streams below Pseudocode, and lets only plain-text fences through at Pseudocode. The prompt asks for the same, but the gate is what enforces it.
+  - First live run: rung 0 still slipped a "(Hint: …)" aside, so asides and the word "Hint" are now named in the rung's rules and in the prompt.
+- **Help accounting:** rung 0 costs nothing; 1–3 count as hints, 4–6 as the editorial (`tutorHintAt`, `tutorSolutionAt`). The skill profile folds them into the times it already scores, so help reached after the solve is free, as with hints.
+- **Context:** the statement, up to 3 visible examples, the student's current editor code (they can untick sharing), and the last submission with its review. Never the hidden test cases.
+- **Off in ranked play:** today's contest problem, a live duel, a live Battles round or knockout match on this problem.
+- **Storage:** `TutorTurn` (role, rung, content, model, prompt version). Clear deletes the rows; the rung stays.
+- **Streaming:** `ai.stream` in the provider seam, with retries until the first token. The SPA reads it with `lib/sse.ts`.
+- **Verified:**
+  - `tutor.test.ts` (9 tests).
+  - A live smoke run (`scratch/tutor-smoke.mts`, `tutor-rung0.mts`): first token in 0.3–0.6 s, a skip refused, the climb recorded.
+  - `e2e/tutor.spec.ts`.
+  - 4 assistant questions pinned.
+- **Deviation from the plan:** findings are not labelled fact / inference / suggestion. A chat turn is prose; the prompt asks for "probably" where the tutor infers, and forbids claims about hidden tests.
+- **Not yet:**
+  - Hint usage of the tutor in the mission's choice of items.
+  - Bug hunts and SQL problems.
+  - A per-turn "was this useful?" signal.

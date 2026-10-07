@@ -14,6 +14,7 @@ import { readFileSync } from "node:fs";
 
 export const PROMPT_VERSIONS = {
   "submission-review": 1,
+  tutor: 1,
 } as const;
 
 export type PromptTask = keyof typeof PROMPT_VERSIONS;

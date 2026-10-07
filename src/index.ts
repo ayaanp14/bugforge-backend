@@ -16,6 +16,7 @@ import accountRouter from "./routes/account.js";
 import skillsRouter from "./routes/skills.js";
 import missionRouter from "./routes/mission.js";
 import analysisRouter from "./routes/analysis.js";
+import tutorRouter from "./routes/tutor.js";
 import { recoverSubmissionAnalyses } from "./services/submission-analysis.js";
 import pushRouter from "./routes/push.js";
 import usersRouter from "./routes/users.js";
@@ -945,6 +946,8 @@ app.use("/api/me", meRouter);
 app.use("/api/me", accountRouter);
 app.use("/api/push", pushRouter);
 app.use("/api/users", usersRouter);
+// The tutor's /:slug/tutor paths first; the problems router has none of them.
+app.use("/api/problems", tutorRouter);
 app.use("/api/problems", problemsRouter);
 app.use("/api/leaderboard", leaderboardRouter);
 app.use("/api/bug-challenges", bugChallengesRouter);
