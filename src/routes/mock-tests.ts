@@ -15,6 +15,13 @@ import { TEST_GUIDES } from "../lib/test-guides.js";
 import { testSamples } from "../services/test-samples.js";
 import { invalidateDashboard } from "../services/dashboard.js";
 import { runOfAttempt } from "../services/simulations.js";
+import { simulationForCompany } from "../lib/simulations/index.js";
+
+/** The company's simulation, for a pattern's pages to point at (lib/simulations): the test is its first round. */
+const companySimulationOf = (company: string) => {
+  const sim = simulationForCompany(company);
+  return sim ? { slug: sim.slug, company: sim.company } : null;
+};
 import { BREACH_LIMIT, breachCausesOf, isMobileClient, isSignalKind, recordBreach, SIGNAL_CAP, type Signals } from "../lib/skill-tests.js";
 
 /**
@@ -361,6 +368,8 @@ router.get("/:slug", optionalAuth, cacheWhenAnonymous, async (req: any, res) => 
       : [];
 
     res.json({
+      // The company's simulation — this test, then its interview rounds — for the page to offer (static: safe under cacheWhenAnonymous).
+      simulation: companySimulationOf(test.company),
       test: {
         ...testSummary(test),
         instructions: test.instructions,
@@ -1096,6 +1105,8 @@ router.get("/attempts/:id/result", requireAuth, async (req: any, res) => {
     const simulation = await runOfAttempt(req.user.userId, { startedAt: attempt.startedAt, testSlug: test.slug });
     res.json({
       simulation,
+      // The company's simulation whatever this sitting was, for "rehearse the whole process" when it was not part of a run.
+      companySimulation: companySimulationOf(test.company),
       attempt: {
         id: attempt.id,
         status: attempt.status,

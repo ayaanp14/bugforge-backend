@@ -14,7 +14,8 @@ Everything below is committed and pushed to `main` (production), in both repos.
 | 4 Socratic tutor | 7-rung ladder; Tutor dock tab + floating button (`TutorLauncher`, animated `LiveTutorMark`); streaming code gate; prompt v2 with the "Your turn:" hand-back | 41e3c1e, 88fbb07 | ccb4c61, cfba650 |
 | 5 Placement OS | `/readiness` for a target company (five areas, from the seeded test patterns + company tags); `User.targetCompany/targetTest/targetDate` | 89923ce | b15142f |
 | 5 remainder | The mission leans on the target's weakest area as the date nears; activity ticks; the readiness line in Today; a target change re-picks the day (`ADAPTIVE_COACH.md` §11) | fae2d93 | 33a6a43 |
-| 7 Interview skills + simulations | Interview domain on the skill profile; readiness reads it; 22 sourced company simulations (`ADAPTIVE_COACH.md` §12) | see `git log` | see `git log` |
+| 7 Interview skills + simulations | Interview domain on the skill profile; readiness reads it; 22 sourced company simulations (`ADAPTIVE_COACH.md` §12) | 82296fa | e5a4af0 |
+| Discovery | Target from onboarding, the mission's Try item, contextual links + tour chapters, menus and a what's-new line (`ADAPTIVE_COACH.md` §13) | see `git log` | see `git log` |
 
 Not built: Phases 6, 8 and 9 and the small follow-ups in §5. Phases 5 and 7 are complete (A and B below are done, 2026-10-07). Next in order: C (Phase 6, debugging), then D, then E.
 

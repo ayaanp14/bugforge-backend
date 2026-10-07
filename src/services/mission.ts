@@ -7,7 +7,8 @@ import { lessonForHub } from "../lib/roadmap-lessons.js";
 import { recommendFor } from "../lib/skill-profile.js";
 import { toDifficulty, type Difficulty } from "../lib/skill-score.js";
 import { nextSittingAt } from "../lib/skill-tests.js";
-import { isGoal, isLevel, type DashboardPlan } from "../lib/onboarding.js";
+import { implicitTargetCompany, isGoal, isLevel, type DashboardPlan } from "../lib/onboarding.js";
+import { simulationForCompany } from "../lib/simulations/index.js";
 import {
   APTITUDE_ITEM_ANSWERS,
   DEFAULT_MINUTES,
@@ -22,6 +23,8 @@ import {
   readMarks,
   slotsFor,
   type ActivityKind,
+  type DiscoverCandidate,
+  type DiscoverKey,
   type MissionCandidates,
   type MissionFacts,
   type MissionItem,
@@ -56,7 +59,7 @@ export interface MissionLoads {
   study: Promise<{ track: string; title: string; behind: number; next: { slug: string; title: string } | null; completedAt: Date | string | null } | null>;
   plan: Promise<DashboardPlan | null>;
   continueSolving: Promise<{ problem: { slug: string; title: string; difficulty: string } | null }>;
-  row: Promise<{ goal: string | null; level: string | null; dailyMinutes: number | null } | null>;
+  row: Promise<{ goal: string | null; level: string | null; dailyMinutes: number | null; goalDetails: unknown; targetCompany: string | null; targetDate: Date | null } | null>;
   /** Readiness for the saved target (services/readiness.ts); null without one, so no other account pays for it. */
   readiness: Promise<Readiness | null>;
 }
@@ -149,7 +152,28 @@ async function gatherCandidates(userId: string, loads: MissionLoads, state: Prob
     milestone: step ? { key: step.key, title: step.title, detail: step.detail, href: step.href } : null,
     fallback,
     target: readiness ? await targetCandidates(userId, readiness, profile, state, skillPick) : null,
+    discover: await discoverCandidates(userId, row),
   };
+}
+
+/**
+ * The features this account has never used, in the order the mission offers
+ * them (lib/mission DiscoverKey): a drive date for a target that has none
+ * (the mission plans towards a date only once it has one), the target
+ * company's simulation, then the tutor. Two counts, on indexed columns.
+ */
+async function discoverCandidates(userId: string, row: Awaited<MissionLoads["row"]>): Promise<DiscoverCandidate[]> {
+  const company = row?.targetCompany ?? implicitTargetCompany(row?.goal ?? null, row?.goalDetails);
+  const sim = company ? simulationForCompany(company) : undefined;
+  const [tutorTurns, runs] = await Promise.all([
+    prisma.tutorTurn.count({ where: { userId } }),
+    sim ? prisma.simulationRun.count({ where: { userId } }) : Promise.resolve(1),
+  ]);
+  const out: DiscoverCandidate[] = [];
+  if (company && !row?.targetDate) out.push({ key: "drive-date", company });
+  if (sim && runs === 0) out.push({ key: "simulation", company: sim.company, slug: sim.slug });
+  if (tutorTurns === 0) out.push({ key: "tutor" });
+  return out;
 }
 
 type Profile = Awaited<ReturnType<typeof skillProfileFor>>;
@@ -291,7 +315,8 @@ async function missionFacts(userId: string, items: readonly MissionItem[], state
   const bugIds = items.flatMap((i) => (i.evidence && "bugId" in i.evidence ? [i.evidence.bugId] : []));
   const lessonKeys = items.flatMap((i) => (i.evidence && "lessonKey" in i.evidence ? [i.evidence.lessonKey] : []));
   const activityKeys = items.flatMap((i) => (i.evidence && "activity" in i.evidence ? [activityKey(i.evidence.activity, i.evidence.ref)] : []));
-  const [bugs, lessons, planned, activities] = await Promise.all([
+  const discoverKeys = new Set(items.flatMap((i) => (i.evidence && "discover" in i.evidence ? [i.evidence.discover] : [])));
+  const [bugs, lessons, planned, activities, discovered] = await Promise.all([
     bugIds.length
       ? prisma.bugSubmission.findMany({ where: { userId, challengeId: { in: bugIds }, verdict: "ACCEPTED" }, select: { challengeId: true }, distinct: ["challengeId"] })
       : Promise.resolve([]),
@@ -300,6 +325,7 @@ async function missionFacts(userId: string, items: readonly MissionItem[], state
       : Promise.resolve([]),
     plan ?? Promise.resolve(null),
     activityKeys.length ? activitiesToday(userId, activityKeys) : Promise.resolve(new Set<string>()),
+    discoverKeys.size ? featuresUsed(userId, discoverKeys) : Promise.resolve(new Set<DiscoverKey>()),
   ]);
   return {
     solvedProblems: state.solved,
@@ -307,7 +333,22 @@ async function missionFacts(userId: string, items: readonly MissionItem[], state
     completedLessons: new Set(lessons.map((l) => l.lessonKey)),
     planDone: new Set((planned?.steps ?? []).filter((s) => s.done).map((s) => s.key)),
     activities,
+    discovered,
   };
+}
+
+/** Which of these features the account has used at least once: a drive date saved, a simulation started, a word to the tutor. */
+async function featuresUsed(userId: string, keys: ReadonlySet<DiscoverKey>): Promise<Set<DiscoverKey>> {
+  const [user, runs, turns] = await Promise.all([
+    keys.has("drive-date") ? prisma.user.findUnique({ where: { id: userId }, select: { targetDate: true } }) : Promise.resolve(null),
+    keys.has("simulation") ? prisma.simulationRun.count({ where: { userId } }) : Promise.resolve(0),
+    keys.has("tutor") ? prisma.tutorTurn.count({ where: { userId } }) : Promise.resolve(0),
+  ]);
+  const used = new Set<DiscoverKey>();
+  if (user?.targetDate) used.add("drive-date");
+  if (runs > 0) used.add("simulation");
+  if (turns > 0) used.add("tutor");
+  return used;
 }
 
 const json = (v: unknown) => v as Prisma.InputJsonValue;

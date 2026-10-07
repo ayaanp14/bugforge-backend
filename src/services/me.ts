@@ -130,8 +130,9 @@ export async function getUserTrends(userId: string, sql: Promise<SqlTally> = loa
 // — a v1 copy left in Redis must not be served in the new shape's place.
 // v3 (2026-10-07): `dailyMinutes`, which sizes the home's mission before it loads.
 // v4 (2026-10-07): `targetCompany`, which tells the home's loading state to keep
-// room for the readiness line.
-const meKey = (userId: string) => `me:v4:${userId}`;
+// room for the readiness line. v5 (same day): `targetDate`, which /welcome's
+// edit mode shows beside the companies.
+const meKey = (userId: string) => `me:v5:${userId}`;
 
 /** Drop a user's cached /api/me payload after anything that changes it. */
 export function invalidateMe(userId: string): void {
@@ -180,6 +181,8 @@ export const ME_SELECT = {
   dailyMinutes: true,
   /** The saved placement target's company (services/readiness); the home keeps room for its line when set. */
   targetCompany: true,
+  /** …and its drive date, which /welcome's edit mode shows. */
+  targetDate: true,
   /** The roadmap chests opened — the frame and the flair the account wears. */
   roadmapRewards: { select: { tierKey: true } },
   /** The skill-test credential worn round the avatar, if any. */
@@ -339,8 +342,10 @@ export function loadDashboardUserRow(userId: string) {
       level: true,
       goalDetails: true,
       dailyMinutes: true,
-      // Whether to read readiness for the home's line and the mission (services/dashboard.ts).
+      // Whether to read readiness for the home's line and the mission (services/dashboard.ts),
+      // and whether the mission still offers to set a drive date (lib/mission DiscoverKey).
       targetCompany: true,
+      targetDate: true,
       roadmapRewards: { select: { tierKey: true } },
       ...WORN_CREDENTIAL_SELECT,
       stats: {
@@ -381,7 +386,7 @@ export async function getDashboardUser(
   if (!row) return null;
   // The onboarding columns are the plan's (`plan` on the dashboard), not the
   // slice's: the slice keeps the shape it always had.
-  const { goal: _goal, level: _level, goalDetails: _details, dailyMinutes: _minutes, targetCompany: _target, ...user } = row;
+  const { goal: _goal, level: _level, goalDetails: _details, dailyMinutes: _minutes, targetCompany: _target, targetDate: _date, ...user } = row;
 
   // Display-adjust a stale streak (the /api/me route persists the reset)
   if (user.stats) {

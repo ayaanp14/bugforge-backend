@@ -326,3 +326,21 @@ Surfaces: /skills, the home dashboard, the workbench verdict, reminders, the car
   - The written and voice prompts are unchanged, and only the role carries the company. A company-specific brief, such as "ask what a TCS HR round asks", would be a prompt v-next for both interviewers.
   - Companies without a seeded pattern have no simulation, because there is no sourced first round.
   - An admin view of runs.
+
+## 13. Discovery (the owner's ask, 2026-10-07)
+
+- **The problem:** most of Phases 1–7 was reachable only for a student who already knew it existed.
+  - The skill profile and readiness sat outside the top bar.
+  - The home's readiness line and the mission's lean waited for a target that only `/readiness` could save. Onboarding collected companies but never saved one.
+  - Simulations were one menu item deep.
+  - The workbench tour predated the tutor and the Code Review tab.
+- **What changed (all four packages the owner chose):**
+  - **Target from onboarding:** an optional drive date on `/welcome` saves the first company and that date as the target. Without a date, the first company is an implicit target for the home line, the mission's lean and readiness.
+  - **A daily Try item:** one feature the student has never used — the drive date, the target company's simulation, or the tutor — ticked by first use. It stops once each has been tried, and lives inside the one daily list.
+  - **Contextual links:** the placement test page, its result, the company hub and the interview builder point at the company's simulation and readiness. The workbench tour gains Tutor and Code Review chapters, which someone who saw the old tour is shown on their own.
+  - **Menus and a line:** Skill profile and Placement readiness in the account menu, Company Simulations in a placements goal's "For you", and a one-time "New on CodeKairo" line for existing members.
+- **Verified:**
+  - `mission.test.ts` (3 new tests) and `onboarding.test.ts` (2 new).
+  - `scratch/discovery-smoke.mts` against the dev API: an answer without a date gives the implicit target and the "Set your TCS drive date" item; an answer with a date saves the target, re-picks the day and leaves that item done; a past date is refused.
+  - Screenshots, and the e2e specs for home loading, onboarding, readiness, simulations and a11y.
+  - 2 assistant questions pinned.

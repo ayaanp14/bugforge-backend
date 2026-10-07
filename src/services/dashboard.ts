@@ -17,7 +17,7 @@ import { studyBandFor } from "./study-plans.js";
 import { credentialsFor } from "./skill-credentials.js";
 // And again: onboarding-plan imports invalidateDashboard for notePlanActivity.
 import { onboardingPlanFor } from "./onboarding-plan.js";
-import { isLevel, type Level } from "../lib/onboarding.js";
+import { implicitTargetCompany, isLevel, type Level } from "../lib/onboarding.js";
 import { upNext, type Difficulty } from "../lib/onboarding-plan.js";
 // And again: skill-profile imports getCatalogue from here.
 import { invalidateSkillProfile } from "./skill-profile.js";
@@ -815,12 +815,13 @@ async function buildDashboard(userId: string) {
     study: studyPromise,
     me: mePromise,
   });
-  // Placement readiness for the saved target (services/readiness.ts), read
-  // once for the home's line and the mission's lean — and only by an account
-  // that saved one, so no other account pays for it. A failure is a missing
-  // line and an unleaning day, never a failed page.
+  // Placement readiness for the target (services/readiness.ts), read once for
+  // the home's line and the mission's lean — the saved target, or the first
+  // company named at onboarding until one is saved (implicitTargetCompany),
+  // and for no other account, so nobody else pays for it. A failure is a
+  // missing line and an unleaning day, never a failed page.
   const readinessPromise = userRowPromise
-    .then((row) => (row?.targetCompany ? readinessFor(userId, {}).then((v) => v.readiness) : null))
+    .then((row) => (row?.targetCompany || implicitTargetCompany(row?.goal ?? null, row?.goalDetails) ? readinessFor(userId, {}).then((v) => v.readiness) : null))
     .catch((err: Error) => {
       console.error("dashboard readiness failed:", err.message);
       return null;
@@ -886,7 +887,7 @@ async function buildDashboard(userId: string) {
 
   const difficultyStats = computeDifficultyStats(problemState);
   const level = userRow?.level;
-  const onMission = new Set((mission?.items ?? []).flatMap((i) => (i.evidence && "problemId" in i.evidence ? [i.evidence.problemId] : [])));
+  const onMission = new Set((mission?.items ?? []).flatMap((i) => (i.evidence && "problemId" in i.evidence && i.evidence.problemId ? [i.evidence.problemId] : [])));
   const problemInsights = computeProblemInsights(problemState, isLevel(level) ? level : null, onMission);
   const { social, savedInterviews } = counters;
   // The SQL problems are code (lib/sql-problems), so their count needs no

@@ -152,6 +152,8 @@ const QUESTIONS: Array<[string, RegExp, string?]> = [
   ["can I set the date of my placement drive", /Add the drive or interview date and press \*\*Save as my target\*\*/],
   ["does my placement target change my daily mission", /the mission leans toward the area of readiness with most to gain/],
   ["what is a company simulation", /a company's whole process practised as one run/],
+  ["can I give my drive date when I answer what I'm preparing for", /\*\*When is your drive or interview\?\*\*/],
+  ["what is the Try item in my mission", /one item named \*\*Try\*\* may appear for something you have never used/],
   ["does a simulation count toward my weekly interview limit", /every interview round counts toward your weekly interview allowance like any other/],
   ["how are my interview skills measured", /\*\*Interviews\*\* is your mock-interview answers by the kind of question/],
   ["why is there a TCS mock in today's mission", /the company's mock test \(on a day of 2 hours or more/],

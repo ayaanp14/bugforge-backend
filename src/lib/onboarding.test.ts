@@ -25,10 +25,10 @@ describe("parseOnboarding", () => {
   });
 
   it("takes an answer, with the level optional", () => {
-    assert.deepEqual(parseOnboarding({ goal: "practice" }), { ok: true, value: { skip: false, goal: "practice", level: null, details: {} } });
+    assert.deepEqual(parseOnboarding({ goal: "practice" }), { ok: true, value: { skip: false, goal: "practice", level: null, details: {}, driveDate: null } });
     assert.deepEqual(parseOnboarding({ goal: "product", level: "some", details: { companies: ["Amazon", "Google"] } }), {
       ok: true,
-      value: { skip: false, goal: "product", level: "some", details: { companies: ["Amazon", "Google"] } },
+      value: { skip: false, goal: "product", level: "some", details: { companies: ["Amazon", "Google"] }, driveDate: null },
     });
   });
 
@@ -54,12 +54,12 @@ describe("parseOnboarding", () => {
 
   it("drops unknown companies rather than refusing the answer", () => {
     const parsed = parseOnboarding({ goal: "placements", details: { companies: ["TCS", "Initech", 42, "Infosys"] } });
-    assert.deepEqual(parsed, { ok: true, value: { skip: false, goal: "placements", level: null, details: { companies: ["TCS", "Infosys"] } } });
+    assert.deepEqual(parsed, { ok: true, value: { skip: false, goal: "placements", level: null, details: { companies: ["TCS", "Infosys"] }, driveDate: null } });
   });
 
   it("keeps only what the goal uses", () => {
     const parsed = parseOnboarding({ goal: "language", details: { language: "java", companies: ["Amazon"] } });
-    assert.deepEqual(parsed, { ok: true, value: { skip: false, goal: "language", level: null, details: { language: "java" } } });
+    assert.deepEqual(parsed, { ok: true, value: { skip: false, goal: "language", level: null, details: { language: "java" }, driveDate: null } });
   });
 });
 
@@ -134,4 +134,31 @@ describe("onboardingStateOf", () => {
       ask: null,
     });
   });
+});
+
+it("the first company named for a placements or product goal is the implicit placement target", async () => {
+  const { implicitTargetCompany } = await import("./onboarding.js");
+  assert.equal(implicitTargetCompany("placements", { companies: ["TCS", "Infosys"] }), "TCS");
+  assert.equal(implicitTargetCompany("product", { companies: ["Amazon"] }), "Amazon");
+  assert.equal(implicitTargetCompany("language", { companies: ["TCS"] }), null, "a language goal keeps no companies");
+  assert.equal(implicitTargetCompany("placements", {}), null);
+  assert.equal(implicitTargetCompany(null, null), null);
+});
+
+it("a drive date is a real day, not past, within two years, and only beside a company", async () => {
+  const { parseDriveDate } = await import("./onboarding.js");
+  const now = Date.UTC(2026, 9, 7, 12);
+  const ok = parseDriveDate("2026-11-20", now);
+  assert.ok(ok.ok && ok.value?.toISOString() === "2026-11-20T00:00:00.000Z");
+  assert.deepEqual(parseDriveDate("", now), { ok: true, value: null });
+  assert.equal(parseDriveDate("2026-02-30", now).ok, false, "no such day");
+  assert.equal(parseDriveDate("20/11/2026", now).ok, false);
+  assert.equal(parseDriveDate("2026-10-01", now).ok, false, "past");
+  assert.equal(parseDriveDate("2029-01-01", now).ok, false, "too far");
+  // Through the answer's parser: kept with companies, dropped without.
+  const withCompany = parseOnboarding({ goal: "placements", details: { companies: ["TCS"] }, driveDate: "2027-01-15" });
+  assert.ok(withCompany.ok && !withCompany.value.skip && withCompany.value.driveDate?.toISOString().startsWith("2027-01-15"));
+  const without = parseOnboarding({ goal: "placements", driveDate: "2027-01-15" });
+  assert.ok(without.ok && !without.value.skip && without.value.driveDate === null);
+  assert.equal(parseOnboarding({ goal: "placements", details: { companies: ["TCS"] }, driveDate: "soon" }).ok, false);
 });

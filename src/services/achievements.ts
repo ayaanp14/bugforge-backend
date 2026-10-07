@@ -1,4 +1,6 @@
 import { prisma } from "../lib/prisma.js";
+import { badgeById, countersOfMe, hasBadge } from "../lib/badges.js";
+import { getMePayload } from "./me.js";
 
 /**
  * A win someone wants to show off, checked against the records.
@@ -12,22 +14,38 @@ import { prisma } from "../lib/prisma.js";
  * Shared by the community's achievement posts (routes/community.ts) and the
  * shareable win pictures (services/share-cards.ts), which both put a claim in
  * front of other people and so must hold it to the same rule.
+ *
+ * A badge (since 2026-10-07) is the fourth kind: the claim is a threshold on
+ * the account's own counters, read from the same /api/me payload the client's
+ * badge wall is drawn from (lib/badges.ts) — never from the request.
  */
 
 export interface VerifiedAchievement {
-  kind: "problem" | "bug" | "roadmap";
+  kind: "problem" | "bug" | "roadmap" | "badge";
   title: string;
   difficulty?: string;
   slug?: string;
   challengeId?: string;
   tier?: string;
+  /** A badge's id (`streak-7`, lib/badges). */
+  badge?: string;
   xp?: number;
 }
 
 export type AchievementCheck = { ok: true; achievement: VerifiedAchievement } | { ok: false; error: string };
 
 export async function verifyAchievement(userId: string, meta: Record<string, unknown>): Promise<AchievementCheck> {
-  const kind = meta["kind"] === "bug" ? "bug" : meta["kind"] === "roadmap" ? "roadmap" : "problem";
+  const kind = meta["kind"] === "bug" ? "bug" : meta["kind"] === "roadmap" ? "roadmap" : meta["kind"] === "badge" ? "badge" : "problem";
+
+  if (kind === "badge") {
+    // The cached /api/me payload, which a solve, a fix and a chest all drop:
+    // a badge the celebration has just shown is one this read already counts.
+    // A badge pays no XP, so none is taken from the request.
+    const badge = badgeById(meta["badge"]);
+    const me = badge ? await getMePayload(userId) : null;
+    if (!badge || !me || !hasBadge(badge, countersOfMe(me))) return { ok: false, error: "You can only share a badge you have earned" };
+    return { ok: true, achievement: { kind, badge: badge.id, title: badge.name } };
+  }
 
   if (kind === "roadmap") {
     // A tier's chest: the claim is the RoadmapReward row the road wrote when

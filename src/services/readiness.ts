@@ -4,6 +4,7 @@ import { COMPANY_RENAMED, COMPANY_TAGS } from "../lib/companies.js";
 import { aptitudeTopic } from "../lib/aptitude-topics.js";
 import { skillsForProblemTags } from "../lib/skill-graph.js";
 import { slugify } from "../lib/slug.js";
+import { implicitTargetCompany } from "../lib/onboarding.js";
 import { INTERVIEW_SKILL_WEIGHTS, companyKey, readinessOf, type PatternSection, type Readiness, type ReadinessFamily, type TargetPattern } from "../lib/readiness.js";
 import { interviewSkillWeights, simulationForCompany } from "../lib/simulations/index.js";
 import { getCatalogue } from "./dashboard.js";
@@ -98,12 +99,11 @@ const readinessKey = (userId: string, company: string, test: string | null) => `
 
 export async function readinessFor(userId: string, asked: { company?: string | null; test?: string | null }): Promise<ReadinessView> {
   const [user, companies] = await Promise.all([
-    prisma.user.findUnique({ where: { id: userId }, select: { targetCompany: true, targetTest: true, targetDate: true, dailyMinutes: true, goalDetails: true } }),
+    prisma.user.findUnique({ where: { id: userId }, select: { targetCompany: true, targetTest: true, targetDate: true, dailyMinutes: true, goal: true, goalDetails: true } }),
     companyChoices(),
   ]);
-  const onboarding = user?.goalDetails && typeof user.goalDetails === "object" ? ((user.goalDetails as { companies?: unknown }).companies as unknown) : null;
-  const firstGoalCompany = Array.isArray(onboarding) && typeof onboarding[0] === "string" ? (onboarding[0] as string) : null;
-  const companyName = asked.company ?? user?.targetCompany ?? firstGoalCompany;
+  // No saved target: the first company named at onboarding (the dashboard and the mission read the same).
+  const companyName = asked.company ?? user?.targetCompany ?? implicitTargetCompany(user?.goal ?? null, user?.goalDetails);
   const target = { company: user?.targetCompany ?? null, test: user?.targetTest ?? null, date: user?.targetDate ? user.targetDate.toISOString().slice(0, 10) : null };
   const choice = companyName ? companies.find((c) => companyKey(c.name) === companyKey(companyName)) : undefined;
   if (!choice) return { target, readiness: null, companies };

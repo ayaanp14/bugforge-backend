@@ -113,6 +113,36 @@ export function detailsFor(goal: Goal | null, raw: unknown): GoalDetails {
   return {};
 }
 
+/**
+ * The placement target an account has without saving one: the first company
+ * it named for a placements or product goal. Readiness and today's mission
+ * read it until a target is saved (services/readiness.ts already shows it
+ * first), so the student who answered /welcome sees both from day one —
+ * before 2026-10-07 they waited for a target only /readiness could save.
+ */
+export function implicitTargetCompany(goal: string | null, rawDetails: unknown): string | null {
+  if (goal !== "placements" && goal !== "product") return null;
+  return detailsFor(goal, rawDetails).companies?.[0] ?? null;
+}
+
+/** How far ahead a drive date may be: what PUT /api/me/readiness/target accepts too. */
+export const MAX_DRIVE_DAYS = 2 * 366;
+
+/**
+ * An optional drive or interview date (YYYY-MM-DD) as a UTC midnight, or an
+ * error. A day in the past is refused (a typo, or a drive already gone), and
+ * so is one more than two years out.
+ */
+export function parseDriveDate(raw: unknown, now = Date.now()): { ok: true; value: Date | null } | { ok: false; error: string } {
+  if (raw == null || raw === "") return { ok: true, value: null };
+  if (typeof raw !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(raw)) return { ok: false, error: "driveDate must be YYYY-MM-DD." };
+  const date = new Date(`${raw}T00:00:00.000Z`);
+  if (Number.isNaN(date.getTime()) || date.toISOString().slice(0, 10) !== raw) return { ok: false, error: "driveDate is not a real day." };
+  if (date.getTime() < now - 86_400_000) return { ok: false, error: "driveDate is in the past." };
+  if (date.getTime() > now + MAX_DRIVE_DAYS * 86_400_000) return { ok: false, error: "driveDate is more than two years away." };
+  return { ok: true, value: date };
+}
+
 export function onboardingStateOf(row: {
   goal: string | null;
   level: string | null;
@@ -129,7 +159,14 @@ export function onboardingStateOf(row: {
 
 export type OnboardingInput =
   | { skip: true }
-  | { skip: false; goal: Goal; level: Level | null; details: GoalDetails };
+  | {
+      skip: false;
+      goal: Goal;
+      level: Level | null;
+      details: GoalDetails;
+      /** A drive date given with a company goal: the first company and this date become the saved placement target. */
+      driveDate: Date | null;
+    };
 
 /**
  * The body of PUT /api/me/onboarding: `{ skip: true }`, or
@@ -160,7 +197,11 @@ export function parseOnboarding(body: unknown): { ok: true; value: OnboardingInp
     return { ok: false, error: "companies must be a list." };
   }
 
-  return { ok: true, value: { skip: false, goal, level: (rawLevel ?? null) as Level | null, details: detailsFor(goal, detailsObj) } };
+  const details = detailsFor(goal, detailsObj);
+  const drive = parseDriveDate(obj["driveDate"]);
+  if (!drive.ok) return drive;
+  // A date means something only beside a company to aim it at.
+  return { ok: true, value: { skip: false, goal, level: (rawLevel ?? null) as Level | null, details, driveDate: details.companies?.length ? drive.value : null } };
 }
 
 // ── Shapes the dashboard carries (built by services/onboarding-plan.ts) ──

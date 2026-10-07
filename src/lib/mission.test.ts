@@ -53,6 +53,7 @@ const EMPTY: MissionCandidates = {
   milestone: null,
   fallback: [],
   target: null,
+  discover: [],
 };
 const cands = (over: Partial<MissionCandidates> = {}): MissionCandidates => ({ ...EMPTY, fallback: Array.from({ length: 12 }, () => prob("easy")), ...over });
 
@@ -309,4 +310,40 @@ test("activity items are ticked by what was done today, and survive a round trip
   assert.equal(row.state, "done");
   assert.equal(row.by, "evidence");
   assert.equal(row.manual, false);
+});
+
+// ── Things never tried ────────────────────────────────────────────
+
+test("one feature never tried joins the day, the first of the list, without changing its size", () => {
+  const discover = [
+    { key: "drive-date" as const, company: "TCS" },
+    { key: "simulation" as const, company: "TCS", slug: "tcs" },
+    { key: "tutor" as const },
+  ];
+  for (const m of MINUTE_CHOICES) assert.equal(buildMission(cands({ discover, weakest: [skill("Graph")] }), m).length, slotsFor(m), `${m} min`);
+  const day = buildMission(cands({ discover, weakest: [skill("Graph")] }), 60);
+  const tries = day.filter((i) => i.kind === "explore");
+  assert.equal(tries.length, 1, "one a day");
+  assert.equal(tries[0]!.id, "explore:drive-date");
+  assert.equal(tries[0]!.href, "/readiness");
+  assert.deepEqual(tries[0]!.evidence, { discover: "drive-date" });
+});
+
+test("the tutor's item is a problem no other item holds, opened with the tutor, ticked by using the tutor", () => {
+  const c = cands({ discover: [{ key: "tutor" }] });
+  const day = buildMission(c, 60);
+  const tutor = day.find((i) => i.id === "explore:tutor")!;
+  assert.match(tutor.href, /^\/problems\/p\d+\?tutor=open$/);
+  assert.equal(tutor.workbench, true);
+  const ids = day.flatMap((i) => (i.evidence && "problemId" in i.evidence && i.evidence.problemId ? [i.evidence.problemId] : []));
+  assert.equal(new Set(ids).size, ids.length, "no problem twice");
+  // Solving the problem without the tutor is not trying the tutor.
+  const solvedOnly = missionView("2026-10-07", 60, day, {}, { ...EMPTY_MISSION_FACTS, solvedProblems: new Set(ids) });
+  assert.equal(solvedOnly.items.find((i) => i.id === tutor.id)!.state, "todo");
+  const tried = missionView("2026-10-07", 60, day, {}, { ...EMPTY_MISSION_FACTS, discovered: new Set(["tutor"]) });
+  assert.equal(tried.items.find((i) => i.id === tutor.id)!.state, "done");
+});
+
+test("nothing left to try, nothing offered", () => {
+  assert.ok(!buildMission(cands({ discover: [] }), 240).some((i) => i.kind === "explore"));
 });

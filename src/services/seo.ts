@@ -32,6 +32,7 @@ import { NOTE_SUBJECTS, subjectByKey } from "../lib/cs-notes.js";
 import { notePage, notesSitemapEntries, notesSyllabus } from "./cs-notes.js";
 import { experienceCompanies, experienceList, type ExperienceRow } from "./interview-experiences.js";
 import { slugify } from "../lib/slug.js";
+import { badgeById, badgeFeat, type BadgeTrack } from "../lib/badges.js";
 
 /**
  * What a search engine is told about the app's public content.
@@ -613,6 +614,7 @@ async function shareHead(id: string): Promise<PageHead | null> {
   const card = await getShareCard(id);
   if (!card) return null;
   const who = card.user.name || card.user.username || "A CodeKairo coder";
+  if (card.kind === "badge") return badgeShareHead(id, who, card.title, badgeById(card.slug));
   const level = card.difficulty ? `${card.difficulty.charAt(0).toUpperCase()}${card.difficulty.slice(1)} ` : "";
   const what =
     card.kind === "roadmap"
@@ -631,6 +633,29 @@ async function shareHead(id: string): Promise<PageHead | null> {
     card.kind === "roadmap"
       ? `${who} opened a chest on CodeKairo's DSA roadmap. Practise problems in 13 languages, clear the road, and share your own wins.`
       : `${who} ${card.kind === "bug" ? "fixed" : "solved"} ${card.title}${level ? ` (${level.trim()})` : ""}${card.xp ? ` for +${card.xp} XP` : ""}. Try it yourself on CodeKairo — free coding practice in 13 languages.`;
+  return {
+    path: `/share/${id}`,
+    title,
+    description,
+    crumb: "Shared win",
+    image: { url: `${API_ORIGIN}/api/share-cards/${id}/image.jpg`, width: CARD_WIDTH, height: CARD_HEIGHT, alt: title },
+    content: `<p>${h(description)}</p><p><a href="${h(target.href)}">${h(target.label)}</a> · <a href="/register">Join CodeKairo</a></p>`,
+  };
+}
+
+/** Where a badge's "Earn it too" goes: the work its track counts. */
+const BADGE_TARGETS: Record<BadgeTrack, { href: string; label: string }> = {
+  solver: { href: "/challenges", label: "Start solving" },
+  hunter: { href: "/bug-hunts", label: "Hunt a bug" },
+  streak: { href: "/challenges", label: "Start a streak" },
+  road: { href: "/roadmap", label: "Walk the DSA roadmap" },
+};
+
+/** A shared badge (services/achievements.ts checked it against the account's counters). */
+function badgeShareHead(id: string, who: string, name: string, badge: ReturnType<typeof badgeById>): PageHead {
+  const title = `${who} earned the ${name} badge on ${BRAND}`;
+  const target = badge ? BADGE_TARGETS[badge.track] : BADGE_TARGETS.solver;
+  const description = `${who} earned the ${name} badge on CodeKairo${badge ? ` for ${badgeFeat(badge)}` : ""}. Practise coding problems in 13 languages, hunt bugs, and earn your own badges.`;
   return {
     path: `/share/${id}`,
     title,

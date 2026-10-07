@@ -19,6 +19,7 @@ import { TEST_GUIDES } from "../lib/test-guides.js";
 import { TOPIC_ESSENTIALS } from "../lib/topic-essentials.js";
 import { walkthroughFor, type Walkthrough } from "../lib/walkthroughs/index.js";
 import { lessonForHub } from "../lib/roadmap-lessons.js";
+import { simulationForCompany } from "../lib/simulations/index.js";
 import { prisma } from "../lib/prisma.js";
 import { cached } from "../lib/cache.js";
 
@@ -96,6 +97,8 @@ export interface HubPage extends HubSummary {
    * a company or a topic no lesson teaches yet.
    */
   lesson: { slug: string; title: string } | null;
+  /** A company hub: its company simulation (lib/simulations) — its test, then its interviews in order; null for a topic or a company without one. */
+  simulation: { slug: string } | null;
   /** Other hubs of the same kind, most populous first. */
   related: HubSummary[];
 }
@@ -329,6 +332,7 @@ export async function hubPage(kind: "topic" | "company", slug: string): Promise<
       problems: rows.map(toHubProblem),
       patterns: [],
       lesson: lesson ? { slug: lesson.slug, title: lesson.title } : null,
+      simulation: null,
       related,
     };
   }
@@ -376,6 +380,10 @@ export async function hubPage(kind: "topic" | "company", slug: string): Promise<
     problems: rows.map(toHubProblem),
     patterns: companyPatterns,
     lesson: null,
+    simulation: (() => {
+      const sim = simulationForCompany(summary.label);
+      return sim ? { slug: sim.slug } : null;
+    })(),
     related,
   };
 }

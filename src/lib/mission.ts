@@ -84,10 +84,10 @@ export const MILESTONE_MINUTES: Readonly<Record<string, number>> = {
   module: 20,
 };
 
-export type MissionKind = "finish" | "review" | "learn" | "lesson" | "practice" | "debug" | "challenge" | "target" | "milestone";
+export type MissionKind = "finish" | "review" | "learn" | "lesson" | "practice" | "explore" | "debug" | "challenge" | "target" | "milestone";
 
 /** The order the day is drawn in: pick up what was left, recall, learn, practise, then the bigger steps. */
-const KIND_ORDER: readonly MissionKind[] = ["finish", "review", "learn", "lesson", "practice", "debug", "challenge", "target", "milestone"];
+const KIND_ORDER: readonly MissionKind[] = ["finish", "review", "learn", "lesson", "practice", "explore", "debug", "challenge", "target", "milestone"];
 
 /**
  * Something done on the site today that ticks a placement-target item: a
@@ -100,7 +100,15 @@ export type ActivityKind = "mock" | "aptitude" | "skill-test" | "interview" | "r
 
 export const activityKey = (kind: ActivityKind, ref: string | null): string => (ref ? `${kind}:${ref}` : kind);
 
+/**
+ * Something on the site the student has never used, offered as one "try
+ * this" item a day until each has been tried (the owner's ask, 2026-10-07:
+ * most of what was built went unexplored). Ticked by its first use.
+ */
+export type DiscoverKey = "drive-date" | "simulation" | "tutor";
+
 export type MissionEvidence =
+  | { discover: DiscoverKey; problemId?: string }
   | { problemId: string }
   | { bugId: string }
   | { lessonKey: string }
@@ -168,7 +176,14 @@ export interface MissionCandidates {
   fallback: ProblemPick[];
   /** The placement target's weakest areas (lib/readiness), when the account has saved one. */
   target: TargetCandidates | null;
+  /** Features never used, best first (DiscoverKey); at most one becomes an item a day. */
+  discover: DiscoverCandidate[];
 }
+
+export type DiscoverCandidate =
+  | { key: "drive-date"; company: string }
+  | { key: "simulation"; company: string; slug: string }
+  | { key: "tutor" };
 
 // ── The placement target (Phase 5 of ADAPTIVE_COACH.md) ───────────
 
@@ -278,7 +293,7 @@ export function buildMission(c: MissionCandidates, minutes: number, keep: readon
   const slots = Math.max(slotsFor(minutes), keep.length);
   const picked: MissionItem[] = [...keep];
   const used = new Set<string>(keep.map((i) => i.id));
-  const usedRefs = new Set<string>(keep.flatMap((i) => (i.evidence && "problemId" in i.evidence ? [i.evidence.problemId] : [])));
+  const usedRefs = new Set<string>(keep.flatMap((i) => (i.evidence && "problemId" in i.evidence && i.evidence.problemId ? [i.evidence.problemId] : [])));
 
   const learnable = [...c.weakest, ...c.building, ...c.ready].find((s) => s.lesson && (s.status === "unstarted" || s.status === "learning"));
   const languageGoal = c.goal === "language";
@@ -289,7 +304,7 @@ export function buildMission(c: MissionCandidates, minutes: number, keep: readon
   const fits = (item: MissionItem | null): item is MissionItem => {
     if (!item || used.has(item.id)) return false;
     if (item.skill && picked.filter((i) => i.skill === item.skill).length >= MAX_PER_SKILL) return false;
-    if (item.evidence && "problemId" in item.evidence && usedRefs.has(item.evidence.problemId)) return false;
+    if (item.evidence && "problemId" in item.evidence && item.evidence.problemId && usedRefs.has(item.evidence.problemId)) return false;
     const step = planStepOf(item);
     const covers = coveredSteps(item);
     if (picked.some((i) => (step && coveredSteps(i).includes(step)) || (covers.length && covers.includes(planStepOf(i) ?? "")))) return false;
@@ -311,6 +326,8 @@ export function buildMission(c: MissionCandidates, minutes: number, keep: readon
   const t = c.target;
   const near = t != null && t.daysLeft != null && t.daysLeft <= TARGET_WINDOW_DAYS;
   const lean = t && t.areas.length ? oneOf(...t.areas.flatMap((a) => areaProposals(t, a, near))) : null;
+  // One feature never used, the first of the list that fits.
+  const discover = c.discover.length ? oneOf(...c.discover.map((d) => discoverProposal(c, d))) : null;
 
   // The order is the day's priorities: pick up what was left (the cheapest
   // progress there is), recall what is due, work the weakest skill, then the
@@ -331,6 +348,9 @@ export function buildMission(c: MissionCandidates, minutes: number, keep: readon
     ...(practiceGoal ? [dailyProposal(c)] : []),
     skillProblem("practice", c.weakest[0], (s) => `${s.label} is one of your weakest at ${s.mastery}%.`),
     ...(near && lean ? [lean] : []),
+    // Early enough that a short day still meets it: a thing never tried is
+    // worth more than a fourth practice problem, and it stops once tried.
+    ...(discover ? [discover] : []),
     milestoneProposal(c, minutes),
     ...(!near && lean ? [lean] : []),
     ...(interviewGoal ? [huntProposal(c)] : []),
@@ -375,7 +395,7 @@ export function buildMission(c: MissionCandidates, minutes: number, keep: readon
     if (!fits(item)) continue;
     picked.push(item);
     used.add(item.id);
-    if (item.evidence && "problemId" in item.evidence) usedRefs.add(item.evidence.problemId);
+    if (item.evidence && "problemId" in item.evidence && item.evidence.problemId) usedRefs.add(item.evidence.problemId);
   }
 
   return orderItems(picked);
@@ -443,6 +463,51 @@ function milestoneProposal(c: MissionCandidates, minutes: number): Proposal {
       difficulty: null,
       skill: null,
       evidence: { planStep: m.key },
+    };
+  };
+}
+
+/** One "try this" item (DiscoverKey). The tutor's is a problem with the tutor open on it — one no other item of the day holds. */
+function discoverProposal(c: MissionCandidates, d: DiscoverCandidate): Proposal {
+  return (_perSlot, refs) => {
+    const base = { kind: "explore" as const, workbench: false, difficulty: null, skill: null };
+    if (d.key === "drive-date") {
+      return {
+        ...base,
+        id: "explore:drive-date",
+        title: `Set your ${d.company} drive date`,
+        context: d.company,
+        why: "With a date, today's mission plans towards it and readiness counts the days.",
+        href: "/readiness",
+        minutes: 5,
+        evidence: { discover: "drive-date" },
+      };
+    }
+    if (d.key === "simulation") {
+      return {
+        ...base,
+        id: "explore:simulation",
+        title: `Start the ${d.company} simulation`,
+        context: d.company,
+        why: `${d.company}'s online test, then its interview rounds in order: the whole process as one run.`,
+        href: `/simulations/${d.slug}`,
+        minutes: 10,
+        evidence: { discover: "simulation" },
+      };
+    }
+    const p = c.fallback.find((x) => !refs.has(x.id));
+    if (!p) return null;
+    return {
+      ...base,
+      id: "explore:tutor",
+      title: `Ask the tutor on ${p.title}`,
+      context: "Tutor",
+      why: "The tutor answers with a question first, and gives only as much help as you ask for.",
+      href: `/problems/${p.slug}?tutor=open`,
+      workbench: true,
+      minutes: PROBLEM_MINUTES[p.difficulty],
+      difficulty: p.difficulty,
+      evidence: { discover: "tutor", problemId: p.id },
     };
   };
 }
@@ -591,9 +656,11 @@ export interface MissionFacts {
   planDone: ReadonlySet<string>;
   /** Activity keys done today (activityKey). */
   activities: ReadonlySet<string>;
+  /** Features used at least once (DiscoverKey). */
+  discovered: ReadonlySet<DiscoverKey>;
 }
 
-export const EMPTY_MISSION_FACTS: MissionFacts = { solvedProblems: new Set(), solvedBugs: new Set(), completedLessons: new Set(), planDone: new Set(), activities: new Set() };
+export const EMPTY_MISSION_FACTS: MissionFacts = { solvedProblems: new Set(), solvedBugs: new Set(), completedLessons: new Set(), planDone: new Set(), activities: new Set(), discovered: new Set() };
 
 export type ItemState = "todo" | "done" | "skipped";
 
@@ -620,6 +687,8 @@ export interface MissionView {
 
 export function evidenceDone(e: MissionEvidence, f: MissionFacts): boolean {
   if (!e) return false;
+  // Before problemId: the tutor's item names a problem, but trying the tutor is what ticks it.
+  if ("discover" in e) return f.discovered.has(e.discover);
   if ("problemId" in e) return f.solvedProblems.has(e.problemId);
   if ("bugId" in e) return f.solvedBugs.has(e.bugId);
   if ("lessonKey" in e) return f.completedLessons.has(e.lessonKey);

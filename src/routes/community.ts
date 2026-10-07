@@ -40,7 +40,7 @@ const MAX_TAGS = 8;
 
 /** The tag an achievement share always carries, by what was achieved. */
 function achievementTag(kind: unknown): string {
-  return kind === "bug" ? "bughunt" : kind === "roadmap" ? "roadmap" : "challenge";
+  return kind === "bug" ? "bughunt" : kind === "roadmap" ? "roadmap" : kind === "badge" ? "badges" : "challenge";
 }
 
 /** Pull #hashtags out of post text (lowercased, deduped) plus auto-tags. */

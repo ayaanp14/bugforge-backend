@@ -7,6 +7,8 @@ import { forgetPublicUser } from "../services/public-profile.js";
 import { ensureBaseline, listNotifications, getUnreadCount, markAllRead } from "../services/notifications.js";
 import { ME_SELECT, getMePayload, invalidateMe, meUserOf } from "../services/me.js";
 import { ONBOARDING_SELECT, onboardingStateOf, parseOnboarding } from "../lib/onboarding.js";
+import { setTarget } from "../services/readiness.js";
+import { repickMissionToday } from "../services/mission.js";
 import { hashPassword, passwordProblem, verifyPassword } from "../lib/passwords.js";
 import { forgetSessions } from "../lib/session-revocation.js";
 import { establishSession } from "../lib/auth-session.js";
@@ -295,6 +297,12 @@ router.put("/language", requireAuth, async (req, res) => {
  *
  * Then the dashboard and /api/me are dropped together (invalidateDashboard):
  * the plan, "Up next" and the `onboarding` field all moved.
+ *
+ * A company goal can carry `driveDate` (YYYY-MM-DD): the first company and
+ * that date are saved as the placement target, echoed as `target` so the
+ * client's session copy has it. Without one, the first company is still the
+ * implicit target readiness and the mission read (lib/onboarding
+ * implicitTargetCompany).
  */
 router.put("/onboarding", requireAuth, async (req, res) => {
   const parsed = parseOnboarding(req.body);
@@ -319,11 +327,21 @@ router.put("/onboarding", requireAuth, async (req, res) => {
         },
     select: { ...ONBOARDING_SELECT, preferredLanguage: true },
   });
+  // A drive date given here saves the placement target (the first company and
+  // the date) the way /readiness does — validated and its caches dropped by
+  // setTarget — and today's undone mission items are re-picked for it.
+  let target: { company: string; date: string } | null = null;
+  if (!input.skip && input.driveDate && input.details.companies?.length) {
+    target = { company: input.details.companies[0]!, date: input.driveDate.toISOString().slice(0, 10) };
+    await setTarget(userId, target);
+    await repickMissionToday(userId);
+  }
   invalidateDashboard(userId);
 
   res.json({
     onboarding: onboardingStateOf(row),
     ...(language ? { preferredLanguage: row.preferredLanguage } : {}),
+    ...(target ? { target } : {}),
   });
 });
 

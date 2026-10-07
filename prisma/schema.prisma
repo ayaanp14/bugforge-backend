@@ -2235,11 +2235,12 @@ model ShareCard {
   id          String   @id @default(cuid())
   userId      String
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  /// "problem" | "bug" | "roadmap"
+  /// "problem" | "bug" | "roadmap" | "badge"
   kind        String   @db.VarChar(16)
   title       String   @db.VarChar(200)
   difficulty  String?  @db.VarChar(20)
   /// Where "Solve it too" goes: a problem's slug, or nothing for a chest.
+  /// A badge's id (`streak-7`, lib/badges) for a badge — it has no page.
   slug        String?  @db.VarChar(200)
   /// A bug hunt's id, for the hunt's own page.
   challengeId String?  @db.VarChar(40)
