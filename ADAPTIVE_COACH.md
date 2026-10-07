@@ -257,8 +257,31 @@ Surfaces: /skills, the home dashboard, the workbench verdict, reminders, the car
   - A smoke run on local data (`scratch/readiness-smoke.mts`, `readiness-richest.mts`): 15–20 ms warm.
   - `e2e/readiness.spec.ts`, axe included.
   - 3 assistant questions pinned, plus an alias for "ready" (TCS appears on every placement chunk).
-- **Not yet (the rest of Phase 5):**
-  - The mission does not read the target or its date yet. The next step is to weight its picks toward the weakest readiness area as the date nears, and to re-pick today's undone items when the target changes.
+- **The mission reads the target (added the same day; the rest of Phase 5).**
+  - **Which area:** readiness's areas below ready, ordered by weight × room left (`areasByGain`, the order the page's "Do these next" uses). Each area now carries `gaps`, its skills below ready with the most to gain first, so the mission reads skills rather than links.
+  - **Where in the day:** within 30 days of the drive date, the area's item comes straight after an unfinished draft, ahead of reviews, and a second one follows the weakest skill. Further out, or with no date, it is one item after the plan step.
+  - **Items, best first, per area:**
+    - Assessment: the full mock, then the paper's weakest aptitude section (ten questions), then the company's weakest topic.
+    - Coding: the company's two weakest topics, with its own problems first in each.
+    - Fundamentals: the next skill test (the level above any credential, out of its cooldown), then that subject's notes.
+    - Interview practice: a mock interview.
+    - Resume: a resume check.
+  - **The fixed row count decides what fits.** A big step goes on the day only if it, plus an Easy problem for every other slot, fits the time left (`holds`). So the hour-long mock needs a two-hour day, and the 45-minute skill test a 90-minute one. On a shorter day the area's smaller item stands in. `slotsFor` and `MAX_PER_SKILL` are unchanged, and `e2e/dashboard-loading.spec.ts` still holds.
+  - **Ticks stay derived.** A new evidence kind, `{ activity, ref }`, is done when the matching row exists for the day (IST):
+    - a graded sitting of the pattern;
+    - 10 different questions answered in the aptitude category;
+    - a closed skill-test sitting;
+    - a sat interview;
+    - a resume analysis that hasn't failed.
+  - **No duplicates or pre-ticked items:** something already done today is never set as an item, and an activity item and the plan step it covers never share a day. The mock is not offered again within 14 days of a graded sitting.
+  - **Changing the target** re-picks today's undone items (`repickMissionToday`, the same keep-what-is-done rule as changing the minutes).
+  - **On the home:** one line in Today, for example "TCS readiness 46% · 18 days left · getting close", opening `/readiness`. It is `readiness` on `dash:v6`. `targetCompany` on `/api/me` (`me:v4`) tells the loading shell to keep room for the line. Readiness is read once per dashboard build, and only for accounts with a target.
+  - **Verified:**
+    - `mission.test.ts`, with 10 new target tests.
+    - `readiness.test.ts`, with `gaps` and `areasByGain` pinned.
+    - Smoke runs on local data: `scratch/target-mission-smoke.mts` (the day at 30, 60, 120 and 240 minutes, with and without a date) and `scratch/target-mission-tick.mts` (nine answers leave the item to do, the tenth ticks it).
+    - 2 assistant questions pinned.
+- **Not yet:**
   - Graduation year.
-  - Readiness on the home dashboard.
   - An admin view of targets.
+  - Aptitude, SQL and debugging reviews as mission items. Only the target's aptitude section reaches the day today.

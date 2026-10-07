@@ -43,6 +43,8 @@ const CLOSE_AT = 50;
 const DAY = 86_400_000;
 
 export interface SkillReading {
+  /** The skill graph's key (lib/skill-graph), e.g. "apt:quantitative". */
+  key: string;
   mastery: number;
   confidence: number;
   label: string;
@@ -120,6 +122,12 @@ export interface ReadinessArea {
   summary: string;
   parts: ReadinessPart[];
   next: ReadinessAction[];
+  /**
+   * The skills behind the area that are below ready, the one with most to
+   * gain first — what today's mission (lib/mission.ts) works when this area
+   * is the one to lean on. Empty for the areas no skill measures.
+   */
+  gaps: Array<{ skill: string; mastery: number }>;
 }
 
 export interface Readiness {
@@ -178,11 +186,11 @@ function assessmentArea(input: ReadinessInput, weight: number): ReadinessArea | 
       for (const d of section.blueprint) {
         const readings = drawReadings(d, section.kind, input);
         const m = meanOf(readings.map((r) => ({ reading: r, weight: 1 })));
-        draws.push({ reading: m ? { mastery: m.score, confidence: m.confidence, label: "", href: "" } : null, weight: d.count });
+        draws.push({ reading: m ? { key: "", mastery: m.score, confidence: m.confidence, label: "", href: "" } : null, weight: d.count });
         for (const r of readings) weakest.push({ reading: r, gap: (100 - r.mastery) * d.count * section.marksPerQuestion });
       }
       const m = meanOf(draws);
-      sections.push({ reading: m ? { mastery: m.score, confidence: m.confidence, label: section.name, href: "" } : null, weight: section.questionCount * section.marksPerQuestion });
+      sections.push({ reading: m ? { key: "", mastery: m.score, confidence: m.confidence, label: section.name, href: "" } : null, weight: section.questionCount * section.marksPerQuestion });
     }
     const estimate = meanOf(sections) ?? { score: 0, confidence: 0 };
     const recent = input.sittings.filter((s) => s.slug === pattern.slug && input.asOf - s.at <= SITTING_WINDOW_DAYS * DAY).sort((a, b) => b.at - a.at);
@@ -199,13 +207,15 @@ function assessmentArea(input: ReadinessInput, weight: number): ReadinessArea | 
   const unsat = input.patterns.find((p) => !input.sittings.some((s) => s.slug === p.slug));
   const toSit = unsat ? { name: unsat.name, href: `/tests/${unsat.slug}` } : { name: lowest.label, href: lowest.href! };
   next.push({ label: `Sit the ${toSit.name} mock`, href: toSit.href });
+  // Marks at stake per skill, summed over every draw that tests it: where the paper has most to give.
   const gaps = new Map<string, { reading: SkillReading; gap: number }>();
   for (const w of weakest) {
-    const g = gaps.get(w.reading.href);
-    gaps.set(w.reading.href, { reading: w.reading, gap: (g?.gap ?? 0) + w.gap });
+    const g = gaps.get(w.reading.key);
+    gaps.set(w.reading.key, { reading: w.reading, gap: (g?.gap ?? 0) + w.gap });
   }
-  const top = [...gaps.values()].sort((a, b) => b.gap - a.gap)[0];
-  if (top && top.reading.mastery < READY_AT) next.push({ label: `Practise ${top.reading.label}`, href: top.reading.href });
+  const byGap = [...gaps.values()].filter((g) => g.reading.mastery < READY_AT).sort((a, b) => b.gap - a.gap);
+  const top = byGap[0];
+  if (top) next.push({ label: `Practise ${top.reading.label}`, href: top.reading.href });
   const satRecently = input.sittings.some((s) => input.patterns.some((p) => p.slug === s.slug) && input.asOf - s.at <= SITTING_WINDOW_DAYS * DAY);
   return {
     key: "assessment",
@@ -219,6 +229,7 @@ function assessmentArea(input: ReadinessInput, weight: number): ReadinessArea | 
       : `${input.company}'s test pattern, read from your skills in each of its sections. A mock sitting would make this firmer.`,
     parts,
     next,
+    gaps: byGap.map((g) => ({ skill: g.reading.key, mastery: round(g.reading.mastery) })),
   };
 }
 
@@ -233,6 +244,11 @@ function codingArea(input: ReadinessInput, weight: number): ReadinessArea {
   const next: ReadinessAction[] = [];
   if (weakest && weakest.score < READY_AT) next.push({ label: `Practise ${weakest.label}`, href: weakest.href! });
   if (input.companyHref) next.push({ label: `Work through ${input.company}'s problems`, href: input.companyHref });
+  // Most to gain: room left × how many of the company's problems use the topic.
+  const gaps = readings
+    .filter((r): r is { key: string; reading: SkillReading; weight: number } => r.reading != null && r.reading.mastery < READY_AT)
+    .sort((a, b) => (100 - b.reading.mastery) * b.weight - (100 - a.reading.mastery) * a.weight)
+    .map((r) => ({ skill: r.key, mastery: round(r.reading.mastery) }));
   return {
     key: "coding",
     label: "Coding rounds",
@@ -243,6 +259,7 @@ function codingArea(input: ReadinessInput, weight: number): ReadinessArea {
     summary: input.companyHref ? `The topics ${input.company}'s tagged problems use most, by your mastery of each.` : "The most common interview topics, by your mastery of each.",
     parts,
     next,
+    gaps,
   };
 }
 
@@ -263,6 +280,10 @@ function fundamentalsArea(input: ReadinessInput, weight: number): ReadinessArea 
     summary: "Operating systems, networks, OOP and DBMS — measured only by skill-test sittings.",
     parts,
     next: weakest && weakest.score < READY_AT ? [{ label: `Read and test ${weakest.label}`, href: weakest.href! }] : [],
+    gaps: readings
+      .filter((r) => r.mastery < READY_AT)
+      .sort((a, b) => a.mastery - b.mastery || a.confidence - b.confidence)
+      .map((r) => ({ skill: r.key, mastery: round(r.mastery) })),
   };
 }
 
@@ -282,6 +303,7 @@ function interviewArea(input: ReadinessInput, weight: number): ReadinessArea {
       : "No mock interview in the last four months.",
     parts: recent.map((i, n) => ({ label: n === 0 ? "Latest" : `${n + 1} back`, score: round(i.score), confidence: 1 })),
     next: [{ label: recent.length ? "Sit another mock interview" : "Sit a mock interview", href: "/mock-interview" }],
+    gaps: [],
   };
 }
 
@@ -299,7 +321,17 @@ function resumeArea(input: ReadinessInput, weight: number): ReadinessArea {
     summary: r ? (r.forCompany ? `Your latest resume analysis, aimed at ${input.company}.` : "Your latest resume analysis (aimed at another role).") : "No resume analysed in the last six months.",
     parts: [],
     next: [{ label: r?.forCompany ? "Improve your resume" : `Analyse your resume against ${/^[AEIOU]/i.test(input.company) ? "an" : "a"} ${input.company} role`, href: "/resume" }],
+    gaps: [],
   };
+}
+
+/**
+ * The areas still below ready, the one whose progress would move the
+ * estimate most first: weight × room left. The page's "Do these next" and
+ * today's mission (lib/mission.ts) both read the areas in this order.
+ */
+export function areasByGain(areas: readonly ReadinessArea[]): ReadinessArea[] {
+  return areas.filter((a) => a.score < READY_AT).sort((a, b) => b.weight * (100 - b.score) - a.weight * (100 - a.score));
 }
 
 export function readinessOf(input: ReadinessInput): Readiness {
@@ -318,9 +350,8 @@ export function readinessOf(input: ReadinessInput): Readiness {
   const score = areas.reduce((a, x) => a + x.weight * x.score, 0);
   const confidence = areas.reduce((a, x) => a + x.weight * x.confidence, 0);
   // What would move the estimate most: weight × room left, one action an area.
-  const focus = [...areas]
-    .filter((a) => a.next.length && a.score < READY_AT)
-    .sort((a, b) => b.weight * (100 - b.score) - a.weight * (100 - a.score))
+  const focus = areasByGain(areas)
+    .filter((a) => a.next.length)
     .slice(0, 3)
     .map((a) => a.next[0]!);
 

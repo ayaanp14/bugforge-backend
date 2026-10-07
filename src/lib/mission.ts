@@ -84,12 +84,29 @@ export const MILESTONE_MINUTES: Readonly<Record<string, number>> = {
   module: 20,
 };
 
-export type MissionKind = "finish" | "review" | "learn" | "lesson" | "practice" | "debug" | "challenge" | "milestone";
+export type MissionKind = "finish" | "review" | "learn" | "lesson" | "practice" | "debug" | "challenge" | "target" | "milestone";
 
 /** The order the day is drawn in: pick up what was left, recall, learn, practise, then the bigger steps. */
-const KIND_ORDER: readonly MissionKind[] = ["finish", "review", "learn", "lesson", "practice", "debug", "challenge", "milestone"];
+const KIND_ORDER: readonly MissionKind[] = ["finish", "review", "learn", "lesson", "practice", "debug", "challenge", "target", "milestone"];
 
-export type MissionEvidence = { problemId: string } | { bugId: string } | { lessonKey: string } | { planStep: string } | null;
+/**
+ * Something done on the site today that ticks a placement-target item: a
+ * graded sitting of a test pattern, ten aptitude answers in a category, a
+ * closed skill-test sitting, a sat mock interview, a resume analysis.
+ * Read from the rows those features already write (services/mission.ts
+ * activitiesToday) — still "ticks are derived".
+ */
+export type ActivityKind = "mock" | "aptitude" | "skill-test" | "interview" | "resume";
+
+export const activityKey = (kind: ActivityKind, ref: string | null): string => (ref ? `${kind}:${ref}` : kind);
+
+export type MissionEvidence =
+  | { problemId: string }
+  | { bugId: string }
+  | { lessonKey: string }
+  | { planStep: string }
+  | { activity: ActivityKind; ref: string | null }
+  | null;
 
 export interface MissionItem {
   /** "<kind>:<what>", unique within the day. */
@@ -149,6 +166,44 @@ export interface MissionCandidates {
   milestone: { key: string; title: string; detail: string; href: string } | null;
   /** Unsolved problems in catalogue order, at the level's difficulty — when nothing else fills a slot. */
   fallback: ProblemPick[];
+  /** The placement target's weakest areas (lib/readiness), when the account has saved one. */
+  target: TargetCandidates | null;
+}
+
+// ── The placement target (Phase 5 of ADAPTIVE_COACH.md) ───────────
+
+/**
+ * Within this many days of the drive the target leads the day: its weakest
+ * area's item comes straight after an unfinished draft, ahead of reviews and
+ * the weakest skill, and a second one follows. Further out, or with no date,
+ * it is one item after the plan's step — a nudge, not the day.
+ */
+export const TARGET_WINDOW_DAYS = 30;
+/** A graded sitting of the target's pattern this recent says enough: the mock is not offered again until it is older. */
+export const MOCK_REST_DAYS = 14;
+/** Aptitude answers in one category, in a day, that make an aptitude item done — about two minutes each. */
+export const APTITUDE_ITEM_ANSWERS = 10;
+export const TARGET_MINUTES = { mock: 60, aptitude: 20, skillTest: 45, notes: 20, interview: 30, resume: 15 } as const;
+
+/** lib/readiness AreaKey, as the mission reads it. */
+export type TargetArea = "assessment" | "coding" | "fundamentals" | "interview" | "resume";
+
+export interface TargetCandidates {
+  company: string;
+  /** Days to the drive; null with no date (or one already past). */
+  daysLeft: number | null;
+  /** The areas below ready, the one with most to gain first (lib/readiness areasByGain). */
+  areas: TargetArea[];
+  /** The company's test pattern to sit, when none was graded in the last MOCK_REST_DAYS. */
+  mock: { slug: string; name: string } | null;
+  /** The pattern's weakest aptitude section. */
+  aptitude: { category: string; label: string; mastery: number } | null;
+  /** The company's coding topics below ready, most to gain first; the company's own problems first in each. */
+  coding: SkillPick[];
+  /** The weakest CS fundamental: its notes, and the skill test to sit when one can be sat now. */
+  fundamentals: { key: string; label: string; mastery: number; notesHref: string; test: { slug: string; title: string } | null } | null;
+  /** Activity keys already done today (activityKey): an item is never set already ticked. */
+  doneToday: ReadonlySet<string>;
 }
 
 const problemItem = (kind: MissionKind, p: ProblemPick, context: string, why: string, skill: string | null): MissionItem => ({
@@ -181,7 +236,33 @@ function fitting(problems: readonly ProblemPick[], perSlot: number, used: Readon
   return [...open].sort((a, b) => RANK[a.difficulty] - RANK[b.difficulty])[0]!;
 }
 
-type Proposal = (perSlot: number, used: ReadonlySet<string>) => MissionItem | null;
+/** The day's time and slots not yet given to an item. */
+interface Room {
+  minutesLeft: number;
+  slotsLeft: number;
+}
+
+type Proposal = (perSlot: number, used: ReadonlySet<string>, room: Room) => MissionItem | null;
+
+/**
+ * Whether a step bigger than a practice item fits what is left of the day:
+ * it, and an Easy for every other slot. The row count is fixed by the
+ * minutes, so a full mock (an hour) needs a two-hour day to sit beside four
+ * Easy problems; on a shorter day the area's smaller item stands in.
+ */
+const holds = (need: number, room: Room): boolean => need + PROBLEM_MINUTES.easy * (room.slotsLeft - 1) <= room.minutesLeft;
+
+/** The plan steps an activity item does the work of: one of them on the day is enough. */
+const PLAN_STEPS_COVERED: Readonly<Record<ActivityKind, readonly string[]>> = {
+  mock: ["mock"],
+  aptitude: ["aptitude"],
+  "skill-test": ["skill-test", "fundamentals"],
+  interview: ["interview"],
+  resume: ["resume"],
+};
+
+const coveredSteps = (i: MissionItem): readonly string[] => (i.evidence && "activity" in i.evidence ? PLAN_STEPS_COVERED[i.evidence.activity] : []);
+const planStepOf = (i: MissionItem): string | null => (i.evidence && "planStep" in i.evidence ? i.evidence.planStep : null);
 
 const skillProblem = (kind: MissionKind, s: SkillPick | undefined, why: (s: SkillPick) => string): Proposal => (perSlot, used) => {
   if (!s) return null;
@@ -204,6 +285,33 @@ export function buildMission(c: MissionCandidates, minutes: number, keep: readon
   const practiceGoal = c.goal === "practice";
   const interviewGoal = c.goal === "placements" || c.goal === "product";
 
+  /** Whether an item may join the day: new, within its skill's share, no problem twice, no plan step twice over. */
+  const fits = (item: MissionItem | null): item is MissionItem => {
+    if (!item || used.has(item.id)) return false;
+    if (item.skill && picked.filter((i) => i.skill === item.skill).length >= MAX_PER_SKILL) return false;
+    if (item.evidence && "problemId" in item.evidence && usedRefs.has(item.evidence.problemId)) return false;
+    const step = planStepOf(item);
+    const covers = coveredSteps(item);
+    if (picked.some((i) => (step && coveredSteps(i).includes(step)) || (covers.length && covers.includes(planStepOf(i) ?? "")))) return false;
+    return true;
+  };
+  /** The first of several proposals whose item may join the day. */
+  const oneOf = (...ps: Proposal[]): Proposal => (perSlot, refs, room) => {
+    for (const p of ps) {
+      const item = p(perSlot, refs, room);
+      if (fits(item)) return item;
+    }
+    return null;
+  };
+
+  // The placement target: its areas with most to gain, each with its items
+  // in order of preference (a full mock, else the paper's weakest section…),
+  // as one proposal that takes the first that fits. Near the drive it comes
+  // twice — the second time it takes the next thing on that list.
+  const t = c.target;
+  const near = t != null && t.daysLeft != null && t.daysLeft <= TARGET_WINDOW_DAYS;
+  const lean = t && t.areas.length ? oneOf(...t.areas.flatMap((a) => areaProposals(t, a, near))) : null;
+
   // The order is the day's priorities: pick up what was left (the cheapest
   // progress there is), recall what is due, work the weakest skill, then the
   // plan's next step, then the rest. A goal moves its own work forward — a
@@ -211,13 +319,20 @@ export function buildMission(c: MissionCandidates, minutes: number, keep: readon
   // problem, an interview goal gets its debugging early. Reading a tutorial
   // comes after practice: an earlier order filled a 90-minute day with a
   // review, a tutorial and the plan step and no practice at all.
+  //
+  // A placement target within TARGET_WINDOW_DAYS goes ahead of the review:
+  // with the drive close, the area that would move readiness most is worth
+  // more today than keeping a skill fresh.
   const proposals: Proposal[] = [
     (_perSlot, refs) => (c.finish && !refs.has(c.finish.id) ? problemItem("finish", c.finish, "", "You have a draft on this one; finish it while it is fresh.", null) : null),
+    ...(near && lean ? [lean] : []),
     ...(languageGoal ? [studyLessonProposal(c)] : []),
     skillProblem("review", c.due[0], (s) => `${s.label} is due for review. Solving one you have not seen keeps it.`),
     ...(practiceGoal ? [dailyProposal(c)] : []),
     skillProblem("practice", c.weakest[0], (s) => `${s.label} is one of your weakest at ${s.mastery}%.`),
+    ...(near && lean ? [lean] : []),
     milestoneProposal(c, minutes),
+    ...(!near && lean ? [lean] : []),
     ...(interviewGoal ? [huntProposal(c)] : []),
     (perSlot) =>
       learnable?.lesson && minutes >= 45
@@ -254,11 +369,10 @@ export function buildMission(c: MissionCandidates, minutes: number, keep: readon
   for (const propose of proposals) {
     if (picked.length >= slots) break;
     const spent = picked.reduce((n, i) => n + i.minutes, 0);
-    const perSlot = Math.max(10, (minutes - spent) / (slots - picked.length));
-    const item = propose(perSlot, usedRefs);
-    if (!item || used.has(item.id)) continue;
-    if (item.skill && picked.filter((i) => i.skill === item.skill).length >= MAX_PER_SKILL) continue;
-    if (item.evidence && "problemId" in item.evidence && usedRefs.has(item.evidence.problemId)) continue;
+    const room: Room = { minutesLeft: minutes - spent, slotsLeft: slots - picked.length };
+    const perSlot = Math.max(10, room.minutesLeft / room.slotsLeft);
+    const item = propose(perSlot, usedRefs, room);
+    if (!fits(item)) continue;
     picked.push(item);
     used.add(item.id);
     if (item.evidence && "problemId" in item.evidence) usedRefs.add(item.evidence.problemId);
@@ -333,6 +447,130 @@ function milestoneProposal(c: MissionCandidates, minutes: number): Proposal {
   };
 }
 
+/** "18 days to TCS: " near the drive, "" otherwise — the countdown leads the reason when it is the reason. */
+function leadOf(t: TargetCandidates, near: boolean): string {
+  if (!near || t.daysLeft == null) return "";
+  if (t.daysLeft === 0) return `${t.company} is today: `;
+  if (t.daysLeft === 1) return `${t.company} is tomorrow: `;
+  return `${t.daysLeft} days to ${t.company}: `;
+}
+
+const sentence = (lead: string, rest: string) => (lead ? lead + rest : rest.charAt(0).toUpperCase() + rest.slice(1));
+
+/** A placement-target item ticked by an activity done today. */
+function activityItem(kind: MissionKind, activity: ActivityKind, ref: string | null, fields: Omit<MissionItem, "id" | "kind" | "evidence" | "workbench" | "difficulty">): MissionItem {
+  return { id: `target:${activityKey(activity, ref)}`, kind, workbench: false, difficulty: null, evidence: { activity, ref }, ...fields };
+}
+
+/**
+ * The items one readiness area offers, best first; the first that fits the
+ * day is taken. Each says why in the target's words, with the countdown in
+ * front when the drive is near.
+ */
+function areaProposals(t: TargetCandidates, area: TargetArea, near: boolean): Proposal[] {
+  const lead = leadOf(t, near);
+  const fresh = (kind: ActivityKind, ref: string | null) => !t.doneToday.has(activityKey(kind, ref));
+  const coding = (n: number): Proposal =>
+    skillProblem("practice", t.coding[n], (s) =>
+      sentence(lead, s.mastery > 0 ? `${s.label} is the weakest topic ${t.company}'s problems use, at ${s.mastery}%.` : `${t.company}'s problems use ${s.label}, and you have not started it.`),
+    );
+
+  switch (area) {
+    case "assessment":
+      return [
+        (_p, _r, room) =>
+          t.mock && fresh("mock", t.mock.slug) && holds(TARGET_MINUTES.mock, room)
+            ? activityItem("target", "mock", t.mock.slug, {
+                title: `${t.mock.name} mock`,
+                context: t.company,
+                why: sentence(lead, `a timed sitting of ${t.company}'s pattern shows where the marks are.`),
+                href: `/tests/${t.mock.slug}`,
+                minutes: TARGET_MINUTES.mock,
+                skill: null,
+              })
+            : null,
+        () =>
+          t.aptitude && fresh("aptitude", t.aptitude.category)
+            ? activityItem("practice", "aptitude", t.aptitude.category, {
+                title: `${APTITUDE_ITEM_ANSWERS} ${t.aptitude.label} questions`,
+                context: t.aptitude.label,
+                why: sentence(
+                  lead,
+                  t.aptitude.mastery > 0
+                    ? `${t.aptitude.label} is the weakest section of ${t.company}'s test for you, at ${t.aptitude.mastery}%.`
+                    : `${t.aptitude.label} is a section of ${t.company}'s test you have not practised yet.`,
+                ),
+                href: `/aptitude/${t.aptitude.category}`,
+                minutes: TARGET_MINUTES.aptitude,
+                skill: `apt:${t.aptitude.category}`,
+              })
+            : null,
+        coding(0),
+      ];
+    case "coding":
+      return [coding(0), coding(1)];
+    case "fundamentals": {
+      const f = t.fundamentals;
+      if (!f) return [];
+      return [
+        (_p, _r, room) =>
+          f.test && fresh("skill-test", f.test.slug) && holds(TARGET_MINUTES.skillTest, room)
+            ? activityItem("target", "skill-test", f.test.slug, {
+                title: `${f.test.title} test`,
+                context: t.company,
+                why: sentence(lead, f.mastery > 0 ? `${f.label} is your weakest fundamental, at ${f.mastery}%; a sitting measures it.` : `${f.label} has no test sitting yet, and readiness counts only those.`),
+                href: `/skill-tests/${f.test.slug}`,
+                minutes: TARGET_MINUTES.skillTest,
+                skill: f.key,
+              })
+            : null,
+        // Reading keeps no record, so the notes are ticked by hand, like a roadmap lesson.
+        () => ({
+          id: `learn:${f.key}`,
+          kind: "learn",
+          title: `${f.label} notes`,
+          context: f.label,
+          why: sentence(lead, f.test ? `read up on ${f.label} before its skill test.` : `${f.label} is your weakest fundamental; the notes cover what interviews ask.`),
+          href: f.notesHref,
+          workbench: false,
+          minutes: TARGET_MINUTES.notes,
+          difficulty: null,
+          skill: f.key,
+          evidence: null,
+        }),
+      ];
+    }
+    case "interview":
+      return [
+        (_p, _r, room) =>
+          fresh("interview", null) && holds(TARGET_MINUTES.interview, room)
+            ? activityItem("target", "interview", null, {
+                title: "Mock interview",
+                context: t.company,
+                why: sentence(lead, `interview practice has the most room in your ${t.company} readiness.`),
+                href: "/mock-interview",
+                minutes: TARGET_MINUTES.interview,
+                skill: null,
+              })
+            : null,
+      ];
+    case "resume":
+      return [
+        () =>
+          fresh("resume", null)
+            ? activityItem("target", "resume", null, {
+                title: `Resume check for ${t.company}`,
+                context: t.company,
+                why: sentence(lead, `readiness reads your resume's score against ${/^[AEIOU]/i.test(t.company) ? "an" : "a"} ${t.company} role.`),
+                href: "/resume",
+                minutes: TARGET_MINUTES.resume,
+                skill: null,
+              })
+            : null,
+      ];
+  }
+}
+
 export function orderItems(items: readonly MissionItem[]): MissionItem[] {
   return [...items].sort(
     (a, b) =>
@@ -351,9 +589,11 @@ export interface MissionFacts {
   solvedBugs: ReadonlySet<string>;
   completedLessons: ReadonlySet<string>;
   planDone: ReadonlySet<string>;
+  /** Activity keys done today (activityKey). */
+  activities: ReadonlySet<string>;
 }
 
-export const EMPTY_MISSION_FACTS: MissionFacts = { solvedProblems: new Set(), solvedBugs: new Set(), completedLessons: new Set(), planDone: new Set() };
+export const EMPTY_MISSION_FACTS: MissionFacts = { solvedProblems: new Set(), solvedBugs: new Set(), completedLessons: new Set(), planDone: new Set(), activities: new Set() };
 
 export type ItemState = "todo" | "done" | "skipped";
 
@@ -383,6 +623,7 @@ export function evidenceDone(e: MissionEvidence, f: MissionFacts): boolean {
   if ("problemId" in e) return f.solvedProblems.has(e.problemId);
   if ("bugId" in e) return f.solvedBugs.has(e.bugId);
   if ("lessonKey" in e) return f.completedLessons.has(e.lessonKey);
+  if ("activity" in e) return f.activities.has(activityKey(e.activity, e.ref));
   return f.planDone.has(e.planStep);
 }
 

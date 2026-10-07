@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { requireAuth } from "../middleware/auth.js";
 import { TargetError, readinessFor, setTarget } from "../services/readiness.js";
+import { repickMissionToday } from "../services/mission.js";
 
 /**
  * Placement readiness (services/readiness.ts) — mounted at /api/me/readiness
@@ -8,6 +9,10 @@ import { TargetError, readinessFor, setTarget } from "../services/readiness.js";
  *
  *   GET /api/me/readiness?company=&test=   the estimate for a company (the saved target by default)
  *   PUT /api/me/readiness/target           {company, test?, date?} — save it; {company: null} clears it
+ *
+ * Today's mission leans on the target (lib/mission.ts), so a save re-picks
+ * the day's undone items for it and drops the dashboard, which also carries
+ * the readiness line.
  */
 
 const router = Router();
@@ -24,6 +29,7 @@ router.get("/", requireAuth, async (req: any, res) => {
 router.put("/target", requireAuth, async (req: any, res) => {
   try {
     await setTarget(req.user.userId, req.body ?? {});
+    await repickMissionToday(req.user.userId);
     res.status(204).end();
   } catch (err) {
     if (err instanceof TargetError) return res.status(400).json({ error: err.message });

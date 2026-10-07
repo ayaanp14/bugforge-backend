@@ -129,7 +129,9 @@ export async function getUserTrends(userId: string, sql: Promise<SqlTally> = loa
 // v2 (2026-10-06): the payload carries `onboarding` and `trends.solvedThisWeek`
 // — a v1 copy left in Redis must not be served in the new shape's place.
 // v3 (2026-10-07): `dailyMinutes`, which sizes the home's mission before it loads.
-const meKey = (userId: string) => `me:v3:${userId}`;
+// v4 (2026-10-07): `targetCompany`, which tells the home's loading state to keep
+// room for the readiness line.
+const meKey = (userId: string) => `me:v4:${userId}`;
 
 /** Drop a user's cached /api/me payload after anything that changes it. */
 export function invalidateMe(userId: string): void {
@@ -176,6 +178,8 @@ export const ME_SELECT = {
   onboardedAt: true,
   /** The minutes a day chosen for the mission (lib/mission); null = never chosen. */
   dailyMinutes: true,
+  /** The saved placement target's company (services/readiness); the home keeps room for its line when set. */
+  targetCompany: true,
   /** The roadmap chests opened — the frame and the flair the account wears. */
   roadmapRewards: { select: { tierKey: true } },
   /** The skill-test credential worn round the avatar, if any. */
@@ -335,6 +339,8 @@ export function loadDashboardUserRow(userId: string) {
       level: true,
       goalDetails: true,
       dailyMinutes: true,
+      // Whether to read readiness for the home's line and the mission (services/dashboard.ts).
+      targetCompany: true,
       roadmapRewards: { select: { tierKey: true } },
       ...WORN_CREDENTIAL_SELECT,
       stats: {
@@ -375,7 +381,7 @@ export async function getDashboardUser(
   if (!row) return null;
   // The onboarding columns are the plan's (`plan` on the dashboard), not the
   // slice's: the slice keeps the shape it always had.
-  const { goal: _goal, level: _level, goalDetails: _details, dailyMinutes: _minutes, ...user } = row;
+  const { goal: _goal, level: _level, goalDetails: _details, dailyMinutes: _minutes, targetCompany: _target, ...user } = row;
 
   // Display-adjust a stale streak (the /api/me route persists the reset)
   if (user.stats) {

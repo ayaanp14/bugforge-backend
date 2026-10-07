@@ -150,6 +150,8 @@ const QUESTIONS: Array<[string, RegExp, string?]> = [
   ["how ready am I for TCS", /how much of what a target company asks you have shown/],
   ["how is my placement readiness calculated", /each section read against your skill in exactly what it tests/],
   ["can I set the date of my placement drive", /Add the drive or interview date and press \*\*Save as my target\*\*/],
+  ["does my placement target change my daily mission", /the mission leans toward the area of readiness with most to gain/],
+  ["why is there a TCS mock in today's mission", /the company's mock test \(on a day of 2 hours or more/],
   ["how does the tutor work", /answers at one of seven rungs and never above it/],
   ["does using the tutor lower my skill score", /Approach, Complexity and Hint count like opening the problem.s hints/],
   ["why is the tutor off on the daily contest problem", /When the tutor is off/],

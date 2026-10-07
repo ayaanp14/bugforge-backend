@@ -161,7 +161,7 @@ export async function readinessFor(userId: string, asked: { company?: string | n
       patterns: chosen,
       skill: (key) => {
         const s = profile.scored.get(key);
-        return s ? { mastery: s.score.mastery, confidence: s.score.confidence, label: s.node.label, href: s.node.href } : null;
+        return s ? { key, mastery: s.score.mastery, confidence: s.score.confidence, label: s.node.label, href: s.node.href } : null;
       },
       categoryOfTopic: (t) => aptitudeTopic(t)?.category ?? null,
       skillsForTags: (tags) => skillsForProblemTags(tags).filter((k) => k.startsWith("dsa:")),

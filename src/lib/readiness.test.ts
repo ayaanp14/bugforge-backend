@@ -1,21 +1,23 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { AREA_WEIGHTS, companyKey, readinessOf, statusOf, type ReadinessInput, type SkillReading } from "./readiness.js";
+import { AREA_WEIGHTS, areasByGain, companyKey, readinessOf, statusOf, type ReadinessInput, type SkillReading } from "./readiness.js";
 
 const DAY = 86_400_000;
 const NOW = Date.UTC(2026, 9, 7, 12);
 
-const reading = (label: string, mastery: number, confidence = 0.8): SkillReading => ({ mastery, confidence, label, href: `/skills?skill=${label}` });
+const reading = (label: string, mastery: number, confidence = 0.8): Omit<SkillReading, "key"> => ({ mastery, confidence, label, href: `/skills?skill=${label}` });
 
-const SKILLS: Record<string, SkillReading> = {
-  "apt:quantitative": reading("Quantitative", 80),
-  "apt:logical": reading("Logical", 40),
-  "apt:verbal": reading("Verbal", 60),
-  "dsa:arrays": reading("Arrays", 70),
-  "dsa:hash-table": reading("Hash Table", 30),
-  "cs:os": reading("Operating systems", 50, 0.5),
-  "cs:networks": reading("Computer networks", 0, 0),
-};
+const SKILLS: Record<string, SkillReading> = Object.fromEntries(
+  Object.entries({
+    "apt:quantitative": reading("Quantitative", 80),
+    "apt:logical": reading("Logical", 40),
+    "apt:verbal": reading("Verbal", 60),
+    "dsa:arrays": reading("Arrays", 70),
+    "dsa:hash-table": reading("Hash Table", 30),
+    "cs:os": reading("Operating systems", 50, 0.5),
+    "cs:networks": reading("Computer networks", 0, 0),
+  }).map(([key, r]) => [key, { key, ...r }]),
+);
 
 const base = (over: Partial<ReadinessInput> = {}): ReadinessInput => ({
   company: "TCS",
@@ -131,6 +133,18 @@ test("focus names what would move the estimate most — weight times room left �
     ["/mock-interview", "/tests/tcs-nqt", "/skills?skill=Computer networks"],
   );
   assert.equal(new Set(r.focus.map((f) => f.href)).size, 3);
+});
+
+test("each area names its skills below ready, most to gain first — what the mission works", () => {
+  const r = readinessOf(base());
+  // Logical: 10 marks × 60 room; quantitative is at 80, ready, so it is no gap.
+  assert.deepEqual(area(r, "assessment").gaps, [{ skill: "apt:logical", mastery: 40 }]);
+  // Hash table: 70 room × 10 problems = 700, arrays: 30 room × 30 problems = 900.
+  assert.deepEqual(area(r, "coding").gaps.map((g) => g.skill), ["dsa:arrays", "dsa:hash-table"]);
+  assert.deepEqual(area(r, "fundamentals").gaps.map((g) => g.skill), ["cs:networks", "cs:os"]);
+  assert.deepEqual(area(r, "interview").gaps, []);
+  // The order the page's focus reads them in.
+  assert.deepEqual(areasByGain(r.areas).map((a) => a.key).slice(0, 3), ["interview", "assessment", "fundamentals"]);
 });
 
 test("a target date gives the days left and, with a daily budget, the hours", () => {

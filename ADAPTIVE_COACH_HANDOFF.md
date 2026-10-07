@@ -13,8 +13,9 @@ Everything below is committed and pushed to `main` (production), in both repos.
 | 3 Why it failed | `SubmissionAnalysis` (deterministic + model review on every failed coding submit); **Code Review** dock tab; causes on `/skills` | a9dba8e | 523ebd8 |
 | 4 Socratic tutor | 7-rung ladder; Tutor dock tab + floating button (`TutorLauncher`, animated `LiveTutorMark`); streaming code gate; prompt v2 with the "Your turn:" hand-back | 41e3c1e, 88fbb07 | ccb4c61, cfba650 |
 | 5 Placement OS | `/readiness` for a target company (five areas, from the seeded test patterns + company tags); `User.targetCompany/targetTest/targetDate` | 89923ce | b15142f |
+| 5 remainder | The mission leans on the target's weakest area as the date nears; activity ticks; the readiness line in Today; a target change re-picks the day (`ADAPTIVE_COACH.md` §11) | see `git log` | see `git log` |
 
-Not built: the rest of Phase 5 (the mission reading the target), Phases 6–9, and the small follow-ups in §4.
+Not built: Phases 6–9 and the small follow-ups in §5. Phase 5 is complete (A below is done, 2026-10-07).
 
 ## 2. How the owner works (learned this session — follow it)
 
@@ -54,7 +55,7 @@ Not built: the rest of Phase 5 (the mission reading the target), Phases 6–9, a
 
 ## 5. What to build next, in order
 
-### A. Finish Phase 5: the mission reads the target (small; do this first)
+### A. Finish Phase 5: the mission reads the target — DONE 2026-10-07 (kept for the record; see `ADAPTIVE_COACH.md` §11)
 
 **Goal:** the daily mission and the home page react to the saved target. As the drive date nears, today's items lean toward the weakest readiness area, and changing the target refreshes today's undone items.
 

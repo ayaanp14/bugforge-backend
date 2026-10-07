@@ -23,6 +23,9 @@ import { upNext, type Difficulty } from "../lib/onboarding-plan.js";
 import { invalidateSkillProfile } from "./skill-profile.js";
 // And again: mission imports invalidateDashboard and loadProblemState from here.
 import { missionFor } from "./mission.js";
+// And again: readiness imports getCatalogue from here.
+import { readinessFor } from "./readiness.js";
+import type { Readiness, ReadinessStatus } from "../lib/readiness.js";
 
 /**
  * Query functions shared by the per-widget /api/me routes and the aggregated
@@ -734,8 +737,20 @@ export function computeProblemInsights(state: ProblemState, level: Level | null 
 // left in Redis must not be served in the new shape's place. v3: the
 // profile's Battles tournaments (2026-09-25). v4: `plan` and the level's
 // "Up next" (2026-10-06). v5: `mission`, and "Up next" without the
-// mission's problems (2026-10-07).
-const dashboardKey = (userId: string) => `dash:v5:${userId}`;
+// mission's problems (2026-10-07). v6: `readiness`, the target's line in
+// Today, and a mission that leans on the target (2026-10-07).
+const dashboardKey = (userId: string) => `dash:v6:${userId}`;
+
+/** The home's one line about the placement target (TodayPanel): the estimate, never the areas. */
+export interface DashboardReadiness {
+  company: string;
+  score: number;
+  status: ReadinessStatus;
+  daysLeft: number | null;
+}
+
+const readinessLine = (r: Readiness | null): DashboardReadiness | null =>
+  r ? { company: r.company, score: r.overall.score, status: r.overall.status, daysLeft: r.target?.daysLeft ?? null } : null;
 
 /**
  * Drop everything cached about a user — the dashboard aggregate and /api/me.
@@ -800,6 +815,16 @@ async function buildDashboard(userId: string) {
     study: studyPromise,
     me: mePromise,
   });
+  // Placement readiness for the saved target (services/readiness.ts), read
+  // once for the home's line and the mission's lean — and only by an account
+  // that saved one, so no other account pays for it. A failure is a missing
+  // line and an unleaning day, never a failed page.
+  const readinessPromise = userRowPromise
+    .then((row) => (row?.targetCompany ? readinessFor(userId, {}).then((v) => v.readiness) : null))
+    .catch((err: Error) => {
+      console.error("dashboard readiness failed:", err.message);
+      return null;
+    });
   // Today's mission (services/mission.ts) reads the same loads as the plan,
   // and the plan itself — its next step is one of the day's items.
   const continuePromise = getContinueSolving(userId);
@@ -810,6 +835,7 @@ async function buildDashboard(userId: string) {
     plan: planPromise,
     continueSolving: continuePromise,
     row: userRowPromise,
+    readiness: readinessPromise,
   });
   const [
     me,
@@ -856,6 +882,7 @@ async function buildDashboard(userId: string) {
     // Today's mission, null when it could not be built (never fails the page).
     missionPromise,
   ]);
+  const readiness = readinessLine(await readinessPromise);
 
   const difficultyStats = computeDifficultyStats(problemState);
   const level = userRow?.level;
@@ -866,5 +893,5 @@ async function buildDashboard(userId: string) {
   // query; the account's own count is `me.stats.sqlSolved`.
   const sqlInsights = { total: SQL_PROBLEMS.length };
 
-  return { me, social, difficultyStats, submissions, heatmap, rank, leaderboard, pairing, continueSolving, problemInsights, bugInsights, sqlInsights, savedInterviews, dailyContest, roadmap, study, tournaments, credentials, plan, mission };
+  return { me, social, difficultyStats, submissions, heatmap, rank, leaderboard, pairing, continueSolving, problemInsights, bugInsights, sqlInsights, savedInterviews, dailyContest, roadmap, study, tournaments, credentials, plan, mission, readiness };
 }
