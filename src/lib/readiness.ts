@@ -18,7 +18,9 @@
  * READINESS_VERSION.
  */
 
-export const READINESS_VERSION = 1;
+// 2 (2026-10-07): the interview area reads the interview skills (lib/interview-skills)
+// the company's rounds call for, instead of averaging the last three sessions.
+export const READINESS_VERSION = 2;
 
 export type ReadinessFamily = "service" | "product";
 export type AreaKey = "assessment" | "coding" | "fundamentals" | "interview" | "resume";
@@ -32,9 +34,19 @@ export const AREA_WEIGHTS: Record<ReadinessFamily, Record<AreaKey, number>> = {
 /** A recent sitting of the company's pattern weighs as much as the skills behind it. */
 const SITTING_WEIGHT = 0.5;
 const SITTING_WINDOW_DAYS = 90;
-const INTERVIEW_WINDOW_DAYS = 120;
-const INTERVIEWS_COUNTED = 3;
 const RESUME_WINDOW_DAYS = 180;
+
+/**
+ * How much each kind of interview answer counts when the company has no
+ * simulation to say which rounds it runs (lib/simulations, sourced): a
+ * service company's campus interviews are a technical and an HR
+ * conversation with some coding, a product company's new-grad loop mostly
+ * coding. Judgement, like AREA_WEIGHTS; a simulation's rounds replace it.
+ */
+export const INTERVIEW_SKILL_WEIGHTS: Record<ReadinessFamily, Record<string, number>> = {
+  service: { "int:technical": 2, "int:behavioural": 2, "int:coding": 1 },
+  product: { "int:coding": 3, "int:technical": 1, "int:behavioural": 1 },
+};
 /** Below this an area's number is shown, but its status says there is too little to go on. */
 const KNOWN_CONFIDENCE = 0.3;
 const READY_AT = 75;
@@ -91,8 +103,10 @@ export interface ReadinessInput {
   companyHref: string | null;
   /** Graded sittings of the patterns: percentage and when (terminated ones never reach here). */
   sittings: Array<{ slug: string; pct: number; at: number }>;
-  /** Sat mock interviews with an overall score (0–100), newest first. */
-  interviews: Array<{ score: number; at: number }>;
+  /** The interview skills (lib/interview-skills) the company's rounds call for, and how much each counts. */
+  interviewSkills: Array<{ key: string; weight: number }>;
+  /** The company's simulation (lib/simulations), when it has one: the interview area's next action. */
+  simulationHref: string | null;
   /** The newest finished resume analysis, and whether it was aimed at this company. */
   resume: { score: number; at: number; forCompany: boolean } | null;
   targetDate: number | null;
@@ -288,22 +302,32 @@ function fundamentalsArea(input: ReadinessInput, weight: number): ReadinessArea 
 }
 
 function interviewArea(input: ReadinessInput, weight: number): ReadinessArea {
-  const recent = input.interviews.filter((i) => input.asOf - i.at <= INTERVIEW_WINDOW_DAYS * DAY).slice(0, INTERVIEWS_COUNTED);
-  const score = recent.length ? recent.reduce((a, i) => a + i.score, 0) / recent.length : 0;
-  const confidence = clamp01(recent.length / INTERVIEWS_COUNTED);
+  const readings = input.interviewSkills.map((s) => ({ key: s.key, reading: input.skill(s.key), weight: s.weight }));
+  const m = meanOf(readings) ?? { score: 0, confidence: 0 };
+  const measured = readings.filter((r): r is { key: string; reading: SkillReading; weight: number } => r.reading != null);
+  const parts = measured.map((r) => ({ label: r.reading.label, score: round(r.reading.mastery), confidence: r.reading.confidence, href: r.reading.href }));
+  const gaps = measured
+    .filter((r) => r.reading.mastery < READY_AT)
+    .sort((a, b) => (100 - b.reading.mastery) * b.weight - (100 - a.reading.mastery) * a.weight)
+    .map((r) => ({ skill: r.key, mastery: round(r.reading.mastery) }));
+  const sat = measured.some((r) => r.reading.confidence > 0);
+  const weakest = gaps[0] ? measured.find((r) => r.key === gaps[0]!.skill)!.reading : null;
+  const next: ReadinessAction[] = [];
+  if (input.simulationHref) next.push({ label: `Run the ${input.company} simulation`, href: input.simulationHref });
+  next.push({ label: weakest && sat ? `Practise ${weakest.label.toLowerCase()} in a mock interview` : "Sit a mock interview", href: "/mock-interview" });
   return {
     key: "interview",
     label: "Interview practice",
     weight,
-    score: round(score),
-    confidence,
-    status: statusOf(score, confidence),
-    summary: recent.length
-      ? `Your last ${recent.length === 1 ? "mock interview" : `${recent.length} mock interviews`}, scored by the interviewer.`
-      : "No mock interview in the last four months.",
-    parts: recent.map((i, n) => ({ label: n === 0 ? "Latest" : `${n + 1} back`, score: round(i.score), confidence: 1 })),
-    next: [{ label: recent.length ? "Sit another mock interview" : "Sit a mock interview", href: "/mock-interview" }],
-    gaps: [],
+    score: round(m.score),
+    confidence: m.confidence,
+    status: statusOf(m.score, m.confidence),
+    summary: sat
+      ? `Your mock-interview answers in the kinds of question ${input.company}'s interviews ask, as the interviewer scored them.`
+      : `No mock interview yet. ${input.company}'s interviews are read from the kinds of question they ask.`,
+    parts,
+    next,
+    gaps,
   };
 }
 

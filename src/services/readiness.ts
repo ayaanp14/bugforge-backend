@@ -4,9 +4,9 @@ import { COMPANY_RENAMED, COMPANY_TAGS } from "../lib/companies.js";
 import { aptitudeTopic } from "../lib/aptitude-topics.js";
 import { skillsForProblemTags } from "../lib/skill-graph.js";
 import { slugify } from "../lib/slug.js";
-import { companyKey, readinessOf, type PatternSection, type Readiness, type ReadinessFamily, type TargetPattern } from "../lib/readiness.js";
+import { INTERVIEW_SKILL_WEIGHTS, companyKey, readinessOf, type PatternSection, type Readiness, type ReadinessFamily, type TargetPattern } from "../lib/readiness.js";
+import { interviewSkillWeights, simulationForCompany } from "../lib/simulations/index.js";
 import { getCatalogue } from "./dashboard.js";
-import { SAT_ROUND } from "./entitlements.js";
 import { skillProfileFor } from "./skill-profile.js";
 
 /**
@@ -94,7 +94,7 @@ export interface ReadinessView {
   companies: CompanyChoice[];
 }
 
-const readinessKey = (userId: string, company: string, test: string | null) => `readiness:v1:${userId}:${companyKey(company)}:${test ?? "*"}`;
+const readinessKey = (userId: string, company: string, test: string | null) => `readiness:v2:${userId}:${companyKey(company)}:${test ?? "*"}`;
 
 export async function readinessFor(userId: string, asked: { company?: string | null; test?: string | null }): Promise<ReadinessView> {
   const [user, companies] = await Promise.all([
@@ -114,7 +114,7 @@ export async function readinessFor(userId: string, asked: { company?: string | n
     const all = (await patterns()).filter((p) => companyKey(p.company) === companyKey(choice.name));
     const chosen = testSlug ? all.filter((p) => p.slug === testSlug) : all;
     const family: ReadinessFamily = chosen.length ? (chosen.some((p) => p.family === "service") ? "service" : "product") : choice.family;
-    const [profile, catalogue, attempts, interviews, analyses] = await Promise.all([
+    const [profile, catalogue, attempts, analyses] = await Promise.all([
       skillProfileFor(userId),
       getCatalogue(),
       chosen.length
@@ -125,12 +125,6 @@ export async function readinessFor(userId: string, asked: { company?: string | n
             select: { score: true, maxScore: true, submittedAt: true, startedAt: true, test: { select: { slug: true } } },
           })
         : Promise.resolve([]),
-      prisma.mockInterviewSession.findMany({
-        where: { userId, overallScore: { not: null }, AND: [SAT_ROUND] },
-        orderBy: { createdAt: "desc" },
-        take: 5,
-        select: { overallScore: true, endedAt: true, completedAt: true, createdAt: true },
-      }),
       prisma.resumeAnalysis.findMany({
         where: { userId, status: "done", score: { not: null } },
         orderBy: { createdAt: "desc" },
@@ -153,6 +147,7 @@ export async function readinessFor(userId: string, asked: { company?: string | n
     }
     const coding = (counts.size ? counts : everyCounts).entries();
 
+    const sim = simulationForCompany(choice.name);
     const forCompany = analyses.find((a) => a.company && companyKey(a.company) === companyKey(choice.name));
     const resume = forCompany ?? analyses[0] ?? null;
     return readinessOf({
@@ -170,7 +165,9 @@ export async function readinessFor(userId: string, asked: { company?: string | n
       sittings: attempts
         .filter((a) => a.score != null && a.maxScore)
         .map((a) => ({ slug: a.test.slug, pct: (100 * a.score!) / a.maxScore!, at: (a.submittedAt ?? a.startedAt).getTime() })),
-      interviews: interviews.map((i) => ({ score: i.overallScore!, at: (i.endedAt ?? i.completedAt ?? i.createdAt).getTime() })),
+      // The company's sourced interview rounds (lib/simulations) when it has a simulation; a family's usual mix otherwise.
+      interviewSkills: sim ? interviewSkillWeights(sim) : Object.entries(INTERVIEW_SKILL_WEIGHTS[family]).map(([key, weight]) => ({ key, weight })),
+      simulationHref: sim ? `/simulations/${sim.slug}` : null,
       resume: resume ? { score: resume.score!, at: resume.createdAt.getTime(), forCompany: resume === forCompany } : null,
       targetDate: companyKey(choice.name) === companyKey(user?.targetCompany ?? "") && user?.targetDate ? user.targetDate.getTime() : null,
       dailyMinutes: user?.dailyMinutes ?? null,

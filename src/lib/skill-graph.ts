@@ -34,7 +34,7 @@ import { slugify } from "./slug.js";
  * whatever the profile thinks of their queues.
  */
 
-export type SkillDomain = "dsa" | "debugging" | "sql" | "fundamentals" | "aptitude";
+export type SkillDomain = "dsa" | "debugging" | "sql" | "fundamentals" | "aptitude" | "interview";
 
 export interface SkillDomainDef {
   key: SkillDomain;
@@ -49,6 +49,7 @@ export const SKILL_DOMAINS: readonly SkillDomainDef[] = [
   { key: "sql", label: "SQL", evidence: "Your SQL-problem submissions, by topic." },
   { key: "fundamentals", label: "CS fundamentals", evidence: "Your skill-test sittings in Operating Systems, Computer Networks, OOP and SQL theory." },
   { key: "aptitude", label: "Aptitude", evidence: "Your answers in the aptitude bank: correct on the first try, with or without hints, and how fast." },
+  { key: "interview", label: "Interviews", evidence: "Your mock-interview answers, as the interviewer scored them, by the kind of question asked." },
 ];
 
 export interface SkillArea {
@@ -71,6 +72,8 @@ export interface SkillMatch {
   aptitudeCategory?: string;
   /** A sitting of a skill test for this skill (lib/skill-catalog SkillId). */
   skillTest?: string;
+  /** A scored mock-interview question of this kind (lib/interview-skills interviewSkillOf). */
+  interviewQuestions?: true;
 }
 
 export interface SkillNode {
@@ -288,6 +291,21 @@ const APTITUDE_SKILLS: SkillNode[] = APTITUDE_CATEGORIES.map((c) => ({
   href: `/aptitude/${c.id}`,
 }));
 
+// ── Interviews ────────────────────────────────────────────────────
+
+/**
+ * The four kinds of answer a mock interview scores (lib/interview-skills,
+ * which says how a question is filed under one). Measured like the CS
+ * fundamentals — each sat round is a sitting, scored from its questions —
+ * because an interview answer is judged, not solved.
+ */
+const INTERVIEW_SKILL_NODES: SkillNode[] = [
+  { key: "int:coding", label: "Coding interviews", href: "/mock-interview" },
+  { key: "int:technical", label: "Technical questions", href: "/mock-interview" },
+  { key: "int:design", label: "System design", href: "/mock-interview" },
+  { key: "int:behavioural", label: "Behavioural & HR", href: "/mock-interview" },
+].map((s) => ({ ...s, area: "int.answers", domain: "interview" as const, requires: [], match: { interviewQuestions: true as const } }));
+
 // ── The graph ─────────────────────────────────────────────────────
 
 export const SKILL_AREAS: readonly SkillArea[] = [
@@ -297,9 +315,10 @@ export const SKILL_AREAS: readonly SkillArea[] = [
   { key: "sql.queries", domain: "sql", label: "Querying" },
   { key: "cs.core", domain: "fundamentals", label: "Core subjects" },
   { key: "apt.sections", domain: "aptitude", label: "Placement-paper sections" },
+  { key: "int.answers", domain: "interview", label: "Kinds of question" },
 ];
 
-export const SKILLS: readonly SkillNode[] = [...DSA_SKILLS, ...DEBUG_SKILLS, ...SQL_SKILLS, ...CS_SKILLS, ...APTITUDE_SKILLS];
+export const SKILLS: readonly SkillNode[] = [...DSA_SKILLS, ...DEBUG_SKILLS, ...SQL_SKILLS, ...CS_SKILLS, ...APTITUDE_SKILLS, ...INTERVIEW_SKILL_NODES];
 
 const BY_KEY = new Map(SKILLS.map((s) => [s.key, s]));
 export const skillNode = (key: string): SkillNode | undefined => BY_KEY.get(key);

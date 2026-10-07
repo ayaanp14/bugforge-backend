@@ -285,3 +285,44 @@ Surfaces: /skills, the home dashboard, the workbench verdict, reminders, the car
   - Graduation year.
   - An admin view of targets.
   - Aptitude, SQL and debugging reviews as mission items. Only the target's aptitude section reaches the day today.
+
+## 12. Phase 7 as shipped (interview skills and company simulations)
+
+- **Decisions (the owner's, 2026-10-07):**
+  - A simulation for every company with a seeded test pattern (22).
+  - The HR round is written or voice, as the candidate chooses when starting a run.
+  - Each interview round counts toward the weekly allowance like any other mock interview.
+- **Interview skills (`lib/interview-skills.ts`, `interview-skills.test.ts`).** A survey of the real rows found that a question's `topic`, `focusArea` and `expectedSkills` are free text the model writes, with almost no value repeating. Only the round (`roundId`) and the focus ids are a fixed vocabulary.
+  - **Classification:** the round decides which of four skills a question counts toward: coding, technical, system design, behavioural/HR. The question's words override the round only when they plainly say behavioural, design or coding.
+  - **Scoring:** each sat round enters the scorer as an assessment record per skill, the way CS fundamentals come from skill tests. A question scores 0–10, read here as ×10; the interview's difficulty sets the scorer's level.
+  - **The graph:** a new `interview` domain (85 skills in all).
+  - **Communication is not a skill:** the interviewer gives each question a single score, so there is nothing to separate it by.
+- **Readiness reads them.** The interview area (`READINESS_VERSION` 2) now weights the interview skills by the company's simulation rounds, instead of averaging the last three sessions' overall scores. Family defaults apply where a company has no simulation, and the area's first next action is "Run the … simulation".
+- **Company simulations.**
+  - **Content:** `lib/simulations/catalog.ts`, content as code with no seed.
+    - Each template's first round is the company's seeded test pattern, followed by the interview rounds in its published order.
+    - Each carries `firmness` (official, consistent or varies), a `sourceNote` and `sources`.
+    - Researched from company careers pages where they exist (Amazon, Microsoft, ZS; Goldman, Adobe and Salesforce describe their process in general terms); otherwise from prep portals that agree.
+  - **Standing rules,** stated in the catalog's header:
+    - A combined interview is listed as its parts.
+    - A round only GeeksforGeeks' templated page lists is left out and named.
+    - What the pattern does not reproduce is named.
+    - Team matching is not a round.
+  - **Thin sources:** Apple, Salesforce and Morgan Stanley, plus Wipro and Deloitte where the sources disagree. Each says so on its page.
+- **Runs (`lib/simulation-run.ts`, `simulation-run.test.ts`).** `SimulationRun` stores only which rounds were opened, when, and each interview round's saved setup. Everything else is derived:
+  - **Assessment round:** the first sitting of its pattern that started after the round opened.
+  - **Interview round:** the newest session of its own setup.
+  - **Order:** rounds open in order, with no cut-off, because no company publishes one.
+  - **Interview rounds** are ordinary mock interviews. Their setup names the company in its role, which both interviewers read as written, so no prompt changed. These setups are hidden from the saved-setups list, its cap and the dashboard count.
+  - **Ways back:** the test result and the interview report link back to the run.
+- **Verified:**
+  - `simulation-run.test.ts` (8 tests), `simulations.test.ts` (5) and `interview-skills.test.ts` (8); readiness tests updated.
+  - `scratch/simulation-smoke.mts` against the dev API: the order is refused out of turn, a second start returns the live run, and a real interview started with the model asking its first question.
+  - `e2e/simulations.spec.ts`.
+  - Screenshots in light and dark at desktop and phone width.
+  - 3 assistant questions pinned.
+- **Not yet:**
+  - The mission does not offer a simulation's next round. Its interview item is still "Mock interview".
+  - The written and voice prompts are unchanged, and only the role carries the company. A company-specific brief, such as "ask what a TCS HR round asks", would be a prompt v-next for both interviewers.
+  - Companies without a seeded pattern have no simulation, because there is no sourced first round.
+  - An admin view of runs.

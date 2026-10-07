@@ -61,7 +61,7 @@ export async function buildAccountExport(userId: string): Promise<Record<string,
     contests, duels, rooms, posts, comments, likes, commentLikes, saved, votes, reports,
     following, followers, affinities, feedback, assistant, roadmap,
     enrollments, lessons, exercises, resumes, subscriptions, orders,
-    notifications, shareCards, orgs, entries, tournamentSubmissions, campus, events, pushDevices, missionDays, analyses, tutorTurns,
+    notifications, shareCards, orgs, entries, tournamentSubmissions, campus, events, pushDevices, missionDays, analyses, tutorTurns, simulationRuns,
   ] = await Promise.all([
     prisma.submission.findMany({
       where, ...newest, orderBy: { submittedAt: "desc" },
@@ -96,7 +96,7 @@ export async function buildAccountExport(userId: string): Promise<Record<string,
         events: { orderBy: { sequence: "asc" }, select: { speaker: true, type: true, text: true, createdAt: true } },
       },
     }),
-    prisma.savedInterview.findMany({ where, ...newest, select: { roleId: true, roundId: true, difficulty: true, experienceBand: true, interviewStyle: true, stackFocusIds: true, focusAreaIds: true, createdAt: true } }),
+    prisma.savedInterview.findMany({ where, ...newest, select: { roleId: true, roundId: true, difficulty: true, experienceBand: true, interviewStyle: true, stackFocusIds: true, focusAreaIds: true, company: true, createdAt: true } }),
     prisma.aptitudeAttempt.findMany({
       where, ...newest, orderBy: { createdAt: "desc" },
       select: { question: { select: { slug: true } }, selected: true, correct: true, timeSec: true, usedHints: true, createdAt: true },
@@ -171,6 +171,8 @@ export async function buildAccountExport(userId: string): Promise<Record<string,
       where, ...newest, orderBy: { createdAt: "desc" },
       select: { problem: { select: { slug: true } }, role: true, rung: true, content: true, createdAt: true },
     }),
+    // Company simulations: which rounds were opened and when; the rounds' results are the sittings and interviews above.
+    prisma.simulationRun.findMany({ where, ...newest, orderBy: { createdAt: "desc" }, select: { slug: true, hrMode: true, rounds: true, endedAt: true, createdAt: true } }),
   ]);
 
   return {
@@ -183,7 +185,7 @@ export async function buildAccountExport(userId: string): Promise<Record<string,
     coding: { submissions, drafts, timers, engagement, failureAnalyses: analyses, tutor: tutorTurns },
     bugHunts: { submissions: bugSubmissions },
     sql: { submissions: sqlSubmissions },
-    interviews: { sessions: interviews, saved: savedInterviews },
+    interviews: { sessions: interviews, saved: savedInterviews, simulations: simulationRuns },
     aptitude: { attempts: aptitude },
     placementTests: { attempts: placement },
     skillTests: { attempts: skills, credentials },

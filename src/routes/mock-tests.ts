@@ -14,6 +14,7 @@ import { codingPool, questionIndex } from "../services/aptitude-bank.js";
 import { TEST_GUIDES } from "../lib/test-guides.js";
 import { testSamples } from "../services/test-samples.js";
 import { invalidateDashboard } from "../services/dashboard.js";
+import { runOfAttempt } from "../services/simulations.js";
 import { BREACH_LIMIT, breachCausesOf, isMobileClient, isSignalKind, recordBreach, SIGNAL_CAP, type Signals } from "../lib/skill-tests.js";
 
 /**
@@ -1091,7 +1092,10 @@ router.get("/attempts/:id/result", requireAuth, async (req: any, res) => {
       perTopic.set(question.topic, row);
     }
 
+    // The company simulation this sitting is the first round of, if any — the result page's way back to it.
+    const simulation = await runOfAttempt(req.user.userId, { startedAt: attempt.startedAt, testSlug: test.slug });
     res.json({
+      simulation,
       attempt: {
         id: attempt.id,
         status: attempt.status,

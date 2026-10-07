@@ -16,6 +16,9 @@ const SKILLS: Record<string, SkillReading> = Object.fromEntries(
     "dsa:hash-table": reading("Hash Table", 30),
     "cs:os": reading("Operating systems", 50, 0.5),
     "cs:networks": reading("Computer networks", 0, 0),
+    "int:technical": reading("Technical questions", 0, 0),
+    "int:behavioural": reading("Behavioural & HR", 0, 0),
+    "int:coding": reading("Coding interviews", 0, 0),
   }).map(([key, r]) => [key, { key, ...r }]),
 );
 
@@ -43,7 +46,12 @@ const base = (over: Partial<ReadinessInput> = {}): ReadinessInput => ({
   ],
   companyHref: "/challenges/company/tcs",
   sittings: [],
-  interviews: [],
+  interviewSkills: [
+    { key: "int:technical", weight: 2 },
+    { key: "int:behavioural", weight: 2 },
+    { key: "int:coding", weight: 1 },
+  ],
+  simulationHref: null,
   resume: null,
   targetDate: null,
   dailyMinutes: null,
@@ -103,21 +111,21 @@ test("no evidence is a known zero with no confidence, never a guess", () => {
   assert.equal(statusOf(20, 0.5), "not-yet");
 });
 
-test("interviews: the last three in four months; the resume counts more when aimed at this company", () => {
-  const r = readinessOf(
-    base({
-      interviews: [
-        { score: 70, at: NOW - DAY },
-        { score: 50, at: NOW - 10 * DAY },
-        { score: 90, at: NOW - 20 * DAY },
-        { score: 10, at: NOW - 30 * DAY },
-        { score: 99, at: NOW - 400 * DAY },
-      ],
-      resume: { score: 72, at: NOW - 3 * DAY, forCompany: true },
-    }),
-  );
-  assert.equal(area(r, "interview").score, 70);
-  assert.equal(area(r, "interview").confidence, 1);
+test("interviews: the interview skills the company's rounds call for, by weight; the resume counts more when aimed at this company", () => {
+  const skills: Record<string, SkillReading> = {
+    ...SKILLS,
+    "int:technical": { key: "int:technical", label: "Technical questions", href: "/mock-interview", mastery: 60, confidence: 0.85 },
+    "int:behavioural": { key: "int:behavioural", label: "Behavioural & HR", href: "/mock-interview", mastery: 80, confidence: 0.75 },
+    "int:coding": { key: "int:coding", label: "Coding interviews", href: "/mock-interview", mastery: 30, confidence: 0.5 },
+  };
+  const r = readinessOf(base({ skill: (k) => skills[k] ?? null, resume: { score: 72, at: NOW - 3 * DAY, forCompany: true } }));
+  // (2 × 60 + 2 × 80 + 1 × 30) / 5 = 62
+  assert.equal(area(r, "interview").score, 62);
+  assert.deepEqual(area(r, "interview").gaps.map((g) => g.skill), ["int:technical", "int:coding"], "room × weight: technical 40 × 2 = 80 leads coding 70 × 1; behavioural is ready");
+  assert.equal(area(r, "interview").next.at(-1)!.label, "Practise technical questions in a mock interview");
+  // A company with a simulation offers it first.
+  const sim = readinessOf(base({ skill: (k) => skills[k] ?? null, simulationHref: "/simulations/tcs" }));
+  assert.deepEqual(area(sim, "interview").next[0], { label: "Run the TCS simulation", href: "/simulations/tcs" });
   assert.equal(area(r, "resume").score, 72);
   assert.equal(area(r, "resume").confidence, 1);
   const other = readinessOf(base({ resume: { score: 72, at: NOW - 3 * DAY, forCompany: false } }));
@@ -142,7 +150,8 @@ test("each area names its skills below ready, most to gain first — what the mi
   // Hash table: 70 room × 10 problems = 700, arrays: 30 room × 30 problems = 900.
   assert.deepEqual(area(r, "coding").gaps.map((g) => g.skill), ["dsa:arrays", "dsa:hash-table"]);
   assert.deepEqual(area(r, "fundamentals").gaps.map((g) => g.skill), ["cs:networks", "cs:os"]);
-  assert.deepEqual(area(r, "interview").gaps, []);
+  // Never interviewed: every kind of answer the rounds call for is a gap, by weight.
+  assert.deepEqual(area(r, "interview").gaps.map((g) => g.skill), ["int:technical", "int:behavioural", "int:coding"]);
   // The order the page's focus reads them in.
   assert.deepEqual(areasByGain(r.areas).map((a) => a.key).slice(0, 3), ["interview", "assessment", "fundamentals"]);
 });

@@ -18,6 +18,7 @@ import missionRouter from "./routes/mission.js";
 import analysisRouter from "./routes/analysis.js";
 import tutorRouter from "./routes/tutor.js";
 import readinessRouter from "./routes/readiness.js";
+import simulationsRouter from "./routes/simulations.js";
 import { recoverSubmissionAnalyses } from "./services/submission-analysis.js";
 import pushRouter from "./routes/push.js";
 import usersRouter from "./routes/users.js";
@@ -971,6 +972,8 @@ app.use("/api/roadmap", roadmapRouter);
 app.use("/api/study-plans", studyPlansRouter);
 // SQL problems (routes/sql.ts, judged on lib/sql) and the CS notes (routes/notes.ts).
 app.use("/api/sql", sqlRouter);
+// Company simulations: a company's online assessment and interview rounds as one run (services/simulations.ts).
+app.use("/api/simulations", simulationsRouter);
 app.use("/api/notes", notesRouter);
 app.use("/api/assistant", assistantRouter);
 // The upload route reads a raw file body with its own parser (see routes/resumes.ts).

@@ -143,6 +143,7 @@ model User {
   targetTest            String?               @db.VarChar(120)
   targetDate            DateTime?             @db.Date
   missionDays           MissionDay[]
+  simulationRuns        SimulationRun[]
   submissionAnalyses    SubmissionAnalysis[]
   tutorTurns            TutorTurn[]
   accounts              Account[]
@@ -459,6 +460,33 @@ model MissionDay {
   @@id([userId, day])
 }
 
+/// A company simulation sat by one account (lib/simulations, Phase 7 of
+/// ADAPTIVE_COACH.md): the company's online assessment and its interview
+/// rounds, in order, as one run. What each round scored is read from the
+/// rows the round produced — the graded sitting of the pattern started after
+/// the round opened, the interview session of the round's own saved setup —
+/// and never copied here (lib/simulation-run.ts).
+model SimulationRun {
+  id              String           @id @default(cuid())
+  userId          String
+  /// lib/simulations slug.
+  slug            String           @db.VarChar(80)
+  /// "written" | "voice": how its HR, managerial and behavioural rounds are
+  /// held — the candidate's choice at the start. Technical and coding rounds
+  /// are always written (they need the editor).
+  hrMode          String           @db.VarChar(8)
+  /// [{ key, openedAt, savedInterviewId? }]: the rounds opened so far, in order.
+  rounds          Json
+  /// Ended by the candidate before the last round finished; null otherwise.
+  endedAt         DateTime?
+  createdAt       DateTime         @default(now())
+  user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  savedInterviews SavedInterview[]
+
+  @@index([userId, slug, createdAt])
+  @@index([userId, createdAt])
+}
+
 model TestCase {
   id             String  @id @default(cuid())
   problemId      String
@@ -705,13 +733,23 @@ model SavedInterview {
   interviewStyle String
   stackFocusIds  Json                   @default("[]")
   focusAreaIds   Json                   @default("[]")
+  /// The company the round is practised for (a company simulation's round,
+  /// lib/simulations): the interviewer's brief names it. Null for a setup
+  /// built by hand.
+  company        String?                @db.VarChar(80)
+  /// The simulation run this setup was made for. Such a setup is the run's,
+  /// not the member's: it is left out of the saved-setups list, its cap and
+  /// the dashboard's count.
+  simulationRunId String?
   createdAt      DateTime               @default(now())
   updatedAt      DateTime               @updatedAt
   user           User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  simulationRun  SimulationRun?         @relation(fields: [simulationRunId], references: [id], onDelete: SetNull)
   mockSessions   MockInterviewSession[]
 
   /// The builder lists a user's templates newest-first and nothing else.
   @@index([userId, createdAt])
+  @@index([simulationRunId])
 }
 
 model MockInterviewSession {

@@ -21,6 +21,7 @@ import {
 import { realtimeProvider } from "../services/realtime-interview.js";
 import { cachedShared } from "../lib/cache.js";
 import { invalidateDashboard } from "../services/dashboard.js";
+import { runOfSession } from "../services/simulations.js";
 import {
   finalizeInterview,
   interviewHistoryKey,
@@ -62,7 +63,8 @@ router.post("/save", requireAuth, async (req: any, res) => {
   try {
     // Templates are a short list on the builder and the dashboard; nothing
     // capped it, so one account could grow the list without limit.
-    const owned = await prisma.savedInterview.count({ where: { userId: req.user.userId } });
+    // A company simulation's setups are the run's, not the member's (services/simulations.ts).
+    const owned = await prisma.savedInterview.count({ where: { userId: req.user.userId, simulationRunId: null } });
     if (owned >= MAX_SAVED_TEMPLATES) {
       return res.status(409).json({
         error: `You can keep up to ${MAX_SAVED_TEMPLATES} saved setups. Delete one you no longer use to add another.`,
@@ -105,7 +107,7 @@ router.post("/save", requireAuth, async (req: any, res) => {
 router.get("/my", requireAuth, async (req: any, res) => {
   try {
     const interviews = await prisma.savedInterview.findMany({
-      where: { userId: req.user.userId },
+      where: { userId: req.user.userId, simulationRunId: null },
       orderBy: { createdAt: "desc" },
     });
 
@@ -1118,7 +1120,8 @@ router.post("/session/:sessionId/complete", requireAuth, async (req: any, res) =
       completing.set(sessionId, job);
     }
     const outcome = await job;
-    res.status(outcome.status).json(outcome.body);
+    // The same payload as GET /session/:id, which the room seeds the report with — so with its run too.
+    res.status(outcome.status).json(outcome.status < 300 ? { ...outcome.body, simulation: await runOfSession(req.user.userId, sessionId) } : outcome.body);
   } catch (error: any) {
     console.error("Error completing interview session:", error?.message);
     res.status(500).json({ error: "Failed to complete interview session" });
@@ -1616,7 +1619,8 @@ router.get("/session/:sessionId", requireAuth, async (req: any, res) => {
       return res.status(403).json({ error: "You do not have permission to view this session" });
     }
 
-    res.json(sessionPayload(session));
+    // A company simulation's round names its run, so the report can lead back to it.
+    res.json({ ...sessionPayload(session), simulation: await runOfSession(req.user.userId, session.id) });
   } catch (error: any) {
     console.error("Error fetching interview session:", error?.message);
     res.status(500).json({ error: "Failed to fetch interview session" });

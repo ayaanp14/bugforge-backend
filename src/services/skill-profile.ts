@@ -12,6 +12,9 @@ import {
 } from "../lib/skill-graph.js";
 import { SOURCE_RULES, outcomeOf, toDifficulty, type AssessmentRecord, type Attempt, type ItemHistory, type SkillCatalogue } from "../lib/skill-score.js";
 import { buildSkillProfile, type ProblemCandidate, type SkillProfile } from "../lib/skill-profile.js";
+import { ANSWER_PASS_SCORE, INTERVIEW_SKILLS, answerPercent, interviewLevel, interviewSkillOf, type InterviewSkill } from "../lib/interview-skills.js";
+import { prettyLabel } from "../lib/interview-labels.js";
+import { SAT_ROUND } from "./entitlements.js";
 // The usual inert cycle: dashboard imports invalidateSkillProfile from here.
 import { getCatalogue } from "./dashboard.js";
 import { bugPath } from "./bug-hunts.js";
@@ -116,6 +119,9 @@ export function skillCatalogues(): Promise<Catalogues> {
       testById.set(t.id, { skills, level, title: t.title, href: `/skill-tests/${t.slug}`, skill: t.skill });
     }
 
+    // Every account can sit a mock interview, so the interview skills are always measurable.
+    count(INTERVIEW_SKILLS, "assessment", 0);
+
     return { catalogue, problems: candidates, problemById: new Map(candidates.map((c) => [c.id, c])), bugById, aptitudeById, sqlBySlug, testById };
   });
 }
@@ -139,7 +145,7 @@ function group<R, K>(rows: readonly R[], keyOf: (r: R) => K): Map<K, R[]> {
 
 async function loadEvidence(userId: string, cat: Catalogues): Promise<{ items: ItemHistory[]; assessments: AssessmentRecord[]; analyses: Array<{ problemId: string; category: string; at: number }> }> {
   const newest = { take: MAX_ROWS } as const;
-  const [submissions, engagements, bugSubs, sqlSubs, aptitude, sittings, reviews] = await Promise.all([
+  const [submissions, engagements, bugSubs, sqlSubs, aptitude, sittings, reviews, interviews] = await Promise.all([
     prisma.submission.findMany({
       where: { userId },
       orderBy: { submittedAt: "desc" },
@@ -179,6 +185,20 @@ async function loadEvidence(userId: string, cat: Catalogues): Promise<{ items: I
       where: { userId, category: { not: null }, createdAt: { gte: new Date(Date.now() - 31 * 86_400_000) } },
       select: { problemId: true, category: true, createdAt: true },
       take: 2_000,
+    }),
+    // Sat mock interviews and their scored questions (lib/interview-skills).
+    prisma.mockInterviewSession.findMany({
+      where: { userId, AND: [SAT_ROUND], questions: { some: { evaluationScore: { not: null } } } },
+      orderBy: { createdAt: "desc" },
+      take: 100,
+      select: {
+        id: true,
+        createdAt: true,
+        endedAt: true,
+        completedAt: true,
+        savedInterview: { select: { roundId: true, difficulty: true } },
+        questions: { where: { evaluationScore: { not: null } }, select: { topic: true, focusArea: true, expectedSkills: true, evaluationScore: true } },
+      },
     }),
   ]);
 
@@ -280,6 +300,36 @@ async function loadEvidence(userId: string, cat: Catalogues): Promise<{ items: I
       terminated: s.status === "terminated",
       topics: topics.map((t) => ({ label: skillTopic(test.skill, t.topic)?.label ?? t.topic, total: t.total, correct: t.correct })),
     });
+  }
+
+  // A sat round is a sitting of each interview skill its questions were filed
+  // under: that skill's mean question score (0–10, as a percentage), at the
+  // round's difficulty.
+  for (const s of interviews) {
+    const bySkill = new Map<InterviewSkill, Array<{ label: string; score: number }>>();
+    for (const q of s.questions) {
+      const skill = interviewSkillOf({
+        roundId: s.savedInterview.roundId,
+        topic: q.topic,
+        focusArea: q.focusArea,
+        expectedSkills: Array.isArray(q.expectedSkills) ? (q.expectedSkills as unknown[]).filter((x): x is string => typeof x === "string") : [],
+      });
+      if (!skill) continue;
+      bySkill.set(skill, [...(bySkill.get(skill) ?? []), { label: prettyLabel(q.topic ?? q.focusArea ?? s.savedInterview.roundId), score: q.evaluationScore! }]);
+    }
+    for (const [skill, answers] of bySkill) {
+      assessments.push({
+        id: `${s.id}:${skill}`,
+        title: `Mock interview: ${prettyLabel(s.savedInterview.roundId)}`,
+        href: `/mock-interview/report/${s.id}`,
+        skills: [skill],
+        at: (s.endedAt ?? s.completedAt ?? s.createdAt).getTime(),
+        percent: answers.reduce((a, x) => a + answerPercent(x.score), 0) / answers.length,
+        level: interviewLevel(s.savedInterview.difficulty),
+        terminated: false,
+        topics: answers.map((a) => ({ label: a.label, total: 1, correct: a.score >= ANSWER_PASS_SCORE ? 1 : 0 })),
+      });
+    }
   }
 
   const analyses = reviews.map((r) => ({ problemId: r.problemId, category: r.category!, at: r.createdAt.getTime() }));
