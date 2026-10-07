@@ -59,7 +59,7 @@ export async function buildAccountExport(userId: string): Promise<Record<string,
     contests, duels, rooms, posts, comments, likes, commentLikes, saved, votes, reports,
     following, followers, affinities, feedback, assistant, roadmap,
     enrollments, lessons, exercises, resumes, subscriptions, orders,
-    notifications, shareCards, orgs, entries, tournamentSubmissions, campus, events, pushDevices, missionDays,
+    notifications, shareCards, orgs, entries, tournamentSubmissions, campus, events, pushDevices, missionDays, analyses,
   ] = await Promise.all([
     prisma.submission.findMany({
       where, ...newest, orderBy: { submittedAt: "desc" },
@@ -156,6 +156,11 @@ export async function buildAccountExport(userId: string): Promise<Record<string,
     prisma.pushSubscription.findMany({ where, select: { createdAt: true, lastPushAt: true } }),
     // Each day's mission: what was set, the minutes chosen, what was ticked or skipped by hand.
     prisma.missionDay.findMany({ where, ...newest, orderBy: { day: "desc" }, select: { day: true, minutes: true, items: true, marks: true, createdAt: true } }),
+    // "Why it failed": each failed submission's explanation — the judge's and the model's — and what it suggested.
+    prisma.submissionAnalysis.findMany({
+      where, ...newest, orderBy: { createdAt: "desc" },
+      select: { submissionId: true, problemId: true, status: true, category: true, deterministic: true, ai: true, recommendation: true, createdAt: true },
+    }),
   ]);
 
   return {
@@ -165,7 +170,7 @@ export async function buildAccountExport(userId: string): Promise<Record<string,
       "checks are not included; your answers, code and scores are.",
     exportedAt: new Date().toISOString(),
     profile,
-    coding: { submissions, drafts, timers, engagement },
+    coding: { submissions, drafts, timers, engagement, failureAnalyses: analyses },
     bugHunts: { submissions: bugSubmissions },
     sql: { submissions: sqlSubmissions },
     interviews: { sessions: interviews, saved: savedInterviews },

@@ -15,6 +15,8 @@ import meRouter from "./routes/me.js";
 import accountRouter from "./routes/account.js";
 import skillsRouter from "./routes/skills.js";
 import missionRouter from "./routes/mission.js";
+import analysisRouter from "./routes/analysis.js";
+import { recoverSubmissionAnalyses } from "./services/submission-analysis.js";
 import pushRouter from "./routes/push.js";
 import usersRouter from "./routes/users.js";
 import problemsRouter, { forgetProblemNumbers } from "./routes/problems.js";
@@ -937,6 +939,7 @@ app.use("/api/auth", oauthRouter);
 // Ahead of the /api/me routers so /api/me/skills/* is never offered to them first.
 app.use("/api/me/skills", skillsRouter);
 app.use("/api/me/mission", missionRouter);
+app.use("/api/me/submissions", analysisRouter);
 app.use("/api/me", meRouter);
 // Privacy, export and deletion (routes/account.ts) — none of its paths is one of meRouter's.
 app.use("/api/me", accountRouter);
@@ -1156,6 +1159,7 @@ httpServer.listen(PORT, () => {
   // Resume analyses run in-process; a restart mid-run leaves rows queued or
   // running with nobody working them. Re-queue the young, fail the stale.
   void recoverAnalyses();
+  void recoverSubmissionAnalyses();
   console.log(`🚀 Backend & WebSocket running on port: ${PORT}`);
   console.log(`   Auth:   POST /api/auth/login`);
   console.log(`   Me:     GET /api/me`);

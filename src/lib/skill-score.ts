@@ -489,7 +489,8 @@ export type IndicatorCode =
   | "easy_only"
   | "rusty"
   | "weak_topic"
-  | "prerequisite_gap";
+  | "prerequisite_gap"
+  | "repeat_mistake";
 
 export interface Indicator {
   code: IndicatorCode;

@@ -137,9 +137,9 @@ function group<R, K>(rows: readonly R[], keyOf: (r: R) => K): Map<K, R[]> {
   return out;
 }
 
-async function loadEvidence(userId: string, cat: Catalogues): Promise<{ items: ItemHistory[]; assessments: AssessmentRecord[] }> {
+async function loadEvidence(userId: string, cat: Catalogues): Promise<{ items: ItemHistory[]; assessments: AssessmentRecord[]; analyses: Array<{ problemId: string; category: string; at: number }> }> {
   const newest = { take: MAX_ROWS } as const;
-  const [submissions, engagements, bugSubs, sqlSubs, aptitude, sittings] = await Promise.all([
+  const [submissions, engagements, bugSubs, sqlSubs, aptitude, sittings, reviews] = await Promise.all([
     prisma.submission.findMany({
       where: { userId },
       orderBy: { submittedAt: "desc" },
@@ -170,6 +170,12 @@ async function loadEvidence(userId: string, cat: Catalogues): Promise<{ items: I
       orderBy: { startedAt: "desc" },
       take: 200,
       select: { testId: true, status: true, submittedAt: true, expiresAt: true, percent: true, topicScores: true },
+    }),
+    // What the "Why it failed" reviews found this month (services/submission-analysis.ts).
+    prisma.submissionAnalysis.findMany({
+      where: { userId, category: { not: null }, createdAt: { gte: new Date(Date.now() - 31 * 86_400_000) } },
+      select: { problemId: true, category: true, createdAt: true },
+      take: 2_000,
     }),
   ]);
 
@@ -268,7 +274,8 @@ async function loadEvidence(userId: string, cat: Catalogues): Promise<{ items: I
     });
   }
 
-  return { items, assessments };
+  const analyses = reviews.map((r) => ({ problemId: r.problemId, category: r.category!, at: r.createdAt.getTime() }));
+  return { items, assessments, analyses };
 }
 
 // ── The profile ───────────────────────────────────────────────────
@@ -278,8 +285,8 @@ const profileKey = (userId: string) => `skill-profile:v1:${userId}`;
 export function skillProfileFor(userId: string, asOf?: number): Promise<SkillProfile> {
   const build = async () => {
     const cat = await skillCatalogues();
-    const { items, assessments } = await loadEvidence(userId, cat);
-    return buildSkillProfile({ items, assessments, catalogue: cat.catalogue, problems: cat.problems, asOf: asOf ?? Date.now() });
+    const { items, assessments, analyses } = await loadEvidence(userId, cat);
+    return buildSkillProfile({ items, assessments, analyses, catalogue: cat.catalogue, problems: cat.problems, asOf: asOf ?? Date.now() });
   };
   // A historical read (tests, a script) is never cached under the live key,
   // and never written to the review index.

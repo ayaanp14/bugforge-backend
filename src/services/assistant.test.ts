@@ -144,6 +144,10 @@ const QUESTIONS: Array<[string, RegExp, string?]> = [
   ["can I skip roadmap stages I already know", /already rates every uncleared stage before one \*strong\*/],
   ["what is my route on the roadmap", /signed-in members see the order to work in/],
   ["why did I get a skill review notification", /when a skill on your skill profile is \*\*due for review\*\*/],
+  ["why did my submission fail", /gets an explanation in a \*\*Code Review\*\* tab/],
+  ["does the AI see the hidden test cases when it reviews my code", /It never sees the hidden test cases/],
+  ["why is there no code review on the daily contest problem", /the AI part is held back/],
+  ["what does Likely mean in the failure explanation", /\*\*Likely\*\* \(a reading of it\)/],
   // Follow-ups: the answer is only reachable through the previous question.
   ["how long does it last?", /expires after \*\*2 hours\*\*/, "how do private duel rooms work"],
   ["and elite?", /\*\*Elite\*\* — /, "how much does the pro plan cost"],

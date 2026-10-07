@@ -136,6 +136,7 @@ model User {
   /// at today's choice, and /api/me can size the mission before it loads.
   dailyMinutes          Int?
   missionDays           MissionDay[]
+  submissionAnalyses    SubmissionAnalysis[]
   accounts              Account[]
   githubConnection      GitHubConnection?
   bugSubmissions        BugSubmission[]
@@ -321,6 +322,51 @@ model ProblemEngagement {
   @@index([problemId])
 }
 
+/// "Why it failed": the explanation of one submission that was not accepted
+/// (services/submission-analysis.ts). Two layers. `deterministic` is what
+/// the judge's own report says — the verdict's class, the cases passed, the
+/// time against the limit, the error parsed, the complexity the constraints
+/// call for (lib/failure-analysis.ts) — and is there within a moment of the
+/// verdict. `ai` is the model's reading of the code against the statement
+/// (lib/submission-review.ts), written by an in-process runner, never in a
+/// duel, a Battles match or on the day's contest problem (`reason`).
+///
+/// Stored, not derived: the model's answer costs a call and is not
+/// reproducible, so it is kept per submission and reused for the same code
+/// resubmitted (`codeHash`). `context` holds what the judge reported that
+/// the Submission row does not keep (the error output, the time limit).
+model SubmissionAnalysis {
+  submissionId   String     @id
+  userId         String
+  problemId      String
+  /// "queued" | "running" | "done" | "failed" | "skipped"
+  status         String     @db.VarChar(16)
+  /// Why the model did not run: "contest" | "duel" | "unavailable" | "error"; "reused" when its answer was copied.
+  reason         String?    @db.VarChar(32)
+  /// The mistake class — the model's when it ran, the verdict's otherwise.
+  category       String?    @db.VarChar(32)
+  context        Json
+  deterministic  Json
+  ai             Json?
+  /// The skill the failure points at and what to do next (lib/skill-profile recommendFor).
+  recommendation Json?
+  model          String?    @db.VarChar(120)
+  promptVersion  Int?
+  codeHash       String     @db.Char(64)
+  tokens         Int        @default(0)
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+  submission     Submission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+  user           User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  /// The account's analyses over time (the skill profile's causes, the export).
+  @@index([userId, createdAt])
+  /// "Has this exact code been explained before" — reuse instead of a second call.
+  @@index([userId, problemId, codeHash])
+  /// The runner's recovery at boot: young rows still queued or running.
+  @@index([status, createdAt])
+}
+
 /// When an account's next skill review falls due — an index, not a record:
 /// a copy of what its skill profile (lib/skill-score reviewSchedule) last
 /// said, written whenever the profile is computed (services/skill-profile.ts).
@@ -435,6 +481,8 @@ model Submission {
   room                 PairRoom?             @relation(fields: [roomId], references: [id], onDelete: SetNull)
   /// Set when this attempt was made in a Battles contest (services/contest.ts).
   tournamentSubmission TournamentSubmission?
+  /// "Why it failed", for a submission that was not accepted (services/submission-analysis.ts).
+  analysis             SubmissionAnalysis?
 
   // The FK on userId alone leaves every "newest first" read to filesort the user's
   // whole history, and every verdict filter to scan it. These two cover the

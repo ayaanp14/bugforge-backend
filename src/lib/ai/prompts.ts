@@ -1,0 +1,33 @@
+import { readFileSync } from "node:fs";
+
+/**
+ * The model prompts, versioned and kept as files rather than strings in the
+ * code: content/prompts/<task>/v<N>.md, shipped in the image beside dist/
+ * like the handbook and the lessons. A changed prompt is a new version file,
+ * so what a stored answer was produced by can always be read back (the rows
+ * that keep a model's answer record `promptVersion`).
+ *
+ * The interviews, the assistant and the resume analyzer still build their
+ * prompts in their own modules; new tasks start here, and the older ones move
+ * when they are next changed.
+ */
+
+export const PROMPT_VERSIONS = {
+  "submission-review": 1,
+} as const;
+
+export type PromptTask = keyof typeof PROMPT_VERSIONS;
+
+const loaded = new Map<string, string>();
+
+/** A task's current prompt (read once per process). */
+export function promptFor(task: PromptTask): { text: string; version: number } {
+  const version = PROMPT_VERSIONS[task];
+  const key = `${task}/v${version}`;
+  let text = loaded.get(key);
+  if (text === undefined) {
+    text = readFileSync(new URL(`../../../content/prompts/${task}/v${version}.md`, import.meta.url), "utf8").trim();
+    loaded.set(key, text);
+  }
+  return { text, version };
+}

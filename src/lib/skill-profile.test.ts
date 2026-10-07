@@ -147,6 +147,26 @@ test("recommendations finish what was started, then pick the difficulty the skil
   assert.ok(recommendFor("dsa:arrays", scored, inp, 5).findIndex((r) => r.slug === "m2") > recommendFor("dsa:arrays", scored, inp, 5).findIndex((r) => r.slug === "m1"), "a problem that is also a first look at an unready skill comes later");
 });
 
+test("the same cause found again and again in one skill's problems becomes its weak spot, and the causes are counted", () => {
+  const a = problem(["dsa:arrays"], "medium", [wa(at(-3), 0.9)]);
+  const b = problem(["dsa:arrays"], "medium", [wa(at(-2), 0.9)]);
+  const c = problem(["dsa:recursion"], "easy", [wa(at(-1))]);
+  const analyses = [
+    { problemId: a.id, category: "EDGE_CASE", at: at(-3) },
+    { problemId: b.id, category: "EDGE_CASE", at: at(-2) },
+    { problemId: b.id, category: "EDGE_CASE", at: at(-2, 5) },
+    { problemId: c.id, category: "MISREAD_PROBLEM", at: at(-1) },
+    { problemId: c.id, category: "CONCEPTUAL", at: at(-60) },
+  ];
+  const p = buildSkillProfile(input([a, b, c], { analyses }));
+  const repeat = p.scored.get("dsa:arrays")!.score.indicators.find((i) => i.code === "repeat_mistake");
+  assert.ok(repeat);
+  assert.equal(repeat.message, "Your recent reviews found missed edge cases in 2 Arrays problems.");
+  assert.equal(repeat.mistake, "EDGE_CASE");
+  assert.ok(!p.scored.get("dsa:recursion")!.score.indicators.some((i) => i.code === "repeat_mistake"), "one review is not a pattern");
+  assert.deepEqual(p.view.mistakes.causes.map((x) => [x.category, x.count]), [["EDGE_CASE", 3], ["MISREAD_PROBLEM", 1]], "a review older than the window is left out");
+});
+
 test("a skill is a weak spot or a strength, never both, and a strength is at least halfway", () => {
   const p = buildSkillProfile(
     input([

@@ -28,6 +28,7 @@ import { claimFirstSolve } from "../lib/solve-payout.js";
 // Streak bookkeeping from the stats row as it stood before this solve; SQL
 // problems use the same rule (routes/sql.ts).
 import { nextStreak } from "../lib/activity.js";
+import { noteFailedSubmission } from "../services/submission-analysis.js";
 
 const router = Router();
 
@@ -447,6 +448,27 @@ router.post("/submit", requireAuth, executionLimiter, async (req, res) => {
     settleDuelForSubmission(userId, { problemId }, { verdict, passed: passedCases, total: totalCases }).catch((err) =>
       console.error("POST /api/submit — duel settlement failed:", err),
     );
+
+    // "Why it failed" (services/submission-analysis.ts): the judge's own
+    // explanation now, the model's review queued — never in a ranked event,
+    // which the service checks (today's contest problem, a live duel) beside
+    // what this request already knows (a Battles contest or knockout).
+    if (verdict !== "ACCEPTED") {
+      void noteFailedSubmission({
+        submissionId: submission.id,
+        userId,
+        problemId,
+        verdict,
+        passedCases,
+        totalCases,
+        runtimeMs: maxRuntime,
+        timeLimitMs: problem.timeLimitMs,
+        code,
+        language: language as string,
+        errorDetail,
+        ranked: Boolean(battles || knockout),
+      });
+    }
 
     // First-ever solve + streak milestones land in the notifications bell
     if (firstSolve) {

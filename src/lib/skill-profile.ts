@@ -68,6 +68,12 @@ export interface ProfileInput {
   /** Published coding problems, for recommendations. */
   problems: readonly ProblemCandidate[];
   asOf: number;
+  /**
+   * Recent "Why it failed" reviews (services/submission-analysis.ts): the
+   * cause each one named, by problem. Optional — a profile reads the same
+   * without them, it just has no causes to report.
+   */
+  analyses?: ReadonlyArray<{ problemId: string; category: string; at: number }>;
 }
 
 export const sourceOf = (node: SkillNode): EvidenceSource | null =>
@@ -87,7 +93,7 @@ export function measurableSkills(catalogue: ReadonlyMap<string, SkillCatalogue>)
 }
 
 /** Every measurable skill scored at `asOf`, with prerequisite gaps applied. */
-export function scoreAll(input: Pick<ProfileInput, "items" | "assessments" | "catalogue">, asOf: number): Map<string, Scored> {
+export function scoreAll(input: Pick<ProfileInput, "items" | "assessments" | "catalogue" | "analyses">, asOf: number): Map<string, Scored> {
   const nodes = measurableSkills(input.catalogue);
   const bySkill = new Map<string, ItemSummary[]>();
   for (const item of input.items) {
@@ -132,7 +138,66 @@ export function scoreAll(input: Pick<ProfileInput, "items" | "assessments" | "ca
       s.score.indicators = [...s.score.indicators, gap].sort((a, b) => b.severity - a.severity);
     }
   }
+
+  // The same cause found by the reviews again and again in one skill's
+  // problems is a weak spot of its own: "missed edge cases in 3 Two Pointers
+  // problems this month" says more than any one verdict.
+  const recent = (input.analyses ?? []).filter((a) => a.at <= asOf && a.at > asOf - MISTAKE_WINDOW_DAYS * DAY_MS);
+  if (recent.length) {
+    const skillsOf = new Map(input.items.filter((i) => i.source === "problem").map((i) => [i.id, i.skills]));
+    const bySkill = new Map<string, Map<string, Set<string>>>();
+    for (const a of recent) {
+      for (const key of skillsOf.get(a.problemId) ?? []) {
+        const causes = bySkill.get(key) ?? new Map<string, Set<string>>();
+        causes.set(a.category, (causes.get(a.category) ?? new Set()).add(a.problemId));
+        bySkill.set(key, causes);
+      }
+    }
+    for (const [key, causes] of bySkill) {
+      const s = out.get(key);
+      if (!s) continue;
+      const [category, problems] = [...causes.entries()].sort((a, b) => b[1].size - a[1].size)[0]!;
+      if (problems.size < REPEAT_MISTAKE_PROBLEMS) continue;
+      const repeat: Indicator = {
+        code: "repeat_mistake",
+        severity: 2,
+        message: `Your recent reviews found ${CAUSE_PHRASE[category] ?? "the same mistake"} in ${problems.size} ${s.node.label} problems.`,
+        ...((MISTAKE_CLASSES as readonly string[]).includes(category) ? { mistake: category as MistakeClass } : {}),
+      };
+      s.score.indicators = [...s.score.indicators, repeat].sort((a, b) => b.severity - a.severity);
+    }
+  }
   return out;
+}
+
+/** Different problems in one skill whose reviews named the same cause, before it is a weak spot. */
+export const REPEAT_MISTAKE_PROBLEMS = 2;
+
+/** A review category as a phrase in a sentence ("found … in 3 problems"). */
+export const CAUSE_PHRASE: Readonly<Record<string, string>> = {
+  EDGE_CASE: "missed edge cases",
+  CONCEPTUAL: "a wrong approach",
+  COMPLEXITY: "solutions too slow for the inputs",
+  IMPLEMENTATION: "code that did something other than the idea",
+  SYNTAX: "code that did not compile",
+  MISREAD_PROBLEM: "a misread statement",
+  DATA_STRUCTURE_SELECTION: "the wrong data structure",
+  ALGORITHM_SELECTION: "the wrong technique",
+  PREMATURE_OPTIMIZATION: "an optimisation that broke correctness",
+};
+
+/** The reviews' causes over the window, most common first. */
+export function causesOf(analyses: ProfileInput["analyses"], from: number, to: number): Array<{ category: string; count: number; share: number }> {
+  const counts = new Map<string, number>();
+  let total = 0;
+  for (const a of analyses ?? []) {
+    if (a.at <= from || a.at > to) continue;
+    counts.set(a.category, (counts.get(a.category) ?? 0) + 1);
+    total++;
+  }
+  return [...counts.entries()]
+    .map(([category, count]) => ({ category, count, share: Math.round((count / total) * 100) / 100 }))
+    .sort((a, b) => b.count - a.count);
 }
 
 // ── Views ─────────────────────────────────────────────────────────
@@ -231,7 +296,12 @@ export interface SkillProfileView {
   /** Skill recommendations for the weakest skills, so the page needs no second request to act on them. */
   recommendations: Record<string, Recommendation[]>;
   changes: ChangeView[];
-  mistakes: { recent: MistakeMix; allTime: MistakeMix };
+  mistakes: {
+    recent: MistakeMix;
+    allTime: MistakeMix;
+    /** What the "Why it failed" reviews found over the last MISTAKE_WINDOW_DAYS, most common first. */
+    causes: Array<{ category: string; count: number; share: number }>;
+  };
   activity: {
     attempts7d: number;
     solved7d: number;
@@ -520,6 +590,7 @@ export function buildSkillProfile(input: ProfileInput): SkillProfile {
       mistakes: {
         recent: mistakeMix(input.items, asOf - MISTAKE_WINDOW_DAYS * DAY_MS, asOf),
         allTime: mistakeMix(input.items, 0, asOf),
+        causes: causesOf(input.analyses, asOf - MISTAKE_WINDOW_DAYS * DAY_MS, asOf),
       },
       activity: { attempts7d, solved7d, activeDays28: activeDays.size, skillPoints7d },
     },

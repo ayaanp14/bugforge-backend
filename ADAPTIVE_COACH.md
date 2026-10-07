@@ -103,7 +103,7 @@ Surfaces: /skills, the home dashboard, the workbench verdict, reminders, the car
 | --- | --- | --- | --- |
 | **1. Skill intelligence** (shipped 2026-10-07) | Skill graph, scoring engine, evidence including hints and editorial, reviews, weak spots, mistake mix, focus lists, `/skills` | Attempt tables, topic hubs | `ProblemEngagement` |
 | **2. Adaptive learning** (mission shipped 2026-10-07) | Daily mission (time budget 30/60/90/120/custom) from focus + reviews + goal; spaced-review reminders via the scheduler; the home dashboard leads with the mission; roadmap stages ordered by the profile | Phase 1, "Your plan", reminders | `MissionDay` |
-| **3. Submission intelligence** | "Why did I fail" on the workbench verdict: deterministic classes (Phase 1) + failing-case shape + a model explanation behind the provider seam, cached per submission, async | Judge results, Phase 1 classes | `SubmissionAnalysis` |
+| **3. Submission intelligence** (built 2026-10-07) | "Why did I fail" on the workbench verdict: the judge's facts read deterministically + a model review behind the provider seam, written on every failure in the background, stored per submission | Judge results, Phase 1 classes | `SubmissionAnalysis` |
 | **4. Socratic tutor** | Tutor in the workbench with the hint ladder (ask → brute force → complexity → hint → pseudocode → structure → solution), context = statement, constraints, visible cases, code, verdict, prior hints; fact / inference / suggestion labelled; never hidden cases | Assistant streaming, `ProblemEngagement` (tutor reveals count as help) | `TutorTurn` |
 | **5. Placement OS** | Target role, date and daily minutes; company/role requirement profiles (admin-seeded); readiness estimate per area; plan regeneration on target change | Phase 1–2, onboarding, tests, interviews, resume | Company profile tables, `User` target columns |
 | **6. Debugging** | Timed production-bug format (logs, stack, diff), diagnosis time, explanation scored; debugging skills already measured in Phase 1 | Bug hunts | Columns on `BugSubmission` |
@@ -114,8 +114,8 @@ Surfaces: /skills, the home dashboard, the workbench verdict, reminders, the car
 ## 5. AI: provider seam and cost
 
 - Lift `providerConfig()`/`completeJson()` out of `services/interview-ai.ts` into `lib/ai/provider.ts`, an interface with task-level methods (`explainFailure`, `tutorTurn`, `evaluateInterview`, `planWeek`). NVIDIA stays the one implementation. Plain `fetch` only (CLAUDE.md forbids OpenAI-style SDKs).
-- Keep prompts in `src/prompts/<task>/v<N>.md`, loaded once per process like the roadmap lessons. Each stored output records the prompt version.
-- Cost: nothing on page load. Scores, plans and readiness are code. Model calls run on explicit actions (open "Why did I fail", ask the tutor), are cached per (submission, prompt version), are rate-limited like `resumeAiLimiter`, and route to a smaller model where structure suffices.
+- Keep prompts in `content/prompts/<task>/v<N>.md` (shipped in the image beside the handbook), loaded once per process by `lib/ai/prompts.ts`. Each stored output records the prompt version. *(As built in Phase 3: `lib/ai/provider.ts` is a generic `json(messages, schema, …)` over `completeJson`, not task methods — a task's shape lives in its own lib module.)*
+- Cost: nothing on page load. Scores, plans and readiness are code. Model calls are cached per (submission, prompt version) and route to a smaller model where structure suffices. *Changed by decision on 2026-10-07: the failure review runs on **every** failed submission, unlimited on every plan, rather than on an explicit "explain" click; the brakes are the execution limiter that already caps submits (30/min), a bounded queue and reuse of an earlier review of identical code.*
 - Untrusted input (student code, resumes) goes in fenced, with the injection notice the resume analyzer already uses. Outputs are checked against computed facts before display (the resume `guardSuggestion` pattern).
 
 ## 6. Risks
@@ -187,3 +187,31 @@ Surfaces: /skills, the home dashboard, the workbench verdict, reminders, the car
   - A swap action for one item (today the only options are skip or undo).
   - Using the target date, once Phase 5 collects it, to shape the day.
   - Covering reviews of aptitude, SQL and debugging skills in the mission. Today it lines up coding reviews only, and the reminder links other kinds to the skill profile.
+
+## 9. Phase 3 as shipped ("Why it failed")
+
+- **Decisions (the owner's, 2026-10-07):** a review on every failed coding submission, unlimited for everyone. Guardrail added: no model review in ranked play — today's daily contest problem, a live duel, a Battles contest or knockout get the deterministic layer only (`reason: "contest" | "duel"`), because it is help the other competitors do not get.
+- **Two layers, both stored on one `SubmissionAnalysis` row** (PK = `submissionId`, cascades with it):
+  - **Deterministic** — `lib/failure-analysis.ts` `analyzeFailure`, pure and pinned by `failure-analysis.test.ts`. Reads only what the judge already reported: verdict, passed/total, runtime against the limit, the error output (`readError` — the recognised failure, its line, a hint; `firstCompileError`), and the statement's `### Constraints` (`constraintsOf` → `targetComplexity`, the slowest complexity those sizes allow; inputs ≤ 25 never blame complexity for a timeout — that is a loop that never ends). Every finding is labelled `fact` (the judge said so), `inference` or `suggestion`. Written synchronously when the row is created, so the panel has it a moment after the verdict.
+  - **Model review** — `lib/submission-review.ts` builds the messages (statement, ≤ 3 *visible* examples, numbered code, verdict and counts, ≤ 2 KB of error, the deterministic facts), each untrusted part fenced between BEGIN/END markers its own text cannot forge. Prompt `content/prompts/submission-review/v1.md`: teach, don't solve; never claim knowledge of hidden cases; a line only when that line is the problem; nine categories (the five verdict classes + MISREAD_PROBLEM, DATA_STRUCTURE_SELECTION, ALGORITHM_SELECTION, PREMATURE_OPTIMIZATION); confidence. `guardReview` holds the answer to the rules: lines that exist, no `fact` from the model, at most four findings, code blocks stripped to a one-line snippet, complexity only as one Big-O expression (`bigO`, else the constraints' own target), a leading "Line N" dropped where the line field carries it.
+- **Runner** — `services/submission-analysis.ts`, the resume analyzer's pattern: `noteFailedSubmission` (called fire-and-forget from `/submit` after the duel settles) inserts the row `queued` or `skipped`; an in-process queue (`SUBMISSION_REVIEW_CONCURRENCY`, default 3; cap 500, past it `reason: "busy"`) claims rows; `recoverSubmissionAnalyses` at boot re-queues rows younger than an hour. Identical code (`codeHash`) on the same problem under the same prompt version reuses the earlier review (`reason: "reused"`) instead of calling the model.
+- **Recommendation** on the same row: the problem's weakest skill on the profile, `recommendFor` excluding this problem, and the roadmap lesson for its hub.
+- **Read** — `GET /api/me/submissions/:id/analysis` (`routes/analysis.ts`), owner only (anyone else gets the same 404 as a missing id); a failure from before the feature, with no row, reads `pending` for two minutes after judging and 404 after (the panel then draws nothing), so it never polls for ever.
+- **Back into the profile** — `loadEvidence` reads the last 31 days of reviews: `mistakes.causes` ("What the reviews found" on `/skills`) and a `repeat_mistake` indicator when the reviews name the same cause in ≥ 2 problems of one skill.
+- **SPA:**
+  - A **Code Review** tab beside Testcase and Test Result (the owner's ask), present from a failed submit until an accepted one or another problem. A verdict still opens Test Result, which carries a one-line summary and an "Open the code review" button. The same `components/problems/FailureAnalysis.tsx` draws in the Submissions tab's detail dialog. It polls every 1.5 s while the review is being written, and stops after 2 minutes.
+  - The Fact / Likely / Try labels come from `lib/failure-analysis.ts`.
+  - The complexity line shows only when speed was the failure, phrased as "aim for X or better".
+- **Also updated:**
+  - The handbook: "Why it failed", plus 4 pinned assistant questions.
+  - The privacy policy: AI models, what is kept, private-to-you, and that AI output is practice.
+  - The account export (`coding.failureAnalyses`).
+- **Verified:**
+  - `failure-analysis.test.ts` and `submission-review.test.ts` (15 tests).
+  - A live model smoke run (`scratch/analysis-smoke.mts`): reviews in 1.5–6 s.
+  - `e2e/failure-analysis.spec.ts`: a wrong Two Sum shows the facts, then the review; another account gets 404.
+- **Not yet:**
+  - Bug hunts and SQL problems (their judges report differently).
+  - A "was this useful?" signal.
+  - Calibrating the categories against what the student changed next.
+  - Admin visibility of review volume and cost.
