@@ -105,7 +105,7 @@ Surfaces: /skills, the home dashboard, the workbench verdict, reminders, the car
 | **2. Adaptive learning** (mission shipped 2026-10-07) | Daily mission (time budget 30/60/90/120/custom) from focus + reviews + goal; spaced-review reminders via the scheduler; the home dashboard leads with the mission; roadmap stages ordered by the profile | Phase 1, "Your plan", reminders | `MissionDay` |
 | **3. Submission intelligence** (built 2026-10-07) | "Why did I fail" on the workbench verdict: the judge's facts read deterministically + a model review behind the provider seam, written on every failure in the background, stored per submission | Judge results, Phase 1 classes | `SubmissionAnalysis` |
 | **4. Socratic tutor** (built 2026-10-07) | Tutor in the workbench with the hint ladder (ask → brute force → complexity → hint → pseudocode → structure → solution), context = statement, constraints, visible cases, code, verdict, prior hints; fact / inference / suggestion labelled; never hidden cases | Assistant streaming, `ProblemEngagement` (tutor reveals count as help) | `TutorTurn` |
-| **5. Placement OS** | Target role, date and daily minutes; company/role requirement profiles (admin-seeded); readiness estimate per area; plan regeneration on target change | Phase 1–2, onboarding, tests, interviews, resume | Company profile tables, `User` target columns |
+| **5. Placement OS** (readiness built 2026-10-07) | Target role, date and daily minutes; company/role requirement profiles (admin-seeded); readiness estimate per area; plan regeneration on target change | Phase 1–2, onboarding, tests, interviews, resume | Company profile tables, `User` target columns |
 | **6. Debugging** | Timed production-bug format (logs, stack, diff), diagnosis time, explanation scored; debugging skills already measured in Phase 1 | Bug hunts | Columns on `BugSubmission` |
 | **7. Interviews** | Interview skills (communication, clarifying questions, complexity) from existing per-question scores into the graph; multi-round company simulations from admin templates | Mock interviews | Simulation template + run tables |
 | **8. Career** | Career profile: self-reported / assessed / verified, credentials, readiness, resume; application tracking | Public profile, credentials | `Application` |
@@ -240,3 +240,25 @@ Surfaces: /skills, the home dashboard, the workbench verdict, reminders, the car
   - Hint usage of the tutor in the mission's choice of items.
   - Bug hunts and SQL problems.
   - A per-turn "was this useful?" signal.
+
+## 11. Phase 5 as shipped (placement readiness)
+
+- **What it is:** `/readiness` shows how much of what a target company asks the account has shown here, area by area, with what to do next. It is an estimate of evidence, not a prediction.
+- **Company facts are only sourced ones.** The 27 test patterns already seeded for placement tests carry `sourceNote`s and section blueprints, and the catalogue carries company tags. No new company tables were needed: the patterns *are* the requirement profiles for the online assessment, and the tags give the coding topics. Nothing claims how a company runs its later rounds.
+- **The model** (`lib/readiness.ts`, `readiness.test.ts`, 9 tests). Five areas, each with a score, a confidence, a status, its parts and next actions:
+  - **Online assessment:** the pattern's sections read against exactly the skills they draw from, with a graded sitting from the last 90 days blended in at half.
+  - **Coding rounds:** the company's tagged topics, weighted by how many of its problems use each.
+  - **CS fundamentals:** from skill tests only.
+  - **Interview practice:** the last 3 sat interviews.
+  - **Resume:** the latest analysis, with more confidence when it was aimed at this company.
+  - **Weights:** set by company family, as judgement. With no evidence an area scores 0 and reads "unknown".
+- **Target:** `User.targetCompany / targetTest / targetDate`, saved from the page. Looking at another company never changes the saved target. The days left and the hours (at the daily minutes) come from the date.
+- **Verified:**
+  - A smoke run on local data (`scratch/readiness-smoke.mts`, `readiness-richest.mts`): 15–20 ms warm.
+  - `e2e/readiness.spec.ts`, axe included.
+  - 3 assistant questions pinned, plus an alias for "ready" (TCS appears on every placement chunk).
+- **Not yet (the rest of Phase 5):**
+  - The mission does not read the target or its date yet. The next step is to weight its picks toward the weakest readiness area as the date nears, and to re-pick today's undone items when the target changes.
+  - Graduation year.
+  - Readiness on the home dashboard.
+  - An admin view of targets.

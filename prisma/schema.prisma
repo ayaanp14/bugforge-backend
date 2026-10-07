@@ -135,6 +135,13 @@ model User {
   /// On the account rather than only on the day so tomorrow's mission starts
   /// at today's choice, and /api/me can size the mission before it loads.
   dailyMinutes          Int?
+  /// The placement target readiness reads (services/readiness.ts): a company as
+  /// the tags or the test patterns spell it, optionally one of its test patterns
+  /// (a MockTest slug — the role, where a company has several), and the date of
+  /// the drive or interview. Null = not set; /readiness then asks.
+  targetCompany         String?               @db.VarChar(80)
+  targetTest            String?               @db.VarChar(120)
+  targetDate            DateTime?             @db.Date
   missionDays           MissionDay[]
   submissionAnalyses    SubmissionAnalysis[]
   tutorTurns            TutorTurn[]

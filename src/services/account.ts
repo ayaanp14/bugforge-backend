@@ -44,6 +44,8 @@ export async function buildAccountExport(userId: string): Promise<Record<string,
       xp: true, questionsXp: true, bugsXp: true, rating: true,
       remindStreak: true, remindDailyKata: true, weeklyDigest: true, remindReviews: true, profileHidden: true, preferredLanguage: true,
       goal: true, level: true, goalDetails: true, onboardedAt: true, dailyMinutes: true,
+      // The placement target readiness reads (services/readiness.ts).
+      targetCompany: true, targetTest: true, targetDate: true,
       createdAt: true, updatedAt: true,
       stats: { select: { problemsSolved: true, bugsFixed: true, pairSessions: true, currentStreak: true, longestStreak: true, lastActive: true } },
       accounts: { select: { provider: true, providerAccountId: true } },

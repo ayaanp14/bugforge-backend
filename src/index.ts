@@ -17,6 +17,7 @@ import skillsRouter from "./routes/skills.js";
 import missionRouter from "./routes/mission.js";
 import analysisRouter from "./routes/analysis.js";
 import tutorRouter from "./routes/tutor.js";
+import readinessRouter from "./routes/readiness.js";
 import { recoverSubmissionAnalyses } from "./services/submission-analysis.js";
 import pushRouter from "./routes/push.js";
 import usersRouter from "./routes/users.js";
@@ -940,6 +941,7 @@ app.use("/api/auth", oauthRouter);
 // Ahead of the /api/me routers so /api/me/skills/* is never offered to them first.
 app.use("/api/me/skills", skillsRouter);
 app.use("/api/me/mission", missionRouter);
+app.use("/api/me/readiness", readinessRouter);
 app.use("/api/me/submissions", analysisRouter);
 app.use("/api/me", meRouter);
 // Privacy, export and deletion (routes/account.ts) — none of its paths is one of meRouter's.

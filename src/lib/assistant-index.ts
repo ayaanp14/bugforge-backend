@@ -223,6 +223,9 @@ const ALIASES: Record<string, string[]> = {
   language: ["language"],
   limit: ["allowance", "plan"],
   quota: ["allowance", "plan"],
+  // "how ready am I for TCS" — the page calls it readiness, and TCS is on every placement-test chunk.
+  ready: ["readiness", "target"],
+  prepared: ["readiness"],
   // "my old interviews" — the pages call it history.
   past: ["history"],
   old: ["history"],
