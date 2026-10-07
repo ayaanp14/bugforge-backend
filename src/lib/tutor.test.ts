@@ -135,3 +135,12 @@ test("text streams at once; only a line that could still open a fence waits, and
   // An unclosed block at the end stays held.
   assert.equal(through(1, "Try:\n```js\nlet a = 1;", 3), `Try:\n${HELD_BACK}\n`);
 });
+
+test("a climb tells the model to give the new rung's help, not only a question", () => {
+  const climbed = buildTutorMessages({ ...CTX, rung: 1, climbed: true }, "SYSTEM");
+  const reminder = climbed[climbed.length - 2]!.content;
+  assert.match(reminder, /just pressed "More help"/);
+  assert.match(reminder, /the brute force/);
+  const asked = buildTutorMessages({ ...CTX, rung: 1 }, "SYSTEM");
+  assert.doesNotMatch(asked[asked.length - 2]!.content, /More help/);
+});

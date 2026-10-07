@@ -167,6 +167,8 @@ export interface TutorContext {
   lastSubmission: { verdict: string; passed: number; total: number; headline: string | null; review: string | null } | null;
   history: TutorTurnText[];
   message: string;
+  /** The student pressed "More help" to reach this rung with this message. */
+  climbed?: boolean;
 }
 
 export type ChatMessage = { role: "system" | "user" | "assistant"; content: string };
@@ -251,7 +253,14 @@ export function buildTutorMessages(ctx: TutorContext, system: string): ChatMessa
     { role: "system", content: rungBlock },
     ...history,
     { role: "system", content: work.join("\n\n") },
-    { role: "system", content: `Reminder — rung ${rungOf(ctx.rung)}, ${rung.label}: you must not ${rung.mayNot}. Answer the student's message below at this rung.` },
+    {
+      role: "system",
+      content:
+        `Reminder — rung ${rungOf(ctx.rung)}, ${rung.label}: you must not ${rung.mayNot}. Answer the student's message below at this rung.` +
+        // A climb is the student asking for this rung's help. Answered with
+        // only a question (seen at Approach on 2026-10-07), More help gave none.
+        (ctx.climbed ? ` The student has just pressed "More help" to reach this rung: give this rung's help now — ${rung.may} — and only then hand the turn back.` : ""),
+    },
     { role: "user", content: clip(ctx.message, TUTOR_LIMITS.message) },
   ];
 }

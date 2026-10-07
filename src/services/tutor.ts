@@ -257,6 +257,7 @@ export async function tutorReply(
         : null,
       history: recent.reverse().map((t): TutorTurnText => ({ role: t.role === "tutor" ? "tutor" : "student", content: t.content })),
       message,
+      climbed: step.climbed,
     },
     system,
   );
