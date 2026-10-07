@@ -134,6 +134,13 @@ const QUESTIONS: Array<[string, RegExp, string?]> = [
   ["I skipped the welcome question, can I answer it later", /\*\*Tell us\*\* if you skipped/],
   ["do the plan steps tick automatically", /Steps tick themselves/],
   ["what does the weekly digest contain", /one suggestion for what you said you are preparing for/],
+  ["how is my skill score calculated", /each problem, hunt or question counts once/],
+  ["why is my arrays skill stuck at 55%", /easy work alone can never take a skill past 55%/],
+  ["does opening the hints lower my skill", /opening the hints first counts 0\.6/],
+  ["when should I review a topic again", /review schedule of 2, 7, 21, 45 and 90 days/],
+  ["how is my daily mission chosen", /in this order of priority: a problem you left a draft on/],
+  ["can I change how much time I have today", /sets the time you have — 15 minutes to 4 hours/],
+  ["how do I mark a tutorial done in my mission", /\*\*Mark done\*\*, because reading leaves no record/],
   // Follow-ups: the answer is only reachable through the previous question.
   ["how long does it last?", /expires after \*\*2 hours\*\*/, "how do private duel rooms work"],
   ["and elite?", /\*\*Elite\*\* — /, "how much does the pro plan cost"],

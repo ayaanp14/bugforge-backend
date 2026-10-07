@@ -19,6 +19,7 @@ import { lessonsForTopics } from "../services/roadmap-lessons.js";
 import { forgetProblemSeo } from "../services/seo.js";
 import { forgetJudgeSuite } from "../lib/test-suite-cache.js";
 import { filterCatalogue, seededShuffle, sortCatalogue, type CatalogueFilter } from "../lib/catalogue-filter.js";
+import { ENGAGEMENT_EVENTS, recordEngagement, type EngagementEvent } from "../services/skill-profile.js";
 
 const router = Router();
 
@@ -650,6 +651,27 @@ router.get("/:slug/editorial", optionalAuth, browserCache(SEEDED_CONTENT_MAX_AGE
     console.error("GET /api/problems/:slug/editorial error:", err);
     res.status(500).json({ error: "Internal server error" });
   }
+});
+
+// 2c. POST /api/problems/[slug]/engagement { event: "open" | "hints" | "editorial" }
+//     The workbench's note that the problem, its hints or its editorial were
+//     shown to a member — the skill profile's evidence of help used before a
+//     solve (services/skill-profile.ts). The two reads above stay shared and
+//     browser-cached for everyone, which is why this is its own write rather
+//     than something they record; first times only, so repeats are no-ops.
+router.post("/:slug/engagement", requireAuth, async (req, res) => {
+  const event = (req.body as { event?: unknown } | undefined)?.event;
+  if (typeof event !== "string" || !ENGAGEMENT_EVENTS.has(event)) {
+    res.status(400).json({ error: "event must be open, hints or editorial" });
+    return;
+  }
+  const problemId = await problemIdBySlug(String(req.params.slug));
+  if (!problemId) {
+    res.status(404).json({ error: "Problem not found" });
+    return;
+  }
+  await recordEngagement(req.user!.userId, problemId, event as EngagementEvent);
+  res.status(204).end();
 });
 
 // 3. POST /api/problems — Create new problem (Admin)

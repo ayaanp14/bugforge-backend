@@ -13,6 +13,8 @@ import billingRouter from "./routes/billing.js";
 import campusRouter from "./routes/campus.js";
 import meRouter from "./routes/me.js";
 import accountRouter from "./routes/account.js";
+import skillsRouter from "./routes/skills.js";
+import missionRouter from "./routes/mission.js";
 import pushRouter from "./routes/push.js";
 import usersRouter from "./routes/users.js";
 import problemsRouter, { forgetProblemNumbers } from "./routes/problems.js";
@@ -932,6 +934,9 @@ app.use(["/api/auth/forgot-password", "/api/auth/resend-verification"], otpReque
 // Routes
 app.use("/api/auth", authRouter);
 app.use("/api/auth", oauthRouter);
+// Ahead of the /api/me routers so /api/me/skills/* is never offered to them first.
+app.use("/api/me/skills", skillsRouter);
+app.use("/api/me/mission", missionRouter);
 app.use("/api/me", meRouter);
 // Privacy, export and deletion (routes/account.ts) — none of its paths is one of meRouter's.
 app.use("/api/me", accountRouter);

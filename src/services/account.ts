@@ -43,7 +43,7 @@ export async function buildAccountExport(userId: string): Promise<Record<string,
       website: true, github: true, linkedin: true, twitter: true, readme: true,
       xp: true, questionsXp: true, bugsXp: true, rating: true,
       remindStreak: true, remindDailyKata: true, weeklyDigest: true, profileHidden: true, preferredLanguage: true,
-      goal: true, level: true, goalDetails: true, onboardedAt: true,
+      goal: true, level: true, goalDetails: true, onboardedAt: true, dailyMinutes: true,
       createdAt: true, updatedAt: true,
       stats: { select: { problemsSolved: true, bugsFixed: true, pairSessions: true, currentStreak: true, longestStreak: true, lastActive: true } },
       accounts: { select: { provider: true, providerAccountId: true } },
@@ -54,12 +54,12 @@ export async function buildAccountExport(userId: string): Promise<Record<string,
 
   // Independent reads; the pool queues what it cannot run at once.
   const [
-    submissions, drafts, timers, bugSubmissions, sqlSubmissions,
+    submissions, drafts, timers, engagement, bugSubmissions, sqlSubmissions,
     interviews, savedInterviews, aptitude, placement, skills, credentials,
     contests, duels, rooms, posts, comments, likes, commentLikes, saved, votes, reports,
     following, followers, affinities, feedback, assistant, roadmap,
     enrollments, lessons, exercises, resumes, subscriptions, orders,
-    notifications, shareCards, orgs, entries, tournamentSubmissions, campus, events, pushDevices,
+    notifications, shareCards, orgs, entries, tournamentSubmissions, campus, events, pushDevices, missionDays,
   ] = await Promise.all([
     prisma.submission.findMany({
       where, ...newest, orderBy: { submittedAt: "desc" },
@@ -67,6 +67,8 @@ export async function buildAccountExport(userId: string): Promise<Record<string,
     }),
     prisma.codeDraft.findMany({ where, ...newest, select: { problem: { select: { slug: true } }, language: true, code: true, updatedAt: true } }),
     prisma.problemTimer.findMany({ where, ...newest, select: { problem: { select: { slug: true } }, elapsedSeconds: true, updatedAt: true } }),
+    // When each problem, its hints and its editorial were first opened (the skill profile's evidence of help).
+    prisma.problemEngagement.findMany({ where, ...newest, select: { problem: { select: { slug: true } }, openedAt: true, hintsAt: true, editorialAt: true } }),
     prisma.bugSubmission.findMany({
       where, ...newest, orderBy: { submittedAt: "desc" },
       select: { challenge: { select: { slug: true, title: true } }, editedFiles: true, verdict: true, passedTests: true, totalTests: true, timeTakenSecs: true, submittedAt: true },
@@ -152,6 +154,8 @@ export async function buildAccountExport(userId: string): Promise<Record<string,
     prisma.appEvent.findMany({ where, take: EXPORT_EVENT_CAP, orderBy: { createdAt: "desc" }, select: { name: true, path: true, props: true, platform: true, createdAt: true } }),
     // The browsers push is on for — when, not the push service's address or keys.
     prisma.pushSubscription.findMany({ where, select: { createdAt: true, lastPushAt: true } }),
+    // Each day's mission: what was set, the minutes chosen, what was ticked or skipped by hand.
+    prisma.missionDay.findMany({ where, ...newest, orderBy: { day: "desc" }, select: { day: true, minutes: true, items: true, marks: true, createdAt: true } }),
   ]);
 
   return {
@@ -161,7 +165,7 @@ export async function buildAccountExport(userId: string): Promise<Record<string,
       "checks are not included; your answers, code and scores are.",
     exportedAt: new Date().toISOString(),
     profile,
-    coding: { submissions, drafts, timers },
+    coding: { submissions, drafts, timers, engagement },
     bugHunts: { submissions: bugSubmissions },
     sql: { submissions: sqlSubmissions },
     interviews: { sessions: interviews, saved: savedInterviews },
@@ -180,6 +184,7 @@ export async function buildAccountExport(userId: string): Promise<Record<string,
     feedback,
     assistant,
     roadmap: { chests: roadmap },
+    missions: missionDays,
     studyPlans: { enrollments, lessons, exercises },
     resumes,
     billing: { subscriptions, orders },

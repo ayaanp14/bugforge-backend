@@ -125,6 +125,12 @@ model User {
   /// asked, which is what decides whether /welcome or the dashboard prompt is
   /// shown (onboardingStateOf).
   onboardedAt           DateTime?
+  /// The minutes a day the account says it has (lib/mission MINUTE_CHOICES),
+  /// set from the home's mission; null = never chosen, read as DEFAULT_MINUTES.
+  /// On the account rather than only on the day so tomorrow's mission starts
+  /// at today's choice, and /api/me can size the mission before it loads.
+  dailyMinutes          Int?
+  missionDays           MissionDay[]
   accounts              Account[]
   githubConnection      GitHubConnection?
   bugSubmissions        BugSubmission[]
@@ -138,6 +144,7 @@ model User {
   problemSolves         ProblemSolve[]
   stats                 UserStats?
   problemTimers         ProblemTimer[]
+  problemEngagements    ProblemEngagement[]
   savedInterviews       SavedInterview[]
   mockSessions          MockInterviewSession[]
   subscriptions         Subscription[]
@@ -217,6 +224,7 @@ model Problem {
   problemSolves         ProblemSolve[]
   testCases             TestCase[]
   problemTimers         ProblemTimer[]
+  engagements           ProblemEngagement[]
   dailyContests         DailyContest[]
   mockCodeAnswers       MockCodeAnswer[]
   skillCodeAnswers      SkillCodeAnswer[]
@@ -279,6 +287,59 @@ model ProblemTimer {
   problem        Problem   @relation(fields: [problemId], references: [id], onDelete: Cascade)
 
   @@unique([userId, problemId])
+}
+
+/// One account's first contact with one problem: when it was opened, when
+/// its hints were first shown and when its editorial was — the evidence the
+/// skill profile (lib/skill-score.ts) cannot get from `Submission`, which
+/// knows how a problem was solved but not whether the answer was read first.
+///
+/// First times only, each written once (`POST /api/problems/:slug/engagement`
+/// sets a column only while it is null): the question the scoring asks is
+/// "was help open before the first accept", and that needs the first time,
+/// never the latest. A solve is timed from `openedAt` to the first accept
+/// when that falls within one sitting (SOLVE_WINDOW_SECS); rows exist only
+/// from 2026-10-07, so older solves are simply untimed and unassisted.
+///
+/// The natural key is the primary key, like ProblemNumber: there is nothing
+/// else to identify, and an upsert on it is one statement.
+model ProblemEngagement {
+  userId      String
+  problemId   String
+  openedAt    DateTime  @default(now())
+  hintsAt     DateTime?
+  editorialAt DateTime?
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  problem     Problem   @relation(fields: [problemId], references: [id], onDelete: Cascade)
+
+  @@id([userId, problemId])
+  @@index([problemId])
+}
+
+/// One account's mission for one day (lib/mission.ts): the items chosen and
+/// the ticks made by hand. Stored, unlike the skill profile it is built from,
+/// because the list must hold still through the day — re-picked on every
+/// read, an item would vanish the moment it was solved (the profile stops
+/// recommending a solved problem). Which items are done is still read from
+/// the evidence (services/mission.ts); `marks` holds only what no row can
+/// say: a roadmap lesson read, an item skipped.
+///
+/// `day` is the platform calendar's date (lib/clock dayKey, IST), so the
+/// mission turns over with the streak. Old days are kept as the record of
+/// what was set and done — the outcome analysis Phase 5 needs.
+model MissionDay {
+  userId    String
+  day       String   @db.VarChar(10)
+  minutes   Int
+  /// MissionItem[], in display order.
+  items     Json
+  /// { [itemId]: "done" | "skipped" }.
+  marks     Json
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([userId, day])
 }
 
 model TestCase {

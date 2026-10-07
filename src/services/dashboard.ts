@@ -19,6 +19,10 @@ import { credentialsFor } from "./skill-credentials.js";
 import { onboardingPlanFor } from "./onboarding-plan.js";
 import { isLevel, type Level } from "../lib/onboarding.js";
 import { upNext, type Difficulty } from "../lib/onboarding-plan.js";
+// And again: skill-profile imports getCatalogue from here.
+import { invalidateSkillProfile } from "./skill-profile.js";
+// And again: mission imports invalidateDashboard and loadProblemState from here.
+import { missionFor } from "./mission.js";
 
 /**
  * Query functions shared by the per-widget /api/me routes and the aggregated
@@ -674,7 +678,7 @@ const SKILLS_SHOWN = 6;
  * coding problems was being offered the catalogue's newest, as likely a Hard
  * as anything. No level keeps the catalogue's own order.
  */
-export function computeProblemInsights(state: ProblemState, level: Level | null = null) {
+export function computeProblemInsights(state: ProblemState, level: Level | null = null, exclude: ReadonlySet<string> = new Set()) {
   const { catalogue, solved, attempted } = state;
 
   const topicMap = new Map<string, { tag: string; total: number; solved: number }>();
@@ -700,6 +704,8 @@ export function computeProblemInsights(state: ProblemState, level: Level | null 
 
     if (!isSolved) {
       unsolvedCount++;
+      // Already on today's mission: "Up next" offers something else.
+      if (exclude.has(p.id)) continue;
       if (isAttempting) attempting.push(p);
       else {
         if (untouched.length < 3) untouched.push(p);
@@ -727,8 +733,9 @@ export function computeProblemInsights(state: ProblemState, level: Level | null 
 // v2: compact heatmap and a trimmed skills list (2026-09-25) — a v1 payload
 // left in Redis must not be served in the new shape's place. v3: the
 // profile's Battles tournaments (2026-09-25). v4: `plan` and the level's
-// "Up next" (2026-10-06).
-const dashboardKey = (userId: string) => `dash:v4:${userId}`;
+// "Up next" (2026-10-06). v5: `mission`, and "Up next" without the
+// mission's problems (2026-10-07).
+const dashboardKey = (userId: string) => `dash:v5:${userId}`;
 
 /**
  * Drop everything cached about a user — the dashboard aggregate and /api/me.
@@ -747,6 +754,8 @@ export function invalidateDashboard(userId: string): void {
   invalidate(heatmapKey(userId));
   for (const kind of RANK_KINDS) invalidate(rankKey(userId, kind));
   invalidateMe(userId);
+  // The skill profile reads the same evidence (services/skill-profile.ts).
+  invalidateSkillProfile(userId);
 }
 
 /**
@@ -791,6 +800,17 @@ async function buildDashboard(userId: string) {
     study: studyPromise,
     me: mePromise,
   });
+  // Today's mission (services/mission.ts) reads the same loads as the plan,
+  // and the plan itself — its next step is one of the day's items.
+  const continuePromise = getContinueSolving(userId);
+  const missionPromise = missionFor(userId, {
+    problemState: problemStatePromise,
+    dailyContest: contestPromise,
+    study: studyPromise,
+    plan: planPromise,
+    continueSolving: continuePromise,
+    row: userRowPromise,
+  });
   const [
     me,
     counters,
@@ -809,6 +829,7 @@ async function buildDashboard(userId: string) {
     credentials,
     plan,
     userRow,
+    mission,
   ] = await Promise.all([
     mePromise,
     queryUserCounters(userId),
@@ -818,7 +839,7 @@ async function buildDashboard(userId: string) {
     rankPromise,
     getLeaderboard("combined"),
     getPairingHistory(userId, 1, 3, false),
-    getContinueSolving(userId),
+    continuePromise,
     getBugInsights(),
     contestPromise,
     // The profile's badge row: the road's chests, opened or not.
@@ -832,15 +853,18 @@ async function buildDashboard(userId: string) {
     // The onboarding checklist, null when no goal is set (never fails the page).
     planPromise,
     userRowPromise,
+    // Today's mission, null when it could not be built (never fails the page).
+    missionPromise,
   ]);
 
   const difficultyStats = computeDifficultyStats(problemState);
   const level = userRow?.level;
-  const problemInsights = computeProblemInsights(problemState, isLevel(level) ? level : null);
+  const onMission = new Set((mission?.items ?? []).flatMap((i) => (i.evidence && "problemId" in i.evidence ? [i.evidence.problemId] : [])));
+  const problemInsights = computeProblemInsights(problemState, isLevel(level) ? level : null, onMission);
   const { social, savedInterviews } = counters;
   // The SQL problems are code (lib/sql-problems), so their count needs no
   // query; the account's own count is `me.stats.sqlSolved`.
   const sqlInsights = { total: SQL_PROBLEMS.length };
 
-  return { me, social, difficultyStats, submissions, heatmap, rank, leaderboard, pairing, continueSolving, problemInsights, bugInsights, sqlInsights, savedInterviews, dailyContest, roadmap, study, tournaments, credentials, plan };
+  return { me, social, difficultyStats, submissions, heatmap, rank, leaderboard, pairing, continueSolving, problemInsights, bugInsights, sqlInsights, savedInterviews, dailyContest, roadmap, study, tournaments, credentials, plan, mission };
 }
