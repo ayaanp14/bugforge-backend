@@ -1900,6 +1900,14 @@ function escapeXml(s: string): string {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }
 
+/**
+ * When every problem page last changed in substance: 2026-10-09, the lead
+ * sentence, the editorial-led description, the hints and the Java/C++
+ * solutions (lib/problem-intro) — and, rendered, a visitor's hints and
+ * editorial under the statement. The problems sitemap's lastmod floor.
+ */
+const PROBLEM_PAGES_REVISED = new Date("2026-10-09T00:00:00Z");
+
 function urlset(entries: Array<{ path: string; lastmod?: Date | null }>): string {
   const rows = entries.map((e) => {
     const loc = `    <loc>${escapeXml(SITE_ORIGIN + e.path)}</loc>`;
@@ -1922,12 +1930,19 @@ export function sitemapXml(name: string): Promise<string | null> {
   return cached(`seo:sitemap:v3:${name}`, SITEMAP_TTL_MS, async () => {
     switch (name as SitemapName) {
       case "problems": {
-        // No updatedAt on the problem table; a creation date would only say
-        // when the row appeared, so no lastmod is claimed at all.
+        // No updatedAt on the problem table (a seed rewrites every row, so it
+        // would move for all at once anyway). What does move every page at
+        // once is the page itself: PROBLEM_PAGES_REVISED, the date the page's
+        // content changed for every problem — bump it only for such a change,
+        // never for a deploy. A problem added since says its own creation.
         // A second copy of a problem (PROBLEM_CANONICAL) is left out, as a
         // restated aptitude question is below: a sitemap lists canonicals.
-        const rows = await prisma.problem.findMany({ where: { isPublished: true }, select: { slug: true }, orderBy: { createdAt: "asc" } });
-        return urlset(rows.filter((r) => !(r.slug in PROBLEM_CANONICAL)).map((r) => ({ path: `/problems/${r.slug}` })));
+        const rows = await prisma.problem.findMany({ where: { isPublished: true }, select: { slug: true, createdAt: true }, orderBy: { createdAt: "asc" } });
+        return urlset(
+          rows
+            .filter((r) => !(r.slug in PROBLEM_CANONICAL))
+            .map((r) => ({ path: `/problems/${r.slug}`, lastmod: r.createdAt > PROBLEM_PAGES_REVISED ? r.createdAt : PROBLEM_PAGES_REVISED })),
+        );
       }
       case "bug-hunts": {
         const rows = await prisma.bugChallenge.findMany({ where: { isPublished: true }, select: { id: true, slug: true }, orderBy: { createdAt: "asc" } });
