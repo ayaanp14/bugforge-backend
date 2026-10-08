@@ -31,7 +31,7 @@ import { SQL_PROBLEMS, SQL_TOPICS } from "../lib/sql-problems/index.js";
 import { sqlNumber, sqlProblemPage, sqlSitemapEntries } from "./sql-problems.js";
 import { NOTE_SUBJECTS, subjectByKey } from "../lib/cs-notes.js";
 import { notePage, notesSitemapEntries, notesSyllabus } from "./cs-notes.js";
-import { experienceCompanies, experienceList, type ExperienceRow } from "./interview-experiences.js";
+import { experienceById, experienceCompanies, experienceIdOf, experienceList, experienceSitemapEntries, type ExperienceRow } from "./interview-experiences.js";
 import { slugify } from "../lib/slug.js";
 import { badgeById, badgeFeat, type BadgeTrack } from "../lib/badges.js";
 
@@ -105,6 +105,12 @@ export interface PageFacts {
   /** A roadmap lesson's level ("Beginner" …) and the date it was last revised (YYYY-MM-DD). */
   level?: string;
   updated?: string;
+  /** A member's post (an interview experience): when it was written, by whom (and their profile, unless hidden), and its likes and comments. */
+  published?: string;
+  author?: string;
+  authorPath?: string;
+  likes?: number;
+  comments?: number;
   /** Home → section → … → this page. The last item is the page itself. */
   trail?: Crumb[];
 }
@@ -218,6 +224,11 @@ export const titles = {
   // A CS note and a notes subject: their authored search titles (lib/cs-notes).
   note: (searchTitle: string) => branded(searchTitle),
   noteSubject: (searchTitle: string) => branded(searchTitle),
+  // "amazon sde intern interview experience": the query, word for word,
+  // with the year and how the candidate came in, so two accounts of one
+  // company's role never share a title. `channel` is the words, or null.
+  experience: (company: string, role: string, year: number, channel: string | null) =>
+    branded(`${company} ${role} Interview Experience (${year}${channel ? `, ${channel}` : ""})`),
 };
 
 /**
@@ -595,6 +606,7 @@ async function pageHead(path: string): Promise<PageHead | PageRedirect | null> {
   if ((m = /^\/notes\/([a-z0-9-]+)$/.exec(path))) return noteSubjectHead(m[1]);
   if ((m = /^\/notes\/([a-z0-9-]+)\/([a-z0-9][a-z0-9-]*)$/.exec(path))) return noteHead(m[1], m[2]);
   if (path === "/interview-experiences") return experiencesIndex();
+  if ((m = /^\/interview-experiences\/([a-z0-9-]+)\/([a-z0-9-]+)$/.exec(path))) return experienceHead(path, m[2]);
   return null;
 }
 
@@ -1855,7 +1867,7 @@ function noteHead(subjectKey: string, slug: string): PageHead | null {
 const OUTCOME_WORD: Record<string, string> = { selected: "Selected", rejected: "Not selected", pending: "Result pending", withdrew: "Withdrew" };
 
 const experienceHtml = (e: ExperienceRow) =>
-  `<article><h3>${h(e.title)}</h3><p>${h(OUTCOME_WORD[e.experience.outcome] ?? e.experience.outcome)} · ${h(titleCase(e.experience.difficulty))} · ${plural(e.experience.rounds.length, "round")}: ${h(
+  `<article><h3>${link(e.path, e.title)}</h3><p>${h(OUTCOME_WORD[e.experience.outcome] ?? e.experience.outcome)} · ${h(titleCase(e.experience.difficulty))} · ${plural(e.experience.rounds.length, "round")}: ${h(
     e.experience.rounds.map((r) => r.name).join(", "),
   )}</p><p>${h(e.excerpt)}</p>${e.experience.problems.length ? `<p>Problems asked: ${e.experience.problems.map((p) => link(`/problems/${p.slug}`, p.title)).join(" · ")}</p>` : ""}</article>`;
 
@@ -1872,6 +1884,66 @@ async function companyExperiencesHtml(label: string, slug: string): Promise<stri
   } catch {
     return "";
   }
+}
+
+/** Plain text a member wrote, as paragraphs: blank lines part them, single breaks stay breaks. */
+const paragraphs = (text: string) =>
+  text.split(/\n\s*\n/).map((p) => p.trim()).filter(Boolean).map((p) => `<p>${h(p).replace(/\n/g, "<br>")}</p>`).join("");
+
+/** "off campus" — the words a channel is written in, in a title (lib/interview-experience experienceTitle). */
+const CHANNEL_WORDS: Record<string, string> = { "on-campus": "On Campus", "off-campus": "Off Campus", referral: "Referral" };
+
+/**
+ * One member's account of one interview, as its own indexable page. Only
+ * what they wrote: the company, role, year, how they came in, the outcome,
+ * every round with its detail, the catalogue problems they named and their
+ * notes. A page asked for under any other slug for the same post answers
+ * with its own address (a 301), so the id is the key.
+ */
+async function experienceHead(path: string, slug: string): Promise<PageHead | PageRedirect | null> {
+  const id = experienceIdOf(slug);
+  const row = id ? await experienceById(id) : null;
+  if (!row) return null;
+  if (row.path !== path) return { redirect: row.path };
+  const e = row.experience;
+  const outcome = OUTCOME_WORD[e.outcome] ?? e.outcome;
+  const companyCrumb = e.companySlug
+    ? { name: e.company, path: `/challenges/company/${e.companySlug}` }
+    : { name: e.company, path: `/interview-experiences?company=${row.path.split("/")[2]}` };
+  const trail: Crumb[] = [HOME, SECTION.experiences, companyCrumb, { name: row.title, path: row.path }];
+  const rounds = e.rounds.map((r, i) => `<section><h3>Round ${i + 1}: ${h(r.name)}</h3>${paragraphs(r.detail)}</section>`).join("");
+  const content =
+    factList([
+      ["Company", e.companySlug ? link(`/challenges/company/${e.companySlug}`, e.company) : h(e.company), { html: true }],
+      ["Role", e.role],
+      ["Year", String(e.year)],
+      ["How they applied", CHANNEL_WORDS[e.channel]],
+      ["Outcome", outcome],
+      ["Difficulty", titleCase(e.difficulty)],
+      ["Written by", row.authorHidden || !row.author.username ? (row.author.name ? h(row.author.name) : undefined) : link(`/u/${row.author.username}`, row.author.name ?? row.author.username), { html: true }],
+    ]) +
+    section(plural(e.rounds.length, "round"), rounds, "rounds") +
+    section("Problems asked", e.problems.length ? linkList(e.problems.map((p) => ({ href: `/problems/${p.slug}`, label: p.title }))) : "", "problems") +
+    section("Notes", row.notes ? paragraphs(row.notes) : "", "notes");
+  const description = summarise(`${outcome} · ${plural(e.rounds.length, "round")}: ${e.rounds.map((r) => r.name).join(", ")}. ${row.excerpt}`);
+  return {
+    path: row.path,
+    title: titles.experience(e.company, e.role, e.year, CHANNEL_WORDS[e.channel] ?? null),
+    description,
+    facts: {
+      company: e.company,
+      difficulty: titleCase(e.difficulty),
+      published: row.createdAt.slice(0, 10),
+      updated: row.updatedAt.slice(0, 10),
+      author: row.author.name ?? row.author.username ?? undefined,
+      authorPath: row.authorHidden || !row.author.username ? undefined : `/u/${row.author.username}`,
+      likes: row.likeCount,
+      comments: row.commentCount,
+      trail,
+    },
+    content,
+    crumb: row.title,
+  };
 }
 
 /** The experiences index's child list: the companies, then the latest experiences. */
@@ -1891,7 +1963,7 @@ async function experiencesIndex(): Promise<PageHead> {
 
 /* ── Sitemaps ─────────────────────────────────────────────────── */
 
-export const SITEMAP_NAMES = ["problems", "bug-hunts", "study-plans", "aptitude", "tests", "categories", "roadmap", "sql", "notes"] as const;
+export const SITEMAP_NAMES = ["problems", "bug-hunts", "study-plans", "aptitude", "tests", "categories", "roadmap", "sql", "notes", "experiences"] as const;
 export type SitemapName = (typeof SITEMAP_NAMES)[number];
 
 const SITEMAP_TTL_MS = 60 * 60 * 1000;
@@ -2010,6 +2082,9 @@ export function sitemapXml(name: string): Promise<string | null> {
         // The subjects and the notes, each note with its authored `updated`
         // date; /notes itself is a prerendered index page (sitemap-pages.xml).
         return urlset(notesSitemapEntries().filter((e) => e.path !== "/notes"));
+      case "experiences":
+        // Members' interview experiences, each dated by its last edit.
+        return urlset(await experienceSitemapEntries());
     }
   });
 }

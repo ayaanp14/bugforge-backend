@@ -12,7 +12,7 @@ import { invalidateUnread } from "../services/notifications.js";
 import { invalidateDashboard, querySocialCounts } from "../services/dashboard.js";
 import { EXPERIENCE_TAG, companyFeedTag, parseExperience } from "../lib/interview-experience.js";
 import { pushNotifications } from "../lib/push.js";
-import { experienceCompanies, experienceList, forgetExperiences } from "../services/interview-experiences.js";
+import { experienceCompanies, experienceList, experiencePathOfPost, forgetExperiences } from "../services/interview-experiences.js";
 import type { ExperienceOutcome } from "../lib/interview-experience.js";
 
 const router = Router();
@@ -497,6 +497,8 @@ async function decoratePosts(userId: string | null, page: Candidate[], following
       content: p.content,
       meta: p.meta,
       tags: p.tags.map((t) => t.tag),
+      // An interview experience's indexable page (services/interview-experiences), which its card links to.
+      experiencePath: p.type === "experience" ? experiencePathOfPost(p.id, p.meta) : null,
       createdAt: p.createdAt,
       editedAt: p.editedAt ?? null,
       resolvedCommentId: p.resolvedCommentId ?? null,

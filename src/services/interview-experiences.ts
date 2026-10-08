@@ -24,6 +24,8 @@ export interface ExperienceProblem {
 
 export interface ExperienceRow {
   id: string;
+  /** Its own page (experiencePath). */
+  path: string;
   createdAt: string;
   title: string;
   author: { id: string; name: string | null; username: string | null; avatar_url: string | null };
@@ -71,6 +73,87 @@ function experienceOf(meta: unknown): ExperienceRow["experience"] | null {
 /** The filter key for a company as typed or as a catalogue name: the tag every experience post carries for it. */
 export const companyKey = (company: string): string => slugify(canonicalCompany(company) ?? company, 30);
 
+/**
+ * An experience's own page, indexable (since 2026-10-09; until then they
+ * lived only at the noindex /community/p/:id):
+ * /interview-experiences/<company key>/<role and year>-<post id>. The id is
+ * the key — the words before it are for the reader and the result, and a
+ * page asked for under other words is sent here with a 301
+ * (services/seo.ts experienceHead), so an edit to nothing can move it.
+ */
+export function experiencePath(id: string, e: { company: string; role: string; year: number }): string {
+  return `/interview-experiences/${companyKey(e.company)}/${slugify(`${e.role} ${e.year}`, 60)}-${id}`;
+}
+
+/** The post id at the end of an experience page's last segment, or null. Post ids are cuids: lower-case letters and digits, no hyphen. */
+export function experienceIdOf(slug: string): string | null {
+  const id = slug.slice(slug.lastIndexOf("-") + 1);
+  return /^[a-z0-9]{20,40}$/.test(id) ? id : null;
+}
+
+/** An experience post's page, from its stored meta — null for a post that is not one. */
+export function experiencePathOfPost(id: string, meta: unknown): string | null {
+  const e = experienceOf(meta);
+  return e ? experiencePath(id, e) : null;
+}
+
+export interface ExperiencePage extends ExperienceRow {
+  /** The author's closing notes, whole. */
+  notes: string;
+  /** When the post was last written: its first edit, or its creation. */
+  updatedAt: string;
+  authorHidden: boolean;
+}
+
+/** One public experience by its post id, for its page's edge head. */
+export function experienceById(id: string): Promise<ExperiencePage | null> {
+  return cachedShared(`${PREFIX}one:${id}`, TTL_SECONDS, async () => {
+    const p = await prisma.post.findFirst({
+      where: { id, type: "experience", visibility: "public" },
+      select: {
+        id: true,
+        createdAt: true,
+        editedAt: true,
+        content: true,
+        meta: true,
+        user: { select: { id: true, name: true, username: true, avatar_url: true, profileHidden: true } },
+        _count: { select: { likes: true, comments: true } },
+      },
+    });
+    const experience = p ? experienceOf(p.meta) : null;
+    if (!p || !experience) return null;
+    const { profileHidden, ...author } = p.user;
+    return {
+      id: p.id,
+      path: experiencePath(p.id, experience),
+      createdAt: p.createdAt.toISOString(),
+      updatedAt: (p.editedAt ?? p.createdAt).toISOString(),
+      title: experienceTitle(experience),
+      author,
+      authorHidden: profileHidden,
+      experience,
+      excerpt: cut((p.content.trim() || experience.rounds[0]?.detail || "").replace(/\s+/g, " ")),
+      notes: p.content.trim(),
+      likeCount: p._count.likes,
+      commentCount: p._count.comments,
+    };
+  });
+}
+
+/** Every public experience's page, for the sitemap: the address and when it was last written. */
+export async function experienceSitemapEntries(): Promise<Array<{ path: string; lastmod: Date }>> {
+  const posts = await prisma.post.findMany({
+    where: { type: "experience", visibility: "public" },
+    select: { id: true, meta: true, createdAt: true, editedAt: true },
+    orderBy: { createdAt: "asc" },
+    take: 45_000,
+  });
+  return posts.flatMap((p) => {
+    const path = experiencePathOfPost(p.id, p.meta);
+    return path ? [{ path, lastmod: p.editedAt ?? p.createdAt }] : [];
+  });
+}
+
 export interface ExperienceQuery {
   /** A company key (companyKey), or omitted for all. */
   company?: string | null;
@@ -114,6 +197,7 @@ export async function experienceList(q: ExperienceQuery): Promise<{ rows: Experi
       if (!experience) continue;
       rows.push({
         id: p.id,
+        path: experiencePath(p.id, experience),
         createdAt: p.createdAt.toISOString(),
         title: experienceTitle(experience),
         author: p.user,
