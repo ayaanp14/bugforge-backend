@@ -5,6 +5,7 @@ import { escapeHtml, markdownOutline, markdownToHtml } from "../lib/markdown-htm
 import { BUG_HUBS, bugHub } from "../lib/bug-hubs.js";
 import { isCompanyTag } from "../lib/companies.js";
 import { PROBLEM_CANONICAL, problemCanonicalSlug } from "../lib/problem-canonical.js";
+import { editorialIdea, problemIntro } from "../lib/problem-intro.js";
 import { renamedCompanyHubSlug } from "../lib/problem-topics.js";
 import { TEST_GUIDES } from "../lib/test-guides.js";
 import { isSkillLevel, LEVEL_LABEL, SKILL_GROUPS, SKILLS, skillDef, skillTopic } from "../lib/skill-catalog.js";
@@ -672,9 +673,15 @@ const hubPath = (hub: { kind: "topic" | "company"; slug: string }) => (hub.kind 
 const hubLinks = (hubs: HubSummary[]) => hubs.map((x) => link(hubPath(x), x.label)).join(", ");
 const problemRow = (p: { slug: string; title: string; difficulty: string }) => ({ href: `/problems/${p.slug}`, label: p.title, note: titleCase(p.difficulty) });
 
-/** The two reference solutions a search most often asks for, then the rest by name. */
+/**
+ * The reference solutions a search most often asks for ("… java solution" is
+ * as common a search as Python's), then the rest by name. Java and C++ joined
+ * on 2026-10-09 with the problem-intro work (lib/problem-intro).
+ */
 const SHOWN_SOLUTIONS: Array<[key: string, label: string, lang: string]> = [
   ["python", "Python", "python"],
+  ["java", "Java", "java"],
+  ["cpp", "C++", "cpp"],
   ["javascript", "JavaScript", "javascript"],
 ];
 const SOLUTION_NAMES: Record<string, string> = {
@@ -682,7 +689,58 @@ const SOLUTION_NAMES: Record<string, string> = {
   python: "Python", ruby: "Ruby", rust: "Rust", swift: "Swift", typescript: "TypeScript",
 };
 
-const problemHeadKey = (slug: string) => `seo:head:problem:v3:${slug}`;
+const problemHeadKey = (slug: string) => `seo:head:problem:v4:${slug}`;
+
+/**
+ * A problem's lead sentence and meta description (lib/problem-intro): the
+ * edge head here and the problem payload (routes/problems.ts — the SPA's
+ * runtime head and the lead above the statement) both take them from this,
+ * so the two can never say different words.
+ *
+ * The description is led by the editorial's idea, in this site's words —
+ * until 2026-10-09 it was the statement's first sentence, which for most of
+ * the catalogue is the sentence every mirror of the problem opens with. A
+ * problem with no editorial keeps the statement's opening (title-led when
+ * another problem shares that sentence).
+ */
+export async function problemSeoText(
+  p: { title: string; difficulty: string; description: string; editorial: string | null; tags: string[] },
+  hubs: { topics: HubSummary[]; companies: HubSummary[] },
+): Promise<{ intro: string; description: string }> {
+  const difficulty = titleCase(p.difficulty);
+  const topicTags = p.tags.filter((t) => !isCompanyTag(t));
+  const companyTags = p.tags.filter(isCompanyTag);
+  const intro = problemIntro({
+    title: p.title,
+    difficulty,
+    topics: hubs.topics.length ? hubs.topics.map((t) => t.label) : topicTags,
+    companies: hubs.companies.length ? hubs.companies.map((c) => c.label) : companyTags,
+  });
+  const idea = editorialIdea(p.editorial);
+  if (idea) {
+    // Whole sentences where they fill the line; when the idea's second
+    // sentence does not fit, the first alone can be a stub ("Two Sum: For
+    // each element the partner it needs is target - x."), so the idea is
+    // cut on a word instead.
+    const lead = `${p.title}: ${idea}`;
+    const sentences = summarise(lead);
+    if (sentences.length >= 110) return { intro, description: sentences };
+    const whole = summarise(lead, "", 10_000);
+    if (whole.length <= DESCRIPTION_MAX) return { intro, description: whole };
+    const cut = whole.slice(0, DESCRIPTION_MAX - 1);
+    return { intro, description: `${cut.slice(0, cut.lastIndexOf(" "))}…` };
+  }
+  // Look-alike problems open with the same sentence (the stock-trading
+  // series, three sentence-counting ones): such a description is led by
+  // the title, as an aptitude question's is (2026-10-01: 7 groups shared one).
+  const plain = summarise(p.description, `${p.title}: a ${difficulty.toLowerCase()} coding problem on ${BRAND}, judged by hidden tests in 13 languages.`);
+  const shared = (await sharedProblemDescriptions()).has(plain);
+  return { intro, description: shared ? `${p.title}: ${summarise(p.description, "", Math.max(60, DESCRIPTION_MAX - p.title.length - 2))}` : plain };
+}
+
+/** The hints as a crawler reads them: each folded under its number, as the page opens them one at a time. */
+const hintsHtml = (hints: string[]) =>
+  `<ol>${hints.map((hint, i) => `<li><details><summary>Hint ${i + 1}</summary>${markdownToHtml(hint, 2_000)}</details></li>`).join("")}</ol>`;
 
 /**
  * What an admin edit to one problem makes stale here: its page head (an
@@ -700,14 +758,18 @@ function problemHead(slug: string): Promise<PageHead | null> {
   return cached(problemHeadKey(slug), HEAD_TTL_MS, async () => {
     const p = await prisma.problem.findFirst({
       where: { slug, isPublished: true },
-      select: { title: true, difficulty: true, description: true, tags: true, editorial: true, solutions: true, timeLimitMs: true, memoryLimitMb: true },
+      select: { title: true, difficulty: true, description: true, tags: true, editorial: true, solutions: true, hints: true, timeLimitMs: true, memoryLimitMb: true },
     });
     if (!p) return null;
     const difficulty = titleCase(p.difficulty);
     const tags = asStrings(p.tags);
     const topics = tags.filter((t) => !isCompanyTag(t));
+    const hints = asStrings(p.hints).filter((x) => x.trim());
     const [hubs, related] = await Promise.all([hubsForTags(tags), relatedProblems(slug, tags, p.difficulty)]);
-    const lessons = await lessonsForTopics(hubs.topics.map((t) => t.slug));
+    const [lessons, seoText] = await Promise.all([
+      lessonsForTopics(hubs.topics.map((t) => t.slug)),
+      problemSeoText({ title: p.title, difficulty: p.difficulty, description: p.description, editorial: p.editorial, tags }, hubs),
+    ]);
     const primary = hubs.topics[0];
     const trail: Crumb[] = [HOME, SECTION.challenges, ...(primary ? [{ name: primary.label, path: hubPath(primary) }] : []), { name: p.title, path: `/problems/${slug}` }];
 
@@ -723,11 +785,13 @@ function problemHead(slug: string): Promise<PageHead | null> {
     const solutionHtml = shown.map(([k, label, lang]) => `<h3>${h(label)}</h3>${codeBlock(lang, solutions[k] as string)}`).join("") +
       (others.length ? `<p>Also on the editorial tab: ${h(others.join(", "))}.</p>` : "");
 
-    // The statement, the editorial (its own headings — approach, why it
-    // works, complexity, pitfalls — arrive one level down from
-    // markdownToHtml), the solutions, and where to go next. Not the hints:
-    // the page opens them one at a time.
+    // The lead in the site's words (lib/problem-intro), the statement, the
+    // hints (each folded, as the page's visitor guide shows them), the
+    // editorial (its own headings — approach, why it works, complexity,
+    // pitfalls — arrive one level down from markdownToHtml), the solutions,
+    // and where to go next.
     const content =
+      `<p class="lead">${h(seoText.intro)}</p>` +
       factList([
         ["Difficulty", difficulty],
         ["Topics", hubs.topics.length ? hubLinks(hubs.topics) : topics.join(", ") || undefined, { html: hubs.topics.length > 0 }],
@@ -737,21 +801,17 @@ function problemHead(slug: string): Promise<PageHead | null> {
         ["Languages", LANGUAGE_LIST],
       ]) +
       section("Problem statement", markdownToHtml(p.description, 24_000, { under: 2 }), "statement") +
+      (hints.length ? section(`Hints for ${p.title}`, hintsHtml(hints), "hints") : "") +
       (p.editorial ? section(`How to solve ${p.title}`, markdownToHtml(p.editorial, 12_000, { under: 2 }), "editorial") : "") +
       (solutionHtml ? section("Reference solution", solutionHtml, "solution") : "") +
       (related.length ? section(primary ? `More ${primary.label.toLowerCase()} problems` : "Related problems", linkList(related.map(problemRow)), "related") : "") +
       (primary ? `<p>${link(hubPath(primary), `All ${primary.count} ${primary.label.toLowerCase()} problems`)} · ${link("/challenges", "the whole catalogue")}</p>` : "") +
       (lessons.length ? `<p>Learn the technique: ${lessons.map((l) => link(`/roadmap/${l.slug}`, l.title)).join(" · ")}</p>` : "");
     const canonical = problemCanonicalSlug(slug);
-    // Look-alike problems open with the same sentence (the stock-trading
-    // series, three sentence-counting ones): such a description is led by
-    // the title, as an aptitude question's is (2026-10-01: 7 groups shared one).
-    const plain = summarise(p.description, `${p.title}: a ${difficulty.toLowerCase()} coding problem on ${BRAND}, judged by hidden tests in 13 languages.`);
-    const shared = (await sharedProblemDescriptions()).has(plain);
     return {
       path: `/problems/${slug}`,
       title: titles.problem(p.title, difficulty),
-      description: shared ? `${p.title}: ${summarise(p.description, "", Math.max(60, DESCRIPTION_MAX - p.title.length - 2))}` : plain,
+      description: seoText.description,
       facts: { difficulty, keywords: topics, trail },
       content,
       crumb: p.title,

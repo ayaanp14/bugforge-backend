@@ -16,7 +16,7 @@ import { problemCanonicalSlug } from "../lib/problem-canonical.js";
 import { isJudgeLanguage } from "../lib/judge0.js";
 import { HUB_PAGE_SIZE, hubIndex, hubPage, hubProblems, hubProgress, hubsForTags, relatedProblems } from "../services/problem-hubs.js";
 import { lessonsForTopics } from "../services/roadmap-lessons.js";
-import { forgetProblemSeo } from "../services/seo.js";
+import { forgetProblemSeo, problemSeoText } from "../services/seo.js";
 import { forgetJudgeSuite } from "../lib/test-suite-cache.js";
 import { filterCatalogue, seededShuffle, sortCatalogue, type CatalogueFilter } from "../lib/catalogue-filter.js";
 import { ENGAGEMENT_EVENTS, recordEngagement, type EngagementEvent } from "../services/skill-profile.js";
@@ -31,7 +31,7 @@ const router = Router();
  * neighbour on either side).
  */
 // v3: the payload carries the problem's `number` (2026-10-03).
-export const PROBLEM_KEY_PREFIX = "problem:v3:";
+export const PROBLEM_KEY_PREFIX = "problem:v4:";
 const problemKey = (slug: string) => `${PROBLEM_KEY_PREFIX}${slug}`;
 
 /**
@@ -148,6 +148,7 @@ const PROBLEM_DETAIL_SELECT = {
   starterCode: true,
   signature: true,
   hints: true,
+  editorial: true,
   testCases: {
     where: { isHidden: false },
     select: { id: true, input: true, expectedOutput: true, orderIndex: true },
@@ -531,9 +532,16 @@ router.get("/:slug", optionalAuth, browserCache(SEEDED_CONTENT_MAX_AGE, { shared
         catalogueNeighbours(problem.slug),
       ]);
 
-      const { numbering, ...statement } = problem;
+      // The editorial is read only for its idea — the meta description's
+      // lead — and never ships here (it has its own endpoint, /:slug/editorial).
+      const { numbering, editorial, ...statement } = problem;
+      const seoText = await problemSeoText({ title: problem.title, difficulty: problem.difficulty, description: problem.description, editorial, tags }, hubs);
       return {
         ...statement,
+        // The page's lead sentence and meta description, the edge's words
+        // exactly (services/seo.ts problemSeoText, lib/problem-intro).
+        intro: seoText.intro,
+        seoDescription: seoText.description,
         // "1. Two Sum" (lib/problem-numbers); null only until the next numbering pass.
         number: numbering?.number ?? null,
         prevSlug: neighbours.prevSlug,

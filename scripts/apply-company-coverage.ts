@@ -44,7 +44,7 @@ for (const [slug, companies] of wanted) {
   tagsAdded += add.length;
   if (apply) {
     await prisma.problem.update({ where: { id: row.id }, data: { tags: [...tags, ...add] } });
-    touched.push(`problem:v3:${slug}`);
+    touched.push(`problem:v4:${slug}`);
   }
 }
 // A script exits right after; invalidateAndWait connects and waits so the
