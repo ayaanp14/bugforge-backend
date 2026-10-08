@@ -1,5 +1,5 @@
 import { prisma } from "../lib/prisma.js";
-import { cachedShared, invalidatePrefix } from "../lib/cache.js";
+import { cachedShared, invalidate, invalidatePrefix } from "../lib/cache.js";
 import { EXPERIENCE_OUTCOMES, EXPERIENCE_TAG, canonicalCompany, experienceTitle, type Experience, type ExperienceOutcome } from "../lib/interview-experience.js";
 import { slugify } from "../lib/slug.js";
 
@@ -15,7 +15,12 @@ import { slugify } from "../lib/slug.js";
 const PREFIX = "experiences:v1:";
 const TTL_SECONDS = 120;
 
-export const forgetExperiences = (): void => invalidatePrefix(PREFIX);
+export const forgetExperiences = (): void => {
+  invalidatePrefix(PREFIX);
+  // The sitemap too (services/seo.ts sitemapXml): a deleted or hidden
+  // experience left in it for its hour is a sitemap URL answering 404.
+  invalidate("seo:sitemap:v3:experiences");
+};
 
 export interface ExperienceProblem {
   slug: string;
