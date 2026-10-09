@@ -36,6 +36,7 @@ import {
 } from "../lib/mission.js";
 import { SAT_ROUND } from "./entitlements.js";
 import { skillCatalogues, skillProfileFor } from "./skill-profile.js";
+import { cohortGoalFor } from "./cohorts.js";
 // The usual inert cycles: dashboard imports this file for the mission, and
 // roadmap imports invalidateDashboard from dashboard.
 import { invalidateDashboard, loadProblemState, type ProblemState } from "./dashboard.js";
@@ -153,6 +154,8 @@ async function gatherCandidates(userId: string, loads: MissionLoads, state: Prob
     fallback,
     target: readiness ? await targetCandidates(userId, readiness, profile, state, skillPick) : null,
     discover: await discoverCandidates(userId, row),
+    // A cohort's goal never fails the day: without it the mission is what it was.
+    cohort: await cohortGoalFor(userId).catch(() => null),
   };
 }
 
@@ -313,13 +316,15 @@ async function activitiesToday(userId: string, keys: readonly string[]): Promise
 /** What the evidence says about the day's items. Only the lookups its items need are made. */
 async function missionFacts(userId: string, items: readonly MissionItem[], state: ProblemState, plan: Promise<DashboardPlan | null> | null): Promise<MissionFacts> {
   const bugIds = items.flatMap((i) => (i.evidence && "bugId" in i.evidence ? [i.evidence.bugId] : []));
+  const sqlSlugs = items.flatMap((i) => (i.evidence && "sqlSlug" in i.evidence ? [i.evidence.sqlSlug] : []));
   const lessonKeys = items.flatMap((i) => (i.evidence && "lessonKey" in i.evidence ? [i.evidence.lessonKey] : []));
   const activityKeys = items.flatMap((i) => (i.evidence && "activity" in i.evidence ? [activityKey(i.evidence.activity, i.evidence.ref)] : []));
   const discoverKeys = new Set(items.flatMap((i) => (i.evidence && "discover" in i.evidence ? [i.evidence.discover] : [])));
-  const [bugs, lessons, planned, activities, discovered] = await Promise.all([
+  const [bugs, sqlSolved, lessons, planned, activities, discovered] = await Promise.all([
     bugIds.length
       ? prisma.bugSubmission.findMany({ where: { userId, challengeId: { in: bugIds }, verdict: "ACCEPTED" }, select: { challengeId: true }, distinct: ["challengeId"] })
       : Promise.resolve([]),
+    sqlSlugs.length ? prisma.sqlSolve.findMany({ where: { userId, slug: { in: sqlSlugs } }, select: { slug: true } }) : Promise.resolve([]),
     lessonKeys.length
       ? prisma.studyLessonProgress.findMany({ where: { userId, lessonKey: { in: lessonKeys }, completedAt: { not: null } }, select: { lessonKey: true } })
       : Promise.resolve([]),
@@ -330,6 +335,7 @@ async function missionFacts(userId: string, items: readonly MissionItem[], state
   return {
     solvedProblems: state.solved,
     solvedBugs: new Set(bugs.map((b) => b.challengeId)),
+    solvedSql: new Set(sqlSolved.map((s) => s.slug)),
     completedLessons: new Set(lessons.map((l) => l.lessonKey)),
     planDone: new Set((planned?.steps ?? []).filter((s) => s.done).map((s) => s.key)),
     activities,

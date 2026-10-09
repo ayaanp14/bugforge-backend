@@ -109,7 +109,7 @@ Surfaces: /skills, the home dashboard, the workbench verdict, reminders, the car
 | **6. Debugging** (built 2026-10-09, §14) | Hunts as production incidents (severity, time target, the shipped build's failing checks, playbook), the server's diagnosis clock, "Why it failed" and the tutor on hunts, a root-cause write-up scored against a rubric | Bug hunts, Phases 1, 3, 4 | `BugEngagement`, `BugTutorTurn`, `BugSubmissionAnalysis`, `BugChallenge.symptoms`, `BugSubmission.rootCause*` |
 | **7. Interviews** | Interview skills (communication, clarifying questions, complexity) from existing per-question scores into the graph; multi-round company simulations from admin templates | Mock interviews | Simulation template + run tables |
 | **8. Career** (built 2026-10-09, §15) | The public profile's career section, every item verified / assessed / self-reported, estimates shared only by their owner's switch; a private application tracker linked to readiness and simulations | Public profile, credentials, Phases 1 and 5 | `JobApplication`, `User.careerShowSkills/careerShowReadiness` |
-| **9. Community** | Cohorts with a shared weekly skill goal and study sessions, learning-only | Community, duels, pair rooms | `Cohort`, `CohortMember` |
+| **9. Community** (built 2026-10-09, §16) | Study cohorts of up to 8, joined by invite only: a shared weekly skill goal, each member's effort toward it (never scores), a shared practice set, sessions on the pair rooms; one mission item and one digest line | Phase 1 (skill profile, catalogues), Phase 2 (mission), pair rooms | `Cohort`, `CohortMember`, `CohortSession` |
 
 ## 5. AI: provider seam and cost
 
@@ -448,3 +448,33 @@ Surfaces: /skills, the home dashboard, the workbench verdict, reminders, the car
   - The resume is not part of the career section. The analyzer's score is an ATS estimate, not evidence of skill, and putting it there would be a new public fact for the owner to decide.
   - There are no reminders before an application's date. The tracker writes no notifications; a `JobRun` job could add them, as the tournament reminders do.
   - The mission does not read the tracker beyond the target it can set.
+
+## 16. Phase 9 as shipped (study cohorts)
+
+- **The owner's decisions (2026-10-09):**
+  - **Size:** up to 8 members, counting the creator, who owns it.
+  - **Joining:** by invite link or code only. Never listed, never indexed, never on a profile.
+  - **Moderation:** the owner removes members and closes the cohort. There is no chat or board, so nothing else to moderate; talk happens in sessions.
+- **Defaults chosen and stated (the owner asked for momentum):**
+  - **Effort, not scores:** members see each other's goal solves this week and active days. Never a mastery figure, never a ranking (joining order).
+  - **The goal:** 1–2 skills from the DSA, SQL and debugging domains (the ones with a catalogue to solve) and a target of 1–20 solves each. The week is Monday 00:00 to Sunday 23:59 IST; the goal carries over until changed.
+  - **The owner leaving** (or deleting the account) hands the cohort to the member who joined earliest; the last one out closes it.
+  - **Caps:** 5 open cohorts an account; 2 live sessions a cohort.
+- **Pure rules** (`lib/cohorts.ts`, pinned by `cohorts.test.ts`, 10 tests): invite codes (Crockford, 40 bits, regenerating kills the old one), name and goal parsing, `joinRefusal`, `successorOf`, `goalWeek`, `progressOf`, `suggestGoal`, `practiceSet`, `median`, `sessionLive`.
+- **Derived, not stored:** progress is each member's first accept per item (problems, hunts, SQL) inside the week that evidences a goal skill, through the same catalogues the skill profile reads. Active days are any submission. The suggestion reads every member's `focus.weakest` on the server and answers a skill name only, and only when two members share it (a cohort of one reads its own). The practice set aims at the median mastery's `targetDifficulty` and skips what more than half have solved; the median never leaves.
+- **Stored, only what no row knows:** `Cohort` (name, owner, code, goal, `closedAt`), `CohortMember` (who and since when), `CohortSession` (which pair room was a cohort's). Additive tables, all cascading with the user.
+- **Sessions:** the pair-room create and seat logic moved to `services/pair-rooms.ts` so the pairing page and cohorts share it. A session is a private room of 4 seats (the pair-room maximum — two sessions seat a full cohort, and the page says so), left out of the public lobby, entered by membership with no passcode. Coding problems only.
+- **Elsewhere:**
+  - **The mission:** one `practice` item "Your cohort's goal: <skill>" after the weakest skill while the week's target is unmet, from the shared set (problem, hunt or SQL — the SQL one ticked by a new `{ sqlSlug }` evidence on `SqlSolve`). `slotsFor` and `MAX_PER_SKILL` unchanged; `mission.test.ts` pins it.
+  - **Notifications:** one `cohort_joined` to the owner; the weekly digest's one cohort line (the goal, never progress). No mail per event.
+  - **Account data:** the export's `cohorts` (memberships, the code only to its owner, sessions started; other members' names left out); deletion hands owned cohorts on first.
+- **Verified:**
+  - `cohorts.test.ts` (10), `mission.test.ts` (+1), `reminders-goal.test.ts` (+1), 4 pinned assistant questions; the whole backend suite (1125).
+  - `scratch/cohort-smoke.mts`: create, a stranger's 404, the ninth refused, owner-only writes, a bad goal, progress and the set, a session (private, 4 seats, out of the lobby, the fifth refused), remove, a dead old code, the mission's goal, the digest, the owner leaving, a closed cohort refusing.
+  - `e2e/cohorts.spec.ts`: create and set a goal in the UI, join by link, the ninth refused (API + the invite's preview), a stranger's 404 equal to an unknown id's, no mastery in a member's payload, the owner removing a member from the page, axe on all three pages.
+  - `scratch/cohort-shots.mts`: light, dark, phone, the goal dialog, a member's view, the invite.
+- **Not yet:**
+  - Sessions on SQL problems or bug hunts: pair rooms hold coding problems only.
+  - A history of past weeks. Any week can be recomputed from the rows (the same function with another week), but nothing shows it.
+  - Reminders to a member behind on the week's goal: deliberately none (the owner's "never mail per event"; the mission item is the nudge).
+  - An admin view of cohorts.

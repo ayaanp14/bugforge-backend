@@ -347,3 +347,34 @@ test("the tutor's item is a problem no other item holds, opened with the tutor, 
 test("nothing left to try, nothing offered", () => {
   assert.ok(!buildMission(cands({ discover: [] }), 240).some((i) => i.kind === "explore"));
 });
+
+test("a cohort's goal is one item after the weakest skill, ticked by its accept, and gone once the target is met", () => {
+  const cohort = {
+    name: "Night owls",
+    skillLabel: "Joins",
+    solved: 1,
+    target: 3,
+    items: [
+      { source: "sql" as const, ref: "employees-dept", slug: "employees-dept", title: "Employees by department", href: "/sql/employees-dept", difficulty: "easy" as const, skill: "sql:joins" },
+      { source: "sql" as const, ref: "orders-late", slug: "orders-late", title: "Late orders", href: "/sql/orders-late", difficulty: "easy" as const, skill: "sql:joins" },
+    ],
+  };
+  const day = buildMission(cands({ weakest: [skill("Graph")], cohort }), 60);
+  assert.equal(day.length, slotsFor(60), "the day's size is unchanged");
+  const item = day.find((i) => i.id.startsWith("practice:cohort:"));
+  assert.ok(item, "the cohort's item is on the day");
+  assert.equal(day.filter((i) => i.id.startsWith("practice:cohort:")).length, 1, "one, not the whole set");
+  assert.equal(item.context, "Your cohort's goal: Joins");
+  assert.match(item.why, /2 more solves meets your target/);
+  assert.deepEqual(item.evidence, { sqlSlug: "employees-dept" });
+  assert.equal(item.workbench, false);
+  assert.equal(day.findIndex((i) => i.context === "Graph") < day.indexOf(item), true, "after the learner's own weakest skill");
+
+  const view = missionView("2026-10-08", 60, day, {}, { ...EMPTY_MISSION_FACTS, solvedSql: new Set(["employees-dept"]) });
+  assert.equal(view.items.find((i) => i.id === item.id)!.state, "done");
+
+  assert.ok(!buildMission(cands({ cohort: { ...cohort, solved: 3 } }), 240).some((i) => i.id.startsWith("practice:cohort:")), "met: no item");
+  // The skill share still holds: a goal skill already twice on the day gets no third.
+  const crowded = buildMission(cands({ weakest: [skill("Joins", { key: "sql:joins" })], building: [skill("Joins", { key: "sql:joins" })], cohort }), 240);
+  assert.ok(crowded.filter((i) => i.skill === "sql:joins").length <= MAX_PER_SKILL);
+});

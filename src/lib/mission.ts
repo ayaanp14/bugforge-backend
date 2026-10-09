@@ -111,6 +111,7 @@ export type MissionEvidence =
   | { discover: DiscoverKey; problemId?: string }
   | { problemId: string }
   | { bugId: string }
+  | { sqlSlug: string }
   | { lessonKey: string }
   | { planStep: string }
   | { activity: ActivityKind; ref: string | null }
@@ -178,6 +179,22 @@ export interface MissionCandidates {
   target: TargetCandidates | null;
   /** Features never used, best first (DiscoverKey); at most one becomes an item a day. */
   discover: DiscoverCandidate[];
+  /** The week's cohort goal this account has not met yet (services/cohorts cohortGoalFor), or null. */
+  cohort?: CohortCandidate | null;
+}
+
+/**
+ * A study cohort's weekly goal, as the mission reads it (Phase 9): the
+ * shared practice set's items this account has not solved, best first.
+ * At most one becomes an item a day, and only while the week's target is
+ * not met — the cohort is a reason to pick a problem, never extra work.
+ */
+export interface CohortCandidate {
+  name: string;
+  skillLabel: string;
+  solved: number;
+  target: number;
+  items: Array<{ source: "problem" | "bug" | "sql"; ref: string; slug: string; title: string; href: string; difficulty: Difficulty; skill: string }>;
 }
 
 export type DiscoverCandidate =
@@ -348,6 +365,10 @@ export function buildMission(c: MissionCandidates, minutes: number, keep: readon
     ...(practiceGoal ? [dailyProposal(c)] : []),
     skillProblem("practice", c.weakest[0], (s) => `${s.label} is one of your weakest at ${s.mastery}%.`),
     ...(near && lean ? [lean] : []),
+    // After the learner's own weakest skill, not before: the cohort's goal is
+    // shared, the weakest skill is theirs. One item, and none once the
+    // week's target is met.
+    ...(c.cohort ? [cohortProposal(c.cohort)] : []),
     // Early enough that a short day still meets it: a thing never tried is
     // worth more than a fourth practice problem, and it stops once tried.
     ...(discover ? [discover] : []),
@@ -440,6 +461,35 @@ function huntProposal(c: MissionCandidates): Proposal {
       difficulty: hunt.difficulty,
       skill: hunt.skill,
       evidence: { bugId: hunt.id },
+    };
+  };
+}
+
+/**
+ * The cohort's goal: the first item of its practice set this account has not
+ * solved that fits the slot (a problem, a hunt or a SQL problem), ticked by
+ * its accept like any other. Nothing once the target is met.
+ */
+function cohortProposal(g: CohortCandidate): Proposal {
+  return (perSlot, refs) => {
+    if (g.solved >= g.target) return null;
+    const minutesOf = (i: CohortCandidate["items"][number]) => (i.source === "bug" ? HUNT_MINUTES : PROBLEM_MINUTES)[i.difficulty];
+    const open = g.items.filter((i) => !refs.has(i.ref));
+    const item = open.find((i) => minutesOf(i) <= perSlot * 2) ?? open[0];
+    if (!item) return null;
+    const left = g.target - g.solved;
+    return {
+      id: `practice:cohort:${item.source}:${item.ref}`,
+      kind: "practice",
+      title: item.title,
+      context: `Your cohort's goal: ${g.skillLabel}`,
+      why: `${g.name} is working on ${g.skillLabel} this week; ${left} more ${left === 1 ? "solve" : "solves"} meets your target.`,
+      href: item.href,
+      workbench: item.source !== "sql",
+      minutes: minutesOf(item),
+      difficulty: item.difficulty,
+      skill: item.skill,
+      evidence: item.source === "problem" ? { problemId: item.ref } : item.source === "bug" ? { bugId: item.ref } : { sqlSlug: item.ref },
     };
   };
 }
@@ -652,6 +702,8 @@ export type MissionMark = "done" | "skipped";
 export interface MissionFacts {
   solvedProblems: ReadonlySet<string>;
   solvedBugs: ReadonlySet<string>;
+  /** SQL problem slugs with a first accept (SqlSolve). */
+  solvedSql: ReadonlySet<string>;
   completedLessons: ReadonlySet<string>;
   planDone: ReadonlySet<string>;
   /** Activity keys done today (activityKey). */
@@ -660,7 +712,7 @@ export interface MissionFacts {
   discovered: ReadonlySet<DiscoverKey>;
 }
 
-export const EMPTY_MISSION_FACTS: MissionFacts = { solvedProblems: new Set(), solvedBugs: new Set(), completedLessons: new Set(), planDone: new Set(), activities: new Set(), discovered: new Set() };
+export const EMPTY_MISSION_FACTS: MissionFacts = { solvedProblems: new Set(), solvedBugs: new Set(), solvedSql: new Set(), completedLessons: new Set(), planDone: new Set(), activities: new Set(), discovered: new Set() };
 
 export type ItemState = "todo" | "done" | "skipped";
 
@@ -691,6 +743,7 @@ export function evidenceDone(e: MissionEvidence, f: MissionFacts): boolean {
   if ("discover" in e) return f.discovered.has(e.discover);
   if ("problemId" in e) return f.solvedProblems.has(e.problemId);
   if ("bugId" in e) return f.solvedBugs.has(e.bugId);
+  if ("sqlSlug" in e) return f.solvedSql.has(e.sqlSlug);
   if ("lessonKey" in e) return f.completedLessons.has(e.lessonKey);
   if ("activity" in e) return f.activities.has(activityKey(e.activity, e.ref));
   return f.planDone.has(e.planStep);

@@ -20,6 +20,7 @@ import analysisRouter from "./routes/analysis.js";
 import tutorRouter from "./routes/tutor.js";
 import readinessRouter from "./routes/readiness.js";
 import simulationsRouter from "./routes/simulations.js";
+import cohortsRouter from "./routes/cohorts.js";
 import { recoverSubmissionAnalyses } from "./services/submission-analysis.js";
 import { recoverBugCoach } from "./services/bug-coach.js";
 import pushRouter from "./routes/push.js";
@@ -980,6 +981,8 @@ app.use("/api/study-plans", studyPlansRouter);
 app.use("/api/sql", sqlRouter);
 // Company simulations: a company's online assessment and interview rounds as one run (services/simulations.ts).
 app.use("/api/simulations", simulationsRouter);
+// Study cohorts: a shared weekly goal and sessions on the pair rooms (Phase 9, services/cohorts.ts).
+app.use("/api/cohorts", cohortsRouter);
 app.use("/api/notes", notesRouter);
 app.use("/api/assistant", assistantRouter);
 // The upload route reads a raw file body with its own parser (see routes/resumes.ts).

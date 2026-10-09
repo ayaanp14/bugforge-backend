@@ -18,8 +18,9 @@ Everything below is committed and pushed to `main` (production), in both repos.
 | Discovery | Target from onboarding, the mission's Try item, contextual links + tour chapters, menus and a what's-new line (`ADAPTIVE_COACH.md` §13) | see `git log` | see `git log` |
 | 6 Debugging | Hunts as production incidents, the diagnosis clock, "Why it failed", the tutor and a scored postmortem on hunts (`ADAPTIVE_COACH.md` §14) | see `git log` | see `git log` |
 | 8 Career | The public profile's career section (verified / assessed / self-reported; estimates by opt-in switch) and a private application tracker (`ADAPTIVE_COACH.md` §15) | see `git log` | see `git log` |
+| 9 Cohorts | Study cohorts of up to 8 by invite only: a weekly skill goal, members' effort (never scores), a shared practice set, sessions on pair rooms, one mission item and one digest line (`ADAPTIVE_COACH.md` §16) | see `git log` | see `git log` |
 
-Not built: Phase 9 and the small follow-ups in §5. Phases 5–8 are complete (A–D below are done). Next: E (Phase 9, cohorts) — ask the owner its three questions first.
+Phases 1–9 are built (A–E below are done). Not built: the small follow-ups in §5 and the "Not yet" lists at the end of each phase in `ADAPTIVE_COACH.md`.
 
 ## 2. How the owner works (learned this session — follow it)
 
@@ -111,7 +112,7 @@ Not built: Phase 9 and the small follow-ups in §5. Phases 5–8 are complete (A
 - **Privacy policy:** update it for anything newly shown publicly.
 - **Ask the owner first:** whether readiness or skill scores may ever appear publicly.
 
-### E. Phase 9: cohorts (last)
+### E. Phase 9: cohorts — DONE 2026-10-09 (see `ADAPTIVE_COACH.md` §16; the owner chose 8 members, invite-only, owner removes/closes)
 
 - **Build:** `Cohort`/`CohortMember`, a shared weekly goal taken from the skill graph, and sessions on top of pair rooms. Learning only, with no new leaderboard.
 - **Ask the owner first:** group size, invite-only or open, and moderation.
@@ -138,4 +139,5 @@ Not built: Phase 9 and the small follow-ups in §5. Phases 5–8 are complete (A
 | Readiness | `src/lib/readiness.ts`, `services/readiness.ts`, `routes/readiness.ts` | `pages/ReadinessPage.tsx`, `store/api/readinessApi.ts` |
 | Debugging coach | `src/lib/bug-incident.ts`, `bug-failure.ts`, `bug-review.ts`, `root-cause.ts`, `bug-tutor.ts`, `services/bug-coach.ts`, the routes in `routes/bug-challenges.ts`, prompts `bug-review/`, `root-cause/`, `bug-tutor/` | `components/bugs/IncidentBrief.tsx`, `BugReview.tsx`, `Postmortem.tsx`, `lib/bug-coach.ts`, `BugWorkspace.tsx`; `e2e/bug-incident.spec.ts` |
 | AI seam | `src/lib/ai/provider.ts`, `src/lib/ai/prompts.ts` | — |
-| e2e | — | `e2e/failure-analysis.spec.ts`, `tutor.spec.ts`, `readiness.spec.ts`, `dashboard-loading.spec.ts`, `a11y.spec.ts` |
+| Cohorts | `src/lib/cohorts.ts`, `services/cohorts.ts`, `routes/cohorts.ts`, `services/pair-rooms.ts` (the shared create/seat path), the mission's `cohort` candidate in `lib/mission.ts` | `pages/CohortsPage.tsx`, `CohortPage.tsx`, `CohortJoinPage.tsx`, `components/cohorts/cohort-ui.tsx`, `lib/cohorts.ts`, `store/api/cohortsApi.ts`; `e2e/cohorts.spec.ts` |
+| e2e | — | `e2e/cohorts.spec.ts`, `e2e/failure-analysis.spec.ts`, `tutor.spec.ts`, `readiness.spec.ts`, `dashboard-loading.spec.ts`, `a11y.spec.ts` |

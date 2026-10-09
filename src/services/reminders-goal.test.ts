@@ -80,4 +80,12 @@ describe("the digest with a goal line", () => {
     assert.doesNotMatch(c.body, /Learning/);
     assert.doesNotMatch(c.text, /study-plans/);
   });
+
+  it("adds a cohort's week after the goal line, with its own link (Phase 9)", () => {
+    const cohort = { text: "Your cohort Night owls is on Sliding Window this week: 5 solves each.", href: "/cohorts/c1" };
+    const c = weeklyDigestContent("Ayaan", week, line, cohort);
+    assert.match(c.body, /moving\. Your cohort Night owls is on Sliding Window/);
+    assert.match(c.text, /5 solves each\.\nhttp\S+\/cohorts\/c1\n\nYou can turn reminders off/);
+    assert.doesNotMatch(weeklyDigestContent("Ayaan", week, line).body, /cohort/);
+  });
 });

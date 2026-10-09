@@ -39,6 +39,7 @@ import { detailsFor, isGoal, type GoalDetails, type GoalLanguage, type Goal } fr
 import { companyHub } from "../lib/problem-topics.js";
 import { mockTestFor } from "../lib/onboarding-plan.js";
 import { reviewDue } from "./review-reminders.js";
+import { cohortDigestLines } from "./cohorts.js";
 
 const FRONTEND_URL = (process.env["FRONTEND_URL"] ?? "http://localhost:3000").replace(/\/+$/, "");
 const DAY_MS = 86_400_000;
@@ -186,7 +187,7 @@ export function goalLineOf(rawGoal: string | null, rawDetails: unknown, tests?: 
   return goal ? digestGoalLine(goal, detailsFor(goal, rawDetails), tests) : null;
 }
 
-export function weeklyDigestContent(name: string | null, s: WeekStats, goal: DigestGoalLine | null = null): ReminderContent {
+export function weeklyDigestContent(name: string | null, s: WeekStats, goal: DigestGoalLine | null = null, cohort: DigestGoalLine | null = null): ReminderContent {
   const parts = [plural(s.solved, "problem", "problems")];
   // Only when there were some: most readers never open the SQL module, and a
   // standing "0 SQL problems" would read as a nudge nobody asked for.
@@ -205,7 +206,7 @@ export function weeklyDigestContent(name: string | null, s: WeekStats, goal: Dig
     title: "Your week on CodeKairo",
     // The goal line goes last in both: the week's numbers are what the digest
     // is for, the suggestion is what to do about them.
-    body: `${line} this week${s.streak > 0 ? ` · ${s.streak}-day streak` : ""}. ${nudge}${goal ? ` ${goal.text}` : ""}`,
+    body: `${line} this week${s.streak > 0 ? ` · ${s.streak}-day streak` : ""}. ${nudge}${goal ? ` ${goal.text}` : ""}${cohort ? ` ${cohort.text}` : ""}`,
     href: "/",
     subject: quiet ? "A quiet week on CodeKairo" : `This week: ${line}`,
     text:
@@ -218,6 +219,8 @@ export function weeklyDigestContent(name: string | null, s: WeekStats, goal: Dig
       `  Total XP:        ${s.xp}\n\n` +
       `${nudge}\n${FRONTEND_URL}/contests\n\n` +
       (goal ? `${goal.text}\n${FRONTEND_URL}${goal.href}\n\n` : "") +
+      // A cohort's week (Phase 9): its shared goal, never anyone's progress.
+      (cohort ? `${cohort.text}\n${FRONTEND_URL}${cohort.href}\n\n` : "") +
       UNSUBSCRIBE_LINE,
   };
 }
@@ -421,7 +424,11 @@ const weeklyDigest: Job = {
         ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
       });
       if (rows.length === 0) break;
-      const stats = await weekStatsFor(rows.map((r) => r.userId), since, sinceDay, now);
+      const [stats, cohorts] = await Promise.all([
+        weekStatsFor(rows.map((r) => r.userId), since, sinceDay, now),
+        // One query a batch; a failure costs the cohort line, never the digest.
+        cohortDigestLines(rows.map((r) => r.userId)).catch(() => new Map<string, DigestGoalLine>()),
+      ]);
       const outcome = await deliver(
         type,
         rows.map((r) => ({
@@ -432,6 +439,7 @@ const weeklyDigest: Job = {
             r.user.name,
             stats.get(r.userId) ?? { solved: 0, sql: 0, bugs: 0, contestPoints: 0, streak: 0, xp: 0 },
             goalLineOf(r.user.goal, r.user.goalDetails, tests),
+            cohorts.get(r.userId) ?? null,
           ),
         })),
         true,

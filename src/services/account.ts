@@ -23,6 +23,7 @@ import { forgetSessions } from "../lib/session-revocation.js";
 import { disconnectUser } from "../lib/realtime.js";
 import { invalidateDashboard } from "./dashboard.js";
 import { forgetPublicUser } from "./public-profile.js";
+import { departAllCohorts } from "./cohorts.js";
 import { forgetExperiences } from "./interview-experiences.js";
 
 /** Rows per table in a copy, newest first. Generous: only a bot reaches it. */
@@ -64,7 +65,7 @@ export async function buildAccountExport(userId: string): Promise<Record<string,
     following, followers, affinities, feedback, assistant, roadmap,
     enrollments, lessons, exercises, resumes, subscriptions, orders,
     notifications, shareCards, orgs, entries, tournamentSubmissions, campus, events, pushDevices, missionDays, analyses, tutorTurns, simulationRuns,
-    bugEngagements, bugAnalyses, jobApplications, bugTutorTurns, honours,
+    bugEngagements, bugAnalyses, jobApplications, bugTutorTurns, honours, cohortMemberships, cohortSessions,
   ] = await Promise.all([
     prisma.submission.findMany({
       where, ...newest, orderBy: { submittedAt: "desc" },
@@ -205,6 +206,17 @@ export async function buildAccountExport(userId: string): Promise<Record<string,
       where,
       select: { kind: true, grantedAt: true, celebratedAt: true, mailedAt: true, linkedinPostAt: true, linkedinPosts: true, linkedinProfileAt: true, linkedinProfiles: true },
     }),
+    // Study cohorts (Phase 9): the ones this account is in, and the cohort's
+    // own fields when it owns one. Other members are not this account's
+    // data — their names stay out; the cohort page shows them.
+    prisma.cohortMember.findMany({
+      where, orderBy: { joinedAt: "desc" },
+      select: { joinedAt: true, cohort: { select: { name: true, ownerId: true, inviteCode: true, goalSkills: true, goalTarget: true, goalSetAt: true, closedAt: true, createdAt: true } } },
+    }),
+    prisma.cohortSession.findMany({
+      where: { startedBy: userId }, ...newest, orderBy: { startedAt: "desc" },
+      select: { startedAt: true, cohort: { select: { name: true } }, room: { select: { problem: { select: { slug: true } } } } },
+    }),
   ]);
 
   return {
@@ -216,6 +228,16 @@ export async function buildAccountExport(userId: string): Promise<Record<string,
     profile,
     coding: { submissions, drafts, timers, engagement, failureAnalyses: analyses, tutor: tutorTurns },
     applications: jobApplications,
+    cohorts: {
+      memberships: cohortMemberships.map(({ joinedAt, cohort: { ownerId, inviteCode, ...c } }) => ({
+        ...c,
+        joinedAt,
+        owner: ownerId === userId,
+        // The code only to its owner, as the page gives it.
+        inviteCode: ownerId === userId ? inviteCode : undefined,
+      })),
+      sessionsStarted: cohortSessions.map((s) => ({ cohort: s.cohort.name, problem: s.room.problem.slug, startedAt: s.startedAt })),
+    },
     bugHunts: { submissions: bugSubmissions, engagement: bugEngagements, failureAnalyses: bugAnalyses, tutor: bugTutorTurns },
     sql: { submissions: sqlSubmissions },
     interviews: { sessions: interviews, saved: savedInterviews, simulations: simulationRuns },
@@ -265,6 +287,11 @@ export function deletionPhrase(user: { username: string | null; email: string | 
 export async function deleteAccount(userId: string): Promise<boolean> {
   const user = await prisma.user.findUnique({ where: { id: userId }, select: { email: true } });
   if (!user) return false;
+
+  // Cohorts it owns pass to their longest-standing member first (services/
+  // cohorts.ts): the owner relation cascades, and seven other people's
+  // cohort should not go with this account.
+  await departAllCohorts(userId);
 
   await prisma.$transaction([
     // Ids without a relation, so nothing cascades to them.

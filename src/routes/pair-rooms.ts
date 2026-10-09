@@ -1,13 +1,12 @@
 import { Router } from "express";
 import { prisma } from "../lib/prisma.js";
 import { kickedUserIdsOf, removeKickedUser } from "../lib/room-kicks.js";
-import { claimRoomSeat } from "../lib/seat-claim.js";
-import { encodeCode, decodeCode } from "../lib/obfuscation.js";
-import { generateInviteCode } from "../lib/room-codes.js";
+import { decodeCode } from "../lib/obfuscation.js";
 import { requireAuth } from "../middleware/auth.js";
 import { emitToRoom, socketsInRoom } from "../lib/realtime.js";
-import { cached, invalidate } from "../lib/cache.js";
+import { cached } from "../lib/cache.js";
 import { invalidateDashboard } from "../services/dashboard.js";
+import { forgetLobby, LOBBY_KEY, LOBBY_WINDOW_MS, openPairRoom, PairRoomError, seatInRoom } from "../services/pair-rooms.js";
 
 const router = Router();
 
@@ -37,14 +36,8 @@ const ROOM_PROBLEM_SELECT = {
   },
 } as const;
 
-/** How long a room can sit unopened before the lobby stops advertising it. */
-const LOBBY_WINDOW_MS = 24 * 60 * 60 * 1000;
-
 /** The most rooms the lobby lists at once. */
 const LOBBY_TAKE = 50;
-
-/** Waiting rooms one account may have open at a time. */
-const MAX_WAITING_ROOMS_PER_USER = 3;
 
 /**
  * How long a room may sit with nobody connected before a read closes it.
@@ -72,20 +65,8 @@ async function closeIfAbandoned<T extends { id: string; status: string; startedA
   return { ...room, status: "closed", endedAt };
 }
 
-/**
- * The lobby is the same list for every caller (the route reads no session)
- * and every open of the pairing page asks for it, so one copy is shared for
- * a few seconds. What changes it drops it: a room opened, joined (it leaves
- * the lobby as it goes active), closed or deleted — so the copy is never
- * staler than the window, and the only thing that reaches it by the clock
- * is a waiting room ageing out of LOBBY_WINDOW_MS.
- */
-const LOBBY_KEY = "pair:lobby:v1";
+/** The lobby's shared copy and its rules live with the create path (services/pair-rooms.ts). */
 const LOBBY_TTL_MS = 3_000;
-
-function forgetLobby(): void {
-  invalidate(LOBBY_KEY);
-}
 
 /**
  * After a room closes, by whichever path (the socket layer's grace timer in
@@ -119,7 +100,9 @@ router.get("/", requireAuth, async (_req, res) => {
     // room's passcode was one lobby request away.
     const rooms = await cached(LOBBY_KEY, LOBBY_TTL_MS, async () => {
       const rows = await prisma.pairRoom.findMany({
-        where: { status: "waiting", startedAt: { gte: new Date(Date.now() - LOBBY_WINDOW_MS) } },
+        // A cohort's session room is for its members (services/cohorts.ts):
+        // it is never advertised to strangers.
+        where: { status: "waiting", startedAt: { gte: new Date(Date.now() - LOBBY_WINDOW_MS) }, cohortSession: { is: null } },
         select: {
           id: true,
           mode: true,
@@ -157,59 +140,16 @@ router.post("/", requireAuth, async (req, res) => {
   if (typeof problemId !== "string" || !problemId || (mode !== "private" && mode !== "collaborative")) {
     return res.status(400).json({ error: "Missing problemId or mode" });
   }
-  // Two to four seats. A room with zero (or a thousand) seats used to be
-  // accepted as typed.
-  const seats = Number.isInteger(maxParticipants) ? Math.min(4, Math.max(2, maxParticipants as number)) : 2;
-
   try {
-    // A person opens a room and waits in it; they do not need five. Nothing
-    // capped it, and every unopened one sat in the lobby for a day. The
-    // problem check and the count are independent, so they travel together.
-    const [problem, waiting] = await Promise.all([
-      prisma.problem.findFirst({ where: { id: problemId, isPublished: true }, select: { id: true } }),
-      prisma.pairRoom.count({
-        where: { createdBy: userId, status: "waiting", startedAt: { gte: new Date(Date.now() - LOBBY_WINDOW_MS) } },
-      }),
-    ]);
-    if (!problem) return res.status(404).json({ error: "Problem not found" });
-    if (waiting >= MAX_WAITING_ROOMS_PER_USER) {
-      return res.status(409).json({
-        error: `You already have ${waiting} rooms waiting for a partner. Join one of those, or close them, before opening another.`,
-      });
-    }
-
-    // Only generate inviteCode for private rooms. The code is the only thing
-    // gating entry, so it comes from the cryptographic generator.
-    const rawInviteCode = mode === "private" ? generateInviteCode() : null;
-
-    const inviteCode = encodeCode(rawInviteCode);
-
-    const room = await prisma.pairRoom.create({
-      data: {
-        problemId,
-        mode,
-        maxParticipants: seats,
-        createdBy: userId,
-        inviteCode,
-        status: "waiting",
-        // The row has no createdAt; this is what the lobby ages rooms by until
-        // a guest arrives and the join below restamps it as the real start.
-        startedAt: new Date(),
-        participants: {
-          create: {
-            userId,
-            role: "host"
-          }
-        }
-      },
-      include: {
-        problem: { select: ROOM_PROBLEM_SELECT }
-      }
+    const room = await openPairRoom(userId, {
+      problemId,
+      mode,
+      seats: maxParticipants as number,
+      include: { problem: { select: ROOM_PROBLEM_SELECT } },
     });
-    forgetLobby();
-
     res.status(201).json(room);
   } catch (err) {
+    if (err instanceof PairRoomError) return res.status(err.status).json({ error: err.message });
     console.error("POST /api/pair-rooms error:", err);
     res.status(500).json({ error: "Failed to create room" });
   }
@@ -333,21 +273,10 @@ router.post("/:id/join", requireAuth, async (req, res) => {
        // same invariant, holds nothing between statements, and reports "full"
        // as a value rather than a thrown error. A re-join is a duplicate on
        // the existing unique and stays an idempotent success.
-       const claim = await claimRoomSeat(id, userId, room.maxParticipants);
+       const claim = await seatInRoom(id, userId, room.maxParticipants);
        if (claim === "full") {
          return res.status(403).json({ error: "Room is full" });
        }
-
-       // A room becomes active when somebody joins the host. Guarded on the
-       // status rather than on the participant count we read earlier: two
-       // joiners arriving together both saw "one participant" and both wrote,
-       // which restamped startedAt and moved the abandonment clock backwards.
-       const { count: started } = await prisma.pairRoom.updateMany({
-         where: { id, status: "waiting" },
-         data: { status: "active", startedAt: new Date() }
-       });
-       // Active rooms are not in the lobby.
-       if (started > 0) forgetLobby();
     }
 
     res.json({ message: "Joined successfully" });

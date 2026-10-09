@@ -193,6 +193,8 @@ model User {
   tagAffinities         TagAffinity[]
   feedback              Feedback[]
   honours               Honour[]
+  cohortsOwned          Cohort[]              @relation("CohortOwner")
+  cohortMemberships     CohortMember[]
   aptitudeAttempts      AptitudeAttempt[]
   mockAttempts          MockAttempt[]
   skillAttempts         SkillAttempt[]
@@ -818,6 +820,7 @@ model PairRoom {
   problem         Problem           @relation(fields: [problemId], references: [id], onDelete: Cascade)
   participants    RoomParticipant[]
   submissions     Submission[]
+  cohortSession   CohortSession?
 
   // The public waiting list and the dashboard's closed-room history both
   // filter on status and sort on a timestamp; without these they scan.
@@ -2668,4 +2671,55 @@ model TournamentMatch {
   @@index([playerBId, status])
   // Settling the matches whose time ran out.
   @@index([tournamentId, status, endsAt])
+}
+
+/// A study cohort (Phase 9 of ADAPTIVE_COACH.md, §16): up to eight members
+/// learning together towards one weekly goal. Joined only by its invite
+/// code; never listed, never indexed, never on a profile. Progress is
+/// derived from the members' accepted rows (lib/cohorts.ts) — nothing here
+/// counts anything.
+model Cohort {
+  id         String          @id @default(cuid())
+  name       String          @db.VarChar(60)
+  ownerId    String
+  /// "7H3K-9QXM" (lib/cohorts.ts inviteCode). Regenerating it kills the old one.
+  inviteCode String          @unique @db.VarChar(12)
+  /// The weekly goal: 1–2 skill keys from lib/skill-graph.ts (DSA, SQL or debugging) …
+  goalSkills Json            @default("[]")
+  /// … and the solves each member aims for in a week.
+  goalTarget Int             @default(5)
+  goalSetAt  DateTime?
+  closedAt   DateTime?
+  createdAt  DateTime        @default(now())
+  owner      User            @relation("CohortOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  members    CohortMember[]
+  sessions   CohortSession[]
+
+  @@index([ownerId])
+}
+
+model CohortMember {
+  cohortId String
+  userId   String
+  joinedAt DateTime @default(now())
+  cohort   Cohort   @relation(fields: [cohortId], references: [id], onDelete: Cascade)
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([cohortId, userId])
+  @@index([userId])
+}
+
+/// A pair room started from a cohort. The room is the session; this row only
+/// says which cohort it belongs to, so the cohort page can show it while it
+/// is live and the public lobby can leave it out.
+model CohortSession {
+  id        String   @id @default(cuid())
+  cohortId  String
+  roomId    String   @unique
+  startedBy String
+  startedAt DateTime @default(now())
+  cohort    Cohort   @relation(fields: [cohortId], references: [id], onDelete: Cascade)
+  room      PairRoom @relation(fields: [roomId], references: [id], onDelete: Cascade)
+
+  @@index([cohortId, startedAt])
 }

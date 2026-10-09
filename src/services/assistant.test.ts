@@ -165,6 +165,11 @@ const QUESTIONS: Array<[string, RegExp, string?]> = [
   ["can recruiters see my skill scores on my profile", /\*\*only if you switch them on\*\*/],
   ["how do I track my job applications", /your own tracker for the jobs and internships you are applying for/],
   ["what does verified mean on my profile", /\*\*Verified\*\* — the site checked it itself/],
+  // Phase 9: study cohorts.
+  ["how do I make a study group with my friends", /a small study group of \*\*up to 8 people\*\*/],
+  ["can other members see my skill scores in a cohort", /effort, not scores/],
+  ["why can only 4 people join our cohort session", /A pair room seats \*\*4 people\*\*/],
+  ["what happens to my cohort if I leave as the owner", /ownership passes to the member who joined earliest/],
   // Phase 6: bug hunts as incidents.
   ["what is the postmortem on a bug hunt", /scores it out of 100 against your accepted patch/],
   ["how is my bug hunt diagnosis time measured", /\*\*diagnosis time\*\* is from that start/],

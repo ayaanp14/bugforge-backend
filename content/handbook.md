@@ -102,6 +102,20 @@ Public pages (no account needed):
 - **Make this my target** (row menu): that company, with the row's next date if it is still ahead, becomes the company you are working toward — the same as choosing it on `/readiness`. Only for a company the site knows.
 - **The page**: filters for Open (still in play), All and each stage with counts; **Coming up** lists the next dates of open applications, soonest first, with how many days are left; the top shows how many applications, how many still open and how many offers.
 
+## Study cohorts — `/cohorts`
+
+- **What a cohort is**: a small study group of **up to 8 people** (its creator, the owner, included) working towards one **weekly goal** together, with group sessions in pair rooms. Learning only: there is no leaderboard and nobody is ranked against anybody. In the account menu (**Cohorts**) and on Ctrl+K.
+- **Private by design**: a cohort is never listed anywhere, never in search results and never on a profile. The only way in is its **invite code** (shape `7H3K-9QXM`) or the invite link `codekairo.com/join/<code>`, and only signed-in. Someone who is not a member cannot open it at all. One account can be in at most **5 cohorts**.
+- **Starting and joining**: on `/cohorts`, **Start a cohort** asks for a name; **Join with a code** takes a code. An invite link shows the cohort's name and size, then **Join**. A full cohort (8 members) or a closed one refuses with a sentence saying so.
+- **The weekly goal**: the owner picks **one or two skills** — a coding topic, a SQL topic or a kind of bug — and a **target of 1 to 20 solves** for each member. The week runs **Monday 00:00 to Sunday 23:59 IST**, and the goal carries over to the next week until the owner changes it. **Suggested** names a skill several members are weak in, read from their skill profiles on the server; it shows only the skill's name, never whose weakness it was.
+- **What members see of each other**: effort, not scores — each member's solves towards the goal this week ("3 of 5") and how many **days active** this week (any submission counts). Never anyone's skill percentage or readiness. Members are listed in the order they joined, not by how much they did.
+- **How progress counts**: a problem, bug hunt or SQL problem counts once, when it is **accepted for the first time that week** and works one of the goal's skills. Re-solving something you had already solved before does not count; the page catches up within a minute.
+- **This week's practice set**: about five problems for the goal, **the same for everyone**, at the difficulty that suits the group, leaving out anything most members have already solved. Each shows how many members have solved it.
+- **Group sessions**: **Solve together** on a coding problem of the set opens a pair room for the cohort and takes you in; while it is live, the cohort's page shows it with **Join**, and members get in without a passcode. A pair room seats **4 people**, so a cohort of 8 runs **two sessions at once** (at most 2 live). Sessions run on coding problems only — not SQL problems or bug hunts. Everything else about the room (chat, audio, the host, kicks, submissions credited to the host) is the usual pair room.
+- **The owner can**: set the goal, rename the cohort, **New code** (the old code and link stop working at once), **remove** a member, and **close** the cohort (members can still see it, but nothing more happens in it). There is no chat or message board in a cohort; talking happens in sessions.
+- **Leaving**: any member can **Leave**. When the owner leaves, ownership passes to the member who joined earliest; the last one out closes it. Deleting your account does the same for cohorts you own.
+- **Elsewhere**: the owner gets one notification when someone joins. Today's mission may offer one item, **"Your cohort's goal: <skill>"**, from the practice set until your week's target is met. The Monday digest adds one line with the cohort's goal for the week. Nothing else is sent.
+
 ## Home dashboard — `/`
 
 One request builds it; it refreshes itself after a submission, a chest, a follow or a profile edit (otherwise within about five minutes).
