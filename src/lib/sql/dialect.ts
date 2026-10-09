@@ -174,6 +174,121 @@ function closingParen(tokens: Token[], open: number): number {
   return -1;
 }
 
+/** The index of the `(` matching the `)` at `close`, or -1. */
+function openingParen(tokens: Token[], close: number): number {
+  let depth = 0;
+  for (let i = close; i >= 0; i--) {
+    const t = tokens[i]!;
+    if (t.kind !== "punct") continue;
+    if (t.text === ")") depth++;
+    else if (t.text === "(" && --depth === 0) return i;
+  }
+  return -1;
+}
+
+const skipSpaceBack = (tokens: Token[], i: number) => {
+  while (i >= 0 && tokens[i]!.kind === "space") i--;
+  return i;
+};
+const skipSpaceFwd = (tokens: Token[], i: number) => {
+  while (i < tokens.length && tokens[i]!.kind === "space") i++;
+  return i;
+};
+const isOperand = (t: Token | undefined) => !!t && (t.kind === "number" || t.kind === "ident" || t.kind === "string" || (t.kind === "word" && !OPERAND_STOP.has(t.text.toUpperCase())));
+/** Words that end an operand when scanning left from DIV (`SELECT a DIV b`, `WHEN x DIV 2`). */
+const OPERAND_STOP = new Set(["SELECT", "WHERE", "AND", "OR", "NOT", "ON", "WHEN", "THEN", "ELSE", "CASE", "BY", "AS", "HAVING", "DIV", "IN", "IS", "LIKE", "BETWEEN", "DISTINCT", "RETURN", "SET", "END", "FROM", "INTERVAL"]);
+
+/** Start of the primary (column, t.col, literal, f(…), (…)) ending at `end`, or -1. */
+function primaryStart(tokens: Token[], end: number): number {
+  const t = tokens[end];
+  if (!t) return -1;
+  let start: number;
+  if (t.kind === "punct" && t.text === ")") {
+    start = openingParen(tokens, end);
+    if (start === -1) return -1;
+    const fn = skipSpaceBack(tokens, start - 1);
+    if (fn >= 0 && tokens[fn]!.kind === "word" && !OPERAND_STOP.has(tokens[fn]!.text.toUpperCase())) start = fn;
+  } else if (isOperand(t)) start = end;
+  else return -1;
+  // qualified names: alias.column
+  while (start >= 2 && tokens[start - 1]!.kind === "punct" && tokens[start - 1]!.text === "." && isOperand(tokens[start - 2])) start -= 2;
+  return start;
+}
+
+/** End of the primary starting at `start` (a leading unary minus included), or -1. */
+function primaryEnd(tokens: Token[], start: number): number {
+  let i = start;
+  if (tokens[i]?.kind === "punct" && (tokens[i]!.text === "-" || tokens[i]!.text === "+")) i = skipSpaceFwd(tokens, i + 1);
+  const t = tokens[i];
+  if (!t) return -1;
+  let end: number;
+  if (t.kind === "punct" && t.text === "(") end = closingParen(tokens, i);
+  else if (isOperand(t)) {
+    end = i;
+    const next = skipSpaceFwd(tokens, i + 1);
+    if (t.kind === "word" && tokens[next]?.kind === "punct" && tokens[next]!.text === "(") end = closingParen(tokens, next);
+  } else return -1;
+  if (end === -1) return -1;
+  while (tokens[end + 1]?.kind === "punct" && tokens[end + 1]!.text === "." && isOperand(tokens[end + 2])) end += 2;
+  return end;
+}
+
+/**
+ * MySQL's `a DIV b` (and the `a MOD b` operator, same precedence) is integer division, truncating towards zero whatever the
+ * operand types — `7.5 DIV 2` is 3, `TIMESTAMPDIFF(SECOND, …) DIV 60` an
+ * integer. Rewriting it to SQLite's bare `/` (as this did until 2026-10-09)
+ * truncated only when both sides were stored integers: a decimal column or a
+ * function's REAL result gave 440.5 where MySQL gives 440, a learner's right
+ * answer marked wrong. So it becomes CAST((a) / (b) AS INTEGER), with the
+ * left operand taking in a chain of `*`, `/`, `%` before it (they share DIV's
+ * precedence and associate left: `a * b DIV c` is `(a * b) DIV c`) and the
+ * right operand one primary. The `/` inside is made decimal by the main pass.
+ */
+function rewriteDiv(tokens: Token[]): Token[] {
+  for (let guard = 0; guard < 200; guard++) {
+    // `MOD` is an operator here only when no `(` follows (MOD(a, b) is the function).
+    const at = tokens.findIndex((t, k) => upper(t) === "DIV" || (upper(t) === "MOD" && tokens[skipSpaceFwd(tokens, k + 1)]?.text !== "("));
+    if (at === -1) return tokens;
+    const isMod = upper(tokens[at]) === "MOD";
+    let leftEnd = skipSpaceBack(tokens, at - 1);
+    let leftStart = primaryStart(tokens, leftEnd);
+    while (leftStart !== -1) {
+      const op = skipSpaceBack(tokens, leftStart - 1);
+      const o = tokens[op];
+      if (!(o && o.kind === "punct" && (o.text === "*" || o.text === "/" || o.text === "%"))) break;
+      const prev = primaryStart(tokens, skipSpaceBack(tokens, op - 1));
+      if (prev === -1) break;
+      leftStart = prev;
+    }
+    const rightStart = skipSpaceFwd(tokens, at + 1);
+    const rightEnd = primaryEnd(tokens, rightStart);
+    if (leftStart === -1 || rightEnd === -1) {
+      // Not an expression we can read — keep the old rewrite rather than fail the query.
+      tokens = [...tokens.slice(0, at), punct(isMod ? "%" : "/"), ...tokens.slice(at + 1)];
+      continue;
+    }
+    leftEnd = Math.max(leftEnd, leftStart);
+    if (isMod) {
+      // `a MOD b` → MOD((a), (b)): the registered function keeps MySQL's sign and
+      // decimals (SQLite's % casts both sides to integers: 7.5 % 2 = 1, MySQL 1.5).
+      tokens = [
+        ...tokens.slice(0, leftStart),
+        word("MOD"), punct("("), punct("("), ...tokens.slice(leftStart, leftEnd + 1), punct(")"), punct(","), space,
+        punct("("), ...tokens.slice(rightStart, rightEnd + 1), punct(")"), punct(")"),
+        ...tokens.slice(rightEnd + 1),
+      ];
+      continue;
+    }
+    tokens = [
+      ...tokens.slice(0, leftStart),
+      word("CAST"), punct("("), punct("("), ...tokens.slice(leftStart, leftEnd + 1), punct(")"), space, punct("/"), space,
+      punct("("), ...tokens.slice(rightStart, rightEnd + 1), punct(")"), space, word("AS"), space, word("INTEGER"), punct(")"),
+      ...tokens.slice(rightEnd + 1),
+    ];
+  }
+  return tokens;
+}
+
 const word = (text: string): Token => ({ kind: "word", text });
 const punct = (text: string): Token => ({ kind: "punct", text });
 const space: Token = { kind: "space", text: " " };
@@ -217,6 +332,26 @@ export function rewriteMysql(sql: string): string {
     const lit = tokens[litAt];
     if (!lit || lit.kind !== "string") continue;
     // SQLite refuses a second argument next to DISTINCT; its default separator is MySQL's own ','.
+    // Any other separator with DISTINCT: each value is tagged with char(1), joined
+    // with SQLite's ',' and the tag + ',' then swapped for the separator — the comma
+    // inside a value carries no tag, so it survives. NULL || x is NULL, skipped as MySQL skips it.
+    if (distinct && lit.text !== "','") {
+      let distinctAt = open + 1;
+      while (upper(tokens[distinctAt]) !== "DISTINCT") distinctAt++;
+      const exprEnd = orderAt !== -1 && orderAt < sepAt ? orderAt : sepAt;
+      const expr = tokens.slice(distinctAt + 1, exprEnd);
+      const order = orderAt !== -1 && orderAt < sepAt ? tokens.slice(orderAt, sepAt) : [];
+      const tag = [word("char"), punct("("), word("1"), punct(")")];
+      const rewritten: Token[] = [
+        word("REPLACE"), punct("("), word("REPLACE"), punct("("),
+        word("group_concat"), punct("("), word("DISTINCT"), space, punct("("), ...expr, punct(")"), space, punct("||"), space, ...tag, space, ...order,
+        punct(")"), punct(","), space, ...tag, space, punct("||"), space, { kind: "string", text: "','" }, punct(","), space, lit,
+        punct(")"), punct(","), space, ...tag, punct(","), space, { kind: "string", text: "''" }, punct(")"),
+      ];
+      tokens = [...tokens.slice(0, i), ...rewritten, ...tokens.slice(close + 1)];
+      i += rewritten.length - 1;
+      continue;
+    }
     const sepTokens: Token[] = distinct && lit.text === "','" ? [] : [punct(","), space, lit];
     const without = [...tokens.slice(0, sepAt), ...tokens.slice(litAt + 1, close)];
     // Positions before sepAt are unchanged; ORDER BY (if any) sits before SEPARATOR in MySQL.
@@ -281,6 +416,8 @@ export function rewriteMysql(sql: string): string {
     tokens = [...tokens.slice(0, i), word(fn), punct("("), ...tokens.slice(open + 1, asAt), punct(")"), ...tokens.slice(close + 1)];
   }
 
+  tokens = rewriteDiv(tokens);
+
   const out: Token[] = [];
   for (let i = 0; i < tokens.length; i++) {
     const t = tokens[i]!;
@@ -288,17 +425,18 @@ export function rewriteMysql(sql: string): string {
     // MySQL string escapes ('It\'s', '\\.' in a REGEXP) → SQLite, which has none but ''.
     if (t.kind === "string") {
       out.push({ kind: "string", text: mysqlStringToSqlite(t.text) });
+      // MySQL's LIKE escapes with a backslash by default ('rider\_%' matches a literal
+      // underscore); SQLite's LIKE has no escape character unless one is named.
+      if (t.text.includes("\\") && upper(prevSignificant(out, 2)) === "LIKE") {
+        let k = i + 1;
+        while (tokens[k]?.kind === "space") k++;
+        if (upper(tokens[k]) !== "ESCAPE") out.push(space, word("ESCAPE"), space, { kind: "string", text: "'\\'" });
+      }
       continue;
     }
     // MySQL's `/` is decimal division.
     if (t.kind === "punct" && t.text === "/") {
       out.push(punct("*"), word("1.0"), punct("/"));
-      continue;
-    }
-    // MySQL's DIV is integer division: CAST((a) / (b) AS INTEGER) would need the
-    // operands; SQLite's own `/` on two integers truncates the same way.
-    if (w === "DIV") {
-      out.push(punct("/"));
       continue;
     }
     if (t.kind === "punct" && t.text === "<=>") {

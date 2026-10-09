@@ -36,7 +36,16 @@ test("anything that writes, or reaches the engine's settings, is refused", () =>
 
 test("MySQL division is decimal and DIV is integer", () => {
   assert.equal(rewriteMysql("SELECT a / b FROM t"), "SELECT a *1.0/ b FROM t");
-  assert.equal(rewriteMysql("SELECT 7 DIV 2"), "SELECT 7 / 2");
+  assert.equal(rewriteMysql("SELECT 7 DIV 2"), "SELECT CAST((7) *1.0/ (2) AS INTEGER)");
+  // a function's result or a decimal column on the left still truncates (MySQL: 440, never 440.5)
+  assert.equal(rewriteMysql("SELECT TIMESTAMPDIFF(SECOND, a, b) DIV 60"), "SELECT CAST((TIMESTAMPDIFF('SECOND', a, b)) *1.0/ (60) AS INTEGER)");
+  // DIV shares * / %'s precedence and associates left: a * b DIV c is (a * b) DIV c
+  assert.equal(rewriteMysql("SELECT t.a * 2 DIV -3 FROM t"), "SELECT CAST((t.a * 2) *1.0/ (-3) AS INTEGER) FROM t");
+  assert.equal(rewriteMysql("SELECT a + b DIV 2"), "SELECT a + CAST((b) *1.0/ (2) AS INTEGER)");
+  // the MOD operator becomes the function; MOD(…) itself is untouched
+  assert.equal(rewriteMysql("SELECT x MOD 60 FROM t"), "SELECT MOD((x), (60)) FROM t");
+  assert.equal(rewriteMysql("SELECT MOD(x, 60) DIV 2 FROM t"), "SELECT CAST((MOD(x, 60)) *1.0/ (2) AS INTEGER) FROM t");
+  assert.equal(rewriteMysql("SELECT (a + b) DIV 2 DIV 3"), "SELECT CAST((CAST(((a + b)) *1.0/ (2) AS INTEGER)) *1.0/ (3) AS INTEGER)");
   // a slash inside a string is text
   assert.equal(rewriteMysql("SELECT 'a/b'"), "SELECT 'a/b'");
 });
@@ -46,6 +55,16 @@ test("GROUP_CONCAT's SEPARATOR moves into SQLite's argument order", () => {
   assert.equal(rewriteMysql("SELECT GROUP_CONCAT(x ORDER BY x DESC SEPARATOR ',')"), "SELECT GROUP_CONCAT(x , ',' ORDER BY x DESC )");
   // DISTINCT with MySQL's default separator: SQLite allows no second argument, and ',' is its default too
   assert.equal(rewriteMysql("SELECT GROUP_CONCAT(DISTINCT x ORDER BY x SEPARATOR ',')"), "SELECT GROUP_CONCAT(DISTINCT x  ORDER BY x )");
+  // any other separator with DISTINCT: values tagged with char(1), the tag + ',' swapped for it
+  assert.equal(
+    rewriteMysql("SELECT GROUP_CONCAT(DISTINCT x ORDER BY x SEPARATOR '; ')"),
+    "SELECT REPLACE(REPLACE(group_concat(DISTINCT ( x ) || char(1) ORDER BY x ), char(1) || ',', '; '), char(1), '')",
+  );
+});
+
+test("a LIKE pattern with a backslash names MySQL's default escape", () => {
+  assert.equal(rewriteMysql("SELECT 1 FROM t WHERE s LIKE 'rider\\_%'"), "SELECT 1 FROM t WHERE s LIKE 'rider\\_%' ESCAPE '\\'");
+  assert.equal(rewriteMysql("SELECT 1 FROM t WHERE s LIKE 'a%'"), "SELECT 1 FROM t WHERE s LIKE 'a%'");
 });
 
 test("INTERVAL, TIMESTAMPDIFF units, CAST types and <=> are rewritten", () => {

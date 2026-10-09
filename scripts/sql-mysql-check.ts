@@ -2,7 +2,11 @@
  * The SQL problems against a real MySQL — the check the SQLite gate cannot
  * make (scripts/sql-problems.ts --validate runs our engine only).
  *
- *   npx tsx scripts/sql-mysql-check.ts [--only slug,slug] [--hidden 8]
+ *   npx tsx scripts/sql-mysql-check.ts [--only slug,slug] [--hidden 8] [--file src/lib/sql-problems/<file>.ts]
+ *
+ * `--file` checks the specs one module exports instead of index.ts's list,
+ * in a scratch database of its own (`codekairo_sql_gate_<file>`), so several
+ * authors can run it at once.
  *
  * For every problem: its tables are created in a scratch database
  * (`codekairo_sql_gate`, dropped at the end) with MySQL's own types, each
@@ -23,7 +27,9 @@
  * Uses DATABASE_URL's server (the local MySQL in Docker), never its schema.
  */
 import mariadb from "mariadb";
-import { SQL_PROBLEMS } from "../src/lib/sql-problems/index.js";
+import { basename, resolve } from "node:path";
+import { pathToFileURL } from "node:url";
+import { SQL_PROBLEMS as LISTED } from "../src/lib/sql-problems/index.js";
 import { buildProblem } from "../src/lib/sql-problems/build.js";
 import type { ColumnType, SqlProblemSpec } from "../src/lib/sql-problems/types.js";
 import { rewriteMysql } from "../src/lib/sql/dialect.js";
@@ -40,7 +46,11 @@ const only = value("--only")?.split(",").map((s) => s.trim()).filter(Boolean);
 const hiddenToCheck = Number(value("--hidden") ?? 8);
 
 const url = new URL(process.env["DATABASE_URL"] ?? "");
-const DB = "codekairo_sql_gate";
+const file = value("--file");
+const SQL_PROBLEMS: SqlProblemSpec[] = file
+  ? (Object.values(await import(pathToFileURL(resolve(file)).href)).filter(Array.isArray).flat() as SqlProblemSpec[])
+  : [...LISTED];
+const DB = file ? `codekairo_sql_gate_${basename(file).replace(/\.[a-z]+$/i, "").replace(/[^A-Za-z0-9]/g, "_")}` : "codekairo_sql_gate";
 
 const MYSQL_TYPE: Record<ColumnType, string> = {
   int: "INT",

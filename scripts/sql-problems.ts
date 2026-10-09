@@ -14,11 +14,19 @@
  *       `alternatives` agrees with it on every dataset; an `ordered` problem's
  *       solution has an ORDER BY. Runs the real engine (sql.js) locally.
  *
- *   npx tsx scripts/sql-problems.ts --show <slug>
+ *   npx tsx scripts/sql-problems.ts --validate --file src/lib/sql-problems/<file>.ts
+ *       The same, for the specs one module exports (every exported array),
+ *       whether or not index.ts lists it yet — so several authors can each
+ *       gate a new file without touching the shared index. Slugs and titles
+ *       are still checked against everything index.ts lists.
+ *
+ *   npx tsx scripts/sql-problems.ts --show <slug> [--file …]
  *       The first example's tables and the solution's output, as the
  *       statement will draw them.
  */
-import { SQL_PROBLEMS, SQL_TOPICS } from "../src/lib/sql-problems/index.js";
+import { resolve } from "node:path";
+import { pathToFileURL } from "node:url";
+import { SQL_PROBLEMS as LISTED, SQL_TOPICS } from "../src/lib/sql-problems/index.js";
 import { buildProblem, datasetSql } from "../src/lib/sql-problems/build.js";
 import type { Dataset, SqlProblemSpec } from "../src/lib/sql-problems/types.js";
 import { checkStatement, rewriteMysql } from "../src/lib/sql/dialect.js";
@@ -32,6 +40,12 @@ const value = (name: string) => {
   return i === -1 ? undefined : args[i + 1];
 };
 const only = value("--only")?.split(",").map((s) => s.trim()).filter(Boolean);
+const file = value("--file");
+/** The specs of `--file` (every exported array of the module), or none. */
+const FILE_PROBLEMS: SqlProblemSpec[] = file
+  ? (Object.values(await import(pathToFileURL(resolve(file)).href)).filter(Array.isArray).flat() as SqlProblemSpec[])
+  : [];
+const SQL_PROBLEMS: SqlProblemSpec[] = [...LISTED, ...FILE_PROBLEMS.filter((p) => !LISTED.includes(p))];
 
 const SLUG = /^[a-z0-9][a-z0-9-]*$/;
 const COLUMN_TYPES = new Set(["int", "bigint", "decimal", "varchar", "char", "date", "datetime", "enum", "bool"]);
@@ -153,7 +167,8 @@ async function behaviour(p: SqlProblemSpec): Promise<string[]> {
 }
 
 async function validate(): Promise<number> {
-  const picked = SQL_PROBLEMS.filter((p) => !only || only.includes(p.slug));
+  const pool = file ? FILE_PROBLEMS : SQL_PROBLEMS;
+  const picked = pool.filter((p) => !only || only.includes(p.slug));
   if (only) for (const s of only) if (!SQL_PROBLEMS.some((p) => p.slug === s)) console.error(`  ✗ no problem "${s}"`);
   const problems: string[] = [];
   const slugs = new Map<string, number>();
