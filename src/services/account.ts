@@ -64,7 +64,7 @@ export async function buildAccountExport(userId: string): Promise<Record<string,
     following, followers, affinities, feedback, assistant, roadmap,
     enrollments, lessons, exercises, resumes, subscriptions, orders,
     notifications, shareCards, orgs, entries, tournamentSubmissions, campus, events, pushDevices, missionDays, analyses, tutorTurns, simulationRuns,
-    bugEngagements, bugAnalyses, jobApplications, bugTutorTurns,
+    bugEngagements, bugAnalyses, jobApplications, bugTutorTurns, honours,
   ] = await Promise.all([
     prisma.submission.findMany({
       where, ...newest, orderBy: { submittedAt: "desc" },
@@ -200,6 +200,11 @@ export async function buildAccountExport(userId: string): Promise<Record<string,
       where, ...newest, orderBy: { createdAt: "desc" },
       select: { challenge: { select: { slug: true } }, role: true, rung: true, content: true, createdAt: true },
     }),
+    // Honours given by hand (lib/honours.ts — the founding members) and what was done with them.
+    prisma.honour.findMany({
+      where,
+      select: { kind: true, grantedAt: true, celebratedAt: true, mailedAt: true, linkedinPostAt: true, linkedinPosts: true, linkedinProfileAt: true, linkedinProfiles: true },
+    }),
   ]);
 
   return {
@@ -229,6 +234,7 @@ export async function buildAccountExport(userId: string): Promise<Record<string,
     feedback,
     assistant,
     roadmap: { chests: roadmap },
+    honours,
     missions: missionDays,
     studyPlans: { enrollments, lessons, exercises },
     resumes,

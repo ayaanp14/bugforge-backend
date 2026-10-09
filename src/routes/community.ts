@@ -8,6 +8,7 @@ import { communityWriteLimiter } from "../middleware/rate-limit.js";
 import { cached, cachedShared, invalidate, invalidatePrefix } from "../lib/cache.js";
 import { browserCache } from "../lib/http-cache.js";
 import { WORN_CREDENTIAL_SELECT } from "../lib/skill-tests.js";
+import { HONOUR_SELECT } from "../lib/honours.js";
 import { invalidateUnread } from "../services/notifications.js";
 import { invalidateDashboard, querySocialCounts } from "../services/dashboard.js";
 import { EXPERIENCE_TAG, companyFeedTag, parseExperience } from "../lib/interview-experience.js";
@@ -28,7 +29,7 @@ const router = Router();
 // chose to wear (lib/skill-tests.ts WORN_CREDENTIAL_SELECT), drawn in place
 // of the chest ring.
 // profileHidden: a name whose profile is hidden is drawn without a link (frontend ProfileLink).
-const AUTHOR_SELECT = { id: true, name: true, username: true, avatar_url: true, xp: true, rating: true, profileHidden: true, roadmapRewards: { select: { tierKey: true } }, ...WORN_CREDENTIAL_SELECT } as const;
+const AUTHOR_SELECT = { id: true, name: true, username: true, avatar_url: true, xp: true, rating: true, profileHidden: true, roadmapRewards: { select: { tierKey: true } }, ...WORN_CREDENTIAL_SELECT, ...HONOUR_SELECT } as const;
 
 /** Feed page size cap. */
 const MAX_TAKE = 30;
@@ -250,7 +251,7 @@ const RANK = {
 type Candidate = {
   id: string; userId: string; type: string; visibility: string; content: string;
   meta: unknown; createdAt: Date; editedAt?: Date | null; resolvedCommentId?: string | null;
-  user: { id: string; name: string | null; username: string | null; avatar_url: string | null; xp: number; roadmapRewards?: { tierKey: string }[]; wornCredential?: unknown };
+  user: { id: string; name: string | null; username: string | null; avatar_url: string | null; xp: number; roadmapRewards?: { tierKey: string }[]; wornCredential?: unknown; honours?: { kind: string }[] };
   _count: { comments: number; likes: number };
   tags: { tag: string }[];
 };
@@ -1711,7 +1712,7 @@ async function querySuggestions(userId: string) {
         id: u.id, name: u.name, username: u.username, avatar_url: u.avatar_url, xp: u.xp,
         // The flair travels with the author everywhere else; the rail drew
         // these avatars bare because this map rebuilt the row without it.
-        roadmapRewards: u.roadmapRewards, wornCredential: u.wornCredential,
+        roadmapRewards: u.roadmapRewards, wornCredential: u.wornCredential, honours: u.honours,
         reason, mutuals: mutual, followers: followers.get(u.id) ?? 0, posts: postCount,
         score,
       };

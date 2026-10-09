@@ -1,6 +1,7 @@
 import { prisma } from "../lib/prisma.js";
 import { badgeById, countersOfMe, hasBadge } from "../lib/badges.js";
 import { getMePayload } from "./me.js";
+import { honourDef } from "../lib/honours.js";
 
 /**
  * A win someone wants to show off, checked against the records.
@@ -15,13 +16,16 @@ import { getMePayload } from "./me.js";
  * shareable win pictures (services/share-cards.ts), which both put a claim in
  * front of other people and so must hold it to the same rule.
  *
+ * An honour (2026-10-09, lib/honours.ts) is the fifth: the Honour row is the
+ * claim.
+ *
  * A badge (since 2026-10-07) is the fourth kind: the claim is a threshold on
  * the account's own counters, read from the same /api/me payload the client's
  * badge wall is drawn from (lib/badges.ts) — never from the request.
  */
 
 export interface VerifiedAchievement {
-  kind: "problem" | "bug" | "roadmap" | "badge";
+  kind: "problem" | "bug" | "roadmap" | "badge" | "honour";
   title: string;
   difficulty?: string;
   slug?: string;
@@ -29,13 +33,23 @@ export interface VerifiedAchievement {
   tier?: string;
   /** A badge's id (`streak-7`, lib/badges). */
   badge?: string;
+  /** An honour's kind (`founding_member`, lib/honours). */
+  honour?: string;
   xp?: number;
 }
 
 export type AchievementCheck = { ok: true; achievement: VerifiedAchievement } | { ok: false; error: string };
 
 export async function verifyAchievement(userId: string, meta: Record<string, unknown>): Promise<AchievementCheck> {
-  const kind = meta["kind"] === "bug" ? "bug" : meta["kind"] === "roadmap" ? "roadmap" : meta["kind"] === "badge" ? "badge" : "problem";
+  const kind = meta["kind"] === "bug" ? "bug" : meta["kind"] === "roadmap" ? "roadmap" : meta["kind"] === "badge" ? "badge" : meta["kind"] === "honour" ? "honour" : "problem";
+
+  if (kind === "honour") {
+    // An honour given by hand (lib/honours.ts): the claim is the Honour row.
+    const def = honourDef(meta["honour"]);
+    const held = def ? await prisma.honour.count({ where: { userId, kind: def.kind } }) : 0;
+    if (!def || !held) return { ok: false, error: "You can only share an honour you hold" };
+    return { ok: true, achievement: { kind, honour: def.kind, title: def.name } };
+  }
 
   if (kind === "badge") {
     // The cached /api/me payload, which a solve, a fix and a chest all drop:

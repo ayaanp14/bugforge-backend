@@ -192,6 +192,7 @@ model User {
   followers             Follow[]                  @relation("followers")
   tagAffinities         TagAffinity[]
   feedback              Feedback[]
+  honours               Honour[]
   aptitudeAttempts      AptitudeAttempt[]
   mockAttempts          MockAttempt[]
   skillAttempts         SkillAttempt[]
@@ -1350,13 +1351,46 @@ model TagAffinity {
 /// comment, either about the platform (prompted every few days while they are
 /// active, never inside a problem or an interview) or about one interview
 /// (asked on its report). See routes/feedback.ts and services/feedback.ts.
+/// An honour given by hand to an account — the founding members first
+/// (2026-10-09, the owner's ask). The kinds and everything they say and give
+/// are a template in code (lib/honours.ts HONOURS); a row only records that
+/// this account holds one, and what has happened since: the celebration
+/// shown (once per account, not per browser — the point of storing it), the
+/// mail sent, and the LinkedIn clicks the owner asked to see in /admin.
+/// Granted by scripts/grant-honour.ts or the admin panel's Honours tab.
+model Honour {
+  id                  String    @id @default(cuid())
+  userId              String
+  /// A key of lib/honours.ts HONOURS ("founding_member").
+  kind                String    @db.VarChar(32)
+  /// Who granted it (the admin's email, or "script").
+  grantedBy           String?   @db.VarChar(191)
+  grantedAt           DateTime  @default(now())
+  /// When the celebration first opened for the holder, on any device.
+  celebratedAt        DateTime?
+  /// When the honour mail was accepted by the provider; null = not sent.
+  mailedAt            DateTime?
+  /// "Post on LinkedIn" — first click and how many.
+  linkedinPostAt      DateTime?
+  linkedinPosts       Int       @default(0)
+  /// "Add to LinkedIn profile" (the certification form) — first click and how many.
+  linkedinProfileAt   DateTime?
+  linkedinProfiles    Int       @default(0)
+  user                User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, kind])
+  @@index([kind, grantedAt])
+}
+
 model Feedback {
   id        String   @id @default(cuid())
   userId    String
   /// "platform" | "interview"
   kind      String
-  /// Whole stars, 1–5.
-  rating    Int
+  /// Whole stars, 1–5. Null on an "honour" note (lib/honours.ts), where the
+  /// stars are optional — a founding member asked for their thoughts owes
+  /// no score, and a made-up 5 would skew the platform average.
+  rating    Int?
   comment   String?  @db.Text
   /// Phrases picked in the dialog.
   tags      Json     @default("[]")
@@ -2360,12 +2394,13 @@ model ShareCard {
   id          String   @id @default(cuid())
   userId      String
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  /// "problem" | "bug" | "roadmap" | "badge"
+  /// "problem" | "bug" | "roadmap" | "badge" | "honour"
   kind        String   @db.VarChar(16)
   title       String   @db.VarChar(200)
   difficulty  String?  @db.VarChar(20)
   /// Where "Solve it too" goes: a problem's slug, or nothing for a chest.
-  /// A badge's id (`streak-7`, lib/badges) for a badge — it has no page.
+  /// A badge's id (`streak-7`, lib/badges) for a badge — it has no page —
+  /// and an honour's kind (`founding_member`, lib/honours) for an honour.
   slug        String?  @db.VarChar(200)
   /// A bug hunt's id, for the hunt's own page.
   challengeId String?  @db.VarChar(40)

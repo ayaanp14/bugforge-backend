@@ -53,6 +53,7 @@ import { checkRoadmapSeeded } from "./services/roadmap.js";
 import { checkStudyPlansSeeded } from "./services/study-plans.js";
 import eventsRouter from "./routes/events.js";
 import adminRouter from "./routes/admin.js";
+import { adminHonoursRouter, honoursRouter } from "./routes/honours.js";
 import { todayContest } from "./services/daily-contest.js";
 import { optionalAuth } from "./middleware/auth.js";
 import { addKickedUser, kickedUserIdsOf } from "./lib/room-kicks.js";
@@ -948,6 +949,7 @@ app.use("/api/me/readiness", readinessRouter);
 app.use("/api/me/submissions", analysisRouter);
 // The application tracker (Phase 8, services/applications.ts).
 app.use("/api/me/applications", applicationsRouter);
+app.use("/api/me/honours", honoursRouter);
 app.use("/api/me", meRouter);
 // Privacy, export and deletion (routes/account.ts) — none of its paths is one of meRouter's.
 app.use("/api/me", accountRouter);
@@ -986,6 +988,7 @@ app.use("/api/resumes", resumesRouter);
 app.use("/api/battles", battlesRouter);
 app.use("/api/share-cards", shareCardsRouter);
 app.use("/api/events", eventsRouter);
+app.use("/api/admin/honours", adminHonoursRouter);
 app.use("/api/admin", adminRouter);
 app.use("/api", executionRouter); 
 

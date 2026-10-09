@@ -39,7 +39,7 @@ router.post("/", requireAuth, shareCardLimiter, readUpload, async (req, res) => 
     return;
   }
   const q = req.query;
-  const meta = { kind: str(q["kind"]), slug: str(q["slug"]), challengeId: str(q["challengeId"]), tier: str(q["tier"]), badge: str(q["badge"]), xp: str(q["xp"]) };
+  const meta = { kind: str(q["kind"]), slug: str(q["slug"]), challengeId: str(q["challengeId"]), tier: str(q["tier"]), badge: str(q["badge"]), honour: str(q["honour"]), xp: str(q["xp"]) };
   try {
     const card = await createShareCard(req.user!.userId, meta, new Uint8Array(body));
     res.status(201).json({ id: card.id });

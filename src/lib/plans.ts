@@ -172,6 +172,21 @@ export const OWNER_PLAN: Plan = {
 };
 
 /**
+ * Lifetime access, held through an honour (lib/honours.ts — the founding
+ * members, 2026-10-09): Elite's entitlements for good, never billed.
+ *
+ * It keeps Elite's id so every client that switches on the plan id (the
+ * pricing page's "current plan", the billing view) treats it as the top
+ * plan without a new case; the name says why it has no end date. Like
+ * OWNER_PLAN it is not in PLANS, cannot be bought and is never stored on a
+ * subscription row — activePlan() hands it out when the honour row exists.
+ */
+export function lifetimePlan(): Plan {
+  const elite = planFor("elite");
+  return { ...elite, name: "Elite — lifetime", tagline: "Founding member: everything, for good." };
+}
+
+/**
  * Addresses that are always owners; OWNER_EMAILS adds more, comma-separated.
  *
  * Kept in code rather than only in the environment so the same accounts are

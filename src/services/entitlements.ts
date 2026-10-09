@@ -1,6 +1,7 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "../lib/prisma.js";
-import { FREE_PLAN, OWNER_PLAN, freeForAll, isOwnerEmail, planFor, withFreeForAll, type FreeForAll, type Plan } from "../lib/plans.js";
+import { FREE_PLAN, OWNER_PLAN, freeForAll, isOwnerEmail, lifetimePlan, planFor, withFreeForAll, type FreeForAll, type Plan } from "../lib/plans.js";
+import { grantsLifetimeAccess } from "../lib/honours.js";
 
 /**
  * Who is allowed to do what, and how much of it they have already done.
@@ -81,16 +82,21 @@ export async function isOwnerAccount(userId: string, email?: string | null): Pro
  * branch is: this is the one place limits come from.
  */
 export async function activePlan(userId: string, email?: string | null): Promise<{ plan: Plan; currentPeriodEnd: Date | null }> {
-  const [owner, subscription] = await Promise.all([
+  const [owner, subscription, honours] = await Promise.all([
     isOwnerAccount(userId, email),
     prisma.subscription.findFirst({
       where: { userId, status: "active", currentPeriodEnd: { gt: new Date() } },
       orderBy: { currentPeriodEnd: "desc" },
       select: { planId: true, currentPeriodEnd: true },
     }),
+    // A founding member (lib/honours.ts) holds Elite for good. Read in the
+    // same round trip as the subscription; an account with no honours is
+    // one empty indexed lookup on Honour's (userId, kind) key.
+    prisma.honour.findMany({ where: { userId }, select: { kind: true } }),
   ]);
 
   if (owner) return { plan: OWNER_PLAN, currentPeriodEnd: null };
+  if (grantsLifetimeAccess(honours.map((h) => h.kind))) return { plan: lifetimePlan(), currentPeriodEnd: null };
   if (!subscription) return { plan: withFreeForAll(FREE_PLAN), currentPeriodEnd: null };
   return { plan: withFreeForAll(planFor(subscription.planId)), currentPeriodEnd: subscription.currentPeriodEnd };
 }

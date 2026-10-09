@@ -629,6 +629,7 @@ async function shareHead(id: string): Promise<PageHead | null> {
   if (!card) return null;
   const who = card.user.name || card.user.username || "A CodeKairo coder";
   if (card.kind === "badge") return badgeShareHead(id, who, card.title, badgeById(card.slug));
+  if (card.kind === "honour") return honourShareHead(id, who, card.title);
   const level = card.difficulty ? `${card.difficulty.charAt(0).toUpperCase()}${card.difficulty.slice(1)} ` : "";
   const what =
     card.kind === "roadmap"
@@ -677,6 +678,23 @@ function badgeShareHead(id: string, who: string, name: string, badge: ReturnType
     crumb: "Shared win",
     image: { url: `${API_ORIGIN}/api/share-cards/${id}/image.jpg`, width: CARD_WIDTH, height: CARD_HEIGHT, alt: title },
     content: `<p>${h(description)}</p><p><a href="${h(target.href)}">${h(target.label)}</a> · <a href="/register">Join CodeKairo</a></p>`,
+  };
+}
+
+/**
+ * A shared honour (lib/honours.ts — the founding members): given by hand,
+ * so the words thank rather than boast, and the link invites the reader in.
+ */
+function honourShareHead(id: string, who: string, name: string): PageHead {
+  const title = `${who} is a ${name} of ${BRAND}`;
+  const description = `${who} was one of the first people to build their coding practice on CodeKairo, and one of its most active — recognised as a ${name}. Practise DSA in 13 languages, hunt real bugs and sit AI mock interviews.`;
+  return {
+    path: `/share/${id}`,
+    title,
+    description,
+    crumb: "Shared win",
+    image: { url: `${API_ORIGIN}/api/share-cards/${id}/image.jpg`, width: CARD_WIDTH, height: CARD_HEIGHT, alt: title },
+    content: `<p>${h(description)}</p><p><a href="/challenges">Start practising</a> · <a href="/register">Join CodeKairo</a></p>`,
   };
 }
 

@@ -90,7 +90,7 @@ export async function createShareCard(userId: string, meta: Record<string, unkno
       title: a.title.slice(0, 200),
       difficulty: a.difficulty ? a.difficulty.toLowerCase().slice(0, 20) : null,
       // A badge has no page of its own; its id rides in `slug` (schema note).
-      slug: a.slug ?? a.badge ?? null,
+      slug: a.slug ?? a.badge ?? a.honour ?? null,
       challengeId: a.challengeId ?? null,
       xp: a.xp ?? null,
       image: Buffer.from(bytes),

@@ -2,6 +2,7 @@ import { prisma } from "../lib/prisma.js";
 import { cachedShared, invalidate } from "../lib/cache.js";
 import { daysBetween } from "../lib/clock.js";
 import { WORN_CREDENTIAL_SELECT } from "../lib/skill-tests.js";
+import { HONOUR_SELECT } from "../lib/honours.js";
 import { sqlSolveTally } from "../lib/activity.js";
 import { countSolved, getRank, loadProblemState, type ProblemState } from "./dashboard.js";
 import { onboardingStateOf, type OnboardingState } from "../lib/onboarding.js";
@@ -131,8 +132,9 @@ export async function getUserTrends(userId: string, sql: Promise<SqlTally> = loa
 // v3 (2026-10-07): `dailyMinutes`, which sizes the home's mission before it loads.
 // v4 (2026-10-07): `targetCompany`, which tells the home's loading state to keep
 // room for the readiness line. v5 (same day): `targetDate`, which /welcome's
-// edit mode shows beside the companies.
-const meKey = (userId: string) => `me:v5:${userId}`;
+// edit mode shows beside the companies. v6 (2026-10-09): `honours`, the
+// founding-member frame and celebration (lib/honours.ts).
+const meKey = (userId: string) => `me:v6:${userId}`;
 
 /** Drop a user's cached /api/me payload after anything that changes it. */
 export function invalidateMe(userId: string): void {
@@ -187,6 +189,8 @@ export const ME_SELECT = {
   roadmapRewards: { select: { tierKey: true } },
   /** The skill-test credential worn round the avatar, if any. */
   ...WORN_CREDENTIAL_SELECT,
+  /** The honours held (lib/honours.ts) — the founding member's frame. */
+  ...HONOUR_SELECT,
   stats: {
     select: {
       problemsSolved: true,
@@ -348,6 +352,7 @@ export function loadDashboardUserRow(userId: string) {
       targetDate: true,
       roadmapRewards: { select: { tierKey: true } },
       ...WORN_CREDENTIAL_SELECT,
+      ...HONOUR_SELECT,
       stats: {
         select: {
           problemsSolved: true,

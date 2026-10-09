@@ -127,7 +127,7 @@ router.post("/", requireAuth, async (req: any, res) => {
  */
 router.get("/", requireAuth, adminOnly, async (req: any, res) => {
   try {
-    const kind = req.query.kind === "platform" || req.query.kind === "interview" ? (req.query.kind as string) : null;
+    const kind = req.query.kind === "platform" || req.query.kind === "interview" || req.query.kind === "honour" ? (req.query.kind as string) : null;
     const take = Math.min(200, Math.max(1, Number(req.query.take) || 100));
 
     const [feedback, summary] = await Promise.all([

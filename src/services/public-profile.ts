@@ -179,6 +179,9 @@ export function publicProfileOf(
       roadmapRewards: me.roadmapRewards,
       // The frame round the avatar; its code is already public (/verify).
       wornCredential: me.wornCredential ?? null,
+      // Honours given by hand (lib/honours.ts): the kinds only — the frame
+      // and the badge are meant to be seen; when and by whom stay private.
+      honours: (me.honours ?? []).map((h: { kind: string }) => ({ kind: h.kind })),
       stats: me.stats
         ? {
             problemsSolved: me.stats.problemsSolved,

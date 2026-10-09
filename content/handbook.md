@@ -71,6 +71,11 @@ Public pages (no account needed):
 - **Sharing your estimates**: on `/profile` → Career, **Share your estimates** has two switches, both off by default: **Show my skill profile, by area** (areas with too little evidence are left out; your weakest skills are never shown, only your strongest) and the readiness switch (needs a chosen company; while there is not enough evidence for an estimate it is not shown, even switched on). The section on `/profile` shows exactly what the public sees. Hiding the whole profile (Privacy) still hides everything.
 - **What other people never see on your profile**: your email, birthday, gender and reminder settings, and the **code** of any submission. Someone else can see which problems you submitted and each verdict, language and time, but never the code you submitted — only you can open that, from your own `/profile`.
 
+### Founding members
+
+- **Founding Member** is an honour CodeKairo gives by hand — not a badge you earn by a count — to the first people who used the site and stayed active. Holders get a gold double frame round their avatar and a gold "Founding Member" tag beside their name everywhere (top bar, profile, community posts), the honour at the top of their profile's badge wall, and **lifetime free access to everything** (every plan limit lifted, for good, never billed).
+- **The founding-member celebration** plays once, on the holder's first visit after the honour is given (on whichever device comes first): a gold medal, a thank-you, what it gives, a **Share on LinkedIn** button (posts a Founding Member picture card; the caption is copied to paste), **Add to LinkedIn profile** (adds it under Licenses & certifications) and a box for feedback to the founder. To see it again, open your profile → Badges → **Share on LinkedIn**.
+
 ### Badges
 
 - **19 achievement badges** on four tracks, shown on the profile ("N of 19 badges earned"), earned in colour and locked in grey with the rule on hover and "N more to <next badge>" per track. Nothing to claim: a badge appears as soon as its number is reached.

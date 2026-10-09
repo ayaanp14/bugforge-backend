@@ -87,7 +87,7 @@ describe("publicProfileOf", () => {
     const profile = publicProfileOf(user, dash, null)!;
     assert.deepEqual(Object.keys(profile).sort(), ["career", "credentials", "difficultyStats", "heatmap", "isSelf", "roadmap", "social", "submissions", "tournaments", "user"]);
     assert.deepEqual(Object.keys(profile.user).sort(), [
-      "avatar_url", "createdAt", "github", "globalRank", "instituteName", "linkedin", "location", "name", "rating", "readme",
+      "avatar_url", "createdAt", "github", "globalRank", "honours", "instituteName", "linkedin", "location", "name", "rating", "readme",
       "roadmapRewards", "stats", "tierTitle", "twitter", "username", "website", "wornCredential", "xp",
     ]);
     assert.deepEqual(Object.keys(profile.user.stats!).sort(), ["bugsFixed", "currentStreak", "longestStreak", "problemsSolved", "sqlSolved"]);
