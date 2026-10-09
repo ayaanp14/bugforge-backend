@@ -530,7 +530,7 @@ export function companyBlurb(
   const split = d ? and((["EASY", "MEDIUM", "HARD"] as const).filter((k) => d[k] > 0).map((k) => `${d[k]} ${k.toLowerCase()}`)) : "";
   const levels = split ? ` — ${split}${d && d.HARD === 0 ? ", no hard ones" : ""} —` : ",";
   const share = more.catalogue ? Math.round((count / more.catalogue) * 100) : 0;
-  const broad = share >= 50 ? ` At ${share}% of the catalogue the tag is a broad net rather than a shortlist${more.patterns?.length ? "; the pattern below is the narrower place to start" : ""}.` : "";
+  const broad = share >= 50 ? ` At ${share}% of the catalogue the tag is a broad net rather than a shortlist${more.patterns?.length ? "; its placement test pattern is the narrower place to start" : ""}.` : "";
   const own = more.ownProblems?.length ? ` Tagged for ${label} and no other company: ${and(more.ownProblems)}.` : "";
   // The pattern's guide (lib/test-guides) opens with one sourced sentence on
   // the test itself — the one company-specific fact the site can back.
