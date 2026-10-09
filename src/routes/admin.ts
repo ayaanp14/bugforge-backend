@@ -283,9 +283,46 @@ const USER_ROW = {
 } as const;
 
 /**
- * The orders the user list offers. "active" reads UserStats.lastActive, which
- * a solve moves; an account that only browses keeps its signup-day value, so
- * the Activity block in the detail (AppEvent) is the truer "last seen".
+ * When each account was last on the site: its newest AppEvent (a page view,
+ * a run, a submit — one MAX per user on the (userId, createdAt) index), or
+ * its last solve when that is later (UserStats.lastActive, which only a solve
+ * moves). The list showed lastActive alone as "Last active", so an account
+ * that browsed for an hour and solved nothing read "never" (owner, 2026-10-09).
+ */
+async function lastSeenOf(users: ReadonlyArray<{ id: string; stats: { lastActive: Date } | null }>): Promise<Map<string, Date>> {
+  const out = new Map<string, Date>();
+  if (!users.length) return out;
+  const rows = await prisma.appEvent.groupBy({ by: ["userId"], where: { userId: { in: users.map((u) => u.id) } }, _max: { createdAt: true } });
+  for (const r of rows) if (r.userId && r._max.createdAt) out.set(r.userId, r._max.createdAt);
+  for (const u of users) {
+    const solved = u.stats?.lastActive;
+    const event = out.get(u.id);
+    if (solved && (!event || solved > event)) out.set(u.id, solved);
+  }
+  return out;
+}
+
+/**
+ * A page of the list ordered by last seen. That is a MAX over another table,
+ * which no orderBy can say, so the matching ids are read, seen and sorted
+ * here and the page loaded by id — fine for the admin's few thousand
+ * accounts; past tens of thousands it wants a stored lastSeenAt.
+ */
+async function usersBySeen(where: Prisma.UserWhereInput, skip: number, take: number) {
+  const all = await prisma.user.findMany({ where, select: { id: true, createdAt: true, stats: { select: { lastActive: true } } } });
+  const seen = await lastSeenOf(all);
+  const ids = all
+    .sort((a, b) => (seen.get(b.id)?.getTime() ?? 0) - (seen.get(a.id)?.getTime() ?? 0) || b.createdAt.getTime() - a.createdAt.getTime())
+    .slice(skip, skip + take)
+    .map((u) => u.id);
+  const rows = await prisma.user.findMany({ where: { id: { in: ids } }, select: USER_ROW });
+  const at = new Map(ids.map((id, i) => [id, i]));
+  return rows.sort((a, b) => (at.get(a.id) ?? 0) - (at.get(b.id) ?? 0));
+}
+
+/**
+ * The orders the user list offers. "active" is last seen (lastSeenOf),
+ * ordered in usersBySeen; its entry here is never used as an orderBy.
  */
 const USER_SORTS = {
   newest: { createdAt: "desc" },
@@ -314,17 +351,22 @@ router.get("/users", async (req, res) => {
   };
   const [total, users] = await Promise.all([
     prisma.user.count({ where }),
-    prisma.user.findMany({
-      where,
-      // createdAt breaks ties so a page boundary never repeats or drops a row.
-      orderBy: [USER_SORTS[sort], { createdAt: "desc" }],
-      skip: (page - 1) * take,
-      take,
-      select: USER_ROW,
-    }),
+    sort === "active"
+      ? usersBySeen(where, (page - 1) * take, take)
+      : prisma.user.findMany({
+          where,
+          // createdAt breaks ties so a page boundary never repeats or drops a row.
+          orderBy: [USER_SORTS[sort], { createdAt: "desc" }],
+          skip: (page - 1) * take,
+          take,
+          select: USER_ROW,
+        }),
   ]);
-  const cameFrom = await cameFromOf(users);
-  res.json({ q, sort, goal, page, pageSize: take, total, users: users.map((u) => ({ ...u, cameFrom: cameFrom.get(u.id) ?? null, onboarding: onboardingRow(u) })) });
+  const [cameFrom, seen] = await Promise.all([cameFromOf(users), lastSeenOf(users)]);
+  res.json({
+    q, sort, goal, page, pageSize: take, total,
+    users: users.map((u) => ({ ...u, lastSeen: seen.get(u.id) ?? null, cameFrom: cameFrom.get(u.id) ?? null, onboarding: onboardingRow(u) })),
+  });
 });
 
 // GET /api/admin/users/:id — one account in full
@@ -384,7 +426,7 @@ router.get("/users/:id", async (req, res) => {
     userTraffic(user.id, user.createdAt),
   ]);
   res.json({
-    user,
+    user: { ...user, lastSeen: (await lastSeenOf([user])).get(user.id) ?? null },
     plan: { id: plan.plan.id, name: plan.plan.name, currentPeriodEnd: plan.currentPeriodEnd },
     onboarding: onboardingDetail(user),
     recentErrors,
