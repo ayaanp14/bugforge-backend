@@ -93,6 +93,8 @@ export interface PageFacts {
   /** An aptitude question's options, and the index of the correct one. */
   options?: string[];
   answer?: number;
+  /** Why the correct option is right, plain text — each Answer's `comment`. */
+  explanation?: string;
   /** An aptitude question's stem as plain text — its Question node's `text`. */
   question?: string;
   /** A hub's first entries in page order (at most twenty) — its ItemList's elements. */
@@ -1336,7 +1338,7 @@ function aptitudeTopicHead(topicId: string): Promise<PageHead | null> {
 }
 
 function aptitudeQuestionHead(slug: string): Promise<PageHead | null> {
-  return cached(`seo:head:aptitude:v3:${slug}`, HEAD_TTL_MS, async () => {
+  return cached(`seo:head:aptitude:v4:${slug}`, HEAD_TTL_MS, async () => {
     const q = await prisma.aptitudeQuestion.findUnique({
       where: { slug },
       select: { prompt: true, topic: true, category: true, title: true, options: true, answer: true, solution: true, approach: true, difficulty: true, timeTargetSec: true },
@@ -1391,7 +1393,7 @@ function aptitudeQuestionHead(slug: string): Promise<PageHead | null> {
       // sentence", and only the title tells their pages apart.
       // The prompt gets what the title and the closing line leave of 158.
       description: `${q.title}: ${summarise(q.prompt, `a ${label} aptitude question with a worked solution.`, Math.max(60, 115 - q.title.length))} Answer and worked solution on ${BRAND}.`,
-      facts: { difficulty, topic: label, minutes: q.timeTargetSec / 60, options, answer: q.answer, question: questionStem(q.prompt, 500), trail },
+      facts: { difficulty, topic: label, minutes: q.timeTargetSec / 60, options, answer: q.answer, explanation: summarise(q.approach, "", 300), question: questionStem(q.prompt, 500), trail },
       content,
       crumb: q.title,
       ...(canonical !== slug ? { canonical: `/aptitude/q/${canonical}` } : {}),
