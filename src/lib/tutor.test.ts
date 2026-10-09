@@ -144,3 +144,25 @@ test("a climb tells the model to give the new rung's help, not only a question",
   const asked = buildTutorMessages({ ...CTX, rung: 1 }, "SYSTEM");
   assert.doesNotMatch(asked[asked.length - 2]!.content, /More help/);
 });
+
+test("an example block passes at every rung, a line at a time, and is cut at the first line of code", () => {
+  const card = "Like this:\n```example\nInput: nums = [2, 7], target = 9\ni = 0 → 2, look for 7\nOutput: [0, 1]\n```\nSee?";
+  for (const rung of [0, 2, 4]) {
+    for (const size of [1, 4, card.length]) assert.equal(through(rung, card, size), card, `rung ${rung}, chunks of ${size}`);
+  }
+  const sneaky = "Look:\n```example\nInput: nums = [2, 7]\nfor x in nums:\n    seen[x] = 1\n```\nDone.";
+  assert.equal(through(0, sneaky, 3), `Look:\n\`\`\`example\nInput: nums = [2, 7]\n\`\`\`\n${HELD_BACK}\nDone.`);
+  // Unclosed at the end: what was fine is kept, a code line is not.
+  assert.equal(through(0, "A\n```example\ni = 0 → 2", 2), "A\n```example\ni = 0 → 2");
+  assert.equal(through(0, "A\n```example\nreturn seen;", 2), `A\n\`\`\`example\n\`\`\`\n${HELD_BACK}`);
+});
+
+test("the model is told when the code changed since its last reply, and when a submission is of older code", () => {
+  const changed = all({ ...CTX, codeChanged: true, lastSubmission: { ...CTX.lastSubmission!, current: false } });
+  assert.match(changed, /CHANGED their code/);
+  assert.match(changed, /EARLIER version of the code/);
+  assert.match(all({ ...CTX, codeChanged: false }), /unchanged since your last reply/);
+  const first = all({ ...CTX, codeChanged: null });
+  assert.doesNotMatch(first, /CHANGED|unchanged/);
+  assert.doesNotMatch(first, /EARLIER version/);
+});

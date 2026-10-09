@@ -46,7 +46,12 @@ export const RUNGS: readonly Rung[] = [
     help: "none",
     code: "none",
     material: NONE,
-    may: "Ask one or two short guiding questions that let the student find the next step themselves — what the input and output mean, what a small example gives, what their code does on it — and reflect their own reasoning back to them.",
+    // Questions only, as v1/v2 read it, answered every message with the same
+    // two questions (the owner, 2026-10-10: "stiff, same reply again and
+    // again"). The rung withholds the *idea*, not conversation: clarifying the
+    // statement, tracing a visible example's expected output, and reading the
+    // student's own code back to them give nothing of the technique away.
+    may: "Talk it through with the student. Answer questions about what the statement means and why a visible example gives its output (an example block helps). Say what their own code does — trace it on a small input, point at a line that misbehaves and why. React to their ideas: say plainly whether a guess is right, partly right or wrong, and why. Then ask one short guiding question that lets them find the next step themselves.",
     // "(Hint: think about what number would pair with the current one)" came
     // back at this rung on Two Sum (2026-10-07): the answer the rung withholds,
     // dropped in an aside. Asides are named, and so is the word.
@@ -164,7 +169,15 @@ export interface TutorContext {
   solution: { language: string; code: string } | null;
   code: string | null;
   language: string | null;
-  lastSubmission: { verdict: string; passed: number; total: number; headline: string | null; review: string | null } | null;
+  /** `current`: the submission's code is the code shared now (false = an earlier version). */
+  lastSubmission: { verdict: string; passed: number; total: number; headline: string | null; review: string | null; current?: boolean } | null;
+  /**
+   * Whether the shared code differs from what the tutor read on the previous
+   * turn: true/false when known, null when there was no previous code. Said
+   * to the model because its own earlier answers in the history cite the old
+   * lines, and without the note it kept repeating them (2026-10-10).
+   */
+  codeChanged?: boolean | null;
   history: TutorTurnText[];
   message: string;
   /** The student pressed "More help" to reach this rung with this message. */
@@ -235,13 +248,19 @@ export function buildTutorMessages(ctx: TutorContext, system: string): ChatMessa
 
   const work: string[] = [];
   if (ctx.code && ctx.code.trim()) {
-    work.push(fence(`STUDENT'S CODE${ctx.language ? ` (${ctx.language})` : ""}, lines numbered`, numberedLines(clip(ctx.code, TUTOR_LIMITS.code))));
+    if (ctx.codeChanged === true) {
+      work.push("The student has CHANGED their code since your last reply. Read the version below fresh: anything said earlier about line numbers or bugs may no longer apply — do not repeat it. Notice what is different, and say so if they fixed something.");
+    } else if (ctx.codeChanged === false) {
+      work.push("The student's code is unchanged since your last reply — do not repeat what you already said about it; move them forward.");
+    }
+    work.push(fence(`STUDENT'S CODE RIGHT NOW${ctx.language ? ` (${ctx.language})` : ""}, lines numbered`, numberedLines(clip(ctx.code, TUTOR_LIMITS.code))));
   } else {
     work.push("The student has not shared code with this message.");
   }
   if (ctx.lastSubmission) {
     const s = ctx.lastSubmission;
-    const lines = [`Last submission: ${s.verdict.replace(/_/g, " ").toLowerCase()}, ${s.passed} of ${s.total} cases passed.`];
+    const when = s.current === false ? " (of an EARLIER version of the code — the code above has changed since; trust the code above)" : "";
+    const lines = [`Last submission${when}: ${s.verdict.replace(/_/g, " ").toLowerCase()}, ${s.passed} of ${s.total} cases passed.`];
     if (s.headline) lines.push(`The judge's reading: ${s.headline}`);
     if (s.review) lines.push(`The code review said: ${clip(s.review, 600)}`);
     work.push(fence("LAST SUBMISSION", lines.join("\n")));
@@ -256,7 +275,7 @@ export function buildTutorMessages(ctx: TutorContext, system: string): ChatMessa
     {
       role: "system",
       content:
-        `Reminder — rung ${rungOf(ctx.rung)}, ${rung.label}: you must not ${rung.mayNot}. Answer the student's message below at this rung.` +
+        `Reminder — rung ${rungOf(ctx.rung)}, ${rung.label}: you must not ${rung.mayNot}. Answer the student's message below at this rung — respond to exactly what they wrote, in a different way from your earlier replies, short and scannable. Any trace of values goes inside one \`\`\`example block (Input: / step → result / Output:), never as loose lines.` +
         // A climb is the student asking for this rung's help. Answered with
         // only a question (seen at Approach on 2026-10-07), More help gave none.
         (ctx.climbed ? ` The student has just pressed "More help" to reach this rung: give this rung's help now — ${rung.may} — and only then hand the turn back.` : ""),
@@ -273,6 +292,27 @@ export const HELD_BACK = "*(Code held back at this rung. Ask for more help to se
 /** Fence info strings that read as steps, not code — the only ones Pseudocode lets through. */
 const PLAIN_FENCES = new Set(["text", "pseudo", "pseudocode", "plaintext", "txt"]);
 
+/** The worked-example card (prompt v3), shown at every rung — values and words only. */
+export const EXAMPLE_FENCE = "example";
+
+/**
+ * A line of an example block that reads as code rather than a value trace.
+ * The prompt asks for `label → what happens` lines; a model that slips a loop
+ * or a statement in there would hand over code below Pseudocode, so the gate
+ * checks every line instead of trusting the info string. Deliberately eager:
+ * a false alarm costs one card, a miss costs the rung.
+ */
+const CODE_LINE: readonly RegExp[] = [
+  /[;{}]\s*$/,
+  /^\s*[{}]/,
+  /=>/,
+  /(\+\+|\+=|-=|\*=|&&|\|\||::)/,
+  /\b(def|function|class|return|public|private|static|void|import|const|let|var|elif|lambda|fn|func|#include|System\.out|console\.log|printf|cout)\b/,
+  /^\s*(for|while|if|else)\b.*[:({]\s*$/,
+  /^\s*[A-Za-z_][\w.]*\s*\([^)]*\)\s*[:{]\s*$/,
+];
+export const looksLikeCode = (line: string) => CODE_LINE.some((re) => re.test(line));
+
 /**
  * A streaming filter over the tutor's Markdown: fenced blocks a rung does not
  * allow are replaced by one line saying so, as the answer arrives — the
@@ -283,14 +323,18 @@ const PLAIN_FENCES = new Set(["text", "pseudo", "pseudocode", "plaintext", "txt"
  *
  * Code at the Structure and Solution rungs passes untouched. Pseudocode lets
  * through only blocks tagged as plain text (`text`, `pseudocode` …): a Python
- * block there is code whatever the model called it.
+ * block there is code whatever the model called it. An `example` block (a
+ * worked example the panel draws as a card) passes at every rung, a line at a
+ * time, and is closed and held from the first line that `looksLikeCode`.
  */
 export function codeGate(rung: number): { push(text: string): string; end(): string } {
   const policy = RUNGS[rungOf(rung)]!.code;
   if (policy === "code") return { push: (t) => t, end: () => "" };
 
   let lineStart: string | null = ""; // the current line while it could still open a fence
-  let fence: "none" | "shown" | "held" = "none";
+  // "example": a worked-example block, let out a whole line at a time so each
+  // line can be checked for code before anyone sees it.
+  let fence: "none" | "shown" | "held" | "example" = "none";
   let fenceLine = ""; // the current line inside a fence, to find its close
 
   const couldOpen = (s: string) => /^ {0,3}`{0,3}$/.test(s);
@@ -299,6 +343,25 @@ export function codeGate(rung: number): { push(text: string): string; end(): str
   const push = (text: string): string => {
     let out = "";
     for (const ch of text) {
+      if (fence === "example") {
+        if (ch !== "\n") {
+          fenceLine += ch;
+          continue;
+        }
+        if (/^ {0,3}```\s*$/.test(fenceLine)) {
+          out += `${fenceLine}\n`;
+          fence = "none";
+          lineStart = "";
+        } else if (looksLikeCode(fenceLine)) {
+          // Close the card at what was fine so far; the rest of the block is held.
+          out += `\`\`\`\n${HELD_BACK}\n`;
+          fence = "held";
+        } else {
+          out += `${fenceLine}\n`;
+        }
+        fenceLine = "";
+        continue;
+      }
       if (fence !== "none") {
         if (ch === "\n") {
           const closing = /^ {0,3}```\s*$/.test(fenceLine);
@@ -320,7 +383,10 @@ export function codeGate(rung: number): { push(text: string): string; end(): str
           if (ch !== "\n") continue; // read the info string to the end of the line
           const info = lineStart.trim().slice(3).trim().toLowerCase().split(/\s+/)[0] ?? "";
           const allowed = policy === "pseudocode" && PLAIN_FENCES.has(info);
-          if (allowed) {
+          if (info === EXAMPLE_FENCE) {
+            out += lineStart;
+            fence = "example";
+          } else if (allowed) {
             out += lineStart;
             fence = "shown";
           } else {
@@ -351,6 +417,11 @@ export function codeGate(rung: number): { push(text: string): string; end(): str
   const end = (): string => {
     // An unclosed fence the rung holds back stays held; a half-read line that
     // turned out not to be a fence is just text.
+    if (fence === "example") {
+      const last = fenceLine;
+      fenceLine = "";
+      return last && !/^ {0,3}```\s*$/.test(last) && looksLikeCode(last) ? `\`\`\`\n${HELD_BACK}` : last;
+    }
     if (fence === "none" && lineStart) {
       const rest = opens(lineStart) ? HELD_BACK : lineStart;
       lineStart = "";

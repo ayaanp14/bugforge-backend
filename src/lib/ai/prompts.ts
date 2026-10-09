@@ -16,7 +16,11 @@ export const PROMPT_VERSIONS = {
   "submission-review": 1,
   // v2 (2026-10-07): short paragraphs, numbered steps, one closing question —
   // v1 wrote a sentence a line, which read as a list of fragments.
-  tutor: 2,
+  // v3 (2026-10-10): conversational — answer the message first, never repeat
+  // an earlier reply, read the current code fresh, bullets and `example`
+  // blocks rather than paragraphs (the owner: "stiff, same reply again and
+  // again, still taking the old code").
+  tutor: 3,
   // Phase 6 (2026-10-09): the bug hunts' review, postmortem rubric and tutor.
   "bug-review": 1,
   "root-cause": 1,

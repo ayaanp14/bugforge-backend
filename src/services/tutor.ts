@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { prisma } from "../lib/prisma.js";
 import { cached } from "../lib/cache.js";
 import { ai, AIStreamError } from "../lib/ai/provider.js";
@@ -43,6 +44,35 @@ export const BLOCK_MESSAGE: Record<TutorBlock, string> = {
 };
 
 const OUTPUT_TOKENS = 1_200;
+/**
+ * 0.3 until 2026-10-10: with the rung repeated before every message, a low
+ * temperature answered "where do I start?" and "I still don't get it" with
+ * near-identical replies. The rung is held by the gate and the reminder, not
+ * by the sampling, so the answers can afford to vary.
+ */
+const TEMPERATURE = 0.7;
+
+/**
+ * The code each conversation last read, as a hash, so the next turn can tell
+ * the model whether it changed — its own earlier answers in the history cite
+ * the old lines, and without the note it kept answering about them. In
+ * process and bounded: after a restart the first turn simply says nothing
+ * either way (`codeChanged: null`), which is how a first turn reads anyway.
+ */
+const lastCodeSeen = new Map<string, string>();
+const LAST_CODE_CAP = 5_000;
+const codeHash = (code: string) => createHash("sha1").update(code.replace(/\r\n?/g, "\n").trim()).digest("hex");
+function noteCodeSeen(key: string, hash: string | null): boolean | null {
+  const before = lastCodeSeen.get(key) ?? null;
+  lastCodeSeen.delete(key);
+  if (hash) {
+    lastCodeSeen.set(key, hash);
+    if (lastCodeSeen.size > LAST_CODE_CAP) lastCodeSeen.delete(lastCodeSeen.keys().next().value!);
+  } else if (before) {
+    lastCodeSeen.set(key, before); // not shared this time: the last version read is still the last
+  }
+  return hash && before ? hash !== before : null;
+}
 /** The stored thread the page shows: the newest this many lines. */
 const THREAD_SHOWN = 60;
 
@@ -222,7 +252,7 @@ export async function tutorReply(
     prisma.submission.findFirst({
       where: { userId, problemId: problem.id },
       orderBy: { submittedAt: "desc" },
-      select: { verdict: true, passedCases: true, totalCases: true, analysis: { select: { deterministic: true, ai: true } } },
+      select: { verdict: true, passedCases: true, totalCases: true, code: true, analysis: { select: { deterministic: true, ai: true } } },
     }),
   ]);
   const reached = rungOf(engagement?.tutorRung ?? 0);
@@ -235,6 +265,8 @@ export async function tutorReply(
   const det = (last?.analysis?.deterministic ?? null) as { headline?: unknown } | null;
   const review = (last?.analysis?.ai ?? null) as { summary?: unknown } | null;
   const { text: system, version } = promptFor("tutor");
+  const shared = ask.code && ask.code.trim() ? codeHash(ask.code) : null;
+  const codeChanged = noteCodeSeen(`${userId}:${problem.id}`, shared);
   const messages = buildTutorMessages(
     {
       title: problem.title,
@@ -253,8 +285,10 @@ export async function tutorReply(
             total: last.totalCases ?? 0,
             headline: typeof det?.headline === "string" ? det.headline : null,
             review: typeof review?.summary === "string" ? review.summary : null,
+            current: shared ? codeHash(last.code) === shared : undefined,
           }
         : null,
+      codeChanged,
       history: recent.reverse().map((t): TutorTurnText => ({ role: t.role === "tutor" ? "tutor" : "student", content: t.content })),
       message,
       climbed: step.climbed,
@@ -272,7 +306,7 @@ export async function tutorReply(
   };
   let model: string;
   try {
-    ({ model } = await ai.stream(messages, { maxTokens: OUTPUT_TOKENS, temperature: 0.3, model: process.env["TUTOR_MODEL"] || undefined }, (t) => emit(gate.push(t))));
+    ({ model } = await ai.stream(messages, { maxTokens: OUTPUT_TOKENS, temperature: TEMPERATURE, model: process.env["TUTOR_MODEL"] || undefined }, (t) => emit(gate.push(t))));
     emit(gate.end());
   } catch (err) {
     if (step.climbed && shown.trim()) await recordClimb(userId, problem.id, step.rung, new Date()).catch(() => {});
