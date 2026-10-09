@@ -161,6 +161,10 @@ const QUESTIONS: Array<[string, RegExp, string?]> = [
   ["does using the tutor lower my skill score", /Approach, Complexity and Hint count like opening the problem.s hints/],
   ["why is the tutor off on the daily contest problem", /When the tutor is off/],
   ["can the tutor just give me the code", /does not climb, and code is held back below Pseudocode/],
+  // Phase 8: the career section and the tracker.
+  ["can recruiters see my skill scores on my profile", /\*\*only if you switch them on\*\*/],
+  ["how do I track my job applications", /your own tracker for the jobs and internships you are applying for/],
+  ["what does verified mean on my profile", /\*\*Verified\*\* — the site checked it itself/],
   // Phase 6: bug hunts as incidents.
   ["what is the postmortem on a bug hunt", /scores it out of 100 against your accepted patch/],
   ["how is my bug hunt diagnosis time measured", /\*\*diagnosis time\*\* is from that start/],

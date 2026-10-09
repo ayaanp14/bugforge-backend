@@ -13,6 +13,7 @@ import billingRouter from "./routes/billing.js";
 import campusRouter from "./routes/campus.js";
 import meRouter from "./routes/me.js";
 import accountRouter from "./routes/account.js";
+import applicationsRouter from "./routes/applications.js";
 import skillsRouter from "./routes/skills.js";
 import missionRouter from "./routes/mission.js";
 import analysisRouter from "./routes/analysis.js";
@@ -945,6 +946,8 @@ app.use("/api/me/skills", skillsRouter);
 app.use("/api/me/mission", missionRouter);
 app.use("/api/me/readiness", readinessRouter);
 app.use("/api/me/submissions", analysisRouter);
+// The application tracker (Phase 8, services/applications.ts).
+app.use("/api/me/applications", applicationsRouter);
 app.use("/api/me", meRouter);
 // Privacy, export and deletion (routes/account.ts) — none of its paths is one of meRouter's.
 app.use("/api/me", accountRouter);

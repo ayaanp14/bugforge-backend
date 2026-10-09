@@ -27,6 +27,8 @@ const user = {
   readme: "Building things.",
   createdAt: new Date("2026-01-02T00:00:00Z"),
   profileHidden: false,
+  careerShowSkills: true,
+  careerShowReadiness: false,
 };
 
 const dash = {
@@ -83,7 +85,7 @@ const dash = {
 describe("publicProfileOf", () => {
   it("names the public fields and nothing else", () => {
     const profile = publicProfileOf(user, dash, null)!;
-    assert.deepEqual(Object.keys(profile).sort(), ["credentials", "difficultyStats", "heatmap", "isSelf", "roadmap", "social", "submissions", "tournaments", "user"]);
+    assert.deepEqual(Object.keys(profile).sort(), ["career", "credentials", "difficultyStats", "heatmap", "isSelf", "roadmap", "social", "submissions", "tournaments", "user"]);
     assert.deepEqual(Object.keys(profile.user).sort(), [
       "avatar_url", "createdAt", "github", "globalRank", "instituteName", "linkedin", "location", "name", "rating", "readme",
       "roadmapRewards", "stats", "tierTitle", "twitter", "username", "website", "wornCredential", "xp",
@@ -126,6 +128,14 @@ describe("publicProfileOf", () => {
     const hidden = { ...user, profileHidden: true };
     assert.equal(publicProfileOf(hidden, dash, "user_1")!.hidden, true);
     assert.ok(!JSON.stringify(publicProfileOf(hidden, dash, "user_2")).includes("idden"));
+  });
+
+  it("carries the career section as built, and never the sharing switches themselves", () => {
+    const career = { verified: [{ proof: "verified" as const, label: "Solved on CodeKairo", detail: "3 coding problems", href: null, at: null }], selfReported: [] };
+    const profile = publicProfileOf(user, dash, null, career)!;
+    assert.deepEqual(profile.career, career);
+    assert.ok(!JSON.stringify(profile).includes("careerShow"));
+    assert.equal(publicProfileOf(user, dash, null)!.career, null);
   });
 
   it("is nothing when the account vanished between the two reads", () => {

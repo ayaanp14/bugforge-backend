@@ -108,6 +108,12 @@ model User {
   /// The account stays on the leaderboard and its public posts keep its
   /// name — without a link (author payloads carry the flag).
   profileHidden         Boolean                   @default(false)
+  /// The career section of /u/<username> (Phase 8, ADAPTIVE_COACH.md §15):
+  /// the skill profile's domain scores and the placement-readiness estimate
+  /// appear there only when their owner switches them on. Off by default —
+  /// the owner's decision, 2026-10-09. Verified facts need no switch.
+  careerShowSkills      Boolean                   @default(false)
+  careerShowReadiness   Boolean                   @default(false)
   /// The judge language the code editors open in (a driver-codegen
   /// ALL_LANGUAGES id): the last one picked on a problem or in a duel, on any
   /// device (PUT /api/me/language). Also an interview round's editor language
@@ -149,6 +155,7 @@ model User {
   accounts              Account[]
   githubConnection      GitHubConnection?
   bugSubmissions        BugSubmission[]
+  jobApplications       JobApplication[]
   bugEngagements        BugEngagement[]
   bugTutorTurns         BugTutorTurn[]
   bugAnalyses           BugSubmissionAnalysis[]
@@ -673,6 +680,31 @@ model BugSubmission {
 /// debugging tutor's ladder. Diagnosis time is *derived* from this and the
 /// first accepted BugSubmission (lib/bug-incident.ts diagnosisOf) — the
 /// client's timeTakenSecs stays on the row but is no longer what counts.
+/// One job or internship the member is applying for (Phase 8): a private
+/// tracker, never on the public profile. The company is free text; it links
+/// to readiness and a simulation when lib/applications.ts can match it.
+model JobApplication {
+  id        String    @id @default(cuid())
+  userId    String
+  company   String    @db.VarChar(120)
+  role      String    @db.VarChar(120)
+  /// lib/applications.ts STAGES: saved | applied | assessment | interviewing | offer | rejected | withdrawn
+  stage     String    @db.VarChar(16)
+  /// on-campus | off-campus | referral | other
+  source    String?   @db.VarChar(16)
+  link      String?   @db.VarChar(500)
+  appliedOn DateTime? @db.Date
+  /// The next dated step (a test, an interview, a deadline) and what it is.
+  nextOn    DateTime? @db.Date
+  nextLabel String?   @db.VarChar(80)
+  notes     String?   @db.Text
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, updatedAt])
+}
+
 model BugEngagement {
   userId          String
   challengeId     String

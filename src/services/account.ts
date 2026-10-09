@@ -46,6 +46,8 @@ export async function buildAccountExport(userId: string): Promise<Record<string,
       goal: true, level: true, goalDetails: true, onboardedAt: true, dailyMinutes: true,
       // The placement target readiness reads (services/readiness.ts).
       targetCompany: true, targetTest: true, targetDate: true,
+      // What the career section of the public profile shares (Phase 8).
+      careerShowSkills: true, careerShowReadiness: true,
       createdAt: true, updatedAt: true,
       stats: { select: { problemsSolved: true, bugsFixed: true, pairSessions: true, currentStreak: true, longestStreak: true, lastActive: true } },
       accounts: { select: { provider: true, providerAccountId: true } },
@@ -62,7 +64,7 @@ export async function buildAccountExport(userId: string): Promise<Record<string,
     following, followers, affinities, feedback, assistant, roadmap,
     enrollments, lessons, exercises, resumes, subscriptions, orders,
     notifications, shareCards, orgs, entries, tournamentSubmissions, campus, events, pushDevices, missionDays, analyses, tutorTurns, simulationRuns,
-    bugEngagements, bugAnalyses, bugTutorTurns,
+    bugEngagements, bugAnalyses, jobApplications, bugTutorTurns,
   ] = await Promise.all([
     prisma.submission.findMany({
       where, ...newest, orderBy: { submittedAt: "desc" },
@@ -188,6 +190,11 @@ export async function buildAccountExport(userId: string): Promise<Record<string,
       where, ...newest, orderBy: { createdAt: "desc" },
       select: { submissionId: true, challengeId: true, status: true, category: true, deterministic: true, ai: true, createdAt: true },
     }),
+    // The application tracker (Phase 8): every row as written.
+    prisma.jobApplication.findMany({
+      where, ...newest, orderBy: { updatedAt: "desc" },
+      select: { company: true, role: true, stage: true, source: true, link: true, appliedOn: true, nextOn: true, nextLabel: true, notes: true, createdAt: true, updatedAt: true },
+    }),
     // The debugging tutor: what was asked and answered on each hunt.
     prisma.bugTutorTurn.findMany({
       where, ...newest, orderBy: { createdAt: "desc" },
@@ -203,6 +210,7 @@ export async function buildAccountExport(userId: string): Promise<Record<string,
     exportedAt: new Date().toISOString(),
     profile,
     coding: { submissions, drafts, timers, engagement, failureAnalyses: analyses, tutor: tutorTurns },
+    applications: jobApplications,
     bugHunts: { submissions: bugSubmissions, engagement: bugEngagements, failureAnalyses: bugAnalyses, tutor: bugTutorTurns },
     sql: { submissions: sqlSubmissions },
     interviews: { sessions: interviews, saved: savedInterviews, simulations: simulationRuns },

@@ -17,8 +17,9 @@ Everything below is committed and pushed to `main` (production), in both repos.
 | 7 Interview skills + simulations | Interview domain on the skill profile; readiness reads it; 22 sourced company simulations (`ADAPTIVE_COACH.md` §12) | 82296fa | e5a4af0 |
 | Discovery | Target from onboarding, the mission's Try item, contextual links + tour chapters, menus and a what's-new line (`ADAPTIVE_COACH.md` §13) | see `git log` | see `git log` |
 | 6 Debugging | Hunts as production incidents, the diagnosis clock, "Why it failed", the tutor and a scored postmortem on hunts (`ADAPTIVE_COACH.md` §14) | see `git log` | see `git log` |
+| 8 Career | The public profile's career section (verified / assessed / self-reported; estimates by opt-in switch) and a private application tracker (`ADAPTIVE_COACH.md` §15) | see `git log` | see `git log` |
 
-Not built: Phases 8 and 9 and the small follow-ups in §5. Phases 5, 6 and 7 are complete (A, B and C below are done). Next in order: D (Phase 8), then E.
+Not built: Phase 9 and the small follow-ups in §5. Phases 5–8 are complete (A–D below are done). Next: E (Phase 9, cohorts) — ask the owner its three questions first.
 
 ## 2. How the owner works (learned this session — follow it)
 
@@ -103,7 +104,7 @@ Not built: Phases 8 and 9 and the small follow-ups in §5. Phases 5, 6 and 7 are
   - A short written root-cause explanation, scored by the model against a rubric (`ai.json`, a new versioned prompt), stored as columns on `BugSubmission`.
 - **Also:** extend "Why it failed" and the tutor to bug hunts. Their verdicts are `FAILED`/`ERROR`, and their test output can be forged (CLAUDE.md, Scoring integrity), so never pay XP on a model's score.
 
-### D. Phase 8: career profile
+### D. Phase 8: career profile — DONE 2026-10-09 (see `ADAPTIVE_COACH.md` §15; the owner chose opt-in per section, the tracker linked to readiness, and the existing `/u/:username`)
 
 - **Build on the public profile** at `/u/:username` (`services/public-profile.ts`, an allow-list — keep it one). Mark each item as verified (credentials, proctored tests), assessed (skill profile, readiness) or self-reported.
 - **Applications:** a private `Application` table (company, role, stage, dates, notes) with its own page.

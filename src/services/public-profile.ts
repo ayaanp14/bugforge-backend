@@ -2,6 +2,8 @@ import { prisma } from "../lib/prisma.js";
 import { broadcastSignal, onSignal } from "../lib/cache.js";
 import { getDashboard, getSubmissionHistory } from "./dashboard.js";
 import { getGitHubCard } from "./github-connection.js";
+import { careerSectionFor } from "./career.js";
+import type { CareerSection } from "../lib/career.js";
 
 /**
  * Someone's profile as anyone else sees it: /u/<username> on the SPA.
@@ -36,6 +38,9 @@ const PUBLIC_USER_SELECT = {
   readme: true,
   createdAt: true,
   profileHidden: true,
+  // Read to decide what the career section may carry; never sent themselves.
+  careerShowSkills: true,
+  careerShowReadiness: true,
 } as const;
 
 /** Usernames are 3–20 of [a-z0-9_] today; older generated ones are looser, so this only screens out what could never be one. */
@@ -123,7 +128,12 @@ async function visibleUser(username: string, viewerId: string | null): Promise<P
 export async function getPublicProfile(username: string, viewerId: string | null) {
   const user = await visibleUser(username, viewerId);
   if (!user) return null;
-  return publicProfileOf(user, await getDashboard(user.id), viewerId);
+  const [dash, career] = await Promise.all([
+    getDashboard(user.id),
+    // A failed estimate never fails the profile: the section goes without it.
+    careerSectionFor(user.id, { skills: user.careerShowSkills, readiness: user.careerShowReadiness }).catch(() => null),
+  ]);
+  return publicProfileOf(user, dash, viewerId, career);
 }
 
 type Dashboard = Awaited<ReturnType<typeof getDashboard>>;
@@ -138,6 +148,8 @@ export function publicProfileOf(
   user: PublicUserRow,
   dash: Pick<Dashboard, "me" | "social" | "difficultyStats" | "heatmap" | "roadmap" | "tournaments" | "submissions" | "credentials">,
   viewerId: string | null,
+  /** The career section (lib/career.ts — itself an allow-list, built by the owner's switches). */
+  career: CareerSection | null = null,
 ) {
   const me = dash.me;
   if (!me) return null;
@@ -189,6 +201,7 @@ export function publicProfileOf(
     credentials: (dash.credentials ?? [])
       .filter((c) => c.status === "valid")
       .map((c) => ({ code: c.code, skill: c.skill, level: c.level, name: c.name, testSlug: c.testSlug, band: c.band, issuedAt: c.issuedAt, expiresAt: c.expiresAt })),
+    career,
   };
 }
 

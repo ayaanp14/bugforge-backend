@@ -108,7 +108,7 @@ Surfaces: /skills, the home dashboard, the workbench verdict, reminders, the car
 | **5. Placement OS** (readiness built 2026-10-07) | Target role, date and daily minutes; company/role requirement profiles (admin-seeded); readiness estimate per area; plan regeneration on target change | Phase 1–2, onboarding, tests, interviews, resume | Company profile tables, `User` target columns |
 | **6. Debugging** (built 2026-10-09, §14) | Hunts as production incidents (severity, time target, the shipped build's failing checks, playbook), the server's diagnosis clock, "Why it failed" and the tutor on hunts, a root-cause write-up scored against a rubric | Bug hunts, Phases 1, 3, 4 | `BugEngagement`, `BugTutorTurn`, `BugSubmissionAnalysis`, `BugChallenge.symptoms`, `BugSubmission.rootCause*` |
 | **7. Interviews** | Interview skills (communication, clarifying questions, complexity) from existing per-question scores into the graph; multi-round company simulations from admin templates | Mock interviews | Simulation template + run tables |
-| **8. Career** | Career profile: self-reported / assessed / verified, credentials, readiness, resume; application tracking | Public profile, credentials | `Application` |
+| **8. Career** (built 2026-10-09, §15) | The public profile's career section, every item verified / assessed / self-reported, estimates shared only by their owner's switch; a private application tracker linked to readiness and simulations | Public profile, credentials, Phases 1 and 5 | `JobApplication`, `User.careerShowSkills/careerShowReadiness` |
 | **9. Community** | Cohorts with a shared weekly skill goal and study sessions, learning-only | Community, duels, pair rooms | `Cohort`, `CohortMember` |
 
 ## 5. AI: provider seam and cost
@@ -405,3 +405,46 @@ Surfaces: /skills, the home dashboard, the workbench verdict, reminders, the car
   - The skill profile does not read the review's causes or the postmortem scores for hunts. Causes are read for problems only.
   - There is no admin view of postmortem scores.
   - The forgeable PASS (CLAUDE.md, Scoring integrity) is unchanged. Nothing here pays on it.
+
+## 15. Phase 8 as shipped (career profile and application tracking)
+
+- **The owner's decisions (2026-10-09):**
+  - **Scores:** skill-profile scores and readiness may appear publicly only by an opt-in switch per section.
+  - **The tracker:** it links to readiness and simulations, and an application's date can become the readiness target.
+  - **Where it lives:** the career section extends `/u/:username`; there is no new page.
+- **The career section** (`lib/career.ts` `careerOf`, pinned by `career.test.ts`): an allow-list like `publicProfileOf`, every item labelled.
+  - **Verified** (the site checked it):
+    - valid skill credentials, linking to `/verify/<code>`;
+    - the best graded, **non-terminated** proctored placement sitting per test;
+    - judged solves (problems, hunts, SQL);
+    - completed study tracks and cleared roadmap tiers;
+    - a GitHub account proven by OAuth (`GitHubConnection`).
+  - **Self-reported:** institute, location, LinkedIn, website. A typed GitHub link is self-reported unless it names the linked account.
+  - **Assessed,** only when switched on:
+    - Skill domains with confidence ≥ 0.2 (`SHOWN_CONFIDENCE`), and the profile's *strongest* list. Never the weakest.
+    - Readiness for the target company (or the onboarding guess): score, status and confidence, never the focus or gaps. An `unknown` readiness is not shown, even switched on, because a public "0%" would read as a verdict the site never made.
+    - Switched off, the payload has no `assessed` key at all.
+- **Services:**
+  - `services/career.ts` gathers the facts from existing rows. It computes the skill profile and readiness only when their switch is on, caches a minute per account and switch pair, and `forgetCareer` drops it on a switch write. The switches are `User.careerShowSkills/careerShowReadiness` (default false).
+  - **The public profile:** `getPublicProfile` adds `career` beside the dashboard slices (`publicProfileOf(…, career)`). The switches are read off the identity row and never sent. A failed estimate never fails the profile.
+  - **The owner's endpoints:** `GET|PUT /api/me/career` (routes/account.ts) answer the switches, the readiness company and status, and the section exactly as the public gets it.
+- **The tracker** (`lib/applications.ts`, pinned by `applications.test.ts`; `services/applications.ts`; `routes/applications.ts` at `/api/me/applications`):
+  - **The table:** `JobApplication`, private, every query scoped by `userId`. Someone else's id gets the same 404 as one that doesn't exist.
+  - **What a row holds:** stages saved → withdrawn; sources; http(s) links only; dates as days; 200 rows per account.
+  - **Company matching:** `linksFor` matches the free-text company loosely (`companyKey`) to readiness's companies and the simulations, producing `/readiness?company=` and `/simulations/<slug>`.
+  - **"Make this my target":** `POST /:id/target` calls `setTarget(company, nextOn if ahead)` then `repickMissionToday`. A company readiness doesn't know is refused.
+  - **The summary:** counts per stage, plus up to 5 upcoming dates of open applications.
+- **SPA.**
+  - `components/profile/CareerSection.tsx` sits on both profiles as the "Career" section, second in `PROFILE_SECTIONS`. The owner mode has the switches and draws the preview from `/api/me/career`.
+  - `pages/ApplicationsPage.tsx` at `/applications` (signed-in, noindex, `APP_ROUTE_PREFIXES`): filters, rows with a stage select and a ⋯ menu, "Coming up", and an add/edit dialog. `store/api/careerApi.ts` provides the tags `Career` and `Application`.
+  - **Ways in:** the account menu, Ctrl+K (`APPLICATIONS`) and the career section's link.
+- **Verified:**
+  - `career.test.ts` (6), `applications.test.ts` (5) and `public-profile.test.ts` (career passes through; the switches never leave).
+  - `scratch/career-smoke.mts`: rows, links, summary, a target set from a row (TCS, the next date), a startup refused, another account's 404, and the public payload with the switches off and on.
+  - `scratch/career-shots.mts`: light, dark and phone.
+  - `e2e/career.spec.ts`: the tracker through the UI, owner-only, axe, and the public career section with no estimates while off.
+  - 3 assistant questions pinned.
+- **Not yet:**
+  - The resume is not part of the career section. The analyzer's score is an ATS estimate, not evidence of skill, and putting it there would be a new public fact for the owner to decide.
+  - There are no reminders before an application's date. The tracker writes no notifications; a `JobRun` job could add them, as the tournament reminders do.
+  - The mission does not read the tracker beyond the target it can set.

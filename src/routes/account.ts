@@ -6,6 +6,7 @@
  * work and says what a copy includes.
  */
 import { Router } from "express";
+import { careerSettingsFor, setCareerSharing } from "../services/career.js";
 import { requireAuth } from "../middleware/auth.js";
 import { accountDataLimiter, sendLinkLimiter } from "../middleware/rate-limit.js";
 import { prisma } from "../lib/prisma.js";
@@ -36,6 +37,28 @@ router.put("/privacy", requireAuth, async (req, res) => {
   invalidateMe(userId);
   forgetPublicUser(userId);
   res.json(row);
+});
+
+/**
+ * GET /api/me/career — the career section's sharing switches and the section
+ * exactly as /u/<username> shows it (services/career.ts, Phase 8).
+ * PUT /api/me/career {showSkills?, showReadiness?} — flip them; answers the same.
+ */
+router.get("/career", requireAuth, async (req, res) => {
+  res.setHeader("Cache-Control", "private, no-store");
+  res.json(await careerSettingsFor(req.user!.userId));
+});
+
+router.put("/career", requireAuth, async (req, res) => {
+  const userId = req.user!.userId;
+  const out = await setCareerSharing(userId, (req.body ?? {}) as { showSkills?: unknown; showReadiness?: unknown });
+  if ("error" in out) {
+    res.status(400).json({ error: out.error });
+    return;
+  }
+  // The public profile holds the identity row (with the switches) for a minute.
+  forgetPublicUser(userId);
+  res.json(out);
 });
 
 /**
