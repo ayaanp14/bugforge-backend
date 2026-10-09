@@ -62,6 +62,7 @@ export async function buildAccountExport(userId: string): Promise<Record<string,
     following, followers, affinities, feedback, assistant, roadmap,
     enrollments, lessons, exercises, resumes, subscriptions, orders,
     notifications, shareCards, orgs, entries, tournamentSubmissions, campus, events, pushDevices, missionDays, analyses, tutorTurns, simulationRuns,
+    bugEngagements, bugAnalyses, bugTutorTurns,
   ] = await Promise.all([
     prisma.submission.findMany({
       where, ...newest, orderBy: { submittedAt: "desc" },
@@ -76,7 +77,11 @@ export async function buildAccountExport(userId: string): Promise<Record<string,
     }),
     prisma.bugSubmission.findMany({
       where, ...newest, orderBy: { submittedAt: "desc" },
-      select: { challenge: { select: { slug: true, title: true } }, editedFiles: true, verdict: true, passedTests: true, totalTests: true, timeTakenSecs: true, submittedAt: true },
+      // rootCause*: the postmortem written after an accepted fix and its rubric score (Phase 6).
+      select: {
+        challenge: { select: { slug: true, title: true } }, editedFiles: true, verdict: true, passedTests: true, totalTests: true, timeTakenSecs: true, submittedAt: true,
+        rootCause: true, rootCauseAt: true, rootCauseScore: true, rootCauseReview: true,
+      },
     }),
     prisma.sqlSubmission.findMany({
       where, ...newest, orderBy: { submittedAt: "desc" },
@@ -173,6 +178,21 @@ export async function buildAccountExport(userId: string): Promise<Record<string,
     }),
     // Company simulations: which rounds were opened and when; the rounds' results are the sittings and interviews above.
     prisma.simulationRun.findMany({ where, ...newest, orderBy: { createdAt: "desc" }, select: { slug: true, hrMode: true, rounds: true, endedAt: true, createdAt: true } }),
+    // Bug hunts (Phase 6): when each was first opened, when an incident was started, the tutor's rung and help.
+    prisma.bugEngagement.findMany({
+      where, ...newest,
+      select: { challenge: { select: { slug: true } }, openedAt: true, incidentAt: true, tutorRung: true, tutorHintAt: true, tutorSolutionAt: true },
+    }),
+    // "Why it failed" on each failed fix — the judge's reading and the model's.
+    prisma.bugSubmissionAnalysis.findMany({
+      where, ...newest, orderBy: { createdAt: "desc" },
+      select: { submissionId: true, challengeId: true, status: true, category: true, deterministic: true, ai: true, createdAt: true },
+    }),
+    // The debugging tutor: what was asked and answered on each hunt.
+    prisma.bugTutorTurn.findMany({
+      where, ...newest, orderBy: { createdAt: "desc" },
+      select: { challenge: { select: { slug: true } }, role: true, rung: true, content: true, createdAt: true },
+    }),
   ]);
 
   return {
@@ -183,7 +203,7 @@ export async function buildAccountExport(userId: string): Promise<Record<string,
     exportedAt: new Date().toISOString(),
     profile,
     coding: { submissions, drafts, timers, engagement, failureAnalyses: analyses, tutor: tutorTurns },
-    bugHunts: { submissions: bugSubmissions },
+    bugHunts: { submissions: bugSubmissions, engagement: bugEngagements, failureAnalyses: bugAnalyses, tutor: bugTutorTurns },
     sql: { submissions: sqlSubmissions },
     interviews: { sessions: interviews, saved: savedInterviews, simulations: simulationRuns },
     aptitude: { attempts: aptitude },

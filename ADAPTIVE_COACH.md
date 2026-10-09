@@ -106,7 +106,7 @@ Surfaces: /skills, the home dashboard, the workbench verdict, reminders, the car
 | **3. Submission intelligence** (built 2026-10-07) | "Why did I fail" on the workbench verdict: the judge's facts read deterministically + a model review behind the provider seam, written on every failure in the background, stored per submission | Judge results, Phase 1 classes | `SubmissionAnalysis` |
 | **4. Socratic tutor** (built 2026-10-07) | Tutor in the workbench with the hint ladder (ask → brute force → complexity → hint → pseudocode → structure → solution), context = statement, constraints, visible cases, code, verdict, prior hints; fact / inference / suggestion labelled; never hidden cases | Assistant streaming, `ProblemEngagement` (tutor reveals count as help) | `TutorTurn` |
 | **5. Placement OS** (readiness built 2026-10-07) | Target role, date and daily minutes; company/role requirement profiles (admin-seeded); readiness estimate per area; plan regeneration on target change | Phase 1–2, onboarding, tests, interviews, resume | Company profile tables, `User` target columns |
-| **6. Debugging** | Timed production-bug format (logs, stack, diff), diagnosis time, explanation scored; debugging skills already measured in Phase 1 | Bug hunts | Columns on `BugSubmission` |
+| **6. Debugging** (built 2026-10-09, §14) | Hunts as production incidents (severity, time target, the shipped build's failing checks, playbook), the server's diagnosis clock, "Why it failed" and the tutor on hunts, a root-cause write-up scored against a rubric | Bug hunts, Phases 1, 3, 4 | `BugEngagement`, `BugTutorTurn`, `BugSubmissionAnalysis`, `BugChallenge.symptoms`, `BugSubmission.rootCause*` |
 | **7. Interviews** | Interview skills (communication, clarifying questions, complexity) from existing per-question scores into the graph; multi-round company simulations from admin templates | Mock interviews | Simulation template + run tables |
 | **8. Career** | Career profile: self-reported / assessed / verified, credentials, readiness, resume; application tracking | Public profile, credentials | `Application` |
 | **9. Community** | Cohorts with a shared weekly skill goal and study sessions, learning-only | Community, duels, pair rooms | `Cohort`, `CohortMember` |
@@ -344,3 +344,64 @@ Surfaces: /skills, the home dashboard, the workbench verdict, reminders, the car
   - `scratch/discovery-smoke.mts` against the dev API: an answer without a date gives the implicit target and the "Set your TCS drive date" item; an answer with a date saves the target, re-picks the day and leaves that item done; a past date is refused.
   - Screenshots, and the e2e specs for home loading, onboarding, readiness, simulations and a11y.
   - 2 assistant questions pinned.
+
+## 14. Phase 6 as shipped (debugging: hunts as production incidents)
+
+- **Decisions (the handoff's defaults, 2026-10-09; the owner asked for the phase and for it to be SEO friendly):** columns on `BugSubmission` for the write-up, a versioned prompt per model task, no XP from any model score, and the incident's words drawn on the page a crawler renders.
+- **No authored content.** All 310 hunts already had a bug report and logs. Every bug report opens with a ticket line (`**BUG-2107** · Priority: Critical · Reported by: …`, 311 of 311), so the incident brief is read from it (`lib/bug-incident.ts`, pinned by `bug-incident.test.ts`):
+  - **Severity** comes from the report's own priority word: Critical, P0, Blocker or Recall → SEV-1; High → SEV-2. A word the list doesn't know falls back to the difficulty, and a guess is never SEV-1.
+  - **The time target** is the scorer's par for a hunt (`SOURCE_RULES.bug.parSecs`: 10, 20 or 35 min), so "inside the target" and the profile's pace are one rule.
+  - **A five-step playbook**, with its tracing step worded for the layer.
+  - **The failing checks** are a real run of the shipped files on the visible tests, stored once on `BugChallenge.symptoms`. The API writes it the first time a hunt is read without one (`ensureSymptoms`: serialised, one engine run per hunt, no retry within the hour after a failure). `scripts/bug-symptoms.ts --apply` fills the whole catalogue at once.
+- **What it never shows:** "the deploy that broke it". That diff is the answer reversed. The only diff is the hunter's own patch, after a submit (`patchOf`, an LCS line diff with two lines of context; locked files are never part of it).
+- **The clock, derived.** `BugEngagement` (PK userId+challengeId) stores three times:
+  - `openedAt`: written when a member's standing is read, which is the hunt opening.
+  - `incidentAt`: "Start incident", set once; a second press keeps the first.
+  - The hunt tutor's rung and help times.
+  - `diagnosisOf` derives the time from the incident start, if it came before the first accepted fix, else from the first open, to that fix. A span over 3 h is untimed, matching the scorer's window.
+  - The skill profile now times hunts by this clock, and the browser's `timeTakenSecs` is ignored wherever an engagement row exists. The hunt tutor's help counts like the problem tutor's.
+- **Why it failed, on a hunt.**
+  - **The deterministic layer** (`lib/bug-failure.ts`): checks passed and failed (a hidden one by name only), the patch's size, and visible failures with the judge's text. One fact only this layer can see: a check that passed on the shipped build and fails with the patch is a regression the patch caused.
+  - **Categories:** UNCHANGED, SYNTAX, REGRESSION, IMPLEMENTATION, INCOMPLETE_FIX, EDGE_CASE; the model adds SYMPTOM_PATCH, WRONG_LOCATION, MISREAD_REPORT and CONCEPTUAL.
+  - **The model** (`lib/bug-review.ts`, prompt `bug-review/v1`) reads the incident, the logs, the project (editable files numbered, locked files as context within a budget), the patch, the checks and the known facts. It sees no test's source, so no hidden input can reach it. `guardBugReview` keeps a file only if it is editable and a line only if that file has it.
+  - **Storage:** one `BugSubmissionAnalysis` row per failed fix. The same code is reviewed once (`codeHash`), and the model stays out of a live duel.
+- **The postmortem** (`lib/root-cause.ts`, prompt `root-cause/v1`):
+  - **The write-up:** written after an accepted fix, 60–2,000 characters.
+  - **The rubric,** scored by the model: cause 4, mechanism 3, fix 2, prevention 1, out of 10 → 0–100. The ground truth is the accepted patch, which passed every hidden test.
+  - **The guard:** clamps each criterion, scores a missing one 0 and drops invented ones. A write-up that talks to the marker is flagged inside its fence.
+  - **Storage:** on `BugSubmission.rootCause*`, and a rewrite rescores. It pays nothing.
+  - **Discrimination, checked on The Checkout Meltdown:** a wrong cause scored 0/100, with notes citing the patch. A correct one scored 100/100.
+- **The tutor on a hunt** (`lib/bug-tutor.ts`, prompt `bug-tutor/v1`):
+  - **The ladder:** Questions, Reproduce, Trace, Locate, Fix plan, Patch outline, Fix. It lines up index for index with the problem ladder's help and code policies, so `rungFor`, `rungOf` and `codeGate` serve both.
+  - **What the model reads:** the files, report, logs and symptoms always; the visible tests' source from Locate up; never a hidden test.
+  - **No stored fix:** the seed's `fixedFiles` never reach the database, so from Fix plan up the model reads the code itself and says when it is inferring.
+  - **Storage:** `BugTutorTurn`. It is off in a duel.
+- **Routes** (`routes/bug-challenges.ts`):
+  - **Changed:** `submit` answers with `submissionId` and notes a failed fix; `standing` carries `incident` and each submission's `rootCauseScore`; `content` carries `incident` and `symptoms` (`bug:detail:v2`).
+  - **New:**
+    - `POST /:id/incident`
+    - `GET /submissions/:sid/analysis`
+    - `GET|PUT /submissions/:sid/postmortem` (owner only; a 404 for anyone else)
+    - `GET|DELETE|POST /:id/tutor` (SSE, routes/tutor.ts's protocol)
+  - **Recovery:** queued and running rows resume at boot (`recoverBugCoach`).
+- **SEO.**
+  - **The edge's article** (`bugHuntHead`, `seo:head:bug:v3`) gains an "Incident" section: severity, ticket, reporter, time to fix, the failing checks and the playbook. `facts.minutes` becomes `timeRequired` on the hunt's LearningResource, in both codebases.
+  - **The rendered page:** the workspace draws the same section at the top of the briefing for visitors too, because Google indexes the rendered page, not the edge's text. Titles are unchanged.
+- **SPA.**
+  - **The briefing:** `IncidentBrief.tsx` (the brief; the clock for members; the running clock re-renders alone).
+  - **Code Review:** `BugReview.tsx`, plus a one-line summary under the verdict.
+  - **Postmortem:** `Postmortem.tsx` (diagnosis line, patch diff, the rubric shown before writing, the score per criterion).
+  - **The tutor:** `TutorPanel`/`TutorLauncher` take a `subject` (`{kind: "problem", slug}` | `{kind: "bug", id}`; the rungs come from `lib/tutor.ts` `BUG_TUTOR_RUNGS`). The Tutor tab sits beside the briefing.
+  - **Layout:** Code Review and Postmortem tabs exist only while they have a submission, beside Results, and the dock's sanitize homes them.
+  - **The tour:** the bug-hunt tour gained an incident step.
+- **Verified:**
+  - 21 unit tests: `bug-incident` 10, `bug-failure` 4, `root-cause` 4, `bug-review` 4 including the ladder alignment.
+  - `scratch/bug-coach-smoke.mts`: real judge and model; the symptoms, clock, review, postmortem and a tutor turn.
+  - `scratch/bug-coach-shots.mts`: light, dark and phone.
+  - `e2e/bug-incident.spec.ts`: visitor brief and axe, the clock set once, owner-only review and postmortem, write-up bounds, the tabs and the ladder.
+  - 4 assistant questions pinned.
+- **Not yet:**
+  - The mission's Debug item does not offer "start it as an incident".
+  - The skill profile does not read the review's causes or the postmortem scores for hunts. Causes are read for problems only.
+  - There is no admin view of postmortem scores.
+  - The forgeable PASS (CLAUDE.md, Scoring integrity) is unchanged. Nothing here pays on it.

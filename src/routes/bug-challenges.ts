@@ -3,7 +3,7 @@ import { prisma } from "../lib/prisma.js";
 import { optionalAuth, requireAuth } from "../middleware/auth.js";
 import { browserCache, SEEDED_CONTENT_MAX_AGE } from "../lib/http-cache.js";
 import { cachedShared } from "../lib/cache.js";
-import { executionLimiter } from "../middleware/rate-limit.js";
+import { executionLimiter, rateLimit } from "../middleware/rate-limit.js";
 import { judgeBugProject, type BugFile, type BugLanguage } from "../lib/bug-judge.js";
 import { containsReservedMarker } from "../lib/batch.js";
 import { invalidateDashboard } from "../services/dashboard.js";
@@ -12,6 +12,7 @@ import { ENGINE_DOWN_MESSAGE, isEngineDown } from "../lib/engine-error.js";
 import { checkBugQuota } from "../services/entitlements.js";
 import {
   DEFAULT_PAGE_SIZE,
+  bugDetailKey,
   bugHubIndex,
   bugHubPage,
   bugIdFor,
@@ -20,6 +21,21 @@ import {
   getBugHuntPage,
   getNeighbours,
 } from "../services/bug-hunts.js";
+import { incidentOf, symptomsOf } from "../lib/bug-incident.js";
+import {
+  CoachError,
+  bugAnalysisFor,
+  bugTutorReply,
+  bugTutorState,
+  clearBugTutor,
+  ensureSymptoms,
+  incidentStanding,
+  noteFailedBugSubmission,
+  postmortemFor,
+  recordBugOpen,
+  startIncident,
+  submitRootCause,
+} from "../services/bug-coach.js";
 
 const router = Router();
 
@@ -215,7 +231,6 @@ router.get("/stats/me", requireAuth, async (req, res) => {
  * and one read past that while it refreshes.
  */
 const BUG_DETAIL_TTL_SECONDS = 600;
-const bugDetailKey = (challengeId: string) => `bug:detail:v1:${challengeId}`;
 
 async function loadBugDetail(challengeId: string) {
   const [challenge, hiddenTestCount] = await Promise.all([
@@ -233,6 +248,7 @@ async function loadBugDetail(challengeId: string) {
         description: true,
         bugReport: true,
         logs: true,
+        symptoms: true,
         isPublished: true,
         files: { select: { id: true, filePath: true, content: true, isEditable: true, language: true } },
         tests: { where: { isHidden: false }, select: { id: true, name: true } },
@@ -255,6 +271,11 @@ async function loadBugDetail(challengeId: string) {
     description: challenge.description,
     bugReport: challenge.bugReport,
     logs: challenge.logs,
+    // Phase 6: the production-incident brief (lib/bug-incident), read from the
+    // report's own ticket line and the difficulty, and what the shipped build
+    // did on the visible tests — null until services/bug-coach has run it once.
+    incident: incidentOf(challenge),
+    symptoms: symptomsOf(challenge.symptoms),
     files: challenge.files,
     visibleTests: challenge.tests,
     hiddenTestCount,
@@ -273,25 +294,30 @@ const huntDetail = (challengeId: string) =>
  * lookup costs nothing.
  */
 async function hunterStanding(userId: string, challengeId: string) {
-  const [submissions, liveDuel] = await Promise.all([
+  // Reading the standing is opening the hunt: the first time starts the
+  // diagnosis clock (BugEngagement), so it is written before it is read.
+  const [, hunt] = await Promise.all([recordBugOpen(userId, challengeId).catch(() => undefined), huntDetail(challengeId)]);
+  const [submissions, liveDuel, incident] = await Promise.all([
     prisma.bugSubmission.findMany({
       where: { userId, challengeId },
-      select: { id: true, verdict: true, passedTests: true, totalTests: true, timeTakenSecs: true, submittedAt: true },
+      select: { id: true, verdict: true, passedTests: true, totalTests: true, timeTakenSecs: true, submittedAt: true, rootCauseScore: true, rootCauseStatus: true },
       orderBy: { submittedAt: "desc" },
       take: 20,
     }),
     findLiveDuelFor(userId, { challengeId }),
+    incidentStanding(userId, challengeId, hunt?.difficulty ?? "easy"),
   ]);
   return {
     solved: submissions.some((s) => s.verdict === "ACCEPTED"),
     submissions,
+    incident,
     // Contract with the workspace: the caller's live duel on this very
     // hunt, or null.
     activeDuelId: liveDuel?.id ?? null,
   };
 }
 
-const SIGNED_OUT_STANDING = { solved: false, submissions: [], activeDuelId: null };
+const SIGNED_OUT_STANDING = { solved: false, submissions: [], activeDuelId: null, incident: null };
 const HUNT_NOT_FOUND = { error: "Challenge not found" };
 
 // The address is the slug (/bug-hunts/the-checkout-meltdown) or, on a link
@@ -321,6 +347,7 @@ router.get("/:id/content", browserCache(SEEDED_CONTENT_MAX_AGE, { shared: true }
       res.status(404).json(HUNT_NOT_FOUND);
       return;
     }
+    if (!challenge.symptoms) ensureSymptoms(challengeId!);
     res.json(challenge);
   } catch (err) {
     console.error("GET /api/bug-challenges/:id/content error:", err);
@@ -552,8 +579,9 @@ router.post("/:id/submit", requireAuth, executionLimiter, async (req, res) => {
             : null,
       },
     });
+    let submissionId: string;
     if (firstSolve) {
-      await prisma.$transaction([
+      const [created] = await prisma.$transaction([
         submissionCreate,
         prisma.user.update({
           where: { id: userId },
@@ -570,11 +598,26 @@ router.post("/:id/submit", requireAuth, executionLimiter, async (req, res) => {
           create: { userId, bugsFixed: 1 },
         }),
       ]);
+      submissionId = created.id;
     } else {
-      await submissionCreate;
+      submissionId = (await submissionCreate).id;
     }
 
-    res.json({ ...result, results: publicResults, awardedXp, firstSolve });
+    // The id is what the workspace's Code Review and Postmortem tabs read by.
+    res.json({ ...result, results: publicResults, awardedXp, firstSolve, submissionId });
+
+    // "Why it failed" (Phase 6): the deterministic reading at once, the
+    // model's review queued — on the checks exactly as the hunter saw them.
+    if (result.verdict !== "ACCEPTED") {
+      void noteFailedBugSubmission({
+        submissionId,
+        userId,
+        challengeId: challenge.id,
+        verdict: result.verdict,
+        checks: publicResults.map((r) => ({ name: r.name, passed: r.passed, detail: r.detail, hidden: hiddenNames.has(r.name) })),
+        editedFiles,
+      });
+    }
 
     // ── After the response ──────────────────────────────────────────
     // The dashboard aggregate is cached; this submission just changed it.
@@ -605,6 +648,122 @@ router.post("/:id/submit", requireAuth, executionLimiter, async (req, res) => {
     }
     console.error("POST /api/bug-challenges/:id/submit error:", err);
     res.status(500).json({ error: "Failed to submit fix" });
+  }
+});
+
+/* ── The debugging coach (Phase 6, services/bug-coach.ts) ──────────── */
+
+const coachError = (res: import("express").Response, err: unknown): boolean => {
+  if (!(err instanceof CoachError)) return false;
+  res.status(err.status).json({ error: err.message });
+  return true;
+};
+
+const userKey = (req: { user?: { userId: string } }) => req.user?.userId ?? "anon";
+
+/** Unlimited by decision; these only stop a script. */
+const tutorBurst = rateLimit({ windowMs: 60_000, max: 20, message: "You are asking very quickly. Give it a moment.", keyOf: userKey });
+const writeUpLimiter = rateLimit({ windowMs: 60 * 60_000, max: 30, message: "That is a lot of rewrites in an hour. Give it a moment.", keyOf: userKey });
+
+const SID = /^[a-z0-9]{10,40}$/i;
+
+// POST /api/bug-challenges/:id/incident — start the incident clock (once; a second press keeps the first).
+router.post("/:id/incident", requireAuth, async (req, res) => {
+  try {
+    res.json(await startIncident(req.user!.userId, String(req.params.id)));
+  } catch (err) {
+    if (!coachError(res, err)) throw err;
+  }
+});
+
+// GET /api/bug-challenges/submissions/:sid/analysis — "Why it failed" on a failed fix, owner only.
+router.get("/submissions/:sid/analysis", requireAuth, async (req, res) => {
+  const sid = String(req.params.sid);
+  const view = SID.test(sid) ? await bugAnalysisFor(req.user!.userId, sid) : null;
+  res.setHeader("Cache-Control", "private, no-store");
+  if (!view) return void res.status(404).json({ error: "No analysis for this submission." });
+  res.json(view);
+});
+
+// GET /api/bug-challenges/submissions/:sid/postmortem — an accepted fix's postmortem, owner only.
+router.get("/submissions/:sid/postmortem", requireAuth, async (req, res) => {
+  const sid = String(req.params.sid);
+  const view = SID.test(sid) ? await postmortemFor(req.user!.userId, sid) : null;
+  res.setHeader("Cache-Control", "private, no-store");
+  if (!view) return void res.status(404).json({ error: "No postmortem for this submission." });
+  res.json(view);
+});
+
+// PUT /api/bug-challenges/submissions/:sid/postmortem {rootCause} — write (or rewrite) the root cause; scored in the background.
+router.put("/submissions/:sid/postmortem", requireAuth, writeUpLimiter, async (req, res) => {
+  try {
+    const sid = String(req.params.sid);
+    if (!SID.test(sid)) return void res.status(404).json({ error: "No such submission." });
+    res.json(await submitRootCause(req.user!.userId, sid, (req.body as { rootCause?: unknown })?.rootCause));
+    invalidateDashboard(req.user!.userId);
+  } catch (err) {
+    if (!coachError(res, err)) throw err;
+  }
+});
+
+// GET /api/bug-challenges/:id/tutor — the rung reached, the thread, and whether the tutor is on here.
+router.get("/:id/tutor", requireAuth, async (req, res) => {
+  try {
+    res.setHeader("Cache-Control", "private, no-store");
+    res.json(await bugTutorState(req.user!.userId, String(req.params.id)));
+  } catch (err) {
+    if (!coachError(res, err)) throw err;
+  }
+});
+
+// DELETE /api/bug-challenges/:id/tutor — clear the thread (the rung reached stays).
+router.delete("/:id/tutor", requireAuth, async (req, res) => {
+  try {
+    await clearBugTutor(req.user!.userId, String(req.params.id));
+    res.status(204).end();
+  } catch (err) {
+    if (!coachError(res, err)) throw err;
+  }
+});
+
+// POST /api/bug-challenges/:id/tutor {message, code?, rung?} — one turn as SSE, routes/tutor.ts's protocol.
+router.post("/:id/tutor", requireAuth, tutorBurst, async (req, res) => {
+  const body = (req.body ?? {}) as Record<string, unknown>;
+  const ask = {
+    message: typeof body["message"] === "string" ? body["message"] : "",
+    code: typeof body["code"] === "string" ? body["code"].slice(0, 64 * 1024) : null,
+    rung: typeof body["rung"] === "number" ? body["rung"] : null,
+  };
+  let streaming = false;
+  const send = (event: string, data: unknown) => {
+    if (!streaming) {
+      streaming = true;
+      res.status(200);
+      res.setHeader("Content-Type", "text/event-stream; charset=utf-8");
+      res.setHeader("Cache-Control", "no-cache, no-transform");
+      res.setHeader("X-Accel-Buffering", "no");
+      res.flushHeaders();
+    }
+    res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
+    (res as typeof res & { flush?: () => void }).flush?.();
+  };
+  try {
+    const { turnId, rung } = await bugTutorReply(
+      req.user!.userId,
+      String(req.params.id),
+      ask,
+      (r) => send("rung", { rung: r }),
+      (t) => send("token", { t }),
+    );
+    send("done", { turnId, rung });
+    res.end();
+  } catch (err) {
+    const status = err instanceof CoachError ? err.status : 500;
+    const text = err instanceof CoachError ? err.message : "The tutor could not answer — try again.";
+    if (status >= 500) console.error(`[bug-tutor] ${req.user!.userId}:`, (err as Error)?.message);
+    if (!streaming) return void res.status(status).json({ error: text });
+    send("error", { error: text, status });
+    res.end();
   }
 });
 

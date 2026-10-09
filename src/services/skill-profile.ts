@@ -145,7 +145,7 @@ function group<R, K>(rows: readonly R[], keyOf: (r: R) => K): Map<K, R[]> {
 
 async function loadEvidence(userId: string, cat: Catalogues): Promise<{ items: ItemHistory[]; assessments: AssessmentRecord[]; analyses: Array<{ problemId: string; category: string; at: number }> }> {
   const newest = { take: MAX_ROWS } as const;
-  const [submissions, engagements, bugSubs, sqlSubs, aptitude, sittings, reviews, interviews] = await Promise.all([
+  const [submissions, engagements, bugSubs, sqlSubs, aptitude, sittings, reviews, interviews, bugEngagements] = await Promise.all([
     prisma.submission.findMany({
       where: { userId },
       orderBy: { submittedAt: "desc" },
@@ -200,6 +200,11 @@ async function loadEvidence(userId: string, cat: Catalogues): Promise<{ items: I
         questions: { where: { evaluationScore: { not: null } }, select: { topic: true, focusArea: true, expectedSkills: true, evaluationScore: true } },
       },
     }),
+    // The hunts' server clock and tutor help (Phase 6, services/bug-coach.ts).
+    prisma.bugEngagement.findMany({
+      where: { userId },
+      select: { challengeId: true, openedAt: true, incidentAt: true, tutorHintAt: true, tutorSolutionAt: true },
+    }),
   ]);
 
   const items: ItemHistory[] = [];
@@ -230,9 +235,15 @@ async function loadEvidence(userId: string, cat: Catalogues): Promise<{ items: I
     });
   }
 
+  const bugEngagementOf = new Map(bugEngagements.map((e) => [e.challengeId, e]));
   for (const [challengeId, rows] of group(bugSubs, (r) => r.challengeId)) {
     const b = cat.bugById.get(challengeId);
     if (!b || !b.skills.length) continue;
+    const e = bugEngagementOf.get(challengeId);
+    // With an engagement row the server's clock times the fix (an incident
+    // started by hand, else the first open) and the browser's stopwatch is
+    // ignored — it was the only measure before Phase 6, and it can be typed.
+    const start = e ? (e.incidentAt ?? e.openedAt) : null;
     items.push({
       source: "bug",
       id: challengeId,
@@ -240,7 +251,11 @@ async function loadEvidence(userId: string, cat: Catalogues): Promise<{ items: I
       href: b.href,
       difficulty: b.difficulty,
       skills: b.skills,
-      attempts: rows.map((r): Attempt => ({ at: r.submittedAt.getTime(), outcome: outcomeOf(r.verdict), passRatio: ratio(r.passedTests, r.totalTests), secs: r.timeTakenSecs })),
+      attempts: rows.map((r): Attempt => ({ at: r.submittedAt.getTime(), outcome: outcomeOf(r.verdict), passRatio: ratio(r.passedTests, r.totalTests), secs: e ? null : r.timeTakenSecs })),
+      openedAt: start?.getTime() ?? null,
+      // The debugging tutor counts as the help it gave, like the problem tutor.
+      hintsAt: e?.tutorHintAt?.getTime() ?? null,
+      solutionAt: e?.tutorSolutionAt?.getTime() ?? null,
     });
   }
 

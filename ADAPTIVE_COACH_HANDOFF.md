@@ -16,8 +16,9 @@ Everything below is committed and pushed to `main` (production), in both repos.
 | 5 remainder | The mission leans on the target's weakest area as the date nears; activity ticks; the readiness line in Today; a target change re-picks the day (`ADAPTIVE_COACH.md` §11) | fae2d93 | 33a6a43 |
 | 7 Interview skills + simulations | Interview domain on the skill profile; readiness reads it; 22 sourced company simulations (`ADAPTIVE_COACH.md` §12) | 82296fa | e5a4af0 |
 | Discovery | Target from onboarding, the mission's Try item, contextual links + tour chapters, menus and a what's-new line (`ADAPTIVE_COACH.md` §13) | see `git log` | see `git log` |
+| 6 Debugging | Hunts as production incidents, the diagnosis clock, "Why it failed", the tutor and a scored postmortem on hunts (`ADAPTIVE_COACH.md` §14) | see `git log` | see `git log` |
 
-Not built: Phases 6, 8 and 9 and the small follow-ups in §5. Phases 5 and 7 are complete (A and B below are done, 2026-10-07). Next in order: C (Phase 6, debugging), then D, then E.
+Not built: Phases 8 and 9 and the small follow-ups in §5. Phases 5, 6 and 7 are complete (A, B and C below are done). Next in order: D (Phase 8), then E.
 
 ## 2. How the owner works (learned this session — follow it)
 
@@ -93,7 +94,7 @@ Not built: Phases 6, 8 and 9 and the small follow-ups in §5. Phases 5 and 7 are
   - Templates must carry a `sourceNote` like the test patterns. Only sourced round structures.
 - **Ask the owner first:** which companies get a simulation first; whether the HR round is voice; whether a simulation counts against the weekly interview allowance.
 
-### C. Phase 6: debugging
+### C. Phase 6: debugging — DONE 2026-10-09 (see `ADAPTIVE_COACH.md` §14; after the deploy, run `scripts/bug-symptoms.ts --apply` on the box once, or let the API fill each hunt on its first read)
 
 - **The bug-hunt pipeline:** `src/lib/bug-judge.ts`, content in `scripts/bugs-data.ts` and `bugs-wave*.ts`, `BugSubmission`.
 - **Build:**
@@ -134,5 +135,6 @@ Not built: Phases 6, 8 and 9 and the small follow-ups in §5. Phases 5 and 7 are
 | Why it failed | `src/lib/failure-analysis.ts`, `submission-review.ts`, `services/submission-analysis.ts`, `routes/analysis.ts`, `content/prompts/submission-review/v1.md` | `components/problems/FailureAnalysis.tsx`, `lib/failure-analysis.ts`; the tab is wired in `pages/ProblemPage.tsx` |
 | Tutor | `src/lib/tutor.ts`, `services/tutor.ts`, `routes/tutor.ts`, `content/prompts/tutor/v2.md` | `components/problems/TutorPanel.tsx`, `TutorLauncher.tsx`, `LiveTutorMark.tsx`, `lib/tutor.ts`, `lib/sse.ts` |
 | Readiness | `src/lib/readiness.ts`, `services/readiness.ts`, `routes/readiness.ts` | `pages/ReadinessPage.tsx`, `store/api/readinessApi.ts` |
+| Debugging coach | `src/lib/bug-incident.ts`, `bug-failure.ts`, `bug-review.ts`, `root-cause.ts`, `bug-tutor.ts`, `services/bug-coach.ts`, the routes in `routes/bug-challenges.ts`, prompts `bug-review/`, `root-cause/`, `bug-tutor/` | `components/bugs/IncidentBrief.tsx`, `BugReview.tsx`, `Postmortem.tsx`, `lib/bug-coach.ts`, `BugWorkspace.tsx`; `e2e/bug-incident.spec.ts` |
 | AI seam | `src/lib/ai/provider.ts`, `src/lib/ai/prompts.ts` | — |
 | e2e | — | `e2e/failure-analysis.spec.ts`, `tutor.spec.ts`, `readiness.spec.ts`, `dashboard-loading.spec.ts`, `a11y.spec.ts` |

@@ -269,6 +269,14 @@ export async function bugIdFor(idOrSlug: string): Promise<string | null> {
   return hit?.id ?? null;
 }
 
+/**
+ * The cache key of a hunt's shared detail (routes/bug-challenges huntDetail).
+ * Here so the symptom run (services/bug-coach) can drop it once it has
+ * written them. v2 (2026-10-09): the payload carries the incident brief and
+ * the shipped build's symptoms.
+ */
+export const bugDetailKey = (challengeId: string) => `bug:detail:v2:${challengeId}`;
+
 /** The public address of a hunt: its slug, or its id until one is backfilled. */
 export const bugPath = (row: { id: string; slug: string | null }) => `/bug-hunts/${row.slug ?? row.id}`;
 

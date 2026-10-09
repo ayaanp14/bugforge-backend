@@ -20,6 +20,7 @@ import tutorRouter from "./routes/tutor.js";
 import readinessRouter from "./routes/readiness.js";
 import simulationsRouter from "./routes/simulations.js";
 import { recoverSubmissionAnalyses } from "./services/submission-analysis.js";
+import { recoverBugCoach } from "./services/bug-coach.js";
 import pushRouter from "./routes/push.js";
 import usersRouter from "./routes/users.js";
 import problemsRouter, { forgetProblemNumbers } from "./routes/problems.js";
@@ -1168,6 +1169,7 @@ httpServer.listen(PORT, () => {
   // running with nobody working them. Re-queue the young, fail the stale.
   void recoverAnalyses();
   void recoverSubmissionAnalyses();
+  void recoverBugCoach();
   console.log(`🚀 Backend & WebSocket running on port: ${PORT}`);
   console.log(`   Auth:   POST /api/auth/login`);
   console.log(`   Me:     GET /api/me`);

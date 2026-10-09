@@ -19,6 +19,7 @@ import { roadDefinition } from "./roadmap.js";
 import { hubIndex, hubPage, hubsForTags, relatedProblems, type HubSummary } from "./problem-hubs.js";
 import { getCatalogue } from "./dashboard.js";
 import { bugHubIndex, bugHubPage, bugPath } from "./bug-hunts.js";
+import { incidentOf, symptomsOf } from "../lib/bug-incident.js";
 import { topicOrder } from "./aptitude-bank.js";
 import { CARD_HEIGHT, CARD_WIDTH, getShareCard } from "./share-cards.js";
 import { CONTENT_CARD_DESIGN, CONTENT_CARD_HEIGHT, CONTENT_CARD_WIDTH, contentCardPng, type ContentCard } from "../lib/content-card.js";
@@ -960,11 +961,12 @@ async function challengesIndex(): Promise<PageHead> {
 const FILE_CHARS = 6_000;
 
 function bugHuntHead(idOrSlug: string): Promise<PageHead | PageRedirect | null> {
-  return cached(`seo:head:bug:v2:${idOrSlug}`, HEAD_TTL_MS, async () => {
+  // v3 (2026-10-09): the incident brief, the failing checks and the playbook (Phase 6).
+  return cached(`seo:head:bug:v3:${idOrSlug}`, HEAD_TTL_MS, async () => {
     const b = await prisma.bugChallenge.findFirst({
       where: { isPublished: true, OR: [{ slug: idOrSlug }, { id: idOrSlug }] },
       select: {
-        id: true, slug: true, title: true, language: true, bugReport: true, description: true, logs: true, difficulty: true, category: true, tags: true, origin: true,
+        id: true, slug: true, title: true, language: true, bugReport: true, description: true, logs: true, difficulty: true, category: true, tags: true, origin: true, symptoms: true,
         files: { select: { filePath: true, content: true, isEditable: true, language: true }, orderBy: { filePath: "asc" } },
         tests: { where: { isHidden: false }, select: { name: true } },
       },
@@ -987,6 +989,23 @@ function bugHuntHead(idOrSlug: string): Promise<PageHead | PageRedirect | null> 
     const filesHtml =
       editable.map((f) => `<h3>${h(f.filePath)} <span class="note">(editable)</span></h3>${codeBlock(f.language, f.content.length > FILE_CHARS ? `${f.content.slice(0, FILE_CHARS)}\n…` : f.content)}`).join("") +
       (locked.length ? `<p>Read-only context: ${h(locked.map((f) => f.filePath).join(", "))}.</p>` : "");
+    // The production-incident brief the workspace draws above the briefing
+    // (lib/bug-incident): the same words, so the indexed page and the
+    // rendered one agree — the rendered one is what Google reads.
+    const incident = incidentOf(b);
+    const symptoms = symptomsOf(b.symptoms);
+    const failing = (symptoms ?? []).filter((s) => !s.passed);
+    const incidentHtml =
+      factList([
+        ["Severity", `${incident.severity}${incident.priority ? ` (priority: ${incident.priority})` : ""}`],
+        ["Ticket", incident.ticket ?? undefined],
+        ["Reported by", incident.reportedBy ?? undefined],
+        ["Time to fix", `${incident.targetMins} minutes, the target for ${difficulty.toLowerCase() === "easy" ? "an" : "a"} ${difficulty.toLowerCase()} incident`],
+      ]) +
+      (failing.length
+        ? `<h3>Failing checks on the shipped build</h3><ul>${failing.map((f) => `<li><strong>${h(f.name)}</strong>${f.detail ? ` — ${h(f.detail)}` : ""}</li>`).join("")}</ul>`
+        : "") +
+      `<h3>How to work this incident</h3><ol>${incident.playbook.map((step) => `<li>${h(step)}</li>`).join("")}</ol>`;
     const content =
       factList([
         ["Language", langHub ? link(`/bug-hunts/${langHub.id}`, language) : language, { html: Boolean(langHub) }],
@@ -997,11 +1016,12 @@ function bugHuntHead(idOrSlug: string): Promise<PageHead | PageRedirect | null> 
         ["Visible tests", b.tests.length ? b.tests.map((t) => t.name).join("; ") : undefined],
         ["Reward", "50 XP for a complete fix"],
       ]) +
+      section("Incident", incidentHtml, "incident") +
       section("Briefing", markdownToHtml(b.description), "briefing") +
       section("Bug report", markdownToHtml(b.bugReport), "report") +
       (b.logs ? section("Logs", codeBlock("text", b.logs), "logs") : "") +
       section("The code as shipped", filesHtml, "files") +
-      `<p>Open the hunt to edit the files, run the visible tests and submit against the hidden ones.${langHub ? ` ${link(`/bug-hunts/${langHub.id}`, `More ${language} bug hunts`)}.` : ""}</p>`;
+      `<p>Open the hunt to start the incident clock, edit the files, run the visible tests and submit against the hidden ones, then write the root cause down.${langHub ? ` ${link(`/bug-hunts/${langHub.id}`, `More ${language} bug hunts`)}.` : ""}</p>`;
     return {
       path,
       title: titles.bugHunt(b.title, language),
@@ -1009,7 +1029,7 @@ function bugHuntHead(idOrSlug: string): Promise<PageHead | PageRedirect | null> 
       // header ("BUG-2107 · Priority: Critical · Reported by: …"), and cut
       // at 160 characters that header was the whole search snippet (2026-09-30).
       description: summarise(b.description || b.bugReport, `${b.title}: a debugging challenge on real ${language} code — read the bug report, find the bug, fix it and pass the hidden tests.`),
-      facts: { difficulty, language, keywords, trail },
+      facts: { difficulty, language, keywords, trail, minutes: incident.targetMins },
       content,
       crumb: b.title,
     };

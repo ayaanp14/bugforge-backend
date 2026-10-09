@@ -149,6 +149,9 @@ model User {
   accounts              Account[]
   githubConnection      GitHubConnection?
   bugSubmissions        BugSubmission[]
+  bugEngagements        BugEngagement[]
+  bugTutorTurns         BugTutorTurn[]
+  bugAnalyses           BugSubmissionAnalysis[]
   sqlSubmissions        SqlSubmission[]
   sqlSolves             SqlSolve[]
   codeDrafts            CodeDraft[]
@@ -589,12 +592,19 @@ model BugChallenge {
   description String          @db.MediumText
   bugReport   String          @db.MediumText
   logs        String?         @db.MediumText
+  /// What the shipped build does on the visible tests: [{name, passed, detail}]
+  /// — the incident's "failing checks". Written once by the API the first time
+  /// the hunt is read without it (services/bug-coach.ts fillSymptoms), from a
+  /// real run of the buggy files; null until then. Never a hidden test.
+  symptoms    Json?
   isPublished Boolean         @default(false)
   createdAt   DateTime        @default(now())
   submissions BugSubmission[]
   files       ChallengeFile[]
   tests       ChallengeTest[]
   duels       Duel[]
+  engagements BugEngagement[]
+  tutorTurns  BugTutorTurn[]
 
   // The catalogue reads: published-by-category ordered by difficulty (bug hunts
   // index) and published-newest-first (duel picks, dashboard counts).
@@ -632,8 +642,23 @@ model BugSubmission {
   totalTests    Int          @default(0)
   timeTakenSecs Int?
   submittedAt   DateTime     @default(now())
+  /// The postmortem (Phase 6, ADAPTIVE_COACH.md §14): the hunter's own account
+  /// of the root cause, written after an accepted fix and scored by the model
+  /// against lib/root-cause.ts RUBRIC. Never pays XP — a hunt's PASS can be
+  /// forged (CLAUDE.md, Scoring integrity), and so can a well-written story.
+  rootCause              String?  @db.Text
+  rootCauseAt            DateTime?
+  /// "queued" | "running" | "done" | "failed" | "skipped"
+  rootCauseStatus        String?  @db.VarChar(16)
+  /// {criteria: [{key, score, max, note}], summary, missed, confidence}
+  rootCauseReview        Json?
+  /// 0–100, the rubric's points scaled; null until scored.
+  rootCauseScore         Int?
+  rootCauseModel         String?  @db.VarChar(120)
+  rootCausePromptVersion Int?
   challenge     BugChallenge @relation(fields: [challengeId], references: [id], onDelete: Cascade)
   user          User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  analysis      BugSubmissionAnalysis?
 
   @@index([userId, submittedAt])
   // alreadySolved / quota / duel checks filter by challenge; streak, stats and
@@ -641,6 +666,74 @@ model BugSubmission {
   @@index([userId, challengeId, submittedAt])
   @@index([userId, verdict, submittedAt])
   @@index([verdict, submittedAt])
+}
+
+/// A member's contact with a hunt, timed by the server (Phase 6): when they
+/// first opened it, when they paged themselves into incident mode, and the
+/// debugging tutor's ladder. Diagnosis time is *derived* from this and the
+/// first accepted BugSubmission (lib/bug-incident.ts diagnosisOf) — the
+/// client's timeTakenSecs stays on the row but is no longer what counts.
+model BugEngagement {
+  userId          String
+  challengeId     String
+  openedAt        DateTime     @default(now())
+  /// "Start incident": the clock the diagnosis runs from. Null = practice.
+  incidentAt      DateTime?
+  /// The debugging tutor's highest rung (lib/bug-tutor.ts BUG_RUNGS, 0–6).
+  tutorRung       Int?
+  tutorHintAt     DateTime?
+  tutorSolutionAt DateTime?
+  user            User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  challenge       BugChallenge @relation(fields: [challengeId], references: [id], onDelete: Cascade)
+
+  @@id([userId, challengeId])
+  @@index([challengeId])
+}
+
+/// The debugging tutor's thread on one hunt (services/bug-coach.ts).
+model BugTutorTurn {
+  id            String       @id @default(cuid())
+  userId        String
+  challengeId   String
+  /// "student" | "tutor"
+  role          String       @db.VarChar(8)
+  rung          Int
+  content       String       @db.Text
+  model         String?      @db.VarChar(120)
+  promptVersion Int?
+  createdAt     DateTime     @default(now())
+  user          User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  challenge     BugChallenge @relation(fields: [challengeId], references: [id], onDelete: Cascade)
+
+  @@index([userId, challengeId, createdAt])
+  @@index([challengeId])
+}
+
+/// "Why it failed" for a hunt: SubmissionAnalysis's twin, keyed by the
+/// BugSubmission (lib/bug-failure.ts + the bug-review prompt).
+model BugSubmissionAnalysis {
+  submissionId  String        @id
+  userId        String
+  challengeId   String
+  /// "queued" | "running" | "done" | "failed" | "skipped"
+  status        String        @db.VarChar(16)
+  /// "duel" | "unavailable" | "error" | "busy" | "reused"
+  reason        String?       @db.VarChar(32)
+  category      String?       @db.VarChar(32)
+  deterministic Json
+  ai            Json?
+  model         String?       @db.VarChar(120)
+  promptVersion Int?
+  codeHash      String        @db.Char(64)
+  tokens        Int           @default(0)
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  submission    BugSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+  user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@index([userId, challengeId, codeHash])
+  @@index([status, createdAt])
 }
 
 // SQL problems (src/lib/sql-problems — specs in code, not rows; the slug is

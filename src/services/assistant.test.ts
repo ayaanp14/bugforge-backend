@@ -161,6 +161,11 @@ const QUESTIONS: Array<[string, RegExp, string?]> = [
   ["does using the tutor lower my skill score", /Approach, Complexity and Hint count like opening the problem.s hints/],
   ["why is the tutor off on the daily contest problem", /When the tutor is off/],
   ["can the tutor just give me the code", /does not climb, and code is held back below Pseudocode/],
+  // Phase 6: bug hunts as incidents.
+  ["what is the postmortem on a bug hunt", /scores it out of 100 against your accepted patch/],
+  ["how is my bug hunt diagnosis time measured", /\*\*diagnosis time\*\* is from that start/],
+  ["what does SEV-1 mean on a bug hunt", /SEV-1 critical, SEV-2 major, SEV-3 minor/],
+  ["why did my bug fix fail", /passed on the shipped build but fails with your patch/],
   ["what does Likely mean in the failure explanation", /\*\*Likely\*\* \(a reading of it\)/],
   // Follow-ups: the answer is only reachable through the previous question.
   ["how long does it last?", /expires after \*\*2 hours\*\*/, "how do private duel rooms work"],
