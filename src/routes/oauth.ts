@@ -566,8 +566,8 @@ async function upsertSocialUser(args: UpsertArgs): Promise<SocialUserResult> {
   // account, and nothing more. The provider's access, refresh and id tokens
   // used to be stored on it too, though nothing ever read them back: they
   // were only ever a liability, sitting in plain text on a shared database
-  // host. Rows written before this change still hold them — the backfill
-  // script clears those.
+  // host. Since 2026-10-10 the columns are gone (prisma/sql/2026-10-10-drop-
+  // dead-objects.sql), so no token can be stored here at all.
   try {
     await prisma.account.upsert({
       where: {
@@ -576,7 +576,7 @@ async function upsertSocialUser(args: UpsertArgs): Promise<SocialUserResult> {
           providerAccountId: args.providerAccountId,
         },
       },
-      update: { access_token: null, refresh_token: null, id_token: null, expires_at: null },
+      update: {},
       create: {
         userId: dbUser.id,
         type: args.accountType,

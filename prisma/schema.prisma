@@ -13,13 +13,13 @@ model Account {
   type              String
   provider          String
   providerAccountId String
-  refresh_token     String? @db.Text
-  access_token      String? @db.Text
-  expires_at        Int?
-  token_type        String?
-  scope             String?
-  id_token          String? @db.Text
-  session_state     String?
+  refresh_token     String? @db.Text @ignore
+  access_token      String? @db.Text @ignore
+  expires_at        Int? @ignore
+  token_type        String? @ignore
+  scope             String? @ignore
+  id_token          String? @db.Text @ignore
+  session_state     String? @ignore
   user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([provider, providerAccountId])
@@ -48,6 +48,11 @@ model Session {
   userId       String
   expires      DateTime
   user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Dropped by prisma/sql/2026-10-10-drop-dead-objects.sql; @ignore keeps it out
+  // of the client first, so the running API never selects a column that is about
+  // to go. The next commit removes the declarations.
+  @@ignore
 }
 
 model VerificationToken {
@@ -56,6 +61,11 @@ model VerificationToken {
   expires    DateTime
 
   @@unique([identifier, token])
+
+  // Dropped by prisma/sql/2026-10-10-drop-dead-objects.sql; @ignore keeps it out
+  // of the client first, so the running API never selects a column that is about
+  // to go. The next commit removes the declarations.
+  @@ignore
 }
 
 model User {
@@ -164,7 +174,7 @@ model User {
   codeDrafts            CodeDraft[]
   roomsCreated          PairRoom[]
   roomParticipations    RoomParticipant[]
-  sessions              Session[]
+  sessions              Session[] @ignore
   submissions           Submission[]
   problemSolves         ProblemSolve[]
   stats                 UserStats?
@@ -858,7 +868,7 @@ model UserStats {
   userId         String   @unique
   problemsSolved Int      @default(0)
   bugsFixed      Int      @default(0)
-  pairSessions   Int      @default(0)
+  pairSessions   Int      @default(0) @ignore
   currentStreak  Int      @default(0)
   longestStreak  Int      @default(0)
   lastActive     DateTime @default(now())
@@ -900,7 +910,7 @@ model MockInterviewSession {
   savedInterviewId String
   status           String  @default("started") // started, completed, abandoned
   /// Dead: left in place so a schema push stays additive. Safe to drop later.
-  gtwyThreadId     String?
+  gtwyThreadId     String? @ignore
 
   /// How many questions this interview runs, fixed when it starts.
   questionBudget Int       @default(7)

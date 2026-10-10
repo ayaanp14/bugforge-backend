@@ -6,7 +6,7 @@
  *   node scripts/run-prod.mjs scripts/auth-hardening-backfill.ts --apply
  *
  * Run it once, after `prisma db push` and before (or right after) the API
- * that enforces email verification goes live. Two things:
+ * that enforces email verification goes live.
  *
  * 1. Accounts that exist already are marked verified. Sign-in now refuses a
  *    password account whose address was never confirmed, and no account had
@@ -17,10 +17,9 @@
  *    Stamped with the account's creation date so the column keeps meaning
  *    "confirmed since".
  *
- * 2. Provider tokens stored on `Account` rows are cleared. The OAuth routes
- *    used to persist GitHub and Google access, refresh and id tokens that
- *    nothing ever read; they no longer write them, and the rows written
- *    before should not keep holding a third party's credentials either.
+ * It also used to clear the provider tokens stored on `Account` rows; those
+ * columns were dropped on 2026-10-10 (prisma/sql/2026-10-10-drop-dead-
+ * objects.sql), which cleared them for good.
  */
 import { prisma } from "../src/lib/prisma.js";
 
@@ -28,11 +27,7 @@ const apply = process.argv.includes("--apply");
 
 async function main() {
   const unverified = await prisma.user.count({ where: { emailVerified: null } });
-  const tokenRows = await prisma.account.count({
-    where: { OR: [{ access_token: { not: null } }, { refresh_token: { not: null } }, { id_token: { not: null } }] },
-  });
   console.log(`accounts without emailVerified: ${unverified}`);
-  console.log(`provider link rows still holding tokens: ${tokenRows}`);
 
   if (!apply) {
     console.log("dry run — pass --apply to write");
@@ -43,12 +38,7 @@ async function main() {
   const verified = await prisma.$executeRawUnsafe(
     "UPDATE `User` SET `emailVerified` = `createdAt` WHERE `emailVerified` IS NULL",
   );
-  const cleared = await prisma.account.updateMany({
-    where: { OR: [{ access_token: { not: null } }, { refresh_token: { not: null } }, { id_token: { not: null } }] },
-    data: { access_token: null, refresh_token: null, id_token: null, expires_at: null },
-  });
   console.log(`marked verified: ${verified}`);
-  console.log(`token columns cleared: ${cleared.count}`);
 }
 
 main()

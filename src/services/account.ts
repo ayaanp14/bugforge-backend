@@ -50,7 +50,7 @@ export async function buildAccountExport(userId: string): Promise<Record<string,
       // What the career section of the public profile shares (Phase 8).
       careerShowSkills: true, careerShowReadiness: true,
       createdAt: true, updatedAt: true,
-      stats: { select: { problemsSolved: true, bugsFixed: true, pairSessions: true, currentStreak: true, longestStreak: true, lastActive: true } },
+      stats: { select: { problemsSolved: true, bugsFixed: true, currentStreak: true, longestStreak: true, lastActive: true } },
       accounts: { select: { provider: true, providerAccountId: true } },
       githubConnection: { select: { githubId: true, login: true, linkedAt: true } },
     },
