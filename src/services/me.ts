@@ -56,7 +56,11 @@ function loadSqlTally(userId: string): Promise<SqlTally> {
  * which is a MIN over one grouped query for every problem at once. A problem
  * counts as new this week exactly when that minimum falls inside the window.
  */
-export async function getUserTrends(userId: string, sql: Promise<SqlTally> = loadSqlTally(userId)): Promise<UserTrends> {
+export async function getUserTrends(
+  userId: string,
+  sql: Promise<SqlTally> = loadSqlTally(userId),
+  problemState: Promise<ProblemState> = loadProblemState(userId),
+): Promise<UserTrends> {
   const now = Date.now();
   const last7Days = new Date(now - 7 * 24 * 3600 * 1000);
   const last24Hours = new Date(now - 24 * 3600 * 1000);
@@ -74,18 +78,14 @@ export async function getUserTrends(userId: string, sql: Promise<SqlTally> = loa
   });
   bugsFixedPromise.catch(() => undefined);
 
-  // One row per problem ever solved, carrying its earliest accepted submission.
-  // Uses the (userId, verdict, submittedAt) index.
-  const firstSolves = await prisma.submission.groupBy({
-    by: ["problemId"],
-    where: { userId, verdict: "ACCEPTED" },
-    _min: { submittedAt: true },
-  });
-
-  const newThisWeek = firstSolves.filter((f) => {
-    const first = f._min.submittedAt;
-    return first !== null && first >= last7Days;
-  });
+  // One entry per problem ever solved, with its earliest accepted submission —
+  // from the problem state (services/dashboard.ts), whose grouped read carries
+  // the MIN. It was a second, identical GROUP BY here; the state is one cached,
+  // single-flight read the standing beside this already loads.
+  const { firstSolvedAt } = await problemState;
+  const newThisWeek = [...firstSolvedAt]
+    .filter(([, first]) => first >= last7Days)
+    .map(([problemId, first]) => ({ problemId, _min: { submittedAt: first } }));
 
   // Difficulties for just those few problems, alongside the bug count that
   // has been in flight since before the groupBy above.
@@ -384,7 +384,7 @@ export async function getDashboardUser(
   const sql = loadSqlTally(userId);
   const [row, trends, standing, sqlTally] = await Promise.all([
     loads?.row ?? loadDashboardUserRow(userId),
-    getUserTrends(userId, sql),
+    getUserTrends(userId, sql, loads?.problemState),
     standingOf(userId, loads),
     sql,
   ]);

@@ -48,6 +48,8 @@ export type CatalogueRow = {
 export type ProblemState = {
   catalogue: CatalogueRow[];
   solved: Set<string>;
+  /** When each solved problem was first accepted — the trends' "new this week" (services/me.ts getUserTrends). */
+  firstSolvedAt: Map<string, Date>;
   attempted: Set<string>;
   /** Solved in a Battles tournament (services/tournament-record.ts): the catalogue's trophy mark. */
   tournamentSolved: Set<string>;
@@ -190,7 +192,9 @@ export function loadProblemState(userId: string): Promise<ProblemState> {
 async function queryProblemState(userId: string): Promise<ProblemState> {
   const [catalogue, solvedRows, touchedRows, tournamentRows] = await Promise.all([
     getCatalogue(),
-    prisma.submission.groupBy({ by: ["problemId"], where: { userId, verdict: "ACCEPTED" } }),
+    // MIN(submittedAt) rides on the grouping already made here: the trends
+    // (services/me.ts) ran this same GROUP BY again for it on every rebuild.
+    prisma.submission.groupBy({ by: ["problemId"], where: { userId, verdict: "ACCEPTED" }, _min: { submittedAt: true } }),
     prisma.submission.groupBy({ by: ["problemId"], where: { userId } }),
     // One more grouped read, on the (userId, problemId) index; empty for
     // anyone who has never played on Battles.
@@ -198,8 +202,10 @@ async function queryProblemState(userId: string): Promise<ProblemState> {
   ]);
 
   const solved = new Set(solvedRows.map((r) => r.problemId));
+  const firstSolvedAt = new Map<string, Date>();
+  for (const r of solvedRows) if (r._min.submittedAt) firstSolvedAt.set(r.problemId, r._min.submittedAt);
   const attempted = new Set(touchedRows.map((r) => r.problemId).filter((id) => !solved.has(id)));
-  return { catalogue, solved, attempted, tournamentSolved: new Set(tournamentRows.map((r) => r.problemId)) };
+  return { catalogue, solved, firstSolvedAt, attempted, tournamentSolved: new Set(tournamentRows.map((r) => r.problemId)) };
 }
 
 // ── Difficulty stats ────────────────────────────────────────────
