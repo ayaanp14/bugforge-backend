@@ -13,13 +13,6 @@ model Account {
   type              String
   provider          String
   providerAccountId String
-  refresh_token     String? @db.Text @ignore
-  access_token      String? @db.Text @ignore
-  expires_at        Int? @ignore
-  token_type        String? @ignore
-  scope             String? @ignore
-  id_token          String? @db.Text @ignore
-  session_state     String? @ignore
   user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([provider, providerAccountId])
@@ -40,32 +33,6 @@ model GitHubConnection {
   login    String   @db.VarChar(64)
   linkedAt DateTime @default(now())
   user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-}
-
-model Session {
-  id           String   @id @default(cuid())
-  sessionToken String   @unique @db.VarChar(500)
-  userId       String
-  expires      DateTime
-  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  // Dropped by prisma/sql/2026-10-10-drop-dead-objects.sql; @ignore keeps it out
-  // of the client first, so the running API never selects a column that is about
-  // to go. The next commit removes the declarations.
-  @@ignore
-}
-
-model VerificationToken {
-  identifier String
-  token      String   @unique @db.VarChar(500)
-  expires    DateTime
-
-  @@unique([identifier, token])
-
-  // Dropped by prisma/sql/2026-10-10-drop-dead-objects.sql; @ignore keeps it out
-  // of the client first, so the running API never selects a column that is about
-  // to go. The next commit removes the declarations.
-  @@ignore
 }
 
 model User {
@@ -174,7 +141,6 @@ model User {
   codeDrafts            CodeDraft[]
   roomsCreated          PairRoom[]
   roomParticipations    RoomParticipant[]
-  sessions              Session[] @ignore
   submissions           Submission[]
   problemSolves         ProblemSolve[]
   stats                 UserStats?
@@ -824,7 +790,6 @@ model SqlSolve {
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, slug])
-  @@index([slug])
 }
 
 model PairRoom {
@@ -868,7 +833,6 @@ model UserStats {
   userId         String   @unique
   problemsSolved Int      @default(0)
   bugsFixed      Int      @default(0)
-  pairSessions   Int      @default(0) @ignore
   currentStreak  Int      @default(0)
   longestStreak  Int      @default(0)
   lastActive     DateTime @default(now())
@@ -909,8 +873,6 @@ model MockInterviewSession {
   userId           String
   savedInterviewId String
   status           String  @default("started") // started, completed, abandoned
-  /// Dead: left in place so a schema push stays additive. Safe to drop later.
-  gtwyThreadId     String? @ignore
 
   /// How many questions this interview runs, fixed when it starts.
   questionBudget Int       @default(7)
@@ -1195,7 +1157,6 @@ model Duel {
   // The queue scan also bounds and orders by createdAt; the trailing column
   // lets MySQL stop at the range instead of filesorting the matches.
   @@index([status, mode, kind, visibility, createdAt])
-  @@index([createdBy])
   @@index([createdAt])
 }
 
@@ -1329,7 +1290,6 @@ model PostReport {
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([postId, userId])
-  @@index([createdAt])
 }
 
 model PostLike {
@@ -2066,7 +2026,9 @@ model JobRun {
   result     Json?
   error      String?   @db.Text
 
-  @@index([job, startedAt])
+  // The admin list (lib/scheduler recentRuns) sorts every run by startedAt
+  // with no job filter, which [job, startedAt] could not serve.
+  @@index([startedAt])
 }
 
 /// The site assistant's conversation with an account, one row per turn.
@@ -2166,7 +2128,6 @@ model RoadmapStageProblem {
   stage     RoadmapStage @relation(fields: [stageId], references: [id], onDelete: Cascade)
   problem   Problem      @relation(fields: [problemId], references: [id], onDelete: Cascade)
 
-  @@unique([stageId, problemId])
   @@index([stageId, position])
 }
 

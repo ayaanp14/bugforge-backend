@@ -1,4 +1,6 @@
--- Dead objects, dropped 2026-10-10 (perf/schema audit). Every one re-checked
+-- Dead objects, dropped 2026-10-10 (perf/schema audit). APPLIED TO PRODUCTION
+-- 2026-10-10 11:44 UTC over SSM, after a targeted dump of every table touched
+-- (~/backups/dead-objects-20261010-1144.sql.gz on the box). Every one re-checked
 -- by search across backend/src, backend/scripts, frontend/src and mobile/src,
 -- and production's contents read first (all empty or unused):
 --
