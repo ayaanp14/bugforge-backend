@@ -302,6 +302,12 @@ router.post("/submit", requireAuth, executionLimiter, async (req, res) => {
         select: { id: true },
       }),
       prisma.userStats.findUnique({ where: { userId } }),
+      // Whether this is the account's first try at the problem — the moment
+      // its catalogue row turns "attempted". The SPA refreshes its solved-
+      // state views (the catalogue's every page, pickers, hub progress) only
+      // on a first attempt or a first solve, rather than on every verdict.
+      // One read on the (userId, problemId, submittedAt) index.
+      prisma.submission.findFirst({ where: { userId, problemId }, select: { id: true } }),
     ]);
     // Awaited after the engine; this only stops an early failure from
     // surfacing as an unhandled rejection in the meantime.
@@ -356,7 +362,7 @@ router.post("/submit", requireAuth, executionLimiter, async (req, res) => {
       ? remapDiagnostics((firstFailure.compile_output || firstFailure.stderr || "").trim() || null, driver ? driver.toEditorLine : null)
       : null;
 
-    const [alreadyClaimed, stats] = await history;
+    const [alreadyClaimed, stats, priorAttempt] = await history;
 
     // Award XP and update stats if first ACCEPTED solve
     const xpMap: Record<string, number> = { easy: 10, medium: 20, hard: 30 };
@@ -427,6 +433,7 @@ router.post("/submit", requireAuth, executionLimiter, async (req, res) => {
       verdict,
       awardedXp,
       firstSolve,
+      firstAttempt: priorAttempt === null,
       passedCases,
       totalCases,
       customResults: batch.perCase.slice(totalCases), // Return custom results separately if needed

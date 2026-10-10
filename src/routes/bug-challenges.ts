@@ -2,7 +2,7 @@ import { Router } from "express";
 import { prisma } from "../lib/prisma.js";
 import { optionalAuth, requireAuth } from "../middleware/auth.js";
 import { browserCache, SEEDED_CONTENT_MAX_AGE } from "../lib/http-cache.js";
-import { cachedShared } from "../lib/cache.js";
+import { cached, cachedShared } from "../lib/cache.js";
 import { executionLimiter, rateLimit } from "../middleware/rate-limit.js";
 import { judgeBugProject, type BugFile, type BugLanguage } from "../lib/bug-judge.js";
 import { containsReservedMarker } from "../lib/batch.js";
@@ -48,6 +48,27 @@ const JUDGE_CHALLENGE_SELECT = {
   language: true,
   files: { select: { filePath: true, content: true, isEditable: true } },
 } as const;
+
+/**
+ * The judge's slice of a hunt — files plus every test, hidden ones included —
+ * held in memory, as lib/test-suite-cache does for problems. Run and Submit
+ * read it on every request (both under executionLimiter, the most frequent
+ * writes a hunt sees), and each used to pull every file's content and the
+ * tests' commands from the database although nothing in the API writes a
+ * hunt: scripts/seed-bugs.ts does, and its flush (scripts/content-caches,
+ * family "bug:") drops this key with the rest. Run filters the visible tests
+ * out of the same entry. Memory only, never Redis: the hidden tests' commands
+ * carry their expected output, and one instance is what serves the judge.
+ */
+const BUG_JUDGE_TTL_MS = 10 * 60_000;
+function judgeChallenge(challengeId: string) {
+  return cached(`bug:judge:v1:${challengeId}`, BUG_JUDGE_TTL_MS, () =>
+    prisma.bugChallenge.findUnique({
+      where: { id: challengeId },
+      select: { ...JUDGE_CHALLENGE_SELECT, tests: { select: { name: true, runCommand: true, isHidden: true } } },
+    }),
+  );
+}
 
 /**
  * GET /api/bug-challenges — the paginated hunts index.
@@ -445,13 +466,8 @@ router.post("/:id/run", requireAuth, executionLimiter, async (req, res) => {
       res.status(404).json({ error: "Challenge not found" });
       return;
     }
-    const challenge = await prisma.bugChallenge.findUnique({
-      where: { id: runId },
-      select: {
-        ...JUDGE_CHALLENGE_SELECT,
-        tests: { where: { isHidden: false }, select: { name: true, runCommand: true } },
-      },
-    });
+    const judged = await judgeChallenge(runId);
+    const challenge = judged && { ...judged, tests: judged.tests.filter((t) => !t.isHidden).map(({ name, runCommand }) => ({ name, runCommand })) };
     if (!challenge || !challenge.isPublished) {
       res.status(404).json({ error: "Challenge not found" });
       return;
@@ -517,13 +533,7 @@ router.post("/:id/submit", requireAuth, executionLimiter, async (req, res) => {
     // failed run must not lock someone out of finishing what they started.
     // The quota needs only the id, so it is checked alongside the load.
     const [challenge, alreadySolved, quota] = await Promise.all([
-      prisma.bugChallenge.findUnique({
-        where: { id: challengeId },
-        select: {
-          ...JUDGE_CHALLENGE_SELECT,
-          tests: { select: { name: true, runCommand: true, isHidden: true } },
-        },
-      }),
+      judgeChallenge(challengeId),
       prisma.bugSubmission.findFirst({
         where: { userId, challengeId, verdict: "ACCEPTED" },
         select: { id: true },
