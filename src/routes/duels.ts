@@ -96,17 +96,18 @@ async function pickTarget(kind: string, participantIds: string[] = []): Promise<
   let solved = new Set<string>();
   if (participantIds.length > 0) {
     if (kind === "bug") {
-      const rows = await prisma.bugSubmission.findMany({
+      // groupBy, not `distinct`: Prisma's distinct on MySQL sends no DISTINCT —
+      // it returns every matching row and dedupes in Node (SQL captured
+      // 2026-10-10, scratch/probe-distinct.mts); GROUP BY does it in MySQL.
+      const rows = await prisma.bugSubmission.groupBy({
+        by: ["challengeId"],
         where: { userId: { in: participantIds }, verdict: "ACCEPTED" },
-        select: { challengeId: true },
-        distinct: ["challengeId"],
       });
       solved = new Set(rows.map((r) => r.challengeId));
     } else {
-      const rows = await prisma.submission.findMany({
+      const rows = await prisma.submission.groupBy({
+        by: ["problemId"],
         where: { userId: { in: participantIds }, verdict: "ACCEPTED" },
-        select: { problemId: true },
-        distinct: ["problemId"],
       });
       solved = new Set(rows.map((r) => r.problemId));
     }

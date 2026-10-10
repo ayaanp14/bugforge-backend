@@ -133,7 +133,8 @@ export function sqlStanding(userId: string): Promise<{ solved: string[]; attempt
   return cached(standingKey(userId), 30_000, async () => {
     const [solves, tried] = await Promise.all([
       prisma.sqlSolve.findMany({ where: { userId }, select: { slug: true } }),
-      prisma.sqlSubmission.findMany({ where: { userId }, select: { slug: true }, distinct: ["slug"] }),
+      // groupBy: Prisma's `distinct` dedupes in Node on MySQL (services/roadmap.ts solvedIds).
+      prisma.sqlSubmission.groupBy({ by: ["slug"], where: { userId } }),
     ]);
     const solved = solves.map((s) => s.slug);
     const solvedSet = new Set(solved);

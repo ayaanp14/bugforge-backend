@@ -209,10 +209,12 @@ export async function checkRoadmapSeeded(): Promise<void> {
 /** Problem ids the account has an ACCEPTED submission on, among a set. */
 async function solvedIds(userId: string, problemIds: string[]): Promise<Set<string>> {
   if (problemIds.length === 0) return new Set();
-  const rows = await prisma.submission.findMany({
+  // groupBy, not `distinct`: Prisma's distinct on MySQL sends no DISTINCT —
+  // it returns every matching row and dedupes in Node (SQL captured
+  // 2026-10-10, scratch/probe-distinct.mts); GROUP BY does it in MySQL.
+  const rows = await prisma.submission.groupBy({
+    by: ["problemId"],
     where: { userId, verdict: "ACCEPTED", problemId: { in: problemIds } },
-    distinct: ["problemId"],
-    select: { problemId: true },
   });
   return new Set(rows.map((r) => r.problemId));
 }

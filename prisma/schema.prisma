@@ -676,6 +676,10 @@ model BugSubmission {
   @@index([userId, challengeId, submittedAt])
   @@index([userId, verdict, submittedAt])
   @@index([verdict, submittedAt])
+  // Boot recovery of postmortem scoring (services/bug-coach.ts) reads queued/
+  // running rows by rootCauseStatus ordered by rootCauseAt — a full scan of
+  // the table (editedFiles Json included) on every API start without this.
+  @@index([rootCauseStatus, rootCauseAt])
 }
 
 /// A member's contact with a hunt, timed by the server (Phase 6): when they
@@ -1233,6 +1237,10 @@ model Post {
 
   @@index([createdAt])
   @@index([userId, createdAt])
+  // Interview experiences (services/interview-experiences.ts): list, count and
+  // sitemap all filter type + visibility and sort by createdAt; they walked
+  // [createdAt] across every post to find the few experiences.
+  @@index([type, visibility, createdAt])
 }
 
 model PostComment {
@@ -1950,6 +1958,10 @@ model ErrorReport {
   @@index([createdAt])
   @@index([fingerprint, createdAt])
   @@index([source, createdAt])
+  // userId is a plain column, not a relation, so MySQL never indexed it: the
+  // admin user page's recent errors and account deletion's updateMany (which
+  // nulls it) were full scans of a table of TEXT columns.
+  @@index([userId, createdAt])
 }
 
 /// One thing a person did: a page view, a submit, a checkout started.

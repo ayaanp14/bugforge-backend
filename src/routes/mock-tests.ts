@@ -1045,7 +1045,9 @@ router.post("/attempts/:id/breach", requireAuth, async (req: any, res) => {
  */
 router.post("/attempts/:id/submit", requireAuth, async (req: any, res) => {
   try {
-    const attempt = await prisma.mockAttempt.findFirst({ where: { id: req.params.id, userId: req.user.userId } });
+    // Only id and status are used: the row also holds the paper, the section
+    // scores and the signals (Json), which finishAttempt reads for itself.
+    const attempt = await prisma.mockAttempt.findFirst({ where: { id: req.params.id, userId: req.user.userId }, select: { id: true, status: true } });
     if (!attempt) return res.status(404).json({ error: "Attempt not found" });
     // Already-closed sittings come back untouched, so a resubmit is harmless.
     const finished = await finishAttempt(attempt.id, "submitted");

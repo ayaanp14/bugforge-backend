@@ -139,6 +139,15 @@ async function gatherCandidates(userId: string, loads: MissionLoads, state: Prob
     .slice(0, 12)
     .map((p) => ({ id: p.id, slug: p.slug, title: p.title, difficulty: toDifficulty(p.difficulty) }));
 
+  // Three independent reads, together: awaited inside the object literal they
+  // ran one after another on the dashboard's critical path.
+  const [target, discover, cohort] = await Promise.all([
+    readiness ? targetCandidates(userId, readiness, profile, state, skillPick) : null,
+    discoverCandidates(userId, row),
+    // A cohort's goal never fails the day: without it the mission is what it was.
+    cohortGoalFor(userId).catch(() => null),
+  ]);
+
   return {
     goal,
     level,
@@ -152,10 +161,9 @@ async function gatherCandidates(userId: string, loads: MissionLoads, state: Prob
     studyLesson: study && next ? { key: `${study.track}:${next.slug}`, title: next.title, href: `/study-plans/${study.track}/${next.slug}`, trackTitle: study.title, behind: study.behind } : null,
     milestone: step ? { key: step.key, title: step.title, detail: step.detail, href: step.href } : null,
     fallback,
-    target: readiness ? await targetCandidates(userId, readiness, profile, state, skillPick) : null,
-    discover: await discoverCandidates(userId, row),
-    // A cohort's goal never fails the day: without it the mission is what it was.
-    cohort: await cohortGoalFor(userId).catch(() => null),
+    target,
+    discover,
+    cohort,
   };
 }
 
@@ -322,7 +330,7 @@ async function missionFacts(userId: string, items: readonly MissionItem[], state
   const discoverKeys = new Set(items.flatMap((i) => (i.evidence && "discover" in i.evidence ? [i.evidence.discover] : [])));
   const [bugs, sqlSolved, lessons, planned, activities, discovered] = await Promise.all([
     bugIds.length
-      ? prisma.bugSubmission.findMany({ where: { userId, challengeId: { in: bugIds }, verdict: "ACCEPTED" }, select: { challengeId: true }, distinct: ["challengeId"] })
+      ? prisma.bugSubmission.groupBy({ by: ["challengeId"], where: { userId, challengeId: { in: bugIds }, verdict: "ACCEPTED" } })
       : Promise.resolve([]),
     sqlSlugs.length ? prisma.sqlSolve.findMany({ where: { userId, slug: { in: sqlSlugs } }, select: { slug: true } }) : Promise.resolve([]),
     lessonKeys.length
