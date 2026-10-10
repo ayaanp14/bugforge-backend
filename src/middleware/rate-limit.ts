@@ -287,6 +287,19 @@ export const resumeAiLimiter = rateLimit({
 });
 
 /**
+ * A written interview question read aloud (lib/polly.ts). The audio is cached
+ * per question, so only a first read spends Polly characters; a round asks
+ * ~7 questions and a person replays a few. The ceiling stops a script cycling
+ * through question ids. Keyed by account.
+ */
+export const speechLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 120,
+  message: "That is a lot of read-alouds in one hour. Give it a little while.",
+  keyOf: (req) => (req as Request & { user?: { userId: string } }).user?.userId ?? addressOf(req),
+});
+
+/**
  * Shareable win pictures. The share dialog uploads one when it opens; a
  * person shares a handful of wins in an hour. Each is a ~100 KB row, so the
  * ceiling is what keeps a script from filling the table. Keyed by account.

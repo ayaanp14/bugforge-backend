@@ -1,6 +1,8 @@
 import { Router } from "express";
 import { prisma } from "../lib/prisma.js";
 import { requireAuth } from "../middleware/auth.js";
+import { speechLimiter } from "../middleware/rate-limit.js";
+import { speechEnabled, speechFor } from "../lib/polly.js";
 import { prettyLabel } from "../lib/interview-labels.js";
 import { estimatedQuestions, voiceDurationMinutes } from "../lib/interview-duration.js";
 import { conversationLanguage, interviewerFor } from "../lib/interviewers.js";
@@ -1624,6 +1626,37 @@ router.get("/session/:sessionId", requireAuth, async (req: any, res) => {
   } catch (error: any) {
     console.error("Error fetching interview session:", error?.message);
     res.status(500).json({ error: "Failed to fetch interview session" });
+  }
+});
+
+/**
+ * @route   GET /api/interviews/questions/:questionId/speech
+ * @desc    The question read aloud by Amazon Polly, as MP3 (lib/polly.ts)
+ * @access  Private — the owner of the question's session only
+ *
+ * Reads the text from the row, never from the request, so only questions
+ * this account was asked can be synthesised. Any failure is a 503 the client
+ * answers with the browser's own voice.
+ */
+router.get("/questions/:questionId/speech", requireAuth, speechLimiter, async (req: any, res) => {
+  if (!speechEnabled) return res.status(503).json({ error: "Read-aloud is off" });
+
+  // Someone else's question is the same 404 as an unknown id.
+  const question = await prisma.mockInterviewQuestion.findFirst({
+    where: { id: String(req.params.questionId), session: { userId: req.user.userId } },
+    select: { questionText: true },
+  });
+  if (!question) return res.status(404).json({ error: "Question not found" });
+
+  try {
+    const audio = await speechFor(question.questionText);
+    res.setHeader("Content-Type", "audio/mpeg");
+    // A question's text never changes, so its audio is good for the round.
+    res.setHeader("Cache-Control", "private, max-age=86400");
+    res.send(audio);
+  } catch (error: any) {
+    console.error("Polly speech failed:", error?.name ?? "", error?.message);
+    res.status(503).json({ error: "Read-aloud is unavailable right now" });
   }
 });
 
