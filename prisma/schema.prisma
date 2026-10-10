@@ -509,7 +509,16 @@ model TestCase {
   orderIndex     Int
   problem        Problem @relation(fields: [problemId], references: [id], onDelete: Cascade)
 
-  @@index([problemId, orderIndex])
+  // isHidden before orderIndex: a Run, the tutor, a review and every sitting's
+  // coding question read only the visible cases, and under (problemId,
+  // orderIndex) that was a lookup of every one of the problem's ~5,000 rows to
+  // keep three — EXPLAIN ANALYZE on the 10M-row table (2026-10-10, two-sum):
+  // 5,003 rows examined and 37.8 ms warm, against 3 rows and 0.03 ms here.
+  // The full suite reads (isHidden, orderIndex) order off the same index, which
+  // is the same sequence because every visible case sorts below every hidden
+  // one (checked across the catalogue). Replaced rather than added: a second
+  // index on this table is ~540 MB, this one is ~75 MB more than the old.
+  @@index([problemId, isHidden, orderIndex])
 }
 
 /// One row the first time an account has a problem accepted — the record that

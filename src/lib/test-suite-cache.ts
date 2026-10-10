@@ -121,7 +121,10 @@ export function getJudgeSuite(problemId: string): Promise<JudgeCase[]> {
   return suites.get(problemId, () =>
     prisma.testCase.findMany({
       where: { problemId },
-      orderBy: { orderIndex: "asc" },
+      // The index's own order — (problemId, isHidden, orderIndex) — so no
+      // filesort of 5,000 rows; the same sequence as orderIndex alone, since
+      // every visible case sorts below every hidden one (schema.prisma).
+      orderBy: [{ isHidden: "asc" }, { orderIndex: "asc" }],
       select: { input: true, expectedOutput: true, isHidden: true, orderIndex: true },
     }),
   );
@@ -136,11 +139,12 @@ export function getJudgeSuite(problemId: string): Promise<JudgeCase[]> {
  * wire to use three of them. Measured against production (two-sum, 5,003
  * cases): 2,275 ms for the full suite against 583 ms for the visible three.
  *
- * TestCase is ~3M rows and 425 MB, so it is the one table in this schema
- * where what you select genuinely matters. No new index is needed: the
- * existing (problemId, orderIndex) index still answers this as a ref lookup
- * and the isHidden test is a filter over one problem's entries — the saving
- * is the rows that are never fetched, not the scan.
+ * TestCase is ~10M rows and 1.7 GB, so it is the one table in this schema
+ * where what you select genuinely matters. It once read "no new index is
+ * needed" here — but under (problemId, orderIndex) the isHidden test was a
+ * filter applied after looking up every one of the problem's rows (5,003
+ * examined for 3 returned, 37.8 ms warm); the (problemId, isHidden,
+ * orderIndex) index reads only the three (0.03 ms). See schema.prisma.
  *
  * When a Submit has already warmed the full suite, that copy answers instead
  * of a second query.
