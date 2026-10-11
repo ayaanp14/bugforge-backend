@@ -164,9 +164,8 @@ describe("owner accounts", () => {
   it("always includes the built-in owners, case-insensitively", () => {
     assert.equal(isOwnerEmail("tabassump8319@gmail.com", {}), true);
     assert.equal(isOwnerEmail("  TabassumP8319@Gmail.com ", {}), true);
-    assert.equal(isOwnerEmail("kingsenterprises1414@gmail.com", {}), true);
-    assert.equal(isOwnerEmail(" KingsEnterprises1414@Gmail.com ", {}), true);
-    assert.equal(isOwnerEmail("AyaanPathan14@gmail.com", {}), true);
+    assert.equal(isOwnerEmail("ayaanpathan14@gmail.com", {}), true);
+    assert.equal(isOwnerEmail(" AyaanPathan14@Gmail.com ", {}), true);
     assert.equal(isOwnerEmail("someone@example.com", {}), false);
     assert.equal(isOwnerEmail(null, {}), false);
     assert.equal(isOwnerEmail("", {}), false);
