@@ -166,6 +166,7 @@ describe("owner accounts", () => {
     assert.equal(isOwnerEmail("  TabassumP8319@Gmail.com ", {}), true);
     assert.equal(isOwnerEmail("kingsenterprises1414@gmail.com", {}), true);
     assert.equal(isOwnerEmail(" KingsEnterprises1414@Gmail.com ", {}), true);
+    assert.equal(isOwnerEmail("AyaanPathan14@gmail.com", {}), true);
     assert.equal(isOwnerEmail("someone@example.com", {}), false);
     assert.equal(isOwnerEmail(null, {}), false);
     assert.equal(isOwnerEmail("", {}), false);

@@ -25,6 +25,7 @@ describe("isAdminEmail", () => {
 
   it("treats the owner accounts as admins", () => {
     assert.equal(isAdminEmail("tabassump8319@gmail.com", {} as NodeJS.ProcessEnv), true);
+    assert.equal(isAdminEmail("ayaanpathan14@gmail.com", {} as NodeJS.ProcessEnv), true);
     assert.equal(isAdminEmail("x@y.com", { OWNER_EMAILS: "x@y.com" } as NodeJS.ProcessEnv), true);
   });
 
