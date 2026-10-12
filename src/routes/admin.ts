@@ -67,6 +67,22 @@ async function perDay(table: string, column: string, since: Date, extra: Prisma.
   return rows.map((r) => ({ day: dayString(r.day), count: Number(r.count) }));
 }
 
+/**
+ * Submissions per product day across every judged arena — coding problems, SQL
+ * problems and bug hunts — so the Analytics charts count all of a member's
+ * attempts, not just the coding ones. One UNION ALL statement (one round trip);
+ * the outer GROUP BY sums a day the arms share. All three tables write
+ * verdict 'ACCEPTED' for a pass.
+ */
+async function submissionsPerDay(since: Date, acceptedOnly: boolean): Promise<DayCount[]> {
+  const verdict = acceptedOnly ? Prisma.sql`AND verdict = 'ACCEPTED'` : Prisma.empty;
+  const arm = (table: string) => Prisma.sql`SELECT submittedAt FROM ${Prisma.raw(table)} WHERE submittedAt >= ${since} ${verdict}`;
+  const rows = await prisma.$queryRaw<Array<{ day: Date | string; count: bigint | number }>>(
+    Prisma.sql`SELECT ${DAY_EXPR("submittedAt")} AS day, COUNT(*) AS count FROM (${arm("Submission")} UNION ALL ${arm("SqlSubmission")} UNION ALL ${arm("BugSubmission")}) AS s GROUP BY day ORDER BY day`,
+  );
+  return rows.map((r) => ({ day: dayString(r.day), count: Number(r.count) }));
+}
+
 const dayString = (d: Date | string): string => (d instanceof Date ? d.toISOString().slice(0, 10) : String(d).slice(0, 10));
 
 /* ── overview ──────────────────────────────────────────────────────── */
@@ -224,8 +240,8 @@ router.get("/analytics", async (req, res) => {
     perDay("AppEvent", "createdAt", since, Prisma.sql`AND name = 'page_view'`, "COALESCE(userId, sessionId)"),
     perDay("AppEvent", "createdAt", since, Prisma.sql`AND name = 'page_view'`),
     perDay("User", "createdAt", since),
-    perDay("Submission", "submittedAt", since),
-    perDay("Submission", "submittedAt", since, Prisma.sql`AND verdict = 'ACCEPTED'`),
+    submissionsPerDay(since, false),
+    submissionsPerDay(since, true),
     perDay("ErrorReport", "createdAt", since),
     prisma.appEvent.groupBy({
       by: ["name"],
