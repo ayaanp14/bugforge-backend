@@ -121,15 +121,10 @@ router.post("/checkout", requireAuth, async (req: any, res) => {
       return res.status(400).json({ error: "That plan cannot be purchased." });
     }
 
-    // Nothing to sell while everything is free: the pricing page disables
-    // the buttons, and this is the same answer for a client that did not.
-    const offer = freeForAll();
-    if (offer.active) {
-      return res.status(409).json({
-        error: `Everything on CodeKairo is free for every account until ${offer.untilLabel} — there is nothing to buy until then.`,
-        freeForAll: offer,
-      });
-    }
+    // Checkout stays open during the free-for-all period (the owner's call,
+    // 2026-10-12, once the live Cashfree account was approved): nobody needs
+    // a plan until it ends, but anyone who wants to pay may, and the plan
+    // runs from the day the payment is confirmed like any other.
 
     if (!isConfigured()) {
       return res.status(503).json({ error: "Payments are not configured on this deployment." });

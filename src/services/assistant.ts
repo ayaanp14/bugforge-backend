@@ -79,7 +79,7 @@ export function plansSection(now: Date = new Date()): string {
   });
   const offer = freeForAll(now);
   const opening = offer.active
-    ? `**Free for everyone until ${offer.untilLabel}**: every limit on every plan is lifted for every account — unlimited mock interviews a week, voice rounds of 10/20/30 minutes, unlimited bug hunts a day — and nobody can buy a plan until then (checkout is paused; the plans below are what each will cost from ${offer.untilLabel}). A plan bought earlier keeps its dates and resumes as bought when the period ends.\n\n`
+    ? `**Free for everyone until ${offer.untilLabel}**: every limit on every plan is lifted for every account — unlimited mock interviews a week, voice rounds of 10/20/30 minutes, unlimited bug hunts a day — so nobody needs to buy a plan until then, though anyone can still buy a plan on /pricing (it starts the day the payment is confirmed).\n\n`
     : "";
   return `## Plans\n\n${opening}Prices are in Indian rupees. Yearly is ten months for twelve.\n\n${lines.join("\n")}`;
 }
@@ -243,7 +243,7 @@ async function buildAccountBlock(userId: string, email: string | null): Promise<
     todaysContestProblem: dash.dailyContest?.problem ? `[${dash.dailyContest.problem.title}](/problems/${dash.dailyContest.problem.slug}), ${dash.dailyContest.streak.solvedToday ? "solved today" : "not solved today"}` : null,
     plan: {
       name: ent.plan.name,
-      freeForAll: ent.freeForAll.active ? `every limit lifted for every account until ${ent.freeForAll.untilLabel}; nothing to buy until then` : null,
+      freeForAll: ent.freeForAll.active ? `every limit lifted for every account until ${ent.freeForAll.untilLabel}; no plan needed until then, though one can still be bought` : null,
       interviewsThisWeek: `${ent.usage.interviewsThisWeek} of ${e.interviewsPerWeek ?? "unlimited"}`,
       bonusInterviews: ent.usage.interviewCredits,
       bugHuntsToday: `${ent.usage.bugsToday} of ${e.bugsPerDay ?? "unlimited"}`,

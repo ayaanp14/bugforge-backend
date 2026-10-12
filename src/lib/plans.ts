@@ -216,7 +216,8 @@ export function isOwnerEmail(email: string | null | undefined, env: NodeJS.Proce
 
 /**
  * Until this instant every account is treated as if it held the top of the
- * ladder: every limit on every plan is lifted and nothing can be bought.
+ * ladder: every limit on every plan is lifted. Checkout stays open (since
+ * 2026-10-12): a plan bought now runs from its payment like any other.
  *
  * Decided on 2026-10-01 — everything free for every user until 1 January.
  * The plans stay listed (the pricing page shows what each will cost after
