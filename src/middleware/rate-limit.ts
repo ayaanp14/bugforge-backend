@@ -262,6 +262,19 @@ export const publicFormLimiter = rateLimit({
 });
 
 /**
+ * The register form's live "is this email taken?" check. /register already
+ * answers "Email already registered." (at 30 an hour), so the check reveals
+ * nothing new — but it is a cheap read a script could loop over a list of
+ * addresses with, so it gets its own ceiling: a person types a few addresses,
+ * never hundreds.
+ */
+export const emailCheckLimiter = rateLimit({
+  windowMs: 10 * 60 * 1000,
+  max: 60,
+  message: "Too many email checks from this address. Try again in a few minutes.",
+});
+
+/**
  * Resume uploads. Each one parses a document and writes several rows, and
  * nobody uploads more than a few versions of their own resume in an hour.
  * Mounted after `requireAuth`, so keyed by account.

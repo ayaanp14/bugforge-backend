@@ -60,9 +60,9 @@ import { optionalAuth } from "./middleware/auth.js";
 import { addKickedUser, kickedUserIdsOf } from "./lib/room-kicks.js";
 import { platformGuard } from "./middleware/platformGuard.js";
 import { displayNameOf } from "./lib/display-name.js";
-import { readUsername } from "./lib/identity.js";
+import { readEmail, readUsername } from "./lib/identity.js";
 import { securityHeaders } from "./middleware/security-headers.js";
-import { authLimiter, generalLimiter, loginAccountLimiter, otpRequestLimiter, registerLimiter } from "./middleware/rate-limit.js";
+import { authLimiter, emailCheckLimiter, generalLimiter, loginAccountLimiter, otpRequestLimiter, registerLimiter } from "./middleware/rate-limit.js";
 import { prisma } from "./lib/prisma.js";
 import { ROBOTS_TXT } from "./lib/robots.js";
 import { setIo, duelRoom, USER_NAMESPACE, userRoom } from "./lib/realtime.js";
@@ -1033,6 +1033,25 @@ app.get("/api/username-check", optionalAuth, async (req: any, res) => {
     }
   } catch (err) {
     console.error("GET /api/username-check error:", err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+
+// GET /api/email-check — the register form's live "already registered?" mark,
+// the same answer /register gives on submit ("Email already registered."),
+// shown while the address is typed instead of after the form is sent.
+app.get("/api/email-check", emailCheckLimiter, async (req, res) => {
+  const email = readEmail(req.query.email);
+  if (!email) {
+    res.json({ available: false, error: "Enter a valid email address." });
+    return;
+  }
+  try {
+    const existing = await prisma.user.findUnique({ where: { email }, select: { id: true } });
+    res.json(existing ? { available: false, error: "Taken" } : { available: true });
+  } catch (err) {
+    console.error("GET /api/email-check error:", err);
     res.status(500).json({ error: "Internal server error" });
   }
 });
