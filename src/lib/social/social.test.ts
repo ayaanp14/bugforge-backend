@@ -255,6 +255,8 @@ test("the poster carries only short words: label, hook, sub, chips and the site 
   // Aptitude: the topic, never the answer.
   const apt = posterWords({ theme: "aptitude", key: "k", path: "/x", title: "Ages", topics: ["Problems on Ages"], options: ["10", "12"], answer: 1 }, COPY);
   assert.equal(apt.label, "Aptitude · Problems on Ages");
+  // A tag too long for a chip is dropped, never cut (a cut one is drawn with its "…").
+  assert.deepEqual(posterWords({ ...PROBLEM, topics: ["Programming Fundamentals", "Arrays"] }, COPY).chips, ["Easy", "Arrays"]);
 });
 
 test("the strict JSON schema matches the Zod schema's fields, every property required", () => {

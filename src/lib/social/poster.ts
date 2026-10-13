@@ -57,7 +57,9 @@ export function posterWords(item: Item, copy: SocialCopy): PosterWords {
     label: short(label, 40),
     headline: short(copy.hook || item.title, 60),
     sub: short(copy.sub, 80),
-    chips: chips.slice(0, 3).map((c) => short(c, 20)),
+    // A tag too long for a chip is left off rather than cut: the image model draws a cut tag's "…" as
+    // written (the first live poster, 2026-10-13: "Programming…"), and the topic is in the label anyway.
+    chips: chips.filter((c) => c.length <= 18).slice(0, 3),
     footer: "codekairo.com",
   };
 }
