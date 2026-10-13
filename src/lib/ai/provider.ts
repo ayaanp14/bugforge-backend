@@ -304,6 +304,61 @@ export const openai: AIProvider = {
 export const OPENAI_IMAGE_DEFAULTS = { model: "gpt-image-1.5", quality: "medium" } as const;
 export const openaiImageModel = () => process.env["OPENAI_IMAGE_MODEL"] || OPENAI_IMAGE_DEFAULTS.model;
 
+/**
+ * An edit of an existing picture (POST /v1/images/edits, multipart): the
+ * picture goes up as the starting point and the model changes what the
+ * prompt asks. `input_fidelity: "high"` asks it to keep the input's details
+ * (layout, lettering) closely; a model that does not take the parameter
+ * answers 400 naming it, and the request is sent once more without it.
+ */
+export async function openaiImageEdit(prompt: string, image: Buffer, options: { size?: "1024x1024" | "1024x1536" | "1536x1024" } = {}): Promise<{ bytes: Buffer; model: string; mime: string }> {
+  const key = process.env["OPENAI_API_KEY"];
+  if (!key) throw new Error("OPENAI_API_KEY is not set");
+  const model = openaiImageModel();
+  const quality = process.env["OPENAI_IMAGE_QUALITY"] || OPENAI_IMAGE_DEFAULTS.quality;
+  let fidelity = true;
+  let last: Error | null = null;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    if (attempt > 0 && fidelity) await new Promise((r) => setTimeout(r, 2000));
+    const form = new FormData();
+    form.append("model", model);
+    form.append("prompt", prompt.slice(0, 4000));
+    form.append("image", new Blob([new Uint8Array(image)], { type: "image/png" }), "poster-base.png");
+    form.append("size", options.size ?? "1024x1024");
+    form.append("quality", quality);
+    form.append("output_format", "jpeg");
+    form.append("output_compression", "88");
+    if (fidelity) form.append("input_fidelity", "high");
+    let res: Response;
+    try {
+      res = await fetch(`${process.env["OPENAI_API_URL"] || "https://api.openai.com/v1"}/images/edits`, {
+        method: "POST",
+        headers: { authorization: `Bearer ${key}` },
+        body: form,
+        signal: AbortSignal.timeout(240_000),
+      });
+    } catch (err) {
+      last = new Error(`OpenAI is unreachable: ${(err as Error).message}`);
+      continue;
+    }
+    const answer = (await res.json().catch(() => null)) as { error?: { message?: string; param?: string }; data?: Array<{ b64_json?: string }> } | null;
+    if (!res.ok) {
+      const message = answer?.error?.message ?? res.statusText;
+      last = new Error(`OpenAI image edit answered ${res.status}: ${message}`);
+      if (res.status === 400 && fidelity && /input_fidelity/i.test(`${answer?.error?.param ?? ""} ${message}`)) {
+        fidelity = false;
+        continue;
+      }
+      if (RETRY_STATUS.has(res.status)) continue;
+      throw last;
+    }
+    const b64 = answer?.data?.[0]?.b64_json;
+    if (!b64) throw new Error("OpenAI returned no image");
+    return { bytes: Buffer.from(b64, "base64"), model, mime: "image/jpeg" };
+  }
+  throw last ?? new Error("OpenAI image edits is unavailable");
+}
+
 export async function openaiImage(prompt: string, options: { size?: "1024x1024" | "1024x1536" | "1536x1024" } = {}): Promise<{ bytes: Buffer; model: string; mime: string }> {
   const key = process.env["OPENAI_API_KEY"];
   if (!key) throw new Error("OPENAI_API_KEY is not set");

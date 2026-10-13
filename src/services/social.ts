@@ -25,7 +25,7 @@ import PDFDocument from "pdfkit";
 import { Prisma } from "@prisma/client";
 import { prisma } from "../lib/prisma.js";
 import { dayKey } from "../lib/clock.js";
-import { ai as nvidia, openai, openaiImage, openaiImageModel, type AIProvider } from "../lib/ai/provider.js";
+import { ai as nvidia, openai, openaiImageEdit, openaiImageModel, type AIProvider } from "../lib/ai/provider.js";
 import { promptFor } from "../lib/ai/prompts.js";
 import type { Job } from "../lib/scheduler.js";
 import {
@@ -43,8 +43,8 @@ import {
 import type { Item } from "../lib/social/item.js";
 import { SOCIAL_JSON_SCHEMA, SocialAnswerSchema, assemble, buildSocialMessages, coerceSocial, guardCopy, guardPosts, type Post, type RawPost, type Revision } from "../lib/social/posts.js";
 import { slidesFor, type Slide, type SocialCopy } from "../lib/social/slides.js";
-import { renderSlide } from "../lib/social/slide-card.js";
-import { posterPrompt } from "../lib/social/poster.js";
+import { renderPosterBase, renderSlide } from "../lib/social/slide-card.js";
+import { posterPrompt, posterWords } from "../lib/social/poster.js";
 import { itemFor, siteFacts } from "./social-knowledge.js";
 import { SITE_ORIGIN } from "./seo.js";
 
@@ -201,23 +201,29 @@ async function save(day: string, item: Item, written: Written, via: "job" | "pag
 /* ── The poster ──────────────────────────────────────────────────────── */
 
 /**
- * Draws the day's poster with the image model and stores it on the row.
- * Never fails the day: the posts are already saved, so a refusal or a
- * timeout is kept as `imageError` for the page to show beside a retry.
+ * Draws the day's poster and stores it on the row: the base in the slides'
+ * design with the words in it (`renderPosterBase`), then the image model's
+ * edit of it, which keeps the design and illustrates the empty half.
+ * Never fails the day: the posts are already saved, and when the image
+ * model is unavailable or refuses, the base is the poster and the reason is
+ * kept as `imageError` beside it ("New poster" tries again).
  */
 export async function drawPoster(day: string): Promise<Pack> {
   const row = await prisma.socialPack.findUnique({ where: { day }, select: { item: true, copy: true } });
   if (!row) throw new SocialError("No pack for that day.", 404);
-  let data: { image: Uint8Array<ArrayBuffer> | null; imageModel: string | null; imageError: string | null };
+  const item = row.item as unknown as Item;
+  const copy = row.copy as unknown as SocialCopy;
+  const base = await renderPosterBase(posterWords(item, copy));
+  let data: { image: Uint8Array<ArrayBuffer>; imageModel: string; imageError: string | null };
   if (!openai.available()) {
-    data = { image: null, imageModel: null, imageError: "No OPENAI_API_KEY on the API, so no poster was drawn." };
+    data = { image: new Uint8Array(base), imageModel: "drawn", imageError: "No OPENAI_API_KEY on the API, so the poster has no illustration." };
   } else {
     try {
-      const { bytes, model } = await openaiImage(posterPrompt(row.item as unknown as Item, row.copy as unknown as SocialCopy), { size: "1024x1024" });
+      const { bytes, model } = await openaiImageEdit(posterPrompt(item, copy), base, { size: "1024x1024" });
       data = { image: new Uint8Array(bytes), imageModel: model, imageError: null };
     } catch (err) {
-      console.error("social: the poster failed:", (err as Error).message);
-      data = { image: null, imageModel: null, imageError: (err as Error).message.slice(0, 300) };
+      console.error("social: the poster's illustration failed:", (err as Error).message);
+      data = { image: new Uint8Array(base), imageModel: "drawn", imageError: `No illustration: ${(err as Error).message}`.slice(0, 300) };
     }
   }
   const updated = await prisma.socialPack.update({ where: { day }, data, omit: NO_IMAGE });

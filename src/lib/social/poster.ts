@@ -64,22 +64,25 @@ export function posterWords(item: Item, copy: SocialCopy): PosterWords {
   };
 }
 
+/**
+ * The instructions sent with the poster's base (lib/social/slide-card.ts
+ * `renderPosterBase`) to the image model's edit endpoint. The base already
+ * carries the design and the words, so the model is told to keep all of it
+ * and only illustrate the empty lower half — in the slides' own flat style,
+ * because left to a written description it drew glossy 3D (the first live
+ * poster, 2026-10-13: "looks cheap", the owner).
+ */
 export function posterPrompt(item: Item, copy: SocialCopy): string {
   const w = posterWords(item, copy);
-  const lines = [
-    `A square social media poster for CodeKairo, a coding-interview and placement preparation site for students in India.`,
+  const scene = copy.imageScene || `a simple visual metaphor for "${item.title}"`;
+  return [
+    `This image is a finished CodeKairo social media post. Edit it by adding one illustration — change nothing else.`,
     ``,
-    `Picture: ${copy.imageScene || `a clean, abstract illustration of "${item.title}"`}`,
+    `KEEP EXACTLY AS THEY ARE: the deep navy background (#003B75), the CodeKairo logo and wordmark at the top left, every word and its font, size, weight, colour and position ("${w.label}", "${w.headline}"${w.sub ? `, "${w.sub}"` : ""}${w.chips.length ? `, the tags ${w.chips.map((c) => `"${c}"`).join(", ")}` : ""}, and "${w.footer}" at the bottom), the thin line above the footer, and all the margins. Do not add, remove, move, restyle or re-letter any text.`,
     ``,
-    `Text on the poster — render each line exactly as written, spelled exactly, and add no other words, letters or numbers anywhere:`,
-    `1. A small uppercase label near the top: "${w.label}"`,
-    `2. The large bold headline: "${w.headline}"`,
-    ...(w.sub ? [`3. A smaller line under the headline: "${w.sub}"`] : []),
-    ...(w.chips.length ? [`4. Small rounded outline tags in a row: ${w.chips.map((c) => `"${c}"`).join(", ")}`] : []),
-    `5. At the bottom edge, small: "${w.footer}"`,
+    `ADD, in the empty lower half only (between the last line of text and the thin line above the footer, inside the left and right margins): a flat illustration of ${scene}`,
     ``,
-    `Style: flat, modern editorial illustration with clean vector shapes. Colours: deep navy blue #003B75 as the ground behind the text, white text, accents in bright blue #0794F9 and sky blue #7CC9FF, a little white space. One clean geometric sans-serif typeface, high contrast and easy to read on a phone. Leave generous margins so no text touches the edges.`,
-    `Do not draw any company's logo, any brand mark other than plain text, any real person's face, code screenshots, or watermarks.`,
-  ];
-  return lines.join("\n");
+    `Illustration style — match the post's existing design: flat 2D vector art built from simple geometric shapes with crisp edges and rounded corners, like a modern product explainer or a tech company's blog header. Colours only from the post's palette: sky blue #7CC9FF, bright blue #3AA9FF, azure #0794F9, pale blue #B9E3FF and white, on the same navy background. Generous empty space around it; centred; it may sit slightly lower than the middle of the empty area.`,
+    `Never: 3D, glossy or glass effects, glows, lens flares, gradients, shadows, photorealism, clip-art, people's faces, hands, logos, or any letters, words or numbers inside the illustration.`,
+  ].join("\n");
 }

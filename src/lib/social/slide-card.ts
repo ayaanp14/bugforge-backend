@@ -17,6 +17,7 @@
 import { HAIRLINE, INK, MIST, SECONDARY, TEAL, TEAL_DEEP, el, renderCard, text, type Child, type Node } from "../og-card.js";
 import { FORMAT_SIZE, type Format } from "./calendar.js";
 import type { Slide } from "./slides.js";
+import type { PosterWords } from "./poster.js";
 
 const WHITE = "#FFFFFF";
 const BLUE_300 = "#7CC9FF";
@@ -179,4 +180,49 @@ function tree(s: Slide, index: number, total: number, format: Format, mark: stri
 export function renderSlide(slide: Slide, index: number, total: number, format: Format): Promise<Buffer> {
   const { width, height } = FORMAT_SIZE[format];
   return renderCard((mark) => tree(slide, index, total, format, mark), width, height);
+}
+
+/* ── The poster's base ───────────────────────────────────────────────── */
+
+/** The poster's side in px: the image model's square size, so its edit keeps the layout one to one. */
+export const POSTER_SIZE = 1024;
+
+/**
+ * The day's poster before the image model touches it: the cover slide's
+ * design (deep blue, the logo, eyebrow, bold Gilroy headline, tags, the
+ * footer) with the words in the top half and the lower half left empty.
+ * It goes to the image model as the picture to edit (services/social.ts
+ * `drawPoster`), which keeps the design and fills the empty half with an
+ * illustration — the owner's ask: a poster that looks like the slides, not
+ * one the model styled from a written description (the first live poster,
+ * 2026-10-13, came back glossy and 3D). It is also the poster as it stands
+ * when the image model fails.
+ */
+export function renderPosterBase(words: PosterWords): Promise<Buffer> {
+  const f: Frame = { width: POSTER_SIZE, height: POSTER_SIZE, scale: 0.92, pad: 72 };
+  const headPx = size(words.headline, [[22, 76], [36, 66], [60, 56]], f);
+  return renderCard(
+    (mark) =>
+      el(
+        { width: POSTER_SIZE, height: POSTER_SIZE, flexDirection: "column", backgroundColor: TEAL_DEEP, padding: f.pad, fontFamily: "Gilroy", color: WHITE },
+        header(mark, true, "", f),
+        el(
+          { flexDirection: "column", marginTop: 44, width: "100%" },
+          eyebrow(words.label, f, true),
+          text({ marginTop: 18, fontSize: headPx, fontWeight: 700, lineHeight: 1.06, letterSpacing: "-0.03em", color: WHITE, lineClamp: 3, maxWidth: "100%" }, words.headline),
+          words.sub ? text({ marginTop: 20, fontSize: Math.round(32 * f.scale), fontWeight: 500, lineHeight: 1.3, color: BLUE_200, lineClamp: 2, maxWidth: "100%" }, words.sub) : null,
+          words.chips.length
+            ? el(
+                { gap: 12, marginTop: 28, flexWrap: "wrap" },
+                ...words.chips.map((c) => el({ alignItems: "center", height: 48, paddingLeft: 22, paddingRight: 22, borderRadius: 24, border: `2px solid ${BLUE_300}`, color: WHITE, fontSize: 24, fontWeight: 600 }, c)),
+              )
+            : null,
+        ),
+        // The empty half the image model fills.
+        el({ flex: 1, width: "100%" }),
+        footer(true, "", f),
+      ),
+    POSTER_SIZE,
+    POSTER_SIZE,
+  );
 }
