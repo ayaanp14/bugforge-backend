@@ -305,6 +305,18 @@ export const resumeAiLimiter = rateLimit({
  * ~7 questions and a person replays a few. The ceiling stops a script cycling
  * through question ids. Keyed by account.
  */
+/**
+ * Switching a written round's editor language: each new language for a
+ * question is one model call (later switches back are cached), so a burst of
+ * clicks through the menu is capped rather than billed.
+ */
+export const interviewLanguageLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 60,
+  message: "That is a lot of language switches in one hour. Give it a little while.",
+  keyOf: (req) => (req as Request & { user?: { userId: string } }).user?.userId ?? addressOf(req),
+});
+
 export const speechLimiter = rateLimit({
   windowMs: 60 * 60 * 1000,
   max: 120,

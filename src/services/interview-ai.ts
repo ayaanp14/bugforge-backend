@@ -836,6 +836,41 @@ export async function completeJson<S extends z.ZodType>(
   return ask(messages, schema, name, options.maxTokens ?? MAX_OUTPUT_TOKENS, options.model ?? MODEL, options.hedge ?? true, options.structured, options.coerce, options.temperature);
 }
 
+const STARTER_LANGUAGE_NAMES: Record<string, string> = { javascript: "JavaScript", python: "Python", java: "Java", cpp: "C++" };
+
+/**
+ * The question's stub written again in another language, when the candidate
+ * switches the room's editor. Not part of the interview's prefix: it is a
+ * short, standalone call on the fast question model, and the same skeleton
+ * rules the question prompt gives (signature, a placeholder body, no solution).
+ */
+export async function starterCodeIn(questionText: string, starterCode: string, from: string, to: string) {
+  const name = (id: string) => STARTER_LANGUAGE_NAMES[id] ?? id;
+  const messages: InputItem[] = [
+    {
+      role: "system",
+      content:
+        `You rewrite a coding-interview starter skeleton in another programming language. Keep exactly what the original sets up — ` +
+        `the same function, method or class and the same parameters (named in the new language's conventions), with types that match ` +
+        `the question's input and output — and nothing more. The skeleton must be valid code in the new language that would compile ` +
+        `as it stands: in C++ a linked structure holds pointers (ListNode* next) and a class or struct definition ends with "};"; ` +
+        `in Java and C++ a method that returns a value has a body that compiles, so the placeholder is a comment followed by a ` +
+        `default return (return false; return 0; return nullptr; return null;). The body is only that: a single comment ` +
+        `placeholder ("// your code here", or "pass  # your code here" in Python) and the default return where one is needed — ` +
+        `never a statement copied from the original language, never the solution. Real newlines, two-space indentation (four for ` +
+        `Python), every brace or block closed and lined up with what it closes. No explanation, no imports the candidate does not ` +
+        `need, no markdown fences — the text is placed straight into the editor. A helper type the original declares (a ListNode, ` +
+        `a TreeNode) is declared the idiomatic way in the new language. Reply with JSON: {"starterCode": "<the skeleton>"}.`,
+    },
+    {
+      role: "user",
+      content: `Question:\n${questionText}\n\nStarter code in ${name(from)}:\n${starterCode}\n\nWrite the same starter code in ${name(to)}.`,
+    },
+  ];
+  const { parsed, usage } = await askQuestion(messages, z.object({ starterCode: z.string() }), "starter_code");
+  return { starterCode: parsed.starterCode, usage };
+}
+
 /** Opens the interview. No transcript yet, so the prefix is just rubric + config. */
 export async function openInterview(config: InterviewConfig, budget: number, wantsCode: boolean) {
   const input = prefix(config, budget, []);

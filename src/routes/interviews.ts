@@ -1,19 +1,19 @@
 import { Router } from "express";
 import { prisma } from "../lib/prisma.js";
 import { requireAuth } from "../middleware/auth.js";
-import { speechLimiter } from "../middleware/rate-limit.js";
+import { interviewLanguageLimiter, speechLimiter } from "../middleware/rate-limit.js";
 import { speechEnabled, speechFor } from "../lib/polly.js";
 import { prettyLabel } from "../lib/interview-labels.js";
 import { estimatedQuestions, voiceDurationMinutes } from "../lib/interview-duration.js";
 import { conversationLanguage, interviewerFor } from "../lib/interviewers.js";
 import { SAT_ROUND_REFUSAL, checkInterviewQuota, checkVoiceDuration, satRoundFits } from "../services/entitlements.js";
 import { normalizeStarterCode } from "../lib/starter-code.js";
-import { ALL_LANGUAGES } from "../lib/driver-codegen.js";
 import {
   askNextQuestion,
   evaluateAnswer,
   openInterview,
   prefetchQuestion,
+  starterCodeIn,
   questionBudgetFor,
   writeReport,
   type InterviewConfig,
@@ -328,14 +328,25 @@ function languageFor(config: InterviewConfig) {
 }
 
 /**
+ * The languages a written round's editor offers (the owner's call,
+ * 2026-10-13): the four most candidates interview in. The room's picker
+ * lists these and nothing else, and a switch is refused outside them.
+ */
+const INTERVIEW_LANGUAGES = ["java", "cpp", "javascript", "python"] as const;
+const isInterviewLanguage = (id: unknown): id is string => typeof id === "string" && (INTERVIEW_LANGUAGES as readonly string[]).includes(id);
+
+/**
  * The language a new written round runs in, fixed on its row: the stack's
- * when one is chosen, else the language the candidate codes in everywhere
- * else (User.preferredLanguage — the last one picked on a problem or in a
- * duel), else JavaScript. A Java solver with no stack picked used to be
- * handed JavaScript stubs.
+ * when it is one of the four (TypeScript reads as JavaScript), else the
+ * language the candidate codes in everywhere else (User.preferredLanguage —
+ * the last one picked on a problem or in a duel) when it is, else JavaScript.
+ * A Java solver with no stack picked used to be handed JavaScript stubs.
  */
 function roundLanguage(config: InterviewConfig, preferred: string | null | undefined): string {
-  return stackLanguage(config) ?? (preferred && (ALL_LANGUAGES as readonly string[]).includes(preferred) ? preferred : "javascript");
+  const stack = stackLanguage(config);
+  const fromStack = stack === "typescript" ? "javascript" : stack;
+  if (isInterviewLanguage(fromStack)) return fromStack;
+  return isInterviewLanguage(preferred) ? preferred : "javascript";
 }
 
 /**
@@ -934,24 +945,37 @@ router.post("/session/:sessionId/answer", requireAuth, async (req: any, res) => 
 });
 
 /**
- * Every language the room's editor may be switched to: the judge's thirteen
- * plus the stack-only ones a round can open in (sql, yaml, dart).
+ * Stubs already written for a question, by `questionId:language` — switching
+ * back and forth costs one model call per language, not one per switch. In
+ * process and bounded; a miss only means writing it again.
  */
-const EDITOR_LANGUAGES = new Set<string>([...ALL_LANGUAGES, ...Object.values(STACK_LANGUAGE)]);
+const switchedStubs = new Map<string, string>();
+/** The stub each question was first switched away from, with its language: the source of every rewrite. */
+const originalStubs = new Map<string, { language: string; stub: string }>();
+function rememberStub(questionId: string, language: string, stub: string) {
+  switchedStubs.set(`${questionId}:${language}`, stub);
+  if (switchedStubs.size > 2_000) switchedStubs.delete(switchedStubs.keys().next().value!);
+}
 
 /**
  * @route   PUT /api/interviews/session/:sessionId/language
- * @desc    Switch a written round's editor language. The candidate picks it in
- *          the room; it is stored on the session so later stubs are written in
- *          it and a resumed round reopens in it. A question already prefetched
- *          with a stub in the old language is thrown away and written again —
- *          handing a Python solver the next stub in Java is the thing this fixes.
+ * @desc    Switch a written round's editor language (one of INTERVIEW_LANGUAGES).
+ *          The question on screen gets its stub written again in the new
+ *          language by the model, answered as `starterCode` (null when the
+ *          question has none); the session keeps the language, so later stubs
+ *          are written in it and a resumed round reopens in it. A question
+ *          already prefetched with a stub in the old language is thrown away
+ *          and written again.
+ *
+ *          The stub is written before anything is saved: when the model fails
+ *          the switch is refused and the round stays as it was, rather than a
+ *          Java editor holding a Python stub.
  * @access  Private
  */
-router.put("/session/:sessionId/language", requireAuth, async (req: any, res) => {
+router.put("/session/:sessionId/language", requireAuth, interviewLanguageLimiter, async (req: any, res) => {
   const language = req.body?.language;
-  if (typeof language !== "string" || !EDITOR_LANGUAGES.has(language)) {
-    return res.status(400).json({ error: "Unsupported language" });
+  if (!isInterviewLanguage(language)) {
+    return res.status(400).json({ error: `Pick one of: ${INTERVIEW_LANGUAGES.join(", ")}` });
   }
 
   try {
@@ -969,11 +993,48 @@ router.put("/session/:sessionId/language", requireAuth, async (req: any, res) =>
     if (session.status !== "started" || session.mode === "voice") {
       return res.status(409).json({ error: "This interview is not open for answers" });
     }
-    if (session.language === language) return res.json({ language });
-
-    await prisma.mockInterviewSession.update({ where: { id: session.id }, data: { language }, select: { id: true } });
-
+    const previous = configFrom(session.savedInterview, session.language).language ?? "javascript";
     const pending = session.questions.find((q) => q.status === "pending");
+    const stub = pending?.starterCode?.trim() ? pending.starterCode : null;
+    if (previous === language) return res.json({ language, starterCode: stub });
+
+    let starterCode: string | null = null;
+    let usage: Usage | null = null;
+    if (pending && stub) {
+      rememberStub(pending.id, previous, stub);
+      // Always rewritten from the stub the question was asked with, never
+      // from an earlier rewrite: Python → Java → C++ carried Java's mistakes
+      // into the C++. After a restart the stub on the row is the source.
+      const source = originalStubs.get(pending.id) ?? { language: previous, stub };
+      originalStubs.set(pending.id, source);
+      if (originalStubs.size > 2_000) originalStubs.delete(originalStubs.keys().next().value!);
+      starterCode = switchedStubs.get(`${pending.id}:${language}`) ?? null;
+      if (!starterCode) {
+        try {
+          const written = await starterCodeIn(pending.questionText, source.stub, source.language, language);
+          starterCode = starterCodeFor(written.starterCode, language);
+          usage = written.usage;
+        } catch (error: any) {
+          console.error("Starter code rewrite failed:", error?.message);
+        }
+        if (!starterCode) {
+          return res.status(503).json({ error: "Could not write the starter code in that language. Try again." });
+        }
+        rememberStub(pending.id, language, starterCode);
+      }
+    }
+
+    await prisma.$transaction([
+      prisma.mockInterviewSession.update({
+        where: { id: session.id },
+        data: { language, ...(usage ? usageIncrement(usage) : {}) },
+        select: { id: true },
+      }),
+      ...(pending && starterCode
+        ? [prisma.mockInterviewQuestion.update({ where: { id: pending.id }, data: { starterCode }, select: { id: true } })]
+        : []),
+    ]);
+
     if (pending) {
       const nextIndex = pending.orderIndex + 1;
       // A prefetch still writing would land after the delete in the old
@@ -995,7 +1056,7 @@ router.put("/session/:sessionId/language", requireAuth, async (req: any, res) =>
       }
     }
 
-    res.json({ language });
+    res.json({ language, starterCode });
   } catch (error: any) {
     console.error("Error switching interview language:", error?.message);
     res.status(500).json({ error: "Failed to switch language" });
