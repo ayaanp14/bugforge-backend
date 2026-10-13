@@ -934,6 +934,75 @@ router.post("/session/:sessionId/answer", requireAuth, async (req: any, res) => 
 });
 
 /**
+ * Every language the room's editor may be switched to: the judge's thirteen
+ * plus the stack-only ones a round can open in (sql, yaml, dart).
+ */
+const EDITOR_LANGUAGES = new Set<string>([...ALL_LANGUAGES, ...Object.values(STACK_LANGUAGE)]);
+
+/**
+ * @route   PUT /api/interviews/session/:sessionId/language
+ * @desc    Switch a written round's editor language. The candidate picks it in
+ *          the room; it is stored on the session so later stubs are written in
+ *          it and a resumed round reopens in it. A question already prefetched
+ *          with a stub in the old language is thrown away and written again —
+ *          handing a Python solver the next stub in Java is the thing this fixes.
+ * @access  Private
+ */
+router.put("/session/:sessionId/language", requireAuth, async (req: any, res) => {
+  const language = req.body?.language;
+  if (typeof language !== "string" || !EDITOR_LANGUAGES.has(language)) {
+    return res.status(400).json({ error: "Unsupported language" });
+  }
+
+  try {
+    const session = await prisma.mockInterviewSession.findUnique({
+      where: { id: req.params.sessionId },
+      include: {
+        savedInterview: true,
+        questions: {
+          orderBy: { orderIndex: "asc" },
+          select: { id: true, orderIndex: true, status: true, questionText: true, userAnswer: true, starterCode: true },
+        },
+      },
+    });
+    if (!session || session.userId !== req.user.userId) return res.status(404).json({ error: "Session not found" });
+    if (session.status !== "started" || session.mode === "voice") {
+      return res.status(409).json({ error: "This interview is not open for answers" });
+    }
+    if (session.language === language) return res.json({ language });
+
+    await prisma.mockInterviewSession.update({ where: { id: session.id }, data: { language }, select: { id: true } });
+
+    const pending = session.questions.find((q) => q.status === "pending");
+    if (pending) {
+      const nextIndex = pending.orderIndex + 1;
+      // A prefetch still writing would land after the delete in the old
+      // language, so it is waited for first.
+      await settlePrefetch(session.id, nextIndex);
+      const ahead = await prisma.mockInterviewQuestion.findUnique({
+        where: { sessionId_orderIndex: { sessionId: session.id, orderIndex: nextIndex } },
+        select: { id: true, status: true, starterCode: true },
+      });
+      // Only a stubbed one: a plain-text question reads the same in any language.
+      if (ahead?.status === "prefetched" && ahead.starterCode) {
+        await prisma.mockInterviewQuestion.deleteMany({ where: { id: ahead.id, status: "prefetched" } });
+        const transcript = session.questions
+          .filter((q) => q.orderIndex < pending.orderIndex && q.userAnswer !== null)
+          .map((q) => ({ questionText: q.questionText, userAnswer: q.userAnswer }));
+        // If this has not landed by the time they answer, /answer writes the
+        // question inline, as it does after any failed prefetch.
+        prefetchAhead(session, configFrom(session.savedInterview, language), transcript, pending.questionText, nextIndex);
+      }
+    }
+
+    res.json({ language });
+  } catch (error: any) {
+    console.error("Error switching interview language:", error?.message);
+    res.status(500).json({ error: "Failed to switch language" });
+  }
+});
+
+/**
  * @route   POST /api/interviews/session/:sessionId/complete
  * @desc    Close the session and build its report. Answers with the same
  *          payload as GET /session/:id (plus `abandoned` / `alreadyCompleted`),
