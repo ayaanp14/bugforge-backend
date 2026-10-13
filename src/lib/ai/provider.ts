@@ -23,6 +23,12 @@ export interface AIJsonOptions {
   temperature?: number;
   /** Repair a reply into the schema's shape before it is validated. */
   coerce?: (raw: unknown) => unknown;
+  /**
+   * The answer's shape as a strict JSON Schema, for a provider that decodes
+   * to one (OpenAI's structured outputs); the NVIDIA provider ignores it and
+   * relies on the prompt + `coerce`. Zod still validates either way.
+   */
+  jsonSchema?: Record<string, unknown>;
 }
 
 export interface AIStreamOptions {
@@ -181,3 +187,95 @@ const nvidia: AIProvider = {
 };
 
 export const ai: AIProvider = nvidia;
+
+/* ── OpenAI ──────────────────────────────────────────────────────────── */
+
+/**
+ * OpenAI's chat completions over plain fetch (no SDK — CLAUDE.md), for the
+ * tasks the owner chose it for: the social module's posts (services/social.ts,
+ * 2026-10-13 — the campaign site's mail writer was already on OpenAI). Strict
+ * structured outputs when the task passes `jsonSchema`: OpenAI decodes nested
+ * schemas cleanly, unlike the NVIDIA endpoint above. `OPENAI_API_KEY` turns
+ * it on; `OPENAI_MODEL` picks the model (default gpt-5-mini).
+ *
+ * JSON only: no streamed task runs on it yet, so `stream` refuses rather than
+ * carrying a second copy of the SSE loop nobody calls.
+ */
+const OPENAI_DEFAULT_MODEL = "gpt-5-mini";
+const openaiModel = () => process.env["OPENAI_MODEL"] || OPENAI_DEFAULT_MODEL;
+
+async function openaiJson<S extends z.ZodType>(messages: AIMessage[], schema: S, name: string, options: AIJsonOptions = {}): Promise<{ parsed: z.infer<S>; usage: Usage }> {
+  const key = process.env["OPENAI_API_KEY"];
+  if (!key) throw new Error("OPENAI_API_KEY is not set");
+  const model = openaiModel();
+  // Reasoning models (gpt-5*, o-series) refuse `temperature`; the others refuse `reasoning_effort`.
+  const reasoning = /^(gpt-5|o\d)/.test(model);
+  const body = JSON.stringify({
+    model,
+    messages,
+    response_format: options.jsonSchema
+      ? { type: "json_schema", json_schema: { name, strict: true, schema: options.jsonSchema } }
+      : { type: "json_object" },
+    max_completion_tokens: options.maxTokens ?? 4000,
+    ...(reasoning ? { reasoning_effort: "low" } : { temperature: options.temperature ?? 0.3 }),
+  });
+  let last: Error | null = null;
+  // Three tries on a refusal worth retrying (rate limit, overload), ~1 s and ~3 s apart.
+  for (let attempt = 0; attempt < 3; attempt++) {
+    if (attempt > 0) await new Promise((r) => setTimeout(r, 1000 * attempt * attempt + 500));
+    let res: Response;
+    try {
+      res = await fetch(`${process.env["OPENAI_API_URL"] || "https://api.openai.com/v1"}/chat/completions`, {
+        method: "POST",
+        headers: { "content-type": "application/json", authorization: `Bearer ${key}` },
+        body,
+        signal: AbortSignal.timeout(150_000),
+      });
+    } catch (err) {
+      last = new Error(`OpenAI is unreachable: ${(err as Error).message}`);
+      continue;
+    }
+    const answer = (await res.json().catch(() => null)) as {
+      error?: { message?: string };
+      choices?: Array<{ finish_reason?: string; message?: { content?: string | null; refusal?: string | null } }>;
+      usage?: { prompt_tokens?: number; completion_tokens?: number; prompt_tokens_details?: { cached_tokens?: number }; completion_tokens_details?: { reasoning_tokens?: number } };
+    } | null;
+    if (!res.ok) {
+      last = new Error(`OpenAI answered ${res.status}: ${answer?.error?.message ?? res.statusText}`);
+      if (RETRY_STATUS.has(res.status)) continue;
+      throw last;
+    }
+    const choice = answer?.choices?.[0];
+    if (choice?.message?.refusal) throw new Error(`OpenAI declined: ${choice.message.refusal}`);
+    if (choice?.finish_reason === "length") throw new Error("OpenAI ran out of tokens");
+    let raw: unknown;
+    try {
+      raw = JSON.parse(choice?.message?.content ?? "");
+    } catch {
+      last = new Error("OpenAI's answer was not JSON");
+      continue;
+    }
+    const parsed = schema.parse(options.coerce ? options.coerce(raw) : raw) as z.infer<S>;
+    const u = answer?.usage;
+    return {
+      parsed,
+      usage: {
+        promptTokens: u?.prompt_tokens ?? 0,
+        cachedTokens: u?.prompt_tokens_details?.cached_tokens ?? 0,
+        completionTokens: u?.completion_tokens ?? 0,
+        reasoningTokens: u?.completion_tokens_details?.reasoning_tokens ?? 0,
+        // Not priced here: the model is a deployment's choice and its price list moves.
+        costMicros: 0,
+      },
+    };
+  }
+  throw last ?? new Error("OpenAI is unavailable");
+}
+
+export const openai: AIProvider = {
+  name: "openai",
+  available: () => Boolean(process.env["OPENAI_API_KEY"]),
+  model: openaiModel,
+  json: openaiJson,
+  stream: () => Promise.reject(new AIStreamError("No streamed task runs on OpenAI.", 501)),
+};

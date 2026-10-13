@@ -25,6 +25,8 @@ export const PROMPT_VERSIONS = {
   "bug-review": 1,
   "root-cause": 1,
   "bug-tutor": 1,
+  // 2026-10-13: the social growth module's daily posts (services/social.ts).
+  "social-posts": 1,
 } as const;
 
 export type PromptTask = keyof typeof PROMPT_VERSIONS;

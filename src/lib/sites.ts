@@ -18,6 +18,18 @@ export const BATTLES_URL = (process.env["BATTLES_URL"] ?? (process.env["NODE_ENV
 /** Every browser origin the API answers with credentials. */
 export const ALLOWED_ORIGINS = [FRONTEND_URL, BATTLES_URL].filter(Boolean);
 
+/**
+ * The campaign page (campaign.codekairo.com, frontend campaign/): its
+ * Social module calls the admin-only /api/admin/social routes with an
+ * admin's Bearer token. HTTP only — it opens no socket and no sign-in
+ * redirect returns there, so it is kept out of ALLOWED_ORIGINS. No
+ * development default in production, as for BATTLES_URL.
+ */
+export const CAMPAIGN_URL = (process.env["CAMPAIGN_URL"] ?? (process.env["NODE_ENV"] === "production" ? "" : "http://localhost:8790")).replace(/\/+$/, "");
+
+/** The origins HTTP CORS answers: the sites, plus the campaign page. */
+export const API_ORIGINS = [...ALLOWED_ORIGINS, CAMPAIGN_URL].filter(Boolean);
+
 export type Site = "main" | "battles";
 
 /** A site named by a request (`?return=battles`) — only ever one of the two, never a URL. */

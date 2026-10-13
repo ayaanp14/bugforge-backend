@@ -2715,3 +2715,40 @@ model CohortSession {
 
   @@index([cohortId, startedAt])
 }
+
+/// The social growth module's day (services/social.ts): one pack of posts —
+/// a theme, the catalogue item it is about, the image slides and one post
+/// per platform — for the team to publish. Keyed by the IST day, so the
+/// daily job and a person on the campaign page can never build the same
+/// day twice. Which items were already posted about is read from these rows
+/// (`itemKey`, `companyKey`), not kept anywhere else.
+model SocialPack {
+  /// YYYY-MM-DD, Indian Standard Time.
+  day           String    @id @db.VarChar(10)
+  /// lib/social/calendar.ts ThemeId.
+  theme         String    @db.VarChar(24)
+  /// "problem:two-sum", "aptitude:<slug>", "note:/notes/…" — what "used before" compares.
+  itemKey       String    @db.VarChar(200)
+  /// The company hub a company-DSA day was about, so the next one names another.
+  companyKey    String?   @db.VarChar(80)
+  /// The catalogue facts the posts and slides were built from (services/social-knowledge.ts Item).
+  item          Json
+  /// The model's slide words (hook, sub, points, takeaway, altText).
+  copy          Json
+  /// lib/social/slides.ts Slide[]: what the PNG routes draw.
+  slides        Json
+  /// { [platform]: Post } — edited in place when someone changes a post on the page.
+  posts         Json
+  /// { [platform]: ISO time } when each was marked posted.
+  posted        Json      @default("{}")
+  model         String    @db.VarChar(120)
+  promptVersion Int
+  /// "job" (the daily scheduler) | "page" (someone on the campaign page).
+  via           String    @db.VarChar(8)
+  /// Who built or last rebuilt it from the page; null for the job.
+  createdById   String?   @db.VarChar(40)
+  generatedAt   DateTime  @default(now())
+  editedAt      DateTime?
+
+  @@index([generatedAt])
+}

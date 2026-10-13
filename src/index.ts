@@ -47,7 +47,7 @@ import resumesRouter from "./routes/resumes.js";
 import battlesRouter from "./routes/battles.js";
 import { sqlRouter } from "./routes/sql.js";
 import { notesRouter } from "./routes/notes.js";
-import { ALLOWED_ORIGINS } from "./lib/sites.js";
+import { ALLOWED_ORIGINS, API_ORIGINS } from "./lib/sites.js";
 import shareCardsRouter, { shareImage } from "./routes/share-cards.js";
 import { recoverAnalyses } from "./services/resumes.js";
 import { checkRoadmapSeeded } from "./services/roadmap.js";
@@ -55,6 +55,8 @@ import { checkStudyPlansSeeded } from "./services/study-plans.js";
 import eventsRouter from "./routes/events.js";
 import adminRouter from "./routes/admin.js";
 import { adminHonoursRouter, honoursRouter } from "./routes/honours.js";
+import socialRouter from "./routes/social.js";
+import { socialDailyJob } from "./services/social.js";
 import { todayContest } from "./services/daily-contest.js";
 import { optionalAuth } from "./middleware/auth.js";
 import { addKickedUser, kickedUserIdsOf } from "./lib/room-kicks.js";
@@ -846,7 +848,7 @@ app.use(compression({ threshold: 1024 }));
  */
 app.use(
   cors({
-    origin: ALLOWED_ORIGINS,
+    origin: API_ORIGINS,
     credentials: true,
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allowedHeaders: ALLOWED_HEADERS,
@@ -992,6 +994,8 @@ app.use("/api/battles", battlesRouter);
 app.use("/api/share-cards", shareCardsRouter);
 app.use("/api/events", eventsRouter);
 app.use("/api/admin/honours", adminHonoursRouter);
+// The campaign page's Social module (services/social.ts), admins only.
+app.use("/api/admin/social", socialRouter);
 app.use("/api/admin", adminRouter);
 app.use("/api", executionRouter); 
 
@@ -1190,6 +1194,8 @@ httpServer.listen(PORT, () => {
   registerJob(contestPayoutJob);
   // Battles: each tournament's entrants mailed 24 h and 1 h before the start.
   registerJob(tournamentRemindersJob);
+  // The campaign page's Social module: today's posts and slides, built at 06:00 IST.
+  registerJob(socialDailyJob);
   startScheduler();
   // No socket survived the restart, and none said goodbye (lib/duels).
   void markActiveDuelsAbsent();
