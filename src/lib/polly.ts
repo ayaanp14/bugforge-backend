@@ -36,8 +36,13 @@ export const speechEnabled = process.env["POLLY"] !== "off";
 /** SynthesizeSpeech refuses more than 3,000 billed characters; a question is a few hundred. */
 const MAX_CHARS = 2_900;
 
-/** A Polly answer is ~0.5–1 s; past this the browser voice is the better experience. */
-const TIMEOUT_MS = 8_000;
+/**
+ * A Polly answer is ~0.5–1 s; past this the browser voice is the better
+ * experience. Under the client's 6 s (frontend lib/question-speech.ts), so a
+ * slow Polly ends in this route's 503 rather than the browser abandoning the
+ * request — at 8 s the candidate sat through twelve seconds of silence first.
+ */
+const TIMEOUT_MS = 4_500;
 
 /**
  * Generated audio, kept in process. A question's text never changes once
