@@ -1,7 +1,7 @@
 import { Router, type Response } from "express";
 import { adminOnly, requireAuth } from "../middleware/auth.js";
 import { isFormat, isPlatform, isTheme } from "../lib/social/calendar.js";
-import { SocialError, checkDay, editPost, generateDay, getPack, markPosted, slidePng, slidesPdf, socialCalendar } from "../services/social.js";
+import { SocialError, checkDay, drawPoster, editPost, generateDay, getPack, markPosted, posterJpeg, slidePng, slidesPdf, socialCalendar } from "../services/social.js";
 
 /**
  * The social growth module's API (services/social.ts), for the campaign
@@ -14,8 +14,10 @@ import { SocialError, checkDay, editPost, generateDay, getPack, markPosted, slid
  *   POST   /days/:day/generate          {mode: new|another|rewrite, theme?, change?} → the pack
  *   POST   /days/:day/posted            {platform, posted} → which went out
  *   PUT    /days/:day/posts/:platform   {title?, text?, firstComment?} → the edited post
- *   GET    /days/:day/slides/:i.png?format=portrait|square|landscape
- *   GET    /days/:day/slides.pdf?format=…   every slide, for LinkedIn's document post
+ *   GET    /days/:day/poster.jpg            the day's poster, drawn once by the image model
+ *   POST   /days/:day/poster                draw it again → the pack
+ *   GET    /days/:day/slides/:i.png         a slide (square; ?format= for another size)
+ *   GET    /days/:day/slides.pdf            the poster + every slide, for LinkedIn's document post
  */
 const router = Router();
 router.use(requireAuth, adminOnly);
@@ -76,10 +78,30 @@ router.put("/days/:day/posts/:platform", async (req, res) => {
   }
 });
 
+router.get("/days/:day/poster.jpg", async (req, res) => {
+  try {
+    const jpeg = await posterJpeg(checkDay(req.params.day));
+    if (!jpeg) throw new SocialError("No poster for that day.", 404);
+    res.setHeader("Content-Type", "image/jpeg");
+    res.setHeader("Cache-Control", "private, no-store");
+    res.send(jpeg);
+  } catch (err) {
+    fail(res, err);
+  }
+});
+
+router.post("/days/:day/poster", async (req, res) => {
+  try {
+    res.json({ pack: await drawPoster(checkDay(req.params.day)) });
+  } catch (err) {
+    fail(res, err);
+  }
+});
+
 router.get("/days/:day/slides.pdf", async (req, res) => {
   try {
     const day = checkDay(req.params.day);
-    const format = isFormat(req.query["format"]) ? req.query["format"] : "portrait";
+    const format = isFormat(req.query["format"]) ? req.query["format"] : "square";
     const pdf = await slidesPdf(day, format);
     res.setHeader("Content-Type", "application/pdf");
     res.setHeader("Content-Disposition", `attachment; filename="codekairo-${day}-carousel.pdf"`);
@@ -95,7 +117,7 @@ router.get("/days/:day/slides/:file", async (req, res) => {
     const day = checkDay(req.params.day);
     const m = /^(\d{1,2})\.png$/.exec(req.params.file);
     if (!m) throw new SocialError("No such slide.", 404);
-    const format = isFormat(req.query["format"]) ? req.query["format"] : "portrait";
+    const format = isFormat(req.query["format"]) ? req.query["format"] : "square";
     const png = await slidePng(day, Number(m[1]), format);
     res.setHeader("Content-Type", "image/png");
     // Private and never stored: the image changes when the day is rebuilt.

@@ -196,20 +196,27 @@ export const ai: AIProvider = nvidia;
  * 2026-10-13 — the campaign site's mail writer was already on OpenAI). Strict
  * structured outputs when the task passes `jsonSchema`: OpenAI decodes nested
  * schemas cleanly, unlike the NVIDIA endpoint above. `OPENAI_API_KEY` turns
- * it on; `OPENAI_MODEL` picks the model (default gpt-5-mini).
+ * it on; `OPENAI_MODEL` picks the model.
+ *
+ * The default is the cheapest current model, by the owner's ask: gpt-6-luna
+ * ($0.10 / $0.50 per million tokens on OpenAI's pricing page, 2026-10-13;
+ * strict structured outputs supported). gpt-5-nano lists cheaper ($0.05 /
+ * $0.40) but its model page marks it deprecated, and a daily job on a model
+ * being retired stops one morning. A day's posts are a fraction of a cent on
+ * either; set OPENAI_MODEL to choose.
  *
  * JSON only: no streamed task runs on it yet, so `stream` refuses rather than
  * carrying a second copy of the SSE loop nobody calls.
  */
-const OPENAI_DEFAULT_MODEL = "gpt-5-mini";
+const OPENAI_DEFAULT_MODEL = "gpt-6-luna";
 const openaiModel = () => process.env["OPENAI_MODEL"] || OPENAI_DEFAULT_MODEL;
 
 async function openaiJson<S extends z.ZodType>(messages: AIMessage[], schema: S, name: string, options: AIJsonOptions = {}): Promise<{ parsed: z.infer<S>; usage: Usage }> {
   const key = process.env["OPENAI_API_KEY"];
   if (!key) throw new Error("OPENAI_API_KEY is not set");
   const model = openaiModel();
-  // Reasoning models (gpt-5*, o-series) refuse `temperature`; the others refuse `reasoning_effort`.
-  const reasoning = /^(gpt-5|o\d)/.test(model);
+  // Reasoning models (gpt-5 onwards, the o-series) refuse `temperature`; the others refuse `reasoning_effort`.
+  const reasoning = /^(gpt-[5-9]|gpt-\d{2}|o\d)/.test(model);
   const body = JSON.stringify({
     model,
     messages,
@@ -279,3 +286,53 @@ export const openai: AIProvider = {
   json: openaiJson,
   stream: () => Promise.reject(new AIStreamError("No streamed task runs on OpenAI.", 501)),
 };
+
+/**
+ * One generated picture from OpenAI's Image API, as bytes.
+ *
+ * The default is the cheapest model trusted with words in the picture — the
+ * social poster carries its headline in it, by the owner's ask (2026-10-13).
+ * Per 1024×1024 picture on OpenAI's pricing (same day), low / medium / high:
+ * gpt-image-1-mini $0.005 / $0.011 / $0.036, gpt-image-1.5 $0.009 / $0.034 /
+ * $0.133, gpt-image-2 $0.006 / $0.053 / $0.211. The mini is cheapest but the
+ * oldest generation, the weakest at lettering; gpt-image-1.5 at medium is the
+ * cheapest newer-generation option. OpenAI's own guide says text can still
+ * come out imprecise on any of them, so a person checks the poster.
+ * `OPENAI_IMAGE_MODEL` / `OPENAI_IMAGE_QUALITY` change them. JPEG, because
+ * the picture is stored in the database and a PNG is several times the size.
+ */
+export const OPENAI_IMAGE_DEFAULTS = { model: "gpt-image-1.5", quality: "medium" } as const;
+export const openaiImageModel = () => process.env["OPENAI_IMAGE_MODEL"] || OPENAI_IMAGE_DEFAULTS.model;
+
+export async function openaiImage(prompt: string, options: { size?: "1024x1024" | "1024x1536" | "1536x1024" } = {}): Promise<{ bytes: Buffer; model: string; mime: string }> {
+  const key = process.env["OPENAI_API_KEY"];
+  if (!key) throw new Error("OPENAI_API_KEY is not set");
+  const model = openaiImageModel();
+  const quality = process.env["OPENAI_IMAGE_QUALITY"] || OPENAI_IMAGE_DEFAULTS.quality;
+  let last: Error | null = null;
+  for (let attempt = 0; attempt < 2; attempt++) {
+    if (attempt > 0) await new Promise((r) => setTimeout(r, 2000));
+    let res: Response;
+    try {
+      res = await fetch(`${process.env["OPENAI_API_URL"] || "https://api.openai.com/v1"}/images/generations`, {
+        method: "POST",
+        headers: { "content-type": "application/json", authorization: `Bearer ${key}` },
+        body: JSON.stringify({ model, prompt: prompt.slice(0, 4000), n: 1, size: options.size ?? "1024x1024", quality, output_format: "jpeg", output_compression: 85 }),
+        signal: AbortSignal.timeout(180_000),
+      });
+    } catch (err) {
+      last = new Error(`OpenAI is unreachable: ${(err as Error).message}`);
+      continue;
+    }
+    const answer = (await res.json().catch(() => null)) as { error?: { message?: string }; data?: Array<{ b64_json?: string }> } | null;
+    if (!res.ok) {
+      last = new Error(`OpenAI images answered ${res.status}: ${answer?.error?.message ?? res.statusText}`);
+      if (RETRY_STATUS.has(res.status)) continue;
+      throw last;
+    }
+    const b64 = answer?.data?.[0]?.b64_json;
+    if (!b64) throw new Error("OpenAI returned no image");
+    return { bytes: Buffer.from(b64, "base64"), model, mime: "image/jpeg" };
+  }
+  throw last ?? new Error("OpenAI images is unavailable");
+}

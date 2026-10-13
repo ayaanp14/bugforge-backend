@@ -25,6 +25,8 @@ export interface SocialCopy {
   points: string[];
   takeaway: string;
   altText: string;
+  /** What the day's poster pictures (lib/social/poster.ts); no words — the poster's words are set in code. */
+  imageScene: string;
 }
 
 export type Slide =

@@ -2743,6 +2743,11 @@ model SocialPack {
   posted        Json      @default("{}")
   model         String    @db.VarChar(120)
   promptVersion Int
+  /// The day's poster (lib/social/poster.ts): drawn once by the image model, posted on every platform.
+  /// JPEG, ~150–300 KB at 1024×1024. Null until drawn, or when drawing failed (`imageError`).
+  image         Bytes?    @db.MediumBlob
+  imageModel    String?   @db.VarChar(60)
+  imageError    String?   @db.VarChar(300)
   /// "job" (the daily scheduler) | "page" (someone on the campaign page).
   via           String    @db.VarChar(8)
   /// Who built or last rebuilt it from the page; null for the job.

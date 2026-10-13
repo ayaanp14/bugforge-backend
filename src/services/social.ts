@@ -25,7 +25,7 @@ import PDFDocument from "pdfkit";
 import { Prisma } from "@prisma/client";
 import { prisma } from "../lib/prisma.js";
 import { dayKey } from "../lib/clock.js";
-import { ai as nvidia, openai, type AIProvider } from "../lib/ai/provider.js";
+import { ai as nvidia, openai, openaiImage, openaiImageModel, type AIProvider } from "../lib/ai/provider.js";
 import { promptFor } from "../lib/ai/prompts.js";
 import type { Job } from "../lib/scheduler.js";
 import {
@@ -44,6 +44,7 @@ import type { Item } from "../lib/social/item.js";
 import { SOCIAL_JSON_SCHEMA, SocialAnswerSchema, assemble, buildSocialMessages, coerceSocial, guardCopy, guardPosts, type Post, type RawPost, type Revision } from "../lib/social/posts.js";
 import { slidesFor, type Slide, type SocialCopy } from "../lib/social/slides.js";
 import { renderSlide } from "../lib/social/slide-card.js";
+import { posterPrompt } from "../lib/social/poster.js";
 import { itemFor, siteFacts } from "./social-knowledge.js";
 import { SITE_ORIGIN } from "./seo.js";
 
@@ -89,9 +90,13 @@ export interface Pack {
   via: string;
   generatedAt: string;
   editedAt: string | null;
+  /** The day's poster: drawn once, posted everywhere. The bytes are their own route. */
+  poster: { ready: boolean; model: string | null; error: string | null };
 }
 
-type Row = Prisma.SocialPackGetPayload<object>;
+/** Every column but the poster's bytes, which only the image route reads. */
+const NO_IMAGE = { image: true } as const;
+type Row = Omit<Prisma.SocialPackGetPayload<object>, "image">;
 
 function packOf(row: Row): Pack {
   const theme = row.theme as ThemeId;
@@ -109,6 +114,8 @@ function packOf(row: Row): Pack {
     via: row.via,
     generatedAt: row.generatedAt.toISOString(),
     editedAt: row.editedAt?.toISOString() ?? null,
+    // `imageModel` is written only beside the bytes, so it says the poster exists.
+    poster: { ready: Boolean(row.imageModel), model: row.imageModel, error: row.imageError },
   };
 }
 
@@ -162,8 +169,15 @@ function postsFor(item: Item, day: string, written: Written): Record<PlatformId,
   return Object.fromEntries(PLATFORM_IDS.map((id) => [id, assemble(id, written.raw[id], item, day, SITE_ORIGIN)])) as Record<PlatformId, Post>;
 }
 
-async function save(day: string, item: Item, written: Written, via: "job" | "page", userId: string | null, keepPosted?: unknown): Promise<Pack> {
+/**
+ * A new item gets a new poster, so its old one is dropped here and drawn
+ * after (`drawPoster`); a rewrite keeps the day's item and its poster — the
+ * picture is made once, by the owner's ask, and "New poster" on the page
+ * draws it again when the words changed.
+ */
+async function save(day: string, item: Item, written: Written, via: "job" | "page", userId: string | null, keepPosted?: unknown, newItem = true): Promise<Pack> {
   const data = {
+    ...(newItem ? { image: null, imageModel: null, imageError: null } : {}),
     theme: item.theme,
     itemKey: item.key,
     companyKey: item.companySlug ?? null,
@@ -179,15 +193,48 @@ async function save(day: string, item: Item, written: Written, via: "job" | "pag
     generatedAt: new Date(),
     editedAt: null,
   };
-  const row = await prisma.socialPack.upsert({ where: { day }, create: { day, ...data }, update: data });
+  const row = await prisma.socialPack.upsert({ where: { day }, create: { day, ...data }, update: data, omit: NO_IMAGE });
   forgetImages(day);
   return packOf(row);
+}
+
+/* ── The poster ──────────────────────────────────────────────────────── */
+
+/**
+ * Draws the day's poster with the image model and stores it on the row.
+ * Never fails the day: the posts are already saved, so a refusal or a
+ * timeout is kept as `imageError` for the page to show beside a retry.
+ */
+export async function drawPoster(day: string): Promise<Pack> {
+  const row = await prisma.socialPack.findUnique({ where: { day }, select: { item: true, copy: true } });
+  if (!row) throw new SocialError("No pack for that day.", 404);
+  let data: { image: Uint8Array<ArrayBuffer> | null; imageModel: string | null; imageError: string | null };
+  if (!openai.available()) {
+    data = { image: null, imageModel: null, imageError: "No OPENAI_API_KEY on the API, so no poster was drawn." };
+  } else {
+    try {
+      const { bytes, model } = await openaiImage(posterPrompt(row.item as unknown as Item, row.copy as unknown as SocialCopy), { size: "1024x1024" });
+      data = { image: new Uint8Array(bytes), imageModel: model, imageError: null };
+    } catch (err) {
+      console.error("social: the poster failed:", (err as Error).message);
+      data = { image: null, imageModel: null, imageError: (err as Error).message.slice(0, 300) };
+    }
+  }
+  const updated = await prisma.socialPack.update({ where: { day }, data, omit: NO_IMAGE });
+  forgetImages(day);
+  return packOf(updated);
+}
+
+/** The poster's JPEG, or null when the day has none. */
+export async function posterJpeg(day: string): Promise<Buffer | null> {
+  const row = await prisma.socialPack.findUnique({ where: { day }, select: { image: true } });
+  return row?.image ? Buffer.from(row.image) : null;
 }
 
 /* ── Reads and writes for the routes ─────────────────────────────────── */
 
 export async function getPack(day: string): Promise<Pack | null> {
-  const row = await prisma.socialPack.findUnique({ where: { day } });
+  const row = await prisma.socialPack.findUnique({ where: { day }, omit: NO_IMAGE });
   return row ? packOf(row) : null;
 }
 
@@ -215,6 +262,7 @@ export async function socialCalendar() {
     platforms: PLATFORM_IDS.map((id) => ({ id, label: PLATFORMS[id].label, format: PLATFORMS[id].format, maxChars: PLATFORMS[id].maxChars, images: PLATFORMS[id].images, link: PLATFORMS[id].link })),
     canWrite: writer().available(),
     writer: writer().available() ? `${writer().name} · ${writer().model()}` : null,
+    painter: openai.available() ? openaiImageModel() : null,
   };
 }
 
@@ -224,13 +272,14 @@ export async function socialCalendar() {
  * `rewrite` keeps the item and rewrites the posts, with the change asked for.
  */
 export async function generateDay(input: { day: string; mode: "new" | "another" | "rewrite"; theme?: ThemeId; change?: string }, userId: string | null, via: "job" | "page" = "page"): Promise<Pack> {
-  const existing = await prisma.socialPack.findUnique({ where: { day: input.day } });
+  const existing = await prisma.socialPack.findUnique({ where: { day: input.day }, omit: NO_IMAGE });
   if (input.mode === "rewrite") {
     if (!existing) throw new SocialError("There is nothing to rewrite for that day yet.", 404);
     const pack = packOf(existing);
     const previous = { copy: pack.copy, posts: Object.fromEntries(PLATFORM_IDS.map((id) => [id, { title: pack.posts[id]?.title ?? "", text: pack.posts[id]?.text ?? "" }])) };
     const written = await writePosts(pack.item, { previous, change: (input.change ?? "").trim() });
-    return save(input.day, pack.item, written, via, userId, existing.posted);
+    // Same item, same poster: the picture is drawn once a day.
+    return save(input.day, pack.item, written, via, userId, existing.posted, false);
   }
   if (input.mode === "new" && existing) return packOf(existing);
   const theme = input.theme ?? (existing?.theme as ThemeId | undefined) ?? themeFor(input.day);
@@ -240,7 +289,8 @@ export async function generateDay(input: { day: string; mode: "new" | "another" 
   const item = await itemFor(theme, input.day, used, salt).catch((err: Error) => {
     throw new SocialError(err.message, 502);
   });
-  return save(input.day, item, await writePosts(item), via, userId);
+  await save(input.day, item, await writePosts(item), via, userId);
+  return drawPoster(input.day);
 }
 
 export async function markPosted(day: string, platform: PlatformId, posted: boolean): Promise<Pack["posted"]> {
@@ -304,20 +354,21 @@ export async function slidePng(day: string, index: number, format: Format): Prom
 }
 
 /**
- * Every slide as one PDF, a page each — what LinkedIn takes as a document
- * post and shows as a swipeable carousel (its most-shared format for this
- * kind of content). pdfkit, as the resume export uses it.
+ * The poster then every slide as one PDF, a page each — what LinkedIn takes
+ * as a document post and shows as a swipeable carousel (its most-shared
+ * format for this kind of content). pdfkit, as the resume export uses it.
  */
 export async function slidesPdf(day: string, format: Format): Promise<Buffer> {
-  const row = await prisma.socialPack.findUnique({ where: { day }, select: { slides: true } });
+  const row = await prisma.socialPack.findUnique({ where: { day }, select: { slides: true, image: true } });
   const slides = (row?.slides ?? []) as unknown as Slide[];
   if (!slides.length) throw new SocialError("No pack for that day.", 404);
-  const pngs: Buffer[] = [];
-  for (let i = 0; i < slides.length; i++) pngs.push(await slidePng(day, i, format));
-  // Half the pixel size in points: 540 × 675 pt pages, which LinkedIn renders at full width.
+  const pages: Buffer[] = row?.image ? [Buffer.from(row.image)] : [];
+  for (let i = 0; i < slides.length; i++) pages.push(await slidePng(day, i, format));
+  // Half the pixel size in points (540 pt for the square set), which LinkedIn renders at full width.
   const { width, height } = FORMAT_SIZE[format];
   const w = width / 2;
   const h = height / 2;
+  const pngs = pages;
   return new Promise((resolve, reject) => {
     const doc = new PDFDocument({ size: [w, h], margin: 0, autoFirstPage: false, info: { Title: `CodeKairo — ${day}`, Author: "CodeKairo" } });
     const chunks: Buffer[] = [];

@@ -58,6 +58,7 @@ export const SocialAnswerSchema = z.object({
   points: z.array(z.string()),
   takeaway: z.string(),
   altText: z.string(),
+  imageScene: z.string(),
   posts: z.object(Object.fromEntries(PLATFORM_IDS.map((id) => [id, PostSchema])) as Record<PlatformId, typeof PostSchema>),
 });
 export type SocialAnswer = z.infer<typeof SocialAnswerSchema>;
@@ -82,13 +83,14 @@ const POST_JSON_SCHEMA = {
 export const SOCIAL_JSON_SCHEMA: Record<string, unknown> = {
   type: "object",
   additionalProperties: false,
-  required: ["hook", "sub", "points", "takeaway", "altText", "posts"],
+  required: ["hook", "sub", "points", "takeaway", "altText", "imageScene", "posts"],
   properties: {
     hook: { type: "string" },
     sub: { type: "string" },
     points: { type: "array", items: { type: "string" } },
     takeaway: { type: "string" },
     altText: { type: "string" },
+    imageScene: { type: "string", description: "The poster's picture, in one or two sentences: what to draw, no words." },
     posts: { type: "object", additionalProperties: false, required: [...PLATFORM_IDS], properties: Object.fromEntries(PLATFORM_IDS.map((id) => [id, POST_JSON_SCHEMA])) },
   },
 };
@@ -111,7 +113,7 @@ export function coerceSocial(raw: unknown): unknown {
       return [id, { title: str(p.title), body: str(p.body ?? p.text), parts: list(p.parts ?? p.thread), hashtags: list(p.hashtags) }];
     }),
   );
-  return { hook: str(r.hook), sub: str(r.sub), points: list(r.points), takeaway: str(r.takeaway), altText: str(r.altText), posts };
+  return { hook: str(r.hook), sub: str(r.sub), points: list(r.points), takeaway: str(r.takeaway), altText: str(r.altText), imageScene: str(r.imageScene), posts };
 }
 
 /* ── What the model is sent ──────────────────────────────────────────── */
@@ -214,6 +216,7 @@ export function guardCopy(a: SocialAnswer): SocialCopy {
     points: a.points.map((p) => line(p, 260)).filter(Boolean).slice(0, 5),
     takeaway: line(a.takeaway, 120),
     altText: line(a.altText, 250),
+    imageScene: line(a.imageScene, 400),
   };
 }
 
