@@ -123,6 +123,24 @@ export interface Crumb {
   path: string;
 }
 
+/**
+ * What the problem workbench shows a visitor on its first screen, in its own
+ * order: the number beside the h1, the difficulty, every tag (linked when it
+ * has a hub, as ProblemDescription links it), the lead, the statement (its
+ * `###` labels as h2, as the page renders them), and the JavaScript starter
+ * the editor opens with.
+ */
+export interface ProblemView {
+  kind: "problem";
+  number: number | null;
+  title: string;
+  difficulty: string;
+  tags: Array<{ label: string; href: string | null }>;
+  intro: string;
+  statement: string;
+  starter: string | null;
+}
+
 export interface PageHead {
   path: string;
   title: string;
@@ -150,6 +168,14 @@ export interface PageHead {
    * or two problems (lib/problem-topics MIN_INDEXED_COMPANY_PROBLEMS).
    */
   noindex?: boolean;
+  /**
+   * The page's first screen as data, for the Worker to draw it as the page
+   * a visitor is about to see rather than as the crawler's article (the
+   * static-first pilot, 2026-10-13: an app page painted nothing until ~260 KB
+   * of script had run, and PageSpeed's phone LCP was 11–17 s). Only the
+   * problem page has one so far.
+   */
+  view?: ProblemView;
   /**
    * For an index page the build already prerendered (/challenges …): the
    * HTML of its child list, which the Worker adds below the page's guide.
@@ -791,7 +817,7 @@ function problemHead(slug: string): Promise<PageHead | null> {
   return cached(problemHeadKey(slug), HEAD_TTL_MS, async () => {
     const p = await prisma.problem.findFirst({
       where: { slug, isPublished: true },
-      select: { title: true, difficulty: true, description: true, tags: true, editorial: true, solutions: true, hints: true, timeLimitMs: true, memoryLimitMb: true },
+      select: { title: true, difficulty: true, description: true, tags: true, editorial: true, solutions: true, hints: true, timeLimitMs: true, memoryLimitMb: true, starterCode: true, numbering: { select: { number: true } } },
     });
     if (!p) return null;
     const difficulty = titleCase(p.difficulty);
@@ -841,6 +867,21 @@ function problemHead(slug: string): Promise<PageHead | null> {
       (primary ? `<p>${link(hubPath(primary), `All ${primary.count} ${primary.label.toLowerCase()} problems`)} · ${link("/challenges", "the whole catalogue")}</p>` : "") +
       (lessons.length ? `<p>Learn the technique: ${lessons.map((l) => link(`/roadmap/${l.slug}`, l.title)).join(" · ")}</p>` : "");
     const canonical = problemCanonicalSlug(slug);
+    const hubOf = new Map([...hubs.topics, ...hubs.companies].map((hub) => [hub.tag, hub]));
+    const stubs = (p.starterCode && typeof p.starterCode === "object" ? p.starterCode : {}) as Record<string, unknown>;
+    const view: ProblemView = {
+      kind: "problem",
+      number: p.numbering?.number ?? null,
+      title: p.title,
+      difficulty,
+      tags: tags.map((tag) => {
+        const hub = hubOf.get(tag);
+        return { label: tag, href: hub ? hubPath(hub) : null };
+      }),
+      intro: seoText.intro,
+      statement: markdownToHtml(p.description, 24_000, { under: 1 }),
+      starter: typeof stubs["javascript"] === "string" ? stubs["javascript"] : null,
+    };
     return {
       path: `/problems/${slug}`,
       title: titles.problem(p.title, difficulty),
@@ -848,6 +889,7 @@ function problemHead(slug: string): Promise<PageHead | null> {
       facts: { difficulty, keywords: topics, trail },
       content,
       crumb: p.title,
+      view,
       ...(canonical !== slug ? { canonical: `/problems/${canonical}` } : {}),
     };
   });
