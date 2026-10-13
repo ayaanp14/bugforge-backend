@@ -2,6 +2,7 @@ import type { Response } from "express";
 import crypto from "node:crypto";
 import jwt from "jsonwebtoken";
 import { prisma } from "./prisma.js";
+import { endOtherSessions } from "./session-revocation.js";
 
 /**
  * Everything needed to mint the `__session` cookie, in one place.
@@ -82,9 +83,16 @@ export function clearSessionCookie(res: Response): void {
   });
 }
 
-/** Sign the user in: mint the token and attach the cookie. */
-export function establishSession(res: Response, user: SessionUser): string {
+/**
+ * Sign the user in: mint the token, attach the cookie, and end every session
+ * the account held elsewhere — one device at a time (endOtherSessions).
+ * Every sign-in path comes through here: password, verified email, OAuth,
+ * password change.
+ */
+export async function establishSession(res: Response, user: SessionUser): Promise<string> {
   const token = signSession(user);
+  const claims = readSessionToken(token);
+  if (claims) await endOtherSessions(user, claims.iat);
   setSessionCookie(res, token);
   return token;
 }

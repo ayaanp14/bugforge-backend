@@ -130,6 +130,8 @@ const ALLOWED_HEADERS = ["Content-Type", "Authorization", "X-App-Platform", "X-A
 interface SocketData {
   /** The account behind a verified session token; absent on an anonymous socket. */
   userId?: string;
+  /** That token's `iat`: a later sign-in elsewhere closes sockets older than its own (lib/realtime closeReplacedSockets). */
+  sessionIat?: number;
 }
 
 /**
@@ -203,6 +205,7 @@ async function identifySocket(socket: {
     const claims = token ? readSessionToken(token) : null;
     if (claims && !(await isSessionRevoked(claims.userId, claims.iat, claims.jti))) {
       socket.data.userId = claims.userId;
+      socket.data.sessionIat = claims.iat;
     }
   } catch (err) {
     console.error("Socket handshake auth error:", err);

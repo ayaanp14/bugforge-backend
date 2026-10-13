@@ -410,7 +410,7 @@ router.post("/password", requireAuth, async (req, res) => {
     select: { id: true },
   });
   forgetSessions(user.id);
-  const token = establishSession(res, user);
+  const token = await establishSession(res, user);
 
   res.json({ message: "Password updated. Other devices have been signed out.", token });
 });

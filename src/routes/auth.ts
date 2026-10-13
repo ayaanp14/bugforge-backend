@@ -253,7 +253,7 @@ router.post("/login", async (req, res) => {
     }
 
     // Same token format and cookie flags as every other sign-in path
-    const token = establishSession(res, user);
+    const token = await establishSession(res, user);
 
     res.json({
       message: "Login successful",
@@ -307,7 +307,7 @@ router.post("/verify-email", async (req, res) => {
       if (flipped.count === 1) welcomeNewAccount(user, "email");
     }
 
-    const token = establishSession(res, user);
+    const token = await establishSession(res, user);
     res.json({
       message: "Email confirmed.",
       user: { id: user.id, email: user.email, username: user.username, name: user.name, avatar_url: user.avatar_url },

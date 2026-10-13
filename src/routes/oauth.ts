@@ -6,14 +6,13 @@ import {
   establishSession,
   generateUsername,
   fireRegistrationWebhook,
-  verifySessionToken,
   readSessionToken,
   SESSION_COOKIE,
 } from "../lib/auth-session.js";
 import { asSite, oauthCallbackUri as callbackUri, siteUrl, type Site } from "../lib/sites.js";
 import { issueHandoff } from "../lib/handoff-store.js";
 import { welcomeNewAccount } from "../lib/auth-mail.js";
-import { forgetSessions } from "../lib/session-revocation.js";
+import { forgetSessions, isSessionRevoked } from "../lib/session-revocation.js";
 import { isLinkState, linkResult, readLinkState } from "../lib/github.js";
 import { invalidateDashboard } from "../services/dashboard.js";
 import { forgetPublicUser } from "../services/public-profile.js";
@@ -269,7 +268,7 @@ router.get("/github/callback", async (req, res) => {
       return;
     }
 
-    res.redirect(handoffUrl(site, establishSession(res, result.record)));
+    res.redirect(handoffUrl(site, await establishSession(res, result.record)));
   } catch (err) {
     console.error("[auth] GitHub callback error:", err);
     res.redirect(failureUrl(site, intent, "oauth_failed"));
@@ -414,7 +413,7 @@ router.get("/google/callback", async (req, res) => {
       return;
     }
 
-    res.redirect(handoffUrl(site, establishSession(res, result.record)));
+    res.redirect(handoffUrl(site, await establishSession(res, result.record)));
   } catch (err) {
     console.error("[auth] Google callback error:", err);
     res.redirect(failureUrl(site, intent, "oauth_failed"));
@@ -438,9 +437,14 @@ router.get("/google/callback", async (req, res) => {
  * not say, but Chrome reports every non-2xx fetch as a red "Failed to load
  * resource" console error, so each such visit looked like a broken site.
  */
-router.get("/session-token", (req, res) => {
+router.get("/session-token", async (req, res) => {
   const token = (req.cookies as Record<string, string | undefined>)?.[SESSION_COOKIE];
-  res.json({ token: token && verifySessionToken(token) ? token : null });
+  const claims = token ? readSessionToken(token) : null;
+  // A revoked one too: a session a sign-in elsewhere replaced (or a password
+  // reset ended) still sits in this browser's cookie, and handing it back
+  // let the tab adopt it, fail /api/me, and bounce to sign-in in a loop.
+  const live = claims !== null && !(await isSessionRevoked(claims.userId, claims.iat, claims.jti));
+  res.json({ token: live ? token : null });
 });
 
 type UpsertArgs = {

@@ -78,6 +78,37 @@ export function userIsConnected(userId: string): boolean {
   }
 }
 
+/** Pushed on `/rt` to a session another sign-in replaced; the client signs out. */
+export const SESSION_REPLACED_EVENT = "session:replaced";
+
+/**
+ * Closes the sockets this instance holds for an account's *older* sessions —
+ * every one whose token was issued before `issuedAt` (`socket.data.sessionIat`,
+ * set at the handshake) — after a sign-in elsewhere replaced them. Their
+ * tokens are already refused (lib/session-revocation), but a socket is only
+ * authenticated at its handshake: without this a pair room or a duel kept
+ * relaying as the old device. The bell's socket is told first, so the tab
+ * signs out at once instead of on its next request; `disconnect()` (not
+ * `true`) sends the close after that packet on the same transport.
+ */
+export function closeReplacedSockets(userId: string, issuedAt: number): void {
+  if (!io) return;
+  const older = (socket: { data?: { userId?: string; sessionIat?: number } }) =>
+    socket.data?.userId === userId && (socket.data.sessionIat ?? 0) < issuedAt;
+  try {
+    for (const socket of io.of(USER_NAMESPACE).sockets.values()) {
+      if (!older(socket)) continue;
+      socket.emit(SESSION_REPLACED_EVENT);
+      socket.disconnect();
+    }
+    for (const socket of io.of("/").sockets.values()) {
+      if (older(socket)) socket.disconnect(true);
+    }
+  } catch (err) {
+    console.error(`closeReplacedSockets(${userId}) failed:`, err);
+  }
+}
+
 /**
  * Closes every socket this instance holds for an account — the bell's on
  * `/rt` and any room's (pair, duel) on `/` — for an account that was just

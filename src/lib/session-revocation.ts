@@ -1,6 +1,8 @@
 import { prisma } from "./prisma.js";
 import { broadcastSignal, onSignal } from "./cache.js";
 import type { Job } from "./scheduler.js";
+import { isReservedAddress } from "./brevo.js";
+import { closeReplacedSockets } from "./realtime.js";
 
 /**
  * Refusing sessions the account has ended.
@@ -162,6 +164,40 @@ export async function isSessionRevoked(userId: string, issuedAt: number, jti: st
 export async function revokeSessions(userId: string): Promise<void> {
   await prisma.user.update({ where: { id: userId }, data: { sessionsValidFrom: new Date() } });
   forgetSessions(userId);
+}
+
+/** Signal on the invalidation channel; the payload is `<userId>:<iat>`. */
+const REPLACED_SIGNAL = "session-replaced";
+
+onSignal(REPLACED_SIGNAL, (payload) => {
+  const cut = payload.lastIndexOf(":");
+  const issuedAt = Number(payload.slice(cut + 1));
+  if (cut > 0 && Number.isFinite(issuedAt)) closeReplacedSockets(payload.slice(0, cut), issuedAt);
+});
+
+/**
+ * One device at a time (the owner's call, 2026-10-13): a sign-in ends every
+ * session the account held before it. The new token's own `iat` becomes
+ * `sessionsValidFrom`, so everything issued in an earlier second is refused —
+ * the same check a password reset uses — and this token, minted in that
+ * second, is not. Never moved backwards, so a reset that stamped later stands.
+ * The older sessions' open sockets are closed here and on every instance.
+ *
+ * Reserved test addresses (`*@codekairo.test`, lib/brevo isReservedAddress)
+ * are left alone: the Playwright suite signs one account in from several
+ * places at once, and such an address can never verify its email, so it can
+ * never sign in on production anyway.
+ */
+export async function endOtherSessions(user: { id: string; email: string | null }, issuedAt: number): Promise<void> {
+  if (user.email && isReservedAddress(user.email)) return;
+  const stamp = new Date(issuedAt * 1000);
+  await prisma.user.updateMany({
+    where: { id: user.id, OR: [{ sessionsValidFrom: null }, { sessionsValidFrom: { lt: stamp } }] },
+    data: { sessionsValidFrom: stamp },
+  });
+  forgetSessions(user.id);
+  closeReplacedSockets(user.id, issuedAt);
+  broadcastSignal(REPLACED_SIGNAL, `${user.id}:${issuedAt}`);
 }
 
 /**
