@@ -2,7 +2,11 @@
  * Today's mission, the writes — mounted at /api/me/mission ahead of the
  * /api/me routers. The mission itself is read with the dashboard
  * (GET /api/me/dashboard `mission`, services/mission.ts); each write here
- * drops that cache and answers 204, and the home reads the day again.
+ * rebuilds the day alone, writes it into the cached aggregate, and answers
+ * the new day with the "Up next" that goes with it (MissionWrite) — the
+ * home patches both into the copy it holds rather than reading the page
+ * again. Until 2026-10-13 a write answered 204 and dropped the whole
+ * dashboard, so changing the minutes cost a full rebuild and transfer.
  */
 import { Router } from "express";
 import { requireAuth } from "../middleware/auth.js";
@@ -11,18 +15,17 @@ import { MARK_ACTIONS, markMissionItem, setMissionMinutes, type MarkAction } fro
 
 const router = Router();
 
-/** PUT /api/me/mission { minutes } — the time there is today (and, until changed, every day after). */
+/** PUT /api/me/mission { minutes } — the time there is today (and, until changed, every day after). Answers the re-picked day. */
 router.put("/", requireAuth, async (req, res) => {
   const minutes = (req.body as { minutes?: unknown } | undefined)?.minutes;
   if (!isMinuteChoice(minutes)) {
     res.status(400).json({ error: `minutes must be one of ${MINUTE_CHOICES.join(", ")}.` });
     return;
   }
-  await setMissionMinutes(req.user!.userId, minutes);
-  res.status(204).end();
+  res.json(await setMissionMinutes(req.user!.userId, minutes));
 });
 
-/** POST /api/me/mission/items/:id { action: "done" | "skip" | "undo" } — a hand tick, a skip, or taking either back. */
+/** POST /api/me/mission/items/:id { action: "done" | "skip" | "undo" } — a hand tick, a skip, or taking either back. Answers the day as marked. */
 router.post("/items/:id", requireAuth, async (req, res) => {
   const action = (req.body as { action?: unknown } | undefined)?.action;
   if (typeof action !== "string" || !MARK_ACTIONS.has(action)) {
@@ -38,7 +41,7 @@ router.post("/items/:id", requireAuth, async (req, res) => {
     res.status(400).json({ error: "This item ticks itself when it is done." });
     return;
   }
-  res.status(204).end();
+  res.json(result);
 });
 
 export default router;

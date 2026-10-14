@@ -1,7 +1,7 @@
 import { Prisma } from "@prisma/client";
 import { tournamentsFor } from "./tournament-record.js";
 import { prisma } from "../lib/prisma.js";
-import { cached, cachedShared, invalidate } from "../lib/cache.js";
+import { cached, cachedShared, invalidate, patchShared } from "../lib/cache.js";
 import { CALENDAR_UTC_OFFSET_MINUTES } from "../lib/clock.js";
 import { heatmapWindow, mergeHistory, sqlHistoryRow, sqlSolveTally, tallyHeatmap, type DayCountRow, type HistoryRow } from "../lib/activity.js";
 import { SQL_PROBLEMS } from "../lib/sql-problems/index.js";
@@ -21,8 +21,8 @@ import { implicitTargetCompany, isLevel, type Level } from "../lib/onboarding.js
 import { upNext, type Difficulty } from "../lib/onboarding-plan.js";
 // And again: skill-profile imports getCatalogue from here.
 import { invalidateSkillProfile } from "./skill-profile.js";
-// And again: mission imports invalidateDashboard and loadProblemState from here.
-import { missionFor } from "./mission.js";
+// And again: mission imports invalidateDashboard, loadProblemState, homeLoads and patchDashboard from here.
+import { missionFor, problemsOnDay } from "./mission.js";
 // And again: readiness imports getCatalogue from here.
 import { readinessFor } from "./readiness.js";
 import type { Readiness, ReadinessStatus } from "../lib/readiness.js";
@@ -794,6 +794,46 @@ export async function getDashboard(userId: string) {
   return cachedShared(dashboardKey(userId), 300, () => buildDashboard(userId));
 }
 
+/**
+ * The loads the home's slices share, started together and each read once:
+ * the problem state behind difficultyStats, "Up next" and the user slice's
+ * solved count; the rank the slice and the rank tile carry; the user row
+ * the slice, the plan and the mission all read; and the plan's inputs
+ * (today's problem, the study band, the credentials, the user slice), which
+ * are slices of the page too. The plan's own checks go out the moment the
+ * row lands, alongside everything else.
+ *
+ * Its own function because the mission's writes (services/mission.ts)
+ * rebuild the day on its own, from exactly these loads, without the rest
+ * of the page — so the two cannot drift. What a caller does not await it
+ * must mark handled (a rejection nobody awaits is an unhandledRejection).
+ */
+export function homeLoads(userId: string) {
+  const problemState = loadProblemState(userId);
+  const rank = getRank(userId, "combined");
+  const row = loadDashboardUserRow(userId);
+  const me = getDashboardUser(userId, { problemState, rank, row });
+  const dailyContest = contestSnapshot(userId);
+  const study = studyBandFor(userId);
+  const credentials = credentialsFor(userId);
+  const plan = onboardingPlanFor(userId, row, { problemState, dailyContest, credentials, study, me });
+  // Placement readiness for the target (services/readiness.ts), read once for
+  // the home's line and the mission's lean — the saved target, or the first
+  // company named at onboarding until one is saved (implicitTargetCompany),
+  // and for no other account, so nobody else pays for it. A failure is a
+  // missing line and an unleaning day, never a failed page.
+  const readiness = row
+    .then((r) => (r?.targetCompany || implicitTargetCompany(r?.goal ?? null, r?.goalDetails) ? readinessFor(userId, {}).then((v) => v.readiness) : null))
+    .catch((err: Error) => {
+      console.error("dashboard readiness failed:", err.message);
+      return null;
+    });
+  const continueSolving = getContinueSolving(userId);
+  return { problemState, rank, row, me, dailyContest, study, credentials, plan, readiness, continueSolving };
+}
+
+export type HomeLoads = ReturnType<typeof homeLoads>;
+
 async function buildDashboard(userId: string) {
   // difficultyStats and problemInsights both describe the same thing — which
   // published problems this user has solved — so the state behind them is loaded
@@ -802,48 +842,22 @@ async function buildDashboard(userId: string) {
   // The user slice's solved count and rank come from the same two loads the
   // payload carries as difficultyStats and rank, so those are started once
   // and handed in, not queried twice.
-  const problemStatePromise = loadProblemState(userId);
-  const rankPromise = getRank(userId, "combined");
-  // "Your plan" (services/onboarding-plan.ts) reads the user row's onboarding
-  // columns and loads this payload makes anyway (the user slice, today's
-  // problem, the study band, the credentials), so those are started here and
-  // handed to both rather than asked twice; the plan's own checks go out the
-  // moment the row lands, alongside everything else.
-  const userRowPromise = loadDashboardUserRow(userId);
-  const mePromise = getDashboardUser(userId, { problemState: problemStatePromise, rank: rankPromise, row: userRowPromise });
-  const contestPromise = contestSnapshot(userId);
-  const studyPromise = studyBandFor(userId);
-  const credentialsPromise = credentialsFor(userId);
-  const planPromise = onboardingPlanFor(userId, userRowPromise, {
+  const loads = homeLoads(userId);
+  const {
     problemState: problemStatePromise,
-    dailyContest: contestPromise,
-    credentials: credentialsPromise,
-    study: studyPromise,
+    rank: rankPromise,
+    row: userRowPromise,
     me: mePromise,
-  });
-  // Placement readiness for the target (services/readiness.ts), read once for
-  // the home's line and the mission's lean — the saved target, or the first
-  // company named at onboarding until one is saved (implicitTargetCompany),
-  // and for no other account, so nobody else pays for it. A failure is a
-  // missing line and an unleaning day, never a failed page.
-  const readinessPromise = userRowPromise
-    .then((row) => (row?.targetCompany || implicitTargetCompany(row?.goal ?? null, row?.goalDetails) ? readinessFor(userId, {}).then((v) => v.readiness) : null))
-    .catch((err: Error) => {
-      console.error("dashboard readiness failed:", err.message);
-      return null;
-    });
+    dailyContest: contestPromise,
+    study: studyPromise,
+    credentials: credentialsPromise,
+    plan: planPromise,
+    readiness: readinessPromise,
+    continueSolving: continuePromise,
+  } = loads;
   // Today's mission (services/mission.ts) reads the same loads as the plan,
   // and the plan itself — its next step is one of the day's items.
-  const continuePromise = getContinueSolving(userId);
-  const missionPromise = missionFor(userId, {
-    problemState: problemStatePromise,
-    dailyContest: contestPromise,
-    study: studyPromise,
-    plan: planPromise,
-    continueSolving: continuePromise,
-    row: userRowPromise,
-    readiness: readinessPromise,
-  });
+  const missionPromise = missionFor(userId, loads);
   const [
     me,
     counters,
@@ -893,12 +907,23 @@ async function buildDashboard(userId: string) {
 
   const difficultyStats = computeDifficultyStats(problemState);
   const level = userRow?.level;
-  const onMission = new Set((mission?.items ?? []).flatMap((i) => (i.evidence && "problemId" in i.evidence && i.evidence.problemId ? [i.evidence.problemId] : [])));
-  const problemInsights = computeProblemInsights(problemState, isLevel(level) ? level : null, onMission);
+  const problemInsights = computeProblemInsights(problemState, isLevel(level) ? level : null, problemsOnDay(mission));
   const { social, savedInterviews } = counters;
   // The SQL problems are code (lib/sql-problems), so their count needs no
   // query; the account's own count is `me.stats.sqlSolved`.
   const sqlInsights = { total: SQL_PROBLEMS.length };
 
   return { me, social, difficultyStats, submissions, heatmap, rank, leaderboard, pairing, continueSolving, problemInsights, bugInsights, sqlInsights, savedInterviews, dailyContest, roadmap, study, tournaments, credentials, plan, mission, readiness };
+}
+
+export type DashboardPayload = Awaited<ReturnType<typeof buildDashboard>>;
+
+/**
+ * Rewrite part of the cached aggregate in place (lib/cache patchShared) for
+ * a write that changes one slice and leaves the rest standing — the
+ * mission's writes, which rebuild the day alone (services/mission.ts).
+ * False when nothing is cached: the next read builds it, new slice included.
+ */
+export function patchDashboard(userId: string, patch: (current: DashboardPayload) => DashboardPayload): Promise<boolean> {
+  return patchShared(dashboardKey(userId), 300, patch);
 }

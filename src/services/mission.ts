@@ -39,7 +39,8 @@ import { skillCatalogues, skillProfileFor } from "./skill-profile.js";
 import { cohortGoalFor } from "./cohorts.js";
 // The usual inert cycles: dashboard imports this file for the mission, and
 // roadmap imports invalidateDashboard from dashboard.
-import { invalidateDashboard, loadProblemState, type ProblemState } from "./dashboard.js";
+import { computeProblemInsights, homeLoads, invalidateDashboard, loadProblemState, patchDashboard, type ProblemState } from "./dashboard.js";
+import { patchMe } from "./me.js";
 import { roadDefinition } from "./roadmap.js";
 
 /**
@@ -50,8 +51,10 @@ import { roadDefinition } from "./roadmap.js";
  *
  * Inside the dashboard build (services/dashboard.ts) like "Your plan" — one
  * request for the home — and, like the plan, a failure answers null rather
- * than failing the page. The writes (minutes, a hand tick, a skip) drop the
- * dashboard; the next read fills the day back up to its size.
+ * than failing the page. The writes (minutes, a hand tick, a skip) rebuild
+ * the day alone from the same loads (missionAfterWrite), write it into the
+ * cached aggregate and answer it; only a target change (repickMissionToday)
+ * still drops the dashboard, since the readiness line moves with it.
  */
 
 export interface MissionLoads {
@@ -403,13 +406,54 @@ export async function missionFor(userId: string, loads: MissionLoads): Promise<M
   }
 }
 
+/** The problems on the day, by id — what "Up next" leaves out (services/dashboard.ts computeProblemInsights). */
+export const problemsOnDay = (mission: MissionView | null): ReadonlySet<string> =>
+  new Set((mission?.items ?? []).flatMap((i) => (i.evidence && "problemId" in i.evidence && i.evidence.problemId ? [i.evidence.problemId] : [])));
+
+/** What a mission write answers (routes/mission.ts): the day as it now stands, and the "Up next" that goes with it. */
+export interface MissionWrite {
+  /** Null when the day could not be built — the home then reads the page again, as before 2026-10-13. */
+  mission: MissionView | null;
+  /** `problemInsights.recommended` without the day's problems: the one other slice a re-picked day moves. */
+  upNext: ReturnType<typeof computeProblemInsights>["recommended"];
+}
+
+/**
+ * The day after one of its writes: rebuilt alone from the loads the
+ * dashboard shares (homeLoads), never the rest of the page. A write used to
+ * invalidate the whole aggregate, so the home paid the ~15-statement
+ * rebuild and the full transfer to re-pick one list (2026-10-13).
+ *
+ * "Up next" is recomputed too, over the cached problem state: it leaves out
+ * the day's problems, which the re-pick just changed. Both are written into
+ * the cached aggregate (patchDashboard) so the next full read agrees with
+ * what the home shows; when the day cannot be built, the old path — the
+ * aggregate dropped, the next read tries again.
+ */
+async function missionAfterWrite(userId: string): Promise<MissionWrite> {
+  const loads = homeLoads(userId);
+  // missionFor awaits only what the day needs (a day already full skips the
+  // candidates), and a rejection nobody awaits is an unhandledRejection; mark
+  // each handled — the ones the day needed have answered, or made it null.
+  for (const p of Object.values(loads)) void (p as Promise<unknown>).catch(() => undefined);
+  const [mission, state, row] = await Promise.all([missionFor(userId, loads), loads.problemState, loads.row]);
+  const rawLevel = row?.level;
+  const upNext = computeProblemInsights(state, isLevel(rawLevel) ? rawLevel : null, problemsOnDay(mission)).recommended;
+  if (mission) await patchDashboard(userId, (d) => ({ ...d, mission, problemInsights: { ...d.problemInsights, recommended: upNext } }));
+  else invalidateDashboard(userId);
+  return { mission, upNext };
+}
+
 /**
  * Change the minutes for today and the days after. What is done stays; the
- * rest is dropped and the next dashboard read re-picks it for the new time.
+ * rest is dropped and re-picked for the new time, here, and answered. The
+ * cached /api/me carries the choice (it sizes the home's loading state), so
+ * it is patched rather than rebuilt.
  */
-export async function setMissionMinutes(userId: string, minutes: number): Promise<void> {
+export async function setMissionMinutes(userId: string, minutes: number): Promise<MissionWrite> {
   await Promise.all([dropUndone(userId, minutes), prisma.user.update({ where: { id: userId }, data: { dailyMinutes: minutes }, select: { id: true } })]);
-  invalidateDashboard(userId);
+  const [written] = await Promise.all([missionAfterWrite(userId), patchMe(userId, (me) => ({ ...me, dailyMinutes: minutes }))]);
+  return written;
 }
 
 /**
@@ -443,8 +487,9 @@ export const MARK_ACTIONS: ReadonlySet<string> = new Set<MarkAction>(["done", "s
  * Tick or skip one of today's items by hand, or take the mark back. Only an
  * item nothing else records (a roadmap lesson) can be ticked by hand: the
  * rest are done when their evidence says so, which is the point of them.
+ * Answers the day as marked.
  */
-export async function markMissionItem(userId: string, itemId: string, action: MarkAction): Promise<"ok" | "missing" | "not-manual"> {
+export async function markMissionItem(userId: string, itemId: string, action: MarkAction): Promise<MissionWrite | "missing" | "not-manual"> {
   const day = dayKey();
   const existing = await prisma.missionDay.findUnique({ where: { userId_day: { userId, day } } });
   const item = existing ? readItems(existing.items).find((i) => i.id === itemId) : undefined;
@@ -454,6 +499,5 @@ export async function markMissionItem(userId: string, itemId: string, action: Ma
   if (action === "undo") delete marks[itemId];
   else marks[itemId] = action === "skip" ? "skipped" : "done";
   await prisma.missionDay.update({ where: { userId_day: { userId, day } }, data: { marks: json(marks) } });
-  invalidateDashboard(userId);
-  return "ok";
+  return missionAfterWrite(userId);
 }

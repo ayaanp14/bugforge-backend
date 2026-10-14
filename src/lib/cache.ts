@@ -219,6 +219,40 @@ export async function cachedShared<T>(
   return singleFlight(key, fill);
 }
 
+/**
+ * Replace a cachedShared() payload in both tiers with `patch(current)` —
+ * for a write that changes one slice of a composed payload the rest of
+ * which still stands, so the next read is a hit rather than a rebuild.
+ *
+ * The mission's writes are why (services/mission.ts, 2026-10-13): a change
+ * of the day's minutes used to invalidate the whole dashboard, so the home
+ * paid the ~15-statement rebuild and the full transfer to re-pick one list.
+ * Now the mission is rebuilt alone and written into the cached aggregate.
+ *
+ * False when nothing is cached (expired, or invalidated by a write since):
+ * then there is nothing to patch, and the next read builds the new shape
+ * from scratch. The current copy is the L1 entry while it is servable, else
+ * Redis's. A load in flight is disowned as invalidate() disowns it: it
+ * started before the write and would otherwise store its pre-write copy
+ * over the patched one. The entry is written with the full TTL — the
+ * aggregate's freshness rests on invalidation by its writes, not on the
+ * TTL (services/dashboard.ts getDashboard), so an extended window costs
+ * nothing. The other instances drop their L1 copy on the broadcast and
+ * take Redis's patched one on their next read.
+ */
+export async function patchShared<T>(key: string, ttlSeconds: number, patch: (current: T) => T, memoryTtlMs = Math.min(ttlSeconds * 1000, 30_000)): Promise<boolean> {
+  const hit = memory.get(key);
+  const current = hit && hit.staleUntil > Date.now() ? (hit.value as T) : await redisGetJSON<T>(key);
+  if (current === null || current === undefined) return false;
+  const next = patch(current);
+  loads.delete(key);
+  inFlight.delete(key);
+  store(key, next, memoryTtlMs);
+  void redisSetJSON(key, next, ttlSeconds);
+  broadcast(key);
+  return true;
+}
+
 function forget(key: string): void {
   memory.delete(key);
   misses.delete(key);

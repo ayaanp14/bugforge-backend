@@ -1,5 +1,5 @@
 import { prisma } from "../lib/prisma.js";
-import { cachedShared, invalidate } from "../lib/cache.js";
+import { cachedShared, invalidate, patchShared } from "../lib/cache.js";
 import { daysBetween } from "../lib/clock.js";
 import { WORN_CREDENTIAL_SELECT } from "../lib/skill-tests.js";
 import { HONOUR_SELECT } from "../lib/honours.js";
@@ -140,6 +140,19 @@ const meKey = (userId: string) => `me:v6:${userId}`;
 export function invalidateMe(userId: string): void {
   invalidate(meKey(userId));
 }
+
+/**
+ * Rewrite one field of the cached /api/me payload in place (lib/cache
+ * patchShared) — for a write that changes a column the payload carries and
+ * nothing it derives, such as the mission's minutes (services/mission.ts),
+ * so the next load is a hit. False when nothing is cached: the next read
+ * builds it, with the column as written.
+ */
+export function patchMe(userId: string, patch: (current: MePayload) => MePayload): Promise<boolean> {
+  return patchShared(meKey(userId), 300, patch);
+}
+
+export type MePayload = NonNullable<Awaited<ReturnType<typeof buildMePayload>>>;
 
 /**
  * The profile columns a client may see. Every route that answers with a user
