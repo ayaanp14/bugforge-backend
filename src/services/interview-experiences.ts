@@ -107,12 +107,29 @@ export interface ExperiencePage extends ExperienceRow {
   notes: string;
   /** When the post was last written: its first edit, or its creation. */
   updatedAt: string;
+  /** Whether the post was edited after it was made (PostCard's "· edited"). */
+  edited: boolean;
   authorHidden: boolean;
+  /**
+   * What PostCard draws beside the author's name and round the avatar (the
+   * static-first view, lib/seo-views/interview-experience.ts): the numbers
+   * the community's AUTHOR_SELECT carries, read in the same select.
+   */
+  authorFlair: {
+    xp: number;
+    rating: number;
+    chests: number;
+    honours: string[];
+    credential: { skill: string; level: string; band: string; expiresAt: string } | null;
+  };
+  /** The post's tags in the order the community payload lists them (the same unordered relation read). */
+  tags: string[];
 }
 
 /** One public experience by its post id, for its page's edge head. */
 export function experienceById(id: string): Promise<ExperiencePage | null> {
-  return cachedShared(`${PREFIX}one:${id}`, TTL_SECONDS, async () => {
+  // `one2`: the entry gained the author's flair and the tags (2026-10-14, the page's static-first view); a new key so no older entry is read as the new shape.
+  return cachedShared(`${PREFIX}one2:${id}`, TTL_SECONDS, async () => {
     const p = await prisma.post.findFirst({
       where: { id, type: "experience", visibility: "public" },
       select: {
@@ -121,14 +138,37 @@ export function experienceById(id: string): Promise<ExperiencePage | null> {
         editedAt: true,
         content: true,
         meta: true,
-        user: { select: { id: true, name: true, username: true, avatar_url: true, profileHidden: true } },
+        tags: { select: { tag: true } },
+        user: {
+          select: {
+            id: true,
+            name: true,
+            username: true,
+            avatar_url: true,
+            profileHidden: true,
+            xp: true,
+            rating: true,
+            roadmapRewards: { select: { tierKey: true } },
+            honours: { select: { kind: true } },
+            wornCredential: { select: { skill: true, level: true, band: true, expiresAt: true } },
+          },
+        },
         _count: { select: { likes: true, comments: true } },
       },
     });
     const experience = p ? experienceOf(p.meta) : null;
     if (!p || !experience) return null;
-    const { profileHidden, ...author } = p.user;
+    const { profileHidden, xp, rating, roadmapRewards, honours, wornCredential, ...author } = p.user;
     return {
+      edited: !!p.editedAt,
+      authorFlair: {
+        xp,
+        rating,
+        chests: roadmapRewards.length,
+        honours: honours.map((h) => h.kind),
+        credential: wornCredential ? { skill: wornCredential.skill, level: wornCredential.level, band: wornCredential.band, expiresAt: wornCredential.expiresAt.toISOString() } : null,
+      },
+      tags: p.tags.map((t) => t.tag),
       id: p.id,
       path: experiencePath(p.id, experience),
       createdAt: p.createdAt.toISOString(),

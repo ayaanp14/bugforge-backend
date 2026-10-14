@@ -1,4 +1,21 @@
 import { prisma } from "../lib/prisma.js";
+import type { ProblemView, SeoView } from "../lib/seo-views/index.js";
+import { interviewExperienceView } from "../lib/seo-views/interview-experience.js";
+import { getTierTitle } from "./me.js";
+import { noteSubjectView } from "../lib/seo-views/note-subject.js";
+import { noteView } from "../lib/seo-views/note.js";
+import { skillTestView } from "../lib/seo-views/skill-test.js";
+import { testView } from "../lib/seo-views/test.js";
+import { problemViewSignature } from "../lib/seo-views/problem.js";
+import { aptitudeQuestionView } from "../lib/seo-views/aptitude-question.js";
+import { studyLessonView } from "../lib/seo-views/study-lesson.js";
+import { roadmapLessonView } from "../lib/seo-views/roadmap-lesson.js";
+import { sqlProblemView } from "../lib/seo-views/sql-problem.js";
+import { hubView } from "../lib/seo-views/hub.js";
+import { bugHubView } from "../lib/seo-views/bug-hub.js";
+import { bugHuntView } from "../lib/seo-views/bug-hunt.js";
+import { studyTrackView } from "../lib/seo-views/study-track.js";
+import { aptitudeCategoryView, aptitudeTopicView } from "../lib/seo-views/aptitude-section.js";
 import { cached, invalidate } from "../lib/cache.js";
 import { APTITUDE_CANONICAL, APTITUDE_CATEGORIES, APTITUDE_TOPICS, aptitudeCanonicalSlug, aptitudeTopic, aptitudeCategory } from "../lib/aptitude-topics.js";
 import { escapeHtml, markdownOutline, markdownToHtml } from "../lib/markdown-html.js";
@@ -14,11 +31,11 @@ import { credentialPath, normalizeCredentialCode } from "../lib/skill-tests.js";
 import { poolTopics, verifyCredential } from "./skill-credentials.js";
 import { APTITUDE_ESSENTIALS } from "../lib/aptitude-essentials.js";
 import { APTITUDE_SECTION_GUIDES } from "../lib/aptitude-section-guides.js";
-import { trackDefinition, trackList, type LessonSeo } from "./study-plans.js";
+import { pdfPathFor, trackDefinition, trackList, type LessonSeo } from "./study-plans.js";
 import { roadDefinition } from "./roadmap.js";
 import { hubIndex, hubPage, hubsForTags, relatedProblems, type HubSummary } from "./problem-hubs.js";
 import { getCatalogue } from "./dashboard.js";
-import { bugHubIndex, bugHubPage, bugPath } from "./bug-hunts.js";
+import { bugHubIndex, bugHubPage, bugPath, getNeighbours } from "./bug-hunts.js";
 import { incidentOf, symptomsOf } from "../lib/bug-incident.js";
 import { topicOrder } from "./aptitude-bank.js";
 import { CARD_HEIGHT, CARD_WIDTH, getShareCard } from "./share-cards.js";
@@ -123,24 +140,6 @@ export interface Crumb {
   path: string;
 }
 
-/**
- * What the problem workbench shows a visitor on its first screen, in its own
- * order: the number beside the h1, the difficulty, every tag (linked when it
- * has a hub, as ProblemDescription links it), the lead, the statement (its
- * `###` labels as h2, as the page renders them), and the JavaScript starter
- * the editor opens with.
- */
-export interface ProblemView {
-  kind: "problem";
-  number: number | null;
-  title: string;
-  difficulty: string;
-  tags: Array<{ label: string; href: string | null }>;
-  intro: string;
-  statement: string;
-  starter: string | null;
-}
-
 export interface PageHead {
   path: string;
   title: string;
@@ -171,11 +170,11 @@ export interface PageHead {
   /**
    * The page's first screen as data, for the Worker to draw it as the page
    * a visitor is about to see rather than as the crawler's article (the
-   * static-first pilot, 2026-10-13: an app page painted nothing until ~260 KB
-   * of script had run, and PageSpeed's phone LCP was 11–17 s). Only the
-   * problem page has one so far.
+   * static-first views, lib/seo-views: an app page painted nothing until
+   * ~260 KB of script had run, and PageSpeed's phone LCP was 11–17 s before
+   * the problem page's pilot, 2026-10-13).
    */
-  view?: ProblemView;
+  view?: SeoView;
   /**
    * For an index page the build already prerendered (/challenges …): the
    * HTML of its child list, which the Worker adds below the page's guide.
@@ -817,7 +816,7 @@ function problemHead(slug: string): Promise<PageHead | null> {
   return cached(problemHeadKey(slug), HEAD_TTL_MS, async () => {
     const p = await prisma.problem.findFirst({
       where: { slug, isPublished: true },
-      select: { title: true, difficulty: true, description: true, tags: true, editorial: true, solutions: true, hints: true, timeLimitMs: true, memoryLimitMb: true, starterCode: true, numbering: { select: { number: true } } },
+      select: { title: true, difficulty: true, description: true, tags: true, editorial: true, solutions: true, hints: true, timeLimitMs: true, memoryLimitMb: true, starterCode: true, signature: true, numbering: { select: { number: true } } },
     });
     if (!p) return null;
     const difficulty = titleCase(p.difficulty);
@@ -881,6 +880,9 @@ function problemHead(slug: string): Promise<PageHead | null> {
       intro: seoText.intro,
       statement: markdownToHtml(p.description, 24_000, { under: 1 }),
       starter: typeof stubs["javascript"] === "string" ? stubs["javascript"] : null,
+      // What the example figures are sized from (lib/seo-views/problem: DiagramContext's facts + signature).
+      markdown: p.description,
+      signature: problemViewSignature(p.signature),
     };
     return {
       path: `/problems/${slug}`,
@@ -1004,6 +1006,8 @@ async function hubHead(kind: "topic" | "company", slug: string): Promise<PageHea
     },
     content,
     crumb: page.label,
+    // The page's first screen for the Worker's static-first view (lib/seo-views/hub).
+    view: hubView(page),
   };
 }
 
@@ -1022,6 +1026,13 @@ async function challengesIndex(): Promise<PageHead> {
 
 const FILE_CHARS = 6_000;
 
+/** The header's arrows: the same cached catalogue order the page's /neighbours reads (services/bug-hunts). */
+const neighboursOf = (id: string) =>
+  getNeighbours(id).then(
+    (n) => ({ prev: n.prevSlug, next: n.nextSlug }),
+    () => ({ prev: null, next: null }),
+  );
+
 function bugHuntHead(idOrSlug: string): Promise<PageHead | PageRedirect | null> {
   // v3 (2026-10-09): the incident brief, the failing checks and the playbook (Phase 6).
   return cached(`seo:head:bug:v3:${idOrSlug}`, HEAD_TTL_MS, async () => {
@@ -1029,11 +1040,18 @@ function bugHuntHead(idOrSlug: string): Promise<PageHead | PageRedirect | null> 
       where: { isPublished: true, OR: [{ slug: idOrSlug }, { id: idOrSlug }] },
       select: {
         id: true, slug: true, title: true, language: true, bugReport: true, description: true, logs: true, difficulty: true, category: true, tags: true, origin: true, symptoms: true,
-        files: { select: { filePath: true, content: true, isEditable: true, language: true }, orderBy: { filePath: "asc" } },
+        // In the stored order, as the page's payload lists them (routes/bug-challenges
+        // loadBugDetail): the view's file tabs must match the editor's. The
+        // article below sorts its own copy by path, as it always has.
+        files: { select: { filePath: true, content: true, isEditable: true, language: true } },
         tests: { where: { isHidden: false }, select: { name: true } },
+        // The hidden ones only as a count, for the view's code map label: their
+        // names are never read, let alone sent.
+        _count: { select: { tests: { where: { isHidden: true } } } },
       },
     });
     if (!b) return null;
+    const visibleTests = b.tests;
     // A link minted before slugs existed: send the crawler to the one address.
     if (b.slug && b.slug !== idOrSlug) return { redirect: `/bug-hunts/${b.slug}` };
     const path = bugPath(b);
@@ -1043,8 +1061,9 @@ function bugHuntHead(idOrSlug: string): Promise<PageHead | PageRedirect | null> 
     const catHub = BUG_HUBS.find((x) => x.kind === "category" && x.value === b.category.toLowerCase());
     const keywords = [b.category, ...asStrings(b.tags)].filter(Boolean);
     const trail: Crumb[] = [HOME, SECTION.bugHunts, ...(langHub ? [{ name: langHub.label, path: `/bug-hunts/${langHub.id}` }] : []), { name: b.title, path }];
-    const editable = b.files.filter((f) => f.isEditable);
-    const locked = b.files.filter((f) => !f.isEditable);
+    const byPath = [...b.files].sort((x, y) => (x.filePath < y.filePath ? -1 : x.filePath > y.filePath ? 1 : 0));
+    const editable = byPath.filter((f) => f.isEditable);
+    const locked = byPath.filter((f) => !f.isEditable);
     // The project as shipped: the editable files in full (the code with the
     // bug in it — what the page's editor shows), the locked ones by name.
     // Not the tests' code and never the fix: the hidden tests are the judge.
@@ -1075,7 +1094,7 @@ function bugHuntHead(idOrSlug: string): Promise<PageHead | PageRedirect | null> 
         ["Difficulty", difficulty],
         ["Concepts", asStrings(b.tags).join(", ") || undefined],
         ["Modelled on", b.origin ?? undefined],
-        ["Visible tests", b.tests.length ? b.tests.map((t) => t.name).join("; ") : undefined],
+        ["Visible tests", visibleTests.length ? visibleTests.map((t) => t.name).join("; ") : undefined],
         ["Reward", "50 XP for a complete fix"],
       ]) +
       section("Incident", incidentHtml, "incident") +
@@ -1094,6 +1113,8 @@ function bugHuntHead(idOrSlug: string): Promise<PageHead | PageRedirect | null> 
       facts: { difficulty, language, keywords, trail, minutes: incident.targetMins },
       content,
       crumb: b.title,
+      // The page's first screen for the Worker's static-first view (lib/seo-views/bug-hunt).
+      view: bugHuntView(b, { visible: visibleTests.map((t) => t.name), hidden: b._count.tests }, incident, symptoms, await neighboursOf(b.id)),
     };
   });
 }
@@ -1130,6 +1151,8 @@ async function bugHubHead(id: string): Promise<PageHead | null> {
     },
     content,
     crumb: page.label,
+    // The page's first screen for the Worker's static-first view (lib/seo-views/bug-hub).
+    view: bugHubView(page),
   };
 }
 
@@ -1185,6 +1208,7 @@ async function trackHead(key: string): Promise<PageHead | null> {
     facts: { language: track.title, modules: track.modules.map((m) => m.title), lessons, minutes, trail },
     content,
     crumb: track.title,
+    view: studyTrackView(track, pdfPathFor),
   };
 }
 
@@ -1246,6 +1270,8 @@ async function lessonHead(key: string, lessonSlug: string): Promise<PageHead | n
     },
     content,
     crumb: lesson.title,
+    // The page's first screen for the Worker's static-first view (lib/seo-views/study-lesson).
+    view: studyLessonView(track, mod, lesson),
   };
 }
 
@@ -1331,15 +1357,22 @@ async function aptitudeCategoryHead(id: string): Promise<PageHead | null> {
     facts: { topic: category.label, count: questions, items: firstItems(topics.map((t) => ({ name: t.label, path: `/aptitude/${t.id}` }))), trail },
     content,
     crumb: category.label,
+    // The page's first screen for the Worker's static-first view (lib/seo-views/aptitude-section).
+    view: aptitudeCategoryView(category, counts, APTITUDE_SECTION_GUIDES[id] ? markdownToHtml(APTITUDE_SECTION_GUIDES[id], 8_000, { under: 2 }) : null),
   };
 }
 
 function aptitudeTopicHead(topicId: string): Promise<PageHead | null> {
   const topic = aptitudeTopic(topicId);
   if (!topic) return Promise.resolve(null);
-  return cached(`seo:head:aptitude-topic:v3:${topicId}`, HEAD_TTL_MS, async () => {
+  // v4: the static-first view (tags and time targets joined the select).
+  return cached(`seo:head:aptitude-topic:v4:${topicId}`, HEAD_TTL_MS, async () => {
     // Every question of the topic as a link — the crawl path into the bank.
-    const rows = await prisma.aptitudeQuestion.findMany({ where: { topic: topicId }, select: { slug: true, title: true, difficulty: true, prompt: true }, orderBy: { orderIndex: "asc" }, take: 500 });
+    const [rows, counts] = await Promise.all([
+      prisma.aptitudeQuestion.findMany({ where: { topic: topicId }, select: { slug: true, title: true, difficulty: true, prompt: true, tags: true, timeTargetSec: true }, orderBy: { orderIndex: "asc" }, take: 500 }),
+      // The section's other topics' counts, for the view's "More …" strip (the cached grouped read the section heads share).
+      aptitudeCounts(),
+    ]);
     const category = aptitudeCategory(topic.category);
     const categoryLabel = category?.label ?? topic.category;
     const path = `/aptitude/${topicId}`;
@@ -1375,6 +1408,15 @@ function aptitudeTopicHead(topicId: string): Promise<PageHead | null> {
       facts: { topic: `${topic.label} (${categoryLabel})`, count: rows.length, items: firstItems(rows.map((r) => ({ name: r.title, path: `/aptitude/q/${r.slug}` }))), trail },
       content,
       crumb: topic.label,
+      // The page's first screen for the Worker's static-first view (lib/seo-views/aptitude-section):
+      // the rows a visitor's first page holds, each as GET /api/aptitude/questions shapes it.
+      view: aptitudeTopicView(
+        topic,
+        category,
+        APTITUDE_ESSENTIALS[topicId] ? markdownToHtml(APTITUDE_ESSENTIALS[topicId], 8_000, { under: 2 }) : null,
+        rows.map((r) => ({ slug: r.slug, title: r.title, stem: questionStem(r.prompt), difficulty: r.difficulty, tags: asStrings(r.tags), timeTargetSec: r.timeTargetSec })),
+        counts,
+      ),
     };
   });
 }
@@ -1383,7 +1425,7 @@ function aptitudeQuestionHead(slug: string): Promise<PageHead | null> {
   return cached(`seo:head:aptitude:v4:${slug}`, HEAD_TTL_MS, async () => {
     const q = await prisma.aptitudeQuestion.findUnique({
       where: { slug },
-      select: { prompt: true, topic: true, category: true, title: true, options: true, answer: true, solution: true, approach: true, difficulty: true, timeTargetSec: true },
+      select: { prompt: true, topic: true, category: true, title: true, options: true, answer: true, solution: true, approach: true, difficulty: true, timeTargetSec: true, tags: true, hints: true },
     });
     if (!q) return null;
     const topic = aptitudeTopic(q.topic);
@@ -1439,6 +1481,12 @@ function aptitudeQuestionHead(slug: string): Promise<PageHead | null> {
       content,
       crumb: q.title,
       ...(canonical !== slug ? { canonical: `/aptitude/q/${canonical}` } : {}),
+      // The page's first screen for the Worker's static-first view (lib/seo-views/aptitude-question).
+      view: aptitudeQuestionView(
+        { slug, title: q.title, difficulty: q.difficulty, tags: asStrings(q.tags), hints: asStrings(q.hints), timeTargetSec: q.timeTargetSec, topic: q.topic, topicLabel: label, prompt: q.prompt, options, answer: q.answer, solution: q.solution, approach: q.approach },
+        order,
+        related,
+      ),
     };
   });
 }
@@ -1459,12 +1507,12 @@ async function aptitudeIndex(): Promise<PageHead> {
 /* ── Placement tests ─────────────────────────────────────────────── */
 
 function testHead(slug: string): Promise<PageHead | null> {
-  return cached(`seo:head:test:v3:${slug}`, HEAD_TTL_MS, async () => {
+  return cached(`seo:head:test:v4:${slug}`, HEAD_TTL_MS, async () => {
     const t = await prisma.mockTest.findFirst({
       where: { slug, published: true },
       select: {
         name: true, company: true, blurb: true, instructions: true, durationSec: true, totalQuestions: true, negativeMark: true, sectionalTiming: true, highlights: true, sourceNote: true, family: true,
-        sections: { orderBy: { orderIndex: "asc" }, select: { name: true, durationSec: true, questionCount: true, kind: true, marksPerQuestion: true } },
+        sections: { orderBy: { orderIndex: "asc" }, select: { name: true, durationSec: true, questionCount: true, kind: true, marksPerQuestion: true, instructions: true, blueprint: true } },
       },
     });
     if (!t) return null;
@@ -1520,6 +1568,8 @@ function testHead(slug: string): Promise<PageHead | null> {
       facts: { company: t.company, minutes, questions: t.totalQuestions, trail },
       content,
       crumb: t.name,
+      // The page's first screen for the Worker's static-first view (lib/seo-views/test).
+      view: testView({ ...t, highlights: asStrings(t.highlights) }, { guide: Boolean(TEST_GUIDES[slug]), samples: samples.length, instructionsHtml: markdownToHtml(t.instructions, 6_000) }),
     };
   });
 }
@@ -1549,12 +1599,13 @@ async function testsIndex(): Promise<PageHead> {
  * a roadmap lesson.
  */
 function skillTestHead(slug: string): Promise<PageHead | null> {
-  return cached(`seo:head:skill-test:v3:${slug}`, HEAD_TTL_MS, async () => {
+  return cached(`seo:head:skill-test:v4:${slug}`, HEAD_TTL_MS, async () => {
     const t = await prisma.skillTest.findFirst({
       where: { slug, published: true },
       select: {
         skill: true, level: true, title: true, blurb: true, instructions: true, durationSec: true, totalQuestions: true, passPercent: true, distinctionPercent: true, validityMonths: true,
-        sections: { orderBy: { orderIndex: "asc" }, select: { name: true, durationSec: true, questionCount: true, kind: true, marksPerQuestion: true } },
+        cooldownDays: true, languages: true,
+        sections: { orderBy: { orderIndex: "asc" }, select: { name: true, durationSec: true, questionCount: true, kind: true, marksPerQuestion: true, instructions: true } },
       },
     });
     if (!t) return null;
@@ -1572,6 +1623,8 @@ function skillTestHead(slug: string): Promise<PageHead | null> {
       .map((s) => `<tr><td>${h(s.name)}</td><td>${s.questionCount}</td><td>${Math.round(s.durationSec / 60)} min</td><td>${s.kind === "coding" ? "Coding" : "Multiple choice"}</td><td>${s.marksPerQuestion}</td></tr>`)
       .join("");
     const guide = guideFor(slug);
+    // Rendered once: the edge article and the static-first view both carry it.
+    const guideHtml = guide ? markdownToHtml(guide.body, 60_000, { anchors: true, under: 1 }) : null;
     const sample = guide?.sample;
     const letter = (i: number) => "ABCDEF"[i] ?? "?";
     const sampleHtml = sample
@@ -1606,7 +1659,7 @@ function skillTestHead(slug: string): Promise<PageHead | null> {
             "topics",
           )
         : "") +
-      (guide ? `<article id="guide">${markdownToHtml(guide.body, 60_000, { anchors: true, under: 1 })}</article>` : "") +
+      (guideHtml ? `<article id="guide">${guideHtml}</article>` : "") +
       sampleHtml +
       (guide?.faq.length ? `<section id="questions"><h2>Common questions</h2>${guide.faq.map((f) => `<h3>${inlineMd(f.q)}</h3><p>${inlineMd(f.a)}</p>`).join("")}</section>` : "") +
       section("Rules", markdownToHtml(t.instructions, 6_000), "rules") +
@@ -1626,6 +1679,19 @@ function skillTestHead(slug: string): Promise<PageHead | null> {
       },
       content,
       crumb: t.title,
+      // The page's first screen, for the static-first view (lib/seo-views/skill-test).
+      view: skillTestView({
+        ...t,
+        short: def?.short,
+        skillLabel,
+        levelLabel,
+        topics: covered.map((id) => {
+          const topic = skillTopic(t.skill, id);
+          return { label: topic?.label ?? id, practice: topic?.practice ?? null };
+        }),
+        answer: guide ? { question: guide.question, html: inlineMd(guide.answer) } : null,
+        guide: guideHtml,
+      }),
     };
   });
 }
@@ -1757,6 +1823,7 @@ async function roadmapLessonHead(slug: string): Promise<PageHead | null> {
     },
     content,
     crumb: l.title,
+    view: roadmapLessonView(page),
   };
 }
 
@@ -1845,6 +1912,8 @@ async function sqlProblemHead(slug: string): Promise<PageHead | null> {
     facts: { difficulty, keywords: ["SQL", ...page.topics], trail },
     content,
     crumb: page.title,
+    // The page's first screen for the Worker's static-first view (lib/seo-views/sql-problem), from the payload loaded above.
+    view: sqlProblemView(page),
   };
 }
 
@@ -1874,7 +1943,8 @@ const readingTime = (minutes: number) => (minutes >= 90 ? `about ${Math.round(mi
 /** A subject's page: what it covers, its notes in order, its skill tests. */
 function noteSubjectHead(key: string): PageHead | null {
   const subject = subjectByKey(key);
-  const card = notesSyllabus().subjects.find((s) => s.key === key);
+  const syllabus = notesSyllabus().subjects;
+  const card = syllabus.find((s) => s.key === key);
   if (!subject || !card || !card.notes.length) return null;
   const path = `/notes/${key}`;
   const trail: Crumb[] = [HOME, SECTION.notes, { name: subject.title, path }];
@@ -1897,6 +1967,8 @@ function noteSubjectHead(key: string): PageHead | null {
     facts: { count: card.notes.length, topic: subject.title, items: firstItems(card.notes.map((n) => ({ name: n.title, path: `/notes/${n.subject}/${n.slug}` }))), trail },
     content,
     crumb: subject.title,
+    // The first screen for the static-first view (lib/seo-views/note-subject.ts), from the syllabus already read above.
+    view: noteSubjectView(card, syllabus, readingTime(card.minutes)),
   };
 }
 
@@ -1941,6 +2013,8 @@ function noteHead(subjectKey: string, slug: string): PageHead | null {
     },
     content,
     crumb: n.title,
+    // The first screen for the static-first view (lib/seo-views/note.ts), from the page and the syllabus — both pure reads of the shipped files.
+    view: noteView(page, notesSyllabus()),
   };
 }
 
@@ -2025,6 +2099,8 @@ async function experienceHead(path: string, slug: string): Promise<PageHead | Pa
     },
     content,
     crumb: row.title,
+    // The page's first screen as data (lib/seo-views/interview-experience): the post as PostCard draws it, from the row read above.
+    view: interviewExperienceView(row, getTierTitle(row.authorFlair.rating)),
   };
 }
 
