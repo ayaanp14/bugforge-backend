@@ -1,6 +1,7 @@
 import type { Request, Response, NextFunction, RequestHandler } from "express";
 import { createHash } from "node:crypto";
 import { isIP } from "node:net";
+import { claimedEngine, isVerifiedCrawler } from "../lib/search-crawler.js";
 
 /**
  * Request rate limiting.
@@ -232,11 +233,43 @@ function sessionOrAddress(req: Request): string {
   return `a:${addressOf(req)}`;
 }
 
-export const generalLimiter = rateLimit({
+const peopleLimiter = rateLimit({
   windowMs: 60 * 1000,
   max: 300,
   keyOf: sessionOrAddress,
 });
+
+/**
+ * A search engine's renderer, proven by DNS (lib/search-crawler.ts), keyed by
+ * its exact address rather than the /64, with ten times the allowance. Google
+ * renders a sitemap's worth of pages from a few shared subnets; under the
+ * people's bucket a render whose read was refused became a "soft 404" in
+ * Search Console (90 problem and lesson pages by 2026-10-09). Still capped,
+ * so a crawler gone wrong cannot take the box.
+ */
+const crawlerLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 3000,
+  keyOf: (req) => `c:${req.ip ?? "unknown"}`,
+});
+
+export function makeGeneralLimiter(verified: (ip: string | undefined, domains: string[]) => Promise<boolean>): RequestHandler {
+  return function generalLimiter(req, res, next) {
+    // Reads only: a crawler has no session and never writes, and a write
+    // claiming to be Googlebot gains nothing by it.
+    const domains = req.method === "GET" ? claimedEngine(req.headers["user-agent"]) : null;
+    if (!domains) {
+      peopleLimiter(req, res, next);
+      return;
+    }
+    verified(req.ip, domains).then(
+      (ok) => (ok ? crawlerLimiter : peopleLimiter)(req, res, next),
+      () => peopleLimiter(req, res, next),
+    );
+  };
+}
+
+export const generalLimiter = makeGeneralLimiter(isVerifiedCrawler);
 
 /**
  * Posting and commenting. Mounted after `requireAuth`, so keyed by account:
