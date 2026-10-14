@@ -55,6 +55,7 @@ import { checkStudyPlansSeeded } from "./services/study-plans.js";
 import eventsRouter from "./routes/events.js";
 import adminRouter from "./routes/admin.js";
 import { adminHonoursRouter, honoursRouter } from "./routes/honours.js";
+import { goodiesRouter } from "./routes/goodies.js";
 import { todayContest } from "./services/daily-contest.js";
 import { optionalAuth } from "./middleware/auth.js";
 import { addKickedUser, kickedUserIdsOf } from "./lib/room-kicks.js";
@@ -986,6 +987,7 @@ app.use("/api/sql", sqlRouter);
 app.use("/api/simulations", simulationsRouter);
 // Study cohorts: a shared weekly goal and sessions on the pair rooms (Phase 9, services/cohorts.ts).
 app.use("/api/cohorts", cohortsRouter);
+app.use("/api/goodies", goodiesRouter);
 app.use("/api/notes", notesRouter);
 app.use("/api/assistant", assistantRouter);
 // The upload route reads a raw file body with its own parser (see routes/resumes.ts).

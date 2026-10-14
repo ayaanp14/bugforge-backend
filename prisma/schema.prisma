@@ -151,6 +151,7 @@ model User {
   subscriptions         Subscription[]
   creditGrants          CreditGrant[]
   creditSpends          CreditSpend[]
+  redemptions           Redemption[]
   paymentOrders         PaymentOrder[]
   notifications         Notification[]
   roadmapRewards        RoadmapReward[]
@@ -2733,7 +2734,7 @@ model CreditGrant {
   id        String   @id @default(cuid())
   userId    String
   credits   Int
-  /// "purchase" | "admin"
+  /// "purchase" | "admin" | "goodies" (a Redemption, lib/goodies)
   source    String   @db.VarChar(16)
   orderId   String?  @unique
   createdAt DateTime @default(now())
@@ -2757,4 +2758,22 @@ model CreditSpend {
 
   @@unique([action, ref])
   @@index([userId, action, createdAt])
+}
+
+/// A goodie redeemed with points (lib/goodies GOODIES). The points balance is
+/// derived — earned from solves, chests, credentials and tracks, less Σ points
+/// here — so this row is both the spend and the record. `grantId` is the
+/// CreditGrant it paid out (source "goodies"), set once the balance held;
+/// a row whose grant is missing was taken back and costs nothing for long.
+model Redemption {
+  id        String   @id @default(cuid())
+  userId    String
+  itemId    String   @db.VarChar(40)
+  points    Int
+  credits   Int
+  grantId   String?  @unique
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
 }

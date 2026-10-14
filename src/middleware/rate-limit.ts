@@ -408,3 +408,15 @@ export const sendLinkLimiter = rateLimit({
   message: "That is five links today — open the rest from your laptop's history, or try again tomorrow.",
   keyOf: (req) => (req as Request & { user?: { userId: string } }).user?.userId ?? addressOf(req),
 });
+
+/**
+ * Redeeming a goodie (POST /api/goodies/:id/redeem). Each one recounts the
+ * account's points twice; a real student redeems a handful a month, so 30 an
+ * hour only ever stops a script hammering the race check.
+ */
+export const redeemLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 30,
+  message: "That is a lot of redemptions in one hour. Give it a little while.",
+  keyOf: (req) => (req as Request & { user?: { userId: string } }).user?.userId ?? addressOf(req),
+});

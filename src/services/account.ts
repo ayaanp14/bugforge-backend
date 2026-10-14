@@ -66,7 +66,7 @@ export async function buildAccountExport(userId: string): Promise<Record<string,
     enrollments, lessons, exercises, resumes, subscriptions, orders,
     notifications, shareCards, orgs, entries, tournamentSubmissions, campus, events, pushDevices, missionDays, analyses, tutorTurns, simulationRuns,
     bugEngagements, bugAnalyses, jobApplications, bugTutorTurns, honours, cohortMemberships, cohortSessions,
-    creditGrants, creditSpends,
+    creditGrants, creditSpends, redemptions,
   ] = await Promise.all([
     prisma.submission.findMany({
       where, ...newest, orderBy: { submittedAt: "desc" },
@@ -221,6 +221,8 @@ export async function buildAccountExport(userId: string): Promise<Record<string,
     // The credit wallet (lib/plans): packs bought and what each spend paid for.
     prisma.creditGrant.findMany({ where, select: { credits: true, source: true, orderId: true, createdAt: true } }),
     prisma.creditSpend.findMany({ where, ...newest, orderBy: { createdAt: "desc" }, select: { credits: true, action: true, createdAt: true } }),
+    // Goodies redeemed with points (lib/goodies) — only the ones that paid out.
+    prisma.redemption.findMany({ where: { ...where, grantId: { not: null } }, ...newest, orderBy: { createdAt: "desc" }, select: { itemId: true, points: true, credits: true, createdAt: true } }),
   ]);
 
   return {
@@ -264,7 +266,7 @@ export async function buildAccountExport(userId: string): Promise<Record<string,
     missions: missionDays,
     studyPlans: { enrollments, lessons, exercises },
     resumes,
-    billing: { subscriptions, orders, credits: { grants: creditGrants, spends: creditSpends } },
+    billing: { subscriptions, orders, credits: { grants: creditGrants, spends: creditSpends }, redemptions },
     notifications,
     pushNotifications: { devices: pushDevices },
     shareCards,
