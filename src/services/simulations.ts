@@ -1,5 +1,6 @@
 import type { Prisma } from "@prisma/client";
 import { prisma } from "../lib/prisma.js";
+import { meteredCreate } from "./entitlements.js";
 import { DEFAULT_FOCUS, SIMULATIONS, builderRoundOf, simulationBySlug, type SimRound, type Simulation } from "../lib/simulations/index.js";
 import { canOpen, formatOf, hrModeOf, readRunRounds, runView, type RunRound, type RunView, type SessionFact, type SittingFact, type StoredRun } from "../lib/simulation-run.js";
 
@@ -150,17 +151,29 @@ export async function simulationPage(userId: string | null, slug: string) {
  * Start a run, or hand back the live one: one run of a simulation at a time,
  * so a second click or a second tab does not open a parallel run.
  */
-export async function startRun(userId: string, slug: string, hrModeRaw: unknown): Promise<RunView> {
+export async function startRun(userId: string, slug: string, hrModeRaw: unknown, meter?: { email: string | null; useCredits: boolean }): Promise<RunView> {
   const sim = simulationBySlug(slug);
   if (!sim) throw new SimulationError("No such simulation.", 404);
   const existing = await prisma.simulationRun.findMany({ where: { userId, slug, endedAt: null }, orderBy: { createdAt: "desc" }, take: 5, select: RUN_SELECT });
   const facts = await factsFor(userId, existing);
   const live = liveOf(existing.map((r) => runView(sim, r, facts)));
   if (live) return live;
-  const run = await prisma.simulationRun.create({
-    data: { userId, slug, hrMode: hrModeOf(typeof hrModeRaw === "string" ? hrModeRaw : "written"), rounds: [] as unknown as Prisma.InputJsonValue },
-    select: RUN_SELECT,
+  // A new run is the metered use (1 every 2 weeks on Free, 5 a month on
+  // Pro — lib/plans); its rounds then cost nothing more (entitlements skips a
+  // simulation's setups and its assessment sitting). The live run above is
+  // handed back free.
+  const make = async (id?: string) => ({
+    created: true,
+    run: await prisma.simulationRun.create({
+      data: { ...(id ? { id } : {}), userId, slug, hrMode: hrModeOf(typeof hrModeRaw === "string" ? hrModeRaw : "written"), rounds: [] as unknown as Prisma.InputJsonValue },
+      select: RUN_SELECT,
+    }),
   });
+  const { run } = meter
+    ? await meteredCreate(userId, meter.email, "simulation", meter.useCredits, make, async (id) => {
+        await prisma.simulationRun.deleteMany({ where: { id, userId } });
+      })
+    : await make();
   return runView(sim, run, { sittings: [], sessions: [] });
 }
 
@@ -268,4 +281,29 @@ export async function runOfAttempt(userId: string, attempt: { startedAt: Date; t
     if (opened && opened.openedAt - 60_000 <= attempt.startedAt.getTime()) return { slug: sim.slug, company: sim.company, runId: run.id };
   }
   return null;
+}
+
+/**
+ * Whether a placement sitting of `testSlug` starting now is a live run's
+ * assessment round — paid for by the run's own allowance, so the
+ * placement-mock window does not count it (MockAttempt.viaSimulation).
+ *
+ * True only for the round's first sitting: the assessment must have been
+ * opened in the last three hours and no sitting of that test may have
+ * started since it opened, so the round cannot be used as a free mock again
+ * and again. Bounded reads: the account's live runs (one per company at
+ * most) and one indexed lookup.
+ */
+export async function simulationCoversSitting(userId: string, testId: string, testSlug: string): Promise<boolean> {
+  const runs = await prisma.simulationRun.findMany({ where: { userId, endedAt: null }, select: { slug: true, rounds: true }, take: 25 });
+  const since = Date.now() - 3 * 3_600_000;
+  for (const run of runs) {
+    const round = simulationBySlug(run.slug)?.rounds.find((r) => r.kind === "assessment" && r.test === testSlug);
+    if (!round) continue;
+    const opened = readRunRounds(run.rounds).find((r) => r.key === round.key)?.openedAt;
+    if (!opened || opened < since) continue;
+    const sat = await prisma.mockAttempt.findFirst({ where: { userId, testId, startedAt: { gte: new Date(opened) } }, select: { id: true } });
+    if (!sat) return true;
+  }
+  return false;
 }

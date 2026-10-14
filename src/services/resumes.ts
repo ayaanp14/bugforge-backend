@@ -462,7 +462,15 @@ export interface AnalyzeOptions {
  * editor and the analysis agree on it. One run per resume at a time: a
  * second request while one is queued or running gets the same row back.
  */
-export async function startAnalysis(userId: string, resumeId: string, options: AnalyzeOptions): Promise<AnalysisSummary> {
+/**
+ * How a new analysis row is admitted: services/entitlements meteredCreate,
+ * bound by the route to the caller's plan and their choice to spend credits.
+ * Given the row's create, it runs it within the allowance or throws a
+ * QuotaError; absent (a script, a test), the row is simply created.
+ */
+export type AnalysisGate = <T extends { created: boolean }>(create: (id: string) => Promise<T>, remove: (id: string) => Promise<void>) => Promise<T>;
+
+export async function startAnalysis(userId: string, resumeId: string, options: AnalyzeOptions, gate?: AnalysisGate): Promise<AnalysisSummary> {
   const data = targetFields(options);
   if (Object.keys(data).length) {
     const result = await prisma.resume.updateMany({ where: { id: resumeId, userId }, data });
@@ -475,19 +483,28 @@ export async function startAnalysis(userId: string, resumeId: string, options: A
   const active = await prisma.resumeAnalysis.findFirst({ where: { resumeId, userId, status: { in: ["queued", "running"] } }, select: ANALYSIS_SUMMARY_SELECT });
   if (active && !isStale(active)) return toAnalysisSummary(active);
 
-  const created = await prisma.resumeAnalysis.create({
-    data: {
-      resumeId,
-      userId,
-      status: "queued",
-      stage: "queued",
-      targetRole: resume.targetRole,
-      company: resume.company,
-      jobDescription: resume.jobDescription,
-      contentSnapshot: resume.content as Prisma.InputJsonValue,
-    },
-    select: ANALYSIS_SUMMARY_SELECT,
+  // A review already running is handed back above and costs nothing; only a
+  // new row is metered (1 a week on Free, 1 a day on Pro — lib/plans).
+  const make = async (id?: string) => ({
+    created: true,
+    row: await prisma.resumeAnalysis.create({
+      data: {
+        ...(id ? { id } : {}),
+        resumeId,
+        userId,
+        status: "queued",
+        stage: "queued",
+        targetRole: resume.targetRole,
+        company: resume.company,
+        jobDescription: resume.jobDescription,
+        contentSnapshot: resume.content as Prisma.InputJsonValue,
+      },
+      select: ANALYSIS_SUMMARY_SELECT,
+    }),
   });
+  const created = gate
+    ? (await gate(make, async (id) => void (await prisma.resumeAnalysis.deleteMany({ where: { id, userId } })))).row
+    : (await make()).row;
   trackServerEvent("resume_analysis_started", { resumeId, hasJd: Boolean(resume.jobDescription), ai: aiAvailable() }, userId);
   enqueue(created.id);
   return toAnalysisSummary(created);

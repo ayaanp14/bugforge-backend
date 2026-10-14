@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { optionalAuth, requireAuth } from "../middleware/auth.js";
+import { QuotaError } from "../services/entitlements.js";
 import { SimulationError, endRun, openRound, simulationList, simulationPage, startRun } from "../services/simulations.js";
 
 /**
@@ -19,6 +20,7 @@ const router = Router();
 
 const fail = (res: any, err: unknown) => {
   if (err instanceof SimulationError) return res.status(err.status).json({ error: err.message });
+  if (err instanceof QuotaError) return res.status(402).json(err.denial);
   throw err;
 };
 
@@ -55,7 +57,7 @@ router.get("/:slug", optionalAuth, async (req: any, res) => {
 
 router.post("/:slug/runs", requireAuth, async (req: any, res) => {
   try {
-    res.status(201).json(await startRun(req.user.userId, String(req.params.slug), req.body?.hrMode));
+    res.status(201).json(await startRun(req.user.userId, String(req.params.slug), req.body?.hrMode, { email: req.user.email, useCredits: req.body?.useCredits === true }));
   } catch (err) {
     fail(res, err);
   }

@@ -14,7 +14,8 @@ import { codingPool, questionIndex } from "../services/aptitude-bank.js";
 import { TEST_GUIDES } from "../lib/test-guides.js";
 import { testSamples } from "../services/test-samples.js";
 import { invalidateDashboard } from "../services/dashboard.js";
-import { runOfAttempt } from "../services/simulations.js";
+import { runOfAttempt, simulationCoversSitting } from "../services/simulations.js";
+import { QuotaError, meteredCreate } from "../services/entitlements.js";
 import { simulationForCompany } from "../lib/simulations/index.js";
 
 /** The company's simulation, for a pattern's pages to point at (lib/simulations): the test is its first round. */
@@ -485,10 +486,15 @@ router.post("/:slug/start", requireAuth, async (req: any, res) => {
     // exists the key collides and the existing one is handed back. That
     // replaces a transaction which locked the candidate's User row across a
     // read and a write — a mutex every other write to that user waited on.
-    const outcome = await (async () => {
+    // A company simulation's assessment round is paid for by the run; any
+    // other sitting is metered (1 every 10 days on Free, 1 every 2 days on
+    // Pro — lib/plans), or bought with credits when the member asked.
+    const viaSimulation = await simulationCoversSitting(userId, test.id, test.slug);
+    const create = async (id?: string) => {
       try {
         const attempt = await prisma.mockAttempt.create({
           data: {
+            ...(id ? { id } : {}),
             userId,
             testId: test.id,
             activeKey: activeAttemptKey(userId, test.id),
@@ -496,11 +502,12 @@ router.post("/:slug/start", requireAuth, async (req: any, res) => {
             expiresAt,
             sectionEndsAt,
             currentSection: 0,
+            viaSimulation,
             paper: paper as any,
           },
           select: { id: true },
         });
-        return { attemptId: attempt.id, resumed: false };
+        return { created: true, value: { attemptId: attempt.id, resumed: false } as { attemptId: string; resumed: boolean } | null };
       } catch (err) {
         if (!isDuplicateKey(err)) throw err;
         const running = await prisma.mockAttempt.findFirst({
@@ -510,10 +517,22 @@ router.post("/:slug/start", requireAuth, async (req: any, res) => {
         // The row must be there — the key that collided is its own — but if a
         // close landed in the very same moment, say so rather than inventing
         // an attempt id.
-        if (!running) return null;
-        return { attemptId: running.id, resumed: true };
+        return { created: false, value: running ? { attemptId: running.id, resumed: true } : null };
       }
-    })();
+    };
+    let outcome: { attemptId: string; resumed: boolean } | null;
+    try {
+      outcome = viaSimulation
+        ? (await create()).value
+        : (
+            await meteredCreate(userId, req.user.email, "placementMock", req.body?.useCredits === true, create, async (id) => {
+              await prisma.mockAttempt.deleteMany({ where: { id, userId } });
+            })
+          ).value;
+    } catch (err) {
+      if (err instanceof QuotaError) return res.status(402).json(err.denial);
+      throw err;
+    }
     if (!outcome) {
       return res.status(409).json({ error: "That sitting just ended. Start it again." });
     }

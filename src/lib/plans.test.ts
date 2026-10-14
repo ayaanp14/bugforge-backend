@@ -1,7 +1,28 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 
-import { FREE_FOR_ALL_UNTIL, FREE_PLAN, LIFTED_ENTITLEMENTS, OWNER_PLAN, PLANS, freeForAll, isOwnerEmail, isPaidPlan, periodEnd, planFor, priceOf, withFreeForAll } from "./plans.js";
+import {
+  CREDIT_COSTS,
+  CREDIT_PACKS,
+  FREE_FOR_ALL_UNTIL,
+  FREE_PLAN,
+  LIFTED_ENTITLEMENTS,
+  METERED_ACTIONS,
+  OWNER_PLAN,
+  PLANS,
+  PLAN_OFFERS,
+  allowanceLabel,
+  creditPackFor,
+  freeForAll,
+  isOwnerEmail,
+  isPaidPlan,
+  offerFor,
+  periodEnd,
+  planFor,
+  planOfSubscription,
+  tierOf,
+  withFreeForAll,
+} from "./plans.js";
 import { dayStart, weekStart } from "../services/entitlements.js";
 
 /**
@@ -11,22 +32,59 @@ import { dayStart, weekStart } from "../services/entitlements.js";
  */
 
 describe("plan catalogue", () => {
-  it("prices the paid tiers exactly as agreed", () => {
-    assert.equal(planFor("starter").monthly, 199);
-    assert.equal(planFor("pro").monthly, 399);
-    assert.equal(planFor("elite").monthly, 799);
-    assert.equal(FREE_PLAN.monthly, 0);
+  it("sells Pro, the passes and the credit packs at exactly the agreed prices (2026-10-15)", () => {
+    const price = (id: string) => PLAN_OFFERS.find((o) => o.id === id)?.price;
+    assert.equal(price("pro-monthly"), 149);
+    assert.equal(price("pro-quarterly"), 399);
+    assert.equal(price("pro-yearly"), 999);
+    assert.equal(price("max-monthly"), 399);
+    assert.equal(price("max-quarterly"), 999);
+    assert.equal(price("max-yearly"), 2999);
+    assert.equal(offerFor("max-yearly")!.bonusCredits, 600);
+    assert.equal(price("sprint"), 99);
+    assert.equal(price("season"), 699);
+    assert.deepEqual(
+      CREDIT_PACKS.map((p) => [p.id, p.price, p.credits]),
+      [
+        ["credits-100", 99, 100],
+        ["credits-300", 249, 300],
+        ["credits-700", 499, 700],
+      ],
+    );
+    assert.deepEqual(CREDIT_COSTS, { resumeAnalysis: 10, placementMock: 20, writtenInterview: 15, voiceInterview: 40, simulation: 60 });
   });
 
-  it("gives two free months on a yearly plan", () => {
-    for (const plan of PLANS.filter((p) => p.monthly > 0)) {
-      assert.equal(plan.yearly, plan.monthly * 10, `${plan.id} yearly should be ten months`);
-    }
+  it("makes a longer commitment cheaper per month, so the ladder reads right", () => {
+    const perMonth = (id: string) => {
+      const o = offerFor(id)!;
+      return o.price / (o.months ?? 1);
+    };
+    assert.ok(perMonth("pro-quarterly") < perMonth("pro-monthly"));
+    assert.ok(perMonth("pro-yearly") < perMonth("pro-quarterly"));
+    assert.ok(perMonth("season") < perMonth("pro-monthly"));
+    assert.ok(perMonth("max-quarterly") < perMonth("max-monthly"));
+    assert.ok(perMonth("max-yearly") < perMonth("max-quarterly"));
   });
 
-  it("offers exactly four tiers, one of them free", () => {
-    assert.equal(PLANS.length, 4);
-    assert.equal(PLANS.filter((p) => p.monthly === 0).length, 1);
+  it("lists Free, Pro and Pro Max; the old Starter and Elite resolve but cannot be bought", () => {
+    assert.deepEqual(PLANS.map((p) => p.id), ["free", "pro", "max"]);
+    assert.equal(isPaidPlan("max"), true);
+    assert.ok(tierOf("max") > tierOf("pro") && tierOf("elite") > tierOf("max"));
+    assert.equal(planFor("starter").name, "Starter");
+    assert.equal(planFor("elite").name, "Elite");
+    assert.equal(isPaidPlan("starter"), false);
+    assert.equal(isPaidPlan("elite"), false);
+    assert.equal(isPaidPlan("pro"), true);
+    assert.ok(tierOf("elite") > tierOf("pro"));
+    assert.equal(tierOf("starter"), tierOf("pro"));
+  });
+
+  it("keeps Pro as it was sold for a subscription bought before 15 October 2026", () => {
+    assert.deepEqual(planOfSubscription("pro", "monthly").entitlements.allowances.voiceInterview, { limit: 20, days: 7 });
+    assert.deepEqual(planOfSubscription("pro", "yearly").entitlements.allowances.voiceInterview, { limit: 20, days: 7 });
+    assert.deepEqual(planOfSubscription("pro", "pro-monthly").entitlements.allowances.voiceInterview, { limit: 8, days: 30 });
+    assert.deepEqual(planOfSubscription("pro", "season").entitlements.allowances.voiceInterview, { limit: 8, days: 30 });
+    assert.equal(planOfSubscription("elite", "monthly").entitlements.allowances.voiceInterview.limit, null);
   });
 
   it("treats an unknown or missing plan id as free, never as paid", () => {
@@ -34,75 +92,63 @@ describe("plan catalogue", () => {
     assert.equal(planFor(null).id, "free");
     assert.equal(planFor(undefined).id, "free");
     assert.equal(planFor("").id, "free");
-  });
-
-  it("refuses to sell the free tier", () => {
     assert.equal(isPaidPlan("free"), false);
     assert.equal(isPaidPlan("nonsense"), false);
-    assert.equal(isPaidPlan("starter"), true);
-  });
-
-  it("charges the catalogue price for the period asked for", () => {
-    const pro = planFor("pro");
-    assert.equal(priceOf(pro, "monthly"), 399);
-    assert.equal(priceOf(pro, "yearly"), 3990);
+    assert.equal(offerFor("pro-weekly"), null);
+    assert.equal(creditPackFor("credits-1"), null);
   });
 });
 
-describe("free tier entitlements", () => {
-  it("matches what free was promised", () => {
-    const free = FREE_PLAN.entitlements;
-    assert.equal(free.interviewsPerWeek, 2);
-    assert.equal(free.bugsPerDay, 1);
-    assert.deepEqual(free.voiceDurationsMin, [10]);
-    // Unlimited, on every plan including this one.
-    assert.equal(free.problemsPerDay, null);
-    assert.equal(free.duelsPerDay, null);
+describe("allowances", () => {
+  it("gives Free exactly what the owner set", () => {
+    const a = FREE_PLAN.entitlements.allowances;
+    assert.deepEqual(a.resumeAnalysis, { limit: 1, days: 7 });
+    assert.deepEqual(a.placementMock, { limit: 1, days: 10 });
+    assert.deepEqual(a.writtenInterview, { limit: 1, days: 7 });
+    assert.deepEqual(a.voiceInterview, { limit: 1, days: 10 });
+    assert.deepEqual(a.simulation, { limit: 1, days: 14 });
+    assert.deepEqual(FREE_PLAN.entitlements.skillTestLevels, ["basic"]);
+    assert.equal(FREE_PLAN.entitlements.resumeExport, false);
   });
 
-  it("never restricts problems or duels on any plan", () => {
+  it("gives Pro exactly what the owner set, voice capped even there", () => {
+    const a = planFor("pro").entitlements.allowances;
+    assert.deepEqual(a.resumeAnalysis, { limit: 1, days: 1 });
+    assert.deepEqual(a.placementMock, { limit: 1, days: 2 });
+    assert.equal(a.writtenInterview.limit, null);
+    assert.deepEqual(a.voiceInterview, { limit: 8, days: 30 });
+    assert.deepEqual(a.simulation, { limit: 5, days: 30 });
+    assert.equal(planFor("pro").entitlements.skillTestLevels, null);
+  });
+
+  it("never gives a higher plan less than a lower one, per day of window", () => {
+    for (const action of METERED_ACTIONS) {
+      const rate = (id: string) => {
+        const { limit, days } = planFor(id).entitlements.allowances[action];
+        return limit === null ? Number.POSITIVE_INFINITY : limit / days;
+      };
+      assert.ok(rate("pro") >= rate("free"), action);
+      assert.ok(rate("max") >= rate("pro"), action);
+    }
+  });
+
+  it("never restricts problems, duels or bug hunts on any plan", () => {
     for (const plan of PLANS) {
       assert.equal(plan.entitlements.problemsPerDay, null, `${plan.id} problems`);
       assert.equal(plan.entitlements.duelsPerDay, null, `${plan.id} duels`);
-    }
-  });
-});
-
-describe("entitlement ladder", () => {
-  const order = ["free", "starter", "pro", "elite"];
-
-  it("never decreases as the price increases", () => {
-    let previousInterviews = -1;
-    let previousBugs = -1;
-    let previousDurations = 0;
-
-    for (const id of order) {
-      const e = planFor(id).entitlements;
-      // null is unlimited, which is the top of the ladder.
-      const interviews = e.interviewsPerWeek ?? Number.POSITIVE_INFINITY;
-      const bugs = e.bugsPerDay ?? Number.POSITIVE_INFINITY;
-
-      assert.ok(interviews >= previousInterviews, `${id} interviews went backwards`);
-      assert.ok(bugs >= previousBugs, `${id} bugs went backwards`);
-      assert.ok(e.voiceDurationsMin.length >= previousDurations, `${id} durations went backwards`);
-
-      previousInterviews = interviews;
-      previousBugs = bugs;
-      previousDurations = e.voiceDurationsMin.length;
-    }
-  });
-
-  it("only lifts every limit on the top tier", () => {
-    const elite = planFor("elite").entitlements;
-    assert.equal(elite.interviewsPerWeek, null);
-    assert.equal(elite.bugsPerDay, null);
-    assert.deepEqual(elite.voiceDurationsMin, [10, 20, 30]);
-  });
-
-  it("includes the ten minute round on every plan, so free is never locked out", () => {
-    for (const plan of PLANS) {
+      assert.equal(plan.entitlements.bugsPerDay, null, `${plan.id} bugs`);
       assert.ok(plan.entitlements.voiceDurationsMin.includes(10), `${plan.id} lost the 10 min round`);
     }
+  });
+
+  it("words each window the way the pricing page prints it", () => {
+    assert.equal(allowanceLabel({ limit: 1, days: 7 }), "1 a week");
+    assert.equal(allowanceLabel({ limit: 1, days: 10 }), "1 every 10 days");
+    assert.equal(allowanceLabel({ limit: 1, days: 14 }), "1 every 2 weeks");
+    assert.equal(allowanceLabel({ limit: 1, days: 1 }), "1 a day");
+    assert.equal(allowanceLabel({ limit: 1, days: 2 }), "1 every 2 days");
+    assert.equal(allowanceLabel({ limit: 8, days: 30 }), "8 a month");
+    assert.equal(allowanceLabel({ limit: null, days: 30 }), "Unlimited");
   });
 });
 
@@ -126,6 +172,15 @@ describe("periodEnd", () => {
   it("adds a year for a yearly period", () => {
     const end = periodEnd(new Date("2026-05-10T00:00:00Z"), "yearly");
     assert.equal(end.getFullYear(), 2027);
+  });
+
+  it("runs each offer for its own length", () => {
+    const from = new Date("2026-10-15T10:00:00Z");
+    assert.equal(periodEnd(from, "sprint").toISOString(), "2026-10-22T10:00:00.000Z");
+    assert.equal(periodEnd(from, "pro-quarterly").getMonth(), 0); // January
+    assert.equal(periodEnd(from, "season").getMonth(), 3); // April
+    assert.equal(periodEnd(from, "pro-yearly").getFullYear(), 2027);
+    assert.equal(periodEnd(from, "pro-monthly").getMonth(), periodEnd(from, "monthly").getMonth());
   });
 
   it("extends from the date given, so renewing early does not lose time", () => {
@@ -181,7 +236,7 @@ describe("owner accounts", () => {
 
   it("has no ceilings and cannot be bought or listed", () => {
     const e = OWNER_PLAN.entitlements;
-    assert.equal(e.interviewsPerWeek, null);
+    for (const action of METERED_ACTIONS) assert.equal(e.allowances[action].limit, null, action);
     assert.equal(e.bugsPerDay, null);
     assert.equal(e.problemsPerDay, null);
     assert.equal(e.duelsPerDay, null);
@@ -215,15 +270,11 @@ describe("free-for-all period", () => {
       const lifted = withFreeForAll(plan, before);
       assert.equal(lifted.id, plan.id);
       assert.equal(lifted.name, plan.name);
-      assert.equal(lifted.monthly, plan.monthly);
-      assert.equal(lifted.yearly, plan.yearly);
       assert.deepEqual(lifted.entitlements, LIFTED_ENTITLEMENTS, `${plan.id} lifted`);
-      assert.equal(lifted.entitlements.interviewsPerWeek, null);
-      assert.equal(lifted.entitlements.bugsPerDay, null);
       assert.deepEqual(lifted.entitlements.voiceDurationsMin, [10, 20, 30]);
     }
     // The table itself is untouched: the pricing page still lists Free's real limits.
-    assert.equal(FREE_PLAN.entitlements.interviewsPerWeek, 2);
+    assert.deepEqual(FREE_PLAN.entitlements.allowances.placementMock, { limit: 1, days: 10 });
   });
 
   it("hands the plan back unchanged once the period is over, and never touches the owner plan", () => {

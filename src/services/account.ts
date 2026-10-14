@@ -66,6 +66,7 @@ export async function buildAccountExport(userId: string): Promise<Record<string,
     enrollments, lessons, exercises, resumes, subscriptions, orders,
     notifications, shareCards, orgs, entries, tournamentSubmissions, campus, events, pushDevices, missionDays, analyses, tutorTurns, simulationRuns,
     bugEngagements, bugAnalyses, jobApplications, bugTutorTurns, honours, cohortMemberships, cohortSessions,
+    creditGrants, creditSpends,
   ] = await Promise.all([
     prisma.submission.findMany({
       where, ...newest, orderBy: { submittedAt: "desc" },
@@ -217,6 +218,9 @@ export async function buildAccountExport(userId: string): Promise<Record<string,
       where: { startedBy: userId }, ...newest, orderBy: { startedAt: "desc" },
       select: { startedAt: true, cohort: { select: { name: true } }, room: { select: { problem: { select: { slug: true } } } } },
     }),
+    // The credit wallet (lib/plans): packs bought and what each spend paid for.
+    prisma.creditGrant.findMany({ where, select: { credits: true, source: true, orderId: true, createdAt: true } }),
+    prisma.creditSpend.findMany({ where, ...newest, orderBy: { createdAt: "desc" }, select: { credits: true, action: true, createdAt: true } }),
   ]);
 
   return {
@@ -260,7 +264,7 @@ export async function buildAccountExport(userId: string): Promise<Record<string,
     missions: missionDays,
     studyPlans: { enrollments, lessons, exercises },
     resumes,
-    billing: { subscriptions, orders },
+    billing: { subscriptions, orders, credits: { grants: creditGrants, spends: creditSpends } },
     notifications,
     pushNotifications: { devices: pushDevices },
     shareCards,

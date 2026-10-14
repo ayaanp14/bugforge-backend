@@ -1,3 +1,4 @@
+import { QuotaError, meteredCreate, requireFeature } from "../services/entitlements.js";
 import express, { Router, type NextFunction, type Request, type Response } from "express";
 import { requireAuth } from "../middleware/auth.js";
 import { browserCache } from "../lib/http-cache.js";
@@ -70,6 +71,12 @@ const router = Router();
 type Authed = Request & { user: { userId: string; email: string } };
 
 function handleResumeError(err: unknown, res: Response, next: NextFunction): void {
+  // A plan limit: the denial carries the next free date and the credit
+  // offer the client turns into its "use credits" choice.
+  if (err instanceof QuotaError) {
+    res.status(402).json(err.denial);
+    return;
+  }
   if (err instanceof ResumeError || err instanceof ResumeFileError) {
     res.status(err.status).json({ error: err.message });
     return;
@@ -189,11 +196,16 @@ router.post(
   resumeAiLimiter,
   wrap(async (req, res) => {
     const body = (req.body ?? {}) as Record<string, unknown>;
-    const analysis = await startAnalysis(req.user.userId, String(req.params["id"]), {
-      targetRole: strOrNull(body["targetRole"]),
-      company: strOrNull(body["company"]),
-      jobDescription: strOrNull(body["jobDescription"]),
-    });
+    const analysis = await startAnalysis(
+      req.user.userId,
+      String(req.params["id"]),
+      {
+        targetRole: strOrNull(body["targetRole"]),
+        company: strOrNull(body["company"]),
+        jobDescription: strOrNull(body["jobDescription"]),
+      },
+      (create, remove) => meteredCreate(req.user.userId, req.user.email, "resumeAnalysis", body["useCredits"] === true, create, remove),
+    );
     res.status(202).json({ analysis });
   }),
 );
@@ -297,6 +309,7 @@ router.post(
   resumeAiLimiter,
   wrap(async (req, res) => {
     const body = (req.body ?? {}) as Record<string, unknown>;
+    await requireFeature(req.user.userId, req.user.email, (plan) => plan.entitlements.resumeOptimize, "Whole-resume AI optimisation");
     res.json({ suggestions: await optimizeFor(req.user.userId, String(req.params["id"]), str(body["section"]) ?? null) });
   }),
 );
@@ -327,6 +340,7 @@ router.post(
 router.get(
   "/:id/export",
   wrap(async (req, res) => {
+    await requireFeature(req.user.userId, req.user.email, (plan) => plan.entitlements.resumeExport, "Downloading the resume as PDF or DOCX");
     const format = str(req.query["format"]) === "docx" ? "docx" : "pdf";
     const versionId = str(req.query["version"]);
     const id = String(req.params["id"]);

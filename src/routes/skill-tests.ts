@@ -1,3 +1,4 @@
+import { activePlan } from "../services/entitlements.js";
 import { Router, type RequestHandler } from "express";
 import { prisma } from "../lib/prisma.js";
 import { isDuplicateKey } from "../lib/seat-claim.js";
@@ -502,6 +503,21 @@ router.post("/:slug/start", requireAuth, async (req, res) => {
   // Laptop or desktop only: the webcam proctor and full screen need one.
   if (isMobileClient(req.headers)) {
     return res.status(403).json({ error: "Skill tests can only be taken on a laptop or desktop computer.", reason: "device" });
+  }
+
+  // Free sits the Basic level; Intermediate is part of Pro (lib/plans
+  // skillTestLevels). Asked before the cooldown so the refusal names the plan.
+  const { plan } = await activePlan(userId, req.user!.email);
+  const levels = plan.entitlements.skillTestLevels;
+  if (levels !== null && !levels.includes(test.level)) {
+    return res.status(402).json({
+      error: `The ${test.level} level is part of Pro. Free includes every ${levels.join(" and ")} level test.`,
+      reason: "plan_required",
+      limit: null,
+      used: 0,
+      planId: plan.id,
+      upgrade: true,
+    });
   }
 
   const recent = await prisma.skillAttempt.findMany({

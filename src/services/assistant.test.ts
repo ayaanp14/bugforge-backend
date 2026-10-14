@@ -80,7 +80,7 @@ const QUESTIONS: Array<[string, RegExp, string?]> = [
   ["is there a dark mode", /dark mode toggle/],
   ["how is my streak counted", /counted in Indian time/],
   ["my streak broke yesterday why", /lapsed streak/],
-  ["how many mock interviews do I get per week", /mock interviews (per|a) week/],
+  ["how many mock interviews do I get per week", /written AI interviews: 1 a week/],
   ["does an abandoned interview count against my allowance", /abandoned before any answer costs nothing/],
   ["how many questions are in a written interview", /7 questions/],
   ["can the voice interviewer speak hindi", /Hinglish/],
@@ -101,7 +101,7 @@ const QUESTIONS: Array<[string, RegExp, string?]> = [
   ["how is time penalty counted in the daily contest", /5 minutes per wrong submission/],
   ["do I get xp for solving the daily contest", /Every solver of the day gets \*\*20 XP\*\*/],
   ["what do the fastest solvers of the daily contest win", /\*\*fastest\*\* on the day's board gets \*\*\+15\*\*/],
-  ["how does the bug hunt daily limit work", /distinct hunts submitted per IST day/],
+  ["is there a daily limit on bug hunts", /No daily cap/],
   ["how much xp for fixing a bug", /\*\*50 XP\*\*/],
   ["can I practice with a friend live", /2 to 4 people/],
   ["who gets credit when we submit in a pair room", /Submissions credit the host/],
@@ -119,8 +119,8 @@ const QUESTIONS: Array<[string, RegExp, string?]> = [
   ["does codekairo store my github token", /keeps no GitHub token/],
   ["can other people see my profile", /Public profile — `\/u\/<username>`/],
   ["can someone else see the code I submitted", /the \*\*code\*\* of any submission/],
-  ["will my subscription auto renew", /No auto-renewal/],
-  ["what happens if I upgrade in the middle of a plan", /\*\*Upgrading\*\*/],
+  ["will my subscription auto renew", /no auto-renewal/],
+  ["what happens if I buy pro again while my plan is running", /\*\*Buying while a plan runs\*\*/],
   ["can I post a poll in the community", /\*\*poll\*\* \(2–4 options/],
   ["what time does the streak reminder come", /18:00 and 20:00 IST/],
   ["does the site work on my phone", /web app/],
@@ -154,7 +154,7 @@ const QUESTIONS: Array<[string, RegExp, string?]> = [
   ["what is a company simulation", /a company's whole process practised as one run/],
   ["can I give my drive date when I answer what I'm preparing for", /\*\*When is your drive or interview\?\*\*/],
   ["what is the Try item in my mission", /one item named \*\*Try\*\* may appear for something you have never used/],
-  ["does a simulation count toward my weekly interview limit", /every interview round counts toward your weekly interview allowance like any other/],
+  ["does a simulation count toward my interview limit", /its assessment and interview rounds then cost nothing more/],
   ["how are my interview skills measured", /\*\*Interviews\*\* is your mock-interview answers by the kind of question/],
   ["why is there a TCS mock in today's mission", /the company's mock test \(on a day of 2 hours or more/],
   ["how does the tutor work", /answers at one of seven rungs and never above it/],
@@ -178,11 +178,11 @@ const QUESTIONS: Array<[string, RegExp, string?]> = [
   ["what does Likely mean in the failure explanation", /\*\*Likely\*\* \(a reading of it\)/],
   // Follow-ups: the answer is only reachable through the previous question.
   ["how long does it last?", /expires after \*\*2 hours\*\*/, "how do private duel rooms work"],
-  ["and elite?", /\*\*Elite\*\* — /, "how much does the pro plan cost"],
+  ["and the season pass?", /\*\*Placement Season Pass\*\*: ₹699/, "how much does the pro plan cost"],
   ["what about points?", /easy 3, medium 4, hard 5/, "how does the daily contest work"],
   ["can I choose the voice?", /Kate/, "tell me about the voice interview"],
   ["is it free?", /free on every plan/, "how do study plans work"],
-  ["how many do I get on free?", /\*\*Free\*\* — free/, "how do bonus interviews work"],
+  ["how many do I get on free?", /\*\*Free\*\* — Practise every day/, "how do bonus interviews work"],
   ["what if I refresh?", /refresh or a dropped connection costs nothing/, "how long can a duel go on"],
   // Topic switches: a previous question about something else must not crowd out the new one.
   ["is there a dark mode", /dark mode toggle/, "how much does the pro plan cost per month"],
@@ -218,7 +218,7 @@ test("a question with no words of its own leans on the previous one", () => {
 });
 
 test("follow-ups are told apart from new questions", () => {
-  for (const q of ["and elite?", "what about points?", "how long does it last?", "is it free?", "Also, can I pause?", "what if I refresh?"]) {
+  for (const q of ["and the season pass?", "what about points?", "how long does it last?", "is it free?", "Also, can I pause?", "what if I refresh?"]) {
     assert.equal(isFollowUp(q), true, q);
   }
   for (const q of ["is there a dark mode", "how do I reset my password", "what happens to my streak if I miss a day and then solve two problems"]) {

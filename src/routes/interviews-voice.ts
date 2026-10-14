@@ -53,7 +53,11 @@ type Guarded = {
     startedAt: Date | null;
     durationLimitSec: number | null;
     voiceState: unknown;
+    /** lib/plans credits the round was opened on (charged once sat). */
+    creditCost: number | null;
     savedInterview: {
+      /** Set when the round is a company simulation's: the run paid for it. */
+      simulationRunId: string | null;
       roleId: string;
       roundId: string;
       difficulty: string | null;
@@ -74,8 +78,10 @@ const GUARD_SELECT = {
   startedAt: true,
   durationLimitSec: true,
   voiceState: true,
+  creditCost: true,
   savedInterview: {
     select: {
+      simulationRunId: true,
       roleId: true,
       roundId: true,
       difficulty: true,
@@ -278,14 +284,23 @@ router.post("/session/:sessionId/voice/session", requireAuth, async (req: any, r
     // take the stamp back if the round does not fit. `onCredit` is decided
     // now too, so the round spends whichever allowance it is actually sat on.
     if (!session.startedAt) {
-      const quota = await checkInterviewQuota(req.user.userId, req.user.email);
+      // A round of a company simulation is the run's; one opened on credits
+      // was priced at /start and is charged by satRoundFits once stamped.
+      const simulation = Boolean(session.savedInterview.simulationRunId);
+      const quota =
+        session.creditCost === null
+          ? await checkInterviewQuota(req.user.userId, req.user.email, "voice", { simulation })
+          : { denial: null, onCredit: false };
       if (quota.denial) return res.status(402).json(quota.denial);
       const stamp = await prisma.mockInterviewSession.updateMany({
         where: { id: session.id, startedAt: null },
         data: { startedAt: new Date(), onCredit: quota.onCredit },
       });
       claimedStart = stamp.count === 1;
-      if (claimedStart && !(await satRoundFits(req.user.userId, req.user.email, quota.onCredit))) {
+      if (
+        claimedStart &&
+        !(await satRoundFits(req.user.userId, req.user.email, { id: session.id, mode: "voice", onCredit: quota.onCredit, creditCost: session.creditCost, simulation }))
+      ) {
         await prisma.mockInterviewSession.updateMany({ where: { id: session.id }, data: { startedAt: null } });
         return res.status(402).json(SAT_ROUND_REFUSAL);
       }

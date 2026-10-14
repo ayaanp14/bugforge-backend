@@ -3,13 +3,16 @@ import crypto from "node:crypto";
 import { prisma } from "../lib/prisma.js";
 import { requireAuth } from "../middleware/auth.js";
 import {
+  CREDIT_COSTS,
+  CREDIT_PACKS,
+  CREDITS_PRODUCT,
   PLANS,
+  PLAN_OFFERS,
+  creditPackFor,
   freeForAll,
-  isPaidPlan,
+  offerFor,
   planFor,
-  priceOf,
   tierOf,
-  type BillingPeriod,
 } from "../lib/plans.js";
 import { applyWebhookEvent, grantAccess } from "../services/billing.js";
 import { trackServerEvent } from "../lib/telemetry.js";
@@ -37,35 +40,48 @@ const router = Router();
 
 const FRONTEND_URL = (process.env["FRONTEND_URL"] ?? "http://localhost:3000").replace(/\/+$/, "");
 
-function asPeriod(value: unknown): BillingPeriod {
-  return value === "yearly" ? "yearly" : "monthly";
+/**
+ * What a checkout body asks for, as the catalogue's own entry — never a
+ * price. `{ offerId }` is a plan or a pass, `{ packId }` a credit pack; an
+ * older client's `{ planId: "pro", period }` is read as the Pro offer of
+ * that period. Anything else is null and refused.
+ */
+function productOf(body: any): { planId: string; period: string; amount: number; credits: number | null } | null {
+  const pack = creditPackFor(body?.packId);
+  if (pack) return { planId: CREDITS_PRODUCT, period: pack.id, amount: pack.price, credits: pack.credits };
+  const offer = offerFor(body?.offerId ?? (body?.planId === "pro" ? (body?.period === "yearly" ? "pro-yearly" : "pro-monthly") : null));
+  if (offer) return { planId: offer.planId, period: offer.id, amount: offer.price, credits: null };
+  return null;
 }
 
 /* ── catalogue ─────────────────────────────────────────────────────────── */
 
 /**
  * @route   GET /api/billing/plans
- * @desc    The pricing table. Public — it is a marketing page.
+ * @desc    The catalogue. Public. The pricing page draws its own generated
+ *          copy (frontend content/plans.ts) and reads this only for
+ *          `checkoutEnabled` and the free-for-all flag; kept whole for any
+ *          other client.
  * @access  Public
- *
- * The catalogue is a constant and `checkoutEnabled` a deployment setting, so
- * the browser may keep its copy for a while — the free-for-all flag flips
- * once, and five minutes late is fine.
  */
 router.get("/plans", browserCache(300, { shared: true }), (_req, res) => {
   res.json({
     plans: PLANS,
+    offers: PLAN_OFFERS,
+    creditPacks: CREDIT_PACKS,
+    creditCosts: CREDIT_COSTS,
     currency: "INR",
     /** False when no keys are set: the UI then shows plans without checkout. */
     checkoutEnabled: isConfigured(),
-    /** While active, every plan's limits are lifted for everyone and checkout is refused (lib/plans). */
+    /** While active, every plan's limits are lifted for everyone (lib/plans). */
     freeForAll: freeForAll(),
   });
 });
 
 /**
  * @route   GET /api/billing/me
- * @desc    The caller's plan, what it allows, and what they have used
+ * @desc    The caller's plan, every allowance as it stands (used, left, when
+ *          the next free one opens), the credit wallet and bonus rounds
  * @access  Private
  */
 router.get("/me", requireAuth, async (req: any, res) => {
@@ -76,24 +92,11 @@ router.get("/me", requireAuth, async (req: any, res) => {
       planName: entitlement.plan.name,
       entitlements: entitlement.plan.entitlements,
       currentPeriodEnd: entitlement.currentPeriodEnd,
-      usage: entitlement.usage,
+      allowances: entitlement.usage.allowances,
+      credits: entitlement.usage.credits,
+      /** Bonus rounds from the roadmap's chests, spent only once the interview allowance is. */
+      bonusInterviews: entitlement.usage.interviewCredits,
       freeForAll: entitlement.freeForAll,
-      remaining: {
-        interviewsThisWeek:
-          entitlement.plan.entitlements.interviewsPerWeek === null
-            ? null
-            : Math.max(0, entitlement.plan.entitlements.interviewsPerWeek - entitlement.usage.interviewsThisWeek),
-        /** Bonus rounds from the roadmap's chests, spent only once the allowance above is. */
-        bonusInterviews: entitlement.usage.interviewCredits,
-        assistantMessagesToday:
-          entitlement.plan.entitlements.assistantMessagesPerDay === null
-            ? null
-            : Math.max(0, entitlement.plan.entitlements.assistantMessagesPerDay - entitlement.usage.assistantMessagesToday),
-        bugsToday:
-          entitlement.plan.entitlements.bugsPerDay === null
-            ? null
-            : Math.max(0, entitlement.plan.entitlements.bugsPerDay - entitlement.usage.bugsToday),
-      },
     });
   } catch (error: any) {
     console.error("[billing] entitlement lookup failed:", error?.message);
@@ -104,35 +107,26 @@ router.get("/me", requireAuth, async (req: any, res) => {
 /* ── checkout ──────────────────────────────────────────────────────────── */
 
 /**
- * @route   POST /api/billing/checkout
- * @desc    Open a Cashfree order for a plan and return its session id
+ * @route   POST /api/billing/checkout   { offerId } | { packId }
+ * @desc    Open a Cashfree order for a plan, a pass or a credit pack and
+ *          return its session id
  * @access  Private
  *
  * The price comes from the catalogue, never from the request. A client that
- * posts `{ planId: "elite", amount: 1 }` gets charged the catalogue price for
- * elite, because `amount` is not read at all.
+ * posts `{ offerId: "pro-yearly", amount: 1 }` gets charged the catalogue
+ * price, because `amount` is not read at all.
  */
 router.post("/checkout", requireAuth, async (req: any, res) => {
   try {
-    const planId = String(req.body?.planId ?? "");
-    const period = asPeriod(req.body?.period);
-
-    if (!isPaidPlan(planId)) {
-      return res.status(400).json({ error: "That plan cannot be purchased." });
-    }
+    const product = productOf(req.body);
+    if (!product) return res.status(400).json({ error: "That cannot be purchased." });
 
     // Checkout stays open during the free-for-all period (the owner's call,
-    // 2026-10-12, once the live Cashfree account was approved): nobody needs
-    // a plan until it ends, but anyone who wants to pay may, and the plan
-    // runs from the day the payment is confirmed like any other.
-
+    // 2026-10-12): nobody needs a plan until it ends, but anyone who wants
+    // to pay may, and the plan runs from the payment like any other.
     if (!isConfigured()) {
       return res.status(503).json({ error: "Payments are not configured on this deployment." });
     }
-
-    const plan = planFor(planId);
-    const amount = priceOf(plan, period);
-    if (amount <= 0) return res.status(400).json({ error: "That plan cannot be purchased." });
 
     const user = await prisma.user.findUnique({
       where: { id: req.user.userId },
@@ -140,22 +134,25 @@ router.post("/checkout", requireAuth, async (req: any, res) => {
     });
     if (!user) return res.status(404).json({ error: "Account not found" });
 
-    // A running higher plan is not replaced by a lesser one. grantAccess
-    // cancels whatever is active when a different plan is paid for, with no
-    // proration — so a Pro subscriber who clicked Starter by mistake would
-    // have paid to lose what they had. Renewing the same plan, or moving up,
-    // is fine; moving down waits until the current period ends.
-    const running = await prisma.subscription.findFirst({
-      where: { userId: user.id, status: "active", currentPeriodEnd: { gt: new Date() } },
-      orderBy: { currentPeriodEnd: "desc" },
-      select: { planId: true, currentPeriodEnd: true },
-    });
-    if (running && tierOf(plan.id) < tierOf(running.planId)) {
-      return res.status(409).json({
-        error: `You are on ${planFor(running.planId).name} until ${running.currentPeriodEnd.toDateString()}. A lower plan can be chosen once it ends.`,
-        currentPlanId: running.planId,
-        currentPeriodEnd: running.currentPeriodEnd,
+    // A lower plan is not sold while a higher one runs: it would tick away
+    // underneath unused (grantAccess pauses a lower plan only when a higher
+    // one is bought on top of it, not the other way round). The highest live
+    // row decides — a Pro paused under a Pro Max ends later than the Max.
+    // Credits sit beside any plan.
+    if (product.credits === null) {
+      const live = await prisma.subscription.findMany({
+        where: { userId: user.id, status: "active", currentPeriodEnd: { gt: new Date() } },
+        select: { planId: true, currentPeriodEnd: true },
+        take: 10,
       });
+      const running = [...live].sort((a, b) => tierOf(b.planId) - tierOf(a.planId))[0];
+      if (running && tierOf(product.planId) < tierOf(running.planId)) {
+        return res.status(409).json({
+          error: `You are on ${planFor(running.planId).name} until ${running.currentPeriodEnd.toDateString()}. ${planFor(product.planId).name} can be bought once it ends.`,
+          currentPlanId: running.planId,
+          currentPeriodEnd: running.currentPeriodEnd,
+        });
+      }
     }
 
     // Our id, not the gateway's: the row exists before the gateway is told
@@ -167,9 +164,9 @@ router.post("/checkout", requireAuth, async (req: any, res) => {
       data: {
         id: orderId,
         userId: user.id,
-        planId: plan.id,
-        period,
-        amount,
+        planId: product.planId,
+        period: product.period,
+        amount: product.amount,
         currency: "INR",
         status: "created",
       },
@@ -177,7 +174,7 @@ router.post("/checkout", requireAuth, async (req: any, res) => {
 
     const created = await createOrder({
       orderId,
-      amount,
+      amount: product.amount,
       currency: "INR",
       customer: { id: user.id, name: user.name, email: user.email, phone: null },
       returnUrl: `${FRONTEND_URL}/pricing?order=${orderId}`,
@@ -188,16 +185,16 @@ router.post("/checkout", requireAuth, async (req: any, res) => {
       data: { paymentSessionId: created.paymentSessionId },
     });
 
-    trackServerEvent("checkout_order_created", { planId: plan.id, period, amount }, user.id);
+    trackServerEvent("checkout_order_created", { planId: product.planId, period: product.period, amount: product.amount }, user.id);
 
     res.json({
       orderId,
       paymentSessionId: created.paymentSessionId,
       // The browser SDK needs to know which Cashfree environment to open.
       mode: process.env["CASHFREE_ENV"] === "production" ? "production" : "sandbox",
-      amount,
-      period,
-      planId: plan.id,
+      amount: product.amount,
+      period: product.period,
+      planId: product.planId,
     });
   } catch (error: any) {
     if (error instanceof PaymentsUnavailable) {

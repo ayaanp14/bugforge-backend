@@ -8,12 +8,12 @@ datasource db {
 }
 
 model Account {
-  id                String  @id @default(cuid())
+  id                String @id @default(cuid())
   userId            String
   type              String
   provider          String
   providerAccountId String
-  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user              User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([provider, providerAccountId])
 }
@@ -122,9 +122,9 @@ model User {
   /// the tags or the test patterns spell it, optionally one of its test patterns
   /// (a MockTest slug — the role, where a company has several), and the date of
   /// the drive or interview. Null = not set; /readiness then asks.
-  targetCompany         String?               @db.VarChar(80)
-  targetTest            String?               @db.VarChar(120)
-  targetDate            DateTime?             @db.Date
+  targetCompany         String?                   @db.VarChar(80)
+  targetTest            String?                   @db.VarChar(120)
+  targetDate            DateTime?                 @db.Date
   missionDays           MissionDay[]
   simulationRuns        SimulationRun[]
   submissionAnalyses    SubmissionAnalysis[]
@@ -149,6 +149,8 @@ model User {
   savedInterviews       SavedInterview[]
   mockSessions          MockInterviewSession[]
   subscriptions         Subscription[]
+  creditGrants          CreditGrant[]
+  creditSpends          CreditSpend[]
   paymentOrders         PaymentOrder[]
   notifications         Notification[]
   roadmapRewards        RoadmapReward[]
@@ -169,7 +171,7 @@ model User {
   tagAffinities         TagAffinity[]
   feedback              Feedback[]
   honours               Honour[]
-  cohortsOwned          Cohort[]              @relation("CohortOwner")
+  cohortsOwned          Cohort[]                  @relation("CohortOwner")
   cohortMemberships     CohortMember[]
   aptitudeAttempts      AptitudeAttempt[]
   mockAttempts          MockAttempt[]
@@ -309,11 +311,11 @@ model ProblemTimer {
 /// The natural key is the primary key, like ProblemNumber: there is nothing
 /// else to identify, and an upsert on it is one statement.
 model ProblemEngagement {
-  userId      String
-  problemId   String
-  openedAt    DateTime  @default(now())
-  hintsAt     DateTime?
-  editorialAt DateTime?
+  userId          String
+  problemId       String
+  openedAt        DateTime  @default(now())
+  hintsAt         DateTime?
+  editorialAt     DateTime?
   /// The tutor's highest rung reached on this problem (lib/tutor.ts RUNGS, 0–6).
   /// The rung never goes down: what was shown cannot be unseen.
   tutorRung       Int?
@@ -322,8 +324,8 @@ model ProblemEngagement {
   /// so the tutor counts as the help it gave, by the same before-the-solve rule.
   tutorHintAt     DateTime?
   tutorSolutionAt DateTime?
-  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  problem     Problem   @relation(fields: [problemId], references: [id], onDelete: Cascade)
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  problem         Problem   @relation(fields: [problemId], references: [id], onDelete: Cascade)
 
   @@id([userId, problemId])
   @@index([problemId])
@@ -628,32 +630,32 @@ model ChallengeTest {
 }
 
 model BugSubmission {
-  id            String       @id @default(cuid())
-  userId        String
-  challengeId   String
-  editedFiles   Json
-  verdict       String
-  passedTests   Int          @default(0)
-  totalTests    Int          @default(0)
-  timeTakenSecs Int?
-  submittedAt   DateTime     @default(now())
+  id                     String                 @id @default(cuid())
+  userId                 String
+  challengeId            String
+  editedFiles            Json
+  verdict                String
+  passedTests            Int                    @default(0)
+  totalTests             Int                    @default(0)
+  timeTakenSecs          Int?
+  submittedAt            DateTime               @default(now())
   /// The postmortem (Phase 6, ADAPTIVE_COACH.md §14): the hunter's own account
   /// of the root cause, written after an accepted fix and scored by the model
   /// against lib/root-cause.ts RUBRIC. Never pays XP — a hunt's PASS can be
   /// forged (CLAUDE.md, Scoring integrity), and so can a well-written story.
-  rootCause              String?  @db.Text
+  rootCause              String?                @db.Text
   rootCauseAt            DateTime?
   /// "queued" | "running" | "done" | "failed" | "skipped"
-  rootCauseStatus        String?  @db.VarChar(16)
+  rootCauseStatus        String?                @db.VarChar(16)
   /// {criteria: [{key, score, max, note}], summary, missed, confidence}
   rootCauseReview        Json?
   /// 0–100, the rubric's points scaled; null until scored.
   rootCauseScore         Int?
-  rootCauseModel         String?  @db.VarChar(120)
+  rootCauseModel         String?                @db.VarChar(120)
   rootCausePromptVersion Int?
-  challenge     BugChallenge @relation(fields: [challengeId], references: [id], onDelete: Cascade)
-  user          User         @relation(fields: [userId], references: [id], onDelete: Cascade)
-  analysis      BugSubmissionAnalysis?
+  challenge              BugChallenge           @relation(fields: [challengeId], references: [id], onDelete: Cascade)
+  user                   User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  analysis               BugSubmissionAnalysis?
 
   @@index([userId, submittedAt])
   // alreadySolved / quota / duel checks filter by challenge; streak, stats and
@@ -840,28 +842,28 @@ model UserStats {
 }
 
 model SavedInterview {
-  id             String                 @id @default(cuid())
-  userId         String
-  roleId         String
-  roundId        String
-  difficulty     String
-  experienceBand String
-  interviewStyle String
-  stackFocusIds  Json                   @default("[]")
-  focusAreaIds   Json                   @default("[]")
+  id              String                 @id @default(cuid())
+  userId          String
+  roleId          String
+  roundId         String
+  difficulty      String
+  experienceBand  String
+  interviewStyle  String
+  stackFocusIds   Json                   @default("[]")
+  focusAreaIds    Json                   @default("[]")
   /// The company the round is practised for (a company simulation's round,
   /// lib/simulations): the interviewer's brief names it. Null for a setup
   /// built by hand.
-  company        String?                @db.VarChar(80)
+  company         String?                @db.VarChar(80)
   /// The simulation run this setup was made for. Such a setup is the run's,
   /// not the member's: it is left out of the saved-setups list, its cap and
   /// the dashboard's count.
   simulationRunId String?
-  createdAt      DateTime               @default(now())
-  updatedAt      DateTime               @updatedAt
-  user           User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
-  simulationRun  SimulationRun?         @relation(fields: [simulationRunId], references: [id], onDelete: SetNull)
-  mockSessions   MockInterviewSession[]
+  createdAt       DateTime               @default(now())
+  updatedAt       DateTime               @updatedAt
+  user            User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  simulationRun   SimulationRun?         @relation(fields: [simulationRunId], references: [id], onDelete: SetNull)
+  mockSessions    MockInterviewSession[]
 
   /// The builder lists a user's templates newest-first and nothing else.
   @@index([userId, createdAt])
@@ -869,10 +871,10 @@ model SavedInterview {
 }
 
 model MockInterviewSession {
-  id               String  @id @default(cuid())
+  id               String @id @default(cuid())
   userId           String
   savedInterviewId String
-  status           String  @default("started") // started, completed, abandoned
+  status           String @default("started") // started, completed, abandoned
 
   /// How many questions this interview runs, fixed when it starts.
   questionBudget Int       @default(7)
@@ -897,6 +899,10 @@ model MockInterviewSession {
   /// the weekly count applies), so a round abandoned at the door costs
   /// nothing — services/entitlements.ts counts these rows to find the balance.
   onCredit         Boolean   @default(false)
+  /// Credits this round is admitted on (lib/plans CREDIT_COSTS), set at
+  /// /start when the member chose to spend them; charged when the round
+  /// becomes sat (CreditSpend ref = this id). Not counted by the plan's window.
+  creditCost       Int?
   /// Realtime vendor, kept as data so a second provider needs no migration.
   provider         String?
   /// The exact realtime model that ran, for cost attribution after the fact.
@@ -1349,24 +1355,24 @@ model TagAffinity {
 /// mail sent, and the LinkedIn clicks the owner asked to see in /admin.
 /// Granted by scripts/grant-honour.ts or the admin panel's Honours tab.
 model Honour {
-  id                  String    @id @default(cuid())
-  userId              String
+  id                String    @id @default(cuid())
+  userId            String
   /// A key of lib/honours.ts HONOURS ("founding_member").
-  kind                String    @db.VarChar(32)
+  kind              String    @db.VarChar(32)
   /// Who granted it (the admin's email, or "script").
-  grantedBy           String?   @db.VarChar(191)
-  grantedAt           DateTime  @default(now())
+  grantedBy         String?   @db.VarChar(191)
+  grantedAt         DateTime  @default(now())
   /// When the celebration first opened for the holder, on any device.
-  celebratedAt        DateTime?
+  celebratedAt      DateTime?
   /// When the honour mail was accepted by the provider; null = not sent.
-  mailedAt            DateTime?
+  mailedAt          DateTime?
   /// "Post on LinkedIn" — first click and how many.
-  linkedinPostAt      DateTime?
-  linkedinPosts       Int       @default(0)
+  linkedinPostAt    DateTime?
+  linkedinPosts     Int       @default(0)
   /// "Add to LinkedIn profile" (the certification form) — first click and how many.
-  linkedinProfileAt   DateTime?
-  linkedinProfiles    Int       @default(0)
-  user                User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  linkedinProfileAt DateTime?
+  linkedinProfiles  Int       @default(0)
+  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, kind])
   @@index([kind, grantedAt])
@@ -1527,6 +1533,10 @@ model MockAttempt {
   testId         String
   /// "in-progress" | "submitted" | "expired" | "terminated" (ended by the
   /// proctoring — see BREACH_LIMIT in lib/skill-tests.ts)
+  /// Opened as a company simulation's assessment round: the run's own
+  /// allowance paid for it, so the placement-mock window does not count it
+  /// (services/entitlements usageIn).
+  viaSimulation  Boolean          @default(false)
   status         String           @default("in-progress")
   /// "<userId>:<testId>" while the sitting is live, null once it is closed.
   ///
@@ -1996,16 +2006,16 @@ model RevokedSession {
 /// row moves to whichever account turned it on last). A push service that
 /// answers 404/410 has dropped the subscription and the row goes with it.
 model PushSubscription {
-  id         String   @id @default(cuid())
+  id         String    @id @default(cuid())
   userId     String
   /// ≤ 700 characters keeps the unique index under InnoDB's 3,072-byte key at utf8mb4.
-  endpoint   String   @unique @db.VarChar(700)
-  p256dh     String   @db.VarChar(200)
-  auth       String   @db.VarChar(64)
-  createdAt  DateTime @default(now())
+  endpoint   String    @unique @db.VarChar(700)
+  p256dh     String    @db.VarChar(200)
+  auth       String    @db.VarChar(64)
+  createdAt  DateTime  @default(now())
   /// The last push the service accepted for it.
   lastPushAt DateTime?
-  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
 }
@@ -2714,4 +2724,37 @@ model CohortSession {
   room      PairRoom @relation(fields: [roomId], references: [id], onDelete: Cascade)
 
   @@index([cohortId, startedAt])
+}
+
+/// Credits added to an account: a pack bought (orderId set, one grant per
+/// order — the unique key is what makes a repeated webhook a no-op) or given
+/// by an admin. The balance is derived: Σ grants − Σ spends (services/credits).
+model CreditGrant {
+  id        String   @id @default(cuid())
+  userId    String
+  credits   Int
+  /// "purchase" | "admin"
+  source    String   @db.VarChar(16)
+  orderId   String?  @unique
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+/// Credits spent on one extra use of a metered feature (lib/plans
+/// MeteredAction) once the plan's allowance was used. `ref` is the row the
+/// use created (an analysis, a sitting, a session, a run): unique per action,
+/// so one use is never charged twice, and the plan's window skips it.
+model CreditSpend {
+  id        String   @id @default(cuid())
+  userId    String
+  credits   Int
+  action    String   @db.VarChar(24)
+  ref       String   @db.VarChar(40)
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([action, ref])
+  @@index([userId, action, createdAt])
 }

@@ -377,9 +377,8 @@ router.post("/start", requireAuth, async (req: any, res) => {
     // The template and the quota are independent reads against a database
     // ~500 ms away, so they go out together; a refused template simply
     // wastes the quota's reads, which is cheaper than serialising every start.
-    const [template, quota, account] = await Promise.all([
+    const [template, account] = await Promise.all([
       prisma.savedInterview.findUnique({ where: { id: savedInterviewId } }),
-      checkInterviewQuota(req.user.userId, req.user.email),
       prisma.user.findUnique({ where: { id: req.user.userId }, select: { preferredLanguage: true } }),
     ]);
 
@@ -391,11 +390,20 @@ router.post("/start", requireAuth, async (req: any, res) => {
     }
 
     // Metered before anything is created, so a refusal leaves no orphan row and
-    // costs no model call.
+    // costs no model call. Asked after the template, because the template says
+    // whether this is a company simulation's round (the run's allowance paid
+    // for it) and the mode says which window — written and voice are metered
+    // apart since 2026-10-15.
+    const quota = await checkInterviewQuota(req.user.userId, req.user.email, mode, {
+      useCredits: req.body?.useCredits === true,
+      simulation: Boolean(template.simulationRunId),
+    });
     if (quota.denial) return res.status(402).json(quota.denial);
-    // Past the plan's weekly allowance on a roadmap credit: the row is
-    // stamped so the credit, not the allowance, is what this round spends.
+    // Past the plan's allowance on a roadmap credit: the row is stamped so the
+    // credit, not the allowance, is what this round spends. On credits the
+    // price is stamped and charged once the round is sat (satRoundFits).
     const onCredit = quota.onCredit;
+    const creditCost = quota.creditCost;
 
     const config = configFrom(template);
     const budget = questionBudgetFor(config.difficulty);
@@ -432,6 +440,7 @@ router.post("/start", requireAuth, async (req: any, res) => {
           questionBudget: estimatedQuestions(durationMin),
           mode: "voice",
           onCredit,
+          creditCost,
           provider: provider.id,
           realtimeModel: provider.model,
           durationLimitSec: durationMin * 60,
@@ -501,6 +510,7 @@ router.post("/start", requireAuth, async (req: any, res) => {
         questionBudget: budget,
         language,
         onCredit,
+        creditCost,
         // The opening question's cost, on the row from the start.
         promptTokens: usage.promptTokens,
         cachedTokens: usage.cachedTokens,
@@ -817,8 +827,11 @@ router.post("/session/:sessionId/answer", requireAuth, async (req: any, res) => 
     // Every later turn skips all of it; the rows in hand say which this is.
     const firstAnswer = !alreadyAnswered && !session.questions.some((q) => q.userAnswer !== null);
     let onCredit = session.onCredit;
-    if (firstAnswer) {
-      const quota = await checkInterviewQuota(req.user.userId, req.user.email);
+    const simulation = Boolean(session.savedInterview.simulationRunId);
+    // A round opened on credits was priced at /start and is charged by
+    // satRoundFits below; anything else asks the window again.
+    if (firstAnswer && session.creditCost === null) {
+      const quota = await checkInterviewQuota(req.user.userId, req.user.email, "written", { simulation });
       if (quota.denial) return res.status(402).json(quota.denial);
       if (quota.onCredit !== session.onCredit) {
         await prisma.mockInterviewSession.update({ where: { id: session.id }, data: { onCredit: quota.onCredit }, select: { id: true } });
@@ -839,7 +852,7 @@ router.post("/session/:sessionId/answer", requireAuth, async (req: any, res) => 
         select: { id: true },
       });
     }
-    if (firstAnswer && !(await satRoundFits(req.user.userId, req.user.email, onCredit))) {
+    if (firstAnswer && !(await satRoundFits(req.user.userId, req.user.email, { id: session.id, mode: "written", onCredit, creditCost: session.creditCost, simulation }))) {
       await prisma.mockInterviewQuestion.update({
         where: { id: current.id },
         data: { userAnswer: null, status: "pending" },

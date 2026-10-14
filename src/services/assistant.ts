@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { prisma } from "../lib/prisma.js";
 import { cached } from "../lib/cache.js";
-import { PLANS, freeForAll } from "../lib/plans.js";
+import { ACTION_LABELS, CREDIT_COSTS, CREDIT_PACKS, METERED_ACTIONS, PLANS, PLAN_OFFERS, allowanceLabel, freeForAll, type Plan } from "../lib/plans.js";
 import { getDashboard } from "./dashboard.js";
 import { entitlementFor } from "./entitlements.js";
 import { providerConfig } from "./interview-ai.js";
@@ -60,28 +60,43 @@ How to answer:
 /** The handbook, read once. Beside dist/ in a build and beside src/ in dev: content/ is at the package root either way. */
 const HANDBOOK = readFileSync(new URL("../../content/handbook.md", import.meta.url), "utf8");
 
-const fmtLimit = (n: number | null, unit: string) => (n === null ? `unlimited ${unit}` : `${n} ${unit}`);
-
 /**
- * The plan table, as prose the model can quote. Generated: prices live in
- * lib/plans.ts. While the free-for-all period runs it opens with the offer,
- * so "is everything free?" lands here — the briefing is rebuilt every five
- * minutes, which is how the paragraph goes away when the period ends.
+ * The plan table, as prose the model can quote. Generated: prices and
+ * limits live in lib/plans.ts. While the free-for-all period runs it opens
+ * with the offer, so "is everything free?" lands here — the briefing is
+ * rebuilt every five minutes, which is how the paragraph goes away when the
+ * period ends. One short bullet per fact, so the index packs them into
+ * chunks under its size cap.
  */
 export function plansSection(now: Date = new Date()): string {
+  const rows = (plan: Plan) =>
+    METERED_ACTIONS.map((a) => `${ACTION_LABELS[a].many}: ${allowanceLabel(plan.entitlements.allowances[a]).toLowerCase()}`).join("; ");
   const lines = PLANS.map((p) => {
     const e = p.entitlements;
-    return [
-      `- **${p.name}** — ${p.monthly === 0 ? "free" : `₹${p.monthly}/month or ₹${p.yearly}/year`}. ${p.tagline}`,
-      `  ${fmtLimit(e.interviewsPerWeek, "mock interviews a week")}; voice rounds of ${e.voiceDurationsMin.join("/")} minutes; ${fmtLimit(e.bugsPerDay, "bug hunts a day")}; unlimited problems, duels and assistant messages.`,
-      `  Highlights: ${p.highlights.join("; ")}.`,
-    ].join("\n");
+    const extras = [
+      e.skillTestLevels === null ? "every skill-test level" : `skill tests at ${e.skillTestLevels.join("/")} level`,
+      `voice rounds of ${e.voiceDurationsMin.join("/")} minutes`,
+      e.resumeExport ? "resume PDF/DOCX export and AI optimisation" : "no resume export or AI optimisation",
+    ].join("; ");
+    return `- **${p.name}** — ${p.tagline} ${rows(p)}; ${extras}. Problems, bug hunts, duels, the roadmap, notes, the tutor and the assistant are unlimited.`;
   });
+  const offers = PLAN_OFFERS.map(
+    (o) =>
+      `- **${o.name}**: ₹${o.price} once for ${o.days !== null ? `${o.days} days` : `${o.months} month${o.months === 1 ? "" : "s"}`} of ${o.planId === "max" ? "Pro Max" : "Pro"}${o.bonusCredits ? `, plus ${o.bonusCredits} bonus credits` : ""}.`,
+  );
+  const packs = CREDIT_PACKS.map((c) => `${c.name} ₹${c.price} = ${c.credits} credits`).join("; ");
+  const costs = METERED_ACTIONS.map((a) => `${ACTION_LABELS[a].one} ${CREDIT_COSTS[a]}`).join(", ");
   const offer = freeForAll(now);
   const opening = offer.active
-    ? `**Free for everyone until ${offer.untilLabel}**: every limit on every plan is lifted for every account — unlimited mock interviews a week, voice rounds of 10/20/30 minutes, unlimited bug hunts a day — so nobody needs to buy a plan until then, though anyone can still buy a plan on /pricing (it starts the day the payment is confirmed).\n\n`
+    ? `**Free for everyone until ${offer.untilLabel}**: every limit on every plan is lifted for every account, so nobody needs to buy anything until then, though anyone can still buy Pro on /pricing (it starts the day the payment is confirmed).\n\n`
     : "";
-  return `## Plans\n\n${opening}Prices are in Indian rupees. Yearly is ten months for twelve.\n\n${lines.join("\n")}`;
+  return [
+    `## Plans\n\n${opening}Prices are in Indian rupees, GST included; every purchase is a one-time payment (no autopay), and buying while Pro runs adds the time to the end.`,
+    lines.join("\n"),
+    `Ways to buy Pro and Pro Max:\n${offers.join("\n")}`,
+    `- **Credits** pay for one more use once an allowance is spent, only when the member chooses: ${packs}. Credits never expire. Cost per use: ${costs}.`,
+    "- Allowances are rolling: \"1 every 10 days\" is ten days from the last use, and the page says when the next free one opens. A company simulation's interview rounds and its assessment are covered by the simulation itself.",
+  ].join("\n\n");
 }
 
 /** The road as seeded: tiers, chests and every stage. Generated from the same tables the roadmap page reads. */
@@ -244,9 +259,14 @@ async function buildAccountBlock(userId: string, email: string | null): Promise<
     plan: {
       name: ent.plan.name,
       freeForAll: ent.freeForAll.active ? `every limit lifted for every account until ${ent.freeForAll.untilLabel}; no plan needed until then, though one can still be bought` : null,
-      interviewsThisWeek: `${ent.usage.interviewsThisWeek} of ${e.interviewsPerWeek ?? "unlimited"}`,
+      allowances: Object.fromEntries(
+        METERED_ACTIONS.map((a) => {
+          const st = ent.usage.allowances[a];
+          return [a, st.limit === null ? "unlimited" : `${st.used} of ${allowanceLabel({ limit: st.limit, days: st.days }).toLowerCase()} used${st.nextAt ? `; next free on ${st.nextAt.slice(0, 10)}` : ""}`];
+        }),
+      ),
+      credits: ent.usage.credits,
       bonusInterviews: ent.usage.interviewCredits,
-      bugHuntsToday: `${ent.usage.bugsToday} of ${e.bugsPerDay ?? "unlimited"}`,
       assistantMessagesToday: `${ent.usage.assistantMessagesToday} of ${e.assistantMessagesPerDay ?? "unlimited"}`,
       voiceRoundMinutes: e.voiceDurationsMin,
     },
