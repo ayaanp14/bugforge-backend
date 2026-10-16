@@ -320,6 +320,18 @@ export const resumeUploadLimiter = rateLimit({
 });
 
 /**
+ * The visitor's ATS check (no account): a document parse per request, from
+ * anyone. A person checks a resume, edits it, checks again — a handful an
+ * hour; a script looping files would not stop. Keyed by address, since
+ * there is no account; services/resumes caps how many parse at once too.
+ */
+export const resumeCheckLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 12,
+  message: "That is a lot of resume checks from this network in an hour. Create a free account to keep going, or try again later.",
+});
+
+/**
  * Resume model calls — an analysis, a bullet rewrite, a whole-resume
  * optimisation. Each is a round trip to the shared free-tier model; a
  * person clicks these a few dozen times in a session, a script would not

@@ -2,14 +2,16 @@ import { QuotaError, meteredCreate, requireFeature } from "../services/entitleme
 import express, { Router, type NextFunction, type Request, type Response } from "express";
 import { requireAuth } from "../middleware/auth.js";
 import { browserCache } from "../lib/http-cache.js";
-import { resumeAiLimiter, resumeUploadLimiter } from "../middleware/rate-limit.js";
+import { resumeAiLimiter, resumeCheckLimiter, resumeUploadLimiter } from "../middleware/rate-limit.js";
 import { MAX_RESUME_BYTES, ResumeFileError } from "../lib/resume-files.js";
 import { exportFilename, renderDocx, renderPdf } from "../lib/resume-export.js";
 import { ATS_SCORING_WEIGHTS, CATEGORY_LABELS } from "../lib/resume-scoring.js";
 import { IMPROVE_MODES } from "../lib/resume-ai.js";
 import { trackServerEvent } from "../lib/telemetry.js";
+import { CheckEnvelopeError, MAX_CHECK_META_BYTES, readCheckEnvelope } from "../lib/resume-check.js";
 import {
   ResumeError,
+  checkResumeForVisitor,
   compare,
   createResumeFromUpload,
   createVersion,
@@ -60,7 +62,9 @@ import {
  *   POST   /:id/suggestions/:suggestionId {status: accepted|rejected}
  *   GET    /:id/export?format=pdf|docx[&version=]   the document
  *
- * Everything needs an account. The upload is the one route on the API that
+ *   POST   /check                              (no account) envelope of file + target → the deterministic report; nothing stored
+ *
+ * Everything else needs an account. The upload is the one route on the API that
  * takes a file: it is read as a raw body by a parser mounted on this path
  * alone (the global parser is JSON only, 512 KB), and the bytes decide the
  * format — see lib/resume-files.ts. Model calls (analyze, improve-bullet,
@@ -77,7 +81,7 @@ function handleResumeError(err: unknown, res: Response, next: NextFunction): voi
     res.status(402).json(err.denial);
     return;
   }
-  if (err instanceof ResumeError || err instanceof ResumeFileError) {
+  if (err instanceof ResumeError || err instanceof ResumeFileError || err instanceof CheckEnvelopeError) {
     res.status(err.status).json({ error: err.message });
     return;
   }
@@ -93,6 +97,44 @@ const wrap =
 const pageOf = (req: Request) => ({ page: Number(req.query["page"]) || 1, limit: Number(req.query["limit"]) || 20 });
 const str = (v: unknown): string | undefined => (typeof v === "string" ? v : undefined);
 const strOrNull = (v: unknown): string | null | undefined => (v === null ? null : typeof v === "string" ? v : undefined);
+
+/**
+ * The free check for a visitor — the page's promise ("Free ATS resume
+ * checker") kept before an account is asked for. Mounted ahead of
+ * `requireAuth`. The body is lib/resume-check's envelope, read with the
+ * upload's raw parser (sized for a file plus its job description).
+ */
+const checkBody = express.raw({ type: () => true, limit: MAX_RESUME_BYTES + MAX_CHECK_META_BYTES + 4 });
+function readCheck(req: Request, res: Response, next: NextFunction): void {
+  checkBody(req, res, (err?: unknown) => {
+    if (err) {
+      const status = (err as { status?: number }).status === 413 ? 413 : 400;
+      res.status(status).json({ error: status === 413 ? `That file is too large. Resumes are limited to ${MAX_RESUME_BYTES / 1024 / 1024} MB.` : "The upload could not be read." });
+      return;
+    }
+    next();
+  });
+}
+
+router.post(
+  "/check",
+  resumeCheckLimiter,
+  readCheck,
+  (req: Request, res: Response, next: NextFunction): void => {
+    const body = req.body as unknown;
+    if (!Buffer.isBuffer(body)) {
+      res.status(400).json({ error: "Choose a PDF or DOCX resume to check." });
+      return;
+    }
+    (async () => {
+      const { meta, file } = readCheckEnvelope(new Uint8Array(body));
+      const check = await checkResumeForVisitor(file, meta.type, { role: meta.role, company: meta.company, jobDescription: meta.jobDescription });
+      // A report on someone's own resume: never cached anywhere on the way.
+      res.setHeader("Cache-Control", "private, no-store");
+      res.json(check);
+    })().catch((err) => handleResumeError(err, res, next));
+  },
+);
 
 router.use(requireAuth);
 

@@ -851,3 +851,53 @@ export function writePath(content: ResumeContent, path: string, value: string): 
   if (row && list && Array.isArray(row[list]) && (row[list] as string[])[Number(j)] !== undefined) (row[list] as string[])[Number(j)] = value;
   return next;
 }
+
+/* ── the visitor's check ───────────────────────────────────────────────── */
+
+/**
+ * At most this many visitor checks parse at once on this process. A check is
+ * a PDF or DOCX parse on the main thread (~100–500 ms); members' uploads and
+ * every other request share that thread, so a burst of anonymous checks is
+ * answered "busy" rather than queued behind each other.
+ */
+const CHECKS_IN_FLIGHT_MAX = 3;
+let checksInFlight = 0;
+
+export interface VisitorCheck {
+  result: AnalysisResult;
+  resume: { format: "pdf" | "docx"; name: string | null; pages: number | null; sections: string[] };
+}
+
+/**
+ * The ATS check without an account (POST /api/resumes/check): the members'
+ * pipeline up to the deterministic score — extract, parse, the target's
+ * requirements, `scoreResume` with no model — and nothing else. No row is
+ * written and the bytes are not kept anywhere, which is what the page
+ * promises a stranger. The model's review, the editor, versions and export
+ * are what an account adds.
+ */
+export async function checkResumeForVisitor(bytes: Uint8Array, declaredType: string | null, target: { role: string; company: string; jobDescription: string }): Promise<VisitorCheck> {
+  if (checksInFlight >= CHECKS_IN_FLIGHT_MAX) throw new ResumeError(503, "A lot of resumes are being checked right now. Try again in a moment.");
+  checksInFlight++;
+  const startedAt = Date.now();
+  try {
+    const format = validateResumeUpload(bytes, declaredType);
+    const extracted = await extractResume(bytes, format);
+    const parsed = parseResumeText(extracted.text, extracted.layout.headingHints);
+    const requirements = requirementsFor(target.role, target.company, target.jobDescription);
+    const layout = { ...extracted.layout, headingHints: [], unmappedHeadings: parsed.unmappedHeadings, sectionsFound: parsed.sectionsFound };
+    const result = scoreResume({
+      content: parsed.content,
+      requirements,
+      layout,
+      unmappedHeadings: parsed.unmappedHeadings,
+      ai: null,
+      aiFailure: "The AI review, bullet rewrites and the editor run on a free account.",
+      heuristicWhy: "the AI review runs on a free account",
+    });
+    trackServerEvent("resume_checked", { format, score: result.overallScore, source: requirements.source, pages: extracted.layout.pages, ms: Date.now() - startedAt });
+    return { result, resume: { format, name: parsed.content.basics.name || null, pages: extracted.layout.pages, sections: parsed.sectionsFound } };
+  } finally {
+    checksInFlight--;
+  }
+}

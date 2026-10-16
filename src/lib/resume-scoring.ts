@@ -581,7 +581,7 @@ function titleAlignment(content: ResumeContent, role: string): number {
   return best;
 }
 
-function heuristicExperience(content: ResumeContent, req: JobRequirements, skills: SkillMatch[], years: number): CategoryScore {
+function heuristicExperience(content: ResumeContent, req: JobRequirements, skills: SkillMatch[], years: number, why = "the model was unavailable"): CategoryScore {
   const max = ATS_SCORING_WEIGHTS.experienceRelevance;
   if (!content.experience.length && !content.projects.length) {
     return { category: "experienceRelevance", score: 2, maxScore: max, reason: "No experience or project entries to judge relevance from.", evidence: [], byModel: false };
@@ -597,13 +597,13 @@ function heuristicExperience(content: ResumeContent, req: JobRequirements, skill
     category: "experienceRelevance",
     score,
     maxScore: max,
-    reason: `Heuristic (the model was unavailable): ${relevant} of ${bullets.length} bullets mention a required or preferred skill; ${req.yearsRequired ? `${years} years against ${req.yearsRequired} asked for` : `${years} years of dated experience`}; ${title >= 0.5 ? "titles align with the target role" : "titles do not clearly match the target role"}.`,
+    reason: `Heuristic (${why}): ${relevant} of ${bullets.length} bullets mention a required or preferred skill; ${req.yearsRequired ? `${years} years against ${req.yearsRequired} asked for` : `${years} years of dated experience`}; ${title >= 0.5 ? "titles align with the target role" : "titles do not clearly match the target role"}.`,
     evidence: [],
     byModel: false,
   };
 }
 
-function heuristicAlignment(content: ResumeContent, req: JobRequirements, domain: { matched: string[]; missing: string[] }): CategoryScore {
+function heuristicAlignment(content: ResumeContent, req: JobRequirements, domain: { matched: string[]; missing: string[] }, why = "the model was unavailable"): CategoryScore {
   const max = ATS_SCORING_WEIGHTS.jobAlignment;
   const title = titleAlignment(content, req.role);
   const domainRatio = domain.matched.length + domain.missing.length ? domain.matched.length / (domain.matched.length + domain.missing.length) : 0.5;
@@ -613,7 +613,7 @@ function heuristicAlignment(content: ResumeContent, req: JobRequirements, domain
     category: "jobAlignment",
     score,
     maxScore: max,
-    reason: `Heuristic (the model was unavailable): ${title >= 0.5 ? "job titles echo the target role" : "job titles do not name the target role"}${req.role && !summaryHits ? "; the summary does not mention it" : ""}.`,
+    reason: `Heuristic (${why}): ${title >= 0.5 ? "job titles echo the target role" : "job titles do not name the target role"}${req.role && !summaryHits ? "; the summary does not mention it" : ""}.`,
     evidence: [],
     byModel: false,
   };
@@ -796,6 +796,8 @@ export interface ScoreInput {
   unmappedHeadings?: string[];
   ai: AiJudgement | null;
   aiFailure?: string | null;
+  /** Why the two judgement categories are the heuristic's, in their reason ("the model was unavailable" by default). */
+  heuristicWhy?: string;
   model?: string | null;
   now?: Date;
 }
@@ -826,14 +828,14 @@ export function scoreResume(input: ScoreInput): AnalysisResult {
     skillsMatch: skillsCategory(skills, req),
     experienceRelevance: ai
       ? { category: "experienceRelevance", score: clamp((ai.experienceRelevance.score / 100) * ATS_SCORING_WEIGHTS.experienceRelevance, ATS_SCORING_WEIGHTS.experienceRelevance), maxScore: ATS_SCORING_WEIGHTS.experienceRelevance, reason: ai.experienceRelevance.reason, evidence: [], byModel: true }
-      : heuristicExperience(content, req, skills, years),
+      : heuristicExperience(content, req, skills, years, input.heuristicWhy),
     structure: structureCategory(content),
     atsCompatibility: atsCategory(issues),
     achievements: achievementsCategory(findings),
     education: educationCategory(content, req),
     jobAlignment: ai
       ? { category: "jobAlignment", score: clamp((ai.jobAlignment.score / 100) * ATS_SCORING_WEIGHTS.jobAlignment, ATS_SCORING_WEIGHTS.jobAlignment), maxScore: ATS_SCORING_WEIGHTS.jobAlignment, reason: ai.jobAlignment.reason, evidence: [], byModel: true }
-      : heuristicAlignment(content, req, domain),
+      : heuristicAlignment(content, req, domain, input.heuristicWhy),
   };
   const overall = Object.values(breakdown).reduce((n, c) => n + c.score, 0);
 
