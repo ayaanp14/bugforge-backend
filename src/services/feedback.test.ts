@@ -24,7 +24,17 @@ describe("feedback parsing", () => {
     const parsed = parseFeedback({ kind: "platform", rating: 4, comment: "  fast and clean  ", tags: ["Speed", " Design ", ""], path: "/challenges" });
     assert.equal(parsed.ok, true);
     if (!parsed.ok) return;
-    assert.deepEqual(parsed.value, { kind: "platform", rating: 4, comment: "fast and clean", tags: ["Speed", "Design"], sessionId: null, path: "/challenges" });
+    assert.deepEqual(parsed.value, { kind: "platform", rating: 4, comment: "fast and clean", tags: ["Speed", "Design"], sessionId: null, path: "/challenges", quoteConsent: false });
+  });
+
+  it("takes quote consent only when asked for, on platform feedback, with words to quote", () => {
+    const yes = parseFeedback({ kind: "platform", rating: 5, comment: "keeps me honest", quoteConsent: true });
+    assert.equal(yes.ok && yes.value.quoteConsent, true);
+    // Never assumed, never from a truthy non-boolean, never without a comment, never on an interview.
+    assert.equal((() => { const p = parseFeedback({ kind: "platform", rating: 5, comment: "x" }); return p.ok && p.value.quoteConsent; })(), false);
+    assert.equal((() => { const p = parseFeedback({ kind: "platform", rating: 5, comment: "x", quoteConsent: "yes" }); return p.ok && p.value.quoteConsent; })(), false);
+    assert.equal((() => { const p = parseFeedback({ kind: "platform", rating: 5, quoteConsent: true }); return p.ok && p.value.quoteConsent; })(), false);
+    assert.equal((() => { const p = parseFeedback({ kind: "interview", rating: 5, sessionId: "s", comment: "x", quoteConsent: true }); return p.ok && p.value.quoteConsent; })(), false);
   });
 
   it("rejects half stars, out-of-range stars and unknown kinds", () => {

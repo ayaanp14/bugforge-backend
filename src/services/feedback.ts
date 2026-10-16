@@ -46,6 +46,8 @@ export interface FeedbackInput {
   tags: string[];
   sessionId: string | null;
   path: string | null;
+  /** "You may quote this on the site" — platform feedback only; never assumed. */
+  quoteConsent: boolean;
 }
 
 /**
@@ -84,6 +86,7 @@ export function parseFeedback(body: unknown): { ok: true; value: FeedbackInput }
 
   return {
     ok: true,
-    value: { kind, rating, comment: comment || null, tags, sessionId: kind === "interview" ? sessionId : null, path },
+    // Consent is only meaningful with words to quote, and only on the platform prompt.
+    value: { kind, rating, comment: comment || null, tags, sessionId: kind === "interview" ? sessionId : null, path, quoteConsent: kind === "platform" && b["quoteConsent"] === true && Boolean(comment) },
   };
 }

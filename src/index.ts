@@ -44,6 +44,7 @@ import seoRouter from "./routes/seo.js";
 import studyPlansRouter from "./routes/study-plans.js";
 import assistantRouter from "./routes/assistant.js";
 import resumesRouter from "./routes/resumes.js";
+import proofRouter from "./routes/proof.js";
 import battlesRouter from "./routes/battles.js";
 import { sqlRouter } from "./routes/sql.js";
 import { notesRouter } from "./routes/notes.js";
@@ -992,6 +993,8 @@ app.use("/api/notes", notesRouter);
 app.use("/api/assistant", assistantRouter);
 // The upload route reads a raw file body with its own parser (see routes/resumes.ts).
 app.use("/api/resumes", resumesRouter);
+// The landing page's social proof: real counts, results and approved quotes (services/social-proof).
+app.use("/api/proof", proofRouter);
 // The tournament site, battles.codekairo.com (routes/battles.ts).
 app.use("/api/battles", battlesRouter);
 app.use("/api/share-cards", shareCardsRouter);

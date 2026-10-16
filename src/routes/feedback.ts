@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { forgetSocialProof } from "../services/social-proof.js";
 import { prisma } from "../lib/prisma.js";
 import { adminOnly, requireAuth } from "../middleware/auth.js";
 import { parseFeedback, platformPromptDue } from "../services/feedback.js";
@@ -111,6 +112,7 @@ router.post("/", requireAuth, async (req: any, res) => {
         comment: input.comment,
         tags: input.tags,
         path: input.path,
+        quoteConsent: input.quoteConsent,
       },
     });
     return res.status(201).json({ feedback });
@@ -148,6 +150,24 @@ router.get("/", requireAuth, adminOnly, async (req: any, res) => {
     console.error("Feedback list error:", error?.message);
     res.status(500).json({ error: "Could not list feedback" });
   }
+});
+
+/**
+ * PATCH /api/feedback/:id/quote  {approved: boolean}
+ *
+ * The admin's half of a testimonial: a quote reaches the landing page only
+ * when its author ticked consent AND an admin approved it (never automatic —
+ * a public quote is the site speaking in a member's name). Unapproving takes
+ * it down at once.
+ */
+router.patch("/:id/quote", requireAuth, adminOnly, async (req: any, res) => {
+  const approved = req.body?.approved === true;
+  const row = await prisma.feedback.findUnique({ where: { id: String(req.params.id) }, select: { id: true, quoteConsent: true } });
+  if (!row) return res.status(404).json({ error: "Feedback not found" });
+  if (approved && !row.quoteConsent) return res.status(409).json({ error: "The member did not allow this to be quoted." });
+  const updated = await prisma.feedback.update({ where: { id: row.id }, data: { quoteApprovedAt: approved ? new Date() : null }, select: { id: true, quoteConsent: true, quoteApprovedAt: true } });
+  await forgetSocialProof();
+  res.json({ feedback: updated });
 });
 
 export default router;
