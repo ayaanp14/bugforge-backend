@@ -1396,6 +1396,13 @@ model Feedback {
   sessionId String?
   /// Where the platform prompt was answered.
   path      String?
+  /// The member ticked "you may quote this on the site" (platform prompt, since
+  /// 2026-10-16). Never true by default: every earlier prompt promised the words
+  /// went privately to the team.
+  quoteConsent    Boolean   @default(false)
+  /// An admin chose to show it on the landing page (services/social-proof).
+  /// Both this and quoteConsent must hold for a quote to appear.
+  quoteApprovedAt DateTime?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)

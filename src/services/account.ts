@@ -142,7 +142,7 @@ export async function buildAccountExport(userId: string): Promise<Record<string,
     prisma.follow.findMany({ where: { followingId: userId }, ...newest, select: { follower: { select: { username: true } }, createdAt: true } }),
     // The feed's per-topic interest scores, learned from what the account read and liked.
     prisma.tagAffinity.findMany({ where, ...newest, select: { tag: true, score: true, updatedAt: true } }),
-    prisma.feedback.findMany({ where, ...newest, select: { kind: true, rating: true, comment: true, tags: true, path: true, createdAt: true } }),
+    prisma.feedback.findMany({ where, ...newest, select: { kind: true, rating: true, comment: true, tags: true, path: true, quoteConsent: true, quoteApprovedAt: true, createdAt: true } }),
     prisma.assistantMessage.findMany({ where, ...newest, orderBy: { createdAt: "asc" }, select: { role: true, content: true, cleared: true, createdAt: true } }),
     prisma.roadmapReward.findMany({ where, select: { tierKey: true, xp: true, interviewCredits: true, earnedAt: true } }),
     prisma.studyEnrollment.findMany({ where, select: { trackKey: true, startedAt: true, paceDays: true, completedAt: true } }),
