@@ -76,8 +76,8 @@ function noteCodeSeen(key: string, hash: string | null): boolean | null {
 /** The stored thread the page shows: the newest this many lines. */
 const THREAD_SHOWN = 60;
 
-/** The problem as the tutor reads it, by slug — public material only. */
-function tutorProblem(slug: string) {
+/** The problem as the tutor reads it, by slug — public material only. Also the extension's tutor's reference for a matched problem (services/external.ts). */
+export function tutorProblem(slug: string) {
   return cached(`tutor:problem:${slug}`, 10 * 60_000, async () => {
     const p = await prisma.problem.findFirst({
       where: { slug, isPublished: true },
@@ -112,7 +112,7 @@ function tutorProblem(slug: string) {
 }
 
 /** The reference in the student's language, else the nearest one there is. */
-function solutionFor(solutions: Record<string, string>, language: string | null): { language: string; code: string } | null {
+export function solutionFor(solutions: Record<string, string>, language: string | null): { language: string; code: string } | null {
   const order = [language, "python", "javascript", "java", "cpp"].filter((l): l is string => Boolean(l));
   for (const l of order) if (solutions[l]) return { language: l, code: solutions[l]! };
   const first = Object.entries(solutions)[0];

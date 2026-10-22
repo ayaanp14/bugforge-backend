@@ -11,6 +11,13 @@ import { isTimestampFresh, verifySignature } from "../lib/crypto.js";
  */
 const SHARE_IMAGE = /^\/api\/share-cards\/[a-z0-9]+\/image\.jpg$/;
 
+/**
+ * The clients that sign: the SPA (and the battles site, which shares its
+ * id), and the browser extension (frontend/extension) under its own, so its
+ * traffic can be told apart and turned off without touching the site's.
+ */
+const PLATFORMS = new Set(["codekairo-web", "codekairo-extension"]);
+
 export function platformGuard(req: Request, res: Response, next: NextFunction) {
   // 1. Skip checks for health or public diagnostic routes
   // /api/auth is exempt too: sign-in, sign-up and the OAuth callbacks are the
@@ -38,7 +45,7 @@ export function platformGuard(req: Request, res: Response, next: NextFunction) {
   const platform = req.headers["x-app-platform"] as string;
 
   // 2. Basic static platform check
-  if (platform !== "codekairo-web") {
+  if (!PLATFORMS.has(platform)) {
     console.warn(`[Guard] Invalid platform header: ${platform}`);
     return res.status(403).json({ error: "Access Denied: Invalid Platform" });
   }

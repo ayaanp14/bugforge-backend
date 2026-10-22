@@ -18,6 +18,7 @@ import skillsRouter from "./routes/skills.js";
 import missionRouter from "./routes/mission.js";
 import analysisRouter from "./routes/analysis.js";
 import tutorRouter from "./routes/tutor.js";
+import extensionRouter from "./routes/extension.js";
 import readinessRouter from "./routes/readiness.js";
 import simulationsRouter from "./routes/simulations.js";
 import cohortsRouter from "./routes/cohorts.js";
@@ -962,6 +963,7 @@ app.use("/api/me", accountRouter);
 app.use("/api/push", pushRouter);
 app.use("/api/users", usersRouter);
 // The tutor's /:slug/tutor paths first; the problems router has none of them.
+app.use("/api/ext", extensionRouter);
 app.use("/api/problems", tutorRouter);
 app.use("/api/problems", problemsRouter);
 app.use("/api/leaderboard", leaderboardRouter);

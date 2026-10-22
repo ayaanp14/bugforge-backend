@@ -46,6 +46,13 @@ export interface ReviewContext {
   timeLimitMs: number;
   errorDetail: string | null;
   known: DeterministicAnalysis;
+  /**
+   * The one failing case the judge *showed* the student, when it shows one —
+   * LeetCode prints the input, its output and the expected output under a
+   * wrong answer (services/external.ts). Ours never does: it stays absent for
+   * a CodeKairo submission, whose cases are hidden.
+   */
+  shownCase?: { input: string; output: string | null; expected: string | null } | null;
 }
 
 /** Caps on what is sent, so one pathological submission cannot make one enormous call. */
@@ -98,6 +105,14 @@ export function buildReviewMessages(ctx: ReviewContext, system: string): Array<{
         fenced("EXAMPLES", examples || "none"),
         fenced("CODE", numbered(clip(ctx.code, LIMITS.code))),
         fenced("JUDGE", judge),
+        ...(ctx.shownCase
+          ? [
+              fenced(
+                "FAILING CASE SHOWN TO THE STUDENT",
+                [`Input: ${clip(ctx.shownCase.input, LIMITS.example)}`, `Their output: ${clip(ctx.shownCase.output ?? "(not shown)", LIMITS.example)}`, `Expected: ${clip(ctx.shownCase.expected ?? "(not shown)", LIMITS.example)}`].join("\n"),
+              ),
+            ]
+          : []),
         fenced("KNOWN", known || "nothing beyond the verdict"),
         "Review this submission now. Reply with the JSON object only.",
       ].join("\n\n"),

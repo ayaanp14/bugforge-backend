@@ -29,7 +29,7 @@ import {
   reconcileDuel,
   winXp,
 } from "../lib/duels.js";
-import { invalidateDashboard } from "../services/dashboard.js";
+import { invalidateDashboard, problemIdBySlug } from "../services/dashboard.js";
 
 const router = Router();
 
@@ -44,6 +44,8 @@ type DuelWithParticipants = {
   visibility: string;
   ratingBand: number;
   startedAt: Date | null;
+  /** Set before the start only on a private room opened on one problem. */
+  problemId?: string | null;
   participants: { userId: string; team: number }[];
 };
 
@@ -130,7 +132,9 @@ async function startIfFull(duel: DuelWithParticipants) {
   if (duel.status !== "waiting") return null;
   if (duel.participants.length < capacityOf(duel.mode)) return null;
 
-  const target = await pickTarget(duel.kind, duel.participants.map((p) => p.userId));
+  // A friend's room opened on one problem (the extension's "Duel a friend on
+  // this problem") keeps it; every other room draws its arena now.
+  const target = duel.kind === "problem" && duel.problemId ? { problemId: duel.problemId } : await pickTarget(duel.kind, duel.participants.map((p) => p.userId));
   if (!target) return null;
 
   const claimed = await prisma.duel.updateMany({
@@ -370,6 +374,14 @@ router.post("/rooms", requireAuth, async (req, res) => {
     const userId = req.user!.userId;
     const mode = (req.body as { mode?: string }).mode === "2v2" ? "2v2" : "1v1";
     const kind = (req.body as { kind?: string }).kind === "bug" ? "bug" : "problem";
+    // A private room may name its problem (the browser extension's "Duel a
+    // friend on this problem"): the arena is then that problem, not a draw.
+    const slug = (req.body as { problemSlug?: unknown }).problemSlug;
+    const chosen = kind === "problem" && typeof slug === "string" && slug ? await problemIdBySlug(slug.slice(0, 200)) : null;
+    if (typeof slug === "string" && slug && !chosen) {
+      res.status(404).json({ error: "That problem is not on CodeKairo." });
+      return;
+    }
 
     // The same double-booking guard the queue has. Without it a player who
     // clicked twice held two waiting rooms, /me/state could only name one,
@@ -405,6 +417,7 @@ router.post("/rooms", requireAuth, async (req, res) => {
         roomCode,
         createdBy: userId,
         ratingBand: me?.rating ?? 1200,
+        ...(chosen ? { problemId: chosen } : {}),
         participants: { create: { userId, team: 1 } },
       },
       include: DUEL_INCLUDE,

@@ -378,3 +378,24 @@ test("a cohort's goal is one item after the weakest skill, ticked by its accept,
   const crowded = buildMission(cands({ weakest: [skill("Joins", { key: "sql:joins" })], building: [skill("Joins", { key: "sql:joins" })], cohort }), 240);
   assert.ok(crowded.filter((i) => i.skill === "sql:joins").length <= MAX_PER_SKILL);
 });
+
+test("a LeetCode revision due comes right after the skill review, opens its own site, and is ticked by an accept there today", () => {
+  const revisions = [
+    { key: "leetcode:two-sum", title: "Two Sum", difficulty: "easy" as const, url: "https://leetcode.com/problems/two-sum/", overdueDays: 2 },
+    { key: "leetcode:3sum", title: "3Sum", difficulty: "medium" as const, url: "https://leetcode.com/problems/3sum/", overdueDays: 0 },
+  ];
+  const day = buildMission(cands({ due: [skill("Hashing")], weakest: [skill("Graph")], revisions }), 60);
+  const at = day.findIndex((i) => i.id === "review:leetcode:two-sum");
+  assert.ok(at >= 0, "the most overdue revision is on the day");
+  assert.equal(day[at]!.href, "https://leetcode.com/problems/two-sum/");
+  assert.equal(day[at]!.workbench, true, "opened in a new tab like a workbench");
+  assert.match(day[at]!.why, /2 days overdue/);
+
+  const todo = missionView("2026-10-21", 60, day, {}, EMPTY_MISSION_FACTS);
+  assert.equal(todo.items.find((i) => i.id === "review:leetcode:two-sum")!.state, "todo");
+  const done = missionView("2026-10-21", 60, day, {}, { ...EMPTY_MISSION_FACTS, revised: new Set(["leetcode:two-sum"]) });
+  assert.equal(done.items.find((i) => i.id === "review:leetcode:two-sum")!.state, "done");
+
+  // An account without the extension has no revisions and the day is as before.
+  assert.ok(buildMission(cands({ due: [skill("Hashing")] }), 60).every((i) => !i.id.startsWith("review:leetcode")));
+});

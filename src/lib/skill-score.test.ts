@@ -264,3 +264,22 @@ test("skill tests: the best counted sitting scaled by level; a proctor-closed on
   assert.ok(weak.indicators.some((i) => i.code === "weak_topic" && /Deadlocks: 1 of 4/.test(i.message)));
   assert.ok(!weak.indicators.some((i) => /Scheduling/.test(i.message)));
 });
+
+test("a solve recorded from LeetCode counts at half, stays out of how-it-went, and lifts the ceiling no further than a Medium", () => {
+  const judged = score([item("hard", [ok(at(-1))])]);
+  const reported = score([item("hard", [ok(at(-1))], { reported: true })]);
+  assert.ok(reported.mastery > 0, "it is evidence");
+  assert.ok(reported.mastery < judged.mastery, "but less than a judged solve");
+  assert.equal(reported.ceiling?.value, Math.round(CEILING.medium * 100), "a reported Hard counts as a Medium for the ceiling");
+  assert.equal(reported.counts.reported, 1);
+  assert.equal(reported.counts.firstTry, 0, "one recorded accept is not a first try");
+  assert.ok(reported.confidence < judged.confidence, "half the evidence");
+  const accuracy = reported.components.find((c) => c.key === "accuracy");
+  assert.equal(accuracy?.value, null, "nothing judged, nothing to measure");
+
+  // Judged work beside it is measured as before.
+  const mixed = score([item("medium", [wa(at(-3)), ok(at(-3, 20))]), item("easy", [ok(at(-2))], { reported: true })]);
+  assert.equal(mixed.counts.firstTry, 0);
+  assert.equal(mixed.counts.solved, 2);
+  assert.match(mixed.components.find((c) => c.key === "depth")!.detail, /1 of them recorded from LeetCode/);
+});

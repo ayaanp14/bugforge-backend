@@ -5,7 +5,7 @@ import { COMPANY_TAGS } from "../lib/companies.js";
 import { areasByGain, companyKey, type Readiness } from "../lib/readiness.js";
 import { lessonForHub } from "../lib/roadmap-lessons.js";
 import { recommendFor } from "../lib/skill-profile.js";
-import { toDifficulty, type Difficulty } from "../lib/skill-score.js";
+import { dayOf, toDifficulty, type Difficulty } from "../lib/skill-score.js";
 import { nextSittingAt } from "../lib/skill-tests.js";
 import { implicitTargetCompany, isGoal, isLevel, type DashboardPlan } from "../lib/onboarding.js";
 import { simulationForCompany } from "../lib/simulations/index.js";
@@ -24,6 +24,7 @@ import {
   slotsFor,
   type ActivityKind,
   type DiscoverCandidate,
+  type RevisionCandidate,
   type DiscoverKey,
   type MissionCandidates,
   type MissionFacts,
@@ -144,11 +145,12 @@ async function gatherCandidates(userId: string, loads: MissionLoads, state: Prob
 
   // Three independent reads, together: awaited inside the object literal they
   // ran one after another on the dashboard's critical path.
-  const [target, discover, cohort] = await Promise.all([
+  const [target, discover, cohort, revisions] = await Promise.all([
     readiness ? targetCandidates(userId, readiness, profile, state, skillPick) : null,
     discoverCandidates(userId, row),
     // A cohort's goal never fails the day: without it the mission is what it was.
     cohortGoalFor(userId).catch(() => null),
+    revisionCandidates(userId).catch(() => []),
   ]);
 
   return {
@@ -167,7 +169,30 @@ async function gatherCandidates(userId: string, loads: MissionLoads, state: Prob
     target,
     discover,
     cohort,
+    revisions,
   };
+}
+
+/**
+ * LeetCode problems due on their revision ladder (the browser extension's,
+ * services/external.ts), most overdue first — one indexed read. An account
+ * without the extension has no rows and loses nothing.
+ */
+async function revisionCandidates(userId: string): Promise<RevisionCandidate[]> {
+  const now = Date.now();
+  const rows = await prisma.externalSolve.findMany({
+    where: { userId, track: true, nextReviewAt: { lte: new Date(now) } },
+    orderBy: { nextReviewAt: "asc" },
+    take: 4,
+    select: { source: true, slug: true, title: true, difficulty: true, nextReviewAt: true },
+  });
+  return rows.map((r) => ({
+    key: `${r.source}:${r.slug}`,
+    title: r.title,
+    difficulty: toDifficulty(r.difficulty),
+    url: `https://leetcode.com/problems/${r.slug}/`,
+    overdueDays: Math.max(0, Math.floor((now - r.nextReviewAt!.getTime()) / 86_400_000)),
+  }));
 }
 
 /**
@@ -331,7 +356,8 @@ async function missionFacts(userId: string, items: readonly MissionItem[], state
   const lessonKeys = items.flatMap((i) => (i.evidence && "lessonKey" in i.evidence ? [i.evidence.lessonKey] : []));
   const activityKeys = items.flatMap((i) => (i.evidence && "activity" in i.evidence ? [activityKey(i.evidence.activity, i.evidence.ref)] : []));
   const discoverKeys = new Set(items.flatMap((i) => (i.evidence && "discover" in i.evidence ? [i.evidence.discover] : [])));
-  const [bugs, sqlSolved, lessons, planned, activities, discovered] = await Promise.all([
+  const revisionKeys = items.flatMap((i) => (i.evidence && "revision" in i.evidence ? [i.evidence.revision] : []));
+  const [bugs, sqlSolved, lessons, planned, activities, discovered, revised] = await Promise.all([
     bugIds.length
       ? prisma.bugSubmission.groupBy({ by: ["challengeId"], where: { userId, challengeId: { in: bugIds }, verdict: "ACCEPTED" } })
       : Promise.resolve([]),
@@ -342,6 +368,7 @@ async function missionFacts(userId: string, items: readonly MissionItem[], state
     plan ?? Promise.resolve(null),
     activityKeys.length ? activitiesToday(userId, activityKeys) : Promise.resolve(new Set<string>()),
     discoverKeys.size ? featuresUsed(userId, discoverKeys) : Promise.resolve(new Set<DiscoverKey>()),
+    revisionKeys.length ? revisedToday(userId, revisionKeys) : Promise.resolve(new Set<string>()),
   ]);
   return {
     solvedProblems: state.solved,
@@ -351,7 +378,20 @@ async function missionFacts(userId: string, items: readonly MissionItem[], state
     planDone: new Set((planned?.steps ?? []).filter((s) => s.done).map((s) => s.key)),
     activities,
     discovered,
+    revised,
   };
+}
+
+/** Of these revision keys, those accepted again on their site today (the platform's day, IST). */
+async function revisedToday(userId: string, keys: readonly string[]): Promise<Set<string>> {
+  const pairs = keys.flatMap((k) => {
+    const at = k.indexOf(":");
+    return at > 0 ? [{ source: k.slice(0, at), slug: k.slice(at + 1) }] : [];
+  });
+  if (!pairs.length) return new Set();
+  const rows = await prisma.externalSolve.findMany({ where: { userId, OR: pairs }, select: { source: true, slug: true, lastSolvedAt: true } });
+  const today = dayOf(Date.now());
+  return new Set(rows.filter((r) => dayOf(r.lastSolvedAt.getTime()) === today).map((r) => `${r.source}:${r.slug}`));
 }
 
 /** Which of these features the account has used at least once: a drive date saved, a simulation started, a word to the tutor. */

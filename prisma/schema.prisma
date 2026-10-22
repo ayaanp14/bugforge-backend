@@ -129,6 +129,10 @@ model User {
   simulationRuns        SimulationRun[]
   submissionAnalyses    SubmissionAnalysis[]
   tutorTurns            TutorTurn[]
+  externalSolves        ExternalSolve[]
+  externalEngagements   ExternalEngagement[]
+  externalTutorTurns    ExternalTutorTurn[]
+  externalReviews       ExternalReview[]
   accounts              Account[]
   githubConnection      GitHubConnection?
   bugSubmissions        BugSubmission[]
@@ -2783,4 +2787,101 @@ model Redemption {
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, createdAt])
+}
+
+/// A problem solved on another site and recorded by the browser extension
+/// (services/external.ts): today only LeetCode. Self-reported — our judge
+/// never saw it — so the skill profile counts it at REPORTED_FACTOR and never
+/// lets it lift a skill's ceiling past a Medium (lib/skill-score.ts). Holds
+/// the problem's name and tags as the site spells them, never its statement.
+/// `problemId` is our catalogue's problem when the titles match, so a
+/// LeetCode solve and a CodeKairo solve of the same problem are one item.
+/// The review columns are the per-problem revision ladder (lib/external.ts
+/// REVISION_LADDER_DAYS), only while `track` is on.
+model ExternalSolve {
+  id             String    @id @default(cuid())
+  userId         String
+  /// "leetcode"
+  source         String    @db.VarChar(16)
+  /// The site's own slug (LeetCode's titleSlug).
+  slug           String    @db.VarChar(160)
+  title          String    @db.VarChar(200)
+  /// "easy" | "medium" | "hard"
+  difficulty     String    @db.VarChar(8)
+  /// The site's topic tags, as it spells them.
+  tags           Json
+  problemId      String?
+  firstSolvedAt  DateTime
+  lastSolvedAt   DateTime
+  /// From the extension's "Import my solved list" rather than an accept it saw.
+  imported       Boolean   @default(false)
+  /// On the revision ladder.
+  track          Boolean   @default(false)
+  /// Rung on the ladder (0-based); -1 until the first review is set.
+  reviewStage    Int       @default(-1)
+  nextReviewAt   DateTime?
+  lastReviewedAt DateTime?
+  createdAt      DateTime  @default(now())
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, source, slug])
+  @@index([userId, track, nextReviewAt])
+}
+
+/// The tutor's rung on another site's problem (the extension's side panel):
+/// the same ladder and the same never-goes-down rule as ProblemEngagement.
+model ExternalEngagement {
+  userId          String
+  source          String    @db.VarChar(16)
+  slug            String    @db.VarChar(160)
+  openedAt        DateTime  @default(now())
+  tutorRung       Int?
+  tutorHintAt     DateTime?
+  tutorSolutionAt DateTime?
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([userId, source, slug])
+}
+
+/// One line of the tutor's conversation on another site's problem — TutorTurn
+/// for a problem that is not in our catalogue.
+model ExternalTutorTurn {
+  id            String   @id @default(cuid())
+  userId        String
+  source        String   @db.VarChar(16)
+  slug          String   @db.VarChar(160)
+  /// "student" | "tutor"
+  role          String   @db.VarChar(8)
+  rung          Int
+  content       String   @db.Text
+  model         String?  @db.VarChar(120)
+  promptVersion Int?
+  createdAt     DateTime @default(now())
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, source, slug, createdAt])
+}
+
+/// "Why it failed" on another site's submission: the same two layers as
+/// SubmissionAnalysis, answered while the extension waits. Keeps the review,
+/// not the code — `codeHash` lets the same code reuse the earlier answer.
+model ExternalReview {
+  id            String   @id @default(cuid())
+  userId        String
+  source        String   @db.VarChar(16)
+  slug          String   @db.VarChar(160)
+  verdict       String   @db.VarChar(40)
+  language      String   @db.VarChar(24)
+  codeHash      String   @db.Char(64)
+  category      String?  @db.VarChar(40)
+  deterministic Json
+  ai            Json?
+  model         String?  @db.VarChar(120)
+  promptVersion Int?
+  tokens        Int?
+  createdAt     DateTime @default(now())
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, source, slug, createdAt])
+  @@index([userId, codeHash])
 }

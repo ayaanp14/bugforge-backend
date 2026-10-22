@@ -1,4 +1,5 @@
 import { Prisma } from "@prisma/client";
+import { skillsForProblemTags } from "../lib/skill-graph.js";
 import { prisma } from "../lib/prisma.js";
 import { cached, invalidate } from "../lib/cache.js";
 import { socketsInRoom } from "../lib/realtime.js";
@@ -96,10 +97,13 @@ interface Core {
 /** Each member's first accept of every problem, hunt and SQL problem — the evidence of the week and of "solved by". */
 async function solvesOf(userIds: string[]): Promise<{ rows: SolveRow[]; problemSkills: (id: string) => readonly string[] }> {
   const cats = await skillCatalogues();
-  const [problems, bugs, sql] = await Promise.all([
+  const [problems, bugs, sql, external] = await Promise.all([
     prisma.submission.groupBy({ by: ["userId", "problemId"], where: { userId: { in: userIds }, verdict: "ACCEPTED" }, _min: { submittedAt: true } }),
     prisma.bugSubmission.groupBy({ by: ["userId", "challengeId"], where: { userId: { in: userIds }, verdict: "ACCEPTED" }, _min: { submittedAt: true } }),
     prisma.sqlSolve.findMany({ where: { userId: { in: userIds } }, select: { userId: true, slug: true, submittedAt: true } }),
+    // Problems solved on LeetCode, through the browser extension: a cohort's
+    // goal counts effort, and practice done there is practice.
+    prisma.externalSolve.findMany({ where: { userId: { in: userIds } }, select: { userId: true, source: true, slug: true, tags: true, problemId: true, firstSolvedAt: true } }),
   ]);
   const rows: SolveRow[] = [];
   for (const p of problems) {
@@ -113,6 +117,15 @@ async function solvesOf(userIds: string[]): Promise<{ rows: SolveRow[]; problemS
   for (const s of sql) {
     const c = cats.sqlBySlug.get(s.slug);
     if (c) rows.push({ userId: s.userId, source: "sql", ref: s.slug, at: s.submittedAt, skills: c.skills });
+  }
+  // The same problem as one of ours is that problem, and counts once: a
+  // first accept here wins over the LeetCode record.
+  const judged = new Set(rows.filter((r) => r.source === "problem").map((r) => `${r.userId}:${r.ref}`));
+  for (const e of external) {
+    const ours = e.problemId ? cats.problemById.get(e.problemId) : undefined;
+    if (ours && judged.has(`${e.userId}:${ours.id}`)) continue;
+    const skills = ours ? ours.skills : skillsForProblemTags(Array.isArray(e.tags) ? (e.tags as unknown[]).filter((t): t is string => typeof t === "string") : []);
+    if (skills.length) rows.push({ userId: e.userId, source: "problem", ref: ours ? ours.id : `ext:${e.source}:${e.slug}`, at: e.firstSolvedAt, skills });
   }
   return { rows, problemSkills: (id) => cats.problemById.get(id)?.skills ?? [] };
 }

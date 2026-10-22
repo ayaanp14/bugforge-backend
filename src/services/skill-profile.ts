@@ -145,7 +145,7 @@ function group<R, K>(rows: readonly R[], keyOf: (r: R) => K): Map<K, R[]> {
 
 async function loadEvidence(userId: string, cat: Catalogues): Promise<{ items: ItemHistory[]; assessments: AssessmentRecord[]; analyses: Array<{ problemId: string; category: string; at: number }> }> {
   const newest = { take: MAX_ROWS } as const;
-  const [submissions, engagements, bugSubs, sqlSubs, aptitude, sittings, reviews, interviews, bugEngagements] = await Promise.all([
+  const [submissions, engagements, bugSubs, sqlSubs, aptitude, sittings, reviews, interviews, bugEngagements, externalSolves] = await Promise.all([
     prisma.submission.findMany({
       where: { userId },
       orderBy: { submittedAt: "desc" },
@@ -205,6 +205,13 @@ async function loadEvidence(userId: string, cat: Catalogues): Promise<{ items: I
       where: { userId },
       select: { challengeId: true, openedAt: true, incidentAt: true, tutorHintAt: true, tutorSolutionAt: true },
     }),
+    // Problems solved on LeetCode, recorded by the browser extension (services/external.ts).
+    prisma.externalSolve.findMany({
+      where: { userId },
+      orderBy: { lastSolvedAt: "desc" },
+      ...newest,
+      select: { source: true, slug: true, title: true, difficulty: true, tags: true, problemId: true, firstSolvedAt: true, lastSolvedAt: true, lastReviewedAt: true },
+    }),
   ]);
 
   const items: ItemHistory[] = [];
@@ -232,6 +239,30 @@ async function loadEvidence(userId: string, cat: Catalogues): Promise<{ items: I
       // whichever came first — the scorer's before-the-solve rule does the rest.
       hintsAt: earliest(e?.hintsAt, e?.tutorHintAt),
       solutionAt: earliest(e?.editorialAt, e?.tutorSolutionAt),
+    });
+  }
+
+  // A solve on another site, self-reported (lib/skill-score REPORTED_FACTOR):
+  // the same problem as one of ours is that problem — and when it was also
+  // judged here, the judged history is the item and this adds nothing. Its
+  // accepts are the first and the latest solve and the latest revision, so
+  // the review ladder sees the days it was brought back.
+  const judged = new Set(items.map((i) => i.id));
+  for (const e of externalSolves) {
+    if (e.problemId && judged.has(e.problemId)) continue;
+    const ours = e.problemId ? cat.problemById.get(e.problemId) : undefined;
+    const skills = ours ? ours.skills : skillsForProblemTags(Array.isArray(e.tags) ? (e.tags as unknown[]).filter((t): t is string => typeof t === "string") : []);
+    if (!skills.length) continue;
+    const days = [...new Set([e.firstSolvedAt, e.lastSolvedAt, e.lastReviewedAt].filter((d): d is Date => d != null).map((d) => d.getTime()))].sort((a, b) => a - b);
+    items.push({
+      source: "problem",
+      id: ours ? ours.id : `ext:${e.source}:${e.slug}`,
+      title: ours ? ours.title : e.title,
+      href: ours ? `/problems/${ours.slug}` : `https://leetcode.com/problems/${e.slug}/`,
+      difficulty: toDifficulty(e.difficulty),
+      skills,
+      attempts: days.map((at): Attempt => ({ at, outcome: "accepted" })),
+      reported: true,
     });
   }
 

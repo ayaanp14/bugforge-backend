@@ -147,6 +147,13 @@ export interface ItemHistory {
   solutionAt?: number | null;
   /** This item's own par time in seconds (an aptitude question's target); otherwise the source's default. */
   parSecs?: number | null;
+  /**
+   * Solved on another site and recorded by the browser extension
+   * (services/external.ts): our judge never saw it. Counted at
+   * REPORTED_FACTOR, kept out of the performance measures (nothing about how
+   * it was solved is known), and never lifting the ceiling past a Medium.
+   */
+  reported?: boolean;
 }
 
 export interface AssessmentRecord {
@@ -240,6 +247,15 @@ export const SOURCE_RULES: Readonly<Record<EvidenceSource, SourceRule>> = {
 export const TARGET_SHARE = 0.5;
 export const ASSIST_FACTOR: Readonly<Record<Assist, number>> = { none: 1, hints: 0.6, solution: 0.25 };
 export const PAIRED_FACTOR = 0.7;
+/**
+ * A self-reported solve (an ItemHistory `reported`, from LeetCode through the
+ * extension) is worth half a judged one: it shows the problem was done, not
+ * how — help, tries and time are unknown — and an import can be anyone's
+ * account. Judged work on the same skill soon outweighs it.
+ */
+export const REPORTED_FACTOR = 0.5;
+/** The hardest difficulty a self-reported solve may lift the ceiling to (RANK: 1 = Medium). */
+export const REPORTED_CEILING_RANK = 1;
 /** The ceiling set by the hardest solve made without the editorial. */
 export const CEILING = { none: 0, assistedOnly: 0.3, easy: 0.55, medium: 0.85, hard: 1 } as const;
 export const PERFORMANCE_WEIGHTS = { accuracy: 0.35, independence: 0.3, firstTry: 0.15, pace: 0.2 } as const;
@@ -386,7 +402,7 @@ export function summarizeItem(item: ItemHistory, asOf: number): ItemSummary | nu
     lastAt: attempts[attempts.length - 1].at,
     successDays: [...success].sort((a, b) => a - b),
     failDays: [...touched].filter((d) => !success.has(d)).sort((a, b) => a - b),
-    quality: solved ? independenceOf({ assist, paired }) * persistence : 0,
+    quality: solved ? independenceOf({ assist, paired }) * persistence * (item.reported ? REPORTED_FACTOR : 1) : 0,
   };
 }
 
@@ -516,6 +532,8 @@ export interface SkillCounts {
   nearMisses: number;
   /** Skill-test sittings that count (not closed by the proctor). */
   sittings: number;
+  /** Of the solves, those self-reported from another site (ItemHistory `reported`). */
+  reported: number;
 }
 
 export interface SkillScore {
@@ -547,6 +565,7 @@ export const EMPTY_COUNTS = (): SkillCounts => ({
   failures: { wrong: 0, runtime: 0, timeout: 0, compile: 0, other: 0 },
   nearMisses: 0,
   sittings: 0,
+  reported: 0,
 });
 
 /** 1 at or under par, 0.3 at three times par or slower, linear between. */
@@ -583,6 +602,12 @@ function practiceEstimate(source: EvidenceSource, summaries: readonly ItemSummar
   const solved = summaries.filter((s) => s.solved);
   counts.attempted = summaries.length;
   counts.solved = solved.length;
+  // What our judge saw: the performance measures read only this. A
+  // self-reported solve has one "attempt" by construction, so counting it
+  // would read every import as first-try, unaided and accurate.
+  const observedAll = summaries.filter((s) => !s.item.reported);
+  const observed = solved.filter((s) => !s.item.reported);
+  counts.reported = solved.length - observed.length;
 
   let easyPoints = 0;
   let otherPoints = 0;
@@ -593,13 +618,17 @@ function practiceEstimate(source: EvidenceSource, summaries: readonly ItemSummar
   for (const s of solved) {
     const d = s.item.difficulty;
     counts.solvedBy[d]++;
+    const credit = rule.weight[d] * s.quality;
+    if (d === "easy") easyPoints += credit;
+    else otherPoints += credit;
+    if (s.item.reported) {
+      hardestIndependent = Math.max(hardestIndependent, Math.min(RANK[d], REPORTED_CEILING_RANK));
+      continue;
+    }
     if (s.firstTry) counts.firstTry++;
     if (s.assist === "hints") counts.hints++;
     if (s.assist === "solution") counts.solution++;
     if (s.paired) counts.paired++;
-    const credit = rule.weight[d] * s.quality;
-    if (d === "easy") easyPoints += credit;
-    else otherPoints += credit;
     independenceSum += independenceOf(s);
     attemptsSum += s.attemptsToSolve ?? 1;
     if (s.assist !== "solution") hardestIndependent = Math.max(hardestIndependent, RANK[d]);
@@ -619,10 +648,10 @@ function practiceEstimate(source: EvidenceSource, summaries: readonly ItemSummar
   const depth = 1 - Math.exp(-points / target);
 
   // Performance.
-  const successes = rule.accuracy === "firstTry" ? counts.firstTry : counts.solved;
-  const accuracy = counts.attempted ? (successes + 1) / (counts.attempted + 2) : null;
-  const independence = solved.length ? independenceSum / solved.length : null;
-  const firstTry = solved.length ? counts.firstTry / solved.length : null;
+  const successes = rule.accuracy === "firstTry" ? counts.firstTry : observed.length;
+  const accuracy = observedAll.length ? (successes + 1) / (observedAll.length + 2) : null;
+  const independence = observed.length ? independenceSum / observed.length : null;
+  const firstTry = observed.length ? counts.firstTry / observed.length : null;
   const pace = counts.paceRatio != null ? paceScore(counts.paceRatio) : null;
   const parts: Array<[number | null, number]> = [
     [accuracy, PERFORMANCE_WEIGHTS.accuracy],
@@ -639,7 +668,7 @@ function practiceEstimate(source: EvidenceSource, summaries: readonly ItemSummar
     hardestIndependent === 2
       ? `A Hard solved without ${rule.answer}: no cap.`
       : hardestIndependent === 1
-        ? `Capped at ${Math.round(CEILING.medium * 100)} until you solve a Hard without ${rule.answer}.`
+        ? `Capped at ${Math.round(CEILING.medium * 100)} until you solve a Hard without ${rule.answer}${solved.some((x) => x.item.reported && x.item.difficulty === "hard") ? " here (a Hard recorded from LeetCode counts as a Medium)" : ""}.`
         : hardestIndependent === 0
           ? `Capped at ${Math.round(CEILING.easy * 100)} until you solve a Medium without ${rule.answer}.`
           : solved.length
@@ -661,7 +690,7 @@ function practiceEstimate(source: EvidenceSource, summaries: readonly ItemSummar
       label: "Depth",
       value: pct(depth),
       detail: counts.solved
-        ? `${by.easy} easy, ${by.medium} medium and ${by.hard} hard solved${counts.hints + counts.solution + counts.paired ? ", part-credited where help was used" : ""}.`
+        ? `${by.easy} easy, ${by.medium} medium and ${by.hard} hard solved${counts.hints + counts.solution + counts.paired ? ", part-credited where help was used" : ""}${counts.reported ? `; ${counts.reported} of them recorded from LeetCode, at half credit` : ""}.`
         : `No ${noun[0]} solved yet.`,
     },
     {
@@ -670,27 +699,29 @@ function practiceEstimate(source: EvidenceSource, summaries: readonly ItemSummar
       value: pct(accuracy),
       // The value is smoothed ((successes + 1) / (attempts + 2)), so 2 of 2
       // reads 75%, not 100%: say why, while the sample is small enough to show it.
-      detail: counts.attempted
+      detail: observedAll.length
         ? `${
             rule.accuracy === "firstTry"
-              ? `${counts.firstTry} of ${plural(counts.attempted, noun)} right on the first answer.`
-              : `Solved ${counts.solved} of the ${plural(counts.attempted, noun)} you started.`
-          }${counts.attempted < 8 ? " With so few, it is counted cautiously." : ""}`
-        : "Nothing attempted yet.",
+              ? `${counts.firstTry} of ${plural(observedAll.length, noun)} right on the first answer.`
+              : `Solved ${observed.length} of the ${plural(observedAll.length, noun)} you started here.`
+          }${observedAll.length < 8 ? " With so few, it is counted cautiously." : ""}`
+        : counts.reported
+          ? "Measured on the work judged here; solves recorded from LeetCode do not show how they went."
+          : "Nothing attempted yet.",
     },
     {
       key: "independence",
       label: "Independence",
       value: pct(independence),
-      detail: solved.length
-        ? `${solved.length - counts.hints - counts.solution} of ${solved.length} solved before opening the hints or ${rule.answer}${counts.paired ? `; ${counts.paired} in a pair room` : ""}.`
+      detail: observed.length
+        ? `${observed.length - counts.hints - counts.solution} of ${observed.length} solved before opening the hints or ${rule.answer}${counts.paired ? `; ${counts.paired} in a pair room` : ""}.`
         : "Measured on your solves.",
     },
     {
       key: "firstTry",
       label: "First try",
       value: pct(firstTry),
-      detail: solved.length ? `${counts.firstTry} of ${solved.length} accepted on the first submission (${(attemptsSum / solved.length).toFixed(1)} tries on average).` : "Measured on your solves.",
+      detail: observed.length ? `${counts.firstTry} of ${observed.length} accepted on the first submission (${(attemptsSum / observed.length).toFixed(1)} tries on average).` : "Measured on your solves.",
     },
     {
       key: "pace",
@@ -715,21 +746,21 @@ function practiceEstimate(source: EvidenceSource, summaries: readonly ItemSummar
 
   const indicators: Indicator[] = [];
   const itemsWith = (f: (s: ItemSummary) => boolean) => summaries.filter(f).length;
-  if (counts.attempted >= 3 && counts.solved / counts.attempted < 0.5) {
-    indicators.push({ code: "low_accuracy", severity: 3, message: `Solved ${counts.solved} of the ${plural(counts.attempted, noun)} you started here.` });
+  if (observedAll.length >= 3 && observed.length / observedAll.length < 0.5) {
+    indicators.push({ code: "low_accuracy", severity: 3, message: `Solved ${observed.length} of the ${plural(observedAll.length, noun)} you started here.` });
   }
   const timeouts = itemsWith((s) => s.failures.timeout > 0);
   if (timeouts >= 2) indicators.push({ code: "timeouts", severity: 3, mistake: "COMPLEXITY", message: `Time limit exceeded on ${plural(timeouts, noun)}: the approach was too slow for the constraints.` });
   const near = itemsWith((s) => s.nearMisses > 0);
   if (near >= 2) indicators.push({ code: "near_misses", severity: 3, mistake: "EDGE_CASE", message: `${plural(near, noun)} failed only a few hidden cases, which usually means an edge case was missed.` });
   const assisted = counts.hints + counts.solution;
-  if (counts.solved >= 3 && assisted / counts.solved >= 0.5) {
-    indicators.push({ code: "assisted", severity: 2, message: `${assisted} of your ${counts.solved} solves came after opening the hints or ${rule.answer}.` });
+  if (observed.length >= 3 && assisted / observed.length >= 0.5) {
+    indicators.push({ code: "assisted", severity: 2, message: `${assisted} of your ${observed.length} solves came after opening the hints or ${rule.answer}.` });
   }
   const crashes = itemsWith((s) => s.failures.runtime > 0);
   if (crashes >= 2) indicators.push({ code: "runtime_errors", severity: 2, mistake: "IMPLEMENTATION", message: `Runtime errors on ${plural(crashes, noun)}. Check the bounds, empty input and overflow.` });
-  if (counts.solved >= 3 && attemptsSum / counts.solved >= 3) {
-    indicators.push({ code: "many_attempts", severity: 2, message: `It takes ${(attemptsSum / counts.solved).toFixed(1)} submissions on average to get accepted. Test the examples and the edge cases before you submit.` });
+  if (observed.length >= 3 && attemptsSum / observed.length >= 3) {
+    indicators.push({ code: "many_attempts", severity: 2, message: `It takes ${(attemptsSum / observed.length).toFixed(1)} submissions on average to get accepted. Test the examples and the edge cases before you submit.` });
   }
   if (counts.timed >= 2 && counts.paceRatio != null && counts.paceRatio >= 1.75) {
     indicators.push({ code: "slow", severity: 2, message: `Your timed solves took ${counts.paceRatio.toFixed(1)}× the target time on median.` });
@@ -742,7 +773,8 @@ function practiceEstimate(source: EvidenceSource, summaries: readonly ItemSummar
 
   return {
     mastery: raw,
-    confidence: confidenceOf(counts.attempted, lastActivityAt, asOf),
+    // A self-reported solve is half the evidence a judged one is, like its credit.
+    confidence: confidenceOf(observedAll.length + REPORTED_FACTOR * (summaries.length - observedAll.length), lastActivityAt, asOf),
     components,
     ceiling: { value: Math.round(ceilingValue * 100), detail: ceilingDetail },
     counts,

@@ -1,3 +1,4 @@
+import { problemIdBySlug } from "../services/dashboard.js";
 import { Router } from "express";
 import { prisma } from "../lib/prisma.js";
 import { kickedUserIdsOf, removeKickedUser } from "../lib/room-kicks.js";
@@ -134,8 +135,16 @@ router.get("/", requireAuth, async (_req, res) => {
 
 // POST /api/pair-rooms — Create a new pair programming room
 router.post("/", requireAuth, async (req, res) => {
-  const { problemId, mode, maxParticipants } = req.body;
+  const { mode, maxParticipants } = req.body;
   const userId = (req as any).user.userId;
+  // By id from the site; by slug from the browser extension, which knows our
+  // problem only by its slug (routes/extension.ts problem panel).
+  const problemId =
+    typeof req.body.problemId === "string" && req.body.problemId
+      ? req.body.problemId
+      : typeof req.body.problemSlug === "string" && req.body.problemSlug
+        ? await problemIdBySlug(req.body.problemSlug.slice(0, 200))
+        : null;
 
   if (typeof problemId !== "string" || !problemId || (mode !== "private" && mode !== "collaborative")) {
     return res.status(400).json({ error: "Missing problemId or mode" });

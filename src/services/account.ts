@@ -67,6 +67,7 @@ export async function buildAccountExport(userId: string): Promise<Record<string,
     notifications, shareCards, orgs, entries, tournamentSubmissions, campus, events, pushDevices, missionDays, analyses, tutorTurns, simulationRuns,
     bugEngagements, bugAnalyses, jobApplications, bugTutorTurns, honours, cohortMemberships, cohortSessions,
     creditGrants, creditSpends, redemptions,
+    externalSolves, externalEngagements, externalTutorTurns, externalReviews,
   ] = await Promise.all([
     prisma.submission.findMany({
       where, ...newest, orderBy: { submittedAt: "desc" },
@@ -223,6 +224,16 @@ export async function buildAccountExport(userId: string): Promise<Record<string,
     prisma.creditSpend.findMany({ where, ...newest, orderBy: { createdAt: "desc" }, select: { credits: true, action: true, createdAt: true } }),
     // Goodies redeemed with points (lib/goodies) — only the ones that paid out.
     prisma.redemption.findMany({ where: { ...where, grantId: { not: null } }, ...newest, orderBy: { createdAt: "desc" }, select: { itemId: true, points: true, credits: true, createdAt: true } }),
+    // The browser extension (services/external.ts): problems solved on
+    // LeetCode and their revisions, the tutor there and its rung, and the
+    // failure reviews — the review, never the code, which was not kept.
+    prisma.externalSolve.findMany({
+      where, ...newest, orderBy: { lastSolvedAt: "desc" },
+      select: { source: true, slug: true, title: true, difficulty: true, tags: true, firstSolvedAt: true, lastSolvedAt: true, imported: true, track: true, reviewStage: true, nextReviewAt: true, lastReviewedAt: true },
+    }),
+    prisma.externalEngagement.findMany({ where, ...newest, select: { source: true, slug: true, openedAt: true, tutorRung: true, tutorHintAt: true, tutorSolutionAt: true } }),
+    prisma.externalTutorTurn.findMany({ where, ...newest, orderBy: { createdAt: "desc" }, select: { source: true, slug: true, role: true, rung: true, content: true, createdAt: true } }),
+    prisma.externalReview.findMany({ where, ...newest, orderBy: { createdAt: "desc" }, select: { source: true, slug: true, verdict: true, language: true, category: true, deterministic: true, ai: true, createdAt: true } }),
   ]);
 
   return {
@@ -246,6 +257,7 @@ export async function buildAccountExport(userId: string): Promise<Record<string,
     },
     bugHunts: { submissions: bugSubmissions, engagement: bugEngagements, failureAnalyses: bugAnalyses, tutor: bugTutorTurns },
     sql: { submissions: sqlSubmissions },
+    browserExtension: { solves: externalSolves, tutorEngagement: externalEngagements, tutor: externalTutorTurns, failureReviews: externalReviews },
     interviews: { sessions: interviews, saved: savedInterviews, simulations: simulationRuns },
     aptitude: { attempts: aptitude },
     placementTests: { attempts: placement },

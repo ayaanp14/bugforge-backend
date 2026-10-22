@@ -115,6 +115,8 @@ export type MissionEvidence =
   | { lessonKey: string }
   | { planStep: string }
   | { activity: ActivityKind; ref: string | null }
+  /** A problem solved on another site, due on its revision ladder ("leetcode:two-sum"); ticked by an accept there today. */
+  | { revision: string }
   | null;
 
 export interface MissionItem {
@@ -181,6 +183,23 @@ export interface MissionCandidates {
   discover: DiscoverCandidate[];
   /** The week's cohort goal this account has not met yet (services/cohorts cohortGoalFor), or null. */
   cohort?: CohortCandidate | null;
+  /**
+   * Problems solved on LeetCode whose revision is due (the browser
+   * extension's ladder, services/external.ts), most overdue first. A
+   * revision is a review: one comes right after the skill review, a second
+   * late in the day.
+   */
+  revisions?: RevisionCandidate[];
+}
+
+export interface RevisionCandidate {
+  /** "<source>:<slug>", the evidence key. */
+  key: string;
+  title: string;
+  difficulty: Difficulty;
+  /** The problem on its own site. */
+  url: string;
+  overdueDays: number;
 }
 
 /**
@@ -362,6 +381,7 @@ export function buildMission(c: MissionCandidates, minutes: number, keep: readon
     ...(near && lean ? [lean] : []),
     ...(languageGoal ? [studyLessonProposal(c)] : []),
     skillProblem("review", c.due[0], (s) => `${s.label} is due for review. Solving one you have not seen keeps it.`),
+    revisionProposal(c, 0),
     ...(practiceGoal ? [dailyProposal(c)] : []),
     skillProblem("practice", c.weakest[0], (s) => `${s.label} is one of your weakest at ${s.mastery}%.`),
     ...(near && lean ? [lean] : []),
@@ -404,6 +424,7 @@ export function buildMission(c: MissionCandidates, minutes: number, keep: readon
     skillProblem("practice", c.ready[1], (s) => `${s.label} is ready to start.`),
     ...(interviewGoal || minutes >= 90 ? [] : [huntProposal(c)]),
     skillProblem("review", c.due[2], (s) => `${s.label} is due for review.`),
+    revisionProposal(c, 1),
     ...c.fallback.map((p): Proposal => (_perSlot, refs) => (refs.has(p.id) ? null : problemItem("practice", p, "Practice", "More practice at your level.", null))),
   ];
 
@@ -420,6 +441,31 @@ export function buildMission(c: MissionCandidates, minutes: number, keep: readon
   }
 
   return orderItems(picked);
+}
+
+/**
+ * A LeetCode problem due on its revision ladder: solve it again there, from
+ * memory. Opened in a new tab like a workbench, ticked by the extension
+ * seeing the accept.
+ */
+function revisionProposal(c: MissionCandidates, n: number): Proposal {
+  return () => {
+    const r = c.revisions?.[n];
+    if (!r) return null;
+    return {
+      id: `review:${r.key}`,
+      kind: "review",
+      title: r.title,
+      context: "LeetCode revision",
+      why: r.overdueDays > 0 ? `You solved this on LeetCode; its revision is ${r.overdueDays} ${r.overdueDays === 1 ? "day" : "days"} overdue. Solve it again from memory.` : "You solved this on LeetCode and it is due for revision. Solve it again from memory.",
+      href: r.url,
+      workbench: true,
+      minutes: PROBLEM_MINUTES[r.difficulty],
+      difficulty: r.difficulty,
+      skill: null,
+      evidence: { revision: r.key },
+    };
+  };
 }
 
 function studyLessonProposal(c: MissionCandidates): Proposal {
@@ -710,9 +756,11 @@ export interface MissionFacts {
   activities: ReadonlySet<string>;
   /** Features used at least once (DiscoverKey). */
   discovered: ReadonlySet<DiscoverKey>;
+  /** Revision keys ("leetcode:two-sum") accepted again today. */
+  revised?: ReadonlySet<string>;
 }
 
-export const EMPTY_MISSION_FACTS: MissionFacts = { solvedProblems: new Set(), solvedBugs: new Set(), solvedSql: new Set(), completedLessons: new Set(), planDone: new Set(), activities: new Set(), discovered: new Set() };
+export const EMPTY_MISSION_FACTS: MissionFacts = { solvedProblems: new Set(), solvedBugs: new Set(), solvedSql: new Set(), completedLessons: new Set(), planDone: new Set(), activities: new Set(), discovered: new Set(), revised: new Set() };
 
 export type ItemState = "todo" | "done" | "skipped";
 
@@ -746,6 +794,7 @@ export function evidenceDone(e: MissionEvidence, f: MissionFacts): boolean {
   if ("sqlSlug" in e) return f.solvedSql.has(e.sqlSlug);
   if ("lessonKey" in e) return f.completedLessons.has(e.lessonKey);
   if ("activity" in e) return f.activities.has(activityKey(e.activity, e.ref));
+  if ("revision" in e) return f.revised?.has(e.revision) ?? false;
   return f.planDone.has(e.planStep);
 }
 
