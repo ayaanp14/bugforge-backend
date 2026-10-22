@@ -89,6 +89,65 @@ export async function sqlProblemList(): Promise<{ problems: SqlProblemRow[]; top
   return { problems, topics: SQL_TOPICS.filter((t) => SQL_PROBLEMS.some((p) => p.topics.includes(t))), counts };
 }
 
+export const SQL_PAGE_SIZE = 100;
+
+export interface SqlListQuery {
+  offset: number;
+  limit: number;
+  difficulty?: SqlProblemSpec["difficulty"];
+  topic?: string;
+  search?: string;
+}
+
+export interface SqlListPage {
+  problems: SqlProblemRow[];
+  /** Rows matching the filters, across every page. */
+  total: number;
+  /** The offset of the next page; null on the last. */
+  next: number | null;
+  /** The facets, over the whole list (not the filtered one) — the masthead, the difficulty pills, the topic chips. */
+  topics: Array<{ name: string; count: number }>;
+  counts: Record<string, number>;
+  all: number;
+}
+
+/**
+ * The search box's rule, answered here so it covers every problem and not
+ * only the pages already loaded: a number ("12", "#12") is that problem;
+ * otherwise every word must appear in the title, a topic or the slug. The
+ * SPA's matchesSqlSearch (components/sql/sql-ui.ts) is the same rule.
+ */
+export function matchesSqlSearch(row: SqlProblemRow, search: string): boolean {
+  const q = search.trim().toLowerCase();
+  if (!q) return true;
+  const number = /^#?(\d+)\.?$/.exec(q);
+  if (number) return row.number === Number(number[1]);
+  const hay = `${row.title} ${row.topics.join(" ")} ${row.slug.replace(/-/g, " ")}`.toLowerCase();
+  return q.split(/\s+/).every((word) => hay.includes(word));
+}
+
+/** The pure half of sqlProblemListPage: narrow, search and slice the list. */
+export function pageOfSqlList(list: { problems: SqlProblemRow[]; topics: string[]; counts: Record<string, number> }, o: SqlListQuery): SqlListPage {
+  const matching = list.problems.filter(
+    (p) => (!o.difficulty || p.difficulty === o.difficulty) && (!o.topic || p.topics.includes(o.topic)) && matchesSqlSearch(p, o.search ?? ""),
+  );
+  const problems = matching.slice(o.offset, o.offset + o.limit);
+  const end = o.offset + problems.length;
+  return {
+    problems,
+    total: matching.length,
+    next: end < matching.length ? end : null,
+    topics: list.topics.map((name) => ({ name, count: list.problems.filter((p) => p.topics.includes(name)).length })),
+    counts: list.counts,
+    all: list.problems.length,
+  };
+}
+
+/** One page of the list (/sql's table, 100 rows a request as the reader scrolls). */
+export async function sqlProblemListPage(o: SqlListQuery): Promise<SqlListPage> {
+  return pageOfSqlList(await sqlProblemList(), o);
+}
+
 function tablesOf(spec: SqlProblemSpec, index: number): Record<string, TableView> {
   const data = buildProblem(spec).data[index] ?? {};
   return Object.fromEntries(spec.tables.map((t) => [t.name, { columns: t.columns.map((c) => c.name), rows: data[t.name] ?? [] }]));

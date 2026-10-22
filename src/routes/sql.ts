@@ -8,7 +8,7 @@ import { claimFirstSolve } from "../lib/solve-payout.js";
 import { sqlProblem } from "../lib/sql-problems/index.js";
 import { judgeSql } from "../lib/sql/judge.js";
 import { SqlBusyError } from "../lib/sql/engine.js";
-import { forgetSqlStanding, sqlProblemList, sqlProblemPage, sqlStanding } from "../services/sql-problems.js";
+import { forgetSqlStanding, SQL_PAGE_SIZE, sqlProblemList, sqlProblemListPage, sqlProblemPage, sqlStanding } from "../services/sql-problems.js";
 import { invalidateDashboard } from "../services/dashboard.js";
 import { createNotificationOnce, streakMilestone } from "../services/notifications.js";
 
@@ -25,6 +25,28 @@ const MAX_QUERY_CHARS = 20_000;
 
 sqlRouter.get("/", browserCache(SEEDED_CONTENT_MAX_AGE, { shared: true }), async (_req, res) => {
   res.json(await sqlProblemList());
+});
+
+// /sql's table, a page at a time: the first 100 on load, the next 100 as the
+// reader scrolls. Filters and search are answered here over the whole list,
+// so a match beyond the loaded pages is still found. Declared before /:slug
+// ("problems" would otherwise be read as a slug).
+sqlRouter.get("/problems", browserCache(SEEDED_CONTENT_MAX_AGE, { shared: true }), async (req, res) => {
+  const offset = Number(req.query["offset"] ?? 0);
+  const limit = Number(req.query["limit"] ?? SQL_PAGE_SIZE);
+  const level = typeof req.query["difficulty"] === "string" && req.query["difficulty"] ? req.query["difficulty"].toUpperCase() : undefined;
+  const topic = typeof req.query["topic"] === "string" && req.query["topic"] ? req.query["topic"] : undefined;
+  const search = typeof req.query["search"] === "string" ? req.query["search"].trim() : "";
+  if (
+    !Number.isInteger(offset) || offset < 0 || offset > 100_000 ||
+    !Number.isInteger(limit) || limit < 1 || limit > SQL_PAGE_SIZE ||
+    (level !== undefined && level !== "EASY" && level !== "MEDIUM" && level !== "HARD") ||
+    (topic !== undefined && topic.length > 80) || search.length > 100
+  ) {
+    res.status(400).json({ error: `offset must be a whole number from 0, limit 1–${SQL_PAGE_SIZE}, difficulty easy, medium or hard, the topic at most 80 characters and the search at most 100` });
+    return;
+  }
+  res.json(await sqlProblemListPage({ offset, limit, difficulty: level as "EASY" | "MEDIUM" | "HARD" | undefined, topic, search }));
 });
 
 sqlRouter.get("/standing", requireAuth, async (req, res) => {
