@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { currentModel, fetchWithModelFallback } from "../lib/ai/model-fallback.js";
 import { prettyLabel } from "../lib/interview-labels.js";
 
 /**
@@ -139,12 +140,15 @@ async function postCompletion(
 
   let response: Response;
   try {
-    response = await fetch(`${BASE_URL}/chat/completions`, {
-      method: "POST",
-      headers: { "content-type": "application/json", authorization: `Bearer ${apiKey()}` },
-      body: JSON.stringify(body),
-      signal: controller.signal,
-    });
+    // A retired model goes again on the next one (lib/ai/model-fallback).
+    ({ response } = await fetchWithModelFallback(String(body["model"]), (model) =>
+      fetch(`${BASE_URL}/chat/completions`, {
+        method: "POST",
+        headers: { "content-type": "application/json", authorization: `Bearer ${apiKey()}` },
+        body: JSON.stringify({ ...body, model }),
+        signal: controller.signal,
+      }),
+    ));
   } catch (error) {
     if ((error as Error).name === "AbortError") {
       // Our own deadline: transient, and worth another attempt.
@@ -205,7 +209,8 @@ function responseFormat(schema: z.ZodType, name: string) {
 /** What the model layer is actually talking to — for logs and the smoke test. */
 export function providerInfo() {
   return {
-    model: MODEL,
+    // The model answering now: the configured one, or its fallback while it is gone.
+    model: currentModel(MODEL),
     questionModel: QUESTION_MODEL,
     split: QUESTION_MODEL !== MODEL,
     baseUrl: BASE_URL,

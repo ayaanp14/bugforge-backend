@@ -1,5 +1,6 @@
 import type { z } from "zod";
 import { completeJson, providerConfig, providerInfo, type Usage } from "../../services/interview-ai.js";
+import { fetchWithModelFallback } from "./model-fallback.js";
 
 /**
  * The one door new AI features go through. Today it opens onto NVIDIA's
@@ -69,16 +70,20 @@ const RETRY_STATUS = new Set([408, 429, 500, 502, 503, 504]);
  * own copy until it is next changed (lib/ai/prompts.ts says the same of the
  * older prompts).
  */
-async function attemptStream(body: Record<string, unknown>, signal: AbortSignal, onToken: (text: string) => void): Promise<{ text: string; inBandError: string | null }> {
+async function attemptStream(body: Record<string, unknown>, signal: AbortSignal, onToken: (text: string) => void): Promise<{ text: string; inBandError: string | null; model: string }> {
   const { baseUrl, key } = providerConfig();
   let response: Response;
+  let model: string;
   try {
-    response = await fetch(`${baseUrl}/chat/completions`, {
-      method: "POST",
-      headers: { "content-type": "application/json", authorization: `Bearer ${key}` },
-      body: JSON.stringify(body),
-      signal,
-    });
+    // A retired model goes again on the next one (lib/ai/model-fallback).
+    ({ response, model } = await fetchWithModelFallback(String(body["model"]), (m) =>
+      fetch(`${baseUrl}/chat/completions`, {
+        method: "POST",
+        headers: { "content-type": "application/json", authorization: `Bearer ${key}` },
+        body: JSON.stringify({ ...body, model: m }),
+        signal,
+      }),
+    ));
   } catch (err) {
     if ((err as Error).name === "AbortError") throw new AIStreamError("The model took too long to answer.", 504);
     throw new AIStreamError(`The model is unreachable: ${(err as Error).message}`, 503);
@@ -120,7 +125,7 @@ async function attemptStream(body: Record<string, unknown>, signal: AbortSignal,
       }
     }
   }
-  return { text, inBandError };
+  return { text, inBandError, model };
 }
 
 /**
@@ -130,7 +135,7 @@ async function attemptStream(body: Record<string, unknown>, signal: AbortSignal,
  * turn that takes ten seconds to say its first word reads as broken.
  */
 async function streamNvidia(messages: AIMessage[], options: AIStreamOptions, onToken: (text: string) => void): Promise<{ text: string; model: string }> {
-  const model = options.model || providerConfig().model;
+  let model = options.model || providerConfig().model;
   const body = {
     model,
     messages,
@@ -146,7 +151,7 @@ async function streamNvidia(messages: AIMessage[], options: AIStreamOptions, onT
     let last: AIStreamError | null = null;
     for (let attempt = 0; attempt < 5 && !text; attempt++) {
       if (attempt > 0) await new Promise((r) => setTimeout(r, 400 * attempt));
-      let outcome: { text: string; inBandError: string | null };
+      let outcome: { text: string; inBandError: string | null; model: string };
       try {
         outcome = await attemptStream(body, controller.signal, (t) => {
           text += t;
@@ -157,6 +162,8 @@ async function streamNvidia(messages: AIMessage[], options: AIStreamOptions, onT
         last = err;
         continue;
       }
+      // Recorded beside the answer: the model that actually wrote it.
+      model = outcome.model;
       if (outcome.text.trim()) break;
       last = new AIStreamError(outcome.inBandError ? `The model is busy: ${outcome.inBandError}` : "The model returned an empty answer.", 503);
     }

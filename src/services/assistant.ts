@@ -1,4 +1,5 @@
 import { readFileSync } from "node:fs";
+import { fetchWithModelFallback } from "../lib/ai/model-fallback.js";
 import { prisma } from "../lib/prisma.js";
 import { cached } from "../lib/cache.js";
 import { ACTION_LABELS, CREDIT_COSTS, CREDIT_PACKS, METERED_ACTIONS, PLANS, PLAN_OFFERS, allowanceLabel, freeForAll, type Plan } from "../lib/plans.js";
@@ -348,12 +349,15 @@ async function attemptStream(body: Record<string, unknown>, signal: AbortSignal,
   const { baseUrl, key } = providerConfig();
   let response: Response;
   try {
-    response = await fetch(`${baseUrl}/chat/completions`, {
-      method: "POST",
-      headers: { "content-type": "application/json", authorization: `Bearer ${key}` },
-      body: JSON.stringify(body),
-      signal,
-    });
+    // A retired model goes again on the next one (lib/ai/model-fallback).
+    ({ response } = await fetchWithModelFallback(String(body["model"]), (model) =>
+      fetch(`${baseUrl}/chat/completions`, {
+        method: "POST",
+        headers: { "content-type": "application/json", authorization: `Bearer ${key}` },
+        body: JSON.stringify({ ...body, model }),
+        signal,
+      }),
+    ));
   } catch (err) {
     if ((err as Error).name === "AbortError") throw new AssistantError("The assistant took too long to answer.", 504);
     throw new AssistantError(`The assistant is unreachable: ${(err as Error).message}`, 503);
