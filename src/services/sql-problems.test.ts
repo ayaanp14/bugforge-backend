@@ -2,17 +2,20 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { matchesSqlSearch, pageOfSqlList, type SqlProblemRow } from "./sql-problems.js";
 
-const row = (n: number, difficulty: SqlProblemRow["difficulty"], topics: string[]): SqlProblemRow => ({
+const row = (n: number, difficulty: SqlProblemRow["difficulty"], topics: string[], company: string | null = null): SqlProblemRow => ({
   number: n,
   slug: `problem-${n}`,
   title: `Problem ${n}`,
   difficulty,
   topics,
+  company,
   acceptance: null,
 });
 
-const problems = Array.from({ length: 250 }, (_, i) => row(i + 1, i % 3 === 0 ? "EASY" : i % 3 === 1 ? "MEDIUM" : "HARD", i % 2 ? ["Joins"] : ["Basics"]));
-const list = { problems, topics: ["Basics", "Joins"], counts: { EASY: 84, MEDIUM: 83, HARD: 83 } };
+// The last 50 are company sets: 201–225 Swiggy, 226–250 Uber.
+const companyOf = (n: number) => (n > 225 ? "Uber" : n > 200 ? "Swiggy" : null);
+const problems = Array.from({ length: 250 }, (_, i) => row(i + 1, i % 3 === 0 ? "EASY" : i % 3 === 1 ? "MEDIUM" : "HARD", i % 2 ? ["Joins"] : ["Basics"], companyOf(i + 1)));
+const list = { problems, topics: ["Basics", "Joins"], companies: ["Swiggy", "Uber", "Zomato"], counts: { EASY: 84, MEDIUM: 83, HARD: 83 } };
 
 test("pages the list 100 at a time and names the next offset", () => {
   const first = pageOfSqlList(list, { offset: 0, limit: 100 });
@@ -41,4 +44,16 @@ test("search finds a number beyond the first page", () => {
   assert.deepEqual(page.problems.map((p) => p.number), [230]);
   assert.equal(matchesSqlSearch(row(5, "EASY", ["Window Functions"]), "window problem"), true);
   assert.equal(matchesSqlSearch(row(5, "EASY", ["Joins"]), "window"), false);
+});
+
+test("the company filter narrows to one set; its chips count the whole list", () => {
+  const page = pageOfSqlList(list, { offset: 0, limit: 100, company: "Swiggy", difficulty: "HARD" });
+  assert.ok(page.problems.every((p) => p.company === "Swiggy" && p.difficulty === "HARD"));
+  assert.deepEqual(page.problems.map((p) => p.number), [201, 204, 207, 210, 213, 216, 219, 222, 225]);
+  assert.deepEqual(page.companies, [
+    { name: "Swiggy", count: 25 },
+    { name: "Uber", count: 25 },
+    { name: "Zomato", count: 0 },
+  ]);
+  assert.equal(matchesSqlSearch(row(5, "EASY", ["Joins"], "PhonePe"), "phonepe"), true);
 });

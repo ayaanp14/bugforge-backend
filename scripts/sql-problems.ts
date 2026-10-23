@@ -45,7 +45,9 @@ const file = value("--file");
 const FILE_PROBLEMS: SqlProblemSpec[] = file
   ? (Object.values(await import(pathToFileURL(resolve(file)).href)).filter(Array.isArray).flat() as SqlProblemSpec[])
   : [];
-const SQL_PROBLEMS: SqlProblemSpec[] = [...LISTED, ...FILE_PROBLEMS.filter((p) => !LISTED.includes(p))];
+// By slug, not identity: index.ts lists a company file's specs as copies (it stamps `company` on each).
+const LISTED_SLUGS = new Set(LISTED.map((p) => p.slug));
+const SQL_PROBLEMS: SqlProblemSpec[] = [...LISTED, ...FILE_PROBLEMS.filter((p) => !LISTED_SLUGS.has(p.slug))];
 
 const SLUG = /^[a-z0-9][a-z0-9-]*$/;
 const COLUMN_TYPES = new Set(["int", "bigint", "decimal", "varchar", "char", "date", "datetime", "enum", "bool"]);

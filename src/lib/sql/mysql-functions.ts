@@ -156,7 +156,8 @@ function thousands(x: SqlValue, decimals: SqlValue): SqlValue {
 /** Fixed-arity functions: name → implementation. sql.js registers each at its declared arity. */
 export const MYSQL_FUNCTIONS: ReadonlyArray<[string, Fn]> = [
   ["IF", (c, a, b) => (truthy(c) ? (a ?? null) : (b ?? null))],
-  ["ISNULL", (v) => (isNull(v) ? 1 : 0)],
+  // MySQL's ISNULL(x); lib/sql/dialect.ts renames the call, ISNULL being an SQLite keyword.
+  ["MYSQL_ISNULL", (v) => (isNull(v) ? 1 : 0)],
   // Dates
   ["YEAR", datePart((d) => d.getUTCFullYear())],
   ["MONTH", datePart((d) => d.getUTCMonth() + 1)],

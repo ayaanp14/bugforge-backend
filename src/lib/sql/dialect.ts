@@ -451,6 +451,13 @@ export function rewriteMysql(sql: string): string {
       if (upper(tokens[k]) === "INTEGER" || upper(tokens[k]) === "INT") i = k;
       continue;
     }
+    // ISNULL(x): SQLite's parser reads ISNULL as its postfix operator (`x ISNULL`),
+    // so the call is a syntax error before any registered function is looked up
+    // (found 2026-10-22, a reference query using it). Renamed to one it doesn't reserve.
+    if (w === "ISNULL" && tokens[skipSpaceFwd(tokens, i + 1)]?.text === "(") {
+      out.push(word("MYSQL_ISNULL"));
+      continue;
+    }
     // TIMESTAMPDIFF(DAY, a, b) → TIMESTAMPDIFF('DAY', a, b)
     if (t.kind === "word" && upper(prevSignificant(out)) === "(" && upper(prevSignificant(out, 2)) === "TIMESTAMPDIFF") {
       out.push({ kind: "string", text: `'${t.text.toUpperCase()}'` });

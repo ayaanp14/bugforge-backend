@@ -67,6 +67,11 @@ test("a LIKE pattern with a backslash names MySQL's default escape", () => {
   assert.equal(rewriteMysql("SELECT 1 FROM t WHERE s LIKE 'a%'"), "SELECT 1 FROM t WHERE s LIKE 'a%'");
 });
 
+test("MySQL's ISNULL(x) call is renamed past SQLite's ISNULL keyword", () => {
+  assert.equal(rewriteMysql("SELECT ISNULL(a), isnull (b) FROM t"), "SELECT MYSQL_ISNULL(a), MYSQL_ISNULL (b) FROM t");
+  assert.equal(rewriteMysql("SELECT a ISNULL FROM t"), "SELECT a ISNULL FROM t");
+});
+
 test("INTERVAL, TIMESTAMPDIFF units, CAST types and <=> are rewritten", () => {
   assert.equal(rewriteMysql("SELECT DATE_ADD(d, INTERVAL 1 DAY)"), "SELECT DATE_ADD(d,  1 , 'DAY')");
   assert.equal(rewriteMysql("SELECT DATE_SUB(d, INTERVAL n + 1 month)"), "SELECT DATE_SUB(d,  n + 1 , 'MONTH')");

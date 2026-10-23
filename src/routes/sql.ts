@@ -36,17 +36,18 @@ sqlRouter.get("/problems", browserCache(SEEDED_CONTENT_MAX_AGE, { shared: true }
   const limit = Number(req.query["limit"] ?? SQL_PAGE_SIZE);
   const level = typeof req.query["difficulty"] === "string" && req.query["difficulty"] ? req.query["difficulty"].toUpperCase() : undefined;
   const topic = typeof req.query["topic"] === "string" && req.query["topic"] ? req.query["topic"] : undefined;
+  const company = typeof req.query["company"] === "string" && req.query["company"] ? req.query["company"] : undefined;
   const search = typeof req.query["search"] === "string" ? req.query["search"].trim() : "";
   if (
     !Number.isInteger(offset) || offset < 0 || offset > 100_000 ||
     !Number.isInteger(limit) || limit < 1 || limit > SQL_PAGE_SIZE ||
     (level !== undefined && level !== "EASY" && level !== "MEDIUM" && level !== "HARD") ||
-    (topic !== undefined && topic.length > 80) || search.length > 100
+    (topic !== undefined && topic.length > 80) || (company !== undefined && company.length > 80) || search.length > 100
   ) {
-    res.status(400).json({ error: `offset must be a whole number from 0, limit 1–${SQL_PAGE_SIZE}, difficulty easy, medium or hard, the topic at most 80 characters and the search at most 100` });
+    res.status(400).json({ error: `offset must be a whole number from 0, limit 1–${SQL_PAGE_SIZE}, difficulty easy, medium or hard, the topic and the company at most 80 characters each and the search at most 100` });
     return;
   }
-  res.json(await sqlProblemListPage({ offset, limit, difficulty: level as "EASY" | "MEDIUM" | "HARD" | undefined, topic, search }));
+  res.json(await sqlProblemListPage({ offset, limit, difficulty: level as "EASY" | "MEDIUM" | "HARD" | undefined, topic, company, search }));
 });
 
 sqlRouter.get("/standing", requireAuth, async (req, res) => {

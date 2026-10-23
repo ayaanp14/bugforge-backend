@@ -1,6 +1,6 @@
 import { prisma } from "../lib/prisma.js";
 import { cached, cachedShared, invalidate } from "../lib/cache.js";
-import { SQL_PROBLEMS, SQL_TOPICS, sqlProblem } from "../lib/sql-problems/index.js";
+import { SQL_COMPANIES, SQL_PROBLEMS, SQL_TOPICS, sqlProblem } from "../lib/sql-problems/index.js";
 import { buildProblem, starterQuery } from "../lib/sql-problems/build.js";
 import type { SqlProblemSpec } from "../lib/sql-problems/types.js";
 import { expectedResults, type TableView } from "../lib/sql/judge.js";
@@ -19,6 +19,8 @@ export interface SqlProblemRow {
   title: string;
   difficulty: SqlProblemSpec["difficulty"];
   topics: string[];
+  /** The company the problem is set at (the `company-*.ts` sets); null for the topic and industry sets. */
+  company: string | null;
   /** Accepted ÷ all submissions, null under 20 submissions. */
   acceptance: number | null;
 }
@@ -34,6 +36,7 @@ export interface SqlProblemPage {
   title: string;
   difficulty: SqlProblemSpec["difficulty"];
   topics: string[];
+  company: string | null;
   description: string;
   ordered: boolean;
   tables: SqlProblemSpec["tables"];
@@ -74,7 +77,15 @@ export async function sqlAcceptance(): Promise<Map<string, number>> {
   }
 }
 
-export async function sqlProblemList(): Promise<{ problems: SqlProblemRow[]; topics: string[]; counts: Record<string, number> }> {
+export interface SqlProblemListAll {
+  problems: SqlProblemRow[];
+  topics: string[];
+  /** The companies with a set, in the list's order (SQL_COMPANIES). */
+  companies: string[];
+  counts: Record<string, number>;
+}
+
+export async function sqlProblemList(): Promise<SqlProblemListAll> {
   const acceptance = await sqlAcceptance();
   const problems = SQL_PROBLEMS.map((p) => ({
     number: sqlNumber(p.slug),
@@ -82,11 +93,12 @@ export async function sqlProblemList(): Promise<{ problems: SqlProblemRow[]; top
     title: p.title,
     difficulty: p.difficulty,
     topics: p.topics,
+    company: p.company ?? null,
     acceptance: acceptance.get(p.slug) ?? null,
   }));
   const counts: Record<string, number> = { EASY: 0, MEDIUM: 0, HARD: 0 };
   for (const p of problems) counts[p.difficulty] = (counts[p.difficulty] ?? 0) + 1;
-  return { problems, topics: SQL_TOPICS.filter((t) => SQL_PROBLEMS.some((p) => p.topics.includes(t))), counts };
+  return { problems, topics: SQL_TOPICS.filter((t) => SQL_PROBLEMS.some((p) => p.topics.includes(t))), companies: [...SQL_COMPANIES], counts };
 }
 
 export const SQL_PAGE_SIZE = 100;
@@ -96,6 +108,7 @@ export interface SqlListQuery {
   limit: number;
   difficulty?: SqlProblemSpec["difficulty"];
   topic?: string;
+  company?: string;
   search?: string;
 }
 
@@ -107,6 +120,8 @@ export interface SqlListPage {
   next: number | null;
   /** The facets, over the whole list (not the filtered one) — the masthead, the difficulty pills, the topic chips. */
   topics: Array<{ name: string; count: number }>;
+  /** The company chips, the same way: every company with a set and its count. */
+  companies: Array<{ name: string; count: number }>;
   counts: Record<string, number>;
   all: number;
 }
@@ -114,7 +129,7 @@ export interface SqlListPage {
 /**
  * The search box's rule, answered here so it covers every problem and not
  * only the pages already loaded: a number ("12", "#12") is that problem;
- * otherwise every word must appear in the title, a topic or the slug. The
+ * otherwise every word must appear in the title, a topic, the company or the slug. The
  * SPA's matchesSqlSearch (components/sql/sql-ui.ts) is the same rule.
  */
 export function matchesSqlSearch(row: SqlProblemRow, search: string): boolean {
@@ -122,14 +137,18 @@ export function matchesSqlSearch(row: SqlProblemRow, search: string): boolean {
   if (!q) return true;
   const number = /^#?(\d+)\.?$/.exec(q);
   if (number) return row.number === Number(number[1]);
-  const hay = `${row.title} ${row.topics.join(" ")} ${row.slug.replace(/-/g, " ")}`.toLowerCase();
+  const hay = `${row.title} ${row.topics.join(" ")} ${row.company ?? ""} ${row.slug.replace(/-/g, " ")}`.toLowerCase();
   return q.split(/\s+/).every((word) => hay.includes(word));
 }
 
 /** The pure half of sqlProblemListPage: narrow, search and slice the list. */
-export function pageOfSqlList(list: { problems: SqlProblemRow[]; topics: string[]; counts: Record<string, number> }, o: SqlListQuery): SqlListPage {
+export function pageOfSqlList(list: SqlProblemListAll, o: SqlListQuery): SqlListPage {
   const matching = list.problems.filter(
-    (p) => (!o.difficulty || p.difficulty === o.difficulty) && (!o.topic || p.topics.includes(o.topic)) && matchesSqlSearch(p, o.search ?? ""),
+    (p) =>
+      (!o.difficulty || p.difficulty === o.difficulty) &&
+      (!o.topic || p.topics.includes(o.topic)) &&
+      (!o.company || p.company === o.company) &&
+      matchesSqlSearch(p, o.search ?? ""),
   );
   const problems = matching.slice(o.offset, o.offset + o.limit);
   const end = o.offset + problems.length;
@@ -138,6 +157,7 @@ export function pageOfSqlList(list: { problems: SqlProblemRow[]; topics: string[
     total: matching.length,
     next: end < matching.length ? end : null,
     topics: list.topics.map((name) => ({ name, count: list.problems.filter((p) => p.topics.includes(name)).length })),
+    companies: list.companies.map((name) => ({ name, count: list.problems.filter((p) => p.company === name).length })),
     counts: list.counts,
     all: list.problems.length,
   };
@@ -170,6 +190,7 @@ export function sqlProblemPage(slug: string): Promise<SqlProblemPage | null> {
       title: spec.title,
       difficulty: spec.difficulty,
       topics: spec.topics,
+      company: spec.company ?? null,
       description: spec.description,
       ordered: spec.ordered ?? false,
       tables: spec.tables,

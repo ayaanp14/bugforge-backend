@@ -46,6 +46,8 @@ export interface SqlProblemSpec {
   difficulty: SqlDifficulty;
   /** From SQL_TOPICS (lib/sql-problems/index.ts). */
   topics: string[];
+  /** The company the problem is set at (`company-*.ts`) — /sql's Companies filter. Set by index.ts per file, never in a spec. */
+  company?: string;
   /** Markdown: the task only — tables, examples and outputs are drawn from the data. No "# " heading. */
   description: string;
   tables: TableSpec[];

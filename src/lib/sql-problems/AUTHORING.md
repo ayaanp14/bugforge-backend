@@ -19,7 +19,11 @@ A new file can be gated before `index.ts` lists it — `--validate --file
 src/lib/sql-problems/<file>.ts` (and `sql-mysql-check.ts --file …`, which uses
 a scratch database named after the file, so different files can be checked at
 once; never the same file twice at once). That is how the twenty
-`world-*.ts` industry sets were written in parallel.
+`world-*.ts` industry sets were written in parallel, and the twenty
+`company-*.ts` sets after them (2026-10-22: one company each, slug `<company>-…`,
+title `<Company>: …`, the company's real products with fictional data; check a
+new one against every other company's titles too — the first pass had Google
+and Meta both writing "Winners and Prices of Second-Price Ad Auctions").
 
 ```
 ```
