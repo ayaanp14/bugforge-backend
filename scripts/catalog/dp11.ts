@@ -4337,7 +4337,10 @@ export const DP11_PROBLEMS: CatalogProblem[] = [
       ],
       gen: (rng: Rng) => {
         const n = ri(rng, 1, pick(rng, [1, 5, 15, 40, 60]));
-        const lo = pick(rng, [0, 0, 0, 5, 5, 1000, 1000, 99990]);
+        // Values near 10^5 stay in (2% of cases): the solutions size an array by the
+        // largest value, and one case in eight that large ran past Paiza's per-run
+        // limit in TypeScript and PHP over 5,000 cases.
+        const lo = rng() < 0.02 ? 99990 : pick(rng, [0, 0, 0, 5, 5, 1000, 1000]);
         const span = pick(rng, [1, 2, 3, 6]);
         const nums = Array.from({ length: n }, () => lo + ri(rng, 0, span));
         return { input: fmtIntArr(nums), expectedOutput: String(ref(nums)) };

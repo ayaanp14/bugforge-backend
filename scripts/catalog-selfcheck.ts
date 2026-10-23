@@ -33,7 +33,7 @@ const TAG = opt("tag");
 
 /** wrapCode's parser, verbatim in behaviour: "k=v" pairs, one JSON value per line, or a bare value. */
 function parseArgs(rawInput: string): unknown[] {
-  const varRegex = /([a-zA-Z_]\w*)\s*=/g;
+  const varRegex = /(?<![a-zA-Z_])([a-zA-Z_]\w*)\s*=/g; // as wrapCode (src/lib/judge0.ts)
   const matches: RegExpExecArray[] = [];
   let match: RegExpExecArray | null;
   while ((match = varRegex.exec(rawInput)) !== null) matches.push(match);

@@ -7422,8 +7422,10 @@ ${fmtIntArr(t)}`, expectedOutput: bool(ans) };
       ],
       gen: (rng: Rng) => {
         for (;;) {
-          const m = ri(rng, rng() < 0.1 ? 1 : 3, pick(rng, [4, 6, 8, 8]));
-          const n = ri(rng, rng() < 0.1 ? 1 : 3, pick(rng, [4, 6, 8, 8]));
+          // At most 6 x 6: the search is over (box, player) states, and 5,000
+          // 8 x 8 grids ran past Paiza's per-run limit in Python and Ruby.
+          const m = ri(rng, rng() < 0.1 ? 1 : 3, pick(rng, [4, 5, 6, 6]));
+          const n = ri(rng, rng() < 0.1 ? 1 : 3, pick(rng, [4, 5, 6, 6]));
           if (m * n < 3) continue;
           const pw = pick(rng, [0, 0.05, 0.12, 0.25]);
           const g: string[][] = Array.from({ length: m }, () => Array.from({ length: n }, (): string => (rng() < pw ? "#" : ".")));
@@ -10307,8 +10309,12 @@ ${fmtIntArr(t)}`, expectedOutput: bool(ans) };
         { input: "\"74\"\n5\n1", expectedOutput: "24" },
         { input: "\"0011\"\n4\n2", expectedOutput: "0011" },
       ],
+      // Every case is a full BFS over up to 10 · 10 · n strings, so 5,000 cases
+      // ran past Paiza's per-run limit in Python and Ruby (shrinking n barely
+      // helped — the state count, not the length, is the cost); 2,000 fit.
+      hiddenCount: 2000,
       gen: (rng: Rng) => {
-        const n = 2 * ri(rng, rng() < 0.1 ? 1 : 2, pick(rng, [3, 5, 7]));
+        const n = 2 * ri(rng, rng() < 0.1 ? 1 : 2, pick(rng, [2, 3, 4, 4]));
         const s = Array.from({ length: n }, () => String(ri(rng, 0, 9))).join("");
         const a = ri(rng, 1, 9), b = ri(rng, 1, n - 1);
         return { input: `"${s}"\n${a}\n${b}`, expectedOutput: ref(s, a, b) };
