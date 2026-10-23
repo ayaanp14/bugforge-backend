@@ -18,6 +18,8 @@
  * that every language actually executes).
  */
 
+import { isStructured, structuredFile, structuredStub, type StructSignature } from "./driver-structures.js";
+
 export type ParamType = "int" | "int[]" | "int[][]" | "string" | "string[]";
 export type ReturnKind = "int" | "bool" | "string" | "int[]" | "int[][]" | "string[]";
 
@@ -26,11 +28,33 @@ export interface Param {
   type: ParamType;
 }
 
-export interface Signature {
+/** The plain shape every generator in this file handles. */
+interface BasicSignature {
   funcName: string;
   params: Param[];
   returns: ReturnKind;
 }
+
+/**
+ * Trees, linked lists and design classes (wave 7, 2026-10-22) are generated
+ * by driver-structures.ts; a signature reaches the generators below only
+ * when isStructured() says it is a plain one.
+ */
+export type NodeType = "TreeNode" | "ListNode" | "ListNode[]";
+export interface MethodSignature {
+  name: string;
+  params: Param[];
+  returns: ReturnKind | "void";
+}
+export interface Signature {
+  funcName: string;
+  params: Array<{ name: string; type: ParamType | NodeType }>;
+  returns: ReturnKind | "TreeNode" | "ListNode" | "void";
+  /** Present only on a design problem: funcName is the class, params its constructor's. */
+  methods?: MethodSignature[];
+}
+
+const asStruct = (sig: Signature) => sig as unknown as StructSignature;
 
 // Kept in sync with src/lib/batch.ts
 const SENTINEL = "__CODEKAIRO_CASE__";
@@ -53,7 +77,7 @@ const JS_TYPES: Record<ParamType | ReturnKind, string> = {
   "int[]": "number[]", "int[][]": "number[][]", "string[]": "string[]",
 };
 
-function jsStub(sig: Signature): string {
+function jsStub(sig: BasicSignature): string {
   const doc = [
     "/**",
     ...sig.params.map((p) => ` * @param {${JS_TYPES[p.type]}} ${p.name}`),
@@ -70,7 +94,7 @@ const PY_TYPES: Record<ParamType | ReturnKind, string> = {
   "int[]": "List[int]", "int[][]": "List[List[int]]", "string[]": "List[str]",
 };
 
-function pyStub(sig: Signature): string {
+function pyStub(sig: BasicSignature): string {
   const needsList = sig.params.some((p) => p.type.endsWith("[]")) || sig.returns.endsWith("[]");
   const args = sig.params.map((p) => `${p.name}: ${PY_TYPES[p.type]}`).join(", ");
   const lines = [];
@@ -80,13 +104,13 @@ function pyStub(sig: Signature): string {
 }
 
 // ── typescript (self-contained) ────────────────────────────────────
-function tsStub(sig: Signature): string {
+function tsStub(sig: BasicSignature): string {
   const args = sig.params.map((p) => `${p.name}: ${JS_TYPES[p.type]}`).join(", ");
   const dflt = { int: "return 0;", bool: "return false;", string: 'return "";', "int[]": "return [];", "int[][]": "return [];", "string[]": "return [];" }[sig.returns];
   return [`function ${sig.funcName}(${args}): ${JS_TYPES[sig.returns]} {`, "    // Write your code here", `    ${dflt}`, "}"].join("\n");
 }
 
-function tsDriver(sig: Signature): string {
+function tsDriver(sig: BasicSignature): string {
   const parse = sig.params.map((p, i) => `        const ${p.name}: ${JS_TYPES[p.type]} = JSON.parse(_lines[${i}]);`);
   return [
     "// ---- driver (do not edit below) ----",
@@ -201,7 +225,7 @@ const JAVA_HELPERS = `    // ---- driver (do not edit below) ----
         return sb.append("]").toString();
     }`;
 
-function javaStub(sig: Signature): string {
+function javaStub(sig: BasicSignature): string {
   const args = sig.params.map((p) => `${JAVA_TYPES[p.type]} ${p.name}`).join(", ");
   const dflt = { int: "return 0;", bool: "return false;", string: 'return "";', "int[]": "return new int[0];", "int[][]": "return new int[0][];", "string[]": "return new String[0];" }[sig.returns];
   return [
@@ -212,7 +236,7 @@ function javaStub(sig: Signature): string {
   ].join("\n");
 }
 
-function javaFile(sig: Signature, fn: string): string {
+function javaFile(sig: BasicSignature, fn: string): string {
   const parse = sig.params.map((p, i) => {
     if (p.type === "int[][]") return `                int[][] ${p.name} = parseIntMatrix(lines.get(${i}));`;
     if (p.type === "int[]") return `                int[] ${p.name} = parseIntArray(lines.get(${i}));`;
@@ -343,7 +367,7 @@ static string fmtIntMatrix(const vector<vector<int>>& m) {
     return r + "]";
 }`;
 
-function cppStub(sig: Signature): string {
+function cppStub(sig: BasicSignature): string {
   const args = sig.params
     .map((p) => (p.type.endsWith("[]") ? `${CPP_TYPES[p.type]}& ${p.name}` : `${CPP_TYPES[p.type]} ${p.name}`))
     .join(", ");
@@ -351,7 +375,7 @@ function cppStub(sig: Signature): string {
   return [`${CPP_TYPES[sig.returns]} ${sig.funcName}(${args}) {`, "    // Write your code here", `    ${dflt}`, "}"].join("\n");
 }
 
-function cppFile(sig: Signature, fn: string): string {
+function cppFile(sig: BasicSignature, fn: string): string {
   const parse = sig.params.map((p, i) => {
     if (p.type === "int[][]") return `            vector<vector<int>> ${p.name} = parseIntMatrix(lines[${i}]);`;
     if (p.type === "int[]") return `            vector<int> ${p.name} = parseIntArray(lines[${i}]);`;
@@ -532,7 +556,7 @@ static void print_int_matrix(int** m, int n, const int* colSizes) {
 }`;
 
 /** LeetCode-style C parameter list: arrays carry a size, array returns carry returnSize. */
-function cParamList(sig: Signature): string {
+function cParamList(sig: BasicSignature): string {
   const parts: string[] = [];
   for (const p of sig.params) {
     if (p.type === "int[][]") parts.push(`int** ${p.name}, int ${p.name}Size, int* ${p.name}ColSize`);
@@ -546,7 +570,7 @@ function cParamList(sig: Signature): string {
   return parts.join(", ");
 }
 
-function cStub(sig: Signature): string {
+function cStub(sig: BasicSignature): string {
   const ret = { int: "int", bool: "bool", string: "char*", "int[]": "int*", "int[][]": "int**", "string[]": "char**" }[sig.returns];
   const dflt = {
     int: "return 0;",
@@ -559,7 +583,7 @@ function cStub(sig: Signature): string {
   return [`${ret} ${sig.funcName}(${cParamList(sig)}) {`, "    // Write your code here", `    ${dflt}`, "}"].join("\n");
 }
 
-function cFile(sig: Signature, fn: string): string {
+function cFile(sig: BasicSignature, fn: string): string {
   const parse: string[] = [];
   const callArgs: string[] = [];
   sig.params.forEach((p, i) => {
@@ -717,11 +741,11 @@ const CS_HELPERS = `    // ---- driver (do not edit below) ----
     }
     static string FmtIntMatrix(int[][] m) { return "[" + string.Join(",", m.Select(FmtIntArray)) + "]"; }`;
 
-function csFuncName(sig: Signature): string {
+function csFuncName(sig: BasicSignature): string {
   return capitalize(sig.funcName);
 }
 
-function csStub(sig: Signature): string {
+function csStub(sig: BasicSignature): string {
   const args = sig.params.map((p) => `${CS_TYPES[p.type]} ${p.name}`).join(", ");
   const dflt = { int: "return 0;", bool: "return false;", string: 'return "";', "int[]": "return new int[0];", "int[][]": "return new int[0][];", "string[]": "return new string[0];" }[sig.returns];
   return [
@@ -733,7 +757,7 @@ function csStub(sig: Signature): string {
   ].join("\n");
 }
 
-function csFile(sig: Signature, fn: string): string {
+function csFile(sig: BasicSignature, fn: string): string {
   const parse = sig.params.map((p, i) => {
     if (p.type === "int[][]") return `                int[][] ${p.name} = ParseIntMatrix(lines[${i}]);`;
     if (p.type === "int[]") return `                int[] ${p.name} = ParseIntArray(lines[${i}]);`;
@@ -833,7 +857,7 @@ const GO_TYPES: Record<ParamType | ReturnKind, string> = {
   "int[]": "[]int", "int[][]": "[][]int", "string[]": "[]string",
 };
 
-function goStub(sig: Signature): string {
+function goStub(sig: BasicSignature): string {
   const args = sig.params.map((p) => `${p.name} ${GO_TYPES[p.type]}`).join(", ");
   const dflt = { int: "return 0", bool: "return false", string: 'return ""', "int[]": "return []int{}", "int[][]": "return [][]int{}", "string[]": "return []string{}" }[sig.returns];
   return [`func ${sig.funcName}(${args}) ${GO_TYPES[sig.returns]} {`, "\t// Write your code here", `\t${dflt}`, "}"].join("\n");
@@ -842,7 +866,7 @@ function goStub(sig: Signature): string {
 /** Stdlib packages a Go solution may reference; added only when it does. */
 const GO_OPTIONAL_PKGS = ["sort", "math", "math/bits", "container/heap", "unicode", "strconv"];
 
-function goFile(sig: Signature, fn: string): string {
+function goFile(sig: BasicSignature, fn: string): string {
   const needsJSON = sig.params.some((p) => p.type !== "int") || sig.returns.endsWith("[]");
   const needsStrconv = sig.params.some((p) => p.type === "int");
   const imports = ["\t\"bytes\"", "\t\"compress/gzip\"", "\t\"encoding/base64\"", "\t\"fmt\"", "\t\"io/ioutil\"", "\t\"os\"", "\t\"runtime\"", "\t\"strings\"", "\t\"time\""];
@@ -990,13 +1014,13 @@ fun parseIntMatrix(s: String): Array<IntArray> {
 }
 fun fmtIntMatrix(m: Array<IntArray>): String = m.joinToString(",", "[", "]") { fmtIntArray(it) }`;
 
-function ktStub(sig: Signature): string {
+function ktStub(sig: BasicSignature): string {
   const args = sig.params.map((p) => `${p.name}: ${KT_TYPES[p.type]}`).join(", ");
   const dflt = { int: "return 0", bool: "return false", string: 'return ""', "int[]": "return intArrayOf()", "int[][]": "return arrayOf<IntArray>()", "string[]": "return arrayOf<String>()" }[sig.returns];
   return [`fun ${sig.funcName}(${args}): ${KT_TYPES[sig.returns]} {`, "    // Write your code here", `    ${dflt}`, "}"].join("\n");
 }
 
-function ktFile(sig: Signature, fn: string): string {
+function ktFile(sig: BasicSignature, fn: string): string {
   const parse = sig.params.map((p, i) => {
     if (p.type === "int[][]") return `            val ${p.name} = parseIntMatrix(lines[${i}])`;
     if (p.type === "int[]") return `            val ${p.name} = parseIntArray(lines[${i}])`;
@@ -1118,13 +1142,13 @@ func parseIntMatrix(_ s: String) -> [[Int]] {
 }
 func fmtIntMatrix(_ m: [[Int]]) -> String { return "[" + m.map(fmtIntArray).joined(separator: ",") + "]" }`;
 
-function swStub(sig: Signature): string {
+function swStub(sig: BasicSignature): string {
   const args = sig.params.map((p) => `_ ${p.name}: ${SW_TYPES[p.type]}`).join(", ");
   const dflt = { int: "return 0", bool: "return false", string: 'return ""', "int[]": "return []", "int[][]": "return []", "string[]": "return []" }[sig.returns];
   return [`func ${sig.funcName}(${args}) -> ${SW_TYPES[sig.returns]} {`, "    // Write your code here", `    ${dflt}`, "}"].join("\n");
 }
 
-function swFile(sig: Signature, fn: string): string {
+function swFile(sig: BasicSignature, fn: string): string {
   const parse = sig.params.map((p, i) => {
     if (p.type === "int[][]") return `    let ${p.name} = parseIntMatrix(lines[${i}])`;
     if (p.type === "int[]") return `    let ${p.name} = parseIntArray(lines[${i}])`;
@@ -1245,13 +1269,13 @@ fn fmt_int_matrix(m: &Vec<Vec<i32>>) -> String {
     format!("[{}]", items.join(","))
 }`;
 
-function rsStub(sig: Signature): string {
+function rsStub(sig: BasicSignature): string {
   const args = sig.params.map((p) => `${p.name}: ${RS_TYPES[p.type]}`).join(", ");
   const dflt = { int: "0", bool: "false", string: "String::new()", "int[]": "vec![]", "int[][]": "vec![]", "string[]": "vec![]" }[sig.returns];
   return [`fn ${sig.funcName}(${args}) -> ${RS_TYPES[sig.returns]} {`, "    // Write your code here", `    ${dflt}`, "}"].join("\n");
 }
 
-function rsFile(sig: Signature, fn: string): string {
+function rsFile(sig: BasicSignature, fn: string): string {
   const parse = sig.params.map((p, i) => {
     if (p.type === "int[][]") return `        let ${p.name} = parse_int_matrix(&lines[${i}]);`;
     if (p.type === "int[]") return `        let ${p.name} = parse_int_array(&lines[${i}]);`;
@@ -1309,13 +1333,13 @@ function rsFile(sig: Signature, fn: string): string {
 }
 
 // ── php (self-contained) ───────────────────────────────────────────
-function phpStub(sig: Signature): string {
+function phpStub(sig: BasicSignature): string {
   const args = sig.params.map((p) => `$${p.name}`).join(", ");
   const dflt = { int: "return 0;", bool: "return false;", string: 'return "";', "int[]": "return [];", "int[][]": "return [];", "string[]": "return [];" }[sig.returns];
   return [`function ${sig.funcName}(${args}) {`, "    // Write your code here", `    ${dflt}`, "}"].join("\n");
 }
 
-function phpFile(sig: Signature, fn: string): string {
+function phpFile(sig: BasicSignature, fn: string): string {
   const parse = sig.params.map((p, i) => `        $${p.name} = json_decode($lines[${i}]);`);
   const call = `${sig.funcName}(${sig.params.map((p) => `$${p.name}`).join(", ")})`;
   return [
@@ -1370,13 +1394,13 @@ function phpFile(sig: Signature, fn: string): string {
 }
 
 // ── ruby (self-contained) ──────────────────────────────────────────
-function rbStub(sig: Signature): string {
+function rbStub(sig: BasicSignature): string {
   const args = sig.params.map((p) => p.name).join(", ");
   const dflt = { int: "0", bool: "false", string: '""', "int[]": "[]", "int[][]": "[]", "string[]": "[]" }[sig.returns];
   return [`def ${sig.funcName}(${args})`, "  # Write your code here", `  ${dflt}`, "end"].join("\n");
 }
 
-function rbFile(sig: Signature, fn: string): string {
+function rbFile(sig: BasicSignature, fn: string): string {
   const parse = sig.params.map((p, i) => `    ${p.name} = JSON.parse(lines[${i}])`);
   const call = `${sig.funcName}(${sig.params.map((p) => p.name).join(", ")})`;
   return [
@@ -1450,7 +1474,9 @@ export type Language = (typeof ALL_LANGUAGES)[number];
  * Render the complete editor file for a language.
  * fnCode null → starter stub; a full solution function → runnable solution.
  */
-export function renderFile(lang: Language, sig: Signature, fnCode: string | null): string {
+export function renderFile(lang: Language, signature: Signature, fnCode: string | null): string {
+  if (isStructured(asStruct(signature))) return structuredFile(lang, asStruct(signature), fnCode);
+  const sig = signature as BasicSignature;
   switch (lang) {
     case "javascript": return fnCode ?? jsStub(sig);
     case "python": return fnCode ?? pyStub(sig);
@@ -1475,7 +1501,9 @@ export function renderFile(lang: Language, sig: Signature, fnCode: string | null
  * batching, gzip, stats) is applied server-side at execution time and never
  * appears in the editor.
  */
-export function renderStub(lang: Language, sig: Signature): string {
+export function renderStub(lang: Language, signature: Signature): string {
+  if (isStructured(asStruct(signature))) return structuredStub(lang, asStruct(signature));
+  const sig = signature as BasicSignature;
   const dedent = (s: string) => s.split("\n").map((l) => l.replace(/^    /, "")).join("\n");
   switch (lang) {
     case "javascript": return jsStub(sig);
@@ -1524,7 +1552,9 @@ export interface DriverBuild {
  * diagnostic shown to the user has to be translated back through this map.
  */
 export function buildDriver(lang: Language, sig: Signature, userCode: string): DriverBuild {
-  if (lang === "javascript" || lang === "python") {
+  // A structured JavaScript/Python program is complete (wrapCode passes it
+  // through on its marker), so it takes the line-mapping path below instead.
+  if ((lang === "javascript" || lang === "python") && !isStructured(asStruct(sig))) {
     return { code: userCode, toEditorLine: (n) => n };
   }
 

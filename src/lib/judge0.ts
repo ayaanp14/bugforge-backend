@@ -1,5 +1,6 @@
 import axios from "axios";
 import { ExecutionEngineError } from "./engine-error.js";
+import { STRUCTURED_DRIVER_MARK } from "./driver-structures.js";
 
 const JUDGE0_BASE_URL = process.env["JUDGE0_URL"] || "http://localhost:2358";
 const JUDGE0_REQUEST_TIMEOUT_MS = Math.max(
@@ -291,6 +292,10 @@ int main(void) {
 }
 
 export function wrapCode(code: string, language: string): string {
+  // A tree/list/design driver (lib/driver-structures.ts) is already a whole
+  // program; wrapping it would bolt a second harness onto it. User code can
+  // never carry this marker (containsReservedMarker refuses __CODEKAIRO_).
+  if (code.includes(STRUCTURED_DRIVER_MARK)) return code;
   if (language === "javascript") {
     // Match only TOP-LEVEL declarations (anchored to line start) so nested
     // helper functions inside the solution are never mistaken for the entry

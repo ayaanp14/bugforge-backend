@@ -153,3 +153,92 @@ export function code(strings: TemplateStringsArray, ...values: unknown[]): strin
   const indent = Math.min(...lines.filter((l) => l.trim() !== "").map((l) => l.match(/^ */)![0].length));
   return lines.map((l) => l.slice(Number.isFinite(indent) ? indent : 0).replace(/\s+$/, "")).join("\n");
 }
+
+// ── Trees, linked lists and design problems (wave 7, 2026-10-22) ────
+// Signatures may now use `TreeNode`, `ListNode` and `ListNode[]`, or describe
+// a design class (`methods`, see src/lib/driver-structures.ts). These are the
+// reference-side shapes for `ref` / `gen`; the wire format is LeetCode's.
+
+export interface TNode { val: number; left: TNode | null; right: TNode | null }
+export interface LNode { val: number; next: LNode | null }
+
+/** `[3,9,20,null,null,15,7]` → nodes (level order, nulls for missing children). */
+export function treeFrom(a: Array<number | null>): TNode | null {
+  if (a.length === 0 || a[0] === null) return null;
+  const root: TNode = { val: a[0], left: null, right: null };
+  const q: TNode[] = [root];
+  let h = 0, i = 1;
+  while (i < a.length && h < q.length) {
+    const n = q[h++];
+    const l = a[i++];
+    if (l !== null && l !== undefined) { n.left = { val: l, left: null, right: null }; q.push(n.left); }
+    const r = i < a.length ? a[i++] : null;
+    if (r !== null && r !== undefined) { n.right = { val: r, left: null, right: null }; q.push(n.right); }
+  }
+  return root;
+}
+
+/** Nodes → level order with nulls, trailing nulls dropped — exactly what every driver prints. */
+export function treeArr(root: TNode | null): Array<number | null> {
+  const out: Array<number | null> = [];
+  const q: Array<TNode | null> = [root];
+  for (let h = 0; h < q.length; h++) {
+    const n = q[h];
+    if (!n) { out.push(null); continue; }
+    out.push(n.val);
+    q.push(n.left, n.right);
+  }
+  while (out.length && out[out.length - 1] === null) out.pop();
+  return out;
+}
+export const fmtTree = (root: TNode | null) => JSON.stringify(treeArr(root));
+
+/** A random tree of `n` nodes (any shape) with values in [lo, hi]. */
+export function randTree(rng: Rng, n: number, lo: number, hi: number): TNode | null {
+  if (n <= 0) return null;
+  const root: TNode = { val: ri(rng, lo, hi), left: null, right: null };
+  const nodes = [root];
+  while (nodes.length < n) {
+    const p = nodes[ri(rng, 0, nodes.length - 1)];
+    const side = rng() < 0.5 ? "left" : "right";
+    if (!p[side]) { const c: TNode = { val: ri(rng, lo, hi), left: null, right: null }; p[side] = c; nodes.push(c); }
+  }
+  return root;
+}
+
+/** A random binary search tree of `n` distinct values from [lo, hi] (hi - lo + 1 >= n). */
+export function randBST(rng: Rng, n: number, lo: number, hi: number): TNode | null {
+  const vals = new Set<number>();
+  while (vals.size < n) vals.add(ri(rng, lo, hi));
+  let root: TNode | null = null;
+  for (const v of shuffle(rng, [...vals])) {
+    const node: TNode = { val: v, left: null, right: null };
+    if (!root) { root = node; continue; }
+    let cur = root;
+    for (;;) {
+      const side = v < cur.val ? "left" : "right";
+      const next = cur[side];
+      if (!next) { cur[side] = node; break; }
+      cur = next;
+    }
+  }
+  return root;
+}
+
+export function listFrom(a: number[]): LNode | null {
+  let head: LNode | null = null;
+  for (let i = a.length - 1; i >= 0; i--) head = { val: a[i], next: head };
+  return head;
+}
+export function listArr(h: LNode | null): number[] {
+  const out: number[] = [];
+  for (; h; h = h.next) out.push(h.val);
+  return out;
+}
+
+/**
+ * A design problem's input: the operations, then each one's arguments (the
+ * constructor's first). Its expected output is `JSON.stringify` of the results,
+ * with null for the constructor and every void method.
+ */
+export const designInput = (ops: string[], args: unknown[][]) => `${JSON.stringify(ops)}\n${JSON.stringify(args)}`;

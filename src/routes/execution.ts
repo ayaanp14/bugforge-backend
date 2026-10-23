@@ -78,8 +78,13 @@ async function fillExpectedOutputs(problem: JudgeProblem, cases: CustomTestCase[
   if (casesToGen.length === 0) return;
   if (!problem.referenceSolution || !problem.referenceLanguage || !LANGUAGE_MAP[problem.referenceLanguage]) return;
   try {
+    // Through the driver, as a submission goes: a plain signature's Python
+    // comes back unchanged (wrapCode drives it), while a tree, list or design
+    // problem needs its structured driver to build the nodes.
     const ref = await runBatch(
-      problem.referenceSolution,
+      problem.signature && isJudgeLanguage(problem.referenceLanguage)
+        ? buildDriver(problem.referenceLanguage as DriverLanguage, problem.signature as Signature, problem.referenceSolution).code
+        : problem.referenceSolution,
       problem.referenceLanguage,
       casesToGen.map((tc) => ({ input: tc.input, expectedOutput: "" })),
       { timeLimitMs: problem.timeLimitMs, memoryLimitMb: problem.memoryLimitMb },

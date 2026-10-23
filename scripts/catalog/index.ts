@@ -75,6 +75,34 @@ import { DP7_PROBLEMS } from "./dp7.js";
 import { GRAPHS6_PROBLEMS } from "./graphs6.js";
 import { MATRICES6_PROBLEMS } from "./matrices6.js";
 import { BACKTRACKING6_PROBLEMS } from "./backtracking6.js";
+
+// ── Wave 7 — 500 more company-asked problems (LeetCode + GFG), all 13 languages:
+// 260 on the plain signatures, then 240 trees, linked lists and design classes ──
+import { DP8_PROBLEMS } from "./dp8.js";
+import { DP9_PROBLEMS } from "./dp9.js";
+import { DP10_PROBLEMS } from "./dp10.js";
+import { DP11_PROBLEMS } from "./dp11.js";
+import { GRAPHS7_PROBLEMS } from "./graphs7.js";
+import { GRAPHS8_PROBLEMS } from "./graphs8.js";
+import { GRAPHS9_PROBLEMS } from "./graphs9.js";
+import { STRINGS10_PROBLEMS } from "./strings10.js";
+import { STRINGS11_PROBLEMS } from "./strings11.js";
+import { HASHING7_PROBLEMS } from "./hashing7.js";
+import { HASHING8_PROBLEMS } from "./hashing8.js";
+import { HASHING9_PROBLEMS } from "./hashing9.js";
+import { ARRAYS9_PROBLEMS } from "./arrays9.js";
+import { TREES1_PROBLEMS } from "./trees1.js";
+import { TREES2_PROBLEMS } from "./trees2.js";
+import { TREES3_PROBLEMS } from "./trees3.js";
+import { TREES4_PROBLEMS } from "./trees4.js";
+import { TREES5_PROBLEMS } from "./trees5.js";
+import { TREES6_PROBLEMS } from "./trees6.js";
+import { LISTS1_PROBLEMS } from "./lists1.js";
+import { LISTS2_PROBLEMS } from "./lists2.js";
+import { DESIGN1_PROBLEMS } from "./design1.js";
+import { DESIGN2_PROBLEMS } from "./design2.js";
+import { DESIGN3_PROBLEMS } from "./design3.js";
+import { DESIGN4_PROBLEMS } from "./design4.js";
 import { COMPANY_COVERAGE } from "./company-coverage.js";
 
 const AUTHORED: CatalogProblem[] = [
@@ -142,6 +170,31 @@ const AUTHORED: CatalogProblem[] = [
   ...GRAPHS6_PROBLEMS,
   ...MATRICES6_PROBLEMS,
   ...BACKTRACKING6_PROBLEMS,
+  ...DP8_PROBLEMS,
+  ...DP9_PROBLEMS,
+  ...DP10_PROBLEMS,
+  ...DP11_PROBLEMS,
+  ...GRAPHS7_PROBLEMS,
+  ...GRAPHS8_PROBLEMS,
+  ...GRAPHS9_PROBLEMS,
+  ...STRINGS10_PROBLEMS,
+  ...STRINGS11_PROBLEMS,
+  ...HASHING7_PROBLEMS,
+  ...HASHING8_PROBLEMS,
+  ...HASHING9_PROBLEMS,
+  ...ARRAYS9_PROBLEMS,
+  ...TREES1_PROBLEMS,
+  ...TREES2_PROBLEMS,
+  ...TREES3_PROBLEMS,
+  ...TREES4_PROBLEMS,
+  ...TREES5_PROBLEMS,
+  ...TREES6_PROBLEMS,
+  ...LISTS1_PROBLEMS,
+  ...LISTS2_PROBLEMS,
+  ...DESIGN1_PROBLEMS,
+  ...DESIGN2_PROBLEMS,
+  ...DESIGN3_PROBLEMS,
+  ...DESIGN4_PROBLEMS,
 ];
 
 /**
