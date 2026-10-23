@@ -146,7 +146,7 @@ const MAX_INT = 2147483647, MIN_INT = -2147483648;
 
 // ── Judge contract (wrapCode's parser and printer, as catalog-selfcheck) ──
 function parseArgs(rawInput: string): unknown[] {
-  const varRegex = /([a-zA-Z_]\w*)\s*=/g;
+  const varRegex = /(?<![a-zA-Z_])([a-zA-Z_]\w*)\s*=/g; // as wrapCode (src/lib/judge0.ts)
   const matches: RegExpExecArray[] = [];
   let m: RegExpExecArray | null;
   while ((m = varRegex.exec(rawInput)) !== null) matches.push(m);

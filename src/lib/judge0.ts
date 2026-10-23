@@ -329,7 +329,13 @@ if (input.startsWith("__CODEKAIRO_GZIN__")) {
  * Handles "var1=val1, var2=val2" format or plain JSON values.
  */
 const parseArgs = (rawInput) => {
-  const varRegex = /([a-zA-Z_]\\w*)\\s*=/g;
+  // The lookbehind starts a match only where a name can start. Without it a
+  // long run of letters with no "=" (a string input) was retried from every
+  // position, each retry backtracking over the rest of the run: quadratic.
+  // A 1,000-letter input cost ~half a million steps before the solution ran
+  // (reverse-degree-of-a-string, 2026-10-23: Python 3.2 s -> 0.17 s on its
+  // suite). Same matches: one that could start mid-word starts earlier too.
+  const varRegex = /(?<![a-zA-Z_])([a-zA-Z_]\\w*)\\s*=/g;
   const matches = [];
   let match;
   while ((match = varRegex.exec(rawInput)) !== null) {
@@ -431,7 +437,9 @@ import json
 import re
 
 def parse_args(input_data):
-    var_regex = r'([a-zA-Z_]\\w*)\\s*='
+    # Lookbehind: see the JavaScript harness above (without it a long run of
+    # letters with no "=" is scanned in quadratic time).
+    var_regex = r'(?<![a-zA-Z_])([a-zA-Z_]\\w*)\\s*='
     matches = list(re.finditer(var_regex, input_data))
     
     if not matches:
