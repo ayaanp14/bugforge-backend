@@ -402,7 +402,7 @@ export function readinessOf(input: ReadinessInput): Readiness {
 }
 
 /** Company names as the patterns and the tags spell them, compared loosely ("HCLTech" is the "HCL" tag). */
-const COMPANY_ALIASES: Readonly<Record<string, string>> = { hcltech: "hcl", facebook: "meta" };
+const COMPANY_ALIASES: Readonly<Record<string, string>> = { hcltech: "hcl", facebook: "meta", ltimindtree: "mindtree" };
 export const companyKey = (name: string): string => {
   const k = name.toLowerCase().replace(/[^a-z0-9]/g, "");
   return COMPANY_ALIASES[k] ?? k;

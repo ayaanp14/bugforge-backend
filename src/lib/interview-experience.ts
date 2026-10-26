@@ -78,6 +78,8 @@ const ALIASES: Record<string, string> = {
   "hcl tech": "HCL",
   "hcltech": "HCL",
   "hcl technologies": "HCL",
+  ltimindtree: "Mindtree",
+  "lti mindtree": "Mindtree",
   "infosys ltd": "Infosys",
   "wipro ltd": "Wipro",
   "x": "Twitter",

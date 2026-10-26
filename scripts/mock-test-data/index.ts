@@ -565,6 +565,126 @@ export const MOCK_TESTS: MockTestSeed[] = [
     ],
   },
 
+  /* ── LTIMindtree, Mphasis, Virtusa ─────────────────────────────── */
+  // Added 2026-10-26: all three are company tags with problem lists but had
+  // no paper, and placement-test pages are where ChatGPT sends visitors
+  // (production's visit events that day: /tests/:slug the top ChatGPT
+  // landing). None of the three publishes its pattern, so each follows the
+  // portals that agree most and says what they disagree on.
+  {
+    slug: "ltimindtree-online-assessment",
+    company: "LTIMindtree",
+    name: "LTIMindtree — Online Assessment",
+    family: "service",
+    blurb: "Aptitude, a long English block and sixty computer-science questions, then two easy programs.",
+    instructions:
+      "The fresher assessment LTIMindtree runs on WeCP, in the most-cited recent shape.\n\n- **Sectionally timed**, in a fixed order.\n- **No negative marking.**\n- **The two computer-science blocks are the bulk of the paper**: output tracing and pseudocode first, then data structures, OS, DBMS and networks.\n- **The coding section appears in some drives and not others.** It is included here so you are ready for the drives that have it.\n\nThe spoken-English check some drives run, the paragraph writing one source reports and the AI-assisted grading of code are not part of this paper.",
+    highlights: ["No negative marking", "Two CS blocks", "Coding in some drives"],
+    sourceNote:
+      "Section order and sizes follow placementpreparation.io (12 quantitative, 12 logical, about 22 English, two blocks of about 30 CS questions). FACE Prep's 2026 page gives a six-section, 107-question version with two coding problems, and Glassdoor reports from 2025 mention two easy problems; placementpreparation.io says most recent drives have none. An older pre-merger page reports negative marking; no recent source does.",
+    difficulty: "medium",
+    orderIndex: 92,
+    sections: [
+      { key: "quantitative", name: "Quantitative Aptitude", durationSec: min(15), questionCount: 12, blueprint: QUANT(12) },
+      { key: "logical", name: "Logical Reasoning", durationSec: min(15), questionCount: 12, blueprint: REASONING(12) },
+      {
+        key: "english",
+        name: "English",
+        durationSec: min(22),
+        questionCount: 22,
+        instructions: "Grammar and sentence questions, then a short comprehension.",
+        blueprint: [
+          { topics: ["sentence-correction"], count: 10 },
+          { topics: ["sentence-completion"], count: 10 },
+          { topics: ["reading-comprehension"], count: 2 },
+        ],
+      },
+      {
+        key: "cs-programming",
+        name: "Computer Science — Programming",
+        durationSec: min(30),
+        questionCount: 30,
+        instructions: "Output prediction, debugging and pseudocode tracing.",
+        blueprint: [
+          { topics: ["programming-fundamentals"], count: 18 },
+          { topics: ["pseudocode"], count: 12 },
+        ],
+      },
+      {
+        key: "cs-fundamentals",
+        name: "Computer Science — Fundamentals",
+        durationSec: min(30),
+        questionCount: 30,
+        instructions: "Data structures, operating systems, DBMS and networks.",
+        blueprint: [
+          { topics: ["data-structures-mcq"], count: 15 },
+          { topics: ["os-dbms-networks"], count: 15 },
+        ],
+      },
+      CODING("coding", "Coding", 60, [{ difficulty: "easy", count: 2 }], "Two problems on one clock. Not every drive has this section."),
+    ],
+  },
+  {
+    slug: "mphasis-amcat",
+    company: "Mphasis",
+    name: "Mphasis — AMCAT Assessment",
+    family: "service",
+    blurb: "Four AMCAT modules of twenty to twenty-five questions, two hours in all, no negative marking.",
+    instructions:
+      "Mphasis hires freshers through AMCAT, and every source agrees on its four modules.\n\n- **Four sections, about thirty minutes each**, in a fixed order with no going back.\n- **No negative marking**, so answer every question.\n- **Computer Programming** mixes output tracing, pseudocode and data structures.\n\nAMCAT adapts each module to your answers; this paper is a fixed draw, so treat its difficulty as an average. The Automata coding module some drives add, the Versant spoken-English test and the group discussion are not part of this paper.",
+    highlights: ["AMCAT pattern", "No negative marking", "Four modules"],
+    sourceNote:
+      "placementpreparation.io, PrepInsta and FACE Prep agree on AMCAT, the four sections, 120 minutes and no negative marking. They disagree on module sizes: 25/25/25 with 20 (placementpreparation.io) or 25 (PrepInsta) programming questions, against AMCAT's shorter native modules (FACE Prep). The real test is adaptive; this one is not.",
+    difficulty: "medium",
+    orderIndex: 93,
+    sections: [
+      { key: "logical", name: "Logical Reasoning", durationSec: min(30), questionCount: 25, blueprint: REASONING(25) },
+      { key: "quantitative", name: "Quantitative Aptitude", durationSec: min(30), questionCount: 25, blueprint: QUANT(25) },
+      { key: "english", name: "English", durationSec: min(30), questionCount: 25, blueprint: VERBAL(25) },
+      {
+        key: "programming",
+        name: "Computer Programming",
+        durationSec: min(30),
+        questionCount: 20,
+        blueprint: [
+          { topics: ["programming-fundamentals"], count: 8 },
+          { topics: ["pseudocode"], count: 6 },
+          { topics: ["data-structures-mcq"], count: 6 },
+        ],
+      },
+    ],
+  },
+  {
+    slug: "virtusa-coder-challenge",
+    company: "Virtusa",
+    name: "Virtusa — Online Test & Coder Challenge",
+    family: "service",
+    blurb: "A short aptitude block, thirty CS questions and pseudocode, then four medium problems in fifty minutes.",
+    instructions:
+      "Virtusa's fresher test leans on code more than most service papers.\n\n- **Aptitude is short**: ten questions across quantitative, logical and verbal.\n- **CS Fundamentals and Pseudo Code** follow, sectionally timed.\n- **The Coder Challenge is four medium problems in fifty minutes**, graded on test cases passed.\n- **No negative marking.**\n\nA strong Coder Challenge score opens the separate Power Coder round (hard problems on trees, graphs and DP) and the higher offer; it is not part of this paper. Nor are the essay, the communication round or the adaptive delivery some sources describe.",
+    highlights: ["Coding-heavy", "No negative marking", "Four problems, 50 minutes"],
+    sourceNote:
+      "Section sizes follow PrepInsta's 2026 table (10 aptitude, 30 CS, 10 pseudocode, 4 problems in 50 minutes), the only full breakdown; its claims that HirePro runs it and that it is adaptive are not corroborated. FACE Prep and Glassdoor reports from 2025 give 40–60 MCQs with 1–5 problems, so counts vary by drive.",
+    difficulty: "hard",
+    orderIndex: 94,
+    sections: [
+      {
+        key: "aptitude",
+        name: "Aptitude",
+        durationSec: min(10),
+        questionCount: 10,
+        blueprint: [
+          { category: "quantitative", count: 4 },
+          { category: "logical", count: 3 },
+          { category: "verbal", count: 3 },
+        ],
+      },
+      { key: "cs-fundamentals", name: "CS Fundamentals", durationSec: min(30), questionCount: 30, blueprint: TECHNICAL(30) },
+      { key: "pseudocode", name: "Pseudo Code", durationSec: min(10), questionCount: 10, blueprint: PSEUDOCODE(10) },
+      CODING("coding", "Coder Challenge", 50, [{ difficulty: "medium", count: 4 }], "Four problems on one clock. Move between them freely."),
+    ],
+  },
+
   /* ── product companies ─────────────────────────────────────────── */
   {
     slug: "amazon-reasoning-debugging",

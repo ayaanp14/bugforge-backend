@@ -99,7 +99,7 @@ const titleCase = (difficulty: string) => difficulty.charAt(0).toUpperCase() + d
  * paper is "HCLTech". Only real differences go here; case and spacing are
  * ignored by the comparison below.
  */
-const MOCK_TEST_COMPANY: Readonly<Record<string, string>> = { HCL: "HCLTech" };
+const MOCK_TEST_COMPANY: Readonly<Record<string, string>> = { HCL: "HCLTech", Mindtree: "LTIMindtree" };
 
 const companyKey = (name: string) => name.toLowerCase().replace(/[^a-z0-9]/g, "");
 
