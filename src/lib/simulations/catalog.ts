@@ -186,6 +186,67 @@ export const SIMULATIONS: readonly Simulation[] = [
     ],
   },
 
+  {
+    slug: "ltimindtree",
+    company: "LTIMindtree",
+    family: "service",
+    role: "campus fresher",
+    difficulty: "beginner",
+    rounds: [
+      { key: "oa", kind: "assessment", name: "LTIMindtree — Online Assessment", covers: "The aptitude, English and computer-science assessment, with coding in some drives.", test: "ltimindtree-online-assessment" },
+      { key: "technical", kind: "technical", name: "Technical Interview", covers: "OOP, DBMS and SQL, OS, networks, data structures, small programs and your projects.", focus: [...SERVICE_TECHNICAL] },
+      { key: "hr", kind: "hr", name: "HR Interview", covers: "Your introduction, why LTIMindtree, relocation and shifts." },
+    ],
+    firmness: "varies",
+    sourceNote:
+      "placementpreparation.io and FACE Prep agree on a technical interview and then a short HR interview (5–15 minutes). The assessment itself varies by drive, and the spoken-English check some drives run is not reproduced.",
+    sources: [
+      { label: "placementpreparation.io — LTIMindtree test pattern", url: "https://www.placementpreparation.io/ltimindtree/syllabus-and-test-pattern/" },
+      { label: "placementpreparation.io — LTIMindtree interview experience", url: "https://www.placementpreparation.io/ltimindtree/interview-experience/" },
+      { label: "FACE Prep — LTIMindtree 2026 fresher assessment", url: "https://faceprep.in/article/ltimindtree-ai-track-2026-fresher-assessment/" },
+    ],
+  },
+  {
+    slug: "mphasis",
+    company: "Mphasis",
+    family: "service",
+    role: "campus fresher",
+    difficulty: "beginner",
+    rounds: [
+      { key: "oa", kind: "assessment", name: "Mphasis — AMCAT Assessment", covers: "The four-module AMCAT test.", test: "mphasis-amcat" },
+      { key: "technical", kind: "technical", name: "Technical Interview", covers: "The subjects on your resume, OOP, DBMS and SQL queries, BFS/DFS, OS, basic programs and projects.", focus: [...SERVICE_TECHNICAL] },
+      { key: "hr", kind: "hr", name: "HR Interview", covers: "Your goals and strengths, what you know about Mphasis, relocation and shifts." },
+    ],
+    firmness: "consistent",
+    sourceNote:
+      "placementpreparation.io, PrepInsta and FACE Prep agree on AMCAT, then a technical and an HR interview (some merge the two). Some drives add a group discussion, an Automata coding module or the Versant spoken-English test; none of those is reproduced.",
+    sources: [
+      { label: "placementpreparation.io — Mphasis recruitment process", url: "https://www.placementpreparation.io/mphasis/recruitment-process/" },
+      { label: "PrepInsta — Mphasis", url: "https://prepinsta.com/mphasis/" },
+      { label: "FACE Prep — Mphasis recruitment process", url: "https://www.faceprep.in/article/mphasis-recruitment-process-test-pattern-syllabus-and-eligibility-criteria/" },
+    ],
+  },
+  {
+    slug: "virtusa",
+    company: "Virtusa",
+    family: "service",
+    role: "campus fresher",
+    difficulty: "intermediate",
+    rounds: [
+      { key: "oa", kind: "assessment", name: "Virtusa — Online Test & Coder Challenge", covers: "Aptitude, CS fundamentals, pseudocode and four coding problems.", test: "virtusa-coder-challenge" },
+      { key: "power-coder", kind: "coding", name: "Power Coder Round", covers: "Harder problems on trees, graphs and DP, and explaining your code — the round for the higher offer.", focus: ["dsa"] },
+      { key: "technical", kind: "technical", name: "Technical Interview", covers: "OOP, core Java or Python, SQL basics, SDLC and your projects.", focus: [...SERVICE_TECHNICAL] },
+      { key: "hr", kind: "hr", name: "HR Interview", covers: "Your introduction, projects and the technologies you know." },
+    ],
+    firmness: "varies",
+    sourceNote:
+      "PrepInsta, FACE Prep and 2025 Glassdoor reports agree on a coding-heavy test, a harder Power Coder tier for top scorers, then technical and HR interviews. Counts and timings vary by drive; the speech-and-listening communication round and the group discussion some drives add are not reproduced.",
+    sources: [
+      { label: "PrepInsta — Virtusa", url: "https://prepinsta.com/virtusa/" },
+      { label: "FACE Prep — Virtusa recruitment process", url: "https://faceprep.in/article/virtusa-recruitment-process-virtusa-hiring-process-for-freshers-2/" },
+    ],
+  },
+
   // ── Product companies ────────────────────────────────────────────
   {
     slug: "zoho",
