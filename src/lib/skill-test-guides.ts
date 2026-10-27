@@ -268,13 +268,13 @@ export function validateGuide(guide: SkillTestGuide, knownPath?: (path: string) 
 /**
  * Whether a path a guide links to is a page: the index pages, a topic hub,
  * an aptitude section or topic, a study track, a roadmap lesson, a skill
- * test. The study tracks are the four seeded ones (scripts/study-plans
+ * test. The study tracks are the five seeded ones (scripts/study-plans
  * TRACKS) — a guide must not link a track that is not live. `testSlugs`
  * comes from the seed source, which lives outside src/.
  */
 export function siteLinkChecker(testSlugs: Iterable<string>, hubs: Iterable<string>, aptitude: Iterable<string>, lessons: Iterable<string>): (path: string) => boolean {
   const known = new Set<string>(["/challenges", "/roadmap", "/aptitude", "/study-plans", "/tests", "/skill-tests", "/bug-hunts", "/mock-interview", "/contests"]);
-  for (const track of ["java", "javascript", "cpp", "python"]) known.add(`/study-plans/${track}`);
+  for (const track of ["java", "javascript", "cpp", "python", "sql"]) known.add(`/study-plans/${track}`);
   for (const slug of testSlugs) known.add(`/skill-tests/${slug}`);
   for (const slug of hubs) known.add(`/challenges/${slug}`);
   for (const id of aptitude) known.add(`/aptitude/${id}`);

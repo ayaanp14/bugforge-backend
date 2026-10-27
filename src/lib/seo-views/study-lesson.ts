@@ -42,6 +42,7 @@ import "prismjs/components/prism-json.js";
 import "prismjs/components/prism-c.js";
 import "prismjs/components/prism-cpp.js";
 import "prismjs/components/prism-python.js";
+import "prismjs/components/prism-sql.js";
 import { escapeHtml, markdownHeadings, markdownOutline, markdownToHtml } from "../markdown-html.js";
 import type { LessonDefinition, ModuleDefinition, TrackDefinition } from "../../services/study-plans.js";
 
@@ -59,6 +60,7 @@ const GRAMMARS: Record<string, string> = {
   c: "c",
   python: "python",
   py: "python",
+  sql: "sql",
 };
 
 /** What markdownToHtml wrote for a fence with a language (its body escaped by escapeHtml). */

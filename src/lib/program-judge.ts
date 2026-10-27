@@ -1,5 +1,6 @@
 import { submitCodeBatch, pollResultBatch, LANGUAGE_MAP, type Judge0Result, type Judge0Submission } from "./executor.js";
 import { isEngineDown } from "./engine-error.js";
+import { judgeSqlProgram, runSqlProgram } from "./sql/program.js";
 
 /**
  * Whole-program judging, for the study plans.
@@ -23,6 +24,10 @@ import { isEngineDown } from "./engine-error.js";
  * refuses. Falling over to Judge0 would turn an outage into a compile error
  * the learner would read as their own. When every engine in the order is
  * down the result is `ENGINE_ERROR`, which the route answers as a 503.
+ *
+ * The one exception is `sql`: the SQL track's exercises run on the SQL
+ * problems' local engine (lib/sql/program.ts says why and how a script and
+ * its setup map onto source and stdin), never on STUDY_EXECUTOR.
  */
 
 export interface ProgramCase {
@@ -127,6 +132,7 @@ function submissionFor(source: string, language: string, stdin: string): Judge0S
 
 /** Run once on the learner's own input — the "Run" button. */
 export async function runProgram(source: string, language: string, stdin: string): Promise<ProgramRunResult> {
+  if (language === "sql") return runSqlProgram(source, stdin);
   let results: Array<Judge0Result & { token: string }>;
   try {
     const tokens = await submitCodeBatch([submissionFor(source, language, stdin)], language, STUDY_ENGINES);
@@ -167,6 +173,7 @@ export async function judgeProgram(source: string, language: string, cases: Prog
     timeMs: 0,
   });
   if (total === 0) return empty("ACCEPTED");
+  if (language === "sql") return judgeSqlProgram(source, cases, normalizeOutput);
 
   let results: Array<Judge0Result & { token: string }>;
   try {

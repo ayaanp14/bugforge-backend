@@ -70,6 +70,7 @@ const JAVA_PLAN = studyPlan("java", "Java");
 const PYTHON_PLAN = studyPlan("python", "Python");
 const JS_PLAN = studyPlan("javascript", "JavaScript");
 const CPP_PLAN = studyPlan("cpp", "C++");
+const SQL_PLAN = studyPlan("sql", "SQL");
 const CORE_CS = { label: "OS, DBMS & Networks MCQs", href: "/aptitude/os-dbms-networks" };
 const FUNDAMENTALS = { label: "Programming Fundamentals MCQs", href: "/aptitude/programming-fundamentals" };
 // Go has no study plan yet; every catalogue problem takes a Go solution, so
