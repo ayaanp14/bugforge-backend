@@ -18,13 +18,7 @@ If every write took locks that blocked readers, a busy table would spend its lif
 
 ## The idea in one picture
 
-```text
-time →
-T1 (reader)  START ─ SELECT price (sees 500) ─────────── SELECT price (still 500) ─ COMMIT
-T2 (writer)          START ─ UPDATE price = 550 ─ COMMIT
-row versions:  v1: 500 (committed before T1 started)
-               v2: 550 (created by T2)
-```
+@figure snapshot
 
 T1 never waits for T2's lock and never sees T2's change: it keeps reading version 1, because version 2 did not exist — committed — when T1's snapshot was taken. T2 never waits for T1 either. Only two **writers** to the same row conflict, and they are ordered by locks.
 

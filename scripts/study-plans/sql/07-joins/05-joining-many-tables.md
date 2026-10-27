@@ -46,9 +46,7 @@ For inner joins the textual order is for the reader, not the database: the optim
 
 Students and courses are many-to-many: one student takes many courses, one course has many students. A relational table cannot hold a list in a column, so the relationship lives in its own table — `enrollments`, one row per (student, course) pair, often with facts about the pair (a grade, a date). Going from a student to their courses always crosses it:
 
-```text
-students ──< enrollments >── courses
-```
+@figure junction-chain
 
 Two joins, and the junction table's columns (here `grade`) are available along the way. Counting the students of each course is a join plus a group:
 
@@ -100,10 +98,7 @@ LEFT JOIN payments p ON p.customer_id = c.id
 GROUP BY c.id, c.name;
 ```
 
-```text
-name | ordered | paid
-Asha | 600     | 750
-```
+@figure fan-out
 
 Orders and payments are not related to each other, so every order row was paired with every payment row: 3 × 2 = 6 rows. Each order was counted twice (once per payment) and each payment three times. The query runs without error and the numbers look plausible — which is why this bug survives code review.
 

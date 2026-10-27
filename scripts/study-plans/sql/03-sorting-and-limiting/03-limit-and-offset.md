@@ -25,12 +25,11 @@ ORDER BY total DESC
 LIMIT 3;
 ```
 
-```text
-id | customer | total
-14 | Ravi     | 4200
-3  | Anita    | 3900
-9  | Sam      | 2750
-```
+| id | customer | total |
+| ---: | --- | ---: |
+| 14 | Ravi | 4200 |
+| 3 | Anita | 3900 |
+| 9 | Sam | 2750 |
 
 `LIMIT 3` keeps at most three rows. "At most": if the query only produces two rows, you get two; if it produces none, you get none. `LIMIT 0` is legal and returns no rows at all — tools sometimes use it to learn a query's column names without fetching data.
 
@@ -56,6 +55,8 @@ FROM orders
 ORDER BY total DESC, id
 LIMIT 3 OFFSET 3;      -- rows 4, 5 and 6
 ```
+
+@figure pages
 
 Offsets count from zero: `OFFSET 0` skips nothing, `OFFSET 3` starts at the fourth row. An offset past the end is not an error — the result is simply empty. In MySQL an `OFFSET` must come with a `LIMIT`; to skip rows and keep "all the rest", the documented trick is a huge limit such as `LIMIT 18446744073709551615 OFFSET 10`. That need is rare.
 

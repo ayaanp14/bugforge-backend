@@ -69,11 +69,10 @@ UPDATE tasks SET done = 1 WHERE id = 1;
 SELECT id, title, done FROM tasks ORDER BY id;
 ```
 
-```text
-id | title | done
-1 | Buy milk | 1
-2 | Call Ravi | 0
-```
+| id | title | done |
+| ---: | --- | ---: |
+| 1 | Buy milk | 1 |
+| 2 | Call Ravi | 0 |
 
 Most of this course is DQL — `SELECT` is where the depth is. DML and DDL get their own modules later, and TCL appears with transactions.
 

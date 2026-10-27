@@ -40,9 +40,7 @@ At `WHERE` time each row is still on its own, and "the count of this row's group
 
 ## Where HAVING sits in the order of execution
 
-```text
-FROM → WHERE → GROUP BY → HAVING → SELECT → ORDER BY → LIMIT
-```
+@figure where-vs-having
 
 - `WHERE` sees individual rows and decides which ones are grouped.
 - `HAVING` sees finished groups, with their aggregates, and decides which are kept.

@@ -31,14 +31,7 @@ ORDER BY category;
 
 Picture the rows sorted into piles, one pile per category; then `COUNT(*)` and `SUM(amount)` run on each pile separately:
 
-```text
-id | category | amount            category | orders | revenue
-1  | books    | 20                books    | 2      | 55
-2  | games    | 60      →         games    | 2      | 100
-3  | books    | 35                toys     | 1      | 15
-4  | toys     | 15
-5  | games    | 40
-```
+@figure piles
 
 Five rows in, three rows out — one per distinct category. A grouped query returns as many rows as there are groups, and a group exists only if at least one row has that value. A category with no orders does not appear at all; listing every category, including the empty ones, needs a join against a categories table (Module 7).
 
@@ -71,13 +64,12 @@ GROUP BY region, category
 ORDER BY region, category;
 ```
 
-```text
-region | category | revenue
-north | books | 20
-north | games | 100
-south | books | 35
-south | toys | 15
-```
+| region | category | revenue |
+| --- | --- | ---: |
+| north | books | 20 |
+| north | games | 100 |
+| south | books | 35 |
+| south | toys | 15 |
 
 Only combinations that occur are returned — there is no `north, toys` row because no such order exists. The order of columns inside `GROUP BY` does not change the groups; `ORDER BY` decides how they are printed.
 

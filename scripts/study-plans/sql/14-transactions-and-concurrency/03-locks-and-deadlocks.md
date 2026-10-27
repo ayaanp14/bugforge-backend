@@ -97,14 +97,7 @@ To see who blocks whom in MySQL 8, query `performance_schema.data_locks` and `pe
 
 A **deadlock** is a cycle of waits:
 
-```text
-step  T1                                      T2
-1     START TRANSACTION;                      START TRANSACTION;
-2     UPDATE accounts SET … WHERE id = 1;     -- X lock on row 1
-3                                             UPDATE accounts SET … WHERE id = 2;   -- X lock on row 2
-4     UPDATE accounts SET … WHERE id = 2;     -- waits for T2
-5                                             UPDATE accounts SET … WHERE id = 1;   -- waits for T1: cycle
-```
+@figure deadlock
 
 Neither can ever proceed. InnoDB's **deadlock detector** (on by default, `innodb_deadlock_detect`) builds the **wait-for graph** — an edge from each waiting transaction to the transaction holding what it wants — and when a new wait closes a cycle it immediately picks a **victim**: the transaction it judges smallest, measured by the number of rows it has inserted, updated or deleted. The victim is **rolled back entirely** with **error 1213**, `Deadlock found when trying to get lock; try restarting transaction`, and the other transaction continues. `SHOW ENGINE INNODB STATUS` prints the latest detected deadlock, with both transactions' statements and locks; `innodb_print_all_deadlocks` writes every one to the error log.
 

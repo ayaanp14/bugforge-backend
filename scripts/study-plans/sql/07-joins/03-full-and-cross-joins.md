@@ -29,13 +29,7 @@ INSERT INTO books VALUES ('P1', 100), ('P2', 205), ('P3', 60);
 
 A full outer join on `ref` returns:
 
-```text
-ref | bank_amount | books_amount
-P1  | 100         | 100
-P2  | 250         | 205
-P3  | NULL        | 60
-P4  | 80          | NULL
-```
+@figure full-outer
 
 Matched references appear once with both amounts; P4 exists only at the bank; P3 only in the books. All three kinds of discrepancy are visible in one result. In PostgreSQL or SQL Server this is one clause:
 
@@ -96,15 +90,7 @@ CROSS JOIN sizes s
 ORDER BY c.name, s.position;
 ```
 
-```text
-colour | size
-black  | S
-black  | M
-black  | L
-white  | S
-white  | M
-white  | L
-```
+@figure cross-grid
 
 Two colours × three sizes = six rows. There is no `ON`: every combination is the point. If either table is empty, the product is empty.
 

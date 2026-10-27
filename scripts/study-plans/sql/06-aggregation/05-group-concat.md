@@ -26,11 +26,10 @@ GROUP BY order_id
 ORDER BY order_id;
 ```
 
-```text
-order_id | products
-1 | pen,ink,paper
-2 | stapler
-```
+| order_id | products |
+| ---: | --- |
+| 1 | pen,ink,paper |
+| 2 | stapler |
 
 Like every aggregate, `GROUP_CONCAT` returns one value per group. The values are joined with a **comma and no space** by default, and their order inside the string is not guaranteed — `pen,ink,paper` is just the order the rows were read in.
 
@@ -50,11 +49,10 @@ GROUP BY order_id
 ORDER BY order_id;
 ```
 
-```text
-order_id | products
-1 | ink, paper, pen
-2 | stapler
-```
+| order_id | products |
+| ---: | --- |
+| 1 | ink, paper, pen |
+| 2 | stapler |
 
 - `DISTINCT` drops repeated values within the group, so an order with two lines of `pen` lists it once.
 - `ORDER BY` sorts the values inside the string. It is independent of the query's own `ORDER BY`, which sorts the groups. Always write it when the output is compared or shown to people — the stored order is not an order.
@@ -75,12 +73,11 @@ GROUP BY sell_date
 ORDER BY sell_date;
 ```
 
-```text
-sell_date | num_sold | products
-2020-05-30 | 3 | Basketball,Headphone,T-shirt
-2020-06-01 | 2 | Bible,Pencil
-2020-06-02 | 1 | Mask
-```
+| sell_date | num_sold | products |
+| --- | ---: | --- |
+| 2020-05-30 | 3 | Basketball,Headphone,T-shirt |
+| 2020-06-01 | 2 | Bible,Pencil |
+| 2020-06-02 | 1 | Mask |
 
 Three things make it right: `DISTINCT` in both functions (a product sold twice on one day counts once), `ORDER BY` inside `GROUP_CONCAT`, and `ORDER BY sell_date` for the rows.
 
@@ -96,10 +93,9 @@ GROUP BY customer_id
 ORDER BY customer_id;
 ```
 
-```text
-customer_id | basket
-7 | ink x2; pen x1
-```
+| customer_id | basket |
+| ---: | --- |
+| 7 | ink x2; pen x1 |
 
 MySQL also accepts several arguments — `GROUP_CONCAT(product, ':', qty)` concatenates them per row — but the `CONCAT` form is clearer and behaves the same.
 

@@ -20,16 +20,16 @@ a: Yes, in practice. A rank only means something in an order, and MySQL numbers 
 
 ## Three ways to number rows
 
-```text
-scores
-player | score
-Asha   | 90
-Ben    | 90
-Chen   | 85
-Dev    | 80
-Eva    | 80
-Farah  | 70
-```
+**`scores`**
+
+| player | score |
+| --- | ---: |
+| Asha | 90 |
+| Ben | 90 |
+| Chen | 85 |
+| Dev | 80 |
+| Eva | 80 |
+| Farah | 70 |
 
 ```sql
 SELECT player, score,
@@ -40,15 +40,7 @@ FROM scores
 ORDER BY score DESC, player;
 ```
 
-```text
-player | score | row_num | rnk | dense_rnk
-Asha   | 90    | 1       | 1   | 1
-Ben    | 90    | 2       | 1   | 1
-Chen   | 85    | 3       | 3   | 2
-Dev    | 80    | 4       | 4   | 3
-Eva    | 80    | 5       | 4   | 3
-Farah  | 70    | 6       | 6   | 4
-```
+@figure three-rankings
 
 - **`ROW_NUMBER()`** gives 1, 2, 3, … — every row a different number, ties broken however the ORDER BY (or the engine) decides.
 - **`RANK()`** gives tied rows the same number and then *skips*: two players share 1, so the next is 3. A row's rank is one plus the number of rows strictly ahead of it — competition ranking, as in sport.
@@ -87,14 +79,13 @@ FROM employees
 ORDER BY dept, dept_rank, name;
 ```
 
-```text
-dept  | name  | salary | dept_rank
-Eng   | Asha  | 90000  | 1
-Eng   | Farah | 90000  | 1
-Eng   | Ben   | 70000  | 2
-Sales | Chen  | 50000  | 1
-Sales | Dev   | 40000  | 2
-```
+| dept | name | salary | dept_rank |
+| --- | --- | ---: | ---: |
+| Eng | Asha | 90000 | 1 |
+| Eng | Farah | 90000 | 1 |
+| Eng | Ben | 70000 | 2 |
+| Sales | Chen | 50000 | 1 |
+| Sales | Dev | 40000 | 2 |
 
 Each department is ranked on its own. This is the building block of "top N per group", which has its own lesson.
 

@@ -27,11 +27,10 @@ FROM products
 ORDER BY name;
 ```
 
-```text
-name | stock | availability
-Desk | 0 | sold out
-Lamp | 12 | in stock
-```
+| name | stock | availability |
+| --- | ---: | --- |
+| Desk | 0 | sold out |
+| Lamp | 12 | in stock |
 
 "Otherwise" includes NULL: `IF(NULL > 0, 'yes', 'no')` returns `'no'`, because the condition is not true. That matches `CASE`, which also falls to `ELSE` when no `WHEN` is true.
 

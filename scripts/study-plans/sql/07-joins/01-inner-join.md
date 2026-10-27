@@ -45,12 +45,7 @@ JOIN customers AS c ON c.id = o.customer_id
 ORDER BY o.id;
 ```
 
-```text
-order_id | customer | amount
-10       | Asha     | 250
-11       | Asha     | 100
-12       | Ben      | 400
-```
+@figure match-orders
 
 Read it as: take each order, find every customer whose `id` equals the order's `customer_id`, and output one combined row per pair. Order 13 has no matching customer, so it disappears. Chen has no matching order, so Chen disappears too. That is the defining property of an inner join: **only rows that found a partner survive**, from both sides.
 
@@ -58,7 +53,11 @@ Read it as: take each order, find every customer whose `id` equals the order's `
 
 ## A mental model: filter the Cartesian product
 
-Logically, a join builds every possible pair of rows — the **Cartesian product**, 4 orders × 3 customers = 12 pairs here — and keeps the pairs where `ON` is true. The database never actually builds all twelve; it uses indexes, hash tables or sorted merges. But the model gives the right answer every time, including in the strange cases:
+Logically, a join builds every possible pair of rows — the **Cartesian product**, 4 orders × 3 customers = 12 pairs here — and keeps the pairs where `ON` is true. The database never actually builds all twelve; it uses indexes, hash tables or sorted merges. But the model gives the right answer every time, including in the strange cases.
+
+@figure cross-product
+
+The strange cases, read off the grid:
 
 - a row that matches nothing produces no pair;
 - a row that matches three rows produces three pairs;
@@ -79,12 +78,11 @@ JOIN orders o ON o.customer_id = c.id
 ORDER BY c.name, o.id;
 ```
 
-```text
-name | order_id | amount
-Asha | 10       | 250
-Asha | 11       | 100
-Ben  | 12       | 400
-```
+| name | order_id | amount |
+| --- | ---: | ---: |
+| Asha | 10 | 250 |
+| Asha | 11 | 100 |
+| Ben | 12 | 400 |
 
 Asha appears twice because she has two orders. This is correct, and it is what makes aggregation after a join work:
 
@@ -96,11 +94,10 @@ GROUP BY c.id, c.name
 ORDER BY spent DESC, c.name;
 ```
 
-```text
-name | orders | spent
-Ben  | 1      | 400
-Asha | 2      | 350
-```
+| name | orders | spent |
+| --- | ---: | ---: |
+| Ben | 1 | 400 |
+| Asha | 2 | 350 |
 
 Group by the key (`c.id`) as well as the name: two different customers can share a name, and grouping by name alone would merge them. The danger comes when a column from the "one" side is summed after the join — summing a customer's credit limit over their order rows counts it once per order. Keep that in mind; the joining-many-tables lesson returns to it.
 

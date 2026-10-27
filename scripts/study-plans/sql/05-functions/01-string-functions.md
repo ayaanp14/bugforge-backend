@@ -30,10 +30,9 @@ Three rules hold for nearly every string function, and knowing them saves a lot 
 SELECT UPPER('sql'), SUBSTRING('hello', 1, 2), UPPER(NULL);
 ```
 
-```text
-UPPER('sql') | SUBSTRING('hello', 1, 2) | UPPER(NULL)
-SQL | he | NULL
-```
+| UPPER('sql') | SUBSTRING('hello', 1, 2) | UPPER(NULL) |
+| --- | --- | --- |
+| SQL | he | NULL |
 
 ## Joining text: CONCAT and CONCAT_WS
 
@@ -147,11 +146,10 @@ FROM people
 ORDER BY display;
 ```
 
-```text
-display
-A. LOVELACE
-G. HOPPER
-```
+| display |
+| --- |
+| A. LOVELACE |
+| G. HOPPER |
 
 Read a nested expression from the innermost call outwards: `TRIM(first_name)`, then `LEFT(…, 1)`, then `UPPER(…)`. When a chain grows past three or four levels, give each step a name with a CTE (Module 9) or do the work once when the data is loaded.
 

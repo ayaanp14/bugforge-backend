@@ -43,11 +43,7 @@ WHERE e.salary > (
 ORDER BY e.dept, e.salary DESC, e.name;
 ```
 
-```text
-name | dept  | salary
-Asha | Eng   | 120000
-Dina | Sales | 82000
-```
+@figure per-row-average
 
 The inner query mentions `e.dept`, a column of the **outer** row. Conceptually the database does this for every employee: take their department, compute that department's average, compare. For Asha it computes the Eng average (107500); for Chen the Sales average (76000). Esha is alone in Ops, equal to her own average, so `>` excludes her.
 

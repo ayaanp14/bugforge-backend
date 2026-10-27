@@ -25,11 +25,10 @@ FROM employees
 ORDER BY emp_id;
 ```
 
-```text
-name | annual_salary
-Asha | 720000
-Ravi | 540000
-```
+| name | annual_salary |
+| --- | ---: |
+| Asha | 720000 |
+| Ravi | 540000 |
 
 `AS` renames the result column. The table still has `first_name`; only this result calls it `name`. Without the alias the second column's heading would be the expression itself — `salary * 12` in MySQL — which is awkward to read and harder for application code to refer to.
 

@@ -45,13 +45,7 @@ Storage is read in **pages** — InnoDB's default page is 16 KB — and a page r
 - the **inner nodes** hold only keys and child pointers, used to steer the search;
 - the **leaf nodes** hold the entries themselves, in sorted order, and each leaf is **linked to the next**.
 
-```text
-                      [ 40 | 80 ]                    root (one page)
-             /             |             \
-     [10|20|30]       [50|60|70]       [90|99]       inner pages
-      /  |  |  \       ...               ...
-  leaf ↔ leaf ↔ leaf ↔ leaf ↔ leaf ↔ leaf ↔ leaf     linked leaf pages
-```
+@figure btree-lookup
 
 With a few hundred keys per page, three levels address tens of millions of rows. An equality lookup is therefore **three or four page reads**, and the upper levels are almost always cached in memory. A binary tree over the same rows would be about twenty-four levels deep — twenty-four dependent reads. The linked leaves are what make a **range** cheap: `WHERE signup_date BETWEEN '2024-01-01' AND '2024-01-31'` searches down once to the first date and then walks the leaves sideways until it passes the last.
 
@@ -61,12 +55,13 @@ Search cost grows with the logarithm of the table, so doubling the table adds a 
 
 In InnoDB the table is not a heap with an index beside it. **The table is stored as a B+tree on the primary key** — the clustered index — and its leaf pages hold the complete rows.
 
-```text
-clustered index (PRIMARY) on customers.id
-  leaf: id=1 | asha@…  | Pune   | 2024-01-04
-        id=2 | ravi@…  | Delhi  | 2024-01-09
-        id=3 | meera@… | Pune   | 2024-02-11
-```
+**Clustered index (PRIMARY) on `customers.id`** — its leaves are the rows:
+
+| id | email | city | signup_date |
+| ---: | --- | --- | --- |
+| 1 | asha@… | Pune | 2024-01-04 |
+| 2 | ravi@… | Delhi | 2024-01-09 |
+| 3 | meera@… | Pune | 2024-02-11 |
 
 Consequences worth saying out loud in an interview:
 
@@ -79,12 +74,7 @@ Consequences worth saying out loud in an interview:
 
 Every other index is a **secondary** (non-clustered) index. Its leaves hold the indexed column values **plus the primary key** of the row — not a physical address.
 
-```text
-idx_customers_city (secondary)
-  leaf: Delhi → id 2
-        Pune  → id 1
-        Pune  → id 3
-```
+@figure secondary-lookup
 
 So `SELECT * FROM customers WHERE city = 'Pune'` is two searches: one down `idx_customers_city` to collect ids 1 and 3, then one down the clustered index **per id** to fetch each full row. If the filter matches a few rows, that is cheap. If it matches a third of the table, those per-row lookups jump all over the clustered index and a plain scan wins — which is why the optimizer sometimes ignores an index you created. Two useful corollaries:
 

@@ -26,12 +26,11 @@ SELECT id,
 FROM users;
 ```
 
-```text
-id | display_name
-1  | ace
-2  | Bela
-3  | Guest
-```
+| id | display_name |
+| ---: | --- |
+| 1 | ace |
+| 2 | Bela |
+| 3 | Guest |
 
 User 1 has a nickname, user 2 has only a first name, user 3 has neither. COALESCE reads like "use this, or else that, or else this default" — a chain of fallbacks of any length.
 

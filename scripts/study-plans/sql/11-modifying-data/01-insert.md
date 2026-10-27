@@ -66,11 +66,10 @@ INSERT INTO tickets (subject) VALUES ('Printer jams'), ('VPN drops');
 SELECT id, subject, status, assignee FROM tickets ORDER BY id;
 ```
 
-```text
-id | subject      | status | assignee
-1  | Printer jams | open   | NULL
-2  | VPN drops    | open   | NULL
-```
+| id | subject | status | assignee |
+| ---: | --- | --- | --- |
+| 1 | Printer jams | open | NULL |
+| 2 | VPN drops | open | NULL |
 
 The `id` came from `AUTO_INCREMENT`, `status` from its default, `assignee` is NULL. Writing `NULL` explicitly for a column with a default does **not** give you the default — you asked for NULL, and a `NOT NULL` column refuses it. To ask for the default by name, MySQL accepts the keyword `DEFAULT` in a value list (`VALUES (DEFAULT, 'x')`); leaving the column out of the list is the portable way.
 

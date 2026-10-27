@@ -25,12 +25,11 @@ FROM students;
 
 Two clauses: `SELECT` lists **what** to return — here two columns — and `FROM` names **where** to read it. The result has exactly the columns you listed, in the order you listed them, and one row for each row of the table:
 
-```text
-name | city
-Asha | Pune
-Ravi | Chennai
-Meera | Pune
-```
+| name | city |
+| --- | --- |
+| Asha | Pune |
+| Ravi | Chennai |
+| Meera | Pune |
 
 The columns are separated by **commas**, and a missing or extra comma is the commonest first error:
 
@@ -60,12 +59,11 @@ The star means **every column, in the table's order**:
 SELECT * FROM students;
 ```
 
-```text
-id | name | year | city
-1 | Asha | 2 | Pune
-2 | Ravi | 1 | Chennai
-3 | Meera | 3 | Pune
-```
+| id | name | year | city |
+| ---: | --- | ---: | --- |
+| 1 | Asha | 2 | Pune |
+| 2 | Ravi | 1 | Chennai |
+| 3 | Meera | 3 | Pune |
 
 Use it to explore a table you do not know. Avoid it in code that other code depends on:
 
@@ -83,12 +81,11 @@ A table is a set; it has **no row order**. If you run `SELECT * FROM students` t
 SELECT name, year FROM students ORDER BY name;
 ```
 
-```text
-name | year
-Asha | 2
-Meera | 3
-Ravi | 1
-```
+| name | year |
+| --- | ---: |
+| Asha | 2 |
+| Meera | 3 |
+| Ravi | 1 |
 
 `ORDER BY` comes **after** `FROM` (and after `WHERE`, once there is one). It sorts ascending by default — numbers small to large, text A to Z, dates old to new; add `DESC` for descending:
 
@@ -112,10 +109,9 @@ Module 3 covers sorting in depth. For now, one rule that every exercise in the c
 SELECT 2 + 3 AS total, 'hello' AS greeting;
 ```
 
-```text
-total | greeting
-5 | hello
-```
+| total | greeting |
+| ---: | --- |
+| 5 | hello |
 
 One row, computed from literals. It is the quickest way to try out an expression or a function. MySQL, PostgreSQL, SQLite and SQL Server accept it as written; Oracle needs a table and supplies the one-row dummy table `DUAL` (`SELECT 2 + 3 FROM dual`), which MySQL also accepts for compatibility.
 
@@ -129,12 +125,11 @@ FROM students
 ORDER BY id;
 ```
 
-```text
-name | role | next_year
-Asha | student | 3
-Ravi | student | 2
-Meera | student | 4
-```
+| name | role | next_year |
+| --- | --- | ---: |
+| Asha | student | 3 |
+| Ravi | student | 2 |
+| Meera | student | 4 |
 
 The literal `'student'` is repeated on every row; `year + 1` is computed per row. The stored data is untouched — `SELECT` only reads. Expressions get a lesson of their own in the next module.
 

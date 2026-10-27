@@ -20,21 +20,19 @@ A query result has a fixed set of columns and any number of rows. Reports often 
 
 Data is normally stored *long*: one row per fact.
 
-```text
-region | sale_date  | amount
-North  | 2024-01-15 | 200
-North  | 2024-05-02 | 150
-South  | 2024-02-20 | 300
-South  | 2024-11-30 | 120
-```
+| region | sale_date | amount |
+| --- | --- | ---: |
+| North | 2024-01-15 | 200 |
+| North | 2024-05-02 | 150 |
+| South | 2024-02-20 | 300 |
+| South | 2024-11-30 | 120 |
 
 A report wants it *wide*:
 
-```text
-region | q1  | q2  | q3 | q4
-North  | 200 | 150 | 0  | 0
-South  | 300 | 0   | 0  | 120
-```
+| region | q1 | q2 | q3 | q4 |
+| --- | ---: | ---: | ---: | ---: |
+| North | 200 | 150 | 0 | 0 |
+| South | 300 | 0 | 0 | 120 |
 
 Long is right for storage — a new quarter is a new row, not a schema change — and wide is right for reading. A pivot is the query that goes from one to the other.
 

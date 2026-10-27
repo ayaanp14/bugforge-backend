@@ -28,11 +28,7 @@ SELECT student FROM enrollments WHERE course = 'Python';
 
 Each SELECT runs on its own; the result is every row that appears in both results, once. The rules are the union rules: the same number of columns, compatible types by position, names from the first branch, one ORDER BY at the end that sorts the final result.
 
-```text
-student
-Asha
-Kiran
-```
+@figure intersect
 
 `INTERSECT` compares *whole rows*. Intersecting `(student, city)` pairs requires the same student in the same city in both results — not just the same student. And like `UNION`, it removes duplicates: a student enrolled in SQL twice still appears once. The standard also defines `INTERSECT ALL` (keep `min(m, n)` copies of a row appearing m and n times), which MySQL 8.0.31+ and PostgreSQL support; it is rarely needed.
 
@@ -113,12 +109,7 @@ WHERE sku NOT IN (SELECT sku FROM sales);
 
 It works — until one row in `sales` has `sku` NULL. Then it returns *nothing*. `x NOT IN (a, b, NULL)` expands to `x <> a AND x <> b AND x <> NULL`; the last comparison is unknown, so the conjunction is never true, so no row passes. No error, no warning, an empty result that looks plausible on a busy day.
 
-```text
-sales.sku: 'A1', 'B2', NULL
-NOT IN     → (no rows)
-NOT EXISTS → C3, D4
-EXCEPT     → C3, D4
-```
+@figure three-anti-joins
 
 Defences, in order of preference: use `NOT EXISTS` or `EXCEPT`; or filter the subquery (`WHERE sku IS NOT NULL`); or make the column `NOT NULL` in the schema so the case cannot arise. Interviewers ask this exact question, and "NOT IN with a NULL returns no rows" is the answer they are waiting for. (`IN` is not affected the same way: `x IN (a, NULL)` is true when `x = a`, and merely unknown otherwise, which filters the same as false.)
 

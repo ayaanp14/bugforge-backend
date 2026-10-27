@@ -39,11 +39,10 @@ WHERE salary > (SELECT AVG(salary) FROM employees)
 ORDER BY salary DESC, name;
 ```
 
-```text
-name | salary
-Asha | 120000
-Ben  | 95000
-```
+| name | salary |
+| --- | ---: |
+| Asha | 120000 |
+| Ben | 95000 |
 
 The parenthesised query runs once, produces the single value 85400, and the outer `WHERE` compares every row with it. A scalar subquery is just an expression — the database treats `(SELECT AVG(salary) FROM employees)` the way it would treat the literal `85400`, except that it stays right when the data changes.
 
@@ -59,14 +58,13 @@ FROM employees
 ORDER BY salary DESC, name;
 ```
 
-```text
-name | salary | vs_average | pct_of_payroll
-Asha | 120000 | 34600      | 28.1
-Ben  | 95000  | 9600       | 22.2
-Dina | 82000  | -3400      | 19.2
-Chen | 70000  | -15400     | 16.4
-Esha | 60000  | -25400     | 14.1
-```
+| name | salary | vs_average | pct_of_payroll |
+| --- | ---: | ---: | ---: |
+| Asha | 120000 | 34600 | 28.1 |
+| Ben | 95000 | 9600 | 22.2 |
+| Dina | 82000 | -3400 | 19.2 |
+| Chen | 70000 | -15400 | 16.4 |
+| Esha | 60000 | -25400 | 14.1 |
 
 Each scalar subquery is used inside arithmetic like any number. This "share of the total" shape is common in reports. (Window functions, later in the course, write it as `SUM(salary) OVER ()` without a second read of the table.)
 
@@ -82,10 +80,9 @@ HAVING AVG(salary) > (SELECT AVG(salary) FROM employees)
 ORDER BY dept;
 ```
 
-```text
-dept | avg_salary
-Eng  | 107500
-```
+| dept | avg_salary |
+| --- | ---: |
+| Eng | 107500 |
 
 `HAVING` filters groups after aggregation, and the subquery provides the threshold.
 
@@ -97,10 +94,9 @@ If a scalar subquery returns no rows, its value is `NULL`:
 SELECT (SELECT salary FROM employees WHERE dept = 'Legal') AS legal_salary;
 ```
 
-```text
-legal_salary
-NULL
-```
+| legal_salary |
+| --- |
+| NULL |
 
 And `salary > NULL` is unknown, so a `WHERE` comparing against an empty subquery keeps nothing. Usually that is the right behaviour; when it is not, wrap the subquery in `COALESCE(…, 0)`.
 
@@ -126,10 +122,9 @@ FROM employees
 WHERE salary < (SELECT MAX(salary) FROM employees);
 ```
 
-```text
-second_highest
-95000
-```
+| second_highest |
+| ---: |
+| 95000 |
 
 The subquery finds the top salary; the outer query takes the largest salary below it. Duplicates of the top are excluded automatically because they are not *less than* it. If every employee earns the same, no row passes the `WHERE`, and `MAX` of nothing is `NULL` — an aggregate without `GROUP BY` always returns exactly one row. That NULL row is part of the expected answer, and it is why the `MAX` form beats a plain `ORDER BY salary DESC LIMIT 1 OFFSET 1`, which returns *no row* when there is no second salary and returns a duplicate of the top when the top is tied.
 

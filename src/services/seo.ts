@@ -32,6 +32,7 @@ import { poolTopics, verifyCredential } from "./skill-credentials.js";
 import { APTITUDE_ESSENTIALS } from "../lib/aptitude-essentials.js";
 import { APTITUDE_SECTION_GUIDES } from "../lib/aptitude-section-guides.js";
 import { pdfPathFor, trackDefinition, trackList, type LessonSeo } from "./study-plans.js";
+import { figuresOf } from "../lib/study-figures/index.js";
 import { roadDefinition } from "./roadmap.js";
 import { hubIndex, hubPage, hubsForTags, relatedProblems, type HubSummary } from "./problem-hubs.js";
 import { getCatalogue } from "./dashboard.js";
@@ -1240,6 +1241,11 @@ async function lessonHead(key: string, lessonSlug: string): Promise<PageHead | n
   // the exercises — the same blocks the SPA's StudyLessonPage draws.
   const outline = markdownOutline(lesson.body);
   const faq = seo?.faq ?? [];
+  // Each placed figure as the notes write theirs: its drawing and its sentences (lib/study-figures).
+  const figures = figuresOf(key, lessonSlug, lesson.body);
+  const lessonArticle = markdownToHtml(lesson.body, 24_000, { anchors: true }).replace(/<p>@figure ([a-z0-9][a-z0-9-]*)<\/p>/g, (_, name: string) =>
+    figures[name] ? lessonFigureHtml(figures[name]) : "",
+  );
   const content =
     factList([
       ["Course", link(`/study-plans/${key}`, `${track.title} study plan`), { html: true }],
@@ -1251,7 +1257,7 @@ async function lessonHead(key: string, lessonSlug: string): Promise<PageHead | n
     (seo?.question && seo.answer ? `<section id="answer"><h2>${inlineMd(seo.question)}</h2><p>${inlineMd(seo.answer)}</p></section>` : "") +
     (isTest ? `<p>${h(lesson.title)} is the checkpoint that closes the ${h(mod.title)} module: a graded quiz and whole-program exercises, passed at 70%.</p>` : "") +
     (outline.length > 1 ? `<nav id="contents" aria-label="On this page"><h2>On this page</h2>${linkList(outline.map((o) => ({ href: `#${o.id}`, label: o.text })))}</nav>` : "") +
-    section(isTest ? "Instructions" : "Lesson", markdownToHtml(lesson.body, 24_000, { anchors: true }), "lesson") +
+    section(isTest ? "Instructions" : "Lesson", lessonArticle, "lesson") +
     (faq.length ? `<section id="questions"><h2>Common questions</h2>${faq.map((f) => `<h3>${inlineMd(f.q)}</h3><p>${inlineMd(f.a)}</p>`).join("")}</section>` : "") +
     section(lesson.exercises.length === 1 ? "Exercise" : "Exercises", exercises, "exercises") +
     section(`In this module: ${mod.title}`, linkList(siblings), "module") +
@@ -1271,7 +1277,7 @@ async function lessonHead(key: string, lessonSlug: string): Promise<PageHead | n
     content,
     crumb: lesson.title,
     // The page's first screen for the Worker's static-first view (lib/seo-views/study-lesson).
-    view: studyLessonView(track, mod, lesson),
+    view: studyLessonView(track, mod, lesson, figures),
   };
 }
 

@@ -20,15 +20,15 @@ GROUP BY answers "the total per department", but it pays for the answer with the
 
 ## Aggregate, but keep the rows
 
-```text
-employees
-id | name  | dept  | salary
-1  | Asha  | Eng   | 90000
-2  | Ben   | Eng   | 70000
-3  | Chen  | Sales | 50000
-4  | Dev   | Sales | 40000
-5  | Eva   | HR    | 45000
-```
+**`employees`**
+
+| id | name | dept | salary |
+| ---: | --- | --- | ---: |
+| 1 | Asha | Eng | 90000 |
+| 2 | Ben | Eng | 70000 |
+| 3 | Chen | Sales | 50000 |
+| 4 | Dev | Sales | 40000 |
+| 5 | Eva | HR | 45000 |
 
 GROUP BY gives one row per department:
 
@@ -45,14 +45,7 @@ FROM employees
 ORDER BY dept, name;
 ```
 
-```text
-name | dept  | salary | dept_avg
-Asha | Eng   | 90000  | 80000
-Ben  | Eng   | 70000  | 80000
-Eva  | HR    | 45000  | 45000
-Chen | Sales | 50000  | 45000
-Dev  | Sales | 40000  | 45000
-```
+@figure partition-vs-group
 
 The function is an ordinary aggregate — `SUM`, `AVG`, `COUNT`, `MIN`, `MAX` all work — and the `OVER (...)` turns it into a window function. Now `salary - dept_avg`, `salary / dept_total` and "is this the department maximum?" are each one expression on one row.
 

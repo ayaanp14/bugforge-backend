@@ -28,13 +28,12 @@ SELECT company, email FROM suppliers;
 
 Each SELECT runs on its own, with its own FROM, WHERE, GROUP BY and HAVING. Then the second result's rows are appended under the first's. The combined result has the *first* SELECT's column names — here `name` and `email`, even for the rows that came from `suppliers.company`.
 
-```text
-name        | email
-Asha Rao    | asha@mail.com
-Ben Ortiz   | ben@mail.com
-Acme Parts  | sales@acme.io
-Bolt & Co   | hi@bolt.co
-```
+| name | email |
+| --- | --- |
+| Asha Rao | asha@mail.com |
+| Ben Ortiz | ben@mail.com |
+| Acme Parts | sales@acme.io |
+| Bolt & Co | hi@bolt.co |
 
 Three rules make a union legal:
 
@@ -53,6 +52,8 @@ SELECT city FROM suppliers;
 ```
 
 `UNION` (short for `UNION DISTINCT`) returns each distinct row once across the *whole* combined result — duplicates within one branch are removed too, not just duplicates between branches. If three customers live in Pune and one supplier does, Pune appears once.
+
+@figure union-dedup
 
 `UNION ALL` keeps every row:
 
@@ -82,11 +83,10 @@ UNION ALL
 SELECT company, email, 'supplier' FROM suppliers;
 ```
 
-```text
-contact     | email          | kind
-Asha Rao    | asha@mail.com  | customer
-Acme Parts  | sales@acme.io  | supplier
-```
+| contact | email | kind |
+| --- | --- | --- |
+| Asha Rao | asha@mail.com | customer |
+| Acme Parts | sales@acme.io | supplier |
 
 The literal is just another column, so it obeys the same rules: same position in every branch, name from the first. A tag also makes `UNION` and `UNION ALL` give the same answer whenever the tags differ, since no row of one branch can equal a row of the other — another reason `UNION ALL` is the default choice for tagged unions.
 

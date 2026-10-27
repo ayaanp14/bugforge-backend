@@ -112,12 +112,11 @@ and `NOT unknown` is `unknown`. `false AND anything` is false, `true OR anything
 
 Take
 
-```text
-emp_id | name | dept
-1 | Asha | Sales
-2 | Ravi | Support
-3 | Meera | NULL
-```
+| emp_id | name | dept |
+| ---: | --- | --- |
+| 1 | Asha | Sales |
+| 2 | Ravi | Support |
+| 3 | Meera | NULL |
 
 - `WHERE dept = 'Sales'` → Asha.
 - `WHERE NOT dept = 'Sales'` → Ravi only.

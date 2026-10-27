@@ -22,23 +22,18 @@ A query returns one result row for every input row that survives `WHERE`. Often 
 SELECT city FROM customers ORDER BY city;
 ```
 
-```text
-city
-Chennai
-Pune
-Pune
-Pune
-```
+| city |
+| --- |
+| Chennai |
+| Pune |
+| Pune |
+| Pune |
 
 ```sql
 SELECT DISTINCT city FROM customers ORDER BY city;
 ```
 
-```text
-city
-Chennai
-Pune
-```
+@figure collapse
 
 `DISTINCT` goes right after `SELECT` and removes **duplicate result rows**. In the logical order it runs after `SELECT` has computed the columns and before `ORDER BY` sorts them. The opposite, `SELECT ALL`, is the default and is never written.
 
@@ -70,11 +65,10 @@ FROM orders
 ORDER BY order_year;
 ```
 
-```text
-order_year
-2023
-2024
-```
+| order_year |
+| ---: |
+| 2023 |
+| 2024 |
 
 ## NULLs collapse into one
 
@@ -84,12 +78,11 @@ For `DISTINCT`, two NULLs count as the same value — the one place in SQL where
 SELECT DISTINCT dept FROM employees ORDER BY dept;
 ```
 
-```text
-dept
-NULL
-Sales
-Support
-```
+| dept |
+| --- |
+| NULL |
+| Sales |
+| Support |
 
 In MySQL, NULL sorts **first** in ascending order (and last in descending), which is why it heads the list. PostgreSQL and Oracle do the opposite by default — NULLs last ascending — and offer `NULLS FIRST`/`NULLS LAST` to choose; MySQL does not have that syntax.
 
@@ -104,10 +97,9 @@ SELECT COUNT(*)             AS customers,
 FROM customers;
 ```
 
-```text
-customers | with_city | cities
-6 | 5 | 2
-```
+| customers | with_city | cities |
+| ---: | ---: | ---: |
+| 6 | 5 | 2 |
 
 Three different counts, three different questions:
 

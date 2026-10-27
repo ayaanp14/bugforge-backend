@@ -66,11 +66,10 @@ SELECT duration_min,
 FROM calls;
 ```
 
-```text
-duration_min | hours | minutes
-135 | 2 | 15
-59 | 0 | 59
-```
+| duration_min | hours | minutes |
+| ---: | ---: | ---: |
+| 135 | 2 | 15 |
+| 59 | 0 | 59 |
 
 ## Rounding
 
@@ -102,10 +101,9 @@ SELECT CONCAT(first_name, ' ', last_name) AS full_name,
 FROM employees;
 ```
 
-```text
-full_name | label | code
-Asha Rao | Asha (Pune) | EMP-1
-```
+| full_name | label | code |
+| --- | --- | --- |
+| Asha Rao | Asha (Pune) | EMP-1 |
 
 Numbers passed to `CONCAT` are converted to text. `CONCAT_WS(sep, a, b, …)` joins with a separator and skips NULL arguments: `CONCAT_WS(', ', city, state, country)`. Remember from the first module that `||` is **not** concatenation in MySQL. The functions module covers `UPPER`, `SUBSTRING`, `LPAD` and the rest.
 
@@ -128,11 +126,10 @@ A comparison produces a value. In MySQL it is `1` (true), `0` (false) or `NULL` 
 SELECT name, price, price > 1000 AS is_premium FROM products;
 ```
 
-```text
-name | price | is_premium
-Monitor | 9000 | 1
-Mouse | 600 | 0
-```
+| name | price | is_premium |
+| --- | ---: | ---: |
+| Monitor | 9000 | 1 |
+| Mouse | 600 | 0 |
 
 That is how MySQL represents booleans — `TRUE` is just `1`. PostgreSQL would print `t`/`f`; SQL Server does not allow a bare comparison in the select list at all (you write `CASE WHEN price > 1000 THEN 1 ELSE 0 END`). The same comparisons are what `WHERE` uses to filter, in the next lesson.
 

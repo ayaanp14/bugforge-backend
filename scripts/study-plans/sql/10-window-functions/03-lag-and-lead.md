@@ -26,13 +26,7 @@ FROM daily_sales
 ORDER BY day;
 ```
 
-```text
-day        | revenue | prev_revenue | next_revenue
-2024-03-01 | 120     | NULL         | 150
-2024-03-02 | 150     | 120          | 90
-2024-03-03 | 90      | 150          | 200
-2024-03-04 | 200     | 90           | NULL
-```
+@figure lag-lead
 
 `LAG(expr)` is `expr` evaluated on the previous row of the window's order; `LEAD(expr)` on the next. The first row has no previous row and the last no next one, so those cells are NULL. The window's `ORDER BY` is what "previous" means — it is required, and it should be unique (a tie on `day` would leave which row is "previous" up to the engine).
 

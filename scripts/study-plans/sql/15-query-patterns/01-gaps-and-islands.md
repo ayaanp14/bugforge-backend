@@ -29,14 +29,13 @@ FROM logins
 WHERE user_id = 1;
 ```
 
-```text
-login_date | rn
-2024-03-01 | 1
-2024-03-02 | 2
-2024-03-03 | 3
-2024-03-05 | 4
-2024-03-06 | 5
-```
+| login_date | rn |
+| --- | ---: |
+| 2024-03-01 | 1 |
+| 2024-03-02 | 2 |
+| 2024-03-03 | 3 |
+| 2024-03-05 | 4 |
+| 2024-03-06 | 5 |
 
 Now subtract `rn` days from each date:
 
@@ -47,14 +46,13 @@ FROM logins
 WHERE user_id = 1;
 ```
 
-```text
-login_date | grp
-2024-03-01 | 2024-02-29
-2024-03-02 | 2024-02-29
-2024-03-03 | 2024-02-29
-2024-03-05 | 2024-03-01
-2024-03-06 | 2024-03-01
-```
+| login_date | grp |
+| --- | --- |
+| 2024-03-01 | 2024-02-29 |
+| 2024-03-02 | 2024-02-29 |
+| 2024-03-03 | 2024-02-29 |
+| 2024-03-05 | 2024-03-01 |
+| 2024-03-06 | 2024-03-01 |
 
 Inside a run, the date and the row number both rise by one per row, so their difference is constant. At the hole (the 4th is missing), the date jumps by two while the row number still rises by one, so the difference changes. `grp` means nothing on its own — it is just a label every row of one island shares. Group by it:
 

@@ -33,14 +33,10 @@ WHERE c.city = 'Pune'
 ORDER BY o.amount DESC;
 ```
 
-```text
-+----+-------------+-------+------+-----------------------+----------------------+---------+----------+------+----------+----------------------------------------------+
-| id | select_type | table | type | possible_keys         | key                  | key_len | ref      | rows | filtered | Extra                                        |
-+----+-------------+-------+------+-----------------------+----------------------+---------+----------+------+----------+----------------------------------------------+
-|  1 | SIMPLE      | c     | ref  | PRIMARY,idx_city      | idx_city             | 243     | const    |  120 |   100.00 | Using index; Using temporary; Using filesort |
-|  1 | SIMPLE      | o     | ref  | idx_orders_customer   | idx_orders_customer  | 4       | shop.c.id|    9 |   100.00 | NULL                                         |
-+----+-------------+-------+------+-----------------------+----------------------+---------+----------+------+----------+----------------------------------------------+
-```
+| id | select_type | table | type | possible_keys | key | key_len | ref | rows | filtered | Extra |
+| ---: | --- | --- | --- | --- | --- | ---: | --- | ---: | ---: | --- |
+| 1 | SIMPLE | c | ref | PRIMARY,idx_city | idx_city | 243 | const | 120 | 100.00 | Using index; Using temporary; Using filesort |
+| 1 | SIMPLE | o | ref | idx_orders_customer | idx_orders_customer | 4 | shop.c.id | 9 | 100.00 | NULL |
 
 One row per table access, listed in the **join order** the optimizer chose: here it starts from the Pune customers and, for each, looks up their orders.
 
@@ -97,10 +93,9 @@ Neutral: `Using where` on its own just means a condition is checked after the ac
 EXPLAIN SELECT * FROM orders WHERE YEAR(placed_on) = 2024 ORDER BY amount;
 ```
 
-```text
-| table  | type | possible_keys | key  | rows   | filtered | Extra                       |
-| orders | ALL  | NULL          | NULL | 498211 |   100.00 | Using where; Using filesort |
-```
+| table | type | possible_keys | key | rows | filtered | Extra |
+| --- | --- | --- | --- | ---: | ---: | --- |
+| orders | ALL | NULL | NULL | 498211 | 100.00 | Using where; Using filesort |
 
 Read it left to right: full table scan (`ALL`), no candidate index (`possible_keys` `NULL` — even though `placed_on` is indexed, because the column is wrapped in a function), half a million rows examined, and then a sort. The fix is a predicate the index can use — `placed_on >= '2024-01-01' AND placed_on < '2025-01-01'` — after which the plan shows `type: range`, `key: idx_orders_placed_on` and far fewer `rows`. The next lesson is about exactly that rewrite.
 
