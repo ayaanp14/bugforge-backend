@@ -41,10 +41,9 @@ SELECT 5 + NULL      AS a,   -- NULL
        CONCAT('Hi ', NULL) AS d;  -- NULL in MySQL
 ```
 
-```text
-a    | b    | c    | d
-NULL | NULL | NULL | NULL
-```
+| a | b | c | d |
+| --- | --- | --- | --- |
+| NULL | NULL | NULL | NULL |
 
 So a line total `qty * unit_price` is NULL whenever either factor is missing, and a full name built with `CONCAT(first_name, ' ', last_name)` is NULL for everyone without a last name. (PostgreSQL's `||` behaves the same; `CONCAT` in PostgreSQL and SQL Server skips NULLs instead — one of the dialect differences that bites when queries move between databases.) The functions in the next lessons exist largely to stop this spread on purpose.
 
@@ -85,21 +84,9 @@ WHERE dept <> 'Sales' OR dept IS NULL;
 
 When conditions are combined, UNKNOWN combines by a simple principle: **if the known parts already decide the answer, the unknown part does not matter; otherwise the answer is unknown.**
 
-`AND` is false as soon as one side is false:
+`AND` is false as soon as one side is false, and `OR` is true as soon as one side is true:
 
-| AND | TRUE | FALSE | UNKNOWN |
-| --- | --- | --- | --- |
-| **TRUE** | TRUE | FALSE | UNKNOWN |
-| **FALSE** | FALSE | FALSE | FALSE |
-| **UNKNOWN** | UNKNOWN | FALSE | UNKNOWN |
-
-`OR` is true as soon as one side is true:
-
-| OR | TRUE | FALSE | UNKNOWN |
-| --- | --- | --- | --- |
-| **TRUE** | TRUE | TRUE | TRUE |
-| **FALSE** | TRUE | FALSE | UNKNOWN |
-| **UNKNOWN** | TRUE | UNKNOWN | UNKNOWN |
+@figure truth-tables
 
 And `NOT UNKNOWN` is UNKNOWN — negating an unknown fact does not make it known. That is why wrapping a condition in `NOT` never brings NULL rows back:
 

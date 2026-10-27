@@ -3,6 +3,8 @@ import { cached, invalidate } from "../lib/cache.js";
 import { createNotificationOnce } from "./notifications.js";
 import { invalidateDashboard } from "./dashboard.js";
 import { judgeProgram, runProgram, type ProgramCase, type ProgramJudgeResult, type ProgramRunResult } from "../lib/program-judge.js";
+import { figuresOf } from "../lib/study-figures/index.js";
+import type { Walkthrough } from "../lib/walkthroughs/core.js";
 
 /**
  * The study plans: a language's syllabus, and one account's way through it.
@@ -627,6 +629,8 @@ export interface LessonPayload {
     body: string;
     exercises: Array<{ title: string; prompt: string; starter: string; hints: string[]; cases: Array<{ stdin: string; expected: string }>; hiddenCases: number }>;
     quiz: Array<{ prompt: string; options: string[] }>;
+    /** The figures the body places with `@figure <name>`, by name (lib/study-figures) — empty for a lesson with none. */
+    figures: Record<string, Walkthrough>;
     /** The head the page sets and the answer and questions it prints — the same the API gives the edge (services/seo.ts). */
     seo: LessonSeo | null;
   };
@@ -699,6 +703,7 @@ export async function lessonContentFor(trackKey: string, lessonSlug: string): Pr
         hiddenCases: e.cases.filter((c) => c.hidden).length,
       })),
       quiz: lesson.quiz.map((q) => ({ prompt: q.prompt, options: q.options })),
+      figures: figuresOf(track.key, lesson.slug, lesson.body),
       seo: lesson.seo,
     },
     progress: null,
@@ -723,6 +728,8 @@ export async function modulePrintFor(trackKey: string, moduleSlug: string) {
       kind: l.kind,
       minutes: l.minutes,
       body: l.body,
+      // The print page draws each placed figure at its finished frame.
+      figures: figuresOf(track.key, l.slug, l.body),
       exercises: l.exercises.map((e) => ({
         title: e.title,
         prompt: e.prompt,

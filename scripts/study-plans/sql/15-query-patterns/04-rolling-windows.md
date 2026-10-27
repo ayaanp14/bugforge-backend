@@ -59,13 +59,12 @@ The `WINDOW` clause names a window once so two functions can share it — MySQL 
 
 Now the trap. Suppose a shop has no payments on some days, and several payments on others:
 
-```text
-paid_on    | amount
-2024-05-01 | 100
-2024-05-01 | 50
-2024-05-03 | 70
-2024-05-09 | 30
-```
+| paid_on | amount |
+| --- | ---: |
+| 2024-05-01 | 100 |
+| 2024-05-01 | 50 |
+| 2024-05-03 | 70 |
+| 2024-05-09 | 30 |
 
 `SUM(amount) OVER (ORDER BY paid_on ROWS BETWEEN 6 PRECEDING AND CURRENT ROW)` is not a seven-day sum here. On the 9th it adds the 9th's row and up to six rows before it — reaching back to the 1st, eight days earlier — and on the 1st the two payments get *different* sums, because each is a separate row. "Seven rows" equals "seven days" only when there is exactly one row per day. There are three fixes, and an interviewer will be pleased to hear all three named.
 

@@ -27,13 +27,7 @@ FROM daily_sales
 ORDER BY day;
 ```
 
-```text
-day        | amount | running_total
-2024-03-01 | 100    | 100
-2024-03-02 | 40     | 140
-2024-03-03 | 60     | 200
-2024-03-04 | 25     | 225
-```
+@figure running-total
 
 The window is ordered by `day`, and the frame `ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW` means "from the first row of the partition through this row". Each row's SUM covers a frame one row larger than the last. Add `PARTITION BY account` and the total restarts for every account — a running balance per account in one pass, where the pre-window answer was a correlated subquery summing every earlier row (quadratic work).
 
@@ -71,14 +65,7 @@ FROM daily_visits
 ORDER BY day;
 ```
 
-```text
-day        | visits | moving_avg_3
-2024-03-01 | 30     | 30
-2024-03-02 | 60     | 45
-2024-03-03 | 90     | 60
-2024-03-04 | 30     | 60
-2024-03-05 | 0      | 40
-```
+@figure moving-average
 
 On 03-01 the frame is one row (30); on 03-02 two rows (30, 60 → 45); from 03-03 on, always three. `ROUND` matters: averages are rarely whole, and engines print different numbers of decimals. A moving SUM, MIN or MAX works the same way — "the highest price in the last five trades" is `MAX(price) OVER (ORDER BY traded_at, id ROWS BETWEEN 4 PRECEDING AND CURRENT ROW)`.
 
@@ -102,13 +89,7 @@ RANGE BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
 
 That is a running total — *including all peers of the current row*. With a unique ORDER BY it is the same as the ROWS version. With ties, it is not:
 
-```text
-id | day        | amount | SUM … OVER (ORDER BY day) | ROWS UNBOUNDED PRECEDING (ORDER BY day, id)
-1  | 2024-03-01 | 100    | 100                       | 100
-2  | 2024-03-02 | 40     | 190                       | 140
-3  | 2024-03-02 | 50     | 190                       | 190
-4  | 2024-03-03 | 10     | 200                       | 200
-```
+@figure rows-vs-range
 
 Rows 2 and 3 share a day, so under the default RANGE frame each one's frame includes the other: both show 190. Sometimes that is exactly right — "total as of the end of each day". When you want a balance after each *transaction*, add a unique tie-breaker and use ROWS. Write the frame explicitly whenever you care; readers should not have to remember the default.
 

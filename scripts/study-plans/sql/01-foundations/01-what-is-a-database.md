@@ -20,16 +20,7 @@ Almost every application you have used keeps its data in a database: the bank th
 
 A **relational database** stores data in **tables**. A table has a name and a fixed list of **columns**; each column has a name and a **type**. The data itself is a set of **rows**, each row holding one value per column.
 
-```text
-students
-+----+---------+------+------------+
-| id | name    | year | city       |
-+----+---------+------+------------+
-|  1 | Asha    |    2 | Pune       |
-|  2 | Ravi    |    1 | Chennai    |
-|  3 | Meera   |    3 | Pune       |
-+----+---------+------+------------+
-```
+@figure table-anatomy
 
 Read it the way the database does: one row is one **record** (one student), one column is one **attribute** (every student's city). The column list and the types are the table's **schema**; the rows are its **data**. The schema changes rarely and deliberately; rows are inserted, updated and deleted all day.
 
@@ -62,16 +53,7 @@ Do not worry about the syntax yet — `CREATE TABLE` gets a module of its own. N
 
 Real data is spread across several tables, each about one kind of thing. An order belongs to a customer, so the `orders` table stores the customer's key:
 
-```text
-customers                     orders
-+----+--------+               +----------+-------------+--------+
-| id | name   |               | order_id | customer_id | amount |
-+----+--------+               +----------+-------------+--------+
-|  1 | Asha   |               |      101 |           1 |    450 |
-|  2 | Ravi   |               |      102 |           1 |    120 |
-+----+--------+               |      103 |           2 |    900 |
-                              +----------+-------------+--------+
-```
+@figure foreign-key
 
 `orders.customer_id` is a **foreign key**: its values must be values of `customers.id`. The customer's name is stored **once**, in `customers`; an order only points at it. Change Asha's name and every one of her orders is up to date, because none of them copied it. That is the core idea of relational design — store each fact once and connect facts by keys — and joins, later in the course, are how a query follows those pointers back.
 
@@ -117,12 +99,11 @@ In every exercise of this course the tables are built for you by a **setup scrip
 SELECT * FROM students ORDER BY id;
 ```
 
-```text
-id | name | year | city
-1 | Asha | 2 | Pune
-2 | Ravi | 1 | Chennai
-3 | Meera | 3 | Pune
-```
+| id | name | year | city |
+| ---: | --- | ---: | --- |
+| 1 | Asha | 2 | Pune |
+| 2 | Ravi | 1 | Chennai |
+| 3 | Meera | 3 | Pune |
 
 `*` means every column, `FROM students` names the table, and `ORDER BY id` fixes the order of the rows — remember, a table has none of its own. The other question you can ask right away is how many rows there are:
 
@@ -130,10 +111,9 @@ id | name | year | city
 SELECT COUNT(*) AS total FROM students;
 ```
 
-```text
-total
-3
-```
+| total |
+| ---: |
+| 3 |
 
 `COUNT(*)` counts rows and `AS total` names the result column. Both are explained properly later; for now they let you look at data.
 

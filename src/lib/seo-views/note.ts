@@ -25,7 +25,7 @@
  * itself mounts only near the viewport, after the first frame.
  */
 import Prism from "prismjs";
-import { highlightFences, inlineAnswer } from "./study-lesson.js";
+import { figureOf, highlightFences, inlineAnswer } from "./study-lesson.js";
 // After study-lesson's grammars (json is there; http highlights a JSON body
 // through whatever JSON grammar is registered when it is defined): the
 // three the notes' own chunk adds on the page (frontend
@@ -153,7 +153,6 @@ function splitProse(markdown: string, line: number): Array<{ kind: "text"; markd
   return out;
 }
 
-const figureOf = (w: Walkthrough): NoteFigure => ({ title: w.title, input: w.input, width: w.width, height: w.height, frames: w.frames.length, captions: w.frames.map((f) => f.caption) });
 
 export function noteView(page: NotePage, syllabus: { subjects: SubjectCard[] }): NoteView {
   const { note: n, subject } = page;

@@ -39,13 +39,7 @@ JOIN employees m ON m.id = e.manager_id
 ORDER BY e.name;
 ```
 
-```text
-employee | manager
-Arjun    | Meera
-Kiran    | Arjun
-Leela    | Arjun
-Omar     | Meera
-```
+@figure manager-links
 
 Read the `ON` clause out loud: "the manager row is the one whose id equals the employee's `manager_id`". Getting that direction backwards (`e.id = m.manager_id`) is the classic mistake: it swaps the roles and lists each manager under their report's name.
 
@@ -70,11 +64,10 @@ WHERE e.salary > m.salary
 ORDER BY e.name;
 ```
 
-```text
-employee | salary | manager | manager_salary
-Kiran    | 110000 | Arjun   | 90000
-Omar     | 160000 | Meera   | 150000
-```
+| employee | salary | manager | manager_salary |
+| --- | ---: | --- | ---: |
+| Kiran | 110000 | Arjun | 90000 |
+| Omar | 160000 | Meera | 150000 |
 
 The same shape answers "employees hired before their manager", "products cheaper than the product they replaced" or "tasks due before the task they depend on".
 

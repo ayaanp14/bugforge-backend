@@ -44,10 +44,9 @@ CREATE INDEX idx_orders_cust_date_amt ON orders (customer_id, placed_on, amount)
 
 Every column the query touches — `customer_id` in the `WHERE`, `placed_on` and `amount` in the `SELECT` — is in the index. The server reads customer 7's entries, which sit next to each other, and is done:
 
-```text
-| table  | type | key                      | rows | Extra       |
-| orders | ref  | idx_orders_cust_date_amt |   40 | Using index |
-```
+| table | type | key | rows | Extra |
+| --- | --- | --- | ---: | --- |
+| orders | ref | idx_orders_cust_date_amt | 40 | Using index |
 
 ## The primary key comes along for free
 

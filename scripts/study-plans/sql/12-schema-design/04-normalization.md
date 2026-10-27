@@ -20,12 +20,11 @@ A spreadsheet stores everything in one sheet: every order row repeats the custom
 
 Here is one wide table of orders, the kind an export or a first draft produces:
 
-```text
-order_id | order_date | customer_email | customer_name | customer_city | sku  | product_name | unit_price | qty
-1        | 2024-05-01 | asha@x.io      | Asha          | Pune          | P1   | Pen          | 1.50       | 10
-1        | 2024-05-01 | asha@x.io      | Asha          | Pune          | P2   | Pad          | 3.00       | 2
-2        | 2024-05-03 | ben@x.io       | Ben           | Delhi         | P1   | Pen          | 1.50       | 4
-```
+| order_id | order_date | customer_email | customer_name | customer_city | sku | product_name | unit_price | qty |
+| ---: | --- | --- | --- | --- | --- | --- | ---: | ---: |
+| 1 | 2024-05-01 | asha@x.io | Asha | Pune | P1 | Pen | 1.50 | 10 |
+| 1 | 2024-05-01 | asha@x.io | Asha | Pune | P2 | Pad | 3.00 | 2 |
+| 2 | 2024-05-03 | ben@x.io | Ben | Delhi | P1 | Pen | 1.50 | 4 |
 
 It works until data changes:
 
@@ -34,6 +33,8 @@ It works until data changes:
 - **Delete anomaly** — delete Ben's only order and the fact that Ben exists, and lives in Delhi, disappears with it.
 
 All three come from the same cause: facts about customers and products are stored in rows about something else.
+
+@figure decompose
 
 ## Functional dependencies
 

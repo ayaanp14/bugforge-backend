@@ -29,12 +29,11 @@ WHERE in_stock = 1
 ORDER BY price;
 ```
 
-```text
-name     | price
-pencil   | 5
-notebook | 40
-backpack | 900
-```
+| name | price |
+| --- | ---: |
+| pencil | 5 |
+| notebook | 40 |
+| backpack | 900 |
 
 The keyword is followed by a **sort key**. Rows are compared on that key and put in ascending order: smallest number first, earliest date first, alphabetically first string first. `ASC` says that explicitly; it is the default, so `ORDER BY price` and `ORDER BY price ASC` are the same query.
 
@@ -50,12 +49,7 @@ FROM products
 ORDER BY price DESC;
 ```
 
-```text
-name     | price
-backpack | 900
-notebook | 40
-pencil   | 5
-```
+@figure sort-rows
 
 `DESC` belongs to the one key it follows, not to the whole clause — that matters as soon as there are several keys, which is the next lesson. A common slip is writing `ORDER BY DESC price`; the direction always comes after the key.
 
@@ -104,12 +98,11 @@ MySQL behaves as if NULL were smaller than every value:
 SELECT name, discount FROM products ORDER BY discount;
 ```
 
-```text
-name     | discount
-pencil   | NULL
-backpack | 5
-notebook | 10
-```
+| name | discount |
+| --- | ---: |
+| pencil | NULL |
+| backpack | 5 |
+| notebook | 10 |
 
 PostgreSQL and Oracle let you say what you want with `NULLS FIRST` / `NULLS LAST`. MySQL has no such syntax, so the MySQL idiom is to sort on a second, hidden key first: the expression `discount IS NULL`, which is `0` for a real value and `1` for a NULL.
 
@@ -120,12 +113,11 @@ FROM products
 ORDER BY discount IS NULL, discount;
 ```
 
-```text
-name     | discount
-backpack | 5
-notebook | 10
-pencil   | NULL
-```
+| name | discount |
+| --- | ---: |
+| backpack | 5 |
+| notebook | 10 |
+| pencil | NULL |
 
 The rows are sorted by the first key (`0` before `1`, so values before NULLs), and within each group by `discount`. That pattern — prefix a boolean key to move a class of rows to one end — comes back in the next lesson for custom orders.
 

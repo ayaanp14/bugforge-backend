@@ -30,14 +30,13 @@ WITH RECURSIVE nums AS (
 SELECT n FROM nums ORDER BY n;
 ```
 
-```text
-n
-1
-2
-3
-4
-5
-```
+| n |
+| ---: |
+| 1 |
+| 2 |
+| 3 |
+| 4 |
+| 5 |
 
 Evaluation goes in rounds:
 
@@ -52,15 +51,15 @@ The recursive member may not use aggregates, window functions, `GROUP BY`, `ORDE
 
 ## Walking down an org chart
 
-```text
-employees
-id | name   | manager_id
-1  | Meera  | NULL
-2  | Arjun  | 1
-3  | Divya  | 1
-4  | Kabir  | 2
-5  | Leela  | 4
-```
+**`employees`**
+
+| id | name | manager_id |
+| ---: | --- | ---: |
+| 1 | Meera | NULL |
+| 2 | Arjun | 1 |
+| 3 | Divya | 1 |
+| 4 | Kabir | 2 |
+| 5 | Leela | 4 |
 
 Everyone under the CEO, with their level:
 
@@ -77,14 +76,7 @@ WITH RECURSIVE org AS (
 SELECT name, depth FROM org ORDER BY depth, name;
 ```
 
-```text
-name  | depth
-Meera | 0
-Arjun | 1
-Divya | 1
-Kabir | 2
-Leela | 3
-```
+@figure org-rounds
 
 Round one is Meera. Round two joins employees whose `manager_id` is Meera's id: Arjun and Divya. Round three finds Kabir under Arjun; round four Leela under Kabir; round five finds no one under Leela and stops. The join *is* the stopping condition: leaves have no children.
 

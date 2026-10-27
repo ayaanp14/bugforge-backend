@@ -103,25 +103,19 @@ ORDER BY line_total DESC, item_id;
 
 with
 
-```text
-item_id | name | price | qty
-1 | pen | 10 | 5
-2 | lamp | 60 | 2
-3 | desk | 150 | 1
-4 | ink | 40 | 3
-```
+| item_id | name | price | qty |
+| ---: | --- | ---: | ---: |
+| 1 | pen | 10 | 5 |
+| 2 | lamp | 60 | 2 |
+| 3 | desk | 150 | 1 |
+| 4 | ink | 40 | 3 |
 
 1. `FROM` — the four rows.
 2. `WHERE price * qty >= 100` — pen gives 50, dropped; lamp 120, desk 150, ink 120 kept.
 3. `SELECT` — each kept row becomes `(name, line_total)`, but still remembers its `item_id`.
 4. `ORDER BY line_total DESC, item_id` — desk 150; then lamp and ink tie on 120, and `item_id` puts lamp (2) before ink (4).
 
-```text
-name | line_total
-desk | 150
-lamp | 120
-ink | 120
-```
+@figure logical-order
 
 ## What the database actually does
 

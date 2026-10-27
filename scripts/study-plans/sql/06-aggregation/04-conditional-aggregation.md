@@ -31,11 +31,10 @@ GROUP BY DATE_FORMAT(created_on, '%Y-%m')
 ORDER BY month;
 ```
 
-```text
-month | orders | paid | pending | refunded
-2024-01 | 4 | 3 | 0 | 1
-2024-02 | 3 | 1 | 2 | 0
-```
+| month | orders | paid | pending | refunded |
+| --- | ---: | ---: | ---: | ---: |
+| 2024-01 | 4 | 3 | 0 | 1 |
+| 2024-02 | 3 | 1 | 2 | 0 |
 
 Every row of every month goes through all three `CASE`s; each row adds 1 to exactly one column. The month with no pending orders shows 0 — it did not disappear, which is what a `WHERE status = 'pending'` would have done to it.
 

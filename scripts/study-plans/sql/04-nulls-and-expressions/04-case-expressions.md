@@ -31,12 +31,11 @@ SELECT student, score,
 FROM results;
 ```
 
-```text
-student | score | grade
-Asha    | 92    | A
-Ben     | 75    | B
-Dina    | 49    | F
-```
+| student | score | grade |
+| --- | ---: | --- |
+| Asha | 92 | A |
+| Ben | 75 | B |
+| Dina | 49 | F |
 
 For each row the database evaluates the `WHEN` conditions **from top to bottom** and returns the `THEN` result of the **first one that is TRUE**. The remaining branches are not considered. If no condition is TRUE, the `ELSE` result is returned. The whole thing, from `CASE` to `END`, is one expression producing one value per row, so it gets an alias like any computed column.
 

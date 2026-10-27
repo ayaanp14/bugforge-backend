@@ -28,10 +28,9 @@ SELECT name FROM customers
 WHERE id NOT IN (SELECT customer_id FROM orders);
 ```
 
-```text
-name
-Chen
-```
+| name |
+| --- |
+| Chen |
 
 Correct: Chen never ordered. Now a guest checkout is stored with no customer:
 
@@ -40,10 +39,9 @@ INSERT INTO orders VALUES (12, NULL);
 -- the same query now returns:
 ```
 
-```text
-name
-(no rows)
-```
+| name |
+| --- |
+| *(no rows)* |
 
 ## Why: three-valued logic
 
@@ -51,12 +49,7 @@ SQL comparisons have three outcomes: true, false and **unknown**. Any comparison
 
 `IN` and `NOT IN` against a list expand into comparisons:
 
-```text
-3 IN (1, 2, NULL)      =  3 = 1  OR  3 = 2  OR  3 = NULL
-                       =  false  OR  false  OR  unknown   =  unknown
-3 NOT IN (1, 2, NULL)  =  3 <> 1 AND 3 <> 2 AND 3 <> NULL
-                       =  true   AND true   AND unknown   =  unknown
-```
+@figure not-in-unknown
 
 `AND` is true only if every part is true; one unknown part makes the whole unknown (unless another part is false, which makes it false). `WHERE` keeps only rows where the condition is **true**, so it discards unknown. For Chen, every row: discarded. For Asha, `1 <> 1` is false, so false — discarded as before. Nobody survives.
 

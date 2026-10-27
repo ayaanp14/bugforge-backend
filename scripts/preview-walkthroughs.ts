@@ -7,6 +7,7 @@
  *   npx tsx scripts/preview-walkthroughs.ts [--group <file>] [--only slug,slug] [--out dir] [--png] [--dark]
  *   npx tsx scripts/preview-walkthroughs.ts --lesson <lesson slug> [--only name,name] [--png] [--dark]
  *   npx tsx scripts/preview-walkthroughs.ts --note <note slug> [--only name,name] [--png] [--dark]
+ *   npx tsx scripts/preview-walkthroughs.ts --study <track>/<lesson slug> [--only name,name] [--png] [--dark]
  *
  * --lesson previews a roadmap lesson's own figures (src/lib/lesson-figures/
  * <slug>.ts) under the lesson limits (one frame allowed, 600 wide), into
@@ -31,6 +32,7 @@ import { frameSvg } from "../src/lib/walkthroughs/svg.js";
 import { walkthroughProblems } from "../src/lib/walkthroughs/validate.js";
 import { FIGURE_LIMITS } from "../src/lib/lesson-figures/index.js";
 import { LESSON_FIGURES } from "../src/lib/lesson-figures/registry.js";
+import { STUDY_FIGURES } from "../src/lib/study-figures/registry.js";
 import type { Walkthrough } from "../src/lib/walkthroughs/core.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -46,6 +48,17 @@ const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replac
 async function main() {
   const lesson = value("lesson");
   const noteSlug = value("note");
+  // --study previews a study-plan lesson's figures (src/lib/study-figures/<track>/<lesson>.ts), lesson limits.
+  const study = value("study");
+  const [studyTrack, studyLesson] = study?.split("/") ?? [];
+  let studyFigures: Record<string, () => Walkthrough> | undefined = study ? STUDY_FIGURES[studyTrack ?? ""]?.[studyLesson ?? ""] : undefined;
+  // Not registered yet: load the module by its file, so a figure can be previewed before registry.ts names it.
+  if (study && !studyFigures) {
+    const file = resolve(here, "../src/lib/study-figures", `${studyTrack}/${studyLesson}.ts`);
+    if (!existsSync(file)) throw new Error(`no figure module for study lesson "${study}" (src/lib/study-figures/${study}.ts)`);
+    studyFigures = ((await import(pathToFileURL(file).href)) as { FIGURES?: Record<string, () => Walkthrough> }).FIGURES;
+    if (!studyFigures) throw new Error(`${study}.ts exports no FIGURES`);
+  }
   if (lesson && !LESSON_FIGURES[lesson]) throw new Error(`no figure module for lesson "${lesson}"`);
   let noteFigures: Record<string, () => Walkthrough> | undefined;
   if (noteSlug) {
@@ -54,11 +67,11 @@ async function main() {
     noteFigures = ((await import(pathToFileURL(file).href)) as { FIGURES?: Record<string, () => Walkthrough> }).FIGURES;
     if (!noteFigures) throw new Error(`${noteSlug}.ts exports no FIGURES`);
   }
-  const registry: Record<string, () => Walkthrough> = noteFigures ? { ...noteFigures } : lesson ? { ...LESSON_FIGURES[lesson] } : { ...WALKTHROUGHS };
-  const limits = lesson || noteFigures ? FIGURE_LIMITS : {};
+  const registry: Record<string, () => Walkthrough> = studyFigures ? { ...studyFigures } : noteFigures ? { ...noteFigures } : lesson ? { ...LESSON_FIGURES[lesson] } : { ...WALKTHROUGHS };
+  const limits = lesson || noteFigures || studyFigures ? FIGURE_LIMITS : {};
   const group = value("group");
   let groupSlugs: string[] | undefined;
-  if (group && !lesson && !noteSlug) {
+  if (group && !lesson && !noteSlug && !study) {
     const mod = (await import(pathToFileURL(resolve(here, "../src/lib/walkthroughs", `${group}.ts`)).href)) as { WALKTHROUGHS?: Record<string, () => Walkthrough> };
     if (!mod.WALKTHROUGHS) throw new Error(`${group}.ts exports no WALKTHROUGHS`);
     Object.assign(registry, mod.WALKTHROUGHS);
@@ -67,7 +80,7 @@ async function main() {
   const only = value("only")?.split(",").map((s) => s.trim()).filter(Boolean);
   // A group alone previews its own; --only narrows to the named ones.
   const slugs = (only ?? groupSlugs ?? Object.keys(registry)).filter((s) => s in registry);
-  const out = resolve(value("out") ?? resolve(here, noteSlug ? `../scratch/note-figures/${noteSlug}` : lesson ? `../scratch/lesson-figures/${lesson}` : "../scratch/walkthroughs"));
+  const out = resolve(value("out") ?? resolve(here, study ? `../scratch/study-figures/${study}` : noteSlug ? `../scratch/note-figures/${noteSlug}` : lesson ? `../scratch/lesson-figures/${lesson}` : "../scratch/walkthroughs"));
   mkdirSync(out, { recursive: true });
 
   let failures = 0;

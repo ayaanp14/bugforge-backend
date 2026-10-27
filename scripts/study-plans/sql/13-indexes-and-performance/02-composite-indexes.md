@@ -24,15 +24,7 @@ A composite index sorts by its first column; among equal first values, by the se
 CREATE INDEX idx_orders_cust_date ON orders (customer_id, placed_on);
 ```
 
-```text
-idx_orders_cust_date (customer_id, placed_on) → id
-  (3, 2024-02-14) → 17
-  (3, 2024-03-02) → 21
-  (3, 2024-03-19) → 30
-  (5, 2024-01-07) → 4
-  (5, 2024-03-11) → 26
-  (7, 2024-03-02) → 22
-```
+@figure leftmost-prefix
 
 Everything else follows from this picture. Customer 3's orders sit together, and within them the dates are in order. But the dates **across** customers are not in order — 2024-03-02 appears twice, far apart.
 

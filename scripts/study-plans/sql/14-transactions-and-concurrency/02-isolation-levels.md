@@ -31,14 +31,7 @@ CREATE TABLE accounts (id INT PRIMARY KEY, owner VARCHAR(40), balance INT);
 
 T1 reads a value T2 has **written but not committed**.
 
-```text
-step  T1                                    T2
-1                                           START TRANSACTION;
-2                                           UPDATE accounts SET balance = 0 WHERE id = 1;
-3     SELECT balance FROM accounts
-      WHERE id = 1;          -- sees 0
-4                                           ROLLBACK;
-```
+@figure dirty-read
 
 T1 has read a balance of 0 that never existed in any committed state. If T1 refused a loan because of it, the decision was based on fiction.
 
@@ -46,14 +39,7 @@ T1 has read a balance of 0 that never existed in any committed state. If T1 refu
 
 T1 reads the **same row twice** and gets different values, because T2 updated it and **committed** in between.
 
-```text
-step  T1                                    T2
-1     START TRANSACTION;
-2     SELECT balance … WHERE id = 1;   -- 1000
-3                                           UPDATE accounts SET balance = 700 WHERE id = 1;
-4                                           COMMIT;
-5     SELECT balance … WHERE id = 1;   -- 700
-```
+@figure non-repeatable-read
 
 Nothing uncommitted was read, yet T1's view of the world changed under it — a report that reads the balance in two places would contradict itself.
 
@@ -61,16 +47,7 @@ Nothing uncommitted was read, yet T1's view of the world changed under it — a 
 
 T1 runs the **same query twice** and gets a different **set of rows**, because T2 inserted (or deleted) rows that match and committed.
 
-```text
-step  T1                                    T2
-1     START TRANSACTION;
-2     SELECT COUNT(*) FROM accounts
-      WHERE balance > 500;          -- 3
-3                                           INSERT INTO accounts VALUES (9, 'Zoya', 900);
-4                                           COMMIT;
-5     SELECT COUNT(*) FROM accounts
-      WHERE balance > 500;          -- 4
-```
+@figure phantom-read
 
 No row T1 had seen changed; a new one appeared. Locking the rows you read cannot stop this, because the phantom did not exist when you read — preventing it means locking the **range**, gaps included.
 

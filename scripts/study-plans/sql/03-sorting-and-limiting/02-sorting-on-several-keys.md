@@ -26,14 +26,13 @@ ORDER BY class, score DESC, name;
 
 The database compares two rows on the first key, `class`. If they differ, that decides their order and the other keys are never looked at. Only when the classes are equal does it compare `score` (descending), and only if those are equal too does it compare `name`.
 
-```text
-class | name  | score
-A     | Meera | 91
-A     | Arjun | 85
-A     | Tara  | 85
-B     | Kiran | 78
-B     | Dev   | 60
-```
+| class | name | score |
+| --- | --- | ---: |
+| A | Meera | 91 |
+| A | Arjun | 85 |
+| A | Tara | 85 |
+| B | Kiran | 78 |
+| B | Dev | 60 |
 
 Arjun and Tara share a class and a score, so the third key, `name`, puts Arjun first. Kiran's 78 sorts below Meera's 91 not because of the score but because class `B` comes after class `A`: a later key never overrides an earlier one. That is what people mean by "sort by class, then by score": a dictionary-style, lexicographic comparison.
 
@@ -104,13 +103,12 @@ ORDER BY CASE priority
          id;
 ```
 
-```text
-id | title           | priority
-2  | Checkout broken | high
-5  | Refund stuck    | high
-1  | Typo on FAQ     | medium
-4  | Dark mode       | low
-```
+| id | title | priority |
+| ---: | --- | --- |
+| 2 | Checkout broken | high |
+| 5 | Refund stuck | high |
+| 1 | Typo on FAQ | medium |
+| 4 | Dark mode | low |
 
 `CASE` gets a full lesson in the next module; for now read it as "if `priority` is `'high'` the key is 1, if `'medium'` it is 2", and so on. The `ELSE 4` sends unexpected values, including NULL, to the end instead of the front — without it they would get NULL, which MySQL sorts first.
 

@@ -29,10 +29,9 @@ SELECT COUNT(*)     AS orders,
 FROM orders;
 ```
 
-```text
-orders | revenue | average_order | smallest | largest
-5 | 750 | 150 | 40 | 400
-```
+| orders | revenue | average_order | smallest | largest |
+| ---: | ---: | ---: | ---: | ---: |
+| 5 | 750 | 150 | 40 | 400 |
 
 Five rows went in, one row came out. That is the defining property: an aggregate collapses its input rows into one value, so a query whose SELECT list holds only aggregates (and no `GROUP BY`) returns exactly **one row** — even when the table is empty.
 
@@ -76,14 +75,13 @@ Every aggregate except `COUNT(*)` **ignores NULL**. That is usually what you wan
 
 Take five reviews where two have no rating:
 
-```text
-id | rating
-1 | 4
-2 | NULL
-3 | 5
-4 | NULL
-5 | 3
-```
+| id | rating |
+| ---: | ---: |
+| 1 | 4 |
+| 2 | NULL |
+| 3 | 5 |
+| 4 | NULL |
+| 5 | 3 |
 
 ```sql
 SELECT COUNT(*)           AS reviews,          -- 5
@@ -107,10 +105,9 @@ FROM orders
 WHERE amount > 1000000;
 ```
 
-```text
-n | total | avg_amount | biggest
-0 | NULL | NULL | NULL
-```
+| n | total | avg_amount | biggest |
+| ---: | --- | --- | --- |
+| 0 | NULL | NULL | NULL |
 
 `COUNT` is 0, but `SUM`, `AVG`, `MIN` and `MAX` are **NULL**, not 0 — there is no total of nothing. A revenue report that prints NULL for a quiet day is usually a bug in the report; `COALESCE(SUM(amount), 0)` fixes it. The same NULL appears when every value in the column is NULL.
 

@@ -32,10 +32,9 @@ The one operator to watch is `/`. In MySQL it is **always decimal division**:
 SELECT 5 / 2, 6 / 3, 1 / 3;
 ```
 
-```text
-5 / 2 | 6 / 3 | 1 / 3
-2.5 | 2 | 0.3333
-```
+| 5 / 2 | 6 / 3 | 1 / 3 |
+| ---: | ---: | ---: |
+| 2.5 | 2 | 0.3333 |
 
 MySQL shows `2.5000`, `2.0000` and `0.3333` — four decimal places by default (`div_precision_increment`); this course prints numbers with trailing zeros dropped. In **PostgreSQL, SQL Server and SQLite**, dividing two integers is integer division: `5 / 2` is `2`, and `1 / 3` is `0`. That difference produces the most common wrong answer in percentage questions — a "conversion rate" of 0 for every row. The portable fix is to make one operand decimal before dividing: `100.0 * converted / visits`.
 
@@ -49,10 +48,9 @@ Division by zero in MySQL returns **NULL** (with a warning), not an error. Postg
 SELECT 17 DIV 5, -17 DIV 5, 17 MOD 5;
 ```
 
-```text
-17 DIV 5 | -17 DIV 5 | 17 MOD 5
-3 | -3 | 2
-```
+| 17 DIV 5 | -17 DIV 5 | 17 MOD 5 |
+| ---: | ---: | ---: |
+| 3 | -3 | 2 |
 
 `DIV` and `MOD` go together: `a = b * (a DIV b) + MOD(a, b)`. Seventeen items in boxes of five is three full boxes and two left over.
 
@@ -77,10 +75,9 @@ The result takes the sign of the dividend: `MOD(-7, 3)` is `-1`. `MOD(x, 0)` is 
 SELECT ROUND(3.14159, 2), ROUND(2.5), ROUND(-2.5), ROUND(19.999, 1);
 ```
 
-```text
-ROUND(3.14159, 2) | ROUND(2.5) | ROUND(-2.5) | ROUND(19.999, 1)
-3.14 | 3 | -3 | 20
-```
+| ROUND(3.14159, 2) | ROUND(2.5) | ROUND(-2.5) | ROUND(19.999, 1) |
+| ---: | ---: | ---: | ---: |
+| 3.14 | 3 | -3 | 20 |
 
 A negative `d` rounds to the left of the decimal point in MySQL: `ROUND(1234, -2)` is 1200. Two more facts worth knowing for interviews:
 
@@ -95,10 +92,9 @@ A negative `d` rounds to the left of the decimal point in MySQL: `ROUND(1234, -2
 SELECT CEIL(4.1), FLOOR(4.9), CEIL(-4.1), FLOOR(-4.1), TRUNCATE(4.789, 1), TRUNCATE(-4.789, 1);
 ```
 
-```text
-CEIL(4.1) | FLOOR(4.9) | CEIL(-4.1) | FLOOR(-4.1) | TRUNCATE(4.789, 1) | TRUNCATE(-4.789, 1)
-5 | 4 | -4 | -5 | 4.7 | -4.7
-```
+| CEIL(4.1) | FLOOR(4.9) | CEIL(-4.1) | FLOOR(-4.1) | TRUNCATE(4.789, 1) | TRUNCATE(-4.789, 1) |
+| ---: | ---: | ---: | ---: | ---: | ---: |
+| 5 | 4 | -4 | -5 | 4.7 | -4.7 |
 
 For negative numbers, `FLOOR` goes further from zero and `TRUNCATE` goes towards it — `FLOOR(-4.1)` is -5, `TRUNCATE(-4.1, 0)` is -4. PostgreSQL calls `TRUNCATE` `TRUNC`; SQL Server uses `ROUND(x, d, 1)`.
 
@@ -110,12 +106,11 @@ FROM members
 ORDER BY age;
 ```
 
-```text
-name | age | decade
-Ravi | 19 | 10
-Mia | 30 | 30
-Sam | 37 | 30
-```
+| name | age | decade |
+| --- | ---: | ---: |
+| Ravi | 19 | 10 |
+| Mia | 30 | 30 |
+| Sam | 37 | 30 |
 
 ## The rest of the toolbox
 

@@ -40,14 +40,14 @@ The CTE is required, not a style choice: window functions are computed after WHE
 
 ## Ties decide the function
 
-```text
-employees
-dept | name  | salary
-Eng  | Asha  | 90000
-Eng  | Farah | 90000
-Eng  | Ben   | 70000
-Eng  | Gita  | 60000
-```
+**`employees`**
+
+| dept | name | salary |
+| --- | --- | ---: |
+| Eng | Asha | 90000 |
+| Eng | Farah | 90000 |
+| Eng | Ben | 70000 |
+| Eng | Gita | 60000 |
 
 "Top 2 in Eng" has three defensible answers:
 

@@ -27,13 +27,7 @@ ORDER BY c.name, o.id;
 
 With the module's data (Asha has orders 10 and 11, Ben has 12, Chen has none, order 13 belongs to a missing customer 9):
 
-```text
-name | order_id | amount
-Asha | 10       | 250
-Asha | 11       | 100
-Ben  | 12       | 400
-Chen | NULL     | NULL
-```
+@figure keep-every-customer
 
 The rule: **every row of the left table appears at least once**. A left row with matches appears once per match, exactly as in an inner join. A left row with no match appears once, with every column of the right table set to `NULL`. Order 13 is still gone — it is on the right side, and the right side keeps only matched rows.
 
@@ -48,13 +42,12 @@ RIGHT JOIN orders o ON o.customer_id = c.id
 ORDER BY o.id;
 ```
 
-```text
-name | order_id
-Asha | 10
-Asha | 11
-Ben  | 12
-NULL | 13
-```
+| name | order_id |
+| --- | ---: |
+| Asha | 10 |
+| Asha | 11 |
+| Ben | 12 |
+| NULL | 13 |
 
 Now every order is kept and the orphan order 13 shows a `NULL` name. `A RIGHT JOIN B` equals `B LEFT JOIN A`, so it never adds expressive power. Most style guides write only left joins — the preserved table is then always the one in `FROM`, which you can see at a glance. You should still read right joins fluently, because they appear in legacy code and interview questions.
 
@@ -71,12 +64,11 @@ GROUP BY c.id, c.name
 ORDER BY c.name;
 ```
 
-```text
-name | wrong_count | orders | spent
-Asha | 2           | 2      | 350
-Ben  | 1           | 1      | 400
-Chen | 1           | 0      | 0
-```
+| name | wrong_count | orders | spent |
+| --- | ---: | ---: | ---: |
+| Asha | 2 | 2 | 350 |
+| Ben | 1 | 1 | 400 |
+| Chen | 1 | 0 | 0 |
 
 Chen's group has one row — the NULL-filled one — so `COUNT(*)` says 1. `COUNT(o.id)` counts non-NULL values and says 0, which is the truth. Count a right-side column that is never NULL in a real match (its primary key is ideal). `SUM` over nothing but NULLs is `NULL`, not 0; `COALESCE(SUM(o.amount), 0)` turns it into a number for the report.
 
@@ -94,11 +86,10 @@ GROUP BY c.id, c.name
 ORDER BY c.name;
 ```
 
-```text
-name | feb_orders
-Asha | 1
-Ben  | 1
-```
+| name | feb_orders |
+| --- | ---: |
+| Asha | 1 |
+| Ben | 1 |
 
 Chen vanished. The join produced Chen's NULL-filled row as promised — and then `WHERE` evaluated `NULL >= '2024-02-01'`, which is unknown, and discarded it. Any `WHERE` condition on a right-table column that rejects `NULL` turns the left join back into an inner join.
 
@@ -113,12 +104,13 @@ GROUP BY c.id, c.name
 ORDER BY c.name;
 ```
 
-```text
-name | feb_orders
-Asha | 1
-Ben  | 1
-Chen | 0
-```
+| name | feb_orders |
+| --- | ---: |
+| Asha | 1 |
+| Ben | 1 |
+| Chen | 0 |
+
+@figure on-vs-where
 
 The rule to memorise:
 

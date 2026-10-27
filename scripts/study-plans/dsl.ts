@@ -19,6 +19,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { bodyFigureProblems } from "../../src/lib/study-figures/index.js";
 
 export interface ExerciseCase {
   stdin: string;
@@ -350,6 +351,8 @@ export function validateTrack(track: TrackSeed): string[] {
       if (lesson.body.trim().length < 400) problems.push(`${at}: body is too short to be a lesson (${lesson.body.trim().length} chars)`);
       if (lesson.body.includes(RESERVED)) problems.push(`${at}: body contains the reserved marker`);
       problems.push(...seoProblems(at, lesson));
+      // Every `@figure <name>` line names a figure of src/lib/study-figures/<track>/<lesson>.ts that builds within the page's limits.
+      problems.push(...bodyFigureProblems(track.key, lesson.slug, lesson.body).map((p) => `${where}: ${p}`));
       let fenced = false;
       for (const line of lesson.body.split("\n")) {
         if (/^\s*(```|~~~)/.test(line)) fenced = !fenced;

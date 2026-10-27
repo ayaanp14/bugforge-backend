@@ -87,10 +87,9 @@ SELECT (
 ) AS second_highest;
 ```
 
-```text
-second_highest
-NULL
-```
+| second_highest |
+| --- |
+| NULL |
 
 The outer `SELECT` has no `FROM` and always produces exactly one row. Its one column is the value of the inner query — and a scalar subquery that finds no row evaluates to NULL. When a second salary does exist, the same query returns it. Subqueries get a full module later; this one pattern is worth learning now because it appears in so many interviews.
 

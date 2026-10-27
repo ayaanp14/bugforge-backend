@@ -25,12 +25,11 @@ JOIN orders o ON o.customer_id = c.id
 ORDER BY c.id;
 ```
 
-```text
-id | name
-1  | Asha
-1  | Asha
-2  | Ben
-```
+| id | name |
+| ---: | --- |
+| 1 | Asha |
+| 1 | Asha |
+| 2 | Ben |
 
 Asha has two orders, so she appears twice. The join answers "list the (customer, order) pairs", and the question was "list the customers". `SELECT DISTINCT c.id, c.name` removes the repeats, but it does so by building all the pairs first and then sorting or hashing them away — wasted work when a customer has thousands of orders.
 
@@ -45,11 +44,7 @@ WHERE EXISTS (
 ORDER BY c.id;
 ```
 
-```text
-id | name
-1  | Asha
-2  | Ben
-```
+@figure exists-vs-join
 
 `EXISTS (subquery)` is true if the subquery returns at least one row. The subquery refers to `c.id` from the outer query — it is **correlated**, evaluated for each customer (the subqueries module covers correlation in depth). The `SELECT 1` is a convention: `EXISTS` looks only at whether a row exists, so the select list is ignored; `SELECT *` or `SELECT o.id` would do the same. The database can stop at the first matching order — it never needs the rest.
 

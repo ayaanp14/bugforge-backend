@@ -45,6 +45,8 @@ import "prismjs/components/prism-python.js";
 import "prismjs/components/prism-sql.js";
 import { escapeHtml, markdownHeadings, markdownOutline, markdownToHtml } from "../markdown-html.js";
 import type { LessonDefinition, ModuleDefinition, TrackDefinition } from "../../services/study-plans.js";
+import type { Walkthrough } from "../walkthroughs/core.js";
+import type { NoteFigure } from "./note.js";
 
 /** Fence language → Prism grammar, as LessonMarkdown's GRAMMARS maps the ones whose grammar a lesson page has loaded. */
 const GRAMMARS: Record<string, string> = {
@@ -94,8 +96,10 @@ export interface StudyLessonView {
   answer: { question: string; answer: string } | null;
   /** The `##` sections with their anchors — the rail's "On this page". */
   outline: Array<{ id: string; text: string }>;
-  /** The lesson text as safe HTML, headings at the page's levels with their anchors. */
+  /** The lesson text as safe HTML, headings at the page's levels with their anchors; each placed figure is a `<!--figure:name-->` marker the view draws from `figures`. */
   body: string;
+  /** The placed figures by name, as LessonFigure first draws them (lib/study-figures; the notes' NoteFigure shape). */
+  figures: Record<string, NoteFigure>;
   /** The common questions after the text, inline-rendered. */
   faq: Array<{ q: string; a: string }>;
   next: { slug: string; title: string; module: string } | null;
@@ -117,7 +121,10 @@ export function inlineAnswer(text: string): string {
     .join("");
 }
 
-export function studyLessonView(track: TrackDefinition, mod: ModuleDefinition, lesson: LessonDefinition): StudyLessonView {
+/** A figure as LessonFigure first draws it (step one, the svg still empty): what sizes its box and the words around it. Shared with the notes' view. */
+export const figureOf = (w: Walkthrough): NoteFigure => ({ title: w.title, input: w.input, width: w.width, height: w.height, frames: w.frames.length, captions: w.frames.map((f) => f.caption) });
+
+export function studyLessonView(track: TrackDefinition, mod: ModuleDefinition, lesson: LessonDefinition, figures: Record<string, Walkthrough> = {}): StudyLessonView {
   const flat = track.modules.flatMap((m) => m.lessons.map((l) => ({ slug: l.slug, title: l.title, module: m.title })));
   const at = flat.findIndex((l) => l.slug === lesson.slug);
   const next = flat[at + 1];
@@ -144,7 +151,10 @@ export function studyLessonView(track: TrackDefinition, mod: ModuleDefinition, l
     },
     answer: seo?.question && seo.answer ? { question: inlineAnswer(seo.question), answer: inlineAnswer(seo.answer) } : null,
     outline: markdownOutline(lesson.body),
-    body: highlightFences(markdownToHtml(lesson.body, 24_000, { anchors: true, under: Math.max(1, shallowest - 1) })),
+    body: highlightFences(markdownToHtml(lesson.body, 24_000, { anchors: true, under: Math.max(1, shallowest - 1) })).replace(/<p>@figure ([a-z0-9][a-z0-9-]*)<\/p>/g, (_, name: string) =>
+      figures[name] ? `<!--figure:${name}-->` : "",
+    ),
+    figures: Object.fromEntries(Object.entries(figures).map(([name, w]) => [name, figureOf(w)])),
     faq: (seo?.faq ?? []).map((f) => ({ q: inlineAnswer(f.q), a: inlineAnswer(f.a) })),
     next: next ? { slug: next.slug, title: next.title, module: next.module } : null,
   };

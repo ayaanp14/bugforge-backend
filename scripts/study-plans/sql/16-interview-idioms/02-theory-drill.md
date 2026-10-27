@@ -86,13 +86,12 @@ The four isolation levels, weakest first, are READ UNCOMMITTED (dirty reads poss
 
 For scores 100, 90, 90, 80 in descending order:
 
-```text
-score | ROW_NUMBER | RANK | DENSE_RANK
-100   | 1          | 1    | 1
-90    | 2          | 2    | 2
-90    | 3          | 2    | 2
-80    | 4          | 4    | 3
-```
+| score | ROW_NUMBER | RANK | DENSE_RANK |
+| ---: | ---: | ---: | ---: |
+| 100 | 1 | 1 | 1 |
+| 90 | 2 | 2 | 2 |
+| 90 | 3 | 2 | 2 |
+| 80 | 4 | 4 | 3 |
 
 ROW_NUMBER is unique per row (and arbitrary between ties unless the ORDER BY breaks them); RANK shares ties and skips the following numbers, like a sports table; DENSE_RANK shares ties and skips nothing. The detail: "top three per group" questions hinge on which one is meant.
 

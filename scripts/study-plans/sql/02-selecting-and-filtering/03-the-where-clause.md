@@ -90,14 +90,9 @@ SELECT name FROM employees WHERE manager_id IS NOT NULL;
 
 `= NULL` is never true, not even for rows whose value is NULL — "is this unknown value equal to that unknown value?" has no answer. `IS NULL` and `IS NOT NULL` are the tests for presence.
 
-The same rule hides in ordinary conditions. Given
+The same rule hides in ordinary conditions. Given three employees, one with no department:
 
-```text
-emp_id | name | dept
-1 | Asha | Sales
-2 | Ravi | Support
-3 | Meera | NULL
-```
+@figure where-rows
 
 `WHERE dept <> 'Sales'` returns **only Ravi**. For Meera, `NULL <> 'Sales'` is unknown, so she is dropped — though most people asking "who is not in Sales?" would include her. If she belongs in the answer, say so:
 

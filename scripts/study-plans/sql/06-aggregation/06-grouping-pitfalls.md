@@ -98,11 +98,10 @@ Three similar-sounding questions, three different queries. Also remember that `W
 
 A chain has two stores:
 
-```text
-store | sales | revenue
-A | 2 | 200        (average sale 100)
-B | 198 | 9900     (average sale 50)
-```
+| store | sales | revenue |
+| --- | ---: | --- |
+| A | 2 | 200 (average sale 100) |
+| B | 198 | 9900 (average sale 50) |
 
 The average sale across the chain is total revenue over total sales: 10100 / 200 = 50.5. The average of the two store averages is (100 + 50) / 2 = 75 — wrong, because it gives store A's two sales the same weight as store B's 198.
 
