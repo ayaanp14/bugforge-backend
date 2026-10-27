@@ -13,7 +13,8 @@ export interface ResultSet {
   ms: number;
 }
 
-export type QueryOutcome = { ok: true; result: ResultSet } | { ok: false; error: string };
+/** `setup` marks a script job's dataset that failed to load (lib/sql/program.ts reports it apart from the learner's statements). */
+export type QueryOutcome = { ok: true; result: ResultSet } | { ok: false; error: string; setup?: true };
 
 export interface SqlJob {
   id: number;
@@ -24,6 +25,14 @@ export interface SqlJob {
   /** Run in order on every dataset. */
   queries: string[];
   maxRows: number;
+  /**
+   * A study-plan script (lib/sql/program.ts): statements that return no
+   * columns (INSERT, UPDATE, CREATE …) run instead of being refused, the
+   * first failing statement ends the dataset's run, and a dataset whose
+   * setup fails is reported as that dataset's one outcome rather than
+   * failing the whole job — the setup is the learner's own input on Run.
+   */
+  script?: boolean;
 }
 
 export type SqlJobReply = { id: number; results: QueryOutcome[][]; error?: undefined } | { id: number; error: string; results?: undefined };

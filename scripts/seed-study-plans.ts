@@ -14,7 +14,8 @@
  * program judge (src/lib/program-judge.ts, on STUDY_EXECUTOR — Paiza by
  * default) and requires ACCEPTED on every case: the one proof that the
  * content compiles on the runtime a learner gets and that the expected
- * outputs are right. Slow (a free engine, ~1 s a case) — run it on the
+ * outputs are right (the SQL track runs on the local SQL engine instead —
+ * lib/sql/program.ts — and takes milliseconds). Slow (a free engine, ~1 s a case) — run it on the
  * modules you touched with --only, and on one track with --track: the four
  * tracks share module slugs (every track ends in interview-idioms), and a
  * --run over all of them is several hundred programs.
@@ -32,9 +33,10 @@ import { javaTrack } from "./study-plans/java/track.js";
 import { javascriptTrack } from "./study-plans/javascript/track.js";
 import { cppTrack } from "./study-plans/cpp/track.js";
 import { pythonTrack } from "./study-plans/python/track.js";
+import { sqlTrack } from "./study-plans/sql/track.js";
 import { flushContentCaches } from "./content-caches.js";
 
-const ALL_TRACKS: TrackSeed[] = [javaTrack, javascriptTrack, cppTrack, pythonTrack];
+const ALL_TRACKS: TrackSeed[] = [javaTrack, javascriptTrack, cppTrack, pythonTrack, sqlTrack];
 
 const args = process.argv.slice(2);
 const trackArg = args[args.indexOf("--track") + 1];

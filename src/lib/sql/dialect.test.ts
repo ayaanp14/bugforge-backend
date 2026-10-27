@@ -103,3 +103,10 @@ test("MySQL backslash escapes in strings become the characters SQLite should see
   assert.equal(rewriteMysql(String.raw`SELECT 'x\%y'`), String.raw`SELECT 'x\%y'`);
   assert.equal(rewriteMysql("SELECT 'plain'"), "SELECT 'plain'");
 });
+
+test("the operator form d + INTERVAL n UNIT becomes DATE_ADD/DATE_SUB", () => {
+  const squash = (s: string) => s.replace(/\s+/g, " ").replace(/\s+([,)])/g, "$1");
+  assert.equal(squash(rewriteMysql("SELECT o.d + INTERVAL 7 DAY FROM o")), "SELECT DATE_ADD(o.d, 7, 'DAY') FROM o");
+  assert.equal(squash(rewriteMysql("SELECT DATE('2024-01-31') - INTERVAL 1 MONTH")), "SELECT DATE_SUB(DATE('2024-01-31'), 1, 'MONTH')");
+  assert.equal(squash(rewriteMysql("SELECT DATE_ADD(d, INTERVAL 1 DAY) FROM t")), "SELECT DATE_ADD(d, 1, 'DAY') FROM t");
+});

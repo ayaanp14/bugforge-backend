@@ -360,6 +360,38 @@ export function rewriteMysql(sql: string): string {
     tokens = [...inner, ...tokens.slice(close)];
   }
 
+  // d + INTERVAL n UNIT → DATE_ADD(d, INTERVAL n UNIT) (and `-` → DATE_SUB),
+  // which the next rule then rewrites. MySQL's operator form is how the SQL
+  // study track's date lessons write it (2026-10-27); until then only the
+  // function form ran, and the operator form was a syntax error here. The
+  // left operand is one primary (a column, a.col, a literal, f(…), (…)) —
+  // `a + b + INTERVAL 1 DAY` is not a date expression in MySQL either.
+  for (let guard = 0, from = 0; guard < 100; guard++) {
+    const at = tokens.findIndex((t, k) => {
+      if (k < from || upper(t) !== "INTERVAL") return false;
+      const op = tokens[skipSpaceBack(tokens, k - 1)];
+      return op?.kind === "punct" && (op.text === "+" || op.text === "-");
+    });
+    if (at === -1) break;
+    const opAt = skipSpaceBack(tokens, at - 1);
+    const leftStart = primaryStart(tokens, skipSpaceBack(tokens, opAt - 1));
+    const valueStart = skipSpaceFwd(tokens, at + 1);
+    const valueEnd = primaryEnd(tokens, valueStart);
+    const unitAt = valueEnd === -1 ? -1 : skipSpaceFwd(tokens, valueEnd + 1);
+    if (leftStart === -1 || unitAt === -1 || tokens[unitAt]?.kind !== "word") {
+      // Not an expression we can read: leave it for the engine to refuse.
+      from = at + 1;
+      continue;
+    }
+    const fn = tokens[opAt]!.text === "+" ? "DATE_ADD" : "DATE_SUB";
+    tokens = [
+      ...tokens.slice(0, leftStart),
+      word(fn), punct("("), ...tokens.slice(leftStart, skipSpaceBack(tokens, opAt - 1) + 1), punct(","), space,
+      word("INTERVAL"), space, ...tokens.slice(valueStart, valueEnd + 1), space, tokens[unitAt]!, punct(")"),
+      ...tokens.slice(unitAt + 1),
+    ];
+  }
+
   // DATE_ADD(d, INTERVAL n UNIT) → DATE_ADD(d, n, 'UNIT')
   for (let i = 0; i < tokens.length; i++) {
     if (!DATE_ARITH.has(upper(tokens[i]))) continue;

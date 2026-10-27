@@ -59,7 +59,9 @@ const cleanError = (err: unknown): string => {
   return msg.replace(/^Error:\s*/, "").slice(0, 400);
 };
 
-function runQuery(db: Database, sql: string, maxRows: number): QueryOutcome {
+const NO_ROWS = (ms: number): QueryOutcome => ({ ok: true, result: { columns: [], rows: [], totalRows: 0, truncated: false, ms } });
+
+function runQuery(db: Database, sql: string, maxRows: number, script = false): QueryOutcome {
   const started = performance.now();
   let stmt;
   try {
@@ -69,7 +71,12 @@ function runQuery(db: Database, sql: string, maxRows: number): QueryOutcome {
   }
   try {
     const columns = stmt.getColumnNames();
-    if (columns.length === 0) return { ok: false, error: "The statement returned no columns — write a SELECT." };
+    if (columns.length === 0) {
+      if (!script) return { ok: false, error: "The statement returned no columns — write a SELECT." };
+      // INSERT, UPDATE, CREATE …: stepping it once runs it.
+      while (stmt.step());
+      return NO_ROWS(Math.round((performance.now() - started) * 100) / 100);
+    }
     const rows: Cell[][] = [];
     let total = 0;
     while (stmt.step()) {
@@ -95,8 +102,22 @@ async function handle(job: SqlJob): Promise<SqlJobReply> {
         db.exec(job.schema);
         if (dataset) db.exec(dataset);
       } catch (err) {
+        if (job.script) {
+          results.push([{ ok: false, error: cleanError(err), setup: true }]);
+          continue;
+        }
         // The problem's own data failed to load: a content bug, not the learner's.
         return { id: job.id, error: `setup failed: ${cleanError(err)}` };
+      }
+      if (job.script) {
+        const outcomes: QueryOutcome[] = [];
+        for (const q of job.queries) {
+          const outcome = runQuery(db, q, job.maxRows, true);
+          outcomes.push(outcome);
+          if (!outcome.ok) break;
+        }
+        results.push(outcomes);
+        continue;
       }
       results.push(job.queries.map((q) => runQuery(db, q, job.maxRows)));
     } finally {
