@@ -3,7 +3,7 @@ import { cached, cachedShared, invalidate } from "../lib/cache.js";
 import { SQL_COMPANIES, SQL_PROBLEMS, SQL_TOPICS, sqlProblem } from "../lib/sql-problems/index.js";
 import { buildProblem, starterQuery } from "../lib/sql-problems/build.js";
 import type { SqlProblemSpec } from "../lib/sql-problems/types.js";
-import { expectedResults, type TableView } from "../lib/sql/judge.js";
+import { exampleResults, type TableView } from "../lib/sql/judge.js";
 import type { ResultSet } from "../lib/sql/types.js";
 
 /**
@@ -180,7 +180,7 @@ export function sqlProblemPage(slug: string): Promise<SqlProblemPage | null> {
   const spec = sqlProblem(slug);
   if (!spec) return Promise.resolve(null);
   return cached(`sql:page:v1:${slug}`, PAGE_TTL_MS, async () => {
-    const expected = await expectedResults(spec);
+    const expected = await exampleResults(spec);
     const built = buildProblem(spec);
     const i = SQL_PROBLEMS.indexOf(spec);
     const near = (p: SqlProblemSpec | undefined) => (p ? { slug: p.slug, title: p.title } : null);

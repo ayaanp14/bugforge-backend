@@ -72,6 +72,39 @@ export function expectedResults(spec: SqlProblemSpec): Promise<ResultSet[]> {
   return hit;
 }
 
+const exampleCache = new Map<string, Promise<ResultSet[]>>();
+
+/**
+ * The reference's result on the visible examples only — what a problem's page
+ * shows. The page used expectedResults, which runs the reference on every
+ * dataset (the examples + ~30 hidden ones) through the two-thread pool; a
+ * crawler opening a dozen cold SQL pages at once queued those behind each
+ * other, the API's /api/seo/head answer passed the edge Worker's 4 s wait and
+ * Google recorded a 503 for /sql/<slug> (Search Console, 2026-10-23/24).
+ * Taken from the full set when a run or submit already computed it.
+ */
+export function exampleResults(spec: SqlProblemSpec): Promise<ResultSet[]> {
+  const built = buildProblem(spec);
+  const full = expectedCache.get(spec.slug);
+  if (full) return full.then((all) => all.slice(0, built.visible));
+  let hit = exampleCache.get(spec.slug);
+  if (!hit) {
+    hit = runSqlJob(
+      { schema: built.schema, datasets: built.scripts.slice(0, built.visible), queries: [rewriteMysql(spec.solution)], maxRows: COMPARE_ROWS },
+      30_000,
+    ).then((results) =>
+      results.map((r, i) => {
+        const outcome = r[0]!;
+        if (!outcome.ok) throw new Error(`sql problem ${spec.slug}: the reference failed on example ${i}: ${outcome.error}`);
+        return outcome.result;
+      }),
+    );
+    hit.catch(() => exampleCache.delete(spec.slug));
+    exampleCache.set(spec.slug, hit);
+  }
+  return hit;
+}
+
 const trim = (r: ResultSet): ResultSet => (r.rows.length > SHOW_ROWS ? { ...r, rows: r.rows.slice(0, SHOW_ROWS), truncated: true } : r);
 
 function tablesOf(spec: SqlProblemSpec, index: number): Record<string, TableView> {
