@@ -1,4 +1,4 @@
-import { NOTE_SUBJECTS, allNotes, noteBlocks, noteBy, noteSummary, notesFor, subjectByKey, type NoteSummary } from "../lib/cs-notes.js";
+import { NOTE_SUBJECTS, allNotes, noteBlocks, noteBy, noteSummary, notesFor, subjectByKey, type NoteFormat, type NoteSummary } from "../lib/cs-notes.js";
 import { noteFigure } from "../lib/note-figures/index.js";
 import { credentialName } from "../lib/skill-catalog.js";
 import type { Walkthrough } from "../lib/walkthroughs/core.js";
@@ -17,6 +17,8 @@ export interface SubjectCard {
   seoTitle: string;
   description: string;
   tests: Array<{ slug: string; title: string }>;
+  /** article: prose with figures; points: bullet points over looping animations (System Design). */
+  format: NoteFormat;
   notes: NoteSummary[];
   minutes: number;
 }
@@ -40,6 +42,7 @@ export function notesSyllabus(): { subjects: SubjectCard[] } {
         seoTitle: s.seoTitle,
         description: s.description,
         tests: testsOf(s.tests),
+        format: s.format,
         notes,
         minutes: notes.reduce((t, n) => t + n.minutes, 0),
       };
@@ -58,7 +61,7 @@ export interface NotePage {
     body: string;
     seo: { title: string; description: string; question: string; answer: string; faq: Array<{ q: string; a: string }> };
   };
-  subject: { key: string; title: string; short: string };
+  subject: { key: string; title: string; short: string; format: NoteFormat };
   position: number;
   count: number;
   prev: NoteSummary | null;
@@ -91,7 +94,7 @@ export function notePage(subjectKey: string, slug: string): NotePage | null {
       body: n.body,
       seo: { title: n.seoTitle, description: n.description, question: n.question, answer: n.answer, faq: n.faq },
     },
-    subject: { key: subject.key, title: subject.title, short: subject.short },
+    subject: { key: subject.key, title: subject.title, short: subject.short, format: subject.format },
     position: i + 1,
     count: siblings.length,
     prev: i > 0 ? noteSummary(siblings[i - 1]!) : null,

@@ -25,6 +25,7 @@ import { FIGURES as introductionToOop } from "./introduction-to-oop.js";
 import { FIGURES as introductionToOperatingSystems } from "./introduction-to-operating-systems.js";
 import { FIGURES as ipAddressingAndSubnetting } from "./ip-addressing-and-subnetting.js";
 import { FIGURES as keysInDbms } from "./keys-in-dbms.js";
+import { FIGURES as loadBalancing } from "./load-balancing.js";
 import { FIGURES as memoryManagement } from "./memory-management.js";
 import { FIGURES as natDhcpAndPorts } from "./nat-dhcp-and-ports.js";
 import { FIGURES as networkSecurityBasics } from "./network-security-basics.js";
@@ -45,6 +46,18 @@ import { FIGURES as tcpAndUdp } from "./tcp-and-udp.js";
 import { FIGURES as tcpIpModel } from "./tcp-ip-model.js";
 import { FIGURES as transactionsAndAcid } from "./transactions-and-acid.js";
 import { FIGURES as virtualMemory } from "./virtual-memory.js";
+import { FIGURES as introductionToSystemDesign } from "./introduction-to-system-design.js";
+import { FIGURES as scalability } from "./scalability.js";
+import { FIGURES as caching } from "./caching.js";
+import { FIGURES as contentDeliveryNetworks } from "./content-delivery-networks.js";
+import { FIGURES as databaseReplication } from "./database-replication.js";
+import { FIGURES as databaseSharding } from "./database-sharding.js";
+import { FIGURES as capTheorem } from "./cap-theorem.js";
+import { FIGURES as consistentHashing } from "./consistent-hashing.js";
+import { FIGURES as messageQueues } from "./message-queues.js";
+import { FIGURES as rateLimiting } from "./rate-limiting.js";
+import { FIGURES as microservicesAndApiGateway } from "./microservices-and-api-gateway.js";
+import { FIGURES as designAUrlShortener } from "./design-a-url-shortener.js";
 import { FIGURES as whatHappensWhenYouTypeAUrl } from "./what-happens-when-you-type-a-url.js";
 
 /**
@@ -80,6 +93,7 @@ export const NOTE_FIGURES: Readonly<Record<string, Readonly<Record<string, () =>
   "introduction-to-operating-systems": introductionToOperatingSystems,
   "ip-addressing-and-subnetting": ipAddressingAndSubnetting,
   "keys-in-dbms": keysInDbms,
+  "load-balancing": loadBalancing,
   "memory-management": memoryManagement,
   "nat-dhcp-and-ports": natDhcpAndPorts,
   "network-security-basics": networkSecurityBasics,
@@ -100,5 +114,17 @@ export const NOTE_FIGURES: Readonly<Record<string, Readonly<Record<string, () =>
   "tcp-ip-model": tcpIpModel,
   "transactions-and-acid": transactionsAndAcid,
   "virtual-memory": virtualMemory,
+  "introduction-to-system-design": introductionToSystemDesign,
+  "scalability": scalability,
+  "caching": caching,
+  "content-delivery-networks": contentDeliveryNetworks,
+  "database-replication": databaseReplication,
+  "database-sharding": databaseSharding,
+  "cap-theorem": capTheorem,
+  "consistent-hashing": consistentHashing,
+  "message-queues": messageQueues,
+  "rate-limiting": rateLimiting,
+  "microservices-and-api-gateway": microservicesAndApiGateway,
+  "design-a-url-shortener": designAUrlShortener,
   "what-happens-when-you-type-a-url": whatHappensWhenYouTypeAUrl,
 };

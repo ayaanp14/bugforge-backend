@@ -6,7 +6,35 @@ Networks**, **DBMS** and **OOP**. One Markdown file per topic in
 `content/notes/<subject>/<slug>.md`, served at `/notes/<subject>/<slug>` to
 everyone (signed in or not) and indexed by search engines. Files whose name
 starts with `_` (this one) are not notes. Subjects (folder names) are fixed:
-`operating-systems`, `computer-networks`, `dbms`, `oop`.
+`operating-systems`, `computer-networks`, `dbms`, `oop`, `system-design`.
+
+## System Design: the points format
+
+`system-design` (2026-10-29) is written differently from the four CS
+subjects — the owner's call: "not too much content, only point to point;
+majorly the content should be shown through animation, and the animation
+should not play/pause — it keeps playing". Its subject has `format:
+"points"` in `src/lib/cs-notes.ts` and the validator holds it to
+`NOTE_POINTS_BAR` instead of the article bar below:
+
+- **250–900 words of prose** (aim 300–550), and **no paragraph over 40 words
+  outside a list** — key points as bullets, a comparison as a table.
+- At least **four `##` sections**, one exactly `## Interview questions`
+  (three to five bold questions with one-line answers).
+- At least **four figures, every one an animation of three frames or more**.
+  The site plays them on a loop with no controls (frontend `LessonFigure`
+  `loop`): while on screen, last frame back to the first, forever; a reader
+  who prefers reduced motion sees the last frame still. So design for a
+  loop: the last frame is the settled answer, ids stay stable so things
+  glide, and no two-frame flip-flops.
+- Shapes for traffic diagrams are in `src/lib/note-figures/sd-kit.ts`
+  (`service`, `database`, `packet`, `wire`): one packet id per request,
+  moved one stop each frame — the pipeline its header describes.
+- Frontmatter, the FAQ pairs, the truth rule for figures, previews and the
+  gate are the same as every note's. `load-balancing.md` and its figures
+  are the template.
+
+Everything below describes the article format of the four CS subjects.
 
 The rules are enforced by `src/lib/cs-notes.ts` and the gate:
 

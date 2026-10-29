@@ -1,7 +1,7 @@
 import { readdirSync, readFileSync, existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { lessonBlocks, FIGURE_LINE, type LessonBlock } from "./roadmap-lessons.js";
-import { noteFigureProblems } from "./note-figures/index.js";
+import { noteFigure, noteFigureProblems } from "./note-figures/index.js";
 
 /**
  * CS fundamentals notes: Operating Systems, Computer Networks, DBMS and OOP,
@@ -27,7 +27,24 @@ import { noteFigureProblems } from "./note-figures/index.js";
  * is allowed more words, may show display-only code (a `c` fork() example
  * the judge cannot run, a `sql` query, a `text` packet layout) and does not
  * have to carry code at all.
+ *
+ * System Design (2026-10-29, the owner: "not too much content, only point to
+ * point; majorly the content should be shown through animation, and that
+ * animation should not have play/pause — it keeps playing") is the fifth
+ * subject and the first in the `points` format: short bullet lists instead
+ * of paragraphs (NOTE_POINTS_BAR), at least four figures that are all
+ * animations, and the SPA plays every figure of a points subject on a loop
+ * with no controls (frontend LessonFigure `loop`). Its figures follow the
+ * same truth rule as every other — a load balancer's spread is computed by
+ * running round robin, a cache's hits by running the LRU.
  */
+
+/**
+ * How a subject's notes are written and shown: `article` is reference prose
+ * with figures (the four CS subjects); `points` is bullet points carried by
+ * looping animations (System Design).
+ */
+export type NoteFormat = "article" | "points";
 
 export interface NoteSubject {
   /** URL segment: /notes/<key>. */
@@ -40,8 +57,9 @@ export interface NoteSubject {
   /** The subject page's own search title and description. */
   seoTitle: string;
   description: string;
-  /** The skill tests that examine this subject (lib/skill-catalog test slugs). */
+  /** The skill tests that examine this subject (lib/skill-catalog test slugs); none for System Design yet. */
   tests: string[];
+  format: NoteFormat;
 }
 
 export const NOTE_SUBJECTS: readonly NoteSubject[] = [
@@ -53,6 +71,7 @@ export const NOTE_SUBJECTS: readonly NoteSubject[] = [
     seoTitle: "Operating System Notes for Placements and Interviews",
     description: "Operating system notes for placement interviews: processes, threads, CPU scheduling, deadlocks, paging, virtual memory and file systems, with worked examples.",
     tests: ["os-basic", "os-intermediate"],
+    format: "article",
   },
   {
     key: "computer-networks",
@@ -62,6 +81,7 @@ export const NOTE_SUBJECTS: readonly NoteSubject[] = [
     seoTitle: "Computer Networks Notes for Placements and Interviews",
     description: "Computer networks notes for placement interviews: OSI and TCP/IP models, subnetting, TCP vs UDP, DNS, HTTP and HTTPS, routing, with worked examples.",
     tests: ["networks-basic", "networks-intermediate"],
+    format: "article",
   },
   {
     key: "dbms",
@@ -71,6 +91,7 @@ export const NOTE_SUBJECTS: readonly NoteSubject[] = [
     seoTitle: "DBMS Notes for Placements and Interviews",
     description: "DBMS notes for placement interviews: ER model, keys, normalization up to BCNF, SQL joins, transactions and ACID, concurrency control and B+ tree indexing.",
     tests: ["sql-basic", "sql-intermediate"],
+    format: "article",
   },
   {
     key: "oop",
@@ -80,6 +101,17 @@ export const NOTE_SUBJECTS: readonly NoteSubject[] = [
     seoTitle: "OOP Notes for Placements and Interviews",
     description: "Object-oriented programming notes for placement interviews: classes, encapsulation, inheritance, polymorphism, abstraction, SOLID and design patterns, with code.",
     tests: ["oop-basic", "oop-intermediate"],
+    format: "article",
+  },
+  {
+    key: "system-design",
+    title: "System Design",
+    short: "SD",
+    blurb: "Scaling, load balancing, caching, CDNs, replication and sharding, CAP, consistent hashing, queues, rate limiting and microservices — as animations.",
+    seoTitle: "System Design Notes for Interviews, With Animations",
+    description: "System design notes for interviews: load balancing, caching, sharding, CAP theorem, consistent hashing, message queues and rate limiting, each shown animated.",
+    tests: [],
+    format: "points",
   },
 ];
 
@@ -241,10 +273,62 @@ export const NOTE_FIGURES_MIN = 3;
 /** Display-only fences a note may show (no output, not run): anything the judge cannot execute. */
 export const DISPLAY_FENCES = new Set(["c", "sql", "text", "bash", "http", "json", "plaintext"]);
 
+/**
+ * The bar for a `points` subject (System Design): the animations teach and
+ * the text is the list a reader revises from the night before. So fewer
+ * words, no paragraph long enough to be a paragraph, at least four figures,
+ * and every figure an animation (a still diagram cannot loop).
+ */
+export const NOTE_POINTS_BAR = {
+  words: { min: 250, max: 900 },
+  figuresMin: 4,
+  /** Frames an animated figure needs at the least: two frames only flick back and forth on a loop. */
+  framesMin: 3,
+  /** The longest run of prose that is not a list item or a table row. */
+  paragraphWords: 40,
+  sectionsMin: 4,
+} as const;
+
+/** Prose paragraphs (not list items, table rows, headings, fences or figures), as their word counts with their first line. */
+function paragraphsOf(body: string): Array<{ line: number; words: number }> {
+  const out: Array<{ line: number; words: number }> = [];
+  let start = -1;
+  let text = "";
+  let fenced = false;
+  const close = () => {
+    if (start >= 0) out.push({ line: start + 1, words: noteProseWords(text) });
+    start = -1;
+    text = "";
+  };
+  body.split("\n").forEach((raw, i) => {
+    const t = raw.trim();
+    if (/^```/.test(t)) {
+      fenced = !fenced;
+      close();
+      return;
+    }
+    if (fenced) return;
+    if (!t || /^(#{1,6}\s|[-*+]\s|\d+[.)]\s|\||@figure\b|>)/.test(t)) {
+      close();
+      return;
+    }
+    // A wrapped line of a list item continues the item, not a paragraph.
+    if (start < 0 && /^\s{2,}/.test(raw)) return;
+    if (start < 0) start = i;
+    text += ` ${t}`;
+  });
+  close();
+  return out;
+}
+
 /** Everything wrong with one note on its own. Empty when it is fine. */
 export function validateNote(n: CsNote): string[] {
   const out: string[] = [];
   const at = `${n.subject}/${n.slug}.md`;
+  const points = subjectByKey(n.subject)?.format === "points";
+  const bar = points
+    ? { words: NOTE_POINTS_BAR.words, figures: NOTE_POINTS_BAR.figuresMin, sections: NOTE_POINTS_BAR.sectionsMin }
+    : { words: NOTE_WORDS, figures: NOTE_FIGURES_MIN, sections: 5 };
   if (!NOTE_SUBJECT_KEYS.has(n.subject)) out.push(`${at}: "${n.subject}" is not a notes subject`);
   if (!NOTE_SLUG.test(n.slug)) out.push(`${at}: the file name must be a lower-case slug`);
   if (n.title.length > 70) out.push(`${at}: title is ${n.title.length} characters; keep it under 70`);
@@ -265,10 +349,15 @@ export function validateNote(n: CsNote): string[] {
   if (/__CODEKAIRO_/.test(n.body)) out.push(`${at}: the body names a judge sentinel`);
   if (/<\/?[a-z][^>]*>/i.test(outsideFences.replace(/`[^`]*`/g, ""))) out.push(`${at}: the body has raw HTML — write Markdown`);
   const prose = noteProseWords(n.body);
-  if (prose < NOTE_WORDS.min) out.push(`${at}: ${prose} words of prose; a note needs at least ${NOTE_WORDS.min}`);
-  if (prose > NOTE_WORDS.max) out.push(`${at}: ${prose} words of prose; keep it to ${NOTE_WORDS.max}`);
+  if (prose < bar.words.min) out.push(`${at}: ${prose} words of prose; a note needs at least ${bar.words.min}`);
+  if (prose > bar.words.max) out.push(`${at}: ${prose} words of prose; keep it to ${bar.words.max}`);
   const sections = (outsideFences.match(/^##\s/gm) ?? []).length;
-  if (sections < 5) out.push(`${at}: ${sections} "##" sections; a note needs at least five`);
+  if (sections < bar.sections) out.push(`${at}: ${sections} "##" sections; a note needs at least ${bar.sections}`);
+  if (points) {
+    for (const p of paragraphsOf(n.body)) {
+      if (p.words > NOTE_POINTS_BAR.paragraphWords) out.push(`${at}:${p.line}: a ${p.words}-word paragraph — a points note says it in bullets (at most ${NOTE_POINTS_BAR.paragraphWords} words outside a list)`);
+    }
+  }
   if (!/^##\s+Interview questions\s*$/m.test(outsideFences)) out.push(`${at}: needs a "## Interview questions" section`);
   const blocks = noteBlocks(n.body);
   for (const b of blocks) {
@@ -292,11 +381,16 @@ export function validateNote(n: CsNote): string[] {
     }
   }
   const figures = blocks.flatMap((b) => (b.kind === "figure" ? [b.name] : []));
-  if (figures.length < NOTE_FIGURES_MIN) out.push(`${at}: ${figures.length} figures; a note needs at least ${NOTE_FIGURES_MIN} — draw it rather than describe it`);
+  if (figures.length < bar.figures) out.push(`${at}: ${figures.length} figures; a note needs at least ${bar.figures} — draw it rather than describe it`);
   const placed = new Set<string>();
   for (const name of figures) {
     if (placed.has(name)) out.push(`${at}: figure "${name}" is placed twice`);
-    else out.push(...noteFigureProblems(n.slug, name));
+    else {
+      const problems = noteFigureProblems(n.slug, name);
+      out.push(...problems);
+      const frames = problems.length ? null : noteFigure(n.slug, name)?.frames.length ?? null;
+      if (points && frames !== null && frames < NOTE_POINTS_BAR.framesMin) out.push(`${at}: figure "${name}" has ${frames} frame${frames === 1 ? "" : "s"}; every figure of a points note is a looping animation of at least ${NOTE_POINTS_BAR.framesMin}`);
+    }
     placed.add(name);
   }
   const lines = n.body.split("\n");

@@ -55,6 +55,8 @@ export interface NoteFigure {
   frames: number;
   /** Every step's sentence: the first is the caption under the box, all of them the closed "All n steps in words" list an animation carries (Chrome lays it out, and at 1920 px it can reach the first viewport). */
   captions: string[];
+  /** A points subject's figure (System Design): it loops with no controls, so the view draws none. */
+  loop?: boolean;
 }
 
 export type NoteBlock =
@@ -183,7 +185,7 @@ export function noteView(page: NotePage, syllabus: { subjects: SubjectCard[] }):
       });
     } else if (b.kind === "figure") {
       const w = page.figures[b.name];
-      if (w) blocks.push({ kind: "figure", ...figureOf(w) });
+      if (w) blocks.push({ kind: "figure", ...figureOf(w), ...(subject.format === "points" ? { loop: true } : {}) });
     }
     // A note has no topic walkthrough to place (NoteBody draws none).
   }
