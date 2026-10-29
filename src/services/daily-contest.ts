@@ -96,6 +96,11 @@ export async function ensureContest(date: string): Promise<ContestRow | null> {
   return cached(contestKey(date), 60_000, async () => {
     const existing = await findContest(date);
     if (existing) return existing;
+    // A day is created by being read while it is (nearly) current. Any
+    // older date that has no row had no contest, and creating one on read
+    // let an anonymous caller write a row for every day back to 0001-01-01
+    // (security audit 2026-10-30) — rows the next picks then read as "used".
+    if (date < addDays(todayUtc(), -1)) return null;
 
     const [catalogue, recent] = await Promise.all([
       getCatalogue(),
@@ -142,13 +147,42 @@ export const ENTRY_SELECT = {
 } as const;
 
 /** Opening the workspace on the contest day is entering the contest. Idempotent. */
+/**
+ * What an entry made late must already hold: the clock from the day's first
+ * submission on the problem, and every failed verdict before the first
+ * accept (a build failure is no wrong answer, as in recordContestSubmission).
+ * Nothing when there was no submission — the clock then starts at entry.
+ * `submissions` are the day's, oldest first.
+ */
+export function catchUpEntry(submissions: ReadonlyArray<{ submittedAt: Date; verdict: string }>): { startedAt: Date; wrongAttempts: number } | Record<string, never> {
+  const first = submissions[0];
+  if (!first) return {};
+  const firstAccept = submissions.findIndex((s) => s.verdict === "ACCEPTED");
+  const before = firstAccept === -1 ? submissions : submissions.slice(0, firstAccept);
+  return { startedAt: first.submittedAt, wrongAttempts: before.filter((s) => s.verdict !== "COMPILATION_ERROR").length };
+}
+
 export async function enterContest(userId: string, contest: ContestRow) {
   const key = { contestId: contest.id, userId };
   const existing = await prisma.dailyContestEntry.findUnique({ where: { contestId_userId: key }, select: ENTRY_SELECT });
   if (existing) return existing;
+  // The clock is the entry's, and the entry is the client's to make — the
+  // workspace calls this when the problem opens, but nothing made anyone
+  // call it first. Submitting before entering cost nothing (no entry, no
+  // record), so the hidden tests could be probed off the clock and the
+  // board's first place taken with a one-second solve (security audit
+  // 2026-10-30). An entry made after the day's first submission on the
+  // problem therefore starts at that submission, with every failed verdict
+  // since then already counted — what entering first would have recorded.
+  const earlier = await prisma.submission.findMany({
+    where: { userId, problemId: contest.problemId, submittedAt: { gte: new Date(contest.date + "T00:00:00Z") } },
+    orderBy: { submittedAt: "asc" },
+    select: { submittedAt: true, verdict: true },
+    take: 200,
+  });
   try {
     const created = await prisma.dailyContestEntry.create({
-      data: { ...key, date: contest.date },
+      data: { ...key, date: contest.date, ...catchUpEntry(earlier) },
       select: ENTRY_SELECT,
     });
     invalidate(boardKey(contest.id));

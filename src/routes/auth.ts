@@ -6,7 +6,7 @@ import { WELCOME, createNotificationOnce } from "../services/notifications.js";
 import { establishSession, clearSessionCookie, generateUsername } from "../lib/auth-session.js";
 import { JWT_SECRET } from "../lib/secrets.js";
 import { consumeChallenge, generateOtp, issueChallenge } from "../lib/otp-store.js";
-import { forgetSessions, revokeSession } from "../lib/session-revocation.js";
+import { closeSocketsOpenedBefore, forgetSessions, revokeSession } from "../lib/session-revocation.js";
 import { burnCompare, hashPassword, needsRehash, passwordProblem, verifyPassword } from "../lib/passwords.js";
 import { emailVerificationRequired, sendAuthCode, welcomeNewAccount } from "../lib/auth-mail.js";
 import { redeemHandoff } from "../lib/handoff-store.js";
@@ -554,6 +554,7 @@ router.post("/reset-password", async (req, res) => {
       select: { id: true },
     });
     forgetSessions(updated.id);
+    closeSocketsOpenedBefore(updated.id);
     // A registration that never entered its code, finished through a reset:
     // this is the account's first way in, so it is welcomed now.
     if (!account.emailVerified) welcomeNewAccount(account, "email");

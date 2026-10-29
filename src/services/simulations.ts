@@ -1,6 +1,6 @@
 import type { Prisma } from "@prisma/client";
 import { prisma } from "../lib/prisma.js";
-import { meteredCreate } from "./entitlements.js";
+import { SAT_ROUND, meteredCreate } from "./entitlements.js";
 import { DEFAULT_FOCUS, SIMULATIONS, builderRoundOf, simulationBySlug, type SimRound, type Simulation } from "../lib/simulations/index.js";
 import { canOpen, formatOf, hrModeOf, readRunRounds, runView, type RunRound, type RunView, type SessionFact, type SittingFact, type StoredRun } from "../lib/simulation-run.js";
 
@@ -306,4 +306,32 @@ export async function simulationCoversSitting(userId: string, testId: string, te
     if (!sat) return true;
   }
   return false;
+}
+
+/**
+ * Whether an interview round on a simulation's setup is the run's — paid for
+ * by the run's allowance, so the interview window does not count it.
+ *
+ * The interview twin of simulationCoversSitting. It used to be enough for the
+ * setup to name a run (`Boolean(simulationRunId)`), and nothing bounded how
+ * many rounds a setup could hold: one simulation run (one metered use) opened
+ * a setup that then took voice and written rounds without end, ended run or
+ * not (security audit 2026-10-30). Now the run must still be live and the
+ * setup may hold one sat round — `exceptSessionId` is the round being stamped
+ * right now, which the routes ask about after the stamp. A round past that
+ * falls back to the ordinary allowance, so an abandoned-at-the-door retry
+ * still costs nothing (an unsat round is not SAT_ROUND).
+ */
+export async function simulationCoversRound(userId: string, savedInterviewId: string, exceptSessionId?: string): Promise<boolean> {
+  const setup = await prisma.savedInterview.findFirst({
+    where: { id: savedInterviewId, userId },
+    select: { simulationRun: { select: { userId: true, endedAt: true } } },
+  });
+  const run = setup?.simulationRun;
+  if (!run || run.userId !== userId || run.endedAt) return false;
+  const sat = await prisma.mockInterviewSession.findFirst({
+    where: { savedInterviewId, ...(exceptSessionId ? { id: { not: exceptSessionId } } : {}), ...SAT_ROUND },
+    select: { id: true },
+  });
+  return !sat;
 }

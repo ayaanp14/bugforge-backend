@@ -67,7 +67,7 @@ import { securityHeaders } from "./middleware/security-headers.js";
 import { authLimiter, emailCheckLimiter, generalLimiter, loginAccountLimiter, otpRequestLimiter, registerLimiter } from "./middleware/rate-limit.js";
 import { prisma } from "./lib/prisma.js";
 import { ROBOTS_TXT } from "./lib/robots.js";
-import { setIo, duelRoom, USER_NAMESPACE, userRoom } from "./lib/realtime.js";
+import { setIo, setRoomEvictor, duelRoom, USER_NAMESPACE, userRoom } from "./lib/realtime.js";
 import { markActiveDuelsAbsent, setDuelPresence } from "./lib/duels.js";
 import { watchMatches } from "./services/match-watch.js";
 import { warmRedis, closeRedis } from "./lib/redis.js";
@@ -180,6 +180,7 @@ const io = new Server<DefaultEventsMap, DefaultEventsMap, DefaultEventsMap, Sock
 
 // Routes push duel updates through this handle rather than importing the server
 setIo(io);
+setRoomEvictor(unseatFromRoom);
 
 /**
  * Who is on the other end of a socket.
@@ -254,7 +255,25 @@ userNs.on("connection", (socket) => {
 });
 
 // Tracks socket.id -> { roomId, userId, isHost, slug } for room dissolution
-const socketMetadata = new Map<string, { roomId: string, userId: string, isHost: boolean, slug: string }>();
+// `name`/`avatar` are the participant's own, read at the seat: a chat line
+// is labelled with them, never with what the client says its name is.
+const socketMetadata = new Map<string, { roomId: string, userId: string, isHost: boolean, slug: string, name: string, avatar: string | null }>();
+
+/**
+ * Takes an account's sockets out of a room: off the channel, off the seat
+ * that admits their relays, off the call. The host's kick uses it, and a
+ * cohort owner removing a member does too (lib/realtime evictFromRoom).
+ * Declared here, used once the server exists — the function only runs later.
+ */
+async function unseatFromRoom(roomId: string, userId: string): Promise<void> {
+  const sockets = await io.in(`user_${userId}`).fetchSockets();
+  for (const s of sockets) {
+    s.leave(roomId);
+    const seat = socketMetadata.get(s.id);
+    if (seat && seat.roomId === roomId) socketMetadata.delete(s.id);
+  }
+  dropAudioParticipant(roomId, userId);
+}
 
 // Room cleanup timers to avoid closing on brief refresh
 const roomCleanupTimers = new Map<string, NodeJS.Timeout>();
@@ -541,7 +560,9 @@ io.on("connection", (socket) => {
         roomId,
         userId,
         isHost: participant.role === "host",
-        slug: room.problem.slug
+        slug: room.problem.slug,
+        name: participant.user?.name || participant.user?.username || "Anonymous",
+        avatar: participant.user?.avatar_url ?? null,
       });
 
       // Somebody is here: the close-on-empty timer, if one was armed by the
@@ -619,9 +640,19 @@ io.on("connection", (socket) => {
     if (!meta || !message || typeof message !== "object") return;
     const text = typeof message.text === "string" ? message.text.slice(0, 2000) : "";
     if (!text.trim()) return;
-    // The sender is stamped server-side so a message cannot be attributed to
-    // the partner; the display name still travels for rendering.
-    io.to(roomId).emit("chat-message", { ...message, text, senderId: meta.userId });
+    // Everything but the text is stamped server-side. The name and avatar
+    // used to travel from the client, so a participant could post as the
+    // host (or as "You" on the host's screen) with a tracking-pixel avatar,
+    // and a line with no `sender` broke every peer's chat (security audit
+    // 2026-10-30). Only the display timestamp is still the sender's string.
+    const timestamp = typeof message.timestamp === "string" ? message.timestamp.slice(0, 16) : "";
+    io.to(roomId).emit("chat-message", {
+      text,
+      timestamp,
+      sender: meta.name,
+      ...(meta.avatar ? { senderAvatar: meta.avatar } : {}),
+      senderId: meta.userId,
+    });
   });
 
   socket.on("typing", ({ roomId, name, isTyping }: { roomId: string, userId: string, name: string, isTyping: boolean }) => {
@@ -711,13 +742,7 @@ io.on("connection", (socket) => {
       // 4. Force their socket(s) to leave the room channel, and the call. The
       //    seat is revoked too, so the socket cannot keep relaying into the
       //    room it was just removed from.
-      const targetSockets = await io.in(`user_${targetUserId}`).fetchSockets();
-      for (const s of targetSockets) {
-        s.leave(roomId);
-        const seat = socketMetadata.get(s.id);
-        if (seat && seat.roomId === roomId) socketMetadata.delete(s.id);
-      }
-      dropAudioParticipant(roomId, targetUserId);
+      await unseatFromRoom(roomId, targetUserId);
 
       // 5. Update the room's participant list for everyone else
       const room = await prisma.pairRoom.findUnique({

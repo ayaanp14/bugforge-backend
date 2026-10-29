@@ -362,6 +362,19 @@ export const interviewLanguageLimiter = rateLimit({
   keyOf: (req) => (req as Request & { user?: { userId: string } }).user?.userId ?? addressOf(req),
 });
 
+/**
+ * Voice-round credentials (POST …/voice/session). Each is a Gemini Live token
+ * on the server's key, minted per connect and reconnect; a round on a bad
+ * network reconnects a handful of times. Before this the only bound was the
+ * round's clock, and a script could mint a hundred live tokens at its end.
+ */
+export const voiceCredentialLimiter = rateLimit({
+  windowMs: 10 * 60 * 1000,
+  max: 20,
+  message: "That is a lot of reconnects in a few minutes. Give it a moment and try again.",
+  keyOf: (req) => (req as Request & { user?: { userId: string } }).user?.userId ?? addressOf(req),
+});
+
 export const speechLimiter = rateLimit({
   windowMs: 60 * 60 * 1000,
   max: 120,

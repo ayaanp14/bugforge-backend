@@ -565,53 +565,68 @@ router.post("/:id/submit", requireAuth, executionLimiter, async (req, res) => {
       hiddenNames.has(r.name) ? { ...r, detail: r.passed ? "" : "Hidden test failed" } : r
     );
 
-    const firstSolve = result.verdict === "ACCEPTED" && !alreadySolved;
-    const awardedXp = firstSolve ? BUG_XP : 0;
+    // Settled again inside the payout below: the read above ran before the
+    // judge, so parallel submits of one fix all saw "not solved" and each paid.
+    let firstSolve = result.verdict === "ACCEPTED" && !alreadySolved;
 
     // The submission row, the XP and the stats land together or not at all.
     // Neither branch below reads the row back, and `editedFiles` is the
     // whole edited project — echoing it to the server and straight back again
     // was the largest thing on a hunt submit.
-    const submissionCreate = prisma.bugSubmission.create({
-      select: { id: true },
-      data: {
-        userId,
-        challengeId: challenge.id,
-        editedFiles: editedFiles ?? {},
-        verdict: result.verdict,
-        passedTests: result.passedTests,
-        totalTests: result.totalTests,
-        // Client-reported (there is no server-side timer for hunts), so at
-        // least bounded: a day, not whatever number was typed into the request.
-        timeTakenSecs:
-          typeof timeTakenSecs === "number" && Number.isFinite(timeTakenSecs)
-            ? Math.min(24 * 3600, Math.max(0, Math.round(timeTakenSecs)))
-            : null,
-      },
-    });
+    const submissionData = {
+      userId,
+      challengeId: challenge.id,
+      editedFiles: editedFiles ?? {},
+      verdict: result.verdict,
+      passedTests: result.passedTests,
+      totalTests: result.totalTests,
+      // Client-reported (there is no server-side timer for hunts), so at
+      // least bounded: a day, not whatever number was typed into the request.
+      timeTakenSecs:
+        typeof timeTakenSecs === "number" && Number.isFinite(timeTakenSecs)
+          ? Math.min(24 * 3600, Math.max(0, Math.round(timeTakenSecs)))
+          : null,
+    };
     let submissionId: string;
     if (firstSolve) {
-      const [created] = await prisma.$transaction([
-        submissionCreate,
-        prisma.user.update({
+      // There is no one-row-per-solve table for hunts (ProblemSolve and
+      // SqlSolve carry a unique pair; BugSubmission only an index), so the
+      // claim is held by the account's row: lock it, then ask again whether
+      // an accepted fix exists. Of N parallel submits of one fix the first
+      // pays and the rest see its row (security audit 2026-10-30). The
+      // locking read comes first, so the transaction's snapshot is taken
+      // after the lock is held and sees every committed fix.
+      const paid = await prisma.$transaction(async (tx) => {
+        await tx.$queryRaw`SELECT id FROM \`User\` WHERE id = ${userId} FOR UPDATE`;
+        const prior = await tx.bugSubmission.findFirst({
+          where: { userId, challengeId: challenge.id, verdict: "ACCEPTED" },
+          select: { id: true },
+        });
+        const created = await tx.bugSubmission.create({ select: { id: true }, data: submissionData });
+        if (prior) return { id: created.id, first: false };
+        await tx.user.update({
           where: { id: userId },
+          select: { id: true },
           data: {
             xp: { increment: BUG_XP },
             bugsXp: { increment: BUG_XP },
             // Rating climbs with every first fix — powers the tier bar
             rating: { increment: BUG_XP },
           },
-        }),
-        prisma.userStats.upsert({
+        });
+        await tx.userStats.upsert({
           where: { userId },
           update: { bugsFixed: { increment: 1 }, lastActive: new Date() },
           create: { userId, bugsFixed: 1 },
-        }),
-      ]);
-      submissionId = created.id;
+        });
+        return { id: created.id, first: true };
+      });
+      submissionId = paid.id;
+      firstSolve = paid.first;
     } else {
-      submissionId = (await submissionCreate).id;
+      submissionId = (await prisma.bugSubmission.create({ select: { id: true }, data: submissionData })).id;
     }
+    const awardedXp = firstSolve ? BUG_XP : 0;
 
     // The id is what the workspace's Code Review and Postmortem tabs read by.
     res.json({ ...result, results: publicResults, awardedXp, firstSolve, submissionId });

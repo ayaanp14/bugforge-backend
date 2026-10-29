@@ -201,6 +201,19 @@ export async function endOtherSessions(user: { id: string; email: string | null 
 }
 
 /**
+ * Closes every socket the account opened before now, here and on every
+ * instance — for a password reset, which ends every session without minting
+ * one (so endOtherSessions, above, never runs for it). Sockets authenticate
+ * only at their handshake, so before this a pair room or duel socket opened
+ * with the token a reset was meant to lock out kept relaying.
+ */
+export function closeSocketsOpenedBefore(userId: string, at: Date = new Date()): void {
+  const issuedAt = Math.floor(at.getTime() / 1000) + 1;
+  closeReplacedSockets(userId, issuedAt);
+  broadcastSignal(REPLACED_SIGNAL, `${userId}:${issuedAt}`);
+}
+
+/**
  * Ends one session — the token behind a sign-out — and leaves the account's
  * other devices alone. `expiresAt` is the token's own `exp` in seconds: the
  * row only needs to outlive the token. Signing out twice with the same token

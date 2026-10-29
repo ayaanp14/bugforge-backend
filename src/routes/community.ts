@@ -791,8 +791,11 @@ router.post("/posts", requireAuth, communityWriteLimiter, async (req, res) => {
     const ask = wantsQuestion && rawAsk && typeof rawAsk === "object"
       ? {
           kind: rawAsk.kind === "bug" ? "bug" : "problem",
-          slug: typeof rawAsk.slug === "string" ? rawAsk.slug : undefined,
-          challengeId: typeof rawAsk.challengeId === "string" ? rawAsk.challengeId : undefined,
+          // Held to the id grammars: the card links `/problems/<slug>`, and an
+          // unchecked string (any length, `../u/x`) pointed that link anywhere
+          // on the site under a title of the poster's choosing.
+          slug: typeof rawAsk.slug === "string" && /^[a-z0-9-]{1,120}$/.test(rawAsk.slug) ? rawAsk.slug : undefined,
+          challengeId: typeof rawAsk.challengeId === "string" && /^[A-Za-z0-9_-]{1,64}$/.test(rawAsk.challengeId) ? rawAsk.challengeId : undefined,
           title: typeof rawAsk.title === "string" ? rawAsk.title.slice(0, 160) : undefined,
         }
       : null;
@@ -1413,6 +1416,12 @@ router.post("/comments/:id/like", requireAuth, async (req, res) => {
   try {
     const userId = req.user!.userId;
     const commentId = String(req.params.id);
+    // The comment's post decides who may see it, as for every other
+    // interaction; this route alone skipped the gate (and an unknown id
+    // reached the insert and came back a foreign-key 500).
+    const comment = await prisma.postComment.findUnique({ where: { id: commentId }, select: { postId: true } });
+    if (!comment) return void res.status(404).json({ error: "Comment not found" });
+    if (!(await gatePost(res, comment.postId, userId))) return;
     // Same shape as a post like: read and count together, then one write.
     const [existing, likeCount] = await Promise.all([
       prisma.postCommentLike.findUnique({ where: { commentId_userId: { commentId, userId } }, select: { id: true } }),
@@ -1514,16 +1523,17 @@ router.post("/follow/:userId", requireAuth, async (req, res) => {
       // told, or it would keep serving the old count.
       void (async () => {
         const me = await prisma.user.findUnique({ where: { id: followerId }, select: { username: true, name: true } });
-        const notice = {
+        // notifyOnce, not a fresh row each time: unfollow + follow in a loop
+        // wrote a bell row and sent an OS push per pair, to anyone whose id
+        // is in an author payload (security audit 2026-10-30). Now an unread
+        // "new follower" is refreshed in place and only a new row pushes.
+        await notifyOnce({
           userId: followingId,
           type: "new_follower",
           title: "You have a new follower",
           body: `${me?.username || me?.name || "Someone"} started following you.`,
           href: "/community",
-        };
-        await prisma.notification.create({ data: notice });
-        invalidateUnread(followingId);
-        void pushNotifications([notice]);
+        });
       })().catch(() => {});
     }
 

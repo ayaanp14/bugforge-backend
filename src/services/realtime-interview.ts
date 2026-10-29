@@ -295,13 +295,16 @@ const gemini: RealtimeProvider = {
     /**
      * `newSessionExpireTime` is the window to *open* the socket; `expireTime`
      * is how long that socket may then keep sending. A minute to connect is
-     * plenty even on a slow phone, and thirty minutes of session covers a full
-     * round — a reconnect past that mints a fresh token, which is cheap.
+     * plenty even on a slow phone, and the session lasts the round's own
+     * length plus two minutes' grace, thirty at most — a reconnect past that
+     * mints a fresh token, which is cheap. It was a flat thirty minutes, so a
+     * ten-minute round's token outlived the round by twenty.
      */
+    const sessionMinutes = Math.min(30, Math.max(1, context.durationMinutes) + 2);
     const body = {
       uses: 1,
       newSessionExpireTime: new Date(now + 60_000).toISOString(),
-      expireTime: new Date(now + 30 * 60_000).toISOString(),
+      expireTime: new Date(now + sessionMinutes * 60_000).toISOString(),
     };
 
     const response = await fetch(`https://${GEMINI_HOST}/v1beta/auth_tokens`, {

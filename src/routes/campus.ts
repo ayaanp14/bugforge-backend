@@ -83,7 +83,8 @@ router.post("/apply", publicFormLimiter, optionalAuth, async (req: any, res) => 
       return res.status(409).json({
         error: "We already have an application from this email — we'll be in touch.",
         alreadyApplied: true,
-        status: existing.status,
+        // No `status`: the address is unverified, so anyone could type a
+        // classmate's and learn whether their application was rejected.
       });
     }
 

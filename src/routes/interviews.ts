@@ -23,7 +23,7 @@ import {
 import { realtimeProvider } from "../services/realtime-interview.js";
 import { cachedShared } from "../lib/cache.js";
 import { invalidateDashboard } from "../services/dashboard.js";
-import { runOfSession } from "../services/simulations.js";
+import { runOfSession, simulationCoversRound } from "../services/simulations.js";
 import {
   finalizeInterview,
   interviewHistoryKey,
@@ -148,6 +148,12 @@ router.patch("/:id", requireAuth, async (req: any, res) => {
 
     if (interview.userId !== req.user.userId) {
       return res.status(403).json({ error: "You do not have permission to update this configuration" });
+    }
+    // A company simulation's setup is the run's (services/simulations.ts):
+    // its role and round are the company's published process, and editing
+    // them turned the run's interview into any interview the caller liked.
+    if (interview.simulationRunId) {
+      return res.status(409).json({ error: "This setup belongs to a company simulation and cannot be edited." });
     }
 
     // Every turn of a round reads its configuration from this row, so editing
@@ -396,7 +402,8 @@ router.post("/start", requireAuth, async (req: any, res) => {
     // apart since 2026-10-15.
     const quota = await checkInterviewQuota(req.user.userId, req.user.email, mode, {
       useCredits: req.body?.useCredits === true,
-      simulation: Boolean(template.simulationRunId),
+      // Only the run's first sat round on a live run is the run's (simulationCoversRound).
+      simulation: template.simulationRunId ? await simulationCoversRound(req.user.userId, template.id) : false,
     });
     if (quota.denial) return res.status(402).json(quota.denial);
     // Past the plan's allowance on a roadmap credit: the row is stamped so the
@@ -827,7 +834,9 @@ router.post("/session/:sessionId/answer", requireAuth, async (req: any, res) => 
     // Every later turn skips all of it; the rows in hand say which this is.
     const firstAnswer = !alreadyAnswered && !session.questions.some((q) => q.userAnswer !== null);
     let onCredit = session.onCredit;
-    const simulation = Boolean(session.savedInterview.simulationRunId);
+    const simulation = firstAnswer && session.savedInterview.simulationRunId
+      ? await simulationCoversRound(req.user.userId, session.savedInterview.id, session.id)
+      : false;
     // A round opened on credits was priced at /start and is charged by
     // satRoundFits below; anything else asks the window again.
     if (firstAnswer && session.creditCost === null) {
@@ -852,7 +861,10 @@ router.post("/session/:sessionId/answer", requireAuth, async (req: any, res) => 
         select: { id: true },
       });
     }
-    if (firstAnswer && !(await satRoundFits(req.user.userId, req.user.email, { id: session.id, mode: "written", onCredit, creditCost: session.creditCost, simulation }))) {
+    // Asked again after the answer landed: two rounds of one setup racing
+    // for its one free sitting both see the other and both pay as usual.
+    const satOnRun = firstAnswer && simulation && (await simulationCoversRound(req.user.userId, session.savedInterview.id, session.id));
+    if (firstAnswer && !(await satRoundFits(req.user.userId, req.user.email, { id: session.id, mode: "written", onCredit, creditCost: session.creditCost, simulation: satOnRun }))) {
       await prisma.mockInterviewQuestion.update({
         where: { id: current.id },
         data: { userAnswer: null, status: "pending" },
@@ -1259,10 +1271,14 @@ router.post("/session/:sessionId/complete", requireAuth, async (req: any, res) =
   const { sessionId } = req.params;
 
   try {
-    let job = completing.get(sessionId);
+    // Keyed by caller as well: the ownership check runs inside the job, so a
+    // job shared by session id alone handed its owner's report to anyone who
+    // posted the same id while it ran.
+    const jobKey = `${req.user.userId}:${sessionId}`;
+    let job = completing.get(jobKey);
     if (!job) {
-      job = completeWrittenSession(sessionId, req.user.userId).finally(() => completing.delete(sessionId));
-      completing.set(sessionId, job);
+      job = completeWrittenSession(sessionId, req.user.userId).finally(() => completing.delete(jobKey));
+      completing.set(jobKey, job);
     }
     const outcome = await job;
     // The same payload as GET /session/:id, which the room seeds the report with — so with its run too.

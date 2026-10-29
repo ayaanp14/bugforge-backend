@@ -918,9 +918,13 @@ router.get("/attempts/:id/result", requireAuth, async (req, res) => {
   ]);
 
   // A passing sitting whose issue failed at grading (a deadlock, a restart)
-  // gets it now; issueCredential is idempotent.
+  // gets it now; issueCredential is idempotent. Only a sitting closed after
+  // the credential was last issued: reading an older, better sitting's
+  // result raised a credential renewed since by a weaker one back up, with
+  // a fresh validity, and no new sitting (security audit 2026-10-30).
+  const notOlder = !credential || (attempt.submittedAt !== null && attempt.submittedAt >= credential.issuedAt);
   let issued: IssueOutcome = null;
-  if (attempt.band && attempt.band !== "fail" && attempt.percent != null && (!credential || (credential.attemptId !== attempt.id && credential.percent < attempt.percent))) {
+  if (attempt.band && attempt.band !== "fail" && attempt.percent != null && notOlder && (!credential || (credential.attemptId !== attempt.id && credential.percent < attempt.percent))) {
     issued = await issueCredential({ userId: attempt.userId, test, attemptId: attempt.id, percent: attempt.percent, band: attempt.band as "pass" | "distinction" }).catch(() => null);
     if (issued) {
       credential = await prisma.skillCredential.findUnique({

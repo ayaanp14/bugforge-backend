@@ -287,8 +287,9 @@ router.post("/submit", requireAuth, executionLimiter, async (req, res) => {
       return;
     }
 
-    // The tensest moment in a duel: the other side is submitting.
-    void emitDuelActivity(userId, { problemId }, { type: "submitting" });
+    // The tensest moment in a duel: the other side is submitting. Not for a
+    // pairing submit, which never settles a duel (below).
+    if (!pairRoomId) void emitDuelActivity(userId, { problemId }, { type: "submitting" });
 
     // Both are only needed once there is a verdict, so they overlap the
     // engine run instead of queueing behind it.
@@ -414,10 +415,15 @@ router.post("/submit", requireAuth, executionLimiter, async (req, res) => {
     // this answers. Not for a pairing submit — the credit went to the room's
     // host, who is not the one sitting the contest.
     const [dailyContest, battles, knockout] = await Promise.all([
-      recordContestSubmission(userId, problemId, verdict, submission.submittedAt).catch((err) => {
-        console.error("POST /api/submit — daily contest failed:", err);
-        return null;
-      }),
+      // Nor the daily contest: the host never sat it — a partner's solve
+      // was the host's ranked result, and a stranger in a collaborative room
+      // could pile wrong attempts (+300 s each) on the host's entry.
+      pairRoomId
+        ? Promise.resolve(null)
+        : recordContestSubmission(userId, problemId, verdict, submission.submittedAt).catch((err) => {
+            console.error("POST /api/submit — daily contest failed:", err);
+            return null;
+          }),
       pairRoomId
         ? Promise.resolve(null)
         : recordTournamentSubmission(userId, problemId, submission.id, verdict, submission.submittedAt).catch((err) => {
@@ -457,9 +463,14 @@ router.post("/submit", requireAuth, executionLimiter, async (req, res) => {
 
     // If this solve landed inside a duel, the duel is decided right here — the
     // Duels never wait for the client to tell it what the judge already knows.
-    settleDuelForSubmission(userId, { problemId }, { verdict, passed: passedCases, total: totalCases }).catch((err) =>
-      console.error("POST /api/submit — duel settlement failed:", err),
-    );
+    // Never from a pairing submit: the verdict would be credited to the
+    // room's host, so a friend in a private room could win the host's duel
+    // (security audit 2026-10-30) — the same rule as the Battles calls above.
+    if (!pairRoomId) {
+      settleDuelForSubmission(userId, { problemId }, { verdict, passed: passedCases, total: totalCases }).catch((err) =>
+        console.error("POST /api/submit — duel settlement failed:", err),
+      );
+    }
 
     // "Why it failed" (services/submission-analysis.ts): the judge's own
     // explanation now, the model's review queued — never in a ranked event,

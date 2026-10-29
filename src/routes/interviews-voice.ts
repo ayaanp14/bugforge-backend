@@ -18,6 +18,8 @@ import { conversationLanguage, interviewerFor } from "../lib/interviewers.js";
 import { voiceDurationMinutes } from "../lib/interview-duration.js";
 import { finalizeInterview, invalidateInterviewHistory } from "../services/interview-completion.js";
 import { SAT_ROUND_REFUSAL, checkInterviewQuota, satRoundFits } from "../services/entitlements.js";
+import { simulationCoversRound } from "../services/simulations.js";
+import { voiceCredentialLimiter } from "../middleware/rate-limit.js";
 import { invalidateDashboard } from "../services/dashboard.js";
 import {
   buildContext,
@@ -51,11 +53,14 @@ type Guarded = {
     mode: string;
     questionBudget: number;
     startedAt: Date | null;
+    endedAt: Date | null;
+    completedAt: Date | null;
     durationLimitSec: number | null;
     voiceState: unknown;
     /** lib/plans credits the round was opened on (charged once sat). */
     creditCost: number | null;
     savedInterview: {
+      id: string;
       /** Set when the round is a company simulation's: the run paid for it. */
       simulationRunId: string | null;
       roleId: string;
@@ -76,11 +81,14 @@ const GUARD_SELECT = {
   mode: true,
   questionBudget: true,
   startedAt: true,
+  endedAt: true,
+  completedAt: true,
   durationLimitSec: true,
   voiceState: true,
   creditCost: true,
   savedInterview: {
     select: {
+      id: true,
       simulationRunId: true,
       roleId: true,
       roundId: true,
@@ -100,6 +108,9 @@ const GUARD_SELECT = {
  * credential for someone else's interview, so it is one function rather than
  * three copies.
  */
+/** How long a closed round still takes the leaving tab's last event flush. */
+const CLOSED_EVENT_GRACE_MS = 5 * 60_000;
+
 async function guard(
   sessionId: string,
   userId: string,
@@ -252,7 +263,7 @@ router.get("/session/:sessionId/voice", requireAuth, async (req: any, res) => {
  * Called once to connect and again on every reconnect — tokens are single-use
  * by design, so a resumed session needs a fresh one.
  */
-router.post("/session/:sessionId/voice/session", requireAuth, async (req: any, res) => {
+router.post("/session/:sessionId/voice/session", requireAuth, voiceCredentialLimiter, async (req: any, res) => {
   // Set once this request has stamped the round's start (below), so a failure
   // after it can take the stamp back.
   let claimedStart = false;
@@ -286,7 +297,9 @@ router.post("/session/:sessionId/voice/session", requireAuth, async (req: any, r
     if (!session.startedAt) {
       // A round of a company simulation is the run's; one opened on credits
       // was priced at /start and is charged by satRoundFits once stamped.
-      const simulation = Boolean(session.savedInterview.simulationRunId);
+      const simulation = session.savedInterview.simulationRunId
+        ? await simulationCoversRound(req.user.userId, session.savedInterview.id, session.id)
+        : false;
       const quota =
         session.creditCost === null
           ? await checkInterviewQuota(req.user.userId, req.user.email, "voice", { simulation })
@@ -299,7 +312,15 @@ router.post("/session/:sessionId/voice/session", requireAuth, async (req: any, r
       claimedStart = stamp.count === 1;
       if (
         claimedStart &&
-        !(await satRoundFits(req.user.userId, req.user.email, { id: session.id, mode: "voice", onCredit: quota.onCredit, creditCost: session.creditCost, simulation }))
+        // Asked again with the stamp in: two rounds of one setup racing for
+        // its one free sitting both see the other and both pay as usual.
+        !(await satRoundFits(req.user.userId, req.user.email, {
+          id: session.id,
+          mode: "voice",
+          onCredit: quota.onCredit,
+          creditCost: session.creditCost,
+          simulation: simulation && (await simulationCoversRound(req.user.userId, session.savedInterview.id, session.id)),
+        }))
       ) {
         await prisma.mockInterviewSession.updateMany({ where: { id: session.id }, data: { startedAt: null } });
         return res.status(402).json(SAT_ROUND_REFUSAL);
@@ -392,6 +413,13 @@ router.post("/session/:sessionId/voice/events", requireAuth, async (req: any, re
     if (!check.ok) return res.status(check.status).json({ error: check.error });
 
     const session = check.data;
+    // A closed round stays writable only for the last flush a leaving tab
+    // sends (keepalive, after End). Before, a finished round took batches
+    // for ever and an account could grow InterviewEvent without bound.
+    const closedAt = session.endedAt ?? session.completedAt;
+    if (session.status !== "started" && (!closedAt || Date.now() - closedAt.getTime() > CLOSED_EVENT_GRACE_MS)) {
+      return res.status(409).json({ error: "This interview was already closed" });
+    }
     const rows = sanitizeEvents(req.body?.events).map((event) => ({
       ...event,
       sessionId: session.id,
@@ -490,7 +518,13 @@ router.post("/session/:sessionId/voice/complete", requireAuth, async (req: any, 
 
     // Connected, said nothing, left. There is nothing to score and no report
     // worth writing, so it closes the same way an abandoned written round does.
-    if (spokenWords < MIN_CANDIDATE_WORDS) {
+    //
+    // Never connected (no `startedAt`) closes the same way, whatever the
+    // transcript says: the stamp at /voice/session is where a spoken round
+    // passes the allowance (satRoundFits), and the transcript is the
+    // client's to write — scoring one here let rounds opened ahead on one
+    // free slot all be "sat" and reported without ever being counted.
+    if (!session.startedAt || spokenWords < MIN_CANDIDATE_WORDS) {
       const abandoned = await prisma.mockInterviewSession.update({
         where: { id: session.id },
         data: { status: "abandoned", completedAt: endedAt, endedAt, durationSec },

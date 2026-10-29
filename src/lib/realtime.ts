@@ -19,6 +19,27 @@ export function emitToRoom(room: string, event: string, payload?: unknown): void
   }
 }
 
+/**
+ * Takes one account out of a pair room's live channel: its sockets leave
+ * the room, lose the seat that lets them relay into it, and drop off the
+ * call. The seats are index.ts's in-process state, so index.ts registers the
+ * function at boot (same reason as setIo); with none registered (tests,
+ * scripts) it does nothing.
+ */
+let roomEvictor: ((roomId: string, userId: string) => Promise<void>) | null = null;
+
+export function setRoomEvictor(fn: (roomId: string, userId: string) => Promise<void>): void {
+  roomEvictor = fn;
+}
+
+export async function evictFromRoom(roomId: string, userId: string): Promise<void> {
+  try {
+    await roomEvictor?.(roomId, userId);
+  } catch (err) {
+    console.error(`evictFromRoom(${roomId}) failed:`, err);
+  }
+}
+
 /** How many sockets are in a room right now; 0 when there is no server. */
 export async function socketsInRoom(room: string): Promise<number> {
   try {

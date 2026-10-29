@@ -1,9 +1,9 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "../lib/prisma.js";
 import { cached, invalidate } from "../lib/cache.js";
-import { socketsInRoom } from "../lib/realtime.js";
+import { emitToRoom, evictFromRoom, socketsInRoom } from "../lib/realtime.js";
 import { decodeCode } from "../lib/obfuscation.js";
-import { kickedUserIdsOf } from "../lib/room-kicks.js";
+import { addKickedUser, kickedUserIdsOf } from "../lib/room-kicks.js";
 import { SKILLS, skillNode } from "../lib/skill-graph.js";
 import {
   COHORT_LIMITS,
@@ -537,6 +537,29 @@ export async function removeMember(userId: string, id: string, memberId: string)
   const gone = await prisma.cohortMember.deleteMany({ where: { cohortId: id, userId: memberId } });
   if (!gone.count) throw new CohortError("They are not in this cohort.", 404);
   forgetCohort(id);
+  await unseatFromSessions(id, memberId);
+}
+
+/**
+ * Removed means out of the cohort's sessions too. The membership row was all
+ * removal deleted, so a removed member's seat in a live session room — and
+ * their open socket, admitted by that seat — kept reading and editing the
+ * group's buffer (security audit 2026-10-30). Their seats go, they are put on
+ * each room's kicked list (which the session join refuses), and their sockets
+ * are taken out of the rooms the way the host's kick does it.
+ */
+async function unseatFromSessions(cohortId: string, userId: string): Promise<void> {
+  const sessions = await prisma.cohortSession.findMany({
+    where: { cohortId, room: { status: { in: ["waiting", "active"] }, participants: { some: { userId } } } },
+    select: { roomId: true },
+    take: 20,
+  });
+  for (const { roomId } of sessions) {
+    await prisma.roomParticipant.deleteMany({ where: { roomId, userId } });
+    await addKickedUser(roomId, userId);
+    emitToRoom(`user_${userId}`, "kicked-from-room");
+    await evictFromRoom(roomId, userId);
+  }
 }
 
 export async function closeCohort(userId: string, id: string): Promise<void> {

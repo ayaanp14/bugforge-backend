@@ -274,6 +274,11 @@ export async function extractPdf(bytes: Uint8Array): Promise<ExtractedResume> {
     disableFontFace: true,
     // Recoverable font problems are noise here; errors still throw.
     verbosity: pdfjs.VerbosityLevel.ERRORS,
+    // The upload is a stranger's (the visitor check has no account), and
+    // pdf.js runs in this process. An image that declares 30000×30000 is
+    // otherwise decoded in full when the page's operators are read; a resume
+    // has no reason to hold one past 4 MP.
+    maxImageSize: 4096 * 4096,
   });
   let pageTexts: string[] = [];
   let multiColumn = false;
