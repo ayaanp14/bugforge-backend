@@ -2,6 +2,7 @@ import { Prisma } from "@prisma/client";
 import { tournamentsFor } from "./tournament-record.js";
 import { prisma } from "../lib/prisma.js";
 import { cached, cachedShared, invalidate, patchShared } from "../lib/cache.js";
+import { HONOUR_SELECT } from "../lib/honours.js";
 import { CALENDAR_UTC_OFFSET_MINUTES } from "../lib/clock.js";
 import { heatmapWindow, mergeHistory, sqlHistoryRow, sqlSolveTally, tallyHeatmap, type DayCountRow, type HistoryRow } from "../lib/activity.js";
 import { SQL_PROBLEMS } from "../lib/sql-problems/index.js";
@@ -480,6 +481,8 @@ async function queryLeaderboard(type: "combined" | "questions" | "bugs") {
         questionsXp: true,
         bugsXp: true,
         profileHidden: true,
+        // The founding member's frame and seal on the board's avatar (lib/honours).
+        ...HONOUR_SELECT,
         stats: { select: { problemsSolved: true, bugsFixed: true } },
         // Ten accounts' SQL solves, one slug per problem — counted below
         // against the problems the module still ships.
@@ -507,6 +510,7 @@ async function queryLeaderboard(type: "combined" | "questions" | "bugs") {
       sqlSolved: sqlSolveTally(u.sqlSolves).solved,
       // Still ranked; the row just does not link to a profile its owner hid.
       profileHidden: u.profileHidden,
+      honours: u.honours,
       hasValue,
     };
   });
