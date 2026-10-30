@@ -17,6 +17,7 @@ Signed-in pages (the dashboard shell — top navigation, Ctrl+K search, the bell
 - **Bug hunts**: `/bug-hunts`, `/bug-hunts/<language>` and `/bug-hunts/<layer>` (javascript, python, java; frontend, backend, database) and `/bug-hunts/<slug>`.
 - **Duels and pair rooms**: `/duels` and `/duels/<id>` · `/pair-mode` lobby and `/pair-room/<roomId>`.
 - **Mock interviews**: `/mock-interview` builder, `/mock-interview/session` (written room), `/mock-interview/voice` (voice room), `/mock-interview/history`, `/mock-interview/report/<sessionId>`.
+- **Companies**: `/companies` lists every company with what there is for it — its coding questions (the company page under Challenges), its placement test patterns, its recruitment or interview process and members' interview experiences — with a box to find one. It is in the Interview menu; no account needed.
 - **Company simulations**: `/simulations` (every company), `/simulations/<company>` (one company's rounds and your run). Both open without an account — anyone can read a company's rounds and sources; starting a run needs one.
 - **Aptitude**: `/aptitude`, `/aptitude/<section>` (quantitative, logical, verbal, data-interpretation, programming), `/aptitude/<topic>`, `/aptitude/q/<slug>`.
 - **Placement tests**: `/tests`, `/tests/<slug>`, `/tests/attempt/<attemptId>`, `/tests/result/<attemptId>`.

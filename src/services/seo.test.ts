@@ -52,6 +52,7 @@ test("every content page kind has a title with its intent first and the brand wh
   assert.equal(titles.simulation("TCS", "service", 4), "TCS Recruitment Process: 4 Rounds Explained — CodeKairo");
   assert.equal(titles.simulation("Google", "product", 5), "Google Interview Process: 5 Rounds Explained — CodeKairo");
   assert.equal(titles.simulations(25), "Recruitment Process of 25 Companies, Round by Round");
+  assert.equal(titles.companies(80), "Company-Wise Coding Questions & Placement Prep: 80 Companies");
   // A SQL problem's story title, then the technique searched for.
   assert.equal(titles.sqlProblem("Second Best Innings Score", "Window Functions"), "Second Best Innings Score — SQL Window Functions Problem");
   assert.equal(titles.bugHunt("The Checkout Meltdown", "JavaScript"), "The Checkout Meltdown — JavaScript Bug Hunt — CodeKairo");

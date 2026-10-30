@@ -58,6 +58,7 @@ import { patternsAskingTopic } from "./pattern-syllabus.js";
 import { companyKey } from "../lib/readiness.js";
 import { SIMULATIONS, simulationBySlug, simulationForCompany, type Simulation } from "../lib/simulations/index.js";
 import { simulationHub } from "./simulations.js";
+import { companyDirectory, type CompanyEntry } from "./company-directory.js";
 import { badgeById, badgeFeat, type BadgeTrack } from "../lib/badges.js";
 
 /**
@@ -273,6 +274,9 @@ export const titles = {
   simulation: (company: string, family: "service" | "product", rounds: number) =>
     branded(`${company} ${family === "service" ? "Recruitment" : "Interview"} Process: ${rounds} Rounds Explained`),
   simulations: (count: number) => branded(`Recruitment Process of ${count} Companies, Round by Round`),
+  // The company directory (/companies): "company wise coding questions", the
+  // search, then what else each row carries.
+  companies: (count: number) => branded(`Company-Wise Coding Questions & Placement Prep: ${count} Companies`),
   // A CS note and a notes subject: their authored search titles (lib/cs-notes).
   note: (searchTitle: string) => branded(searchTitle),
   noteSubject: (searchTitle: string) => branded(searchTitle),
@@ -417,6 +421,7 @@ const SECTION = {
   notes: { name: "CS notes", path: "/notes" },
   experiences: { name: "Interview experiences", path: "/interview-experiences" },
   simulations: { name: "Company simulations", path: "/simulations" },
+  companies: { name: "Companies", path: "/companies" },
 } as const;
 
 const HEAD_TTL_MS = 60 * 60 * 1000;
@@ -660,6 +665,7 @@ async function pageHead(path: string): Promise<PageHead | PageRedirect | null> {
   if ((m = /^\/notes\/([a-z0-9-]+)\/([a-z0-9][a-z0-9-]*)$/.exec(path))) return noteHead(m[1], m[2]);
   if (path === "/interview-experiences") return experiencesIndex();
   if (path === "/simulations") return simulationsIndex();
+  if (path === "/companies") return companiesIndex();
   if ((m = /^\/simulations\/([a-z0-9-]+)$/.exec(path))) return simulationHead(m[1]);
   if ((m = /^\/interview-experiences\/([a-z0-9-]+)\/([a-z0-9-]+)$/.exec(path))) return experienceHead(path, m[2]);
   return null;
@@ -2105,6 +2111,49 @@ function simulationsIndex(): PageHead {
   };
 }
 
+/* ── The company directory ─────────────────────────────────────────── */
+
+/** The /companies description; the SPA's CompaniesPage composes the same words. */
+export const companiesDescription = (count: number) =>
+  summarise(
+    `Company-wise coding questions for ${count} companies, from TCS and Infosys to Amazon and Google, each with its placement test pattern and recruitment process.`,
+  );
+
+/**
+ * /companies: every company the site has something for (services/company-directory),
+ * service companies, then product, then the rest — each with its coding questions,
+ * test patterns, process and experiences as links. Every fact is the linked page's.
+ */
+async function companiesIndex(): Promise<PageHead> {
+  const all = await companyDirectory();
+  const rowHtml = (c: CompanyEntry) => {
+    const links = [
+      c.hub ? link(`/challenges/company/${c.hub.slug}`, `${c.name} coding questions`) + ` (${plural(c.hub.count, "problem")})` : "",
+      ...c.tests.map((t) => link(`/tests/${t.slug}`, `${t.name} pattern`)),
+      c.simulation ? link(`/simulations/${c.simulation.slug}`, `${c.name} ${c.family === "service" ? "recruitment" : "interview"} process`) + ` (${plural(c.simulation.rounds, "round")})` : "",
+      c.experiences ? link(`/interview-experiences?company=${c.experiences.key}`, plural(c.experiences.count, "interview experience")) : "",
+    ].filter(Boolean);
+    return `<li><h3>${h(c.name)}</h3><p>${links.join(" · ")}</p></li>`;
+  };
+  const group = (title: string, id: string, list: CompanyEntry[]) => (list.length ? section(title, `<ul>${list.map(rowHtml).join("")}</ul>`, id) : "");
+  return {
+    path: "/companies",
+    title: titles.companies(all.length),
+    description: companiesDescription(all.length),
+    facts: {
+      count: all.length,
+      items: all.slice(0, 20).map((c) => ({ name: c.name, path: c.hub ? `/challenges/company/${c.hub.slug}` : c.simulation ? `/simulations/${c.simulation.slug}` : "/companies" })),
+      trail: [HOME, SECTION.companies],
+    },
+    content:
+      `<p>Each company with what there is to practise for it here: its tagged coding questions, its placement test pattern with a free mock, its recruitment or interview process round by round, and members' interview experiences.</p>` +
+      group("Service companies", "service", all.filter((c) => c.family === "service")) +
+      group("Product companies", "product", all.filter((c) => c.family === "product")) +
+      group("More companies", "more", all.filter((c) => !c.family)),
+    crumb: "Companies",
+  };
+}
+
 /* ── CS notes ───────────────────────────────────────────────────────── */
 
 /** The notes index's child list: each subject and its notes in reading order. */
@@ -2415,6 +2464,7 @@ export function sitemapXml(name: string): Promise<string | null> {
         // problems is served noindex (lib/problem-topics).
         const [hubs, bugs, counts] = await Promise.all([hubIndex(), bugHubIndex(), aptitudeCounts()]);
         const entries: Array<{ path: string }> = [
+          { path: "/companies" },
           ...hubs.topics.map((t) => ({ path: hubPath(t) })),
           ...hubs.companies.filter((c) => c.indexed).map((c) => ({ path: hubPath(c) })),
           ...[...bugs.languages, ...bugs.categories].filter((b) => b.count > 0).map((b) => ({ path: `/bug-hunts/${b.id}` })),

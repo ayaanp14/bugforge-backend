@@ -20,6 +20,7 @@ import analysisRouter from "./routes/analysis.js";
 import tutorRouter from "./routes/tutor.js";
 import readinessRouter from "./routes/readiness.js";
 import simulationsRouter from "./routes/simulations.js";
+import companiesRouter from "./routes/companies.js";
 import cohortsRouter from "./routes/cohorts.js";
 import { recoverSubmissionAnalyses } from "./services/submission-analysis.js";
 import { recoverBugCoach } from "./services/bug-coach.js";
@@ -1011,6 +1012,8 @@ app.use("/api/study-plans", studyPlansRouter);
 app.use("/api/sql", sqlRouter);
 // Company simulations: a company's online assessment and interview rounds as one run (services/simulations.ts).
 app.use("/api/simulations", simulationsRouter);
+// The company directory (/companies): each company's coding questions, tests, process and experiences in one list.
+app.use("/api/companies", companiesRouter);
 // Study cohorts: a shared weekly goal and sessions on the pair rooms (Phase 9, services/cohorts.ts).
 app.use("/api/cohorts", cohortsRouter);
 app.use("/api/goodies", goodiesRouter);
