@@ -289,6 +289,22 @@ function scorePost(
   );
 }
 
+/**
+ * "Trending" (the feed's third tab, 2026-10-30): the fortnight's public posts
+ * that people actually reacted to, ordered the way a "hot" list is — the
+ * engagement For you uses, divided by the post's age so a day-old post with
+ * ten likes outranks a fortnight-old one with twelve. Nothing about the
+ * viewer goes in, so it is the same list for everyone, visitors included. A
+ * post nobody has liked or answered is not trending, however new: that is
+ * what Latest is for.
+ */
+function trendScore(p: Candidate): number {
+  const reactions = p._count.likes + 2 * p._count.comments;
+  if (reactions === 0) return 0;
+  const ageHours = Math.max(0, (Date.now() - p.createdAt.getTime()) / 3600000);
+  return reactions / Math.pow(ageHours + 2, 0.8);
+}
+
 /** Feed diversity: never more than 2 consecutive posts by the same author. */
 function diversify<T extends { userId: string }>(sorted: T[]): T[] {
   const out: T[] = [];
@@ -604,18 +620,20 @@ router.get("/experiences/companies", browserCache(60, { shared: true }), async (
   res.json({ companies: await experienceCompanies() });
 });
 
-// GET /api/community/feed?scope=all|following&tag=react&skip=0&take=20
+// GET /api/community/feed?scope=all|following|saved|trending|latest&tag=react&skip=0&take=20
 //
 // Readable without a session (the community page is public — see the
 // frontend's lib/seo/routes): a visitor gets "For you" over the public
-// window with none of the viewer signals, and the scopes that are about
-// them — Following, Saved — ask for an account.
+// window with none of the viewer signals, Trending and Latest as everyone
+// does, and the scopes that are about them — Following, Saved — ask for an
+// account.
+const FEED_SCOPES = new Set(["all", "following", "saved", "trending", "latest"]);
 router.get("/feed", optionalAuth, async (req, res) => {
   try {
     const userId = req.user?.userId ?? null;
     const rawScope = String(req.query.scope ?? "all");
-    const scope = rawScope === "following" || rawScope === "saved" ? rawScope : "all";
-    if (scope !== "all" && !userId) {
+    const scope = FEED_SCOPES.has(rawScope) ? rawScope : "all";
+    if ((scope === "following" || scope === "saved") && !userId) {
       res.status(401).json({ error: "Sign in to see this feed." });
       return;
     }
@@ -638,6 +656,35 @@ router.get("/feed", optionalAuth, async (req, res) => {
 
     let page: Candidate[];
     let followingIds: string[];
+
+    if (scope === "trending") {
+      // The shared public window (cached 30 s), ranked on the posts alone.
+      // It ends with the window: an old post is not trending.
+      const ranked = diversify(
+        (await publicCandidates(tagFilter))
+          .map((p) => ({ p, s: trendScore(p) }))
+          .filter((x) => x.s > 0)
+          .sort((a, b) => b.s - a.s)
+          .map((x) => x.p)
+      );
+      const follows = userId ? await followingIdsOf(userId) : [];
+      res.json(await decoratePosts(userId, ranked.slice(skip, skip + take), new Set(follows)));
+      return;
+    }
+
+    if (scope === "latest") {
+      // Everything the reader may see, newest first — no ranking at all.
+      followingIds = userId ? await followingIdsOf(userId) : [];
+      page = (await prisma.post.findMany({
+        where: { AND: baseAndFor(followingIds) },
+        orderBy: { createdAt: "desc" },
+        skip,
+        take,
+        include: POST_INCLUDE,
+      })) as unknown as Candidate[];
+      res.json(await decoratePosts(userId, page, new Set(followingIds)));
+      return;
+    }
 
     if (userId === null) {
       // A visitor: the shared public window, ranked and decorated once per
