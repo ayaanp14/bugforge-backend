@@ -1264,7 +1264,7 @@ export const BINARYSEARCH4_PROBLEMS: CatalogProblem[] = [
       slug: "maximum-candies-allocated-to-k-children",
       title: "Maximum Candies Allocated to K Children",
       difficulty: "MEDIUM" as const,
-      tags: ["Array", "Binary Search", "Amazon", "Google", "Cred"],
+      tags: ["Array", "Binary Search", "Amazon", "Google", "CRED"],
       signature: { funcName: "maximumCandies", params: [{ name: "candies", type: "int[]" as const }, { name: "k", type: "int" as const }], returns: "int" as const },
       description: describe(
         "Pile `i` holds `candies[i]` candies. You may split a pile into any number of **sub-piles**, but you may not merge piles.\n\nEvery one of the `k` children must get the **same** number of candies, all from a single pile (leftovers may be discarded). Return the maximum number each child can get, or `0` if it is impossible.",

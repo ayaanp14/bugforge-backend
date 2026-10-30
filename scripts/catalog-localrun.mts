@@ -72,10 +72,10 @@ const TOPIC_TAGS = new Set([
 const COMPANY_TAGS = new Set([
   "Amazon", "Google", "Adobe", "Microsoft", "Meta", "Apple", "Bloomberg", "Uber", "Airbnb", "LinkedIn",
   "Goldman Sachs", "Palantir", "Two Sigma", "Twitter", "Snapchat", "Dropbox", "Walmart", "Yahoo", "Hulu",
-  "Indeed", "Yelp", "LiveRamp", "Capital One", "Epic Systems", "Riot Games", "Mathworks", "Flipkart", "TCS",
+  "Indeed", "Yelp", "LiveRamp", "Capital One", "Epic Systems", "Riot Games", "MathWorks", "Flipkart", "TCS",
   "Infosys", "Wipro", "Capgemini", "Cognizant", "Accenture", "Zoho", "HCL", "Tech Mahindra", "Mphasis",
   "Virtusa", "Mindtree", "Oracle", "Salesforce", "Samsung", "Atlassian", "Rubrik", "Intuit", "Arcesium",
-  "Databricks", "Morgan Stanley", "Nutanix", "Sprinklr", "Spotify", "Paytm", "Swiggy", "Cred", "Zomato",
+  "Databricks", "Morgan Stanley", "Nutanix", "Sprinklr", "Spotify", "Paytm", "Swiggy", "CRED", "Zomato",
   "Directi", "Ola", "Razorpay", "Freshworks", "Myntra", "Dream11", "Hotstar", "PhonePe",
 ]);
 

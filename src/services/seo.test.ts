@@ -45,7 +45,15 @@ test("one long sentence is cut on a word with an ellipsis", () => {
 test("every content page kind has a title with its intent first and the brand where it fits", () => {
   assert.equal(titles.problem("Two Sum", "Easy"), "Two Sum — Easy Problem & Solution — CodeKairo");
   assert.equal(titles.topicHub("Arrays", 343), "Arrays Coding Problems: 343 Questions with Solutions");
-  assert.equal(titles.companyHub("TCS", 57), "TCS Coding Interview Questions: 57 Tagged Problems");
+  assert.equal(titles.companyHub("Google", 57), "Google Coding Interview Questions: 57 Tagged Problems");
+  // A service company hires through an online test: "accenture coding questions" is the search.
+  assert.equal(titles.companyHub("Accenture", 29, true), "Accenture Coding Questions: 29 Problems with Solutions");
+  // A company's process, as searched: a service company recruits, a product company interviews.
+  assert.equal(titles.simulation("TCS", "service", 4), "TCS Recruitment Process: 4 Rounds Explained — CodeKairo");
+  assert.equal(titles.simulation("Google", "product", 5), "Google Interview Process: 5 Rounds Explained — CodeKairo");
+  assert.equal(titles.simulations(25), "Recruitment Process of 25 Companies, Round by Round");
+  // A SQL problem's story title, then the technique searched for.
+  assert.equal(titles.sqlProblem("Second Best Innings Score", "Window Functions"), "Second Best Innings Score — SQL Window Functions Problem");
   assert.equal(titles.bugHunt("The Checkout Meltdown", "JavaScript"), "The Checkout Meltdown — JavaScript Bug Hunt — CodeKairo");
   assert.equal(titles.bugHub("JavaScript", 105, "language"), "JavaScript Debugging Practice: 105 Bug Hunts on Real Code");
   assert.equal(titles.bugHub("Database", 29, "category"), "Database Bug Hunts: 29 Debugging Challenges — CodeKairo");

@@ -494,7 +494,8 @@ export function companyHub(tag: string): CompanyHub | undefined {
 
 /** Where a renamed company's old hub address now lives (COMPANY_RENAMED): "facebook" → "meta". */
 export function renamedCompanyHubSlug(slug: string): string | undefined {
-  for (const [from, to] of Object.entries(COMPANY_RENAMED)) if (slugify(from) === slug) return slugify(to);
+  // A rename that keeps the slug (Cred → CRED) moves nothing: answering it would redirect a hub to itself.
+  for (const [from, to] of Object.entries(COMPANY_RENAMED)) if (slugify(from) === slug && slugify(to) !== slug) return slugify(to);
   return undefined;
 }
 

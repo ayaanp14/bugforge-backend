@@ -9,6 +9,7 @@ import { APTITUDE_ESSENTIALS } from "../lib/aptitude-essentials.js";
 import { APTITUDE_SECTION_GUIDES } from "../lib/aptitude-section-guides.js";
 import { questionStem } from "../services/seo.js";
 import { notePlanActivity } from "../services/onboarding-plan.js";
+import { patternsAskingTopic } from "../services/pattern-syllabus.js";
 
 /**
  * Aptitude preparation.
@@ -187,6 +188,9 @@ router.get("/questions", optionalAuth, browserCache(120), async (req: any, res) 
       // The topic's formula/rules sheet (lib/aptitude-essentials) rides with
       // its first page of questions: the page shows it above the list.
       topic: { ...topic, ...(APTITUDE_ESSENTIALS[topic.id] ? { essentials: APTITUDE_ESSENTIALS[topic.id] } : {}) },
+      // The placement patterns whose papers draw this topic (services/pattern-syllabus) — the
+      // page's "Asked in" strip; the edge HTML lists the same.
+      patterns: await patternsAskingTopic(topic.id),
       category: APTITUDE_CATEGORIES.find((category) => category.id === topic.category) ?? null,
       questions: rows.map((row) => {
         const entry = byQuestion.get(row.id);

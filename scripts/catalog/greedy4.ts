@@ -1652,7 +1652,7 @@ export const GREEDY4_PROBLEMS: CatalogProblem[] = [
       slug: "minimum-operations-to-make-median-of-array-equal-to-k",
       title: "Minimum Operations to Make Median of Array Equal to K",
       difficulty: "MEDIUM" as const,
-      tags: ["Array", "Greedy", "Sorting", "Amazon", "Google", "Cred"],
+      tags: ["Array", "Greedy", "Sorting", "Amazon", "Google", "CRED"],
       signature: { funcName: "minOperationsToMakeMedianK", params: [{ name: "nums", type: "int[]" as const }, { name: "k", type: "int" as const }], returns: "int" as const },
       description: describe(
         "One operation increases or decreases any element by 1. The **median** is the middle element after sorting; with an even length it is the **larger** of the two middles.\n\nReturn the minimum number of operations to make the median of `nums` equal to `k`.",

@@ -343,7 +343,7 @@ export const HASHING3_PROBLEMS: CatalogProblem[] = [
       slug: "keyboard-row",
       title: "Keyboard Row",
       difficulty: "EASY" as const,
-      tags: ["Array", "String", "Hash Table", "Amazon", "Mathworks"],
+      tags: ["Array", "String", "Hash Table", "Amazon", "MathWorks"],
       signature: { funcName: "findWords", params: [{ name: "words", type: "string[]" as const }], returns: "string[]" as const },
       description: describe(
         "Given an array of strings `words`, return those that can be typed using letters from **only one row** of an American QWERTY keyboard.\n\nThe rows are:\n\n```\nqwertyuiop\nasdfghjkl\nzxcvbnm\n```\n\nCase is ignored. Return the qualifying words in their original order.",

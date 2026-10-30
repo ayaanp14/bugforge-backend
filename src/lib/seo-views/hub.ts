@@ -19,6 +19,8 @@ import { itemSvg } from "../walkthroughs/svg.js";
 export interface HubView {
   kind: "topic-hub" | "company-hub";
   label: string;
+  /** A service company's hub (its simulation's family): its h1 says "coding questions", not "coding interview questions". */
+  service?: boolean;
   /** The whole blurb; the page keeps its first sentence under the h1 (a topic only) — frontend lib/seo/summary firstSentence. */
   blurb: string;
   lesson: { slug: string; title: string } | null;
@@ -63,6 +65,7 @@ export function hubView(page: HubPage): HubView {
   return {
     kind: page.kind === "topic" ? "topic-hub" : "company-hub",
     label: page.label,
+    service: page.simulation?.family === "service",
     blurb: page.blurb,
     lesson: page.lesson,
     count: page.count,

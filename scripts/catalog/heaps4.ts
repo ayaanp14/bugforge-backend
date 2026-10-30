@@ -407,7 +407,7 @@ export const HEAPS4_PROBLEMS: CatalogProblem[] = [
       slug: "the-number-of-the-smallest-unoccupied-chair",
       title: "The Number of the Smallest Unoccupied Chair",
       difficulty: "MEDIUM" as const,
-      tags: ["Array", "Hash Table", "Heap (Priority Queue)", "Ordered Set", "Amazon", "Google", "Cred"],
+      tags: ["Array", "Hash Table", "Heap (Priority Queue)", "Ordered Set", "Amazon", "Google", "CRED"],
       signature: { funcName: "smallestChair", params: [{ name: "times", type: "int[][]" as const }, { name: "targetFriend", type: "int" as const }], returns: "int" as const },
       description: describe(
         "A party has infinitely many chairs numbered `0, 1, 2, …`. `times[i] = [arrival, leaving]` gives when friend `i` arrives and leaves; all the arrival times are different.\n\nOn arrival a friend takes the **smallest-numbered unoccupied** chair. A chair freed at moment `t` may be taken by someone arriving at that same moment `t`. Return the chair number that friend `targetFriend` sits on.",
@@ -968,7 +968,7 @@ export const HEAPS4_PROBLEMS: CatalogProblem[] = [
       slug: "total-cost-to-hire-k-workers",
       title: "Total Cost to Hire K Workers",
       difficulty: "MEDIUM" as const,
-      tags: ["Array", "Two Pointers", "Simulation", "Heap (Priority Queue)", "Amazon", "Google", "Cred"],
+      tags: ["Array", "Two Pointers", "Simulation", "Heap (Priority Queue)", "Amazon", "Google", "CRED"],
       signature: { funcName: "totalCost", params: [{ name: "costs", type: "int[]" as const }, { name: "k", type: "int" as const }, { name: "candidates", type: "int" as const }], returns: "int" as const },
       description: describe(
         "`costs[i]` is what it costs to hire the `i`-th worker. You run `k` hiring sessions, and in each one you consider the **first `candidates`** and the **last `candidates`** workers still unhired.\n\nYou hire the cheapest among those considered, breaking ties by the **smaller index**. If fewer than `2 * candidates` workers remain, all of them are considered. Return the total cost.",

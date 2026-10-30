@@ -21,8 +21,10 @@ import { simulationForCompany } from "../lib/simulations/index.js";
 /** The company's simulation, for a pattern's pages to point at (lib/simulations): the test is its first round. */
 const companySimulationOf = (company: string) => {
   const sim = simulationForCompany(company);
-  return sim ? { slug: sim.slug, company: sim.company } : null;
+  return sim ? { slug: sim.slug, company: sim.company, family: sim.family } : null;
 };
+import { sectionTopics } from "../lib/pattern-syllabus.js";
+import { simulationHub } from "../services/simulations.js";
 import { BREACH_LIMIT, breachCausesOf, isMobileClient, isSignalKind, recordBreach, SIGNAL_CAP, type Signals } from "../lib/skill-tests.js";
 
 /**
@@ -356,7 +358,7 @@ router.get("/:slug", optionalAuth, cacheWhenAnonymous, async (req: any, res) => 
   try {
     const test = await testPattern(req.params.slug);
     if (!test) return res.status(404).json({ error: "Test not found" });
-    const samples = await testSamples(String(req.params.slug));
+    const [samples, companyHub] = await Promise.all([testSamples(String(req.params.slug)), simulationHub(test.company)]);
 
     const userId: string | null = req.user?.userId ?? null;
     const attempts = userId
@@ -371,6 +373,8 @@ router.get("/:slug", optionalAuth, cacheWhenAnonymous, async (req: any, res) => 
     res.json({
       // The company's simulation — this test, then its interview rounds — for the page to offer (static: safe under cacheWhenAnonymous).
       simulation: companySimulationOf(test.company),
+      // The company's tagged coding problems (its catalogue hub), linked from the syllabus; null when it tags none.
+      companyHub,
       test: {
         ...testSummary(test),
         instructions: test.instructions,
@@ -415,6 +419,9 @@ router.get("/:slug", optionalAuth, cacheWhenAnonymous, async (req: any, res) => 
                     )
                   ),
                 ],
+            // The aptitude topics a multiple-choice section draws, with their pages
+            // (lib/pattern-syllabus): the page links each, so the syllabus is a way in.
+            aptitudeTopics: coding ? [] : sectionTopics(rules),
           };
         }),
       },

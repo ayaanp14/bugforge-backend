@@ -4,7 +4,7 @@
  * (public company-wise exports, 2021–2025), GeeksforGeeks' company tags, and for
  * Hotstar interview-experience reports. Service companies (Tech Mahindra, Mphasis,
  * Virtusa, HCL, Mindtree): their LeetCode tags plus the fundamentals their coding
- * rounds are reported to ask. Riot Games, Cred and LiveRamp stay under ten.
+ * rounds are reported to ask. Riot Games, CRED and LiveRamp stay under ten.
  * index.ts merges these into each problem's tags;
  * scripts/apply-company-coverage.ts writes them to a database without
  * reseeding cases.
@@ -81,7 +81,7 @@ export const COMPANY_COVERAGE: Readonly<Record<string, readonly string[]>> = {
   "Riot Games": [
     "sudoku-solver", "game-of-life", "valid-sudoku", "divide-two-integers", "valid-parentheses",
   ],
-  Mathworks: [
+  MathWorks: [
     "total-cost-to-hire-k-workers", "maximum-number-of-alloys", "reshape-the-matrix",
     "count-anagrams", "remove-colored-pieces-if-both-neighbors-are-the-same-color",
     "last-substring-in-lexicographical-order", "minimum-cost-tree-from-leaf-values",
@@ -256,7 +256,7 @@ export const COMPANY_COVERAGE: Readonly<Record<string, readonly string[]>> = {
     "rotate-array", "first-unique-character-in-a-string", "unique-paths", "smallest-good-base",
     "excel-sheet-column-number", "container-with-most-water",
   ],
-  Cred: [
+  CRED: [
     "longest-repeating-character-replacement", "count-elements-with-maximum-frequency",
   ],
   Zomato: [

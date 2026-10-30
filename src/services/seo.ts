@@ -52,6 +52,12 @@ import { NOTE_SUBJECTS, subjectByKey } from "../lib/cs-notes.js";
 import { notePage, notesSitemapEntries, notesSyllabus } from "./cs-notes.js";
 import { experienceById, experienceCompanies, experienceIdOf, experienceList, experienceSitemapEntries, type ExperienceRow } from "./interview-experiences.js";
 import { slugify } from "../lib/slug.js";
+import { sectionTopics } from "../lib/pattern-syllabus.js";
+import type { DrawRule } from "../lib/mock-tests.js";
+import { patternsAskingTopic } from "./pattern-syllabus.js";
+import { companyKey } from "../lib/readiness.js";
+import { SIMULATIONS, simulationBySlug, simulationForCompany, type Simulation } from "../lib/simulations/index.js";
+import { simulationHub } from "./simulations.js";
 import { badgeById, badgeFeat, type BadgeTrack } from "../lib/badges.js";
 
 /**
@@ -220,7 +226,15 @@ const branded = (core: string): string => {
 export const titles = {
   problem: (title: string, difficulty: string) => branded(`${title} — ${difficulty} Problem & Solution`),
   topicHub: (label: string, count: number) => branded(`${label} Coding Problems: ${count} ${count === 1 ? "Question" : "Questions"} with Solutions`),
-  companyHub: (label: string, count: number) => branded(`${label} Coding Interview Questions: ${count} Tagged ${count === 1 ? "Problem" : "Problems"}`),
+  // A service company (its simulation's family) hires through an online test,
+  // and "accenture coding questions" is what is searched — not "interview"
+  // (2026-10-30). A product company keeps "Coding Interview Questions".
+  companyHub: (label: string, count: number, service = false) =>
+    branded(
+      service
+        ? `${label} Coding Questions: ${count} ${count === 1 ? "Problem" : "Problems"} with Solutions`
+        : `${label} Coding Interview Questions: ${count} Tagged ${count === 1 ? "Problem" : "Problems"}`,
+    ),
   bugHunt: (title: string, language: string) => branded(`${title} — ${language} Bug Hunt`),
   bugHub: (label: string, count: number, kind: "language" | "category") =>
     branded(kind === "language" ? `${label} Debugging Practice: ${count} Bug Hunts on Real Code` : `${label} Bug Hunts: ${count} Debugging Challenges`),
@@ -249,7 +263,16 @@ export const titles = {
   // hub's "… Coding Problems", so the two pages never compete for a query.
   roadmapLesson: (searchTitle: string) => branded(searchTitle),
   // A SQL problem (/sql/<slug>): its title and the kind of page, like a coding problem's.
-  sqlProblem: (title: string, difficulty: string) => branded(`${title} — SQL ${difficulty} Problem`),
+  // The technique, not the difficulty, after the name (2026-10-30): the titles
+  // are stories ("Bowlers Who Caught Their Own Delivery") and what a searcher
+  // types is the technique — "sql window functions problem", "sql joins question".
+  sqlProblem: (title: string, topic: string) => branded(`${title} — SQL ${topic} Problem`),
+  // A company simulation (/simulations/<slug>): "tcs recruitment process",
+  // "google interview process" — a service company recruits through a drive,
+  // a product company interviews. The round count tells two results apart.
+  simulation: (company: string, family: "service" | "product", rounds: number) =>
+    branded(`${company} ${family === "service" ? "Recruitment" : "Interview"} Process: ${rounds} Rounds Explained`),
+  simulations: (count: number) => branded(`Recruitment Process of ${count} Companies, Round by Round`),
   // A CS note and a notes subject: their authored search titles (lib/cs-notes).
   note: (searchTitle: string) => branded(searchTitle),
   noteSubject: (searchTitle: string) => branded(searchTitle),
@@ -393,6 +416,7 @@ const SECTION = {
   sql: { name: "SQL problems", path: "/sql" },
   notes: { name: "CS notes", path: "/notes" },
   experiences: { name: "Interview experiences", path: "/interview-experiences" },
+  simulations: { name: "Company simulations", path: "/simulations" },
 } as const;
 
 const HEAD_TTL_MS = 60 * 60 * 1000;
@@ -635,6 +659,8 @@ async function pageHead(path: string): Promise<PageHead | PageRedirect | null> {
   if ((m = /^\/notes\/([a-z0-9-]+)$/.exec(path))) return noteSubjectHead(m[1]);
   if ((m = /^\/notes\/([a-z0-9-]+)\/([a-z0-9][a-z0-9-]*)$/.exec(path))) return noteHead(m[1], m[2]);
   if (path === "/interview-experiences") return experiencesIndex();
+  if (path === "/simulations") return simulationsIndex();
+  if ((m = /^\/simulations\/([a-z0-9-]+)$/.exec(path))) return simulationHead(m[1]);
   if ((m = /^\/interview-experiences\/([a-z0-9-]+)\/([a-z0-9-]+)$/.exec(path))) return experienceHead(path, m[2]);
   return null;
 }
@@ -975,6 +1001,11 @@ async function hubHead(kind: "topic" | "company", slug: string): Promise<PageHea
     (page.patterns.length
       ? section(`${page.label} test patterns`, linkList(page.patterns.map((t) => ({ href: `/tests/${t.slug}`, label: t.name, note: "pattern guide and timed mock" }))), "patterns")
       : "") +
+    // The whole process, round by round (lib/simulations): the page a search for
+    // "<company> recruitment process" lands on, linked from the company's own hub.
+    (page.simulation
+      ? `<p>${link(`/simulations/${page.simulation.slug}`, `The ${page.label} ${page.simulation.family === "service" ? "recruitment" : "interview"} process, round by round`)}</p>`
+      : "") +
     section(`All ${noun}`, levels.join(""), "problems") +
     (kind === "company" ? await companyExperiencesHtml(page.label, slug) : "") +
     links +
@@ -983,7 +1014,7 @@ async function hubHead(kind: "topic" | "company", slug: string): Promise<PageHea
   return {
     path,
     ...(page.indexed ? {} : { noindex: true }),
-    title: kind === "topic" ? titles.topicHub(page.label, page.count) : titles.companyHub(page.label, page.count),
+    title: kind === "topic" ? titles.topicHub(page.label, page.count) : titles.companyHub(page.label, page.count, page.simulation?.family === "service"),
     // Composed descriptions go through summarise() for its 158-character
     // cap, which drops whole trailing sentences — so each puts what the
     // page is first and the lines it can lose last (2026-09-30: 90 of 91
@@ -1372,12 +1403,14 @@ function aptitudeTopicHead(topicId: string): Promise<PageHead | null> {
   const topic = aptitudeTopic(topicId);
   if (!topic) return Promise.resolve(null);
   // v4: the static-first view (tags and time targets joined the select).
-  return cached(`seo:head:aptitude-topic:v4:${topicId}`, HEAD_TTL_MS, async () => {
+  return cached(`seo:head:aptitude-topic:v5:${topicId}`, HEAD_TTL_MS, async () => {
     // Every question of the topic as a link — the crawl path into the bank.
-    const [rows, counts] = await Promise.all([
+    const [rows, counts, patterns] = await Promise.all([
       prisma.aptitudeQuestion.findMany({ where: { topic: topicId }, select: { slug: true, title: true, difficulty: true, prompt: true, tags: true, timeTargetSec: true }, orderBy: { orderIndex: "asc" }, take: 500 }),
       // The section's other topics' counts, for the view's "More …" strip (the cached grouped read the section heads share).
       aptitudeCounts(),
+      // The placement patterns whose papers draw this topic — the page's "Asked in" strip.
+      patternsAskingTopic(topicId),
     ]);
     const category = aptitudeCategory(topic.category);
     const categoryLabel = category?.label ?? topic.category;
@@ -1406,6 +1439,7 @@ function aptitudeTopicHead(topicId: string): Promise<PageHead | null> {
         `<ol>${rows.map((r) => `<li>${link(`/aptitude/q/${r.slug}`, r.title)} <span class="note">${h(titleCase(r.difficulty))}</span><br>${h(questionStem(r.prompt))}</li>`).join("")}</ol>`,
         "questions",
       ) +
+      (patterns.length ? section(`Placement tests that ask ${topic.label.toLowerCase()}`, linkList(patterns.map((t) => ({ href: `/tests/${t.slug}`, label: t.name, note: t.company }))), "patterns") : "") +
       (siblings.length ? section(`More ${categoryLabel.toLowerCase()} topics`, linkList(siblings.map((t) => ({ href: `/aptitude/${t.id}`, label: t.label }))), "related") : "");
     return {
       path,
@@ -1513,7 +1547,7 @@ async function aptitudeIndex(): Promise<PageHead> {
 /* ── Placement tests ─────────────────────────────────────────────── */
 
 function testHead(slug: string): Promise<PageHead | null> {
-  return cached(`seo:head:test:v4:${slug}`, HEAD_TTL_MS, async () => {
+  return cached(`seo:head:test:v5:${slug}`, HEAD_TTL_MS, async () => {
     const t = await prisma.mockTest.findFirst({
       where: { slug, published: true },
       select: {
@@ -1525,10 +1559,21 @@ function testHead(slug: string): Promise<PageHead | null> {
     const path = `/tests/${slug}`;
     const minutes = Math.round(t.durationSec / 60);
     const trail: Crumb[] = [HOME, SECTION.tests, { name: t.name, path }];
-    const [others, samples] = await Promise.all([
+    const [others, samples, hubs] = await Promise.all([
       prisma.mockTest.findMany({ where: { published: true, family: t.family, NOT: { slug } }, select: { slug: true, name: true, company: true }, orderBy: { orderIndex: "asc" }, take: 8 }),
       testSamples(slug),
+      hubIndex(),
     ]);
+    // The company's catalogue hub (its tagged coding problems) and its simulation, when it has them.
+    const companyHubOf = hubs.companies.find((c) => companyKey(c.label) === companyKey(t.company)) ?? null;
+    const sim = simulationForCompany(t.company);
+    // What each multiple-choice section draws, as links into the aptitude bank
+    // (lib/pattern-syllabus) — the "<pattern> syllabus" a search asks for.
+    const syllabus = t.sections
+      .filter((s) => s.kind !== "coding")
+      .map((s) => ({ name: s.name, topics: sectionTopics((s.blueprint ?? []) as unknown as DrawRule[]) }))
+      .filter((s) => s.topics.length);
+    const coding = t.sections.some((s) => s.kind === "coding");
     const letter = (i: number) => String.fromCharCode(65 + i);
     // A dozen questions of the paper's kind, each with its answer behind a
     // disclosure (services/test-samples) — the page draws the same list.
@@ -1552,14 +1597,32 @@ function testHead(slug: string): Promise<PageHead | null> {
       `<p>${h(t.blurb)}</p>` +
       (asStrings(t.highlights).length ? `<ul>${asStrings(t.highlights).map((x) => `<li>${h(x)}</li>`).join("")}</ul>` : "") +
       section("Sections", `<table><thead><tr><th>Section</th><th>Questions</th><th>Time</th><th>Kind</th><th>Marks each</th></tr></thead><tbody>${rows}</tbody></table>`, "sections") +
+      (syllabus.length || (coding && companyHubOf)
+        ? section(
+            `${t.name} syllabus`,
+            syllabus.map((s) => `<h3>${h(s.name)}</h3>${linkList(s.topics.map((x) => ({ href: `/aptitude/${x.id}`, label: x.label })))}`).join("") +
+              (coding && companyHubOf ? `<p>Coding: ${link(hubPath(companyHubOf), `${companyHubOf.label} coding questions`)} <span class="note">${plural(companyHubOf.count, "problem")}</span></p>` : ""),
+            "syllabus",
+          )
+        : "") +
       section("Instructions", markdownToHtml(t.instructions, 6_000), "instructions") +
       // The written preparation guide (lib/test-guides): what a search for
       // "<company> test pattern" is answered by — the results are guides, and
       // this page was a mock-test lobby of ~240 own words (2026-10-01).
       (TEST_GUIDES[slug] ? section("How to prepare for this pattern", markdownToHtml(TEST_GUIDES[slug], 12_000, { under: 2 }), "guide") : "") +
-      (samplesHtml ? section("Sample questions", samplesHtml, "samples") : "") +
+      // "Practice questions for …", not "<company> questions": they are the bank's
+      // questions of the paper's kind, never a company's own paper.
+      (samplesHtml ? section(`Practice questions for the ${t.name} test`, samplesHtml, "samples") : "") +
       (t.sourceNote ? section("About this pattern", `<p>${h(t.sourceNote)}</p>`, "source") : "") +
       `<p>Modelled on the published pattern; not affiliated with ${h(t.company)}. Every sitting draws a fresh paper from ${link("/aptitude", "the aptitude bank")}${t.sections.some((s) => s.kind === "coding") ? ` and ${link("/challenges", "the problem catalogue")}` : ""}.</p>` +
+      (sim || (!coding && companyHubOf)
+        ? `<p>${[
+            sim ? link(`/simulations/${sim.slug}`, `The ${sim.company} ${sim.family === "service" ? "recruitment" : "interview"} process, round by round`) : "",
+            !coding && companyHubOf ? link(hubPath(companyHubOf), `${companyHubOf.label} coding questions`) : "",
+          ]
+            .filter(Boolean)
+            .join(" · ")}</p>`
+        : "") +
       (others.length ? section("Similar patterns", linkList(others.map((o) => ({ href: `/tests/${o.slug}`, label: o.name, note: o.company }))), "related") : "");
     return {
       path,
@@ -1913,13 +1976,132 @@ async function sqlProblemHead(slug: string): Promise<PageHead | null> {
     `<p>${near}</p>`;
   return {
     path,
-    title: titles.sqlProblem(page.title, difficulty),
+    title: titles.sqlProblem(page.title, page.topics[0] ?? "Query"),
     description: summarise(page.description, `${page.title}: a ${difficulty.toLowerCase()} SQL problem on ${BRAND}, written in MySQL and judged on hidden datasets.`),
     facts: { difficulty, keywords: ["SQL", ...page.topics], trail },
     content,
     crumb: page.title,
     // The page's first screen for the Worker's static-first view (lib/seo-views/sql-problem), from the payload loaded above.
     view: sqlProblemView(page),
+  };
+}
+
+/* ── Company simulations ──────────────────────────────────────────── */
+
+/** "recruitment" for a service company's drive, "interview" for a product company's loop: the word searched with its name. */
+export const processWord = (sim: Pick<Simulation, "family">) => (sim.family === "service" ? "recruitment" : "interview");
+
+/** What a round's kind is called on the page (the SPA's components/simulations/sim-ui KIND_LABEL, mirrored). */
+const ROUND_KIND: Record<Simulation["rounds"][number]["kind"], string> = {
+  assessment: "Online test",
+  technical: "Technical",
+  coding: "Coding",
+  "system-design": "Design",
+  managerial: "Managerial",
+  hr: "HR",
+  behavioral: "Behavioural",
+  case: "Case",
+};
+
+/** How firm a simulation's round structure is (the SPA's FIRMNESS, mirrored). */
+const FIRMNESS_WORDS: Record<Simulation["firmness"], { label: string; detail: string }> = {
+  official: { label: "From the company", detail: "The company's own careers pages describe these rounds." },
+  consistent: { label: "Sources agree", detail: "Two or more prep sources agree on these rounds." },
+  varies: { label: "Sources differ", detail: "Sources disagree on part of this process; the note says where." },
+};
+
+/** A simulation's meta description; the SPA's SimulationPage composes the same words. */
+export const simulationDescription = (sim: Simulation) =>
+  summarise(
+    `The ${sim.company} ${processWord(sim)} process, round by round: ${sim.rounds.map((r) => r.name).join(" → ")}. What each round covers, where it comes from, and a free practice run of every round.`,
+  );
+
+/**
+ * One company's process, round by round (/simulations/<slug>): the page a
+ * search for "tcs recruitment process" or "google interview process" wants.
+ * The rounds in order with what each covers, how firm that is and the
+ * sources it comes from, then where to practise. Every word is the
+ * catalogue's (lib/simulations/catalog.ts, held to its sources by
+ * simulations.test.ts); nothing here adds a claim about how a company hires.
+ * Public and indexed since 2026-10-30; a member's run lives on the same page.
+ */
+async function simulationHead(slug: string): Promise<PageHead | null> {
+  const sim = simulationBySlug(slug);
+  if (!sim) return null;
+  const path = `/simulations/${slug}`;
+  const word = processWord(sim);
+  const trail: Crumb[] = [HOME, SECTION.simulations, { name: sim.company, path }];
+  const tests = sim.rounds.flatMap((r) => (r.test ? [r.test] : []));
+  const [hub, testRows] = await Promise.all([
+    simulationHub(sim.company),
+    tests.length ? prisma.mockTest.findMany({ where: { slug: { in: tests }, published: true }, select: { slug: true, name: true } }) : Promise.resolve([]),
+  ]);
+  const testName = new Map(testRows.map((t) => [t.slug, t.name]));
+  const rounds = sim.rounds
+    .map(
+      (r) =>
+        `<li><h3>${h(r.name)}</h3><p><strong>${h(ROUND_KIND[r.kind])}.</strong> ${h(r.covers)}</p>` +
+        (r.test && testName.has(r.test) ? `<p>${link(`/tests/${r.test}`, `${testName.get(r.test)}: pattern, syllabus and a free mock`)}</p>` : "") +
+        `</li>`,
+    )
+    .join("");
+  const practise = [
+    ...(hub ? [{ href: `/challenges/company/${hub.slug}`, label: `${hub.label} coding questions`, note: plural(hub.count, "problem") }] : []),
+    { href: "/mock-interview", label: "AI mock interviews" },
+    { href: "/interview-experiences", label: "Interview experiences" },
+  ];
+  const firm = FIRMNESS_WORDS[sim.firmness];
+  const content =
+    factList([
+      ["Company", sim.company],
+      ["Role", sim.role],
+      ["Rounds", String(sim.rounds.length)],
+      ["How firm", firm.label],
+    ]) +
+    `<p>The ${h(sim.company)} ${word} process for a ${h(sim.role)} has ${plural(sim.rounds.length, "round")}, in this order: ${h(sim.rounds.map((r) => r.name).join(", "))}.</p>` +
+    section("The rounds", `<ol>${rounds}</ol>`, "rounds") +
+    section("Where this comes from", `<p><strong>${h(firm.label)}.</strong> ${h(firm.detail)}</p><p>${h(sim.sourceNote)}</p>${linkList(sim.sources.map((x) => ({ href: x.url, label: x.label })))}`, "sources") +
+    section(`Practise for ${sim.company}`, linkList(practise), "practise") +
+    `<p>Signed in, you can sit the whole process as one simulation: the online test, then each interview with the AI interviewer, in order. Not affiliated with ${h(sim.company)}.</p>` +
+    `<p>${link("/simulations", "Every company's process")}</p>`;
+  return {
+    path,
+    title: titles.simulation(sim.company, sim.family, sim.rounds.length),
+    description: simulationDescription(sim),
+    facts: { company: sim.company, trail },
+    content,
+    crumb: sim.company,
+  };
+}
+
+/** The /simulations description; the SPA's SimulationsPage composes the same words. */
+export const simulationsDescription = (count: number) =>
+  summarise(
+    `How ${count} companies hire, round by round: TCS, Infosys, Accenture, Amazon, Google and more. The online test and every interview in order, from the companies' pages and prep sources that agree.`,
+  );
+
+/** /simulations: every company's process, by family, each with its rounds named. */
+function simulationsIndex(): PageHead {
+  const group = (family: Simulation["family"], title: string, id: string) => {
+    const list = SIMULATIONS.filter((x) => x.family === family);
+    return list.length
+      ? section(title, linkList(list.map((x) => ({ href: `/simulations/${x.slug}`, label: `${x.company} ${processWord(x)} process`, note: x.rounds.map((r) => r.name).join(" → ") }))), id)
+      : "";
+  };
+  return {
+    path: "/simulations",
+    title: titles.simulations(SIMULATIONS.length),
+    description: simulationsDescription(SIMULATIONS.length),
+    facts: {
+      count: SIMULATIONS.length,
+      items: SIMULATIONS.slice(0, 20).map((x) => ({ name: `${x.company} ${processWord(x)} process`, path: `/simulations/${x.slug}` })),
+      trail: [HOME, SECTION.simulations],
+    },
+    content:
+      `<p>Each page lists one company's rounds in the order its process runs them, what each covers and where that comes from. Signed in, you can sit them as one run.</p>` +
+      group("service", "Service companies", "service") +
+      group("product", "Product companies", "product"),
+    crumb: "Company simulations",
   };
 }
 
@@ -2217,7 +2399,14 @@ export function sitemapXml(name: string): Promise<string | null> {
           const updated = guideFor(slug)?.updated;
           return updated ? new Date(`${updated}T00:00:00Z`) : null;
         };
-        return urlset([...rows.map((r) => ({ path: `/tests/${r.slug}` })), ...skill.map((r) => ({ path: `/skill-tests/${r.slug}`, lastmod: revised(r.slug) }))]);
+        // And the company simulations: a company's process, its test the first
+        // round (content as code, so no lastmod; they change with a deploy).
+        return urlset([
+          ...rows.map((r) => ({ path: `/tests/${r.slug}` })),
+          ...skill.map((r) => ({ path: `/skill-tests/${r.slug}`, lastmod: revised(r.slug) })),
+          { path: "/simulations" },
+          ...SIMULATIONS.map((x) => ({ path: `/simulations/${x.slug}` })),
+        ]);
       }
       case "categories": {
         // The hub pages: the catalogue's topics and companies, the bug hunts'

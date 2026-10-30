@@ -12,7 +12,7 @@ export const COMPANY_TAGS: readonly string[] = [
   "Amazon", "Google", "Adobe", "Microsoft", "Meta", "Facebook", "Apple", "Bloomberg", "Uber",
   "Airbnb", "LinkedIn", "Goldman Sachs", "Palantir", "Two Sigma", "Twitter", "Snapchat", "Dropbox",
   "Walmart", "Yahoo", "Hulu", "Indeed", "Yelp", "LiveRamp", "Capital One", "Epic Systems",
-  "Riot Games", "Mathworks", "Flipkart",
+  "Riot Games", "MathWorks", "Flipkart",
   // Indian service-based hiring rounds
   "TCS", "Infosys", "Wipro", "Capgemini", "Cognizant", "Accenture", "Zoho", "HCL",
   "Tech Mahindra", "Mphasis", "Virtusa", "Mindtree",
@@ -21,8 +21,10 @@ export const COMPANY_TAGS: readonly string[] = [
   // twenty more as if they were techniques.
   "Oracle", "Salesforce", "Samsung", "Atlassian", "Rubrik", "Intuit", "Arcesium", "Databricks",
   "Morgan Stanley", "Nutanix", "Sprinklr", "Spotify",
-  "Paytm", "Swiggy", "Cred", "Zomato", "Directi", "Ola", "Razorpay", "Freshworks", "Myntra",
+  "Paytm", "Swiggy", "CRED", "Zomato", "Directi", "Ola", "Razorpay", "Freshworks", "Myntra",
   "Dream11", "Hotstar", "PhonePe",
+  // Old spellings (COMPANY_RENAMED), kept so a database not yet migrated still reads them as companies.
+  "Mathworks", "Cred",
 ];
 
 /**
@@ -36,6 +38,11 @@ export const COMPANY_TAGS: readonly string[] = [
  */
 export const COMPANY_RENAMED: Readonly<Record<string, string>> = {
   Facebook: "Meta",
+  // The companies' own casing (2026-10-30; the 2026-10 SEO audit's open item):
+  // the hub titles read "Cred Coding Interview Questions". Same slug either
+  // way, so these move no address — only the name a hub and a chip show.
+  Mathworks: "MathWorks",
+  Cred: "CRED",
 };
 
 const COMPANY_SET = new Set(COMPANY_TAGS);

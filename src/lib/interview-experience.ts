@@ -73,7 +73,7 @@ const ALIASES: Record<string, string> = {
   "ms": "Morgan Stanley",
   "disney hotstar": "Hotstar",
   "disney+ hotstar": "Hotstar",
-  "cred club": "Cred",
+  "cred club": "CRED",
   "tech mahindra ltd": "Tech Mahindra",
   "hcl tech": "HCL",
   "hcltech": "HCL",

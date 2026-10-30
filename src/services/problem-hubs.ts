@@ -98,7 +98,7 @@ export interface HubPage extends HubSummary {
    */
   lesson: { slug: string; title: string } | null;
   /** A company hub: its company simulation (lib/simulations) — its test, then its interviews in order; null for a topic or a company without one. */
-  simulation: { slug: string } | null;
+  simulation: { slug: string; family: "service" | "product" } | null;
   /** Other hubs of the same kind, most populous first. */
   related: HubSummary[];
 }
@@ -382,7 +382,7 @@ export async function hubPage(kind: "topic" | "company", slug: string): Promise<
     lesson: null,
     simulation: (() => {
       const sim = simulationForCompany(summary.label);
-      return sim ? { slug: sim.slug } : null;
+      return sim ? { slug: sim.slug, family: sim.family } : null;
     })(),
     related,
   };

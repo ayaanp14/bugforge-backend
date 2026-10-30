@@ -3,6 +3,8 @@ import { prisma } from "../lib/prisma.js";
 import { SAT_ROUND, meteredCreate } from "./entitlements.js";
 import { DEFAULT_FOCUS, SIMULATIONS, builderRoundOf, simulationBySlug, type SimRound, type Simulation } from "../lib/simulations/index.js";
 import { canOpen, formatOf, hrModeOf, readRunRounds, runView, type RunRound, type RunView, type SessionFact, type SittingFact, type StoredRun } from "../lib/simulation-run.js";
+import { hubIndex } from "./problem-hubs.js";
+import { companyKey } from "../lib/readiness.js";
 
 /**
  * Company simulations (lib/simulations, lib/simulation-run; Phase 7 of
@@ -125,26 +127,43 @@ export async function simulationList(userId: string | null) {
   };
 }
 
+/**
+ * The company's catalogue hub (its tagged coding problems), for the page's
+ * "Practise for …" list — the edge HTML (services/seo simulationHead) lists
+ * the same. Null when the company tags no problem; never fails the page.
+ */
+export async function simulationHub(company: string): Promise<{ slug: string; label: string; count: number } | null> {
+  try {
+    const hub = (await hubIndex()).companies.find((c) => companyKey(c.label) === companyKey(company));
+    return hub ? { slug: hub.slug, label: hub.label, count: hub.count } : null;
+  } catch {
+    return null;
+  }
+}
+
 /** One simulation's page: the template, the reader's live run and the runs before it. */
 export async function simulationPage(userId: string | null, slug: string) {
   const sim = simulationBySlug(slug);
   if (!sim) throw new SimulationError("No such simulation.", 404);
-  const tests = await prisma.mockTest.findMany({
-    where: { slug: { in: sim.rounds.flatMap((r) => (r.test ? [r.test] : [])) } },
-    select: { slug: true, name: true, sections: { select: { durationSec: true, questionCount: true } } },
-  });
+  const [tests, hub] = await Promise.all([
+    prisma.mockTest.findMany({
+      where: { slug: { in: sim.rounds.flatMap((r) => (r.test ? [r.test] : [])) } },
+      select: { slug: true, name: true, sections: { select: { durationSec: true, questionCount: true } } },
+    }),
+    simulationHub(sim.company),
+  ]);
   const assessment = tests.map((t) => ({
     slug: t.slug,
     name: t.name,
     minutes: Math.round(t.sections.reduce((a, s) => a + s.durationSec, 0) / 60),
     questions: t.sections.reduce((a, s) => a + s.questionCount, 0),
   }))[0] ?? null;
-  if (!userId) return { simulation: publicSimulation(sim), assessment, run: null, past: [] };
+  if (!userId) return { simulation: publicSimulation(sim), assessment, hub, run: null, past: [] };
   const runs = await prisma.simulationRun.findMany({ where: { userId, slug }, orderBy: { createdAt: "desc" }, take: 10, select: RUN_SELECT });
   const facts = await factsFor(userId, runs);
   const views = runs.map((r) => runView(sim, r, facts));
   const run = liveOf(views);
-  return { simulation: publicSimulation(sim), assessment, run, past: views.filter((v) => v !== run) };
+  return { simulation: publicSimulation(sim), assessment, hub, run, past: views.filter((v) => v !== run) };
 }
 
 /**

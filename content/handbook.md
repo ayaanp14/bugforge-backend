@@ -17,7 +17,7 @@ Signed-in pages (the dashboard shell — top navigation, Ctrl+K search, the bell
 - **Bug hunts**: `/bug-hunts`, `/bug-hunts/<language>` and `/bug-hunts/<layer>` (javascript, python, java; frontend, backend, database) and `/bug-hunts/<slug>`.
 - **Duels and pair rooms**: `/duels` and `/duels/<id>` · `/pair-mode` lobby and `/pair-room/<roomId>`.
 - **Mock interviews**: `/mock-interview` builder, `/mock-interview/session` (written room), `/mock-interview/voice` (voice room), `/mock-interview/history`, `/mock-interview/report/<sessionId>`.
-- **Company simulations**: `/simulations` (every company), `/simulations/<company>` (one company's rounds and your run).
+- **Company simulations**: `/simulations` (every company), `/simulations/<company>` (one company's rounds and your run). Both open without an account — anyone can read a company's rounds and sources; starting a run needs one.
 - **Aptitude**: `/aptitude`, `/aptitude/<section>` (quantitative, logical, verbal, data-interpretation, programming), `/aptitude/<topic>`, `/aptitude/q/<slug>`.
 - **Placement tests**: `/tests`, `/tests/<slug>`, `/tests/attempt/<attemptId>`, `/tests/result/<attemptId>`.
 - **Skill tests**: `/skill-tests`, `/skill-tests/<slug>` (e.g. `java-basic`, `sql-intermediate`), `/skill-tests/attempt/<attemptId>`, `/skill-tests/result/<attemptId>` · `/verify/<code>` (a credential's public check).
