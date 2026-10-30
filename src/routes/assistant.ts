@@ -2,7 +2,6 @@ import { Router } from "express";
 import { optionalAuth, requireAuth } from "../middleware/auth.js";
 import { addressOf, rateLimit } from "../middleware/rate-limit.js";
 import { AssistantError, clearHistory, history, reply, type AssistantTurn } from "../services/assistant.js";
-import { checkAssistantQuota } from "../services/entitlements.js";
 
 /**
  * The site assistant's endpoints — the chat itself as a server-sent stream,
@@ -33,17 +32,16 @@ const burstLimiter = rateLimit({
 
 /**
  * @route   GET /api/assistant
- * @desc    The conversation so far and today's allowance
+ * @desc    The conversation so far
  * @access  Private
  */
 router.get("/", requireAuth, async (req: any, res) => {
-  const [messages, quota] = await Promise.all([history(req.user.userId), checkAssistantQuota(req.user.userId, req.user.email)]);
-  res.json({ messages, quota: { used: quota.used, limit: quota.limit } });
+  res.json({ messages: await history(req.user.userId) });
 });
 
 /**
  * @route   DELETE /api/assistant
- * @desc    Clear the conversation (the day's allowance is unaffected)
+ * @desc    Clear the conversation
  * @access  Private
  */
 router.delete("/", requireAuth, async (req: any, res) => {
@@ -56,11 +54,11 @@ router.delete("/", requireAuth, async (req: any, res) => {
  * @desc    Ask a question; the answer streams back as SSE
  * @access  Public (signed in gets the account context and a stored thread)
  *
- * Events: `token` {t} as the answer is written, then `done` {messageId, used,
- * limit}, or `error` {error} if the model failed. A refusal (the daily
- * allowance) is an ordinary 402 JSON answer, since nothing has streamed yet.
- * A visitor sends `history` — their own recent turns — since nothing is
- * stored for them; `used`/`limit` come back null for them.
+ * Events: `token` {t} as the answer is written, then `done` {messageId}, or
+ * `error` {error} if the model failed. There is no allowance — the assistant
+ * is unlimited on every plan (the owner's call); the burst guard is the only
+ * refusal. A visitor sends `history` — their own recent turns — since nothing
+ * is stored for them.
  */
 router.post("/chat", optionalAuth, burstLimiter, async (req: any, res) => {
   const message = typeof req.body?.message === "string" ? req.body.message : "";
@@ -68,9 +66,6 @@ router.post("/chat", optionalAuth, burstLimiter, async (req: any, res) => {
   const userId: string | null = req.user?.userId ?? null;
   const email: string | null = req.user?.email ?? null;
   const carried: AssistantTurn[] = userId ? [] : Array.isArray(req.body?.history) ? req.body.history.slice(-20) : [];
-
-  const quota = userId ? await checkAssistantQuota(userId, email) : { denial: null, used: null, limit: null };
-  if (quota.denial) return res.status(402).json(quota.denial);
 
   res.status(200);
   res.setHeader("Content-Type", "text/event-stream; charset=utf-8");
@@ -84,7 +79,7 @@ router.post("/chat", optionalAuth, burstLimiter, async (req: any, res) => {
 
   try {
     const { messageId } = await reply(userId, message, (t) => send("token", { t }), carried, email);
-    send("done", { messageId, used: quota.used === null ? null : quota.used + 1, limit: quota.limit });
+    send("done", { messageId });
   } catch (err) {
     const status = err instanceof AssistantError ? err.status : 500;
     const text = err instanceof AssistantError ? err.message : "The assistant could not answer — try again.";

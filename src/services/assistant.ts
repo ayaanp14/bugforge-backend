@@ -267,7 +267,6 @@ async function buildAccountBlock(userId: string, email: string | null): Promise<
       ),
       credits: ent.usage.credits,
       bonusInterviews: ent.usage.interviewCredits,
-      assistantMessagesToday: `${ent.usage.assistantMessagesToday} of ${e.assistantMessagesPerDay ?? "unlimited"}`,
       voiceRoundMinutes: e.voiceDurationsMin,
     },
     roadmap: {
@@ -409,8 +408,9 @@ async function attemptStream(body: Record<string, unknown>, signal: AbortSignal,
 /**
  * One turn: streams the answer through `onToken`, then persists the question
  * and the answer together. Nothing is written until an answer exists, so a
- * failure — the provider's, or this one's — costs nothing off the day's
- * allowance. The quota is the caller's to check first.
+ * failure — the provider's, or this one's — leaves nothing behind. There is
+ * no allowance to check: the assistant is unlimited on every plan, and the
+ * route's burst guard is the only brake.
  *
  * Retries: an HTTP refusal, or the provider's overload notice arriving inside
  * a 200 stream, is tried again as long as no token has reached the client

@@ -57,13 +57,6 @@ export interface PlanEntitlements {
   problemsPerDay: number | null;
   /** Duels per day. Unlimited on every plan, including free. */
   duelsPerDay: number | null;
-  /**
-   * Messages to the site assistant per day. Unlimited on every plan by
-   * decision — the assistant is meant to be asked freely — and kept as a
-   * field so a cap can be set per plan again without touching the routes.
-   * A burst guard in routes/assistant.ts is the only brake, against scripts.
-   */
-  assistantMessagesPerDay: number | null;
 }
 
 export interface Plan {
@@ -88,7 +81,6 @@ const FREE_ENTITLEMENTS: PlanEntitlements = {
   bugsPerDay: null,
   problemsPerDay: null,
   duelsPerDay: null,
-  assistantMessagesPerDay: null,
 };
 
 const PRO_ENTITLEMENTS: PlanEntitlements = {
@@ -108,7 +100,6 @@ const PRO_ENTITLEMENTS: PlanEntitlements = {
   bugsPerDay: null,
   problemsPerDay: null,
   duelsPerDay: null,
-  assistantMessagesPerDay: null,
 };
 
 const MAX_ENTITLEMENTS: PlanEntitlements = {
@@ -143,7 +134,6 @@ export const LIFTED_ENTITLEMENTS: PlanEntitlements = {
   bugsPerDay: null,
   problemsPerDay: null,
   duelsPerDay: null,
-  assistantMessagesPerDay: null,
 };
 
 /** The plans on sale, in ladder order. */

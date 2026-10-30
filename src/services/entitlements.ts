@@ -59,8 +59,6 @@ export interface Usage {
   /** Bonus mock interviews still unspent: the roadmap's chests, less the rounds sat on them. */
   interviewCredits: number;
   bugsToday: number;
-  /** Messages sent to the site assistant since the day began. */
-  assistantMessagesToday: number;
 }
 
 export interface Entitlement {
@@ -249,11 +247,6 @@ export async function bugsToday(userId: string): Promise<number> {
   return rows.length;
 }
 
-/** Messages the account has sent the assistant today; "clear" hides history, it does not refill the day. */
-export async function assistantMessagesToday(userId: string): Promise<number> {
-  return prisma.assistantMessage.count({ where: { userId, role: "user", createdAt: { gte: dayStart() } } });
-}
-
 const METERED: MeteredAction[] = ["resumeAnalysis", "placementMock", "writtenInterview", "voiceInterview", "simulation"];
 
 /**
@@ -263,18 +256,17 @@ const METERED: MeteredAction[] = ["resumeAnalysis", "placementMock", "writtenInt
  */
 export async function entitlementFor(userId: string, email?: string | null): Promise<Entitlement> {
   const { plan, currentPeriodEnd } = await activePlan(userId, email);
-  const [states, credits, bonus, bugs, assistant] = await Promise.all([
+  const [states, credits, bonus, bugs] = await Promise.all([
     Promise.all(METERED.map((action) => allowanceOn(userId, plan, action))),
     creditBalance(userId),
     interviewCredits(userId),
     bugsToday(userId),
-    assistantMessagesToday(userId),
   ]);
   const allowances = Object.fromEntries(METERED.map((action, i) => [action, states[i]])) as Record<MeteredAction, AllowanceState>;
   return {
     plan,
     currentPeriodEnd,
-    usage: { allowances, credits, interviewCredits: bonus, bugsToday: bugs, assistantMessagesToday: assistant },
+    usage: { allowances, credits, interviewCredits: bonus, bugsToday: bugs },
     freeForAll: freeForAll(),
   };
 }
@@ -471,25 +463,6 @@ export const SAT_ROUND_REFUSAL = {
 } as const;
 
 /* ── The rest ─────────────────────────────────────────────────────────── */
-
-/** The assistant's daily allowance (unlimited on every plan today; kept so a cap can return). */
-export async function checkAssistantQuota(userId: string, email?: string | null): Promise<{ denial: QuotaDenial | null; used: number; limit: number | null }> {
-  const [{ plan }, used] = await Promise.all([activePlan(userId, email), assistantMessagesToday(userId)]);
-  const limit = plan.entitlements.assistantMessagesPerDay;
-  if (limit === null || used < limit) return { denial: null, used, limit };
-  return {
-    denial: {
-      error: `You have used today's ${limit} assistant messages on the ${plan.name} plan. Upgrade for more, or ask again tomorrow.`,
-      reason: "quota_exceeded",
-      limit,
-      used,
-      planId: plan.id,
-      upgrade: true,
-    },
-    used,
-    limit,
-  };
-}
 
 /** Voice rounds longer than the plan allows are a plan gate, not a quota. */
 export async function checkVoiceDuration(userId: string, minutes: number, email?: string | null): Promise<QuotaDenial | null> {
