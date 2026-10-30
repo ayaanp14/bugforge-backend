@@ -1,6 +1,9 @@
 import { prisma } from "../lib/prisma.js";
 import type { ProblemView, SeoView } from "../lib/seo-views/index.js";
+import { companiesView } from "../lib/seo-views/companies.js";
 import { interviewExperienceView } from "../lib/seo-views/interview-experience.js";
+import { simulationView } from "../lib/seo-views/simulation.js";
+import { simulationsView } from "../lib/seo-views/simulations.js";
 import { getTierTitle } from "./me.js";
 import { noteSubjectView } from "../lib/seo-views/note-subject.js";
 import { noteView } from "../lib/seo-views/note.js";
@@ -2040,9 +2043,16 @@ async function simulationHead(slug: string): Promise<PageHead | null> {
   const tests = sim.rounds.flatMap((r) => (r.test ? [r.test] : []));
   const [hub, testRows] = await Promise.all([
     simulationHub(sim.company),
-    tests.length ? prisma.mockTest.findMany({ where: { slug: { in: tests }, published: true }, select: { slug: true, name: true } }) : Promise.resolve([]),
+    tests.length
+      ? prisma.mockTest.findMany({ where: { slug: { in: tests }, published: true }, select: { slug: true, name: true, sections: { select: { durationSec: true, questionCount: true } } } })
+      : Promise.resolve([]),
   ]);
   const testName = new Map(testRows.map((t) => [t.slug, t.name]));
+  // The online test's length as the page's payload counts it (services/simulations simulationPage `assessment`), for the view's round line.
+  const first = testRows[0];
+  const assessment = first
+    ? { slug: first.slug, name: first.name, minutes: Math.round(first.sections.reduce((a, x) => a + x.durationSec, 0) / 60), questions: first.sections.reduce((a, x) => a + x.questionCount, 0) }
+    : null;
   const rounds = sim.rounds
     .map(
       (r) =>
@@ -2077,6 +2087,8 @@ async function simulationHead(slug: string): Promise<PageHead | null> {
     facts: { company: sim.company, trail },
     content,
     crumb: sim.company,
+    // The page's first screen for the Worker's static-first view (lib/seo-views/simulation), from what is loaded above.
+    view: simulationView(sim, assessment, hub),
   };
 }
 
@@ -2108,6 +2120,8 @@ function simulationsIndex(): PageHead {
       group("service", "Service companies", "service") +
       group("product", "Product companies", "product"),
     crumb: "Company simulations",
+    // The page's first screen for the Worker's static-first view (lib/seo-views/simulations): the catalogue, no query.
+    view: simulationsView(SIMULATIONS),
   };
 }
 
@@ -2151,6 +2165,8 @@ async function companiesIndex(): Promise<PageHead> {
       group("Product companies", "product", all.filter((c) => c.family === "product")) +
       group("More companies", "more", all.filter((c) => !c.family)),
     crumb: "Companies",
+    // The static-first view's data: the same directory, every row (lib/seo-views/companies.ts).
+    view: companiesView(all),
   };
 }
 

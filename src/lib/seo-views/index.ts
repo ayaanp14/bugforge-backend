@@ -31,6 +31,9 @@ import type { SqlProblemView } from "./sql-problem.js";
 import type { NoteSubjectView } from "./note-subject.js";
 import type { NoteView } from "./note.js";
 import type { InterviewExperienceView } from "./interview-experience.js";
+import type { SimulationsView } from "./simulations.js";
+import type { SimulationView } from "./simulation.js";
+import type { CompaniesView } from "./companies.js";
 
 export type SeoView =
   | ProblemView
@@ -47,7 +50,10 @@ export type SeoView =
   | SqlProblemView
   | NoteSubjectView
   | NoteView
-  | InterviewExperienceView;
+  | InterviewExperienceView
+  | SimulationsView
+  | SimulationView
+  | CompaniesView;
 
 export type { ProblemView } from "./problem.js";
 export type { HubView } from "./hub.js";
@@ -64,3 +70,6 @@ export type { SqlProblemView } from "./sql-problem.js";
 export type { NoteSubjectView } from "./note-subject.js";
 export type { NoteView } from "./note.js";
 export type { InterviewExperienceView } from "./interview-experience.js";
+export type { SimulationsView } from "./simulations.js";
+export type { SimulationView } from "./simulation.js";
+export type { CompaniesView } from "./companies.js";
