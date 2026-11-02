@@ -50,7 +50,8 @@ import type { Walkthrough } from "../lib/walkthroughs/index.js";
 import { LESSON_LANGUAGES, RESERVED_LESSON_SLUGS, WALKTHROUGH_MARKER } from "../lib/roadmap-lessons.js";
 import { lessonPage, lessonSitemapEntries, lessonSyllabus, lessonsForTopics } from "./roadmap-lessons.js";
 import { SQL_PROBLEMS, SQL_TOPICS } from "../lib/sql-problems/index.js";
-import { sqlNumber, sqlProblemPage, sqlSitemapEntries } from "./sql-problems.js";
+import { sqlNumber, sqlProblemPage, sqlSitemapEntries, sqlTopicPage } from "./sql-problems.js";
+import { SQL_TOPIC_GUIDES, sqlTopicBySlug } from "../lib/sql-problems/topics.js";
 import { NOTE_SUBJECTS, subjectByKey } from "../lib/cs-notes.js";
 import { notePage, notesSitemapEntries, notesSyllabus } from "./cs-notes.js";
 import { experienceById, experienceCompanies, experienceIdOf, experienceList, experienceSitemapEntries, type ExperienceRow } from "./interview-experiences.js";
@@ -271,6 +272,9 @@ export const titles = {
   // are stories ("Bowlers Who Caught Their Own Delivery") and what a searcher
   // types is the technique — "sql window functions problem", "sql joins question".
   sqlProblem: (title: string, topic: string) => branded(`${title} — SQL ${topic} Problem`),
+  // A SQL topic's hub (/sql/joins, 2026-11-02): "sql joins practice problems",
+  // "sql window functions questions" — the phrases its page answers.
+  sqlTopic: (topic: string, count: number) => branded(`SQL ${topic} Practice Problems: ${count} ${count === 1 ? "Question" : "Questions"} with Solutions`),
   // A company simulation (/simulations/<slug>): "tcs recruitment process",
   // "google interview process" — a service company recruits through a drive,
   // a product company interviews. The round count tells two results apart.
@@ -662,7 +666,8 @@ async function pageHead(path: string): Promise<PageHead | PageRedirect | null> {
   if ((m = /^\/roadmap\/([a-z0-9][a-z0-9-]*)$/.exec(path))) return RESERVED_LESSON_SLUGS.has(m[1]) ? null : roadmapLessonHead(m[1]);
   if ((m = /^\/share\/([a-z0-9]{10,40})$/.exec(path))) return shareHead(m[1]);
   if (path === "/sql") return sqlIndex();
-  if ((m = /^\/sql\/([a-z0-9][a-z0-9-]*)$/.exec(path))) return sqlProblemHead(m[1]);
+  // A topic's slug is reserved (lib/sql-problems/topics), so it is tried first.
+  if ((m = /^\/sql\/([a-z0-9][a-z0-9-]*)$/.exec(path))) return sqlTopicBySlug(m[1]) ? sqlTopicHead(m[1]) : sqlProblemHead(m[1]);
   if (path === "/notes") return notesIndex();
   if ((m = /^\/notes\/([a-z0-9-]+)$/.exec(path))) return noteSubjectHead(m[1]);
   if ((m = /^\/notes\/([a-z0-9-]+)\/([a-z0-9][a-z0-9-]*)$/.exec(path))) return noteHead(m[1], m[2]);
@@ -1937,9 +1942,51 @@ function sqlIndex(): PageHead {
   const byTopic = SQL_TOPICS.map((t) => [t, SQL_PROBLEMS.filter((p) => p.topics[0] === t)] as const).filter(([, rows]) => rows.length);
   const content =
     `<p>${plural(SQL_PROBLEMS.length, "SQL problem")} written in MySQL and judged on hidden datasets. Each page draws its tables, shows an example and explains a reference solution.</p>` +
+    section(
+      "Practise by topic",
+      linkList(SQL_TOPIC_GUIDES.map((g) => ({ g, n: SQL_PROBLEMS.filter((p) => p.topics.includes(g.topic)).length })).filter(({ n }) => n > 0).map(({ g, n }) => ({ href: `/sql/${g.slug}`, label: `SQL ${g.topic}`, note: plural(n, "problem") }))),
+      "topics",
+    ) +
     byTopic.map(([t, rows]) => section(t, linkList(rows.map((p) => ({ href: `/sql/${p.slug}`, label: p.title, note: titleCase(p.difficulty) }))), slugify(t))).join("") +
     `<p>New to SQL? Read ${link("/notes/dbms", "the DBMS notes")} first, or test yourself with ${link("/skill-tests/sql-basic", "the SQL skill test")}.</p>`;
   return { path: "/sql", title: "SQL problems", description: "", content, section: "index" };
+}
+
+/** A SQL topic's hub (/sql/joins): its introduction, every problem by difficulty and the other topics. */
+function sqlTopicHead(slug: string): PageHead | null {
+  const page = sqlTopicPage(slug);
+  if (!page) return null;
+  const path = `/sql/${slug}`;
+  const trail: Crumb[] = [HOME, SECTION.sql, { name: page.topic, path }];
+  const byLevel = (["EASY", "MEDIUM", "HARD"] as const)
+    .map((d) => [d, page.problems.filter((p) => p.difficulty === d)] as const)
+    .filter(([, rows]) => rows.length)
+    .map(([d, rows]) => section(`${titleCase(d)} SQL ${page.topic.toLowerCase()} problems`, linkList(rows.map((p) => ({ href: `/sql/${p.slug}`, label: p.title }))), d.toLowerCase()))
+    .join("");
+  const content =
+    factList([
+      ["Problems", String(page.count)],
+      ["By difficulty", difficultySplit(page.byDifficulty)],
+      ["Dialect", "MySQL"],
+    ]) +
+    `<p>${h(page.blurb)}</p>` +
+    byLevel +
+    section("Other SQL topics", linkList(page.related.map((r) => ({ href: `/sql/${r.slug}`, label: `SQL ${r.topic}`, note: plural(r.count, "problem") }))), "related") +
+    `<p>${link("/sql", "Every SQL problem")} · ${link("/skill-tests/sql-basic", "The SQL skill test")}</p>`;
+  return {
+    path,
+    title: titles.sqlTopic(page.topic, page.count),
+    description: page.description,
+    facts: {
+      topic: page.topic,
+      keywords: ["SQL", page.topic, "MySQL"],
+      count: page.count,
+      items: firstItems(page.problems.map((p) => ({ name: p.title, path: `/sql/${p.slug}` }))),
+      trail,
+    },
+    content,
+    crumb: page.topic,
+  };
 }
 
 /** A SQL problem: the task, its tables, the example with its output, the editorial and the reference queries. */

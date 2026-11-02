@@ -8,7 +8,7 @@ import { claimFirstSolve } from "../lib/solve-payout.js";
 import { sqlProblem } from "../lib/sql-problems/index.js";
 import { judgeSql } from "../lib/sql/judge.js";
 import { SqlBusyError } from "../lib/sql/engine.js";
-import { forgetSqlStanding, SQL_PAGE_SIZE, sqlProblemList, sqlProblemListPage, sqlProblemPage, sqlStanding } from "../services/sql-problems.js";
+import { forgetSqlStanding, SQL_PAGE_SIZE, sqlProblemList, sqlProblemListPage, sqlProblemPage, sqlStanding, sqlTopicPage } from "../services/sql-problems.js";
 import { invalidateDashboard } from "../services/dashboard.js";
 import { createNotificationOnce, streakMilestone } from "../services/notifications.js";
 
@@ -48,6 +48,21 @@ sqlRouter.get("/problems", browserCache(SEEDED_CONTENT_MAX_AGE, { shared: true }
     return;
   }
   res.json(await sqlProblemListPage({ offset, limit, difficulty: level as "EASY" | "MEDIUM" | "HARD" | undefined, topic, company, search }));
+});
+
+// A topic's hub (/sql/joins): its introduction, counts and the other topics.
+// Not its problem list — the page reads the table from /problems?topic= like
+// /sql does, a hundred rows at a time; the full list is for the edge HTML only.
+// Declared before /:slug ("topics" would otherwise be read as a slug).
+sqlRouter.get("/topics/:slug", browserCache(SEEDED_CONTENT_MAX_AGE, { shared: true }), (req, res) => {
+  const page = sqlTopicPage(String(req.params["slug"] ?? ""));
+  if (!page) {
+    res.removeHeader("Cache-Control");
+    res.status(404).json({ error: "There is no SQL topic at this address." });
+    return;
+  }
+  const { problems: _edgeOnly, ...hub } = page;
+  res.json(hub);
 });
 
 sqlRouter.get("/standing", requireAuth, async (req, res) => {

@@ -3,6 +3,7 @@ import { cached, cachedShared, invalidate } from "../lib/cache.js";
 import { SQL_COMPANIES, SQL_PROBLEMS, SQL_TOPICS, sqlProblem } from "../lib/sql-problems/index.js";
 import { buildProblem, starterQuery } from "../lib/sql-problems/build.js";
 import type { SqlProblemSpec } from "../lib/sql-problems/types.js";
+import { SQL_TOPIC_GUIDES, sqlTopicBySlug } from "../lib/sql-problems/topics.js";
 import { exampleResults, type TableView } from "../lib/sql/judge.js";
 import type { ResultSet } from "../lib/sql/types.js";
 
@@ -224,5 +225,54 @@ export function sqlStanding(userId: string): Promise<{ solved: string[]; attempt
 
 export const forgetSqlStanding = (userId: string): void => invalidate(standingKey(userId));
 
-/** Sitemap entries: the index and every problem. */
-export const sqlSitemapEntries = (): Array<{ path: string }> => SQL_PROBLEMS.map((p) => ({ path: `/sql/${p.slug}` }));
+export interface SqlTopicPage {
+  slug: string;
+  topic: string;
+  blurb: string;
+  /**
+   * The page's meta description, written here so the edge head and the
+   * SPA's runtime head (which reads it off GET /api/sql/topics/:slug) are
+   * one string. Plain text, ≤158 characters (sql-problems topics.test).
+   */
+  description: string;
+  count: number;
+  byDifficulty: Record<SqlProblemSpec["difficulty"], number>;
+  /** Every problem of the topic in the list's order — the edge HTML's links (the SPA pages the table from /problems). */
+  problems: Array<{ slug: string; title: string; difficulty: SqlProblemSpec["difficulty"] }>;
+  /** The other topics, in learning order, with their counts — the page's strip. */
+  related: Array<{ slug: string; topic: string; count: number }>;
+}
+
+const topicRows = (topic: string) => SQL_PROBLEMS.filter((p) => p.topics.includes(topic));
+
+/**
+ * A topic's hub (/sql/joins), null for a slug that is no topic. Pure over
+ * the problems (code, not rows), so it is computed rather than cached: eight
+ * filters over ~1,000 specs.
+ */
+export function sqlTopicPage(slug: string): SqlTopicPage | null {
+  const guide = sqlTopicBySlug(slug);
+  if (!guide) return null;
+  const rows = topicRows(guide.topic);
+  if (!rows.length) return null;
+  const byDifficulty = { EASY: 0, MEDIUM: 0, HARD: 0 };
+  for (const p of rows) byDifficulty[p.difficulty] += 1;
+  return {
+    slug: guide.slug,
+    topic: guide.topic,
+    blurb: guide.blurb,
+    description: `${rows.length} SQL ${guide.topic.toLowerCase()} practice problems with solutions: ${guide.focus}. Written in MySQL, judged on hidden datasets.`,
+    count: rows.length,
+    byDifficulty,
+    problems: rows.map((p) => ({ slug: p.slug, title: p.title, difficulty: p.difficulty })),
+    related: SQL_TOPIC_GUIDES.filter((g) => g.slug !== slug)
+      .map((g) => ({ slug: g.slug, topic: g.topic, count: topicRows(g.topic).length }))
+      .filter((r) => r.count > 0),
+  };
+}
+
+/** Sitemap entries: every topic hub with a problem, then every problem (/sql itself is prerendered, in sitemap-pages.xml). */
+export const sqlSitemapEntries = (): Array<{ path: string }> => [
+  ...SQL_TOPIC_GUIDES.filter((g) => topicRows(g.topic).length > 0).map((g) => ({ path: `/sql/${g.slug}` })),
+  ...SQL_PROBLEMS.map((p) => ({ path: `/sql/${p.slug}` })),
+];
