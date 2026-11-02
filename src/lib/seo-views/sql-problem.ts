@@ -35,6 +35,8 @@ export interface SqlProblemView {
   topics: string[];
   /** The statement as safe HTML (markdownToHtml). */
   statement: string;
+  /** The company a company-set problem is set at (its invented-data note follows the statement); null otherwise. */
+  company: string | null;
   schemas: Array<{ name: string; columns: Array<{ name: string; type: string; values: string | null }>; enumColumn: boolean; primaryKey: string[]; note: string | null }>;
   examples: Array<{ input: Array<{ name: string } & SqlProblemViewTable>; output: SqlProblemViewTable }>;
   ordered: boolean;
@@ -64,6 +66,7 @@ export function sqlProblemView(page: SqlProblemPage): SqlProblemView {
     difficulty: page.difficulty,
     topics: page.topics,
     statement: markdownToHtml(page.description, 12_000, { under: 1 }),
+    company: page.company,
     schemas: page.tables.map((t) => ({
       name: t.name,
       columns: t.columns.map((c) => ({ name: c.name, type: c.type, values: c.values?.length ? c.values.join(", ") : null })),

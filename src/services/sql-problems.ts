@@ -49,6 +49,29 @@ export interface SqlProblemPage {
   starter: string;
   prev: { slug: string; title: string } | null;
   next: { slug: string; title: string } | null;
+  /**
+   * Up to RELATED_MAX problems on the first topic, nearest to this one in the
+   * list's order (prev/next excluded — the header links them), in that order.
+   * The workbench has no footer, so without these a rendered SQL problem
+   * linked to seven pages (SEO audit 2026-11-03, ISS-009).
+   */
+  related: Array<{ slug: string; title: string; difficulty: SqlProblemSpec["difficulty"] }>;
+}
+
+const RELATED_MAX = 6;
+
+/** relatedSqlProblems' rule, for one problem: same first topic, nearest by list position, prev/next left out. */
+export function relatedSqlProblems(spec: SqlProblemSpec, all: readonly SqlProblemSpec[] = SQL_PROBLEMS): SqlProblemPage["related"] {
+  const i = all.indexOf(spec);
+  const topic = spec.topics[0];
+  if (!topic) return [];
+  return all
+    .map((p, j) => ({ p, j }))
+    .filter(({ p, j }) => p !== spec && Math.abs(j - i) > 1 && p.topics.includes(topic))
+    .sort((a, b) => Math.abs(a.j - i) - Math.abs(b.j - i) || a.j - b.j)
+    .slice(0, RELATED_MAX)
+    .sort((a, b) => a.j - b.j)
+    .map(({ p }) => ({ slug: p.slug, title: p.title, difficulty: p.difficulty }));
 }
 
 const numberOf = new Map(SQL_PROBLEMS.map((p, i) => [p.slug, i + 1]));
@@ -180,7 +203,7 @@ const PAGE_TTL_MS = 60 * 60 * 1000;
 export function sqlProblemPage(slug: string): Promise<SqlProblemPage | null> {
   const spec = sqlProblem(slug);
   if (!spec) return Promise.resolve(null);
-  return cached(`sql:page:v1:${slug}`, PAGE_TTL_MS, async () => {
+  return cached(`sql:page:v2:${slug}`, PAGE_TTL_MS, async () => {
     const expected = await exampleResults(spec);
     const built = buildProblem(spec);
     const i = SQL_PROBLEMS.indexOf(spec);
@@ -203,6 +226,7 @@ export function sqlProblemPage(slug: string): Promise<SqlProblemPage | null> {
       starter: starterQuery(spec),
       prev: near(SQL_PROBLEMS[i - 1]),
       next: near(SQL_PROBLEMS[i + 1]),
+      related: relatedSqlProblems(spec),
     };
   });
 }

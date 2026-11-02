@@ -49,7 +49,7 @@ import { frameSvg } from "../lib/walkthroughs/svg.js";
 import type { Walkthrough } from "../lib/walkthroughs/index.js";
 import { LESSON_LANGUAGES, RESERVED_LESSON_SLUGS, WALKTHROUGH_MARKER } from "../lib/roadmap-lessons.js";
 import { lessonPage, lessonSitemapEntries, lessonSyllabus, lessonsForTopics } from "./roadmap-lessons.js";
-import { SQL_PROBLEMS, SQL_TOPICS } from "../lib/sql-problems/index.js";
+import { SQL_PROBLEMS, SQL_TOPICS, sqlScenarioNote } from "../lib/sql-problems/index.js";
 import { sqlNumber, sqlProblemPage, sqlSitemapEntries, sqlTopicPage } from "./sql-problems.js";
 import { SQL_TOPIC_GUIDES, sqlTopicBySlug } from "../lib/sql-problems/topics.js";
 import { NOTE_SUBJECTS, subjectByKey } from "../lib/cs-notes.js";
@@ -227,9 +227,24 @@ const branded = (core: string): string => {
   const full = `${core} — ${BRAND}`;
   return full.length <= TITLE_BUDGET ? full : core;
 };
+/**
+ * The same budget for the item pages whose names run long (problems, SQL
+ * problems, aptitude questions, bug hunts): `cores` are the title from the
+ * fullest suffix down to the bare name, and the first that fits wins — branded
+ * when the first fits with the brand. Dropping only the brand still left 2,471
+ * of 5,611 titles past 60 (2026-11-03 SEO audit, ISS-007): a result showed
+ * "… — Medium Problem & Sol…" and cut the name's own words to say it. Nothing
+ * fits → the bare name, whose words are what the page is searched by.
+ */
+const fitted = (...cores: string[]): string => {
+  const best = branded(cores[0]!);
+  if (best.length <= TITLE_BUDGET) return best;
+  return cores.find((c) => c.length <= TITLE_BUDGET) ?? cores[cores.length - 1]!;
+};
 
 export const titles = {
-  problem: (title: string, difficulty: string) => branded(`${title} — ${difficulty} Problem & Solution`),
+  problem: (title: string, difficulty: string) =>
+    fitted(`${title} — ${difficulty} Problem & Solution`, `${title} — Problem & Solution`, `${title} — Solution`, title),
   topicHub: (label: string, count: number) => branded(`${label} Coding Problems: ${count} ${count === 1 ? "Question" : "Questions"} with Solutions`),
   // A service company (its simulation's family) hires through an online test,
   // and "accenture coding questions" is what is searched — not "interview"
@@ -240,12 +255,13 @@ export const titles = {
         ? `${label} Coding Questions: ${count} ${count === 1 ? "Problem" : "Problems"} with Solutions`
         : `${label} Coding Interview Questions: ${count} Tagged ${count === 1 ? "Problem" : "Problems"}`,
     ),
-  bugHunt: (title: string, language: string) => branded(`${title} — ${language} Bug Hunt`),
+  bugHunt: (title: string, language: string) => fitted(`${title} — ${language} Bug Hunt`, `${title} — Bug Hunt`, title),
   bugHub: (label: string, count: number, kind: "language" | "category") =>
     branded(kind === "language" ? `${label} Debugging Practice: ${count} Bug Hunts on Real Code` : `${label} Bug Hunts: ${count} Debugging Challenges`),
   aptitudeCategory: (label: string, questions: number) => branded(`${questions} ${label} Questions with Solutions`),
   aptitudeTopic: (label: string) => branded(`${label} Aptitude Questions with Solutions`),
-  aptitudeQuestion: (title: string, topicLabel: string) => branded(`${title} — ${topicLabel} Aptitude Question`),
+  aptitudeQuestion: (title: string, topicLabel: string) =>
+    fitted(`${title} — ${topicLabel} Aptitude Question`, `${title} — Aptitude Question`, `${title} — Aptitude`, title),
   // "learn java", "java tutorial": the words a track is searched by. It
   // was "Learn Java: 20-Module Study Plan with 138 Lessons" — "study plan"
   // is this site's word, not a searcher's.
@@ -271,7 +287,7 @@ export const titles = {
   // The technique, not the difficulty, after the name (2026-10-30): the titles
   // are stories ("Bowlers Who Caught Their Own Delivery") and what a searcher
   // types is the technique — "sql window functions problem", "sql joins question".
-  sqlProblem: (title: string, topic: string) => branded(`${title} — SQL ${topic} Problem`),
+  sqlProblem: (title: string, topic: string) => fitted(`${title} — SQL ${topic} Problem`, `${title} — SQL Problem`, title),
   // A SQL topic's hub (/sql/joins, 2026-11-02): "sql joins practice problems",
   // "sql window functions questions" — the phrases its page answers.
   sqlTopic: (topic: string, count: number) => branded(`SQL ${topic} Practice Problems: ${count} ${count === 1 ? "Question" : "Questions"} with Solutions`),
@@ -1990,6 +2006,16 @@ function sqlTopicHead(slug: string): PageHead | null {
 }
 
 /** A SQL problem: the task, its tables, the example with its output, the editorial and the reference queries. */
+/** The SPA's "More SQL <topic> problems" list under the statement (SqlDescriptionPane), as the article's section. */
+function relatedSqlSection(page: { topics: string[]; related: Array<{ slug: string; title: string }> }): string {
+  const topic = page.topics[0];
+  const hub = topic ? SQL_TOPIC_GUIDES.find((g) => g.topic === topic) : undefined;
+  if (!topic || (!page.related.length && !hub)) return "";
+  const rows = page.related.map((p) => ({ href: `/sql/${p.slug}`, label: p.title }));
+  if (hub) rows.push({ href: `/sql/${hub.slug}`, label: `All SQL ${topic.toLowerCase()} problems` });
+  return section(`More SQL ${topic.toLowerCase()} problems`, linkList(rows), "related");
+}
+
 async function sqlProblemHead(slug: string): Promise<PageHead | null> {
   const page = await sqlProblemPage(slug);
   if (!page) return null;
@@ -2024,11 +2050,16 @@ async function sqlProblemHead(slug: string): Promise<PageHead | null> {
       ["Dialect", "MySQL"],
       ["Problem", `#${sqlNumber(slug)}`],
     ]) +
-    section("Problem statement", markdownToHtml(page.description, 12_000, { under: 2 }), "statement") +
+    section(
+      "Problem statement",
+      markdownToHtml(page.description, 12_000, { under: 2 }) + (page.company ? `<p>${h(sqlScenarioNote(page.company))}</p>` : ""),
+      "statement",
+    ) +
     section("Tables", schema, "tables") +
     section("Examples", examples, "examples") +
     section(`How to solve ${page.title}`, markdownToHtml(page.editorial, 12_000, { under: 2 }), "editorial") +
     section("Reference solution (MySQL)", queries, "solution") +
+    relatedSqlSection(page) +
     `<p>${near}</p>`;
   return {
     path,

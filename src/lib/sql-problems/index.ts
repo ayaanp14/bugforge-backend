@@ -91,6 +91,17 @@ const COMPANY_SETS: ReadonlyArray<readonly [string, readonly SqlProblemSpec[]]> 
   ] as const
 ).map(([company, set]) => [company, set.map((p) => ({ ...p, company }))] as const);
 
+/**
+ * The line under a company problem's statement (2026-11-03 SEO audit, ISS-005):
+ * the title leads with a real company and the data is invented, so the page
+ * says so — a reader (or a rater) must not take it for a question the company
+ * asked, or for an endorsement. Drawn by sqlProblemHead's article, the
+ * static-first view and the SPA's SqlDescriptionPane (frontend
+ * content/sql-workbench SQL_STATEMENT.scenario mirrors these words).
+ */
+export const sqlScenarioNote = (company: string) =>
+  `A practice scenario set at ${company}: the tables and data are invented, and this is not a question from, or endorsed by, ${company}.`;
+
 /** The companies with a SQL set, in the list's order. */
 export const SQL_COMPANIES: readonly string[] = COMPANY_SETS.map(([company]) => company);
 
