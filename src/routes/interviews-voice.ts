@@ -199,6 +199,19 @@ function topicsFor(config: InterviewConfig) {
 /* ── bootstrap ─────────────────────────────────────────────────────────── */
 
 /**
+ * The accepted submission an "explain your solution" round is about — the
+ * caller's own and accepted, checked on every read (lib/solution-interview),
+ * since the setup row only names it. Null for any other round.
+ */
+function solvedSubmission(submissionId: string | null, userId: string) {
+  if (!submissionId) return Promise.resolve(null);
+  return prisma.submission.findFirst({
+    where: { id: submissionId, userId, verdict: "ACCEPTED" },
+    select: { code: true, language: true, problem: { select: { title: true, slug: true, difficulty: true, description: true } } },
+  });
+}
+
+/**
  * @route   GET /api/interviews/session/:sessionId/voice
  * @desc    Everything the voice screen needs to render before it connects
  * @access  Private
@@ -218,13 +231,14 @@ router.get("/session/:sessionId/voice", requireAuth, async (req: any, res) => {
     // and computing it from the transcript alone handed a resumed client
     // numbers already taken — its new lines then hit the unique constraint
     // and `skipDuplicates` silently dropped them.
-    const [events, highWater] = await Promise.all([
+    const [events, highWater, solved] = await Promise.all([
       prisma.interviewEvent.findMany({
         where: { sessionId: session.id, type: "transcript" },
         orderBy: { sequence: "asc" },
         select: { sequence: true, speaker: true, text: true, questionNumber: true },
       }),
       prisma.interviewEvent.aggregate({ where: { sessionId: session.id }, _max: { sequence: true } }),
+      solvedSubmission(session.savedInterview.submissionId, req.user.userId),
     ]);
 
     res.json({
@@ -244,6 +258,15 @@ router.get("/session/:sessionId/voice", requireAuth, async (req: any, res) => {
       interviewer: interviewerFor(state.interviewer)?.id ?? null,
       conversationLanguage: conversationLanguage(state.language),
       transcript: events,
+      /**
+       * An "explain your solution" round's problem and the candidate's own
+       * accepted code, which the room shows beside the call (the owner,
+       * 2026-11-03: the candidate needs it in front of them to answer). The
+       * interviewer reads the same code (the credential route). Null otherwise.
+       */
+      solution: solved
+        ? { title: solved.problem.title, slug: solved.problem.slug, difficulty: solved.problem.difficulty, language: solved.language, code: solved.code }
+        : null,
       /** Where a resumed client must continue counting from. */
       nextSequence: (highWater._max.sequence ?? 0) + 1,
       /** Seconds already burned, so a resumed round does not restart the clock. */
@@ -358,12 +381,7 @@ router.post("/session/:sessionId/voice/session", requireAuth, voiceCredentialLim
       // for — the candidate's own, and only an accepted one (both checked
       // again here, not only at /explain, since the setup row is the client's
       // to point at).
-      submissionId
-        ? prisma.submission.findFirst({
-            where: { id: submissionId, userId: req.user.userId, verdict: "ACCEPTED" },
-            select: { code: true, language: true, problem: { select: { title: true, difficulty: true, description: true } } },
-          })
-        : Promise.resolve(null),
+      solvedSubmission(submissionId, req.user.userId),
     ]);
 
     const credential = await provider.createCredential(
