@@ -2,6 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
   EMPTY_MISSION_FACTS,
+  INTERVIEW_MINUTES,
   MAX_PER_SKILL,
   MINUTE_CHOICES,
   activityKey,
@@ -377,4 +378,27 @@ test("a cohort's goal is one item after the weakest skill, ticked by its accept,
   // The skill share still holds: a goal skill already twice on the day gets no third.
   const crowded = buildMission(cands({ weakest: [skill("Joins", { key: "sql:joins" })], building: [skill("Joins", { key: "sql:joins" })], cohort }), 240);
   assert.ok(crowded.filter((i) => i.skill === "sql:joins").length <= MAX_PER_SKILL);
+});
+
+test("a short AI interview a week: only when none was sat, only on a day with room", () => {
+  const isInterview = (i: { id: string }) => i.id === "practice:interview";
+  const due = buildMission(cands({ interviewDue: true, weakest: [skill("Graph")] }), 60);
+  const item = due.find(isInterview);
+  assert.ok(item, "offered on an hour's day");
+  assert.equal(item!.minutes, INTERVIEW_MINUTES);
+  assert.deepEqual(item!.evidence, { activity: "interview", ref: null });
+  assert.equal(due[0]!.context, "Graph", "after the weakest skill, never ahead of it");
+
+  assert.ok(!buildMission(cands({ interviewDue: false }), 60).some(isInterview), "not when one was sat this week");
+  assert.ok(!buildMission(cands({ interviewDue: true }), 15).some(isInterview), "a 15-minute day keeps its time for a problem");
+  assert.ok(!buildMission(cands(), 60).some(isInterview), "absent candidate, no interview");
+});
+
+test("the weekly interview never shares a day with the plan's own interview step", () => {
+  const day = buildMission(
+    cands({ interviewDue: true, milestone: { key: "interview", title: "Sit a mock interview", detail: "", href: "/mock-interview" } }),
+    120,
+  );
+  const interviews = day.filter((i) => i.id === "practice:interview" || i.id.includes("interview"));
+  assert.equal(interviews.length, 1, interviews.map((i) => i.id).join(", "));
 });

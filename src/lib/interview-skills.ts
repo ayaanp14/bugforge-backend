@@ -27,6 +27,8 @@ export type InterviewSkill = (typeof INTERVIEW_SKILLS)[number];
 /** The builder's round ids (frontend components/mock-interview/interview-options.ts) and the kind of answer each scores. */
 export const ROUND_SKILL: Readonly<Record<string, InterviewSkill | null>> = {
   "coding-interview": "int:coding",
+  // "Explain your solution" (lib/solution-interview): talking through code the candidate wrote.
+  "explain-solution": "int:coding",
   "machine-coding": "int:coding",
   "debugging-interview": "int:technical",
   "technical-interview": "int:technical",

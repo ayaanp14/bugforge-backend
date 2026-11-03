@@ -21,6 +21,7 @@ import { SAT_ROUND_REFUSAL, checkInterviewQuota, satRoundFits } from "../service
 import { simulationCoversRound } from "../services/simulations.js";
 import { voiceCredentialLimiter } from "../middleware/rate-limit.js";
 import { invalidateDashboard } from "../services/dashboard.js";
+import { solutionBrief } from "../lib/solution-interview.js";
 import {
   buildContext,
   realtimeProvider,
@@ -63,6 +64,8 @@ type Guarded = {
       id: string;
       /** Set when the round is a company simulation's: the run paid for it. */
       simulationRunId: string | null;
+      /** Set when the round explains an accepted submission (lib/solution-interview). */
+      submissionId: string | null;
       roleId: string;
       roundId: string;
       difficulty: string | null;
@@ -90,6 +93,7 @@ const GUARD_SELECT = {
     select: {
       id: true,
       simulationRunId: true,
+      submissionId: true,
       roleId: true,
       roundId: true,
       difficulty: true,
@@ -338,7 +342,8 @@ router.post("/session/:sessionId/voice/session", requireAuth, voiceCredentialLim
     // "send the whole transcript every time" cost PHASE 17 rules out.
     // Independent reads, one round trip: this runs on every connect and
     // every reconnect, when the candidate is waiting to hear a voice.
-    const [asked, user] = await Promise.all([
+    const submissionId = session.savedInterview.submissionId;
+    const [asked, user, solved] = await Promise.all([
       prisma.interviewEvent.findMany({
         where: { sessionId: session.id, type: "question_started" },
         orderBy: { sequence: "asc" },
@@ -349,6 +354,16 @@ router.post("/session/:sessionId/voice/session", requireAuth, voiceCredentialLim
         where: { id: req.user.userId },
         select: { name: true },
       }),
+      // An "explain your solution" round briefs on the submission it was made
+      // for — the candidate's own, and only an accepted one (both checked
+      // again here, not only at /explain, since the setup row is the client's
+      // to point at).
+      submissionId
+        ? prisma.submission.findFirst({
+            where: { id: submissionId, userId: req.user.userId, verdict: "ACCEPTED" },
+            select: { code: true, language: true, problem: { select: { title: true, difficulty: true, description: true } } },
+          })
+        : Promise.resolve(null),
     ]);
 
     const credential = await provider.createCredential(
@@ -364,6 +379,15 @@ router.post("/session/:sessionId/voice/session", requireAuth, voiceCredentialLim
         candidateName: user?.name ?? null,
         interviewer: interviewerFor(state.interviewer),
         openingLanguage: conversationLanguage(state.language),
+        solution: solved
+          ? solutionBrief({
+              title: solved.problem.title,
+              difficulty: solved.problem.difficulty,
+              statement: solved.problem.description,
+              language: solved.language,
+              code: solved.code,
+            })
+          : null,
       }),
       // Resuming picks the conversation back up inside the model rather than
       // starting a second interview with the same candidate.

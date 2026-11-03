@@ -860,6 +860,12 @@ model SavedInterview {
   /// not the member's: it is left out of the saved-setups list, its cap and
   /// the dashboard's count.
   simulationRunId String?
+  /// The accepted submission an "explain your solution" round is about
+  /// (lib/solution-interview): set by POST /api/interviews/explain, read by the
+  /// voice brief. Such a setup is the submission's, like a simulation's — left
+  /// out of the saved-setups list, its cap and the dashboard's count. No FK:
+  /// a deleted submission leaves a round that briefs without the code.
+  submissionId    String?                @db.VarChar(191)
   createdAt       DateTime               @default(now())
   updatedAt       DateTime               @updatedAt
   user            User                   @relation(fields: [userId], references: [id], onDelete: Cascade)

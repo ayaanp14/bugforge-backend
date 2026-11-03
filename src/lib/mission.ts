@@ -181,7 +181,24 @@ export interface MissionCandidates {
   discover: DiscoverCandidate[];
   /** The week's cohort goal this account has not met yet (services/cohorts cohortGoalFor), or null. */
   cohort?: CohortCandidate | null;
+  /**
+   * No mock interview sat in the last INTERVIEW_EVERY_DAYS (services/mission
+   * — one count on the sat-round predicate). True offers a short AI interview
+   * on a day with room for it (interviewProposal).
+   */
+  interviewDue?: boolean;
 }
+
+/**
+ * The AI interview as a regular part of the routine (the owner, 2026-11-03:
+ * the AI interview is to be one of the platform's primary features). One
+ * short round a week, for every goal: a 15-minute voice round is enough to
+ * practise saying an answer out loud, and a day under 30 minutes keeps its
+ * time for problems.
+ */
+export const INTERVIEW_EVERY_DAYS = 7;
+export const INTERVIEW_MINUTES = 15;
+const INTERVIEW_DAY_MINUTES = 30;
 
 /**
  * A study cohort's weekly goal, as the mission reads it (Phase 9): the
@@ -372,6 +389,29 @@ export function buildMission(c: MissionCandidates, minutes: number, keep: readon
     // Early enough that a short day still meets it: a thing never tried is
     // worth more than a fourth practice problem, and it stops once tried.
     ...(discover ? [discover] : []),
+    // After the never-tried feature, before the plan's step: an interview a
+    // week is part of every goal's practice, not a milestone of one.
+    ...(c.interviewDue && minutes >= INTERVIEW_DAY_MINUTES
+      ? [
+          (_perSlot: number, _refs: ReadonlySet<string>, room: Room): MissionItem | null =>
+            // Never beside the target's or the plan's own interview item.
+            room.minutesLeft < INTERVIEW_MINUTES || picked.some((i) => i.evidence && "activity" in i.evidence && i.evidence.activity === "interview")
+              ? null
+              : {
+                  id: "practice:interview",
+                  kind: "practice",
+                  title: "AI mock interview",
+                  context: "Interview",
+                  why: "You have not practised an interview this week. Fifteen minutes out loud with the AI interviewer keeps you ready.",
+                  href: "/mock-interview",
+                  workbench: false,
+                  minutes: INTERVIEW_MINUTES,
+                  difficulty: null,
+                  skill: null,
+                  evidence: { activity: "interview", ref: null },
+                },
+        ]
+      : []),
     milestoneProposal(c, minutes),
     ...(!near && lean ? [lean] : []),
     ...(interviewGoal ? [huntProposal(c)] : []),

@@ -136,6 +136,8 @@ One request builds it; it refreshes itself after a submission, a chest, a follow
 - **It holds still for the day**: the list is built once a day and does not reshuffle as you work — solving an item ticks it, it does not replace it. A new list is built after midnight Indian time, like the streak, from what you did.
 - **Try items**: once a day, one item named **Try** may appear for something you have never used — **Set your … drive date** (no date yet), **Start the … simulation** for the company you named, or **Ask the tutor on …** (a problem that opens with the tutor ready). It ticks itself the first time you use the thing, and stops appearing once each has been tried.
 - **With a placement target** (saved on `/readiness`, or the first company you named at `/welcome`): the mission leans toward the area of readiness with most to gain. Within 30 days of the drive date that area's work comes right after an unfinished draft, ahead of reviews, and a second item for it follows; further out, or with no date, it is one item after your plan's step. The items: the company's mock test (on a day of 2 hours or more, where it fits, and not within 14 days of sitting it), ten questions from the test's weakest aptitude section, a problem in the company's weakest topic (its own problems first), a CS fundamentals skill test or that subject's notes, a mock interview, or a resume check. Each ticks itself when done that day: a graded sitting, ten different questions answered in the section, a closed skill-test sitting, a mock interview sat, a resume analysed. Changing or clearing the target rebuilds today's undone items at once.
+- **A weekly interview**: on a day of 30 minutes or more, when you have not sat a mock interview in the past 7 days, the list includes **AI mock interview** (15 minutes, after your weakest skill). It opens the mock interview builder and ticks itself when you sit a round that day. It never appears beside your plan's or your placement target's own interview item.
+- **Practise an interview today**: right under Today, a card with the interviewer's animated orb. **Start an interview** opens the mock interview builder; **Your past interviews** opens the history.
 - Further down: CodeKairo **Battles** (the tournament live or open now, or how to host one), **Recent submissions** (last five across problems, bug hunts and SQL problems; open one to read its code — a SQL one opens its problem) beside the **Leaderboard preview** (top five by XP with your rank), the **Activity heatmap** (365 days), **Skills** (topic tags with solved/total, languages used, and a **Your skill profile** link to `/skills`) beside **Problem progress** (ring by difficulty).
 - **Keep practising** at the end: bug hunts, **pair rooms** and **mock interviews** — the way to open a pair room or start a mock interview from home.
 - "Solved today" counts *first-time* solves in the last 24 hours; "XP this week" counts first-time solves in the last 7 days (rolling windows, not calendar days).
@@ -338,6 +340,14 @@ What your work on CodeKairo shows you can do, skill by skill, and what to work o
 - **History** tab on the lobby: the rooms you took part in, with the last submission's verdict and its code.
 
 ## Mock interviews — `/mock-interview`
+
+- **AI Interview** in the top bar (the animated orb beside the search, on screens 900 px and wider) opens this page from anywhere on the site. The landing page's **Meet your AI interviewer** section plays a short recorded sample of Ava opening a round, with the orb moving to her voice.
+
+### Explain your solution
+
+- After an **Accepted** submit on a coding problem, the result panel offers **Can you explain it out loud?** — **Explain it** starts a **10-minute voice round** about the solution you just submitted.
+- The interviewer reads the problem's statement and your accepted code, then asks you to walk through your approach and probes it like the part of a real coding interview after the code is written: why this approach, its time and space complexity, the edge cases, what would break it, an alternative and its tradeoffs. It refers to your code by what it does, never reading it aloud.
+- It is an ordinary voice round otherwise: it uses your voice allowance, has a report, and is in your interview history. Its setup is not added to **Your setups**. Pressing **Explain it** again for the same submission opens the same setup.
 
 ### The builder
 

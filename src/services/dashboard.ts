@@ -639,7 +639,7 @@ async function queryUserCounters(userId: string) {
       (SELECT COUNT(*) FROM \`Follow\` WHERE \`followingId\` = ${userId}) AS followers,
       (SELECT COUNT(*) FROM \`Follow\` WHERE \`followerId\` = ${userId}) AS following,
       (SELECT COUNT(*) FROM \`Post\` WHERE \`userId\` = ${userId}) AS posts,
-      (SELECT COUNT(*) FROM \`SavedInterview\` WHERE \`userId\` = ${userId} AND \`simulationRunId\` IS NULL) AS savedInterviews
+      (SELECT COUNT(*) FROM \`SavedInterview\` WHERE \`userId\` = ${userId} AND \`simulationRunId\` IS NULL AND \`submissionId\` IS NULL) AS savedInterviews
   `);
   const row = rows[0];
   return {

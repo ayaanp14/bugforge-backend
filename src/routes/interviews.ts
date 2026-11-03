@@ -24,6 +24,7 @@ import { realtimeProvider } from "../services/realtime-interview.js";
 import { cachedShared } from "../lib/cache.js";
 import { invalidateDashboard } from "../services/dashboard.js";
 import { runOfSession, simulationCoversRound } from "../services/simulations.js";
+import { SOLUTION_MINUTES, SOLUTION_ROUND } from "../lib/solution-interview.js";
 import {
   finalizeInterview,
   interviewHistoryKey,
@@ -66,7 +67,7 @@ router.post("/save", requireAuth, async (req: any, res) => {
     // Templates are a short list on the builder and the dashboard; nothing
     // capped it, so one account could grow the list without limit.
     // A company simulation's setups are the run's, not the member's (services/simulations.ts).
-    const owned = await prisma.savedInterview.count({ where: { userId: req.user.userId, simulationRunId: null } });
+    const owned = await prisma.savedInterview.count({ where: { userId: req.user.userId, simulationRunId: null, submissionId: null } });
     if (owned >= MAX_SAVED_TEMPLATES) {
       return res.status(409).json({
         error: `You can keep up to ${MAX_SAVED_TEMPLATES} saved setups. Delete one you no longer use to add another.`,
@@ -109,7 +110,7 @@ router.post("/save", requireAuth, async (req: any, res) => {
 router.get("/my", requireAuth, async (req: any, res) => {
   try {
     const interviews = await prisma.savedInterview.findMany({
-      where: { userId: req.user.userId, simulationRunId: null },
+      where: { userId: req.user.userId, simulationRunId: null, submissionId: null },
       orderBy: { createdAt: "desc" },
     });
 
@@ -118,6 +119,52 @@ router.get("/my", requireAuth, async (req: any, res) => {
     console.error("Error fetching saved interviews:", error);
     res.status(500).json({ error: "Failed to fetch saved interviews" });
   }
+});
+
+/**
+ * @route   POST /api/interviews/explain
+ * @desc    A setup for an "explain your solution" voice round on an accepted submission
+ * @access  Private
+ *
+ * lib/solution-interview says what the round is. The setup is made once per
+ * submission and reused (a second click opens the same one); the round
+ * itself is started by the voice page as any other, so it is metered and
+ * counted as usual. Answers the voice page's href.
+ */
+router.post("/explain", requireAuth, async (req: any, res) => {
+  const submissionId = req.body?.submissionId;
+  if (typeof submissionId !== "string" || !submissionId || submissionId.length > 191) {
+    return res.status(400).json({ error: "submissionId is required" });
+  }
+  const submission = await prisma.submission.findFirst({
+    where: { id: submissionId, userId: req.user.userId, verdict: "ACCEPTED" },
+    select: { id: true, problem: { select: { difficulty: true } } },
+  });
+  // Someone else's, unknown, or not accepted: the same answer for each.
+  if (!submission) return res.status(404).json({ error: "That accepted submission was not found." });
+
+  const existing = await prisma.savedInterview.findFirst({
+    where: { userId: req.user.userId, submissionId: submission.id },
+    select: { id: true },
+  });
+  const setup =
+    existing ??
+    (await prisma.savedInterview.create({
+      data: {
+        userId: req.user.userId,
+        roleId: "Software Engineer",
+        roundId: SOLUTION_ROUND,
+        difficulty: submission.problem.difficulty,
+        experienceBand: "Junior (0-2 years)",
+        interviewStyle: "Friendly",
+        submissionId: submission.id,
+      },
+      select: { id: true },
+    }));
+  res.status(existing ? 200 : 201).json({
+    savedInterviewId: setup.id,
+    href: `/mock-interview/voice?savedInterviewId=${setup.id}&durationMin=${SOLUTION_MINUTES}`,
+  });
 });
 
 /**
@@ -154,6 +201,10 @@ router.patch("/:id", requireAuth, async (req: any, res) => {
     // them turned the run's interview into any interview the caller liked.
     if (interview.simulationRunId) {
       return res.status(409).json({ error: "This setup belongs to a company simulation and cannot be edited." });
+    }
+    // Likewise an "explain your solution" setup is its submission's.
+    if (interview.submissionId) {
+      return res.status(409).json({ error: "This setup is for explaining one solution and cannot be edited." });
     }
 
     // Every turn of a round reads its configuration from this row, so editing

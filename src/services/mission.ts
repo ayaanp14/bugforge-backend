@@ -17,6 +17,7 @@ import {
   activityKey,
   buildMission,
   isMinuteChoice,
+  INTERVIEW_EVERY_DAYS,
   keptOnResize,
   missionView,
   readItems,
@@ -144,11 +145,16 @@ async function gatherCandidates(userId: string, loads: MissionLoads, state: Prob
 
   // Three independent reads, together: awaited inside the object literal they
   // ran one after another on the dashboard's critical path.
-  const [target, discover, cohort] = await Promise.all([
+  const [target, discover, cohort, interviewsThisWeek] = await Promise.all([
     readiness ? targetCandidates(userId, readiness, profile, state, skillPick) : null,
     discoverCandidates(userId, row),
     // A cohort's goal never fails the day: without it the mission is what it was.
     cohortGoalFor(userId).catch(() => null),
+    // Sat rounds in the last week (lib/mission interviewDue). A failed count
+    // offers no interview rather than failing the day.
+    prisma.mockInterviewSession
+      .count({ where: { userId, createdAt: { gte: new Date(Date.now() - INTERVIEW_EVERY_DAYS * 86_400_000) }, AND: [SAT_ROUND] } })
+      .catch(() => 1),
   ]);
 
   return {
@@ -167,6 +173,7 @@ async function gatherCandidates(userId: string, loads: MissionLoads, state: Prob
     target,
     discover,
     cohort,
+    interviewDue: interviewsThisWeek === 0,
   };
 }
 
