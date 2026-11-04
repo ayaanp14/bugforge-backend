@@ -1,8 +1,8 @@
 import { dayKey } from "./clock.js";
 
 /**
- * Diwali 2026, "Light seven diyas" (the owner's ask, 2026-11-04): 4 to 10
- * November, one diya for each day, lit by an accepted coding or SQL submission
+ * Diwali 2026, "Light seven diyas" (the owner's ask, 2026-11-04): 5 to 11
+ * November (moved from 4 to 10 on the owner's word, 2026-11-05), one diya for each day, lit by an accepted coding or SQL submission
  * on that day in the product's calendar. A missed day stays dark; there is no
  * catching up.
  *
@@ -23,19 +23,19 @@ import { dayKey } from "./clock.js";
  * nothing needs a deploy to end it. Mirrored by the SPA's lib/festival.ts.
  */
 
-export const FESTIVAL_DAYS = ["2026-11-04", "2026-11-05", "2026-11-06", "2026-11-07", "2026-11-08", "2026-11-09", "2026-11-10"] as const;
+export const FESTIVAL_DAYS = ["2026-11-05", "2026-11-06", "2026-11-07", "2026-11-08", "2026-11-09", "2026-11-10", "2026-11-11"] as const;
 /** Diyas the badge takes: every day's. */
 export const FESTIVAL_GOAL = FESTIVAL_DAYS.length;
 /** The day after the last diya: the home still shows the result, and the frame is still worn. */
-export const FESTIVAL_LAST_DAY = "2026-11-11";
+export const FESTIVAL_LAST_DAY = "2026-11-12";
 
 export const FESTIVAL_FRAME_KIND = "diwali_2026_diya";
 export const FESTIVAL_BADGE_KIND = "diwali_2026";
 
 /** The window of submissions that can light a diya, as instants (IST midnights). */
 export const FESTIVAL_WINDOW = {
-  from: new Date("2026-11-04T00:00:00+05:30"),
-  until: new Date("2026-11-11T00:00:00+05:30"),
+  from: new Date("2026-11-05T00:00:00+05:30"),
+  until: new Date("2026-11-12T00:00:00+05:30"),
 };
 
 export interface FestivalSlice {
@@ -78,6 +78,6 @@ export function festivalAnnouncePeriod(now: Date, hour: number): string | null {
 export const FESTIVAL_ANNOUNCEMENT = {
   type: "diwali_2026_start",
   title: "Happy Diwali! Light seven diyas",
-  body: "Solve any problem to light a diya, one a day until 10 November. Light all seven for a limited-edition badge.",
+  body: "Solve any problem to light a diya, one a day until 11 November. Light all seven for a limited-edition badge.",
   href: "/",
 };

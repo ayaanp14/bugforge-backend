@@ -7,10 +7,10 @@ import { honourDef } from "./honours.js";
 const at = (iso: string) => new Date(iso);
 
 test("the diyas follow the IST calendar, not UTC", () => {
-  // 19:00 UTC on the 3rd is 00:30 on the 4th in IST: the first diya's day.
-  assert.deepEqual(litDays([at("2026-11-03T19:00:00Z")]), ["2026-11-04"]);
-  // 18:00 UTC on the 3rd is still 23:30 on the 3rd in IST: too early.
-  assert.deepEqual(litDays([at("2026-11-03T18:00:00Z")]), []);
+  // 19:00 UTC on the 4th is 00:30 on the 5th in IST: the first diya's day.
+  assert.deepEqual(litDays([at("2026-11-04T19:00:00Z")]), ["2026-11-05"]);
+  // 18:00 UTC on the 4th is still 23:30 on the 4th in IST: too early.
+  assert.deepEqual(litDays([at("2026-11-04T18:00:00Z")]), []);
 });
 
 test("several solves on one day light one diya, and the days come back in order", () => {
@@ -21,16 +21,16 @@ test("several solves on one day light one diya, and the days come back in order"
 });
 
 test("a solve after the last day lights nothing", () => {
-  assert.deepEqual(litDays([at("2026-11-11T00:00:00+05:30")]), []);
-  assert.equal(festivalLighting(at("2026-11-10T23:59:00+05:30")), true);
-  assert.equal(festivalLighting(at("2026-11-11T00:00:00+05:30")), false);
+  assert.deepEqual(litDays([at("2026-11-12T00:00:00+05:30")]), []);
+  assert.equal(festivalLighting(at("2026-11-11T23:59:00+05:30")), true);
+  assert.equal(festivalLighting(at("2026-11-12T00:00:00+05:30")), false);
 });
 
 test("the strip shows through the day after and then stops by itself", () => {
-  assert.equal(festivalShowing(at("2026-11-03T23:59:00+05:30")), false);
-  assert.equal(festivalShowing(at("2026-11-04T00:00:00+05:30")), true);
-  assert.equal(festivalShowing(at("2026-11-11T23:59:00+05:30")), true);
-  assert.equal(festivalShowing(at("2026-11-12T00:00:00+05:30")), false);
+  assert.equal(festivalShowing(at("2026-11-04T23:59:00+05:30")), false);
+  assert.equal(festivalShowing(at("2026-11-05T00:00:00+05:30")), true);
+  assert.equal(festivalShowing(at("2026-11-12T23:59:00+05:30")), true);
+  assert.equal(festivalShowing(at("2026-11-13T00:00:00+05:30")), false);
 });
 
 test("the frame comes with the first diya and the badge only with all seven", () => {
@@ -52,7 +52,7 @@ test("the badge is held only with its row, so a share is checked against the acc
 });
 
 test("the announcement is due on the first day only, and not overnight", () => {
-  assert.equal(festivalAnnouncePeriod(at("2026-11-04T15:00:00+05:30"), 15), "diwali-2026");
-  assert.equal(festivalAnnouncePeriod(at("2026-11-04T22:00:00+05:30"), 22), null);
-  assert.equal(festivalAnnouncePeriod(at("2026-11-05T09:00:00+05:30"), 9), null);
+  assert.equal(festivalAnnouncePeriod(at("2026-11-05T15:00:00+05:30"), 15), "diwali-2026");
+  assert.equal(festivalAnnouncePeriod(at("2026-11-05T22:00:00+05:30"), 22), null);
+  assert.equal(festivalAnnouncePeriod(at("2026-11-06T09:00:00+05:30"), 9), null);
 });
