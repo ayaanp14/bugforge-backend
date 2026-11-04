@@ -22,6 +22,7 @@ import readinessRouter from "./routes/readiness.js";
 import simulationsRouter from "./routes/simulations.js";
 import companiesRouter from "./routes/companies.js";
 import cohortsRouter from "./routes/cohorts.js";
+import diwaliPlaygroundRouter from "./routes/diwali-playground.js"; // DIWALI-PLAYGROUND
 import { recoverSubmissionAnalyses } from "./services/submission-analysis.js";
 import { recoverBugCoach } from "./services/bug-coach.js";
 import pushRouter from "./routes/push.js";
@@ -1017,6 +1018,7 @@ app.use("/api/simulations", simulationsRouter);
 app.use("/api/companies", companiesRouter);
 // Study cohorts: a shared weekly goal and sessions on the pair rooms (Phase 9, services/cohorts.ts).
 app.use("/api/cohorts", cohortsRouter);
+app.use("/api/diwali-playground", diwaliPlaygroundRouter); // DIWALI-PLAYGROUND
 app.use("/api/goodies", goodiesRouter);
 app.use("/api/notes", notesRouter);
 app.use("/api/assistant", assistantRouter);
