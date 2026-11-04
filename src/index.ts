@@ -1227,7 +1227,7 @@ httpServer.listen(PORT, () => {
   registerJob(contestPayoutJob);
   // Battles: each tournament's entrants mailed 24 h and 1 h before the start.
   registerJob(tournamentRemindersJob);
-  // Diwali 2026's one announcement; due on a single morning (services/festival.ts).
+  // Diwali 2026's one announcement; due on a single day (services/festival.ts).
   registerFestivalJobs();
   startScheduler();
   // No socket survived the restart, and none said goodbye (lib/duels).

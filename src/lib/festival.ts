@@ -1,9 +1,10 @@
 import { dayKey } from "./clock.js";
 
 /**
- * Diwali 2026, "Light five diyas" (the owner's ask, 2026-11-04): five days,
- * one diya a day, lit by any accepted coding or SQL submission on that day in
- * the product's calendar. A missed day stays dark; there is no catching up.
+ * Diwali 2026, "Light five diyas" (the owner's ask, 2026-11-04): 4 to 10
+ * November, one diya a day on any five of the seven days, lit by an accepted
+ * coding or SQL submission on that day in the product's calendar. Two days of
+ * grace, because this is a week when people travel; a day missed is still gone.
  *
  * Which days are lit is derived from the submissions and never stored. What
  * is stored is what the lights earned, as two `Honour` rows, because a frame
@@ -22,7 +23,9 @@ import { dayKey } from "./clock.js";
  * nothing needs a deploy to end it. Mirrored by the SPA's lib/festival.ts.
  */
 
-export const FESTIVAL_DAYS = ["2026-11-06", "2026-11-07", "2026-11-08", "2026-11-09", "2026-11-10"] as const;
+export const FESTIVAL_DAYS = ["2026-11-04", "2026-11-05", "2026-11-06", "2026-11-07", "2026-11-08", "2026-11-09", "2026-11-10"] as const;
+/** Diyas the badge takes. */
+export const FESTIVAL_GOAL = 5;
 /** The day after the last diya: the home still shows the result, and the frame is still worn. */
 export const FESTIVAL_LAST_DAY = "2026-11-11";
 
@@ -31,7 +34,7 @@ export const FESTIVAL_BADGE_KIND = "diwali_2026";
 
 /** The window of submissions that can light a diya, as instants (IST midnights). */
 export const FESTIVAL_WINDOW = {
-  from: new Date("2026-11-06T00:00:00+05:30"),
+  from: new Date("2026-11-04T00:00:00+05:30"),
   until: new Date("2026-11-11T00:00:00+05:30"),
 };
 
@@ -40,7 +43,7 @@ export interface FestivalSlice {
   lit: string[];
 }
 
-/** Whether the home shows the strip at all: the five days and the day after. */
+/** Whether the home shows the strip at all: the seven days and the day after. */
 export function festivalShowing(now: Date): boolean {
   const today = dayKey(now);
   return today >= FESTIVAL_DAYS[0] && today <= FESTIVAL_LAST_DAY;
@@ -59,18 +62,22 @@ export function litDays(instants: readonly Date[]): string[] {
 
 /** The Honour kinds this many lit days has earned. */
 export function festivalKinds(lit: number): string[] {
-  if (lit >= FESTIVAL_DAYS.length) return [FESTIVAL_FRAME_KIND, FESTIVAL_BADGE_KIND];
+  if (lit >= FESTIVAL_GOAL) return [FESTIVAL_FRAME_KIND, FESTIVAL_BADGE_KIND];
   return lit >= 1 ? [FESTIVAL_FRAME_KIND] : [];
 }
 
-/** The morning announcement's window: the first day, 08:00–11:00 in the product zone. */
+/**
+ * The announcement's window: the first day, 08:00–21:00 in the product zone. Wide
+ * because the campaign started the day it shipped, on the owner's word, and a
+ * job whose window has passed is skipped rather than caught up (lib/scheduler).
+ */
 export function festivalAnnouncePeriod(now: Date, hour: number): string | null {
-  return dayKey(now) === FESTIVAL_DAYS[0] && hour >= 8 && hour < 11 ? "diwali-2026" : null;
+  return dayKey(now) === FESTIVAL_DAYS[0] && hour >= 8 && hour < 21 ? "diwali-2026" : null;
 }
 
 export const FESTIVAL_ANNOUNCEMENT = {
   type: "diwali_2026_start",
   title: "Happy Diwali! Light five diyas",
-  body: "Solve any problem to light today's diya. Five days, five diyas, and a limited-edition badge if you light them all.",
+  body: "Solve any problem to light a diya, one a day until 10 November. Light five for a limited-edition badge.",
   href: "/",
 };

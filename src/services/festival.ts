@@ -29,7 +29,7 @@ function festivalNow(): Date {
 
 /**
  * The days this account has lit. Two reads on the (userId, verdict,
- * submittedAt) indexes, bounded to five days of one person's accepted
+ * submittedAt) indexes, bounded to seven days of one person's accepted
  * submissions, and neither touches a code column.
  */
 async function litDaysOf(userId: string): Promise<string[]> {
@@ -76,7 +76,7 @@ export async function festivalFor(userId: string, now = festivalNow()): Promise<
 /**
  * After an accepted submission, before the answer: the client reads /api/me
  * the moment it has the verdict, and the frame and the badge should be on that
- * read. Costs nothing outside the five days, and a failure costs only the
+ * read. Costs nothing outside the seven days, and a failure costs only the
  * reward's timing, because the next dashboard read repairs it.
  */
 export async function noteFestivalSolve(userId: string, now = festivalNow()): Promise<void> {
@@ -88,10 +88,10 @@ export async function noteFestivalSolve(userId: string, now = festivalNow()): Pr
   }
 }
 
-/** In-app only, to accounts seen this month that keep the morning notes on. The mail is a separate campaign. */
+/** In-app only, to accounts seen this month that keep the daily notes on. The mail is a separate campaign. */
 const festivalAnnouncement: Job = {
   name: "diwali_2026_start",
-  description: "The first morning of Diwali 2026: tells accounts active in the last 30 days about the five diyas. In-app only.",
+  description: "The first day of Diwali 2026: tells accounts active in the last 30 days about the five diyas. In-app only.",
   periodOf: (now) => festivalAnnouncePeriod(now, zoned(now).getUTCHours()),
   async run(now) {
     const since = new Date(now.getTime() - 30 * DAY_MS);

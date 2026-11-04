@@ -1,5 +1,5 @@
 /**
- * The Diwali 2026 campaign: one mail on the first morning, Friday 6 November,
+ * The Diwali 2026 campaign: one mail on the first day, Wednesday 4 November,
  * announcing "Light five diyas" (lib/festival.ts).
  *
  *   npx tsx scripts/campaigns/diwali-2026.ts
@@ -10,8 +10,7 @@
  * every style inline, the <style> block only for what a client may drop.
  *
  * Nothing is promised that the code does not do: any accepted coding or SQL
- * submission lights the day's diya, a missed day stays dark, and the badge
- * takes all five. There is no offer, because everything is already free until
+ * submission lights one diya a day, and the badge takes five of the seven days. There is no offer, because everything is already free until
  * the date in lib/plans.ts.
  */
 
@@ -23,8 +22,8 @@ const SITE = "https://codekairo.com";
 const CAMPAIGN = "diwali-2026";
 const link = (path: string) => `${SITE}${path}?utm_source=newsletter&utm_medium=email&utm_campaign=${CAMPAIGN}`;
 
-const SUBJECT = "Happy Diwali! Five days, five diyas to light";
-const PREHEADER = "Solve one problem a day from 6 to 10 November to light a diya. Light all five for a limited-edition badge.";
+const SUBJECT = "Happy Diwali! Light five diyas by 10 November";
+const PREHEADER = "Solve one problem a day from 4 to 10 November to light a diya. Light five for a limited-edition badge.";
 
 const REWARDS: Array<{ count: string; title: string; body: string }> = [
   { count: "1 diya", title: "A festive frame", body: "Round your picture across CodeKairo until 11 November." },
@@ -95,9 +94,9 @@ a{text-decoration:none}
 <td valign="middle" class="ck-ink" style="font:700 16px/24px ${SANS};letter-spacing:-0.02em;color:${L.ink}">CodeKairo</td>
 </tr></table>
 
-<p class="ck-eyebrow" style="margin:48px 0 12px;font:600 12px/16px ${SANS};letter-spacing:0.06em;text-transform:uppercase;color:${L.highlight}">6 to 10 November</p>
+<p class="ck-eyebrow" style="margin:48px 0 12px;font:600 12px/16px ${SANS};letter-spacing:0.06em;text-transform:uppercase;color:${L.highlight}">4 to 10 November</p>
 <h1 class="ck-ink ck-h1" style="margin:0 0 20px;font:700 40px/44px ${SANS};letter-spacing:-0.03em;color:${L.ink}">Happy Diwali. Light five&nbsp;diyas.</h1>
-<p class="ck-secondary" style="margin:0 0 32px;font:400 17px/28px ${SANS};color:${L.secondary}">One solve a day lights that day's diya on your home page. Any coding or SQL problem counts, in any language, and even an easy one will do. A missed day stays dark, so start today.</p>
+<p class="ck-secondary" style="margin:0 0 32px;font:400 17px/28px ${SANS};color:${L.secondary}">One solve a day lights a diya on your home page. Any coding or SQL problem counts, in any language, and even an easy one will do. You have seven days to light five, so start today.</p>
 
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
 <td class="ck-btn-cell" style="width:1%;white-space:nowrap">
