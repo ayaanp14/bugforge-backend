@@ -1,6 +1,6 @@
 import { prisma } from "../lib/prisma.js";
 import { brevoConfigured, isReservedAddress, sendTransactional } from "../lib/brevo.js";
-import { HONOURS, grantsLifetimeAccess, honourDef, type HonourShareAction } from "../lib/honours.js";
+import { HONOURS, HONOUR_KINDS, grantsLifetimeAccess, honourDef, type HonourShareAction } from "../lib/honours.js";
 import { honourHtml, honourSubject, honourText } from "../lib/honour-mail.js";
 import { invalidateMe } from "./me.js";
 import { invalidateDashboard } from "./dashboard.js";
@@ -167,6 +167,8 @@ export async function saveHonourFeedback(userId: string, kind: string, comment: 
 /** The admin's view: every holder, what has happened since the grant, and their note. */
 export async function adminHonours() {
   const rows = await prisma.honour.findMany({
+    // Only what is given by hand: the festival's rows (lib/festival.ts) would bury it.
+    where: { kind: { in: HONOUR_KINDS } },
     orderBy: { grantedAt: "desc" },
     take: 500,
     select: {

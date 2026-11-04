@@ -3,6 +3,7 @@ import { tournamentsFor } from "./tournament-record.js";
 import { prisma } from "../lib/prisma.js";
 import { cached, cachedShared, invalidate, patchShared } from "../lib/cache.js";
 import { HONOUR_SELECT } from "../lib/honours.js";
+import { festivalFor } from "./festival.js";
 import { CALENDAR_UTC_OFFSET_MINUTES } from "../lib/clock.js";
 import { heatmapWindow, mergeHistory, sqlHistoryRow, sqlSolveTally, tallyHeatmap, type DayCountRow, type HistoryRow } from "../lib/activity.js";
 import { SQL_PROBLEMS } from "../lib/sql-problems/index.js";
@@ -748,8 +749,9 @@ export function computeProblemInsights(state: ProblemState, level: Level | null 
 // profile's Battles tournaments (2026-09-25). v4: `plan` and the level's
 // "Up next" (2026-10-06). v5: `mission`, and "Up next" without the
 // mission's problems (2026-10-07). v6: `readiness`, the target's line in
-// Today, and a mission that leans on the target (2026-10-07).
-const dashboardKey = (userId: string) => `dash:v6:${userId}`;
+// Today, and a mission that leans on the target (2026-10-07). v7: `festival`,
+// the Diwali strip (2026-11-04).
+const dashboardKey = (userId: string) => `dash:v7:${userId}`;
 
 /** The home's one line about the placement target (TodayPanel): the estimate, never the areas. */
 export interface DashboardReadiness {
@@ -862,6 +864,8 @@ async function buildDashboard(userId: string) {
   // Today's mission (services/mission.ts) reads the same loads as the plan,
   // and the plan itself — its next step is one of the day's items.
   const missionPromise = missionFor(userId, loads);
+  // The Diwali strip: no query at all outside the campaign, and never fails the page.
+  const festivalPromise = festivalFor(userId);
   const [
     me,
     counters,
@@ -908,6 +912,7 @@ async function buildDashboard(userId: string) {
     missionPromise,
   ]);
   const readiness = readinessLine(await readinessPromise);
+  const festival = await festivalPromise;
 
   const difficultyStats = computeDifficultyStats(problemState);
   const level = userRow?.level;
@@ -917,7 +922,7 @@ async function buildDashboard(userId: string) {
   // query; the account's own count is `me.stats.sqlSolved`.
   const sqlInsights = { total: SQL_PROBLEMS.length };
 
-  return { me, social, difficultyStats, submissions, heatmap, rank, leaderboard, pairing, continueSolving, problemInsights, bugInsights, sqlInsights, savedInterviews, dailyContest, roadmap, study, tournaments, credentials, plan, mission, readiness };
+  return { me, social, difficultyStats, submissions, heatmap, rank, leaderboard, pairing, continueSolving, problemInsights, bugInsights, sqlInsights, savedInterviews, dailyContest, roadmap, study, tournaments, credentials, plan, mission, readiness, festival };
 }
 
 export type DashboardPayload = Awaited<ReturnType<typeof buildDashboard>>;

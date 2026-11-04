@@ -80,6 +80,7 @@ Public pages (no account needed):
 
 ### Badges
 
+- **Diwali 2026: Light five diyas**. From 6 to 10 November (India time) the home page shows five diyas, one per day. Any accepted coding or SQL submission that day lights that day's diya; a bug hunt or a pair-room solve does not, and a missed day cannot be made up. One diya earns a festive frame on your picture until 11 November, three unlock a Diwali card you can send to friends, and all five earn the limited-edition **Festival of Lights 2026** badge, kept for good and impossible to earn afterwards. **Hide decorations** on the home page turns off the hanging lights and the logo's diya in that browser.
 - **19 achievement badges** on four tracks, shown on the profile ("N of 19 badges earned"), earned in colour and locked in grey with the rule on hover and "N more to <next badge>" per track. Nothing to claim: a badge appears as soon as its number is reached.
 - **Solver** (problems solved — coding and SQL problems both count): First Solve 1, Warmed Up 10, Problem Solver 25, Algorithm Adept 50, Centurion 100, Code Machine 250, Legend 500.
 - **Bug hunter** (bugs fixed): Bug Spotter 1, Exterminator 10, Debugger 25, Bug Slayer 50.

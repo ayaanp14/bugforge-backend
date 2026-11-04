@@ -15,6 +15,7 @@ import { buildDriver, remapDiagnostics, type Language as DriverLanguage, type Si
 import { FIRST_SOLVE, createNotificationOnce, streakMilestone } from "../services/notifications.js";
 import { announceStageIfCleared } from "../services/roadmap.js";
 import { invalidateDashboard } from "../services/dashboard.js";
+import { noteFestivalSolve } from "../services/festival.js";
 import { emitDuelActivity, settleDuelForSubmission } from "../lib/duels.js";
 import { recordContestSubmission } from "../services/daily-contest.js";
 import { recordTournamentSubmission } from "../services/contest.js";
@@ -439,6 +440,10 @@ router.post("/submit", requireAuth, executionLimiter, async (req, res) => {
             return null;
           }),
     ]);
+
+    // Today's diya, in the campaign only: the frame or badge it earns belongs on
+    // the /api/me read the client makes the moment it has this answer.
+    if (verdict === "ACCEPTED" && !pairRoomId) await noteFestivalSolve(userId);
 
     res.json({
       verdict,

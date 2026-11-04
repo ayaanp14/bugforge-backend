@@ -12,7 +12,9 @@
  * list so a change here is a deliberate one.
  */
 
-export type BadgeTrack = "solver" | "hunter" | "streak" | "road";
+import { FESTIVAL_BADGE_KIND } from "./festival.js";
+
+export type BadgeTrack = "solver" | "hunter" | "streak" | "road" | "festival";
 
 export interface Badge {
   /** `<track>-<threshold>`, the id the client sends. */
@@ -29,6 +31,8 @@ export interface BadgeCounters {
   bugsFixed: number;
   longestStreak: number;
   chestsOpened: number;
+  /** Diyas lit at Diwali 2026 as far as the badge goes: five with its Honour row, else none (lib/festival.ts). */
+  festivalDiyas: number;
 }
 
 const b = (track: BadgeTrack, tier: Badge["tier"], threshold: number, name: string): Badge => ({ id: `${track}-${threshold}`, track, tier, name, threshold });
@@ -56,6 +60,9 @@ export const BADGES: readonly Badge[] = [
   b("road", 2, 2, "Core Climber"),
   b("road", 3, 3, "Advanced Ascent"),
   b("road", 4, 4, "Road Walker"),
+
+  // Limited edition: earned only during Diwali 2026 (lib/festival.ts).
+  b("festival", 4, 5, "Festival of Lights 2026"),
 ];
 
 export function badgeById(id: unknown): Badge | null {
@@ -67,6 +74,7 @@ export function counterFor(track: BadgeTrack, c: BadgeCounters): number {
   if (track === "solver") return c.problemsSolved + c.sqlSolved;
   if (track === "hunter") return c.bugsFixed;
   if (track === "streak") return c.longestStreak;
+  if (track === "festival") return c.festivalDiyas;
   return c.chestsOpened;
 }
 
@@ -79,6 +87,7 @@ export function counterFor(track: BadgeTrack, c: BadgeCounters): number {
 export function countersOfMe(me: {
   stats?: { problemsSolved?: number; sqlSolved?: number; bugsFixed?: number; longestStreak?: number; currentStreak?: number } | null;
   roadmapRewards?: readonly unknown[] | null;
+  honours?: ReadonlyArray<{ kind: string }> | null;
 }): BadgeCounters {
   const s = me.stats;
   return {
@@ -87,6 +96,7 @@ export function countersOfMe(me: {
     bugsFixed: s?.bugsFixed ?? 0,
     longestStreak: Math.max(s?.longestStreak ?? 0, s?.currentStreak ?? 0),
     chestsOpened: me.roadmapRewards?.length ?? 0,
+    festivalDiyas: me.honours?.some((h) => h.kind === FESTIVAL_BADGE_KIND) ? 5 : 0,
   };
 }
 
@@ -96,6 +106,7 @@ export function badgeFeat(badge: Badge): string {
   if (badge.track === "solver") return n === 1 ? "a first problem solved" : `${n} problems solved`;
   if (badge.track === "hunter") return n === 1 ? "a first bug fixed" : `${n} bugs fixed`;
   if (badge.track === "streak") return `a ${n}-day streak`;
+  if (badge.track === "festival") return "all five diyas lit at Diwali 2026";
   if (n === 1) return "a first roadmap chest opened";
   return n === BADGES.filter((x) => x.track === "road").length ? "every roadmap chest opened" : `${n} roadmap chests opened`;
 }

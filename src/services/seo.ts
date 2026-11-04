@@ -751,6 +751,7 @@ const BADGE_TARGETS: Record<BadgeTrack, { href: string; label: string }> = {
   hunter: { href: "/bug-hunts", label: "Hunt a bug" },
   streak: { href: "/challenges", label: "Start a streak" },
   road: { href: "/roadmap", label: "Walk the DSA roadmap" },
+  festival: { href: "/challenges", label: "Start solving" },
 };
 
 /** A shared badge (services/achievements.ts checked it against the account's counters). */
