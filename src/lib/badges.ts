@@ -31,7 +31,7 @@ export interface BadgeCounters {
   bugsFixed: number;
   longestStreak: number;
   chestsOpened: number;
-  /** Diyas lit at Diwali 2026 as far as the badge goes: five with its Honour row, else none (lib/festival.ts). */
+  /** Diyas lit at Diwali 2026 as far as the badge goes: seven with its Honour row, else none (lib/festival.ts). */
   festivalDiyas: number;
 }
 
@@ -62,7 +62,7 @@ export const BADGES: readonly Badge[] = [
   b("road", 4, 4, "Road Walker"),
 
   // Limited edition: earned only during Diwali 2026 (lib/festival.ts).
-  b("festival", 4, 5, "Festival of Lights 2026"),
+  b("festival", 4, 7, "Festival of Lights 2026"),
 ];
 
 export function badgeById(id: unknown): Badge | null {
@@ -96,7 +96,7 @@ export function countersOfMe(me: {
     bugsFixed: s?.bugsFixed ?? 0,
     longestStreak: Math.max(s?.longestStreak ?? 0, s?.currentStreak ?? 0),
     chestsOpened: me.roadmapRewards?.length ?? 0,
-    festivalDiyas: me.honours?.some((h) => h.kind === FESTIVAL_BADGE_KIND) ? 5 : 0,
+    festivalDiyas: me.honours?.some((h) => h.kind === FESTIVAL_BADGE_KIND) ? 7 : 0,
   };
 }
 
@@ -106,7 +106,7 @@ export function badgeFeat(badge: Badge): string {
   if (badge.track === "solver") return n === 1 ? "a first problem solved" : `${n} problems solved`;
   if (badge.track === "hunter") return n === 1 ? "a first bug fixed" : `${n} bugs fixed`;
   if (badge.track === "streak") return `a ${n}-day streak`;
-  if (badge.track === "festival") return "all five diyas lit at Diwali 2026";
+  if (badge.track === "festival") return "all seven diyas lit at Diwali 2026";
   if (n === 1) return "a first roadmap chest opened";
   return n === BADGES.filter((x) => x.track === "road").length ? "every roadmap chest opened" : `${n} roadmap chests opened`;
 }

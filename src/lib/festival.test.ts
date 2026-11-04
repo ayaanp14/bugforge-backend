@@ -33,11 +33,10 @@ test("the strip shows through the day after and then stops by itself", () => {
   assert.equal(festivalShowing(at("2026-11-12T00:00:00+05:30")), false);
 });
 
-test("the frame comes with the first diya and the badge with any five of the seven days", () => {
+test("the frame comes with the first diya and the badge only with all seven", () => {
   assert.deepEqual(festivalKinds(0), []);
   assert.deepEqual(festivalKinds(1), [FESTIVAL_FRAME_KIND]);
-  assert.deepEqual(festivalKinds(4), [FESTIVAL_FRAME_KIND]);
-  assert.deepEqual(festivalKinds(5), [FESTIVAL_FRAME_KIND, FESTIVAL_BADGE_KIND]);
+  assert.deepEqual(festivalKinds(6), [FESTIVAL_FRAME_KIND]);
   assert.deepEqual(festivalKinds(7), [FESTIVAL_FRAME_KIND, FESTIVAL_BADGE_KIND]);
 });
 
@@ -47,7 +46,7 @@ test("the rewards are not honours: no star, no celebration, no lifetime access",
 });
 
 test("the badge is held only with its row, so a share is checked against the account", () => {
-  const badge = badgeById("festival-5")!;
+  const badge = badgeById("festival-7")!;
   assert.equal(hasBadge(badge, countersOfMe({ honours: [{ kind: FESTIVAL_FRAME_KIND }] })), false);
   assert.equal(hasBadge(badge, countersOfMe({ honours: [{ kind: FESTIVAL_BADGE_KIND }] })), true);
 });

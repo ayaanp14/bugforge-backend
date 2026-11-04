@@ -16,7 +16,7 @@ test("the table is the client's: same ids, in the same order", () => {
       "hunter-1", "hunter-10", "hunter-25", "hunter-50",
       "streak-3", "streak-7", "streak-30", "streak-100",
       "road-1", "road-2", "road-3", "road-4",
-      "festival-5",
+      "festival-7",
     ],
   );
   for (const b of BADGES) assert.equal(b.id, `${b.track}-${b.threshold}`);

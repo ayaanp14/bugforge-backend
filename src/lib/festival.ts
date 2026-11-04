@@ -1,10 +1,10 @@
 import { dayKey } from "./clock.js";
 
 /**
- * Diwali 2026, "Light five diyas" (the owner's ask, 2026-11-04): 4 to 10
- * November, one diya a day on any five of the seven days, lit by an accepted
- * coding or SQL submission on that day in the product's calendar. Two days of
- * grace, because this is a week when people travel; a day missed is still gone.
+ * Diwali 2026, "Light seven diyas" (the owner's ask, 2026-11-04): 4 to 10
+ * November, one diya for each day, lit by an accepted coding or SQL submission
+ * on that day in the product's calendar. A missed day stays dark; there is no
+ * catching up.
  *
  * Which days are lit is derived from the submissions and never stored. What
  * is stored is what the lights earned, as two `Honour` rows, because a frame
@@ -13,7 +13,7 @@ import { dayKey } from "./clock.js";
  *
  *   1 diya  → the frame, worn until FESTIVAL_LAST_DAY (the client's lib/festival.ts checks the date)
  *   3 diyas → the Diwali card, drawn in the browser, so nothing to store
- *   5 diyas → the badge `festival-5` for good (lib/badges.ts)
+ *   7 diyas → the badge `festival-7` for good (lib/badges.ts)
  *
  * Neither kind is in lib/honours.ts HONOURS on purpose: an honour there plays
  * a celebration, wears the star and appears in the admin's grant list. Bug
@@ -24,8 +24,8 @@ import { dayKey } from "./clock.js";
  */
 
 export const FESTIVAL_DAYS = ["2026-11-04", "2026-11-05", "2026-11-06", "2026-11-07", "2026-11-08", "2026-11-09", "2026-11-10"] as const;
-/** Diyas the badge takes. */
-export const FESTIVAL_GOAL = 5;
+/** Diyas the badge takes: every day's. */
+export const FESTIVAL_GOAL = FESTIVAL_DAYS.length;
 /** The day after the last diya: the home still shows the result, and the frame is still worn. */
 export const FESTIVAL_LAST_DAY = "2026-11-11";
 
@@ -77,7 +77,7 @@ export function festivalAnnouncePeriod(now: Date, hour: number): string | null {
 
 export const FESTIVAL_ANNOUNCEMENT = {
   type: "diwali_2026_start",
-  title: "Happy Diwali! Light five diyas",
-  body: "Solve any problem to light a diya, one a day until 10 November. Light five for a limited-edition badge.",
+  title: "Happy Diwali! Light seven diyas",
+  body: "Solve any problem to light a diya, one a day until 10 November. Light all seven for a limited-edition badge.",
   href: "/",
 };

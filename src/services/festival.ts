@@ -91,7 +91,7 @@ export async function noteFestivalSolve(userId: string, now = festivalNow()): Pr
 /** In-app only, to accounts seen this month that keep the daily notes on. The mail is a separate campaign. */
 const festivalAnnouncement: Job = {
   name: "diwali_2026_start",
-  description: "The first day of Diwali 2026: tells accounts active in the last 30 days about the five diyas. In-app only.",
+  description: "The first day of Diwali 2026: tells accounts active in the last 30 days about the seven diyas. In-app only.",
   periodOf: (now) => festivalAnnouncePeriod(now, zoned(now).getUTCHours()),
   async run(now) {
     const since = new Date(now.getTime() - 30 * DAY_MS);
