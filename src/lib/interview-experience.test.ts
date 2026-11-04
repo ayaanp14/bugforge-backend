@@ -1,6 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { canonicalCompany, experienceTitle, parseExperience } from "./interview-experience.js";
+import { canonicalCompany, experienceBody, experienceDescription, experienceTitle, parseExperience, readableExperienceMeta, tidyName, tidyRoundName } from "./interview-experience.js";
+import { slugify } from "./slug.js";
 
 const round = (name: string, detail: string) => ({ name, detail });
 const long = "Two coding questions on arrays and a discussion of my project; the interviewer asked about time complexity and edge cases. ".repeat(2);
@@ -80,4 +81,44 @@ test("an unknown channel falls back to other; rounds are capped at eight", () =>
 test("the title names role, company, year and channel", () => {
   assert.equal(experienceTitle({ role: "SDE Intern", company: "Amazon", year: 2025, channel: "off-campus" }), "SDE Intern at Amazon (2025, off campus)");
   assert.equal(experienceTitle({ role: "Analyst", company: "Zoho", year: 2024, channel: "other" }), "Analyst at Zoho (2024)");
+});
+
+test("an all-lower-case name reads tidied; a name written with capitals is left alone", () => {
+  assert.equal(tidyName("intercontinental exchange"), "Intercontinental Exchange");
+  assert.equal(tidyName("full stack software engineer"), "Full Stack Software Engineer");
+  assert.equal(tidyName("sde-1 at ibm"), "SDE-1 at IBM");
+  assert.equal(tidyName("sde2"), "SDE2");
+  assert.equal(tidyName("e4"), "E4");
+  assert.equal(tidyName(".net developer"), ".NET Developer");
+  assert.equal(tidyName("bank of america"), "Bank of America");
+  assert.equal(tidyName("the trade desk"), "The Trade Desk");
+  assert.equal(tidyName("eBay"), "eBay");
+  assert.equal(tidyName("SDE Intern"), "SDE Intern");
+  assert.equal(tidyName("NVIDIA"), "NVIDIA");
+  assert.equal(tidyName("3m"), "3m");
+  assert.equal(tidyRoundName("onsite with panel"), "Onsite with panel");
+  assert.equal(tidyRoundName("HR round"), "HR round");
+});
+
+test("tidying a name never moves a post's address", () => {
+  for (const [company, role] of [["intercontinental exchange", "full stack software engineer"], ["ibm", "sde-1 (.net)"], ["bank of america", "e4"]] as const) {
+    assert.equal(slugify(tidyName(company), 30), slugify(company, 30));
+    assert.equal(slugify(`${tidyName(role)} 2025`, 60), slugify(`${role} 2025`, 60));
+  }
+});
+
+test("the payload's meta reads tidied and anything else passes through", () => {
+  const meta = { topic: "x", experience: { company: "acme corp", role: "qa engineer", year: 2025, rounds: [{ name: "online test", detail: "keep my words" }] } };
+  assert.deepEqual(readableExperienceMeta(meta), { topic: "x", experience: { company: "Acme Corp", role: "QA Engineer", year: 2025, rounds: [{ name: "Online test", detail: "keep my words" }] } });
+  assert.equal(meta.experience.company, "acme corp");
+  const other = { kind: "problem" };
+  assert.equal(readableExperienceMeta(other), other);
+  assert.equal(readableExperienceMeta(null), null);
+});
+
+test("the description opens on the company and the role; the body is every round then the notes", () => {
+  const e = { company: "Amazon", role: "SDE Intern", rounds: [{ name: "OA", detail: "Two questions." }, { name: "Technical", detail: "LRU cache." }] };
+  assert.equal(experienceDescription(e, "Selected", "Two questions."), "Amazon SDE Intern interview: 2 rounds (OA, Technical). Selected. Two questions.");
+  assert.equal(experienceBody(e, "Practise arrays."), "Round 1: OA\nTwo questions.\n\nRound 2: Technical\nLRU cache.\n\nPractise arrays.");
+  assert.equal(experienceBody(e, ""), "Round 1: OA\nTwo questions.\n\nRound 2: Technical\nLRU cache.");
 });

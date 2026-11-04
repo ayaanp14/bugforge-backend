@@ -1,6 +1,6 @@
 import { prisma } from "../lib/prisma.js";
 import { cachedShared, invalidate, invalidatePrefix } from "../lib/cache.js";
-import { EXPERIENCE_OUTCOMES, EXPERIENCE_TAG, canonicalCompany, experienceTitle, type Experience, type ExperienceOutcome } from "../lib/interview-experience.js";
+import { EXPERIENCE_OUTCOMES, EXPERIENCE_TAG, canonicalCompany, experienceTitle, tidyName, tidyRoundName, type Experience, type ExperienceOutcome } from "../lib/interview-experience.js";
 import { slugify } from "../lib/slug.js";
 
 /**
@@ -57,15 +57,15 @@ const cut = (s: string) => (s.length > PREVIEW ? `${s.slice(0, PREVIEW).replace(
 function experienceOf(meta: unknown): ExperienceRow["experience"] | null {
   const e = (meta as { experience?: Record<string, unknown> } | null)?.experience;
   if (!e || typeof e !== "object" || typeof e["company"] !== "string") return null;
-  const rounds = Array.isArray(e["rounds"]) ? (e["rounds"] as Array<{ name?: unknown; detail?: unknown }>).map((r) => ({ name: String(r.name ?? ""), detail: String(r.detail ?? "") })) : [];
+  const rounds = Array.isArray(e["rounds"]) ? (e["rounds"] as Array<{ name?: unknown; detail?: unknown }>).map((r) => ({ name: tidyRoundName(String(r.name ?? "")), detail: String(r.detail ?? "") })) : [];
   const problems = Array.isArray(e["problems"])
     ? (e["problems"] as Array<{ slug?: unknown; title?: unknown }>).filter((p) => typeof p?.slug === "string").map((p) => ({ slug: String(p.slug), title: String(p.title ?? p.slug) }))
     : [];
   return {
-    company: e["company"] as string,
+    company: tidyName(e["company"] as string),
     companyTag: typeof e["companyTag"] === "string" ? (e["companyTag"] as string) : null,
     companySlug: typeof e["companySlug"] === "string" ? (e["companySlug"] as string) : null,
-    role: String(e["role"] ?? ""),
+    role: tidyName(String(e["role"] ?? "")),
     year: Number(e["year"] ?? 0),
     channel: (e["channel"] as Experience["channel"]) ?? "other",
     outcome: (e["outcome"] as Experience["outcome"]) ?? "pending",

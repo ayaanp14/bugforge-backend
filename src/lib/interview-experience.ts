@@ -152,6 +152,88 @@ export function parseExperience(raw: unknown, notes: string, nowYear: number): E
 export const EXPERIENCE_TAG = "experience";
 export const companyFeedTag = (company: string): string => slugify(company, 30);
 
+/**
+ * How a name reads on the page, title and result. Members type quickly, and
+ * "intercontinental exchange full stack software engineer" is what the first
+ * production experience's title and h1 said (2026-11-04): a result nobody
+ * would pick. Only an all-lower-case entry is touched — "SDE Intern", "eBay"
+ * and "NVIDIA" were written that way on purpose. Applied when read, never
+ * stored, so the member's words stay as typed and a change to these lists
+ * corrects every post. Case only, so a post's address (slugify) cannot move.
+ */
+const UPPER_WORDS = new Set(["sde", "sdet", "sse", "mts", "smts", "pmts", "qa", "qe", "hr", "it", "ai", "ml", "ui", "ux", "api", "aws", "gcp", "sql", "php", "etl", "bi", "vp", "cto", "ibm", "sap", "dxc", "ii", "iii", "iv"]);
+const SPELLED: Record<string, string> = { ".net": ".NET", ios: "iOS", devops: "DevOps", javascript: "JavaScript", typescript: "TypeScript", github: "GitHub", linkedin: "LinkedIn", paypal: "PayPal" };
+const SMALL_WORDS = new Set(["a", "an", "and", "at", "for", "in", "of", "on", "the", "to"]);
+const isAllLower = (s: string) => s === s.toLowerCase() && s !== s.toUpperCase();
+const upperFirst = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+
+const tidyWord = (word: string, first: boolean): string => {
+  const spelled = SPELLED[word];
+  if (spelled) return spelled;
+  // "sde2", "sse1", and a level like "e4" or "l5".
+  if (UPPER_WORDS.has(word) || /^(sde|sse|mts)\d$/.test(word) || /^[a-z]\d$/.test(word)) return word.toUpperCase();
+  return !first && SMALL_WORDS.has(word) ? word : upperFirst(word);
+};
+
+/** A company or role as it reads: "full stack software engineer" → "Full Stack Software Engineer", "sde-1 at ibm" → "SDE-1 at IBM". */
+export function tidyName(name: string): string {
+  if (!isAllLower(name)) return name;
+  let first = true;
+  return name
+    .split(/([\s\-/(),]+)/)
+    .map((part, i) => {
+      if (i % 2 === 1 || !part) return part;
+      const word = tidyWord(part, first);
+      first = false;
+      return word;
+    })
+    .join("");
+}
+
+/** A round's name as it reads: a sentence, so only its first letter ("online assessment" → "Online assessment"). */
+export const tidyRoundName = (name: string): string => (isAllLower(name) ? upperFirst(name) : name);
+
+/**
+ * A stored post's meta with its experience's names as they read — for the
+ * community payload, which sends meta as stored and is what the page and
+ * its head draw from. Anything that is not an experience comes back as is.
+ */
+export function readableExperienceMeta(meta: unknown): unknown {
+  const e = (meta as { experience?: Record<string, unknown> } | null)?.experience;
+  if (!e || typeof e !== "object" || typeof e["company"] !== "string") return meta;
+  return {
+    ...(meta as object),
+    experience: {
+      ...e,
+      company: tidyName(e["company"]),
+      role: typeof e["role"] === "string" ? tidyName(e["role"]) : e["role"],
+      rounds: Array.isArray(e["rounds"]) ? (e["rounds"] as Array<Record<string, unknown>>).map((r) => ({ ...r, name: typeof r?.["name"] === "string" ? tidyRoundName(r["name"]) : r?.["name"] })) : e["rounds"],
+    },
+  };
+}
+
+/**
+ * The page's meta description before it is cut: what the result is about in
+ * the words it is searched by, then the rounds, then the outcome and an
+ * excerpt where they fit. It used to open "Selected · 4 rounds:", which named
+ * neither the company nor the role. Mirrored word for word by the SPA's
+ * INTERVIEW_EXPERIENCE_COPY.description, or the head changes when React mounts.
+ */
+export function experienceDescription(e: Pick<Experience, "company" | "role"> & { rounds: Array<{ name: string }> }, outcomeWord: string, excerpt: string): string {
+  const count = `${e.rounds.length} round${e.rounds.length === 1 ? "" : "s"}`;
+  return `${e.company} ${e.role} interview: ${count} (${e.rounds.map((r) => r.name).join(", ")}). ${outcomeWord}. ${excerpt}`.trim();
+}
+
+/**
+ * The whole account as plain text, for the post's structured data: the text
+ * an answer engine or Google's forum reading can take as the post itself,
+ * not just its summary. Only what the member wrote. Mirrored by the SPA's
+ * INTERVIEW_EXPERIENCE_COPY.body.
+ */
+export function experienceBody(e: { rounds: Array<{ name: string; detail: string }> }, notes: string): string {
+  return [...e.rounds.map((r, i) => `Round ${i + 1}: ${r.name}\n${r.detail}`), notes].filter(Boolean).join("\n\n");
+}
+
 /** A one-line title for lists, previews and the edge: "Software Engineer at Morgan Stanley (2026, on campus)". */
 export function experienceTitle(e: Pick<Experience, "company" | "role" | "year" | "channel">): string {
   const channel = e.channel === "on-campus" ? "on campus" : e.channel === "off-campus" ? "off campus" : e.channel === "referral" ? "referral" : null;

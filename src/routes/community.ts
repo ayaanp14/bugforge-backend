@@ -11,7 +11,8 @@ import { WORN_CREDENTIAL_SELECT } from "../lib/skill-tests.js";
 import { HONOUR_SELECT } from "../lib/honours.js";
 import { invalidateUnread } from "../services/notifications.js";
 import { invalidateDashboard, querySocialCounts } from "../services/dashboard.js";
-import { EXPERIENCE_TAG, companyFeedTag, parseExperience } from "../lib/interview-experience.js";
+import { EXPERIENCE_TAG, companyFeedTag, parseExperience, readableExperienceMeta } from "../lib/interview-experience.js";
+import { announceToSearchEngines } from "../lib/indexnow.js";
 import { pushNotifications } from "../lib/push.js";
 import { experienceCompanies, experienceList, experiencePathOfPost, forgetExperiences } from "../services/interview-experiences.js";
 import type { ExperienceOutcome } from "../lib/interview-experience.js";
@@ -512,7 +513,7 @@ async function decoratePosts(userId: string | null, page: Candidate[], following
       type: p.type,
       visibility: p.visibility,
       content: p.content,
-      meta: p.meta,
+      meta: p.type === "experience" ? readableExperienceMeta(p.meta) : p.meta,
       tags: p.tags.map((t) => t.tag),
       // An interview experience's indexable page (services/interview-experiences), which its card links to.
       experiencePath: p.type === "experience" ? experiencePathOfPost(p.id, p.meta) : null,
@@ -587,6 +588,13 @@ async function visitorFeedWindow(tag: string | null): Promise<FeedRow[]> {
  * write's answer (frontend store/api/communityApi.ts). Other readers' counts
  * trail by the window, the trade the window was made for.
  */
+/** A public interview experience was written, edited or deleted: its indexable page changed (lib/indexnow.ts). */
+function announceExperience(post: { id: string; type: string; visibility: string; meta: unknown }): void {
+  if (post.type !== "experience" || post.visibility !== "public") return;
+  const path = experiencePathOfPost(post.id, post.meta);
+  if (path) announceToSearchEngines([path]);
+}
+
 function forgetFeedsWith(post: { userId: string; visibility: string }): void {
   if (post.visibility === "public") {
     invalidatePrefix(PUBLIC_CANDIDATES_PREFIX);
@@ -905,13 +913,14 @@ router.post("/posts", requireAuth, communityWriteLimiter, async (req, res) => {
     invalidateDashboard(userId);
     forgetPostCounters(userId);
     forgetFeedsWith(post);
+    announceExperience(post);
 
     res.json({
       id: post.id,
       type: post.type,
       visibility: post.visibility,
       content: post.content,
-      meta: post.meta,
+      meta: post.type === "experience" ? readableExperienceMeta(post.meta) : post.meta,
       tags,
       createdAt: post.createdAt,
       editedAt: null,
@@ -936,7 +945,7 @@ router.delete("/posts/:id", requireAuth, async (req, res) => {
   try {
     const userId = req.user!.userId;
     const id = String(req.params.id);
-    const post = await prisma.post.findUnique({ where: { id }, select: { userId: true, visibility: true } });
+    const post = await prisma.post.findUnique({ where: { id }, select: { id: true, userId: true, visibility: true, type: true, meta: true } });
     if (!post) {
       res.status(404).json({ error: "Post not found" });
       return;
@@ -949,6 +958,8 @@ router.delete("/posts/:id", requireAuth, async (req, res) => {
     invalidateDashboard(userId);
     forgetPostCounters(userId);
     forgetFeedsWith(post);
+    // A gone page is news too: the engines drop it on the 404 they then find.
+    announceExperience(post);
     res.json({ success: true });
   } catch (err) {
     console.error("DELETE /api/community/posts/:id error:", err);
@@ -1009,6 +1020,7 @@ router.patch("/posts/:id", requireAuth, async (req, res) => {
     // learn what we sent is a round trip for nothing.
     const updated = { content: text, editedAt };
     forgetFeedsWith(post);
+    announceExperience({ id, ...post });
     notifyMentions(userId, text, postHref(id), "a post");
 
     res.json({ content: updated.content, editedAt: updated.editedAt, tags });

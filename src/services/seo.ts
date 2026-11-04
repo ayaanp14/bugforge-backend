@@ -54,6 +54,7 @@ import { sqlNumber, sqlProblemPage, sqlSitemapEntries, sqlTopicPage } from "./sq
 import { SQL_TOPIC_GUIDES, sqlTopicBySlug } from "../lib/sql-problems/topics.js";
 import { NOTE_SUBJECTS, subjectByKey } from "../lib/cs-notes.js";
 import { notePage, notesSitemapEntries, notesSyllabus } from "./cs-notes.js";
+import { experienceBody, experienceDescription } from "../lib/interview-experience.js";
 import { experienceById, experienceCompanies, experienceIdOf, experienceList, experienceSitemapEntries, type ExperienceRow } from "./interview-experiences.js";
 import { slugify } from "../lib/slug.js";
 import { sectionTopics } from "../lib/pattern-syllabus.js";
@@ -143,6 +144,8 @@ export interface PageFacts {
   authorPath?: string;
   likes?: number;
   comments?: number;
+  /** A member's post in full, as plain text (its DiscussionForumPosting's `text`). */
+  body?: string;
   /** Home → section → … → this page. The last item is the page itself. */
   trail?: Crumb[];
 }
@@ -2412,7 +2415,7 @@ async function experienceHead(path: string, slug: string): Promise<PageHead | Pa
     section(plural(e.rounds.length, "round"), rounds, "rounds") +
     section("Problems asked", e.problems.length ? linkList(e.problems.map((p) => ({ href: `/problems/${p.slug}`, label: p.title }))) : "", "problems") +
     section("Notes", row.notes ? paragraphs(row.notes) : "", "notes");
-  const description = summarise(`${outcome} · ${plural(e.rounds.length, "round")}: ${e.rounds.map((r) => r.name).join(", ")}. ${row.excerpt}`);
+  const description = summarise(experienceDescription(e, outcome, row.excerpt));
   return {
     path: row.path,
     title: titles.experience(e.company, e.role, e.year, CHANNEL_WORDS[e.channel] ?? null),
@@ -2426,6 +2429,7 @@ async function experienceHead(path: string, slug: string): Promise<PageHead | Pa
       authorPath: row.authorHidden || !row.author.username ? undefined : `/u/${row.author.username}`,
       likes: row.likeCount,
       comments: row.commentCount,
+      body: experienceBody(e, row.notes),
       trail,
     },
     content,
