@@ -40,6 +40,8 @@ export interface TransactionalEmail {
   text: string;
   /** Brevo tags, for filtering the log in their dashboard ("otp", "reminder"). */
   tags?: string[];
+  /** Where a reply goes, when not the support inbox: an internal notice about a person replies to that person. */
+  replyTo?: string;
 }
 
 export function brevoConfigured(env: NodeJS.ProcessEnv = process.env): boolean {
@@ -89,7 +91,7 @@ export async function sendTransactional(mail: TransactionalEmail, env: NodeJS.Pr
       name: env["MAIL_FROM_NAME"] || DEFAULT_FROM_NAME,
     },
     to: [{ email: mail.to }],
-    replyTo: { email: env["MAIL_REPLY_TO"] || DEFAULT_REPLY_TO },
+    replyTo: { email: mail.replyTo || env["MAIL_REPLY_TO"] || DEFAULT_REPLY_TO },
     subject: mail.subject,
     htmlContent: mail.html,
     textContent: mail.text,

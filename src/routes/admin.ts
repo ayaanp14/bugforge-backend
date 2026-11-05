@@ -13,6 +13,7 @@ import { cameFromOf, trafficReport, userTraffic } from "../services/admin-traffi
 import { goalFilterWhere, isGoalFilter, onboardingDetail, onboardingReport, onboardingRow } from "../services/admin-onboarding.js";
 import { invalidateProblem } from "./problems.js";
 import { emailEnabled } from "../lib/email.js";
+import { applicantLink } from "../lib/campus-application-mail.js";
 
 /**
  * The admin panel's API: what the creator needs to run the product from a
@@ -552,6 +553,59 @@ router.patch("/problems/:slug", async (req, res) => {
   }
   invalidateProblem(slug);
   res.json({ slug, isPublished });
+});
+
+/* ── brand ambassadors ─────────────────────────────────────────────── */
+
+const AMBASSADOR_STATUSES = ["pending", "accepted", "rejected"];
+
+// GET /api/admin/ambassadors?status=all|pending|accepted|rejected&q=&page=1
+// The review queue: the page promises a reply every week, so the pending list
+// runs oldest first; any other view reads newest first.
+router.get("/ambassadors", async (req, res) => {
+  const q = termArg(req.query["q"]);
+  const status = AMBASSADOR_STATUSES.includes(String(req.query["status"])) ? String(req.query["status"]) : null;
+  const page = intArg(req.query["page"], 1, 1, 1000);
+  const take = 50;
+  const where = {
+    ...(q ? { OR: [{ name: { contains: q } }, { email: { contains: q } }, { college: { contains: q } }] } : {}),
+    ...(status ? { status } : {}),
+  };
+  const [total, rows, counts] = await Promise.all([
+    prisma.campusAmbassador.count({ where }),
+    prisma.campusAmbassador.findMany({
+      where,
+      orderBy: { createdAt: status === "pending" ? "asc" : "desc" },
+      skip: (page - 1) * take,
+      take,
+    }),
+    prisma.campusAmbassador.groupBy({ by: ["status"], _count: { _all: true } }),
+  ]);
+  res.json({
+    total,
+    page,
+    pageSize: take,
+    counts: Object.fromEntries(counts.map((c) => [c.status, c._count._all])),
+    // Links worked out here so the page and the mail share one rule for what
+    // is safe to click in a value a stranger typed.
+    applications: rows.map((row) => ({ ...row, linkedinHref: applicantLink(row.linkedin), instagramHref: applicantLink(row.instagram) })),
+  });
+});
+
+// PATCH /api/admin/ambassadors/:id — { status }. Records the decision; it mails no one.
+router.patch("/ambassadors/:id", async (req, res) => {
+  const status = (req.body as { status?: unknown })?.status;
+  if (typeof status !== "string" || !AMBASSADOR_STATUSES.includes(status)) {
+    res.status(400).json({ error: "status must be pending, accepted or rejected" });
+    return;
+  }
+  const id = String(req.params["id"]);
+  const { count } = await prisma.campusAmbassador.updateMany({ where: { id }, data: { status } });
+  if (count === 0) {
+    res.status(404).json({ error: "Application not found" });
+    return;
+  }
+  res.json({ id, status });
 });
 
 /* ── billing ───────────────────────────────────────────────────────── */

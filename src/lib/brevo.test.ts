@@ -158,3 +158,11 @@ test("no sender hands a reserved address to Brevo or to a hosted flow", async ()
   assert.equal(outcomes.ok, true);
   assert.equal(outcomes.calls.length, 0, "neither Brevo nor a flow may be called");
 });
+
+test("a mail can name its own Reply-To, and otherwise replies reach the support inbox", async () => {
+  const { calls } = await withFetch(
+    async () => jsonResponse(201, { messageId: "abc" }),
+    () => sendTransactional({ ...MAIL, replyTo: "applicant@college.edu" }, ENV),
+  );
+  assert.deepEqual(JSON.parse(String(calls[0].init.body)).replyTo, { email: "applicant@college.edu" });
+});

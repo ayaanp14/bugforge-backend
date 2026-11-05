@@ -4,6 +4,9 @@ import { optionalAuth } from "../middleware/auth.js";
 import { publicFormLimiter } from "../middleware/rate-limit.js";
 import { BOT_SIGNAL_ERROR, botSignal } from "../lib/bot-check.js";
 import { CAMPUS_APPLIED, createNotificationOnce } from "../services/notifications.js";
+import { sendTransactional } from "../lib/brevo.js";
+import { campusApplicationMail, type CampusApplication } from "../lib/campus-application-mail.js";
+import { FRONTEND_URL } from "../lib/sites.js";
 
 /**
  * Campus ambassador applications.
@@ -88,7 +91,7 @@ router.post("/apply", publicFormLimiter, optionalAuth, async (req: any, res) => 
       });
     }
 
-    let application: { id: string; createdAt: Date };
+    let application: CampusApplication & { id: string; createdAt: Date };
     try {
       application = await prisma.campusAmbassador.create({
         data: {
@@ -104,7 +107,7 @@ router.post("/apply", publicFormLimiter, optionalAuth, async (req: any, res) => 
           reach: text(req.body?.reach, 1000),
           userId: req.user?.userId ?? null,
         },
-        select: { id: true, createdAt: true },
+        select: { id: true, createdAt: true, name: true, email: true, college: true, why: true, phone: true, city: true, graduationYear: true, linkedin: true, instagram: true, reach: true },
       });
     } catch (err) {
       // A double submit that beat the check above: the same sentence, not a 500.
@@ -124,6 +127,13 @@ router.post("/apply", publicFormLimiter, optionalAuth, async (req: any, res) => 
     }
 
     console.log(`[campus] new application from ${college} <${address}>`);
+
+    // Not awaited: the applicant's answer never waits on a mail provider, and
+    // the row is already saved, so a failed send still shows in the admin
+    // panel. sendTransactional does not throw.
+    void sendTransactional(campusApplicationMail(application, `${FRONTEND_URL}/admin?tab=ambassadors`)).then((sent) => {
+      if (!sent) console.error(`[campus] the mail for application ${application.id} was not sent; it is in the admin panel`);
+    });
 
     res.status(201).json({
       success: true,
