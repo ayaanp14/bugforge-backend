@@ -50,7 +50,7 @@ import proofRouter from "./routes/proof.js";
 import battlesRouter from "./routes/battles.js";
 import { sqlRouter } from "./routes/sql.js";
 import { notesRouter } from "./routes/notes.js";
-import { ALLOWED_ORIGINS } from "./lib/sites.js";
+import { ALLOWED_ORIGINS, CAMPAIGN_URL } from "./lib/sites.js";
 import shareCardsRouter, { shareImage } from "./routes/share-cards.js";
 import { recoverAnalyses } from "./services/resumes.js";
 import { checkRoadmapSeeded } from "./services/roadmap.js";
@@ -59,6 +59,8 @@ import eventsRouter from "./routes/events.js";
 import adminRouter from "./routes/admin.js";
 import { adminHonoursRouter, honoursRouter } from "./routes/honours.js";
 import { goodiesRouter } from "./routes/goodies.js";
+import { videoStudioRouter } from "./routes/video-studio.js";
+import { registerVideoJobs } from "./services/video-studio.js";
 import { todayContest } from "./services/daily-contest.js";
 import { optionalAuth } from "./middleware/auth.js";
 import { addKickedUser, kickedUserIdsOf } from "./lib/room-kicks.js";
@@ -877,6 +879,9 @@ app.use(compression({ threshold: 1024 }));
  * otherwise count forty against the same address. `maxAge` lets the browser
  * keep the preflight answer for a day instead of asking before every call.
  */
+// Ahead of the general CORS, which would answer this origin's preflight with
+// nothing. No credentials: the campaign page sends its password as a header.
+app.use("/api/video-studio", cors({ origin: CAMPAIGN_URL, methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"], allowedHeaders: ["Content-Type", "Authorization"], maxAge: 86400 }));
 app.use(
   cors({
     origin: ALLOWED_ORIGINS,
@@ -1020,6 +1025,8 @@ app.use("/api/companies", companiesRouter);
 app.use("/api/cohorts", cohortsRouter);
 app.use("/api/diwali-playground", diwaliPlaygroundRouter); // DIWALI-PLAYGROUND
 app.use("/api/goodies", goodiesRouter);
+// The daily videos behind the Videos tab at campaign.codekairo.com (services/video-studio.ts).
+app.use("/api/video-studio", videoStudioRouter);
 app.use("/api/notes", notesRouter);
 app.use("/api/assistant", assistantRouter);
 // The upload route reads a raw file body with its own parser (see routes/resumes.ts).
@@ -1231,6 +1238,8 @@ httpServer.listen(PORT, () => {
   registerJob(tournamentRemindersJob);
   // Diwali 2026's one announcement; due on a single day (services/festival.ts).
   registerFestivalJobs();
+  // The day's video and Short, at 10:00 IST once switched on.
+  registerVideoJobs();
   startScheduler();
   // No socket survived the restart, and none said goodbye (lib/duels).
   void markActiveDuelsAbsent();

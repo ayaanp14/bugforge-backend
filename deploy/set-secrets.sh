@@ -84,6 +84,11 @@ esac
 # ── rotated third-party keys ────────────────────────────────────────────
 ask NVIDIA_API_KEY        "written interviews + the site assistant (billable)"
 ask GEMINI_API_KEY        "voice interview tokens (billable)"
+ask CAMPAIGN_PASSWORD     "daily videos: the campaign page's password, same as its Worker's"
+ask VIDEO_RUNNER_SECRET   "daily videos: shared with the GitHub workflow; encrypts the YouTube token"
+ask GITHUB_DISPATCH_TOKEN "daily videos: fine-grained token, Actions write on bugforge-backend"
+ask YOUTUBE_CLIENT_ID     "daily videos: their own Google OAuth client"
+ask YOUTUBE_CLIENT_SECRET "daily videos: that client's secret"
 ask BREVO_API_KEY         "outbound mail - OTP codes, reminders"
 ask GITHUB_SECRET         "GitHub OAuth app secret"
 ask GOOGLE_CLIENT_SECRET  "Google OAuth client secret"

@@ -1,0 +1,24 @@
+{
+  "name": "codekairo-daily-video",
+  "private": true,
+  "type": "module",
+  "description": "The making of the daily videos, started by the API (src/services/video-studio.ts) on GitHub's runners: Claude writes the script and an HTML composition, Gemini voices it, Chrome renders it frame by frame, YouTube gets the result. Its own package because Chrome and ffmpeg don't belong in the API image.",
+  "scripts": {
+    "demo": "tsx src/cli.ts demo",
+    "create": "tsx src/cli.ts create",
+    "render": "tsx src/cli.ts render",
+    "publish": "tsx src/cli.ts publish",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^1.6.0",
+    "ffmpeg-static": "^5.3.0",
+    "playwright-core": "^1.64.1",
+    "zod": "^4.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "tsx": "^4.23.15",
+    "typescript": "^5.9.0"
+  }
+}

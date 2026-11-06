@@ -2790,3 +2790,71 @@ model Redemption {
 
   @@index([userId, createdAt])
 }
+
+/// One run of the daily video pipeline (services/video-studio.ts): a prompt, how
+/// far it got, and the two videos it put on YouTube. The ids and claim times are
+/// what stop a re-run posting a video twice.
+model VideoRun {
+  id               String    @id @default(cuid())
+  prompt           String    @db.Text
+  /// schedule | auto ("Make one now" with no prompt) | typed. Only a typed prompt is refused outright as a repeat; the others move on to the next topic.
+  source           String    @db.VarChar(16)
+  privacy          String    @db.VarChar(16)
+  status           String    @default("queued") @db.VarChar(24)
+  title            String?   @db.VarChar(200)
+  model            String?   @db.VarChar(60)
+  usd              Float?
+  cleared          Boolean?
+  warnings         Json?
+  error            String?   @db.Text
+  logUrl           String?   @db.VarChar(300)
+  landscapeId      String?   @db.VarChar(40)
+  shortId          String?   @db.VarChar(40)
+  landscapeClaimAt DateTime?
+  shortClaimAt     DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  @@index([createdAt])
+}
+
+/// A prompt waiting for its day. The queue goes first, then the built-in topics.
+model VideoTopic {
+  id        String   @id @default(cuid())
+  prompt    String   @db.Text
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+}
+
+/// One row, id "studio": the schedule's switch and the YouTube connection.
+/// refreshToken is AES-GCM under a key derived from VIDEO_RUNNER_SECRET, so a
+/// database backup alone cannot post to the channel.
+model VideoSettings {
+  id           String    @id @default("studio") @db.VarChar(16)
+  enabled      Boolean   @default(false)
+  privacy      String    @default("public") @db.VarChar(16)
+  autoNext     Int       @default(0)
+  refreshToken String?   @db.Text
+  channelId    String?   @db.VarChar(40)
+  channelTitle String?   @db.VarChar(200)
+  connectedAt  DateTime?
+  tokenBroken  Boolean   @default(false)
+}
+
+/// Everything known to be on the channel: read from YouTube's own uploads list
+/// on each run, so videos posted by hand count too. It is what "never post the
+/// same video again" is checked against, and rows are kept after a video is
+/// deleted from YouTube, since it was still posted.
+model PostedVideo {
+  youtubeId   String    @id @db.VarChar(40)
+  title       String    @db.VarChar(200)
+  titleKey    String    @db.VarChar(200)
+  sha256      String?   @db.Char(64)
+  runId       String?   @db.VarChar(40)
+  publishedAt DateTime?
+  createdAt   DateTime  @default(now())
+
+  @@index([titleKey])
+  @@index([sha256])
+}

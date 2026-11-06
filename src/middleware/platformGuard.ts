@@ -29,7 +29,9 @@ export function platformGuard(req: Request, res: Response, next: NextFunction) {
   // (browserCache's `cdn` option). An answer served from the edge never
   // reaches this guard, so a signature it could not check must not be the
   // difference between a hit and a 403.
-  if (req.path === "/health" || req.path === "/robots.txt" || req.path.startsWith("/api/auth") || req.path.startsWith("/api/seo/") || req.path === "/api/problems/facets" || req.path === "/api/billing/webhook" || SHARE_IMAGE.test(req.path)) {
+  // /api/video-studio is called by the campaign page, a GitHub run and Google's
+  // redirect, none of which hold the key; routes/video-studio.ts checks each.
+  if (req.path === "/health" || req.path === "/robots.txt" || req.path.startsWith("/api/auth") || req.path.startsWith("/api/seo/") || req.path === "/api/problems/facets" || req.path === "/api/billing/webhook" || req.path.startsWith("/api/video-studio/") || SHARE_IMAGE.test(req.path)) {
     return next();
   }
 

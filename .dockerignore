@@ -27,3 +27,6 @@ src/**/*.test.ts
 *.log
 *.md
 !content/*.md
+
+# The daily video pipeline runs on GitHub's runners with Chrome and ffmpeg, never in the API image.
+video

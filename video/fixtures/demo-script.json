@@ -1,0 +1,30 @@
+{
+  "topic": "Binary search",
+  "practicePath": "/problems/binary-search",
+  "code": {
+    "language": "java",
+    "source": "public class Main {\n    static int search(int[] nums, int target) {\n        int low = 0, high = nums.length - 1;\n        while (low <= high) {\n            int mid = low + (high - low) / 2;\n            if (nums[mid] == target) return mid;\n            if (nums[mid] < target) low = mid + 1;\n            else high = mid - 1;\n        }\n        return -1;\n    }\n    public static void main(String[] args) {\n        System.out.println(search(new int[] {2, 5, 8, 12, 16, 23, 38, 56, 72, 91}, 23));\n    }\n}\n",
+    "expectedOutput": "5"
+  },
+  "thumbnail": { "headline": "A million numbers. Twenty checks.", "tag": "Binary search" },
+  "landscape": {
+    "title": "Pipeline demo: binary search",
+    "description": "A demo of the daily video pipeline.",
+    "tags": ["binary search"],
+    "scenes": [
+      { "id": "hook", "title": "Binary search", "narration": "Checking a million sorted numbers one by one takes a million checks. A million numbers, twenty checks. Here's the trick.", "visual": "Big type" },
+      { "id": "walk", "title": "Step by step", "narration": "We want twenty three. First, look at the middle. Sixteen is too small, so throw away the left and keep the right half. One check removed half the list.", "visual": "Row of cells" },
+      { "id": "outro", "title": "Your turn", "narration": "Halve the search every time. Now solve it yourself on CodeKairo.", "visual": "Sign-off" }
+    ]
+  },
+  "short": {
+    "title": "A million numbers, twenty checks #coding",
+    "description": "Binary search in under a minute.",
+    "tags": ["binary search"],
+    "scenes": [
+      { "id": "hook", "title": "Binary search", "narration": "Checking a million sorted numbers one by one takes a million checks. A million numbers, twenty checks. Here's the trick.", "visual": "Big type" },
+      { "id": "walk", "title": "Step by step", "narration": "We want twenty three. First, look at the middle. Sixteen is too small, so throw away the left and keep the right half. One check removed half the list.", "visual": "Row of cells" },
+      { "id": "outro", "title": "Your turn", "narration": "Halve the search every time. Now solve it yourself on CodeKairo.", "visual": "Sign-off" }
+    ]
+  }
+}

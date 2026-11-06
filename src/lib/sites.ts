@@ -15,6 +15,13 @@ export const FRONTEND_URL = (process.env["FRONTEND_URL"] ?? "http://localhost:30
  */
 export const BATTLES_URL = (process.env["BATTLES_URL"] ?? (process.env["NODE_ENV"] === "production" ? "" : "http://localhost:3002")).replace(/\/+$/, "");
 
+/**
+ * The campaign page (campaign.codekairo.com). Deliberately not in ALLOWED_ORIGINS:
+ * that list gets credentialed CORS on the whole API and socket handshakes, and this
+ * page talks to one router with a password (index.ts, routes/video-studio.ts).
+ */
+export const CAMPAIGN_URL = (process.env["CAMPAIGN_URL"] ?? (process.env["NODE_ENV"] === "production" ? "https://campaign.codekairo.com" : "http://localhost:8790")).replace(/\/+$/, "");
+
 /** Every browser origin the API answers with credentials. */
 export const ALLOWED_ORIGINS = [FRONTEND_URL, BATTLES_URL].filter(Boolean);
 

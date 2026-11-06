@@ -1,0 +1,127 @@
+# One day's video, started by the API (src/services/video-studio.ts) at 10:00 IST or
+# from the campaign page's "Make one now". Never by a `schedule:` here: GitHub delays
+# those by up to an hour and turns them off after 60 days without a commit.
+#
+# It runs here rather than on the API's instance because Chrome and ffmpeg for tens of
+# minutes don't fit beside MySQL on 2 GB (deploy/mysql.cnf).
+#
+# Three jobs so that the one running model-written code holds no secrets at all:
+# `render` opens the composition in Chrome and runs the on-screen program with no API
+# key, no runner secret and a read-only token. This repository is public, so its logs
+# and artifacts are too: nothing here prints a secret, and artifacts last one day.
+# Setup: video/README.md.
+name: Daily video
+
+on:
+  workflow_dispatch:
+    inputs:
+      run_id:
+        description: The run's id (VideoRun.id)
+        required: true
+
+permissions:
+  contents: read
+
+# Two at once would post out of order.
+concurrency: daily-video
+
+env:
+  RUN_ID: ${{ inputs.run_id }}
+
+defaults:
+  run:
+    working-directory: video
+
+jobs:
+  create:
+    runs-on: ubuntu-latest
+    timeout-minutes: 75
+    env:
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+      VIDEO_RUNNER_SECRET: ${{ secrets.VIDEO_RUNNER_SECRET }}
+      API_URL: ${{ vars.API_URL }}
+      VIDEO_MODEL: ${{ vars.VIDEO_MODEL }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm ci --ignore-scripts
+      - run: npx tsx src/cli.ts create --run "$RUN_ID"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: created
+          path: video/out/
+          retention-days: 1
+
+  render:
+    needs: create
+    runs-on: ubuntu-latest
+    timeout-minutes: 75
+    env:
+      FFMPEG_PATH: ffmpeg
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - run: sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg
+      - run: npm ci --ignore-scripts
+      - uses: actions/download-artifact@v4
+        with:
+          name: created
+          path: video/out/
+      - run: npx tsx src/cli.ts render --run "$RUN_ID"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: rendered
+          path: video/out/${{ inputs.run_id }}/*/video.mp4
+          retention-days: 1
+
+  publish:
+    needs: render
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      VIDEO_RUNNER_SECRET: ${{ secrets.VIDEO_RUNNER_SECRET }}
+      API_URL: ${{ vars.API_URL }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm ci --ignore-scripts
+      - uses: actions/download-artifact@v4
+        with:
+          name: created
+          path: video/out/
+      - uses: actions/download-artifact@v4
+        with:
+          name: rendered
+          path: video/out/${{ inputs.run_id }}/
+      - run: npx tsx src/cli.ts publish --run "$RUN_ID"
+
+  # The jobs report their own errors; this catches what they can't, like a timeout,
+  # and gives the page a link to the log.
+  report-failure:
+    needs: [create, render, publish]
+    if: failure() || cancelled()
+    runs-on: ubuntu-latest
+    env:
+      VIDEO_RUNNER_SECRET: ${{ secrets.VIDEO_RUNNER_SECRET }}
+      API_URL: ${{ vars.API_URL }}
+      LOG_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+    defaults:
+      run:
+        working-directory: .
+    steps:
+      - run: |
+          curl -sS -X POST "$API_URL/api/video-studio/runner/$RUN_ID/status" \
+            -H "Authorization: Bearer $VIDEO_RUNNER_SECRET" \
+            -H "Content-Type: application/json" \
+            -d "{\"status\":\"failed\",\"logUrl\":\"$LOG_URL\"}"
