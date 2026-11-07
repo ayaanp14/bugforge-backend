@@ -27,10 +27,27 @@ const scene = z.object({
   visual: z.string().min(1),
 });
 
+/**
+ * The channel's shelves. A playlist keeps a viewer watching the next video, which
+ * is most of what YouTube ranks on; a fixed list keeps them from splintering.
+ */
+export const PLAYLISTS = [
+  "DSA Patterns",
+  "Arrays and Strings",
+  "Linked Lists, Stacks and Queues",
+  "Trees and Graphs",
+  "Dynamic Programming",
+  "System Design",
+  "CS Fundamentals",
+  "Interview Preparation",
+] as const;
+
 const cut = z.object({
   title: z.string().min(1),
   description: z.string().min(1),
   tags: z.array(z.string()),
+  /** Without the "#"; scripts written before the field existed have none. */
+  hashtags: z.array(z.string()).default([]),
   scenes: z.array(scene).min(2),
 });
 
@@ -48,6 +65,7 @@ export const ScriptSchema = z.object({
     })
     .nullable(),
   thumbnail: z.object({ headline: z.string().min(1), tag: z.string().min(1) }),
+  playlist: z.enum(PLAYLISTS).default("DSA Patterns"),
   landscape: cut,
   short: cut,
 });

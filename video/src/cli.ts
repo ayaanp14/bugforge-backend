@@ -20,7 +20,7 @@ import { inspect, launch, loadFonts, pageHtml, renderThumbnail, renderVideo } fr
 import { claimUpload, fetchJob, nextTopic, recordUpload, report, type Job } from "./runner.ts";
 import { ScriptSchema, SHORT_MAX_SECONDS, type Format, type RunState, type Script, type Timeline } from "./types.ts";
 import { voiceCut, voiceName } from "./voice.ts";
-import { chapters, setCaptions, setThumbnail, uploadVideo } from "./youtube.ts";
+import { addToPlaylist, chapters, setCaptions, setThumbnail, uploadVideo } from "./youtube.ts";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.join(HERE, "..");
@@ -176,7 +176,23 @@ async function render() {
   }
 }
 
-const hashtags = (tags: string[]) => tags.slice(0, 5).map((t) => `#${t.replace(/[^a-z0-9]/gi, "")}`).join(" ");
+/**
+ * YouTube shows the first three hashtags above the title, and more than fifteen
+ * makes it ignore them all; three is the whole point. Older scripts with none fall
+ * back to their tags. A Short always carries #shorts.
+ */
+const hashtags = (cut: Script["landscape"], short: boolean) => {
+  const words = (cut.hashtags.length ? cut.hashtags : cut.tags)
+    .map((t) => t.replace(/[^a-z0-9]/gi, "").toLowerCase())
+    .filter((t, i, all) => t && all.indexOf(t) === i);
+  const picked = short ? ["shorts", ...words.filter((t) => t !== "shorts")] : words;
+  return picked.slice(0, 3).map((t) => `#${t}`).join(" ");
+};
+const FOLLOW = "A new coding interview explainer every day. Subscribe so you don't miss the next one.";
+const playlistName = (script: Script, language: string, short: boolean) =>
+  `${short ? "Coding Shorts" : script.playlist}${language === "english" ? "" : " in Hindi"}`;
+const playlistAbout = (name: string) =>
+  `${name}: short, animated explanations for coding interviews and campus placements, from CodeKairo. Practise every topic at ${SITE}`;
 const tracked = (url: string, medium: string, slug: string) =>
   `${url}?utm_source=youtube&utm_medium=${medium}&utm_campaign=daily-video&utm_content=${encodeURIComponent(slug)}`;
 
@@ -189,6 +205,7 @@ async function publish() {
   // Nothing goes public that the review did not clear.
   const privacy = state.cleared ? job.privacy : "private";
   const slug = runId;
+  const language = job.language ?? "hinglish";
 
   await report(runId, { status: "uploading", usd: state.usage.usd });
 
@@ -207,11 +224,17 @@ async function publish() {
       script.landscape.description,
       `Practise it on CodeKairo: ${tracked(state.practiceUrl, "video", slug)}`,
       chapters(timeline),
-      hashtags(script.landscape.tags),
+      FOLLOW,
+      hashtags(script.landscape, false),
     ].filter(Boolean).join("\n\n");
-    state.landscapeId = await uploadVideo(token, landscapeFile, { title: script.landscape.title, description, tags: script.landscape.tags, privacy });
+    state.landscapeId = await uploadVideo(token, landscapeFile, { title: script.landscape.title, description, tags: script.landscape.tags, privacy, language });
     await recordUpload(runId, "landscape", state.landscapeId, script.landscape.title, landscapeHash);
-    for (const problem of [await setThumbnail(token, state.landscapeId, path.join(dir, "thumbnail.jpg")), await setCaptions(token, state.landscapeId, path.join(cutDir("landscape"), "captions.srt"))]) {
+    const playlist = playlistName(script, language, false);
+    for (const problem of [
+      await setThumbnail(token, state.landscapeId, path.join(dir, "thumbnail.jpg")),
+      await setCaptions(token, state.landscapeId, path.join(cutDir("landscape"), "captions.srt"), language),
+      await addToPlaylist(token, state.landscapeId, playlist, playlistAbout(playlist)),
+    ]) {
       if (problem) state.warnings.push(problem);
     }
   }
@@ -228,10 +251,19 @@ async function publish() {
       // An unlisted or private long cut isn't worth pointing at.
       privacy === "public" ? `The full explanation: https://youtu.be/${state.landscapeId}` : "",
       `Practise it on CodeKairo: ${tracked(state.practiceUrl, "short", slug)}`,
-      hashtags(script.short.tags),
+      hashtags(script.short, true),
     ].filter(Boolean).join("\n\n");
-    state.shortId = await uploadVideo(shortClaim.accessToken, shortFile, { title: script.short.title, description, tags: script.short.tags, privacy });
+    const token = shortClaim.accessToken;
+    state.shortId = await uploadVideo(token, shortFile, { title: script.short.title, description, tags: script.short.tags, privacy, language });
     await recordUpload(runId, "short", state.shortId, script.short.title, shortHash);
+    // A Short's thumbnail is a frame YouTube picks; the captions still feed search.
+    const playlist = playlistName(script, language, true);
+    for (const problem of [
+      await setCaptions(token, state.shortId, path.join(cutDir("short"), "captions.srt"), language),
+      await addToPlaylist(token, state.shortId, playlist, playlistAbout(playlist)),
+    ]) {
+      if (problem) state.warnings.push(problem);
+    }
   }
   await report(runId, { status: state.cleared ? "done" : "needs_review", privacy, warnings: state.warnings, usd: state.usage.usd });
 }

@@ -20,7 +20,30 @@ export interface Upload {
   description: string;
   tags: string[];
   privacy: "public" | "unlisted" | "private";
+  language: "hinglish" | "english";
 }
+
+/**
+ * YouTube's limit is 500 characters across the tags, and a tag with a space in it
+ * counts its quotes too. Duplicates and "#" are dropped; a tag over 30 characters
+ * is a sentence, not a search term.
+ */
+export function fitTags(tags: string[]): string[] {
+  const out: string[] = [];
+  let used = 0;
+  for (const raw of tags) {
+    const tag = clean(raw).replace(/[#,]/g, "").trim().toLowerCase();
+    if (!tag || tag.length > 30 || out.includes(tag)) continue;
+    const cost = tag.length + (tag.includes(" ") ? 2 : 0) + (out.length ? 1 : 0);
+    if (used + cost > 480) break;
+    out.push(tag);
+    used += cost;
+  }
+  return out;
+}
+
+/** Hinglish narration is spoken Hindi to YouTube: it is what matches the audience's searches and language. */
+const audioLanguage = (language: Upload["language"]) => (language === "hinglish" ? "hi" : "en");
 
 export async function uploadVideo(token: string, file: string, meta: Upload): Promise<string> {
   const size = statSync(file).size;
@@ -37,14 +60,20 @@ export async function uploadVideo(token: string, file: string, meta: Upload): Pr
         title: clean(meta.title).slice(0, 100),
         description: clean(meta.description).slice(0, 4900),
         // YouTube's limit is 500 characters across all of them.
-        tags: meta.tags.slice(0, 15).filter((_, i, all) => all.slice(0, i + 1).join(",").length <= 450),
+        tags: fitTags(meta.tags),
         categoryId: EDUCATION,
+        // The title and description are English whatever is spoken.
         defaultLanguage: "en",
-        defaultAudioLanguage: "en",
+        defaultAudioLanguage: audioLanguage(meta.language),
       },
       status: {
         privacyStatus: meta.privacy,
+        // For students and engineers, not children: "made for kids" would switch off
+        // comments, notifications and the end screens, and narrow who it is shown to.
         selfDeclaredMadeForKids: false,
+        license: "youtube",
+        embeddable: true,
+        publicStatsViewable: true,
         // The field covers realistic altered content (a real person made to say
         // something, a scene that never happened). A labelled diagram animation is not.
         containsSyntheticMedia: false,
@@ -103,10 +132,10 @@ export async function setThumbnail(token: string, videoId: string, file: string)
   return res.ok ? null : `Thumbnail not set (${res.status}): ${(await res.text()).slice(0, 200)}`;
 }
 
-export async function setCaptions(token: string, videoId: string, srtFile: string): Promise<string | null> {
+export async function setCaptions(token: string, videoId: string, srtFile: string, language: Upload["language"]): Promise<string | null> {
   const boundary = "codekairo-caption-part";
   const body = [
-    `--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${JSON.stringify({ snippet: { videoId, language: "en", name: "English" } })}\r\n`,
+    `--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${JSON.stringify({ snippet: { videoId, language: audioLanguage(language), name: language === "hinglish" ? "Hinglish" : "English" } })}\r\n`,
     `--${boundary}\r\nContent-Type: application/octet-stream\r\n\r\n${readFileSync(srtFile, "utf8")}\r\n`,
     `--${boundary}--`,
   ].join("");
@@ -116,6 +145,43 @@ export async function setCaptions(token: string, videoId: string, srtFile: strin
     body,
   });
   return res.ok ? null : `Captions not set (${res.status}): ${(await res.text()).slice(0, 200)}`;
+}
+
+/**
+ * Puts a video on the channel's playlist of that name, making the playlist the
+ * first time. Needs only the force-ssl scope the connection already has. A failure
+ * is a warning: the video is up either way.
+ */
+export async function addToPlaylist(token: string, videoId: string, title: string, about: string): Promise<string | null> {
+  const headers = { Authorization: `Bearer ${token}`, "Content-Type": "application/json; charset=UTF-8" };
+  try {
+    let id: string | undefined;
+    let page = "";
+    do {
+      const res = await fetch(`${API}/youtube/v3/playlists?part=snippet&mine=true&maxResults=50${page ? `&pageToken=${page}` : ""}`, { headers });
+      if (!res.ok) return `Playlist not set (${res.status}): ${(await res.text()).slice(0, 200)}`;
+      const data = (await res.json()) as { items?: { id: string; snippet: { title: string } }[]; nextPageToken?: string };
+      id = data.items?.find((p) => p.snippet.title === title)?.id;
+      page = id ? "" : (data.nextPageToken ?? "");
+    } while (page);
+    if (!id) {
+      const res = await fetch(`${API}/youtube/v3/playlists?part=snippet,status`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ snippet: { title, description: clean(about).slice(0, 4900), defaultLanguage: "en" }, status: { privacyStatus: "public" } }),
+      });
+      if (!res.ok) return `Playlist not made (${res.status}): ${(await res.text()).slice(0, 200)}`;
+      id = ((await res.json()) as { id: string }).id;
+    }
+    const res = await fetch(`${API}/youtube/v3/playlistItems?part=snippet`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify({ snippet: { playlistId: id, resourceId: { kind: "youtube#video", videoId } } }),
+    });
+    return res.ok ? null : `Not added to the playlist (${res.status}): ${(await res.text()).slice(0, 200)}`;
+  } catch (e) {
+    return `Playlist not set: ${(e as Error).message}`;
+  }
 }
 
 const clock = (s: number) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, "0")}`;

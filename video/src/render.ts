@@ -63,7 +63,7 @@ ${fonts()}
 html,body{width:${frame.w}px;height:${frame.h}px;overflow:hidden;background:#0A0A0A;color:#F5F5F5;font-family:Gilroy,sans-serif;-webkit-font-smoothing:antialiased}
 #ck-head{position:absolute;left:${stage.x}px;right:${stage.x}px;top:${vertical ? 136 : 36}px;display:flex;align-items:center;justify-content:space-between;padding-bottom:${vertical ? 20 : 14}px;border-bottom:1px solid #262626}
 #ck-brand{display:flex;align-items:center;gap:14px;font:600 ${vertical ? 36 : 28}px Gilroy}
-#ck-brand img{width:${vertical ? 60 : 46}px;height:${vertical ? 60 : 46}px}
+#ck-brand img{height:${vertical ? 48 : 38}px;width:auto;display:block}
 #ck-where{font:500 ${vertical ? 28 : 24}px Gilroy;color:#A3A3A3}
 #ck-num{font:500 ${vertical ? 28 : 24}px 'JetBrains Mono';color:#3AA9FF;margin-right:12px}
 #ck-progress{position:absolute;left:0;right:0;bottom:-1px;height:2px;background:#3AA9FF;transform-origin:left}
@@ -231,7 +231,7 @@ export async function renderThumbnail(browser: Browser, script: Script, outPath:
   const esc = (s: string) => s.replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" })[c]!);
   await page.setContent(`<!doctype html><style>${fonts()}*{margin:0;box-sizing:border-box}
 body{width:1280px;height:720px;background:#0A0A0A;color:#F5F5F5;font-family:Gilroy;padding:72px;display:flex;flex-direction:column;justify-content:space-between}
-.b{display:flex;align-items:center;gap:18px;font:600 40px Gilroy}.b img{width:68px;height:68px}
+.b{display:flex;align-items:center;gap:18px;font:600 40px Gilroy}.b img{height:56px;width:auto;display:block}
 h1{font:700 104px/1.05 Gilroy;max-width:1120px}.t{font:600 38px Gilroy;color:#3AA9FF;letter-spacing:.06em;text-transform:uppercase;border-top:2px solid #3AA9FF;padding-top:24px}</style>
 <div class="b"><img src="${logo()}" alt="">CodeKairo</div><h1>${esc(script.thumbnail.headline)}</h1><div class="t">${esc(script.thumbnail.tag)}</div>`);
   await page.evaluate(() => document.fonts.ready);

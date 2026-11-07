@@ -25,6 +25,10 @@ Anything the review doesn't clear goes up private and shows as "Check this one" 
 
 Each video is **Hinglish** (Roman script, technical terms in English) or **English**, picked on the Videos tab and copied onto the run when it starts. Titles, thumbnails, code and on-screen text stay English either way; a Hinglish video's title ends with "in Hindi" where it fits.
 
+## What each upload carries
+
+Claude writes, per cut, a search-first title (under 70 characters, "in Hindi" for Hinglish), a description whose first sentence restates the search term, 10–15 tags and three hashtags (a Short's first is #shorts), and picks one of the channel's playlists (`PLAYLISTS` in src/types.ts). The upload adds: category Education; not made for kids (that would turn off comments and end screens and narrow the audience); no altered or synthetic content to declare; standard licence, embeddable, public stats; the spoken language (`hi` for Hinglish, `en` otherwise) with English title text; the practice link with UTM tags, chapters, a subscribe line; the thumbnail; captions on both cuts; and the video added to "<playlist> in Hindi" (the Short to "Coding Shorts in Hindi"), each playlist made the first time it is needed. A thumbnail, caption or playlist failure is a warning on the run, never a failed upload.
+
 ## Never posting the same video twice
 
 - **Before making it:** the API compares the words of the prompt with what's posted. Then Claude judges whether it's the same video in different words. A typed prompt is refused with the title it repeats; an automatic topic moves to the next in line.

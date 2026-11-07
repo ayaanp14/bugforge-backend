@@ -6,7 +6,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { FRAMES, ReviewSchema, ScriptSchema, type Format, type Review, type Script, type Timeline, type Usage } from "./types.ts";
+import { FRAMES, PLAYLISTS, ReviewSchema, ScriptSchema, type Format, type Review, type Script, type Timeline, type Usage } from "./types.ts";
 
 export const MODEL = process.env["VIDEO_MODEL"] || "claude-opus-5-5";
 
@@ -84,11 +84,12 @@ const string = { type: "string" };
 const cutSchema = {
   type: "object",
   additionalProperties: false,
-  required: ["title", "description", "tags", "scenes"],
+  required: ["title", "description", "tags", "hashtags", "scenes"],
   properties: {
     title: string,
     description: string,
     tags: { type: "array", items: string },
+    hashtags: { type: "array", items: string },
     scenes: {
       type: "array",
       items: {
@@ -103,7 +104,7 @@ const cutSchema = {
 const scriptSchema = {
   type: "object",
   additionalProperties: false,
-  required: ["topic", "practicePath", "code", "thumbnail", "landscape", "short"],
+  required: ["topic", "practicePath", "code", "thumbnail", "playlist", "landscape", "short"],
   properties: {
     topic: string,
     practicePath: string,
@@ -114,6 +115,7 @@ const scriptSchema = {
       ],
     },
     thumbnail: { type: "object", additionalProperties: false, required: ["headline", "tag"], properties: { headline: string, tag: string } },
+    playlist: { type: "string", enum: [...PLAYLISTS] },
     landscape: cutSchema,
     short: cutSchema,
   },
@@ -151,7 +153,16 @@ Scene ids are unique, lower-case-with-dashes, and the two cuts have separate lis
 
 "practicePath" is the path on codekairo.com to practise this, such as /problems/two-sum, /roadmap, /notes/system-design/rate-limiting or /challenges. If you are unsure a specific page exists, use /challenges.
 
-Titles are what a student would search for and under 100 characters${language === "hinglish" ? ', in English, ending with "in Hindi" where it fits, since that is how Indian students search for a Hinglish explanation (\"Valid Parentheses Explained in Hindi | Stack\")' : ""}. Avoid "<" and ">" in titles and descriptions; YouTube refuses them. Descriptions say what the viewer learns in 2 to 4 sentences; links, chapters and hashtags get added for you. Thumbnail headline is 2 to 6 punchy words, at most 40 characters.`;
+What YouTube search and suggestions read, for each cut:
+- Title: lead with the exact term a student types (the problem's or concept's usual name), then the angle. Under 70 characters so search results don't cut it (100 is the hard limit)${language === "hinglish" ? ', in English, with "in Hindi" in it, since that is how Indian students search for a Hinglish explanation ("Valid Parentheses Explained in Hindi | Stack")' : ""}. Honest: no all caps, no promise the video doesn't keep. The Short's title is under 60 characters, a hook that names the term ("Why Binary Search Is O(log n)${language === "hinglish" ? " in Hindi" : ""}").
+- Description: the first sentence restates the title's search term in a natural sentence, since it is what search shows under the title. Then 2 to 4 sentences of what the viewer learns, naturally naming the related terms a student would also search: the pattern, the LeetCode problem name when it is one, Java, the interview it helps with. No links, chapters or hashtags; those are added for you.
+- Tags: 10 to 15, lower case, no "#", most specific first: the exact name, its other common names, ${language === "hinglish" ? 'the name with "in hindi" and "hindi", ' : ""}the pattern or data structure, then broad ones such as dsa, coding interview, placement preparation, leetcode (only for a LeetCode problem), java. Under 400 characters in all.
+- Hashtags: exactly 3, no "#", one word each with no spaces (binarysearch, dsa, codinginterview); YouTube shows them above the title. The Short's first hashtag is shorts.
+Avoid "<" and ">" anywhere in these; YouTube refuses them.
+
+"playlist" is the one shelf of the channel this topic belongs on.
+
+Thumbnail headline is 2 to 6 punchy words, at most 40 characters.`;
 
 /**
  * Is this topic already on the channel? Run before anything costly. The API's own
