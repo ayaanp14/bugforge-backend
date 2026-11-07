@@ -93,6 +93,11 @@ async function create() {
   const browser = await launch();
   let cleared = false;
   let open: string[] = [];
+  // What each cut was last sent back for. A rewrite that comes back with the same
+  // problems is not getting anywhere, and each one costs about forty cents, so
+  // that cut is left as it is (and posted private) rather than paid for again.
+  const last: Record<Format, Set<string>> = { landscape: new Set(), short: new Set() };
+  const gist = (p: string) => p.replace(/[\d.]+/g, "#");
   try {
     for (let round = 0; ; round++) {
       await report(runId, { status: "reviewing", round, usd: spend.usd });
@@ -121,9 +126,14 @@ async function create() {
         break;
       }
       if (round >= MAX_ROUNDS) break;
+      const worth = FORMATS.filter((format) => problems[format].length && !problems[format].every((p) => last[format].has(gist(p))));
+      if (!worth.length) {
+        console.log("the last rewrite fixed nothing; not paying for another");
+        break;
+      }
       await report(runId, { status: "revising", round, usd: spend.usd });
-      for (const format of FORMATS) {
-        if (!problems[format].length) continue;
+      for (const format of worth) {
+        last[format] = new Set(problems[format].map(gist));
         compositions[format] = await revise(script, format, timelines[format], compositions[format], problems[format]);
         writeFileSync(path.join(cutDir(format), "composition.html"), compositions[format]);
       }

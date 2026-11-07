@@ -146,14 +146,26 @@ export async function inspect(browser: Browser, format: Format, html: string, ti
     stills.push({ scene: scene.id, jpeg: await shot(stage, 70, 0.5) });
   }
   // A picture must depend on t alone: visit a moment, go elsewhere, come back.
+  // Compared as what the page holds (the stage's DOM with its inline styles, and
+  // its canvases' pixels), not as two screenshots: a JPEG of the same picture
+  // came out different on GitHub's runners, and the false alarm paid for three
+  // full rewrites of a composition that was fine (run cmw6fpuyy, 2026-11-07).
   const a = timeline.scenes[Math.floor(timeline.scenes.length / 2)]!;
   const b = timeline.scenes[timeline.scenes.length - 1]!;
   const moment = (a.start + a.end) / 2;
+  const state = () =>
+    stage.page.evaluate(() => {
+      // Only the scene on screen: a hidden one keeps whatever it last drew, which
+      // nobody sees and which its own draw replaces before it shows.
+      const on = [...document.querySelectorAll<HTMLElement>("#ck-stage [data-scene]")].find((el) => el.style.display !== "none");
+      if (!on) return "";
+      return on.outerHTML + [...on.querySelectorAll("canvas")].map((c) => c.toDataURL()).join("");
+    });
   await seek(stage.page, moment);
-  const first = await shot(stage, 70, 0.5);
+  const first = await state();
   await seek(stage.page, (b.start + b.end) / 2);
   await seek(stage.page, moment);
-  if (!first.equals(await shot(stage, 70, 0.5))) problems.push(`Going to a later time and back to ${moment.toFixed(1)} s drew a different picture: draw must be a pure function of t, keeping no state between frames.`);
+  if (first !== (await state())) problems.push(`Going to a later time and back to ${moment.toFixed(1)} s drew a different picture: draw must be a pure function of t, keeping no state between frames.`);
   problems.push(...stage.errors.map((e) => `page error: ${e}`));
   await stage.page.context().close();
   return { problems: [...new Set(problems)].slice(0, 30), stills };
