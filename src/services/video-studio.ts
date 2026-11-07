@@ -18,7 +18,7 @@ import { dayKey, zoned } from "../lib/clock.js";
 import { prisma } from "../lib/prisma.js";
 import { registerJob, type Job } from "../lib/scheduler.js";
 import { CAMPAIGN_URL } from "../lib/sites.js";
-import { AUTO_TOPICS, OPEN_TOPIC, VIDEO_FINISHED, VIDEO_PRIVACY, VIDEO_STALLED_MS, decideClaim, nextStatus, obviousRepeat, titleKey, videoPeriod, type VideoPrivacy } from "../lib/video-studio.js";
+import { AUTO_TOPICS, OPEN_TOPIC, VIDEO_FINISHED, VIDEO_LANGUAGES, VIDEO_PRIVACY, VIDEO_STALLED_MS, decideClaim, nextStatus, obviousRepeat, titleKey, videoPeriod, type VideoLanguage, type VideoPrivacy } from "../lib/video-studio.js";
 
 const YOUTUBE_API = () => process.env["YOUTUBE_API_URL"] ?? "https://www.googleapis.com";
 const TOKEN_URL = () => process.env["GOOGLE_TOKEN_URL"] ?? "https://oauth2.googleapis.com/token";
@@ -72,13 +72,14 @@ function signState(at: string): string {
 
 const settings = () => prisma.videoSettings.upsert({ where: { id: "studio" }, create: { id: "studio" }, update: {} });
 
-export async function saveSettings(body: { enabled?: unknown; privacy?: unknown }) {
+export async function saveSettings(body: { enabled?: unknown; privacy?: unknown; language?: unknown }) {
   await settings();
   await prisma.videoSettings.update({
     where: { id: "studio" },
     data: {
       ...(typeof body.enabled === "boolean" ? { enabled: body.enabled } : {}),
       ...(VIDEO_PRIVACY.includes(body.privacy as VideoPrivacy) ? { privacy: body.privacy as string } : {}),
+      ...(VIDEO_LANGUAGES.includes(body.language as VideoLanguage) ? { language: body.language as string } : {}),
     },
   });
 }
@@ -225,7 +226,7 @@ async function nextTopic(earlier: string[]): Promise<{ prompt: string; commit: (
 
 async function startRun(prompt: string, source: "schedule" | "auto" | "typed"): Promise<{ id: string; problem: string | null }> {
   const row = await settings();
-  const run = await prisma.videoRun.create({ data: { prompt, source, privacy: row.privacy } });
+  const run = await prisma.videoRun.create({ data: { prompt, source, privacy: row.privacy, language: row.language } });
   const problem = await dispatch(run.id);
   if (problem) await prisma.videoRun.update({ where: { id: run.id }, data: { status: "failed", error: problem } });
   return { id: run.id, problem };
@@ -294,7 +295,7 @@ export async function studioState() {
   ]);
   const missing = ["VIDEO_RUNNER_SECRET", "GITHUB_DISPATCH_TOKEN", "YOUTUBE_CLIENT_ID", "YOUTUBE_CLIENT_SECRET"].filter((k) => !process.env[k]);
   return {
-    settings: { enabled: row.enabled, privacy: row.privacy },
+    settings: { enabled: row.enabled, privacy: row.privacy, language: row.language },
     queue,
     runs,
     missing,
@@ -326,7 +327,7 @@ export async function jobFor(id: string) {
   const run = await runOf(id);
   // Read fresh, so the model's "already posted" list includes this morning's hand uploads.
   await accessToken().then(syncChannel).catch((err) => console.error("[video-studio] channel read failed:", err));
-  return { id: run.id, prompt: run.prompt, privacy: run.privacy, source: run.source, posted: await earlierTopics(run.id) };
+  return { id: run.id, prompt: run.prompt, privacy: run.privacy, language: run.language, source: run.source, posted: await earlierTopics(run.id) };
 }
 
 /** The run's first step found its topic was already made. A typed prompt stops there; otherwise the next in line takes its place. */

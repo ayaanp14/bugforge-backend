@@ -1,6 +1,6 @@
 # Daily videos
 
-One prompt makes a landscape video (3 to 5 minutes) and a Short (30 to 60 seconds), and posts both to YouTube. It runs every day at 10:00 IST once switched on. They aren't AI-generated footage: Claude writes the script and an HTML composition, and Chrome renders that page frame by frame.
+One prompt makes a landscape video (3 to 5 minutes) and a Short (30 to 60 seconds), and posts both to YouTube. It runs every day at 10:00 IST once switched on. They aren't AI-generated footage: Claude writes the script and an HTML composition, Polly voices it, and Chrome renders that page frame by frame.
 
 ## Where everything lives
 
@@ -19,9 +19,11 @@ One prompt makes a landscape video (3 to 5 minutes) and a Short (30 to 60 second
 
 Anything the review doesn't clear goes up private and shows as "Check this one" on the page.
 
-## The voice
+## The voice and the language
 
-Gemini TTS, voice **Kore**, with the direction used for the 2026-11-05 Shorts (`src/voice.ts`). `GEMINI_TTS_VOICE` and `GEMINI_TTS_MODEL` change it.
+**Amazon Polly**, voice **Kajal** (neural, Indian English), the voice the site reads interview questions in (`src/voice.ts`). Polly reports when each word is said, so the captions and the animation cues land on the words exactly. Repository variables `POLLY_VOICE`, `POLLY_ENGINE` and `POLLY_REGION` change it; a voice without word timings (the generative engine has none) is timed from the pauses between its sentences instead.
+
+Each video is **Hinglish** (Roman script, technical terms in English) or **English**, picked on the Videos tab and copied onto the run when it starts. Titles, thumbnails, code and on-screen text stay English either way; a Hinglish video's title ends with "in Hindi" where it fits.
 
 ## Never posting the same video twice
 
@@ -60,7 +62,8 @@ Rotating `VIDEO_RUNNER_SECRET` means reconnecting YouTube, since it also encrypt
 | Kind | Name | Value |
 | --- | --- | --- |
 | Secret | `ANTHROPIC_API_KEY` | Your Anthropic key |
-| Secret | `GEMINI_API_KEY` | A Gemini key |
+| Secret | `POLLY_ACCESS_KEY_ID` | An IAM user's access key, allowed only `polly:SynthesizeSpeech` |
+| Secret | `POLLY_SECRET_ACCESS_KEY` | That key's secret |
 | Secret | `VIDEO_RUNNER_SECRET` | The same as above |
 | Variable | `API_URL` | `https://api.codekairo.com` |
 | Variable | `VIDEO_MODEL` | Optional. `claude-sonnet-5-5` halves the Claude cost. |
@@ -75,7 +78,7 @@ Rotating `VIDEO_RUNNER_SECRET` means reconnecting YouTube, since it also encrypt
 cd video
 npm ci
 npx tsx src/cli.ts demo            # the reference composition, silent, no API keys
-npx tsx src/cli.ts demo --voice    # with the real voice; needs GEMINI_API_KEY
+npx tsx src/cli.ts demo --voice    # with the real Polly voice; needs AWS credentials (aws login)
 ```
 
 The result is in `out/`. Local rendering needs Google Chrome installed. `backend/scratch/video-studio-job-smoke.mts` runs the 10:00 job through the scheduler against a stub.

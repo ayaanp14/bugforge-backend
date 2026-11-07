@@ -2800,6 +2800,8 @@ model VideoRun {
   /// schedule | auto ("Make one now" with no prompt) | typed. Only a typed prompt is refused outright as a repeat; the others move on to the next topic.
   source           String    @db.VarChar(16)
   privacy          String    @db.VarChar(16)
+  /// hinglish | english: what the narration is spoken in, copied from the settings when the run starts.
+  language         String    @default("hinglish") @db.VarChar(16)
   status           String    @default("queued") @db.VarChar(24)
   title            String?   @db.VarChar(200)
   model            String?   @db.VarChar(60)
@@ -2834,6 +2836,7 @@ model VideoSettings {
   id           String    @id @default("studio") @db.VarChar(16)
   enabled      Boolean   @default(false)
   privacy      String    @default("public") @db.VarChar(16)
+  language     String    @default("hinglish") @db.VarChar(16)
   autoNext     Int       @default(0)
   refreshToken String?   @db.Text
   channelId    String?   @db.VarChar(40)

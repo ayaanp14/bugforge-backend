@@ -19,7 +19,7 @@ import { compose, findDuplicate, MODEL, reviewVideo, revise, spend, writeScript 
 import { inspect, launch, loadFonts, pageHtml, renderThumbnail, renderVideo } from "./render.ts";
 import { claimUpload, fetchJob, nextTopic, recordUpload, report, type Job } from "./runner.ts";
 import { ScriptSchema, SHORT_MAX_SECONDS, type Format, type RunState, type Script, type Timeline } from "./types.ts";
-import { voiceCut } from "./voice.ts";
+import { voiceCut, voiceName } from "./voice.ts";
 import { chapters, setCaptions, setThumbnail, uploadVideo } from "./youtube.ts";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -51,7 +51,7 @@ async function practiceUrl(script: Script): Promise<string> {
 
 async function create() {
   const job: Job = opt("prompt")
-    ? { id: runId, prompt: opt("prompt")!, privacy: "private", source: "typed", posted: [] }
+    ? { id: runId, prompt: opt("prompt")!, privacy: "private", language: opt("language") === "english" ? "english" : "hinglish", source: "typed", posted: [] }
     : await fetchJob(runId);
   mkdirSync(dir, { recursive: true });
   writeJson("job.json", job);
@@ -59,6 +59,7 @@ async function create() {
 
   await loadFonts();
   await report(runId, { status: "scripting", model: MODEL });
+  console.log(`voice: ${voiceName()}`);
   // First and cheap: never spend a video's worth of tokens on one the channel has.
   // A typed topic stops here with a sentence; an automatic one moves to the next in line.
   for (let tries = 0; ; tries++) {
@@ -69,7 +70,8 @@ async function create() {
     job.prompt = await nextTopic(runId, duplicateOf);
   }
   writeJson("job.json", job);
-  let script = await writeScript(job.prompt, job.posted);
+  const language = job.language ?? "hinglish";
+  let script = await writeScript(job.prompt, job.posted, language);
   await report(runId, { status: "voicing", title: script.landscape.title, usd: spend.usd });
   const timelines = {} as Record<Format, Timeline>;
   for (const format of FORMATS) {
@@ -103,7 +105,7 @@ async function create() {
       }
       // Don't pay to look at frames of a page that is already known to be broken.
       if (!problems.landscape.length && !problems.short.length) {
-        const review = await reviewVideo(script, stills);
+        const review = await reviewVideo(script, stills, language);
         writeJson(`review-${round}.json`, review);
         for (const p of review.problems) {
           if (p.severity !== "blocker") continue;

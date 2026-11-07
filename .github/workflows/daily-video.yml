@@ -38,7 +38,15 @@ jobs:
     timeout-minutes: 75
     env:
       ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+      # The voice (src/voice.ts): Amazon Polly, through an IAM user allowed only
+      # polly:SynthesizeSpeech. The variables are optional; Kajal neural is the default.
+      AWS_ACCESS_KEY_ID: ${{ secrets.POLLY_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.POLLY_SECRET_ACCESS_KEY }}
+      POLLY_VOICE: ${{ vars.POLLY_VOICE }}
+      POLLY_ENGINE: ${{ vars.POLLY_ENGINE }}
+      POLLY_REGION: ${{ vars.POLLY_REGION }}
+      # Polly's MP3 is decoded with it.
+      FFMPEG_PATH: ffmpeg
       VIDEO_RUNNER_SECRET: ${{ secrets.VIDEO_RUNNER_SECRET }}
       API_URL: ${{ vars.API_URL }}
       VIDEO_MODEL: ${{ vars.VIDEO_MODEL }}
@@ -47,6 +55,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
+      - run: sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg
       - run: npm ci --ignore-scripts
       - run: npx tsx src/cli.ts create --run "$RUN_ID"
       - uses: actions/upload-artifact@v4

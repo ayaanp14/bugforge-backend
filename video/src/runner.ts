@@ -18,6 +18,8 @@ export interface Job {
   id: string;
   prompt: string;
   privacy: "public" | "unlisted" | "private";
+  /** What the narration is spoken in; older runs predate it and read as Hinglish. */
+  language?: "hinglish" | "english";
   source: "schedule" | "auto" | "typed";
   /** Everything already on the channel or already made. */
   posted: string[];

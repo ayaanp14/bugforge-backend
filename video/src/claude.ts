@@ -9,6 +9,19 @@ import { fileURLToPath } from "node:url";
 import { FRAMES, ReviewSchema, ScriptSchema, type Format, type Review, type Script, type Timeline, type Usage } from "./types.ts";
 
 export const MODEL = process.env["VIDEO_MODEL"] || "claude-opus-5-5";
+
+/**
+ * What the narration is spoken in, set per run from the campaign page. Hinglish is
+ * the default by the owner's call (2026-11-07): the channel is for Indian students,
+ * who learn this in Hindi mixed with English terms. Roman script, because Kajal
+ * reads Roman Hinglish and the captions print it.
+ */
+export type Language = "hinglish" | "english";
+
+const languageRules = (language: Language) =>
+  language === "hinglish"
+    ? "Write all narration in Hinglish, in Roman script, the way an Indian teacher explains this in class: Hindi sentence structure (hai, karte hain, isliye, kyunki, matlab) with every technical term in English (array, stack, pointer, time complexity, push, pop). Never Devanagari. Keep it conversational, not formal Hindi. Spell numbers out in English words (\"twenty three\", \"O of n\"), since that is how students say them. Scene titles, the thumbnail, code and everything on screen stay in English."
+    : "Write all narration in English.";
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 
 /** USD per million tokens: input, 1h cache write, cache read, output. */
@@ -116,7 +129,7 @@ async function siteFacts(): Promise<string> {
   return text.slice(0, 3000) || "CodeKairo is a web-based coding practice and interview-preparation platform for college students and early-career software engineers.";
 }
 
-const scriptSystem = (facts: string) => `You write the daily explainer videos for CodeKairo's YouTube channel. Each topic gets two cuts: a landscape tutorial and a vertical Short.
+const scriptSystem = (facts: string, language: Language) => `You write the daily explainer videos for CodeKairo's YouTube channel. Each topic gets two cuts: a landscape tutorial and a vertical Short.
 
 About CodeKairo, the only facts about it you may state: ${facts}
 
@@ -125,6 +138,8 @@ The audience is Indian engineering students preparing for coding interviews and 
 The landscape cut runs 3 to 5 minutes, 450 to 800 words, in 7 to 12 scenes. Its usual arc for an algorithm: a hook, the problem, the obvious approach and why it falls short, the insight, a step-by-step walkthrough on a small concrete example, a common mistake, the code, the complexity, then a sign-off. Other kinds of topic take the arc that suits them.
 
 The Short runs 30 to 60 seconds, 80 to 150 words, in 3 to 6 scenes. It opens on one surprising, concrete claim in the first sentence, since a viewer decides in two seconds, shows the one idea that makes the topic click, and ends by sending them to CodeKairo. It stands on its own and is not a trimmed copy of the long cut.
+
+${languageRules(language)}
 
 Narration is read aloud by a text-to-speech voice, so write for the ear: short sentences, plain words, no markdown. Spell numbers and symbols out as they should be spoken ("twenty three", "O of log n", "n squared"). Every statement about the topic must be correct; a viewer will be tested on it in an interview, so walk the example through and check each value before you write it down.
 
@@ -136,7 +151,7 @@ Scene ids are unique, lower-case-with-dashes, and the two cuts have separate lis
 
 "practicePath" is the path on codekairo.com to practise this, such as /problems/two-sum, /roadmap, /notes/system-design/rate-limiting or /challenges. If you are unsure a specific page exists, use /challenges.
 
-Titles are what a student would search for and under 100 characters. Avoid "<" and ">" in titles and descriptions; YouTube refuses them. Descriptions say what the viewer learns in 2 to 4 sentences; links, chapters and hashtags get added for you. Thumbnail headline is 2 to 6 punchy words, at most 40 characters.`;
+Titles are what a student would search for and under 100 characters${language === "hinglish" ? ', in English, ending with "in Hindi" where it fits, since that is how Indian students search for a Hinglish explanation (\"Valid Parentheses Explained in Hindi | Stack\")' : ""}. Avoid "<" and ">" in titles and descriptions; YouTube refuses them. Descriptions say what the viewer learns in 2 to 4 sentences; links, chapters and hashtags get added for you. Thumbnail headline is 2 to 6 punchy words, at most 40 characters.`;
 
 /**
  * Is this topic already on the channel? Run before anything costly. The API's own
@@ -153,9 +168,9 @@ export async function findDuplicate(prompt: string, posted: string[]): Promise<s
   return (JSON.parse(raw) as { duplicateOf: string | null }).duplicateOf;
 }
 
-export async function writeScript(prompt: string, posted: string[]): Promise<Script> {
+export async function writeScript(prompt: string, posted: string[], language: Language): Promise<Script> {
   const earlier = posted.length ? `\n\nAlready on the channel. Never repeat these topics, angles or hooks:\n${posted.map((t) => `- ${t}`).join("\n")}` : "";
-  const raw = await ask({ system: scriptSystem(await siteFacts()), content: `Today's video: ${prompt}${earlier}`, effort: "high", schema: scriptSchema });
+  const raw = await ask({ system: scriptSystem(await siteFacts(), language), content: `Today's video: ${prompt}${earlier}`, effort: "high", schema: scriptSchema });
   return ScriptSchema.parse(JSON.parse(raw));
 }
 
@@ -259,9 +274,9 @@ Fix every problem, keep what works, and reply with the whole corrected compositi
 
 /* ── The review ─────────────────────────────────────────────────────── */
 
-const REVIEW_SYSTEM = `You check CodeKairo's explainer videos before they go public. They publish without a person watching, so you are the last reader.
+const reviewSystem = (language: Language) => `You check CodeKairo's explainer videos before they go public. They publish without a person watching, so you are the last reader.
 
-You get the script, and frames from late in each scene. Report a blocker for a technical error in the narration, code or picture; a picture that contradicts what is said; text that overlaps, is cut off or is too small to read on a phone; or a scene that is blank or plainly unfinished. Frames are half size, so judge text by its proportion of the frame.
+You get the script, and frames from late in each scene. Report a blocker for a technical error in the narration, code or picture; a picture that contradicts what is said; text that overlaps, is cut off or is too small to read on a phone; or a scene that is blank or plainly unfinished. Frames are half size, so judge text by its proportion of the frame.${language === "hinglish" ? " The narration and captions are Roman-script Hinglish on purpose; judge what they say, not the language." : ""}
 
 A frame caught mid-animation is fine, and so is a design you would have done differently: report those as minor or not at all. An empty problems list means it can go out. Some things in the frames (header, captions) are drawn by the page rather than the composition, and captions show one line at a time.`;
 
@@ -282,13 +297,13 @@ const reviewSchema = {
   },
 };
 
-export async function reviewVideo(script: Script, stills: { format: Format; scene: string; jpeg: Buffer }[]): Promise<Review> {
+export async function reviewVideo(script: Script, stills: { format: Format; scene: string; jpeg: Buffer }[], language: Language): Promise<Review> {
   const images = stills.flatMap((s): Anthropic.Beta.Messages.BetaContentBlockParam[] => [
     { type: "text", text: `${s.format}, scene "${s.scene}":` },
     { type: "image", source: { type: "base64", media_type: "image/jpeg", data: s.jpeg.toString("base64") } },
   ]);
   const raw = await ask({
-    system: REVIEW_SYSTEM,
+    system: reviewSystem(language),
     effort: "high",
     schema: reviewSchema,
     content: [{ type: "text", text: `The script:\n${JSON.stringify(script, null, 1)}` }, ...images],

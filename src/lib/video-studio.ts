@@ -7,6 +7,10 @@
 export const VIDEO_PRIVACY = ["public", "unlisted", "private"] as const;
 export type VideoPrivacy = (typeof VIDEO_PRIVACY)[number];
 
+/** Hinglish first: the channel is for Indian students (the owner's call, 2026-11-07). */
+export const VIDEO_LANGUAGES = ["hinglish", "english"] as const;
+export type VideoLanguage = (typeof VIDEO_LANGUAGES)[number];
+
 export const VIDEO_FINISHED = new Set(["done", "needs_review", "failed"]);
 
 /** The workflow's jobs time out in under this, so silence past it means it died unreported. */

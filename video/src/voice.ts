@@ -1,71 +1,83 @@
 /**
- * The narration, in the voice of the 2026-11-05 Shorts (frontend/scratch/shorts,
- * the owner's pick for these videos): Gemini TTS, voice Kore, the same model and
- * the same direction, and the same way of cutting the read-aloud pauses down.
+ * The narration: Amazon Polly, voice Kajal (neural, Indian English), the voice the
+ * site reads interview questions in. The owner's call on 2026-11-07, after the first
+ * real run died on Gemini TTS's free tier (ten voice requests a day, where one video
+ * needs a dozen), and after hearing Kajal generative and neural read the same
+ * Hinglish: neural. It reads Roman-script Hinglish and English alike.
  *
- * A text is read in one call because a sentence read on its own loses the rhythm
- * of the script: a Short is one call, a long video one call per scene. The model
- * returns no word timings, so lines are recovered from its pauses and words are
- * spread across each line by length. Not forced alignment, but the Shorts proved
- * it lands close enough to read along with.
- *
- * Unlike those Shorts, nobody is watching when this runs, so a read whose pauses
- * do not fit its lines is asked for again and then used anyway, with a warning,
- * rather than stopping the day's video.
+ * Polly reports when every word is said (speech marks), so the captions and the
+ * animation cues land on the words exactly. Each scene is one request, which keeps
+ * every read under Polly's 3,000-character cap. POLLY_VOICE / POLLY_ENGINE /
+ * POLLY_REGION change the voice; a voice without speech marks (the generative
+ * engine has none) is timed instead from the pauses between its sentences.
  */
+import { spawn } from "node:child_process";
 import { writeFileSync } from "node:fs";
+import { PollyClient, SynthesizeSpeechCommand, type Engine, type LanguageCode, type VoiceId } from "@aws-sdk/client-polly";
+import ffmpegStatic from "ffmpeg-static";
 import type { Format, SceneScript, TimedScene, Timeline, Word } from "./types.ts";
 
-const MODEL = process.env["GEMINI_TTS_MODEL"] || "gemini-3.1-flash-tts-preview";
-const VOICE = process.env["GEMINI_TTS_VOICE"] || "Kore";
-const STYLE = "Read this as a sharp, upbeat tech explainer on a short video: quick, clear and natural";
-const API = process.env["GEMINI_API_URL"] || "https://generativelanguage.googleapis.com";
 const RATE = 24000;
+const VOICE = (process.env["POLLY_VOICE"] || "Kajal") as VoiceId;
+const ENGINE = (process.env["POLLY_ENGINE"] || "neural") as Engine;
+// Kajal and Aditi speak Indian English and Hindi; unnamed, Polly may read English with Hindi phonetics.
+const LANGUAGE = (process.env["POLLY_LANGUAGE"] || (["Kajal", "Aditi"].includes(VOICE) ? "en-IN" : "")) as LanguageCode | "";
+// Generative voices are served from fewer regions than neural ones (Kajal generative: us-east-1 only).
+const REGION = process.env["POLLY_REGION"] || (ENGINE === "generative" ? "us-east-1" : "ap-south-1");
+/** SynthesizeSpeech refuses more than 3,000 billed characters a request. */
+const MAX_CHARS = 2900;
 
-/** The silence left between lines once the read-aloud pauses are cut. */
+/** The silence left between lines once each line's own trailing silence is cut. */
 const GAP_S = 0.14;
 const SCENE_GAP_S = 0.3;
 const END_HOLD_S = 1.2;
 const WINDOW_S = 0.02;
 
-const sleep = (ms: number) => new Promise((done) => setTimeout(done, ms));
+export const voiceName = () => `Polly ${VOICE} (${ENGINE})`;
 
-async function synthesise(lines: string[], attempt = 1): Promise<Float32Array> {
-  const key = process.env["GEMINI_API_KEY"];
-  if (!key) throw new Error("GEMINI_API_KEY is not set");
-  const res = await fetch(`${API}/v1beta/models/${MODEL}:generateContent`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", "x-goog-api-key": key },
-    body: JSON.stringify({
-      contents: [{ parts: [{ text: `${STYLE}, with a full one second pause after each line:\n${lines.join("\n")}` }] }],
-      generationConfig: { responseModalities: ["AUDIO"], speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: VOICE } } } },
+/* ── Polly ───────────────────────────────────────────────────────────── */
+
+let polly: PollyClient | null = null;
+
+async function pollyCall(text: string, format: "mp3" | "json"): Promise<Buffer> {
+  if (text.length > MAX_CHARS) throw new Error(`A scene's narration is ${text.length} characters; Polly takes ${MAX_CHARS} a request.`);
+  polly ??= new PollyClient({ region: REGION, maxAttempts: 4 });
+  const answer = await polly.send(
+    new SynthesizeSpeechCommand({
+      Text: text,
+      TextType: "text",
+      VoiceId: VOICE,
+      Engine: ENGINE,
+      ...(LANGUAGE ? { LanguageCode: LANGUAGE } : {}),
+      OutputFormat: format,
+      ...(format === "mp3" ? { SampleRate: "24000" } : { SpeechMarkTypes: ["sentence", "word"] }),
     }),
-  });
-  if ((res.status === 429 || res.status >= 500) && attempt < 6) {
-    const wait = Number(res.headers.get("retry-after")) || 15 * attempt;
-    console.log(`  Gemini TTS answered ${res.status}; waiting ${wait} s`);
-    await sleep(wait * 1000);
-    return synthesise(lines, attempt + 1);
-  }
-  if (!res.ok) throw new Error(`Gemini TTS ${res.status}: ${(await res.text()).slice(0, 400)}`);
-  const body = (await res.json()) as { candidates?: { content?: { parts?: { inlineData?: { data?: string } }[] } }[] };
-  const data = body.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
-  if (!data) {
-    // The preview model now and then ends a turn with no audio; another call answers.
-    if (attempt < 6) return synthesise(lines, attempt + 1);
-    throw new Error("Gemini TTS returned no audio");
-  }
-  let bytes = Buffer.from(data, "base64");
-  // The API's docs describe a RIFF header on unary answers; the Shorts' calls got
-  // bare PCM. Taking either means a change on their side cannot read a header as sound.
-  if (bytes.subarray(0, 4).toString("latin1") === "RIFF") {
-    const chunk = bytes.indexOf("data", 12, "latin1");
-    if (chunk > 0) bytes = bytes.subarray(chunk + 8);
-  }
-  const pcm = new Float32Array(Math.floor(bytes.length / 2));
-  for (let i = 0; i < pcm.length; i++) pcm[i] = bytes.readInt16LE(i * 2) / 0x8000;
-  return pcm;
+  );
+  if (!answer.AudioStream) throw new Error("Polly returned no audio");
+  return Buffer.from(await answer.AudioStream.transformToByteArray());
 }
+
+/**
+ * MP3 rather than Polly's raw PCM, which stops at 16 kHz and sounds like a phone
+ * line; 24 kHz MP3 decoded here keeps the voice crisp.
+ */
+function decodeMp3(mp3: Buffer): Promise<Float32Array> {
+  return new Promise((resolve, reject) => {
+    const ff = spawn(process.env["FFMPEG_PATH"] || (ffmpegStatic as unknown as string), ["-hide_banner", "-loglevel", "error", "-i", "pipe:0", "-f", "f32le", "-ac", "1", "-ar", String(RATE), "pipe:1"]);
+    const out: Buffer[] = [];
+    ff.stdout.on("data", (d: Buffer) => out.push(d));
+    ff.on("error", reject);
+    ff.on("close", (code) => {
+      if (code !== 0) return reject(new Error(`ffmpeg could not decode Polly's audio (${code})`));
+      const all = Buffer.concat(out);
+      const usable = all.length - (all.length % 4);
+      resolve(new Float32Array(all.buffer.slice(all.byteOffset, all.byteOffset + usable)));
+    });
+    ff.stdin.end(mp3);
+  });
+}
+
+/* ── Timing from the audio itself, for a voice with no speech marks ─────── */
 
 function envelope(pcm: Float32Array): number[] {
   const win = Math.round(RATE * WINDOW_S);
@@ -117,18 +129,11 @@ export function alignLines(spans: [number, number][], lines: string[]): [number,
   return groups;
 }
 
-/**
- * A line said far faster or slower than its neighbours means a pause landed in
- * the wrong place. Lines under 25 characters don't get a vote: the Shorts' beats
- * were all of a length, but "Here's the trick." is naturally slow next to a
- * full sentence, and judging it sent every read back as bad.
- */
-export function plausible(groups: [number, number][], lines: string[]): boolean {
-  const rates = groups.map(([a, b], i) => ({ rate: lines[i]!.length / (b - a), long: lines[i]!.length >= 25 }));
-  const long = rates.filter((r) => r.long);
-  if (!long.length) return true;
-  const mean = long.reduce((x, r) => x + r.rate, 0) / long.length;
-  return long.every((r) => r.rate >= mean * 0.55 && r.rate <= mean * 1.6);
+/** The end of the speech before `limit`: a line's own trailing silence is cut. */
+function speechEnd(pcm: Float32Array, from: number, limit: number): number {
+  const env = envelope(pcm.subarray(Math.round(from * RATE), Math.round(limit * RATE)));
+  for (let i = env.length - 1; i >= 0; i--) if (env[i]! > 0.02) return from + (i + 1) * WINDOW_S;
+  return limit;
 }
 
 export const sentences = (text: string) => text.match(/[^.!?]+[.!?]+["')]*|[^.!?]+$/g)?.map((s) => s.trim()).filter(Boolean) ?? [text];
@@ -145,29 +150,58 @@ function spread(line: string, from: number, seconds: number): Word[] {
   });
 }
 
+/* ── A read ──────────────────────────────────────────────────────────── */
+
 interface Read {
   /** One entry per line: where that line's speech sits in the pcm. */
   spans: [number, number][];
   lines: string[];
   pcm: Float32Array;
+  /** When the voice reported them: each line's words, timed in the pcm. Otherwise spread by length. */
+  words?: Word[][];
 }
 
-async function readAloud(lines: string[], warnings: string[]): Promise<Read> {
-  let pcm: Float32Array = new Float32Array(0);
-  let last: [number, number][] | null = null;
-  for (let attempt = 0; attempt < 3; attempt++) {
-    pcm = await synthesise(lines);
-    last = alignLines(stretches(envelope(pcm)), lines);
-    if (last && plausible(last, lines)) return { spans: last, lines, pcm };
-    console.log("  the read's pauses do not fit its lines; asking again");
+interface Mark {
+  time: number;
+  type: string;
+  value: string;
+}
+
+/**
+ * One scene read aloud, its lines and every word's time taken from Polly's speech
+ * marks. The sentences Polly itself heard are the caption lines, so its marks and
+ * the lines can never disagree.
+ */
+async function pollyRead(lines: string[], warnings: string[]): Promise<Read> {
+  const text = lines.join(" ");
+  const pcm = await decodeMp3(await pollyCall(text, "mp3"));
+  const duration = pcm.length / RATE;
+  let marks: Mark[] = [];
+  try {
+    marks = (await pollyCall(text, "json")).toString("utf8").split("\n").filter((l) => l.trim()).map((l) => JSON.parse(l) as Mark);
+  } catch (err) {
+    console.log(`  no speech marks for ${voiceName()} (${(err as Error).name}); timing by pauses`);
   }
-  warnings.push(`Captions may run slightly off in "${lines[0]!.slice(0, 40)}…": the voice's pauses did not match its lines.`);
-  // The split still cuts the long pauses out, which matters more to the listener than a caption's exact timing.
-  if (last) return { spans: last, lines, pcm };
-  return { spans: [[0, pcm.length / RATE]], lines: [lines.join(" ")], pcm };
+  const said = marks.filter((m) => m.type === "sentence");
+  const words = marks.filter((m) => m.type === "word");
+  if (!said.length || !words.length) {
+    const spans = alignLines(stretches(envelope(pcm)), lines);
+    if (spans) return { spans, lines, pcm };
+    warnings.push(`Captions may run slightly off in "${lines[0]!.slice(0, 40)}…": the voice gave no timings.`);
+    return { spans: [[0, duration]], lines: [text], pcm };
+  }
+  const spans: [number, number][] = [];
+  const lineWords: Word[][] = [];
+  said.forEach((sentence, i) => {
+    const start = sentence.time / 1000;
+    const next = said[i + 1] ? said[i + 1]!.time / 1000 : duration;
+    spans.push([start, speechEnd(pcm, start, next)]);
+    lineWords.push(words.filter((w) => w.time / 1000 >= start && w.time / 1000 < next).map((w) => ({ w: w.value, t: w.time / 1000 })));
+  });
+  return { spans, lines: said.map((x) => x.value.trim()), pcm, words: lineWords };
 }
 
-/** No audio or key: silence at a typical pace, for layout work and the demo. */
+/** No audio or credentials: silence at a typical pace, for layout work and the demo. */
 function estimatedRead(lines: string[]): Read {
   let at = 0.05;
   const spans = lines.map((line): [number, number] => {
@@ -177,6 +211,8 @@ function estimatedRead(lines: string[]): Read {
   });
   return { spans, lines, pcm: new Float32Array(Math.round(at * RATE)) };
 }
+
+/* ── The cut ─────────────────────────────────────────────────────────── */
 
 function wav(samples: Float32Array): Buffer {
   const head = Buffer.alloc(44);
@@ -206,38 +242,11 @@ const stamp = (s: number) => {
 
 /** Writes narration.wav, timeline.json and captions.srt under `dir`. */
 export async function voiceCut(format: Format, scenes: SceneScript[], dir: string, warnings: string[], estimate = false): Promise<Timeline> {
-  // A Short is one call, for its rhythm. A long cut is one call per scene: a
-  // five-minute read in one call would lose everything to a single bad pause.
-  const reads = async (lines: string[]) => (estimate ? estimatedRead(lines) : readAloud(lines, warnings));
-  const sceneLines = scenes.map((s) => sentences(s.narration));
   const perScene: Read[] = [];
-  if (format === "short") {
-    const all = await reads(sceneLines.flat());
-    // Hand each scene its share of the one read. A fallback read has no lines
-    // to share out, so it goes out as the first scene's and the rest draw from
-    // the proportional split below.
-    if (all.lines.length === sceneLines.flat().length) {
-      let i = 0;
-      for (const lines of sceneLines) {
-        perScene.push({ pcm: all.pcm, lines, spans: all.spans.slice(i, i + lines.length) });
-        i += lines.length;
-      }
-    } else {
-      const total = sceneLines.flat().join(" ").length;
-      const end = all.spans[0]![1];
-      let at = 0;
-      for (const lines of sceneLines) {
-        const text = lines.join(" ");
-        const span: [number, number] = [at, at + (text.length / total) * end];
-        perScene.push({ pcm: all.pcm, lines: [text], spans: [span] });
-        at = span[1];
-      }
-    }
-  } else {
-    for (const [i, lines] of sceneLines.entries()) {
-      console.log(`  voicing ${i + 1}/${sceneLines.length}: ${scenes[i]!.id}`);
-      perScene.push(await reads(lines));
-    }
+  for (const [i, scene] of scenes.entries()) {
+    console.log(`  voicing ${format} ${i + 1}/${scenes.length}: ${scene.id}`);
+    const lines = sentences(scene.narration);
+    perScene.push(estimate ? estimatedRead(lines) : await pollyRead(lines, warnings));
   }
 
   const parts: Float32Array[] = [];
@@ -260,7 +269,8 @@ export async function voiceCut(format: Format, scenes: SceneScript[], dir: strin
       const seconds = (to - from) / RATE;
       push(read.pcm.subarray(from, to));
       push(new Float32Array(Math.round(GAP_S * RATE)));
-      words.push(...spread(line, lineStart, seconds));
+      const said = read.words?.[l];
+      words.push(...(said?.length ? said.map((x) => ({ w: x.w, t: lineStart + Math.max(0, x.t - from / RATE) })) : spread(line, lineStart, seconds)));
       srt.push(`${srt.length + 1}\n${stamp(lineStart)} --> ${stamp(lineStart + seconds)}\n${line}\n`);
     });
     push(new Float32Array(Math.round(SCENE_GAP_S * RATE)));
@@ -277,7 +287,7 @@ export async function voiceCut(format: Format, scenes: SceneScript[], dir: strin
   }
   let peak = 0;
   for (const v of track) peak = Math.max(peak, Math.abs(v));
-  // -1 dBFS, as the Shorts: speech alone in a feed of music is the quiet one otherwise.
+  // -1 dBFS: speech alone in a feed of music is the quiet one otherwise.
   if (peak > 0) for (let i = 0; i < track.length; i++) track[i] = track[i]! * (0.89 / peak);
 
   const duration = at / RATE;
