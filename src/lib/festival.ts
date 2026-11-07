@@ -81,3 +81,103 @@ export const FESTIVAL_ANNOUNCEMENT = {
   body: "Solve any problem to light a diya, one a day until 11 November. Light all seven for a limited-edition badge.",
   href: "/",
 };
+
+/* ── the festival's later notices (the owner's ask, 2026-11-07) ──────────── */
+
+/** Diwali itself, 8 November: the day the greeting says "Happy Diwali" and the kata is the festival problem. */
+export const DIWALI_DAY = "2026-11-08";
+/** The days the "keep going" notice goes out: the badge needs every diya, so only these two are still in reach of it. */
+export const LAST_CHANCE_DAYS = ["2026-11-10", "2026-11-11"] as const;
+/** Diwali's kata (services/daily-contest.ts PINNED_DAYS), which every Diwali-day notice that asks for a solve links to. */
+export const DIWALI_PROBLEM = { slug: "brightest-string-of-diyas", title: "Brightest String of Diyas" };
+
+export interface FestivalNotice {
+  /** The notification type: one a day, so createNotificationsOnce sends each once and push (lib/push.ts PUSHED) knows it. */
+  type: string;
+  title: string;
+  body: string;
+  href: string;
+}
+
+/**
+ * The notice job's period. Diwali's runs from 08:00 to 21:00 IST, as wide as
+ * the announcement and for the same reason: a window that passed before a
+ * deploy is skipped, never caught up. The last-chance ones run 17:00–22:00, late
+ * enough that a member who solves in the day is not asked to, early enough
+ * to solve before midnight.
+ */
+export function festivalNoticePeriod(now: Date, hour: number): string | null {
+  const today = dayKey(now);
+  if (today === DIWALI_DAY && hour >= 8 && hour < 21) return `diwali-2026-day`;
+  if ((LAST_CHANCE_DAYS as readonly string[]).includes(today) && hour >= 17 && hour < 22) return `diwali-2026-last:${today}`;
+  return null;
+}
+
+/** Whether every festival day before `today` is lit: the only accounts the badge is still open to. */
+export function onCourseForBadge(lit: readonly string[], today: string): boolean {
+  const before = FESTIVAL_DAYS.filter((day) => day < today);
+  return before.every((day) => lit.includes(day));
+}
+
+/**
+ * What one account is told today, or null when it is told nothing. Worded by
+ * what its own lights show, and never promising what is out of reach: a
+ * missed day stays dark, so the badge is named only to an account that has
+ * lit every day so far.
+ *
+ *   Diwali: everyone — the first diya (0 lit), the count (1–2), the card (3,
+ *           which on 8 Nov means every day so far), or "already lit".
+ *   10/11 Nov: only an account on course for the badge with today still dark.
+ */
+export function festivalNoticeFor(lit: readonly string[], today: string): FestivalNotice | null {
+  const count = lit.length;
+  const litToday = lit.includes(today);
+  const problemHref = `/problems/${DIWALI_PROBLEM.slug}`;
+  if (today === DIWALI_DAY) {
+    const type = "diwali_2026_day";
+    if (litToday) {
+      return { type, title: "Happy Diwali! Today's diya is lit", body: `You've lit ${count} of ${FESTIVAL_GOAL}. Thank you for spending part of Diwali with us.`, href: "/" };
+    }
+    if (count === 0) {
+      return {
+        type,
+        title: "Happy Diwali! Light your first diya",
+        body: `One accepted solve today lights a diya and puts a diya frame on your avatar. Today's problem, ${DIWALI_PROBLEM.title}, is an easy one.`,
+        href: problemHref,
+      };
+    }
+    if (onCourseForBadge(lit, today)) {
+      return {
+        type,
+        title: "Happy Diwali! Your Diwali card is ready",
+        body: `You've lit ${count} of ${FESTIVAL_GOAL}, and your card is open on the home page. One solve today keeps you on course for the badge.`,
+        href: "/",
+      };
+    }
+    return {
+      type,
+      title: `Happy Diwali! You've lit ${count} of ${FESTIVAL_GOAL}`,
+      body: `Light today's diya with one solve. Today's problem, ${DIWALI_PROBLEM.title}, is an easy one.`,
+      href: problemHref,
+    };
+  }
+  if ((LAST_CHANCE_DAYS as readonly string[]).includes(today)) {
+    if (litToday || !onCourseForBadge(lit, today)) return null;
+    const type = `diwali_2026_last_${today}`;
+    const left = FESTIVAL_DAYS.filter((day) => day >= today).length;
+    return left > 1
+      ? {
+          type,
+          title: `${left} diyas left for the Diwali badge`,
+          body: `You've lit every diya so far, ${count} of ${FESTIVAL_GOAL}. Solve one problem today and one tomorrow to earn the badge.`,
+          href: "/challenges",
+        }
+      : {
+          type,
+          title: "Last diya: the badge is one solve away",
+          body: `You've lit ${count} of ${FESTIVAL_GOAL}. One accepted solve before midnight lights the seventh and earns the Diwali badge.`,
+          href: "/challenges",
+        };
+  }
+  return null;
+}

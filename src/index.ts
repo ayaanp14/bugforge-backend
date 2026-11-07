@@ -1236,7 +1236,7 @@ httpServer.listen(PORT, () => {
   registerJob(contestPayoutJob);
   // Battles: each tournament's entrants mailed 24 h and 1 h before the start.
   registerJob(tournamentRemindersJob);
-  // Diwali 2026's one announcement; due on a single day (services/festival.ts).
+  // Diwali 2026: the first-day announcement, the Diwali-day greeting and the last-chance nudges (services/festival.ts).
   registerFestivalJobs();
   // The day's video and Short, at 10:00 IST once switched on.
   registerVideoJobs();

@@ -74,6 +74,17 @@ function hashDay(date: string): number {
   return h;
 }
 
+/**
+ * Days whose problem is chosen by hand rather than by the hash. Diwali 2026
+ * (the owner's ask, 2026-11-07): an Easy, festival-themed problem, so the day
+ * everyone is asked to light a diya has one obvious solve (lib/festival.ts).
+ * The contest day is the UTC date. A pinned slug missing from the catalogue,
+ * or a day that already has its row, falls back to the usual pick / the row.
+ */
+export const PINNED_DAYS: Readonly<Record<string, string>> = {
+  "2026-11-08": "brightest-string-of-diyas",
+};
+
 const contestKey = (date: string) => `contest:daily:${date}`;
 
 type ContestRow = NonNullable<Awaited<ReturnType<typeof findContest>>>;
@@ -109,6 +120,7 @@ export async function ensureContest(date: string): Promise<ContestRow | null> {
         select: { problemId: true },
       }),
     ]);
+    const pinned = PINNED_DAYS[date] ? catalogue.find((p) => p.slug === PINNED_DAYS[date]) : undefined;
     const used = new Set(recent.map((r) => r.problemId));
     const wanted = weekdayDifficulty(date);
     // Sorted by id so the hash lands on the same problem whatever order the
@@ -118,7 +130,7 @@ export async function ensureContest(date: string): Promise<ContestRow | null> {
     if (pool.length === 0) pool = [...catalogue];
     if (pool.length === 0) return null;
     pool.sort((a, b) => (a.id < b.id ? -1 : 1));
-    const pick = pool[hashDay(date) % pool.length];
+    const pick = pinned ?? pool[hashDay(date) % pool.length];
 
     try {
       await prisma.dailyContest.create({ data: { date, problemId: pick.id, difficulty: pick.difficulty.toLowerCase() } });

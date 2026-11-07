@@ -56,3 +56,60 @@ test("the announcement is due on the first day only, and not overnight", () => {
   assert.equal(festivalAnnouncePeriod(at("2026-11-05T22:00:00+05:30"), 22), null);
   assert.equal(festivalAnnouncePeriod(at("2026-11-06T09:00:00+05:30"), 9), null);
 });
+
+/* ── the later notices ─────────────────────────────────────────────── */
+
+import { DIWALI_PROBLEM, festivalNoticeFor, festivalNoticePeriod, onCourseForBadge } from "./festival.js";
+import { isPushed } from "./push.js";
+
+test("the notices are due on Diwali's day and the last two evenings only", () => {
+  assert.equal(festivalNoticePeriod(at("2026-11-08T08:00:00+05:30"), 8), "diwali-2026-day");
+  assert.equal(festivalNoticePeriod(at("2026-11-08T07:59:00+05:30"), 7), null);
+  assert.equal(festivalNoticePeriod(at("2026-11-08T21:00:00+05:30"), 21), null);
+  assert.equal(festivalNoticePeriod(at("2026-11-09T12:00:00+05:30"), 12), null);
+  assert.equal(festivalNoticePeriod(at("2026-11-10T16:59:00+05:30"), 16), null);
+  assert.equal(festivalNoticePeriod(at("2026-11-10T17:00:00+05:30"), 17), "diwali-2026-last:2026-11-10");
+  assert.equal(festivalNoticePeriod(at("2026-11-11T21:30:00+05:30"), 21), "diwali-2026-last:2026-11-11");
+  assert.equal(festivalNoticePeriod(at("2026-11-12T18:00:00+05:30"), 18), null);
+});
+
+test("on Diwali each account is told what its own lights show", () => {
+  const none = festivalNoticeFor([], "2026-11-08")!;
+  assert.match(none.title, /first diya/);
+  assert.equal(none.href, `/problems/${DIWALI_PROBLEM.slug}`);
+  assert.doesNotMatch(none.body, /badge/, "the badge is out of reach after a missed day");
+
+  const two = festivalNoticeFor(["2026-11-05", "2026-11-07"], "2026-11-08")!;
+  assert.match(two.title, /2 of 7/);
+  assert.doesNotMatch(two.body, /badge/);
+
+  const every = festivalNoticeFor(["2026-11-05", "2026-11-06", "2026-11-07"], "2026-11-08")!;
+  assert.match(every.title, /card/);
+  assert.match(every.body, /badge/);
+  assert.equal(every.href, "/");
+
+  const done = festivalNoticeFor(["2026-11-05", "2026-11-08"], "2026-11-08")!;
+  assert.match(done.title, /lit/);
+  assert.match(done.body, /2 of 7/);
+
+  for (const n of [none, two, every, done]) assert.equal(n.type, "diwali_2026_day");
+});
+
+test("the last-chance nudge goes only to accounts the badge is still open to, with today dark", () => {
+  const five = ["2026-11-05", "2026-11-06", "2026-11-07", "2026-11-08", "2026-11-09"];
+  const tenth = festivalNoticeFor(five, "2026-11-10")!;
+  assert.equal(tenth.type, "diwali_2026_last_2026-11-10");
+  assert.match(tenth.title, /2 diyas left/);
+  assert.equal(festivalNoticeFor(five.slice(1), "2026-11-10"), null, "a missed day: the badge is gone");
+  assert.equal(festivalNoticeFor([...five, "2026-11-10"], "2026-11-10"), null, "already lit today");
+  const eleventh = festivalNoticeFor([...five, "2026-11-10"], "2026-11-11")!;
+  assert.match(eleventh.title, /one solve away/);
+  assert.equal(festivalNoticeFor(five, "2026-11-09"), null, "no notice on an ordinary festival day");
+  assert.equal(onCourseForBadge([], "2026-11-05"), true);
+});
+
+test("the later notices are pushed, the first-day announcement is not", () => {
+  assert.equal(isPushed("diwali_2026_day"), true);
+  assert.equal(isPushed("diwali_2026_last_2026-11-10"), true);
+  assert.equal(isPushed("diwali_2026_start"), false);
+});

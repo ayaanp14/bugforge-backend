@@ -61,6 +61,9 @@ const PUSHED: RegExp[] = [
   /^study_plan_due_/,
   /^review_due_/,
   /^battles_reminder:/,
+  // Diwali 2026's day-of greeting and last-chance nudges (services/festival.ts).
+  // The first-day announcement stays in-app only, as it shipped.
+  /^diwali_2026_(day|last_)/,
   /^(mention|comment_reply|post_comment|answer_accepted|new_follower)$/,
 ];
 

@@ -103,6 +103,7 @@ import { DESIGN1_PROBLEMS } from "./design1.js";
 import { DESIGN2_PROBLEMS } from "./design2.js";
 import { DESIGN3_PROBLEMS } from "./design3.js";
 import { DESIGN4_PROBLEMS } from "./design4.js";
+import { FESTIVAL_PROBLEMS } from "./festival.js";
 import { COMPANY_COVERAGE } from "./company-coverage.js";
 
 const AUTHORED: CatalogProblem[] = [
@@ -195,6 +196,7 @@ const AUTHORED: CatalogProblem[] = [
   ...DESIGN2_PROBLEMS,
   ...DESIGN3_PROBLEMS,
   ...DESIGN4_PROBLEMS,
+  ...FESTIVAL_PROBLEMS,
 ];
 
 /**
