@@ -173,12 +173,24 @@ export async function addToPlaylist(token: string, videoId: string, title: strin
       if (!res.ok) return `Playlist not made (${res.status}): ${(await res.text()).slice(0, 200)}`;
       id = ((await res.json()) as { id: string }).id;
     }
-    const res = await fetch(`${API}/youtube/v3/playlistItems?part=snippet`, {
-      method: "POST",
-      headers,
-      body: JSON.stringify({ snippet: { playlistId: id, resourceId: { kind: "youtube#video", videoId } } }),
-    });
-    return res.ok ? null : `Not added to the playlist (${res.status}): ${(await res.text()).slice(0, 200)}`;
+    // A playlist made seconds ago, or a video still settling after its upload, is
+    // answered 409 SERVICE_UNAVAILABLE ("The operation was aborted.") for a while:
+    // both of 2026-11-08's adds failed that way on their first and only try. It is
+    // transient, so wait and ask again; an insert that failed added nothing, so a
+    // retry cannot put the video on the list twice.
+    let failure = "";
+    for (const wait of [0, 5, 15, 30, 60]) {
+      if (wait) await new Promise((r) => setTimeout(r, wait * 1000));
+      const res = await fetch(`${API}/youtube/v3/playlistItems?part=snippet`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ snippet: { playlistId: id, resourceId: { kind: "youtube#video", videoId } } }),
+      });
+      if (res.ok) return null;
+      failure = `Not added to the playlist (${res.status}): ${(await res.text()).slice(0, 200)}`;
+      if (res.status !== 409 && res.status < 500) break;
+    }
+    return failure;
   } catch (e) {
     return `Playlist not set: ${(e as Error).message}`;
   }
