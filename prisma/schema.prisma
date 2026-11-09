@@ -2865,3 +2865,21 @@ model PostedVideo {
   @@index([titleKey])
   @@index([sha256])
 }
+
+/// A public video of ours shown on a page of the site: the problem it solves, the
+/// lesson or note that teaches it (video/src/site.ts picks them, the publish job
+/// records them with each upload). The problem page's Editorial tab plays them.
+model SiteVideo {
+  id        Int      @id @default(autoincrement())
+  /// The page's path, "/problems/two-sum".
+  path      String   @db.VarChar(200)
+  youtubeId String   @db.VarChar(40)
+  /// "video" (landscape) or "short".
+  kind      String   @db.VarChar(8)
+  title     String   @db.VarChar(200)
+  seconds   Int?
+  createdAt DateTime @default(now())
+
+  @@unique([path, youtubeId])
+  @@index([path, createdAt])
+}

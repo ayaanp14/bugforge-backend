@@ -63,6 +63,8 @@ export const ScriptSchema = z.object({
   topic: z.string().min(1),
   /** A codekairo.com path (/problems/two-sum). Checked against the live site before it is printed. */
   practicePath: z.string(),
+  /** A page that teaches the idea (a roadmap lesson, a CS note, a topic hub), or "". Older scripts have none. */
+  learnPath: z.string().default(""),
   code: z
     .object({
       language: z.string(),
@@ -134,6 +136,8 @@ export interface RunState {
   cleared: boolean;
   warnings: string[];
   practiceUrl: string;
+  /** The checked learnPath, or null. */
+  learnUrl?: string | null;
   usage: Usage;
   landscapeId?: string;
   shortId?: string;

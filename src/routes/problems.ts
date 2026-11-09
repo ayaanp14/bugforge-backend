@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { videosForPath } from "../services/site-videos.js";
 import { tournamentSolveFor } from "../services/tournament-record.js";
 import { ensureContest, todayUtc } from "../services/daily-contest.js";
 import slugify from "slugify";
@@ -41,7 +42,7 @@ const problemKey = (slug: string) => `${PROBLEM_KEY_PREFIX}${slug}`;
  * Editorial tab is opened, so they are fetched (and cached) on demand rather
  * than shipped with every statement.
  */
-const editorialKey = (slug: string) => `problem:editorial:v1:${slug}`;
+const editorialKey = (slug: string) => `problem:editorial:v2:${slug}`;
 
 /** The starter stubs and the hints, which the lean payload leaves out (/:slug/starter/:lang, /:slug/hints). */
 const starterKey = (slug: string) => `problem:starter:v1:${slug}`;
@@ -646,7 +647,9 @@ router.get("/:slug/editorial", optionalAuth, browserCache(SEEDED_CONTENT_MAX_AGE
         select: { isPublished: true, editorial: true, solutions: true },
       });
       if (!problem || !problem.isPublished) return null;
-      return { editorial: problem.editorial, solutions: problem.solutions };
+      // Our videos of it (services/site-videos.ts): new ones show within the cache's ten minutes.
+      const videos = await videosForPath(`/problems/${String(slug)}`).catch(() => []);
+      return { editorial: problem.editorial, solutions: problem.solutions, videos };
     });
 
     if (!payload) {

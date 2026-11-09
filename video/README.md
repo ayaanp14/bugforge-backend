@@ -1,6 +1,6 @@
 # Daily videos
 
-One prompt makes a landscape video (3 to 5 minutes) and a Short (30 to 60 seconds), and posts both to YouTube. It posts every day at 10:00 IST once switched on (making starts at 07:00, see [What it costs](#what-it-costs)). They aren't AI-generated footage: Claude writes the script and an HTML composition, Polly voices it, and Chrome renders that page frame by frame.
+One prompt makes a landscape video (3 to 5 minutes) and a Short (20 to 35 seconds), and posts both to YouTube. It posts every day at 18:00 IST once switched on (making starts at 15:00, see [What it costs](#what-it-costs)). They aren't AI-generated footage: Claude writes the script and an HTML composition, Polly voices it, and Chrome renders that page frame by frame.
 
 ## Where everything lives
 
@@ -15,9 +15,25 @@ One prompt makes a landscape video (3 to 5 minutes) and a Short (30 to 60 second
 1. **Start.** The `daily_video` job (or "Make one now") picks the topic: the queue first, then `AUTO_TOPICS`, then Claude's own choice. The API starts the workflow.
 2. **`create` job.** Asks Claude whether the channel already has this video. Then the script, the voice, one composition per cut, and the review: mechanical checks plus Claude reading frames, with up to two rounds of fixes.
 3. **`render` job.** Compiles and runs the on-screen Java, then renders every frame. It holds no secrets, because this is the job that runs model-written code.
-4. **`publish` job.** A daily run waits until 10:00 IST (status "scheduled"), then asks the API before each upload, uploads, and reports back.
+4. **`publish` job.** A daily run waits until 18:00 IST (status "scheduled"), then asks the API before each upload, uploads, and reports back.
 
 Anything the review doesn't clear goes up private and shows as "Check this one" on the page.
+
+## Links to the site
+
+Claude picks the video's pages from the site's own sitemaps (`src/site.ts` shortlists the pages whose address shares words with the topic: the problem, its topic hub, the roadmap lesson, a CS note), never by guessing: `practicePath` (where to solve it) and `learnPath` (where the idea is taught). Both are checked against the live site before they are printed; a page that doesn't answer falls back to /challenges or is left out. The landscape description carries all four links (practise, learn, the roadmap, the site), the Short's the first two, each with UTM tags per place (video, short, comment, short-comment). Every public video also gets a comment from the channel with the same links and a question for the comments. **The YouTube API cannot pin a comment** (it has no such call), so pinning it is one tap in YouTube Studio.
+
+## On the site
+
+A public upload is also shown on the site (`SiteVideo`, `services/site-videos.ts`): the publish job's `recordUpload` names the video's pages (the practice and learn pages above), and a problem's editorial answer carries its newest long video and Short. The problem page draws them at the top of the Editorial tab and in a visitor's "How to solve" guide (`components/problems/VideoExplanation`, click to play, a Short at 9:16), so the search traffic the problem pages get becomes views. A new video shows within the editorial cache's ten minutes.
+
+## What a Short looks like
+
+20 to 35 seconds in 3 to 4 scenes (YouTube pushes a Short people finish and replay). The first scene is the hook: at most 10 words, the payoff in 110px type, fully drawn on its first frame (that frame is also the feed's preview), with the page's header hidden for it (`src/runtime.js`).
+
+## Topics
+
+The queue first, then `AUTO_TOPICS` (`src/lib/video-studio.ts` on the API): coding problems named by their LeetCode title and number, the way students search them, with an aptitude topic every few days. Its position is stored, so only append, or rewrite entries the position hasn't reached.
 
 ## What it costs
 
@@ -25,7 +41,7 @@ Almost all of a run's cost is Claude's output (run cmw8riz2d, 2026-11-09: 86% of
 
 - **Two models.** Opus 5.5 (`VIDEO_MODEL`) writes the script and does every review, where correctness is decided. Sonnet 5.5 (`VIDEO_COMPOSE_MODEL`), at half the price, writes and fixes the animation and the cover: 80% of the output tokens. Set `VIDEO_COMPOSE_MODEL=claude-opus-5-5` as a repository variable to go back.
 - **Fixes as edits.** A review round asks for find-and-replace edits instead of the whole file again (17–18k tokens a round before). An edit whose text isn't found exactly once makes it ask for the whole file, as before.
-- **The Batches API, at half price.** A daily run sends each Claude call as a one-request batch and polls it. A batch not ended in 20 minutes (`VIDEO_BATCH_WAIT_MIN`) is cancelled and the call made directly at full price, so a slow queue never costs the day's video; so is a declined one, because batches can't carry the refusal fallback. That's why the job starts at 07:00 IST and the upload waits for 10:00. "Make one now" never batches. `VIDEO_BATCH=off` turns it off.
+- **The Batches API, at half price.** A daily run sends each Claude call as a one-request batch and polls it. A batch not ended in 20 minutes (`VIDEO_BATCH_WAIT_MIN`) is cancelled and the call made directly at full price, so a slow queue never costs the day's video; so is a declined one, because batches can't carry the refusal fallback. That's why the job starts at 15:00 IST and the upload waits for 18:00, the evening hour students scroll. "Make one now" never batches. `VIDEO_BATCH=off` turns it off.
 
 The run log names the model of each call and marks batched ones.
 
@@ -114,7 +130,7 @@ npx tsx src/cli.ts demo            # the reference composition, silent, no API k
 npx tsx src/cli.ts demo --voice    # with the real Polly voice; needs AWS credentials (aws login)
 ```
 
-The result is in `out/`. Local rendering needs Google Chrome installed. `backend/scratch/video-studio-job-smoke.mts` runs the 10:00 job through the scheduler against a stub.
+The result is in `out/`. Local rendering needs Google Chrome installed. `backend/scratch/video-studio-job-smoke.mts` runs the daily job through the scheduler against a stub.
 
 ## Good to know
 

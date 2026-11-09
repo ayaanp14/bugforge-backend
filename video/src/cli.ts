@@ -21,11 +21,11 @@ import { claimUpload, fetchJob, nextTopic, recordUpload, report, type Job } from
 import { ScriptSchema, SHORT_MAX_SECONDS, type Format, type RunState, type Script, type Timeline } from "./types.ts";
 import { postReel } from "./instagram.ts";
 import { voiceCut, voiceName } from "./voice.ts";
-import { addToPlaylist, chapters, setCaptions, setThumbnail, uploadVideo } from "./youtube.ts";
+import { addToPlaylist, chapters, postComment, setCaptions, setThumbnail, uploadVideo } from "./youtube.ts";
+import { candidatePages, livePage, SITE } from "./site.ts";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.join(HERE, "..");
-const SITE = "https://codekairo.com";
 const FORMATS: Format[] = ["landscape", "short"];
 /** Each revision rewrites a whole composition, the costly part of a run; two is the most a day's video gets. */
 const MAX_ROUNDS = 2;
@@ -44,10 +44,11 @@ const readJson = <T,>(file: string) => JSON.parse(readFileSync(path.join(dir, fi
 const writeJson = (file: string, value: unknown) => writeFileSync(path.join(dir, file), JSON.stringify(value, null, 1));
 
 /** Only a page that really answers gets printed under the channel's name. The Worker sends a true 404 for an unknown slug. */
-async function practiceUrl(script: Script): Promise<string> {
-  const wanted = script.practicePath.startsWith("/") ? script.practicePath : `/${script.practicePath}`;
-  const good = await fetch(SITE + wanted, { redirect: "follow" }).then((r) => r.ok).catch(() => false);
-  return SITE + (good ? wanted : "/challenges");
+/** The script's pages, checked against the live site: a page that doesn't answer is never printed. */
+async function pagesOf(script: Script) {
+  const practiceUrl = (await livePage(script.practicePath, null)) ?? `${SITE}/challenges`;
+  const learnUrl = await livePage(script.learnPath ?? "", null);
+  return { practiceUrl, learnUrl: learnUrl === practiceUrl ? null : learnUrl };
 }
 
 async function create() {
@@ -74,7 +75,7 @@ async function create() {
   }
   writeJson("job.json", job);
   const language = job.language ?? "hinglish";
-  let script = await writeScript(job.prompt, job.posted, language);
+  let script = await writeScript(job.prompt, job.posted, language, await candidatePages(job.prompt));
   await report(runId, { status: "voicing", title: script.landscape.title, usd: spend.usd });
   const timelines = {} as Record<Format, Timeline>;
   for (const format of FORMATS) {
@@ -148,7 +149,7 @@ async function create() {
   }
   if (!cleared) warnings.push(...open.slice(0, 8).map((p) => `Review: ${p}`));
 
-  const state: RunState = { id: runId, cleared, warnings, practiceUrl: await practiceUrl(script), usage: spend };
+  const state: RunState = { id: runId, cleared, warnings, ...(await pagesOf(script)), usage: spend };
   writeJson("state.json", state);
   script = ScriptSchema.parse(script);
   for (const format of FORMATS) writeFileSync(path.join(cutDir(format), "page.html"), pageHtml(format, timelines[format], compositions[format], script.code));
@@ -238,23 +239,53 @@ const playlistAbout = (name: string) =>
 const tracked = (url: string, medium: string, slug: string) =>
   `${url}?utm_source=youtube&utm_medium=${medium}&utm_campaign=daily-video&utm_content=${encodeURIComponent(slug)}`;
 
+/**
+ * Every place a video sends viewers to the site, each with its own utm_medium so
+ * the admin's traffic table tells description, Short and comment apart. The
+ * practice page first: it is the one the video is about.
+ */
+function siteLinks(state: RunState, medium: string, slug: string, full: boolean): string {
+  const lines = [`▶ Solve it yourself, free: ${tracked(state.practiceUrl, medium, slug)}`];
+  if (state.learnUrl) lines.push(`📘 Learn the pattern: ${tracked(state.learnUrl, medium, slug)}`);
+  if (full) {
+    if (!state.practiceUrl.endsWith("/roadmap") && state.learnUrl !== `${SITE}/roadmap`) lines.push(`🗺 The free DSA roadmap: ${tracked(`${SITE}/roadmap`, medium, slug)}`);
+    lines.push(`💼 Mock interviews, aptitude and placement tests: ${tracked(SITE, medium, slug)}`);
+  }
+  return lines.join("\n");
+}
+
+/** The site's pages this video belongs on (the API shows a public one there: services/site-videos.ts). */
+const onSite = (state: RunState, privacy: string, seconds: number) => ({
+  pages: [state.practiceUrl, state.learnUrl].filter((u): u is string => Boolean(u)).map((u) => new URL(u).pathname),
+  public: privacy === "public",
+  seconds,
+});
+
+/** The comment each public video gets from the channel (pin it in Studio: the API can't). */
+const commentText = (state: RunState, medium: string, slug: string) =>
+  [
+    "Try it yourself before you look at the answer 👇",
+    siteLinks(state, medium, slug, false),
+    "Which problem should we explain next? Tell us below.",
+  ].join("\n\n");
+
 const sha256Of = (file: string) => createHash("sha256").update(readFileSync(file)).digest("hex");
 
 /**
- * The daily run starts at 07:00 IST so its Claude calls can wait in the Batches
- * API at half price, and still posts at 10:00 IST: the time the channel has always
- * posted. A run that finishes later posts at once. While it waits it tells the API
+ * The daily run starts at 15:00 IST so its Claude calls can wait in the Batches
+ * API at half price, and posts at 18:00 IST, when students are off class and
+ * scrolling (lib/video-studio.ts videoPeriod on the API). A run that finishes later posts at once. While it waits it tells the API
  * every 20 minutes, so the page shows it waiting and it never reads as stalled.
  */
-const POST_AT_IST = { hour: 10, minute: 0 };
+const POST_AT_IST = { hour: 18, minute: 0 };
 
 async function holdUntilPostTime(usd: number) {
   const now = new Date();
   const ist = new Date(now.getTime() + 330 * 60_000);
   const target = Date.UTC(ist.getUTCFullYear(), ist.getUTCMonth(), ist.getUTCDate(), POST_AT_IST.hour, POST_AT_IST.minute) - 330 * 60_000;
-  // Only a wait inside the same morning: a run that somehow ended past midnight shouldn't sit for a day.
+  // Only a wait inside the same afternoon: a run that somehow ended past midnight shouldn't sit for a day.
   if (target <= now.getTime() || target - now.getTime() > 4 * 60 * 60_000) return;
-  console.log(`waiting until 10:00 IST to post (${Math.round((target - now.getTime()) / 60_000)} min)`);
+  console.log(`waiting until 18:00 IST to post (${Math.round((target - now.getTime()) / 60_000)} min)`);
   while (Date.now() < target) {
     await report(runId, { status: "scheduled", usd });
     await new Promise((r) => setTimeout(r, Math.min(20 * 60_000, target - Date.now())));
@@ -286,18 +317,19 @@ async function publish() {
     const timeline = JSON.parse(readFileSync(path.join(cutDir("landscape"), "timeline.json"), "utf8")) as Timeline;
     const description = [
       script.landscape.description,
-      `Practise it on CodeKairo: ${tracked(state.practiceUrl, "video", slug)}`,
+      siteLinks(state, "video", slug, true),
       chapters(timeline),
       FOLLOW,
       hashtags(script.landscape, false),
     ].filter(Boolean).join("\n\n");
     state.landscapeId = await uploadVideo(token, landscapeFile, { title: script.landscape.title, description, tags: script.landscape.tags, privacy, language });
-    await recordUpload(runId, "landscape", state.landscapeId, script.landscape.title, landscapeHash);
+    await recordUpload(runId, "landscape", state.landscapeId, script.landscape.title, landscapeHash, onSite(state, privacy, timeline.duration));
     const playlist = playlistName(script, language, false);
     for (const problem of [
       await setThumbnail(token, state.landscapeId, path.join(dir, "thumbnail.jpg")),
       await setCaptions(token, state.landscapeId, path.join(cutDir("landscape"), "captions.srt"), language),
       await addToPlaylist(token, state.landscapeId, playlist, playlistAbout(playlist)),
+      privacy === "public" ? await postComment(token, state.landscapeId, commentText(state, "comment", slug)) : null,
     ]) {
       if (problem) state.warnings.push(problem);
     }
@@ -315,18 +347,20 @@ async function publish() {
       script.short.description,
       // An unlisted or private long cut isn't worth pointing at.
       privacy === "public" ? `The full explanation: https://youtu.be/${state.landscapeId}` : "",
-      `Practise it on CodeKairo: ${tracked(state.practiceUrl, "short", slug)}`,
+      siteLinks(state, "short", slug, false),
       hashtags(script.short, true),
     ].filter(Boolean).join("\n\n");
     const token = shortClaim.accessToken;
     state.shortId = await uploadVideo(token, shortFile, { title: script.short.title, description, tags: script.short.tags, privacy, language });
-    await recordUpload(runId, "short", state.shortId, script.short.title, shortHash);
+    const shortTimeline = JSON.parse(readFileSync(path.join(cutDir("short"), "timeline.json"), "utf8")) as Timeline;
+    await recordUpload(runId, "short", state.shortId, script.short.title, shortHash, onSite(state, privacy, shortTimeline.duration));
     // The designed cover, the same one the reel gets; without it YouTube picks a frame.
     const playlist = playlistName(script, language, true);
     for (const problem of [
       existsSync(coverFile) ? await setThumbnail(token, state.shortId, coverFile) : null,
       await setCaptions(token, state.shortId, path.join(cutDir("short"), "captions.srt"), language),
       await addToPlaylist(token, state.shortId, playlist, playlistAbout(playlist)),
+      privacy === "public" ? await postComment(token, state.shortId, commentText(state, "short-comment", slug)) : null,
     ]) {
       if (problem) state.warnings.push(problem);
     }

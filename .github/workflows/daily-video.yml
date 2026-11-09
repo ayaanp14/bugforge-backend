@@ -1,4 +1,4 @@
-# One day's video, started by the API (src/services/video-studio.ts) at 10:00 IST or
+# One day's video, started by the API (src/services/video-studio.ts) at 15:00 IST (it posts at 18:00) or
 # from the campaign page's "Make one now". Never by a `schedule:` here: GitHub delays
 # those by up to an hour and turns them off after 60 days without a commit.
 #
@@ -98,7 +98,7 @@ jobs:
   publish:
     needs: render
     runs-on: ubuntu-latest
-    timeout-minutes: 240  # holds the daily run's upload until 10:00 IST (src/cli.ts holdUntilPostTime)
+    timeout-minutes: 240  # holds the daily run's upload until 18:00 IST (src/cli.ts holdUntilPostTime)
     env:
       VIDEO_RUNNER_SECRET: ${{ secrets.VIDEO_RUNNER_SECRET }}
       API_URL: ${{ vars.API_URL }}

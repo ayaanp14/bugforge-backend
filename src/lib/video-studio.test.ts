@@ -55,12 +55,12 @@ test("a late failure report cannot unmark a finished publish", () => {
   assert.equal(nextStatus("rendering", "uploading"), "uploading");
 });
 
-test("the job is due only in the half hour from 07:00 IST", () => {
-  assert.equal(videoPeriod(7, 0, "2026-11-06"), "2026-11-06");
-  assert.equal(videoPeriod(7, 29, "2026-11-06"), "2026-11-06");
-  assert.equal(videoPeriod(7, 30, "2026-11-06"), null);
-  assert.equal(videoPeriod(6, 59, "2026-11-06"), null);
-  assert.equal(videoPeriod(10, 0, "2026-11-06"), null);
+test("the job is due only in the half hour from 15:00 IST", () => {
+  assert.equal(videoPeriod(15, 0, "2026-11-06"), "2026-11-06");
+  assert.equal(videoPeriod(15, 29, "2026-11-06"), "2026-11-06");
+  assert.equal(videoPeriod(15, 30, "2026-11-06"), null);
+  assert.equal(videoPeriod(14, 59, "2026-11-06"), null);
+  assert.equal(videoPeriod(7, 0, "2026-11-06"), null);
 });
 
 test("the automatic topics hold no repeat of each other", () => {

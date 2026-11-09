@@ -126,6 +126,8 @@
   let drawnLine = null;
 
   function chrome(t, s, index) {
+    // A Short's first scene is its hook: nothing but the payoff on screen (src/claude.ts says so to the model).
+    $("ck-head").style.visibility = frame.h > frame.w && index === 0 ? "hidden" : "visible";
     $("ck-num").textContent = String(index + 1).padStart(2, "0");
     $("ck-title").textContent = s.title;
     $("ck-progress").style.transform = `scaleX(${clamp(t / timeline.duration)})`;

@@ -57,10 +57,11 @@ export async function claimUpload(id: string, format: string, title: string, sha
   return body;
 }
 
-export async function recordUpload(id: string, format: string, videoId: string, title: string, sha256: string): Promise<void> {
+/** `site`: the pages the video belongs on and whether it went up public (only then is it shown there). */
+export async function recordUpload(id: string, format: string, videoId: string, title: string, sha256: string, site: { pages: string[]; public: boolean; seconds: number } | null = null): Promise<void> {
   // Retried hard: this is the line that keeps a re-run from posting it again.
   for (let attempt = 1; ; attempt++) {
-    const res = await call(`${id}/uploaded`, { method: "POST", body: JSON.stringify({ format, videoId, title, sha256 }) }).catch(() => null);
+    const res = await call(`${id}/uploaded`, { method: "POST", body: JSON.stringify({ format, videoId, title, sha256, ...site }) }).catch(() => null);
     if (res?.ok) return;
     if (attempt >= 6) throw new Error(`Uploaded ${videoId} but could not record it (${res?.status ?? "no answer"}).`);
     await new Promise((done) => setTimeout(done, attempt * 5000));

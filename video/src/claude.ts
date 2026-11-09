@@ -21,8 +21,8 @@ export const COMPOSE_MODEL = process.env["VIDEO_COMPOSE_MODEL"] || "claude-sonne
 
 /**
  * The Message Batches API halves every token's price but answers in minutes
- * rather than at once, which a daily job can afford (it starts at 07:00 and posts
- * at 10:00). A batch that hasn't ended within BATCH_WAIT is cancelled and the
+ * rather than at once, which a daily job can afford (it starts at 15:00 and posts
+ * at 18:00). A batch that hasn't ended within BATCH_WAIT is cancelled and the
  * call is made at the normal price, so a slow queue never costs the day's video.
  * VIDEO_BATCH=off makes every call directly; a typed "Make one now" run does too.
  */
@@ -190,10 +190,11 @@ const cutSchema = {
 const scriptSchema = {
   type: "object",
   additionalProperties: false,
-  required: ["topic", "practicePath", "code", "thumbnail", "reel", "playlist", "landscape", "short"],
+  required: ["topic", "practicePath", "learnPath", "code", "thumbnail", "reel", "playlist", "landscape", "short"],
   properties: {
     topic: string,
     practicePath: string,
+    learnPath: string,
     code: {
       anyOf: [
         { type: "null" },
@@ -231,7 +232,7 @@ The audience is Indian engineering students preparing for coding interviews and 
 
 The landscape cut runs 3 to 5 minutes, 450 to 800 words, in 7 to 12 scenes. Its usual arc for an algorithm: a hook, the problem, the obvious approach and why it falls short, the insight, a step-by-step walkthrough on a small concrete example, a common mistake, the code, the complexity, then a sign-off. Other kinds of topic take the arc that suits them.
 
-The Short runs 30 to 60 seconds, 80 to 150 words, in 3 to 6 scenes. It opens on one surprising, concrete claim in the first sentence, since a viewer decides in two seconds, shows the one idea that makes the topic click, and ends by sending them to CodeKairo. It stands on its own and is not a trimmed copy of the long cut.
+The Short runs 20 to 35 seconds, 50 to 90 words, in 3 to 4 scenes. Shorter is better: YouTube pushes a Short that people watch to the end and replay, and swipes past one that drags. Its first scene is the hook, at most 10 words and 3 seconds: one surprising, concrete payoff ("One loop. O(n squared) becomes O(n).", "Twenty checks to find one number in a million."), since a viewer decides in the first second whether to swipe. Then the one idea that makes the topic click, shown not told, and a last line sending them to CodeKairo. It stands on its own and is not a trimmed copy of the long cut.
 
 ${languageRules(language)}
 
@@ -243,10 +244,10 @@ Scene ids are unique, lower-case-with-dashes, and the two cuts have separate lis
 
 "code" is for a topic with a program worth showing: a complete Java file with a class named Main whose main method prints results, plus exactly what it prints as expectedOutput. It is compiled and run, and shown to viewers exactly as written, so keep it short enough for a screen (under 30 lines) and well named. Use null when the topic has no program, such as most system design.
 
-"practicePath" is the path on codekairo.com to practise this, such as /problems/two-sum, /roadmap, /notes/system-design/rate-limiting or /challenges. If you are unsure a specific page exists, use /challenges.
+"practicePath" and "learnPath" are where the video sends viewers on codekairo.com, chosen only from the real pages listed with the topic. practicePath is where they practise this exact thing: the problem's own page when there is one (/problems/container-with-most-water), else the closest hub or note. learnPath is a different page that teaches the idea behind it: a roadmap lesson (/roadmap/two-pointers), a CS note or a topic hub; "" if none fits. Never /challenges when a closer page is listed.
 
 What YouTube search and suggestions read, for each cut:
-- Title: lead with the exact term a student types (the problem's or concept's usual name), then the angle. Under 70 characters so search results don't cut it (100 is the hard limit)${language === "hinglish" ? ', in English, with "in Hindi" in it, since that is how Indian students search for a Hinglish explanation ("Valid Parentheses Explained in Hindi | Stack")' : ""}. Honest: no all caps, no promise the video doesn't keep. The Short's title is under 60 characters, a hook that names the term ("Why Binary Search Is O(log n)${language === "hinglish" ? " in Hindi" : ""}").
+- Title: lead with the exact term a student types (the problem's or concept's usual name), then the angle, and for a LeetCode problem its number as students search it ("LeetCode 121"). Under 70 characters so search results don't cut it (100 is the hard limit)${language === "hinglish" ? ', in English, with "in Hindi" in it, since that is how Indian students search for a Hinglish explanation ("Valid Parentheses Explained in Hindi | Stack")' : ""}. Honest: no all caps, no promise the video doesn't keep. The Short's title is under 60 characters, a hook that names the term ("Why Binary Search Is O(log n)${language === "hinglish" ? " in Hindi" : ""}").
 - Description: the first sentence restates the title's search term in a natural sentence, since it is what search shows under the title. Then 2 to 4 sentences of what the viewer learns, naturally naming the related terms a student would also search: the pattern, the LeetCode problem name when it is one, Java, the interview it helps with. No links, chapters or hashtags; those are added for you.
 - Tags: 10 to 15, lower case, no "#", most specific first: the exact name, its other common names, ${language === "hinglish" ? 'the name with "in hindi" and "hindi", ' : ""}the pattern or data structure, then broad ones such as dsa, coding interview, placement preparation, leetcode (only for a LeetCode problem), java. Under 400 characters in all.
 - Hashtags: exactly 3, no "#", one word each with no spaces (binarysearch, dsa, codinginterview); YouTube shows them above the title. The Short's first hashtag is shorts.
@@ -276,9 +277,9 @@ export async function findDuplicate(prompt: string, posted: string[]): Promise<s
   return (JSON.parse(raw) as { duplicateOf: string | null }).duplicateOf;
 }
 
-export async function writeScript(prompt: string, posted: string[], language: Language): Promise<Script> {
+export async function writeScript(prompt: string, posted: string[], language: Language, pages: string[]): Promise<Script> {
   const earlier = posted.length ? `\n\nAlready on the channel. Never repeat these topics, angles or hooks:\n${posted.map((t) => `- ${t}`).join("\n")}` : "";
-  const raw = await ask({ system: scriptSystem(await siteFacts(), language), content: `Today's video: ${prompt}${earlier}`, effort: "high", schema: scriptSchema });
+  const raw = await ask({ system: scriptSystem(await siteFacts(), language), content: `Today's video: ${prompt}\n\nReal pages on codekairo.com that may fit, best match first:\n${pages.map((p) => `- ${p}`).join("\n")}${earlier}`, effort: "high", schema: scriptSchema });
   return ScriptSchema.parse(JSON.parse(raw));
 }
 
@@ -311,7 +312,9 @@ You write the contents of a <div id="ck-stage">: a <style> block, one <section d
 
 This is a CodeKairo page in motion. Dark ground #0A0A0A; surfaces #111111, #161616, #1C1C1C; hairlines #262626, #383838; text #F5F5F5, secondary #A3A3A3, muted #8C8C8C. The one colour is blue: accent #3AA9FF, highlight #7CC9FF, deep steps #0794F9, #0068CC. State colours only name a state: success #52C98A, error #FF7A7E. Gilroy (400, 500, 600, 700) for words and 'JetBrains Mono' for code and values. No gradients, glass, glows or shadows. Corners are 8px at most.
 
-Everything must be readable on a phone: on a Short keep text at 34px or larger, on landscape 26px or larger. Fill the stage with one large idea at a time rather than scattering small items. Text must stay inside the stage; check your sizes against its width and height.
+Everything must be readable on a phone: on a Short keep text at 44px or larger, on landscape 26px or larger.
+
+On a Short, the first scene is the hook and decides whether anyone keeps watching. The page hides its header during it. Fill the stage with the payoff in huge type (110px or more): the before and after, the number, the struck-through slow way. It must be fully drawn on the scene's very first frame, with no fade or reveal in, because that frame is also what shows while the Short loads in the feed; movement can come after. Fill the stage with one large idea at a time rather than scattering small items. Text must stay inside the stage; check your sizes against its width and height.
 
 Show the idea moving: values travel, pointers glide between cells, things get crossed out as the voice says why. A viewer should get the idea with the sound off. Compute drawn values by running the algorithm in the script rather than typing them, so the picture can't contradict itself, and make sure it agrees with the narration.
 

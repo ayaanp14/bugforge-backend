@@ -15,21 +15,22 @@ export const VIDEO_FINISHED = new Set(["done", "needs_review", "failed"]);
 
 /**
  * A run reports between steps (no step outlasts a 20-minute batch wait plus a
- * direct call) and every 20 minutes while holding for 10:00, so silence past this
+ * direct call) and every 20 minutes while holding for 18:00, so silence past this
  * means it died unreported.
  */
 export const VIDEO_STALLED_MS = 3 * 60 * 60 * 1000;
 
 /**
- * 07:00 IST: the run starts three hours before it posts, so its Claude calls can
+ * 15:00 IST: the run starts three hours before it posts, so its Claude calls can
  * wait in the Batches API at half price (since 2026-11-09; video/src/claude.ts),
- * and the publish job holds the upload until 10:00 IST, the time the channel has
- * always posted. A window, as every job here has, because the tick is five minutes
+ * and the publish job holds the upload until 18:00 IST. Evening, because that is
+ * when students are off class and scrolling (the owner's call, 2026-11-09; it
+ * posted at 10:00 before). A window, as every job here has, because the tick is five minutes
  * and a deploy can be restarting on the hour; the JobRun row makes it once a day.
  * Later than this, and the day's video is skipped rather than posted at a random hour.
  */
 export function videoPeriod(hourIst: number, minuteIst: number, day: string): string | null {
-  return hourIst === 7 && minuteIst < 30 ? day : null;
+  return hourIst === 15 && minuteIst < 30 ? day : null;
 }
 
 const STOP_WORDS = new Set(["a", "an", "the", "how", "to", "what", "why", "explain", "explained", "explaining", "tutorial", "video", "about", "on", "in", "of", "and", "with", "for", "is", "it", "shorts", "short"]);
@@ -135,45 +136,64 @@ export function nextStatus(current: string, incoming: string): string {
 export const OPEN_TOPIC = "Choose the most useful coding-interview or computer science topic for placement students that the channel has not covered yet.";
 
 /**
- * What runs when the queue is empty, in roughly the road's learning order: what a
- * placement student searches for. Add to the end, because the position is stored.
- * Anything here the channel already has is skipped when its turn comes.
+ * What runs when the queue is empty: what a placement student actually types into
+ * YouTube. From the fourth entry on (rewritten 2026-11-09, the owner's ask for
+ * views), each coding topic is named by its LeetCode title and number, the way
+ * it is searched, and every few days an aptitude topic, which placement students
+ * search as much as DSA. The position is stored (VideoSettings.autoNext, 3 when
+ * this was written), so never insert or reorder before it: add to the end, or
+ * rewrite only entries the position hasn't reached. Anything the channel already
+ * has is skipped when its turn comes.
  */
 export const AUTO_TOPICS = [
   "Valid Parentheses and the stack: why the last thing opened must close first",
   "Kadane's algorithm: maximum subarray in O(n)",
   "Two pointers: Container With Most Water",
-  "Sliding window: longest substring without repeating characters",
-  "Reverse a linked list, iteratively and recursively",
-  "Detect a cycle in a linked list with Floyd's tortoise and hare",
-  "Merge intervals: why sorting first makes it easy",
-  "Prefix sums: subarray sum equals K",
-  "Monotonic stack: next greater element",
-  "Binary tree traversals: inorder, preorder, postorder and level order",
-  "Validate a binary search tree, and the bug most people write first",
-  "Lowest common ancestor of a binary tree",
-  "Heaps: finding the Kth largest element",
-  "BFS on a grid: number of islands",
-  "Topological sort: course schedule and detecting a cycle",
+  "Best Time to Buy and Sell Stock (LeetCode 121): one pass, keep the cheapest day",
+  "Longest Substring Without Repeating Characters (LeetCode 3): the sliding window",
+  "Time and work aptitude for placement tests: the LCM shortcut",
+  "Reverse Linked List (LeetCode 206), iteratively and recursively",
+  "Move Zeroes (LeetCode 283): two pointers in place",
+  "Percentages shortcuts for placement aptitude tests",
+  "Linked List Cycle (LeetCode 141): Floyd's tortoise and hare",
+  "Merge Intervals (LeetCode 56): why sorting first makes it easy",
+  "Profit and loss shortcuts for placement aptitude tests",
+  "Subarray Sum Equals K (LeetCode 560): prefix sums and a hash map",
+  "Majority Element (LeetCode 169): Boyer-Moore voting",
+  "Number of Islands (LeetCode 200): BFS on a grid",
+  "Speed, time and distance aptitude: trains and relative speed",
+  "Climbing Stairs (LeetCode 70): dynamic programming from scratch",
+  "Product of Array Except Self (LeetCode 238) without division",
+  "Coin Change (LeetCode 322): why greedy fails and DP works",
+  "Number series questions in placement aptitude tests: spotting the pattern",
+  "3Sum (LeetCode 15): sort, then two pointers",
+  "Next Greater Element: the monotonic stack",
+  "Binary Tree Level Order Traversal (LeetCode 102): BFS with a queue",
+  "Probability for placement aptitude tests: coins, dice and cards",
+  "Validate Binary Search Tree (LeetCode 98), and the bug most people write first",
+  "Kth Largest Element in an Array (LeetCode 215): heaps",
+  "Lowest Common Ancestor of a Binary Tree (LeetCode 236)",
+  "Course Schedule (LeetCode 207): topological sort and detecting a cycle",
+  "Ratio and proportion shortcuts for placement aptitude tests",
+  "Longest Common Subsequence (LeetCode 1143): reading the DP table",
+  "0/1 knapsack: the pattern behind many DP problems",
+  "Subsets and Permutations (LeetCode 78, 46): backtracking",
+  "Single Number (LeetCode 136): the XOR trick",
+  "LRU Cache (LeetCode 146): a hash map plus a doubly linked list",
+  "Second highest salary in SQL: the classic interview query",
+  "SQL joins: inner, left, right and when each returns what",
   "Dijkstra's algorithm: shortest paths step by step",
   "Union-Find: path compression and union by rank",
-  "Dynamic programming from scratch: climbing stairs and memoization",
-  "Coin change: why greedy fails and DP works",
-  "Longest common subsequence: reading the DP table",
-  "0/1 knapsack: the pattern behind many DP problems",
-  "Backtracking: generating all subsets and permutations",
-  "Tries: how autocomplete finds prefixes fast",
-  "Bit manipulation: single number and the XOR trick",
+  "Implement Trie (LeetCode 208): how autocomplete finds prefixes fast",
   "Big O in practice: reading the complexity of real code",
-  "Load balancing: round robin, least connections and consistent routing",
   "Database indexes: how a B-tree makes a query fast",
-  "SQL joins: inner, left, right and when each returns what",
   "Database normalization: 1NF, 2NF and 3NF on one messy table",
   "ACID transactions: what each letter protects you from",
   "What happens when you type a URL and press enter",
   "Processes vs threads: the operating systems interview question",
   "Deadlock: the four conditions and how to break one",
   "OOP pillars with one running example: encapsulation, inheritance, polymorphism, abstraction",
+  "Load balancing: round robin, least connections and consistent routing",
   "Caching strategies: cache aside, write through and write back",
   "Designing a URL shortener: the system design interview walkthrough",
   "Message queues: why systems stop calling each other directly",

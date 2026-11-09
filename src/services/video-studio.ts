@@ -16,6 +16,7 @@ import { createCipheriv, createDecipheriv, createHash, randomBytes, timingSafeEq
 import type { Request } from "express";
 import { dayKey, zoned } from "../lib/clock.js";
 import { prisma } from "../lib/prisma.js";
+import { pagePaths, recordSiteVideo } from "./site-videos.js";
 import { registerJob, type Job } from "../lib/scheduler.js";
 import { CAMPAIGN_URL } from "../lib/sites.js";
 import { AUTO_TOPICS, OPEN_TOPIC, VIDEO_FINISHED, VIDEO_LANGUAGES, VIDEO_PRIVACY, VIDEO_STALLED_MS, decideClaim, nextStatus, obviousRepeat, titleKey, videoPeriod, type VideoLanguage, type VideoPrivacy } from "../lib/video-studio.js";
@@ -398,7 +399,7 @@ export async function claimUpload(id: string, body: { format?: unknown; title?: 
 }
 
 /** Into the ledger as well as the run, so the next day's check sees it before YouTube's list does. */
-export async function recordUpload(id: string, body: { format?: unknown; videoId?: unknown; title?: unknown; sha256?: unknown }) {
+export async function recordUpload(id: string, body: { format?: unknown; videoId?: unknown; title?: unknown; sha256?: unknown; pages?: unknown; public?: unknown; seconds?: unknown }) {
   const format = asCut(body.format);
   const videoId = String(body.videoId ?? "");
   const title = String(body.title ?? "").slice(0, 200);
@@ -413,6 +414,11 @@ export async function recordUpload(id: string, body: { format?: unknown; videoId
       update: { sha256, runId: id },
     }),
   ]);
+  // Shown on the site's pages only when anyone can watch it.
+  if (body.public === true) {
+    const seconds = typeof body.seconds === "number" && Number.isFinite(body.seconds) ? Math.round(body.seconds) : null;
+    await recordSiteVideo(pagePaths(body.pages), { youtubeId: videoId, kind: format === "short" ? "short" : "video", title, seconds });
+  }
 }
 
 export const CAMPAIGN_PAGE = `${CAMPAIGN_URL}/?tab=videos`;

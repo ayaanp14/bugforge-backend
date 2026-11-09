@@ -208,3 +208,18 @@ export function chapters(timeline: Timeline): string {
   if (timeline.duration - out[out.length - 1]!.at < 10) out.pop();
   return out.length >= 3 ? `Chapters\n${out.map((c) => `${clock(c.at)} ${c.title}`).join("\n")}` : "";
 }
+
+/**
+ * A comment from the channel itself, with the link to practise. The Data API can
+ * post one but has no way to pin it (commentThreads has insert and moderation,
+ * nothing else), so pinning is one tap in YouTube Studio. A failure is a warning.
+ * Comments can't be posted on a private video, so only public runs get one.
+ */
+export async function postComment(token: string, videoId: string, text: string): Promise<string | null> {
+  const res = await fetch(`${API}/youtube/v3/commentThreads?part=snippet`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json; charset=UTF-8" },
+    body: JSON.stringify({ snippet: { videoId, topLevelComment: { snippet: { textOriginal: clean(text).slice(0, 9000) } } } }),
+  }).catch(() => null);
+  return res?.ok ? null : `Comment not posted (${res?.status ?? "no answer"}): ${((await res?.text().catch(() => "")) ?? "").slice(0, 200)}`;
+}
