@@ -1,5 +1,6 @@
 import { LANGUAGE_MAP } from "./judge0.js";
 import { EXECUTOR_ENGINE, pollResult, submitCode } from "./executor.js";
+import { PAIZA_MAX_STDIN_CHARS } from "./paiza.js";
 import { CASE_SENTINEL, ERROR_MARKER, GZIP_OUTPUT_LANGS, buildBatchStdin, decodeBatchStdout, encodeBatchStdin, extractBatchStats, isolateDriverOutput, splitBatchStdout } from "./batch.js";
 
 /**
@@ -101,7 +102,24 @@ function chunkCases(cases: BatchCase[], language: string): BatchCase[][] {
     outputBytes += outB;
   }
   if (current.length > 0) chunks.push(current);
-  return chunks;
+  return capOutput ? chunks : chunks.flatMap((chunk) => fitEncodedStdin(chunk, language));
+}
+
+// What a chunk's stdin may be once encoded: Paiza refuses more than 300,000
+// characters, with a little room. The gzip path's 900K raw cap assumed ~3x
+// compression; Java's russian-doll-envelopes (random int pairs) encoded past
+// 300K, Paiza answered "input: Too long" on every chunk, and one member's
+// sixteen submits over two days all came back "the service is down"
+// (2026-11-08/09). Measuring the encoded text is exact where a ratio is not.
+const MAX_ENCODED_STDIN_CHARS = PAIZA_MAX_STDIN_CHARS - 2_000;
+
+/** Halve a chunk until its encoded stdin fits the engines' input cap. */
+export function fitEncodedStdin<C extends { input: string }>(chunk: C[], language: string): C[][] {
+  if (chunk.length <= 1) return [chunk];
+  const encoded = encodeBatchStdin(buildBatchStdin(chunk.map((c) => c.input)), language);
+  if (encoded.length <= MAX_ENCODED_STDIN_CHARS) return [chunk];
+  const mid = Math.ceil(chunk.length / 2);
+  return [...fitEncodedStdin(chunk.slice(0, mid), language), ...fitEncodedStdin(chunk.slice(mid), language)];
 }
 
 export async function runBatch(

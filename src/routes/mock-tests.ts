@@ -826,15 +826,25 @@ router.put("/attempts/:id/code", requireAuth, async (req: any, res) => {
 
     // Autosave during a sitting: up to 200 KB of code goes up, and without a
     // select the same 200 KB comes straight back for a { saved: true }.
-    await prisma.mockCodeAnswer.upsert({
-      select: { id: true },
-      where: { attemptId_problemId: { attemptId: context.attempt.id, problemId } },
-      create: { attemptId: context.attempt.id, problemId, sectionIndex: context.sectionIndex, language, code, timeSec: timeSec ?? 0 },
-      update: { language, code, ...(timeSec === undefined ? {} : { timeSec }) },
+    const save = () =>
+      prisma.mockCodeAnswer.upsert({
+        select: { id: true },
+        where: { attemptId_problemId: { attemptId: context.attempt.id, problemId } },
+        create: { attemptId: context.attempt.id, problemId, sectionIndex: context.sectionIndex, language, code, timeSec: timeSec ?? 0 },
+        update: { language, code, ...(timeSec === undefined ? {} : { timeSec }) },
+      });
+    // Upsert is a select then a write on MySQL: two first saves racing both
+    // create and the loser hits the unique key. The row exists by then, so a
+    // second upsert updates it (the CodeDraft autosave had the same race).
+    await save().catch((err: unknown) => {
+      if (!isDuplicateKey(err)) throw err;
+      return save();
     });
     res.json({ saved: true });
   } catch (error: any) {
-    console.error("Mock code save error:", error?.message);
+    // One string: telemetry files the first argument, and with the cause as a
+    // second one the 500s of 2026-11-05/07 reached the panel without it.
+    console.error(`Mock code save error: ${error?.code ? `${error.code} ` : ""}${error?.message ?? error}`);
     res.status(500).json({ error: "Could not save your code" });
   }
 });

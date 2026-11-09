@@ -41,6 +41,13 @@ const PAIZA_POLL_BACKOFF_MS = [150, 250, 400];
 const PAIZA_DEBUG_LOGS = process.env["PAIZA_DEBUG_LOGS"] === "true";
 
 /** Our language keys → Paiza language ids. */
+/**
+ * The most stdin Paiza's create accepts: 300,000 characters, probed
+ * 2026-11-09 (300,000 runs, 300,040 is "input: Too long"; newlines count).
+ * The batch chunker sizes every chunk under it.
+ */
+export const PAIZA_MAX_STDIN_CHARS = 300_000;
+
 const PAIZA_LANGUAGES: Record<string, string> = {
   javascript: "javascript",
   typescript: "typescript",
@@ -193,7 +200,12 @@ export async function submitToPaiza(submission: Judge0Submission, rawLanguage: s
   );
 
   if (!created?.id) {
-    throw new ExecutionEngineError("paiza", created?.error || "create returned no runner id");
+    // A validation refusal ("input: Too long", "source_code: Too long") is
+    // about this request; the engine is fine for everyone else.
+    const refusal = created?.error ?? "";
+    throw new ExecutionEngineError("paiza", refusal || "create returned no runner id", {
+      requestOnly: /too long/i.test(refusal),
+    });
   }
 
   pendingSubmissions.set(created.id, submission);

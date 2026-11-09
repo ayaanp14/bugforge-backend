@@ -12,12 +12,21 @@ export class ExecutionEngineError extends Error {
   readonly engine: string;
   /** What the engine said, for the logs. */
   readonly detail: string | undefined;
+  /**
+   * The engine is up but refused this one request (Paiza's "input: Too long"
+   * past 300,000 characters of stdin). Worth another engine's try, but not a
+   * reason to skip the engine for everyone else: the executor's cooldown is
+   * for outages, and with a one-engine chain it turned one oversized submit
+   * into a minute of "the service is down" for the whole site (2026-11-08).
+   */
+  readonly requestOnly: boolean;
 
-  constructor(engine: string, detail?: string) {
+  constructor(engine: string, detail?: string, options?: { requestOnly?: boolean }) {
     super(`Execution engine "${engine}" is unavailable${detail ? `: ${detail}` : ""}`);
     this.name = "ExecutionEngineError";
     this.engine = engine;
     this.detail = detail;
+    this.requestOnly = options?.requestOnly ?? false;
   }
 }
 

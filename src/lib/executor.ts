@@ -117,6 +117,10 @@ export function resolveChain(preferred?: readonly string[]): string[] {
 }
 
 function markDown(name: string, err: unknown): void {
+  if (err instanceof ExecutionEngineError && err.requestOnly) {
+    console.warn(`[Executor] ${name} refused this request (engine still healthy) — ${err.message}`);
+    return;
+  }
   failedUntil.set(name, Date.now() + COOLDOWN_MS);
   const detail = err instanceof Error ? err.message : String(err);
   console.error(`[Executor] ${name} is down, skipping it for ${Math.round(COOLDOWN_MS / 1000)}s — ${detail}`);
