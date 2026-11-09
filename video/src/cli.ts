@@ -11,12 +11,12 @@
  */
 import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { compose, findDuplicate, MODEL, reviewVideo, revise, spend, writeScript } from "./claude.ts";
-import { inspect, launch, loadFonts, pageHtml, renderThumbnail, renderVideo } from "./render.ts";
+import { COMPOSE_MODEL, compose, composeCover, findDuplicate, MODEL, reviewCover, reviewVideo, revise, spend, useBatches, writeScript, type Language } from "./claude.ts";
+import { inspect, launch, loadFonts, pageHtml, renderCover, renderThumbnail, renderVideo } from "./render.ts";
 import { claimUpload, fetchJob, nextTopic, recordUpload, report, type Job } from "./runner.ts";
 import { ScriptSchema, SHORT_MAX_SECONDS, type Format, type RunState, type Script, type Timeline } from "./types.ts";
 import { postReel } from "./instagram.ts";
@@ -59,7 +59,9 @@ async function create() {
   const warnings: string[] = [];
 
   await loadFonts();
-  await report(runId, { status: "scripting", model: MODEL });
+  // Only the daily run can wait on the Batches API; "Make one now" is someone watching.
+  useBatches(job.source === "schedule");
+  await report(runId, { status: "scripting", model: MODEL === COMPOSE_MODEL ? MODEL : `${MODEL} + ${COMPOSE_MODEL}` });
   console.log(`voice: ${voiceName()}`);
   // First and cheap: never spend a video's worth of tokens on one the channel has.
   // A typed topic stops here with a sentence; an automatic one moves to the next in line.
@@ -140,6 +142,7 @@ async function create() {
       }
     }
     await renderThumbnail(browser, script, path.join(dir, "thumbnail.jpg"));
+    await makeCover(browser, script, language, warnings);
   } finally {
     await browser.close();
   }
@@ -150,6 +153,34 @@ async function create() {
   script = ScriptSchema.parse(script);
   for (const format of FORMATS) writeFileSync(path.join(cutDir(format), "page.html"), pageHtml(format, timelines[format], compositions[format], script.code));
   await report(runId, { status: "rendering", usd: spend.usd, cleared, warnings });
+}
+
+/**
+ * The Short's cover, used as its YouTube thumbnail and the reel's Instagram cover:
+ * designed by the model, checked like a frame, reviewed, and rewritten once if the
+ * review finds a blocker. Without one, both fall back to a frame of the video.
+ */
+async function makeCover(browser: Awaited<ReturnType<typeof launch>>, script: Script, language: Language, warnings: string[]) {
+  let html = "";
+  let problems: string[] = [];
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      html = await composeCover(script, attempt && html ? { html, problems } : undefined);
+      writeFileSync(path.join(dir, "cover.html"), html);
+      const drawn = await renderCover(browser, html);
+      // Don't pay to look at a cover already known to be broken.
+      problems = drawn.problems.length ? drawn.problems : await reviewCover(script, drawn.still, language);
+      if (!problems.length) {
+        writeFileSync(path.join(dir, "cover.jpg"), drawn.jpeg);
+        console.log("cover: clear");
+        return;
+      }
+      console.log(`cover, attempt ${attempt + 1}:\n  ${problems.join("\n  ")}`);
+    } catch (e) {
+      problems = [(e as Error).message];
+    }
+  }
+  warnings.push(`Cover: not used (${problems[0] ?? "no reason given"}); the Short and the reel show a frame of the video.`);
 }
 
 /** Whatever's on screen has to compile and print what the script says it prints. */
@@ -209,6 +240,27 @@ const tracked = (url: string, medium: string, slug: string) =>
 
 const sha256Of = (file: string) => createHash("sha256").update(readFileSync(file)).digest("hex");
 
+/**
+ * The daily run starts at 07:00 IST so its Claude calls can wait in the Batches
+ * API at half price, and still posts at 10:00 IST: the time the channel has always
+ * posted. A run that finishes later posts at once. While it waits it tells the API
+ * every 20 minutes, so the page shows it waiting and it never reads as stalled.
+ */
+const POST_AT_IST = { hour: 10, minute: 0 };
+
+async function holdUntilPostTime(usd: number) {
+  const now = new Date();
+  const ist = new Date(now.getTime() + 330 * 60_000);
+  const target = Date.UTC(ist.getUTCFullYear(), ist.getUTCMonth(), ist.getUTCDate(), POST_AT_IST.hour, POST_AT_IST.minute) - 330 * 60_000;
+  // Only a wait inside the same morning: a run that somehow ended past midnight shouldn't sit for a day.
+  if (target <= now.getTime() || target - now.getTime() > 4 * 60 * 60_000) return;
+  console.log(`waiting until 10:00 IST to post (${Math.round((target - now.getTime()) / 60_000)} min)`);
+  while (Date.now() < target) {
+    await report(runId, { status: "scheduled", usd });
+    await new Promise((r) => setTimeout(r, Math.min(20 * 60_000, target - Date.now())));
+  }
+}
+
 async function publish() {
   const job = readJson<Job>("job.json");
   const script = readJson<Script>("script.json");
@@ -218,6 +270,7 @@ async function publish() {
   const slug = runId;
   const language = job.language ?? "hinglish";
 
+  if (job.source === "schedule") await holdUntilPostTime(state.usage.usd);
   await report(runId, { status: "uploading", usd: state.usage.usd });
 
   // The API decides each upload just before it happens, against what YouTube says
@@ -251,6 +304,7 @@ async function publish() {
   }
 
   const shortFile = path.join(cutDir("short"), "video.mp4");
+  const coverFile = path.join(dir, "cover.jpg");
   const shortHash = sha256Of(shortFile);
   const shortClaim = await claimUpload(runId, "short", script.short.title, shortHash);
   if ("videoId" in shortClaim) {
@@ -267,9 +321,10 @@ async function publish() {
     const token = shortClaim.accessToken;
     state.shortId = await uploadVideo(token, shortFile, { title: script.short.title, description, tags: script.short.tags, privacy, language });
     await recordUpload(runId, "short", state.shortId, script.short.title, shortHash);
-    // A Short's thumbnail is a frame YouTube picks; the captions still feed search.
+    // The designed cover, the same one the reel gets; without it YouTube picks a frame.
     const playlist = playlistName(script, language, true);
     for (const problem of [
+      existsSync(coverFile) ? await setThumbnail(token, state.shortId, coverFile) : null,
       await setCaptions(token, state.shortId, path.join(cutDir("short"), "captions.srt"), language),
       await addToPlaylist(token, state.shortId, playlist, playlistAbout(playlist)),
     ]) {
@@ -278,29 +333,41 @@ async function publish() {
   }
   // The same Short as an Instagram reel. Instagram has no private posts, so only a
   // run that went up public is posted there; the API says no when it's not connected.
-  const reelProblem = await postReel(runId, shortFile, script.short.title, reelCaption(script, state.practiceUrl), privacy === "public");
+  const caption = reelCaption(script, state.practiceUrl);
+  const reelProblem = await postReel(runId, {
+    file: shortFile,
+    cover: existsSync(coverFile) ? coverFile : null,
+    // The caption's first line is how a re-run recognises the reel on the account.
+    title: caption.split("\n")[0]!,
+    caption,
+    audioName: `${script.topic} · CodeKairo`,
+    publish: privacy === "public",
+  });
   if (reelProblem) state.warnings.push(reelProblem);
 
   await report(runId, { status: state.cleared ? "done" : "needs_review", privacy, warnings: state.warnings, usd: state.usage.usd });
 }
 
 /**
- * The first line is the title: it is how a re-run recognises the reel on the
- * account (reelOnAccount on the API). Links in a caption aren't clickable, so the
- * site is written out for reading. Instagram ranks on the caption's words, and
- * three to five specific hashtags do better than the thirty allowed.
+ * The hook first, since it is all Instagram shows before "more", and how a re-run
+ * recognises the reel on the account (reelOnAccount on the API). Then the idea, the
+ * save/share line and a question (saves, shares and comments are what Instagram
+ * ranks a reel on). Links in a caption aren't clickable, so the site is written out
+ * for reading. Three to five specific hashtags; generic reach tags read as spam.
+ * Scripts from before the reel field fall back to the Short's words.
  */
 function reelCaption(script: Script, practiceUrl: string): string {
-  const tags = [...script.short.hashtags, ...script.short.tags]
+  const reel = script.reel;
+  const tags = [...(reel?.hashtags ?? []), ...script.short.hashtags, ...script.short.tags]
     .map((t) => t.replace(/[^a-z0-9]/gi, "").toLowerCase())
-    .filter((t, i, all) => t && t !== "shorts" && t.length <= 30 && all.indexOf(t) === i)
+    .filter((t, i, all) => t && !GENERIC_TAGS.has(t) && t.length <= 30 && all.indexOf(t) === i)
     .slice(0, 5)
     .map((t) => `#${t}`)
     .join(" ");
   const page = practiceUrl.replace(/^https?:\/\//, "").replace(/\?.*$/, "");
   return [
-    script.short.title,
-    script.short.description,
+    (reel?.hook ?? script.short.title).replace(/\s*\n\s*/g, " ").trim(),
+    reel?.caption ?? script.short.description,
     `Practise it free on CodeKairo: ${page}`,
     "A new coding interview explainer every day. Follow so you don't miss the next one.",
     tags,
@@ -309,6 +376,8 @@ function reelCaption(script: Script, practiceUrl: string): string {
     .join("\n\n")
     .slice(0, 2200);
 }
+
+const GENERIC_TAGS = new Set(["shorts", "reels", "reel", "viral", "fyp", "foryou", "explore", "explorepage", "trending"]);
 
 async function demo() {
   await loadFonts();

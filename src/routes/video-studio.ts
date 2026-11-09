@@ -60,7 +60,7 @@ videoStudioRouter.get("/youtube/callback", async (req, res) => {
 videoStudioRouter.get("/reel-file/:name", (req, res) => {
   const file = reelFile(String(req.params["name"]));
   if (!file) return void res.status(404).end();
-  res.sendFile(file, { headers: { "Content-Type": "video/mp4", "Cache-Control": "no-store" } });
+  res.sendFile(file, { headers: { "Content-Type": file.endsWith(".jpg") ? "image/jpeg" : "video/mp4", "Cache-Control": "no-store" } });
 });
 
 videoStudioRouter.get("/runner/:id", runnerSecret, async (req, res) => res.json(await jobFor(id(req))));
@@ -76,7 +76,7 @@ videoStudioRouter.post("/runner/:id/uploaded", runnerSecret, async (req, res) =>
 });
 
 videoStudioRouter.post("/runner/:id/reel/claim", runnerSecret, async (req, res) => res.json(await claimReel(id(req), req.body ?? {})));
-// The body is the MP4 itself: express.json leaves a video/mp4 body unread, and this streams it to disk.
+// The body is the MP4 or its JPEG cover itself: express.json leaves those unread, and this streams them to disk.
 videoStudioRouter.post("/runner/:id/reel/file", runnerSecret, async (req, res) => res.json(await stageReel(id(req), req)));
 videoStudioRouter.post("/runner/:id/reel/start", runnerSecret, async (req, res) => res.json(await startReel(id(req), req, req.body ?? {})));
 videoStudioRouter.get("/runner/:id/reel/status/:container", runnerSecret, async (req, res) => res.json(await reelStatus(id(req), String(req.params["container"]))));

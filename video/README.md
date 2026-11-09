@@ -1,6 +1,6 @@
 # Daily videos
 
-One prompt makes a landscape video (3 to 5 minutes) and a Short (30 to 60 seconds), and posts both to YouTube. It runs every day at 10:00 IST once switched on. They aren't AI-generated footage: Claude writes the script and an HTML composition, Polly voices it, and Chrome renders that page frame by frame.
+One prompt makes a landscape video (3 to 5 minutes) and a Short (30 to 60 seconds), and posts both to YouTube. It posts every day at 10:00 IST once switched on (making starts at 07:00, see [What it costs](#what-it-costs)). They aren't AI-generated footage: Claude writes the script and an HTML composition, Polly voices it, and Chrome renders that page frame by frame.
 
 ## Where everything lives
 
@@ -15,9 +15,19 @@ One prompt makes a landscape video (3 to 5 minutes) and a Short (30 to 60 second
 1. **Start.** The `daily_video` job (or "Make one now") picks the topic: the queue first, then `AUTO_TOPICS`, then Claude's own choice. The API starts the workflow.
 2. **`create` job.** Asks Claude whether the channel already has this video. Then the script, the voice, one composition per cut, and the review: mechanical checks plus Claude reading frames, with up to two rounds of fixes.
 3. **`render` job.** Compiles and runs the on-screen Java, then renders every frame. It holds no secrets, because this is the job that runs model-written code.
-4. **`publish` job.** Asks the API before each upload, uploads, and reports back.
+4. **`publish` job.** A daily run waits until 10:00 IST (status "scheduled"), then asks the API before each upload, uploads, and reports back.
 
 Anything the review doesn't clear goes up private and shows as "Check this one" on the page.
+
+## What it costs
+
+Almost all of a run's cost is Claude's output (run cmw8riz2d, 2026-11-09: 86% of $2.84), so caching, already on, can't do much. Three things cut it (2026-11-09):
+
+- **Two models.** Opus 5.5 (`VIDEO_MODEL`) writes the script and does every review, where correctness is decided. Sonnet 5.5 (`VIDEO_COMPOSE_MODEL`), at half the price, writes and fixes the animation and the cover: 80% of the output tokens. Set `VIDEO_COMPOSE_MODEL=claude-opus-5-5` as a repository variable to go back.
+- **Fixes as edits.** A review round asks for find-and-replace edits instead of the whole file again (17–18k tokens a round before). An edit whose text isn't found exactly once makes it ask for the whole file, as before.
+- **The Batches API, at half price.** A daily run sends each Claude call as a one-request batch and polls it. A batch not ended in 20 minutes (`VIDEO_BATCH_WAIT_MIN`) is cancelled and the call made directly at full price, so a slow queue never costs the day's video; so is a declined one, because batches can't carry the refusal fallback. That's why the job starts at 07:00 IST and the upload waits for 10:00. "Make one now" never batches. `VIDEO_BATCH=off` turns it off.
+
+The run log names the model of each call and marks batched ones.
 
 ## The voice and the language
 
@@ -31,9 +41,11 @@ Claude writes, per cut, a search-first title (under 70 characters, "in Hindi" fo
 
 ## Instagram
 
-When Instagram is set up (step 5b), the Short also goes up as a reel (`src/instagram.ts`, API side `src/services/video-instagram.ts`). The caption is the Short's title as its first line, the description, the practice page written out (Instagram captions have no clickable links), a follow line and up to five hashtags. Instagram has no private or unlisted posts, so a run that didn't go up public on YouTube isn't posted there (the run says so).
+When Instagram is set up (step 5b), the Short also goes up as a reel (`src/instagram.ts`, API side `src/services/video-instagram.ts`). The script carries its own Instagram words (`reel` in `types.ts`, rules in the script prompt): a hook as the caption's first line (all Instagram shows before "more"), the idea, a save/share line and a question that invites comments, then the practice page written out (captions have no clickable links), a follow line and three to five specific hashtags (generic reach tags such as viral or fyp are dropped). The reel shares to the feed and names its audio after the topic. Scripts from before the field fall back to the Short's title and description. Instagram has no private or unlisted posts, so a run that didn't go up public on YouTube isn't posted there (the run says so).
 
-Instagram Login can't upload a file: a reel is made from a URL Instagram fetches itself. So the publish job sends the MP4 to the API, which serves it from a random 32-character name for up to two hours and deletes it as soon as the reel is published or has failed. **Never twice:** the reel's id is kept on the run, and before posting the API reads the account's newest 30 posts for one whose caption opens with this title, so a job that died after Instagram published adopts that reel. The token never expires and never leaves the API: the publish job sends the file and asks, and the API makes every call to Instagram. Any Instagram failure is a warning on the run; YouTube is never held up by it.
+**The cover.** Each run's create job has Claude design a 1080×1920 cover for the topic (`composeCover` in `src/claude.ts`; the target is the channel's best hand-made covers: a blue eyebrow, a huge headline with the key word in blue, a struck-through "before" against an "after", one picture of the idea drawn from the real example, a promise line). The page draws our logo; the design keeps inside Instagram's 3:4 grid crop (`COVER` in `types.ts`). It is rendered in the same sandbox as the video frames (`renderCover`), checked for text off the area or under 22px, reviewed like a frame (`reviewCover`) and rewritten once on a blocker; without a clean one the run warns and both platforms show a frame. The same `cover.jpg` is the Short's YouTube thumbnail and the reel's Instagram cover. The long cut keeps its own 16:9 thumbnail.
+
+Instagram Login can't upload a file: a reel is made from a URL Instagram fetches itself. So the publish job sends the MP4 and the cover to the API, which serves each from a random 32-character name for up to two hours and deletes them as soon as the reel is published or has failed. **Never twice:** the reel's id is kept on the run, and before posting the API reads the account's newest 30 posts for one whose caption opens with this reel's first line, so a job that died after Instagram published adopts that reel. The token never expires and never leaves the API: the publish job sends the file and asks, and the API makes every call to Instagram. Any Instagram failure is a warning on the run; YouTube is never held up by it.
 
 ## Never posting the same video twice
 

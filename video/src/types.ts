@@ -14,6 +14,14 @@ export const FRAMES: Record<Format, { w: number; h: number; stage: { x: number; 
   short: { w: 1080, h: 1920, stage: { x: 64, y: 240, w: 952, h: 1130 } },
 };
 
+/**
+ * The reel's cover. Instagram's profile grid shows the middle 3:4 of it (y 240 to
+ * 1680), and the Reels feed lays its caption and buttons over the bottom, so the
+ * design keeps inside the grid's crop: the page's logo at the top of it, then the
+ * area the model draws in.
+ */
+export const COVER = { w: 1080, h: 1920, logoY: 262, area: { x: 64, y: 362, w: 952, h: 1310 } };
+
 export const FPS = 30;
 
 /** YouTube files a vertical video as a Short up to three minutes; past that it is a regular upload. */
@@ -65,6 +73,13 @@ export const ScriptSchema = z.object({
     })
     .nullable(),
   thumbnail: z.object({ headline: z.string().min(1), tag: z.string().min(1) }),
+  /**
+   * The Short's words on Instagram, which ranks on different things from YouTube:
+   * the caption's first line is all that shows before "more", saves and shares
+   * count for more than likes, and a few specific hashtags beat many. Scripts
+   * written before the field existed have none and fall back to the Short's.
+   */
+  reel: z.object({ hook: z.string().min(1), caption: z.string().min(1), hashtags: z.array(z.string()) }).optional(),
   playlist: z.enum(PLAYLISTS).default("DSA Patterns"),
   landscape: cut,
   short: cut,

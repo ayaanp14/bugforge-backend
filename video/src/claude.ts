@@ -1,14 +1,39 @@
 /**
- * Every call to Claude, and what they cost. VIDEO_MODEL picks the model;
+ * Every call to Claude, and what they cost. VIDEO_MODEL and VIDEO_COMPOSE_MODEL pick
+ * the models, and a daily run goes through the Batches API (see "What it costs" in
+ * the README);
  * the run's real spend is reported to the campaign page.
  */
 import Anthropic from "@anthropic-ai/sdk";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { FRAMES, PLAYLISTS, ReviewSchema, ScriptSchema, type Format, type Review, type Script, type Timeline, type Usage } from "./types.ts";
+import { COVER, FRAMES, PLAYLISTS, ReviewSchema, ScriptSchema, type Format, type Review, type Script, type Timeline, type Usage } from "./types.ts";
 
+/** The script and every review: where correctness is decided. */
 export const MODEL = process.env["VIDEO_MODEL"] || "claude-opus-5-5";
+/**
+ * Writing and fixing the animation and the cover: 80% of a run's output tokens
+ * (run cmw8riz2d, 2026-11-09: $2.24 of $2.84), at half Opus's price. The Opus
+ * reviews still judge what it draws. VIDEO_COMPOSE_MODEL=claude-opus-5-5 undoes it.
+ */
+export const COMPOSE_MODEL = process.env["VIDEO_COMPOSE_MODEL"] || "claude-sonnet-5-5";
+
+/**
+ * The Message Batches API halves every token's price but answers in minutes
+ * rather than at once, which a daily job can afford (it starts at 07:00 and posts
+ * at 10:00). A batch that hasn't ended within BATCH_WAIT is cancelled and the
+ * call is made at the normal price, so a slow queue never costs the day's video.
+ * VIDEO_BATCH=off makes every call directly; a typed "Make one now" run does too.
+ */
+const BATCH_ON = () => process.env["VIDEO_BATCH"] !== "off";
+const BATCH_WAIT_MS = Number(process.env["VIDEO_BATCH_WAIT_MIN"] || 20) * 60_000;
+const BATCH_POLL_MS = 30_000;
+let batching = true;
+/** A typed run is someone waiting for it: no batches. */
+export function useBatches(on: boolean) {
+  batching = on;
+}
 
 /**
  * What the narration is spoken in, set per run from the campaign page. Hinglish is
@@ -44,34 +69,95 @@ interface Ask {
   content: Anthropic.Beta.Messages.BetaContentBlockParam[] | string;
   effort: Effort;
   schema?: Record<string, unknown>;
+  /** MODEL unless given (COMPOSE_MODEL for the drawing). */
+  model?: string;
 }
 
-async function ask({ system, content, effort, schema }: Ask): Promise<string> {
+type Reply = Pick<Anthropic.Messages.Message, "content" | "stop_reason" | "usage">;
+
+const request = ({ system, content, effort, schema, model = MODEL }: Ask) => ({
+  model,
+  max_tokens: 64000,
+  thinking: { type: "adaptive" },
+  // One hour: a long composition outlasts the 5-minute cache, and the next call needs the prefix.
+  system: [{ type: "text", text: system, cache_control: { type: "ephemeral", ttl: "1h" } }],
+  messages: [{ role: "user", content }],
+  output_config: { effort, ...(schema ? { format: { type: "json_schema", schema } } : {}) },
+});
+
+async function direct(a: Ask): Promise<Reply> {
   const stream = client.beta.messages.stream({
-    model: MODEL,
-    max_tokens: 64000,
-    thinking: { type: "adaptive" },
+    ...request(a),
     betas: ["server-side-fallback-2026-07-01"],
     // A classifier declining mid-run (a security topic, say) falls over to the
     // recommended model rather than costing the day's video.
     fallbacks: "default",
-    // One hour: a long composition outlasts the 5-minute cache, and the next call needs the prefix.
-    system: [{ type: "text", text: system, cache_control: { type: "ephemeral", ttl: "1h" } }],
-    messages: [{ role: "user", content }],
-    output_config: { effort, ...(schema ? { format: { type: "json_schema", schema } } : {}) },
   } as unknown as Anthropic.Beta.Messages.MessageCreateParamsStreaming);
-  const message = await stream.finalMessage();
+  return (await stream.finalMessage()) as unknown as Reply;
+}
 
-  const u = message.usage;
-  const price = PRICES[MODEL] ?? PRICES["claude-opus-5-5"]!;
-  const write = u.cache_creation_input_tokens ?? 0;
-  const read = u.cache_read_input_tokens ?? 0;
-  spend.input += u.input_tokens;
-  spend.cacheWrite += write;
-  spend.cacheRead += read;
-  spend.output += u.output_tokens;
-  spend.usd += (u.input_tokens * price[0] + write * price[1] + read * price[2] + u.output_tokens * price[3]) / 1e6;
-  console.log(`  ${u.input_tokens} in, ${write} cache write, ${read} cache read, ${u.output_tokens} out; run total $${spend.usd.toFixed(3)}`);
+/**
+ * The same request through the Batches API, or null when it should be made
+ * directly instead: the batch didn't end in time, failed, or was declined (the
+ * Batches API refuses the `fallbacks` parameter, so a refusal is retried directly,
+ * where the fallback can catch it).
+ */
+async function batched(a: Ask, charge: (r: Reply, discount: number) => void): Promise<Reply | null> {
+  const created = await client.messages.batches
+    .create({ requests: [{ custom_id: "call", params: request(a) as unknown as Anthropic.Messages.MessageCreateParamsNonStreaming }] })
+    .catch((e: Error) => {
+      console.log(`  batch refused (${e.message.slice(0, 120)}); calling directly`);
+      return null;
+    });
+  if (!created) return null;
+  const started = Date.now();
+  for (;;) {
+    await new Promise((r) => setTimeout(r, BATCH_POLL_MS));
+    const batch = await client.messages.batches.retrieve(created.id).catch(() => null);
+    if (batch?.processing_status === "ended") break;
+    if (Date.now() - started > BATCH_WAIT_MS) {
+      await client.messages.batches.cancel(created.id).catch(() => undefined);
+      console.log(`  batch still queued after ${BATCH_WAIT_MS / 60_000} min; calling directly`);
+      // A request can finish in the moment between the deadline and the cancel; it is billed, so count it.
+      for await (const r of await client.messages.batches.results(created.id).catch(() => [])) if (r.result.type === "succeeded") charge(r.result.message, 0.5);
+      return null;
+    }
+  }
+  for await (const r of await client.messages.batches.results(created.id)) {
+    if (r.result.type !== "succeeded") {
+      console.log(`  batch ${r.result.type}; calling directly`);
+      return null;
+    }
+    if (r.result.message.stop_reason === "refusal") {
+      charge(r.result.message, 0.5);
+      console.log("  declined in the batch; calling directly, where a fallback can answer");
+      return null;
+    }
+    return r.result.message;
+  }
+  return null;
+}
+
+async function ask(a: Ask): Promise<string> {
+  const model = a.model ?? MODEL;
+  const charge = (message: Reply, discount: number) => {
+    const u = message.usage;
+    const price = PRICES[model] ?? PRICES["claude-opus-5-5"]!;
+    const write = u.cache_creation_input_tokens ?? 0;
+    const read = u.cache_read_input_tokens ?? 0;
+    spend.input += u.input_tokens;
+    spend.cacheWrite += write;
+    spend.cacheRead += read;
+    spend.output += u.output_tokens;
+    spend.usd += (discount * (u.input_tokens * price[0] + write * price[1] + read * price[2] + u.output_tokens * price[3])) / 1e6;
+    console.log(`  ${model}${discount < 1 ? " (batch)" : ""}: ${u.input_tokens} in, ${write} cache write, ${read} cache read, ${u.output_tokens} out; run total $${spend.usd.toFixed(3)}`);
+  };
+  let message = BATCH_ON() && batching ? await batched(a, charge) : null;
+  if (message) charge(message, 0.5);
+  else {
+    message = await direct(a);
+    charge(message, 1);
+  }
 
   if (message.stop_reason === "refusal") throw new Error("Claude declined this topic.");
   if (message.stop_reason === "max_tokens") throw new Error("Claude ran out of room before finishing.");
@@ -104,7 +190,7 @@ const cutSchema = {
 const scriptSchema = {
   type: "object",
   additionalProperties: false,
-  required: ["topic", "practicePath", "code", "thumbnail", "playlist", "landscape", "short"],
+  required: ["topic", "practicePath", "code", "thumbnail", "reel", "playlist", "landscape", "short"],
   properties: {
     topic: string,
     practicePath: string,
@@ -115,6 +201,12 @@ const scriptSchema = {
       ],
     },
     thumbnail: { type: "object", additionalProperties: false, required: ["headline", "tag"], properties: { headline: string, tag: string } },
+    reel: {
+      type: "object",
+      additionalProperties: false,
+      required: ["hook", "caption", "hashtags"],
+      properties: { hook: string, caption: string, hashtags: { type: "array", items: string } },
+    },
     playlist: { type: "string", enum: [...PLAYLISTS] },
     landscape: cutSchema,
     short: cutSchema,
@@ -162,7 +254,12 @@ Avoid "<" and ">" anywhere in these; YouTube refuses them.
 
 "playlist" is the one shelf of the channel this topic belongs on.
 
-Thumbnail headline is 2 to 6 punchy words, at most 40 characters.`;
+Thumbnail headline is 2 to 6 punchy words, at most 40 characters.
+
+"reel" is the same Short posted to Instagram, where people find it in Reels, Explore and search rather than by a title:
+- hook: the caption's first line, all Instagram shows before "more". Under 90 characters, in English, naming the topic by the term a student searches, and giving a reason to watch: a surprising number, a mistake most people make, a promise ("Most people solve Container With Most Water in O(n squared). One idea makes it O(n)."). At most one emoji. Never the YouTube title word for word.
+- caption: what follows the hook, 2 to 4 short lines with a blank line between: the one idea in plain words${language === "hinglish" ? " (English or light Hinglish in Roman script)" : ""}, then a line asking them to save it for their next interview or send it to a friend preparing for placements, then one question that invites a comment (the edge case, their language, how they'd solve it). Under 500 characters, no links, no hashtags.
+- hashtags: 3 to 5, no "#", one word each, specific first (containerwithmostwater, twopointers, dsa, codinginterview, placementprep). Never generic reach tags such as viral, reels, fyp or explore; Instagram reads those as spam.`;
 
 /**
  * Is this topic already on the channel? Run before anything costly. The API's own
@@ -244,10 +341,69 @@ const sceneBrief = (script: Script, format: Format, timeline: Timeline) =>
     })
     .join("\n\n");
 
+/* ── Fixing: edits, not a rewrite ───────────────────────────────────── */
+//
+// A review round used to send the whole file back: 17-18k output tokens to change
+// a few lines (run cmw8riz2d: two rounds, $0.80). Now the model answers with
+// find-and-replace edits; if any of them doesn't apply cleanly, the whole file is
+// asked for as before, so a fix is never lost to a bad edit.
+
+const editsSchema = {
+  type: "object",
+  additionalProperties: false,
+  required: ["edits"],
+  properties: {
+    edits: {
+      type: "array",
+      items: { type: "object", additionalProperties: false, required: ["find", "replace"], properties: { find: { type: "string" }, replace: { type: "string" } } },
+    },
+  },
+};
+
+/** Each edit in turn; its `find` must occur exactly once in the text as it stands. Null if one doesn't. */
+export function applyEdits(text: string, edits: { find: string; replace: string }[]): string | null {
+  let out = text;
+  for (const { find, replace } of edits) {
+    if (!find || out.split(find).length !== 2) return null;
+    out = out.replace(find, () => replace);
+  }
+  return edits.length ? out : null;
+}
+
+async function fix(system: string, what: string, brief: string, html: string, problems: string[]): Promise<string> {
+  const head = `${brief}
+
+This ${what} needs fixing.
+
+Problems:
+${problems.map((p) => `- ${p}`).join("\n")}
+
+The ${what}:
+
+\`\`\`html
+${html}
+\`\`\``;
+  const raw = await ask({
+    system,
+    model: COMPOSE_MODEL,
+    effort: "medium",
+    schema: editsSchema,
+    content: `${head}
+
+Fix every problem and keep what works. Reply only with edits, not the whole file: each edit's "find" is an exact passage copied from the ${what} above, long enough to occur exactly once, and "replace" is what goes there instead. Edits apply in order.`,
+  });
+  const edits = (JSON.parse(raw) as { edits: { find: string; replace: string }[] }).edits;
+  const fixed = applyEdits(html, edits);
+  if (fixed) return fixed;
+  console.log(`  ${edits.length} edit(s) didn't apply cleanly; asking for the whole ${what}`);
+  return fenced(await ask({ system, model: COMPOSE_MODEL, effort: "medium", content: `${head}\n\nFix every problem, keep what works, and reply with the whole corrected ${what}.` }));
+}
+
 export async function compose(script: Script, format: Format, timeline: Timeline): Promise<string> {
   const { stage } = FRAMES[format];
   const reply = await ask({
     system: composeSystem(),
+    model: COMPOSE_MODEL,
     effort: "medium",
     content: `Topic: ${script.topic}
 Format: ${format}. The stage is ${stage.w} x ${stage.h} px. Total ${timeline.duration.toFixed(1)} s.
@@ -260,27 +416,69 @@ ${sceneBrief(script, format, timeline)}`,
 }
 
 export async function revise(script: Script, format: Format, timeline: Timeline, composition: string, problems: string[]): Promise<string> {
-  const reply = await ask({
-    system: composeSystem(),
+  return fix(composeSystem(), "composition", `Topic: ${script.topic}. Format: ${format}.\n\nScenes:\n\n${sceneBrief(script, format, timeline)}`, composition, problems);
+}
+
+/* ── The reel's cover ───────────────────────────────────────────────── */
+//
+// Designed per topic by the model, because the covers that did best on the
+// channel (Binary Search, HTTP vs HTTPS; the owner's pick, 2026-11-09) each draw
+// the topic's own idea, which no fixed template can.
+
+const coverSystem = () => `You design the cover of CodeKairo's daily coding reel on Instagram. The cover is what shows on the profile grid, in Explore and when the reel is shared, so it decides whether anyone taps.
+
+## The contract
+
+You write the contents of a <div id="ck-cover"> that is ${COVER.area.w} x ${COVER.area.h} px: a <style> block and the markup, plus a <script> only if building the markup in code is simpler (it runs once). The page already draws the CodeKairo logo just above this area, so never draw a logo or the brand name. No network exists: no images, fonts or scripts by URL; draw with HTML, CSS and inline SVG. Everything must stay inside the area; nothing may be cut off. Position inside it freely (the div is position:relative).
+
+## What a cover that works has, top to bottom
+
+1. An eyebrow: one short line in blue capitals, letter-spaced, 30 to 36px, naming the angle ("ONE LETTER. HUGE DIFFERENCE.", or "EASY · CODING INTERVIEW · JAVA" with a small green dot before Easy).
+2. The headline: the topic's name as people search it, huge and bold, 120 to 170px, two or three lines at most, the one word that matters in blue (HTTP vs HTTP<blue>S</blue>).
+3. The payoff, when the topic has one: a struck-through "before" in the error colour against an "after" in blue ("1,000,000 checks" struck out, then "→ 20 checks"; "O(n²)" struck out, then "→ O(n)").
+4. One picture of the idea, drawn from the script's real example, large enough to read: the sorted array with the middle cell lit and low/high marked; two cards, HTTP with an open lock and what an eavesdropper reads in plain text against HTTPS with a closed lock and gibberish; the two walls and the water between them. One picture, not a collage.
+5. One line at the bottom, 40 to 48px, the promise of the reel ("Throw away half the array with every check"), its key words in blue.
+
+A design may leave out the payoff or change the order when the topic calls for it, but it is always big, few elements and high contrast: it is read as a tile a third of a phone's width. No text under 30px except tiny labels inside the picture (at least 22px).
+
+## The look
+
+Dark ground #0A0A0A, a faint grid of #141414 lines is fine; surfaces #111111, #161616, #1C1C1C; hairlines #262626, #383838; text #F5F5F5, secondary #A3A3A3. Blue is the one colour: accent #3AA9FF, highlight #7CC9FF, deep #0794F9, #0068CC. Error #FF7A7E and success #52C98A only name a state (the struck-through cost, a broken thing, a lock that leaks). Gilroy 400 to 700 for words, 'JetBrains Mono' for code and values. Corners 8px at most, no gradients, glows or shadows, except that a card may be tinted with its state colour at low opacity.
+
+Every value drawn must be correct for the topic and agree with the script. Reply with the cover in one \`\`\`html fence and nothing else.`;
+
+const coverBrief = (script: Script) => `Topic: ${script.topic}
+The reel's title: ${script.short.title}
+Its hook: ${script.reel?.hook ?? script.short.title}
+The YouTube thumbnail's headline and tag, for the angle: ${script.thumbnail.headline} / ${script.thumbnail.tag}
+
+The Short's scenes:
+${script.short.scenes.map((s) => `- ${s.title}: ${s.narration}\n  Shows: ${s.visual}`).join("\n")}`;
+
+export async function composeCover(script: Script, previous?: { html: string; problems: string[] }): Promise<string> {
+  if (previous) return fix(coverSystem(), "cover", coverBrief(script), previous.html, previous.problems);
+  return fenced(await ask({ system: coverSystem(), model: COMPOSE_MODEL, effort: "medium", content: coverBrief(script) }));
+}
+
+const coverReviewSchema = {
+  type: "object",
+  additionalProperties: false,
+  required: ["problems"],
+  properties: { problems: { type: "array", items: string } },
+};
+
+/** The video's reviewer, looking at one still: what would stop it going out. */
+export async function reviewCover(script: Script, jpeg: Buffer, language: Language): Promise<string[]> {
+  const raw = await ask({
+    system: reviewSystem(language),
     effort: "medium",
-    content: `This ${format} composition for "${script.topic}" needs fixing.
-
-Problems:
-${problems.map((p) => `- ${p}`).join("\n")}
-
-Scenes:
-
-${sceneBrief(script, format, timeline)}
-
-The composition:
-
-\`\`\`html
-${composition}
-\`\`\`
-
-Fix every problem, keep what works, and reply with the whole corrected composition.`,
+    schema: coverReviewSchema,
+    content: [
+      { type: "text", text: `This time you check the reel's cover, a still image shown on the profile grid and when shared, not a video frame. List only blockers: a technical error, a value that contradicts the topic, text that overlaps, is cut off or is unreadable at a third of a phone's width, or a cover that is blank or unfinished. An empty list means it goes out.\n\n${coverBrief(script)}` },
+      { type: "image", source: { type: "base64", media_type: "image/jpeg", data: jpeg.toString("base64") } },
+    ],
   });
-  return fenced(reply);
+  return (JSON.parse(raw) as { problems: string[] }).problems;
 }
 
 /* ── The review ─────────────────────────────────────────────────────── */

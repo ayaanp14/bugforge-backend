@@ -55,11 +55,12 @@ test("a late failure report cannot unmark a finished publish", () => {
   assert.equal(nextStatus("rendering", "uploading"), "uploading");
 });
 
-test("the job is due only in the half hour from 10:00 IST", () => {
-  assert.equal(videoPeriod(10, 0, "2026-11-06"), "2026-11-06");
-  assert.equal(videoPeriod(10, 29, "2026-11-06"), "2026-11-06");
-  assert.equal(videoPeriod(10, 30, "2026-11-06"), null);
-  assert.equal(videoPeriod(9, 59, "2026-11-06"), null);
+test("the job is due only in the half hour from 07:00 IST", () => {
+  assert.equal(videoPeriod(7, 0, "2026-11-06"), "2026-11-06");
+  assert.equal(videoPeriod(7, 29, "2026-11-06"), "2026-11-06");
+  assert.equal(videoPeriod(7, 30, "2026-11-06"), null);
+  assert.equal(videoPeriod(6, 59, "2026-11-06"), null);
+  assert.equal(videoPeriod(10, 0, "2026-11-06"), null);
 });
 
 test("the automatic topics hold no repeat of each other", () => {
@@ -82,4 +83,6 @@ test("a reel file name is the random kind the API makes, never a path", () => {
   assert.ok(REEL_FILE.test("abcdefghijklmnopqrstuvwxyz012345.mp4"));
   assert.ok(!REEL_FILE.test("../../etc/passwd.mp4"));
   assert.ok(!REEL_FILE.test("abcdefghijklmnopqrstuvwxyz01234.mp4"));
+  assert.ok(REEL_FILE.test("abcdefghijklmnopqrstuvwxyz012345.jpg"));
+  assert.ok(!REEL_FILE.test("abcdefghijklmnopqrstuvwxyz012345.html"));
 });

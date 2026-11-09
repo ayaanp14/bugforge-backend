@@ -13,16 +13,23 @@ export type VideoLanguage = (typeof VIDEO_LANGUAGES)[number];
 
 export const VIDEO_FINISHED = new Set(["done", "needs_review", "failed"]);
 
-/** The workflow's jobs time out in under this, so silence past it means it died unreported. */
+/**
+ * A run reports between steps (no step outlasts a 20-minute batch wait plus a
+ * direct call) and every 20 minutes while holding for 10:00, so silence past this
+ * means it died unreported.
+ */
 export const VIDEO_STALLED_MS = 3 * 60 * 60 * 1000;
 
 /**
- * 10:00 IST. A window, as every job here has, because the tick is five minutes
- * and a deploy can be restarting at 10:00:00; the JobRun row makes it once a day.
+ * 07:00 IST: the run starts three hours before it posts, so its Claude calls can
+ * wait in the Batches API at half price (since 2026-11-09; video/src/claude.ts),
+ * and the publish job holds the upload until 10:00 IST, the time the channel has
+ * always posted. A window, as every job here has, because the tick is five minutes
+ * and a deploy can be restarting on the hour; the JobRun row makes it once a day.
  * Later than this, and the day's video is skipped rather than posted at a random hour.
  */
 export function videoPeriod(hourIst: number, minuteIst: number, day: string): string | null {
-  return hourIst === 10 && minuteIst < 30 ? day : null;
+  return hourIst === 7 && minuteIst < 30 ? day : null;
 }
 
 const STOP_WORDS = new Set(["a", "an", "the", "how", "to", "what", "why", "explain", "explained", "explaining", "tutorial", "video", "about", "on", "in", "of", "and", "with", "for", "is", "it", "shorts", "short"]);
@@ -48,8 +55,8 @@ export function reelOnAccount<T extends { caption?: string }>(title: string, med
   return media.find((m) => titleKey((m.caption ?? "").split("\n")[0] ?? "") === key) ?? null;
 }
 
-/** The names the API gives a reel file for Instagram to fetch: 24 random bytes, nothing that could walk a path. */
-export const REEL_FILE = /^[A-Za-z0-9_-]{32}\.mp4$/;
+/** The names the API gives a reel's files (the MP4 and its cover) for Instagram to fetch: 24 random bytes, nothing that could walk a path. */
+export const REEL_FILE = /^[A-Za-z0-9_-]{32}\.(mp4|jpg)$/;
 
 /** A prompt's words in order, without the filler: "Explain two sum" and "two sum tutorial" are one topic. */
 export function topicKey(prompt: string): string {

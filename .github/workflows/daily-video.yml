@@ -35,7 +35,7 @@ defaults:
 jobs:
   create:
     runs-on: ubuntu-latest
-    timeout-minutes: 75
+    timeout-minutes: 200  # each Claude call may wait up to 20 min in the Batches API before it is made directly
     env:
       ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
       # The voice (src/voice.ts): Amazon Polly, through an IAM user allowed only
@@ -50,6 +50,9 @@ jobs:
       VIDEO_RUNNER_SECRET: ${{ secrets.VIDEO_RUNNER_SECRET }}
       API_URL: ${{ vars.API_URL }}
       VIDEO_MODEL: ${{ vars.VIDEO_MODEL }}
+      VIDEO_COMPOSE_MODEL: ${{ vars.VIDEO_COMPOSE_MODEL }}
+      VIDEO_BATCH: ${{ vars.VIDEO_BATCH }}
+      VIDEO_BATCH_WAIT_MIN: ${{ vars.VIDEO_BATCH_WAIT_MIN }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -95,7 +98,7 @@ jobs:
   publish:
     needs: render
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 240  # holds the daily run's upload until 10:00 IST (src/cli.ts holdUntilPostTime)
     env:
       VIDEO_RUNNER_SECRET: ${{ secrets.VIDEO_RUNNER_SECRET }}
       API_URL: ${{ vars.API_URL }}

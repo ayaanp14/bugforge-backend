@@ -87,17 +87,17 @@ export async function claimReel(id: string, title: string, publish: boolean): Pr
   return reelCall<ReelClaim>(`${id}/reel/claim`, { method: "POST", body: JSON.stringify({ title, publish }) });
 }
 
-/** The MP4 to the API, which serves it to Instagram: Instagram fetches a reel from a URL. */
-export const stageReel = (id: string, file: Buffer) =>
-  reelCall<{ name: string }>(`${id}/reel/file`, { method: "POST", headers: { "Content-Type": "video/mp4" }, body: new Uint8Array(file) });
+/** The MP4 (or its JPEG cover) to the API, which serves it to Instagram: Instagram fetches a reel from a URL. */
+export const stageReel = (id: string, file: Buffer, type: "video/mp4" | "image/jpeg" = "video/mp4") =>
+  reelCall<{ name: string }>(`${id}/reel/file`, { method: "POST", headers: { "Content-Type": type }, body: new Uint8Array(file) });
 
-export const startReel = (id: string, name: string, caption: string) =>
-  reelCall<{ containerId: string }>(`${id}/reel/start`, { method: "POST", body: JSON.stringify({ name, caption }) });
+export const startReel = (id: string, name: string, caption: string, extra: { cover?: string; audioName?: string } = {}) =>
+  reelCall<{ containerId: string }>(`${id}/reel/start`, { method: "POST", body: JSON.stringify({ name, caption, ...extra }) });
 
 export const reelStatus = (id: string, containerId: string) => reelCall<{ statusCode: string; status: string }>(`${id}/reel/status/${containerId}`);
 
-export const publishReel = (id: string, name: string, containerId: string) =>
-  reelCall<{ mediaId: string; url: string | null }>(`${id}/reel/publish`, { method: "POST", body: JSON.stringify({ name, containerId }) });
+export const publishReel = (id: string, name: string, containerId: string, cover?: string) =>
+  reelCall<{ mediaId: string; url: string | null }>(`${id}/reel/publish`, { method: "POST", body: JSON.stringify({ name, containerId, cover }) });
 
 /** Deletes the API's copy now rather than in two hours. */
 export const dropReel = (id: string, name: string) =>

@@ -126,19 +126,28 @@ function sweepReels() {
   }
 }
 
-/** The run's MP4 in, streamed to disk with a byte cap. Answers the name the later steps refer to it by. */
+/** What may be staged, by the body's type: the reel itself, or its cover (Instagram takes a JPEG of at most 8 MB). */
+const STAGED = {
+  "video/mp4": { ext: "mp4", max: MAX_REEL_BYTES, tooBig: "That reel is over Instagram's 300 MB." },
+  "image/jpeg": { ext: "jpg", max: 8 * 1024 * 1024, tooBig: "That cover is over Instagram's 8 MB." },
+} as const;
+
+/** The run's MP4 or cover in, streamed to disk with a byte cap. Answers the name the later steps refer to it by. */
 export async function stageReel(id: string, req: Request): Promise<{ name: string }> {
   await runOf(id);
   sweepReels();
-  if (Number(req.headers["content-length"] ?? 0) > MAX_REEL_BYTES) throw new VideoError("That reel is over Instagram's 300 MB.", 413);
+  const type = String(req.headers["content-type"] ?? "").split(";")[0]!.trim().toLowerCase();
+  const kind = STAGED[type as keyof typeof STAGED];
+  if (!kind) throw new VideoError("Send a video/mp4 reel or an image/jpeg cover.", 415);
+  if (Number(req.headers["content-length"] ?? 0) > kind.max) throw new VideoError(kind.tooBig, 413);
   mkdirSync(REEL_DIR, { recursive: true });
-  const name = `${randomBytes(24).toString("base64url")}.mp4`;
+  const name = `${randomBytes(24).toString("base64url")}.${kind.ext}`;
   const file = path.join(REEL_DIR, name);
   let bytes = 0;
   const cap = new Transform({
     transform(chunk: Buffer, _enc, done) {
       bytes += chunk.length;
-      done(bytes > MAX_REEL_BYTES ? new VideoError("That reel is over Instagram's 300 MB.", 413) : null, chunk);
+      done(bytes > kind.max ? new VideoError(kind.tooBig, 413) : null, chunk);
     },
   });
   try {
@@ -166,17 +175,24 @@ export function reelFile(name: string): string | null {
 }
 
 /** Instagram's container for the staged file: Instagram starts fetching and processing it from our URL. */
-export async function startReel(id: string, req: Request, body: { name?: unknown; caption?: unknown }) {
+export async function startReel(id: string, req: Request, body: { name?: unknown; caption?: unknown; cover?: unknown; audioName?: unknown }) {
   await runOf(id);
   const name = String(body.name ?? "");
-  if (!reelFile(name)) throw new VideoError("That reel file is gone; send it again.", 410);
+  if (!name.endsWith(".mp4") || !reelFile(name)) throw new VideoError("That reel file is gone; send it again.", 410);
+  const fileUrl = (n: string) => `${publicBase(req)}/api/video-studio/reel-file/${n}`;
+  const cover = String(body.cover ?? "");
+  const audioName = String(body.audioName ?? "").trim().slice(0, 60);
   const created = await graph("POST", "{ig}/media", {
     media_type: "REELS",
-    video_url: `${publicBase(req)}/api/video-studio/reel-file/${name}`,
+    video_url: fileUrl(name),
     caption: String(body.caption ?? "").slice(0, 2200),
+    // In the main feed as well as the Reels tab: followers see it where they scroll.
     share_to_feed: "true",
-    // A second in, so the cover is the opening scene rather than its very first frame.
-    thumb_offset: "1000",
+    // The designed cover when the run made one (it is what the profile grid and a
+    // share show); otherwise a second in, the opening scene rather than its first frame.
+    ...(cover.endsWith(".jpg") && reelFile(cover) ? { cover_url: fileUrl(cover) } : { thumb_offset: "1000" }),
+    // "Original audio" says nothing; a named sound is one more line people read. Instagram allows one rename, this is it.
+    ...(audioName ? { audio_name: audioName } : {}),
   });
   if (typeof created["id"] !== "string") throw new VideoError("Instagram made no container.", 502);
   return { containerId: created["id"] };
@@ -193,7 +209,7 @@ export async function reelStatus(id: string, containerId: string) {
 }
 
 /** Publishes the finished container, records the reel on the run, and deletes our copy. */
-export async function publishReel(id: string, body: { name?: unknown; containerId?: unknown }) {
+export async function publishReel(id: string, body: { name?: unknown; containerId?: unknown; cover?: unknown }) {
   await runOf(id);
   const containerId = String(body.containerId ?? "");
   if (!CONTAINER.test(containerId)) throw new VideoError("Not a container id.", 400);
@@ -203,6 +219,7 @@ export async function publishReel(id: string, body: { name?: unknown; containerI
   const permalink = await graph("GET", mediaId, { fields: "permalink" }).then((m) => (typeof m["permalink"] === "string" ? m["permalink"] : null), () => null);
   await prisma.videoRun.update({ where: { id }, data: { reelId: mediaId.slice(0, 40), reelUrl: permalink?.slice(0, 300) ?? null } });
   dropReel(String(body.name ?? ""));
+  dropReel(String(body.cover ?? ""));
   return { mediaId, url: permalink };
 }
 

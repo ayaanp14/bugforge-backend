@@ -17,7 +17,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import ffmpegStatic from "ffmpeg-static";
 import { chromium, type Browser, type CDPSession, type Page } from "playwright-core";
-import { FPS, FRAMES, type Format, type Script, type Timeline } from "./types.ts";
+import { COVER, FPS, FRAMES, type Format, type Script, type Timeline } from "./types.ts";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const SITE_FONTS = "https://codekairo.com/fonts";
@@ -239,6 +239,63 @@ export async function renderVideo(browser: Browser, format: Format, html: string
   const errors = [...new Set(stages.flatMap((s) => s.errors))];
   await Promise.all(stages.map((s) => s.page.context().close()));
   if (errors.length) throw new Error(`The page failed during the render: ${errors.slice(0, 5).join("; ")}`);
+}
+
+/** The reel's cover page: our logo at the top of Instagram's grid crop, the model's design under it. */
+function coverHtml(composition: string): string {
+  const { area } = COVER;
+  return `<!doctype html><html><head><meta charset="utf-8"><style>
+${fonts()}
+*{box-sizing:border-box;margin:0;padding:0;animation:none!important;transition:none!important}
+html,body{width:${COVER.w}px;height:${COVER.h}px;overflow:hidden;background:#0A0A0A;color:#F5F5F5;font-family:Gilroy,sans-serif;-webkit-font-smoothing:antialiased}
+#ck-brand{position:absolute;left:${area.x}px;top:${COVER.logoY}px;display:flex;align-items:center;gap:16px;font:600 44px Gilroy}
+#ck-brand img{height:60px;width:auto;display:block}
+#ck-cover{position:absolute;left:${area.x}px;top:${area.y}px;width:${area.w}px;height:${area.h}px}
+</style></head><body>
+<div id="ck-brand"><img src="${logo()}" alt="">CodeKairo</div>
+<div id="ck-cover">${composition}</div>
+</body></html>`;
+}
+
+/**
+ * The cover as a JPEG, sandboxed like the video's frames (no network, a strict
+ * CSP), plus what is mechanically wrong with it and a lighter copy for review.
+ */
+export async function renderCover(browser: Browser, composition: string): Promise<{ jpeg: Buffer; still: Buffer; problems: string[] }> {
+  const context = await browser.newContext({ viewport: { width: COVER.w, height: COVER.h }, deviceScaleFactor: 1 });
+  const page = await context.newPage();
+  const errors: string[] = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  const html = coverHtml(composition);
+  await page.route("**/*", (route) =>
+    route.request().url() === ORIGIN
+      ? route.fulfill({ status: 200, contentType: "text/html; charset=utf-8", headers: { "Content-Security-Policy": CSP }, body: html })
+      : route.abort(),
+  );
+  try {
+    await page.goto(ORIGIN);
+    await page.evaluate(() => document.fonts.ready.then(() => Promise.all(["500 20px Gilroy", "700 20px Gilroy", "500 20px 'JetBrains Mono'"].map((f) => document.fonts.load(f)))));
+    const found = await page.evaluate((area) => {
+      const out: string[] = [];
+      const root = document.getElementById("ck-cover")!;
+      const box = root.getBoundingClientRect();
+      for (const el of root.querySelectorAll<HTMLElement>("*")) {
+        const text = [...el.childNodes].filter((n) => n.nodeType === 3 && n.textContent!.trim()).map((n) => n.textContent!.trim()).join(" ");
+        if (!text) continue;
+        const r = el.getBoundingClientRect();
+        if (!r.width || !r.height) continue;
+        if (r.left < box.left - 1 || r.top < box.top - 1 || r.right > box.right + 1 || r.bottom > box.bottom + 1) out.push(`"${text.slice(0, 40)}" runs outside the ${area.w} x ${area.h} area`);
+        if (parseFloat(getComputedStyle(el).fontSize) < 22) out.push(`"${text.slice(0, 40)}" is under 22px, unreadable as a grid tile`);
+      }
+      return out;
+    }, COVER.area);
+    const jpeg = await page.screenshot({ type: "jpeg", quality: 92 });
+    // The API scales an image down itself; a lighter copy is enough for the review.
+    const still = await page.screenshot({ type: "jpeg", quality: 70 });
+    return { jpeg, still, problems: [...new Set([...found, ...errors.map((e) => `page error: ${e}`)])].slice(0, 15) };
+  } finally {
+    await context.close();
+  }
 }
 
 /** A template of ours, not the model's: the thumbnail is the one frame seen before anyone chooses to watch. */
