@@ -19,6 +19,7 @@ import { HUB_PAGE_SIZE, hubIndex, hubPage, hubProblems, hubProgress, hubsForTags
 import { lessonsForTopics } from "../services/roadmap-lessons.js";
 import { forgetProblemSeo, problemSeoText } from "../services/seo.js";
 import { forgetJudgeSuite } from "../lib/test-suite-cache.js";
+import { isDuplicateKey } from "../lib/seat-claim.js";
 import { filterCatalogue, seededShuffle, sortCatalogue, type CatalogueFilter } from "../lib/catalogue-filter.js";
 import { ENGAGEMENT_EVENTS, recordEngagement, type EngagementEvent } from "../services/skill-profile.js";
 
@@ -42,7 +43,7 @@ const problemKey = (slug: string) => `${PROBLEM_KEY_PREFIX}${slug}`;
  * Editorial tab is opened, so they are fetched (and cached) on demand rather
  * than shipped with every statement.
  */
-const editorialKey = (slug: string) => `problem:editorial:v2:${slug}`;
+const editorialKey = (slug: string) => `problem:editorial:v3:${slug}`;
 
 /** The starter stubs and the hints, which the lean payload leaves out (/:slug/starter/:lang, /:slug/hints). */
 const starterKey = (slug: string) => `problem:starter:v1:${slug}`;
@@ -908,25 +909,35 @@ router.post("/:problemId/draft", requireAuth, async (req, res) => {
       draftIds.delete(draftKey);
     }
 
-    const draft = await prisma.codeDraft.upsert({
-      where: {
-        userId_problemId_language: {
+    const upsertDraft = () =>
+      prisma.codeDraft.upsert({
+        where: {
+          userId_problemId_language: {
+            userId,
+            problemId,
+            language,
+          },
+        },
+        update: {
+          code,
+          updatedAt,
+        },
+        create: {
           userId,
           problemId,
           language,
+          code,
         },
-      },
-      update: {
-        code,
-        updatedAt,
-      },
-      create: {
-        userId,
-        problemId,
-        language,
-        code,
-      },
-      select: { id: true, updatedAt: true },
+        select: { id: true, updatedAt: true },
+      });
+    // Prisma's upsert is a select then a write, not one atomic statement, so
+    // two first saves arriving together (the debounced autosave and the flush
+    // on blur/language switch) can both see no row and both create — the
+    // loser died with P2002 and a 500 (2026-11-06). By then the row exists,
+    // so a second upsert takes its update branch.
+    const draft = await upsertDraft().catch((err: unknown) => {
+      if (!isDuplicateKey(err)) throw err;
+      return upsertDraft();
     });
     rememberDraft(draftKey, draft.id);
     // The dashboard's "continue solving" card is the newest draft. Only this

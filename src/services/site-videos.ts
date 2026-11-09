@@ -36,11 +36,12 @@ export async function recordSiteVideo(paths: string[], video: { youtubeId: strin
   }
 }
 
-/** The newest long video and the newest Short for a page, the long one first. */
+/**
+ * The newest long video for a page. Shorts are recorded too but not shown: on the
+ * site the long explanation is the one worth a reader's time (the owner's call,
+ * 2026-11-09, the day both went up).
+ */
 export async function videosForPath(path: string): Promise<SiteVideo[]> {
-  const rows = await prisma.siteVideo.findMany({ where: { path }, orderBy: { createdAt: "desc" }, take: 10 });
-  const pick = (kind: string) => rows.find((r) => r.kind === kind);
-  return [pick("video"), pick("short")]
-    .filter((r): r is NonNullable<typeof r> => Boolean(r))
-    .map((r) => ({ id: r.youtubeId, title: r.title, kind: r.kind === "short" ? "short" : "video", seconds: r.seconds }));
+  const row = await prisma.siteVideo.findFirst({ where: { path, kind: "video" }, orderBy: { createdAt: "desc" } });
+  return row ? [{ id: row.youtubeId, title: row.title, kind: "video", seconds: row.seconds }] : [];
 }

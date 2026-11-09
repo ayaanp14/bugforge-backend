@@ -25,7 +25,7 @@ Claude picks the video's pages from the site's own sitemaps (`src/site.ts` short
 
 ## On the site
 
-A public upload is also shown on the site (`SiteVideo`, `services/site-videos.ts`): the publish job's `recordUpload` names the video's pages (the practice and learn pages above), and a problem's editorial answer carries its newest long video and Short. The problem page draws them at the top of the Editorial tab and in a visitor's "How to solve" guide (`components/problems/VideoExplanation`, click to play, a Short at 9:16), so the search traffic the problem pages get becomes views. A new video shows within the editorial cache's ten minutes.
+A public upload is also shown on the site (`SiteVideo`, `services/site-videos.ts`): the publish job's `recordUpload` names the video's pages (the practice and learn pages above), and a problem's editorial answer carries its newest long video (Shorts are recorded but not shown on the site, the owner's call). The problem page draws them at the top of the Editorial tab and in a visitor's "How to solve" guide (`components/problems/VideoExplanation`, click to play), so the search traffic the problem pages get becomes views. A new video shows within the editorial cache's ten minutes.
 
 ## What a Short looks like
 
