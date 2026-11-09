@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { AUTO_TOPICS, decideClaim, nextStatus, obviousRepeat, titleKey, topicKey, videoPeriod, type PostedRow } from "./video-studio.js";
+import { AUTO_TOPICS, REEL_FILE, decideClaim, nextStatus, obviousRepeat, reelOnAccount, titleKey, topicKey, videoPeriod, type PostedRow } from "./video-studio.js";
 
 const row = (over: Partial<PostedRow>): PostedRow => ({ youtubeId: "yt1", title: "Two Sum", titleKey: "two sum", sha256: null, runId: null, ...over });
 const claim = (over: Partial<Parameters<typeof decideClaim>[0]>) =>
@@ -64,4 +64,22 @@ test("the job is due only in the half hour from 10:00 IST", () => {
 
 test("the automatic topics hold no repeat of each other", () => {
   assert.equal(new Set(AUTO_TOPICS.map(topicKey)).size, AUTO_TOPICS.length);
+});
+
+test("a reel already on the account is found by its caption's first line", () => {
+  const media = [
+    { id: "1", caption: "Binary Search in 60 Seconds\n\nmore text #dsa" },
+    { id: "2", caption: "Kadane's Algorithm in 60 Seconds!\n\nMaximum subarray #coding" },
+    { id: "3" },
+  ];
+  assert.equal(reelOnAccount("kadane's algorithm in 60 seconds", media)?.id, "2");
+  assert.equal(reelOnAccount("Two Pointers in 60 Seconds", media), null);
+  // A title made only of punctuation matches nothing, not every caption-less reel.
+  assert.equal(reelOnAccount("!!", media), null);
+});
+
+test("a reel file name is the random kind the API makes, never a path", () => {
+  assert.ok(REEL_FILE.test("abcdefghijklmnopqrstuvwxyz012345.mp4"));
+  assert.ok(!REEL_FILE.test("../../etc/passwd.mp4"));
+  assert.ok(!REEL_FILE.test("abcdefghijklmnopqrstuvwxyz01234.mp4"));
 });

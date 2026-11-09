@@ -37,6 +37,20 @@ export function titleKey(title: string): string {
     .slice(0, 200);
 }
 
+/**
+ * A reel's caption opens with its title, so that first line is how a re-run knows
+ * the reel is already on the account: Instagram, unlike YouTube's claim, has no
+ * other key to go by.
+ */
+export function reelOnAccount<T extends { caption?: string }>(title: string, media: T[]): T | null {
+  const key = titleKey(title);
+  if (!key) return null;
+  return media.find((m) => titleKey((m.caption ?? "").split("\n")[0] ?? "") === key) ?? null;
+}
+
+/** The names the API gives a reel file for Instagram to fetch: 24 random bytes, nothing that could walk a path. */
+export const REEL_FILE = /^[A-Za-z0-9_-]{32}\.mp4$/;
+
 /** A prompt's words in order, without the filler: "Explain two sum" and "two sum tutorial" are one topic. */
 export function topicKey(prompt: string): string {
   return titleKey(prompt)

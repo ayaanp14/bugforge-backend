@@ -29,6 +29,12 @@ Each video is **Hinglish** (Roman script, technical terms in English) or **Engli
 
 Claude writes, per cut, a search-first title (under 70 characters, "in Hindi" for Hinglish), a description whose first sentence restates the search term, 10–15 tags and three hashtags (a Short's first is #shorts), and picks one of the channel's playlists (`PLAYLISTS` in src/types.ts). The upload adds: category Education; not made for kids (that would turn off comments and end screens and narrow the audience); no altered or synthetic content to declare; standard licence, embeddable, public stats; the spoken language (`hi` for Hinglish, `en` otherwise) with English title text; the practice link with UTM tags, chapters, a subscribe line; the thumbnail; captions on both cuts; and the video added to "<playlist> in Hindi" (the Short to "Coding Shorts in Hindi"), each playlist made the first time it is needed. A thumbnail, caption or playlist failure is a warning on the run, never a failed upload.
 
+## Instagram
+
+When Instagram is set up (step 5b), the Short also goes up as a reel (`src/instagram.ts`, API side `src/services/video-instagram.ts`). The caption is the Short's title as its first line, the description, the practice page written out (Instagram captions have no clickable links), a follow line and up to five hashtags. Instagram has no private or unlisted posts, so a run that didn't go up public on YouTube isn't posted there (the run says so).
+
+Instagram Login can't upload a file: a reel is made from a URL Instagram fetches itself. So the publish job sends the MP4 to the API, which serves it from a random 32-character name for up to two hours and deletes it as soon as the reel is published or has failed. **Never twice:** the reel's id is kept on the run, and before posting the API reads the account's newest 30 posts for one whose caption opens with this title, so a job that died after Instagram published adopts that reel. The token never expires and never leaves the API: the publish job sends the file and asks, and the API makes every call to Instagram. Any Instagram failure is a warning on the run; YouTube is never held up by it.
+
 ## Never posting the same video twice
 
 - **Before making it:** the API compares the words of the prompt with what's posted. Then Claude judges whether it's the same video in different words. A typed prompt is refused with the title it repeats; an automatic topic moves to the next in line.
@@ -73,6 +79,17 @@ Rotating `VIDEO_RUNNER_SECRET` means reconnecting YouTube, since it also encrypt
 | Variable | `VIDEO_MODEL` | Optional. `claude-sonnet-5-5` halves the Claude cost. |
 
 **5. Deploy** both repositories. GitHub only starts a dispatched workflow whose file is on `main`. The API's deploy creates the four new tables.
+
+**5b. Instagram (optional).** Meta's path for posting to your own account is the Instagram API with **Unified login**: a business portfolio, the Instagram account as one of its assets (no Facebook Page), and a system user's token that never expires. No sign-in button, no redirect URL.
+
+1. Make the Instagram account **professional** (Instagram app → Settings → Account type and tools → Switch to professional account).
+2. At developers.facebook.com, create an app with the use case *Manage messaging & content on Instagram*. Under *Use cases → Customize → API setup with Unified login*, link it to a **business portfolio** (create one, free, if you have none).
+3. In Business settings (business.facebook.com/settings) for that portfolio:
+   - *Accounts → Instagram accounts → Add*, and log in to the Instagram account. Open it there and copy its **ID** (a long number starting 17841).
+   - *Users → System users → Add*: name it `codekairo-reels`, role Admin.
+   - On that system user, *Assign assets*: the app (full control) and the Instagram account (content).
+   - *Generate new token*: the app, expiry **Never**, permissions `instagram_basic` and `instagram_content_publish` (add `business_management` if Meta asks). Copy the token: Meta shows it once.
+4. On the instance, `bash deploy/set-secrets.sh`: `INSTAGRAM_ACCESS_TOKEN` is the token, `INSTAGRAM_USER_ID` the ID. The Videos tab then says which account reels go to, read from Instagram, or why Instagram refused.
 
 **6. On the page:** connect YouTube, set "Post as" to Private, press "Make one now", and watch the result. Then set it to Public and turn on the daily switch.
 

@@ -50,27 +50,27 @@ function tokenKey(): Buffer {
   return digest(`video-studio:youtube:${secret}`);
 }
 
-function sealToken(token: string): string {
+export function sealToken(token: string): string {
   const iv = randomBytes(12);
   const cipher = createCipheriv("aes-256-gcm", tokenKey(), iv);
   const body = Buffer.concat([cipher.update(token, "utf8"), cipher.final()]);
   return [iv, cipher.getAuthTag(), body].map((b) => b.toString("base64url")).join(".");
 }
 
-function openToken(sealed: string): string {
+export function openToken(sealed: string): string {
   const [iv, tag, body] = sealed.split(".").map((p) => Buffer.from(p, "base64url"));
   const decipher = createDecipheriv("aes-256-gcm", tokenKey(), iv!);
   decipher.setAuthTag(tag!);
   return Buffer.concat([decipher.update(body!), decipher.final()]).toString("utf8");
 }
 
-function signState(at: string): string {
+export function signState(at: string): string {
   return createHash("sha256").update(`${tokenKey().toString("hex")}:oauth:${at}`).digest("hex");
 }
 
 /* ── Settings ────────────────────────────────────────────────────────── */
 
-const settings = () => prisma.videoSettings.upsert({ where: { id: "studio" }, create: { id: "studio" }, update: {} });
+export const settings = () => prisma.videoSettings.upsert({ where: { id: "studio" }, create: { id: "studio" }, update: {} });
 
 export async function saveSettings(body: { enabled?: unknown; privacy?: unknown; language?: unknown }) {
   await settings();
@@ -86,7 +86,9 @@ export async function saveSettings(body: { enabled?: unknown; privacy?: unknown;
 
 /* ── YouTube ─────────────────────────────────────────────────────────── */
 
-const callbackUri = (req: Request) => `${(process.env["BACKEND_PUBLIC_URL"] ?? `${req.protocol}://${req.get("host") ?? "localhost:3001"}`).replace(/\/+$/, "")}/api/video-studio/youtube/callback`;
+/** This API's address as the outside world reaches it: Google redirects to it, and Instagram fetches reels from it. */
+export const publicBase = (req: Request) => (process.env["BACKEND_PUBLIC_URL"] ?? `${req.protocol}://${req.get("host") ?? "localhost:3001"}`).replace(/\/+$/, "");
+const callbackUri = (req: Request) => `${publicBase(req)}/api/video-studio/youtube/callback`;
 
 export function youtubeConsentUrl(req: Request): string {
   const clientId = process.env["YOUTUBE_CLIENT_ID"];
@@ -317,7 +319,7 @@ export const removeFromQueue = (id: string) => prisma.videoTopic.deleteMany({ wh
 
 /* ── The runner's routes ─────────────────────────────────────────────── */
 
-async function runOf(id: string) {
+export async function runOf(id: string) {
   const run = await prisma.videoRun.findUnique({ where: { id } });
   if (!run) throw new VideoError("No such run.", 404);
   return run;

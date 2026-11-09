@@ -2814,6 +2814,10 @@ model VideoRun {
   shortId          String?   @db.VarChar(40)
   landscapeClaimAt DateTime?
   shortClaimAt     DateTime?
+  /// The Short as an Instagram reel: its media id and permalink once published, and when the publish step claimed it.
+  reelId           String?   @db.VarChar(40)
+  reelUrl          String?   @db.VarChar(300)
+  reelClaimAt      DateTime?
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
 

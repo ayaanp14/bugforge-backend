@@ -186,10 +186,15 @@ export async function renderVideo(browser: Browser, format: Format, html: string
     // Screenshots are full-range BT.601; delivery is limited-range BT.709, tagged so:
     // Remotion's untagged output is what shifted colours in the social apps.
     "-vf", "scale=in_range=pc:out_range=tv:in_color_matrix=bt601:out_color_matrix=bt709,format=yuv420p",
-    "-c:v", "libx264", "-preset", "veryfast", "-crf", "18", "-g", String(FPS * 2), "-r", String(FPS),
+    // Instagram's reel spec (2026-11-08) is the narrower of the two places this goes:
+    // video at most 25 Mbps (crf 18 on flat animation sits far under it; the cap is
+    // for a busy scene), audio 128 kbps AAC at 48 kHz at most, and no edit lists,
+    // which ffmpeg writes by default for AAC's priming samples. A spoken voice loses
+    // nothing at 128k, and YouTube re-encodes what it gets anyway.
+    "-c:v", "libx264", "-preset", "veryfast", "-crf", "18", "-maxrate", "20M", "-bufsize", "40M", "-g", String(FPS * 2), "-r", String(FPS),
     "-color_primaries", "bt709", "-color_trc", "bt709", "-colorspace", "bt709", "-color_range", "tv",
-    "-c:a", "aac", "-b:a", "192k", "-ar", "48000", "-ac", "2",
-    "-t", timeline.duration.toFixed(3), "-movflags", "+faststart", outPath,
+    "-c:a", "aac", "-b:a", "128k", "-ar", "48000", "-ac", "2",
+    "-t", timeline.duration.toFixed(3), "-use_editlist", "0", "-movflags", "+faststart", outPath,
   ], { stdio: ["pipe", "inherit", "inherit"] });
   const encoded = new Promise<void>((resolve, reject) => {
     ff.on("close", (code) => (code === 0 ? resolve() : reject(new Error(`ffmpeg exited ${code}`))));

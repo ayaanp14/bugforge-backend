@@ -66,3 +66,39 @@ export async function recordUpload(id: string, format: string, videoId: string, 
     await new Promise((done) => setTimeout(done, attempt * 5000));
   }
 }
+
+/* ── Instagram (src/services/video-instagram.ts on the API) ─────────────── */
+//
+// Every call to Instagram is the API's: its token never expires, so it never comes
+// here. The run sends the file and asks how it is going.
+
+export type ReelClaim = { skip: string | null } | { mediaId: string; url: string | null } | { go: true };
+
+async function reelCall<T>(path: string, init: RequestInit = {}): Promise<T> {
+  const res = await call(path, init);
+  const body = (await res.json().catch(() => ({}))) as T & { error?: string };
+  if (!res.ok) throw new Error(body.error ?? `${path}: ${res.status}`);
+  return body;
+}
+
+/** Asked before the reel is made: skip it, it's already up, or go. */
+export async function claimReel(id: string, title: string, publish: boolean): Promise<ReelClaim> {
+  if (!URL_BASE) return { skip: null };
+  return reelCall<ReelClaim>(`${id}/reel/claim`, { method: "POST", body: JSON.stringify({ title, publish }) });
+}
+
+/** The MP4 to the API, which serves it to Instagram: Instagram fetches a reel from a URL. */
+export const stageReel = (id: string, file: Buffer) =>
+  reelCall<{ name: string }>(`${id}/reel/file`, { method: "POST", headers: { "Content-Type": "video/mp4" }, body: new Uint8Array(file) });
+
+export const startReel = (id: string, name: string, caption: string) =>
+  reelCall<{ containerId: string }>(`${id}/reel/start`, { method: "POST", body: JSON.stringify({ name, caption }) });
+
+export const reelStatus = (id: string, containerId: string) => reelCall<{ statusCode: string; status: string }>(`${id}/reel/status/${containerId}`);
+
+export const publishReel = (id: string, name: string, containerId: string) =>
+  reelCall<{ mediaId: string; url: string | null }>(`${id}/reel/publish`, { method: "POST", body: JSON.stringify({ name, containerId }) });
+
+/** Deletes the API's copy now rather than in two hours. */
+export const dropReel = (id: string, name: string) =>
+  call(`${id}/reel/drop`, { method: "POST", body: JSON.stringify({ name }) }).then(() => undefined, () => undefined);

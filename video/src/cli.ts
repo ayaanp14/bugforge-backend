@@ -19,6 +19,7 @@ import { compose, findDuplicate, MODEL, reviewVideo, revise, spend, writeScript 
 import { inspect, launch, loadFonts, pageHtml, renderThumbnail, renderVideo } from "./render.ts";
 import { claimUpload, fetchJob, nextTopic, recordUpload, report, type Job } from "./runner.ts";
 import { ScriptSchema, SHORT_MAX_SECONDS, type Format, type RunState, type Script, type Timeline } from "./types.ts";
+import { postReel } from "./instagram.ts";
 import { voiceCut, voiceName } from "./voice.ts";
 import { addToPlaylist, chapters, setCaptions, setThumbnail, uploadVideo } from "./youtube.ts";
 
@@ -275,7 +276,38 @@ async function publish() {
       if (problem) state.warnings.push(problem);
     }
   }
+  // The same Short as an Instagram reel. Instagram has no private posts, so only a
+  // run that went up public is posted there; the API says no when it's not connected.
+  const reelProblem = await postReel(runId, shortFile, script.short.title, reelCaption(script, state.practiceUrl), privacy === "public");
+  if (reelProblem) state.warnings.push(reelProblem);
+
   await report(runId, { status: state.cleared ? "done" : "needs_review", privacy, warnings: state.warnings, usd: state.usage.usd });
+}
+
+/**
+ * The first line is the title: it is how a re-run recognises the reel on the
+ * account (reelOnAccount on the API). Links in a caption aren't clickable, so the
+ * site is written out for reading. Instagram ranks on the caption's words, and
+ * three to five specific hashtags do better than the thirty allowed.
+ */
+function reelCaption(script: Script, practiceUrl: string): string {
+  const tags = [...script.short.hashtags, ...script.short.tags]
+    .map((t) => t.replace(/[^a-z0-9]/gi, "").toLowerCase())
+    .filter((t, i, all) => t && t !== "shorts" && t.length <= 30 && all.indexOf(t) === i)
+    .slice(0, 5)
+    .map((t) => `#${t}`)
+    .join(" ");
+  const page = practiceUrl.replace(/^https?:\/\//, "").replace(/\?.*$/, "");
+  return [
+    script.short.title,
+    script.short.description,
+    `Practise it free on CodeKairo: ${page}`,
+    "A new coding interview explainer every day. Follow so you don't miss the next one.",
+    tags,
+  ]
+    .filter(Boolean)
+    .join("\n\n")
+    .slice(0, 2200);
 }
 
 async function demo() {

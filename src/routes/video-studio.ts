@@ -18,6 +18,7 @@ import {
   youtubeCallback,
   youtubeConsentUrl,
 } from "../services/video-studio.js";
+import { claimReel, dropReel, instagramAccount, publishReel, reelFile, reelStatus, stageReel, startReel } from "../services/video-instagram.js";
 
 /**
  * The daily videos (services/video-studio.ts). Exempt from the platform guard
@@ -25,6 +26,8 @@ import {
  * proves itself instead:
  *
  *   /youtube/callback   Google's redirect: a state this API signed
+ *   /reel-file/:name    Instagram fetching a reel: a random name this API made,
+ *                       deleted once the reel is published (services/video-instagram.ts)
  *   /runner/*           the GitHub run: VIDEO_RUNNER_SECRET
  *   everything else     campaign.codekairo.com: CAMPAIGN_PASSWORD, the same one the
  *                       page's email half asks for, and rate limited here
@@ -54,6 +57,12 @@ videoStudioRouter.get("/youtube/callback", async (req, res) => {
   res.redirect(303, `${CAMPAIGN_PAGE}&youtube=${encodeURIComponent(result)}`);
 });
 
+videoStudioRouter.get("/reel-file/:name", (req, res) => {
+  const file = reelFile(String(req.params["name"]));
+  if (!file) return void res.status(404).end();
+  res.sendFile(file, { headers: { "Content-Type": "video/mp4", "Cache-Control": "no-store" } });
+});
+
 videoStudioRouter.get("/runner/:id", runnerSecret, async (req, res) => res.json(await jobFor(id(req))));
 videoStudioRouter.post("/runner/:id/status", runnerSecret, async (req, res) => {
   await reportStatus(id(req), req.body ?? {});
@@ -66,10 +75,21 @@ videoStudioRouter.post("/runner/:id/uploaded", runnerSecret, async (req, res) =>
   res.json({ ok: true });
 });
 
+videoStudioRouter.post("/runner/:id/reel/claim", runnerSecret, async (req, res) => res.json(await claimReel(id(req), req.body ?? {})));
+// The body is the MP4 itself: express.json leaves a video/mp4 body unread, and this streams it to disk.
+videoStudioRouter.post("/runner/:id/reel/file", runnerSecret, async (req, res) => res.json(await stageReel(id(req), req)));
+videoStudioRouter.post("/runner/:id/reel/start", runnerSecret, async (req, res) => res.json(await startReel(id(req), req, req.body ?? {})));
+videoStudioRouter.get("/runner/:id/reel/status/:container", runnerSecret, async (req, res) => res.json(await reelStatus(id(req), String(req.params["container"]))));
+videoStudioRouter.post("/runner/:id/reel/publish", runnerSecret, async (req, res) => res.json(await publishReel(id(req), req.body ?? {})));
+videoStudioRouter.post("/runner/:id/reel/drop", runnerSecret, (req, res) => {
+  dropReel(String(req.body?.name ?? ""));
+  res.json({ ok: true });
+});
+
 // Nothing limits a wrong guess at the Worker's copy of this check; this one does.
 videoStudioRouter.use(authLimiter, campaignPassword);
 
-videoStudioRouter.get("/state", async (_req, res) => res.json(await studioState()));
+videoStudioRouter.get("/state", async (_req, res) => res.json({ ...(await studioState()), instagram: await instagramAccount() }));
 videoStudioRouter.put("/settings", async (req, res) => {
   await saveSettings(req.body ?? {});
   res.json({ ok: true });
