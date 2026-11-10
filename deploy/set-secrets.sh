@@ -93,6 +93,7 @@ ask INSTAGRAM_ACCESS_TOKEN "daily videos: the Meta system user's never-expiring 
 ask BREVO_API_KEY         "outbound mail - OTP codes, reminders"
 ask GITHUB_SECRET         "GitHub OAuth app secret"
 ask GOOGLE_CLIENT_SECRET  "Google OAuth client secret"
+ask FACEBOOK_APP_SECRET   "Facebook sign-in: the consumer Meta app's secret, or Enter to skip"
 ask CASHFREE_SECRET_KEY   "Cashfree secret (test keys - Enter to skip is fine)"
 
 # ── account-specific, not secret ────────────────────────────────────────
@@ -100,6 +101,7 @@ ask CASHFREE_SECRET_KEY   "Cashfree secret (test keys - Enter to skip is fine)"
 # your account's identifiers, not the project's.
 ask_plain GITHUB_ID          "GitHub OAuth client ID (rotation does not change it)"
 ask_plain GOOGLE_CLIENT_ID   "Google OAuth client ID (rotation does not change it)"
+ask_plain FACEBOOK_APP_ID    "Facebook sign-in: the consumer Meta app's id, or Enter to skip"
 ask_plain CASHFREE_APP_ID    "Cashfree app id"
 ask_plain CASHFREE_ENV       "sandbox or production - must match the keys above"
 ask_plain NVIDIA_BASE_URL    "e.g. https://integrate.api.nvidia.com/v1"

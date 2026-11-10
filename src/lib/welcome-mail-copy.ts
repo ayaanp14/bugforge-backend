@@ -31,7 +31,7 @@ import { ASSET_ORIGIN, CODE, FONT_FACES, L, MONO, ON_TEAL, PREHEADER_FILLER, SAN
  */
 
 /** How the account signs in, as named in the mail. */
-export type SignInRoad = "email" | "google" | "github";
+export type SignInRoad = "email" | "google" | "github" | "facebook";
 
 export interface WelcomeRecipient {
   email: string;
@@ -47,6 +47,7 @@ const ROAD_LABEL: Record<SignInRoad, string> = {
   email: "email + password",
   google: "Google",
   github: "GitHub",
+  facebook: "Facebook",
 };
 
 /** The four first moves, in the order a new account should meet them. */

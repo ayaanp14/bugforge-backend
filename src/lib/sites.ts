@@ -40,7 +40,7 @@ export const siteUrl = (site: Site): string => (site === "battles" ? BATTLES_URL
  */
 export function oauthCallbackUri(
   req: { protocol: string; get: (h: string) => string | undefined },
-  provider: "github" | "google",
+  provider: "github" | "google" | "facebook",
 ): string {
   const base =
     process.env["BACKEND_PUBLIC_URL"] ?? `${req.protocol}://${req.get("host") ?? "localhost:3001"}`;

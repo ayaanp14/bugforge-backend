@@ -196,7 +196,7 @@ export function welcomeNewAccount(
   via: string,
 ): void {
   if (!user.email) return;
-  const road: SignInRoad = via === "google" || via === "github" ? via : "email";
+  const road: SignInRoad = via === "google" || via === "github" || via === "facebook" ? via : "email";
   void sendWelcome({ email: user.email, name: user.name, username: user.username, via: road }).catch((err) => {
     console.error("[auth] welcome mail failed:", (err as Error)?.message ?? err);
   });

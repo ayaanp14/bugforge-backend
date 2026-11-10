@@ -20,7 +20,8 @@ import { forgetPublicUser } from "../services/public-profile.js";
 /**
  * Social sign-in, ported off NextAuth.
  *
- * The SPA has no server of its own, so both OAuth dances — GitHub and Google —
+ * The SPA has no server of its own, so the OAuth dances — GitHub, Google and
+ * (since 2026-11-10) Facebook —
  * run here as plain OAuth 2.0 authorization-code flows straight against the
  * providers (no Firebase, no SDK): the client secret never leaves the backend.
  * Both paths end the same way the password routes do: a `__session` cookie
@@ -37,6 +38,10 @@ const GITHUB_ID = process.env["GITHUB_ID"];
 const GITHUB_SECRET = process.env["GITHUB_SECRET"];
 const GOOGLE_CLIENT_ID = process.env["GOOGLE_CLIENT_ID"];
 const GOOGLE_CLIENT_SECRET = process.env["GOOGLE_CLIENT_SECRET"];
+/** A Meta app of the consumer kind with the Facebook Login use case (not the reels app: a block on one must not stop the other). */
+const FACEBOOK_APP_ID = process.env["FACEBOOK_APP_ID"];
+const FACEBOOK_APP_SECRET = process.env["FACEBOOK_APP_SECRET"];
+const FACEBOOK_GRAPH = "https://graph.facebook.com/v24.0";
 
 type Intent = "login" | "register";
 
@@ -416,6 +421,130 @@ router.get("/google/callback", async (req, res) => {
     res.redirect(handoffUrl(site, await establishSession(res, result.record)));
   } catch (err) {
     console.error("[auth] Google callback error:", err);
+    res.redirect(failureUrl(site, intent, "oauth_failed"));
+  }
+});
+
+// GET /api/auth/facebook - start the OAuth dance
+//
+// Facebook rather than Instagram (the owner's ask was Instagram, 2026-11-10):
+// Instagram's login serves only business and creator accounts since Meta ended
+// its consumer API in December 2024, and it never shares an email address,
+// which every account here is built on. Facebook Login returns one.
+router.get("/facebook", (req, res) => {
+  if (!FACEBOOK_APP_ID || !FACEBOOK_APP_SECRET) {
+    console.error("[auth] FACEBOOK_APP_ID / FACEBOOK_APP_SECRET are not configured");
+    res.redirect(failureUrl(asSite(req.query["return"]), "login", "oauth_failed"));
+    return;
+  }
+
+  const intent = asIntent(req.query["intent"]);
+  const state = beginHandoff(res, intent, asSite(req.query["return"]));
+
+  const authorize = new URL("https://www.facebook.com/v24.0/dialog/oauth");
+  authorize.searchParams.set("client_id", FACEBOOK_APP_ID);
+  authorize.searchParams.set("redirect_uri", callbackUri(req, "facebook"));
+  authorize.searchParams.set("response_type", "code");
+  authorize.searchParams.set("scope", "public_profile,email");
+  authorize.searchParams.set("state", state);
+  // Someone who unticked the email last time is asked for it again rather than
+  // signed in without one (which is refused below anyway).
+  authorize.searchParams.set("auth_type", "rerequest");
+
+  res.redirect(authorize.toString());
+});
+
+// GET /api/auth/facebook/callback - exchange the code and sign the user in
+router.get("/facebook/callback", async (req, res) => {
+  const intent = asIntent(req.cookies?.[INTENT_COOKIE]);
+  const site = asSite(req.cookies?.[SITE_COOKIE]);
+  const expectedState = req.cookies?.[STATE_COOKIE];
+
+  res.clearCookie(STATE_COOKIE, { path: "/" });
+  res.clearCookie(INTENT_COOKIE, { path: "/" });
+  res.clearCookie(SITE_COOKIE, { path: "/" });
+
+  // "Cancel" or "Not now" on Facebook's dialog.
+  if (typeof req.query["error"] === "string") {
+    res.redirect(failureUrl(site, intent, "oauth_failed"));
+    return;
+  }
+
+  const code = typeof req.query["code"] === "string" ? req.query["code"] : null;
+  const state = typeof req.query["state"] === "string" ? req.query["state"] : null;
+
+  // CSRF: the state we issued must come back untouched.
+  if (!code || !state || !expectedState || state !== expectedState || !FACEBOOK_APP_ID || !FACEBOOK_APP_SECRET) {
+    res.redirect(failureUrl(site, intent, "oauth_failed"));
+    return;
+  }
+
+  try {
+    const tokenUrl = new URL(`${FACEBOOK_GRAPH}/oauth/access_token`);
+    tokenUrl.searchParams.set("client_id", FACEBOOK_APP_ID);
+    tokenUrl.searchParams.set("client_secret", FACEBOOK_APP_SECRET);
+    tokenUrl.searchParams.set("redirect_uri", callbackUri(req, "facebook"));
+    tokenUrl.searchParams.set("code", code);
+    const tokenRes = await fetch(tokenUrl, { headers: { Accept: "application/json" } });
+    const tokenData = (await tokenRes.json().catch(() => ({}))) as { access_token?: string; error?: { message?: string } };
+    const accessToken = tokenData.access_token;
+    if (!tokenRes.ok || !accessToken) {
+      console.error("[auth] Facebook token exchange failed:", tokenData.error?.message ?? tokenRes.status);
+      res.redirect(failureUrl(site, intent, "oauth_failed"));
+      return;
+    }
+
+    // appsecret_proof: Meta's guard that a token is being used by the app it
+    // was issued to, so one leaked from a browser can't be replayed elsewhere.
+    const proof = crypto.createHmac("sha256", FACEBOOK_APP_SECRET).update(accessToken).digest("hex");
+    const profileUrl = new URL(`${FACEBOOK_GRAPH}/me`);
+    profileUrl.searchParams.set("fields", "id,name,email");
+    profileUrl.searchParams.set("appsecret_proof", proof);
+    const profileRes = await fetch(profileUrl, { headers: { Authorization: `Bearer ${accessToken}`, Accept: "application/json" } });
+    if (!profileRes.ok) {
+      console.error("[auth] Facebook /me failed:", profileRes.status);
+      res.redirect(failureUrl(site, intent, "oauth_failed"));
+      return;
+    }
+    const profile = (await profileRes.json()) as { id?: string; name?: string; email?: string };
+    if (typeof profile.id !== "string") {
+      res.redirect(failureUrl(site, intent, "oauth_failed"));
+      return;
+    }
+
+    // Facebook returns `email` only when the person granted it and the
+    // account has a confirmed primary address (none for a phone-only account,
+    // and none if they unticked it). Sign-in links to an existing account by
+    // address, as Google's does, so no address means no sign-in: the page asks
+    // them to use another way in.
+    const email = profile.email?.trim().toLowerCase();
+    if (!email) {
+      console.warn("[auth] Facebook identity with no email refused");
+      res.redirect(failureUrl(site, intent, "facebook_no_email"));
+      return;
+    }
+
+    // Auto-registers, as Google does. No avatar: Facebook's picture URLs are
+    // signed and expire within weeks, so a stored one would turn into a broken
+    // image; an existing account keeps its own.
+    const result = await upsertSocialUser({
+      email,
+      intent: "register-or-login",
+      name: profile.name ?? null,
+      avatarUrl: null,
+      provider: "facebook",
+      providerAccountId: profile.id,
+      accountType: "oauth",
+    });
+
+    if ("error" in result) {
+      res.redirect(failureUrl(site, intent, result.error));
+      return;
+    }
+
+    res.redirect(handoffUrl(site, await establishSession(res, result.record)));
+  } catch (err) {
+    console.error("[auth] Facebook callback error:", err);
     res.redirect(failureUrl(site, intent, "oauth_failed"));
   }
 });
