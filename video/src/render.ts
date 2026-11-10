@@ -161,11 +161,19 @@ export async function inspect(browser: Browser, format: Format, html: string, ti
       if (!on) return "";
       return on.outerHTML + [...on.querySelectorAll("canvas")].map((c) => c.toDataURL()).join("");
     });
-  await seek(stage.page, moment);
-  const first = await state();
-  await seek(stage.page, (b.start + b.end) / 2);
-  await seek(stage.page, moment);
-  if (first !== (await state())) problems.push(`Going to a later time and back to ${moment.toFixed(1)} s drew a different picture: draw must be a pure function of t, keeping no state between frames.`);
+  // A scene that throws was already reported above, with the error, for the fix
+  // round; it must not end the run here (run cmwahqd8k, 2026-11-10: a cue not in
+  // the narration threw out of this check and failed the day's video instead of
+  // being sent back). The purity check just can't be made on a page that throws.
+  try {
+    await seek(stage.page, moment);
+    const first = await state();
+    await seek(stage.page, (b.start + b.end) / 2);
+    await seek(stage.page, moment);
+    if (first !== (await state())) problems.push(`Going to a later time and back to ${moment.toFixed(1)} s drew a different picture: draw must be a pure function of t, keeping no state between frames.`);
+  } catch (e) {
+    if (!problems.length) problems.push(`Seeking to ${moment.toFixed(1)} s threw: ${(e as Error).message}`);
+  }
   problems.push(...stage.errors.map((e) => `page error: ${e}`));
   await stage.page.context().close();
   return { problems: [...new Set(problems)].slice(0, 30), stills };
