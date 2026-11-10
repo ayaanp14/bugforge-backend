@@ -236,6 +236,8 @@ The Short runs 20 to 35 seconds, 50 to 90 words, in 3 to 4 scenes. Shorter is be
 
 ${languageRules(language)}
 
+Never say or show the word LeetCode, or a problem number from it, anywhere in the video: not in the narration, a scene title, a visual, the thumbnail or the cover (the owner's rule). Name a problem only by its own name, "Best Time to Buy and Sell Stock", even when the topic you were given carries a LeetCode number.
+
 Narration is read aloud by a text-to-speech voice, so write for the ear: short sentences, plain words, no markdown. Spell numbers and symbols out as they should be spoken ("twenty three", "O of log n", "n squared"). Every statement about the topic must be correct; a viewer will be tested on it in an interview, so walk the example through and check each value before you write it down.
 
 "visual" tells the animator what the scene shows and which spoken words the changes land on. Anything that can be computed, such as array states, should come from a concrete example given in full there.
@@ -283,6 +285,35 @@ export async function writeScript(prompt: string, posted: string[], language: La
   return ScriptSchema.parse(JSON.parse(raw));
 }
 
+/**
+ * "LeetCode" and its problem numbers, with any brackets around them. The owner's
+ * rule (2026-11-10): never inside a video. The prompts say so; this is the last
+ * guard, run over everything the voice reads or a page draws before either
+ * happens. Titles, descriptions and tags (outside the video) keep their search words.
+ */
+const LEETCODE = /[([]?\s*\bleet\s*code\b(?:\s*(?:problem|question|number|no\.?))*(?:\s*#?\s*\d+)?\s*[)\]]?/gi;
+export const hasLeetCode = (s: string) => /\bleet\s*code\b/i.test(s);
+const scrub = (s: string) => s.replace(LEETCODE, " ").replace(/\s{2,}/g, " ").replace(/\s+([,.:;!?])/g, "$1").replace(/,([.:;!?])/g, "$1").replace(/^[\s,:;]+|[\s,:;]+$/g, "").trim();
+
+/** The script with LeetCode taken out of everything inside the video. Returns what it changed, for the run's log. */
+export function withoutLeetCode(script: Script): { script: Script; changed: number } {
+  let changed = 0;
+  const clean = (s: string) => {
+    if (!hasLeetCode(s)) return s;
+    changed++;
+    return scrub(s);
+  };
+  const cut = (c: Script["short"]) => ({ ...c, scenes: c.scenes.map((x) => ({ ...x, title: clean(x.title), narration: clean(x.narration), visual: clean(x.visual) })) });
+  const out: Script = {
+    ...script,
+    topic: clean(script.topic),
+    thumbnail: { headline: clean(script.thumbnail.headline), tag: clean(script.thumbnail.tag) },
+    landscape: cut(script.landscape),
+    short: cut(script.short),
+  };
+  return { script: out, changed };
+}
+
 /* ── The composition ────────────────────────────────────────────────── */
 
 const reference = () => readFileSync(path.join(HERE, "..", "fixtures", "reference-short.html"), "utf8");
@@ -311,6 +342,8 @@ You write the contents of a <div id="ck-stage">: a <style> block, one <section d
 ## The look
 
 This is a CodeKairo page in motion. Dark ground #0A0A0A; surfaces #111111, #161616, #1C1C1C; hairlines #262626, #383838; text #F5F5F5, secondary #A3A3A3, muted #8C8C8C. The one colour is blue: accent #3AA9FF, highlight #7CC9FF, deep steps #0794F9, #0068CC. State colours only name a state: success #52C98A, error #FF7A7E. Gilroy (400, 500, 600, 700) for words and 'JetBrains Mono' for code and values. No gradients, glass, glows or shadows. Corners are 8px at most.
+
+Never write the word LeetCode or a LeetCode problem number on screen.
 
 Everything must be readable on a phone: on a Short keep text at 44px or larger, on landscape 26px or larger.
 
@@ -448,7 +481,7 @@ A design may leave out the payoff or change the order when the topic calls for i
 
 Dark ground #0A0A0A, a faint grid of #141414 lines is fine; surfaces #111111, #161616, #1C1C1C; hairlines #262626, #383838; text #F5F5F5, secondary #A3A3A3. Blue is the one colour: accent #3AA9FF, highlight #7CC9FF, deep #0794F9, #0068CC. Error #FF7A7E and success #52C98A only name a state (the struck-through cost, a broken thing, a lock that leaks). Gilroy 400 to 700 for words, 'JetBrains Mono' for code and values. Corners 8px at most, no gradients, glows or shadows, except that a card may be tinted with its state colour at low opacity.
 
-Every value drawn must be correct for the topic and agree with the script. Reply with the cover in one \`\`\`html fence and nothing else.`;
+Never write the word LeetCode or a LeetCode problem number on the cover. Every value drawn must be correct for the topic and agree with the script. Reply with the cover in one \`\`\`html fence and nothing else.`;
 
 const coverBrief = (script: Script) => `Topic: ${script.topic}
 The reel's title: ${script.short.title}

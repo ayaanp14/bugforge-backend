@@ -144,6 +144,9 @@ export async function inspect(browser: Browser, format: Format, html: string, ti
       problems.push(...found.map((p) => `scene "${scene.id}" at ${t.toFixed(1)} s: ${p}`));
     }
     stills.push({ scene: scene.id, jpeg: await shot(stage, 70, 0.5) });
+    // Never LeetCode inside the video (the owner's rule, 2026-11-10): the fix round takes it off the screen.
+    const onScreen = await stage.page.evaluate(() => document.getElementById("ck-stage")?.innerText ?? "").catch(() => "");
+    if (/\bleet\s*code\b/i.test(onScreen)) problems.push(`scene "${scene.id}": the word LeetCode is on screen; name the problem by its own name only`);
   }
   // A picture must depend on t alone: visit a moment, go elsewhere, come back.
   // Compared as what the page holds (the stage's DOM with its inline styles, and
@@ -294,6 +297,7 @@ export async function renderCover(browser: Browser, composition: string): Promis
         if (!r.width || !r.height) continue;
         if (r.left < box.left - 1 || r.top < box.top - 1 || r.right > box.right + 1 || r.bottom > box.bottom + 1) out.push(`"${text.slice(0, 40)}" runs outside the ${area.w} x ${area.h} area`);
         if (parseFloat(getComputedStyle(el).fontSize) < 22) out.push(`"${text.slice(0, 40)}" is under 22px, unreadable as a grid tile`);
+        if (/\bleet\s*code\b/i.test(text)) out.push(`"${text.slice(0, 40)}" names LeetCode; the cover names the problem by its own name only`);
       }
       return out;
     }, COVER.area);

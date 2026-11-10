@@ -15,7 +15,7 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { COMPOSE_MODEL, compose, composeCover, findDuplicate, MODEL, reviewCover, reviewVideo, revise, spend, useBatches, writeScript, type Language } from "./claude.ts";
+import { COMPOSE_MODEL, compose, composeCover, withoutLeetCode, findDuplicate, MODEL, reviewCover, reviewVideo, revise, spend, useBatches, writeScript, type Language } from "./claude.ts";
 import { inspect, launch, loadFonts, pageHtml, renderCover, renderThumbnail, renderVideo } from "./render.ts";
 import { claimUpload, fetchJob, nextTopic, recordUpload, report, type Job } from "./runner.ts";
 import { ScriptSchema, SHORT_MAX_SECONDS, type Format, type RunState, type Script, type Timeline } from "./types.ts";
@@ -76,6 +76,10 @@ async function create() {
   writeJson("job.json", job);
   const language = job.language ?? "hinglish";
   let script = await writeScript(job.prompt, job.posted, language, await candidatePages(job.prompt));
+  // Never LeetCode inside the video (the owner's rule): taken out before the voice reads it or a page draws it.
+  const scrubbed = withoutLeetCode(script);
+  script = scrubbed.script;
+  if (scrubbed.changed) console.log(`took "LeetCode" out of ${scrubbed.changed} line(s) of the script`);
   await report(runId, { status: "voicing", title: script.landscape.title, usd: spend.usd });
   const timelines = {} as Record<Format, Timeline>;
   for (const format of FORMATS) {
@@ -374,7 +378,8 @@ async function publish() {
     // The caption's first line is how a re-run recognises the reel on the account.
     title: caption.split("\n")[0]!,
     caption,
-    audioName: `${script.topic} · CodeKairo`,
+    // The topic up to its colon: Instagram cuts an audio name at 60 characters.
+    audioName: `${script.topic.split(":")[0]!.trim().slice(0, 45)} · CodeKairo`,
     publish: privacy === "public",
   });
   if (reelProblem) state.warnings.push(reelProblem);
