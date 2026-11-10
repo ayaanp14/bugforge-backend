@@ -107,6 +107,7 @@ ask_plain INTERVIEW_MODEL    "e.g. nvidia/nemotron-3-super-120b-a12b"
 ask_plain MAIL_REPLY_TO      "the published support inbox"
 ask_plain OWNER_EMAILS       "comma-separated; these accounts bypass every quota"
 ask_plain INSTAGRAM_USER_ID  "daily videos: the Instagram account's id (17841...), or Enter to skip"
+ask_plain VIDEO_NOTIFY_EMAIL "daily videos: who is mailed when a run posts or fails (comma-separated), or Enter to skip"
 ask_plain ADMIN_EMAIL        "extra admin-panel address, or Enter to skip"
 ask_plain PLATFORM_SECRET    "KEEP THE CURRENT VALUE - changing it needs a matching frontend build (Phase 2)"
 

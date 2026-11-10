@@ -19,6 +19,10 @@ One prompt makes a landscape video (3 to 5 minutes) and a Short (20 to 35 second
 
 Anything the review doesn't clear goes up private and shows as "Check this one" on the page.
 
+## The mail when a run ends
+
+When a run is posted, held as "Check this one" or fails, the API mails the addresses in `VIDEO_NOTIFY_EMAIL` (server environment, comma-separated) through Brevo: the links to both cuts and the reel, the cost, the warnings, or the error and the log (`src/services/video-notify.ts`). Once per ending, so the failure job repeating "failed" sends nothing more.
+
 ## Links to the site
 
 Claude picks the video's pages from the site's own sitemaps (`src/site.ts` shortlists the pages whose address shares words with the topic: the problem, its topic hub, the roadmap lesson, a CS note), never by guessing: `practicePath` (where to solve it) and `learnPath` (where the idea is taught). Both are checked against the live site before they are printed; a page that doesn't answer falls back to /challenges or is left out. The landscape description carries all four links (practise, learn, the roadmap, the site), the Short's the first two, each with UTM tags per place (video, short, comment, short-comment). Every public video also gets a comment from the channel with the same links and a question for the comments. **The YouTube API cannot pin a comment** (it has no such call), so pinning it is one tap in YouTube Studio.

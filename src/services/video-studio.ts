@@ -17,6 +17,7 @@ import type { Request } from "express";
 import { dayKey, zoned } from "../lib/clock.js";
 import { prisma } from "../lib/prisma.js";
 import { pagePaths, recordSiteVideo } from "./site-videos.js";
+import { notifyVideoRun } from "./video-notify.js";
 import { registerJob, type Job } from "../lib/scheduler.js";
 import { CAMPAIGN_URL } from "../lib/sites.js";
 import { AUTO_TOPICS, OPEN_TOPIC, VIDEO_FINISHED, VIDEO_LANGUAGES, VIDEO_PRIVACY, VIDEO_STALLED_MS, decideClaim, nextStatus, obviousRepeat, titleKey, videoPeriod, type VideoLanguage, type VideoPrivacy } from "../lib/video-studio.js";
@@ -347,7 +348,7 @@ export async function replaceTopic(id: string, duplicateOf: string) {
 export async function reportStatus(id: string, body: Record<string, unknown>) {
   const run = await runOf(id);
   const str = (v: unknown, max: number) => (typeof v === "string" ? v.slice(0, max) : undefined);
-  await prisma.videoRun.update({
+  const updated = await prisma.videoRun.update({
     where: { id },
     data: {
       ...(typeof body["status"] === "string" ? { status: nextStatus(run.status, body["status"]).slice(0, 24) } : {}),
@@ -361,6 +362,8 @@ export async function reportStatus(id: string, body: Record<string, unknown>) {
       ...(Array.isArray(body["warnings"]) ? { warnings: body["warnings"].map(String).slice(0, 20) } : {}),
     },
   });
+  // The owner's mail (services/video-notify.ts), once per ending: only on the move into a finished state.
+  if (!VIDEO_FINISHED.has(run.status) && VIDEO_FINISHED.has(updated.status)) void notifyVideoRun(updated);
 }
 
 type Cut = "landscape" | "short";
