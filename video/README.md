@@ -17,7 +17,7 @@ One prompt makes a landscape video (3 to 5 minutes) and a Short (20 to 35 second
 3. **`render` job.** Compiles and runs the on-screen Java, then renders every frame. It holds no secrets, because this is the job that runs model-written code.
 4. **`publish` job.** A daily run waits until 18:00 IST (status "scheduled"), then asks the API before each upload, uploads, and reports back.
 
-Anything the review doesn't clear goes up private and shows as "Check this one" on the page.
+Every run posts at the privacy set on the page. The review fixes what it finds, up to three rounds; whatever it still flags after that is listed on the run and in the owner's mail, and the video goes out anyway (the owner's rule, 2026-11-12; before, an uncleared run went up private and skipped Instagram).
 
 ## The mail when a run ends
 

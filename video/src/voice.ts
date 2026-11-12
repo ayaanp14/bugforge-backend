@@ -139,6 +139,12 @@ function speechEnd(pcm: Float32Array, from: number, limit: number): number {
 export const sentences = (text: string) => text.match(/[^.!?]+[.!?]+["')]*|[^.!?]+$/g)?.map((s) => s.trim()).filter(Boolean) ?? [text];
 
 /** Each word's start spread by length across the time the line took to say. */
+/** The same words in the same order, ignoring case and punctuation. */
+export function sameWords(a: string, b: string): boolean {
+  const words = (s: string) => s.toLowerCase().replace(/[^\p{L}\p{N}']+/gu, " ").trim().split(/\s+/).join(" ");
+  return words(a) === words(b);
+}
+
 function spread(line: string, from: number, seconds: number): Word[] {
   const shown = line.split(/\s+/).filter(Boolean);
   const chars = shown.reduce((n, w) => n + w.length + 1, 0);
@@ -164,7 +170,28 @@ interface Read {
 interface Mark {
   time: number;
   type: string;
+  /** Byte offsets of the text this mark speaks, in the request's text. */
+  start?: number;
+  end?: number;
   value: string;
+}
+
+/**
+ * Each stretch of the script once, in order. Polly can report spelled-out letters
+ * twice: "a b c a b c b b" came back as "a b c b c a b c b c b b" (run cmwbx65h7,
+ * 2026-11-10), most likely the letters read once as letters and again as the
+ * abbreviation "ABC", and the captions printed every mark. A repeated mark covers
+ * text an earlier one already covered, so a word mark that starts before the
+ * previous one ends is dropped. Marks without offsets are all kept, as before.
+ */
+export function distinctWords<T extends { start?: number; end?: number }>(marks: T[]): T[] {
+  let covered = -1;
+  return marks.filter((m) => {
+    if (typeof m.start !== "number" || typeof m.end !== "number") return true;
+    if (m.start < covered) return false;
+    covered = m.end;
+    return true;
+  });
 }
 
 /**
@@ -183,7 +210,7 @@ async function pollyRead(lines: string[], warnings: string[]): Promise<Read> {
     console.log(`  no speech marks for ${voiceName()} (${(err as Error).name}); timing by pauses`);
   }
   const said = marks.filter((m) => m.type === "sentence");
-  const words = marks.filter((m) => m.type === "word");
+  const words = distinctWords(marks.filter((m) => m.type === "word"));
   if (!said.length || !words.length) {
     const spans = alignLines(stretches(envelope(pcm)), lines);
     if (spans) return { spans, lines, pcm };
@@ -269,8 +296,13 @@ export async function voiceCut(format: Format, scenes: SceneScript[], dir: strin
       const seconds = (to - from) / RATE;
       push(read.pcm.subarray(from, to));
       push(new Float32Array(Math.round(GAP_S * RATE)));
+      // Polly's own word times when its words are the line's words; otherwise the
+      // line's words spread over its speech, so a caption never prints a word the
+      // script doesn't say (the second guard behind distinctWords).
       const said = read.words?.[l];
-      words.push(...(said?.length ? said.map((x) => ({ w: x.w, t: lineStart + Math.max(0, x.t - from / RATE) })) : spread(line, lineStart, seconds)));
+      const exact = said?.length && sameWords(said.map((x) => x.w).join(" "), line);
+      if (said?.length && !exact) console.log(`  captions for "${line.slice(0, 40)}…" timed by length: the voice's words didn't match the script`);
+      words.push(...(exact ? said!.map((x) => ({ w: x.w, t: lineStart + Math.max(0, x.t - from / RATE) })) : spread(line, lineStart, seconds)));
       srt.push(`${srt.length + 1}\n${stamp(lineStart)} --> ${stamp(lineStart + seconds)}\n${line}\n`);
     });
     push(new Float32Array(Math.round(SCENE_GAP_S * RATE)));

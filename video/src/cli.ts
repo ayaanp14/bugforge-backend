@@ -27,8 +27,12 @@ import { candidatePages, livePage, SITE } from "./site.ts";
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.join(HERE, "..");
 const FORMATS: Format[] = ["landscape", "short"];
-/** Each revision rewrites a whole composition, the costly part of a run; two is the most a day's video gets. */
-const MAX_ROUNDS = 2;
+/**
+ * Fix rounds a day's video gets before it posts anyway. Three since 2026-11-12:
+ * a round is cheap now (edits, Sonnet, batched), and the owner's rule is that the
+ * review fixes what it finds and the video always goes out.
+ */
+const MAX_ROUNDS = 3;
 
 const args = process.argv.slice(2);
 const opt = (name: string) => {
@@ -300,8 +304,12 @@ async function publish() {
   const job = readJson<Job>("job.json");
   const script = readJson<Script>("script.json");
   const state = readJson<RunState>("state.json");
-  // Nothing goes public that the review did not clear.
-  const privacy = state.cleared ? job.privacy : "private";
+  // Always the privacy the page sets (the owner's rule, 2026-11-12: "the video needs
+  // to post no matter which error comes"). Until then a run the review didn't clear
+  // went up private and skipped Instagram, which is how 11 Nov's video sat unseen
+  // over captions only the code could fix. What the review still flags after its
+  // fix rounds is in the run's warnings and the owner's mail.
+  const privacy = job.privacy;
   const slug = runId;
   const language = job.language ?? "hinglish";
 
@@ -384,7 +392,7 @@ async function publish() {
   });
   if (reelProblem) state.warnings.push(reelProblem);
 
-  await report(runId, { status: state.cleared ? "done" : "needs_review", privacy, warnings: state.warnings, usd: state.usage.usd });
+  await report(runId, { status: "done", privacy, warnings: state.warnings, usd: state.usage.usd });
 }
 
 /**
