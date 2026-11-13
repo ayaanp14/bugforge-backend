@@ -67,7 +67,8 @@ html,body{width:${frame.w}px;height:${frame.h}px;overflow:hidden;background:#0A0
 #ck-where{font:500 ${vertical ? 28 : 24}px Gilroy;color:#A3A3A3}
 #ck-num{font:500 ${vertical ? 28 : 24}px 'JetBrains Mono';color:#3AA9FF;margin-right:12px}
 #ck-progress{position:absolute;left:0;right:0;bottom:-1px;height:2px;background:#3AA9FF;transform-origin:left}
-#ck-stage{position:absolute;left:${stage.x}px;top:${stage.y}px;width:${stage.w}px;height:${stage.h}px}
+#ck-bg{position:absolute;left:0;top:0}
+#ck-stage{position:absolute;left:${stage.x}px;top:${stage.y}px;width:${stage.w}px;height:${stage.h}px;clip-path:inset(0 -${stage.x}px)}
 #ck-captions{position:absolute;left:${stage.x}px;right:${stage.x}px;top:${stage.y + stage.h + (vertical ? 40 : 28)}px;height:${vertical ? 170 : 110}px;text-align:center;font:600 ${vertical ? 60 : 44}px/1.25 Gilroy}
 .ck-code{font-family:'JetBrains Mono',monospace;font-variant-ligatures:none;line-height:1.55;white-space:pre;color:#EFF8FF}
 .ck-line{padding:0 12px;border-left:3px solid transparent}
@@ -76,6 +77,7 @@ html,body{width:${frame.w}px;height:${frame.h}px;overflow:hidden;background:#0A0
 <script>window.__CK_DATA=${inline({ timeline, frame, code })}</script>
 <script>${readFileSync(path.join(HERE, "runtime.js"), "utf8")}</script>
 </head><body>
+<svg id="ck-bg" width="${frame.w}" height="${frame.h}" aria-hidden="true"><defs><pattern id="ck-dot" width="48" height="48" patternUnits="userSpaceOnUse"><circle cx="24" cy="24" r="1.8" fill="#1F1F1F"/></pattern></defs><rect id="ck-bg-dots" width="${frame.w + 96}" height="${frame.h + 96}" fill="url(#ck-dot)"/></svg>
 <div id="ck-head"><div id="ck-brand"><img src="${logo()}" alt="">CodeKairo</div><div id="ck-where"><span id="ck-num"></span><span id="ck-title"></span><div id="ck-progress"></div></div></div>
 <div id="ck-stage">${composition}</div>
 <div id="ck-captions"></div>

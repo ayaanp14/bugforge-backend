@@ -39,6 +39,8 @@ A public upload is also shown on the site (`SiteVideo`, `services/site-videos.ts
 
 20 to 35 seconds in 3 to 4 scenes (YouTube pushes a Short people finish and replay). The first scene is the hook: at most 10 words, the payoff in 110px type, fully drawn on its first frame (that frame is also the feed's preview), with the page's header hidden for it (`src/runtime.js`).
 
+**Motion** (since 2026-11-14, the owner: "more animated, small 3D camera angles"). The runtime owns a camera: every scene breathes (a slow zoom around 1 with a slight turn, never past what a stage-wide headline can take), swings in at its cut, and sits on a drifting dot grid for parallax; `CK.camera(sceneId, keys)` adds the scene’s own moves (zoom, pan, `focus` on an element, tilts up to 25 degrees). One-line helpers — `CK.move` (keyframes), `pop`, `flip`, `slide`, `stagger`, `bump`, `shake`, `float`, `count`, `trace` — keep a moving scene about as short to write as a still one, so the cost per run barely moves. The audit measures text with the camera off (a crop is deliberate, an overflow is not); the stage clips above and below and spills only into the side margins.
+
 ## Topics
 
 The queue first, then `AUTO_TOPICS` (`src/lib/video-studio.ts` on the API): coding problems named by their LeetCode title and number, the way students search them, with an aptitude topic every few days. Its position is stored, so only append, or rewrite entries the position hasn't reached.

@@ -32,6 +32,7 @@
     return ((r ^ (r >>> 14)) >>> 0) / 4294967296;
   };
 
+  const $ = (id) => document.getElementById(id);
   const clamp = (v, a = 0, b = 1) => Math.min(b, Math.max(a, v));
   const ease = {
     linear: (p) => p,
@@ -72,6 +73,112 @@
 
   const typed = (text, v) => text.slice(0, Math.round(clamp(v) * text.length));
 
+  /* ── Motion: one line each, so a moving scene costs the model no more code than a still one ── */
+  const PROPS = { x: 0, y: 0, z: 0, rx: 0, ry: 0, rot: 0, scale: 1, opacity: 1 };
+  /**
+   * Keyframes [{at, ...props}] to the state at t. A key keeps every prop it
+   * doesn't name from the key before it, so {at, x: 200} moves only x. Eased in
+   * and out between keys, or by a key's own ease ("out", "back", "linear").
+   */
+  const keyed = (t, keys, base) => {
+    const full = [];
+    let prev = base;
+    for (const k of [...keys].sort((a, b) => a.at - b.at)) full.push((prev = { ...prev, ...k }));
+    if (!full.length) return { ...base };
+    if (t <= full[0].at) return full[0];
+    for (let i = 1; i < full.length; i++) {
+      const a = full[i - 1], b = full[i];
+      if (t < b.at) {
+        const v = (ease[b.ease] || ease.inOut)(clamp((t - a.at) / (b.at - a.at)));
+        const out = { ...b };
+        for (const key of Object.keys(base)) if (typeof a[key] === "number" && typeof b[key] === "number") out[key] = mix(a[key], b[key], v);
+        return out;
+      }
+    }
+    return full[full.length - 1];
+  };
+  // Each element carries its own perspective, so a tilt reads as depth without
+  // the composition keeping preserve-3d on every wrapper.
+  const transform = (o) => `perspective(1100px) translate3d(${o.x}px,${o.y}px,${o.z}px) rotateX(${o.rx}deg) rotateY(${o.ry}deg) rotate(${o.rot}deg) scale(${o.scale})`;
+  const apply = (el, o) => { el.style.transform = transform(o); el.style.opacity = o.opacity; return o; };
+  /** Moves an element through keyframes: x, y, z in px, rx, ry, rot in degrees, scale, opacity. */
+  const move = (el, t, keys) => apply(el, keyed(t, keys, PROPS));
+  /** Springs an element in from at (scale with overshoot), out from until. */
+  const pop = (el, t, at, until = Infinity) => {
+    const out = p(t, until, until + 0.3);
+    return apply(el, { ...PROPS, scale: mix(0.35, 1, p(t, at, at + 0.5, ease.back)) * (1 - 0.15 * out), opacity: p(t, at, at + 0.18, ease.linear) * (1 - out) });
+  };
+  /** Swings an element in on its top edge like a card turning over. */
+  const flip = (el, t, at, until = Infinity) => {
+    const v = p(t, at, at + 0.55, ease.back), out = p(t, until, until + 0.3);
+    el.style.transformOrigin = "50% 0";
+    return apply(el, { ...PROPS, rx: mix(-95, 0, v) + 60 * out, opacity: p(t, at, at + 0.2, ease.linear) * (1 - out) });
+  };
+  const FROM = { left: [-1, 0], right: [1, 0], up: [0, -1], down: [0, 1] };
+  /** Slides an element in from a side ("left", "right", "up", "down"), turning to face the viewer. */
+  const slide = (el, t, at, from = "left", dist = 160, until = Infinity) => {
+    const [dx, dy] = FROM[from] || FROM.left;
+    const v = p(t, at, at + 0.5), out = p(t, until, until + 0.3);
+    return apply(el, { ...PROPS, x: dx * dist * (1 - v), y: dy * dist * (1 - v), ry: -dx * 35 * (1 - v), rx: dy * 35 * (1 - v), opacity: v * (1 - out) });
+  };
+  /** Runs an entrance (pop by default) over a list, one after another, gap seconds apart. */
+  const stagger = (els, t, at, gap = 0.08, fx = pop) => [...els].forEach((el, i) => fx(el, t, at + i * gap));
+  /** A one-shot emphasis factor for scale: 1, rising to 1 + amount just after at, back to 1. */
+  const bump = (t, at, amount = 0.16) => { const d = t - at; return d < 0 || d > 0.5 ? 1 : 1 + amount * Math.sin((d / 0.5) * Math.PI); };
+  /** A damped shake in px, for a wrong answer or a crossed-out approach. */
+  const shake = (t, at, px = 14) => { const d = t - at; return d < 0 || d > 0.6 ? 0 : px * Math.sin(d * 44) * (1 - d / 0.6); };
+  /** A gentle idle bob in px, so an element that waits still breathes. */
+  const float = (t, amp = 6, period = 3, phase = 0) => amp * Math.sin((t / period + phase) * Math.PI * 2);
+  /** Counts a number from one value to another between two times, into el. */
+  const count = (el, t, from, to, a, b, decimals = 0) => { el.textContent = mix(from, to, p(t, a, b)).toFixed(decimals); };
+  /** Draws an SVG path or line along its length between two times. */
+  const trace = (el, t, a, b) => {
+    const len = el.getTotalLength();
+    el.style.strokeDasharray = len;
+    el.style.strokeDashoffset = len * (1 - p(t, a, b, ease.inOut));
+  };
+
+  /* ── The camera: the runtime's, like the captions ─────────────────────── */
+  // Every scene drifts (a slow push in with a turn) and swings in at its cut, so
+  // no frame is a still slide even where the model wrote no camera at all; a
+  // composition adds its own moves with CK.camera. Bounded so a phone can read
+  // it, and the audit measures text with the camera off, so the camera may crop
+  // on purpose but can't hide an overflow from the check.
+  const shots = new Map();
+  const CAM = { zoom: 1, x: 0, y: 0, rx: 0, ry: 0, rz: 0 };
+  const camera = (sceneId, keys) => { scene(sceneId); shots.set(sceneId, keys); };
+  /** Where an element's centre sits relative to the stage's centre, with no camera on. */
+  const offsetOf = (el, section) => {
+    const keep = section.style.transform;
+    section.style.transform = "none";
+    const r = el.getBoundingClientRect(), st = $("ck-stage").getBoundingClientRect();
+    section.style.transform = keep;
+    return { x: r.left + r.width / 2 - (st.left + st.width / 2), y: r.top + r.height / 2 - (st.top + st.height / 2) };
+  };
+  function shoot(t, s, index, section) {
+    const keys = (shots.get(s.id) || []).map((k) => {
+      if (!k.focus) return k;
+      const el = typeof k.focus === "string" ? section.querySelector(k.focus) : k.focus;
+      if (!el) throw new Error(`CK.camera focus "${k.focus}" is not in scene "${s.id}"`);
+      return { zoom: 1.35, ...k, ...offsetOf(el, section) };
+    });
+    const c = keyed(t, keys, CAM);
+    const zoom = clamp(c.zoom, 0.8, 2.2), rx = clamp(c.rx, -25, 25), ry = clamp(c.ry, -25, 25), rz = clamp(c.rz, -10, 10);
+    const v = clamp((t - s.start) / Math.max(0.01, s.end - s.start));
+    const dir = index % 2 ? -1 : 1;
+    // The first scene gets no entrance: a Short's hook must be whole on frame one.
+    const enter = index === 0 ? 1 : p(t, s.start, s.start + 0.6, ease.out);
+    // The drift breathes around 1 rather than pushing past it, so a headline that fills the stage is never cut.
+    const z = zoom * mix(0.975, 1.012, ease.inOut(v)) * mix(0.9, 1, enter);
+    const turn = ry + dir * mix(-2.2, 2.2, ease.inOut(v)) + dir * 14 * (1 - enter);
+    const tilt = rx + 1.4 * Math.sin(v * Math.PI);
+    section.style.transformOrigin = "50% 50%";
+    section.style.transform = `perspective(1800px) translate(${-c.x * z}px,${-c.y * z}px) rotateX(${tilt}deg) rotateY(${turn}deg) rotate(${rz}deg) scale(${z})`;
+    // The dotted ground drifts on its own and leans against the camera: a little parallax.
+    const dots = $("ck-bg-dots");
+    if (dots) dots.setAttribute("transform", `translate(${(((t * 14 + turn * 6) % 48) + 48) % 48 - 48} ${(((t * 9 - tilt * 6) % 48) + 48) % 48 - 48})`);
+  }
+
   /* ── Code: the script's own source, never retyped by the model ───────── */
   const KEYWORDS = /^(abstract|boolean|break|byte|case|catch|char|class|const|continue|def|default|do|double|elif|else|enum|except|extends|final|finally|float|for|from|function|if|implements|import|in|instanceof|int|interface|let|long|new|null|package|private|protected|public|return|short|static|super|switch|this|throw|throws|true|false|try|var|void|while|None|True|False)$/;
   const esc = (s) => s.replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" })[c]);
@@ -107,7 +214,6 @@
   };
 
   /* ── Header and captions ─────────────────────────────────────────────── */
-  const $ = (id) => document.getElementById(id);
   const MAX_WORDS = frame.w > frame.h ? 11 : 6;
   const CAPTION_LINES = timeline.scenes.map((s) => {
     const out = [];
@@ -164,16 +270,28 @@
     for (const el of sections()) {
       const on = el.dataset.scene === s.id;
       el.style.display = on ? "" : "none";
-      // A short dip at each cut: scenes change on the voice, never mid-word.
-      if (on) el.style.opacity = p(t, s.start, s.start + 0.25) * (1 - p(t, s.end - 0.15, s.end, ease.linear));
+      // A hidden section is reset, so nothing it holds depends on which frames came before.
+      if (!on) { el.style.transform = ""; continue; }
+      // A short dip at each cut: scenes change on the voice, never mid-word. The
+      // first scene is on from frame one (a Short's hook is its picture in the feed).
+      el.style.opacity = (index === 0 ? 1 : p(t, s.start, s.start + 0.25)) * (1 - p(t, s.end - 0.15, s.end, ease.linear));
     }
+    const section = sections().find((el) => el.dataset.scene === s.id);
     chrome(t, s, index);
     if (draw) draw(t, s);
+    // After draw, so a focus lands on where the element is in this frame.
+    if (section) shoot(t, s, index, section);
   }
 
   /** What a person would call broken at this moment, for the review loop. */
   function audit() {
     const problems = [];
+    // Measured with the camera off: its crop is deliberate, an overflow is not.
+    const held = sections().map((el) => [el, el.style.transform]);
+    for (const [el] of held) el.style.transform = "none";
+    try { return measure(problems); } finally { for (const [el, v] of held) el.style.transform = v; }
+  }
+  function measure(problems) {
     const stage = $("ck-stage").getBoundingClientRect();
     for (const el of $("ck-stage").querySelectorAll("*")) {
       if (el.tagName === "STYLE" || el.tagName === "SCRIPT") continue;
@@ -195,6 +313,7 @@
   window.CK = {
     frame, stage: frame.stage, vertical: frame.h > frame.w, duration: timeline.duration, scenes: timeline.scenes, scene, cue,
     p, mix, clamp, ease, reveal, typed, code: codeBlock, focusLines,
+    move, pop, flip, slide, stagger, bump, shake, float, count, trace, camera,
     render: (fn) => { draw = fn; },
   };
   window.__ck = { seek, audit, missing, duration: timeline.duration };

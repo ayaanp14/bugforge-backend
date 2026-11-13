@@ -1,10 +1,10 @@
 <style>
   .eyebrow { font: 600 26px Gilroy; letter-spacing: .14em; color: #3AA9FF; text-transform: uppercase; }
-  .big { font: 700 92px/1.08 Gilroy; color: #F5F5F5; }
-  .row { display: flex; gap: 12px; justify-content: center; }
+  .big { font: 700 112px/1.05 Gilroy; color: #F5F5F5; }
+  .row { position: relative; display: flex; gap: 12px; justify-content: center; }
   .cell { width: 84px; height: 104px; display: grid; place-items: center; font: 600 36px Gilroy; color: #A3A3A3; background: #111111; border: 1px solid #262626; border-radius: 8px; }
   .cell.mid { color: #F5F5F5; border-color: #3AA9FF; background: #161616; }
-  .cell.out { opacity: .22; }
+  .ptr { position: absolute; top: -64px; left: 0; width: 84px; text-align: center; font: 500 30px 'JetBrains Mono'; color: #3AA9FF; opacity: 0; }
   .label { font: 500 34px 'JetBrains Mono'; color: #A3A3A3; text-align: center; min-height: 46px; }
   .label b { color: #7CC9FF; font-weight: 500; }
   .center { height: 100%; display: flex; flex-direction: column; justify-content: center; gap: 44px; }
@@ -12,14 +12,14 @@
 </style>
 
 <section data-scene="hook"><div class="center">
-  <div class="eyebrow" id="h-eye">Binary search</div>
+  <div class="eyebrow">Binary search</div>
   <div class="big" id="h-a">A million numbers.</div>
   <div class="big" id="h-b" style="color:#3AA9FF">Twenty checks.</div>
 </div></section>
 
 <section data-scene="walk"><div class="center">
   <div class="label" id="w-target">target = <b>23</b></div>
-  <div class="row" id="w-row"></div>
+  <div class="row" id="w-row" style="margin-top:24px"><div class="ptr" id="w-ptr">mid ↓</div></div>
   <div class="label" id="w-note"></div>
   <div id="w-code"></div>
 </div></section>
@@ -30,9 +30,10 @@
 </div></section>
 
 <script>
+  const $ = (id) => document.getElementById(id);
   const nums = [2, 5, 8, 12, 16, 23, 38, 56, 72, 91];
   const target = 23;
-  const row = document.getElementById("w-row");
+  const row = $("w-row");
   const cells = nums.map((n) => {
     const el = document.createElement("div");
     el.className = "cell";
@@ -40,7 +41,7 @@
     row.append(el);
     return el;
   });
-  const code = document.getElementById("w-code");
+  const code = $("w-code");
   CK.code(code, { fontSize: 25, first: 3, last: 9 });
 
   // The steps come from running the algorithm, never typed, and each lands on
@@ -52,30 +53,66 @@
     if (nums[mid] === target) break;
     if (nums[mid] < target) lo = mid + 1; else hi = mid - 1;
   }
+  const walk = CK.scene("walk");
   const at = [CK.cue("walk", "look at the middle"), CK.cue("walk", "right half")];
+  const removed = CK.cue("walk", "one check removed");
+  const twenty = CK.cue("hook", "twenty checks");
+  const solve = CK.cue("outro", "solve it");
+  const centreOf = (i) => cells[i].offsetLeft + cells[i].offsetWidth / 2 - 42;
+
+  // The camera, once per scene: lean in on the payoff (the headlines fill the
+  // stage, so barely); follow the middle cell,
+  // then pull back to show the half that is left; swing round on the sign-off.
+  CK.camera("hook", [{ at: twenty - 0.2 }, { at: twenty + 0.8, zoom: 1.04, y: 60 }]);
+  CK.camera("walk", [
+    { at: walk.start, zoom: 0.95, rx: 8 },
+    { at: at[0], zoom: 1, rx: 0 },
+    { at: at[0] + 0.7, focus: cells[steps[0].mid], zoom: 1.6 },
+    { at: at[1] + 0.8, focus: cells[steps[1].mid], zoom: 1.4 },
+    { at: removed, zoom: 1, x: 0, y: 0 },
+  ]);
+  CK.camera("outro", [{ at: CK.scene("outro").start, ry: -14 }, { at: solve + 0.6, ry: 0 }]);
 
   CK.render((t, scene) => {
-    const $ = (id) => document.getElementById(id);
     if (scene.id === "hook") {
-      CK.reveal($("h-eye"), t, scene.start);
-      CK.reveal($("h-a"), t, CK.cue("hook", "a million numbers"));
-      CK.reveal($("h-b"), t, CK.cue("hook", "twenty checks"));
+      // Whole on frame one; the second line kicks as it is said.
+      CK.move($("h-b"), t, [{ at: 0, scale: CK.bump(t, twenty, 0.12) }]);
     }
     if (scene.id === "walk") {
-      CK.reveal($("w-target"), t, scene.start);
+      CK.slide($("w-target"), t, scene.start, "down", 60);
+      // The row lands cell by cell on a board tilted back, then stands up to be read.
+      CK.move(row, t, [{ at: scene.start, rx: 32 }, { at: at[0], rx: 0 }]);
       let step = steps[0];
       at.forEach((when, i) => { if (t >= when && steps[i]) step = steps[i]; });
       const started = t >= at[0];
       cells.forEach((el, i) => {
+        const out = started && (i < step.lo || i > step.hi);
+        const lands = scene.start + 0.2 + i * 0.07;
+        const dropped = Math.max(lands, at[1]);
+        // The middle kicks on the word that picks it.
+        const kick = started && i === step.mid ? CK.bump(t, at[steps.indexOf(step)]) : 1;
         el.classList.toggle("mid", started && i === step.mid);
-        el.classList.toggle("out", started && (i < step.lo || i > step.hi));
+        CK.move(el, t, [
+          { at: lands, scale: 0.3, opacity: 0, y: -40 },
+          { at: lands + 0.45, scale: kick, opacity: 1, y: 0, ease: "back" },
+          { at: dropped, opacity: 1, y: 0 },
+          { at: dropped + 0.5, opacity: out ? 0.22 : 1, y: out ? 26 : 0 },
+        ]);
       });
+      // The pointer glides from one middle to the next and bobs while it waits.
+      CK.move($("w-ptr"), t, [
+        { at: at[0], x: centreOf(steps[0].mid), y: CK.float(t, 5), opacity: 0 },
+        { at: at[0] + 0.3, opacity: 1 },
+        { at: at[1], x: centreOf(steps[0].mid) },
+        { at: at[1] + 0.6, x: centreOf(steps[1].mid) },
+      ]);
       $("w-note").textContent = started ? `nums[${step.mid}] = ${nums[step.mid]}` : "";
+      CK.slide(code, t, removed, "up", 120);
       CK.focusLines(code, started ? [5] : []);
     }
     if (scene.id === "outro") {
-      CK.reveal($("o-a"), t, scene.start);
-      CK.reveal($("o-b"), t, CK.cue("outro", "solve it"));
+      CK.pop($("o-a"), t, scene.start + 0.1);
+      CK.slide($("o-b"), t, solve, "up", 80);
     }
   });
 </script>

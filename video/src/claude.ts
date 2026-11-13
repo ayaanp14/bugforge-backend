@@ -240,7 +240,7 @@ Never say or show the word LeetCode, or a problem number from it, anywhere in th
 
 Narration is read aloud by a text-to-speech voice, so write for the ear: short sentences, plain words, no markdown. Spell numbers and symbols out as they should be spoken ("twenty three", "O of log n", "n squared"). Every statement about the topic must be correct; a viewer will be tested on it in an interview, so walk the example through and check each value before you write it down.
 
-"visual" tells the animator what the scene shows and which spoken words the changes land on. Anything that can be computed, such as array states, should come from a concrete example given in full there.
+"visual" tells the animator what the scene shows, how it moves (the camera pushing in on the cell that matters, a pointer gliding, cells landing one by one) and which spoken words the changes land on. Anything that can be computed, such as array states, should come from a concrete example given in full there.
 
 Scene ids are unique, lower-case-with-dashes, and the two cuts have separate lists. Scene titles are 40 characters or fewer.
 
@@ -339,6 +339,27 @@ You write the contents of a <div id="ck-stage">: a <style> block, one <section d
 - CK.code(el, {fontSize, first, last}) fills el with the script's code, syntax coloured. Always show code through this; never retype it. CK.focusLines(el, [lineNumbers]) lights lines and dims the rest; [] lights all.
 - CK.stage is {x, y, w, h}, CK.vertical is true on a Short.
 
+Motion helpers, one line each. Each sets the element's transform and opacity, so give an element one of them per frame, not two:
+- CK.move(el, t, [{at, x, y, z, rx, ry, rot, scale, opacity, ease?}, ...]) moves through keyframes (px and degrees). A key keeps what it doesn't name from the key before it, so {at: CK.cue(...), x: 240} moves only x. This is how values travel and pointers glide.
+- CK.pop(el, t, at, until?) springs in with an overshoot. CK.flip(el, t, at, until?) turns in like a card. CK.slide(el, t, at, "left"|"right"|"up"|"down", dist?, until?) slides in turning to face the viewer.
+- CK.stagger(els, t, at, gap?, fx?) runs an entrance (CK.pop by default) over a list, gap seconds apart: an array's cells landing one after another.
+- Numbers for CK.move's props: CK.bump(t, at, amount?) is a scale factor that kicks up just after at (emphasis on the word that names it), CK.shake(t, at, px?) an x offset for a wrong answer, CK.float(t, amp?, period?, phase?) a gentle idle bob.
+- CK.count(el, t, from, to, a, b, decimals?) counts a number up. CK.trace(svgPathOrLine, t, a, b) draws a stroke along its length: arrows, links, crossing lines out.
+
+The camera:
+- Every scene already drifts (a slow push in with a slight turn) and swings in at its cut. That is the floor, not the motion.
+- CK.camera(sceneId, [{at, zoom, x, y, rx, ry, rz, focus, ease?}, ...]) adds the scene's own camera moves; call it once per scene at the top of the script, not inside the draw. focus is an element or a selector inside the scene: the camera centres on it (zoom 1.35 unless the key says) and follows it if it moves. zoom 0.8 to 2.2, rx and ry up to 25 degrees, rz up to 10. Keys carry forward like CK.move's, so {at, zoom: 1} pulls back out.
+- The stage clips above and below (the header and captions) and has only the side margins to spill into, so zoom in on something smaller than the stage: a cell, a line of code, a node. Type that already fills the stage’s width takes no zoom past 1.05.
+
+## Motion
+
+A viewer should feel the video is moving the whole time. In every scene after the hook:
+- At least one camera move on a spoken cue: push in to the cell or line that matters, follow the pointer as it travels, pull back to show the whole structure, or swing around (ry 12 to 20) as the idea turns.
+- Lay structures out in depth when it reads well: an array or grid tilted back like a board on a table (rx 20 to 35 on its row), cards at slightly different z, a stack rising towards the camera. Bring it flat again (rx 0) when the viewer has to read the values closely.
+- Entrances are springs and staggers, not fades: cells pop in one after another, panels slide or flip in, and every change lands with a CK.bump on the word that names it.
+- Something always moves: a pointer bobbing with CK.float, a value travelling between cells, a line tracing in.
+Keep the hook's first frame fully drawn (no entrance on it), and keep text facing the viewer enough to read.
+
 ## The look
 
 This is a CodeKairo page in motion. Dark ground #0A0A0A; surfaces #111111, #161616, #1C1C1C; hairlines #262626, #383838; text #F5F5F5, secondary #A3A3A3, muted #8C8C8C. The one colour is blue: accent #3AA9FF, highlight #7CC9FF, deep steps #0794F9, #0068CC. State colours only name a state: success #52C98A, error #FF7A7E. Gilroy (400, 500, 600, 700) for words and 'JetBrains Mono' for code and values. No gradients, glass, glows or shadows. Corners are 8px at most.
@@ -355,7 +376,7 @@ Rich layouts need care but not bulk: reuse helpers across scenes and keep the fi
 
 ## Reference
 
-A complete composition for a three-scene Short. Match its discipline, then go further with the visuals; a scene should usually show more movement than this.
+A complete composition for a three-scene Short. Match its discipline and its motion, then go further with the visuals.
 
 \`\`\`html
 ${reference()}
@@ -523,7 +544,7 @@ const reviewSystem = (language: Language) => `You check CodeKairo's explainer vi
 
 You get the script, and frames from late in each scene. Report a blocker for a technical error in the narration, code or picture; a picture that contradicts what is said; text that overlaps, is cut off or is too small to read on a phone; or a scene that is blank or plainly unfinished. Frames are half size, so judge text by its proportion of the frame.${language === "hinglish" ? " The narration and captions are Roman-script Hinglish on purpose; judge what they say, not the language." : ""}
 
-A frame caught mid-animation is fine, and so is a design you would have done differently: report those as minor or not at all. An empty problems list means it can go out. Some things in the frames (header, captions) are drawn by the page rather than the composition, and captions show one line at a time.`;
+A frame caught mid-animation is fine, so is a camera zoomed in or tilted on purpose (a tilted board, part of the stage cropped by a push in) while the text that matters stays readable, and so is a design you would have done differently: report those as minor or not at all. An empty problems list means it can go out. Some things in the frames (header, captions) are drawn by the page rather than the composition, and captions show one line at a time.`;
 
 const reviewSchema = {
   type: "object",
