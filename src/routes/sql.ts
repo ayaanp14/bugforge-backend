@@ -10,7 +10,6 @@ import { judgeSql } from "../lib/sql/judge.js";
 import { SqlBusyError } from "../lib/sql/engine.js";
 import { forgetSqlStanding, SQL_PAGE_SIZE, sqlProblemList, sqlProblemListPage, sqlProblemPage, sqlStanding, sqlTopicPage } from "../services/sql-problems.js";
 import { invalidateDashboard } from "../services/dashboard.js";
-import { noteFestivalSolve } from "../services/festival.js";
 import { createNotificationOnce, streakMilestone } from "../services/notifications.js";
 
 /**
@@ -175,8 +174,6 @@ sqlRouter.post("/:slug/submit", requireAuth, executionLimiter, async (req, res) 
       ? await claimFirstSolve(userId, { sqlSlug: spec.slug }, submission.submittedAt, prize, streak)
       : false;
   const awardedXp = firstSolve ? prize : 0;
-  // Today's diya, before the answer, as on the coding submit (services/festival.ts).
-  if (result.verdict === "ACCEPTED") await noteFestivalSolve(userId);
   res.json({ ...result, submissionId: submission.id, awardedXp, firstSolve });
 
   // ── After the response ──────────────────────────────────────────

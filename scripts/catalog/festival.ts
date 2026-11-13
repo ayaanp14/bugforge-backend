@@ -1,12 +1,10 @@
 /**
- * Festival problems — one original problem per festival, pinned as that day's
- * daily kata (services/daily-contest.ts PINNED_DAYS). They stay in the
- * catalogue afterwards like any other problem.
+ * Festival problems — original problems written for a festival, which stay in
+ * the catalogue afterwards like any other problem.
  *
- * Diwali 2026 (8 November): an Easy fixed-size sliding window, so the day's
- * kata is a solve most members can finish — every accepted submission that day
- * also lights a diya (lib/festival.ts) — and it is the technique the Diwali
- * video teaches.
+ * Diwali 2026 (8 November): an Easy fixed-size sliding window, that day's
+ * daily kata and the technique the Diwali video teaches. The campaign around it
+ * was removed on 2026-11-14; the problem keeps its submissions and its place.
  *
  * JS solutions must be Node 12-safe: no ??, ?., at(), replaceAll, flat.
  */

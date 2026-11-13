@@ -22,7 +22,6 @@ import readinessRouter from "./routes/readiness.js";
 import simulationsRouter from "./routes/simulations.js";
 import companiesRouter from "./routes/companies.js";
 import cohortsRouter from "./routes/cohorts.js";
-import diwaliPlaygroundRouter from "./routes/diwali-playground.js"; // DIWALI-PLAYGROUND
 import { recoverSubmissionAnalyses } from "./services/submission-analysis.js";
 import { recoverBugCoach } from "./services/bug-coach.js";
 import pushRouter from "./routes/push.js";
@@ -83,7 +82,6 @@ import { isSessionRevoked, revokedSessionsSweep } from "./lib/session-revocation
 import { describeError, errorTelemetry, noteRequestError, reportError } from "./lib/telemetry.js";
 import { registerJob, startScheduler } from "./lib/scheduler.js";
 import { registerReminderJobs } from "./services/reminders.js";
-import { registerFestivalJobs } from "./services/festival.js";
 import { tournamentRemindersJob } from "./services/tournament-reminders.js";
 import { contestPayoutJob } from "./services/daily-contest-rewards.js";
 import { pushUnreadCount } from "./services/notifications.js";
@@ -1023,7 +1021,6 @@ app.use("/api/simulations", simulationsRouter);
 app.use("/api/companies", companiesRouter);
 // Study cohorts: a shared weekly goal and sessions on the pair rooms (Phase 9, services/cohorts.ts).
 app.use("/api/cohorts", cohortsRouter);
-app.use("/api/diwali-playground", diwaliPlaygroundRouter); // DIWALI-PLAYGROUND
 app.use("/api/goodies", goodiesRouter);
 // The daily videos behind the Videos tab at campaign.codekairo.com (services/video-studio.ts).
 app.use("/api/video-studio", videoStudioRouter);
@@ -1236,8 +1233,6 @@ httpServer.listen(PORT, () => {
   registerJob(contestPayoutJob);
   // Battles: each tournament's entrants mailed 24 h and 1 h before the start.
   registerJob(tournamentRemindersJob);
-  // Diwali 2026: the first-day announcement, the Diwali-day greeting and the last-chance nudges (services/festival.ts).
-  registerFestivalJobs();
   // The day's video and Short, at 10:00 IST once switched on.
   registerVideoJobs();
   startScheduler();
