@@ -128,6 +128,8 @@ model User {
   missionDays           MissionDay[]
   simulationRuns        SimulationRun[]
   submissionAnalyses    SubmissionAnalysis[]
+  designAttempts        DesignAttempt[]
+  virtualContests       VirtualContest[]
   tutorTurns            TutorTurn[]
   accounts              Account[]
   githubConnection      GitHubConnection?
@@ -369,6 +371,61 @@ model TutorTurn {
 /// reproducible, so it is kept per submission and reused for the same code
 /// resubmitted (`codeHash`). `context` holds what the judge reported that
 /// the Submission row does not keep (the error output, the time limit).
+/// A solo ICPC-style round on catalogue problems (lib/virtual-contest,
+/// services/virtual-contests). Attempts are the member's ordinary Submission
+/// rows on these problems inside the window — derived, never copied here —
+/// scored by the Battles engine's rules (services/contest-rules). When the
+/// round ends its board, performance and the CP rating it moved are frozen
+/// on the row, so a later re-solve never rewrites a finished contest.
+model VirtualContest {
+  id              String    @id @default(cuid())
+  userId          String
+  /// "beginner" | "intermediate" | "advanced"
+  level           String    @db.VarChar(16)
+  /// Problem ids in board order (A, B, C …).
+  problemIds      Json
+  startedAt       DateTime  @default(now())
+  durationMinutes Int
+  /// Set when finished (time up, or the member ended it early).
+  endedAt         DateTime?
+  /// The frozen board row: { solved, penalty, cells } (services/contest-rules StandingRow).
+  result          Json?
+  performance     Int?
+  ratingBefore    Int?
+  ratingAfter     Int?
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  /// The member's contests, newest first: the live one, the history, the current rating.
+  @@index([userId, startedAt])
+}
+
+/// One design on the system design canvas and its review (lib/design-practice,
+/// services/design-practice). The answer is the member's own text; the review
+/// is the model's, guarded and scored 0–100 against DESIGN_RUBRIC, and is the
+/// int:design evidence the skill profile reads (a done row is one sitting).
+model DesignAttempt {
+  id            String   @id @default(cuid())
+  userId        String
+  /// DESIGN_PROBLEMS slug.
+  slug          String   @db.VarChar(60)
+  answer        Json
+  /// "running" | "done" | "failed"
+  status        String   @db.VarChar(16)
+  review        Json?
+  /// 0–100, set when done.
+  score         Int?
+  model         String?  @db.VarChar(120)
+  promptVersion Int?
+  tokens        Int      @default(0)
+  createdAt     DateTime @default(now())
+  reviewedAt    DateTime?
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  /// A member's attempts on one problem, newest first; and all of them for the profile and the export.
+  @@index([userId, slug, createdAt])
+  @@index([userId, createdAt])
+}
+
 model SubmissionAnalysis {
   submissionId   String     @id
   userId         String
@@ -2229,6 +2286,10 @@ model StudyLesson {
   quiz      Json        @default("[]")
   /// Percent of the quiz needed to clear a test; null for a lesson.
   passMark  Int?
+  /// A timed checkpoint's limit in minutes (the Competitive Programming
+  /// track's, 2026-11-14); null when untimed. StudyLessonProgress.timerStartedAt
+  /// is the clock; a quiz sent after it ran out cannot pass.
+  timeLimitMin Int?
   xp        Int         @default(10)
   /// What search engines are told about the lesson and the questions the
   /// page answers: { title, description, question, answer, faq[{q, a}] }
@@ -2271,6 +2332,8 @@ model StudyLessonProgress {
   /// Exercises passed, by index into the lesson's list.
   exercisesPassed Json      @default("[]")
   completedAt     DateTime?
+  /// A timed checkpoint's current sitting began here (StudyLesson.timeLimitMin); null until started.
+  timerStartedAt  DateTime?
   updatedAt       DateTime  @updatedAt
   user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 

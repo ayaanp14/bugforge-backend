@@ -69,6 +69,18 @@ GET  /2bYsMq             → 302  Location: https://shop.example/item/48213
 
 @figure read-path
 
+```game
+type: order
+title: Follow a redirect
+prompt: A user opens short.example/2bYsMq. Put the read path in order.
+- GET /2bYsMq reaches an app server
+- The server looks the code up in the cache
+- On a miss, it reads the database
+- It stores the result in the cache
+- It answers 302 with the long URL in Location
+why: Cache first, the database only on a miss, then fill the cache so the next click is fast; a 302 keeps every click countable.
+```
+
 ## 301 vs 302
 
 - **301 Moved Permanently**: browsers cache it; fewer requests reach you, but you lose click counts and cannot change the target.
@@ -89,4 +101,4 @@ GET  /2bYsMq             → 302  Location: https://shop.example/item/48213
 - **Where is the bottleneck?** Reads; a cache in front of a sharded key-value store absorbs them.
 - **301 or 302?** 302 if you need click analytics or editable links; 301 to shed load.
 
-Back to [System Design](/notes/system-design) · Before this: [Microservices and API Gateway](/notes/system-design/microservices-and-api-gateway)
+Next: [Back-of-the-Envelope Estimation](/notes/system-design/back-of-the-envelope-estimation) · Before this: [Microservices and API Gateway](/notes/system-design/microservices-and-api-gateway)

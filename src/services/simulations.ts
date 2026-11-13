@@ -5,6 +5,13 @@ import { DEFAULT_FOCUS, SIMULATIONS, builderRoundOf, simulationBySlug, type SimR
 import { canOpen, formatOf, hrModeOf, readRunRounds, runView, type RunRound, type RunView, type SessionFact, type SittingFact, type StoredRun } from "../lib/simulation-run.js";
 import { hubIndex } from "./problem-hubs.js";
 import { companyKey } from "../lib/readiness.js";
+import { coversResume, resumeBrief } from "../lib/resume-interview.js";
+
+/** The member's most recently edited resume that has something to ask about (lib/resume-interview resumeBrief), or null. */
+async function newestUsableResume(userId: string): Promise<string | null> {
+  const rows = await prisma.resume.findMany({ where: { userId }, orderBy: { updatedAt: "desc" }, take: 5, select: { id: true, content: true } });
+  return rows.find((r) => resumeBrief(r.content) !== null)?.id ?? null;
+}
 
 /**
  * Company simulations (lib/simulations, lib/simulation-run; Phase 7 of
@@ -230,6 +237,10 @@ export async function openRound(userId: string, runId: string, key: string): Pro
   if (!entry || state.state === "open") {
     let savedInterviewId = entry?.savedInterviewId ?? null;
     if (round.kind !== "assessment" && !savedInterviewId) {
+      // A round whose published content takes in the resume or projects reads
+      // the member's newest usable resume (lib/resume-interview: the brief is
+      // frozen when the round starts, as part of the round, not all of it).
+      const resumeId = coversResume(round.covers) ? await newestUsableResume(userId) : null;
       const setup = await prisma.savedInterview.create({
         data: {
           userId,
@@ -243,6 +254,7 @@ export async function openRound(userId: string, runId: string, key: string): Pro
           focusAreaIds: [...(round.focus ?? DEFAULT_FOCUS[round.kind as Exclude<SimRound["kind"], "assessment">])],
           company: sim.company,
           simulationRunId: stored.id,
+          resumeId,
         },
         select: { id: true },
       });

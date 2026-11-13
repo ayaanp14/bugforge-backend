@@ -66,7 +66,7 @@ export async function buildAccountExport(userId: string): Promise<Record<string,
     enrollments, lessons, exercises, resumes, subscriptions, orders,
     notifications, shareCards, orgs, entries, tournamentSubmissions, campus, events, pushDevices, missionDays, analyses, tutorTurns, simulationRuns,
     bugEngagements, bugAnalyses, jobApplications, bugTutorTurns, honours, cohortMemberships, cohortSessions,
-    creditGrants, creditSpends, redemptions,
+    creditGrants, creditSpends, redemptions, designAttempts, virtualContests,
   ] = await Promise.all([
     prisma.submission.findMany({
       where, ...newest, orderBy: { submittedAt: "desc" },
@@ -223,6 +223,10 @@ export async function buildAccountExport(userId: string): Promise<Record<string,
     prisma.creditSpend.findMany({ where, ...newest, orderBy: { createdAt: "desc" }, select: { credits: true, action: true, createdAt: true } }),
     // Goodies redeemed with points (lib/goodies) — only the ones that paid out.
     prisma.redemption.findMany({ where: { ...where, grantId: { not: null } }, ...newest, orderBy: { createdAt: "desc" }, select: { itemId: true, points: true, credits: true, createdAt: true } }),
+    // The system design canvas: each design and its review (services/design-practice).
+    prisma.designAttempt.findMany({ where, ...newest, orderBy: { createdAt: "desc" }, select: { slug: true, answer: true, status: true, review: true, score: true, createdAt: true, reviewedAt: true } }),
+    // Virtual contests and the CP rating they moved (services/virtual-contests).
+    prisma.virtualContest.findMany({ where, ...newest, orderBy: { startedAt: "desc" }, select: { level: true, problemIds: true, startedAt: true, durationMinutes: true, endedAt: true, result: true, performance: true, ratingBefore: true, ratingAfter: true } }),
   ]);
 
   return {
@@ -247,6 +251,8 @@ export async function buildAccountExport(userId: string): Promise<Record<string,
     bugHunts: { submissions: bugSubmissions, engagement: bugEngagements, failureAnalyses: bugAnalyses, tutor: bugTutorTurns },
     sql: { submissions: sqlSubmissions },
     interviews: { sessions: interviews, saved: savedInterviews, simulations: simulationRuns },
+    designPractice: { attempts: designAttempts },
+    virtualContests,
     aptitude: { attempts: aptitude },
     placementTests: { attempts: placement },
     skillTests: { attempts: skills, credentials },

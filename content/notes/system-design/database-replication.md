@@ -71,6 +71,18 @@ database survives failures and can serve more reads.
 
 @figure failover
 
+```game
+type: order
+title: Failover, step by step
+prompt: The leader has crashed. Put the failover in order.
+- The leader stops sending heartbeats
+- The timeout passes with no heartbeat
+- The most up-to-date follower is promoted
+- Clients and followers switch to the new leader
+- The old leader returns and is fenced off as a follower
+why: Detect, elect, reconfigure; fencing the old leader when it returns is what prevents split brain.
+```
+
 ## Other topologies
 
 - **Multi-leader**: a leader per region; writes are local, but concurrent writes conflict and need resolving.

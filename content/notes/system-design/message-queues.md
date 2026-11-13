@@ -77,6 +77,18 @@ A queue sits between the service that has work and the service that does it, so 
 
 @figure dead-letter
 
+```game
+type: match
+title: Delivery vocabulary
+prompt: Pair each term with what it means.
+- At-most-once => Ack before the work; a crash loses the message
+- At-least-once => Ack after the work; a crash causes a redelivery
+- Idempotent consumer => Processing a message twice has the effect of once
+- Visibility timeout => A delivered message stays hidden until acked or expired
+- Dead-letter queue => Where a message goes after failing N deliveries
+why: When the ack happens decides loss or duplicates; idempotency makes duplicates harmless, and the DLQ stops a poison message blocking the queue.
+```
+
 ## Ordering and tools
 
 - A single queue can be FIFO, but **competing consumers break strict order**; order is usually kept per key (a partition or message group).

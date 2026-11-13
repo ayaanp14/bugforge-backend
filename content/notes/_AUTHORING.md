@@ -6,7 +6,8 @@ Networks**, **DBMS** and **OOP**. One Markdown file per topic in
 `content/notes/<subject>/<slug>.md`, served at `/notes/<subject>/<slug>` to
 everyone (signed in or not) and indexed by search engines. Files whose name
 starts with `_` (this one) are not notes. Subjects (folder names) are fixed:
-`operating-systems`, `computer-networks`, `dbms`, `oop`, `system-design`.
+`operating-systems`, `computer-networks`, `dbms`, `oop`, `system-design`,
+`low-level-design`.
 
 ## System Design: the points format
 
@@ -33,6 +34,68 @@ should not play/pause — it keeps playing". Its subject has `format:
 - Frontmatter, the FAQ pairs, the truth rule for figures, previews and the
   gate are the same as every note's. `load-balancing.md` and its figures
   are the template.
+
+## Low-Level Design: points format with code
+
+`low-level-design` (2026-11-14) is a second `points` subject, held to the
+same `NOTE_POINTS_BAR` as System Design: few words, every figure a looping
+animation, at least one game. What differs is what the figures show and that
+every case study carries one runnable program:
+
+- **Class diagrams build up**: frame one shows the core class, each next
+  frame adds a class and its relation (`classBox` + `umlLink` from
+  `note-figures/kit.ts`), the last frame is the whole model. Ids stay
+  stable so the boxes glide as the diagram grows.
+- **Behaviour as a sequence**: one use case (park a car, press a floor,
+  book two seats) as `lifelines` + `message` frames, each frame one call,
+  computed by running a small model of the design in the figure module.
+- **One code group per case study** in `cpp`, `java`, `python`,
+  `javascript` then `output`: the design's core classes and a `main` that
+  drives one scenario and prints what happened — ≤ 80 lines each, the same
+  output from all four, run by `--run`.
+- Link the patterns to `/notes/oop/design-patterns` and SOLID to
+  `/notes/oop/solid-principles` rather than re-teaching them.
+
+## Learning games
+
+Every points note (System Design, Low-Level Design) carries **one or two
+games** — the owner's "games-based learning". A game is a fenced block the
+page plays (`components/learning/LearningGame`); `--validate` refuses one
+that does not parse (`src/lib/learning-games.ts`). Games are not prose: their
+words do not count towards the bar. Three kinds:
+
+```text
+```game
+type: order                      (3–7 "- item" lines, in the right order;
+title: Follow one request          the reader sees them shuffled)
+prompt: Put the hops in order.
+- DNS resolves the name
+- The load balancer picks a server
+- The app server reads the cache
+why: One sentence on why this order (shown when solved).
+```
+
+```game
+type: match                      (3–6 "- left => right" pairs; every
+title: Pattern to problem          left and every right different)
+- Strategy => swap an algorithm at runtime
+- Observer => tell many listeners about one change
+- Factory => create without naming the concrete class
+```
+
+```game
+type: pick                       (3–8 rounds; each a "? question",
+title: Which component fixes it?   2–4 options with exactly one "*",
+? Reads repeat the same keys.      and a "> why" line)
+* Add a cache
+- Add a queue
+> Repeated reads are served from memory.
+```
+```
+
+Titles ≤ 80 characters, items and options ≤ 90, a why ≤ 300. A game tests
+what the note just taught — a decision (pick), a flow (order), a vocabulary
+(match) — never trivia. Place it after the section it tests, not at the end.
 
 Everything below describes the article format of the four CS subjects.
 

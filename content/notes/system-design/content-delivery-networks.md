@@ -54,6 +54,19 @@ Distance sets a floor that no server tuning removes:
 
 @figure ttl-revalidation
 
+```game
+type: order
+title: One file through an edge
+prompt: Put the events in order, from the first request to a revalidation.
+- The first request at this edge misses
+- The edge fetches the file from the origin
+- The edge stores it for max-age seconds
+- Later requests at this edge are hits
+- After max-age, the edge asks the origin with If-None-Match
+- The origin answers 304 and the copy is fresh again
+why: An edge fills on a miss, serves hits while its copy is fresh, then revalidates cheaply instead of downloading the file again.
+```
+
 ## Cache keys and invalidation
 
 - The edge looks copies up by a **cache key**, by default roughly host + path + query.

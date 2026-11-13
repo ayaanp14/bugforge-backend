@@ -7,6 +7,7 @@ import {
   StudyError,
   enroll,
   gradeQuiz,
+  startCheckpointTimer,
   lastSubmission,
   lessonContentFor,
   lessonFor,
@@ -150,6 +151,15 @@ router.post("/:track/lessons/:lesson/quiz", requireAuth, async (req: Authed, res
       return;
     }
     res.json(await gradeQuiz(req.user!.userId, String(req.params["track"]), String(req.params["lesson"]), answers));
+  } catch (err) {
+    handleStudyError(err, res, next);
+  }
+});
+
+/** A timed checkpoint's clock: starts it, or answers the one already running (services/study-plans startCheckpointTimer). */
+router.post("/:track/lessons/:lesson/timer", requireAuth, async (req: Authed, res, next) => {
+  try {
+    res.json({ timer: await startCheckpointTimer(req.user!.userId, String(req.params["track"]), String(req.params["lesson"])) });
   } catch (err) {
     handleStudyError(err, res, next);
   }

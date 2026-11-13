@@ -274,6 +274,61 @@ router.post("/resume", requireAuth, async (req: any, res) => {
   });
 });
 
+/** The design rounds a learning page can open on its own topic (POST /practice). */
+const PRACTICE_ROUNDS = new Set(["system-design-interview", "low-level-design"]);
+
+/**
+ * @route   POST /api/interviews/practice
+ * @desc    A design round on one topic, opened from a System Design / LLD note or the design canvas
+ * @access  Private
+ *
+ * The System Design track's "learn → practise → interview" (2026-11-14): a
+ * note or a reviewed design hands the member to an interviewer who asks about
+ * that system. The topic rides as a focus area, which both interviewers' briefs
+ * already name ("Topics the candidate asked to be interviewed on"), so no
+ * prompt changed. An ordinary saved setup, reused when the same round and
+ * topic were opened before; the round is metered in the room as usual.
+ */
+router.post("/practice", requireAuth, async (req: any, res) => {
+  const round = req.body?.round;
+  const topic = typeof req.body?.topic === "string" ? req.body.topic.trim().slice(0, 80) : "";
+  if (typeof round !== "string" || !PRACTICE_ROUNDS.has(round)) return res.status(400).json({ error: "round must be system-design-interview or low-level-design" });
+  if (!topic) return res.status(400).json({ error: "topic is required" });
+  const userId = req.user.userId;
+  const focus = [round === "low-level-design" ? "lld" : "system-design", topic];
+  const mine = { userId, simulationRunId: null, submissionId: null };
+  const [candidates, owned] = await Promise.all([
+    prisma.savedInterview.findMany({ where: { ...mine, roundId: round, resumeId: null }, orderBy: { createdAt: "desc" }, take: 30, select: { id: true, focusAreaIds: true } }),
+    prisma.savedInterview.count({ where: mine }),
+  ]);
+  const same = candidates.find((s) => JSON.stringify(s.focusAreaIds) === JSON.stringify(focus));
+  let setupId = same?.id ?? null;
+  if (!setupId) {
+    if (owned >= MAX_SAVED_TEMPLATES) {
+      return res.status(409).json({ error: `You can keep up to ${MAX_SAVED_TEMPLATES} saved setups. Delete one you no longer use to add another.` });
+    }
+    const created = await prisma.savedInterview.create({
+      data: {
+        userId,
+        roleId: "Software Engineer",
+        roundId: round,
+        difficulty: "intermediate",
+        experienceBand: "Junior (0-2 years)",
+        interviewStyle: "Technical Heavy",
+        focusAreaIds: focus,
+      },
+      select: { id: true },
+    });
+    setupId = created.id;
+    invalidateDashboard(userId);
+  }
+  res.status(same ? 200 : 201).json({
+    savedInterviewId: setupId,
+    href: `/mock-interview/session?savedInterviewId=${setupId}`,
+    voiceHref: `/mock-interview/voice?savedInterviewId=${setupId}&durationMin=20`,
+  });
+});
+
 /**
  * @route   PATCH /api/interviews/:id
  * @desc    Update an existing interview configuration
@@ -580,17 +635,21 @@ router.post("/start", requireAuth, async (req: any, res) => {
     // A Resume Deep Dive on a named resume freezes it now (lib/resume-interview),
     // before the quota is touched: a resume that has gone, or holds nothing to
     // ask about, is a sentence to fix in the setup, never a spent round.
+    // A company simulation's round that covers projects names a resume too
+    // (services/simulations): there it is part of the round, so a resume that
+    // has gone or emptied since only drops that part — never the round.
     let brief: string | null = null;
-    if (template.roundId === RESUME_ROUND && template.resumeId) {
+    if (template.resumeId) {
+      const deepDive = template.roundId === RESUME_ROUND;
       const resume = await prisma.resume.findFirst({
         where: { id: template.resumeId, userId: req.user.userId },
         select: { content: true },
       });
-      if (!resume) {
+      if (!resume && deepDive) {
         return res.status(409).json({ error: "The resume this setup uses was deleted. Pick another resume in the setup." });
       }
-      brief = resumeBrief(resume.content);
-      if (!brief) {
+      brief = resume ? resumeBrief(resume.content) : null;
+      if (!brief && deepDive) {
         return res.status(409).json({ error: "That resume has no experience, projects or skills to ask about yet. Fill it in on the resume page first." });
       }
     }

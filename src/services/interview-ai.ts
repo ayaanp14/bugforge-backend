@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { prettyLabel } from "../lib/interview-labels.js";
-import { resumeSection } from "../lib/resume-interview.js";
+import { RESUME_ROUND, resumeSection } from "../lib/resume-interview.js";
 
 /**
  * The interview model layer.
@@ -445,7 +445,8 @@ type InputItem = { role: "system" | "user" | "assistant"; content: string };
 
 /** The resume a Resume Deep Dive round is about, as one system message — none for any other round. */
 function resumeInput(config: InterviewConfig): InputItem[] {
-  return config.resume ? [{ role: "system", content: resumeSection(config.resume, false) }] : [];
+  // The Resume Deep Dive is about the resume; any other round (a simulation's) covers it in part.
+  return config.resume ? [{ role: "system", content: resumeSection(config.resume, false, config.roundId !== RESUME_ROUND) }] : [];
 }
 
 /**

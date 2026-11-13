@@ -1,4 +1,5 @@
 import { NOTE_SUBJECTS, allNotes, noteBlocks, noteBy, noteSummary, notesFor, subjectByKey, type NoteFormat, type NoteSummary } from "../lib/cs-notes.js";
+import { DESIGN_PROBLEMS } from "../lib/design-practice.js";
 import { noteFigure } from "../lib/note-figures/index.js";
 import { credentialName } from "../lib/skill-catalog.js";
 import type { Walkthrough } from "../lib/walkthroughs/core.js";
@@ -69,6 +70,13 @@ export interface NotePage {
   /** The figures the body places, by name. */
   figures: Record<string, Walkthrough>;
   tests: Array<{ slug: string; title: string }>;
+  /**
+   * Learn → practise → interview (2026-11-14): on a System Design or LLD note,
+   * the design problem that practises it on the canvas (lib/design-practice,
+   * by its `note`) and the interview round to defend it in, on this topic.
+   * Null on the four CS subjects.
+   */
+  practice: { designSlug: string | null; round: "system-design-interview" | "low-level-design"; topic: string } | null;
 }
 
 export function notePage(subjectKey: string, slug: string): NotePage | null {
@@ -101,6 +109,14 @@ export function notePage(subjectKey: string, slug: string): NotePage | null {
     next: i < siblings.length - 1 ? noteSummary(siblings[i + 1]!) : null,
     figures,
     tests: testsOf(subject.tests),
+    practice:
+      subject.key === "system-design" || subject.key === "low-level-design"
+        ? {
+            designSlug: DESIGN_PROBLEMS.find((p) => p.note === n.slug)?.slug ?? null,
+            round: subject.key === "low-level-design" ? "low-level-design" : "system-design-interview",
+            topic: n.title,
+          }
+        : null,
   };
 }
 

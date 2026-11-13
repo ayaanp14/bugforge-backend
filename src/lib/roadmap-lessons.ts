@@ -1,6 +1,7 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { lessonFigureProblems } from "./lesson-figures/index.js";
+import { gameProblems } from "./learning-games.js";
 import { markdownHeadings } from "./markdown-html.js";
 
 /**
@@ -380,6 +381,7 @@ export function validateLesson(l: RoadmapLesson): string[] {
   if (l.faq.length < 4 || l.faq.length > 8) out.push(`${at}: ${l.faq.length} q/a pairs; write four to eight`);
   if (l.practice.length < 3 || l.practice.length > 10) out.push(`${at}: ${l.practice.length} practice problems; list three to ten`);
   if (new Set(l.practice).size !== l.practice.length) out.push(`${at}: a practice problem is listed twice`);
+  for (const p of gameProblems(l.body)) out.push(`${at}: ${p}`);
   if (/^#\s/m.test(l.body.replace(/```[\s\S]*?```/g, ""))) out.push(`${at}: the body has a "# " heading — the page owns the H1; start at "##"`);
   if (/__CODEKAIRO_/.test(l.body)) out.push(`${at}: the body names a judge sentinel`);
   const prose = proseWords(l.body);

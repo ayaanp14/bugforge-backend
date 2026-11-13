@@ -58,7 +58,25 @@ import { FIGURES as messageQueues } from "./message-queues.js";
 import { FIGURES as rateLimiting } from "./rate-limiting.js";
 import { FIGURES as microservicesAndApiGateway } from "./microservices-and-api-gateway.js";
 import { FIGURES as designAUrlShortener } from "./design-a-url-shortener.js";
+import { FIGURES as designAChatApp } from "./design-a-chat-app.js";
+import { FIGURES as designANewsFeed } from "./design-a-news-feed.js";
+import { FIGURES as designANotificationSystem } from "./design-a-notification-system.js";
+import { FIGURES as designFileStorage } from "./design-file-storage.js";
+import { FIGURES as designRideHailing } from "./design-ride-hailing.js";
+import { FIGURES as designAWebCrawler } from "./design-a-web-crawler.js";
 import { FIGURES as whatHappensWhenYouTypeAUrl } from "./what-happens-when-you-type-a-url.js";
+import { FIGURES as backOfTheEnvelopeEstimation } from "./back-of-the-envelope-estimation.js";
+import { FIGURES as systemDesignInterviewFramework } from "./system-design-interview-framework.js";
+import { FIGURES as designSearchAutocomplete } from "./design-search-autocomplete.js";
+import { FIGURES as designAParkingLot } from "./design-a-parking-lot.js";
+import { FIGURES as designAVendingMachine } from "./design-a-vending-machine.js";
+import { FIGURES as designAnElevatorSystem } from "./design-an-elevator-system.js";
+import { FIGURES as designAMovieTicketBookingSystem } from "./design-a-movie-ticket-booking-system.js";
+import { FIGURES as designAnExpenseSharingApp } from "./design-an-expense-sharing-app.js";
+import { FIGURES as introductionToLowLevelDesign } from "./introduction-to-low-level-design.js";
+import { FIGURES as designAnLruCache } from "./design-an-lru-cache.js";
+import { FIGURES as umlClassDiagrams } from "./uml-class-diagrams.js";
+import { FIGURES as designPatternsInLld } from "./design-patterns-in-lld.js";
 
 /**
  * Every CS note's figures by note slug, then figure name (one module per
@@ -126,5 +144,23 @@ export const NOTE_FIGURES: Readonly<Record<string, Readonly<Record<string, () =>
   "rate-limiting": rateLimiting,
   "microservices-and-api-gateway": microservicesAndApiGateway,
   "design-a-url-shortener": designAUrlShortener,
+  "design-a-chat-app": designAChatApp,
+  "design-a-news-feed": designANewsFeed,
+  "design-a-notification-system": designANotificationSystem,
+  "design-file-storage": designFileStorage,
+  "design-ride-hailing": designRideHailing,
+  "design-a-web-crawler": designAWebCrawler,
   "what-happens-when-you-type-a-url": whatHappensWhenYouTypeAUrl,
+  "back-of-the-envelope-estimation": backOfTheEnvelopeEstimation,
+  "system-design-interview-framework": systemDesignInterviewFramework,
+  "design-search-autocomplete": designSearchAutocomplete,
+  "design-a-parking-lot": designAParkingLot,
+  "design-a-vending-machine": designAVendingMachine,
+  "design-an-elevator-system": designAnElevatorSystem,
+  "design-a-movie-ticket-booking-system": designAMovieTicketBookingSystem,
+  "design-an-expense-sharing-app": designAnExpenseSharingApp,
+  "introduction-to-low-level-design": introductionToLowLevelDesign,
+  "design-an-lru-cache": designAnLruCache,
+  "uml-class-diagrams": umlClassDiagrams,
+  "design-patterns-in-lld": designPatternsInLld,
 };

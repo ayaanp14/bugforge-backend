@@ -2,6 +2,7 @@ import { readdirSync, readFileSync, existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { lessonBlocks, FIGURE_LINE, type LessonBlock } from "./roadmap-lessons.js";
 import { noteFigure, noteFigureProblems } from "./note-figures/index.js";
+import { gameFences, gameProblems } from "./learning-games.js";
 
 /**
  * CS fundamentals notes: Operating Systems, Computer Networks, DBMS and OOP,
@@ -110,6 +111,21 @@ export const NOTE_SUBJECTS: readonly NoteSubject[] = [
     blurb: "Scaling, load balancing, caching, CDNs, replication and sharding, CAP, consistent hashing, queues, rate limiting and microservices — as animations.",
     seoTitle: "System Design Notes for Interviews, With Animations",
     description: "System design notes for interviews: load balancing, caching, sharding, CAP theorem, consistent hashing, message queues and rate limiting, each shown animated.",
+    tests: [],
+    format: "points",
+  },
+  {
+    // 2026-11-14, the owner: a System Design track learn → practise → interview,
+    // "well animated, not too much content". The machine-coding half of the
+    // design round: classes, their relations and their behaviour, in the same
+    // points format — class diagrams built up frame by frame, objects talking
+    // as sequence diagrams, one runnable program per case study.
+    key: "low-level-design",
+    title: "Low-Level Design",
+    short: "LLD",
+    blurb: "UML class diagrams, SOLID and design patterns applied, and the classic machine-coding rounds — parking lot, elevator, LRU cache, BookMyShow, Splitwise — animated, with code.",
+    seoTitle: "Low-Level Design (LLD) Interview Notes, Animated",
+    description: "Low-level design notes for interviews: UML class diagrams, design patterns applied, and parking lot, elevator, LRU cache and BookMyShow, animated with code.",
     tests: [],
     format: "points",
   },
@@ -376,9 +392,16 @@ export function validateNote(n: CsNote): string[] {
   for (const m of n.body.matchAll(/^\s*```\s*([\w+#.-]*)\s*$/gm)) {
     const lang = m[1]!.toLowerCase();
     if (!lang) continue;
-    if (!DISPLAY_FENCES.has(lang) && !(NOTE_CODE_LANGUAGES as readonly string[]).includes(lang) && lang !== "output") {
+    if (!DISPLAY_FENCES.has(lang) && !(NOTE_CODE_LANGUAGES as readonly string[]).includes(lang) && lang !== "output" && lang !== "game") {
       out.push(`${at}: fence language "${lang}" — use one of ${[...NOTE_CODE_LANGUAGES, ...DISPLAY_FENCES].join(", ")}`);
     }
+  }
+  // Learning games (lib/learning-games): each must parse, or the page would not draw it.
+  for (const p of gameProblems(n.body)) out.push(`${at}: ${p}`);
+  // A points note teaches by animation and play (2026-11-14): one game at least, two at most.
+  if (points) {
+    const games = gameFences(n.body).length;
+    if (games < 1 || games > 2) out.push(`${at}: ${games} games; a points note carries one or two (\`\`\`game fences, see _AUTHORING.md)`);
   }
   const figures = blocks.flatMap((b) => (b.kind === "figure" ? [b.name] : []));
   if (figures.length < bar.figures) out.push(`${at}: ${figures.length} figures; a note needs at least ${bar.figures} — draw it rather than describe it`);

@@ -34,9 +34,11 @@ import { javascriptTrack } from "./study-plans/javascript/track.js";
 import { cppTrack } from "./study-plans/cpp/track.js";
 import { pythonTrack } from "./study-plans/python/track.js";
 import { sqlTrack } from "./study-plans/sql/track.js";
+import { lldTrack } from "./study-plans/lld/track.js";
+import { competitiveProgrammingTrack } from "./study-plans/competitive-programming/track.js";
 import { flushContentCaches } from "./content-caches.js";
 
-const ALL_TRACKS: TrackSeed[] = [javaTrack, javascriptTrack, cppTrack, pythonTrack, sqlTrack];
+const ALL_TRACKS: TrackSeed[] = [javaTrack, javascriptTrack, cppTrack, pythonTrack, sqlTrack, lldTrack, competitiveProgrammingTrack];
 
 const args = process.argv.slice(2);
 const trackArg = args[args.indexOf("--track") + 1];
@@ -131,6 +133,7 @@ async function seedTrack(track: TrackSeed, position: number): Promise<void> {
         exercises: lesson.exercises as unknown as Prisma.InputJsonValue,
         quiz: lesson.quiz as unknown as Prisma.InputJsonValue,
         passMark: lesson.passMark,
+        timeLimitMin: lesson.timeLimitMin,
         xp: lesson.xp,
         seo: lesson.seo ? (lesson.seo as unknown as Prisma.InputJsonValue) : Prisma.DbNull,
       };

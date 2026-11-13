@@ -96,7 +96,7 @@ const KIND_ORDER: readonly MissionKind[] = ["finish", "review", "learn", "lesson
  * Read from the rows those features already write (services/mission.ts
  * activitiesToday) — still "ticks are derived".
  */
-export type ActivityKind = "mock" | "aptitude" | "skill-test" | "interview" | "resume";
+export type ActivityKind = "mock" | "aptitude" | "skill-test" | "interview" | "resume" | "contest";
 
 export const activityKey = (kind: ActivityKind, ref: string | null): string => (ref ? `${kind}:${ref}` : kind);
 
@@ -187,7 +187,24 @@ export interface MissionCandidates {
    * on a day with room for it (interviewProposal).
    */
   interviewDue?: boolean;
+  /**
+   * A competitive programmer (a virtual contest ever, or the Competitive
+   * Programming track started) with no virtual contest in the last
+   * CONTEST_EVERY_DAYS. True offers one round on a day long enough for it.
+   */
+  contestDue?: boolean;
 }
+
+/**
+ * A virtual contest a week for those learning competitive programming
+ * (2026-11-14): contest speed is its own skill (lib/skill-graph cp:contests),
+ * and only a timed round trains it. The shortest round is 90 minutes, so it
+ * is offered on a two-hour day or longer, and never to anyone who has not
+ * taken up competitive programming.
+ */
+export const CONTEST_EVERY_DAYS = 7;
+export const CONTEST_MINUTES = 90;
+const CONTEST_DAY_MINUTES = 120;
 
 /**
  * The AI interview as a regular part of the routine (the owner, 2026-11-03:
@@ -308,6 +325,7 @@ const PLAN_STEPS_COVERED: Readonly<Record<ActivityKind, readonly string[]>> = {
   "skill-test": ["skill-test", "fundamentals"],
   interview: ["interview"],
   resume: ["resume"],
+  contest: [],
 };
 
 const coveredSteps = (i: MissionItem): readonly string[] => (i.evidence && "activity" in i.evidence ? PLAN_STEPS_COVERED[i.evidence.activity] : []);
@@ -409,6 +427,27 @@ export function buildMission(c: MissionCandidates, minutes: number, keep: readon
                   difficulty: null,
                   skill: null,
                   evidence: { activity: "interview", ref: null },
+                },
+        ]
+      : []),
+    // A weekly virtual contest for competitive programmers, on a long day: it fills most of it.
+    ...(c.contestDue && minutes >= CONTEST_DAY_MINUTES
+      ? [
+          (_perSlot: number, _refs: ReadonlySet<string>, room: Room): MissionItem | null =>
+            room.minutesLeft < CONTEST_MINUTES
+              ? null
+              : {
+                  id: "practice:contest",
+                  kind: "practice",
+                  title: "Virtual contest",
+                  context: "Competitive programming",
+                  why: "No timed round this week. A 90-minute virtual contest trains the speed and nerve a contest asks for, and moves your CP rating.",
+                  href: "/virtual-contests",
+                  workbench: false,
+                  minutes: CONTEST_MINUTES,
+                  difficulty: null,
+                  skill: "cp:contests",
+                  evidence: { activity: "contest", ref: null },
                 },
         ]
       : []),

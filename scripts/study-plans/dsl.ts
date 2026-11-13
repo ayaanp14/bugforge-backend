@@ -20,6 +20,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { bodyFigureProblems } from "../../src/lib/study-figures/index.js";
+import { gameProblems } from "../../src/lib/learning-games.js";
 
 export interface ExerciseCase {
   stdin: string;
@@ -109,6 +110,13 @@ export interface LessonSource {
   quiz?: QuizSeed[];
   /** Tests only: percent of the quiz to clear. */
   passMark?: number;
+  /**
+   * Tests only: a timed checkpoint (2026-11-14, the Competitive Programming
+   * track's "timed checkpoint"). The clock starts when the learner opens the
+   * checkpoint's timer; a quiz sent after it ran out does not pass the
+   * checkpoint (services/study-plans). 10–180 minutes. Untimed when absent.
+   */
+  timeLimitMin?: number;
   /** Paid once, when the lesson is complete. Lessons 10, tests 25 by default. */
   xp?: number;
 }
@@ -134,6 +142,8 @@ export interface LessonSeed {
   exercises: ExerciseSeed[];
   quiz: QuizSeed[];
   passMark: number | null;
+  /** Tests only: the checkpoint's time limit in minutes; null when untimed. */
+  timeLimitMin: number | null;
   xp: number;
   /** Null only while a lesson has no search fields yet — which validateTrack refuses. */
   seo: LessonSeo | null;
@@ -310,6 +320,7 @@ export function defineModule(importMetaUrl: string, source: ModuleSource, extras
         exercises: [...(lesson.exercises ?? []), ...(extras[lesson.slug] ?? [])].map(resolve),
         quiz: lesson.quiz ?? [],
         passMark: kind === "test" ? lesson.passMark ?? 70 : null,
+        timeLimitMin: kind === "test" ? lesson.timeLimitMin ?? null : null,
         xp: lesson.xp ?? (kind === "test" ? 25 : 10),
         seo,
       };
@@ -353,6 +364,8 @@ export function validateTrack(track: TrackSeed): string[] {
       problems.push(...seoProblems(at, lesson));
       // Every `@figure <name>` line names a figure of src/lib/study-figures/<track>/<lesson>.ts that builds within the page's limits.
       problems.push(...bodyFigureProblems(track.key, lesson.slug, lesson.body).map((p) => `${where}: ${p}`));
+      // Learning games (src/lib/learning-games): each must parse, or the lesson would not draw it.
+      problems.push(...gameProblems(lesson.body).map((p) => `${where}: ${p}`));
       let fenced = false;
       for (const line of lesson.body.split("\n")) {
         if (/^\s*(```|~~~)/.test(line)) fenced = !fenced;
@@ -363,6 +376,7 @@ export function validateTrack(track: TrackSeed): string[] {
         if (lesson.quiz.length < 10) problems.push(`${at}: a test needs at least 10 questions, has ${lesson.quiz.length}`);
         if (lesson.exercises.length < 1) problems.push(`${at}: a test needs at least one exercise`);
         if (lesson.passMark === null || lesson.passMark < 50 || lesson.passMark > 100) problems.push(`${at}: passMark must be 50–100`);
+        if (lesson.timeLimitMin !== null && (!Number.isInteger(lesson.timeLimitMin) || lesson.timeLimitMin < 10 || lesson.timeLimitMin > 180)) problems.push(`${at}: timeLimitMin must be a whole number of minutes, 10–180`);
       } else {
         if (lesson.quiz.length < 3) problems.push(`${at}: a lesson needs at least 3 quiz questions, has ${lesson.quiz.length}`);
       }

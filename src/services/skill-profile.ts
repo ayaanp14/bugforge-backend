@@ -15,6 +15,7 @@ import { buildSkillProfile, type ProblemCandidate, type SkillProfile } from "../
 import { ANSWER_PASS_SCORE, INTERVIEW_SKILLS, answerPercent, interviewLevel, interviewSkillOf, type InterviewSkill } from "../lib/interview-skills.js";
 import { prettyLabel } from "../lib/interview-labels.js";
 import { SAT_ROUND } from "./entitlements.js";
+import { assessmentLevel, problemBySlug, type DesignReview } from "../lib/design-practice.js";
 // The usual inert cycle: dashboard imports invalidateSkillProfile from here.
 import { getCatalogue } from "./dashboard.js";
 import { bugPath } from "./bug-hunts.js";
@@ -121,6 +122,8 @@ export function skillCatalogues(): Promise<Catalogues> {
 
     // Every account can sit a mock interview, so the interview skills are always measurable.
     count(INTERVIEW_SKILLS, "assessment", 0);
+    // Every account can take a virtual contest and the CP track's checkpoints (lib/skill-graph CP_SKILL_NODES).
+    count(["cp:contests", "cp:techniques"], "assessment", 0);
 
     return { catalogue, problems: candidates, problemById: new Map(candidates.map((c) => [c.id, c])), bugById, aptitudeById, sqlBySlug, testById };
   });
@@ -145,7 +148,7 @@ function group<R, K>(rows: readonly R[], keyOf: (r: R) => K): Map<K, R[]> {
 
 async function loadEvidence(userId: string, cat: Catalogues): Promise<{ items: ItemHistory[]; assessments: AssessmentRecord[]; analyses: Array<{ problemId: string; category: string; at: number }> }> {
   const newest = { take: MAX_ROWS } as const;
-  const [submissions, engagements, bugSubs, sqlSubs, aptitude, sittings, reviews, interviews, bugEngagements] = await Promise.all([
+  const [submissions, engagements, bugSubs, sqlSubs, aptitude, sittings, reviews, interviews, bugEngagements, designs, contests, cpCheckpoints] = await Promise.all([
     prisma.submission.findMany({
       where: { userId },
       orderBy: { submittedAt: "desc" },
@@ -204,6 +207,25 @@ async function loadEvidence(userId: string, cat: Catalogues): Promise<{ items: I
     prisma.bugEngagement.findMany({
       where: { userId },
       select: { challengeId: true, openedAt: true, incidentAt: true, tutorHintAt: true, tutorSolutionAt: true },
+    }),
+    // Reviewed designs on the system design canvas (int:design).
+    prisma.designAttempt.findMany({
+      where: { userId, status: "done", score: { not: null } },
+      orderBy: { createdAt: "desc" },
+      take: 100,
+      select: { id: true, slug: true, score: true, review: true, createdAt: true, reviewedAt: true },
+    }),
+    // Finished virtual contests (cp:contests) and the CP track's checkpoint quizzes (cp:techniques).
+    prisma.virtualContest.findMany({
+      where: { userId, endedAt: { not: null } },
+      orderBy: { startedAt: "desc" },
+      take: 100,
+      select: { id: true, level: true, problemIds: true, result: true, endedAt: true },
+    }),
+    prisma.studyLessonProgress.findMany({
+      where: { userId, lessonKey: { startsWith: "competitive-programming:", endsWith: "-checkpoint" }, quizCorrect: { not: null }, quizTotal: { gt: 0 } },
+      take: 100,
+      select: { lessonKey: true, quizCorrect: true, quizTotal: true, quizAt: true, updatedAt: true },
     }),
   ]);
 
@@ -345,6 +367,60 @@ async function loadEvidence(userId: string, cat: Catalogues): Promise<{ items: I
         topics: answers.map((a) => ({ label: a.label, total: 1, correct: a.score >= ANSWER_PASS_SCORE ? 1 : 0 })),
       });
     }
+  }
+
+  // A reviewed design on the system design canvas (services/design-practice)
+  // is a sitting of int:design: its rubric score at the problem's level, each
+  // rubric area a topic (half its points or more counts as shown).
+  for (const d of designs) {
+    const problem = problemBySlug(d.slug);
+    const review = d.review as DesignReview | null;
+    if (!problem || d.score === null || !review) continue;
+    assessments.push({
+      id: `design:${d.id}`,
+      title: `Design practice: ${problem.title}`,
+      href: `/design-practice/${problem.slug}?attempt=${d.id}`,
+      skills: ["int:design"],
+      at: (d.reviewedAt ?? d.createdAt).getTime(),
+      percent: d.score,
+      level: assessmentLevel(problem),
+      terminated: false,
+      topics: review.criteria.map((c) => ({ label: c.label, total: 1, correct: c.score * 2 >= c.max ? 1 : 0 })),
+    });
+  }
+
+  // A finished virtual contest is a sitting of cp:contests: the share of its
+  // problems solved against the clock, each problem a topic (lib/virtual-contest).
+  for (const c of contests) {
+    const ids = Array.isArray(c.problemIds) ? (c.problemIds as string[]) : [];
+    const r = (c.result ?? {}) as { solved?: number; cells?: Record<string, { solvedAt: number | null }> };
+    if (!ids.length) continue;
+    assessments.push({
+      id: `contest:${c.id}`,
+      title: `Virtual contest (${c.level})`,
+      href: `/virtual-contests/${c.id}`,
+      skills: ["cp:contests"],
+      at: c.endedAt!.getTime(),
+      percent: Math.round(((r.solved ?? 0) / ids.length) * 100),
+      level: c.level === "beginner" ? "basic" : c.level === "advanced" ? "advanced" : "intermediate",
+      terminated: false,
+      topics: ids.map((id, i) => ({ label: `Problem ${String.fromCharCode(65 + i)}`, total: 1, correct: r.cells?.[id]?.solvedAt != null ? 1 : 0 })),
+    });
+  }
+  // The CP track's timed checkpoints: the best quiz on each, a sitting of cp:techniques.
+  for (const p of cpCheckpoints) {
+    const module = p.lessonKey.slice("competitive-programming:".length).replace(/-checkpoint$/, "");
+    assessments.push({
+      id: `cp-checkpoint:${p.lessonKey}`,
+      title: `CP checkpoint: ${module.replace(/-/g, " ")}`,
+      href: `/study-plans/competitive-programming/${p.lessonKey.slice("competitive-programming:".length)}`,
+      skills: ["cp:techniques"],
+      at: (p.quizAt ?? p.updatedAt).getTime(),
+      percent: Math.round((p.quizCorrect! / p.quizTotal!) * 100),
+      level: "intermediate",
+      terminated: false,
+      topics: [{ label: module.replace(/-/g, " "), total: p.quizTotal!, correct: p.quizCorrect! }],
+    });
   }
 
   const analyses = reviews.map((r) => ({ problemId: r.problemId, category: r.category!, at: r.createdAt.getTime() }));

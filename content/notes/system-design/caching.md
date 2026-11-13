@@ -78,6 +78,18 @@ A cache keeps hot data close and fast, so most reads never reach the slow store 
 - **Hot key**: one key overloads one cache node — replicate it or keep a local copy.
 - Size the cache for the **working set**, not the whole dataset.
 
+```game
+type: match
+title: Cache pitfall to fix
+prompt: Pair each problem with the fix that stops it.
+- A hot key expires and every request misses at once => One request refills it while the others wait
+- Requests for keys that never exist always miss => Cache the "not found" answer briefly
+- One key overloads one cache node => Replicate the key or keep a local copy
+- Many popular keys expire at the same moment => Add random jitter to the TTLs
+- A stale copy could otherwise live forever => Give every entry a TTL
+why: Each pitfall is a burst of misses or load in one place; each fix spreads it out or stops it reaching the database.
+```
+
 ## Interview questions
 
 - **What would you cache?** Data read far more often than written and tolerant of brief staleness: profiles, product pages, computed feeds.

@@ -18,6 +18,7 @@ import {
   buildMission,
   isMinuteChoice,
   INTERVIEW_EVERY_DAYS,
+  CONTEST_EVERY_DAYS,
   keptOnResize,
   missionView,
   readItems,
@@ -145,7 +146,7 @@ async function gatherCandidates(userId: string, loads: MissionLoads, state: Prob
 
   // Three independent reads, together: awaited inside the object literal they
   // ran one after another on the dashboard's critical path.
-  const [target, discover, cohort, interviewsThisWeek] = await Promise.all([
+  const [target, discover, cohort, interviewsThisWeek, cpActivity] = await Promise.all([
     readiness ? targetCandidates(userId, readiness, profile, state, skillPick) : null,
     discoverCandidates(userId, row),
     // A cohort's goal never fails the day: without it the mission is what it was.
@@ -155,7 +156,14 @@ async function gatherCandidates(userId: string, loads: MissionLoads, state: Prob
     prisma.mockInterviewSession
       .count({ where: { userId, createdAt: { gte: new Date(Date.now() - INTERVIEW_EVERY_DAYS * 86_400_000) }, AND: [SAT_ROUND] } })
       .catch(() => 1),
+    // Competitive programmers only (lib/mission contestDue): their newest virtual contest and whether the CP track is started.
+    Promise.all([
+      prisma.virtualContest.findFirst({ where: { userId }, orderBy: { startedAt: "desc" }, select: { startedAt: true } }),
+      prisma.studyEnrollment.count({ where: { userId, trackKey: "competitive-programming" } }),
+    ]).catch(() => [null, 0] as const),
   ]);
+  const [lastContest, cpEnrolled] = cpActivity;
+  const contestDue = (lastContest !== null || cpEnrolled > 0) && (!lastContest || Date.now() - lastContest.startedAt.getTime() > CONTEST_EVERY_DAYS * 86_400_000);
 
   return {
     goal,
@@ -174,6 +182,7 @@ async function gatherCandidates(userId: string, loads: MissionLoads, state: Prob
     discover,
     cohort,
     interviewDue: interviewsThisWeek === 0,
+    contestDue,
   };
 }
 
@@ -306,7 +315,7 @@ async function activitiesToday(userId: string, keys: readonly string[]): Promise
   const mocks = refs("mock");
   const aptitude = refs("aptitude");
   const tests = refs("skill-test");
-  const [mockRows, aptRows, testRows, interviews, resumes] = await Promise.all([
+  const [mockRows, aptRows, testRows, interviews, resumes, contests] = await Promise.all([
     mocks.length
       ? prisma.mockAttempt.findMany({ where: { userId, status: { in: ["submitted", "expired"] }, startedAt: { gte: since }, test: { slug: { in: mocks } } }, select: { test: { select: { slug: true } } } })
       : Promise.resolve([]),
@@ -318,6 +327,7 @@ async function activitiesToday(userId: string, keys: readonly string[]): Promise
       : Promise.resolve([]),
     keys.includes("interview") ? prisma.mockInterviewSession.count({ where: { userId, createdAt: { gte: since }, AND: [SAT_ROUND] } }) : Promise.resolve(0),
     keys.includes("resume") ? prisma.resumeAnalysis.count({ where: { userId, createdAt: { gte: since }, status: { not: "failed" } } }) : Promise.resolve(0),
+    keys.includes("contest") ? prisma.virtualContest.count({ where: { userId, startedAt: { gte: since } } }) : Promise.resolve(0),
   ]);
   const done = new Set<string>();
   for (const m of mockRows) done.add(activityKey("mock", m.test.slug));
@@ -328,6 +338,7 @@ async function activitiesToday(userId: string, keys: readonly string[]): Promise
   for (const t of testRows) done.add(activityKey("skill-test", t.test.slug));
   if (interviews > 0) done.add(activityKey("interview", null));
   if (resumes > 0) done.add(activityKey("resume", null));
+  if (contests > 0) done.add(activityKey("contest", null));
   return done;
 }
 

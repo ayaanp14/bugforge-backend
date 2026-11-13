@@ -25,6 +25,8 @@ export const PROMPT_VERSIONS = {
   "bug-review": 1,
   "root-cause": 1,
   "bug-tutor": 1,
+  // 2026-11-14: the system design canvas's review (lib/design-practice).
+  "design-review": 1,
 } as const;
 
 export type PromptTask = keyof typeof PROMPT_VERSIONS;

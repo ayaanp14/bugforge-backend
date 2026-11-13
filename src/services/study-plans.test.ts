@@ -1,6 +1,6 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { EMPTY_PROGRESS, lessonComplete, lessonStatus, mastery, moduleStatuses, pace, quizPercent, streakDays, type LessonProgress } from "./study-plans.js";
+import { EMPTY_PROGRESS, TIMER_GRACE_MS, lessonComplete, lessonStatus, mastery, moduleStatuses, pace, quizPercent, streakDays, timerState, type LessonProgress } from "./study-plans.js";
 import { normalizeOutput } from "../lib/program-judge.js";
 
 /**
@@ -132,5 +132,19 @@ describe("normalizeOutput", () => {
     assert.equal(normalizeOutput("a\nb"), normalizeOutput("a\nb\n"));
     assert.notEqual(normalizeOutput("a\nb"), normalizeOutput("a\n\nb"));
     assert.notEqual(normalizeOutput(" a"), normalizeOutput("a"));
+  });
+});
+
+describe("timed checkpoints", () => {
+  const start = new Date("2026-11-14T10:00:00Z");
+  it("is not running until started", () => {
+    assert.deepEqual(timerState(45, null, start.getTime()), { startedAt: null, endsAt: null, running: false });
+  });
+  it("runs for its limit plus the grace, then stops", () => {
+    const ends = start.getTime() + 45 * 60_000;
+    assert.equal(timerState(45, start, start.getTime()).endsAt!.getTime(), ends);
+    assert.equal(timerState(45, start, ends).running, true);
+    assert.equal(timerState(45, start, ends + TIMER_GRACE_MS).running, true);
+    assert.equal(timerState(45, start, ends + TIMER_GRACE_MS + 1).running, false);
   });
 });

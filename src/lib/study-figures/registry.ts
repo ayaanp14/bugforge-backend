@@ -29,6 +29,25 @@ import { FIGURES as sqlCompositeIndexes } from "./sql/composite-indexes.js";
 import { FIGURES as sqlIsolationLevels } from "./sql/isolation-levels.js";
 import { FIGURES as sqlLocksAndDeadlocks } from "./sql/locks-and-deadlocks.js";
 import { FIGURES as sqlMvcc } from "./sql/mvcc.js";
+import { FIGURES as lldModellingRequirements } from "./lld/modelling-requirements.js";
+import { FIGURES as lldLruCacheDesign } from "./lld/lru-cache-design.js";
+import { FIGURES as lldParkingLotDesign } from "./lld/parking-lot-design.js";
+import { FIGURES as lldVendingMachineDesign } from "./lld/vending-machine-design.js";
+import { FIGURES as lldElevatorDesign } from "./lld/elevator-design.js";
+import { FIGURES as lldTicketBookingDesign } from "./lld/ticket-booking-design.js";
+import { FIGURES as lldExpenseSharingDesign } from "./lld/expense-sharing-design.js";
+import { FIGURES as cpContestTemplateAndBudgets } from "./competitive-programming/contest-template-and-budgets.js";
+import { FIGURES as cpPrefixSumsAndDifferenceArrays } from "./competitive-programming/prefix-sums-and-difference-arrays.js";
+import { FIGURES as cpBitTricksForContests } from "./competitive-programming/bit-tricks-for-contests.js";
+import { FIGURES as cpSearchingTheAnswerSpace } from "./competitive-programming/searching-the-answer-space.js";
+import { FIGURES as cpExchangeArguments } from "./competitive-programming/exchange-arguments.js";
+import { FIGURES as cpSieveAndModularArithmetic } from "./competitive-programming/sieve-and-modular-arithmetic.js";
+import { FIGURES as cpDsuUnionBySize } from "./competitive-programming/dsu-union-by-size.js";
+import { FIGURES as cpDijkstraAnd01Bfs } from "./competitive-programming/dijkstra-and-0-1-bfs.js";
+import { FIGURES as cpKahnsAlgorithm } from "./competitive-programming/kahns-algorithm.js";
+import { FIGURES as cpSegmentTreesAndFenwickTrees } from "./competitive-programming/segment-trees-and-fenwick-trees.js";
+import { FIGURES as cpDpOptimisationTechniques } from "./competitive-programming/dp-optimisation-techniques.js";
+import { FIGURES as cpKmpZFunctionAndHashing } from "./competitive-programming/kmp-z-function-and-hashing.js";
 
 type LessonFigures = Readonly<Record<string, () => Walkthrough>>;
 
@@ -70,5 +89,29 @@ export const STUDY_FIGURES: Readonly<Record<string, Readonly<Record<string, Less
     "isolation-levels": sqlIsolationLevels,
     "locks-and-deadlocks": sqlLocksAndDeadlocks,
     mvcc: sqlMvcc,
+  },
+  // 2026-11-14: the Low-Level Design practice and Competitive Programming tracks (scripts/study-plans/lld, competitive-programming).
+  lld: {
+    "modelling-requirements": lldModellingRequirements,
+    "lru-cache-design": lldLruCacheDesign,
+    "parking-lot-design": lldParkingLotDesign,
+    "vending-machine-design": lldVendingMachineDesign,
+    "elevator-design": lldElevatorDesign,
+    "ticket-booking-design": lldTicketBookingDesign,
+    "expense-sharing-design": lldExpenseSharingDesign,
+  },
+  "competitive-programming": {
+    "contest-template-and-budgets": cpContestTemplateAndBudgets,
+    "prefix-sums-and-difference-arrays": cpPrefixSumsAndDifferenceArrays,
+    "bit-tricks-for-contests": cpBitTricksForContests,
+    "searching-the-answer-space": cpSearchingTheAnswerSpace,
+    "exchange-arguments": cpExchangeArguments,
+    "sieve-and-modular-arithmetic": cpSieveAndModularArithmetic,
+    "dsu-union-by-size": cpDsuUnionBySize,
+    "dijkstra-and-0-1-bfs": cpDijkstraAnd01Bfs,
+    "kahns-algorithm": cpKahnsAlgorithm,
+    "segment-trees-and-fenwick-trees": cpSegmentTreesAndFenwickTrees,
+    "dp-optimisation-techniques": cpDpOptimisationTechniques,
+    "kmp-z-function-and-hashing": cpKmpZFunctionAndHashing,
   },
 };

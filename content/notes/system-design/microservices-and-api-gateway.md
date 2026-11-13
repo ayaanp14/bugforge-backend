@@ -78,6 +78,18 @@ Microservices trade one big deployable for many small ones; the gateway, the reg
 - **Database per service**; no reaching into another service's tables.
 - Cross-service workflows use **sagas** with compensating steps.
 
+```game
+type: match
+title: Which part does this job?
+prompt: Pair each microservices component with its job.
+- API gateway => Auth, rate limits and routing, once for every client
+- Service registry => Tells callers where healthy instances live now
+- Circuit breaker => Fails fast while a dependency keeps failing
+- Saga => Undoes earlier steps when a cross-service workflow fails
+- Message queue => Lets services exchange events without waiting
+why: Each part keeps many small services usable: one front door, a live address book, a fuse, compensation instead of transactions, and asynchronous events.
+```
+
 ## Interview questions
 
 - **Would you start with microservices?** Usually not; a modular monolith first, then split where team or scaling needs prove it.

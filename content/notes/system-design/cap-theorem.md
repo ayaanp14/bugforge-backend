@@ -75,6 +75,33 @@ CAP is about one moment: the network has split, and a replica cannot reach its p
 | After healing | Nothing to merge | Reconcile conflicts |
 | Good for | Locks, config, balances | Feeds, carts, counters |
 
+```game
+type: pick
+title: CP or AP?
+prompt: A partition splits the replicas. For each kind of data, which should the system choose?
+? An account balance that transfers move money between.
+* CP: refuse rather than be wrong
+- AP: answer, even if stale
+> A stale balance could allow a double spend; a brief error is safer.
+? Like counts on posts.
+- CP: refuse rather than be wrong
+* AP: answer, even if stale
+> A count a few likes behind costs nothing; an error page costs users.
+? A distributed lock that only one worker may hold.
+* CP: refuse rather than be wrong
+- AP: answer, even if stale
+> Two holders on two sides of a partition would break the lock's one promise.
+? A shopping cart.
+- CP: refuse rather than be wrong
+* AP: answer, even if stale
+> Accepting adds on both sides and merging them later keeps customers shopping.
+? N = 3 replicas. Which setting makes every read see the latest write?
+* R = 2, W = 2
+- R = 1, W = 1
+- R = 1, W = 2
+> R + W = 4 > 3, so every read set overlaps the last write set.
+```
+
 ## PACELC
 
 - **P**artition → **A** or **C**; **E**lse → **L**atency or **C**onsistency.

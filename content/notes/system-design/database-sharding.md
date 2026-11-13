@@ -51,6 +51,30 @@ database servers, so each holds and serves only part of the data.
 
 @figure hot-shard
 
+```game
+type: pick
+title: Choose the shard key
+prompt: Each round is a table and how it is used. Pick the best shard key.
+? A users table; nearly every query names one user.
+* Hashed user ID
+- Signup date
+- Country
+> High cardinality, even load, and most queries reach a single shard.
+? Chat messages, always read one conversation at a time.
+- Message ID
+* Conversation ID
+- Sender ID
+> A conversation's messages stay together, so reading one hits one shard.
+? Sensor readings arriving every second from many devices.
+- Timestamp range
+* Hashed device ID
+> By time, every new row lands on the newest shard: a hot shard.
+? A multi-tenant app; every query is scoped to one tenant, and tenants are of similar size.
+* Tenant ID
+- Row ID
+> Each tenant's queries and joins stay on one shard.
+```
+
 ## Resharding
 
 - Shards fill up or get hot, so data must be split and moved.

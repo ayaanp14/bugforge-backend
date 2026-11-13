@@ -50,6 +50,32 @@ System design is choosing the parts of a system and how they work together, so i
 
 @figure requirements
 
+```game
+type: pick
+title: Functional or non-functional?
+prompt: Each round is a requirement for a ride-hailing app. Which kind is it?
+? A rider can request a ride to an address.
+* Functional
+- Non-functional
+> It is something the system does for a user.
+? A match is found within 5 seconds for 99% of requests.
+- Functional
+* Non-functional
+> It says how well, not what: a latency target.
+? A driver can accept or decline a request.
+* Functional
+- Non-functional
+> Another feature a user can use.
+? Completed trips are never lost, even if a server fails.
+- Functional
+* Non-functional
+> Durability is a quality of the system, not a feature.
+? The app keeps working while one datacenter is down.
+- Functional
+* Non-functional
+> Availability shapes the architecture: redundancy across datacenters.
+```
+
 ## Back-of-the-envelope estimation
 
 - **QPS** = daily users × requests per user ÷ 86,400 seconds.

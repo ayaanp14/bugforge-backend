@@ -1,6 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { RESUME_CHARS, RESUME_ROUND, resumeBrief, resumeRole, resumeSection } from "./resume-interview.js";
+import { RESUME_CHARS, RESUME_ROUND, coversResume, resumeBrief, resumeRole, resumeSection } from "./resume-interview.js";
+import { SIMULATIONS } from "./simulations/index.js";
 import { emptyContent } from "./resume-parse.js";
 import { ROUND_SKILL } from "./interview-skills.js";
 
@@ -86,6 +87,19 @@ test("the role comes from the target, then the headline, then the common case", 
   assert.equal(resumeRole({ targetRole: "Data Analyst", content: resume() }), "Data Analyst");
   assert.equal(resumeRole({ targetRole: "  ", content: resume() }), "Backend Engineer");
   assert.equal(resumeRole({ targetRole: null, content: {} }), "Software Engineer");
+});
+
+test("a simulation round that covers projects or the resume reads it as one part of the round", () => {
+  assert.equal(coversResume("OOP, DBMS and SQL, OS, networks, your projects and puzzles."), true);
+  assert.equal(coversResume("Questions from your resume and area of interest"), true);
+  assert.equal(coversResume("Situational and behavioural questions"), false);
+  // Some company's rounds do: the hook is not dead.
+  assert.ok(SIMULATIONS.some((s) => s.rounds.some((r) => r.kind !== "assessment" && coversResume(r.covers))));
+
+  const part = resumeSection("SDE Intern — Acme Pay", true, true);
+  assert.match(part, /Keep the round's other topics/);
+  assert.match(part, /BEGIN RESUME\nSDE Intern — Acme Pay\nEND RESUME/);
+  assert.doesNotMatch(part, /Every question must start from something on this resume/);
 });
 
 test("the round is filed under the technical interview skill", () => {

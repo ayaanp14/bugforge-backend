@@ -64,6 +64,32 @@ address, and it decides which server answers each request.
 
 @figure health-checks
 
+```game
+type: pick
+title: Pick the balancing algorithm
+prompt: Each round is a traffic pattern. Which algorithm fits it best?
+? Every request is a short, uniform API call.
+* Round robin
+- Least connections
+- IP hash
+> Uniform requests cost the same, so a fixed rotation spreads them evenly at zero cost.
+? Some requests are 2-second uploads, others take 5 ms.
+- Round robin
+* Least connections
+- IP hash
+> Counting open connections keeps long uploads from piling onto one server.
+? Sessions live in each server's memory and cannot move.
+- Round robin
+- Least connections
+* IP hash
+> Hashing the client's address sends a user back to the server holding their session.
+? One server is twice as large as the other two.
+* Weighted round robin
+- IP hash
+- Round robin
+> Weights give the bigger server proportionally more turns.
+```
+
 ## L4 vs L7
 
 | | L4 (transport) | L7 (application) |

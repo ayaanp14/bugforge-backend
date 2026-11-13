@@ -394,6 +394,18 @@ test("a short AI interview a week: only when none was sat, only on a day with ro
   assert.ok(!buildMission(cands(), 60).some(isInterview), "absent candidate, no interview");
 });
 
+test("a virtual contest a week for competitive programmers, only on a day long enough for one", () => {
+  const isContest = (i: { id: string }) => i.id === "practice:contest";
+  const day = buildMission(cands({ contestDue: true, weakest: [skill("Graph")] }), 180);
+  const item = day.find(isContest);
+  assert.ok(item, "offered on a three-hour day");
+  assert.equal(item!.minutes, 90);
+  assert.deepEqual(item!.evidence, { activity: "contest", ref: null });
+  assert.equal(item!.href, "/virtual-contests");
+  assert.ok(!buildMission(cands({ contestDue: true }), 60).some(isContest), "an hour's day keeps its time for problems");
+  assert.ok(!buildMission(cands({ contestDue: false }), 180).some(isContest), "not when one was taken this week, nor for anyone not doing CP");
+});
+
 test("the weekly interview never shares a day with the plan's own interview step", () => {
   const day = buildMission(
     cands({ interviewDue: true, milestone: { key: "interview", title: "Sit a mock interview", detail: "", href: "/mock-interview" } }),

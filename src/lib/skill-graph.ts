@@ -34,7 +34,7 @@ import { slugify } from "./slug.js";
  * whatever the profile thinks of their queues.
  */
 
-export type SkillDomain = "dsa" | "debugging" | "sql" | "fundamentals" | "aptitude" | "interview";
+export type SkillDomain = "dsa" | "debugging" | "sql" | "fundamentals" | "aptitude" | "interview" | "competitive";
 
 export interface SkillDomainDef {
   key: SkillDomain;
@@ -50,6 +50,7 @@ export const SKILL_DOMAINS: readonly SkillDomainDef[] = [
   { key: "fundamentals", label: "CS fundamentals", evidence: "Your skill-test sittings in Operating Systems, Computer Networks, OOP and SQL theory." },
   { key: "aptitude", label: "Aptitude", evidence: "Your answers in the aptitude bank: correct on the first try, with or without hints, and how fast." },
   { key: "interview", label: "Interviews", evidence: "Your mock-interview answers, as the interviewer scored them, by the kind of question asked." },
+  { key: "competitive", label: "Competitive programming", evidence: "Your virtual contests (problems solved against the clock) and the Competitive Programming track's timed checkpoints." },
 ];
 
 export interface SkillArea {
@@ -74,6 +75,10 @@ export interface SkillMatch {
   skillTest?: string;
   /** A scored mock-interview question of this kind (lib/interview-skills interviewSkillOf). */
   interviewQuestions?: true;
+  /** A finished virtual contest (lib/virtual-contest). */
+  contestRounds?: true;
+  /** A checkpoint of the Competitive Programming study track. */
+  cpCheckpoints?: true;
 }
 
 export interface SkillNode {
@@ -306,6 +311,18 @@ const INTERVIEW_SKILL_NODES: SkillNode[] = [
   { key: "int:behavioural", label: "Behavioural & HR", href: "/mock-interview" },
 ].map((s) => ({ ...s, area: "int.answers", domain: "interview" as const, requires: [], match: { interviewQuestions: true as const } }));
 
+/**
+ * Competitive programming (2026-11-14). The techniques themselves are the DSA
+ * skills above — a segment tree solve is evidence of Segment Tree — so these
+ * two measure what the techniques do not: solving against a clock (each
+ * finished virtual contest is a sitting, scored by the share of its problems
+ * solved), and the Competitive Programming track's timed checkpoints.
+ */
+const CP_SKILL_NODES: SkillNode[] = [
+  { key: "cp:contests", label: "Contest rounds", href: "/virtual-contests", match: { contestRounds: true as const } },
+  { key: "cp:techniques", label: "Contest techniques", href: "/study-plans/competitive-programming", match: { cpCheckpoints: true as const } },
+].map((s) => ({ ...s, area: "cp.contests", domain: "competitive" as const, requires: [] }));
+
 // ── The graph ─────────────────────────────────────────────────────
 
 export const SKILL_AREAS: readonly SkillArea[] = [
@@ -316,9 +333,10 @@ export const SKILL_AREAS: readonly SkillArea[] = [
   { key: "cs.core", domain: "fundamentals", label: "Core subjects" },
   { key: "apt.sections", domain: "aptitude", label: "Placement-paper sections" },
   { key: "int.answers", domain: "interview", label: "Kinds of question" },
+  { key: "cp.contests", domain: "competitive", label: "Contest skills" },
 ];
 
-export const SKILLS: readonly SkillNode[] = [...DSA_SKILLS, ...DEBUG_SKILLS, ...SQL_SKILLS, ...CS_SKILLS, ...APTITUDE_SKILLS, ...INTERVIEW_SKILL_NODES];
+export const SKILLS: readonly SkillNode[] = [...DSA_SKILLS, ...DEBUG_SKILLS, ...SQL_SKILLS, ...CS_SKILLS, ...APTITUDE_SKILLS, ...INTERVIEW_SKILL_NODES, ...CP_SKILL_NODES];
 
 const BY_KEY = new Map(SKILLS.map((s) => [s.key, s]));
 export const skillNode = (key: string): SkillNode | undefined => BY_KEY.get(key);

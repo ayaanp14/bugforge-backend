@@ -64,6 +64,35 @@ Scalability is handling more load by adding resources, without rewriting the sys
 
 @figure bottleneck
 
+```game
+type: pick
+title: Which fix relieves this bottleneck?
+prompt: Each round names what saturates first. Pick the change that helps most.
+? Product pages are read thousands of times between edits, and the database is busy.
+* Add a cache for the pages
+- Shard the database
+- Add a queue
+> Repeated reads are served from memory and never reach the database.
+? Reads are varied and rarely repeat, writes are light, and the database CPU is at its limit.
+- Add a queue
+* Add read replicas
+- Scale the app servers out
+> Replicas each take a share of the reads; a cache helps little when reads rarely repeat.
+? Writes alone exceed what the largest database machine can handle.
+- Add read replicas
+* Shard the data
+- Add a cache
+> Every replica applies every write; only splitting the data spreads them.
+? Sign-ups are slow because each one sends a welcome email before answering.
+* Put the email on a queue for a worker
+- Scale the database up
+> The email leaves the request path, so the user gets an answer at once.
+? App servers are at full CPU while the database is mostly idle.
+- Shard the database
+* Add stateless app servers behind the load balancer
+> The app tier is the bottleneck, and stateless servers scale out freely.
+```
+
 ## Comparison
 
 | | Vertical | Horizontal |

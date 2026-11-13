@@ -39,6 +39,18 @@ Sharding needs a rule for which server owns a key. Consistent hashing is a rule 
 
 @figure ring-lookup
 
+```game
+type: order
+title: Find a key's server on the ring
+prompt: Put the lookup steps in order.
+- Hash each server onto the ring and sort the positions
+- Hash the key onto the same ring
+- Binary search for the first server position at or after the key
+- Wrap to the first position if the key is past the last one
+- Send the request to that server
+why: Servers are placed once; each lookup hashes the key and moves clockwise to the next server, found by binary search.
+```
+
 ## Adding a server
 
 - The new server takes only the arc from its predecessor up to itself.

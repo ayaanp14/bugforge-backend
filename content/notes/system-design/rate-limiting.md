@@ -73,6 +73,32 @@ A rate limiter decides, per client, whether a request may go through now or must
 | Sliding log | None | 1 timestamp per request | Exact |
 | Sliding counter | Small | 2 counters | Approximate |
 
+```game
+type: pick
+title: Pick the rate-limiting algorithm
+prompt: Each round is a requirement. Which algorithm fits it best?
+? A public API should allow short bursts but hold a steady long-run rate.
+* Token bucket
+- Fixed window counter
+- Leaky bucket
+> Saved-up tokens allow a burst; the refill rate holds the average.
+? A fragile downstream must receive requests at a perfectly even rate.
+- Token bucket
+* Leaky bucket
+- Sliding log
+> A queue drained at a constant rate smooths every burst.
+? The limit is 5 login attempts an hour, and it must be exact.
+- Fixed window counter
+* Sliding log
+- Token bucket
+> With a small limit, storing each timestamp is cheap and the count is exact.
+? A high-volume limit must avoid the 2x edge burst with two numbers per client.
+- Fixed window counter
+* Sliding window counter
+- Sliding log
+> Weighting the previous window's count removes most of the edge burst without storing timestamps.
+```
+
 ## Where it runs
 
 - **API gateway or load balancer**: one place for every service, before the work starts.

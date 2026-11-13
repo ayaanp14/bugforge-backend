@@ -49,6 +49,8 @@ import proofRouter from "./routes/proof.js";
 import battlesRouter from "./routes/battles.js";
 import { sqlRouter } from "./routes/sql.js";
 import { notesRouter } from "./routes/notes.js";
+import designPracticeRouter from "./routes/design-practice.js";
+import virtualContestsRouter from "./routes/virtual-contests.js";
 import { ALLOWED_ORIGINS, CAMPAIGN_URL } from "./lib/sites.js";
 import shareCardsRouter, { shareImage } from "./routes/share-cards.js";
 import { recoverAnalyses } from "./services/resumes.js";
@@ -1025,6 +1027,10 @@ app.use("/api/goodies", goodiesRouter);
 // The daily videos behind the Videos tab at campaign.codekairo.com (services/video-studio.ts).
 app.use("/api/video-studio", videoStudioRouter);
 app.use("/api/notes", notesRouter);
+// The system design canvas and its reviews (services/design-practice.ts).
+app.use("/api/design-practice", designPracticeRouter);
+// Virtual contests and the CP rating (services/virtual-contests.ts).
+app.use("/api/virtual-contests", virtualContestsRouter);
 app.use("/api/assistant", assistantRouter);
 // The upload route reads a raw file body with its own parser (see routes/resumes.ts).
 app.use("/api/resumes", resumesRouter);

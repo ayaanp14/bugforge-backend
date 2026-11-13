@@ -70,6 +70,8 @@ export interface LessonDefinition {
   minutes: number;
   xp: number;
   passMark: number | null;
+  /** A timed checkpoint's limit in minutes (scripts/study-plans/dsl.ts timeLimitMin); null when untimed. */
+  timeLimitMin: number | null;
   body: string;
   exercises: ExerciseDefinition[];
   quiz: QuizQuestion[];
@@ -220,7 +222,7 @@ export async function trackDefinition(key: string): Promise<TrackDefinition | nu
             overview: true,
             lessons: {
               orderBy: { position: "asc" },
-              select: { key: true, slug: true, title: true, kind: true, minutes: true, xp: true, passMark: true, body: true, exercises: true, quiz: true, seo: true },
+              select: { key: true, slug: true, title: true, kind: true, minutes: true, xp: true, passMark: true, timeLimitMin: true, body: true, exercises: true, quiz: true, seo: true },
             },
           },
         },
@@ -248,6 +250,7 @@ export async function trackDefinition(key: string): Promise<TrackDefinition | nu
           minutes: l.minutes,
           xp: l.xp,
           passMark: l.passMark,
+          timeLimitMin: l.timeLimitMin,
           body: l.body,
           exercises: (Array.isArray(l.exercises) ? l.exercises : []) as unknown as ExerciseDefinition[],
           quiz: (Array.isArray(l.quiz) ? l.quiz : []) as unknown as QuizQuestion[],
@@ -626,6 +629,8 @@ export interface LessonPayload {
     minutes: number;
     xp: number;
     passMark: number | null;
+    /** A timed checkpoint's limit in minutes; null when untimed. */
+    timeLimitMin: number | null;
     body: string;
     exercises: Array<{ title: string; prompt: string; starter: string; hints: string[]; cases: Array<{ stdin: string; expected: string }>; hiddenCases: number }>;
     quiz: Array<{ prompt: string; options: string[] }>;
@@ -639,12 +644,61 @@ export interface LessonPayload {
   next: { slug: string; title: string; module: string } | null;
 }
 
-/** One reader's standing on one lesson: the stored row, or the empty one, and what it reads as. */
-export type ReaderProgress = LessonProgress & { status: LessonStatus; mastery: number };
+/** One reader's standing on one lesson: the stored row, or the empty one, and what it reads as — and on a timed checkpoint, its clock. */
+export type ReaderProgress = LessonProgress & { status: LessonStatus; mastery: number; timer?: CheckpointTimer | null };
 
 async function readerProgress(lesson: LessonDefinition, userId: string): Promise<ReaderProgress> {
-  const p = (await progressMap(userId, [lesson.key])).get(lesson.key) ?? EMPTY_PROGRESS;
-  return { ...p, status: lessonStatus(lesson, p), mastery: mastery(lesson, p) };
+  const [p, started] = await Promise.all([
+    progressMap(userId, [lesson.key]).then((m) => m.get(lesson.key) ?? EMPTY_PROGRESS),
+    lesson.timeLimitMin ? timerStartedAt(userId, lesson.key) : Promise.resolve(null),
+  ]);
+  const base = { ...p, status: lessonStatus(lesson, p), mastery: mastery(lesson, p) };
+  return lesson.timeLimitMin ? { ...base, timer: timerState(lesson.timeLimitMin, started, Date.now()) } : base;
+}
+
+/* ── Timed checkpoints (2026-11-14) ─────────────────────────────────── */
+
+/** Quiz answers sent this long after the clock ran out still count: the request was in flight. */
+export const TIMER_GRACE_MS = 30_000;
+
+export interface CheckpointTimer {
+  /** Null until the learner starts the clock. */
+  startedAt: Date | null;
+  endsAt: Date | null;
+  /** Started and not yet run out (grace included). */
+  running: boolean;
+}
+
+/** A timed checkpoint's clock at `now` — pure, pinned by study-plans.test.ts. */
+export function timerState(limitMin: number, startedAt: Date | null, now: number): CheckpointTimer {
+  if (!startedAt) return { startedAt: null, endsAt: null, running: false };
+  const endsAt = new Date(startedAt.getTime() + limitMin * 60_000);
+  return { startedAt, endsAt, running: now <= endsAt.getTime() + TIMER_GRACE_MS };
+}
+
+async function timerStartedAt(userId: string, lessonKey: string): Promise<Date | null> {
+  const row = await prisma.studyLessonProgress.findUnique({ where: { userId_lessonKey: { userId, lessonKey } }, select: { timerStartedAt: true } });
+  return row?.timerStartedAt ?? null;
+}
+
+/**
+ * Start a timed checkpoint's clock — or hand back the one already running. A
+ * clock that has run out is restarted: a new sitting, as many as wanted; only
+ * a quiz sent while one runs can pass (gradeQuiz).
+ */
+export async function startCheckpointTimer(userId: string, trackKey: string, lessonSlug: string): Promise<CheckpointTimer> {
+  const { lesson } = await requireLesson(trackKey, lessonSlug);
+  if (!lesson.timeLimitMin) throw new StudyError(400, "This lesson is not timed");
+  await ensureEnrolled(userId, trackKey);
+  const current = timerState(lesson.timeLimitMin, await timerStartedAt(userId, lesson.key), Date.now());
+  if (current.running) return current;
+  const now = new Date();
+  await prisma.studyLessonProgress.upsert({
+    where: { userId_lessonKey: { userId, lessonKey: lesson.key } },
+    create: { userId, lessonKey: lesson.key, timerStartedAt: now },
+    update: { timerStartedAt: now },
+  });
+  return timerState(lesson.timeLimitMin, now, now.getTime());
 }
 
 /**
@@ -693,6 +747,7 @@ export async function lessonContentFor(trackKey: string, lessonSlug: string): Pr
       minutes: lesson.minutes,
       xp: lesson.xp,
       passMark: lesson.passMark,
+      timeLimitMin: lesson.timeLimitMin,
       body: lesson.body,
       exercises: lesson.exercises.map((e) => ({
         title: e.title,
@@ -954,6 +1009,12 @@ export async function gradeQuiz(userId: string, trackKey: string, lessonSlug: st
   const { track, module, lesson } = await requireLesson(trackKey, lessonSlug);
   if (lesson.quiz.length === 0) throw new StudyError(400, "This lesson has no quiz");
   if (!Array.isArray(answers) || answers.length !== lesson.quiz.length) throw new StudyError(400, `Expected ${lesson.quiz.length} answers`);
+  // A timed checkpoint is graded only inside its clock (startCheckpointTimer).
+  if (lesson.timeLimitMin) {
+    const clock = timerState(lesson.timeLimitMin, await timerStartedAt(userId, lesson.key), Date.now());
+    if (!clock.startedAt) throw new StudyError(409, "Start the checkpoint's timer before you answer.");
+    if (!clock.running) throw new StudyError(409, "Time ran out on this sitting. Start the timer again for a new attempt.");
+  }
 
   const questions = lesson.quiz.map((q, i) => {
     const raw = answers[i];
