@@ -58,6 +58,8 @@ type Guarded = {
     completedAt: Date | null;
     durationLimitSec: number | null;
     voiceState: unknown;
+    /** The resume a Resume Deep Dive round is about, frozen at /start (lib/resume-interview). */
+    resumeBrief: string | null;
     /** lib/plans credits the round was opened on (charged once sat). */
     creditCost: number | null;
     savedInterview: {
@@ -66,6 +68,8 @@ type Guarded = {
       simulationRunId: string | null;
       /** Set when the round explains an accepted submission (lib/solution-interview). */
       submissionId: string | null;
+      /** The resume a Resume Deep Dive setup names; the report links back to it. */
+      resumeId: string | null;
       roleId: string;
       roundId: string;
       difficulty: string | null;
@@ -88,12 +92,14 @@ const GUARD_SELECT = {
   completedAt: true,
   durationLimitSec: true,
   voiceState: true,
+  resumeBrief: true,
   creditCost: true,
   savedInterview: {
     select: {
       id: true,
       simulationRunId: true,
       submissionId: true,
+      resumeId: true,
       roleId: true,
       roundId: true,
       difficulty: true,
@@ -139,8 +145,9 @@ async function guard(
   return { ok: true, data: session as unknown as Guarded["session"] };
 }
 
-function configFrom(template: Guarded["session"]["savedInterview"]): InterviewConfig {
+function configFrom(template: Guarded["session"]["savedInterview"], resume: string | null = null): InterviewConfig {
   return {
+    resume,
     roleId: template.roleId,
     roundId: template.roundId,
     difficulty: template.difficulty ?? "medium",
@@ -222,7 +229,7 @@ router.get("/session/:sessionId/voice", requireAuth, async (req: any, res) => {
     if (!check.ok) return res.status(check.status).json({ error: check.error });
 
     const session = check.data;
-    const config = configFrom(session.savedInterview);
+    const config = configFrom(session.savedInterview, session.resumeBrief);
     const state = stateOf(session.voiceState);
 
     // A reload mid-interview should not lose what has already been said.
@@ -250,7 +257,8 @@ router.get("/session/:sessionId/voice", requireAuth, async (req: any, res) => {
         startedAt: session.startedAt,
         durationLimitSec: session.durationLimitSec ?? DEFAULT_LIMIT_SEC,
       },
-      setup: config,
+      // The frozen resume brief stays server-side; which resume it was is enough for the page.
+      setup: { ...config, resume: undefined, resumeId: session.savedInterview.resumeId },
       language: languageFor(config),
       topics: topicsFor(config),
       state,
@@ -356,7 +364,7 @@ router.post("/session/:sessionId/voice/session", requireAuth, voiceCredentialLim
       if (claimedStart) invalidateDashboard(req.user.userId);
     }
 
-    const config = configFrom(session.savedInterview);
+    const config = configFrom(session.savedInterview, session.resumeBrief);
     const state = stateOf(session.voiceState);
 
     // Questions already asked, so a reconnect does not re-ask them. Only the
@@ -575,7 +583,7 @@ router.post("/session/:sessionId/voice/complete", requireAuth, async (req: any, 
       return res.json({ success: true, abandoned: true, session: abandoned });
     }
 
-    const config = configFrom(session.savedInterview);
+    const config = configFrom(session.savedInterview, session.resumeBrief);
 
     // Not `session.questionBudget`: on a spoken round that is the placeholder
     // from /start (four for ten minutes), and handing it to the breakdown as

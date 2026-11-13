@@ -1,6 +1,7 @@
 import type { InterviewConfig } from "./interview-ai.js";
 import type { ConversationLanguage, Interviewer, InterviewerId } from "../lib/interviewers.js";
 import { solutionSection, type SolutionBrief } from "../lib/solution-interview.js";
+import { resumeSection } from "../lib/resume-interview.js";
 
 /**
  * The realtime (spoken) interview layer.
@@ -50,6 +51,8 @@ export interface InterviewContext {
    * just solved and the accepted code. Null for every other round.
    */
   solution: SolutionBrief | null;
+  /** The resume a Resume Deep Dive round is about (lib/resume-interview resumeBrief), or null. */
+  resume: string | null;
 }
 
 /** What the browser needs to open the session, and nothing more. */
@@ -145,8 +148,10 @@ export function systemInstruction(context: InterviewContext): string {
   // An "explain your solution" round is about one problem, and that section
   // decides what is asked; it comes straight after the opening paragraph.
   const solution = context.solution ? `\n\n${solutionSection(context.solution)}` : "";
+  // Likewise a resume round is about one resume, and that section decides what is asked.
+  const resume = context.resume ? `\n\n${resumeSection(context.resume, true)}` : "";
 
-  return `You are an experienced interviewer running a live, spoken ${context.round} round for a ${context.role} position — you interview as a senior practitioner of that role's own field would, and you have run hundreds of these.${persona}${named} The round is at ${context.difficulty} difficulty, for someone at the ${context.experience} experience band. Interview style: ${context.style}.${solution}
+  return `You are an experienced interviewer running a live, spoken ${context.round} round for a ${context.role} position — you interview as a senior practitioner of that role's own field would, and you have run hundreds of these.${persona}${named} The round is at ${context.difficulty} difficulty, for someone at the ${context.experience} experience band. Interview style: ${context.style}.${solution}${resume}
 
 ## The role decides everything you ask
 
@@ -255,6 +260,7 @@ export function buildContext(args: {
     interviewer: args.interviewer ?? null,
     openingLanguage: args.openingLanguage ?? "english",
     solution: args.solution ?? null,
+    resume: args.config.resume ?? null,
   };
 }
 

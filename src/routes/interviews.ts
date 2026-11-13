@@ -25,6 +25,7 @@ import { cachedShared } from "../lib/cache.js";
 import { invalidateDashboard } from "../services/dashboard.js";
 import { runOfSession, simulationCoversRound } from "../services/simulations.js";
 import { SOLUTION_MINUTES, SOLUTION_ROUND } from "../lib/solution-interview.js";
+import { RESUME_ROUND, RESUME_VOICE_MINUTES, resumeBrief, resumeRole } from "../lib/resume-interview.js";
 import {
   finalizeInterview,
   interviewHistoryKey,
@@ -39,6 +40,23 @@ const MAX_SAVED_TEMPLATES = 30;
 
 /** The longest written answer accepted — a few pages, or a full solution with commentary. */
 const MAX_ANSWER_CHARS = 20_000;
+
+/**
+ * The resume a setup may name (lib/resume-interview): only on a Resume Deep
+ * Dive round, and only one of the caller's own — someone else's id is refused
+ * exactly like an unknown one. Absent, null or "" clears it; any other round
+ * drops it silently, since a resume on a coding round would never be read.
+ */
+async function setupResumeId(
+  raw: unknown,
+  roundId: string,
+  userId: string,
+): Promise<{ ok: true; id: string | null } | { ok: false; error: string }> {
+  if (roundId !== RESUME_ROUND || raw === undefined || raw === null || raw === "") return { ok: true, id: null };
+  if (typeof raw !== "string" || raw.length > 191) return { ok: false, error: "That resume was not found." };
+  const owned = await prisma.resume.count({ where: { id: raw, userId } });
+  return owned ? { ok: true, id: raw } : { ok: false, error: "That resume was not found." };
+}
 
 /**
  * @route   POST /api/interviews/save
@@ -62,6 +80,8 @@ router.post("/save", requireAuth, async (req: any, res) => {
   if (roleId.length > 80 || roundId.length > 80) {
     return res.status(400).json({ error: "Role and round names are limited to 80 characters." });
   }
+  const resume = await setupResumeId(req.body?.resumeId, roundId, req.user.userId);
+  if (!resume.ok) return res.status(400).json({ error: resume.error });
 
   try {
     // Templates are a short list on the builder and the dashboard; nothing
@@ -84,6 +104,7 @@ router.post("/save", requireAuth, async (req: any, res) => {
         interviewStyle,
         stackFocusIds: stackFocusIds || [],
         focusAreaIds: focusAreaIds || [],
+        resumeId: resume.id,
       },
     });
 
@@ -168,6 +189,69 @@ router.post("/explain", requireAuth, async (req: any, res) => {
 });
 
 /**
+ * @route   POST /api/interviews/resume
+ * @desc    A Resume Deep Dive setup on one of the caller's resumes (the resume workspace's "Interview me on this")
+ * @access  Private
+ *
+ * lib/resume-interview says what the round is. Unlike an "explain your
+ * solution" setup this one is an ordinary saved setup — listed, editable,
+ * under the cap — because a member comes back to the same resume for round
+ * after round and may want to change its depth. A setup already on this
+ * resume is handed back rather than duplicated. Answers both rooms' hrefs;
+ * the round is started there and metered as usual.
+ */
+router.post("/resume", requireAuth, async (req: any, res) => {
+  const resumeId = req.body?.resumeId;
+  if (typeof resumeId !== "string" || !resumeId || resumeId.length > 191) {
+    return res.status(400).json({ error: "resumeId is required" });
+  }
+  const userId = req.user.userId;
+  const [resume, existing, owned] = await Promise.all([
+    prisma.resume.findFirst({ where: { id: resumeId, userId }, select: { id: true, targetRole: true, content: true } }),
+    prisma.savedInterview.findFirst({
+      where: { userId, resumeId, roundId: RESUME_ROUND, simulationRunId: null, submissionId: null },
+      orderBy: { createdAt: "desc" },
+      select: { id: true },
+    }),
+    prisma.savedInterview.count({ where: { userId, simulationRunId: null, submissionId: null } }),
+  ]);
+  // Someone else's or unknown: the same answer for each.
+  if (!resume) return res.status(404).json({ error: "That resume was not found." });
+  if (!resumeBrief(resume.content)) {
+    return res.status(409).json({ error: "That resume has no experience, projects or skills to ask about yet. Fill it in first." });
+  }
+
+  let setupId = existing?.id ?? null;
+  if (!setupId) {
+    if (owned >= MAX_SAVED_TEMPLATES) {
+      return res.status(409).json({
+        error: `You can keep up to ${MAX_SAVED_TEMPLATES} saved setups. Delete one you no longer use to add another.`,
+      });
+    }
+    const created = await prisma.savedInterview.create({
+      data: {
+        userId,
+        roleId: resumeRole(resume),
+        roundId: RESUME_ROUND,
+        // The builder's own values, so the setup reads and edits like one made there.
+        difficulty: "intermediate",
+        experienceBand: "Junior (0-2 years)",
+        interviewStyle: "Behavioral + Technical",
+        resumeId: resume.id,
+      },
+      select: { id: true },
+    });
+    setupId = created.id;
+    invalidateDashboard(userId);
+  }
+  res.status(existing ? 200 : 201).json({
+    savedInterviewId: setupId,
+    href: `/mock-interview/session?savedInterviewId=${setupId}`,
+    voiceHref: `/mock-interview/voice?savedInterviewId=${setupId}&durationMin=${RESUME_VOICE_MINUTES}`,
+  });
+});
+
+/**
  * @route   PATCH /api/interviews/:id
  * @desc    Update an existing interview configuration
  * @access  Private
@@ -219,6 +303,16 @@ router.patch("/:id", requireAuth, async (req: any, res) => {
       });
     }
 
+    // A client that does not send the field (an older one, the mobile app)
+    // keeps the resume while the round stays a deep dive; a round changed to
+    // anything else lets it go.
+    const round = typeof roundId === "string" ? roundId : interview.roundId;
+    const resume =
+      req.body && "resumeId" in req.body
+        ? await setupResumeId(req.body.resumeId, round, req.user.userId)
+        : ({ ok: true, id: round === RESUME_ROUND ? interview.resumeId : null } as const);
+    if (!resume.ok) return res.status(400).json({ error: resume.error });
+
     const updatedInterview = await prisma.savedInterview.update({
       where: { id },
       data: {
@@ -229,6 +323,7 @@ router.patch("/:id", requireAuth, async (req: any, res) => {
         interviewStyle,
         stackFocusIds: stackFocusIds || [],
         focusAreaIds: focusAreaIds || [],
+        resumeId: resume.id,
       },
     });
     // The history's analytics and its role filter are read through this
@@ -314,6 +409,8 @@ function configFrom(
     focusAreaIds: unknown;
   },
   language?: string | null,
+  /** The session's frozen resume brief (MockInterviewSession.resumeBrief), for a Resume Deep Dive round. */
+  resume?: string | null,
 ): InterviewConfig {
   const config: InterviewConfig = {
     roleId: template.roleId,
@@ -326,7 +423,18 @@ function configFrom(
   };
   // Named in the prompt so the stub arrives in the language the editor opens in.
   config.language = language ?? languageFor(config);
+  if (resume) config.resume = resume;
   return config;
+}
+
+/**
+ * The setup as the client sees it: the config without the resume brief (the
+ * member's own text, but ~7 KB on every report load that nothing draws), plus
+ * which resume the round was about, so the report can link back to it.
+ */
+function setupOf(config: InterviewConfig, resumeId: string | null = null) {
+  const { resume: _resume, ...setup } = config;
+  return { ...setup, resumeId };
 }
 
 /**
@@ -446,6 +554,24 @@ router.post("/start", requireAuth, async (req: any, res) => {
       return res.status(403).json({ error: "You do not have permission to use this configuration" });
     }
 
+    // A Resume Deep Dive on a named resume freezes it now (lib/resume-interview),
+    // before the quota is touched: a resume that has gone, or holds nothing to
+    // ask about, is a sentence to fix in the setup, never a spent round.
+    let brief: string | null = null;
+    if (template.roundId === RESUME_ROUND && template.resumeId) {
+      const resume = await prisma.resume.findFirst({
+        where: { id: template.resumeId, userId: req.user.userId },
+        select: { content: true },
+      });
+      if (!resume) {
+        return res.status(409).json({ error: "The resume this setup uses was deleted. Pick another resume in the setup." });
+      }
+      brief = resumeBrief(resume.content);
+      if (!brief) {
+        return res.status(409).json({ error: "That resume has no experience, projects or skills to ask about yet. Fill it in on the resume page first." });
+      }
+    }
+
     // Metered before anything is created, so a refusal leaves no orphan row and
     // costs no model call. Asked after the template, because the template says
     // whether this is a company simulation's round (the run's allowance paid
@@ -463,7 +589,7 @@ router.post("/start", requireAuth, async (req: any, res) => {
     const onCredit = quota.onCredit;
     const creditCost = quota.creditCost;
 
-    const config = configFrom(template);
+    const config = configFrom(template, null, brief);
     const budget = questionBudgetFor(config.difficulty);
 
     if (mode === "voice") {
@@ -504,18 +630,20 @@ router.post("/start", requireAuth, async (req: any, res) => {
           durationLimitSec: durationMin * 60,
           // The rest of the state fills in as the round runs (stateOf).
           voiceState: { interviewer, language },
+          resumeBrief: brief,
         },
       });
 
       // A new row changes the session count and the activity calendar.
       invalidateInterviewHistory(req.user.userId);
 
+      const { resumeBrief: _voiceBrief, ...voiceSession } = session;
       return res.json({
         success: true,
         message: "Voice interview session created",
-        session,
+        session: voiceSession,
         mode: "voice",
-        setup: config,
+        setup: setupOf(config, template.resumeId),
         language: languageFor(config),
         durationLimitSec: durationMin * 60,
         interviewer,
@@ -537,8 +665,8 @@ router.post("/start", requireAuth, async (req: any, res) => {
     });
     if (open) {
       const pending = open.questions.find((q) => q.status === "pending") ?? null;
-      const { questions, ...session } = open;
-      const resumed = configFrom(template, open.language);
+      const { questions, resumeBrief: _openBrief, ...session } = open;
+      const resumed = configFrom(template, open.language, open.resumeBrief);
       return res.json({
         success: true,
         resumed: true,
@@ -547,7 +675,7 @@ router.post("/start", requireAuth, async (req: any, res) => {
         question: pending,
         mode: "written",
         language: resumed.language,
-        setup: resumed,
+        setup: setupOf(resumed, template.resumeId),
         progress: { asked: pending ? pending.orderIndex + 1 : questions.length, total: open.questionBudget },
       });
     }
@@ -567,6 +695,7 @@ router.post("/start", requireAuth, async (req: any, res) => {
         status: "started",
         questionBudget: budget,
         language,
+        resumeBrief: brief,
         onCredit,
         creditCost,
         // The opening question's cost, on the row from the start.
@@ -600,13 +729,13 @@ router.post("/start", requireAuth, async (req: any, res) => {
     res.json({
       success: true,
       message: "Interview session started successfully",
-      session: { ...session, questionBudget: budget },
+      session: { ...session, resumeBrief: undefined, questionBudget: budget },
       question: firstQuestion,
       mode: "written",
       language,
       // The room the candidate is sitting in — role, round, depth, focus. It is
       // shown alongside the question rather than left behind on the builder.
-      setup: config,
+      setup: setupOf(config, template.resumeId),
       progress: { asked: 1, total: budget },
     });
   } catch (error: any) {
@@ -836,7 +965,7 @@ router.post("/session/:sessionId/answer", requireAuth, async (req: any, res) => 
       return res.status(409).json({ error: "That question has not been asked yet" });
     }
 
-    const config = configFrom(session.savedInterview, session.language);
+    const config = configFrom(session.savedInterview, session.language, session.resumeBrief);
     const budget = session.questionBudget;
     const language = config.language ?? languageFor(config);
 
@@ -1069,7 +1198,7 @@ router.put("/session/:sessionId/language", requireAuth, interviewLanguageLimiter
     if (session.status !== "started" || session.mode === "voice") {
       return res.status(409).json({ error: "This interview is not open for answers" });
     }
-    const previous = configFrom(session.savedInterview, session.language).language ?? "javascript";
+    const previous = configFrom(session.savedInterview, session.language, session.resumeBrief).language ?? "javascript";
     const pending = session.questions.find((q) => q.status === "pending");
     const stub = pending?.starterCode?.trim() ? pending.starterCode : null;
     if (previous === language) return res.json({ language, starterCode: stub });
@@ -1128,7 +1257,7 @@ router.put("/session/:sessionId/language", requireAuth, interviewLanguageLimiter
           .map((q) => ({ questionText: q.questionText, userAnswer: q.userAnswer }));
         // If this has not landed by the time they answer, /answer writes the
         // question inline, as it does after any failed prefetch.
-        prefetchAhead(session, configFrom(session.savedInterview, language), transcript, pending.questionText, nextIndex);
+        prefetchAhead(session, configFrom(session.savedInterview, language, session.resumeBrief), transcript, pending.questionText, nextIndex);
       }
     }
 
@@ -1201,13 +1330,14 @@ function sessionPayload(session: SessionRows) {
   // The list travels once, at the top level — that is what both the web and
   // the mobile client read. `session` used to carry a second, nested copy of
   // the same rows (each with a MediumText answer), doubling every report load.
-  const { questions: stored, ...sessionRow } = session;
+  // The frozen resume brief stays server-side too (setupOf).
+  const { questions: stored, resumeBrief: _brief, ...sessionRow } = session;
 
   return {
     session: sessionRow,
     questions,
     language: configFrom(session.savedInterview, session.language).language,
-    setup: configFrom(session.savedInterview, session.language),
+    setup: setupOf(configFrom(session.savedInterview, session.language), session.savedInterview.resumeId),
     status: session.status,
     completedAt: session.completedAt,
     startedAt: session.createdAt,
@@ -1247,7 +1377,7 @@ async function completeWrittenSession(sessionId: string, userId: string): Promis
   // slowest one rather than the sum.
   const unmarked = session.questions.filter((q) => q.userAnswer !== null && q.evaluationScore === null);
   if (unmarked.length > 0) {
-    const config = configFrom(session.savedInterview, session.language);
+    const config = configFrom(session.savedInterview, session.language, session.resumeBrief);
     const budget = session.questionBudget;
     const ordered = session.questions;
 
@@ -1308,7 +1438,7 @@ async function completeWrittenSession(sessionId: string, userId: string): Promis
     };
   }
 
-  const completed = await finalizeInterview(session, configFrom(session.savedInterview, session.language), scored);
+  const completed = await finalizeInterview(session, configFrom(session.savedInterview, session.language, session.resumeBrief), scored);
   return {
     status: 200,
     body: {

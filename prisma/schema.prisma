@@ -866,6 +866,12 @@ model SavedInterview {
   /// out of the saved-setups list, its cap and the dashboard's count. No FK:
   /// a deleted submission leaves a round that briefs without the code.
   submissionId    String?                @db.VarChar(191)
+  /// The member's resume a "Resume Deep Dive" round interviews on
+  /// (lib/resume-interview): picked in the builder or from the resume
+  /// workspace. No FK, like submissionId: a deleted resume leaves a setup
+  /// whose next round /start refuses with a sentence, and its past rounds
+  /// keep their own frozen copy (MockInterviewSession.resumeBrief).
+  resumeId        String?                @db.VarChar(191)
   createdAt       DateTime               @default(now())
   updatedAt       DateTime               @updatedAt
   user            User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -891,6 +897,11 @@ model MockInterviewSession {
   /// cannot turn the next question's stub into another language. Null on
   /// rounds started before 2026-10-05, which read the stack's (or JavaScript).
   language       String?   @db.VarChar(16)
+  /// The resume this round interviews on, as the interviewer reads it
+  /// (lib/resume-interview resumeBrief: no contact details), frozen at /start
+  /// so every turn, the marking and the report read the same copy. Null for
+  /// a round that is not about a resume.
+  resumeBrief    String?   @db.Text
   completedAt    DateTime?
 
   // ── interaction layer ──────────────────────────────────────────────────

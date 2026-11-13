@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { prettyLabel } from "../lib/interview-labels.js";
+import { resumeSection } from "../lib/resume-interview.js";
 
 /**
  * The interview model layer.
@@ -395,6 +396,12 @@ export interface InterviewConfig {
   focusAreaIds: string[];
   /** Monaco language id the round's editor opens in; the stub is written in it. */
   language?: string;
+  /**
+   * The resume a Resume Deep Dive round is about (lib/resume-interview
+   * resumeBrief), frozen on the session at /start. Part of the cached prefix:
+   * it never changes within a round.
+   */
+  resume?: string | null;
 }
 
 export interface TranscriptTurn {
@@ -436,6 +443,11 @@ function configBlock(config: InterviewConfig, budget: number | null) {
 
 type InputItem = { role: "system" | "user" | "assistant"; content: string };
 
+/** The resume a Resume Deep Dive round is about, as one system message — none for any other round. */
+function resumeInput(config: InterviewConfig): InputItem[] {
+  return config.resume ? [{ role: "system", content: resumeSection(config.resume, false) }] : [];
+}
+
 /**
  * The prefix, in the one order every call must use. Callers append their own
  * volatile tail; nothing here may vary between turns of a session.
@@ -445,6 +457,7 @@ function prefix(config: InterviewConfig, budget: number, transcript: TranscriptT
     { role: "system", content: RUBRIC },
     { role: "system", content: configBlock(config, budget) },
   ];
+  input.push(...resumeInput(config));
 
   for (const turn of transcript) {
     input.push({ role: "assistant", content: turn.questionText });
@@ -1029,6 +1042,8 @@ export async function writeReport(
   const input: InputItem[] = [
     { role: "system", content: RUBRIC },
     { role: "system", content: configBlock(config, budget) },
+    // A resume round's report names the claims the answers did not back, so it reads the resume too.
+    ...resumeInput(config),
     {
       role: "user",
       content:
@@ -1118,6 +1133,8 @@ export async function analyzeVoiceTranscript(
   const input: InputItem[] = [
     { role: "system", content: RUBRIC },
     { role: "system", content: configBlock(config, null) },
+    // Scoring a resume round means checking the answers against the resume it was about.
+    ...resumeInput(config),
     {
       role: "user",
       content:

@@ -94,7 +94,7 @@ export async function buildAccountExport(userId: string): Promise<Record<string,
     prisma.mockInterviewSession.findMany({
       where, ...newest, orderBy: { createdAt: "desc" },
       select: {
-        id: true, mode: true, status: true, language: true, startedAt: true, endedAt: true, completedAt: true, durationSec: true,
+        id: true, mode: true, status: true, language: true, resumeBrief: true, startedAt: true, endedAt: true, completedAt: true, durationSec: true,
         overallScore: true, summary: true, strengths: true, weaknesses: true, nextSteps: true, topicBreakdown: true, createdAt: true,
         savedInterview: { select: { roleId: true, roundId: true, difficulty: true, experienceBand: true, interviewStyle: true } },
         questions: {
@@ -105,7 +105,7 @@ export async function buildAccountExport(userId: string): Promise<Record<string,
         events: { orderBy: { sequence: "asc" }, select: { speaker: true, type: true, text: true, createdAt: true } },
       },
     }),
-    prisma.savedInterview.findMany({ where, ...newest, select: { roleId: true, roundId: true, difficulty: true, experienceBand: true, interviewStyle: true, stackFocusIds: true, focusAreaIds: true, company: true, createdAt: true } }),
+    prisma.savedInterview.findMany({ where, ...newest, select: { roleId: true, roundId: true, difficulty: true, experienceBand: true, interviewStyle: true, stackFocusIds: true, focusAreaIds: true, company: true, resumeId: true, createdAt: true } }),
     prisma.aptitudeAttempt.findMany({
       where, ...newest, orderBy: { createdAt: "desc" },
       select: { question: { select: { slug: true } }, selected: true, correct: true, timeSec: true, usedHints: true, createdAt: true },
