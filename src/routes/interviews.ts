@@ -26,6 +26,7 @@ import { invalidateDashboard } from "../services/dashboard.js";
 import { runOfSession, simulationCoversRound } from "../services/simulations.js";
 import { SOLUTION_MINUTES, SOLUTION_ROUND } from "../lib/solution-interview.js";
 import { RESUME_ROUND, RESUME_VOICE_MINUTES, resumeBrief, resumeRole } from "../lib/resume-interview.js";
+import { resumeInterviewPage } from "../services/resume-interview.js";
 import {
   finalizeInterview,
   interviewHistoryKey,
@@ -189,37 +190,59 @@ router.post("/explain", requireAuth, async (req: any, res) => {
 });
 
 /**
+ * @route   GET /api/interviews/resume
+ * @desc    The Resume Deep Dive Interview page: the caller's resumes (what each gives the interviewer, counted) and their resume rounds
+ * @access  Private
+ */
+router.get("/resume", requireAuth, async (req: any, res) => {
+  res.json(await resumeInterviewPage(req.user.userId));
+});
+
+/** The builder's difficulty ids (frontend interview-options DifficultyLevel). */
+const DIFFICULTIES = new Set(["beginner", "intermediate", "advanced"]);
+
+/**
  * @route   POST /api/interviews/resume
- * @desc    A Resume Deep Dive setup on one of the caller's resumes (the resume workspace's "Interview me on this")
+ * @desc    A Resume Deep Dive setup on one of the caller's resumes
  * @access  Private
  *
- * lib/resume-interview says what the round is. Unlike an "explain your
- * solution" setup this one is an ordinary saved setup — listed, editable,
- * under the cap — because a member comes back to the same resume for round
- * after round and may want to change its depth. A setup already on this
- * resume is handed back rather than duplicated. Answers both rooms' hrefs;
- * the round is started there and metered as usual.
+ * Called by the Resume Deep Dive Interview page (with the role, seniority and
+ * difficulty chosen there) and by the resume workspace's "Practise interview"
+ * (resume alone: the resume's role, Junior, Intermediate). lib/resume-interview
+ * says what the round is. The setup is an ordinary saved one — listed,
+ * editable, under the cap — and one already holding exactly this choice is
+ * handed back rather than duplicated. Answers both rooms' hrefs; the round is
+ * started there and metered as usual.
  */
 router.post("/resume", requireAuth, async (req: any, res) => {
-  const resumeId = req.body?.resumeId;
+  const body = req.body ?? {};
+  const resumeId = body.resumeId;
   if (typeof resumeId !== "string" || !resumeId || resumeId.length > 191) {
     return res.status(400).json({ error: "resumeId is required" });
   }
+  const text = (v: unknown, max: number) => (typeof v === "string" && v.trim() ? v.trim().slice(0, max) : null);
+  const role = text(body.roleId, 80);
+  const band = text(body.experienceBand, 60) ?? "Junior (0-2 years)";
+  const difficulty = typeof body.difficulty === "string" && DIFFICULTIES.has(body.difficulty) ? body.difficulty : "intermediate";
+
   const userId = req.user.userId;
-  const [resume, existing, owned] = await Promise.all([
-    prisma.resume.findFirst({ where: { id: resumeId, userId }, select: { id: true, targetRole: true, content: true } }),
-    prisma.savedInterview.findFirst({
-      where: { userId, resumeId, roundId: RESUME_ROUND, simulationRunId: null, submissionId: null },
-      orderBy: { createdAt: "desc" },
-      select: { id: true },
-    }),
-    prisma.savedInterview.count({ where: { userId, simulationRunId: null, submissionId: null } }),
-  ]);
+  const resume = await prisma.resume.findFirst({ where: { id: resumeId, userId }, select: { id: true, targetRole: true, content: true } });
   // Someone else's or unknown: the same answer for each.
   if (!resume) return res.status(404).json({ error: "That resume was not found." });
   if (!resumeBrief(resume.content)) {
     return res.status(409).json({ error: "That resume has no experience, projects or skills to ask about yet. Fill it in first." });
   }
+  const roleId = role ?? resumeRole(resume);
+
+  const mine = { userId, simulationRunId: null, submissionId: null };
+  const [existing, owned] = await Promise.all([
+    prisma.savedInterview.findFirst({
+      where: { ...mine, resumeId, roundId: RESUME_ROUND, roleId, experienceBand: band, difficulty },
+      orderBy: { createdAt: "desc" },
+      select: { id: true },
+    }),
+    prisma.savedInterview.count({ where: mine }),
+  ]);
 
   let setupId = existing?.id ?? null;
   if (!setupId) {
@@ -231,11 +254,11 @@ router.post("/resume", requireAuth, async (req: any, res) => {
     const created = await prisma.savedInterview.create({
       data: {
         userId,
-        roleId: resumeRole(resume),
+        roleId,
         roundId: RESUME_ROUND,
-        // The builder's own values, so the setup reads and edits like one made there.
-        difficulty: "intermediate",
-        experienceBand: "Junior (0-2 years)",
+        difficulty,
+        experienceBand: band,
+        // The builder's own style for a round that is half projects, half conduct.
         interviewStyle: "Behavioral + Technical",
         resumeId: resume.id,
       },
