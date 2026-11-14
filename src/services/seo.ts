@@ -54,6 +54,7 @@ import { sqlNumber, sqlProblemPage, sqlSitemapEntries, sqlTopicPage } from "./sq
 import { SQL_TOPIC_GUIDES, sqlTopicBySlug } from "../lib/sql-problems/topics.js";
 import { NOTE_SUBJECTS, subjectByKey } from "../lib/cs-notes.js";
 import { notePage, notesSitemapEntries, notesSyllabus } from "./cs-notes.js";
+import { DESIGN_POINTS, DESIGN_PROBLEMS, DESIGN_RUBRIC, problemBySlug as designProblemBySlug, type DesignProblem } from "../lib/design-practice.js";
 import { experienceBody, experienceDescription } from "../lib/interview-experience.js";
 import { experienceById, experienceCompanies, experienceIdOf, experienceList, experienceSitemapEntries, type ExperienceRow } from "./interview-experiences.js";
 import { slugify } from "../lib/slug.js";
@@ -300,6 +301,11 @@ export const titles = {
   simulation: (company: string, family: "service" | "product", rounds: number) =>
     branded(`${company} ${family === "service" ? "Recruitment" : "Interview"} Process: ${rounds} Rounds Explained`),
   simulations: (count: number) => branded(`Recruitment Process of ${count} Companies, Round by Round`),
+  // A system design practice problem (/design-practice/<slug>, 2026-11-14):
+  // "design a url shortener system design interview" — the problem's own
+  // name, then what the page is, so it never competes with the reference
+  // note's title ("… System Design", lib/cs-notes) for the same query.
+  designProblem: (title: string) => fitted(`${title}: System Design Interview Practice`, `${title}: System Design Practice`, title),
   // The company directory (/companies): "company wise coding questions", the
   // search, then what else each row carries.
   companies: (count: number) => branded(`Company-Wise Coding Questions & Placement Prep: ${count} Companies`),
@@ -448,6 +454,7 @@ const SECTION = {
   experiences: { name: "Interview experiences", path: "/interview-experiences" },
   simulations: { name: "Company simulations", path: "/simulations" },
   companies: { name: "Companies", path: "/companies" },
+  designPractice: { name: "System design practice", path: "/design-practice" },
 } as const;
 
 const HEAD_TTL_MS = 60 * 60 * 1000;
@@ -694,6 +701,8 @@ async function pageHead(path: string): Promise<PageHead | PageRedirect | null> {
   if (path === "/simulations") return simulationsIndex();
   if (path === "/companies") return companiesIndex();
   if ((m = /^\/simulations\/([a-z0-9-]+)$/.exec(path))) return simulationHead(m[1]);
+  if (path === "/design-practice") return designPracticeIndex();
+  if ((m = /^\/design-practice\/([a-z0-9-]+)$/.exec(path))) return designProblemHead(m[1]);
   if ((m = /^\/interview-experiences\/([a-z0-9-]+)\/([a-z0-9-]+)$/.exec(path))) return experienceHead(path, m[2]);
   return null;
 }
@@ -2077,6 +2086,70 @@ async function sqlProblemHead(slug: string): Promise<PageHead | null> {
   };
 }
 
+/* ── System design practice ───────────────────────────────────────── */
+
+const DESIGN_LEVEL: Record<DesignProblem["level"], string> = { beginner: "Beginner", intermediate: "Intermediate", advanced: "Advanced" };
+
+/** The reference note's title (lib/cs-notes), for the link from a problem to its walkthrough. */
+function systemDesignNoteTitle(slug: string): string | null {
+  const subject = notesSyllabus().subjects.find((x) => x.key === "system-design");
+  return subject?.notes.find((n) => n.slug === slug)?.title ?? null;
+}
+
+/** A design problem's meta description; the SPA's DesignCanvasPage composes the same words. */
+export const designProblemDescription = (p: Pick<DesignProblem, "title" | "brief">) =>
+  summarise(`${p.title} as a system design interview question: ${p.brief} Write the requirements, estimates, API, data model and architecture, and get it reviewed against a rubric.`);
+
+/**
+ * One system design problem (/design-practice/<slug>, indexed since
+ * 2026-11-14): the question as an interviewer opens it, the stated scale,
+ * the five things the answer is scored on, and the walkthrough note. The
+ * `mustCover` list is the reviewer's and is never written here — it is
+ * the answer key, shown to a member only after their review.
+ */
+function designProblemHead(slug: string): PageHead | null {
+  const p = designProblemBySlug(slug);
+  if (!p) return null;
+  const path = `/design-practice/${slug}`;
+  const trail: Crumb[] = [HOME, SECTION.designPractice, { name: p.title, path }];
+  const noteTitle = systemDesignNoteTitle(p.note);
+  const content =
+    factList([
+      ["Level", DESIGN_LEVEL[p.level]],
+      ["Scored out of", String(DESIGN_POINTS)],
+      ["Cost", "Free to read; a free account gets the review"],
+    ]) +
+    `<p>${h(p.brief)}</p>` +
+    section("The scale", `<p>${h(p.scale)}</p>`, "scale") +
+    section("What a strong answer covers", `<ol>${DESIGN_RUBRIC.map((c) => `<li><strong>${h(c.label)} (${c.max} points).</strong> ${h(c.asks)}</li>`).join("")}</ol>`, "rubric") +
+    section(
+      "How the practice works",
+      `<p>Write your design in sections — functional and non-functional requirements, scale estimates, the API, the data model, the request flow and a deep dive on the bottlenecks — and pick the components to draw the architecture. A review scores it on the five areas above in under a minute, then you can defend it in an AI mock interview.</p>`,
+      "how",
+    ) +
+    (noteTitle ? section("The reference design", `<p>${link(`/notes/system-design/${p.note}`, noteTitle)}: the walkthrough, with animated figures.</p>`, "reference") : "") +
+    section("More design problems", linkList(DESIGN_PROBLEMS.filter((x) => x.slug !== slug).map((x) => ({ href: `/design-practice/${x.slug}`, label: x.title, note: DESIGN_LEVEL[x.level] }))), "more");
+  return {
+    path,
+    title: titles.designProblem(p.title),
+    description: designProblemDescription(p),
+    facts: { trail },
+    content,
+    crumb: p.title,
+  };
+}
+
+/** /design-practice's child list (the prerendered page's `seo:index` slot): every problem with its level. */
+function designPracticeIndex(): PageHead {
+  return {
+    path: "/design-practice",
+    title: "System design practice",
+    description: "",
+    content: section("The problems", linkList(DESIGN_PROBLEMS.map((x) => ({ href: `/design-practice/${x.slug}`, label: x.title, note: `${DESIGN_LEVEL[x.level]} · ${x.brief}` }))), "problems"),
+    section: "index",
+  };
+}
+
 /* ── Company simulations ──────────────────────────────────────────── */
 
 /** "recruitment" for a service company's drive, "interview" for a product company's loop: the word searched with its name. */
@@ -2583,7 +2656,10 @@ export function sitemapXml(name: string): Promise<string | null> {
       case "notes":
         // The subjects and the notes, each note with its authored `updated`
         // date; /notes itself is a prerendered index page (sitemap-pages.xml).
-        return urlset(notesSitemapEntries().filter((e) => e.path !== "/notes"));
+        // The system design practice problems ride here, beside the notes that
+        // teach them, rather than in a sitemap of their own (a new name is a
+        // change to the frontend's sitemap index too, for nine URLs).
+        return urlset([...notesSitemapEntries().filter((e) => e.path !== "/notes"), ...DESIGN_PROBLEMS.map((x) => ({ path: `/design-practice/${x.slug}` }))]);
       case "experiences":
         // Members' interview experiences, each dated by its last edit.
         return urlset(await experienceSitemapEntries());
