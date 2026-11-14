@@ -31,7 +31,7 @@ import { normalizeOutput, runProgram } from "../src/lib/program-judge.js";
 import { skillDef } from "../src/lib/skill-catalog.js";
 import { BREACH_LIMIT } from "../src/lib/skill-tests.js";
 import { expectedOutput, loadBank, programOf, validateBank, type BankQuestion } from "./skill-test-data/bank.js";
-import { readGuides, siteLinkChecker, validateGuide, type SkillTestGuide } from "../src/lib/skill-test-guides.js";
+import { readGuides, siteLinkChecker, studyLessonPaths, validateGuide, type SkillTestGuide } from "../src/lib/skill-test-guides.js";
 import { TOPIC_HUBS } from "../src/lib/problem-topics.js";
 import { APTITUDE_CATEGORIES, APTITUDE_TOPICS } from "../src/lib/aptitude-topics.js";
 import { fileURLToPath } from "node:url";
@@ -154,6 +154,7 @@ async function validate(questions: BankQuestion[], parseProblems: string[]): Pro
     TOPIC_HUBS.map((h) => h.slug),
     [...APTITUDE_CATEGORIES.map((c) => c.id), ...APTITUDE_TOPICS.map((t) => t.id)],
     lessons,
+    studyLessonPaths(),
   );
   for (const slug of GUIDES.keys()) if (!SKILL_TESTS.some((t) => t.slug === slug)) problems.push(`content/skill-tests/${slug}.md names no skill test`);
   // A pool still being written is short by design; --run must still check

@@ -43,7 +43,7 @@ test("one long sentence is cut on a word with an ellipsis", () => {
  * deliberate one made in both places.
  */
 test("every content page kind has a title with its intent first and the brand where it fits", () => {
-  assert.equal(titles.problem("Two Sum", "Easy"), "Two Sum — Easy Problem & Solution — CodeKairo");
+  assert.equal(titles.problem("Two Sum", "Easy"), "Two Sum — Solution in Python, Java & C++ — CodeKairo");
   assert.equal(titles.topicHub("Arrays", 343), "Arrays Coding Problems: 343 Questions with Solutions");
   assert.equal(titles.companyHub("Google", 57), "Google Coding Interview Questions: 57 Tagged Problems");
   // A service company hires through an online test: "accenture coding questions" is the search.
@@ -127,7 +127,8 @@ test("a content page's preview card says what its head says, and hubs keep the s
 
 test("the brand is added only where the whole title fits in 60 characters", () => {
   const long = titles.problem("Find First and Last Position of Element in Sorted Array", "Medium");
-  assert.equal(long, "Find First and Last Position of Element in Sorted Array");
+  // Past the budget with any dash suffix: the name keeps " Solution", no brand.
+  assert.equal(long, "Find First and Last Position of Element in Sorted Array Solution");
   for (const t of [titles.problem("Two Sum", "Easy"), titles.test("Sprint", "CodeKairo"), titles.aptitudeTopic("Percentages")]) {
     assert.ok(t.endsWith(" — CodeKairo") && t.length <= 60, t);
   }

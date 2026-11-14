@@ -44,7 +44,14 @@ export interface TopicHub {
   slug: string;
   /** The page's name ("Hash Table"). */
   label: string;
+  /** Its first sentence is the line under the h1 — the page's direct answer — so it says what the topic is. */
   blurb: string;
+  /**
+   * The questions the page answers (2026-11-14, a hub's FAQPage): written for
+   * the hubs Search Console had closest to page 1, each answer a fact about
+   * the technique, never a claim about the catalogue. Optional.
+   */
+  faq?: ReadonlyArray<{ q: string; a: string }>;
 }
 
 /**
@@ -223,14 +230,26 @@ export const TOPIC_HUBS: TopicHub[] = [
     slug: "intervals",
     label: "Intervals",
     blurb:
-      "Ranges on a line: merge the ones that overlap, insert a new one, count how many rooms a set of meetings needs, find the gaps. Sort by start and sweep is the recurring idea; the problems here practise the boundary cases — touching ends, containment, an interval that swallows several.",
+      "Interval problems give you ranges on a line — meetings, bookings, time slots — and ask you to merge the overlapping ones, insert a new one, count how many rooms they need or find the gaps. Sort by start and sweep is the recurring idea; the problems here practise the boundary cases — touching ends, containment, an interval that swallows several.",
+    faq: [
+      { q: "What is an interval problem?", a: "A problem whose input is a list of ranges [start, end] — meetings, bookings, time slots — and whose answer depends on how they overlap: merge them, insert one, count the most that overlap at once, or find the free gaps between them." },
+      { q: "How do you solve interval problems?", a: "Sort the intervals by start, then sweep once from left to right, keeping the interval you are building (or, to count rooms, a min-heap of end times). The sort dominates, so most run in O(n log n) time." },
+      { q: "When do two intervals overlap?", a: "[a, b] and [c, d] overlap when a ≤ d and c ≤ b: each starts before the other ends. Whether touching ends such as [1, 2] and [2, 3] count is the problem's choice — read it before writing the comparison." },
+      { q: "How many meeting rooms does a schedule need?", a: "As many as the meetings running at the busiest moment. Keep a min-heap of end times: a meeting that starts before the earliest end needs a new room, otherwise it reuses the room that just freed up." },
+    ],
   },
   {
     tag: "Number Theory",
     slug: "number-theory",
     label: "Number Theory",
     blurb:
-      "Primes, divisors, greatest common divisors and modular arithmetic. Sieving primes, reducing fractions, computing powers modulo a number and reasoning about remainders are the moves; these problems practise them along with the integer limits that make a naive product overflow.",
+      "Number theory problems are coding questions about integers themselves — primes, divisors, greatest common divisors and modular arithmetic. Sieving primes, reducing fractions, computing powers modulo a number and reasoning about remainders are the moves; these problems practise them along with the integer limits that make a naive product overflow.",
+    faq: [
+      { q: "What is number theory in coding problems?", a: "The part of programming problems about integers themselves: primes, divisibility, GCD and LCM, modular arithmetic and the digits of a number. It appears as \"count the divisors\", \"is it prime\", \"return the answer modulo 10^9 + 7\" or \"reduce the fraction\"." },
+      { q: "Which number theory algorithms should I know?", a: "The sieve of Eratosthenes for every prime up to n in O(n log log n), Euclid's algorithm for GCD in O(log n), fast modular exponentiation in O(log n), trial division up to √n to factorise, and Fermat's little theorem for a modular inverse when the modulus is prime." },
+      { q: "Why is the answer asked modulo 10^9 + 7?", a: "Because the true answer overflows a 64-bit integer. 10^9 + 7 is prime and small enough that the product of two remainders still fits in 64 bits, so you can reduce after every addition and multiplication without changing the final result." },
+      { q: "How do I avoid overflow in number theory problems?", a: "Multiply in 64-bit integers (long long in C++, long in Java) and reduce modulo after every step. Compute an LCM as a / gcd(a, b) * b rather than a * b / gcd(a, b), and in JavaScript use BigInt once values pass 2^53." },
+    ],
   },
   {
     tag: "Counting Sort",

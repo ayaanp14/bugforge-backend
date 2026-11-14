@@ -272,9 +272,19 @@ export function validateGuide(guide: SkillTestGuide, knownPath?: (path: string) 
  * TRACKS) — a guide must not link a track that is not live. `testSlugs`
  * comes from the seed source, which lives outside src/.
  */
-export function siteLinkChecker(testSlugs: Iterable<string>, hubs: Iterable<string>, aptitude: Iterable<string>, lessons: Iterable<string>): (path: string) => boolean {
+export function siteLinkChecker(
+  testSlugs: Iterable<string>,
+  hubs: Iterable<string>,
+  aptitude: Iterable<string>,
+  lessons: Iterable<string>,
+  studyLessons: Iterable<string> = [],
+): (path: string) => boolean {
   const known = new Set<string>(["/challenges", "/roadmap", "/aptitude", "/study-plans", "/tests", "/skill-tests", "/bug-hunts", "/mock-interview", "/contests"]);
-  for (const track of ["java", "javascript", "cpp", "python", "sql"]) known.add(`/study-plans/${track}`);
+  for (const track of ["java", "javascript", "cpp", "python", "sql", "lld", "competitive-programming"]) known.add(`/study-plans/${track}`);
+  // One lesson of a track ("cpp/range-for-and-iteration"): a guide's topic
+  // can send the reader to the lesson that teaches it (2026-11-14, the
+  // C++ lessons Search Console had at positions 8–12 had no link but the track's).
+  for (const path of studyLessons) known.add(`/study-plans/${path}`);
   for (const slug of testSlugs) known.add(`/skill-tests/${slug}`);
   for (const slug of hubs) known.add(`/challenges/${slug}`);
   for (const id of aptitude) known.add(`/aptitude/${id}`);
@@ -283,6 +293,33 @@ export function siteLinkChecker(testSlugs: Iterable<string>, hubs: Iterable<stri
 }
 
 /* ── Loading ─────────────────────────────────────────────────────── */
+
+/** The study plans' sources (scripts/study-plans/<track>/NN-<module>/NN-<lesson>.md) — read by the link gate only, never at run time. */
+export const STUDY_PLANS_DIR = fileURLToPath(new URL("../../scripts/study-plans/", import.meta.url));
+
+/** Every study lesson as "<track>/<lesson slug>", from the sources the seed reads; empty where they are not shipped. */
+export function studyLessonPaths(dir: string = STUDY_PLANS_DIR): string[] {
+  const out: string[] = [];
+  const list = (d: string) => {
+    try {
+      return readdirSync(d, { withFileTypes: true });
+    } catch {
+      return [];
+    }
+  };
+  for (const track of list(dir)) {
+    if (!track.isDirectory()) continue;
+    for (const mod of list(`${dir}${track.name}`)) {
+      if (!mod.isDirectory() || !/^\d+-/.test(mod.name)) continue;
+      for (const f of list(`${dir}${track.name}/${mod.name}`)) {
+        const m = /^\d+-([a-z0-9-]+)\.md$/.exec(f.name);
+        if (f.isFile() && m) out.push(`${track.name}/${m[1]}`);
+      }
+    }
+  }
+  return out;
+}
+
 
 export const GUIDE_DIR = fileURLToPath(new URL("../../content/skill-tests/", import.meta.url));
 

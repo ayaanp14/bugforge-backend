@@ -25,7 +25,7 @@ import { escapeHtml, markdownOutline, markdownToHtml } from "../lib/markdown-htm
 import { BUG_HUBS, bugHub } from "../lib/bug-hubs.js";
 import { isCompanyTag } from "../lib/companies.js";
 import { PROBLEM_CANONICAL, problemCanonicalSlug } from "../lib/problem-canonical.js";
-import { editorialIdea, problemIntro } from "../lib/problem-intro.js";
+import { editorialIdea, problemDescription, problemIntro } from "../lib/problem-intro.js";
 import { renamedCompanyHubSlug } from "../lib/problem-topics.js";
 import { TEST_GUIDES } from "../lib/test-guides.js";
 import { isSkillLevel, LEVEL_LABEL, SKILL_GROUPS, SKILLS, skillDef, skillTopic } from "../lib/skill-catalog.js";
@@ -228,6 +228,8 @@ const LANGUAGE_LIST = "JavaScript, TypeScript, Python, Java, C++, C, C#, Go, Kot
  * the same rule; the H1 is the title less the brand (lib/seo/prerender).
  */
 const TITLE_BUDGET = 60;
+/** A problem title past the budget still keeps " Solution" up to this length (titles.problem). */
+const LONG_PROBLEM_TITLE = 70;
 const branded = (core: string): string => {
   const full = `${core} — ${BRAND}`;
   return full.length <= TITLE_BUDGET ? full : core;
@@ -248,8 +250,16 @@ const fitted = (...cores: string[]): string => {
 };
 
 export const titles = {
-  problem: (title: string, difficulty: string) =>
-    fitted(`${title} — ${difficulty} Problem & Solution`, `${title} — Problem & Solution`, `${title} — Solution`, title),
+  // A problem (2026-11-14): "<name> solution", "<name> python/java solution"
+  // are what is searched with a problem's name — not its difficulty — so the
+  // languages lead where they fit, and a name too long for any suffix keeps
+  // the one word searched with it up to LONG_PROBLEM_TITLE: a result cut
+  // after the name loses "Solution", never the name's own words, and the
+  // words still count for matching. Only names past 61 characters stay bare.
+  problem: (title: string, _difficulty: string) => {
+    const t = fitted(`${title} — Solution in Python, Java & C++`, `${title} — Problem & Solution`, `${title} — Solution`, title);
+    return t === title && title.length + 9 <= LONG_PROBLEM_TITLE ? `${title} Solution` : t;
+  },
   topicHub: (label: string, count: number) => branded(`${label} Coding Problems: ${count} ${count === 1 ? "Question" : "Questions"} with Solutions`),
   // A service company (its simulation's family) hires through an online test,
   // and "accenture coding questions" is what is searched — not "interview"
@@ -818,7 +828,7 @@ const SOLUTION_NAMES: Record<string, string> = {
   python: "Python", ruby: "Ruby", rust: "Rust", swift: "Swift", typescript: "TypeScript",
 };
 
-const problemHeadKey = (slug: string) => `seo:head:problem:v4:${slug}`;
+const problemHeadKey = (slug: string) => `seo:head:problem:v5:${slug}`;
 
 /**
  * A problem's lead sentence and meta description (lib/problem-intro): the
@@ -845,19 +855,21 @@ export async function problemSeoText(
     topics: hubs.topics.length ? hubs.topics.map((t) => t.label) : topicTags,
     companies: hubs.companies.length ? hubs.companies.map((c) => c.label) : companyTags,
   });
-  const idea = editorialIdea(p.editorial);
-  if (idea) {
-    // Whole sentences where they fill the line; when the idea's second
-    // sentence does not fit, the first alone can be a stub ("Two Sum: For
-    // each element the partner it needs is target - x."), so the idea is
-    // cut on a word instead.
-    const lead = `${p.title}: ${idea}`;
-    const sentences = summarise(lead);
-    if (sentences.length >= 110) return { intro, description: sentences };
-    const whole = summarise(lead, "", 10_000);
-    if (whole.length <= DESCRIPTION_MAX) return { intro, description: whole };
-    const cut = whole.slice(0, DESCRIPTION_MAX - 1);
-    return { intro, description: `${cut.slice(0, cut.lastIndexOf(" "))}…` };
+  // What the page offers rather than the trick (lib/problem-intro problemDescription, 2026-11-14).
+  if (editorialIdea(p.editorial)) {
+    return {
+      intro,
+      description: problemDescription(
+        {
+          title: p.title,
+          difficulty,
+          topics: hubs.topics.length ? hubs.topics.map((t) => t.label) : topicTags,
+          companies: hubs.companies.length ? hubs.companies.map((c) => c.label) : companyTags,
+          complexity: /complexit/i.test(p.editorial ?? ""),
+        },
+        DESCRIPTION_MAX,
+      ),
+    };
   }
   // Look-alike problems open with the same sentence (the stock-trading
   // series, three sentence-counting ones): such a description is led by
@@ -1053,6 +1065,8 @@ async function hubHead(kind: "topic" | "company", slug: string): Promise<PageHea
     section(`All ${noun}`, levels.join(""), "problems") +
     (kind === "company" ? await companyExperiencesHtml(page.label, slug) : "") +
     links +
+    // The page's questions (lib/problem-topics faq), as the SPA prints them; the FAQPage names exactly these.
+    (page.faq.length ? section("Common questions", page.faq.map((f) => `<h3>${h(f.q)}</h3><p>${h(f.a)}</p>`).join(""), "questions") : "") +
     (page.related.length ? section(kind === "topic" ? "Other topics" : "Other companies", linkList(page.related.map((r) => ({ href: hubPath(r), label: r.label, note: plural(r.count, "problem") }))), "related") : "") +
     (page.next ? `<p>Next topic: ${link(hubPath(page.next), page.next.label)}</p>` : "");
   return {
@@ -1079,6 +1093,7 @@ async function hubHead(kind: "topic" | "company", slug: string): Promise<PageHea
       // In the page's order: easy, then medium, then hard.
       items: firstItems((["EASY", "MEDIUM", "HARD"] as const).flatMap((level) => byLevel(level)).map((p) => ({ name: p.title, path: `/problems/${p.slug}` }))),
       trail,
+      ...(page.faq.length ? { faq: page.faq } : {}),
     },
     content,
     crumb: page.label,

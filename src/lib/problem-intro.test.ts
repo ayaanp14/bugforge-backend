@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { editorialIdea, joinAnd, problemIntro } from "./problem-intro.js";
+import { editorialIdea, joinAnd, problemDescription, problemIntro } from "./problem-intro.js";
 
 test("joinAnd", () => {
   assert.equal(joinAnd([]), "");
@@ -18,6 +18,19 @@ test("editorialIdea falls back to the first prose paragraph, and to nothing", ()
   assert.equal(editorialIdea("## Intuition\n\n```js\nx\n```\n\n- a list\n\nThe real idea."), "The real idea.");
   assert.equal(editorialIdea(null), "");
   assert.equal(editorialIdea("## Approach\n\n1. only steps"), "");
+});
+
+test("problemDescription says what the page offers, then its facts, never the approach", () => {
+  const twoSum = problemDescription({ title: "Two Sum", difficulty: "EASY", topics: ["Arrays", "Hash Table", "Math"], companies: ["Amazon", "Google"], complexity: true });
+  assert.equal(twoSum, "Two Sum solution explained: step-by-step approach, complexity and code in Python, Java, C++ and JavaScript. An easy problem, asked at Amazon and Google.");
+  assert.ok(twoSum.length <= 158, twoSum);
+  // No complexity in the editorial: none promised.
+  assert.doesNotMatch(problemDescription({ title: "Two Sum", difficulty: "Easy", topics: [], companies: [], complexity: false }), /complexity/);
+  // A long name keeps the offer and drops the facts first, then "explained", and never runs past the limit.
+  for (const title of ["Maximize Consecutive Elements in an Array After Modification", "Number of Sub-arrays of Size K and Average Greater than or Equal to Threshold"]) {
+    const d = problemDescription({ title, difficulty: "Hard", topics: ["Dynamic Programming", "Sorting"], companies: ["Amazon", "Microsoft", "Google"], complexity: true });
+    assert.ok(d.startsWith(`${title} solution`) && d.length <= 158, d);
+  }
 });
 
 test("problemIntro states facts, never the approach", () => {

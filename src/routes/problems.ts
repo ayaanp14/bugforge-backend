@@ -33,7 +33,7 @@ const router = Router();
  * neighbour on either side).
  */
 // v3: the payload carries the problem's `number` (2026-10-03).
-export const PROBLEM_KEY_PREFIX = "problem:v4:";
+export const PROBLEM_KEY_PREFIX = "problem:v5:";
 const problemKey = (slug: string) => `${PROBLEM_KEY_PREFIX}${slug}`;
 
 /**

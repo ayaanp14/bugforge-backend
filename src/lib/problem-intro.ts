@@ -73,6 +73,52 @@ export function problemIntro(f: IntroFacts): string {
 }
 
 /**
+ * A problem's meta description: what the page offers, then its facts —
+ * "Two Sum solution explained: step-by-step approach, complexity and code in
+ * Python, Java, C++ and JavaScript. An easy problem, asked at Amazon and
+ * Google."
+ *
+ * Until 2026-11-14 it was led by the editorial's idea ("Sort the array;
+ * then a run of consecutive values…"), which answered the search in the
+ * result itself: Search Console had 510 problem pages on page 1 at a 2%
+ * click rate, and pages at position 2 with no clicks at all. The searcher
+ * looking for a solution is told the page has one — the approach, the
+ * complexity, the code in the languages searched with it — and not the
+ * trick. Every published problem carries an editorial with an approach and
+ * a complexity, and solutions in all 13 languages (the catalogue's seed gate
+ * refuses one without), so the languages named are always on the page;
+ * `complexity` is still read off the editorial, so a problem written another
+ * way is never promised one. The facts are the intro's (no approach), so a
+ * member is told nothing the hints withhold. Fits `max` characters: the
+ * companies go first, then the topics, then the "explained" wording, then
+ * a cut on a word.
+ */
+export function problemDescription(f: IntroFacts & { complexity: boolean }, max = 158): string {
+  const offer = `step-by-step approach${f.complexity ? ", complexity" : ""} and code in Python, Java, C++ and JavaScript.`;
+  const difficulty = f.difficulty.trim().toLowerCase();
+  const article = /^[aeiou]/.test(difficulty) ? "An" : "A";
+  const topics = [...new Set(f.topics.map((t) => t.trim()).filter(Boolean))].slice(0, 2).map(lowerTopic);
+  const companies = [...new Set(f.companies.map((c) => c.trim()).filter(Boolean))].slice(0, 3);
+  const kind = difficulty ? `${article} ${difficulty} problem` : "A coding problem";
+  const tails = [
+    ...(topics.length && companies.length ? [` ${kind} on ${joinAnd(topics)}, asked at ${joinAnd(companies)}.`] : []),
+    ...(companies.length ? [` ${kind}, asked at ${joinAnd(companies)}.`] : []),
+    // "asked at Amazon" is the fact a searcher clicks for: two companies before the topics alone.
+    ...(companies.length > 2 ? [` ${kind}, asked at ${joinAnd(companies.slice(0, 2))}.`] : []),
+    ...(topics.length ? [` ${kind} on ${joinAnd(topics)}.`] : []),
+    ` ${kind}.`,
+    "",
+  ];
+  for (const lead of [`${f.title} solution explained: ${offer}`, `${f.title} solution: ${offer}`]) {
+    const tail = tails.find((t) => lead.length + t.length <= max);
+    if (tail !== undefined) return lead + tail;
+  }
+  const whole = `${f.title} solution: ${offer}`;
+  const cut = whole.slice(0, max - 1);
+  return `${cut.slice(0, cut.lastIndexOf(" "))}…`;
+}
+
+/**
  * A topic as it reads mid-sentence: "Strings" → "strings", "Binary Indexed
  * Tree" → "binary indexed tree", but a topic holding an acronym or a name
  * keeps its capitals ("BFS", "Dijkstra's Algorithm").

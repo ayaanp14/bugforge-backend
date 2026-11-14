@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readdirSync } from "node:fs";
-import { parseGuide, proseWords, readGuides, siteLinkChecker, validateGuide } from "./skill-test-guides.js";
+import { parseGuide, proseWords, readGuides, siteLinkChecker, studyLessonPaths, validateGuide } from "./skill-test-guides.js";
 import { TOPIC_HUBS } from "./problem-topics.js";
 import { APTITUDE_CATEGORIES, APTITUDE_TOPICS } from "./aptitude-topics.js";
 import { fileURLToPath } from "node:url";
@@ -31,7 +31,7 @@ test("every guide keeps the bar and links only to real pages", async () => {
   const seed = (await import(new URL("../../scripts/skill-test-data/tests.ts", import.meta.url).href)) as { SKILL_TESTS: Array<{ slug: string }> };
   const slugs = new Set(seed.SKILL_TESTS.map((t) => t.slug));
   const lessons = readdirSync(LESSONS_DIR).filter((f) => f.endsWith(".md") && !f.startsWith("_")).map((f) => f.replace(/\.md$/, ""));
-  const known = siteLinkChecker(slugs, TOPIC_HUBS.map((h) => h.slug), [...APTITUDE_CATEGORIES.map((c) => c.id), ...APTITUDE_TOPICS.map((t) => t.id)], lessons);
+  const known = siteLinkChecker(slugs, TOPIC_HUBS.map((h) => h.slug), [...APTITUDE_CATEGORIES.map((c) => c.id), ...APTITUDE_TOPICS.map((t) => t.id)], lessons, studyLessonPaths());
   for (const guide of guides) {
     assert.ok(slugs.has(guide.slug), `${guide.slug}.md names no skill test`);
     assert.deepEqual(validateGuide(guide, known), [], guide.slug);

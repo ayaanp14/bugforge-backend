@@ -34,9 +34,9 @@ Each topic appears on your result by name, with a link to practise it. The [C++ 
 - **Inheritance and virtual functions.** The order of construction and destruction in a hierarchy, `virtual` and `override`, calls through base-class pointers and references, `protected` access, and object slicing.
 - **`const` and references.** A pointer to `const` versus a `const` pointer, `const` objects and `const` member functions, and what a `const` reference is allowed to bind to.
 - **Memory and RAII.** `new` and `delete` and their array forms, leaks and dangling pointers, and `std::unique_ptr` as the way to have an object released automatically at the end of a scope.
-- **STL containers.** `vector`, `string`, `map` and `set`: building them, inserting, erasing and looking up, which order each keeps its elements in, and checked versus unchecked element access.
+- **STL containers.** `vector`, `string`, `map` and `set`: building them, inserting, erasing and looking up, which order each keeps its elements in, and checked versus unchecked element access. For strings, [searching and slicing with `find` and `substr`](/study-plans/cpp/searching-and-slicing) covers the `npos` test the paper likes.
 - **STL algorithms and iterators.** `sort`, `find`, `accumulate`, `max_element` and their relatives, half-open iterator ranges, and what `end()` refers to.
-- **Modern C++.** `auto`, range-based `for` loops by value and by reference, and brace initialisation.
+- **Modern C++.** `auto`, range-based `for` loops by value and by reference, and brace initialisation. Two lessons teach exactly this: [the range-based for loop](/study-plans/cpp/range-for-and-iteration) and [`const`, `constexpr` and `auto`](/study-plans/cpp/const-constexpr-and-auto).
 
 ## Small programs, compiled and compared
 

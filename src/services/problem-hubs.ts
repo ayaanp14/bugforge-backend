@@ -77,6 +77,8 @@ export interface HubLink {
 
 export interface HubPage extends HubSummary {
   blurb: string;
+  /** The page's questions and answers (lib/problem-topics `faq`): its FAQPage; empty for a company or a topic without them. */
+  faq: Array<{ q: string; a: string }>;
   problems: HubProblem[];
   /** A topic hub: its essentials sheet (lib/topic-essentials), Markdown; null for a company. */
   essentials: string | null;
@@ -324,6 +326,7 @@ export async function hubPage(kind: "topic" | "company", slug: string): Promise<
     return {
       ...summary,
       blurb: hub.blurb,
+      faq: hub.faq ? [...hub.faq] : [],
       essentials: TOPIC_ESSENTIALS[slug] ?? null,
       walkthrough: walkthroughFor(slug),
       plan: topicPlan({ label: hub.label, problems: ordered.map(toHubProblem), next: next ? { label: next.label, href: hubHref(next) } : null }),
@@ -372,6 +375,7 @@ export async function hubPage(kind: "topic" | "company", slug: string): Promise<
   return {
     ...summary,
     blurb,
+    faq: [],
     essentials: null,
     walkthrough: null,
     plan: companyPlan({ label: summary.label, problems: planRows, patterns: companyPatterns }),
