@@ -55,6 +55,7 @@ import { SQL_TOPIC_GUIDES, sqlTopicBySlug } from "../lib/sql-problems/topics.js"
 import { NOTE_SUBJECTS, subjectByKey } from "../lib/cs-notes.js";
 import { notePage, notesSitemapEntries, notesSyllabus } from "./cs-notes.js";
 import { DESIGN_POINTS, DESIGN_PROBLEMS, DESIGN_RUBRIC, problemBySlug as designProblemBySlug, type DesignProblem } from "../lib/design-practice.js";
+import { designFaq } from "./design-practice.js";
 import { experienceBody, experienceDescription } from "../lib/interview-experience.js";
 import { experienceById, experienceCompanies, experienceIdOf, experienceList, experienceSitemapEntries, type ExperienceRow } from "./interview-experiences.js";
 import { slugify } from "../lib/slug.js";
@@ -2113,7 +2114,10 @@ function designProblemHead(slug: string): PageHead | null {
   const path = `/design-practice/${slug}`;
   const trail: Crumb[] = [HOME, SECTION.designPractice, { name: p.title, path }];
   const noteTitle = systemDesignNoteTitle(p.note);
+  const qa = designFaq(p);
   const content =
+    // The quotable answer first, under the page's own question (#answer), as the page prints it for a visitor.
+    (qa.answer ? `<section id="answer"><h2>${h(qa.question)}</h2><p>${h(qa.answer)}</p></section>` : "") +
     factList([
       ["Level", DESIGN_LEVEL[p.level]],
       ["Scored out of", String(DESIGN_POINTS)],
@@ -2128,12 +2132,14 @@ function designProblemHead(slug: string): PageHead | null {
       "how",
     ) +
     (noteTitle ? section("The reference design", `<p>${link(`/notes/system-design/${p.note}`, noteTitle)}: the walkthrough, with animated figures.</p>`, "reference") : "") +
+    section("Common questions", qa.faq.map((f) => `<h3>${h(f.q)}</h3><p>${h(f.a)}</p>`).join(""), "questions") +
     section("More design problems", linkList(DESIGN_PROBLEMS.filter((x) => x.slug !== slug).map((x) => ({ href: `/design-practice/${x.slug}`, label: x.title, note: DESIGN_LEVEL[x.level] }))), "more");
   return {
     path,
     title: titles.designProblem(p.title),
     description: designProblemDescription(p),
-    facts: { trail },
+    // faq → an FAQPage (the questions printed above); level + topic → the LearningResource node.
+    facts: { trail, faq: qa.faq, level: DESIGN_LEVEL[p.level], topic: "System design" },
     content,
     crumb: p.title,
   };

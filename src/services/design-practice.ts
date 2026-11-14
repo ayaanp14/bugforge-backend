@@ -27,6 +27,7 @@ import {
   type DesignProblem,
 } from "../lib/design-practice.js";
 import { invalidateDashboard } from "./dashboard.js";
+import { notePage } from "./cs-notes.js";
 
 const REVIEW_TOKENS = 1_400;
 /** Reviews in flight at once across the process; the rest wait their turn. */
@@ -43,6 +44,33 @@ export class DesignPracticeError extends Error {
   ) {
     super(message);
   }
+}
+
+const LEVEL_WORD: Record<DesignProblem["level"], string> = { beginner: "beginner", intermediate: "intermediate", advanced: "advanced" };
+
+/**
+ * A problem's direct answer and common questions (2026-11-14, answer
+ * engines): what a search result or an AI answer quotes for "how do you
+ * design a URL shortener". The answer is the reference note's own authored
+ * one (content/notes/system-design, 25–80 words, held by the notes' gate),
+ * so this page never states a design the note does not; the other answers
+ * are the problem's stated facts and the rubric. Printed on the page for a
+ * visitor (DesignCanvasPage) and written into the edge HTML and the
+ * FAQPage markup (services/seo designProblemHead) — one source for all
+ * three, as Google requires of FAQ markup. Never `mustCover`.
+ */
+export function designFaq(p: DesignProblem): { question: string; answer: string | null; faq: Array<{ q: string; a: string }> } {
+  const note = notePage("system-design", p.note)?.note.seo ?? null;
+  const question = `How do you answer "${p.title}" in a system design interview?`;
+  const rubric = DESIGN_RUBRIC.map((c) => `${c.label.toLowerCase()} (${c.max})`).join(", ");
+  const faq = [
+    ...(note ? [{ q: question, a: note.answer }] : []),
+    { q: `What scale is "${p.title}" designed for here?`, a: `${p.scale} Your estimates turn that into requests per second, storage and bandwidth before you pick components.` },
+    { q: "How is a design scored?", a: `Out of 100 on a fixed rubric: ${rubric}. The review names what the design covered and what it missed, then points to the reference design.` },
+    { q: `Is "${p.title}" a good first system design problem?`, a: p.level === "beginner" ? "Yes. It is rated beginner: few components, a clear read and write path, and the classic estimates every later problem builds on." : `It is rated ${LEVEL_WORD[p.level]}. Start with the beginner problems — the URL shortener and the rate limiter — and the System Design notes on load balancing, caching and sharding first.` },
+    { q: "Do I need an account?", a: "Not to read the problem or the reference design. Getting your design reviewed needs a free account." },
+  ];
+  return { question, answer: note?.answer ?? null, faq };
 }
 
 /** A problem as the page shows it — never `mustCover`, which is the reviewer's. */
@@ -76,6 +104,8 @@ export async function designProblem(slug: string, userId: string | null) {
     fields: ANSWER_FIELDS,
     components: COMPONENTS,
     rubric: DESIGN_RUBRIC.map(({ key, label, max, asks }) => ({ key, label, max, asks })),
+    // The page's direct answer and questions, as the edge writes them (designFaq).
+    seo: designFaq(p),
     attempts,
   };
 }
