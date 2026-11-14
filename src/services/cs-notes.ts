@@ -76,8 +76,33 @@ export interface NotePage {
    * by its `note`) and the interview round to defend it in, on this topic.
    * Null on the four CS subjects.
    */
-  practice: { designSlug: string | null; round: "system-design-interview" | "low-level-design"; topic: string } | null;
+  practice: {
+    designSlug: string | null;
+    round: "system-design-interview" | "low-level-design";
+    topic: string;
+    /** An LLD note's hands-on lesson in the Low-Level Design study track (LLD_PRACTICE), where the classes are written and judged; null elsewhere. */
+    codeLesson: { href: string; title: string } | null;
+  } | null;
 }
+
+/**
+ * Each Low-Level Design note's practice lesson in the `lld` study track
+ * (scripts/study-plans/lld) — the note teaches the design, the lesson has the
+ * learner write it, judged on behaviour. The intro and UML notes share the
+ * modelling module; the patterns note has none of its own (every case study
+ * practises patterns). Pinned by cs-notes-practice.test.ts against the track,
+ * so a renamed lesson fails the build rather than a link.
+ */
+export const LLD_PRACTICE: Readonly<Record<string, { lesson: string; title: string }>> = {
+  "introduction-to-low-level-design": { lesson: "modelling-requirements", title: "From requirements to classes" },
+  "uml-class-diagrams": { lesson: "modelling-requirements", title: "From requirements to classes" },
+  "design-an-lru-cache": { lesson: "lru-cache-design", title: "Code an LRU cache" },
+  "design-a-parking-lot": { lesson: "parking-lot-design", title: "Code a parking lot" },
+  "design-a-vending-machine": { lesson: "vending-machine-design", title: "Code a vending machine" },
+  "design-an-elevator-system": { lesson: "elevator-design", title: "Code an elevator system" },
+  "design-a-movie-ticket-booking-system": { lesson: "ticket-booking-design", title: "Code a ticket booking system" },
+  "design-an-expense-sharing-app": { lesson: "expense-sharing-design", title: "Code an expense sharing app" },
+};
 
 export function notePage(subjectKey: string, slug: string): NotePage | null {
   const subject = subjectByKey(subjectKey);
@@ -115,6 +140,10 @@ export function notePage(subjectKey: string, slug: string): NotePage | null {
             designSlug: DESIGN_PROBLEMS.find((p) => p.note === n.slug)?.slug ?? null,
             round: subject.key === "low-level-design" ? "low-level-design" : "system-design-interview",
             topic: n.title,
+            codeLesson:
+              subject.key === "low-level-design" && LLD_PRACTICE[n.slug]
+                ? { href: `/study-plans/lld/${LLD_PRACTICE[n.slug]!.lesson}`, title: LLD_PRACTICE[n.slug]!.title }
+                : null,
           }
         : null,
   };

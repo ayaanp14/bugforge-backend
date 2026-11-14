@@ -58,6 +58,8 @@ export async function userDepth(userId: string) {
     topPages,
     topEvents,
     recent,
+    designs,
+    contests,
   ] = await Promise.all([
     // Which sign-in methods are linked (not the tokens — the backfill scrubbed those).
     prisma.account.findMany({ where: { userId }, select: { provider: true } }),
@@ -132,6 +134,20 @@ export async function userDepth(userId: string) {
       take: RECENT_EVENTS,
       select: { id: true, name: true, path: true, platform: true, props: true, createdAt: true },
     }),
+    // System design practice (services/design-practice): every review, newest first — scores only, never the design's text.
+    prisma.designAttempt.findMany({
+      where: { userId },
+      orderBy: { createdAt: "desc" },
+      take: 50,
+      select: { id: true, slug: true, status: true, score: true, createdAt: true },
+    }),
+    // Virtual contests and the CP rating they moved (services/virtual-contests).
+    prisma.virtualContest.findMany({
+      where: { userId },
+      orderBy: { startedAt: "desc" },
+      take: 50,
+      select: { id: true, level: true, problemIds: true, startedAt: true, endedAt: true, result: true, performance: true, ratingBefore: true, ratingAfter: true },
+    }),
   ]);
 
   const study = await studyProgress(userId, enrollments.map((e) => e.trackKey));
@@ -152,6 +168,33 @@ export async function userDepth(userId: string) {
     community: { comments, followers, following, likesGiven },
     roadmap: chests,
     battles: { entries: battleEntries },
+    designPractice: {
+      reviewed: designs.filter((d) => d.status === "done").length,
+      failed: designs.filter((d) => d.status === "failed").length,
+      best: designs.reduce<number | null>((b, d) => (d.score !== null && (b === null || d.score > b) ? d.score : b), null),
+      recent: designs.slice(0, 8),
+    },
+    virtualContests: {
+      rounds: contests.length,
+      rated: contests.filter((c) => c.ratingAfter !== null).length,
+      // The newest rated round's result is the current rating (lib/virtual-contest START_RATING when none).
+      rating: contests.find((c) => c.ratingAfter !== null)?.ratingAfter ?? null,
+      recent: contests.slice(0, 8).map((c) => {
+        const r = (c.result ?? {}) as { solved?: number; penalty?: number };
+        return {
+          id: c.id,
+          level: c.level,
+          startedAt: c.startedAt,
+          endedAt: c.endedAt,
+          problems: Array.isArray(c.problemIds) ? c.problemIds.length : 0,
+          solved: r.solved ?? null,
+          penalty: r.penalty ?? null,
+          performance: c.performance,
+          ratingBefore: c.ratingBefore,
+          ratingAfter: c.ratingAfter,
+        };
+      }),
+    },
     activity: {
       days: ACTIVITY_DAYS,
       firstSeen: seen._min.createdAt,
