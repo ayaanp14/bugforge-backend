@@ -24,6 +24,7 @@ import { disconnectUser } from "../lib/realtime.js";
 import { invalidateDashboard } from "./dashboard.js";
 import { forgetPublicUser } from "./public-profile.js";
 import { departAllCohorts } from "./cohorts.js";
+import { referralExport } from "./referrals.js";
 import { forgetExperiences } from "./interview-experiences.js";
 
 /** Rows per table in a copy, newest first. Generous: only a bot reaches it. */
@@ -66,7 +67,7 @@ export async function buildAccountExport(userId: string): Promise<Record<string,
     enrollments, lessons, exercises, resumes, subscriptions, orders,
     notifications, shareCards, orgs, entries, tournamentSubmissions, campus, events, pushDevices, missionDays, analyses, tutorTurns, simulationRuns,
     bugEngagements, bugAnalyses, jobApplications, bugTutorTurns, honours, cohortMemberships, cohortSessions,
-    creditGrants, creditSpends, redemptions, designAttempts, virtualContests,
+    creditGrants, creditSpends, redemptions, designAttempts, virtualContests, referrals,
   ] = await Promise.all([
     prisma.submission.findMany({
       where, ...newest, orderBy: { submittedAt: "desc" },
@@ -227,6 +228,8 @@ export async function buildAccountExport(userId: string): Promise<Record<string,
     prisma.designAttempt.findMany({ where, ...newest, orderBy: { createdAt: "desc" }, select: { slug: true, answer: true, status: true, review: true, score: true, createdAt: true, reviewedAt: true } }),
     // Virtual contests and the CP rating they moved (services/virtual-contests).
     prisma.virtualContest.findMany({ where, ...newest, orderBy: { startedAt: "desc" }, select: { level: true, problemIds: true, startedAt: true, durationMinutes: true, endedAt: true, result: true, performance: true, ratingBefore: true, ratingAfter: true } }),
+    // Invite links (services/referrals): the code, the invites sent and the one joined from — no one else's name or address.
+    referralExport(userId),
   ]);
 
   return {
@@ -273,6 +276,7 @@ export async function buildAccountExport(userId: string): Promise<Record<string,
     studyPlans: { enrollments, lessons, exercises },
     resumes,
     billing: { subscriptions, orders, credits: { grants: creditGrants, spends: creditSpends }, redemptions },
+    referrals,
     notifications,
     pushNotifications: { devices: pushDevices },
     shareCards,

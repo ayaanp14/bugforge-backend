@@ -62,6 +62,8 @@ const PUSHED: RegExp[] = [
   /^review_due_/,
   /^battles_reminder:/,
   /^(mention|comment_reply|post_comment|answer_accepted|new_follower)$/,
+  // A friend joining from the member's invite, and their first solve paying it (services/referrals).
+  /^referral_(joined|rewarded):/,
 ];
 
 export const isPushed = (type: string): boolean => PUSHED.some((re) => re.test(type));

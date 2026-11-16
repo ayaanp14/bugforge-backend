@@ -44,6 +44,7 @@ import { bugHubIndex, bugHubPage, bugPath, getNeighbours } from "./bug-hunts.js"
 import { incidentOf, symptomsOf } from "../lib/bug-incident.js";
 import { topicOrder } from "./aptitude-bank.js";
 import { CARD_HEIGHT, CARD_WIDTH, getShareCard } from "./share-cards.js";
+import { previewInvite } from "./referrals.js";
 import { CONTENT_CARD_DESIGN, CONTENT_CARD_HEIGHT, CONTENT_CARD_WIDTH, contentCardPng, type ContentCard } from "../lib/content-card.js";
 import { testSamples } from "./test-samples.js";
 import { frameSvg } from "../lib/walkthroughs/svg.js";
@@ -710,6 +711,7 @@ async function pageHead(path: string): Promise<PageHead | PageRedirect | null> {
   if (path === "/roadmap") return roadmapIndex();
   if ((m = /^\/roadmap\/([a-z0-9][a-z0-9-]*)$/.exec(path))) return RESERVED_LESSON_SLUGS.has(m[1]) ? null : roadmapLessonHead(m[1]);
   if ((m = /^\/share\/([a-z0-9]{10,40})$/.exec(path))) return shareHead(m[1]);
+  if ((m = /^\/r\/([a-z0-9_]{3,24})$/.exec(path))) return inviteHead(m[1]);
   if (path === "/sql") return sqlIndex();
   // A topic's slug is reserved (lib/sql-problems/topics), so it is tried first.
   if ((m = /^\/sql\/([a-z0-9][a-z0-9-]*)$/.exec(path))) return sqlTopicBySlug(m[1]) ? sqlTopicHead(m[1]) : sqlProblemHead(m[1]);
@@ -1854,6 +1856,28 @@ async function skillTestsIndex(): Promise<PageHead> {
     "tests",
   );
   return { path: "/skill-tests", title: "Skill tests", description: "", content, section: "index" };
+}
+
+/**
+ * /r/<code> — a member's invite link (services/referrals), the page a WhatsApp
+ * or Telegram message opens. The preview names who sent it, which is what
+ * makes a link in a group chat worth a tap. Noindex (the route table says so):
+ * one person's invitation, made to be sent, not searched. A code nobody holds
+ * is a 404, like a credential's.
+ */
+async function inviteHead(code: string): Promise<PageHead | null> {
+  const preview = await previewInvite(code);
+  if (!preview) return null;
+  const title = `${preview.inviter} invited you to ${BRAND}`;
+  // Under DESCRIPTION_MAX whole, so the SPA's InviteLandingPage sets the same words (it mirrors this).
+  const description = `Free DSA practice in 13 languages, AI mock interviews and placement tests. Join from this invite and get ${preview.terms.invitee} credits after your first solve.`;
+  return {
+    path: `/r/${preview.code}`,
+    title,
+    description,
+    crumb: "Invite",
+    content: `<p>${h(description)}</p><p><a href="/register">Create your free account</a> · <a href="/challenges">Browse the problems</a></p>`,
+  };
 }
 
 /**

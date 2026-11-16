@@ -56,6 +56,7 @@ describe("classifyTouch", () => {
     // WhatsApp sends no referrer: a win card opened with nothing is a link someone sent.
     assert.equal(verdict({ landing: "/share/:id" }), "shared:Link to a shared page");
     assert.equal(verdict({ landing: "/verify/:code" }), "shared:Link to a shared page");
+    assert.equal(verdict({ landing: "/r/:code" }), "shared:Link to a shared page");
     assert.equal(verdict({ landing: "/pair-room/:roomId" }), "shared:Link to a shared page");
     // …but the same page reached from LinkedIn is LinkedIn.
     assert.equal(verdict({ ref: "www.linkedin.com", landing: "/verify/:code" }), "social:LinkedIn");

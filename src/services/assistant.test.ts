@@ -176,6 +176,10 @@ const QUESTIONS: Array<[string, RegExp, string?]> = [
   ["what does SEV-1 mean on a bug hunt", /SEV-1 critical, SEV-2 major, SEV-3 minor/],
   ["why did my bug fix fail", /passed on the shipped build but fails with your patch/],
   ["what does Likely mean in the failure explanation", /\*\*Likely\*\* \(a reading of it\)/],
+  // Invite links (services/referrals).
+  ["how do I invite my friends", /personal invite link, `codekairo\.com\/r\/<code>`/],
+  ["what do I get for referring a friend", /\*\*you get 40 credits\*\*/],
+  ["why didn't my referral pay me", /at most \*\*10 invites in any 30 days\*\*/],
   // Follow-ups: the answer is only reachable through the previous question.
   ["how long does it last?", /expires after \*\*2 hours\*\*/, "how do private duel rooms work"],
   ["and the season pass?", /\*\*Placement Season Pass\*\*: ₹699/, "how much does the pro plan cost"],

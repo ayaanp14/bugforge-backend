@@ -154,6 +154,11 @@ model User {
   creditGrants          CreditGrant[]
   creditSpends          CreditSpend[]
   redemptions           Redemption[]
+  referralCode          ReferralCode?
+  /// The invite this account joined from, if any (lib/referrals).
+  referredBy            Referral?                 @relation("ReferralInvitee")
+  /// The accounts that joined from this account's invite link.
+  referrals             Referral[]                @relation("ReferralReferrer")
   paymentOrders         PaymentOrder[]
   notifications         Notification[]
   roadmapRewards        RoadmapReward[]
@@ -2821,7 +2826,7 @@ model CreditGrant {
   id        String   @id @default(cuid())
   userId    String
   credits   Int
-  /// "purchase" | "admin" | "goodies" (a Redemption, lib/goodies)
+  /// "purchase" | "admin" | "goodies" (a Redemption, lib/goodies) | "referral" (an invite paid, lib/referrals)
   source    String   @db.VarChar(16)
   orderId   String?  @unique
   createdAt DateTime @default(now())
@@ -2863,6 +2868,43 @@ model Redemption {
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, createdAt])
+}
+
+/// A member's invite link, /r/<code> (lib/referrals, services/referrals).
+/// Made the first time the member opens /invite: the code is their username
+/// then, or a random one when that is taken, and it never changes — a link
+/// already shared keeps working after a rename, and a username given up and
+/// claimed by someone else never starts crediting a stranger. A table of its
+/// own rather than a unique column on User, because the deploy's
+/// non-interactive `db push` refuses a unique index added to an existing
+/// table as "possible data loss" (the ProblemNumber precedent).
+model ReferralCode {
+  code      String   @id @db.VarChar(24)
+  userId    String   @unique
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+/// One account that joined from someone's invite link. The primary key is the
+/// invitee: an account is invited once. `rewardedAt` is the payout's claim —
+/// flipped from null in the same transaction that writes both CreditGrant rows
+/// (source "referral"), so the invitee's first solve pays exactly once however
+/// many solves race to it. The credits are what each side was actually paid
+/// (the referrer's is 0 when their 30-day reward cap was full, or when the
+/// invitee shares a mailbox with an earlier one).
+model Referral {
+  inviteeId       String    @id
+  referrerId      String
+  code            String    @db.VarChar(24)
+  createdAt       DateTime  @default(now())
+  rewardedAt      DateTime?
+  referrerCredits Int       @default(0)
+  inviteeCredits  Int       @default(0)
+  invitee         User      @relation("ReferralInvitee", fields: [inviteeId], references: [id], onDelete: Cascade)
+  referrer        User      @relation("ReferralReferrer", fields: [referrerId], references: [id], onDelete: Cascade)
+
+  @@index([referrerId, createdAt])
+  @@index([referrerId, rewardedAt])
 }
 
 /// One run of the daily video pipeline (services/video-studio.ts): a prompt, how

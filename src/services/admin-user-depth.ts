@@ -60,6 +60,8 @@ export async function userDepth(userId: string) {
     recent,
     designs,
     contests,
+    invitedBy,
+    invites,
   ] = await Promise.all([
     // Which sign-in methods are linked (not the tokens — the backfill scrubbed those).
     prisma.account.findMany({ where: { userId }, select: { provider: true } }),
@@ -148,6 +150,9 @@ export async function userDepth(userId: string) {
       take: 50,
       select: { id: true, level: true, problemIds: true, startedAt: true, endedAt: true, result: true, performance: true, ratingBefore: true, ratingAfter: true },
     }),
+    // Invite links (services/referrals): who brought this account, and whom it brought.
+    prisma.referral.findUnique({ where: { inviteeId: userId }, select: { code: true, createdAt: true, rewardedAt: true, referrer: { select: { id: true, username: true, name: true } } } }),
+    prisma.referral.aggregate({ where: { referrerId: userId }, _count: { _all: true, rewardedAt: true }, _sum: { referrerCredits: true } }),
   ]);
 
   const study = await studyProgress(userId, enrollments.map((e) => e.trackKey));
@@ -194,6 +199,14 @@ export async function userDepth(userId: string) {
           ratingAfter: c.ratingAfter,
         };
       }),
+    },
+    referrals: {
+      invitedBy: invitedBy
+        ? { userId: invitedBy.referrer.id, username: invitedBy.referrer.username, name: invitedBy.referrer.name, code: invitedBy.code, joinedAt: invitedBy.createdAt, rewardedAt: invitedBy.rewardedAt }
+        : null,
+      joined: invites._count._all,
+      rewarded: invites._count.rewardedAt,
+      creditsEarned: invites._sum.referrerCredits ?? 0,
     },
     activity: {
       days: ACTIVITY_DAYS,

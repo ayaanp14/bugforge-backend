@@ -62,6 +62,7 @@ import eventsRouter from "./routes/events.js";
 import adminRouter from "./routes/admin.js";
 import { adminHonoursRouter, honoursRouter } from "./routes/honours.js";
 import { goodiesRouter } from "./routes/goodies.js";
+import referralsRouter from "./routes/referrals.js";
 import { videoStudioRouter } from "./routes/video-studio.js";
 import { registerVideoJobs } from "./services/video-studio.js";
 import { todayContest } from "./services/daily-contest.js";
@@ -1028,6 +1029,8 @@ app.use("/api/companies", companiesRouter);
 // Study cohorts: a shared weekly goal and sessions on the pair rooms (Phase 9, services/cohorts.ts).
 app.use("/api/cohorts", cohortsRouter);
 app.use("/api/goodies", goodiesRouter);
+// Invite links: /r/<code> on the site, credits on the friend's first solve (services/referrals).
+app.use("/api/referrals", referralsRouter);
 // The daily videos behind the Videos tab at campaign.codekairo.com (services/video-studio.ts).
 app.use("/api/video-studio", videoStudioRouter);
 app.use("/api/notes", notesRouter);

@@ -64,6 +64,9 @@ describe("reminder copy", () => {
     assert.equal(quiet.subject, "A quiet week on CodeKairo");
     assert.match(quiet.body, /^0 problems, 0 bugs this week\. A quiet week/);
     assert.match(quiet.text, /^Ayaan, here is your week/);
+    // The invite link rides in the mail, never in the bell's line.
+    assert.match(quiet.text, /you get 40 credits and they get 20 when they solve their first problem\.\nhttp\S+\/invite\n/);
+    assert.doesNotMatch(quiet.body, /invite/i);
 
     const busy = weeklyDigestContent(null, { solved: 1, sql: 0, bugs: 2, contestPoints: 9, streak: 4, xp: 500 });
     assert.equal(busy.subject, "This week: 1 problem, 2 bugs, 9 contest points");

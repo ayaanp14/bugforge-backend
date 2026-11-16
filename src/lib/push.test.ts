@@ -30,13 +30,13 @@ describe("push endpoints", () => {
 
 describe("pushed types", () => {
   it("pushes reminders and what other people did", () => {
-    for (const type of ["streak_at_risk_2026-10-06", "daily_kata_2026-10-06", "study_plan_due_2026-10-06", "battles_reminder:abc", "mention", "comment_reply", "post_comment", "answer_accepted", "new_follower"]) {
+    for (const type of ["streak_at_risk_2026-10-06", "daily_kata_2026-10-06", "study_plan_due_2026-10-06", "battles_reminder:abc", "mention", "comment_reply", "post_comment", "answer_accepted", "new_follower", "referral_joined:u2", "referral_rewarded:u2"]) {
       assert.equal(isPushed(type), true, type);
     }
   });
 
   it("does not push what the account just did on the site, or the noisy ones", () => {
-    for (const type of ["welcome", "first_solve", "streak_7", "post_like", "roadmap_stage_cleared:arrays", "weekly_digest_2026-10-05", "skill_credential:CK-1:issued", "mention_extra"]) {
+    for (const type of ["welcome", "first_solve", "streak_7", "post_like", "roadmap_stage_cleared:arrays", "weekly_digest_2026-10-05", "skill_credential:CK-1:issued", "mention_extra", "referral_welcome_credits"]) {
       assert.equal(isPushed(type), false, type);
     }
   });

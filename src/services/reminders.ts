@@ -40,6 +40,7 @@ import { companyHub } from "../lib/problem-topics.js";
 import { mockTestFor } from "../lib/onboarding-plan.js";
 import { reviewDue } from "./review-reminders.js";
 import { cohortDigestLines } from "./cohorts.js";
+import { REFERRAL_REWARDS } from "../lib/referrals.js";
 
 const FRONTEND_URL = (process.env["FRONTEND_URL"] ?? "http://localhost:3000").replace(/\/+$/, "");
 const DAY_MS = 86_400_000;
@@ -49,6 +50,9 @@ const BATCH = 200;
 const MAIL_CONCURRENCY = 4;
 
 const UNSUBSCRIBE_LINE = "You can turn reminders off any time under Profile → Reminders.";
+
+/** The digest mail's invite line (lib/referrals): what an invite pays, in one sentence. */
+const INVITE_LINE = `Know someone preparing too? Invite them: you get ${REFERRAL_REWARDS.referrer} credits and they get ${REFERRAL_REWARDS.invitee} when they solve their first problem.`;
 
 /* ── windows ───────────────────────────────────────────────────────── */
 
@@ -218,6 +222,9 @@ export function weeklyDigestContent(name: string | null, s: WeekStats, goal: Dig
       `  Streak:          ${s.streak} ${s.streak === 1 ? "day" : "days"}\n` +
       `  Total XP:        ${s.xp}\n\n` +
       `${nudge}\n${FRONTEND_URL}/contests\n\n` +
+      // The invite link (services/referrals), in the mail only: the bell's
+      // line is the week, and the page makes the member's link on first visit.
+      `${INVITE_LINE}\n${FRONTEND_URL}/invite\n\n` +
       (goal ? `${goal.text}\n${FRONTEND_URL}${goal.href}\n\n` : "") +
       // A cohort's week (Phase 9): its shared goal, never anyone's progress.
       (cohort ? `${cohort.text}\n${FRONTEND_URL}${cohort.href}\n\n` : "") +

@@ -256,6 +256,8 @@ const SHARE_MEDIUM = /^(?:share|shared|social[-_]?share|invite)$/;
 export const SHARED_LANDINGS: ReadonlySet<string> = new Set([
   "/share/:id",
   "/verify/:code",
+  // A member's invite link (services/referrals).
+  "/r/:code",
   "/u/:username",
   "/community/p/:id",
   "/pair-room/:roomId",

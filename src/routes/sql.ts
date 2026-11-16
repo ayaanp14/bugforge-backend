@@ -11,6 +11,7 @@ import { SqlBusyError } from "../lib/sql/engine.js";
 import { forgetSqlStanding, SQL_PAGE_SIZE, sqlProblemList, sqlProblemListPage, sqlProblemPage, sqlStanding, sqlTopicPage } from "../services/sql-problems.js";
 import { invalidateDashboard } from "../services/dashboard.js";
 import { createNotificationOnce, streakMilestone } from "../services/notifications.js";
+import { rewardReferral } from "../services/referrals.js";
 
 /**
  * /api/sql — LeetCode-style database problems (lib/sql-problems), judged on
@@ -182,6 +183,8 @@ sqlRouter.post("/:slug/submit", requireAuth, executionLimiter, async (req, res) 
   // it, and an accepted one lights today on the heatmap even when the problem
   // was solved before. This also drops the heatmap, rank and /api/me copies.
   invalidateDashboard(userId);
+  // A first solve may be the one an invite was waiting for (services/referrals).
+  if (firstSolve) rewardReferral(userId).catch((err) => console.error("POST /api/sql/:slug/submit — referral reward failed:", err));
   if (firstSolve && stats) {
     const milestone = streakMilestone(streak.currentStreak);
     if (milestone) createNotificationOnce(userId, milestone).catch((err) => console.error("POST /api/sql/:slug/submit — notification failed:", err));

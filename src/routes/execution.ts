@@ -14,6 +14,7 @@ import { containsReservedMarker } from "../lib/batch.js";
 import { buildDriver, remapDiagnostics, type Language as DriverLanguage, type Signature } from "../lib/driver-codegen.js";
 import { FIRST_SOLVE, createNotificationOnce, streakMilestone } from "../services/notifications.js";
 import { announceStageIfCleared } from "../services/roadmap.js";
+import { rewardReferral } from "../services/referrals.js";
 import { invalidateDashboard } from "../services/dashboard.js";
 import { emitDuelActivity, settleDuelForSubmission } from "../lib/duels.js";
 import { recordContestSubmission } from "../services/daily-contest.js";
@@ -460,6 +461,12 @@ router.post("/submit", requireAuth, executionLimiter, async (req, res) => {
     // ── After the response ──────────────────────────────────────────
     // The dashboard aggregate is cached; this submission just changed it.
     invalidateDashboard(userId);
+
+    // A first solve may be the one an invite was waiting for (services/referrals).
+    // Never a pairing submit: the room's host is credited with a partner's solve.
+    if (firstSolve && !pairRoomId) {
+      rewardReferral(userId).catch((err) => console.error("POST /api/submit — referral reward failed:", err));
+    }
 
     // If this solve landed inside a duel, the duel is decided right here — the
     // Duels never wait for the client to tell it what the judge already knows.
