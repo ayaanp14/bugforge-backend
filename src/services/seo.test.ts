@@ -63,7 +63,7 @@ test("every content page kind has a title with its intent first and the brand wh
   assert.equal(titles.bugHub("Database", 29, "category"), "Database Bug Hunts: 29 Debugging Challenges — CodeKairo");
   assert.equal(titles.aptitudeCategory("Quantitative Aptitude", 517), "517 Quantitative Aptitude Questions with Solutions");
   assert.equal(titles.aptitudeTopic("Percentages"), "Percentages Aptitude Questions with Solutions — CodeKairo");
-  assert.equal(titles.aptitudeQuestion("Remainder of a large power", "Number System"), "Remainder of a large power — Number System Aptitude Question");
+  assert.equal(titles.aptitudeQuestion("Remainder of a large power", "Number System"), "Remainder of a large power — Number System Question & Answer");
   assert.equal(titles.studyTrack("Java", 138), "Learn Java: Free Java Tutorial in 138 Lessons — CodeKairo");
   assert.equal(titles.studyLesson("Records", "Java", false), "Records — Java lesson — CodeKairo");
   assert.equal(titles.studyLesson("Module test", "Java", true), "Module test — Java checkpoint — CodeKairo");
@@ -136,7 +136,7 @@ test("the brand is added only where the whole title fits in 60 characters", () =
 
 test("a long item title sheds its suffix a step at a time, down to the bare name", () => {
   assert.equal(titles.problem("Kth Smallest Element in a Sorted Matrix", "Medium"), "Kth Smallest Element in a Sorted Matrix — Problem & Solution");
-  assert.equal(titles.aptitudeQuestion("Statement and assumption: the advertisement", "Mathematical Reasoning"), "Statement and assumption: the advertisement — Aptitude");
+  assert.equal(titles.aptitudeQuestion("Statement and assumption: the advertisement", "Mathematical Reasoning"), "Statement and assumption: the advertisement — Answer");
   assert.equal(titles.sqlProblem("Apple: Subscription Billing Lapses Recovered in the Grace Period", "Window Functions"), "Apple: Subscription Billing Lapses Recovered in the Grace Period");
   assert.equal(titles.bugHunt("Three Runs Deep Is Not Deep Enough for the Retry Queue Here", "Python"), "Three Runs Deep Is Not Deep Enough for the Retry Queue Here");
   const name = "Number of Sub-arrays of Size K and Average Greater than or Equal to Threshold";

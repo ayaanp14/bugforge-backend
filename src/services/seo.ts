@@ -1,4 +1,5 @@
 import { videosForPath, type SiteVideo } from "./site-videos.js";
+import { aptitudeDescription, coreTitle } from "../lib/aptitude-seo.js";
 import { prisma } from "../lib/prisma.js";
 import type { ProblemView, SeoView } from "../lib/seo-views/index.js";
 import { companiesView } from "../lib/seo-views/companies.js";
@@ -284,8 +285,12 @@ export const titles = {
     branded(kind === "language" ? `${label} Debugging Practice: ${count} Bug Hunts on Real Code` : `${label} Bug Hunts: ${count} Debugging Challenges`),
   aptitudeCategory: (label: string, questions: number) => branded(`${questions} ${label} Questions with Solutions`),
   aptitudeTopic: (label: string) => branded(`${label} Aptitude Questions with Solutions`),
+  // The name-led title, for a question without a short searchable core
+  // (lib/aptitude-seo has the rest): "Question & Answer" says what a click
+  // gets, where "Aptitude Question" did not (2026-11-17, Search Console: the
+  // questions sat at position 9.5 with 0.2% clicks).
   aptitudeQuestion: (title: string, topicLabel: string) =>
-    fitted(`${title} — ${topicLabel} Aptitude Question`, `${title} — Aptitude Question`, `${title} — Aptitude`, title),
+    fitted(`${title} — ${topicLabel} Question & Answer`, `${title} — Question & Answer`, `${title} — Answer`, title),
   // "learn java", "java tutorial": the words a track is searched by. It
   // was "Learn Java: 20-Module Study Plan with 138 Lessons" — "study plan"
   // is this site's word, not a searcher's.
@@ -1536,8 +1541,38 @@ function aptitudeTopicHead(topicId: string): Promise<PageHead | null> {
   });
 }
 
+/**
+ * Every aptitude question's search title and description (lib/aptitude-seo),
+ * computed over the whole bank in one read so that two questions whose
+ * searchable cores would give one title both keep their (unique) name-led
+ * ones. The page's head and the question API (routes/aptitude) read the same
+ * map, so the edge and the running page name a question identically.
+ */
+function aptitudeSearchTexts(): Promise<Map<string, { title: string; description: string }>> {
+  return cached("seo:aptitude-search:v1", HEAD_TTL_MS, async () => {
+    const rows = await prisma.aptitudeQuestion.findMany({ select: { slug: true, title: true, prompt: true, options: true, topic: true } });
+    const cores = new Map(rows.map((r) => [r.slug, coreTitle(r.prompt, r.topic, TITLE_BUDGET)]));
+    const uses = new Map<string, number>();
+    for (const t of cores.values()) if (t) uses.set(t, (uses.get(t) ?? 0) + 1);
+    return new Map(
+      rows.map((r) => {
+        const core = cores.get(r.slug);
+        const title = core && uses.get(core) === 1 ? core : titles.aptitudeQuestion(r.title, aptitudeTopic(r.topic)?.label ?? r.topic);
+        const description = aptitudeDescription({ title: r.title, stem: questionStem(r.prompt, 300), options: asStrings(r.options) }, DESCRIPTION_MAX);
+        return [r.slug, { title, description }];
+      }),
+    );
+  });
+}
+
+/** One question's search title and description, or null for a slug the bank does not hold. */
+export async function aptitudeSearchText(slug: string): Promise<{ title: string; description: string } | null> {
+  return (await aptitudeSearchTexts()).get(slug) ?? null;
+}
+
 function aptitudeQuestionHead(slug: string): Promise<PageHead | null> {
-  return cached(`seo:head:aptitude:v4:${slug}`, HEAD_TTL_MS, async () => {
+  // v5: the title and description from aptitudeSearchText (2026-11-17).
+  return cached(`seo:head:aptitude:v5:${slug}`, HEAD_TTL_MS, async () => {
     const q = await prisma.aptitudeQuestion.findUnique({
       where: { slug },
       select: { prompt: true, topic: true, category: true, title: true, options: true, answer: true, solution: true, approach: true, difficulty: true, timeTargetSec: true, tags: true, hints: true },
@@ -1584,14 +1619,14 @@ function aptitudeQuestionHead(slug: string): Promise<PageHead | null> {
       (related.length ? section(`More ${label} questions`, linkList(related.map((r) => ({ href: `/aptitude/q/${r.slug}`, label: r.title, note: titleCase(r.difficulty) }))), "related") : "") +
       `<p>${link(`/aptitude/${q.topic}`, `All ${label} questions`)} · ${link("/tests", "placement mock tests")}</p>`;
     const canonical = aptitudeCanonicalSlug(slug);
+    const search = await aptitudeSearchText(slug);
     return {
       path,
-      title: titles.aptitudeQuestion(q.title, label),
-      // The title leads the description: thirty sentence-correction
-      // questions share the prompt "Choose the grammatically correct
-      // sentence", and only the title tells their pages apart.
-      // The prompt gets what the title and the closing line leave of 158.
-      description: `${q.title}: ${summarise(q.prompt, `a ${label} aptitude question with a worked solution.`, Math.max(60, 115 - q.title.length))} Answer and worked solution on ${BRAND}.`,
+      title: search?.title ?? titles.aptitudeQuestion(q.title, label),
+      // The question as it is searched, its options, then the promise
+      // (lib/aptitude-seo aptitudeDescription — led by the name where the
+      // question alone would not tell two pages apart).
+      description: search?.description ?? `${q.title}: ${summarise(q.prompt, `a ${label} aptitude question with a worked solution.`, Math.max(60, 115 - q.title.length))} Answer and worked solution on ${BRAND}.`,
       facts: { difficulty, topic: label, minutes: q.timeTargetSec / 60, options, answer: q.answer, explanation: summarise(q.approach, "", 300), question: questionStem(q.prompt, 500), trail },
       content,
       crumb: q.title,

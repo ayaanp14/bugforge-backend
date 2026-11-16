@@ -7,7 +7,7 @@ import { browserCache } from "../lib/http-cache.js";
 import { APTITUDE_CATEGORIES, APTITUDE_DIFFICULTIES, APTITUDE_TOPICS, aptitudeCanonicalSlug, aptitudeCategory, aptitudeTopic, type AptitudeDifficulty } from "../lib/aptitude-topics.js";
 import { APTITUDE_ESSENTIALS } from "../lib/aptitude-essentials.js";
 import { APTITUDE_SECTION_GUIDES } from "../lib/aptitude-section-guides.js";
-import { questionStem } from "../services/seo.js";
+import { aptitudeSearchText, questionStem } from "../services/seo.js";
 import { notePlanActivity } from "../services/onboarding-plan.js";
 import { patternsAskingTopic } from "../services/pattern-syllabus.js";
 
@@ -226,7 +226,7 @@ router.get("/questions/:slug", optionalAuth, browserCache(120), async (req: any,
     const topic = aptitudeTopic(question.topic);
 
     const userId: string | null = req.user?.userId ?? null;
-    const [siblings, attempts] = await Promise.all([
+    const [siblings, attempts, search] = await Promise.all([
       // Every question in the topic, only to find the one either side of this
       // one. That ordering is fixed by orderIndex at seed time.
       topicOrder(question.topic),
@@ -237,6 +237,8 @@ router.get("/questions/:slug", optionalAuth, browserCache(120), async (req: any,
             select: { selected: true, correct: true, timeSec: true, usedHints: true, createdAt: true },
           })
         : Promise.resolve([]),
+      // The search title and description the edge writes (services/seo), so the page's head says the same.
+      aptitudeSearchText(question.slug).catch(() => null),
     ]);
     const index = siblings.findIndex((s) => s.slug === question.slug);
     const solved = attempts.some((a) => a.correct);
@@ -261,6 +263,8 @@ router.get("/questions/:slug", optionalAuth, browserCache(120), async (req: any,
         prompt: question.prompt,
         // Plain text, for the page's structured data (the edge names the same).
         stem: questionStem(question.prompt, 500),
+        seoTitle: search?.title ?? null,
+        seoDescription: search?.description ?? null,
         options: question.options,
         difficulty: question.difficulty,
         hints: question.hints,
