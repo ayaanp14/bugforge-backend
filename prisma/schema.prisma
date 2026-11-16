@@ -2907,6 +2907,29 @@ model Referral {
   @@index([referrerId, rewardedAt])
 }
 
+/// A roadmap lesson or CS note republished on another site with its canonical
+/// link back here (services/crosspost: Dev.to, one a day). The row is written
+/// *before* the post — the unique (platform, path) is the claim — so a page is
+/// posted at most once: a request whose answer never came stays "posting" and
+/// is not retried by itself (Dev.to has no idempotency key), a refused one is
+/// "failed" with the reason, a posted one keeps the remote id and address.
+model CrossPost {
+  id        String    @id @default(cuid())
+  platform  String    @db.VarChar(16)
+  /// The site path republished, e.g. /roadmap/two-pointers.
+  path      String    @db.VarChar(191)
+  /// posting | posted | failed
+  status    String    @db.VarChar(16)
+  remoteId  String?   @db.VarChar(64)
+  url       String?   @db.VarChar(300)
+  error     String?   @db.Text
+  createdAt DateTime  @default(now())
+  postedAt  DateTime?
+
+  @@unique([platform, path])
+  @@index([platform, createdAt])
+}
+
 /// One run of the daily video pipeline (services/video-studio.ts): a prompt, how
 /// far it got, and the two videos it put on YouTube. The ids and claim times are
 /// what stop a re-run posting a video twice.

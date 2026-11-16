@@ -65,6 +65,7 @@ import { goodiesRouter } from "./routes/goodies.js";
 import referralsRouter from "./routes/referrals.js";
 import { videoStudioRouter } from "./routes/video-studio.js";
 import { registerVideoJobs } from "./services/video-studio.js";
+import { registerCrosspostJobs } from "./services/crosspost.js";
 import { todayContest } from "./services/daily-contest.js";
 import { optionalAuth } from "./middleware/auth.js";
 import { addKickedUser, kickedUserIdsOf } from "./lib/room-kicks.js";
@@ -1251,6 +1252,8 @@ httpServer.listen(PORT, () => {
   registerJob(tournamentRemindersJob);
   // The day's video and Short, at 10:00 IST once switched on.
   registerVideoJobs();
+  // One roadmap lesson or CS note a day on Dev.to, canonical back here (off until DEVTO_API_KEY).
+  registerCrosspostJobs();
   startScheduler();
   // No socket survived the restart, and none said goodbye (lib/duels).
   void markActiveDuelsAbsent();

@@ -90,6 +90,7 @@ ask GITHUB_DISPATCH_TOKEN "daily videos: fine-grained token, Actions write on bu
 ask YOUTUBE_CLIENT_ID     "daily videos: their own Google OAuth client"
 ask YOUTUBE_CLIENT_SECRET "daily videos: that client's secret"
 ask INSTAGRAM_ACCESS_TOKEN "daily videos: the Meta system user's never-expiring token, or Enter to skip"
+ask DEVTO_API_KEY         "daily Dev.to cross-post of a lesson or note (free key from Dev.to Settings > Extensions), or Enter to skip"
 ask BREVO_API_KEY         "outbound mail - OTP codes, reminders"
 ask GITHUB_SECRET         "GitHub OAuth app secret"
 ask GOOGLE_CLIENT_SECRET  "Google OAuth client secret"
