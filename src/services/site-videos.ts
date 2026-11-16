@@ -17,6 +17,8 @@ export interface SiteVideo {
   title: string;
   kind: "video" | "short";
   seconds: number | null;
+  /** When it was recorded here — the publish job writes the row as the upload goes public — ISO 8601. The page's VideoObject `uploadDate`. */
+  uploadedAt: string;
 }
 
 /** Paths from the publish job's body, kept only if they look like one of our pages. */
@@ -43,5 +45,5 @@ export async function recordSiteVideo(paths: string[], video: { youtubeId: strin
  */
 export async function videosForPath(path: string): Promise<SiteVideo[]> {
   const row = await prisma.siteVideo.findFirst({ where: { path, kind: "video" }, orderBy: { createdAt: "desc" } });
-  return row ? [{ id: row.youtubeId, title: row.title, kind: "video", seconds: row.seconds }] : [];
+  return row ? [{ id: row.youtubeId, title: row.title, kind: "video", seconds: row.seconds, uploadedAt: row.createdAt.toISOString() }] : [];
 }

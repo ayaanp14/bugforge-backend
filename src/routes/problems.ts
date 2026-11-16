@@ -43,7 +43,8 @@ const problemKey = (slug: string) => `${PROBLEM_KEY_PREFIX}${slug}`;
  * Editorial tab is opened, so they are fetched (and cached) on demand rather
  * than shipped with every statement.
  */
-const editorialKey = (slug: string) => `problem:editorial:v3:${slug}`;
+// v4: each video carries `uploadedAt` (the page's VideoObject markup).
+const editorialKey = (slug: string) => `problem:editorial:v4:${slug}`;
 
 /** The starter stubs and the hints, which the lean payload leaves out (/:slug/starter/:lang, /:slug/hints). */
 const starterKey = (slug: string) => `problem:starter:v1:${slug}`;

@@ -1,3 +1,4 @@
+import { videosForPath, type SiteVideo } from "./site-videos.js";
 import { prisma } from "../lib/prisma.js";
 import type { ProblemView, SeoView } from "../lib/seo-views/index.js";
 import { companiesView } from "../lib/seo-views/companies.js";
@@ -137,6 +138,13 @@ export interface PageFacts {
    * authored; the SPA's structured data renders them as plain text.
    */
   faq?: Array<{ q: string; a: string }>;
+  /**
+   * A problem's video explanations from the channel (services/site-videos) —
+   * the same list its editorial answer carries, which the page draws in a
+   * visitor's guide. The SPA's structured data adds its hand-listed videos
+   * (content/problem-videos) and writes a VideoObject for each.
+   */
+  videos?: SiteVideo[];
   /** A roadmap lesson's level ("Beginner" …) and the date it was last revised (YYYY-MM-DD). */
   level?: string;
   updated?: string;
@@ -906,7 +914,13 @@ function problemHead(slug: string): Promise<PageHead | null> {
     const tags = asStrings(p.tags);
     const topics = tags.filter((t) => !isCompanyTag(t));
     const hints = asStrings(p.hints).filter((x) => x.trim());
-    const [hubs, related] = await Promise.all([hubsForTags(tags), relatedProblems(slug, tags, p.difficulty)]);
+    // The videos: one indexed read, alongside the hubs (services/site-videos);
+    // a failure leaves the page without them rather than without a head.
+    const [hubs, related, videos] = await Promise.all([
+      hubsForTags(tags),
+      relatedProblems(slug, tags, p.difficulty),
+      videosForPath(`/problems/${slug}`).catch(() => [] as SiteVideo[]),
+    ]);
     const [lessons, seoText] = await Promise.all([
       lessonsForTopics(hubs.topics.map((t) => t.slug)),
       problemSeoText({ title: p.title, difficulty: p.difficulty, description: p.description, editorial: p.editorial, tags }, hubs),
@@ -971,7 +985,7 @@ function problemHead(slug: string): Promise<PageHead | null> {
       path: `/problems/${slug}`,
       title: titles.problem(p.title, difficulty),
       description: seoText.description,
-      facts: { difficulty, keywords: topics, trail },
+      facts: { difficulty, keywords: topics, trail, ...(videos.length ? { videos } : {}) },
       content,
       crumb: p.title,
       view,
