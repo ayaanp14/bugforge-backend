@@ -332,6 +332,36 @@ export const resumeCheckLimiter = rateLimit({
 });
 
 /**
+ * The online compiler for a visitor (routes/compiler, no account): each run
+ * is a job on the shared execution engine. A person runs, edits and runs
+ * again — a few a minute while working; anything faster is a script. Keyed
+ * by address. A computer lab behind one address shares these, which is why
+ * the refusal points at a free account: signed in, each person gets the
+ * per-account executionLimiter instead.
+ */
+export const compilerVisitorLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 8,
+  message: "You are running code very quickly. Give it a few seconds.",
+});
+export const compilerVisitorHourLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 60,
+  message: "That is a lot of runs from this network in an hour. Sign in free to keep going, or try again later.",
+});
+
+/**
+ * Turnstile answers exchanged for a visitor pass (routes/visitor-pass). A
+ * pass lasts half an hour, so a person asks for a few an hour at most; each
+ * request is a call to Cloudflare's siteverify.
+ */
+export const visitorPassLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 30,
+  message: "Too many checks from this network. Try again in a little while.",
+});
+
+/**
  * Resume model calls — an analysis, a bullet rewrite, a whole-resume
  * optimisation. Each is a round trip to the shared free-tier model; a
  * person clicks these a few dozen times in a session, a script would not

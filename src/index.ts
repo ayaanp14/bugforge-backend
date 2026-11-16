@@ -45,6 +45,8 @@ import seoRouter from "./routes/seo.js";
 import studyPlansRouter from "./routes/study-plans.js";
 import assistantRouter from "./routes/assistant.js";
 import resumesRouter from "./routes/resumes.js";
+import compilerRouter from "./routes/compiler.js";
+import visitorPassRouter from "./routes/visitor-pass.js";
 import proofRouter from "./routes/proof.js";
 import battlesRouter from "./routes/battles.js";
 import { sqlRouter } from "./routes/sql.js";
@@ -129,7 +131,9 @@ app.set("trust proxy", 1);
  * listed is refused at preflight, so keep this in step with
  * frontend/src/lib/client-api.ts and store/api/apiSlice.ts.
  */
-const ALLOWED_HEADERS = ["Content-Type", "Authorization", "X-App-Platform", "X-App-Signature", "X-App-Timestamp"];
+// X-Visitor-Pass: a visitor's proof of a Turnstile challenge, sent to the
+// online compiler and the free ATS check (lib/visitor-pass).
+const ALLOWED_HEADERS = ["Content-Type", "Authorization", "X-App-Platform", "X-App-Signature", "X-App-Timestamp", "X-Visitor-Pass"];
 
 // --- Socket.io Setup ---
 
@@ -1034,6 +1038,9 @@ app.use("/api/virtual-contests", virtualContestsRouter);
 app.use("/api/assistant", assistantRouter);
 // The upload route reads a raw file body with its own parser (see routes/resumes.ts).
 app.use("/api/resumes", resumesRouter);
+// The online compiler (/compiler/<language>), open to visitors behind a visitor pass.
+app.use("/api/compiler", compilerRouter);
+app.use("/api/visitor-pass", visitorPassRouter);
 // The landing page's social proof: real counts, results and approved quotes (services/social-proof).
 app.use("/api/proof", proofRouter);
 // The tournament site, battles.codekairo.com (routes/battles.ts).

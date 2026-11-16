@@ -3,6 +3,7 @@ import express, { Router, type NextFunction, type Request, type Response } from 
 import { requireAuth } from "../middleware/auth.js";
 import { browserCache } from "../lib/http-cache.js";
 import { resumeAiLimiter, resumeCheckLimiter, resumeUploadLimiter } from "../middleware/rate-limit.js";
+import { requireVisitorPass } from "../middleware/visitor-pass.js";
 import { MAX_RESUME_BYTES, ResumeFileError } from "../lib/resume-files.js";
 import { exportFilename, renderDocx, renderPdf } from "../lib/resume-export.js";
 import { ATS_SCORING_WEIGHTS, CATEGORY_LABELS } from "../lib/resume-scoring.js";
@@ -119,6 +120,10 @@ function readCheck(req: Request, res: Response, next: NextFunction): void {
 router.post(
   "/check",
   resumeCheckLimiter,
+  // A Turnstile challenge answered in the last half hour, when configured
+  // (lib/visitor-pass) — before the body is read, so a refused script never
+  // gets its 5 MB parsed.
+  requireVisitorPass,
   readCheck,
   (req: Request, res: Response, next: NextFunction): void => {
     const body = req.body as unknown;
