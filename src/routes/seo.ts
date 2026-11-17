@@ -3,6 +3,7 @@ import { contentCardImageFor, headFor, sitemapXml } from "../services/seo.js";
 import { CONTENT_CARD_DESIGN } from "../lib/content-card.js";
 import { contentCardLimiter } from "../middleware/rate-limit.js";
 import { battlesCard, battlesHead, battlesIndexHtml, battlesSitemapXml } from "../services/battles-seo.js";
+import { companyQuestionsExport } from "../services/company-questions.js";
 
 /**
  * What the site's edge asks the API on a crawler's behalf.
@@ -17,6 +18,7 @@ import { battlesCard, battlesHead, battlesIndexHtml, battlesSitemapXml } from ".
  *                                                 { redirect } when the address has moved
  *                                                 or 404 when nothing is there
  *   GET /api/seo/sitemaps/problems.xml         → a sitemap of that content
+ *   GET /api/seo/company-questions.json        → every company's questions, for the public GitHub list
  */
 const router = Router();
 
@@ -119,6 +121,17 @@ router.get("/battles/sitemaps/:name.xml", async (req, res) => {
   }
   res.setHeader("Cache-Control", "public, max-age=900, stale-while-revalidate=86400");
   res.type("application/xml").send(body);
+});
+
+/**
+ * Every company's coding questions as JSON (services/company-questions.ts),
+ * read each night by the public GitHub repository that republishes them as
+ * Markdown. Published content only, like the rest of this router.
+ */
+router.get("/company-questions.json", async (_req, res) => {
+  const data = await companyQuestionsExport();
+  res.setHeader("Cache-Control", "public, max-age=3600, stale-while-revalidate=86400");
+  res.json(data);
 });
 
 router.get("/sitemaps/:name.xml", async (req, res) => {
