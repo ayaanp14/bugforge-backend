@@ -14,6 +14,11 @@ describe("parseRunRequest", () => {
     assert.ok(parsed.ok && parsed.run.stdin === "");
   });
 
+  it("takes SQL, which runs on the local engine", () => {
+    const parsed = parseRunRequest({ language: "sql", code: "SELECT 1;", stdin: "CREATE TABLE t (a INT);" });
+    assert.ok(parsed.ok && parsed.run.language === "sql");
+  });
+
   it("refuses a language the judge does not run, including inherited names", () => {
     for (const language of ["cobol", "constructor", "__proto__", "", null, 7]) {
       const parsed = parseRunRequest({ language, code: "x" });

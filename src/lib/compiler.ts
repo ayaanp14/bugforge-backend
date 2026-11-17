@@ -7,8 +7,14 @@ import { MAX_SOURCE_BYTES, MAX_STDIN_BYTES } from "./program-judge.js";
  *
  * A run is a whole program and its stdin through the study plans' program
  * judge (lib/program-judge runProgram: no driver, no sentinel protocol, the
- * same 64 KB / 16 KB caps), in any of the thirteen judge languages.
+ * same 64 KB / 16 KB caps), in any of the thirteen judge languages — or SQL
+ * (since 2026-11-17, /compiler/sql), which runProgram answers on the SQL
+ * problems' own engine in this process (lib/sql/program: the stdin is the
+ * setup script, the source the queries) and never on the shared remote one.
  */
+
+/** The compiler's SQL: run here, so it draws nothing from the visitors' engine budget. */
+export const LOCAL_LANGUAGES: ReadonlySet<string> = new Set(["sql"]);
 
 export interface RunRequest {
   language: string;
@@ -21,7 +27,7 @@ export type ParsedRun = { ok: true; run: RunRequest } | { ok: false; status: num
 export function parseRunRequest(body: unknown): ParsedRun {
   const b = (body && typeof body === "object" ? body : {}) as Record<string, unknown>;
   const language = b["language"];
-  if (!isJudgeLanguage(language)) return { ok: false, status: 400, error: "Pick one of the thirteen languages." };
+  if (!(isJudgeLanguage(language) || (typeof language === "string" && LOCAL_LANGUAGES.has(language)))) return { ok: false, status: 400, error: "Pick one of the compiler's languages." };
   const code = b["code"];
   if (typeof code !== "string" || !code.trim()) return { ok: false, status: 400, error: "Write some code to run." };
   const stdin = b["stdin"] ?? "";

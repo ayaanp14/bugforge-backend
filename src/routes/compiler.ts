@@ -2,7 +2,7 @@ import { Router, type NextFunction, type Request, type Response } from "express"
 import { optionalAuth } from "../middleware/auth.js";
 import { compilerVisitorHourLimiter, compilerVisitorLimiter, executionLimiter } from "../middleware/rate-limit.js";
 import { requireVisitorPass } from "../middleware/visitor-pass.js";
-import { parseRunRequest, visitorBudget } from "../lib/compiler.js";
+import { LOCAL_LANGUAGES, parseRunRequest, visitorBudget } from "../lib/compiler.js";
 import { runProgram } from "../lib/program-judge.js";
 import { ENGINE_DOWN_MESSAGE } from "../lib/engine-error.js";
 
@@ -38,7 +38,9 @@ router.post("/run", optionalAuth, limitByCaller, async (req, res) => {
     return;
   }
 
-  const visitor = !req.user;
+  // SQL runs in this process (lib/sql/engine, its own queue and deadline), so a
+  // visitor's SQL draws nothing from the budget kept for the remote engine.
+  const visitor = !req.user && !LOCAL_LANGUAGES.has(parsed.run.language);
   if (visitor) {
     const slot = visitorBudget.take();
     if (slot !== "ok") {
@@ -57,7 +59,8 @@ router.post("/run", optionalAuth, limitByCaller, async (req, res) => {
     const { language, code, stdin } = parsed.run;
     const result = await runProgram(code, language, stdin);
     if (result.status === "ENGINE_ERROR") {
-      res.status(503).json({ error: ENGINE_DOWN_MESSAGE });
+      // For SQL that is the local engine's queue being full, not an outage.
+      res.status(503).json({ error: LOCAL_LANGUAGES.has(language) ? "The SQL runner is busy — run again in a few seconds." : ENGINE_DOWN_MESSAGE });
       return;
     }
     res.json(result);

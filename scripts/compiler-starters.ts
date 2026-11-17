@@ -9,7 +9,8 @@
  * compile, read the sample input and greet it. Each one is sent through the
  * same path a Run takes (lib/program-judge runProgram, STUDY_EXECUTOR —
  * Paiza by default) with the sample input, and must exit cleanly with
- * "Hello, <sample>!" as its first line. Exits 1 if any does not.
+ * "Hello, <sample>!" as its first line — SQL instead reads its sample tables
+ * and must print the header its `check` names. Exits 1 if any does not.
  *
  * The file is read at run time through a computed path, so the backend's
  * typecheck never follows it into the frontend's sources.
@@ -23,6 +24,10 @@ interface Starter {
   id: string;
   name: string;
   starter: string;
+  /** SQL's: the tables its query reads, instead of the sample line. */
+  sampleInput?: string;
+  /** The first line it prints, when not "Hello, <sample>!". */
+  check?: string;
 }
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -36,9 +41,10 @@ const expected = `Hello, ${SAMPLE_INPUT}!`;
 let failed = 0;
 for (const c of COMPILERS) {
   if (only && !only.has(c.id)) continue;
-  const result = await runProgram(c.starter, c.id, `${SAMPLE_INPUT}\n`);
+  // SQL's starter reads its sample tables (the setup script) and is checked by its header line.
+  const result = await runProgram(c.starter, c.id, c.sampleInput ?? `${SAMPLE_INPUT}\n`);
   const first = result.stdout.split("\n")[0]?.trim();
-  const ok = result.status === "ACCEPTED" && first === expected;
+  const ok = result.status === "ACCEPTED" && first === (c.check ?? expected);
   if (!ok) failed += 1;
   console.log(`${ok ? "ok  " : "FAIL"} ${c.name.padEnd(11)} ${result.status.padEnd(20)} ${result.timeMs} ms  ${JSON.stringify(result.stdout.trim())}`);
   if (!ok && (result.compileOutput || result.stderr)) console.log(`     ${(result.compileOutput ?? result.stderr ?? "").trim().split("\n").slice(0, 6).join("\n     ")}`);

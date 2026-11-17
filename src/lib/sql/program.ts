@@ -126,7 +126,10 @@ export function prepareScript(source: string): ScriptCheck {
     // The type may carry a width and modifiers before the keyword
     // (`INT(11) UNSIGNED NOT NULL AUTO_INCREMENT`, the form mysqldump and
     // SHOW CREATE TABLE print): the width and the sign words go, NOT NULL
-    // stays (an INTEGER PRIMARY KEY still numbers itself under it).
+    // stays (an INTEGER PRIMARY KEY still numbers itself under it), and so
+    // does a PRIMARY KEY written before the keyword — `id INT PRIMARY KEY
+    // AUTO_INCREMENT` is MySQL too, and kept INT it numbered nothing: every
+    // id came back NULL (found probing the online SQL compiler, 2026-11-17).
     // Table options after the closing parenthesis (ENGINE=InnoDB, DEFAULT
     // CHARSET=…) mean nothing here and are dropped.
     if (head === "CREATE" && upper(sig[1]) === "TABLE") {
@@ -141,7 +144,7 @@ export function prepareScript(source: string): ScriptCheck {
           while (k >= 0 && isSpace(next[k])) k--;
           const w = upper(next[k]);
           if (w === "UNSIGNED" || w === "SIGNED" || w === "ZEROFILL") next.splice(k, 1), k--;
-          else if (w === "NULL" || w === "NOT") k--;
+          else if (w === "NULL" || w === "NOT" || w === "PRIMARY" || w === "KEY") k--;
           else break;
         }
         let typeEnd = k;

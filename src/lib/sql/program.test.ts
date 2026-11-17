@@ -28,6 +28,8 @@ test("prepareScript rewrites the MySQL statement forms SQLite lacks", () => {
   assert.deepEqual(s("TRUNCATE TABLE emp"), ["DELETE FROM emp"]);
   assert.match(s("INSERT IGNORE INTO t VALUES (1)")[0]!, /^INSERT OR IGNORE INTO/);
   assert.match(s("CREATE TABLE t (id INT(11) AUTO_INCREMENT PRIMARY KEY, n INT)")[0]!, /id INTEGER\s+PRIMARY KEY/);
+  // PRIMARY KEY before the keyword: the type is still found and made INTEGER.
+  assert.match(s("CREATE TABLE t (id INT PRIMARY KEY AUTO_INCREMENT, n INT)")[0]!, /id INTEGER\s+PRIMARY KEY\s*,/);
   assert.match(s("CREATE TABLE t (id INT UNSIGNED NOT NULL AUTO_INCREMENT, PRIMARY KEY (id)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4")[0]!, /^CREATE TABLE t \(id INTEGER\s+NOT NULL\s*, PRIMARY KEY \(id\)\)$/);
 });
 
