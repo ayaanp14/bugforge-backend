@@ -6,6 +6,9 @@ import { trackServerEvent } from "../lib/telemetry.js";
 import { CREDENTIAL_XP } from "./skill-credentials.js";
 import { TRACK_BONUS_XP } from "./study-plans.js";
 import { creditBalance } from "./credits.js";
+import { FRAME_GOODIES, frameGoodieFor, type FrameGoodie } from "../lib/frames.js";
+import { isDuplicateKey } from "../lib/seat-claim.js";
+import { forgetFrames } from "./frames.js";
 
 /**
  * Goodies (lib/goodies.ts): the points balance and its redemption.
@@ -22,6 +25,20 @@ export interface GoodieView extends Goodie {
   refusal: string | null;
 }
 
+/**
+ * A profile-picture frame bought with points (lib/frames.ts FRAME_GOODIES):
+ * redeemed like a goodie, but it adds no credits — `owned` instead, once.
+ */
+export interface FrameGoodieView {
+  id: string;
+  name: string;
+  blurb: string;
+  points: number;
+  owned: boolean;
+  /** Why it cannot be bought now; null = it can (or it is owned). */
+  refusal: string | null;
+}
+
 export interface RedemptionRow {
   id: string;
   itemId: string;
@@ -35,6 +52,8 @@ export interface GoodiesPage {
   points: PointsBalance;
   credits: number;
   items: GoodieView[];
+  /** The frames for sale, after the credits. */
+  frames: FrameGoodieView[];
   redemptions: RedemptionRow[];
   /** While every limit is lifted (lib/plans FREE_FOR_ALL_UNTIL), credits wait in the wallet; the page says so. */
   freeForAll: FreeForAll;
@@ -45,6 +64,23 @@ const HISTORY_LIMIT = 20;
 
 /** How long a redemption without its grant still holds its points (see balanceOf). A redeem takes well under a second. */
 const IN_FLIGHT_MS = 5 * 60_000;
+
+/**
+ * A frame's redemption is paid by a grantId that names the frame and the
+ * account instead of a CreditGrant (a frame is not credits). The column is
+ * unique, so of two purchases of one frame racing past the balance check
+ * only one can be stamped; the other is taken back (see redeem).
+ */
+const frameGrantKey = (userId: string, frameId: string) => `frame:${frameId}:${userId}`;
+
+/** A frame as the redemption path prices it: a goodie that adds no credits. */
+const asGoodie = (f: FrameGoodie): Goodie => ({ id: f.id, name: f.name, blurb: f.blurb, points: f.points, credits: 0 });
+
+/** The frames this account has bought. */
+async function ownedFrames(userId: string): Promise<Set<string>> {
+  const rows = await prisma.redemption.findMany({ where: { userId, itemId: { in: FRAME_GOODIES.map((g) => g.id) }, grantId: { not: null } }, select: { itemId: true } });
+  return new Set(rows.map((r) => r.itemId));
+}
 
 /** The rows that hold points: paid ones, and ones still in flight. A getter, because "in flight" is relative to now. */
 const LIVE_WHERE = () => ({ OR: [{ grantId: { not: null } }, { createdAt: { gt: new Date(Date.now() - IN_FLIGHT_MS) } }] });
@@ -81,10 +117,11 @@ async function standingOf(userId: string): Promise<{ emailVerified: boolean; cre
 }
 
 export async function goodiesPage(userId: string): Promise<GoodiesPage | null> {
-  const [points, credits, standing, rows] = await Promise.all([
+  const [points, credits, standing, owned, rows] = await Promise.all([
     balanceOf(userId),
     creditBalance(userId),
     standingOf(userId),
+    ownedFrames(userId),
     prisma.redemption.findMany({
       // A row without its grant is a redemption being taken back (see redeem), never one that paid.
       where: { userId, grantId: { not: null } },
@@ -98,7 +135,15 @@ export async function goodiesPage(userId: string): Promise<GoodiesPage | null> {
     points,
     credits,
     items: GOODIES.map((item) => ({ ...item, refusal: redeemRefusal({ ...standing, balance: points.balance, item }) })),
-    redemptions: rows.map((r) => ({ ...r, name: goodieFor(r.itemId)?.name ?? r.itemId })),
+    frames: FRAME_GOODIES.map((f) => ({
+      id: f.id,
+      name: f.name,
+      blurb: f.blurb,
+      points: f.points,
+      owned: owned.has(f.id),
+      refusal: owned.has(f.id) ? null : redeemRefusal({ ...standing, balance: points.balance, item: asGoodie(f) }),
+    })),
+    redemptions: rows.map((r) => ({ ...r, name: goodieFor(r.itemId)?.name ?? frameGoodieFor(r.itemId)?.name ?? r.itemId })),
     freeForAll: freeForAll(),
   };
 }
@@ -126,8 +171,11 @@ export type RedeemOutcome =
  * anywhere leaves nothing spent.
  */
 export async function redeem(userId: string, itemId: unknown): Promise<RedeemOutcome> {
-  const item = goodieFor(itemId);
+  const frame = frameGoodieFor(itemId);
+  const item = goodieFor(itemId) ?? (frame ? asGoodie(frame) : null);
   if (!item) return { ok: false, status: 404, error: "That goodie does not exist." };
+  const ALREADY_OWNED = "You already own this frame — wear it from your profile.";
+  if (frame && (await ownedFrames(userId)).has(frame.id)) return { ok: false, status: 409, error: ALREADY_OWNED };
 
   const [standing, before] = await Promise.all([standingOf(userId), balanceOf(userId)]);
   if (!standing) return { ok: false, status: 404, error: "Account not found." };
@@ -155,6 +203,24 @@ export async function redeem(userId: string, itemId: unknown): Promise<RedeemOut
   if (ahead > after.earned) {
     await prisma.redemption.deleteMany({ where: { id: row.id } });
     return { ok: false, status: 409, error: "Not enough points for this any more — check your balance and try again." };
+  }
+
+  if (frame) {
+    try {
+      await prisma.redemption.update({ where: { id: row.id }, data: { grantId: frameGrantKey(userId, frame.id) }, select: { id: true } });
+    } catch (err) {
+      await prisma.redemption.deleteMany({ where: { id: row.id } }).catch(() => undefined);
+      if (isDuplicateKey(err)) return { ok: false, status: 409, error: ALREADY_OWNED };
+      throw err;
+    }
+    forgetFrames(userId);
+    trackServerEvent("goodie_redeemed", { item: item.id, points: item.points, credits: 0 }, userId);
+    return {
+      ok: true,
+      redemption: { id: row.id, itemId: item.id, name: item.name, points: item.points, credits: 0, createdAt: row.createdAt },
+      balance: Math.max(0, after.earned - after.spent),
+      credits: await creditBalance(userId),
+    };
   }
 
   try {

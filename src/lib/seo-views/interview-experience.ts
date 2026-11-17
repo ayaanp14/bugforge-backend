@@ -1,4 +1,5 @@
 import { honourDef } from "../honours.js";
+import { HONOUR_FRAMES } from "../frames.js";
 import { SKILLS } from "../skill-catalog.js";
 
 /**
@@ -59,6 +60,12 @@ export interface InterviewExperienceView {
     honour: string | null;
     /** The worn skill credential's seal, or null; the view hides it once `expiresAt` has passed. */
     credential: { short: string; level: string; expiresAt: string } | null;
+    /**
+     * The profile-picture frame chosen (lib/frames.ts) — an id or "none" —
+     * or null for Auto. A frame that stands for an Honour row the author no
+     * longer holds reads as Auto here, as the client resolves it.
+     */
+    frame: string | null;
   };
 }
 
@@ -71,7 +78,7 @@ export interface InterviewExperienceSource {
   commentCount: number;
   author: { name: string | null; username: string | null; avatar_url: string | null };
   authorHidden: boolean;
-  authorFlair: { xp: number; chests: number; honours: string[]; credential: { skill: string; level: string; expiresAt: string } | null };
+  authorFlair: { xp: number; chests: number; honours: string[]; credential: { skill: string; level: string; expiresAt: string } | null; frame?: string | null };
   experience: {
     company: string;
     companySlug: string | null;
@@ -91,6 +98,8 @@ export function interviewExperienceView(row: InterviewExperienceSource, tier: st
   const f = row.authorFlair;
   const honour = f.honours.map((k) => honourDef(k)).find(Boolean) ?? null;
   const cred = f.credential;
+  const chosen = f.frame ?? null;
+  const needs = chosen && Object.prototype.hasOwnProperty.call(HONOUR_FRAMES, chosen) ? HONOUR_FRAMES[chosen as keyof typeof HONOUR_FRAMES].kind : null;
   return {
     kind: "interview-experience",
     company: e.company,
@@ -120,6 +129,7 @@ export function interviewExperienceView(row: InterviewExperienceSource, tier: st
       credential: cred
         ? { short: SKILLS.find((s) => s.id === cred.skill)?.short ?? cred.skill.slice(0, 3).toUpperCase(), level: cred.level, expiresAt: cred.expiresAt }
         : null,
+      frame: chosen && (!needs || f.honours.includes(needs)) ? chosen : null,
     },
   };
 }

@@ -3,6 +3,8 @@ import { tournamentsFor } from "./tournament-record.js";
 import { prisma } from "../lib/prisma.js";
 import { cached, cachedShared, invalidate, patchShared } from "../lib/cache.js";
 import { HONOUR_SELECT } from "../lib/honours.js";
+import { WORN_FRAME_SELECT } from "../lib/frames.js";
+import { WORN_CREDENTIAL_SELECT } from "../lib/skill-tests.js";
 import { CALENDAR_UTC_OFFSET_MINUTES } from "../lib/clock.js";
 import { heatmapWindow, mergeHistory, sqlHistoryRow, sqlSolveTally, tallyHeatmap, type DayCountRow, type HistoryRow } from "../lib/activity.js";
 import { SQL_PROBLEMS } from "../lib/sql-problems/index.js";
@@ -481,8 +483,12 @@ async function queryLeaderboard(type: "combined" | "questions" | "bugs") {
         questionsXp: true,
         bugsXp: true,
         profileHidden: true,
-        // The founding member's frame and seal on the board's avatar (lib/honours).
+        // The frame on the board's avatar, as on the feed: the one chosen
+        // (lib/frames.ts) and what Auto and a lapsed choice fall back to.
         ...HONOUR_SELECT,
+        ...WORN_FRAME_SELECT,
+        ...WORN_CREDENTIAL_SELECT,
+        roadmapRewards: { select: { tierKey: true } },
         stats: { select: { problemsSolved: true, bugsFixed: true } },
         // Ten accounts' SQL solves, one slug per problem — counted below
         // against the problems the module still ships.
@@ -511,6 +517,9 @@ async function queryLeaderboard(type: "combined" | "questions" | "bugs") {
       // Still ranked; the row just does not link to a profile its owner hid.
       profileHidden: u.profileHidden,
       honours: u.honours,
+      wornFrame: u.wornFrame,
+      wornCredential: u.wornCredential,
+      roadmapRewards: u.roadmapRewards,
       hasValue,
     };
   });

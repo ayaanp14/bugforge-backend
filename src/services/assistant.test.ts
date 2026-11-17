@@ -91,6 +91,8 @@ const QUESTIONS: Array<[string, RegExp, string?]> = [
   ["can I retake a skill test I failed", /\*\*7 days\*\*/],
   ["how do I add my skill test certificate to linkedin", /Add to LinkedIn/],
   ["how do I remove the certification frame from my profile picture", /Certifications\*\* section of/],
+  ["how do I change the frame on my profile picture", /\*\*Auto\*\* \(the default\)/],
+  ["how do I earn the streak frame", /365-day streak/],
   ["how long is the TCS NQT test", /TCS NQT — Foundation: 75 min/],
   ["does the tech mahindra test have negative marking", /−0\.25 per wrong/],
   ["can I go back to a section after finishing it in a placement test", /cannot be reopened/],

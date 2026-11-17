@@ -121,6 +121,8 @@ export interface ExperiencePage extends ExperienceRow {
     chests: number;
     honours: string[];
     credential: { skill: string; level: string; band: string; expiresAt: string } | null;
+    /** The profile-picture frame chosen (lib/frames.ts); null = Auto. */
+    frame: string | null;
   };
   /** The post's tags in the order the community payload lists them (the same unordered relation read). */
   tags: string[];
@@ -151,6 +153,7 @@ export function experienceById(id: string): Promise<ExperiencePage | null> {
             roadmapRewards: { select: { tierKey: true } },
             honours: { select: { kind: true } },
             wornCredential: { select: { skill: true, level: true, band: true, expiresAt: true } },
+            wornFrame: true,
           },
         },
         _count: { select: { likes: true, comments: true } },
@@ -158,7 +161,7 @@ export function experienceById(id: string): Promise<ExperiencePage | null> {
     });
     const experience = p ? experienceOf(p.meta) : null;
     if (!p || !experience) return null;
-    const { profileHidden, xp, rating, roadmapRewards, honours, wornCredential, ...author } = p.user;
+    const { profileHidden, xp, rating, roadmapRewards, honours, wornCredential, wornFrame, ...author } = p.user;
     return {
       edited: !!p.editedAt,
       authorFlair: {
@@ -167,6 +170,7 @@ export function experienceById(id: string): Promise<ExperiencePage | null> {
         chests: roadmapRewards.length,
         honours: honours.map((h) => h.kind),
         credential: wornCredential ? { skill: wornCredential.skill, level: wornCredential.level, band: wornCredential.band, expiresAt: wornCredential.expiresAt.toISOString() } : null,
+        frame: wornFrame,
       },
       tags: p.tags.map((t) => t.tag),
       id: p.id,

@@ -2,6 +2,7 @@ import { prisma } from "../lib/prisma.js";
 import { brevoConfigured, isReservedAddress, sendTransactional } from "../lib/brevo.js";
 import { HONOURS, HONOUR_KINDS, grantsLifetimeAccess, honourDef, type HonourShareAction } from "../lib/honours.js";
 import { honourHtml, honourSubject, honourText } from "../lib/honour-mail.js";
+import { FRAME_GRANT_KINDS, frameGrantName, isFrameGrantKind } from "../lib/frames.js";
 import { invalidateMe } from "./me.js";
 import { invalidateDashboard } from "./dashboard.js";
 import { forgetPublicUser } from "./public-profile.js";
@@ -32,6 +33,7 @@ function forgetHolder(userId: string): void {
   invalidateMe(userId);
   invalidateDashboard(userId);
   forgetPublicUser(userId);
+  // The frames picker (services/frames.ts) catches up within its minute; a wear reads fresh facts anyway.
 }
 
 /**
@@ -67,7 +69,9 @@ export async function grantHonour(
   identifiers: string[],
   opts: { grantedBy: string; mail: boolean; resendMail?: boolean },
 ): Promise<GrantResult[]> {
-  if (!honourDef(kind)) throw new Error(`Unknown honour "${kind}"`);
+  // A frame given by hand (lib/frames.ts) is an Honour row too, but only the frame: no mail, no celebration.
+  const frameOnly = isFrameGrantKind(kind);
+  if (!honourDef(kind) && !frameOnly) throw new Error(`Unknown honour "${kind}"`);
   const results: GrantResult[] = [];
   for (const who of identifiers) {
     const user = await prisma.user.findFirst({
@@ -83,7 +87,7 @@ export async function grantHonour(
     forgetHolder(user.id);
     // One at a time, not in parallel: Brevo's free plan is 300 a day and a
     // burst of a few dozen is fine, but the order of the log is worth keeping.
-    const wantMail = opts.mail && (!row.mailedAt || opts.resendMail);
+    const wantMail = !frameOnly && opts.mail && (!row.mailedAt || opts.resendMail);
     const mailed = wantMail ? await mailHonour(row.id) : null;
     results.push({ who, status: existing ? "already" : "granted", userId: user.id, username: user.username, email: user.email, mailed });
   }
@@ -167,8 +171,9 @@ export async function saveHonourFeedback(userId: string, kind: string, comment: 
 /** The admin's view: every holder, what has happened since the grant, and their note. */
 export async function adminHonours() {
   const rows = await prisma.honour.findMany({
-    // Only what is given by hand: the festival's rows (lib/festival.ts) would bury it.
-    where: { kind: { in: HONOUR_KINDS } },
+    // Only what is given by hand — the honours and the frame-only grants
+    // (lib/frames.ts); the festival's rows (lib/festival.ts) would bury it.
+    where: { kind: { in: [...HONOUR_KINDS, ...FRAME_GRANT_KINDS] } },
     orderBy: { grantedAt: "desc" },
     take: 500,
     select: {
@@ -193,7 +198,7 @@ export async function adminHonours() {
     : [];
   const noteOf = new Map(notes.map((n) => [`${n.userId}|${n.path}`, n]));
   return {
-    kinds: Object.values(HONOURS).map((d) => ({ kind: d.kind, name: d.name })),
+    kinds: [...Object.values(HONOURS).map((d) => ({ kind: d.kind, name: d.name })), ...FRAME_GRANT_KINDS.map((kind) => ({ kind, name: `${frameGrantName(kind) ?? kind} (frame only)` }))],
     holders: rows.map((r) => {
       const note = noteOf.get(`${r.user.id}|honour:${r.kind}`);
       return {

@@ -50,6 +50,8 @@ export async function buildAccountExport(userId: string): Promise<Record<string,
       targetCompany: true, targetTest: true, targetDate: true,
       // What the career section of the public profile shares (Phase 8).
       careerShowSkills: true, careerShowReadiness: true,
+      // The profile-picture frame chosen (lib/frames.ts).
+      wornFrame: true,
       createdAt: true, updatedAt: true,
       stats: { select: { problemsSolved: true, bugsFixed: true, currentStreak: true, longestStreak: true, lastActive: true } },
       accounts: { select: { provider: true, providerAccountId: true } },

@@ -9,6 +9,7 @@ import { cached, cachedShared, invalidate, invalidatePrefix } from "../lib/cache
 import { browserCache } from "../lib/http-cache.js";
 import { WORN_CREDENTIAL_SELECT } from "../lib/skill-tests.js";
 import { HONOUR_SELECT } from "../lib/honours.js";
+import { WORN_FRAME_SELECT } from "../lib/frames.js";
 import { invalidateUnread } from "../services/notifications.js";
 import { invalidateDashboard, querySocialCounts } from "../services/dashboard.js";
 import { EXPERIENCE_TAG, companyFeedTag, parseExperience, readableExperienceMeta } from "../lib/interview-experience.js";
@@ -30,7 +31,7 @@ const router = Router();
 // chose to wear (lib/skill-tests.ts WORN_CREDENTIAL_SELECT), drawn in place
 // of the chest ring.
 // profileHidden: a name whose profile is hidden is drawn without a link (frontend ProfileLink).
-const AUTHOR_SELECT = { id: true, name: true, username: true, avatar_url: true, xp: true, rating: true, profileHidden: true, roadmapRewards: { select: { tierKey: true } }, ...WORN_CREDENTIAL_SELECT, ...HONOUR_SELECT } as const;
+const AUTHOR_SELECT = { id: true, name: true, username: true, avatar_url: true, xp: true, rating: true, profileHidden: true, roadmapRewards: { select: { tierKey: true } }, ...WORN_CREDENTIAL_SELECT, ...HONOUR_SELECT, ...WORN_FRAME_SELECT } as const;
 
 /** Feed page size cap. */
 const MAX_TAKE = 30;

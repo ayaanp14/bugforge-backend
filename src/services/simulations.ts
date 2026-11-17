@@ -135,6 +135,31 @@ export async function simulationList(userId: string | null) {
 }
 
 /**
+ * Every simulation with the account's furthest run of it: rounds done, and
+ * whether any run was completed — the "full process" frames (lib/frames.ts).
+ * The same reads and rule as the list above (runView), every run counted,
+ * not only the latest: a finished run stays finished when a later one is
+ * abandoned.
+ */
+export async function simulationProgress(userId: string): Promise<Array<{ slug: string; company: string; done: number; total: number; complete: boolean }>> {
+  const runs = await prisma.simulationRun.findMany({ where: { userId }, orderBy: { createdAt: "desc" }, take: 100, select: RUN_SELECT });
+  const facts = await factsFor(userId, runs);
+  const best = new Map<string, { done: number; complete: boolean }>();
+  for (const run of runs) {
+    const sim = simulationBySlug(run.slug);
+    if (!sim) continue;
+    const view = runView(sim, run, facts);
+    const done = view.rounds.filter((r) => r.state === "done").length;
+    const was = best.get(sim.slug);
+    best.set(sim.slug, { done: Math.max(was?.done ?? 0, done), complete: (was?.complete ?? false) || view.complete });
+  }
+  return SIMULATIONS.map((sim) => {
+    const b = best.get(sim.slug);
+    return { slug: sim.slug, company: sim.company, done: b?.done ?? 0, total: sim.rounds.length, complete: b?.complete ?? false };
+  });
+}
+
+/**
  * The company's catalogue hub (its tagged coding problems), for the page's
  * "Practise for …" list — the edge HTML (services/seo simulationHead) lists
  * the same. Null when the company tags no problem; never fails the page.

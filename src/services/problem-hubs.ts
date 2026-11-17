@@ -392,6 +392,47 @@ export async function hubPage(kind: "topic" | "company", slug: string): Promise<
   };
 }
 
+export interface TopicPlanTarget {
+  slug: string;
+  label: string;
+  /** The problem ids the topic's study plan picks (hubPage's `plan`, every stage). */
+  ids: string[];
+}
+
+/**
+ * Every topic hub's study plan as the problems it picks, in learning order —
+ * what a "<topic> finisher" frame is earned against (lib/frames.ts). The
+ * same plan the hub page draws (same order, same picks), built once per
+ * catalogue instance like the index: one plan per hub is ~55 sorts, and the
+ * frames picker asks for all of them at once.
+ */
+const planTargetsOf = new WeakMap<CatalogueRow[], Promise<TopicPlanTarget[]>>();
+export async function topicPlanTargets(): Promise<TopicPlanTarget[]> {
+  const catalogue = await getCatalogue();
+  let known = planTargetsOf.get(catalogue);
+  if (!known) {
+    known = (async () => {
+      const [index, road] = await Promise.all([hubIndex(), roadPositions()]);
+      const groups = groupByTag(catalogue);
+      const idOf = new Map(catalogue.map((r) => [r.slug, r.id]));
+      return [...index.topics]
+        .sort((a, b) => topicRank(a.slug) - topicRank(b.slug))
+        .map((summary) => {
+          const hub = topicHubBySlug(summary.slug)!;
+          const ordered = prioritise(topicRows(hub, groups, catalogue), road, startWith(summary.slug));
+          const plan = topicPlan({ label: hub.label, problems: ordered.map(toHubProblem) });
+          const ids = plan.stages.flatMap((s) => s.problems.flatMap((p) => (idOf.has(p.slug) ? [idOf.get(p.slug)!] : [])));
+          return { slug: summary.slug, label: hub.label, ids };
+        })
+        .filter((t) => t.ids.length > 0);
+    })();
+    // A failed build is not kept: the next ask tries again.
+    known.catch(() => planTargetsOf.delete(catalogue));
+    planTargetsOf.set(catalogue, known);
+  }
+  return known;
+}
+
 /**
  * Which of a hub's problems this account has solved or only tried, by slug
  * — the page's progress line and its ticks. The hub itself is public and

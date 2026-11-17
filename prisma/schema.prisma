@@ -192,6 +192,13 @@ model User {
   /// credential so every author payload reads it with one joined select.
   wornCredentialId      String?
   wornCredential        SkillCredential?          @relation("wornCredential", fields: [wornCredentialId], references: [id], onDelete: SetNull)
+  /// The profile-picture frame this account chose (lib/frames.ts): a frame
+  /// id ("solver-200", "kata-2026-11", "credential" — the worn credential's
+  /// frame — …), "none", or null for Auto, the order frames were chosen in
+  /// before the picker. Checked as earned when put on (services/frames.ts);
+  /// every source of a frame only grows, so it stays earned, and the few
+  /// that can lapse are re-checked by the client from the payload.
+  wornFrame             String?                   @db.VarChar(100)
   dailyContests         DailyContestEntry[]
   revokedSessions       RevokedSession[]
   pushSubscriptions     PushSubscription[]

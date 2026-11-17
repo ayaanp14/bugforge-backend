@@ -11,6 +11,8 @@
 import { prisma } from "../lib/prisma.js";
 import { cached, cachedShared, invalidate } from "../lib/cache.js";
 import { isDuplicateKey } from "../lib/seat-claim.js";
+import { HONOUR_SELECT } from "../lib/honours.js";
+import { WORN_FRAME_SELECT } from "../lib/frames.js";
 import { credentialName, isSkillLevel, LEVEL_LABEL, skillDef, SKILL_LEVELS, type SkillLevel } from "../lib/skill-catalog.js";
 import {
   addMonths,
@@ -251,6 +253,9 @@ export async function verifyCredential(code: string, viewerId: string | null, no
             avatar_url: true,
             roadmapRewards: { select: { tierKey: true } },
             ...WORN_CREDENTIAL_SELECT,
+            // The rest of the frame the holder wears (lib/frames.ts), as on the feed.
+            ...HONOUR_SELECT,
+            ...WORN_FRAME_SELECT,
           },
         },
       },

@@ -16,6 +16,7 @@
 import "dotenv/config";
 import { prisma } from "../src/lib/prisma.js";
 import { HONOUR_KINDS, honourDef, parseHonourees } from "../src/lib/honours.js";
+import { FRAME_GRANT_KINDS, isFrameGrantKind } from "../src/lib/frames.js";
 import { grantHonour } from "../src/services/honours.js";
 
 const args = process.argv.slice(2);
@@ -27,7 +28,8 @@ const value = (name: string) => {
 
 async function main() {
   const kind = value("--kind") ?? "founding_member";
-  if (!honourDef(kind)) throw new Error(`--kind must be one of ${HONOUR_KINDS.join(", ")}`);
+  // An honour, or a frame given by hand (lib/frames.ts) — those have no mail; --mail is ignored for them.
+  if (!honourDef(kind) && !isFrameGrantKind(kind)) throw new Error(`--kind must be one of ${[...HONOUR_KINDS, ...FRAME_GRANT_KINDS].join(", ")}`);
 
   if (flag("--list")) {
     const rows = await prisma.honour.findMany({

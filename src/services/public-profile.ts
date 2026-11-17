@@ -182,6 +182,8 @@ export function publicProfileOf(
       // Honours given by hand (lib/honours.ts): the kinds only — the frame
       // and the badge are meant to be seen; when and by whom stay private.
       honours: (me.honours ?? []).map((h: { kind: string }) => ({ kind: h.kind })),
+      // The profile-picture frame chosen (lib/frames.ts) — drawn round the avatar for everyone.
+      wornFrame: me.wornFrame ?? null,
       stats: me.stats
         ? {
             problemsSolved: me.stats.problemsSolved,

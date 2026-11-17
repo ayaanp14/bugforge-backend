@@ -61,6 +61,7 @@ import { checkStudyPlansSeeded } from "./services/study-plans.js";
 import eventsRouter from "./routes/events.js";
 import adminRouter from "./routes/admin.js";
 import { adminHonoursRouter, honoursRouter } from "./routes/honours.js";
+import { framesRouter } from "./routes/frames.js";
 import { goodiesRouter } from "./routes/goodies.js";
 import referralsRouter from "./routes/referrals.js";
 import { videoStudioRouter } from "./routes/video-studio.js";
@@ -995,6 +996,8 @@ app.use("/api/me/submissions", analysisRouter);
 // The application tracker (Phase 8, services/applications.ts).
 app.use("/api/me/applications", applicationsRouter);
 app.use("/api/me/honours", honoursRouter);
+// Profile-picture frames: the picker and the one worn (routes/frames.ts).
+app.use("/api/me/frames", framesRouter);
 app.use("/api/me", meRouter);
 // Privacy, export and deletion (routes/account.ts) — none of its paths is one of meRouter's.
 app.use("/api/me", accountRouter);

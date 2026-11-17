@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { adminOnly, requireAuth } from "../middleware/auth.js";
 import { honourDef, isHonourShareAction, parseHonourFeedback, parseHonourees } from "../lib/honours.js";
+import { isFrameGrantKind } from "../lib/frames.js";
 import {
   adminHonours,
   grantHonour,
@@ -67,7 +68,8 @@ adminHonoursRouter.get("/", async (_req, res) => {
 adminHonoursRouter.post("/", async (req, res) => {
   const body = (req.body ?? {}) as Record<string, unknown>;
   const kind = String(body["kind"] ?? "");
-  if (!honourDef(kind)) return void res.status(400).json({ error: "Unknown honour" });
+  // An honour, or one of the frames given by hand (lib/frames.ts FRAME_GRANT_KINDS).
+  if (!honourDef(kind) && !isFrameGrantKind(kind)) return void res.status(400).json({ error: "Unknown honour" });
   const users = parseHonourees(body["users"]);
   if (!users.length) return void res.status(400).json({ error: "Name at least one account by email or username" });
   const results = await grantHonour(kind, users, {
