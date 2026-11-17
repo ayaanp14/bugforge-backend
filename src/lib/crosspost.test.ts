@@ -92,6 +92,7 @@ describe("devtoArticle", () => {
   it("ends with the questions, then the way back", () => {
     assert.ok(body.indexOf("## Common questions") < body.indexOf("**Is it the same as sliding window?**"));
     assert.match(body, /part of CodeKairo's free \[DSA roadmap\]\(https:\/\/codekairo\.com\/roadmap\?utm_.*The 9 practice problems/);
+    assert.match(body, /\[company-wise coding questions\]\(https:\/\/github\.com\/ayaanp14\/company-wise-coding-questions\)[^\n]*\*\n$/);
   });
 });
 

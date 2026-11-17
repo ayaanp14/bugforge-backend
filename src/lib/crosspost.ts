@@ -112,6 +112,9 @@ export function liquidSafe(fence: string): string {
   return /\{%|%\}/.test(fence) ? `{% raw %}\n${fence}\n{% endraw %}` : fence;
 }
 
+/** The public GitHub list of company-wise questions (services/company-questions feeds it): every post points readers at it. */
+export const COMPANY_LIST_REPO = "https://github.com/ayaanp14/company-wise-coding-questions";
+
 const LANGUAGE_LABEL: Readonly<Record<string, string>> = { cpp: "C++", java: "Java", python: "Python", javascript: "JavaScript" };
 
 /** A fence long enough for its contents (a program that itself holds ``` gets ````). */
@@ -191,6 +194,7 @@ export function devtoArticle(
       ? ` The ${item.practice} practice problems for it are at the end of the [original lesson](${tracked}) — solve them in any of 13 languages, free.`
       : ` Read it with the animated figures on [CodeKairo](${tracked}).`;
   parts.push(`---\n\n*This is part of CodeKairo's free [${item.home.label}](${siteLink(origin, item.home.path, campaign)}).${practice}*`);
+  parts.push(`*Preparing for a company? The [company-wise coding questions](${COMPANY_LIST_REPO}) for TCS, Infosys, Wipro, Amazon, Google and 50+ more are on GitHub.*`);
 
   return {
     title: item.seoTitle.slice(0, 128),
