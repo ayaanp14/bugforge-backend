@@ -62,7 +62,7 @@ describe("devtoArticle", () => {
     assert.equal(article.series, "CodeKairo DSA Roadmap");
     assert.equal(article.main_image, "https://api.codekairo.com/card.jpg");
     assert.equal(article.published, true);
-    assert.equal(article.tags, "dsa,algorithms,programming,interview");
+    assert.deepEqual(article.tags, ["dsa", "algorithms", "programming", "interview"]);
     assert.match(body, /^\*First published on \[CodeKairo\]\(https:\/\/codekairo\.com\/roadmap\/two-pointers\?utm_source=devto/);
     assert.match(body, /> \*\*In short:\*\* Two indices walk the array in one pass\./);
   });

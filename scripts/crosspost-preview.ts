@@ -32,7 +32,7 @@ if (args.includes("--check")) {
       /^@(figure|walkthrough)\b/m.test(post.body_markdown) && "a marker line survived",
       /\]\(\/(?!\/)/.test(post.body_markdown) && "a site-relative link",
       /```output/.test(post.body_markdown) && "an output fence",
-      !post.tags && "no tags",
+      !post.tags.length && "no tags",
       post.title.length > 128 && "title over 128",
     ].filter(Boolean);
     if (problems.length) {

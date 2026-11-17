@@ -132,8 +132,13 @@ export interface DevtoArticle {
   title: string;
   body_markdown: string;
   published: boolean;
-  /** Comma-separated, as the Forem v1 API takes them. */
-  tags: string;
+  /**
+   * An array. The Forem v1 docs type it as a comma-separated string, but the
+   * first post (2026-11-17) sent that way went up with tags Dev.to chose
+   * itself (algorithms, beginners, performance, tutorial); the same four sent
+   * as an array stuck.
+   */
+  tags: string[];
   canonical_url: string;
   description: string;
   series: string;
@@ -191,7 +196,7 @@ export function devtoArticle(
     title: item.seoTitle.slice(0, 128),
     body_markdown: parts.join("\n\n") + "\n",
     published: true,
-    tags: devtoTags(item.tags).join(","),
+    tags: devtoTags(item.tags),
     canonical_url: original,
     description: item.description,
     series: item.series,
