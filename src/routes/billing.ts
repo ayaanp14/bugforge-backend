@@ -18,6 +18,8 @@ import { applyWebhookEvent, grantAccess } from "../services/billing.js";
 import { trackServerEvent } from "../lib/telemetry.js";
 import { entitlementFor } from "../services/entitlements.js";
 import { browserCache } from "../lib/http-cache.js";
+import { rateLimit } from "../middleware/rate-limit.js";
+import { desktopCheckoutUrls, maskEmail, payTicket, readPayTicket, wantsDesktopHandoff } from "../lib/pay-handoff.js";
 import {
   createOrder,
   fetchOrder,
@@ -52,6 +54,18 @@ function productOf(body: any): { planId: string; period: string; amount: number;
   const offer = offerFor(body?.offerId ?? (body?.planId === "pro" ? (body?.period === "yearly" ? "pro-yearly" : "pro-monthly") : null));
   if (offer) return { planId: offer.planId, period: offer.id, amount: offer.price, credits: null };
   return null;
+}
+
+/** Which Cashfree environment the browser SDK opens: sandbox unless production is set explicitly (services/cashfree). */
+const cashfreeMode = (): "sandbox" | "production" => (process.env["CASHFREE_ENV"] === "production" ? "production" : "sandbox");
+
+/** What an order bought, in words: the offer's name ("Pro · Yearly"), or a pack's ("Value pack · 300 credits"). */
+function productName(planId: string, period: string): string {
+  if (planId === CREDITS_PRODUCT) {
+    const pack = creditPackFor(period);
+    return pack ? `${pack.name} · ${pack.credits} credits` : "Credits";
+  }
+  return offerFor(period)?.name ?? planFor(planId).name;
 }
 
 /* ── catalogue ─────────────────────────────────────────────────────────── */
@@ -160,6 +174,13 @@ router.post("/checkout", requireAuth, async (req: any, res) => {
     // creating a subscription out of thin air.
     const orderId = `ck_${crypto.randomBytes(12).toString("hex")}`;
 
+    // The desktop app pays in the system browser, on the site's /pay page,
+    // which carries a signed ticket rather than a session (lib/pay-handoff):
+    // Cashfree sends that browser back to /pay, not to /pricing, where the
+    // site would try to confirm the order under a session it does not hold.
+    const desktop = wantsDesktopHandoff(req.body) ? payTicket(orderId, user.id) : null;
+    const urls = desktop ? desktopCheckoutUrls(FRONTEND_URL, desktop.ticket) : null;
+
     await prisma.paymentOrder.create({
       data: {
         id: orderId,
@@ -177,7 +198,7 @@ router.post("/checkout", requireAuth, async (req: any, res) => {
       amount: product.amount,
       currency: "INR",
       customer: { id: user.id, name: user.name, email: user.email, phone: null },
-      returnUrl: `${FRONTEND_URL}/pricing?order=${orderId}`,
+      returnUrl: urls?.returnUrl ?? `${FRONTEND_URL}/pricing?order=${orderId}`,
     });
 
     await prisma.paymentOrder.update({
@@ -185,16 +206,18 @@ router.post("/checkout", requireAuth, async (req: any, res) => {
       data: { paymentSessionId: created.paymentSessionId },
     });
 
-    trackServerEvent("checkout_order_created", { planId: product.planId, period: product.period, amount: product.amount }, user.id);
+    trackServerEvent("checkout_order_created", { planId: product.planId, period: product.period, amount: product.amount, client: desktop ? "desktop" : "web" }, user.id);
 
     res.json({
       orderId,
       paymentSessionId: created.paymentSessionId,
       // The browser SDK needs to know which Cashfree environment to open.
-      mode: process.env["CASHFREE_ENV"] === "production" ? "production" : "sandbox",
+      mode: cashfreeMode(),
       amount: product.amount,
       period: product.period,
       planId: product.planId,
+      // The desktop hand-off: the page the app opens in the browser, and until when it works.
+      ...(desktop && urls ? { payUrl: urls.payUrl, payUrlExpiresAt: new Date(desktop.expiresAt).toISOString() } : {}),
     });
   } catch (error: any) {
     if (error instanceof PaymentsUnavailable) {
@@ -264,48 +287,185 @@ router.post("/orders/:orderId/verify", requireAuth, async (req: any, res) => {
     if (order.userId !== req.user.userId) {
       return res.status(403).json({ error: "That order belongs to another account" });
     }
-
-    if (order.status === "paid") {
-      return res.json({ status: "paid", planId: order.planId, alreadyApplied: true });
-    }
-
-    const remote = await fetchOrder(order.id);
-
-    if (remote.status === "PAID") {
-      const granted = await grantAccess(prisma, order.id, null, remote.raw);
-      if (granted) return res.json({ status: "paid", planId: order.planId });
-      // The gateway says paid but nothing here would take the claim: the row
-      // is in a state grantAccess does not own (a concurrent webhook won the
-      // race, or an operator marked it). Re-read rather than guess — telling
-      // the buyer "your plan is active" on the redirect alone was the bug.
-      const after = await prisma.paymentOrder.findUnique({ where: { id: order.id }, select: { status: true } });
-      if (after?.status === "paid") {
-        return res.json({ status: "paid", planId: order.planId, alreadyApplied: true });
-      }
-      console.error(`[billing] verify: gateway PAID but order ${order.id} is "${after?.status}" and was not granted`);
-      return res.status(409).json({
-        status: "unresolved",
-        error: "The payment went through but could not be applied yet. Please contact support with your order id.",
-        orderId: order.id,
-      });
-    }
-
-    if (remote.status === "EXPIRED") {
-      await prisma.paymentOrder.updateMany({
-        where: { id: order.id, status: "created" },
-        data: { status: "expired" },
-      });
-      return res.json({ status: "expired" });
-    }
-
-    // ACTIVE means the order exists but has not been paid yet.
-    res.json({ status: remote.status.toLowerCase() });
+    const settled = await settleOrder(order);
+    res.status(settled.status).json(settled.body);
   } catch (error: any) {
     if (error instanceof PaymentsUnavailable) {
       return res.status(503).json({ error: error.message });
     }
     console.error("[billing] verify failed:", error?.message);
     res.status(500).json({ error: "Could not verify that payment" });
+  }
+});
+
+/**
+ * What the gateway says about an order, applied: the one rule /verify and
+ * the desktop pay page's verify share. It never trusts a redirect — it asks
+ * Cashfree — and grants through `grantAccess`, the webhook's own path, so
+ * whichever of the three arrives first wins and the rest are no-ops.
+ */
+async function settleOrder(order: { id: string; planId: string; status: string }): Promise<{ status: number; body: Record<string, unknown> }> {
+  if (order.status === "paid") {
+    return { status: 200, body: { status: "paid", planId: order.planId, alreadyApplied: true } };
+  }
+
+  const remote = await fetchOrder(order.id);
+
+  if (remote.status === "PAID") {
+    const granted = await grantAccess(prisma, order.id, null, remote.raw);
+    if (granted) return { status: 200, body: { status: "paid", planId: order.planId } };
+    // The gateway says paid but nothing here would take the claim: the row
+    // is in a state grantAccess does not own (a concurrent webhook won the
+    // race, or an operator marked it). Re-read rather than guess — telling
+    // the buyer "your plan is active" on the redirect alone was the bug.
+    const after = await prisma.paymentOrder.findUnique({ where: { id: order.id }, select: { status: true } });
+    if (after?.status === "paid") {
+      return { status: 200, body: { status: "paid", planId: order.planId, alreadyApplied: true } };
+    }
+    console.error(`[billing] verify: gateway PAID but order ${order.id} is "${after?.status}" and was not granted`);
+    return {
+      status: 409,
+      body: {
+        status: "unresolved",
+        error: "The payment went through but could not be applied yet. Please contact support with your order id.",
+        orderId: order.id,
+      },
+    };
+  }
+
+  if (remote.status === "EXPIRED") {
+    await prisma.paymentOrder.updateMany({
+      where: { id: order.id, status: "created" },
+      data: { status: "expired" },
+    });
+    return { status: 200, body: { status: "expired" } };
+  }
+
+  // ACTIVE means the order exists but has not been paid yet.
+  return { status: 200, body: { status: remote.status.toLowerCase() } };
+}
+
+/* ── the desktop app's checkout ────────────────────────────────────────── */
+
+/**
+ * @route   GET /api/billing/orders/:orderId
+ * @desc    One of the caller's orders as this database holds it — what the
+ *          desktop app watches while its member pays in the browser
+ * @access  Private (the order's owner; anyone else gets the same 404 as no order)
+ *
+ * A read of our own row, never the gateway: the app polls it every few
+ * seconds, and only every few polls asks /verify, which does ask Cashfree.
+ * On a deployment Cashfree can call back, the webhook flips the row and this
+ * sees it on the next poll.
+ */
+router.get("/orders/:orderId", requireAuth, async (req: any, res) => {
+  const order = await prisma.paymentOrder.findUnique({
+    where: { id: String(req.params.orderId) },
+    select: { id: true, userId: true, planId: true, period: true, amount: true, currency: true, status: true, createdAt: true },
+  });
+  if (!order || order.userId !== req.user.userId) return res.status(404).json({ error: "Order not found" });
+  res.json({
+    orderId: order.id,
+    status: order.status,
+    planId: order.planId,
+    period: order.period,
+    product: productName(order.planId, order.period),
+    amount: order.amount,
+    currency: order.currency,
+    createdAt: order.createdAt,
+  });
+});
+
+/**
+ * The pay page reads by ticket and asks Cashfree on return; neither has a
+ * session, so they are held to a rate of their own, per address — a page
+ * load is one read and one verify, and a person retrying a declined card a
+ * handful more.
+ */
+const payPageLimiter = rateLimit({
+  windowMs: 10 * 60_000,
+  max: 60,
+  message: "Too many tries on this payment page. Wait a few minutes and reload it.",
+});
+
+/** The order a pay ticket names, with its account — null for a bad ticket or an order that is not its account's. */
+async function orderOfTicket(raw: unknown) {
+  const ticket = readPayTicket(raw);
+  if (!ticket) return null;
+  const order = await prisma.paymentOrder.findUnique({
+    where: { id: ticket.orderId },
+    select: {
+      id: true,
+      userId: true,
+      planId: true,
+      period: true,
+      amount: true,
+      currency: true,
+      status: true,
+      paymentSessionId: true,
+      user: { select: { name: true, username: true, email: true } },
+    },
+  });
+  if (!order || order.userId !== ticket.userId) return null;
+  return { ticket, order };
+}
+
+/**
+ * @route   GET /api/billing/pay/:ticket
+ * @desc    What the desktop app's pay page (frontend pages/PayPage.tsx) is
+ *          paying for and for whom, and the session id to open checkout on
+ * @access  Public — the signed ticket is the authority (lib/pay-handoff)
+ *
+ * The session id goes out only while the order can still be paid; a paid
+ * or expired one answers its status alone.
+ */
+router.get("/pay/:ticket", payPageLimiter, async (req, res) => {
+  const found = await orderOfTicket(req.params["ticket"]);
+  if (!found) return void res.status(404).json({ error: "This payment link has expired or is not valid. Start again from the CodeKairo app." });
+  const { ticket, order } = found;
+  const payable = order.status === "created" || order.status === "failed";
+  res.setHeader("Cache-Control", "no-store");
+  res.json({
+    orderId: order.id,
+    status: order.status,
+    product: productName(order.planId, order.period),
+    planId: order.planId,
+    amount: order.amount,
+    currency: order.currency,
+    account: {
+      name: order.user.name?.trim() || order.user.username || null,
+      email: maskEmail(order.user.email),
+    },
+    paymentSessionId: payable ? order.paymentSessionId : null,
+    mode: cashfreeMode(),
+    expiresAt: new Date(ticket.expiresAt).toISOString(),
+  });
+});
+
+/**
+ * @route   POST /api/billing/pay/:ticket/verify
+ * @desc    The pay page, back from Cashfree, asks for the order to be
+ *          confirmed — /verify's rule (settleOrder) under the ticket
+ * @access  Public — the signed ticket is the authority
+ *
+ * Granting stays where it was: the gateway's own word that the order is
+ * PAID, applied once. This only lets the browser that paid ask for it, so
+ * the plan is on the account before the member is back in the app — and on
+ * localhost, where no webhook arrives, at all.
+ */
+router.post("/pay/:ticket/verify", payPageLimiter, async (req, res) => {
+  try {
+    const found = await orderOfTicket(req.params["ticket"]);
+    if (!found) return void res.status(404).json({ error: "This payment link has expired or is not valid. Start again from the CodeKairo app." });
+    const settled = await settleOrder(found.order);
+    res.setHeader("Cache-Control", "no-store");
+    res.status(settled.status).json({ ...settled.body, product: productName(found.order.planId, found.order.period) });
+  } catch (error: any) {
+    if (error instanceof PaymentsUnavailable) {
+      return void res.status(503).json({ error: error.message });
+    }
+    console.error("[billing] pay-page verify failed:", error?.message);
+    res.status(500).json({ error: "Could not confirm that payment. If you were charged it will apply automatically." });
   }
 });
 
