@@ -88,12 +88,21 @@ export function clearSessionCookie(res: Response): void {
  * the account held elsewhere — one device at a time (endOtherSessions).
  * Every sign-in path comes through here: password, verified email, OAuth,
  * password change.
+ *
+ * `cookie: false` is the desktop app's social sign-in (lib/desktop-oauth.ts):
+ * that session belongs to the app, so the browser that ran the OAuth dance
+ * is not left holding it — or the site in that browser could adopt it
+ * (/api/auth/session-token), and signing out there would sign the app out.
  */
-export async function establishSession(res: Response, user: SessionUser): Promise<string> {
+export async function establishSession(
+  res: Response,
+  user: SessionUser,
+  { cookie = true }: { cookie?: boolean } = {},
+): Promise<string> {
   const token = signSession(user);
   const claims = readSessionToken(token);
   if (claims) await endOtherSessions(user, claims.iat);
-  setSessionCookie(res, token);
+  if (cookie) setSessionCookie(res, token);
   return token;
 }
 

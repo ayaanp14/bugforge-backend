@@ -31,6 +31,30 @@ describe("OAuth handoff codes", () => {
     assert.equal(await handoff.redeemHandoff("not-a-code"), null);
   });
 
+  it("binds a desktop code to its verifier (S256)", async () => {
+    const crypto = await import("node:crypto");
+    const verifier = crypto.randomBytes(32).toString("base64url");
+    const challenge = crypto.createHash("sha256").update(verifier).digest("base64url");
+    const token = session.signSession(user);
+    const claims = session.readSessionToken(token)!;
+
+    assert.equal(await handoff.redeemHandoff(handoff.issueHandoff(user, claims, challenge), verifier), token);
+
+    const withoutVerifier = handoff.issueHandoff(user, claims, challenge);
+    assert.equal(await handoff.redeemHandoff(withoutVerifier), null, "no verifier, no session");
+    assert.equal(await handoff.redeemHandoff(withoutVerifier, verifier), null, "and the attempt spent the code");
+
+    const wrong = handoff.issueHandoff(user, claims, challenge);
+    assert.equal(await handoff.redeemHandoff(wrong, crypto.randomBytes(32).toString("base64url")), null);
+    assert.equal(await handoff.redeemHandoff(wrong, verifier), null, "a wrong guess spends it too");
+  });
+
+  it("ignores a verifier on a code the site's own sign-in issued", async () => {
+    const token = session.signSession(user);
+    const code = handoff.issueHandoff(user, session.readSessionToken(token)!);
+    assert.equal(await handoff.redeemHandoff(code, "anything-at-all-anything-at-all-anything-at-all"), token);
+  });
+
   it("expires after a minute", async () => {
     mock.timers.enable({ apis: ["Date"] });
     try {

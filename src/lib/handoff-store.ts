@@ -1,6 +1,7 @@
 import crypto from "node:crypto";
 import { signSession, type SessionClaims, type SessionUser } from "./auth-session.js";
 import { redisDel, redisGetJSON, redisSetJSON } from "./redis.js";
+import { verifierMatches } from "./desktop-oauth.js";
 
 /**
  * Handing a social sign-in's session to the SPA.
@@ -29,6 +30,11 @@ interface Handoff {
   user: SessionUser;
   claims: Pick<SessionClaims, "jti" | "iat" | "exp">;
   expiresAt: number;
+  /**
+   * Set for the desktop app's sign-in (lib/desktop-oauth.ts): the code is
+   * then spendable only with the verifier that hashes to this challenge.
+   */
+  challenge?: string;
 }
 
 const handoffs = new Map<string, Handoff>();
@@ -40,12 +46,19 @@ function sweep(now: number): void {
   for (const [code, handoff] of handoffs) if (handoff.expiresAt <= now) handoffs.delete(code);
 }
 
-/** Registers a session for pickup and returns the code to put in the URL. */
-export function issueHandoff(user: SessionUser, claims: Pick<SessionClaims, "jti" | "iat" | "exp">): string {
+/**
+ * Registers a session for pickup and returns the code to put in the URL.
+ * `challenge` binds it to the desktop app that started the sign-in.
+ */
+export function issueHandoff(
+  user: SessionUser,
+  claims: Pick<SessionClaims, "jti" | "iat" | "exp">,
+  challenge?: string,
+): string {
   const now = Date.now();
   sweep(now);
   const code = crypto.randomBytes(32).toString("base64url");
-  const handoff: Handoff = { user, claims, expiresAt: now + TTL_MS };
+  const handoff: Handoff = { user, claims, expiresAt: now + TTL_MS, ...(challenge ? { challenge } : {}) };
   handoffs.set(code, handoff);
   void redisSetJSON(redisKey(code), handoff, Math.ceil(TTL_MS / 1000));
   return code;
@@ -53,9 +66,11 @@ export function issueHandoff(user: SessionUser, claims: Pick<SessionClaims, "jti
 
 /**
  * Exchanges a code for the session token, once. A second exchange, an
- * expired code and a code that never existed are all the same null.
+ * expired code, a code that never existed and a desktop code without its
+ * verifier are all the same null — and a wrong verifier spends the code
+ * too, so a challenge can never be guessed at.
  */
-export async function redeemHandoff(code: string): Promise<string | null> {
+export async function redeemHandoff(code: string, verifier?: string): Promise<string | null> {
   const now = Date.now();
   sweep(now);
 
@@ -69,6 +84,7 @@ export async function redeemHandoff(code: string): Promise<string | null> {
   // here cannot be redeemed again on another instance.
   void redisDel(redisKey(code));
   if (handoff.expiresAt <= now) return null;
+  if (handoff.challenge !== undefined && !verifierMatches(verifier, handoff.challenge)) return null;
 
   return signSession(handoff.user, handoff.claims);
 }

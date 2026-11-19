@@ -378,14 +378,21 @@ router.post("/logout", optionalAuth, async (req, res) => {
 //
 // The OAuth callback lands the browser on the SPA with a one-time code in
 // the URL rather than the session itself (lib/handoff-store.ts); the SPA
-// posts the code here and gets the token. Once.
+// posts the code here and gets the token. Once. The Windows app posts its
+// `verifier` too: its codes are bound to it (lib/desktop-oauth.ts).
 router.post("/handoff", async (req, res) => {
-  const code = bodyOf(req)["code"];
+  const body = bodyOf(req);
+  const code = body["code"];
+  const verifier = body["verifier"];
   if (typeof code !== "string" || !code || code.length > 128) {
     res.status(400).json({ error: "Sign-in code is required." });
     return;
   }
-  const token = await redeemHandoff(code);
+  if (verifier !== undefined && (typeof verifier !== "string" || verifier.length > 128)) {
+    res.status(400).json({ error: "Sign-in code is required." });
+    return;
+  }
+  const token = await redeemHandoff(code, verifier);
   if (!token) {
     res.status(400).json({ error: "This sign-in link has expired. Please try again." });
     return;

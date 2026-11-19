@@ -11,6 +11,13 @@ import {
 } from "../lib/auth-session.js";
 import { asSite, oauthCallbackUri as callbackUri, siteUrl, type Site } from "../lib/sites.js";
 import { issueHandoff } from "../lib/handoff-store.js";
+import {
+  loopbackUrl,
+  parseDesktopSignIn,
+  readDesktopSignIn,
+  serializeDesktopSignIn,
+  type DesktopSignIn,
+} from "../lib/desktop-oauth.js";
 import { welcomeNewAccount } from "../lib/auth-mail.js";
 import { forgetSessions, isSessionRevoked } from "../lib/session-revocation.js";
 import { isLinkState, linkResult, readLinkState } from "../lib/github.js";
@@ -44,6 +51,8 @@ const STATE_COOKIE = "oauth_state";
 const INTENT_COOKIE = "auth_intent";
 /** Which site started the sign-in (lib/sites `Site`), so it is the one the browser returns to. */
 const SITE_COOKIE = "auth_site";
+/** Set when the Windows app started it (lib/desktop-oauth.ts): its loopback port and challenge. */
+const DESKTOP_COOKIE = "auth_desktop";
 
 /**
  * State and intent only need to survive the round-trip to the provider.
@@ -81,28 +90,91 @@ function handoffUrl(site: Site, token: string): string {
   return `${siteUrl(site)}/auth/callback?code=${encodeURIComponent(code)}`;
 }
 
-/** Issue the CSRF state and remember the intent and the starting site for the callback leg. */
-function beginHandoff(
-  res: { cookie: (name: string, value: string, options: object) => unknown },
-  intent: Intent,
-  site: Site,
-): string {
+/**
+ * Issue the CSRF state and remember the intent, the starting site and - for
+ * the Windows app - its loopback, for the callback leg. A sign-in the site
+ * starts clears any desktop cookie an abandoned app sign-in left in this
+ * browser, or that sign-in would end at the app instead of the page.
+ */
+function beginHandoff(res: Response, intent: Intent, site: Site, desktop: DesktopSignIn | null): string {
   const state = crypto.randomBytes(16).toString("hex");
   res.cookie(STATE_COOKIE, state, HANDOFF_COOKIE);
   res.cookie(INTENT_COOKIE, intent, HANDOFF_COOKIE);
   res.cookie(SITE_COOKIE, site, HANDOFF_COOKIE);
+  if (desktop) res.cookie(DESKTOP_COOKIE, serializeDesktopSignIn(desktop), HANDOFF_COOKIE);
+  else res.clearCookie(DESKTOP_COOKIE, { path: "/" });
   return state;
+}
+
+/**
+ * The Windows app's loopback port and challenge, when the start URL carries
+ * them. `invalid` when it tried and got them wrong: that is refused rather
+ * than quietly turned into a sign-in on the site the app would never hear of.
+ */
+function desktopStart(req: Request): { desktop: DesktopSignIn | null; invalid: boolean } {
+  const port = req.query["desktop_port"];
+  const challenge = req.query["desktop_challenge"];
+  if (port === undefined && challenge === undefined) return { desktop: null, invalid: false };
+  const desktop = parseDesktopSignIn(port, challenge);
+  return { desktop, invalid: desktop === null };
+}
+
+function refuseDesktopStart(res: Response): void {
+  res.status(400).type("text/plain").send("This sign-in link from the CodeKairo app is not valid. Start again from the app.");
+}
+
+/** What the start leg left for the callback, read once and cleared. */
+interface CallbackContext {
+  intent: Intent;
+  site: Site;
+  expectedState: string | undefined;
+  desktop: DesktopSignIn | null;
+}
+
+function takeHandoffCookies(req: Request, res: Response): CallbackContext {
+  const cookies = req.cookies as Record<string, string | undefined> | undefined;
+  const context: CallbackContext = {
+    intent: asIntent(cookies?.[INTENT_COOKIE]),
+    site: asSite(cookies?.[SITE_COOKIE]),
+    expectedState: cookies?.[STATE_COOKIE],
+    desktop: readDesktopSignIn(cookies?.[DESKTOP_COOKIE]),
+  };
+  for (const name of [STATE_COOKIE, INTENT_COOKIE, SITE_COOKIE, DESKTOP_COOKIE]) res.clearCookie(name, { path: "/" });
+  return context;
+}
+
+/** A failed sign-in goes back where it started: the site's form, or the app's listener. */
+const failTo = (context: CallbackContext, error: string): string =>
+  context.desktop ? loopbackUrl(context.desktop, { error }) : failureUrl(context.site, context.intent, error);
+
+/**
+ * A signed-in account, handed to whoever started: the site gets the cookie
+ * and a code for /auth/callback; the app gets no cookie (the session is the
+ * app's, not this browser's) and a code only its verifier can spend.
+ */
+async function finishSignIn(res: Response, context: CallbackContext, record: SocialUserRecord): Promise<string> {
+  if (!context.desktop) return handoffUrl(context.site, await establishSession(res, record));
+  const token = await establishSession(res, record, { cookie: false });
+  const claims = readSessionToken(token);
+  if (!claims) throw new Error("freshly minted session token did not verify");
+  const code = issueHandoff({ id: claims.userId, email: claims.email || null }, claims, context.desktop.challenge);
+  return loopbackUrl(context.desktop, { code });
 }
 
 // GET /api/auth/github - start the OAuth dance
 router.get("/github", (req, res) => {
+  const { desktop, invalid } = desktopStart(req);
+  if (invalid) {
+    refuseDesktopStart(res);
+    return;
+  }
   if (!GITHUB_ID || !GITHUB_SECRET) {
-    res.redirect(failureUrl(asSite(req.query["return"]), "login", "oauth_failed"));
+    res.redirect(desktop ? loopbackUrl(desktop, { error: "oauth_failed" }) : failureUrl(asSite(req.query["return"]), "login", "oauth_failed"));
     return;
   }
 
   const intent = asIntent(req.query["intent"]);
-  const state = beginHandoff(res, intent, asSite(req.query["return"]));
+  const state = beginHandoff(res, intent, asSite(req.query["return"]), desktop);
 
   const authorize = new URL("https://github.com/login/oauth/authorize");
   authorize.searchParams.set("client_id", GITHUB_ID);
@@ -187,27 +259,22 @@ router.get("/github/callback", async (req, res) => {
     return;
   }
 
-  const intent = asIntent(req.cookies?.[INTENT_COOKIE]);
-  const site = asSite(req.cookies?.[SITE_COOKIE]);
-  const expectedState = req.cookies?.[STATE_COOKIE];
-
-  res.clearCookie(STATE_COOKIE, { path: "/" });
-  res.clearCookie(INTENT_COOKIE, { path: "/" });
-  res.clearCookie(SITE_COOKIE, { path: "/" });
+  const context = takeHandoffCookies(req, res);
+  const { expectedState } = context;
 
   const code = typeof req.query["code"] === "string" ? req.query["code"] : null;
   const state = typeof req.query["state"] === "string" ? req.query["state"] : null;
 
   // CSRF: the state we issued must come back untouched.
   if (!code || !state || !expectedState || state !== expectedState) {
-    res.redirect(failureUrl(site, intent, "oauth_failed"));
+    res.redirect(failTo(context, "oauth_failed"));
     return;
   }
 
   try {
     const accessToken = await exchangeGitHubCode(code, callbackUri(req, "github"));
     if (!accessToken) {
-      res.redirect(failureUrl(site, intent, "oauth_failed"));
+      res.redirect(failTo(context, "oauth_failed"));
       return;
     }
 
@@ -215,7 +282,7 @@ router.get("/github/callback", async (req, res) => {
 
     const profileRes = await fetch("https://api.github.com/user", { headers: ghHeaders });
     if (!profileRes.ok) {
-      res.redirect(failureUrl(site, intent, "oauth_failed"));
+      res.redirect(failTo(context, "oauth_failed"));
       return;
     }
     const profile = (await profileRes.json()) as {
@@ -249,13 +316,13 @@ router.get("/github/callback", async (req, res) => {
 
     if (!email) {
       console.warn("[auth] GitHub identity with no verified email refused");
-      res.redirect(failureUrl(site, intent, "oauth_failed"));
+      res.redirect(failTo(context, "oauth_failed"));
       return;
     }
 
     const result = await upsertSocialUser({
       email: email.trim().toLowerCase(),
-      intent,
+      intent: context.intent,
       name: profile.name ?? profile.login,
       avatarUrl: profile.avatar_url ?? null,
       provider: "github",
@@ -264,27 +331,32 @@ router.get("/github/callback", async (req, res) => {
     });
 
     if ("error" in result) {
-      res.redirect(failureUrl(site, intent, result.error));
+      res.redirect(failTo(context, result.error));
       return;
     }
 
-    res.redirect(handoffUrl(site, await establishSession(res, result.record)));
+    res.redirect(await finishSignIn(res, context, result.record));
   } catch (err) {
     console.error("[auth] GitHub callback error:", err);
-    res.redirect(failureUrl(site, intent, "oauth_failed"));
+    res.redirect(failTo(context, "oauth_failed"));
   }
 });
 
 // GET /api/auth/google - start the OAuth dance
 router.get("/google", (req, res) => {
+  const { desktop, invalid } = desktopStart(req);
+  if (invalid) {
+    refuseDesktopStart(res);
+    return;
+  }
   if (!GOOGLE_CLIENT_ID || !GOOGLE_CLIENT_SECRET) {
     console.error("[auth] GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET are not configured");
-    res.redirect(failureUrl(asSite(req.query["return"]), "login", "oauth_failed"));
+    res.redirect(desktop ? loopbackUrl(desktop, { error: "oauth_failed" }) : failureUrl(asSite(req.query["return"]), "login", "oauth_failed"));
     return;
   }
 
   const intent = asIntent(req.query["intent"]);
-  const state = beginHandoff(res, intent, asSite(req.query["return"]));
+  const state = beginHandoff(res, intent, asSite(req.query["return"]), desktop);
 
   const authorize = new URL("https://accounts.google.com/o/oauth2/v2/auth");
   authorize.searchParams.set("client_id", GOOGLE_CLIENT_ID);
@@ -301,17 +373,12 @@ router.get("/google", (req, res) => {
 
 // GET /api/auth/google/callback - exchange the code and sign the user in
 router.get("/google/callback", async (req, res) => {
-  const intent = asIntent(req.cookies?.[INTENT_COOKIE]);
-  const site = asSite(req.cookies?.[SITE_COOKIE]);
-  const expectedState = req.cookies?.[STATE_COOKIE];
-
-  res.clearCookie(STATE_COOKIE, { path: "/" });
-  res.clearCookie(INTENT_COOKIE, { path: "/" });
-  res.clearCookie(SITE_COOKIE, { path: "/" });
+  const context = takeHandoffCookies(req, res);
+  const { expectedState } = context;
 
   // The user pressed "Cancel" on Google's consent screen.
   if (typeof req.query["error"] === "string") {
-    res.redirect(failureUrl(site, intent, "oauth_failed"));
+    res.redirect(failTo(context, "oauth_failed"));
     return;
   }
 
@@ -320,12 +387,12 @@ router.get("/google/callback", async (req, res) => {
 
   // CSRF: the state we issued must come back untouched.
   if (!code || !state || !expectedState || state !== expectedState) {
-    res.redirect(failureUrl(site, intent, "oauth_failed"));
+    res.redirect(failTo(context, "oauth_failed"));
     return;
   }
 
   if (!GOOGLE_CLIENT_ID || !GOOGLE_CLIENT_SECRET) {
-    res.redirect(failureUrl(site, intent, "oauth_failed"));
+    res.redirect(failTo(context, "oauth_failed"));
     return;
   }
 
@@ -359,7 +426,7 @@ router.get("/google/callback", async (req, res) => {
         "[auth] Google token exchange failed:",
         tokenData.error_description ?? tokenData.error,
       );
-      res.redirect(failureUrl(site, intent, "oauth_failed"));
+      res.redirect(failTo(context, "oauth_failed"));
       return;
     }
 
@@ -370,7 +437,7 @@ router.get("/google/callback", async (req, res) => {
     });
     if (!profileRes.ok) {
       console.error("[auth] Google userinfo failed:", profileRes.status);
-      res.redirect(failureUrl(site, intent, "oauth_failed"));
+      res.redirect(failTo(context, "oauth_failed"));
       return;
     }
     const profile = (await profileRes.json()) as {
@@ -382,7 +449,7 @@ router.get("/google/callback", async (req, res) => {
     };
 
     if (!profile.email) {
-      res.redirect(failureUrl(site, intent, "oauth_failed"));
+      res.redirect(failTo(context, "oauth_failed"));
       return;
     }
     // A Google identity is only trusted for an address Google has verified.
@@ -392,7 +459,7 @@ router.get("/google/callback", async (req, res) => {
     // refused too: the claim is what the link rests on, not a default.
     if (profile.email_verified !== true) {
       console.warn("[auth] Google identity with unverified email refused");
-      res.redirect(failureUrl(site, intent, "oauth_failed"));
+      res.redirect(failTo(context, "oauth_failed"));
       return;
     }
 
@@ -409,14 +476,14 @@ router.get("/google/callback", async (req, res) => {
     });
 
     if ("error" in result) {
-      res.redirect(failureUrl(site, intent, result.error));
+      res.redirect(failTo(context, result.error));
       return;
     }
 
-    res.redirect(handoffUrl(site, await establishSession(res, result.record)));
+    res.redirect(await finishSignIn(res, context, result.record));
   } catch (err) {
     console.error("[auth] Google callback error:", err);
-    res.redirect(failureUrl(site, intent, "oauth_failed"));
+    res.redirect(failTo(context, "oauth_failed"));
   }
 });
 
