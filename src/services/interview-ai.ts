@@ -705,6 +705,16 @@ async function askQuestion<S extends z.ZodType>(
   }
 }
 
+/**
+ * The model answered, but not with what the schema asked for: JSON that does
+ * not parse (an unescaped quote inside a transcribed answer) or that fails
+ * validation. Unlike a provider error, the same request usually comes back
+ * right the second time, so a caller with a lot riding on one reply retries it.
+ */
+class MalformedReplyError extends Error {
+  override name = "MalformedReplyError";
+}
+
 /** Strips ```json fences a chatty model wraps its JSON in. */
 function unfence(text: string) {
   const fenced = text.match(/```(?:json)?\s*([\s\S]*?)```/i);
@@ -825,12 +835,12 @@ async function ask<S extends z.ZodType>(
   try {
     candidate = JSON.parse(unfence(text));
   } catch {
-    throw new Error(`Interview model returned unparsable JSON for ${name}: ${text.slice(0, 160)}`);
+    throw new MalformedReplyError(`Interview model returned unparsable JSON for ${name}: ${text.slice(0, 160)}`);
   }
 
   const result = schema.safeParse(coerce ? coerce(candidate) : candidate);
   if (!result.success) {
-    throw new Error(`Interview model returned a ${name} that failed validation: ${result.error.message.slice(0, 200)}`);
+    throw new MalformedReplyError(`Interview model returned a ${name} that failed validation: ${result.error.message.slice(0, 200)}`);
   }
   return { parsed: result.data as z.infer<S>, usage: readUsage(response.usage) };
 }
@@ -1186,12 +1196,21 @@ export async function analyzeVoiceTranscript(
   // its own entry a thirty-minute round can run to twenty-odd of them, at
   // roughly 250 tokens each with the follow-ups quoted; 16K leaves room for
   // that without reserving the model's whole window.
-  const { parsed, usage } = await ask(
-    input,
-    SpokenBreakdown,
-    "voice_breakdown",
-    Number(process.env.INTERVIEW_VOICE_MAX_OUTPUT_TOKENS ?? 16_000),
-  );
+  //
+  // One retry when the reply is malformed. The whole spoken round's report
+  // rides on this single call, and on 2026-11-21 one reply that did not
+  // parse failed /voice/complete with a 500; the client's own retry then
+  // succeeded, so the same request is simply asked again here first.
+  const maxTokens = Number(process.env.INTERVIEW_VOICE_MAX_OUTPUT_TOKENS ?? 16_000);
+  let reply: { parsed: z.infer<typeof SpokenBreakdown>; usage: Usage };
+  try {
+    reply = await ask(input, SpokenBreakdown, "voice_breakdown", maxTokens);
+  } catch (error) {
+    if (!(error instanceof MalformedReplyError)) throw error;
+    console.error(`[interview] voice_breakdown malformed (${error.message.slice(0, 120)}) — asking again`);
+    reply = await ask(input, SpokenBreakdown, "voice_breakdown", maxTokens);
+  }
+  const { parsed, usage } = reply;
   return { questions: parsed.questions, usage };
 }
 
