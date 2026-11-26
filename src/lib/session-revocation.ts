@@ -187,9 +187,24 @@ onSignal(REPLACED_SIGNAL, (payload) => {
  * are left alone: the Playwright suite signs one account in from several
  * places at once, and such an address can never verify its email, so it can
  * never sign in on production anyway.
+ *
+ * `MULTI_DEVICE_EMAILS` are the one other exception (the owner's call,
+ * 2026-11-26): the founder's own account keeps every device signed in.
+ * Deliberately a fixed list and not `isOwnerEmail` — the other owner
+ * addresses stay one device at a time, and OWNER_EMAILS must not widen this
+ * by accident. Safe to key on the address because a password account cannot
+ * sign in until it has verified it, and a social one arrives verified.
  */
+const MULTI_DEVICE_EMAILS = new Set(["ayaanpatha14@gmail.com", "ayaanpathan14@gmail.com"]);
+
+export function keepsOtherSessions(email: string | null | undefined): boolean {
+  if (!email) return false;
+  const normalised = email.trim().toLowerCase();
+  return isReservedAddress(normalised) || MULTI_DEVICE_EMAILS.has(normalised);
+}
+
 export async function endOtherSessions(user: { id: string; email: string | null }, issuedAt: number): Promise<void> {
-  if (user.email && isReservedAddress(user.email)) return;
+  if (keepsOtherSessions(user.email)) return;
   const stamp = new Date(issuedAt * 1000);
   await prisma.user.updateMany({
     where: { id: user.id, OR: [{ sessionsValidFrom: null }, { sessionsValidFrom: { lt: stamp } }] },

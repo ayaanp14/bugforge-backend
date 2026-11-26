@@ -46,3 +46,19 @@ describe("session revocation", () => {
     assert.equal(await mod.isSessionRevoked("u2", at(Date.now()), "jti-a"), false);
   });
 });
+
+describe("keepsOtherSessions", () => {
+  it("lets only the founder's account stay signed in on several devices", () => {
+    assert.equal(mod.keepsOtherSessions("ayaanpatha14@gmail.com"), true);
+    assert.equal(mod.keepsOtherSessions("  AyaanPatha14@Gmail.com "), true);
+    assert.equal(mod.keepsOtherSessions("ayaanpathan14@gmail.com"), true);
+  });
+
+  it("keeps everyone else, the other owner included, to one device", () => {
+    assert.equal(mod.keepsOtherSessions("tabassump8319@gmail.com"), false);
+    assert.equal(mod.keepsOtherSessions("someone@example.org"), true, "reserved test domains stay exempt");
+    assert.equal(mod.keepsOtherSessions("student@gmail.com"), false);
+    assert.equal(mod.keepsOtherSessions(null), false);
+    assert.equal(mod.keepsOtherSessions(""), false);
+  });
+});
