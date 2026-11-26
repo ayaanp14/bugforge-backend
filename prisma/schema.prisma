@@ -3029,3 +3029,13 @@ model SiteVideo {
   @@unique([path, youtubeId])
   @@index([path, createdAt])
 }
+
+/// What the daily IndexNow sweep last told the engines about each public page
+/// (services/search-pings.ts): the lastmod the sitemap gave when it was sent,
+/// "" when it gave none. A page is sent again only when that moves; a row whose
+/// page left every sitemap is sent once more and deleted. Additive, no relations.
+model IndexNowPing {
+  path    String   @id @db.VarChar(191)
+  lastmod String   @db.VarChar(10)
+  sentAt  DateTime @default(now())
+}
