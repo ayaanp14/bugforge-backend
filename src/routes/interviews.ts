@@ -456,8 +456,12 @@ router.delete("/:id", requireAuth, async (req: any, res) => {
       });
     }
 
-    await prisma.savedInterview.delete({
-      where: { id },
+    // deleteMany, not delete: two requests for one setup (a double click on
+    // the purge confirmation) both passed the lookup above, and the second
+    // delete() found nothing and threw P2025 — a 500 for a setup that was
+    // gone, which is what the caller asked for (production, 2026-11-20).
+    await prisma.savedInterview.deleteMany({
+      where: { id, userId: req.user.userId },
     });
 
     // Its sessions went with it, and the history analytics counted them.

@@ -2641,6 +2641,19 @@ function escapeXml(s: string): string {
  */
 const PROBLEM_PAGES_REVISED = new Date("2026-10-09T00:00:00Z");
 
+/**
+ * When every aptitude question page last changed in substance: 2026-11-17,
+ * the search-led titles and descriptions (lib/aptitude-seo). The aptitude
+ * sitemap's lastmod, for the same reason as PROBLEM_PAGES_REVISED — and it
+ * is the signal that gets them re-read: ~300 were rendered before the
+ * 2026-10-14 head fix (frontend useDocumentTitle) while a failed read wrote
+ * the homepage canonical, and Search Console still filed them under
+ * "Alternate page with proper canonical tag" a month later, unvisited, with
+ * no lastmod to say anything had changed. Bump it only when every question
+ * page changes, never for a seed or a deploy.
+ */
+const APTITUDE_PAGES_REVISED = new Date("2026-11-17T00:00:00Z");
+
 function urlset(entries: Array<{ path: string; lastmod?: Date | null }>): string {
   const rows = entries.map((e) => {
     const loc = `    <loc>${escapeXml(SITE_ORIGIN + e.path)}</loc>`;
@@ -2694,11 +2707,12 @@ export function sitemapXml(name: string): Promise<string | null> {
       case "aptitude": {
         // A restated question (APTITUDE_CANONICAL) is left out: its page
         // names the original as canonical, and a sitemap lists canonicals.
-        // No lastmod: every seed rewrites every row, so updatedAt was one
-        // date for all 1,164 that moved with each seed — a lastmod that
-        // changes when nothing did teaches a crawler to ignore it (2026-10-01).
+        // Not updatedAt: every seed rewrites every row, so it was one date
+        // for all 1,164 that moved with each seed — a lastmod that changes
+        // when nothing did teaches a crawler to ignore it (2026-10-01). The
+        // date the pages themselves last changed instead, as for problems.
         const rows = await prisma.aptitudeQuestion.findMany({ select: { slug: true }, orderBy: { slug: "asc" } });
-        return urlset(rows.filter((r) => !(r.slug in APTITUDE_CANONICAL)).map((r) => ({ path: `/aptitude/q/${r.slug}` })));
+        return urlset(rows.filter((r) => !(r.slug in APTITUDE_CANONICAL)).map((r) => ({ path: `/aptitude/q/${r.slug}`, lastmod: APTITUDE_PAGES_REVISED })));
       }
       case "tests": {
         // The placement patterns and the skill tests: both are tests a

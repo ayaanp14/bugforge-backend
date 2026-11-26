@@ -67,6 +67,7 @@ import referralsRouter from "./routes/referrals.js";
 import { videoStudioRouter } from "./routes/video-studio.js";
 import { registerVideoJobs } from "./services/video-studio.js";
 import { registerCrosspostJobs } from "./services/crosspost.js";
+import { registerSearchPingJobs } from "./services/search-pings.js";
 import { todayContest } from "./services/daily-contest.js";
 import { optionalAuth } from "./middleware/auth.js";
 import { addKickedUser, kickedUserIdsOf } from "./lib/room-kicks.js";
@@ -1257,6 +1258,8 @@ httpServer.listen(PORT, () => {
   registerVideoJobs();
   // One roadmap lesson or CS note a day on Dev.to, canonical back here (off until DEVTO_API_KEY).
   registerCrosspostJobs();
+  // New and changed public pages to IndexNow (Bing → ChatGPT search, Copilot), once a day.
+  registerSearchPingJobs();
   startScheduler();
   // No socket survived the restart, and none said goodbye (lib/duels).
   void markActiveDuelsAbsent();

@@ -10,7 +10,7 @@ import { ONBOARDING_SELECT, onboardingStateOf, parseOnboarding } from "../lib/on
 import { setTarget } from "../services/readiness.js";
 import { repickMissionToday } from "../services/mission.js";
 import { hashPassword, passwordProblem, verifyPassword } from "../lib/passwords.js";
-import { forgetSessions } from "../lib/session-revocation.js";
+import { closeSocketsOpenedBefore, forgetSessions } from "../lib/session-revocation.js";
 import { establishSession } from "../lib/auth-session.js";
 import { USERNAME_RULE, readUsername } from "../lib/identity.js";
 import { oauthCallbackUri } from "../lib/sites.js";
@@ -410,6 +410,9 @@ router.post("/password", requireAuth, async (req, res) => {
     select: { id: true },
   });
   forgetSessions(user.id);
+  // establishSession closes the older sockets too, except for an account
+  // allowed several devices (keepsOtherSessions), which it leaves alone.
+  closeSocketsOpenedBefore(user.id, stamp);
   const token = await establishSession(res, user);
 
   res.json({ message: "Password updated. Other devices have been signed out.", token });
