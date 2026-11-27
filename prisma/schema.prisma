@@ -453,6 +453,8 @@ model SubmissionAnalysis {
   ai             Json?
   /// The skill the failure points at and what to do next (lib/skill-profile recommendFor).
   recommendation Json?
+  /// "Roast my code" (lib/code-roast): one roast per style, written on demand — { english?, hinglish? }.
+  roast          Json?
   model          String?    @db.VarChar(120)
   promptVersion  Int?
   codeHash       String     @db.Char(64)

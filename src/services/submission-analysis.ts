@@ -6,6 +6,7 @@ import { ai } from "../lib/ai/provider.js";
 import { PROMPT_VERSIONS, promptFor } from "../lib/ai/prompts.js";
 import { analyzeFailure, type DeterministicAnalysis } from "../lib/failure-analysis.js";
 import { buildReviewMessages, coerceReview, guardReview, ReviewSchema, type AiReview } from "../lib/submission-review.js";
+import { buildRoastMessages, coerceRoast, cookedLevel, guardRoast, roastSetOf, RoastSchema, type Roast, type RoastSet, type RoastStyle } from "../lib/code-roast.js";
 import { recommendFor } from "../lib/skill-profile.js";
 import { skillsForProblemTags } from "../lib/skill-graph.js";
 import { lessonForHub } from "../lib/roadmap-lessons.js";
@@ -66,6 +67,8 @@ export interface AnalysisView {
   deterministic: DeterministicAnalysis | null;
   ai: AiReview | null;
   recommendation: Recommendation | null;
+  /** "Roast my code", per style, once asked for (lib/code-roast). */
+  roast: RoastSet;
 }
 
 export interface FailedSubmission {
@@ -302,7 +305,7 @@ export async function recoverSubmissionAnalyses(): Promise<void> {
 export async function analysisFor(userId: string, submissionId: string): Promise<AnalysisView | null> {
   const row = await prisma.submissionAnalysis.findUnique({
     where: { submissionId },
-    select: { userId: true, status: true, reason: true, category: true, deterministic: true, ai: true, recommendation: true },
+    select: { userId: true, status: true, reason: true, category: true, deterministic: true, ai: true, recommendation: true, roast: true },
   });
   if (row) {
     if (row.userId !== userId) return null;
@@ -314,9 +317,96 @@ export async function analysisFor(userId: string, submissionId: string): Promise
       deterministic: row.deterministic as unknown as DeterministicAnalysis,
       ai: (row.ai as unknown as AiReview | null) ?? null,
       recommendation: (row.recommendation as unknown as Recommendation | null) ?? null,
+      roast: roastSetOf(row.roast),
     };
   }
   const submission = await prisma.submission.findFirst({ where: { id: submissionId, userId }, select: { verdict: true, submittedAt: true } });
   if (!submission || submission.verdict === "ACCEPTED" || Date.now() - submission.submittedAt.getTime() > PENDING_WINDOW_MS) return null;
-  return { submissionId, status: "pending", reason: null, category: null, deterministic: null, ai: null, recommendation: null };
+  return { submissionId, status: "pending", reason: null, category: null, deterministic: null, ai: null, recommendation: null, roast: {} };
+}
+
+// ── Roast my code ─────────────────────────────────────────────────
+
+export class RoastError extends Error {
+  constructor(
+    readonly status: number,
+    message: string,
+  ) {
+    super(message);
+    this.name = "RoastError";
+  }
+}
+
+/** One model call per (submission, style) at a time: a double-click waits on the first. */
+const roasting = new Map<string, Promise<Roast>>();
+
+/**
+ * "Roast my code" for one failed submission, in one style — written the first
+ * time it is asked for and kept on the analysis row (`roast.<style>`), so a
+ * reopened panel, a second click or a reload never pays for it again. Owner
+ * only (someone else's submission is the same 404 as none); never in ranked
+ * play, by the same rule as the review (the row's reason says contest/duel).
+ */
+export async function roastFor(userId: string, submissionId: string, style: RoastStyle): Promise<Roast> {
+  const row = await prisma.submissionAnalysis.findUnique({
+    where: { submissionId },
+    select: { userId: true, problemId: true, reason: true, deterministic: true, ai: true, roast: true },
+  });
+  if (!row || row.userId !== userId) throw new RoastError(404, "No review for that submission.");
+  if (row.reason === "contest" || row.reason === "duel") throw new RoastError(409, "No roasts in ranked play — the duel or contest gets a clean review only. Roast it after.");
+  const version = PROMPT_VERSIONS["submission-roast"];
+  const stored = roastSetOf(row.roast)[style];
+  if (stored && stored.promptVersion === version) return stored;
+  if (!ai.available()) throw new RoastError(503, "The roaster is offline right now. Try again in a bit.");
+
+  const key = `${submissionId}:${style}`;
+  const inFlight = roasting.get(key);
+  if (inFlight) return inFlight;
+  const work = (async () => {
+    const [problem, submission] = await Promise.all([
+      problemForReview(row.problemId),
+      prisma.submission.findUnique({ where: { id: submissionId }, select: { code: true, language: true, verdict: true, passedCases: true, totalCases: true } }),
+    ]);
+    if (!problem || !submission) throw new RoastError(404, "No review for that submission.");
+    const known = row.deterministic as unknown as DeterministicAnalysis | null;
+    const review = row.ai as unknown as AiReview | null;
+    const prompt = promptFor("submission-roast");
+    const ctx = {
+      title: problem.title,
+      statement: problem.description,
+      code: submission.code,
+      language: submission.language,
+      verdict: submission.verdict,
+      passedCases: submission.passedCases,
+      totalCases: submission.totalCases,
+      headline: known?.headline ?? null,
+      reviewSummary: review?.summary ?? null,
+      cooked: cookedLevel(submission.verdict, submission.passedCases, submission.totalCases),
+    };
+    let raw;
+    try {
+      ({ parsed: raw } = await ai.json(buildRoastMessages(ctx, prompt.text, style), RoastSchema, "submission_roast", {
+        maxTokens: 500,
+        // A joke wants variety; the guard, not the temperature, keeps it clean.
+        temperature: 0.9,
+        coerce: coerceRoast,
+      }));
+    } catch (err) {
+      console.error("submission roast: model failed:", (err as Error).message);
+      throw new RoastError(502, "The roast didn't come out right. Try again.");
+    }
+    const roast = guardRoast(raw, { style, cooked: ctx.cooked, promptVersion: prompt.version });
+    if (!roast) throw new RoastError(502, "The roast didn't come out right. Try again.");
+    // Read-merge-write of a small Json: two styles racing on one row could
+    // drop one, which costs only a second call later — never a wrong roast.
+    const fresh = await prisma.submissionAnalysis.findUnique({ where: { submissionId }, select: { roast: true } });
+    await prisma.submissionAnalysis.update({ where: { submissionId }, data: { roast: json({ ...roastSetOf(fresh?.roast), [style]: roast }) } });
+    return roast;
+  })();
+  roasting.set(key, work);
+  try {
+    return await work;
+  } finally {
+    roasting.delete(key);
+  }
 }
