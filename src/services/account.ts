@@ -176,7 +176,7 @@ export async function buildAccountExport(userId: string): Promise<Record<string,
     // "Why it failed": each failed submission's explanation — the judge's and the model's — and what it suggested.
     prisma.submissionAnalysis.findMany({
       where, ...newest, orderBy: { createdAt: "desc" },
-      select: { submissionId: true, problemId: true, status: true, category: true, deterministic: true, ai: true, recommendation: true, createdAt: true },
+      select: { submissionId: true, problemId: true, status: true, category: true, deterministic: true, ai: true, recommendation: true, roast: true, createdAt: true },
     }),
     // The tutor: what was asked and answered on each problem, at which rung.
     prisma.tutorTurn.findMany({
